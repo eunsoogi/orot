@@ -5,6 +5,15 @@ final class FormScrollGeometryUITests: XCTestCase {
     @MainActor
     func testFormGestureBoundaries() throws {
         try FormScrollGeometryRegression.verify()
+        XCTAssertEqual(FormScrollGeometry.uniqueOwnerIndex([1, 0]), 0)
+        XCTAssertEqual(FormScrollGeometry.uniqueOwnerIndex([0, 1]), 1)
+        XCTAssertNil(FormScrollGeometry.uniqueOwnerIndex([0, 0]))
+        XCTAssertNil(FormScrollGeometry.uniqueOwnerIndex([1, 1]))
+        XCTAssertNil(FormScrollGeometry.uniqueOwnerIndex([2, 0]))
+        XCTAssertEqual(FormScrollGeometry.matchingOwnerIndex(scrollCounts: [1, 0], targetCounts: [1, 0]), 0)
+        XCTAssertNil(FormScrollGeometry.matchingOwnerIndex(scrollCounts: [1, 0], targetCounts: [0, 1]))
+        XCTAssertNil(FormScrollGeometry.matchingOwnerIndex(scrollCounts: [1, 1], targetCounts: [1, 0]))
+        XCTAssertNil(FormScrollGeometry.matchingOwnerIndex(scrollCounts: [0, 0], targetCounts: nil))
         let window = CGRect(x: 0, y: 0, width: 951, height: 669)
         let appEnvelope = CGRect(x: 0, y: 0, width: 669, height: 951)
         let scroll = CGRect(x: 0, y: 0, width: 867, height: 386)

@@ -3,17 +3,6 @@ import XCTest
 
 @MainActor
 enum FormUITestConditions {
-    /// Use the unique AX window that owns the observed form, rather than the app's orientation-dependent envelope.
-    private static func owningWindow(_ app: XCUIApplication, scroll: XCUIElement) -> XCUIElement? {
-        let window = app.windows.firstMatch
-        guard app.windows.count == 1, window.exists else { XCTFail("The form requires one owning AX window"); return nil }
-        let identifier = scroll.identifier
-        if !identifier.isEmpty, window.descendants(matching: .any).matching(identifier: identifier).count != 1 {
-            XCTFail("The observed form scroll is not unique in its AX window"); return nil
-        }
-        return window
-    }
-
     /// React Native backs multiline TextInput with UITextView; query that role instead of scanning every accessibility element.
     static func multilineInput(_ app: XCUIApplication, identifier: String) -> XCUIElement {
         app.textViews.matching(identifier: identifier).firstMatch
@@ -30,14 +19,13 @@ enum FormUITestConditions {
     @discardableResult
     static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil, scrollObservation: FormScrollObservation? = nil) -> CGRect? {
         XCTAssertTrue(UITestConditions.exists(scroll))
-        guard let window = owningWindow(app, scroll: scroll) else { return nil }
         var lastObservation = ""
         // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
         for attempt in 0 ... 16 {
             // Read-only stages can skip this global AX snapshot when no action can present a keyboard.
             let keyboard = keyboardMayBeVisible ? app.keyboards.firstMatch : nil
             // AX queries are independent. Read each frame once and fail before synthesizing an invalid gesture.
-            guard app.windows.count == 1, window.exists else { XCTFail("The form window changed during reveal"); return nil }
+            guard let window = FormWindowOwnership.resolve(app, scroll: scroll, target: target) else { return nil }
             let applicationFrame = window.frame
             let scrollFrame = scroll.frame
             let keyboardFrame = keyboard?.exists == true ? keyboard?.frame : nil
@@ -194,7 +182,7 @@ enum FormUITestConditions {
         // A hardware keyboard can leave no software keyboard. Observe presence without waiting for one to appear.
         let keyboardFrame = keyboard.exists ? keyboard.frame : nil
         let scroll = UITestConditions.element(app, scrollID)
-        guard let window = owningWindow(app, scroll: scroll) else { return nil }
+        guard let window = FormWindowOwnership.resolve(app, scroll: scroll, target: input) else { return nil }
         let applicationFrame = window.frame
         let scrollFrame = scroll.frame
         let inputFrame = input.frame
@@ -212,8 +200,8 @@ enum FormUITestConditions {
             input.tap()
         }
         let actualKeyboardFrame = keyboard.exists ? keyboard.frame : nil
-        guard app.windows.count == 1, window.exists else { XCTFail("The form window changed during focus"); return nil }
-        let actualApplicationFrame = window.frame
+        guard let actualWindow = FormWindowOwnership.resolve(app, scroll: scroll, target: input) else { return nil }
+        let actualApplicationFrame = actualWindow.frame
         let actualScrollFrame = scroll.frame
         guard let actual = FormScrollGeometry(application: actualApplicationFrame, scroll: actualScrollFrame, keyboard: actualKeyboardFrame) else {
             XCTFail("The refocused input has no finite keyboard viewport")

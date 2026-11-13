@@ -106,6 +106,7 @@
 		D3A73F6214CB458BAE72EAD1 /* NavigationGeometryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */; };
 		AC917F6214CB458BAE72EAD1 /* NavigationMeasuredReservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */; };
 		9D81887FE75E296A4E9C2AAE /* FormScrollGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */; };
+		A77400000000000000000005 /* FormWindowOwnership.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77400000000000000000006 /* FormWindowOwnership.swift */; };
 		9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */; };
 		CE7A8B9120FA49BB3E6E2930 /* NavigationRailFrameIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0CFA67204BB1059B01C0647 /* NavigationRailFrameIntegrationTests.swift */; };
 		026FA02E3DF24624A885119D /* NavigationFocusObservationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624BCD81A97449138708ACDB /* NavigationFocusObservationTests.swift */; };
@@ -620,6 +621,7 @@
 		FA1C7510E3C109036CBC94DA /* CalendarSelectionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarSelectionUITests.swift; sourceTree = "<group>"; };
 		FAE6F89196C20B76EB9AEC58 /* TestFixtureState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestFixtureState.swift; path = OrotMobile/TestFixtureState.swift; sourceTree = "<group>"; };
 		FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FormScrollGeometry.swift; sourceTree = "<group>"; };
+		A77400000000000000000006 /* FormWindowOwnership.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormWindowOwnership.swift; sourceTree = "<group>"; };
 		B1CD2E3F405162738495A6B7 /* ConversationComposerDockUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationComposerDockUITests.swift; sourceTree = "<group>"; };
 		A71D65500000000000000002 /* ConversationHealthSummaryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationHealthSummaryUITests.swift; sourceTree = "<group>"; };
 		A652EBA3110F4C94A4E35002 /* ConversationToolEventsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationToolEventsUITests.swift; sourceTree = "<group>"; };
@@ -1053,6 +1055,7 @@
 				57B3B1D586B849E5B681F225 /* ConversationHistoryUITestConditions.swift */,
 				5C2079E18C7329B3C721FA69 /* AiFeatureNavigationUITests.swift */,
 				FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */,
+				A77400000000000000000006 /* FormWindowOwnership.swift */,
 				F4A0173CB1668372E7B07078 /* FormScrollGeometryRegression.swift */,
 				D47AE9E631A9B2300C1B1A02 /* FormScrollGeometryUITests.swift */,
 			);
@@ -1568,6 +1571,7 @@
 				6DDA81C6B5654D44AFA384EF /* ConversationHistoryUITestConditions.swift in Sources */,
 				4EBE38BC5B5FD5E49C372A3A /* AiFeatureNavigationUITests.swift in Sources */,
 				9D81887FE75E296A4E9C2AAE /* FormScrollGeometry.swift in Sources */,
+				A77400000000000000000005 /* FormWindowOwnership.swift in Sources */,
 				A46DEDA1E5E62AC772FEA278 /* FormScrollGeometryRegression.swift in Sources */,
 				D47AE9E631A9B2300C1B1A01 /* FormScrollGeometryUITests.swift in Sources */,
 			);
