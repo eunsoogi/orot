@@ -6,7 +6,7 @@ import XCTest
 final class AppointmentPageScrollOwnershipTests: XCTestCase {
     @MainActor
     func testWrapperOwnerAndSectionsRejectNestedOrDetachedScrolls() throws {
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 951, height: 669))
+        let window = try makeFixtureWindow(frame: CGRect(x: 0, y: 0, width: 951, height: 669))
         let wrapper = UIView(frame: window.bounds)
         wrapper.accessibilityIdentifier = "appointments-scroll"
         let owner = UIScrollView(frame: wrapper.bounds)
@@ -41,7 +41,7 @@ final class AppointmentPageScrollOwnershipTests: XCTestCase {
         XCTAssertEqual(snapshot()["status"] as? String, "unavailable")
 
         // A native root scroll needs no wrapper; depth and traversal limits still fail closed.
-        let directWindow = UIWindow(frame: window.bounds)
+        let directWindow = try makeFixtureWindow(frame: window.bounds)
         let direct = UIScrollView(frame: directWindow.bounds)
         direct.accessibilityIdentifier = "appointments-scroll"
         let directPrimary = UIView(), directSecondary = UIView()
@@ -65,5 +65,21 @@ final class AppointmentPageScrollOwnershipTests: XCTestCase {
             direct.addSubview(UIView())
         }
         XCTAssertEqual(directSnapshot()["truncated"] as? Bool, true)
+    }
+
+    /// Uses a real foreground scene for screen-coordinate geometry while keeping fixture windows hidden.
+    @MainActor
+    private func makeFixtureWindow(frame: CGRect) throws -> UIWindow {
+        let scene = try XCTUnwrap(
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first { $0.activationState == .foregroundActive },
+            "The integration host must have a foreground window scene."
+        )
+        let window = UIWindow(windowScene: scene)
+        window.frame = frame
+        window.isHidden = true
+        XCTAssertTrue(window.windowScene === scene)
+        return window
     }
 }
