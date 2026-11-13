@@ -57,9 +57,10 @@ export const duoTests = [
   'OrotUITests/HealthImportDuoUITests/testHealthRecordPeriodAndRowsSurviveDuoGeometryChanges',
   'OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow',
   'OrotUITests/KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances',
-  // These native conversation journeys cover saved results, reversible history, and failure state on Duo.
+  // These native conversation journeys cover saved results, rotation, accessible history, and failure state on Duo.
   'OrotUITests/KeyboardSafeAreaUITests/testConversationLongTitlesAndFullSwipeAcrossTextSizes',
   'OrotUITests/ConversationHistoryDuoUITests/testSavedOutputActionsOpenAndReturnFromHistory',
+  'OrotUITests/ConversationHistoryDuoUITests/testLandscapeHistoryKeepsLargeTextAndVoiceOverOrder',
   'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable',
   'OrotUITests/ConversationComposerDockUITests/testDuoComposerAndActionsRemainReachable',
   'OrotUITests/SettingsSyncStatusDuoUITests/testSyncStatusAndRecoveryStayInsideDuoRegionsAcrossReflow',

@@ -65,6 +65,8 @@ test('Duo remains opt-in with its exact native test inventory', () => {
     'OrotUITests/KeyboardSafeAreaUITests/testConversationLongTitlesAndFullSwipeAcrossTextSizes';
   const savedOutputActions =
     'OrotUITests/ConversationHistoryDuoUITests/testSavedOutputActionsOpenAndReturnFromHistory';
+  const historyRotationAccessibility =
+    'OrotUITests/ConversationHistoryDuoUITests/testLandscapeHistoryKeepsLargeTextAndVoiceOverOrder';
   const conversationFailureRecovery =
     'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable';
   const syncStatusReflow =
@@ -100,7 +102,7 @@ test('Duo remains opt-in with its exact native test inventory', () => {
   const providerSelectionTests = iosTestInventory('provider-selection');
   const speechTests = iosTestInventory('speech');
   // Keep Duo-only cohorts explicit so the exact inventory cannot drift silently.
-  assert.equal(duoInventory.length, 63);
+  assert.equal(duoInventory.length, 64);
   assert.deepEqual(duoInventory, [
     'OrotUITests/ChartConsumerAcceptanceUITests/testHomeLargeTextChartValuesRemainReachable',
     'OrotUITests/DailyReportEntryUITests/testSavedReportAndFollowUpFitPortraitDuoAtLargeTextInBothAppearances',
@@ -158,6 +160,7 @@ test('Duo remains opt-in with its exact native test inventory', () => {
     keyboardUndoReflow,
     conversationLongTitlesAndFullSwipe,
     savedOutputActions,
+    historyRotationAccessibility,
     conversationFailureRecovery,
     'OrotUITests/ConversationComposerDockUITests/testDuoComposerAndActionsRemainReachable',
     syncStatusReflow,

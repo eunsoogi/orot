@@ -122,6 +122,7 @@
 		F94600000000000000000007 /* NavigationRailMountTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94600000000000000000008 /* NavigationRailMountTestObservation.swift */; };
 		A49300000000000000000003 /* ConversationHitTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49300000000000000000004 /* ConversationHitTestObservation.swift */; };
 		E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D4A0000000000000000002 /* NavigationRotationProbe.swift */; };
+		A74211B10000000000000001 /* NavigationRotationUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A74211B10000000000000002 /* NavigationRotationUITestConditions.swift */; };
 		F26700000000000000000002 /* WindowGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000004 /* WindowGeometryUITests.swift */; };
 		B86E17D32A304AA18B994826 /* NavigationWindowGeometryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */; };
 		2C23D9984D5148FD953E8DAC /* NavigationGeometryReservedRegionMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA48CD63B8574397A72A3267 /* NavigationGeometryReservedRegionMatcher.swift */; };
@@ -439,6 +440,7 @@
 		a23c13bada0fd75e87404dfe /* ProviderSelectionDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSelectionDuoUITests.swift; sourceTree = "<group>"; };
 		7105E581D5A4BCA2DF07F257 /* SettingsBackupDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsBackupDuoUITests.swift; sourceTree = "<group>"; };
 		A89139838EEBFC807829E10F /* UITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UITestConditions.swift; sourceTree = "<group>"; };
+		A74211B10000000000000002 /* NavigationRotationUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationRotationUITestConditions.swift; sourceTree = "<group>"; };
 		D3FBD4A586A2465C82F30711 /* HomeMetricScrollUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeMetricScrollUITestConditions.swift; sourceTree = "<group>"; };
 		D4687A5C9F8E4A2B913C7602 /* HomeMetricScrollGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeMetricScrollGeometry.swift; sourceTree = "<group>"; };
 		AAC7EA95F80AE2A7C829EC81 /* HealthKitAuthorizationPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitAuthorizationPlan.swift; path = OrotMobile/HealthKitAuthorizationPlan.swift; sourceTree = "<group>"; };
@@ -947,6 +949,7 @@
 			children = (
 				5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */,
 				A89139838EEBFC807829E10F /* UITestConditions.swift */,
+				A74211B10000000000000002 /* NavigationRotationUITestConditions.swift */,
 				A62440000000000000000002 /* TranscriptEvidenceUITests.swift */,
 				D40E9817CB8A4FAF92E6B211 /* EncounterReviewUITests.swift */,
 				573D819AAC6F4E578B760D0B /* FormScrollObservation.swift */,
@@ -1462,6 +1465,7 @@
 				B2850AD9AAFAE36D783F2D67 /* OrotFailFastTestCase.swift in Sources */,
 				BFE2E63FDD5B34C5C8D0BDB9 /* TestHostConnectionTests.swift in Sources */,
 				32E95890ED81D9F662C886C9 /* UITestConditions.swift in Sources */,
+				A74211B10000000000000001 /* NavigationRotationUITestConditions.swift in Sources */,
 				D4687A5C9F8E4A2B913C7601 /* HomeMetricScrollGeometry.swift in Sources */,
 				B51E2A969CE74D4DA5B8B302 /* HomeMetricScrollUITestConditions.swift in Sources */,
 				A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */,

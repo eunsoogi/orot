@@ -58,6 +58,99 @@ final class ConversationHistoryDuoUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
     }
 
+    /// Confirms the history header, saved shortcuts, and list remain ordered and reachable after a native Duo rotation.
+    @MainActor
+    func testLandscapeHistoryKeepsLargeTextAndVoiceOverOrder() throws {
+        guard #available(iOS 27.0, *) else {
+            XCTFail("The Duo history speech-order check requires the public iOS 27 VoiceOver service")
+            return
+        }
+        let voiceOver = VoiceOverTestSession()
+        voiceOver.registerRestoration(in: self)
+        try voiceOver.prepareForStandardInteraction()
+
+        let app = XCUIApplication()
+        let originalOrientation = XCUIDevice.shared.orientation
+        let session = UUID().uuidString
+        defer {
+            UITestConditions.terminateStandaloneApp(app)
+            XCUIDevice.shared.orientation = originalOrientation
+        }
+        XCUIDevice.shared.orientation = .portrait
+        app.launchArguments = [
+            "-OROT_TEST_SCENARIO", "conversation-visual",
+            "-OROT_TEST_HISTORY_SAVED_OUTPUT_LAYOUT", "YES",
+            "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
+            "-OROT_TEST_ROTATION_GEOMETRY_SESSION", session,
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR",
+        ]
+        app.launch()
+        XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
+        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
+        NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
+
+        let receipt = try NavigationRotationUITestConditions.rotateObservedScene(app, session: session, landscape: true)
+        XCTAssertEqual((receipt["before"] as? [String: Any])?["sceneOrientation"] as? Int, UIInterfaceOrientation.portrait.rawValue)
+        XCTAssertEqual((receipt["current"] as? [String: Any])?["sceneOrientation"] as? Int, UIInterfaceOrientation.landscapeLeft.rawValue)
+        XCTAssertTrue(UITestConditions.exists(node(app, "conversation-history-screen")))
+
+        let title = node(app, "conversation-history-title")
+        let count = node(app, "conversation-history-count")
+        let savedOutputsTitle = node(app, "conversation-history-saved-outputs-title")
+        let savedAnalysis = node(app, "conversation-saved-analysis")
+        let savedVisitQuestions = node(app, "conversation-saved-visit-questions")
+        let row = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "conversation-history-session-")).firstMatch
+        let contentRegion = node(app, "navigation-content-region")
+        let regionFrame = contentRegion.frame
+
+        XCTAssertTrue(UITestConditions.exists(title) && title.isHittable)
+        XCTAssertEqual(title.label, "대화 기록")
+        XCTAssertTrue(UITestConditions.exists(count) && !count.label.isEmpty)
+        XCTAssertTrue(UITestConditions.exists(savedOutputsTitle))
+        XCTAssertEqual(savedOutputsTitle.label, "저장된 AI 결과")
+        XCTAssertTrue(UITestConditions.exists(savedAnalysis) && !savedAnalysis.label.isEmpty)
+        XCTAssertTrue(UITestConditions.exists(savedVisitQuestions) && !savedVisitQuestions.label.isEmpty)
+        XCTAssertTrue(UITestConditions.exists(row))
+        XCTAssertTrue(regionFrame.insetBy(dx: -0.5, dy: -0.5).contains(title.frame))
+        XCTAssertTrue(regionFrame.insetBy(dx: -0.5, dy: -0.5).contains(count.frame))
+
+        let service = XCUIDevice.shared.voiceOverService
+        try voiceOver.assertSpeech(from: title, expected: "대화 기록", forbiddenTerms: [], phase: "history-title-order", testCase: self)
+        let countOutput = try service.moveForward()
+        assertVoiceOverSpeechOutput(countOutput, expected: count.label, phase: "history-count-order", testCase: self)
+        let savedOutputsOutput = try service.moveForward()
+        assertVoiceOverSpeechOutput(savedOutputsOutput, expected: "저장된 AI 결과", phase: "history-saved-group-order", testCase: self)
+        let savedAnalysisOutput = try service.moveForward()
+        assertVoiceOverSpeechOutput(savedAnalysisOutput, expected: "저장된 요약과 가능성", phase: "history-saved-analysis-order", testCase: self)
+        let savedQuestionsOutput = try service.moveForward()
+        assertVoiceOverSpeechOutput(savedQuestionsOutput, expected: "저장된 진료 질문", phase: "history-saved-questions-order", testCase: self)
+        let todayOutput = try service.moveForward()
+        assertVoiceOverSpeechOutput(todayOutput, expected: "오늘", phase: "history-list-section-order", testCase: self)
+        let rowOutput = try service.moveForward()
+        assertVoiceOverSpeechOutput(rowOutput, expected: "새 대화", phase: "history-list-row-order", testCase: self)
+        try voiceOver.prepareForStandardInteraction()
+
+        for action in [savedAnalysis, savedVisitQuestions] {
+            XCTAssertTrue(action.label.contains("다시 살펴봐요"))
+            _ = FormUITestConditions.reveal(action, in: app, scrollID: "conversation-history-page")
+            XCTAssertTrue(action.exists && action.isHittable)
+            XCTAssertGreaterThanOrEqual(action.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(action.frame.height, 44)
+            XCTAssertTrue(regionFrame.insetBy(dx: -0.5, dy: -0.5).contains(action.frame))
+        }
+        _ = FormUITestConditions.reveal(row, in: app, scrollID: "conversation-history-page")
+        XCTAssertTrue(row.exists && row.isHittable)
+        XCTAssertGreaterThanOrEqual(row.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(row.frame.height, 44)
+        try NavigationUITestConditions.contentClearOfNavigation(
+            app,
+            scrollID: "conversation-history-page",
+            contentID: row.identifier,
+            testCase: self,
+        )
+    }
+
     @MainActor
     private func node(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
         UITestConditions.element(app, identifier)

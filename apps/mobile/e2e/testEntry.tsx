@@ -28,6 +28,7 @@ import {
 import { AppearanceTestObservation } from './AppearanceTestObservation';
 import { compactNavigationObservation } from './compactNavigationObservation';
 import { ReminderTestObservation } from './ReminderTestObservation';
+import { RotationGeometryRequest } from './RotationGeometryRequest';
 import {
   readInitialTestEntrySettings,
   type TestEntrySettingsManager,
@@ -155,6 +156,9 @@ function GeometryTestWrapper({ children }: PropsWithChildren) {
   return (
     <SafeAreaListener onChange={setMetrics}>
       {children}
+      <RotationGeometryRequest
+        session={settings.OROT_TEST_ROTATION_GEOMETRY_SESSION}
+      />
       {lifecycleObservation ? (
         <View pointerEvents="none" style={styles.geometryMarker}>
           {route === 'ai-feature-visit-questions' ? (
