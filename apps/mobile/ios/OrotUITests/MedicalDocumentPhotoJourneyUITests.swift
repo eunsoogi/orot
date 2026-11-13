@@ -46,13 +46,7 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
 
         // The host seeds one synthetic image in the owned Simulator; selection remains in PHPicker.
         XCTAssertTrue(app.navigationBars["Photos"].waitForAppearance(), app.debugDescription)
-        // PHPicker exposes assets through its system extension on both ordinary iPhone and Duo.
-        let photo = XCUIApplication(bundleIdentifier: "com.apple.mobileslideshow.photospicker")
-            .images.matching(identifier: "PXGGridLayout-Info").firstMatch
-        XCTAssertTrue(photo.waitForAppearance(), app.debugDescription)
-        XCTAssertTrue(photo.isHittable, app.debugDescription)
-        photo.tap()
-        XCTAssertTrue(node(app, "medical-document-review-title").waitForAppearance(), app.debugDescription)
+        try MedicalDocumentPhotoSelectionUITestConditions.selectLeadingPhotoAndAwaitReview(app, testCase: self)
         XCTAssertTrue(node(app, "medical-document-review-original-photo").exists, app.debugDescription)
         let text = node(app, "medical-document-review-text-0")
         XCTAssertTrue(UITestConditions.text(text).lowercased().contains("synthetic clinic"), app.debugDescription)
