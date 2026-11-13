@@ -39,5 +39,31 @@ final class AppointmentPageScrollOwnershipTests: XCTestCase {
         XCTAssertEqual(snapshot()["secondaryComplete"] as? Bool, false)
         wrapper.addSubview(UIScrollView())
         XCTAssertEqual(snapshot()["status"] as? String, "unavailable")
+
+        // A native root scroll needs no wrapper; depth and traversal limits still fail closed.
+        let directWindow = UIWindow(frame: window.bounds)
+        let direct = UIScrollView(frame: directWindow.bounds)
+        direct.accessibilityIdentifier = "appointments-scroll"
+        let directPrimary = UIView(), directSecondary = UIView()
+        directPrimary.accessibilityIdentifier = "appointments-columns-primary"
+        directSecondary.accessibilityIdentifier = "appointments-columns-secondary"
+        directWindow.addSubview(direct); direct.addSubview(directPrimary); direct.addSubview(directSecondary)
+        func directSnapshot() -> [String: Any] {
+            AppointmentPageScrollObservation.snapshot(window: directWindow, identity: identity)
+        }
+        let directResult = directSnapshot()
+        XCTAssertEqual(directResult["ownerID"] as? String, identity(direct))
+        XCTAssertEqual(directResult["primaryAncestors"] as? [String], [identity(direct)])
+        var parent: UIView = direct
+        for _ in 0 ..< 65 {
+            let child = UIView(); parent.addSubview(child); parent = child
+        }
+        parent.addSubview(directPrimary)
+        XCTAssertEqual(directSnapshot()["primaryComplete"] as? Bool, false)
+        direct.addSubview(directPrimary)
+        for _ in 0 ..< 2049 {
+            direct.addSubview(UIView())
+        }
+        XCTAssertEqual(directSnapshot()["truncated"] as? Bool, true)
     }
 }

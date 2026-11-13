@@ -6,14 +6,44 @@ extension AppointmentsUITests {
     func assertAppointmentScrollOwnership(_ app: XCUIApplication, scroll: XCUIElement, primary: XCUIElement, secondary: XCUIElement) throws {
         let marker = UITestConditions.element(app, "navigation-test-observation")
         XCTAssertTrue(marker.exists)
-        let raw = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any])
-        let geometry = try XCTUnwrap(raw["windowGeometry"] as? [String: Any])
-        let dock = try XCTUnwrap(geometry["dockControls"] as? [String: Any])
-        let page = try XCTUnwrap(dock["appointmentPage"] as? [String: Any])
-        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: page, options: .sortedKeys), uniformTypeIdentifier: "public.json")
+        func sample() throws -> (dock: [String: Any], page: [String: Any]) {
+            let raw = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any])
+            let geometry = try XCTUnwrap(raw["windowGeometry"] as? [String: Any])
+            let dock = try XCTUnwrap(geometry["dockControls"] as? [String: Any])
+            return try (dock, XCTUnwrap(dock["appointmentPage"] as? [String: Any]))
+        }
+        let before = try sample()
+        let axStart = Date().timeIntervalSince1970 * 1000
+        let window = try XCTUnwrap(FormWindowOwnership.resolve(app, scroll: scroll, target: primary))
+        var frames = [("windowFrameInScreen", window.frame), ("wrapperFrame", scroll.frame),
+                      ("primaryFrame", primary.frame), ("secondaryFrame", secondary.frame)]
+        let axOwners = scroll.descendants(matching: .scrollView).allElementsBoundByIndex
+        if axOwners.count == 1 {
+            frames.append(("ownerFrame", axOwners[0].frame))
+        }
+        let axEnd = Date().timeIntervalSince1970 * 1000
+        let after = try sample()
+        let dock = before.dock, page = before.page
+        let receipt: [String: Any] = ["before": page, "after": after.page, "axStartMs": axStart, "axEndMs": axEnd]
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: receipt, options: .sortedKeys), uniformTypeIdentifier: "public.json")
         attachment.name = "appointment-page-scroll-ownership"
         attachment.lifetime = .keepAlways
         add(attachment)
+        XCTAssertLessThanOrEqual(axOwners.count, 1)
+        let firstStart = try XCTUnwrap(dock["sampleStartedAtMs"] as? Double)
+        let firstEnd = try XCTUnwrap(dock["sampleEndedAtMs"] as? Double)
+        let secondStart = try XCTUnwrap(after.dock["sampleStartedAtMs"] as? Double)
+        let secondEnd = try XCTUnwrap(after.dock["sampleEndedAtMs"] as? Double)
+        let windowID = try XCTUnwrap(dock["windowID"] as? String)
+        XCTAssertTrue(try AppointmentViewportGeometry.samplesBracketAX(launch: firstStart, axStart: axStart, firstStart: firstStart, firstEnd: firstEnd,
+                                                                       secondStart: secondStart, secondEnd: secondEnd, firstWindow: windowID,
+                                                                       secondWindow: XCTUnwrap(after.dock["windowID"] as? String)))
+        XCTAssertLessThanOrEqual(axEnd, secondStart)
+        let firstPage = try JSONSerialization.data(withJSONObject: page, options: .sortedKeys)
+        let secondPage = try JSONSerialization.data(withJSONObject: after.page, options: .sortedKeys)
+        XCTAssertEqual(firstPage, secondPage, "The sampled owner and section geometry must stay stable across AX reads")
+        XCTAssertEqual(dock["sceneID"] as? String, after.dock["sceneID"] as? String)
+        XCTAssertEqual(dock["windowFrameInScreen"] as? [String: Double], after.dock["windowFrameInScreen"] as? [String: Double])
         XCTAssertEqual(page["status"] as? String, "sampled")
         XCTAssertEqual(page["counts"] as? [Int], [1, 1, 1])
         XCTAssertEqual(page["ownerCount"] as? Int, 1)
@@ -26,10 +56,7 @@ extension AppointmentsUITests {
             primaryComplete: page["primaryComplete"] as? Bool == true, secondaryComplete: page["secondaryComplete"] as? Bool == true,
             primaryNested: XCTUnwrap(page["primaryNested"] as? Int), secondaryNested: XCTUnwrap(page["secondaryNested"] as? Int),
         ))
-        let window = try XCTUnwrap(FormWindowOwnership.resolve(app, scroll: scroll, target: primary))
-        for (key, actual) in [("windowFrameInScreen", window.frame), ("wrapperFrame", scroll.frame),
-                              ("primaryFrame", primary.frame), ("secondaryFrame", secondary.frame)]
-        {
+        for (key, actual) in frames {
             let source = key == "windowFrameInScreen" ? dock : page
             let frame = try XCTUnwrap(source[key] as? [String: Double])
             XCTAssertEqual(actual.minX, try XCTUnwrap(frame["x"]), accuracy: 0.5)
