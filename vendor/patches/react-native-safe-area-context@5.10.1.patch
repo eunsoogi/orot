@@ -1,27 +1,75 @@
 diff --git a/ios/Fabric/RNCSafeAreaProviderComponentView.mm b/ios/Fabric/RNCSafeAreaProviderComponentView.mm
-index f315ccda83ea81b1ce24ca2c33dad2513e299b17..e8c33c7917255411005bf97aa793ac768e75b6b2 100644
 --- a/ios/Fabric/RNCSafeAreaProviderComponentView.mm
 +++ b/ios/Fabric/RNCSafeAreaProviderComponentView.mm
-@@ -106,9 +106,10 @@ - (void)invalidateSafeAreaInsets
+@@ -18,6 +18,7 @@
+   CGRect _currentFrame;
+   BOOL _initialInsetsSent;
+   BOOL _registeredNotifications;
++  NSUInteger _mountGeneration;
+ }
+
+ // Needed because of this: https://github.com/facebook/react-native/pull/37274
+@@ -47,6 +48,32 @@
+   }
+ }
+ #endif
++
++#if !TARGET_OS_OSX
++// Fabric may drop the first insets event while attaching the view. Replay once
++// after mounting; stale callbacks must not affect a recycled or reparented view.
++- (void)didMoveToWindow
++{
++  [super didMoveToWindow];
++  const NSUInteger generation = ++_mountGeneration;
++  if (self.window == nil) {
++    return;
++  }
++
++  __weak RNCSafeAreaProviderComponentView *weakSelf = self;
++  __weak typeof(self.window) mountWindow = self.window;
++  __weak UIView *mountSuperview = self.superview;
++  dispatch_async(dispatch_get_main_queue(), ^{
++    RNCSafeAreaProviderComponentView *strongSelf = weakSelf;
++    if (strongSelf == nil || strongSelf->_mountGeneration != generation || strongSelf.window == nil ||
++        strongSelf.window != mountWindow || strongSelf.superview != mountSuperview) {
++      return;
++    }
++    strongSelf->_initialInsetsSent = NO;
++    [strongSelf invalidateSafeAreaInsets];
++  });
++}
++#endif
+
+ - (void)registerNotifications
+ {
+@@ -106,9 +133,10 @@
          .insets =
              {
                  .top = safeAreaInsets.top,
--                .left = safeAreaInsets.left,
--                .bottom = safeAreaInsets.bottom,
 +                // Match the generated event field declaration order.
-                 .right = safeAreaInsets.right,
++                .right = safeAreaInsets.right,
 +                .bottom = safeAreaInsets.bottom,
-+                .left = safeAreaInsets.left,
+                 .left = safeAreaInsets.left,
+-                .bottom = safeAreaInsets.bottom,
+-                .right = safeAreaInsets.right,
              },
          .frame =
              {
+@@ -138,6 +166,7 @@
+
+ - (void)prepareForRecycle
+ {
++  ++_mountGeneration;
+   [super prepareForRecycle];
+   _currentSafeAreaInsets = UIEdgeInsetsZero;
+   _currentFrame = CGRectZero;
 
 diff --git a/react-native-safe-area-context.podspec b/react-native-safe-area-context.podspec
 index 078def5..cc47196 100644
 --- a/react-native-safe-area-context.podspec
 +++ b/react-native-safe-area-context.podspec
 @@ -28,6 +28,8 @@ Pod::Spec.new do |s|
- 
+
      s.subspec "common" do |ss|
        ss.source_files         = "common/cpp/**/*.{cpp,h}"
 +      # Its only implementation is Android-specific; do not archive an empty iOS object.
