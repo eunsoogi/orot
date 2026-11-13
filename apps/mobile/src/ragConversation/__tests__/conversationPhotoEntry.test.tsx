@@ -4,14 +4,12 @@ import { useConversationEntryIntent } from '../useConversationEntryIntent';
 
 jest.mock('../../medicalDocuments/medicalDocumentImportService', () => ({
   medicalDocumentImportService: {
-    selectDocument: jest
-      .fn()
-      .mockResolvedValue({
-        id: 'synthetic',
-        displayName: 'synthetic.jpg',
-        contentHash: `sha256:${'a'.repeat(64)}`,
-        sections: [],
-      }),
+    selectDocument: jest.fn().mockResolvedValue({
+      id: 'synthetic',
+      displayName: 'synthetic.jpg',
+      contentHash: `sha256:${'a'.repeat(64)}`,
+      sections: [],
+    }),
     discardDocument: jest.fn().mockResolvedValue(undefined),
   },
 }));
