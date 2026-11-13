@@ -182,6 +182,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         XCTAssertTrue(secondary.exists && !secondary.frame.isEmpty, app.debugDescription)
         let scroll = app.scrollViews.matching(identifier: "appointments-scroll").firstMatch
         XCTAssertTrue(scroll.exists && !scroll.frame.isEmpty, app.debugDescription)
+        XCTAssertEqual(scroll.descendants(matching: .scrollView).count, 0, "Appointment sections must not introduce nested scroll owners")
         XCTAssertEqual(scroll.descendants(matching: .any).matching(identifier: "appointments-columns-primary").count, 1)
         XCTAssertEqual(scroll.descendants(matching: .any).matching(identifier: "appointments-columns-secondary").count, 1)
         let primaryFrame = primary.frame
