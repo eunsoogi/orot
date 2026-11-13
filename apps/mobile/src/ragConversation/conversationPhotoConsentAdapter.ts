@@ -1,10 +1,7 @@
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import type { StagedMedicalDocument } from '../medicalDocuments/medicalDocumentNativeBridge';
-import {
-  canUseMedicalDocumentGeneration,
-  getMedicalDocumentGeneration,
-} from '../medicalDocuments/medicalDocumentLifecycle';
+import { canUseMedicalDocumentGeneration } from '../medicalDocuments/medicalDocumentLifecycle';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { photoEvidenceCapability } from './conversationPhotoCapability';
 import type { PhotoRequestIdentity } from './conversationPhotoHandoff';
@@ -50,8 +47,10 @@ async function waitForPhotoDecision<T>(
 /** Confirm that the exact OCR sections, rather than an omitted or replaced attachment, reach the request. */
 function containsPhotoEvidence(
   request: OutboundProcessingRequest,
-  document: StagedMedicalDocument,
-  photoEvidenceIds: readonly string[],
+  photoEvidence: readonly {
+    readonly evidenceId: string;
+    readonly content: string;
+  }[],
 ): boolean {
   const evidence: unknown[] = [];
   for (const message of request.payload.messages) {
@@ -76,13 +75,13 @@ function containsPhotoEvidence(
       // Ordinary user messages need not contain an evidence envelope.
     }
   }
-  return document.sections.every((section, index) => {
+  return photoEvidence.every(expected => {
     const matches = evidence.filter(
       item =>
         item &&
         typeof item === 'object' &&
         'evidenceId' in item &&
-        item.evidenceId === photoEvidenceIds[index],
+        item.evidenceId === expected.evidenceId,
     );
     return (
       matches.length === 1 &&
@@ -93,7 +92,7 @@ function containsPhotoEvidence(
           'sourceKind' in item &&
           item.sourceKind === 'personal_record' &&
           'content' in item &&
-          item.content === section.text,
+          item.content === expected.content,
       )
     );
   });
@@ -102,10 +101,17 @@ function containsPhotoEvidence(
 /** A photo-specific decision never substitutes for the runtime's normal remote-payload consent. */
 export async function authorizeConversationPhoto(input: {
   readonly identity: PhotoRequestIdentity;
-  readonly document: StagedMedicalDocument;
+  readonly document: Pick<
+    StagedMedicalDocument,
+    'id' | 'contentHash' | 'sections'
+  > &
+    Partial<Pick<StagedMedicalDocument, 'previewData'>>;
   readonly stagingGeneration: number;
-  /** Turn-local evidence aliases, in the same order as the OCR sections. */
-  readonly photoEvidenceIds: readonly string[];
+  /** Exact registered, redacted content and aliases in OCR section order. */
+  readonly photoEvidence: readonly {
+    readonly evidenceId: string;
+    readonly content: string;
+  }[];
   readonly selected: Selection;
   readonly request: OutboundProcessingRequest;
   /** Revalidates file, source, request and each alias-to-section mapping against their real owners. */
@@ -131,9 +137,12 @@ export async function authorizeConversationPhoto(input: {
     /^sha256:[0-9a-f]{64}$/i.test(document.contentHash) &&
     new Set(document.sections.map(section => section.id)).size ===
       document.sections.length &&
-    input.photoEvidenceIds.length === document.sections.length &&
-    new Set(input.photoEvidenceIds).size === input.photoEvidenceIds.length &&
-    input.photoEvidenceIds.every(id => Boolean(id)) &&
+    input.photoEvidence.length === document.sections.length &&
+    new Set(input.photoEvidence.map(item => item.evidenceId)).size ===
+      input.photoEvidence.length &&
+    input.photoEvidence.every(item =>
+      Boolean(item.evidenceId && item.content),
+    ) &&
     document.sections.every(
       section =>
         Boolean(section.id && section.text.trim()) &&
@@ -143,7 +152,6 @@ export async function authorizeConversationPhoto(input: {
         section.endOffset - section.startOffset === section.text.length,
     ) &&
     canUseMedicalDocumentGeneration(stagingGeneration) &&
-    getMedicalDocumentGeneration(document.id) === stagingGeneration &&
     photoEvidenceCapability(selected.provider.capabilities, document) ===
       'ocr' &&
     Boolean(
@@ -165,11 +173,11 @@ export async function authorizeConversationPhoto(input: {
         document.previewData.split(',')[1] ?? document.previewData,
       )
     ) &&
-    containsPhotoEvidence(request, document, input.photoEvidenceIds);
+    containsPhotoEvidence(request, input.photoEvidence);
   const snapshot = () =>
     stableJson({
       identity: input.identity,
-      photoEvidenceIds: input.photoEvidenceIds,
+      photoEvidence: input.photoEvidence,
       source: {
         id: document.id,
         hash: document.contentHash,

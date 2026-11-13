@@ -6,12 +6,14 @@ export function createConversationPhotoRetirement(input: {
 }) {
   const pending = new Set<string>();
   const active = new Map<string, Promise<void>>();
+  const listeners = new Set<() => void>();
   const changed = () => {
     try {
       input.changed?.();
     } catch {
       // A detached view must not interrupt ownership cleanup.
     }
+    listeners.forEach(listener => listener());
   };
   const retire = (sourceId: string): Promise<void> => {
     const current = active.get(sourceId);
@@ -33,6 +35,10 @@ export function createConversationPhotoRetirement(input: {
   };
   return {
     retire,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
     pending: () => [...pending],
     isActive: (sourceId: string) => active.has(sourceId),
   };

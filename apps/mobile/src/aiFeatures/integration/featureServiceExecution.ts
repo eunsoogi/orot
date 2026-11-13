@@ -13,6 +13,7 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
 import { requireSelectedAi } from './provider';
 import { createHealthContextTool } from './healthContextTool';
+import { evidenceConsentScope } from './evidenceConsentScope';
 import {
   indexChangedFeatureEvidence,
   loadFeatureEvidenceSnapshot,
@@ -110,20 +111,12 @@ export function executionOptions(input: {
       modelId: input.selected.modelId,
       recipient: input.selected.recipient,
       remoteProcessing: input.selected.remoteProcessing,
-      consentScope: {
+      consentScope: evidenceConsentScope({
         purpose: input.consentPurpose,
-        dataCategories: [
-          'health_records',
-          'reviewed_memory',
-          'conversation',
-          ...(generatedArtifacts ? ['generated_artifacts'] : []),
-          ...(input.external ? ['medical_literature'] : []),
-          ...(input.external?.usesPublicWeb ? ['public_web_results'] : []),
-        ],
-        policyVersion: generatedArtifacts
-          ? 'local-artifacts-v1'
-          : 'local-records-v1',
-      },
+        generatedArtifacts,
+        external: Boolean(input.external),
+        publicWeb: Boolean(input.external?.usesPublicWeb),
+      }),
       allowedScope: {
         sourceKinds: [
           'personal_record' as const,

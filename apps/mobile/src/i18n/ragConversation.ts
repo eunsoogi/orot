@@ -7,6 +7,7 @@ export const ragConversationKo = {
   'ragConversation.photo.selectHint': '한 번에 사진 한 장을 선택해요.',
   'ragConversation.photo.remove': '첨부 사진 제거',
   'ragConversation.photo.preview': '첨부할 사진 미리보기',
+  'ragConversation.photo.message': '첨부한 사진',
   'ragConversation.photo.preparing': '사진을 준비하고 있어요.',
   'ragConversation.photo.transferring':
     '사진을 안전하게 전송할 준비를 하고 있어요.',

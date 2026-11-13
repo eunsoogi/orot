@@ -85,6 +85,37 @@ export function createConversationRequestSources(
         return row.source_id;
       });
     },
+    /** Before any provider call, return an exact checkpoint's original to its staged owner. */
+    async releaseUnsentPhotoRequest(input: {
+      readonly requestId: string;
+      readonly sessionId: string;
+      readonly version: number;
+      readonly submitted: import('../ragConversation/conversationSubmittedInput').ConversationSubmittedInput;
+    }) {
+      await ensure();
+      await database.transaction(async tx => {
+        const result = await tx.execute(
+          "SELECT r.status, r.input_json, x.source_id FROM conversation_requests r JOIN conversation_request_sources x ON x.request_id = r.id WHERE r.id = ? AND r.session_id = ? AND r.session_version = ? AND r.status IN ('active', 'interrupted', 'cancelled')",
+          [input.requestId, input.sessionId, input.version],
+        );
+        const row = result.rows[0];
+        if (
+          !input.submitted.ocr ||
+          (row?.input_json !== stableJson(input.submitted) &&
+            !(row?.status === 'cancelled' && row.input_json === null)) ||
+          row.source_id !== input.submitted.ocr.source.id
+        )
+          throw new Error('Conversation photo ownership changed.');
+        await tx.execute(
+          "UPDATE conversation_requests SET status = 'cancelled', question = '', input_json = NULL WHERE id = ?",
+          [input.requestId],
+        );
+        await tx.execute(
+          'DELETE FROM conversation_request_sources WHERE request_id = ?',
+          [input.requestId],
+        );
+      });
+    },
     /** Fence database ownership before the native owner removes or replaces an original. */
     async invalidateRequestSource(sourceId: string) {
       if (!isConversationPhotoSourceId(sourceId))

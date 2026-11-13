@@ -16,6 +16,9 @@ export type ConversationSessions = ReturnType<
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly photoPreparation?: ReturnType<
+    typeof import('../aiFeatures/integration/conversationPhotoPreparation').createConversationPhotoPreparation
+  >;
   readonly execution?: import('./conversationExecutionLease').ConversationExecutionAdapter;
   readonly listSessions?: (cursor?: {
     readonly updatedAt: string;

@@ -18,6 +18,7 @@ import {
   isGeneratedSummarySource,
   isGeneratedConversationSource,
   isGeneratedResearchSource,
+  isConversationPhotoSource,
 } from '../ragConversation/conversationArtifactSources';
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 import { createConversationToolEventStorage } from './conversationToolEventStorage';
@@ -170,7 +171,10 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         if (decoded.treatmentContext)
           await appendTreatmentTaskCard(tx, decoded);
         for (const source of decoded.sources) {
-          if (
+          if (isConversationPhotoSource(source)) {
+            // The request-source table owns the photo; no medical-record row is fabricated.
+            continue;
+          } else if (
             isGeneratedSummarySource(source) ||
             isGeneratedConversationSource(source) ||
             isGeneratedResearchSource(source)

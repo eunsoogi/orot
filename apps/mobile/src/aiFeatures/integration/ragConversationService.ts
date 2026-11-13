@@ -5,25 +5,29 @@ import type {
   RagConversationObserver,
 } from '../../ragConversation/service';
 import type { RagConversationMessage } from '../../ragConversation/task';
-import { executionOptions, toolsFor } from './featureServiceExecution';
+import { executionOptions } from './featureServiceExecution';
 import { createLinkedAbortController } from './linkedAbortController';
 import { operationRunId } from './featureRunIdentity';
-import { conversationGeneratedTools } from './conversationGeneratedTools';
+import { createConversationToolBundle } from './conversationToolBundle';
 import { withProviderStage } from '../../providers/diagnostics';
 import { ragConversationFailure } from './ragConversationFailure';
-import { observeLocalSearchFailures } from './observeLocalSearchFailures';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
-import { conversationStreamObservers } from './conversationStreamObservers';
+import {
+  conversationRunInvocation,
+  conversationRunRequest,
+  conversationRunWorkflow,
+} from './conversationRunOptions';
 import { createResearchInputTracker } from './researchInputTracker';
-import { budgetAfterPublicSearch } from './defaultPublicSearch';
 import type { ConversationEntryContext } from './conversationIntent';
 import { conversationEarlyResponse } from './conversationEarlyResponse';
 import { loadConversationHistory } from './conversationHistorySources';
 import { conversationFallbackOutcome } from './conversationFallbackOutcome';
-import { guardHistory } from './conversationHistoryProviderGuard';
+import {
+  bindConversationPhotoExecution,
+  prepareConversationPhoto,
+} from './conversationPhotoService';
 import {
   conversationInputsAreCurrent,
-  emptyConversationSnapshot,
   resolveConversationTargets,
 } from './conversationEntryTargets';
 import {
@@ -50,7 +54,12 @@ export function createRagConversationService({
     entryContext?: ConversationEntryContext,
   ): Promise<RagConversationOutcome> {
     const normalizedQuestion = question.trim();
-    if (!normalizedQuestion || normalizedQuestion.length > 1000) {
+    const photo = observer?.photoInput;
+    if (
+      (!normalizedQuestion &&
+        !photo?.submitted.ocr?.sections.some(section => section.text.trim())) ||
+      normalizedQuestion.length > 1000
+    ) {
       return { status: 'failure', kind: 'validation_failed' };
     }
     const linked = createLinkedAbortController(parentSignal);
@@ -74,6 +83,7 @@ export function createRagConversationService({
       stage = 'selection';
       const early =
         !report &&
+        !photo &&
         (await conversationEarlyResponse({
           question: normalizedQuestion,
           observer,
@@ -91,6 +101,15 @@ export function createRagConversationService({
       stage = 'data';
       const data =
         target.data ?? (await withProviderStage('rag', 'data', loadLocalData));
+      const photoEvidence = await prepareConversationPhoto({
+        photo,
+        question: normalizedQuestion,
+        sessionId: observer?.retentionSession?.id,
+        selected,
+        data,
+        registry,
+        signal,
+      });
       // User follow-ups may influence an answer, so retain their validated turn lineage.
       const history = await loadConversationHistory({
         messages: previousMessages,
@@ -121,35 +140,31 @@ export function createRagConversationService({
         researchInputs,
       });
       const runId = createOperationRunId?.() ?? operationRunId();
-      const publicSearch = await conversationPublicSearch({
-        external,
-        observer,
-        runId,
-        question: normalizedQuestion,
-        signal,
-      });
+      const publicSearch = normalizedQuestion
+        ? await conversationPublicSearch({
+            external,
+            observer,
+            runId,
+            question: normalizedQuestion,
+            signal,
+          })
+        : { status: 'unavailable' as const };
       if (publicSearch.status === 'cancelled')
         return { status: 'failure', kind: 'cancelled' };
-      let localRetrievalFailed = false;
-      const generated = conversationGeneratedTools(data, registry, observer);
-      const tools = [
-        ...observeLocalSearchFailures(
-          researchInputs.wrap([
-            ...toolsFor(undefined, data, registry, 6, true, 'rag'),
-            ...generated.tools,
-          ]),
-          () => {
-            localRetrievalFailed = true;
-          },
-        ),
-        ...(publicSearch.status === 'success' || !external.publicWebTool
-          ? external.tools
-          : []),
-      ];
+      const { tools, generated, localRetrievalFailed } =
+        createConversationToolBundle({
+          data,
+          registry,
+          observer,
+          researchInputs,
+          external,
+          publicSearchSucceeded: publicSearch.status === 'success',
+        });
       const retention = createConversationRetentionBridge({
         observer,
         registry,
         question: normalizedQuestion,
+        ...(photo ? { submittedInput: photo.submitted } : {}),
         providerId: selected.provider.id,
         modelId: selected.modelId,
         entryContext,
@@ -158,7 +173,7 @@ export function createRagConversationService({
         ...(history.omitted ? { priorDialogueOmitted: true as const } : {}),
         signal,
       });
-      const execution = executionOptions({
+      const baseExecution = executionOptions({
         consentPurpose: 'record_conversation',
         selected,
         operationRunId: runId,
@@ -167,60 +182,44 @@ export function createRagConversationService({
         tools,
         external,
       });
+      const execution = photo
+        ? bindConversationPhotoExecution(baseExecution, photo, photoEvidence!, {
+            selected,
+            data,
+            registry,
+            sessionVersion: observer!.retentionSession!.version,
+          })
+        : baseExecution;
       stage = 'workflow';
       if (!(await historyIsCurrent()))
         return { status: 'failure', kind: 'retrieval_failed' };
       const outcome = await ragRunner(
-        {
+        conversationRunRequest({
           question: normalizedQuestion,
+          photoEvidence,
           entryIntent: entryContext?.intent,
           targetVisitEvidence: target.evidence,
           dailyReportEvidence: report?.items,
-          previousMessages: history.messages,
-          validatedPriorTurns: history.priorTurns,
-          priorDialogueOmitted: history.omitted,
-          onValidatedEvidence: references =>
-            retention.onValidatedEvidence([
-              ...references,
-              ...history.sources,
-              ...(report?.items ?? []),
-            ]),
-          loadCurrentEvidence: emptyConversationSnapshot,
+          history,
+          retention,
           rag: data.rag,
-          ...(publicSearch.status === 'success'
-            ? { publicEvidence: publicSearch.batch }
-            : {}),
-          resolveLocalEvidenceIdentity: reference =>
-            registry.resolve(reference),
-          readHistoricalArtifact: (reference, readSignal) =>
-            registry.readSource(reference, readSignal),
-          workflow: {
-            ...guardHistory(
-              execution,
-              historyIsCurrent,
-              !!history.references.length || !!report,
-            ),
-            execution: {
-              ...execution.execution,
-              budget: budgetAfterPublicSearch(
-                execution.execution.budget,
-                publicSearch,
-                Boolean(external.publicWebTool),
-              ),
-            },
-          },
-        },
-        {
-          onProgress: observer?.onProgress,
-          onToolEvent: observer?.onToolEvent,
-          ...conversationStreamObservers(
-            observer,
-            Boolean(history.references.length || report),
-            registry,
-            { providerId: selected.provider.id, modelId: selected.modelId },
+          search: publicSearch,
+          registry,
+          workflow: conversationRunWorkflow(
+            execution,
+            historyIsCurrent,
+            !!history.references.length || !!report,
+            publicSearch,
+            Boolean(normalizedQuestion && external.publicWebTool),
           ),
+        }),
+        conversationRunInvocation(
+          observer,
+          Boolean(history.references.length || report || photo),
+          registry,
+          { providerId: selected.provider.id, modelId: selected.modelId },
           signal,
-        },
+        ),
       );
       if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
       if (!(await historyIsCurrent()))
@@ -230,12 +229,13 @@ export function createRagConversationService({
       const fallback = conversationFallbackOutcome(
         outcome,
         Boolean(continuation),
-        localRetrievalFailed,
+        localRetrievalFailed(),
       );
       if (fallback) return fallback;
       return await finishRagConversation({
         outcome,
         publicSearch,
+        skipPublicSearchNotice: !normalizedQuestion,
         retention,
         signal,
         continuation: Boolean(continuation),

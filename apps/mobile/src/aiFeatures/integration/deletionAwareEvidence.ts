@@ -42,6 +42,20 @@ export function revalidateWithLocalDeletionGuard(
   revalidate: EvidenceRevalidator,
   resolveIdentity?: LocalEvidenceIdentityResolver,
 ): Promise<boolean> {
+  if (
+    !resolveIdentity &&
+    references.some(reference => {
+      const locator = reference.locator;
+      return (
+        reference.sourceKind === 'personal_record' &&
+        locator &&
+        typeof locator === 'object' &&
+        !Array.isArray(locator) &&
+        (locator as Record<string, unknown>).kind === 'local-evidence'
+      );
+    })
+  )
+    return Promise.resolve(false);
   // External publications have no local tombstone identity; the run's snapshot validator still checks them below.
   const identities = references.map(reference =>
     reference.sourceKind === 'external_medical'
@@ -51,18 +65,44 @@ export function revalidateWithLocalDeletionGuard(
         : reference,
   );
   if (identities.some(reference => !reference)) return Promise.resolve(false);
-  const ordinary = (identities as EvidenceReference[]).filter(reference => {
+  const photos = (identities as EvidenceReference[]).filter(reference => {
     const locator = reference.locator;
-    return !(
+    return (
       reference.sourceKind === 'personal_record' &&
       locator &&
       typeof locator === 'object' &&
       !Array.isArray(locator) &&
-      (locator as Record<string, unknown>).kind === 'health_context_period'
+      (locator as Record<string, unknown>).kind === 'conversation_photo'
+    );
+  });
+  if (
+    photos.some(reference => {
+      const locator = reference.locator as Record<string, unknown>;
+      return (
+        !resolveIdentity ||
+        typeof locator.requestId !== 'string' ||
+        !locator.requestId ||
+        locator.sectionId !== reference.evidenceId ||
+        !/^sha256:[0-9a-f]{64}$/.test(reference.sourceRevision)
+      );
+    })
+  )
+    return Promise.resolve(false);
+  const ordinary = (identities as EvidenceReference[]).filter(reference => {
+    const locator = reference.locator;
+    return (
+      !photos.includes(reference) &&
+      !(
+        reference.sourceKind === 'personal_record' &&
+        locator &&
+        typeof locator === 'object' &&
+        !Array.isArray(locator) &&
+        (locator as Record<string, unknown>).kind === 'health_context_period'
+      )
     );
   });
   const periods = (identities as EvidenceReference[]).filter(
-    reference => !ordinary.includes(reference),
+    reference => !ordinary.includes(reference) && !photos.includes(reference),
   );
   // Only registry-resolved, validated period locators use generation and aggregate-revision guards.
   // Unknown locators remain fail-closed; a synthetic ID is never passed off as a stored source row.

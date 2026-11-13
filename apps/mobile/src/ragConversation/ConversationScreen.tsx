@@ -29,6 +29,7 @@ import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { useConversationPhotoControls } from './useConversationPhotoControls';
+import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
 import { t } from '../i18n';
 import {
   ConversationTaskHeader,
@@ -151,6 +152,7 @@ export function ConversationScreen({
       style={styles.screen}
       testID="rag-conversation-screen"
     >
+      <ConversationPhotoConsentSurface controller={store.photoConsent} />
       <AdaptiveColumns
         routeKey={navigationRouteKey}
         testID="rag-conversation-columns"

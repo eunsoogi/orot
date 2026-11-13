@@ -101,7 +101,7 @@ test('removal during protected handoff fences the request before native cleanup'
   }
 });
 
-test('an unconfirmed failed write keeps the original locked even when rejection has no value', async () => {
+test('an unconfirmed failed write fences cleanup even when rejection has no value', async () => {
   const doc = {
     id: '12345678-1234-4234-8234-123456789abc',
     displayName: 'synthetic.jpg',
@@ -142,18 +142,29 @@ test('an unconfirmed failed write keeps the original locked even when rejection 
       sections: doc.sections,
     },
   };
+  const fence = jest
+    .fn()
+    .mockRejectedValueOnce(new Error('unavailable'))
+    .mockResolvedValue(undefined);
+  const discard = jest.fn().mockResolvedValue(undefined);
+  const retirement = createConversationPhotoRetirement({ fence, discard });
   let failed = false;
   try {
     await commitConversationPhotoCheckpoint({
       lease,
       submitted,
       storage: { readRequestInput: async () => null },
-      retire: async () => {},
+      retire: retirement.retire,
       start: () => Promise.reject(undefined),
     });
   } catch {
     failed = true;
   }
   expect(failed).toBe(true);
-  expect(drafts.get(1).status).toBe('transferring');
+  expect(retirement.pending()).toEqual([doc.id]);
+  expect(discard).not.toHaveBeenCalled();
+  expect(drafts.get(1).status).toBe('empty');
+  await retirement.retire(doc.id);
+  expect(discard).toHaveBeenCalledWith(doc.id);
+  expect(retirement.pending()).toEqual([]);
 });

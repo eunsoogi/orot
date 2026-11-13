@@ -68,7 +68,47 @@ export async function callModelWithEvidenceFreshness<TResult>(
   };
 
   if (!options.execution.remoteProcessing && !(await ensureCurrent('not_started'))) return;
-  if (onTextEvent && context.beforeTaskStream) {
+  if (options.photoInput) {
+    let before: string;
+    try {
+      before = JSON.stringify({ request, evidence: context.currentEvidence });
+    } catch {
+      return { status: 'consent_required' };
+    }
+    const approval = await observeUntilAbort(
+      deferEvidenceAdapter(signal, () =>
+        options.photoInput!.consent.authorize({
+          operationRunId: options.execution.operationRunId,
+          providerId: options.execution.providerId,
+          modelId: options.execution.modelId,
+          recipient: options.execution.recipient,
+          remoteProcessing: options.execution.remoteProcessing,
+          ...(options.execution.consentScope
+            ? { consentScope: options.execution.consentScope }
+            : {}),
+          allowedScope: options.execution.allowedScope,
+          payload: request,
+          signal,
+        }),
+      ),
+      signal,
+    );
+    if (approval.kind === 'cancelled') {
+      canceled(context, 'not_started');
+      return;
+    }
+    if (approval.kind !== 'value' || approval.value !== 'authorized')
+      return { status: 'consent_required' };
+    try {
+      if (before !== JSON.stringify({ request, evidence: context.currentEvidence }))
+        return { status: 'consent_required' };
+    } catch {
+      return { status: 'consent_required' };
+    }
+    if (!(await ensureCurrent('not_started'))) return;
+  }
+  // A source fence is required even when private preview text is deliberately withheld.
+  if (context.beforeTaskStream) {
     let snapshot: string;
     try {
       snapshot = JSON.stringify({ request, evidence: context.currentEvidence });

@@ -1,4 +1,5 @@
 import { getRagConversationCopy } from './copy';
+import { t } from '../i18n';
 import type {
   ConversationSession,
   PendingTurn,
@@ -9,11 +10,12 @@ export function prepareConversationRequest(
   session: ConversationSession,
   nextId: () => number,
   explicitQuestion?: string,
+  hasPhoto = false,
 ) {
   const restorePromptToComposer = explicitQuestion === undefined;
   const question = (explicitQuestion ?? session.draft).trim();
   if (
-    !question ||
+    (!question && !hasPhoto) ||
     session.busy ||
     session.restoring ||
     session.retryingSave ||
@@ -36,7 +38,9 @@ export function prepareConversationRequest(
   const responseId = nextId();
   const change: Partial<ConversationSession> = {
     ...(restorePromptToComposer ? { draft: '' } : {}),
-    title: session.messages.length ? session.title : question.slice(0, 36),
+    title: session.messages.length
+      ? session.title
+      : (question || t('ragConversation.photo.message')).slice(0, 36),
     messages: [
       ...session.messages.filter(
         message =>
@@ -46,7 +50,12 @@ export function prepareConversationRequest(
             message.content === question
           ),
       ),
-      { id: request.userMessageId, role: 'user', content: question },
+      {
+        id: request.userMessageId,
+        role: 'user',
+        content: question,
+        ...(hasPhoto ? { photoAttached: true } : {}),
+      },
     ],
     busy: true,
     error: session.unsavedCount ? copy.unsavedAnswersRemain() : '',

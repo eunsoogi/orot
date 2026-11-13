@@ -9,17 +9,19 @@ import { observeSummaryCommit } from './conversationSummaryCommit';
 import { prepareConversationRequest } from './conversationRequestStart';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import { createConversationRequestLifetime } from './conversationRequestLifetime';
+import { startConversationRetainedRequest } from './conversationPhotoRequestStart';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 import {
   createConversationRequestPreview,
   conversationPreviewObserver,
 } from './conversationRequestPreview';
+import { conversationPreviewSetup } from './conversationPreviewSetup';
 import {
   createRetainConversationPartial,
   createConversationStopHandler,
 } from './conversationStoppedTurn';
-import { restoreFailedPrompt } from './conversationFailedPrompt';
+import { conversationFailureReporter as failureReporter } from './conversationFailedPrompt';
 import type {
   ConversationSender,
   ConversationSession,
@@ -33,6 +35,7 @@ export function createConversationSessionRequests(
   conversationScope: (id: number) => string,
   retention?: ConversationSessionOptions['retention'],
   execution?: ConversationExecutionAdapter,
+  photo?: Parameters<typeof startConversationRetainedRequest>[0]['photo'],
 ) {
   let messageId = 0;
   const saveRecovery = createConversationRequestSaveRecovery(update, find);
@@ -91,16 +94,19 @@ export function createConversationSessionRequests(
       id: number,
       onSend: ConversationSender,
       explicitQuestion?: string,
+      hasPhoto = false,
     ) {
       const session = find(id);
       const start = prepareConversationRequest(
         session,
         () => ++messageId,
         explicitQuestion,
+        hasPhoto,
       );
       if (!start) return;
       const { request, responseId, change, copy } = start;
       const { question, userMessageId } = request;
+      const fail = failureReporter(find, update, request, retainPartial, id);
       const history = conversationHistoryPayload(session.messages, question);
       const controller = new AbortController();
       controllers.set(id, controller);
@@ -114,22 +120,32 @@ export function createConversationSessionRequests(
         ReturnType<typeof createConversationTurnRetention> | undefined;
       let preview:
         ReturnType<typeof createConversationRequestPreview> | undefined;
+      let photoInput: Awaited<
+        ReturnType<typeof startConversationRetainedRequest>
+      >;
       try {
         retained = retention
           ? await retention.beginTurn(id, controller.signal)
           : undefined;
         if (!current()) return;
-        if (retained) await lifetime.start(id, controller, retained, question);
+        photoInput = await startConversationRetainedRequest({
+          id,
+          question,
+          controller,
+          turn: retained,
+          retention,
+          lifetime,
+          photo: photo ? { ...photo, requested: hasPhoto } : undefined,
+        });
         if (!current()) return;
-        if (retained)
-          preview = createConversationRequestPreview({
-            turn: retained,
-            current,
-            reportFailure: () => {
-              if (!find(id)?.error)
-                update(id, { error: copy.previewSaveFailed });
-            },
-          });
+        preview = conversationPreviewSetup({
+          id,
+          retained,
+          current,
+          find,
+          update,
+          error: copy.previewSaveFailed,
+        });
         activity = createConversationTurnActivity({
           id,
           responseId,
@@ -144,6 +160,7 @@ export function createConversationSessionRequests(
             ? saveRecovery.observer(id, retained, request, current)
             : {}),
           conversationScope: conversationScope(id),
+          ...(photoInput ? { photoInput } : {}),
           retainedHistory: retainedHistoryTurns(session.messages, question),
           ...(retention?.activeLease(id)
             ? { retentionSession: retention.activeLease(id)! }
@@ -168,17 +185,7 @@ export function createConversationSessionRequests(
           const kind =
             outcome.status === 'failure' ? outcome.kind : 'unavailable';
           const failureCopy = getRagConversationFailureCopy(kind);
-          retainPartial(id, failureCopy);
-          restoreFailedPrompt(
-            find,
-            update,
-            id,
-            question,
-            userMessageId,
-            failureCopy,
-            false,
-            request.restorePromptToComposer,
-          );
+          fail(failureCopy);
           return;
         }
         conversationCompletedAnswer({
@@ -200,19 +207,10 @@ export function createConversationSessionRequests(
         });
       } catch {
         if (current()) {
-          retainPartial(id, copy.unavailable);
-          restoreFailedPrompt(
-            find,
-            update,
-            id,
-            question,
-            userMessageId,
-            getRagConversationFailureCopy('unavailable'),
-            false,
-            request.restorePromptToComposer,
-          );
+          fail(copy.unavailable, getRagConversationFailureCopy('unavailable'));
         }
       } finally {
+        await photoInput?.settleUnsent?.().catch(() => {});
         activity?.finish(controller.signal.aborted ? 'cancelled' : 'failed');
         await preview?.flush();
         await activity?.flush();

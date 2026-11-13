@@ -70,7 +70,7 @@ test('requires a separate explicit approval even for a local selected provider',
   const result = await authorizeConversationPhoto({
     identity,
     document,
-    photoEvidenceIds: ['e1'],
+    photoEvidence: [{ evidenceId: 'e1', content: 'synthetic OCR' }],
     stagingGeneration: currentMedicalDocumentGeneration(),
     selected,
     request: request(signal),
@@ -96,7 +96,7 @@ test('denial, changed payload and unsupported provider fail closed', async () =>
   const base = {
     identity,
     document,
-    photoEvidenceIds: ['e1'],
+    photoEvidence: [{ evidenceId: 'e1', content: 'synthetic OCR' }],
     stagingGeneration: currentMedicalDocumentGeneration(),
     selected,
     request: request(signal),
@@ -108,7 +108,7 @@ test('denial, changed payload and unsupported provider fail closed', async () =>
   expect(
     await authorizeConversationPhoto({
       ...base,
-      photoEvidenceIds: ['wrong-alias'],
+      photoEvidence: [{ evidenceId: 'wrong-alias', content: 'synthetic OCR' }],
       confirm: async () => true,
     }),
   ).toBe('unavailable');
@@ -142,7 +142,7 @@ test('a changed payload or deleted source during confirmation cannot be approved
   const result = await authorizeConversationPhoto({
     identity,
     document,
-    photoEvidenceIds: ['e1'],
+    photoEvidence: [{ evidenceId: 'e1', content: 'synthetic OCR' }],
     stagingGeneration: currentMedicalDocumentGeneration(),
     selected,
     request: outbound,
@@ -165,7 +165,7 @@ test('aborting while the explicit decision is pending stops authorization', asyn
   const result = authorizeConversationPhoto({
     identity,
     document,
-    photoEvidenceIds: ['e1'],
+    photoEvidence: [{ evidenceId: 'e1', content: 'synthetic OCR' }],
     stagingGeneration: currentMedicalDocumentGeneration(),
     selected,
     request: request(controller.signal),
@@ -185,7 +185,7 @@ test('a mutated provider payload cannot reuse an earlier approval', async () => 
   const result = await authorizeConversationPhoto({
     identity,
     document,
-    photoEvidenceIds: ['e1'],
+    photoEvidence: [{ evidenceId: 'e1', content: 'synthetic OCR' }],
     stagingGeneration: currentMedicalDocumentGeneration(),
     selected,
     request: outbound,

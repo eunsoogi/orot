@@ -11,6 +11,7 @@ import {
   isGeneratedConversationSource,
   isGeneratedResearchSource,
   isGeneratedSummarySource,
+  isConversationPhotoSource,
 } from '../ragConversation/conversationArtifactSources';
 import type { FilteredToolPeriod } from './conversationToolFilteredPeriod';
 import { decodeFilteredToolPeriod } from './conversationToolFilteredPeriodCodec';
@@ -82,6 +83,8 @@ export function decodeToolLineage(
       return filtered;
     }
     const source = artifact.sources[regularIndex++]!;
+    if (isConversationPhotoSource(source))
+      throw new Error('Photo tool sources are unsupported.');
     if (isExternalToolResearch(item)) {
       if (
         item.reference.sourceKind !== 'external_medical' ||
@@ -188,6 +191,8 @@ export async function indexToolLineage(
         'INSERT OR IGNORE INTO conversation_tool_dependencies VALUES (?, ?, ?, ?, ?, ?)',
         [...prefix, 'generated_research', source.research.id],
       );
+    } else if ('kind' in source && source.kind === 'conversation_photo') {
+      throw new Error('Photo tool sources are unsupported.');
     } else if (
       'kind' in source &&
       source.kind === 'filtered_medication_period'

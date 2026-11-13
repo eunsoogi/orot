@@ -1,4 +1,5 @@
 import { validConversationReportTarget } from './conversationReportTarget';
+import { validConversationPhotoArtifactSource } from './conversationPhotoArtifactValidation';
 import { isRecordKind } from '@orot/storage';
 import { parseHealthContextScope } from '../healthEvidence/healthContext/scope';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
@@ -118,6 +119,8 @@ export function decodeConversationArtifact(
                 ))
         )
           return null;
+      } else if (source.kind === 'conversation_photo') {
+        if (!validConversationPhotoArtifactSource(source, value)) return null;
       } else if (source.kind === 'health_context_period') {
         const scope = parseHealthContextScope(source.scope);
         if (

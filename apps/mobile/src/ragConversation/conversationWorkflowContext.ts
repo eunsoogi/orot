@@ -9,12 +9,14 @@ export function conversationWorkflowContext(
   const history = boundedProviderHistory(options.previousMessages);
   if (
     !options.entryIntent &&
+    !options.photoEvidence?.length &&
     !options.validatedPriorTurns?.length &&
     !options.priorDialogueOmitted
   )
     return history as unknown as JsonValue;
   return {
     history,
+    ...(options.photoEvidence?.length ? { photoAttachment: true } : {}),
     ...(options.entryIntent ? { intent: options.entryIntent } : {}),
     ...(options.validatedPriorTurns?.length
       ? { priorDialogue: options.validatedPriorTurns }

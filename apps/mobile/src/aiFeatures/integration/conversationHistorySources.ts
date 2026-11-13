@@ -213,9 +213,20 @@ export async function conversationHistorySources(input: {
       question: input.registry.redactText(turn.question.slice(0, 1000)),
       answer: input.registry.redactText(turn.answer.slice(0, 1000)),
     }));
-  // Flatten source dependencies: nesting every earlier turn would exhaust the
-  // storage ancestry limit in ordinary long conversations.
-  const sources = admitted.flatMap(turn => turn.sources);
+  // Photo ownership belongs to the original request, so retain its validated
+  // parent turn instead of assigning the original to a later request.
+  const sources = admitted.flatMap(turn => {
+    const parent = references[selected.indexOf(turn)]!;
+    return turn.sources.map(source => {
+      const locator = input.registry.resolve(source)?.locator;
+      return locator &&
+        typeof locator === 'object' &&
+        'kind' in locator &&
+        locator.kind === 'conversation_photo'
+        ? parent
+        : source;
+    });
+  });
   return {
     references,
     sources,

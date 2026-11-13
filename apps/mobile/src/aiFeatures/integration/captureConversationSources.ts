@@ -3,7 +3,7 @@ import type { ConversationArtifactSource } from '../../ragConversation/conversat
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { captureEvidenceSources } from './captureEvidenceSources';
 import { RetainedSourceInvalidError } from './retainedSourceError';
-import { stableJson } from './evidenceUtils';
+import { fingerprint, stableJson } from './evidenceUtils';
 
 /** Capture generated parents as generated artifacts, never as clinical facts. */
 export async function captureConversationSources(
@@ -16,16 +16,48 @@ export async function captureConversationSources(
   for (const ref of references) {
     const key = JSON.stringify(ref);
     if (mapping.has(key)) continue;
+    const original = registry.resolve(ref);
+    const locator = original?.locator;
+    const location =
+      locator && typeof locator === 'object' && !Array.isArray(locator)
+        ? (locator as Readonly<Record<string, unknown>>)
+        : undefined;
+    if (location?.kind === 'conversation_photo') {
+      const read = await registry.readSource(ref, signal);
+      if (
+        !original ||
+        read.status !== 'available' ||
+        read.document.sourceKind !== 'conversation_photo' ||
+        read.document.requestId !== location.requestId ||
+        read.document.sourceId !== original.sourceId ||
+        read.document.contentHash !== original.sourceRevision ||
+        read.document.section.id !== location.sectionId ||
+        original.evidenceId !== location.sectionId ||
+        original.evidenceRevision !== fingerprint(read.document.section) ||
+        !(await registry.revalidateEvidence([ref], signal))
+      )
+        throw new RetainedSourceInvalidError(
+          'The attached photo changed before saving.',
+        );
+      sources.push({
+        kind: 'conversation_photo',
+        reference: original,
+        requestId: read.document.requestId,
+        sectionId: read.document.section.id,
+      });
+      mapping.set(key, original);
+      continue;
+    }
     if (ref.sourceKind !== 'generated_artifact') {
       const captured = await captureEvidenceSources([ref], registry, signal);
       sources.push(...captured.sources);
       mapping.set(key, captured.mapping.get(key)!);
       continue;
     }
-    const original = registry.resolve(ref);
+    const originalGenerated = registry.resolve(ref);
     const current = await registry.readSource(ref, signal);
     if (
-      !original ||
+      !originalGenerated ||
       current.status === 'missing' ||
       current.status === 'changed'
     )
@@ -49,10 +81,10 @@ export async function captureConversationSources(
           ))
       ) ||
       doc.sourceStatus === 'changed' ||
-      original.sourceId !== doc.metadata.id ||
-      original.evidenceId !== doc.metadata.id ||
-      original.sourceRevision !== doc.metadata.revision ||
-      original.evidenceRevision !== doc.metadata.revision
+      originalGenerated.sourceId !== doc.metadata.id ||
+      originalGenerated.evidenceId !== doc.metadata.id ||
+      originalGenerated.sourceRevision !== doc.metadata.revision ||
+      originalGenerated.evidenceRevision !== doc.metadata.revision
     )
       throw new RetainedSourceInvalidError(
         'The generated parent cannot be retained.',
@@ -64,11 +96,11 @@ export async function captureConversationSources(
           : 'conversation' in doc
             ? 'generated_conversation'
             : 'generated_summary',
-      reference: original,
+      reference: originalGenerated,
       id: doc.metadata.id,
       revision: doc.metadata.revision,
     });
-    mapping.set(key, original);
+    mapping.set(key, originalGenerated);
   }
   if (signal.aborted) throw new Error('Saving was cancelled.');
   // Multiple dialogue turns can share the same original input; retain it once.

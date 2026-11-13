@@ -13,6 +13,7 @@ import type { RagConversationMessage } from './task';
 
 export interface DisplayMessage extends RagConversationMessage {
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
+  readonly photoAttached?: boolean;
   readonly id: number;
   readonly dailyReport?: NonNullable<
     import('../aiFeatures/integration/conversationIntent').ConversationEntryContext['dailyReport']
@@ -133,6 +134,11 @@ export function ConversationMessage({
             resolveToolSource={resolveToolSource}
             sessionId={toolSourceSessionId}
           />
+        ) : null}
+        {user && (message.photoAttached || message.submittedInput?.ocr) ? (
+          <Text style={[styles.messageText, styles.userText]}>
+            {t('ragConversation.photo.message')}
+          </Text>
         ) : null}
         {message.content ? (
           <MessageText

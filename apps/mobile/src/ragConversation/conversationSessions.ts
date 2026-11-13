@@ -23,6 +23,7 @@ import { createConversationHistoryLoader } from './conversationHistoryLoader';
 import { createConversationSessionRemoval } from './conversationSessionRemoval';
 import { createConversationTaskRefresh } from './conversationTaskRefresh';
 import { createConversationPhotoImport } from './conversationPhotoImport';
+import { createConversationPhotoConsentController } from './conversationPhotoConsentController';
 export type { ConversationSender, ConversationSession };
 export type { ConversationSessions } from './conversationSessionTypes';
 let nextSessionOwner = 0;
@@ -38,6 +39,7 @@ export function createConversationSessions(
   let disposed = false;
   let lifecycle = 0;
   const photoDrafts = createConversationPhotoImport();
+  const photoConsent = createConversationPhotoConsentController();
   const emit = listeners.emit;
   const apply = (next: ConversationSnapshot | null) => {
     if (next) {
@@ -76,6 +78,12 @@ export function createConversationSessions(
     id => `${owner}:${id}`,
     options.retention,
     options.execution,
+    {
+      requested: false,
+      drafts: photoDrafts,
+      consent: photoConsent,
+      preparation: options.photoPreparation,
+    },
   );
   const restoration = createConversationSessionRestoreState({
     read: options.restoreSession,
@@ -123,6 +131,11 @@ export function createConversationSessions(
   });
   return {
     photoDrafts,
+    photoConsent,
+    photoRetirement: options.photoPreparation?.retirement,
+    photoDeliveryAvailable: Boolean(
+      options.photoPreparation && options.retention,
+    ),
     attachExisting,
     loadHistory,
     subscribe: listeners.subscribe,
@@ -181,6 +194,7 @@ export function createConversationSessions(
     },
     invalidateAll() {
       if (disposed) return;
+      photoConsent.dispose();
       photoDrafts.clear().catch(() => {});
       lifecycle++;
       taskState.invalidate();
@@ -195,6 +209,7 @@ export function createConversationSessions(
     },
     // View subscribers never cancel on exit; only the app owner disposes requests.
     dispose() {
+      photoConsent.dispose();
       photoDrafts.clear().catch(() => {});
       disposed = true;
       lifecycle++;
@@ -208,7 +223,14 @@ export function createConversationSessions(
         options.retention?.finalize(snapshot.deleted.handle).catch(() => {});
     },
     send: (id: number, onSend: ConversationSender) =>
-      disposed ? Promise.resolve() : requests.send(id, onSend),
+      disposed
+        ? Promise.resolve()
+        : requests.send(
+            id,
+            onSend,
+            undefined,
+            photoDrafts.get(id).status !== 'empty',
+          ),
     /** Adds an explicit turn to the transcript without moving its prompt into the composer. */
     sendPrompt: (id: number, prompt: string, onSend: ConversationSender) =>
       disposed ? Promise.resolve() : requests.send(id, onSend, prompt),

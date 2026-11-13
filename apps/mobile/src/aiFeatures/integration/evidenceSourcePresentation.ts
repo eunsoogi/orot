@@ -9,6 +9,7 @@ import type { EvidenceSourceDocument } from './evidenceRegistry';
 import type { ManualHistoryEvidence } from '@orot/domain';
 import { presentHealthContextDocument } from './healthContextPresentation';
 import { presentResearchSource } from './researchSourcePresentation';
+import { evidenceSourceManagementFields } from './evidenceSourceManagementFields';
 import {
   evidenceRecordHero,
   type EvidenceRecordHero,
@@ -24,23 +25,6 @@ export interface EvidenceSourceDetailSection {
   readonly rows: readonly EvidenceSourceDetailRow[];
   readonly hero?: EvidenceRecordHero;
 }
-
-// Import bookkeeping is useful for sync recovery, but does not describe the cited health event.
-const managementFields = new Set([
-  'ingestedAt',
-  'recordedAt',
-  'createdAt',
-  'provenance',
-  'reviewState',
-  'isArchived',
-  'hasSchedule',
-  'generalForm',
-  'observationKind',
-  'device',
-  'manufacturer',
-  'productType',
-  'sourceVersion',
-]);
 
 function personalRecordRows(
   entry: LocalHealthEvidenceRecord,
@@ -58,7 +42,7 @@ function personalRecordRows(
     if (
       !fieldLabels[key] ||
       isPrivateIdentifier(key) ||
-      managementFields.has(key)
+      evidenceSourceManagementFields.has(key)
     )
       continue;
     const rendered = visibleValue(value, key);
@@ -241,6 +225,14 @@ export function presentEvidenceSource(
         consumedLabels: [],
       },
     }));
+  if (document.sourceKind === 'conversation_photo')
+    return [
+      {
+        title: '첨부한 사진에서 추출한 글자',
+        rows: [],
+        hero: { body: document.section.text, consumedLabels: [] },
+      },
+    ];
   return document.records.map(entry => ({
     title: recordTitle(entry),
     rows: personalRecordRows(entry),
