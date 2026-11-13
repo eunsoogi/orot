@@ -132,14 +132,12 @@ test.each(['navigation', 'session'] as const)(
   async source => {
     const prior = NativeModules.ReplyNotificationModule;
     NativeModules.ReplyNotificationModule = {
-      consumeTarget: jest
-        .fn()
-        .mockResolvedValue({
-          requestId: 'r',
-          sessionId: 's',
-          messageId: 'm',
-          sessionVersion: '0',
-        }),
+      consumeTarget: jest.fn().mockResolvedValue({
+        requestId: 'r',
+        sessionId: 's',
+        messageId: 'm',
+        sessionVersion: '0',
+      }),
     };
     let navigationChanged = () => {};
     let sessionChanged = () => {};

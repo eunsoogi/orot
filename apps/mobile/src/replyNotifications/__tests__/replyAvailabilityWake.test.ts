@@ -9,7 +9,13 @@ jest.mock('../../appointmentReminders/nativeReminderBridge', () => ({
   subscribeAppointmentReminderOpened: () => () => {},
 }));
 
-test.each(['navigation', 'late-navigation', 'session'] as const)(
+test.each([
+  'navigation',
+  'late-navigation',
+  'settled-route',
+  'session',
+  'final-session',
+] as const)(
   'retries when external %s readiness arrives before the deferred executor returns',
   async blockedBy => {
     const previous = NativeModules.ReplyNotificationModule;
@@ -29,6 +35,7 @@ test.each(['navigation', 'late-navigation', 'session'] as const)(
     let navigationListener = () => {};
     let sessionListener = () => {};
     let transitioning = blockedBy === 'navigation';
+    let routeKey = 'home';
     let busy = blockedBy === 'session';
     const controller = {
       subscribe: (listener: () => void) => {
@@ -37,7 +44,7 @@ test.each(['navigation', 'late-navigation', 'session'] as const)(
       },
       getSnapshot: () => ({
         isTransitioning: transitioning,
-        currentRoute: { key: 'home', name: 'rag-conversation' },
+        currentRoute: { key: routeKey, name: 'rag-conversation' },
       }),
     } as unknown as NavigationController<AppNavigationRoute>;
     const session = () => ({
@@ -77,7 +84,12 @@ test.each(['navigation', 'late-navigation', 'session'] as const)(
       ],
       readSessionMany: async () => {
         reads += 1;
-        if (blockedBy === 'late-navigation' && reads === 2) {
+        if (
+          (blockedBy === 'late-navigation' ||
+            blockedBy === 'settled-route' ||
+            blockedBy === 'final-session') &&
+          reads === 2
+        ) {
           signalSecondRead();
           await holdRead;
         }
@@ -114,22 +126,43 @@ test.each(['navigation', 'late-navigation', 'session'] as const)(
       },
     });
     try {
-      if (blockedBy === 'late-navigation') {
+      if (
+        blockedBy === 'late-navigation' ||
+        blockedBy === 'settled-route' ||
+        blockedBy === 'final-session'
+      ) {
         await secondRead;
-        transitioning = true;
-        navigationListener();
+        if (blockedBy === 'final-session') {
+          busy = true;
+          sessionListener();
+        } else {
+          transitioning = true;
+          navigationListener();
+        }
+        if (blockedBy === 'settled-route') {
+          routeKey = 'other';
+          transitioning = false;
+          navigationListener();
+        }
         releaseRead();
       }
       await firstFinished;
       expect(acknowledgeTarget).not.toHaveBeenCalled();
       transitioning = false;
       busy = false;
-      if (blockedBy !== 'session') navigationListener();
+      if (blockedBy === 'settled-route') {
+        // The only readiness publication already occurred during the protected read.
+      } else if (blockedBy !== 'session' && blockedBy !== 'final-session')
+        navigationListener();
       else sessionListener();
       release();
       for (let i = 0; i < 100; i += 1) await Promise.resolve();
       expect(acknowledgeTarget).toHaveBeenCalledWith(`wake-${blockedBy}`);
       expect(acknowledgeTarget).toHaveBeenCalledTimes(1);
+      if (blockedBy === 'settled-route') {
+        expect(confirm).toHaveBeenCalledTimes(2);
+        expect(sessions.select).toHaveBeenCalledTimes(1);
+      }
     } finally {
       releaseRead();
       release();

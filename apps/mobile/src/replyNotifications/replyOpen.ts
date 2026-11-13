@@ -4,6 +4,7 @@ import type { NavigationController } from '../navigation/navigationController';
 import type { AppNavigationRoute } from '../routes/appNavigationRoute';
 import type { ReplyIdentity } from './replyNotificationCoordinator';
 import { replyFocus } from './replyFocus';
+import type { createReplyReadiness } from './replyReadiness';
 
 /** Resolve the exact protected reply before selecting a session; no send operation is involved. */
 export function createReplyOpen(input: {
@@ -15,7 +16,7 @@ export function createReplyOpen(input: {
   isCurrent?(): boolean;
   signal?: AbortSignal;
   onReplyOpened?: () => void;
-  onBlocked?(reason: 'navigation' | number): void;
+  readiness?: ReturnType<typeof createReplyReadiness>;
   confirm(
     routeKey: string,
   ): Promise<'approved' | 'declined' | 'unavailable' | 'busy'>;
@@ -35,7 +36,18 @@ export function createReplyOpen(input: {
       if (!currentOwner()) return 'deferred';
       if (decision === 'declined') return 'cancelled';
       if (!input.canEnter()) return 'deferred';
-      if (decision === 'busy') input.onBlocked?.('navigation');
+      const afterConfirm = input.controller.getSnapshot();
+      // Consume our guard's own publications, but preserve the route that was approved.
+      input.readiness?.navigation(
+        decision === 'unavailable' &&
+          afterConfirm.currentRoute.key === before.currentRoute.key
+          ? afterConfirm
+          : {
+              currentRoute: before.currentRoute,
+              isTransitioning:
+                decision === 'busy' || afterConfirm.isTransitioning,
+            },
+      );
       if (decision !== 'approved') return 'deferred';
       const existing = input.sessions.getSnapshot().sessions.find(session => {
         const lease = input.retention?.activeLease(session.id);
@@ -65,8 +77,8 @@ export function createReplyOpen(input: {
           .getSnapshot()
           .sessions.find(value => value.id === sessionId);
       }
+      input.readiness?.session(identity);
       if (session?.busy || session?.restoring || session?.restoreFailed) {
-        input.onBlocked?.(sessionId);
         return 'deferred';
       }
       if (
@@ -80,8 +92,17 @@ export function createReplyOpen(input: {
       const latest = await input.read(identity);
       if (!currentOwner() || !input.canEnter()) return 'deferred';
       if (!latest) return 'missing';
+      // The retained lease and reply can change while protected storage is awaited.
+      if (input.readiness?.sessionChanged(identity)) {
+        input.readiness.waitForSession(identity);
+        return 'deferred';
+      }
       const current = input.controller.getSnapshot();
-      if (current.isTransitioning) input.onBlocked?.('navigation');
+      if (current.isTransitioning)
+        input.readiness?.navigation({
+          currentRoute: before.currentRoute,
+          isTransitioning: true,
+        });
       if (
         !currentOwner() ||
         !input.canEnter() ||
