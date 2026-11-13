@@ -2,6 +2,7 @@
 export function createDailyReminderDrain(input: {
   cleanup: () => Promise<boolean>;
   restore: () => Promise<string>;
+  shouldRestore?: () => Promise<boolean>;
   deliver: () => Promise<void>;
   onBusy: () => void;
   onClosed: () => void;
@@ -18,7 +19,10 @@ export function createDailyReminderDrain(input: {
           return;
         }
         if (closed) input.onClosed();
-        if (restorePending) {
+        if (
+          restorePending &&
+          (!input.shouldRestore || (await input.shouldRestore()))
+        ) {
           const result = await input.restore();
           if (result === 'busy') {
             input.onBusy();
@@ -29,5 +33,6 @@ export function createDailyReminderDrain(input: {
         await input.deliver();
       })
       .catch(() => undefined);
+    return queue;
   };
 }

@@ -28,10 +28,9 @@ import {
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { sendConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
-import { useConversationPhotoControls } from './useConversationPhotoControls';
+import { useConversationScreenControls } from './useConversationScreenControls';
 import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
 import { t } from '../i18n';
-import { useReplyFocusForSession } from '../replyNotifications/replyFocus';
 import {
   ConversationTaskHeader,
   ConversationStoredTaskCards,
@@ -68,20 +67,18 @@ export function ConversationScreen({
   const store = useConversationSessions();
   useConversationEntryIntent(store, entryContext);
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  const hasReportTask = Boolean(renderReportTask);
   const reportOwner = useMemo(
     () =>
-      hasReportTask && navigationRouteKey
+      renderReportTask && navigationRouteKey
         ? store.reportTaskOwner(navigationRouteKey)
         : null,
-    [store, hasReportTask, navigationRouteKey],
+    [store, renderReportTask, navigationRouteKey],
   );
   const session = snapshot.sessions.find(
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
-  const photo = useConversationPhotoControls(store, id);
-  const focus = useReplyFocusForSession(id);
+  const { photo, focus } = useConversationScreenControls(store, id);
   const selectedReport =
     session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
   // Source validation uses the retained identity, not the session's view-only numeric ID.

@@ -1,4 +1,5 @@
 import { act, render, waitFor } from '@testing-library/react-native';
+import { AppState } from 'react-native';
 import { createAppointmentStore } from '../../../test-helpers/appointmentStore';
 import { appointment } from '../../nextVisitQuestions/testSupport/fixtures';
 import { createNavigationController } from '../../navigation/navigationController';
@@ -14,6 +15,14 @@ import {
   consumeAppointmentReminderTarget,
 } from '../nativeReminderBridge';
 import { buildAppointmentReminder } from '../reminderPlan';
+
+jest.mock('../../appEntry/rootURLBridge', () => ({
+  rootURLBridge: {
+    peek: jest.fn(async () => null),
+    acknowledge: jest.fn(),
+    subscribe: jest.fn(() => () => {}),
+  },
+}));
 
 jest.mock('../nativeReminderBridge', () => ({
   appointmentReminderPort: {
@@ -36,6 +45,10 @@ function deferred<Value>() {
 }
 
 beforeEach(() => {
+  Object.defineProperty(AppState, 'currentState', {
+    configurable: true,
+    value: 'active',
+  });
   jest.clearAllMocks();
   jest.mocked(appointmentReminderPort.readSelection).mockResolvedValue(null);
   jest.mocked(consumeAppointmentReminderTarget).mockResolvedValue(null);
@@ -65,13 +78,17 @@ it('retains the exact appointment tap while appearance setup closes during confi
   jest.mocked(consumeAppointmentReminderTarget).mockResolvedValueOnce(target);
   const view = await render(
     <AppointmentReminderProvider runtime={runtime}>
-      <ReminderGate controller={controller} ready />
+      <ReminderGate controller={controller} ready selectTab={() => {}} />
     </AppointmentReminderProvider>,
   );
   await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
   await view.rerender(
     <AppointmentReminderProvider runtime={runtime}>
-      <ReminderGate controller={controller} ready={false} />
+      <ReminderGate
+        controller={controller}
+        ready={false}
+        selectTab={() => {}}
+      />
     </AppointmentReminderProvider>,
   );
   await act(async () => {
@@ -84,7 +101,7 @@ it('retains the exact appointment tap while appearance setup closes during confi
   expect(controller.getSnapshot().routes).toHaveLength(1);
   await view.rerender(
     <AppointmentReminderProvider runtime={runtime}>
-      <ReminderGate controller={controller} ready />
+      <ReminderGate controller={controller} ready selectTab={() => {}} />
     </AppointmentReminderProvider>,
   );
   await waitFor(() =>

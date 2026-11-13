@@ -14,15 +14,19 @@ export function RootURLDeliveryHost({
   ready,
   canEnter,
   selectTab,
+  onApplied,
+  onSettled,
 }: {
   controller: NavigationController<AppNavigationRoute>;
   arbiter: ReturnType<typeof createEntryArbiter>;
   ready: boolean;
   canEnter: () => boolean;
   selectTab: (tab: AppRootTab) => void;
+  onApplied?: () => void;
+  onSettled?: () => void;
 }) {
-  const current = useRef({ ready, canEnter, selectTab });
-  current.current = { ready, canEnter, selectTab };
+  const current = useRef({ ready, canEnter, selectTab, onApplied, onSettled });
+  current.current = { ready, canEnter, selectTab, onApplied, onSettled };
   const wake = useRef<() => void>(() => {});
   useEffect(() => {
     let mounted = true;
@@ -36,7 +40,10 @@ export function RootURLDeliveryHost({
         current.current.ready &&
         current.current.canEnter() &&
         AppState.currentState === 'active',
-      selectTab: tab => current.current.selectTab(tab),
+      selectTab: tab => {
+        current.current.selectTab(tab);
+        current.current.onApplied?.();
+      },
       onGuardChange: active => {
         ownGuard = active;
       },
@@ -55,7 +62,10 @@ export function RootURLDeliveryHost({
       running = true;
       deliver()
         .then(result => {
-          if (result === 'opened' || result === 'cancelled') pendingWake = true;
+          if (result === 'opened' || result === 'cancelled') {
+            current.current.onSettled?.();
+            pendingWake = true;
+          }
         })
         .catch(() => undefined)
         .finally(() => {

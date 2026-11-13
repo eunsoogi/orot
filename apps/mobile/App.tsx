@@ -3,7 +3,6 @@ import {
   withAppointmentReminderApp,
 } from './src/appointmentReminders/AppointmentReminderContext';
 import { GatedReminderDeliveryHost } from './src/assistantAppearance/GatedReminderDeliveryHost';
-import { reconcileReplyPrivacy } from './src/replyNotifications/reconcileReplyPrivacy';
 import { RecordingSelectionProvider } from './src/recording/RecordingSelectionContext';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
@@ -96,7 +95,6 @@ function App({
     useHomeActivity(appNavigation, activeTab),
   );
   const backupPreparation = useBackupPreparation();
-  useEffect(reconcileReplyPrivacy, []);
 
   useEffect(() => {
     let previousState = AppState.currentState;
@@ -236,6 +234,7 @@ function App({
             controller={appNavigation}
             retention={conversationSessionOptions.retention}
             loadLocalData={aiFeatureServiceDependencies?.loadLocalData}
+            selectTab={selectActiveTab}
           />
           {ai.disclosureSheet}
         </AiFeatureSharedNavigationStateProvider>
