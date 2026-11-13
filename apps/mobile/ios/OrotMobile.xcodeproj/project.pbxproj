@@ -13,6 +13,9 @@
 		A11200000000000000000004 /* DailyReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000004 /* DailyReminderNotificationTests.swift */; };
 		256A00003303DB744E18775C /* DailyReminderSystemCenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1E1B6CD4A067306EEE635A /* DailyReminderSystemCenterTests.swift */; };
 		A11200000000000000000003 /* DailyReminderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000003 /* DailyReminderModule.m */; };
+		AFC900000000000000000001 /* ReplyNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC900000000000000000001 /* ReplyNotificationService.swift */; };
+		AFC900000000000000000002 /* ReplyNotificationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC900000000000000000002 /* ReplyNotificationModule.swift */; };
+		AFC900000000000000000003 /* ReplyNotificationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = BFC900000000000000000003 /* ReplyNotificationModule.m */; };
 		A11200000000000000000002 /* DailyReminderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000002 /* DailyReminderModule.swift */; };
 		A11200000000000000000001 /* DailyReminderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000001 /* DailyReminderNotifications.swift */; };
 		A19500000000000000000003 /* NavigationContextualActionContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000003 /* NavigationContextualActionContent.swift */; };
@@ -334,6 +337,9 @@
 		B11200000000000000000004 /* DailyReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyReminderNotificationTests.swift; sourceTree = "<group>"; };
 		6E1E1B6CD4A067306EEE635A /* DailyReminderSystemCenterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyReminderSystemCenterTests.swift; sourceTree = "<group>"; };
 		B11200000000000000000003 /* DailyReminderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = DailyReminderModule.m; path = OrotMobile/DailyReminderModule.m; sourceTree = "<group>"; };
+		BFC900000000000000000001 /* ReplyNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReplyNotificationService.swift; path = OrotMobile/ReplyNotificationService.swift; sourceTree = "<group>"; };
+		BFC900000000000000000002 /* ReplyNotificationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReplyNotificationModule.swift; path = OrotMobile/ReplyNotificationModule.swift; sourceTree = "<group>"; };
+		BFC900000000000000000003 /* ReplyNotificationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ReplyNotificationModule.m; path = OrotMobile/ReplyNotificationModule.m; sourceTree = "<group>"; };
 		B11200000000000000000002 /* DailyReminderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DailyReminderModule.swift; path = OrotMobile/DailyReminderModule.swift; sourceTree = "<group>"; };
 		B11200000000000000000001 /* DailyReminderNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DailyReminderNotifications.swift; path = OrotMobile/DailyReminderNotifications.swift; sourceTree = "<group>"; };
 		A84C19E6D37B4A5098E3F202 /* AppSymbolSizingIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSymbolSizingIntegrationTests.swift; sourceTree = "<group>"; };
@@ -756,6 +762,9 @@
 				B11200000000000000000001 /* DailyReminderNotifications.swift */,
 				B11200000000000000000002 /* DailyReminderModule.swift */,
 				B11200000000000000000003 /* DailyReminderModule.m */,
+				BFC900000000000000000001 /* ReplyNotificationService.swift */,
+				BFC900000000000000000002 /* ReplyNotificationModule.swift */,
+				BFC900000000000000000003 /* ReplyNotificationModule.m */,
 				B67F00000000000000000001 /* AppointmentReminderModule.swift */,
 				B67F00000000000000000002 /* AppointmentReminderModule.m */,
 				B67F00000000000000000003 /* AppointmentReminderNotifications.swift */,
@@ -1422,6 +1431,9 @@
 				A11200000000000000000001 /* DailyReminderNotifications.swift in Sources */,
 				A11200000000000000000002 /* DailyReminderModule.swift in Sources */,
 				A11200000000000000000003 /* DailyReminderModule.m in Sources */,
+				AFC900000000000000000001 /* ReplyNotificationService.swift in Sources */,
+				AFC900000000000000000002 /* ReplyNotificationModule.swift in Sources */,
+				AFC900000000000000000003 /* ReplyNotificationModule.m in Sources */,
 				A67F00000000000000000001 /* AppointmentReminderModule.swift in Sources */,
 				A67F00000000000000000002 /* AppointmentReminderModule.m in Sources */,
 				A67F00000000000000000003 /* AppointmentReminderNotifications.swift in Sources */,
