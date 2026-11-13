@@ -136,7 +136,8 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
             XCTContext.runActivity(named: "Stop target: app=\(appFrame), action=\(actionFrame), keyboard=\(keyboardFrame), windows=\(app.windows.count), hittable=\(hittable)") { _ in }
             // Reject a measured unreachable target before attempting to tap it.
             guard hittable, actionFrame.width >= 44, actionFrame.height >= 44,
-                  appFrame.contains(actionFrame), !actionFrame.intersects(keyboardFrame) else {
+                  appFrame.contains(actionFrame), !actionFrame.intersects(keyboardFrame)
+            else {
                 XCTFail("Stop action is not reachable in the measured viewport")
                 return
             }
