@@ -109,6 +109,7 @@ enum UITestConditions {
         // Keyboard and system surfaces can expose additional AX windows; bind the
         // rotation control to the same unique window as the appointment page.
         let scroll = element(app, "appointments-scroll")
+        XCTAssertTrue(scroll.exists && control.exists, "Appointment page and rotation control must be observable")
         let window = try XCTUnwrap(FormWindowOwnership.resolve(app, scroll: scroll, target: control))
         let initial = window.frame
         let armed = try command("start")
@@ -136,15 +137,17 @@ enum UITestConditions {
                 (landscape ? width > height : height > width)
         }, "No correlated current scene geometry event: \(receipt)")
         let bounds = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            guard window.exists else { return false }
-            let frame = window.frame
+            // Re-resolve on every observation because AX window indices can change.
+            guard scroll.exists, control.exists,
+                  let owner = FormWindowOwnership.resolve(app, scroll: scroll, target: control, reportFailure: false) else { return false }
+            let frame = owner.frame
             return (abs(frame.width - initial.width) > 0.5 || abs(frame.height - initial.height) > 0.5) &&
                 abs(frame.width - (current["width"] ?? 0)) <= 0.5 && abs(frame.height - (current["height"] ?? 0)) <= 0.5 &&
                 (landscape ? frame.width > frame.height : frame.height > frame.width)
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [bounds], timeout: 15), .completed, "AX window did not reflow")
-        let reflowedWindow = try XCTUnwrap(FormWindowOwnership.resolve(app, scroll: scroll, target: control))
-        XCTAssertEqual(reflowedWindow.frame, window.frame, "The appointment window owner changed during rotation")
+        XCTAssertTrue(scroll.exists && control.exists, "Appointment page and rotation control must remain observable")
+        _ = try XCTUnwrap(FormWindowOwnership.resolve(app, scroll: scroll, target: control))
     }
 
     /// React Native exposes a checkbox's VoiceOver state through its localized accessibility value.
