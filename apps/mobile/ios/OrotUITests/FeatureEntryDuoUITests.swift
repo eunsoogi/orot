@@ -41,14 +41,14 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
             }
             UITestConditions.terminateStandaloneApp(app)
         }
-        XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
+        XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
         _ = try AppearanceUITestConditions.select(
             false,
             returningTo: app,
             testCase: self,
             captureOriginal: { originalAppearance = $0 },
         )
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         try assertConversationFitsContentLane(app)
         NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
         NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
@@ -88,14 +88,14 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
     @MainActor
     private func assertConversationFitsContentLane(_ app: XCUIApplication) throws {
         let viewport = node(app, "navigation-content-region")
-        let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar
+        let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation").toolbar
         let screen = node(app, "rag-conversation-screen")
         let input = node(app, "rag-conversation-input")
         for element in [viewport, rail, screen, input] {
             XCTAssertTrue(UITestConditions.exists(element), app.debugDescription)
             XCTAssertFalse(element.frame.isEmpty, element.debugDescription)
         }
-        let ai = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").control
+        let ai = try NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation").control
         XCTAssertTrue(rail.isHittable && ai.exists && ai.isHittable && ai.isSelected)
         XCTAssertGreaterThanOrEqual(ai.frame.width, 44)
         XCTAssertGreaterThanOrEqual(ai.frame.height, 44)
@@ -136,8 +136,8 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         XCUIDevice.shared.orientation = .portrait
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
-        XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         XCTAssertGreaterThan(app.frame.height, app.frame.width, "The portrait journey requires an observed portrait window")
         try assertConversationFitsContentLane(app)
         let input = node(app, "rag-conversation-input")
@@ -150,7 +150,7 @@ final class FeatureEntryDuoUITests: OrotFailFastTestCase {
         }
         if ProcessInfo.processInfo.environment["OROT_TEST_DUO_KEYBOARD_DIAGNOSTIC"] == "1" {
             // Capture the real keyboard and controls before entering an action query that may have no target.
-            let ids = ["navigation-tab-home", "navigation-home", "navigation-tab-ai", "navigation-page-action-overflow", "rag-conversation-sessions-toggle", "rag-conversation-new-session"]
+            let ids = ["navigation-tab-overview", "navigation-tab-conversation", "navigation-page-action-overflow", "rag-conversation-sessions-toggle", "rag-conversation-new-session"]
             let states = ids.map { id in
                 let matches = app.descendants(matching: .any).matching(identifier: id)
                 let item = matches.firstMatch

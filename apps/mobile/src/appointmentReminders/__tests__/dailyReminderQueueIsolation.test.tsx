@@ -87,7 +87,7 @@ test.each(['dismissal locked', 'read locked', 'unlocked'] as const)(
     const runtime = createAppointmentReminderRuntime(
       async () => store.repository,
     );
-    const controller = createNavigationController<AppNavigationRoute>('home');
+    const controller = createNavigationController<AppNavigationRoute>('root');
     const home = controller.getSnapshot().currentRoute;
     controller.registerLeaveGuard(home.key, async () => true);
     const view = await render(

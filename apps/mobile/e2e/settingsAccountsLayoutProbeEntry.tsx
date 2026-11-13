@@ -57,7 +57,7 @@ const serviceDependencies: AiFeatureServiceDependencies = {
 // Keep this fixture on the production adapter while selecting only Settings accounts.
 function SettingsAccountsLayoutProbe() {
   const controller = useMemo(
-    () => createNavigationController<AppNavigationRoute>('home'),
+    () => createNavigationController<AppNavigationRoute>('root'),
     [],
   );
 
@@ -66,12 +66,11 @@ function SettingsAccountsLayoutProbe() {
       contentLayoutOwner={appContentLayoutOwner}
       controller={controller}
       rootTabs={route =>
-        route.name === 'home'
+        route.name === 'root'
           ? { activeTab: 'settings', onSelect: () => undefined }
           : undefined
       }
-      scrollable={route => route.name === 'home'}
-      showHome
+      scrollable={route => route.name === 'root'}
     >
       {actions => renderRoute(actions)}
     </NavigationRouteAdapter>
@@ -88,7 +87,7 @@ function renderRoute(actions: NavigationRouteActions<AppNavigationRoute>) {
       />
     );
   }
-  if (actions.route.name !== 'home') return null;
+  if (actions.route.name !== 'root') return null;
 
   return (
     <SettingsRoute

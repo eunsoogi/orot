@@ -53,8 +53,8 @@ export function DailyReportVisualProbe({
       <NavigationRouteAdapter
         controller={controller}
         leaveState={leaveState}
-        showHome
-        rootTabs={{ activeTab: 'ai', onSelect: () => {} }}
+
+        rootTabs={{ activeTab: 'conversation', onSelect: () => {} }}
       >
         {navigation =>
           navigation.route.name === 'report' ? (

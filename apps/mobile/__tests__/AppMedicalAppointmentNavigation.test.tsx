@@ -169,7 +169,7 @@ it('opens classification with the saved AI and reaches the separate manual page'
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(await screen.findByTestId('open-medical-appointments')).toBeTruthy();
   // Returning to the retained classification scene refreshes the saved model selection.
-  expect(loadSelection).toHaveBeenCalledTimes(2);
+  expect(loadSelection).toHaveBeenCalledTimes(3);
 });
 
 it('keeps manual entry available while the saved AI lookup is pending', async () => {
@@ -197,7 +197,7 @@ it('keeps manual entry available while the saved AI lookup is pending', async ()
 
   await fireEvent.press(screen.getByTestId('navigation-tab-schedule'));
   await fireEvent.press(await screen.findByTestId('open-medical-appointments'));
-  await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
   expect(screen.getByTestId('navigation-back')).toBeEnabled();
   await fireEvent.press(
     await screen.findByTestId('medical-appointment-manual'),

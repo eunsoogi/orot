@@ -66,7 +66,7 @@ test.each([
       status: 'no_evidence' as const,
     }));
     const reminderRuntime = {
-      homePreparationTargets:
+      overviewPreparationTargets:
         route === 'visit-questions'
           ? new Map([['intent-entry', 'appointment-home']])
           : new Map(),

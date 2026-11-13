@@ -40,7 +40,7 @@ test.each(['unavailable guard', 'restore failure'] as const)(
       throw new Error('restore unavailable');
     });
     const sessions = createConversationSessions({ retention, restoreSession });
-    const controller = createNavigationController<AppNavigationRoute>('home');
+    const controller = createNavigationController<AppNavigationRoute>('root');
     if (failure === 'restore failure')
       controller.registerLeaveGuard(
         controller.getSnapshot().currentRoute.key,
@@ -118,7 +118,7 @@ test('rechecks a real controller after a route change during the final read and 
       { question: 'q', answer: 'a', citations: [], toolMessageId: 'answer' },
     ],
   });
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const approve = async () => true;
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,

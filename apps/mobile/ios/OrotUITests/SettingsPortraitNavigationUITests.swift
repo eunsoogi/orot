@@ -79,7 +79,7 @@ extension RootNavigationUITests {
         let arguments = ["-OROT_TEST_PROFILE", "core", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launchArguments = arguments + ViewportObservation.arguments
         app.launch()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try ViewportObservation.openSettings(app, testCase: self)
         let regularTitleHeight = UITestConditions.element(app, "settings-title").frame.height
         try verifySettingsPanels(app)
@@ -92,7 +92,7 @@ extension RootNavigationUITests {
         app.terminate()
         app.launchArguments = arguments + ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
         XCTAssertGreaterThan(UITestConditions.element(app, "settings-title").frame.height, regularTitleHeight)
         try verifySettingsPanels(app, expectsStacked: true)

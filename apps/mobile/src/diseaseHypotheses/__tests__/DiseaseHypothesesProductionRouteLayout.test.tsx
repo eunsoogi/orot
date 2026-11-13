@@ -155,7 +155,7 @@ afterEach(() => {
 });
 
 test('restores saved analysis and source across expanded and narrow production routes', async () => {
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   routeController = controller;
   const summary = jest.fn();
   const assessment = jest.fn();
@@ -164,16 +164,16 @@ test('restores saved analysis and source across expanded and narrow production r
     summarizeSymptoms: summary,
     generateDiseaseHypotheses: assessment,
   } as unknown as AiFeatureServices;
-  const rootTabs = { activeTab: 'ai' as const, onSelect: noop };
+  const rootTabs = { activeTab: 'conversation' as const, onSelect: noop };
 
   await render(
     <NavigationRouteAdapter
       contentLayoutOwner={appContentLayoutOwner}
       controller={controller}
-      rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+      rootTabs={route => (route.name === 'root' ? rootTabs : undefined)}
     >
       {actions =>
-        actions.route.name === 'home' ? (
+        actions.route.name === 'root' ? (
           <Button
             title="Open saved analysis"
             testID="open-saved-analysis"

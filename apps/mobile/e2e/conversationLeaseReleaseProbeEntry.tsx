@@ -217,7 +217,6 @@ function Probe() {
                   inputRevision: 0,
                 }),
               }}
-              showHome
             >
               {navigation =>
                 navigation.route.name === 'history' ? (

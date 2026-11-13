@@ -65,7 +65,7 @@ final class ProductionRagConversationUITests: XCTestCase {
         defer { app.terminate() }
         stage("harness_launched")
 
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         guard UITestConditions.exists(node(app, "rag-conversation-screen")) else { throw failure("conversation_unavailable") }
         try tap(app, "ai-feature-select-provider")
         guard UITestConditions.exists(node(app, "provider-selection-screen")) else { throw failure("provider_selection_unavailable") }

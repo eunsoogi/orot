@@ -84,7 +84,7 @@ it.each([
       withSafeAreaInsets(
         <NavigationActionBar
           controller={controller}
-          rootTabs={{ activeTab: 'home', onSelect: jest.fn() }}
+          rootTabs={{ activeTab: 'overview', onSelect: jest.fn() }}
           surface={FallbackSurface}
         />,
       ),
@@ -107,7 +107,7 @@ it('does not reclaim the bottom inset while the keyboard is visible', async () =
     withSafeAreaInsets(
       <NavigationActionBar
         controller={controller}
-        rootTabs={{ activeTab: 'home', onSelect: jest.fn() }}
+        rootTabs={{ activeTab: 'overview', onSelect: jest.fn() }}
         keyboardVisible
         surface={FallbackSurface}
       />,
@@ -122,14 +122,14 @@ it('does not reclaim the bottom inset while the keyboard is visible', async () =
 it('keeps the surface mounted across root, child, and keyboard inset changes', async () => {
   mockBottomInset = 34;
   const controller = createNavigationController<'home' | 'details'>('home');
-  const rootTabs = { activeTab: 'home' as const, onSelect: jest.fn() };
+  const rootTabs = { activeTab: 'overview' as const, onSelect: jest.fn() };
   const bar = (showRootTabs: boolean, keyboardVisible: boolean) =>
     withSafeAreaInsets(
       <NavigationActionBar
         controller={controller}
         keyboardVisible={keyboardVisible}
         rootTabs={showRootTabs ? rootTabs : undefined}
-        showHome={!showRootTabs}
+
         surface={TrackingSurface}
       />,
     );
@@ -163,7 +163,7 @@ it('keeps the surface mounted across root, child, and keyboard inset changes', a
     controller.reconcileNativeBack(controller.getSnapshot().currentRoute.key);
     await view.rerender(bar(true, false));
   });
-  expect(screen.getByTestId('navigation-tab-home')).toBeVisible();
+  expect(screen.getByTestId('navigation-tab-overview')).toBeVisible();
   expect(surfaceMountCount).toBe(1);
   expect(surfaceUnmountCount).toBe(0);
   expect(translation()).toEqual([{ translateY: 10 }]);

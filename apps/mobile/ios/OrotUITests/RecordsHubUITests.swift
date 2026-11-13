@@ -136,7 +136,7 @@ final class RecordsHubUITests: OrotFailFastTestCase {
             "en_US",
         ] + extra
         app.launch()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         return app
     }
 

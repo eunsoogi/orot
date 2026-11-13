@@ -11,7 +11,8 @@ final class DailyReportEntryUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
 
-        let homeEntry = UITestConditions.element(app, "home-open-daily-report")
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
+        let homeEntry = UITestConditions.element(app, "overview-open-daily-report")
         XCTAssertTrue(homeEntry.waitForAppearance(), app.debugDescription)
         attach(app, name: "daily-report-home-entry")
         XCTAssertTrue(homeEntry.isHittable, homeEntry.debugDescription)
@@ -20,7 +21,7 @@ final class DailyReportEntryUITests: XCTestCase {
 
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         XCTAssertTrue(homeEntry.waitForAppearance(), app.debugDescription)
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         let conversationEntry = UITestConditions.element(app, "daily-report-request")
         XCTAssertTrue(conversationEntry.waitForAppearance(), app.debugDescription)
         attach(app, name: "daily-report-conversation-entry")
@@ -157,7 +158,7 @@ final class DailyReportEntryUITests: XCTestCase {
         // Hittability alone can leave the lower part of large text outside the viewport.
         _ = try XCTUnwrap(FormUITestConditions.reveal(observation, in: app, scroll: scroll, keyboardMayBeVisible: false))
         XCTAssertTrue(observation.exists && observation.isHittable, observation.debugDescription)
-        let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar
+        let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation").toolbar
         XCTAssertGreaterThan(rail.frame.height, rail.frame.width, "This observation requires the Duo rail")
         XCTAssertTrue(scroll.frame.intersects(observation.frame))
         XCTAssertTrue(scroll.frame.insetBy(dx: -1, dy: -1).contains(observation.frame), observation.debugDescription)
@@ -172,7 +173,7 @@ final class DailyReportEntryUITests: XCTestCase {
         UITestConditions.scrollTo(chat, in: scroll)
         XCTAssertTrue(chat.exists && chat.isHittable, chat.debugDescription)
         XCTAssertGreaterThanOrEqual(chat.frame.height, 44)
-        let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai").toolbar
+        let rail = try NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation").toolbar
         XCTAssertLessThanOrEqual(chat.frame.maxX, rail.frame.minX + 0.5)
         chat.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")), app.debugDescription)

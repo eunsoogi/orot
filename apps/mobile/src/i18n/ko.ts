@@ -10,7 +10,7 @@ import { healthRecordsKo } from './healthRecords';
 import { healthkitSettingsKo } from './healthkitSettings';
 import { probeKo } from './probeKo';
 import { manualHistoryKo } from './manualHistory';
-import { homeOverviewKo } from './homeOverview';
+import { overviewKo } from './overview';
 import { appointmentActionsKo } from './appointmentActionsKo';
 import { medicalDocumentSaveErrorsKo } from './medicalDocumentSaveErrors';
 import { chartsKo } from './charts';
@@ -21,26 +21,26 @@ export const ko = {
   ...assistantAppearanceKo,
   ...chartsKo,
   ...replyNotificationKo,
-  ...homeOverviewKo,
+  ...overviewKo,
   ...probeKo,
   ...manualHistoryKo,
   ...backupKo,
   'app.welcome.title': '오롯',
   'app.welcome.message': '흩어진 건강 기록을 한곳에 모아요',
-  'home.greeting': '오늘도 나를 위한 기록',
-  'home.nextAppointment': '다음 진료',
-  'home.prepareVisit': '진료 준비하기',
-  'home.noAppointment': '예정된 진료가 없어요. 일정을 확인해 보세요.',
-  'home.recentRecord': '최근 기록',
-  'home.noRecentRecord': '아직 저장된 기록이 없어요.',
-  'navigation.tabs.home': '홈',
-  'navigation.tabs.homeAccessibility': '홈 탭',
+  'overview.greeting': '오늘도 나를 위한 기록',
+  'overview.nextAppointment': '다음 진료',
+  'overview.prepareVisit': '진료 준비하기',
+  'overview.noAppointment': '예정된 진료가 없어요. 일정을 확인해 보세요.',
+  'overview.recentRecord': '최근 기록',
+  'overview.noRecentRecord': '아직 저장된 기록이 없어요.',
+  'navigation.tabs.overview': '한눈에',
+  'navigation.tabs.overviewAccessibility': '한눈에 탭',
   'navigation.tabs.records': '기록',
   'navigation.tabs.recordsAccessibility': '기록 탭',
   'navigation.tabs.schedule': '일정',
   'navigation.tabs.scheduleAccessibility': '일정 탭',
-  'navigation.tabs.ai': 'AI',
-  'navigation.tabs.aiAccessibility': 'AI 탭',
+  'navigation.tabs.conversation': '대화',
+  'navigation.tabs.conversationAccessibility': '대화 탭',
   'navigation.tabs.settings': '설정',
   'navigation.tabs.settingsAccessibility': '설정 탭',
   'records.title': '기록',

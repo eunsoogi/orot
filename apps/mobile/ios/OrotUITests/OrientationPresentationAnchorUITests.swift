@@ -28,7 +28,7 @@ final class OrientationPresentationAnchorUITests: OrotFailFastTestCase {
         XCTAssertGreaterThan(portrait.width, 0)
         XCTAssertGreaterThan(portrait.height, portrait.width)
 
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         let question = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertTrue(UITestConditions.exists(question) && question.isHittable)
         question.tap()
@@ -71,7 +71,7 @@ final class OrientationPresentationAnchorUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         XCTAssertEqual(question.value as? String, draft, "The edited question must survive a real window-size transition")
-        let selectedTab = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai")
+        let selectedTab = try NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation")
         XCTAssertTrue(selectedTab.control.isSelected)
     }
 

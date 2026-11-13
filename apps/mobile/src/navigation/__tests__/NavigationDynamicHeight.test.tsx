@@ -41,7 +41,7 @@ describe('measured bottom navigation', () => {
         <NavigationActionBar
           controller={controller}
           safeAreaHandledByParent
-          rootTabs={{ activeTab: 'home', onSelect: jest.fn() }}
+          rootTabs={{ activeTab: 'overview', onSelect: jest.fn() }}
         />,
       );
       const surface = screen.getByTestId('navigation-bar-native-surface', {
@@ -75,7 +75,7 @@ describe('measured bottom navigation', () => {
       await render(
         <NavigationActionBar
           controller={controller}
-          showHome
+
           safeAreaHandledByParent
           pageActions={[
             {
@@ -97,8 +97,8 @@ describe('measured bottom navigation', () => {
           nativeEvent: {
             revision: dock.props.pageMetricsRequest.revision,
             width: 390,
-            widths: [48, 64, 80, 44],
-            heights: [70, 70, 90, 70],
+            widths: [48, 80, 44],
+            heights: [70, 90, 70],
           },
         }),
       );

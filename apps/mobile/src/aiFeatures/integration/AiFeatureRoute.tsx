@@ -21,7 +21,6 @@ export interface AiFeatureRouteProps extends Omit<
 > {
   readonly initialRoute?: FeatureScreenRoute | 'provider-selection';
   readonly onBack: () => void;
-  readonly onHome?: () => void;
   readonly onOpenRecording?: () => void;
   readonly onOpenArticle?: AiFeatureFlowProps['onOpenArticle'];
 }
@@ -29,7 +28,6 @@ export interface AiFeatureRouteProps extends Omit<
 /** Keeps one guarded route tree mounted so provider/source overlays preserve feature state. */
 export function AiFeatureRoute({
   onBack,
-  onHome,
   initialRoute = 'entry',
   onOpenArticle = openEuropePmcArticle,
   renderVisitQuestions,
@@ -53,7 +51,6 @@ export function AiFeatureRoute({
     navigation.push(initialRoute);
     return navigation;
   });
-  const pendingExitIntent = useRef<'home' | null>(null);
   const nativeExitHandled = useRef(false);
   const completeNativeExit = useCallback(
     (routeKey: string) => {
@@ -66,12 +63,9 @@ export function AiFeatureRoute({
       }
       if (nativeExitHandled.current) return;
       nativeExitHandled.current = true;
-      const intent = pendingExitIntent.current;
-      pendingExitIntent.current = null;
-      if (intent === 'home' && onHome) onHome();
-      else onBack();
+      onBack();
     },
-    [controller, onBack, onHome],
+    [controller, onBack],
   );
   const rootLeaveState = useMemo<
     NavigationLeaveStateSource<AiFeatureRouteName>
@@ -106,18 +100,6 @@ export function AiFeatureRoute({
           contentLayoutOwner={appContentLayoutOwner}
           leaveState={rootLeaveState}
           onNativeRouteRemovalComplete={completeNativeExit}
-          showHome
-          homeAction={
-            onHome
-              ? async () => {
-                  // Home remains a guarded exit while returning to the source is reserved for Back.
-                  pendingExitIntent.current = 'home';
-                  if (!(await controller.requestHome())) {
-                    pendingExitIntent.current = null;
-                  }
-                }
-              : undefined
-          }
         >
           {navigation =>
             navigation.route.name === 'app-home' ? null : (

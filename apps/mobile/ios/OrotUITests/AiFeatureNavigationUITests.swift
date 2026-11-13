@@ -14,11 +14,11 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_STORAGE_DIAGNOSTICS", "enabled", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_CONVERSATION_HIT_OBSERVATION", observationSession, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
-        XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         // The health editor is available independently of asynchronous record reads.
-        NavigationUITestConditions.route(app, markers: ["home-metrics-edit"])
-        XCTAssertTrue(UITestConditions.exists(node(app, "home-metrics-edit")), app.debugDescription)
-        try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "home-metrics-edit", navigationID: "navigation-tab-home")
+        NavigationUITestConditions.route(app, markers: ["overview-metrics-edit"])
+        XCTAssertTrue(UITestConditions.exists(node(app, "overview-metrics-edit")), app.debugDescription)
+        try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "overview-metrics-edit", navigationID: "navigation-tab-overview")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "records-open-health-library", navigationID: "navigation-tab-records")
         let recording = node(app, "records-new-recording")
@@ -27,7 +27,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "recording-controls-scroll")))
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         XCTAssertFalse(node(app, "ai-features-screen").exists)
         XCTAssertFalse(node(app, "external-evidence-search").exists)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
@@ -58,7 +58,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         _ = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["settings-title"])
-        try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+        try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         message(app, "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.")
         XCTAssertFalse(app.alerts["저장하지 않은 내용이 있어요"].exists)
         try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
@@ -82,7 +82,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
             }
             UITestConditions.terminateStandaloneApp(app)
         }
-        XCTAssertTrue(UITestConditions.exists(node(app, "welcome-title")))
+        XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
         for dark in [false, true] {
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
                 if original == nil {
@@ -90,7 +90,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
                 }
             })
             let suffix = dark ? "dark" : "light"
-            try NavigationUITestConditions.openTab(app, "ai", markers: ["rag-conversation-screen"])
+            try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
             try captureAppearance(app, "conversation-empty-\(suffix)")
             NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
             NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
@@ -204,7 +204,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         // A mounted React scene may still have its detached zero-inset frame during the native push.
         // Capture only after the actual toolbar and the conversation's safe-area frame are installed.
         if name.hasPrefix("conversation-empty-") {
-            _ = try NavigationUITestConditions.navigationAction(app, "navigation-tab-ai")
+            _ = try NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation")
             let scene = node(app, "rag-conversation-screen")
             let attached = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 scene.exists && scene.frame.minY > app.frame.minY

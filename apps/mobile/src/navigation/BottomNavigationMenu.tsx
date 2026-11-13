@@ -20,14 +20,12 @@ import {
 /** Callback routes keep their own stack while sharing the app's bottom actions. */
 export function BottomNavigationMenu({
   onBack,
-  onHome,
   primaryAction,
   surface: Surface = NavigationGlassSurface,
   testID,
   disabled = false,
 }: {
   readonly onBack: () => void | Promise<unknown>;
-  readonly onHome?: () => void | Promise<unknown>;
   readonly primaryAction?: NavigationPrimaryAction;
   readonly surface?: NavigationSurface;
   readonly testID: string;
@@ -46,16 +44,6 @@ export function BottomNavigationMenu({
       disabled,
     },
   ];
-  if (onHome) {
-    nativeActions.push({
-      id: 'home',
-      label: navigationText.home.label,
-      accessibilityLabel: navigationText.home.accessibilityLabel,
-      testID: 'navigation-home',
-      systemImageName: 'house',
-      disabled,
-    });
-  }
   if (primaryAction) {
     nativeActions.push({
       id: 'primary',
@@ -78,10 +66,6 @@ export function BottomNavigationMenu({
       settleBottomAction(onBack);
       return;
     }
-    if (nativeEvent.id === 'home' && onHome) {
-      settleBottomAction(onHome);
-      return;
-    }
     if (
       nativeEvent.id === 'primary' &&
       primaryAction &&
@@ -101,16 +85,6 @@ export function BottomNavigationMenu({
         onPress={onBack}
         testID={testID}
       />
-      {onHome ? (
-        <BottomAction
-          accessibilityLabel={navigationText.home.accessibilityLabel}
-          disabled={disabled}
-          isDarkAppearance={isDarkAppearance}
-          label={navigationText.home.label}
-          onPress={onHome}
-          testID="navigation-home"
-        />
-      ) : null}
       {primaryAction ? (
         <BottomAction
           accessibilityLabel={primaryAction.accessibilityLabel}

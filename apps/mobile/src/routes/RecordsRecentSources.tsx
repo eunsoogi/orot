@@ -64,7 +64,7 @@ export function RecordsRecentSources({
     <View style={styles.container} testID="records-recent-sources">
       <View style={styles.headingRow}>
         <Text accessibilityRole="header" style={styles.heading}>
-          {t('home.recentRecord')}
+          {t('overview.recentRecord')}
         </Text>
         {records.length > 0 ? (
           <AppButton

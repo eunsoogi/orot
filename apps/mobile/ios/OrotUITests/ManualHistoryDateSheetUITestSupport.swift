@@ -12,7 +12,7 @@ enum ManualHistoryUITestSupport {
             + (observeGeometry ? ["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"] : [])
             + (initialDate.map { ["-OROT_TEST_MANUAL_HISTORY_DATE", $0] } ?? [])
         app.launch()
-        NavigationUITestConditions.route(app, markers: ["welcome-title"])
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
     }
 }
 

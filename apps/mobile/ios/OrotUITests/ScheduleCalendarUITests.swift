@@ -200,7 +200,7 @@ final class ScheduleCalendarUITests: OrotFailFastTestCase {
 
     @MainActor
     private func openSchedule(_ app: XCUIApplication) throws {
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "welcome-title")))
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")))
         try NavigationUITestConditions.openTab(
             app,
             "schedule",

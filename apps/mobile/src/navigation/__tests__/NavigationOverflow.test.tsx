@@ -142,8 +142,8 @@ test('keeps primary action direct and preserves disabled, busy and destructive m
   const originalWindow = Dimensions.get('window');
   const originalScreen = Dimensions.get('screen');
   Dimensions.set({
-    window: { ...originalWindow, width: 320 },
-    screen: { ...originalScreen, width: 320 },
+    window: { ...originalWindow, width: 280 },
+    screen: { ...originalScreen, width: 280 },
   });
   metricsControl.__OROT_TEST_PAGE_METRICS__ = null;
   const show = jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions');
@@ -183,7 +183,7 @@ test('keeps primary action direct and preserves disabled, busy and destructive m
     const view = await render(
       <NavigationActionBar
         controller={controller}
-        showHome
+
         safeAreaHandledByParent
         routeKey="first"
         pageActions={actions}
@@ -196,9 +196,9 @@ test('keeps primary action direct and preserves disabled, busy and destructive m
       surface.props.onPageMetrics({
         nativeEvent: {
           revision: surface.props.pageMetricsRequest.revision,
-          width: 304,
-          widths: [48, 64, 88, 88, 52],
-          heights: [48, 48, 48, 48, 48],
+          width: 264,
+          widths: [48, 88, 88, 52],
+          heights: [48, 48, 48, 48],
         },
       }),
     );
@@ -214,7 +214,7 @@ test('keeps primary action direct and preserves disabled, busy and destructive m
     await view.rerender(
       <NavigationActionBar
         controller={controller}
-        showHome
+
         safeAreaHandledByParent
         routeKey="second"
         pageActions={actions}
