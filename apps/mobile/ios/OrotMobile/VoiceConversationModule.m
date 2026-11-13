@@ -10,9 +10,14 @@ RCT_EXTERN_METHOD(speak : (NSString *)identifier text : (NSString *)text languag
                           resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(stop : (NSString *)identifier resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(openCall : (NSString *)identifier language : (NSString *)language resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(stopCall : (NSString *)identifier resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(interruptOutput : (NSString *)identifier resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(openCall : (NSString *)identifier language : (NSString *)language resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(stopCall : (NSString *)identifier resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(interruptOutput : (NSString *)identifier resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(finishCallCapture : (NSString *)identifier)
-RCT_EXTERN_METHOD(speakCall : (NSString *)identifier generation : (NSInteger)generation text : (NSString *)text language : (NSString *)language resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(speakCall : (NSString *)identifier generation : (NSInteger)generation text : (
+    NSString *)text language : (NSString *)language resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 @end
