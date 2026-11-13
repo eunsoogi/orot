@@ -88,6 +88,7 @@ test('full integration execution preserves profile observations and every regist
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
   // Nine host regressions run outside iOS; seven picker journeys still repeat across cohorts.
+  // Visit preparation adds one native accessibility fixture to the full schedule.
   assert.equal(scheduled.length, 222);
   const identifiers = new Set(scheduled);
   assert.equal(identifiers.size, 215);

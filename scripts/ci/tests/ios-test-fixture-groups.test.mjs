@@ -6,7 +6,7 @@ import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosTestExecutionPlan } from '../ios-test-execution-plan.mjs';
 import { iosFixtureGroups, selectIosFixtureGroup } from '../ios-test-fixture-groups.mjs';
 
-test('fixture groups partition appointment, document-import, and orientation journeys', () => {
+test('fixture groups partition conversation, appointment, document-import, and orientation journeys', () => {
   const original = iosTestInventory('fixtures');
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(

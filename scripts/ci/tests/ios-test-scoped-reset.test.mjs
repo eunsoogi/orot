@@ -95,7 +95,7 @@ test('cold pollution proof requires real database, files, keys, permission and f
     );
 });
 
-test('fresh creation, migration, document import, backup and native permission cases retain full resets', () => {
+test('fresh creation, visit preparation, migration, document import, backup and native permission cases retain full resets', () => {
   const full = fixtureTests.filter(
     (identifier) => iosFixtureResetMode('fixtures', identifier) === 'fresh-install',
   );
@@ -124,6 +124,7 @@ test('fresh creation, migration, document import, backup and native permission c
     'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable',
     'OrotUITests/ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
     'OrotUITests/ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
+    // The visit-preparation UI fixture keeps its synthetic conversation in a fresh app container.
     'OrotUITests/ConversationVisitPreparationUITests/testLongPreparedQuestionKeepsAccessibleOrderWithLargeTextAndKeyboard',
     'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
     'OrotUITests/AppointmentTextSelectionUITests/testAppointmentClinicReplacementClearsASCIIAndUnicodeValues',
