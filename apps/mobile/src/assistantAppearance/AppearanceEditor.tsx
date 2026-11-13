@@ -124,6 +124,7 @@ export function AppearanceEditor({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScrollView
+            testID="assistant-appearance-scroll"
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
           >
@@ -176,6 +177,7 @@ export function AppearanceEditor({
               </AppText>
             ) : null}
             <AppButton
+              testID="assistant-appearance-save"
               title={t('assistantAppearance.save')}
               disabled={!avatar}
               busy={busy}

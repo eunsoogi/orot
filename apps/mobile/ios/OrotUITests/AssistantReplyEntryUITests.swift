@@ -15,13 +15,14 @@ final class AssistantReplyEntryUITests: OrotFailFastTestCase {
         XCTAssertGreaterThanOrEqual(star.frame.width, 44)
         XCTAssertGreaterThanOrEqual(star.frame.height, 44)
         star.tap()
-        let save = app.buttons["저장"]
-        XCTAssertNotNil(FormUITestConditions.reveal(save, in: app, scroll: app.scrollViews.firstMatch))
+        let save = app.buttons["assistant-appearance-save"]
+        XCTAssertEqual(save.label, "저장")
+        XCTAssertNotNil(FormUITestConditions.reveal(save, in: app, scrollID: "assistant-appearance-scroll"))
         XCTAssertTrue(save.isHittable && save.isEnabled)
         save.tap()
 
         let history = UITestConditions.element(app, "rag-conversation-history")
-        let answer = app.staticTexts["Synthetic retained reply"]
+        let answer = app.staticTexts.matching(identifier: "rag-conversation-answer-body").matching(NSPredicate(format: "label == %@", "Synthetic retained reply")).firstMatch
         XCTAssertTrue(UITestConditions.exists(history), app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(answer), app.debugDescription)
         XCTAssertTrue(answer.isHittable, answer.debugDescription)

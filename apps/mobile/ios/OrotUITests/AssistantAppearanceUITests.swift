@@ -10,10 +10,11 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
         defer { UITestConditions.terminateStandaloneApp(app) }
 
         let star = app.descendants(matching: .any).matching(identifier: "별").firstMatch
-        let save = app.buttons["저장"]
+        let save = app.buttons["assistant-appearance-save"]
         let name = app.textFields["비서 이름"]
         XCTAssertTrue(UITestConditions.exists(star), "Requires a fresh test-owned app container: \(app.debugDescription)")
         XCTAssertFalse(UITestConditions.element(app, "navigation-tab-ai").exists)
+        XCTAssertEqual(save.label, "저장")
         XCTAssertFalse(save.isEnabled)
         XCTAssertTrue(star.isHittable)
         XCTAssertTrue((star.value as? String)?.contains("radio button") == true, star.debugDescription)
@@ -29,7 +30,7 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
         ConversationComposerDockUITestConditions.waitForVisibleKeyboard(in: app)
         name.typeText("Momo")
         XCTAssertEqual(name.value as? String, "Momo")
-        XCTAssertNotNil(FormUITestConditions.reveal(save, in: app, scroll: app.scrollViews.firstMatch))
+        XCTAssertNotNil(FormUITestConditions.reveal(save, in: app, scrollID: "assistant-appearance-scroll"))
         XCTAssertTrue(save.isHittable && save.isEnabled)
         XCTAssertGreaterThanOrEqual(save.frame.width, 44)
         XCTAssertGreaterThanOrEqual(save.frame.height, 44)
@@ -74,6 +75,11 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
         XCTAssertGreaterThanOrEqual(send.frame.width, 44)
         XCTAssertGreaterThanOrEqual(send.frame.height, 44)
         send.tap()
+        // Preserve the synthetic post-send screen even if the expected stage never appears.
+        let sentScreenshot = XCTAttachment(screenshot: app.screenshot())
+        sentScreenshot.name = "Assistant request after send"
+        sentScreenshot.lifetime = .keepAlways
+        add(sentScreenshot)
         let waiting = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "응답을 기다리고 있어요")).firstMatch
         XCTAssertTrue(UITestConditions.exists(waiting), app.debugDescription)
         XCTAssertTrue(waiting.label.contains("Momo"))

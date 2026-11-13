@@ -17,13 +17,16 @@ final class ReplyFocusGeometryUITests: OrotFailFastTestCase {
         XCTAssertGreaterThanOrEqual(newer.frame.height, 44)
 
         let receipt = app.staticTexts["reply-focus-probe-receipt"]
+        func answerBody(_ text: String) -> XCUIElement {
+            app.staticTexts.matching(identifier: "rag-conversation-answer-body").matching(NSPredicate(format: "label == %@", text)).firstMatch
+        }
         func assertOutside(_ text: String) {
-            let answer = app.staticTexts[text]
+            let answer = answerBody(text)
             XCTAssertTrue(!answer.exists || !scroll.frame.intersects(answer.frame), answer.debugDescription)
         }
 
         func assertRevealed(_ text: String, id: String, after generation: Int) -> Int {
-            let answer = app.staticTexts[text]
+            let answer = answerBody(text)
             let revealed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 guard answer.exists, scroll.exists else { return false }
                 return scroll.frame.contains(answer.frame) && !answer.frame.isEmpty
@@ -39,7 +42,7 @@ final class ReplyFocusGeometryUITests: OrotFailFastTestCase {
             return next
         }
 
-        let latest = app.staticTexts["Synthetic reply 32"]
+        let latest = answerBody("Synthetic reply 32")
         let bottomSettled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             latest.exists && scroll.exists && scroll.frame.contains(latest.frame) && !latest.frame.isEmpty
         }, object: nil)
