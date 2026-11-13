@@ -26,7 +26,7 @@ export const ragConversationKo = {
   'ragConversation.photo.cleanupFailed':
     '이전 임시 사진을 정리하지 못했어요. 다시 시도해 주세요.',
   'ragConversation.photo.ocrDisclosure':
-    '사진에서 추출한 글자를 질문과 함께 보내요. 사진 자체는 보내지 않아요.',
+    '사진에서 추출한 글자를 보내요. 사진 자체는 보내지 않아요.',
   'ragConversation.photo.consentTitle':
     '{provider}에서 사진의 글자를 처리해요.',
   'ragConversation.photo.consentDestination':

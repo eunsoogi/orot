@@ -219,7 +219,7 @@ test('a selected photo cannot be silently omitted when attachment delivery is un
   );
   expect(
     screen.getByText(
-      '사진에서 추출한 글자를 질문과 함께 보내요. 사진 자체는 보내지 않아요.',
+      '사진에서 추출한 글자를 보내요. 사진 자체는 보내지 않아요.',
     ),
   ).toBeTruthy();
 });

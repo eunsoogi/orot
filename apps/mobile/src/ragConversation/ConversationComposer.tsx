@@ -119,7 +119,12 @@ export function ConversationComposer({
         disabled={
           !busy &&
           (disabled ||
-            !value.trim() ||
+            (!value.trim() &&
+              !(
+                photo?.status === 'ready' &&
+                photo.deliveryReady &&
+                photo.deliveryMode === 'ocr'
+              )) ||
             photo?.status === 'preparing' ||
             photo?.status === 'transferring' ||
             photo?.status === 'error' ||
