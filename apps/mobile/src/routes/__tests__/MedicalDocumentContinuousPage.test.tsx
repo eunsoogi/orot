@@ -227,7 +227,8 @@ test.each([1, 2])(
     expect(
       content.queryByText(/원본 파일|PDF 파일 상태|하이라이트/),
     ).toBeNull();
-    await fireEvent.press(content.getByTestId('medical-document-source-back'));
+    expect(content.queryByTestId('medical-document-source-back')).toBeNull();
+    await fireEvent.press(screen.getByTestId('navigation-back'));
     expect(screen.getByTestId('medical-document-source-0')).toBeTruthy();
     expect(imports.getDocument).toHaveBeenCalledWith(detail.id);
   },

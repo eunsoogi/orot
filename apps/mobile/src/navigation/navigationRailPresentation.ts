@@ -17,6 +17,7 @@ export function navigationRailPresentation(
   rootTabs: boolean,
   navigationCount: number,
   actionCount: number,
+  hasContextualBack = false,
 ) {
   const candidate = layout.placement === 'right' ? layout : undefined;
   const height = candidate
@@ -28,7 +29,12 @@ export function navigationRailPresentation(
       : candidate?.railBottomInset;
   const navFits = candidate
     ? rootTabs
-      ? fitsNavigationRootRail(height, candidate.railTopInset, bottomInset ?? 0)
+      ? fitsNavigationRootRail(
+          height,
+          candidate.railTopInset,
+          bottomInset ?? 0,
+          hasContextualBack,
+        )
       : fitsNavigationRailSegment(
           height,
           candidate.railTopInset,
@@ -46,6 +52,7 @@ export function navigationRailPresentation(
         rootTabs,
         navigationCount,
         actionCount,
+        hasContextualBack,
       })
     : undefined;
   const rightLayout = navFits && pageLayout?.fits ? candidate : undefined;

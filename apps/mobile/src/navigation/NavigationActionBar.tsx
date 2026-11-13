@@ -16,7 +16,10 @@ import type { NavigationRootTabs } from './rootTabs';
 import { NavigationActionButton } from './NavigationActionButton';
 import { RootTabActions } from './RootTabActions';
 import { NavigationActionBarPresentation } from './NavigationActionBarPresentation';
-import type { NavigationRouteAction } from './useNavigationPrimaryAction';
+import type {
+  NavigationRouteAction,
+  NavigationRouteBackAction,
+} from './useNavigationPrimaryAction';
 
 export type NavigationSurfaceProps = NavigationGlassSurfaceProps;
 export type NavigationSurface = ComponentType<NavigationSurfaceProps>;
@@ -40,6 +43,7 @@ export interface NavigationActionBarProps<Name extends string> {
   readonly leaveDisabled?: boolean;
   readonly primaryAction?: NavigationPrimaryAction;
   readonly pageActions?: readonly NavigationRouteAction[];
+  readonly routeBackAction?: NavigationRouteBackAction;
   readonly routeKey?: string;
   readonly safeAreaHandledByParent?: boolean;
   readonly keyboardVisible?: boolean;
@@ -54,6 +58,7 @@ export function NavigationActionBar<Name extends string>({
   leaveDisabled = false,
   primaryAction,
   pageActions = [],
+  routeBackAction,
   routeKey = snapshotRouteFallback,
   safeAreaHandledByParent = false,
   keyboardVisible,
@@ -81,6 +86,7 @@ export function NavigationActionBar<Name extends string>({
   const backDisabled = snapshot.isTransitioning || leaveDisabled;
   if (
     !snapshot.canGoBack &&
+    !routeBackAction &&
     !primaryAction &&
     !pageActions.length &&
     !rootTabs
@@ -92,6 +98,7 @@ export function NavigationActionBar<Name extends string>({
     controller,
     snapshot,
     backDisabled,
+    routeBackAction,
     rootTabs,
   });
 
@@ -100,21 +107,30 @@ export function NavigationActionBar<Name extends string>({
       style={rootTabs ? styles.rootTabs : styles.actions}
       testID="bottom-navigation-action-bar"
     >
-      {rootTabs ? (
-        <RootTabActions
-          controller={controller}
-          disabled={backDisabled}
-          rootTabs={rootTabs}
-        />
-      ) : null}
-      {snapshot.canGoBack && !rootTabs ? (
+      {/* Keep contextual Back first, ahead of persistent root tabs in the rail. */}
+      {routeBackAction || (snapshot.canGoBack && !rootTabs) ? (
         <NavigationActionButton
           accessibilityLabel={navigationText.back.accessibilityLabel}
           disabled={backDisabled}
           isDarkAppearance={isDarkAppearance}
           label={navigationText.back.label}
-          onPress={() => settleNavigationRequest(controller.requestBack())}
+          onPress={() => {
+            if (routeBackAction) {
+              settleNavigationRequest(
+                Promise.resolve(routeBackAction.onPress()),
+              );
+            } else {
+              settleNavigationRequest(controller.requestBack());
+            }
+          }}
           testID="navigation-back"
+        />
+      ) : null}
+      {rootTabs ? (
+        <RootTabActions
+          controller={controller}
+          disabled={backDisabled}
+          rootTabs={rootTabs}
         />
       ) : null}
     </View>

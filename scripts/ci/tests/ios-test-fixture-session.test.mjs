@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { fixture as runnerFixture } from './fixtures/ios-test-runner.mjs';
 import { fixture } from './fixtures/ios-test-fixture-driver.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
+import { photoDocumentJourney } from '../medical-document-photo-fixture.mjs';
 
 // These command fixtures prove runner scheduling and reset boundaries, not actual UI acceptance.
 test('one runner retains explicit preparation and exact observations for every selected independent UI case', () => {
@@ -23,6 +24,24 @@ test('one runner retains explicit preparation and exact observations for every s
       identifiers.slice().sort(),
     );
     assert.deepEqual(value.report().notRun, []);
+  } finally {
+    value.dispose();
+  }
+});
+
+test('the host fixture session seeds the photo journey once before its shared runner executes', () => {
+  const value = fixture({
+    selectedIdentifiers: [photoDocumentJourney],
+    failFirst: false,
+  });
+  try {
+    assert.equal(value.outcome.status, 0, value.outcome.stderr);
+    const seeds = value.calls.filter(
+      (call) => call.name === 'xcrun' && call.args[1] === 'addmedia',
+    );
+    assert.equal(seeds.length, 1);
+    assert.ok(seeds[0].args[0] === 'simctl');
+    assert.ok(value.calls.some((call) => call.name === 'xcodebuild'));
   } finally {
     value.dispose();
   }

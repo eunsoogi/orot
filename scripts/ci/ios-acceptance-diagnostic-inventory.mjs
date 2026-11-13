@@ -8,8 +8,10 @@ export const iosAcceptanceDiagnosticTests = [
   'OrotUITests/ChartFoundationUITests/testDenseChartPagesKeepOutlierReachable',
 ];
 
-/** Keep the direct speech observation selectable while the Duo runtime cannot return it reliably. */
+/** Explicit single-case Duo acceptance journeys stay selectable outside routine Duo runs. */
 export const duoAcceptanceDiagnosticTests = [
   'OrotUITests/TestHostConnectionTests/testAppointmentRotationGeometryObservation',
   'OrotUITests/ChartConsumerAcceptanceUITests/testBloodPressureValuesAndDiastolicVoiceOver',
+  'OrotUITests/MedicalDocumentPickerRecoveryUITests/testPhotoPickerCancelRestoresInteraction',
+  'OrotUITests/MedicalDocumentImportJourneyUITests/testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance',
 ];

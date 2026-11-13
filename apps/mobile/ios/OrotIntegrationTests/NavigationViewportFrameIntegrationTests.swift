@@ -5,6 +5,32 @@ import XCTest
 /// Models the keyboard-contracted viewport and bottom overlay without changing action identity.
 /// Deterministic UIKit geometry is a regression fixture, not actual keyboard acceptance.
 final class NavigationViewportFrameIntegrationTests: OrotFailFastTestCase {
+    /// Distinguishes UIKit window geometry from a contracted rendering host.
+    @MainActor
+    func testGeometryPayloadSeparatesActualWindowFromContractedSensor() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive })
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 951, height: 669)
+        let host = UIView(frame: CGRect(x: 24, y: 10, width: 843, height: 625))
+        window.addSubview(host)
+        let sensor = NavigationGeometryView(frame: host.bounds)
+        host.addSubview(sensor)
+        var snapshot: [AnyHashable: Any]?
+        sensor.onGeometryChange = { snapshot = $0 }
+        sensor.layoutIfNeeded()
+        let payload = try XCTUnwrap(snapshot)
+        let windowBounds = try XCTUnwrap(payload["windowBounds"] as? [String: Double])
+        let viewportBounds = try XCTUnwrap(payload["viewportBounds"] as? [String: Double])
+        XCTAssertEqual(windowBounds["width"], Double(window.bounds.width))
+        XCTAssertEqual(windowBounds["height"], Double(window.bounds.height))
+        let measuredHost = sensor.convert(sensor.bounds, to: window)
+        XCTAssertEqual(viewportBounds["x"], Double(measuredHost.minX))
+        XCTAssertEqual(viewportBounds["y"], Double(measuredHost.minY))
+        XCTAssertEqual(viewportBounds["width"], Double(measuredHost.width))
+        XCTAssertNotEqual(windowBounds, viewportBounds)
+    }
+
     @MainActor
     func testBottomActionMetricsGrowWithAccessibilityText() throws {
         let action = try XCTUnwrap(NavigationActionDescriptor([

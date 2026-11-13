@@ -4,29 +4,6 @@ import XCTest
 
 final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
     @MainActor
-    func testGeometryPayloadSeparatesActualWindowFromContractedSensor() throws {
-        let scene = try foregroundScene()
-        let window = makeSceneWindow(in: scene, frame: CGRect(x: 0, y: 0, width: 951, height: 669))
-        let host = UIView(frame: CGRect(x: 24, y: 10, width: 843, height: 625))
-        window.addSubview(host)
-        let sensor = NavigationGeometryView(frame: host.bounds)
-        host.addSubview(sensor)
-        var snapshot: [AnyHashable: Any]?
-        sensor.onGeometryChange = { snapshot = $0 }
-        sensor.layoutIfNeeded()
-        let payload = try XCTUnwrap(snapshot)
-        let windowBounds = try XCTUnwrap(payload["windowBounds"] as? [String: Double])
-        let viewportBounds = try XCTUnwrap(payload["viewportBounds"] as? [String: Double])
-        XCTAssertEqual(windowBounds["width"], Double(window.bounds.width))
-        XCTAssertEqual(windowBounds["height"], Double(window.bounds.height))
-        let measuredHost = sensor.convert(sensor.bounds, to: window)
-        XCTAssertEqual(viewportBounds["x"], Double(measuredHost.minX))
-        XCTAssertEqual(viewportBounds["y"], Double(measuredHost.minY))
-        XCTAssertEqual(viewportBounds["width"], Double(measuredHost.width))
-        XCTAssertNotEqual(windowBounds, viewportBounds)
-    }
-
-    @MainActor
     func testNativeRailFramesUseWindowSideSpaceAndClearExpandedIndicators() async throws {
         // These are geometry fixtures, not a claim of measured Duo runtime acceptance.
         // Convert actual UIKit frames through an offset host to catch local/window confusion.
@@ -48,16 +25,23 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         surface.railAvailableHeight = 669
         surface.layoutMode = "right"
         surface.railRightInset = 12
-        surface.railTopInset = 192
+        surface.railTopInset = 192 + NavigationRootGlassBar.contextualBackGroupHeight // Match the React Back-plus-tabs offset.
         surface.railBottomInset = 46
         let systemRegion = CGRect(x: 867, y: 0, width: 84, height: 180)
         let contentSafeFrame = CGRect(x: 0, y: 0, width: 867, height: 635)
-        // The production rail's fixed height belongs to exactly five 52pt tabs.
-        surface.actions = [("conversation", "sparkles"), ("overview", "house"), ("records", "doc.text"),
-                           ("schedule", "calendar"), ("settings", "gearshape")].map { pair -> [String: Any] in
-            let (tab, symbol) = pair
-            return ["id": "tab-\(tab)", "label": tab, "accessibilityLabel": "\(tab) tab",
-                    "testID": "navigation-tab-\(tab)", "rootTab": true, "selected": tab == "conversation",
+        // Contextual Back is measured separately from the fixed five root-tab targets.
+        surface.actions = [
+            ("back", "chevron.backward", false),
+            ("conversation", "sparkles", true),
+            ("overview", "house", true),
+            ("records", "doc.text", true),
+            ("schedule", "calendar", true),
+            ("settings", "gearshape", true),
+        ].map { tab, symbol, isRootTab -> [String: Any] in
+            return ["id": isRootTab ? "tab-\(tab)" : tab, "label": tab,
+                    "accessibilityLabel": isRootTab ? "\(tab) tab" : "Back",
+                    "testID": isRootTab ? "navigation-tab-\(tab)" : "navigation-back",
+                    "rootTab": isRootTab, "selected": isRootTab && tab == "conversation",
                     "systemImageName": symbol]
         } as NSArray
         surface.layoutIfNeeded()
@@ -68,7 +52,19 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         verify(rootFrame, in: window, avoiding: systemRegion, content: contentSafeFrame)
         XCTAssertEqual(rootFrame.height, NavigationRootGlassBar.railHeight, accuracy: 0.5)
         // The root stack is centered below the real indicator, independently of its fixed hit targets.
-        XCTAssertEqual(rootFrame.midY, (192 + 669 - 46) / 2, accuracy: 0.5)
+        let rootCenter = (192 + 669 - 46) / 2 + NavigationRootGlassBar.contextualBackGroupHeight / 2
+        XCTAssertEqual(rootFrame.midY, rootCenter, accuracy: 0.5)
+        let backStack = try XCTUnwrap(portal.subviews.compactMap { $0 as? UIStackView }.first { $0.accessibilityIdentifier == "navigation-toolbar" })
+        let backButton = try XCTUnwrap(backStack.arrangedSubviews.compactMap { $0 as? UIButton }.first)
+        let backFrame = backButton.convert(backButton.bounds, to: window)
+        // Window conversion can round a 48pt frame by a few CGFloat ULPs.
+        let expectedBackSize: CGFloat = 48
+        let frameTolerance = expectedBackSize.ulp * 8
+        XCTAssertEqual(backFrame.width, expectedBackSize, accuracy: frameTolerance)
+        XCTAssertEqual(backFrame.height, expectedBackSize, accuracy: frameTolerance)
+        XCTAssertEqual(rootFrame.minY - backFrame.maxY, 4, accuracy: 0.5)
+        verify(backFrame, in: window, avoiding: systemRegion, content: contentSafeFrame)
+        XCTAssertTrue(window.hitTest(CGPoint(x: backFrame.midX, y: backFrame.midY), with: nil) === backButton)
         let selection = try XCTUnwrap(root.contentView.subviews.first {
             $0.accessibilityIdentifier == "navigation-root-selection-indicator"
         })
@@ -101,6 +97,7 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         portal.layoutIfNeeded()
 
         measuredPayload = nil
+        surface.railTopInset = 192
         surface.actions = [
             ["id": "back", "label": "Back", "accessibilityLabel": "Back", "testID": "navigation-back"],
             ["id": "home", "label": "Home", "accessibilityLabel": "Home", "testID": "navigation-home"],

@@ -111,9 +111,9 @@ final class MedicalDocumentPickerRecoveryUITests: OrotFailFastTestCase {
 
     @MainActor
     private func waitForPhotoPicker(_ app: XCUIApplication, _ action: XCUIElement, name: String) -> XCUIElement {
-        // The waiting label proves JS entered selection; the system Cancel button proves UIKit presented PHPicker.
+        // The source label stays stable while opening; disabled state and native Cancel prove picker presentation.
         let waiting = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label CONTAINS %@", "사진을 선택해 주세요."),
+            predicate: NSPredicate(format: "isEnabled == false"),
             object: action,
         )
         XCTAssertEqual(XCTWaiter.wait(for: [waiting], timeout: 5), .completed, app.debugDescription)
@@ -136,8 +136,7 @@ final class MedicalDocumentPickerRecoveryUITests: OrotFailFastTestCase {
         let result = XCTWaiter.wait(for: [ready], timeout: 5)
         XCTAssertEqual(result, .completed, app.debugDescription)
         guard result == .completed else { throw NSError(domain: "MedicalDocumentPickerRecovery", code: 1) }
-        XCTAssertTrue(photos.label.contains("선택한 사진의 글자를 기기에서 읽어요."), photos.debugDescription)
-        XCTAssertFalse(photos.label.contains("사진을 선택해 주세요."), photos.debugDescription)
+        XCTAssertEqual(photos.label, "사진에서 의료 문서 가져오기", photos.debugDescription)
         XCTAssertFalse(node(app, "medical-document-import-status").exists, app.debugDescription)
     }
 

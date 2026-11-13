@@ -17,6 +17,9 @@ export const NAVIGATION_ROOT_RAIL_HEIGHT = 5 * 52 + 4 * 4;
 // Mirror fixed control heights and stack spacing from NavigationGlassButton and NavigationGlassView.
 export const NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT = 48;
 export const NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING = 12;
+// Contextual Back sits above the unchanged root-tab surface with a 4pt gap.
+export const NAVIGATION_ROOT_BACK_GROUP_HEIGHT =
+  NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT + 4;
 
 /** Checks a fixed native control stack against its measured usable vertical segment. */
 export function fitsNavigationRailSegment(
@@ -43,12 +46,14 @@ export function fitsNavigationRootRail(
   availableHeight: number,
   topInset: number,
   bottomInset: number,
+  hasContextualBack = false,
 ): boolean {
   return fitsNavigationRailSegment(
     availableHeight,
     topInset,
     bottomInset,
-    NAVIGATION_ROOT_RAIL_HEIGHT,
+    NAVIGATION_ROOT_RAIL_HEIGHT +
+      (hasContextualBack ? NAVIGATION_ROOT_BACK_GROUP_HEIGHT : 0),
   );
 }
 
