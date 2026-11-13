@@ -155,7 +155,11 @@ test('registers history and new-session actions on a Duo rail without interrupti
     '진행 중인 질문',
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
-  expect(await screen.findByTestId('rag-conversation-progress')).toBeTruthy();
+  expect(
+    await screen.findByTestId('rag-conversation-activity-bubble', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
   expect(
     store!.getSnapshot().sessions.find(session => session.id === conversationId)
       ?.busy,

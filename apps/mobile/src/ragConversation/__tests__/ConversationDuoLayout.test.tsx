@@ -69,7 +69,11 @@ test('keeps the request, draft, and exact citations through adaptive reflow', as
     screen.getByTestId('rag-conversation-input'),
     '다음 질문 초안',
   );
-  expect(screen.getByTestId('rag-conversation-progress')).toBeTruthy();
+  expect(
+    screen.getByTestId('rag-conversation-activity-bubble', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
 
   await act(async () => {
     Dimensions.set({
@@ -92,7 +96,11 @@ test('keeps the request, draft, and exact citations through adaptive reflow', as
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
     '다음 질문 초안',
   );
-  expect(screen.getByTestId('rag-conversation-progress')).toBeTruthy();
+  expect(
+    screen.getByTestId('rag-conversation-activity-bubble', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
   expect(requestSignal?.aborted).toBe(false);
   expect(onSend).toHaveBeenCalledTimes(1);
 
