@@ -36,7 +36,7 @@ test('queued inset replay cannot mutate recycled, unmounted, or reparented views
     additions,
     /strongSelf.window != mountWindow \|\| strongSelf.superview != mountSuperview/,
   );
-  assert.match(patch, /- \(void\)prepareForRecycle\n \{\n\+  \+\+_mountGeneration;/);
+  assert.match(patch, /- \(void\)prepareForRecycle\n \{\n\+ {2}\+\+_mountGeneration;/);
 });
 
 // pnpm consumes the patch bytes as an installation/build input.
