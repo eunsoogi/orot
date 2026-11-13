@@ -14,6 +14,7 @@ test.each([
   'late-navigation',
   'settled-route',
   'session',
+  'final-session',
 ] as const)(
   'retries when external %s readiness arrives before the deferred executor returns',
   async blockedBy => {
@@ -84,7 +85,9 @@ test.each([
       readSessionMany: async () => {
         reads += 1;
         if (
-          (blockedBy === 'late-navigation' || blockedBy === 'settled-route') &&
+          (blockedBy === 'late-navigation' ||
+            blockedBy === 'settled-route' ||
+            blockedBy === 'final-session') &&
           reads === 2
         ) {
           signalSecondRead();
@@ -123,10 +126,19 @@ test.each([
       },
     });
     try {
-      if (blockedBy === 'late-navigation' || blockedBy === 'settled-route') {
+      if (
+        blockedBy === 'late-navigation' ||
+        blockedBy === 'settled-route' ||
+        blockedBy === 'final-session'
+      ) {
         await secondRead;
-        transitioning = true;
-        navigationListener();
+        if (blockedBy === 'final-session') {
+          busy = true;
+          sessionListener();
+        } else {
+          transitioning = true;
+          navigationListener();
+        }
         if (blockedBy === 'settled-route') {
           routeKey = 'other';
           transitioning = false;
@@ -140,7 +152,8 @@ test.each([
       busy = false;
       if (blockedBy === 'settled-route') {
         // The only readiness publication already occurred during the protected read.
-      } else if (blockedBy !== 'session') navigationListener();
+      } else if (blockedBy !== 'session' && blockedBy !== 'final-session')
+        navigationListener();
       else sessionListener();
       release();
       for (let i = 0; i < 100; i += 1) await Promise.resolve();

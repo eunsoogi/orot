@@ -11,6 +11,7 @@ import { readCommittedReply } from './readCommittedReply';
 import { createReplyDestination } from './replyDestination';
 import { createReplyOpen } from './replyOpen';
 import type { ReplyEntryExecutor } from './replyDeliverySettings';
+import { createReplyReadiness } from './replyReadiness';
 
 /** Reuse the existing reminder wake signal and navigation decision queue for reply taps. */
 export function observeReplyDelivery(input: {
@@ -30,12 +31,13 @@ export function observeReplyDelivery(input: {
   const execute = input.execute;
   let active = true;
   const lifetime = new AbortController();
-  let blocked: 'navigation' | number | null = null;
+  const readiness = createReplyReadiness({
+    ...input,
+    retention: input.retention,
+  });
   const open = createReplyOpen({
     ...input,
-    onBlocked: reason => {
-      blocked = reason;
-    },
+    readiness,
     isCurrent: () => active,
     signal: lifetime.signal,
     async read(identity) {
@@ -66,31 +68,19 @@ export function observeReplyDelivery(input: {
   });
   let pending = false;
   let running = false;
-  let navigationSnapshot = input.controller.getSnapshot();
-  let busySessions = new Set<number>();
-  let navigationReady = false;
-  const readySessions = new Set<number>();
-  const readBusySessions = () =>
-    new Set(
-      (input.sessions.getSnapshot?.().sessions ?? [])
-        .filter(
-          session => session.busy || session.restoring || session.restoreFailed,
-        )
-        .map(session => session.id),
-    );
-  busySessions = readBusySessions();
+  let queued = false;
   let queue = Promise.resolve();
   const drain = () => {
-    if (!active) return;
+    if (!active || queued) return;
+    queued = true;
     queue = queue
       .then(async () => {
+        queued = false;
         if (!active) return;
         // An entry owner may defer without invoking the callback while its gate is closed.
         pending = true;
         running = true;
-        blocked = null;
-        navigationReady = false;
-        readySessions.clear();
+        readiness.reset();
         try {
           await execute(async () => {
             if (!active) return;
@@ -107,13 +97,8 @@ export function observeReplyDelivery(input: {
           });
         } finally {
           running = false;
-          // Only a readiness transition for the actual blocker can wake an in-flight defer.
-          if (
-            pending &&
-            (blocked === 'navigation'
-              ? navigationReady
-              : blocked !== null && readySessions.has(blocked))
-          ) {
+          // Compare the consumed prerequisites after the executor releases its gate.
+          if (pending && readiness.changed()) {
             pending = false;
             drain();
           }
@@ -132,36 +117,14 @@ export function observeReplyDelivery(input: {
   const state = AppState.addEventListener('change', value => {
     if (value === 'active') drain();
   });
-  const navigation = input.controller.subscribe(() => {
-    const next = input.controller.getSnapshot();
-    if (
-      running &&
-      !next.isTransitioning &&
-      (navigationSnapshot.isTransitioning ||
-        navigationSnapshot.currentRoute?.key !== next.currentRoute?.key)
-    )
-      navigationReady = true;
-    navigationSnapshot = next;
-    if (
-      pending &&
-      !running &&
-      !input.controller.getSnapshot().isTransitioning
-    ) {
+  const wakeChanged = () => {
+    if (pending && !running && readiness.changed()) {
       pending = false;
       drain();
     }
-  });
-  const sessions = input.sessions.subscribe(() => {
-    const nextBusy = readBusySessions();
-    if (running)
-      for (const id of busySessions)
-        if (!nextBusy.has(id)) readySessions.add(id);
-    busySessions = nextBusy;
-    if (pending && !running) {
-      pending = false;
-      drain();
-    }
-  });
+  };
+  const navigation = input.controller.subscribe(wakeChanged);
+  const sessions = input.sessions.subscribe(wakeChanged);
   const ready = input.subscribeReady?.(drain) ?? (() => {});
   drain();
   return () => {
