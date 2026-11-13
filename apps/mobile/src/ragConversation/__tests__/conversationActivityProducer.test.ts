@@ -47,6 +47,10 @@ test('the real turn observer reports only accepted tools and actual output', () 
   expect(activity.getSnapshot()?.stage).toBe('records');
   turn.observer.onToolEvent({ ...event, status: 'completed' });
   expect(activity.getSnapshot()?.stage).toBe('streaming');
+  turn.observer.onTaskStreamEvent({ type: 'started' });
+  expect(activity.getSnapshot()?.stage).toBe('waiting');
+  turn.observer.onTaskStreamEvent({ type: 'text_delta', text: 'replacement' });
+  expect(activity.getSnapshot()?.stage).toBe('streaming');
   current = false;
   turn.observer.onToolEvent({ ...event, callId: 'late' });
   expect(activity.getSnapshot()?.stage).toBe('streaming');

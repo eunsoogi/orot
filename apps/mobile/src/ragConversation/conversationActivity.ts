@@ -63,7 +63,7 @@ export function createConversationActivity(
   return {
     getSnapshot: () => snapshot,
     waiting() {
-      if (!snapshot || cancelling || phase !== 'preparing') return;
+      if (!snapshot || cancelling) return;
       phase = 'waiting';
       publish();
     },

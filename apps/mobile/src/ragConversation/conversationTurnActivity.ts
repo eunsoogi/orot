@@ -105,6 +105,17 @@ export function createConversationTurnActivity(input: {
       },
       onTaskStreamEvent(event: Parameters<typeof applyWorkflowStreamEvent>[1]) {
         const pending = input.find(input.id)?.pendingMessage;
+        if (
+          input.current() &&
+          pending?.id === input.responseId &&
+          event.type === 'started' &&
+          input.activity
+        ) {
+          const before = input.activity.getSnapshot();
+          input.activity.waiting();
+          if (before !== input.activity.getSnapshot())
+            input.activityChanged?.();
+        }
         // A stream start alone is not output; report writing only after text arrives.
         if (
           input.current() &&
