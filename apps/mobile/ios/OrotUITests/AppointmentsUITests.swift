@@ -42,8 +42,13 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         XCTAssertEqual(UITestConditions.text(clinic), "Neurology clinic")
 
         try UITestConditions.rotateAppointmentScene(app, session: rotationSession, landscape: true)
-        let expandedUsesTwoColumns = try assertAppointmentPanelsFollowGeometry(app)
-        XCTAssertTrue(expandedUsesTwoColumns, "Expanded Duo geometry should place the list and details side by side")
+        let expandedUsesTwoColumns = try assertAppointmentPanelsFollowGeometry(app, expectsStacked: true)
+        XCTAssertFalse(expandedUsesTwoColumns, "The appointment page keeps one vertical reading flow")
+        let edit = UITestConditions.element(app, "appointment-edit-\(identity)")
+        FormUITestConditions.reveal(edit, in: app, scrollID: "appointments-scroll")
+        XCTAssertTrue(edit.exists && edit.isHittable, app.debugDescription)
+        XCTAssertGreaterThanOrEqual(edit.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(edit.frame.height, 44)
         XCTAssertTrue(selection.isSelected, app.debugDescription)
         XCTAssertEqual(UITestConditions.text(clinic), "Neurology clinic")
         _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
@@ -175,6 +180,10 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         let secondary = UITestConditions.element(app, "appointments-columns-secondary")
         XCTAssertTrue(primary.exists && !primary.frame.isEmpty, app.debugDescription)
         XCTAssertTrue(secondary.exists && !secondary.frame.isEmpty, app.debugDescription)
+        let scroll = app.scrollViews.matching(identifier: "appointments-scroll").firstMatch
+        XCTAssertTrue(scroll.exists && !scroll.frame.isEmpty, app.debugDescription)
+        XCTAssertEqual(scroll.descendants(matching: .any).matching(identifier: "appointments-columns-primary").count, 1)
+        XCTAssertEqual(scroll.descendants(matching: .any).matching(identifier: "appointments-columns-secondary").count, 1)
         let primaryFrame = primary.frame
         let secondaryFrame = secondary.frame
         let sideBySide = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 &&
