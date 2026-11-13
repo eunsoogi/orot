@@ -45,9 +45,12 @@ test('preparation reads only the selected current day through its cutoff', async
     expect(result).toMatchObject({
       status: 'ready',
       count: 1,
+      timeZone: 'UTC',
       partial: true,
       latestSourceTime: '2035-01-01T08:00:00Z',
     });
+    if (result.status === 'ready')
+      expect(result.sourceCounts.get('health_observation')).toBe(1);
     const old = createDailyReportIdentity('2034-12-31', 'UTC');
     expect(
       await previewDailyReport({

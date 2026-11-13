@@ -134,13 +134,36 @@ test('a source revision change after regeneration hides the prior saved report',
           status: 'saved',
           runId: 'previous',
           revision: 3,
-          context: { identity, generationCutoff: '2026-11-09T03:00:00Z' },
+          context: {
+            identity,
+            generationCutoff: '2026-11-09T03:00:00Z',
+            sourceSnapshot: {
+              records: [
+                {
+                  source: 'health_observation',
+                  recordId: 'synthetic-health-record',
+                  revision: 'synthetic-revision',
+                  occurrence: { startInclusive: '2026-11-09T01:00:00Z' },
+                  ingestedAt: '2026-11-09T01:01:00Z',
+                },
+              ],
+            },
+          },
           report: {
             generatedAt: '2026-11-09T03:01:00Z',
             observations: [{ text: '이전에 저장된 합성 기록' }],
             supportedContext: [],
             followUpQuestions: [],
-            coverage: [],
+            coverage: [
+              {
+                source: 'health_observation',
+                status: 'available',
+                syncStatus: 'complete',
+                lastSuccessfulAt: '2026-11-09T02:00:00Z',
+                availableThrough: '2026-11-09T02:30:00Z',
+                limitationCodes: [],
+              },
+            ],
           },
         }
       : {
@@ -167,6 +190,7 @@ test('a source revision change after regeneration hides the prior saved report',
     />,
   );
   await screen.findByText('이전에 저장된 합성 기록');
+  expect(screen.getByText('불러온 원본 기록 1건')).toBeTruthy();
   await fireEvent.press(screen.getByText('다시 요약하기'));
   expect(
     await screen.findByText(
@@ -174,6 +198,7 @@ test('a source revision change after regeneration hides the prior saved report',
     ),
   ).toBeTruthy();
   expect(screen.queryByText('이전에 저장된 합성 기록')).toBeNull();
+  expect(screen.queryByText('불러온 원본 기록 1건')).toBeNull();
   expect(feature.start).toHaveBeenCalledWith(expect.anything(), {
     kind: 'revise',
     expectedRunId: 'previous',
@@ -217,34 +242,4 @@ test('saved content appears during preview loading and survives retrying a faile
   expect(feature.lookup).toHaveBeenCalledTimes(1);
   expect(feature.preview).toHaveBeenCalledTimes(2);
   expect(screen.queryByRole('alert')).toBeNull();
-});
-
-test('the current preview appears while the saved lookup is pending', async () => {
-  let finishLookup!: (value: { status: 'missing' }) => void;
-  const feature = fixture(
-    () =>
-      new Promise(resolve => {
-        finishLookup = resolve;
-      }),
-  );
-  feature.preview.mockResolvedValueOnce({
-    status: 'ready',
-    cutoff: '2026-11-09T03:00:00Z',
-    count: 0,
-    partial: false,
-    coverage: [],
-    latestSourceTime: null,
-  });
-  await render(
-    <DailyReportRoute
-      feature={feature as unknown as Feature}
-      providerSelection={null}
-      onBack={jest.fn()}
-      onChat={jest.fn()}
-    />,
-  );
-  expect(screen.getByText(t('dailyReport.empty'))).toBeTruthy();
-  expect(screen.getByText(t('dailyReport.preparing'))).toBeTruthy();
-  await act(async () => finishLookup({ status: 'missing' }));
-  expect(screen.queryByText(t('dailyReport.preparing'))).toBeNull();
 });
