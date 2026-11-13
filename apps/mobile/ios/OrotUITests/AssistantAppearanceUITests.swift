@@ -42,13 +42,29 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
         XCTAssertTrue((star.value as? String)?.contains("checked") == true, star.debugDescription)
         XCTAssertFalse((star.value as? String)?.contains("unchecked") == true, star.debugDescription)
         XCTAssertEqual(name.value as? String, "Momo")
-        // Replace explicitly: the native field may select its current value on focus, so appending is not a valid fixture assumption.
-        guard FormUITestConditions.replace(name, with: "Momo Companion Long Name", in: app, scrollID: "assistant-appearance-scroll") else { return }
-        guard FormUITestConditions.reveal(save, in: app, scrollID: "assistant-appearance-scroll") != nil else { return }
+        // This already-visible modal field needs no cross-window form scrolling or inferred window owner.
+        guard name.isHittable else { XCTFail("Appearance name is not reachable"); return }
+        name.tap()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText(XCUIKeyboardKey.delete.rawValue)
+        guard waitForName(name, equals: "") else { return }
+        for character in "Momo Companion Long Name" {
+            app.typeText(String(character))
+        }
+        guard waitForName(name, equals: "Momo Companion Long Name") else { return }
+        guard save.isHittable, save.isEnabled else { XCTFail("Appearance save is not reachable"); return }
         save.tap()
         XCTAssertTrue(UITestConditions.exists(identity), app.debugDescription)
         XCTAssertEqual(identity.label, "Momo Companion Long Name, 비서 꾸미기")
         assertFloatingIdentity(identity, in: app)
+    }
+
+    /// Require the native field's observed value without retrying or repairing a failed edit.
+    private func waitForName(_ field: XCUIElement, equals value: String) -> Bool {
+        let match = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", value), object: field)
+        let passed = XCTWaiter.wait(for: [match], timeout: 3) == .completed
+        XCTAssertTrue(passed, "Expected name \(value), observed \(String(describing: field.value))")
+        return passed
     }
 
     /// Observe actual UIKit bounds; component style assertions cannot prove floating placement or touch reachability.
