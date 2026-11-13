@@ -37,7 +37,7 @@ struct AppointmentReminderNotificationPlan {
     /// Both visible content and payload are built from an allowlist, not appointment dictionaries.
     func request() -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
-        content.title = "Orot"
+        content.title = ReminderNotificationCopy.title
         content.body = NSLocalizedString(
             "appointmentReminder.body",
             tableName: "ReminderCopy",

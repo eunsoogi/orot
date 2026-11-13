@@ -95,6 +95,7 @@ test('keeps the draft visible when saving fails', async () => {
   await screen.findByText(
     '저장 결과를 확인하지 못했어요. 다시 불러와 확인해 주세요.',
   );
+  expect(screen.getByRole('button', { name: '다시 저장' })).toBeTruthy();
   expect(screen.getByLabelText('의료진 답변').props.value).toBe('식후');
 });
 
