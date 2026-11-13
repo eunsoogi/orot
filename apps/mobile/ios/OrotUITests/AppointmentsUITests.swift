@@ -169,8 +169,10 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         tap(app, "appointment-add")
         fill(app, clinic: clinic, date: date, time: time, note: "")
         let identity = UITestConditions.appointmentIdentity(app, previous: previous)
-        let savedClinic = UITestConditions.element(app, "appointment-clinic-\(identity)")
+        let clinics = app.staticTexts.matching(identifier: "appointment-clinic-\(identity)")
+        let savedClinic = clinics.firstMatch
         XCTAssertTrue(savedClinic.waitForAppearance())
+        XCTAssertEqual(clinics.count, 1)
         FormUITestConditions.reveal(savedClinic, in: app, scrollID: "appointments-scroll", towardTop: true)
         XCTAssertTrue(savedClinic.isHittable)
         XCTAssertEqual(UITestConditions.text(savedClinic), clinic)
