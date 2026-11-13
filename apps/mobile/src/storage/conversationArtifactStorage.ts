@@ -23,6 +23,10 @@ import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 import { createConversationToolEventStorage } from './conversationToolEventStorage';
 import { createFilteredToolPeriodStorage } from './conversationToolFilteredStorage';
 import {
+  commitConversationRequest,
+  createConversationRequestStorage,
+} from './conversationRequestStorage';
+import {
   appendTreatmentTaskCard,
   createConversationTaskCardStorage,
 } from './conversationTaskCards';
@@ -50,6 +54,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   return {
+    ...createConversationRequestStorage(database, ensure),
     ...createConversationTaskCardStorage(database, ensure),
     ...createConversationToolEventStorage(database, ensure),
     ...createFilteredToolPeriodStorage(database, ensure),
@@ -148,6 +153,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
           if (existing.rows[0]?.result_json !== serialized)
             throw new Error('A different output already owns this identity.');
           assertConversationNotCancelled(signal);
+          await commitConversationRequest(tx, decoded, expectedSessionVersion);
           return;
         }
         await tx.execute(
@@ -196,6 +202,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         }
         // After this check, commit wins; the caller must report the saved result even if cancellation arrives later.
         assertConversationNotCancelled(signal);
+        await commitConversationRequest(tx, decoded, expectedSessionVersion);
       });
     },
     async list(

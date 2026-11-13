@@ -19,6 +19,8 @@ export const ragConversationKo = {
   'ragConversation.progressEvidenceFailed': '근거를 확인하지 못했어요.',
   'ragConversation.progressEvidenceCancelled': '근거 확인을 취소했어요.',
   'ragConversation.progressCancelled': '답변 생성을 중지했어요.',
+  'ragConversation.progressInterrupted':
+    '답변 생성이 중단됐어요. 다시 보내기 전에 내용을 확인해 주세요.',
   'ragConversation.noEvidence':
     '이 질문에 답할 만한 저장된 근거를 찾지 못했어요.',
   'ragConversation.insufficient':

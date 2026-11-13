@@ -53,6 +53,9 @@ export function createConversationSessionRestoreState(input: {
                 id: -(2 * index + 1),
                 role: 'user' as const,
                 content: turn.question,
+                ...(!turn.answer && turn.completion === 'partial'
+                  ? { failed: true }
+                  : {}),
               },
             ]
           : []),
@@ -73,7 +76,12 @@ export function createConversationSessionRestoreState(input: {
           visitQuestions: turn.visitQuestions,
           visitQuestionsUnavailable: turn.visitQuestionsUnavailable,
           ...(turn.dailyReport ? { dailyReport: turn.dailyReport } : {}),
-          ...(!turn.question && !turn.answer ? { incomplete: true } : {}),
+          ...(!turn.answer && turn.completion === 'partial'
+            ? {
+                incomplete: true,
+                activity: t('ragConversation.progressInterrupted'),
+              }
+            : {}),
           ...(turn.completion ? { completion: turn.completion } : {}),
         },
       ]);
