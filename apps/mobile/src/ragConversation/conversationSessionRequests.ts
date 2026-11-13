@@ -128,15 +128,16 @@ export function createConversationSessionRequests(
           ? await retention.beginTurn(id, controller.signal)
           : undefined;
         if (!current()) return;
-        photoInput = await startConversationRetainedRequest({
-          id,
-          question,
-          controller,
-          turn: retained,
-          retention,
-          lifetime,
-          photo: photo ? { ...photo, requested: hasPhoto } : undefined,
-        });
+        if (retained || hasPhoto)
+          photoInput = await startConversationRetainedRequest({
+            id,
+            question,
+            controller,
+            turn: retained,
+            retention,
+            lifetime,
+            photo: photo ? { ...photo, requested: hasPhoto } : undefined,
+          });
         if (!current()) return;
         preview = conversationPreviewSetup({
           id,
