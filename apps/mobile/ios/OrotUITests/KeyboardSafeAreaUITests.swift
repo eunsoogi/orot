@@ -216,8 +216,12 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
 
     @MainActor
     private func sessionToggle(_ app: XCUIApplication) -> XCUIElement {
-        // The sessions control is a button, so avoid scanning unrelated accessibility element types.
-        app.buttons.matching(identifier: "rag-conversation-sessions-toggle").firstMatch
+        // Re-resolve the direct or overflow action after keyboard and streaming layout transitions.
+        NavigationPageActionUITestConditions.pageAction(
+            app,
+            id: "rag-conversation-sessions-toggle",
+            label: "대화 목록",
+        )
     }
 
     @MainActor
