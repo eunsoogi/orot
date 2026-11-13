@@ -69,7 +69,7 @@
                 let generation = geometryGeneration
                 scene.requestGeometryUpdate(.iOS(interfaceOrientations: mode == "portrait" ? .portrait : .landscape)) { [weak self] error in
                     DispatchQueue.main.async {
-                        guard let self, Self.matchesPhase(currentSession: geometrySession, currentGeneration: geometryGeneration, session: session, generation: generation) else { return }
+                        guard let self, Self.matchesPhase(currentSession: self.geometrySession, currentGeneration: self.geometryGeneration, session: session, generation: generation) else { return }
                         let value = error as NSError
                         var details: [String: Any] = ["domain": value.domain, "code": value.code, "atMs": Date().timeIntervalSince1970 * 1000]
                         if value.domain == UISceneErrorDomain {
@@ -79,7 +79,7 @@
                         if let underlying = value.userInfo[NSUnderlyingErrorKey] as? NSError {
                             details["underlyingDomain"] = underlying.domain; details["underlyingCode"] = underlying.code
                         }
-                        geometryError = details
+                        self.geometryError = details
                     }
                 }
             }
