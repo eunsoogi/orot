@@ -115,11 +115,13 @@ test('fresh creation, migration, document import, backup and native permission c
     'OrotUITests/ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
     'OrotUITests/ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
     'OrotUITests/ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
+    'OrotUITests/ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
     // Tool-event disclosure uses the same fresh fixture store as the conversation journeys.
     'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
     'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable',
     'OrotUITests/ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
     'OrotUITests/ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
+    'OrotUITests/ConversationVisitPreparationUITests/testLongPreparedQuestionKeepsAccessibleOrderWithLargeTextAndKeyboard',
     'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
     'OrotUITests/AppointmentTextSelectionUITests/testAppointmentClinicReplacementClearsASCIIAndUnicodeValues',
     'OrotUITests/AppointmentReminderJourneyUITests/testDiagnosticConfirmedRejectionStopsBeforeOriginalSuccessAssertions',
