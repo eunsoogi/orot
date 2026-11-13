@@ -1,3 +1,4 @@
+import CoreFoundation
 import Foundation
 import React
 import UIKit
@@ -13,7 +14,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
         true
     }
 
-    @objc var methodQueue: DispatchQueue! {
+    override var methodQueue: DispatchQueue! {
         DispatchQueue.main
     }
 
@@ -27,8 +28,15 @@ final class ConversationExecutionModule: RCTEventEmitter {
         for name in [UIApplication.protectedDataWillBecomeUnavailableNotification,
                      UIApplication.protectedDataDidBecomeAvailableNotification]
         {
-            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                self?.publish(["kind": "protectedData", "available": UIApplication.shared.isProtectedDataAvailable])
+            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
+                // The will-unavailable notification precedes the getter changing to false.
+                let available = notification.name == UIApplication.protectedDataDidBecomeAvailableNotification
+                #if OROT_TESTS && targetEnvironment(simulator)
+                    if !available, let token = UserDefaults.standard.string(forKey: "OROT_TEST_BACKGROUND_TOKEN") {
+                        self?.signalBackgroundFailure(token)
+                    }
+                #endif
+                self?.publish(["kind": "protectedData", "available": available])
             })
         }
     }
@@ -50,6 +58,11 @@ final class ConversationExecutionModule: RCTEventEmitter {
         guard !requestId.isEmpty, leases[requestId] == nil else { resolve(false); return }
         let task = UIApplication.shared.beginBackgroundTask(withName: "Conversation request") { [weak self] in
             guard let self else { return }
+            #if OROT_TESTS && targetEnvironment(simulator)
+                if let token = UserDefaults.standard.string(forKey: "OROT_TEST_BACKGROUND_TOKEN") {
+                    signalBackgroundFailure(token)
+                }
+            #endif
             endLease(requestId)
             publish(["kind": "expired", "requestId": requestId])
         }
@@ -67,6 +80,29 @@ final class ConversationExecutionModule: RCTEventEmitter {
     func isActive(_ requestId: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
         resolve(leases[requestId] != nil)
     }
+
+    #if OROT_TESTS && targetEnvironment(simulator)
+        /// Signal the test host only after the saved answer and an actual background lease coexist.
+        @objc(signalBackgroundCommit:token:resolver:rejecter:)
+        func signalBackgroundCommit(_ requestId: String, token: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
+            guard UserDefaults.standard.string(forKey: "OROT_TEST_SCENARIO") == "conversation-background-retention",
+                  UUID(uuidString: token) != nil,
+                  UIApplication.shared.applicationState == .background,
+                  leases[requestId] != nil else { resolve(false); return }
+            let name = CFNotificationName("com.orot.tests.conversation-background.\(token)" as CFString)
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), name, nil, nil, true)
+            resolve(true)
+        }
+
+        /// A test failure wakes the host without exposing request text or changing production behavior.
+        @objc(signalBackgroundFailure:)
+        func signalBackgroundFailure(_ token: String) {
+            guard UserDefaults.standard.string(forKey: "OROT_TEST_SCENARIO") == "conversation-background-retention",
+                  UUID(uuidString: token) != nil else { return }
+            let name = CFNotificationName("com.orot.tests.conversation-background-failure.\(token)" as CFString)
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), name, nil, nil, true)
+        }
+    #endif
 
     private func endLease(_ requestId: String) {
         guard let task = leases.removeValue(forKey: requestId) else { return }

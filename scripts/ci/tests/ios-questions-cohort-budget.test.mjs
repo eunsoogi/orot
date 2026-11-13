@@ -19,9 +19,11 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
       id.includes('/KeyboardSafeAreaUITests/') ||
       id.includes('/ConversationComposerDockUITests/') ||
       id.includes('/ConversationToolEventsUITests/') ||
-      id.includes('/ConversationHealthSummaryUITests/'),
+      id.includes('/ConversationRetentionUITests/') ||
+      id.includes('/ConversationHealthSummaryUITests/') ||
+      id.includes('/ConversationVisitPreparationUITests/'),
   );
-  assert.equal(expected.length, 8);
+  assert.equal(expected.length, 12);
   const full = iosTestExecutionPlan();
   assert.equal(full.length, 28);
   const selected = iosTestExecutionPlan(cohorts);
@@ -41,15 +43,22 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
     return tasks[0].identifiers;
   });
   assert.deepEqual(identifiers.slice().sort(), expected.slice().sort());
-  assert.equal(new Set(identifiers).size, 8);
+  assert.equal(new Set(identifiers).size, 12);
   // The conversation journeys share their existing budget; no method is cut into phases.
-  assert.deepEqual(iosTestCohortTasks(cohorts[0])[0].identifiers, [composer, dock, toolEvents]);
-  assert.equal(iosTestCohortTasks(cohorts[1])[0].identifiers.length, 5);
+  assert.deepEqual(iosTestCohortTasks(cohorts[0])[0].identifiers, [
+    composer,
+    dock,
+    'OrotUITests/ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
+    'OrotUITests/ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
+    'OrotUITests/ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
+    toolEvents,
+  ]);
+  assert.equal(iosTestCohortTasks(cohorts[1])[0].identifiers.length, 6);
   const actual = full.flatMap(({ cohort }) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(actual.length, 208);
-  assert.equal(new Set(actual).size, 208);
+  assert.equal(actual.length, 212);
+  assert.equal(new Set(actual).size, 212);
 
   const jobs = cohortJobs(workflow('.github/workflows/e2e-test.yml').jobs);
   for (const cohort of cohorts) {
@@ -104,6 +113,6 @@ test('Summary and Literature own separate complete methods and hosted budgets', 
   const all = full.flatMap(({ cohort }) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(all.length, 208);
-  assert.equal(new Set(all).size, 208);
+  assert.equal(all.length, 212);
+  assert.equal(new Set(all).size, 212);
 });
