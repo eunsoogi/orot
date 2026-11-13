@@ -23,13 +23,79 @@ final class ConversationVisitPreparationUITests: OrotFailFastTestCase {
         let composer = UITestConditions.element(app, "rag-conversation-composer")
         let input = FormUITestConditions.multilineInput(app, identifier: "rag-conversation-input")
         let prepare = app.buttons.matching(identifier: "conversation-visit-prepare").firstMatch
-        XCTAssertTrue(UITestConditions.exists(history) && UITestConditions.exists(input), app.debugDescription)
-        XCTAssertTrue(UITestConditions.exists(prepare), app.debugDescription)
+        let observationStartedAt = Date().timeIntervalSince1970
+        let windows = app.windows
+        let windowCount = windows.count
+        let historyOwnerWindows = windows.containing(.any, identifier: "rag-conversation-history")
+        let historyOwnerWindowCount = historyOwnerWindows.count
+        let historyOwnerWindow = historyOwnerWindows.firstMatch
+        let historyOwnerWindowExists = historyOwnerWindowCount == 1 && historyOwnerWindow.exists
+        let historyOwnerWindowFrame = historyOwnerWindowExists
+            ? String(describing: historyOwnerWindow.frame)
+            : "unavailable"
+        let keyboard = app.keyboards.firstMatch
+        let historyExists = UITestConditions.exists(history)
+        let historyFrame = historyExists ? String(describing: history.frame) : "unavailable"
+        let composerExists = composer.exists
+        let composerFrame = composerExists ? String(describing: composer.frame) : "unavailable"
+        let inputExists = UITestConditions.exists(input)
+        let prepareExists = prepare.exists
+        let prepareFrame = prepareExists ? String(describing: prepare.frame) : "unavailable"
+        let prepareEnabledValue: Bool? = prepareExists ? prepare.isEnabled : nil
+        let prepareHittableValue: Bool? = prepareExists ? prepare.isHittable : nil
+        let prepareEnabled = prepareEnabledValue.map { String($0) } ?? "unavailable"
+        let prepareHittable = prepareHittableValue.map { String($0) } ?? "unavailable"
+        let keyboardCount = app.keyboards.count
+        let keyboardExists = keyboard.exists
+        let keyboardFrame = keyboardExists ? String(describing: keyboard.frame) : "unavailable"
+        let observationFinishedAt = Date().timeIntervalSince1970
+        let screenshotStartedAt = Date().timeIntervalSince1970
+        let initialScreenshot = XCTAttachment(screenshot: app.screenshot())
+        let screenshotFinishedAt = Date().timeIntervalSince1970
+        let observation = """
+        observation startedAtUnixSeconds=\(observationStartedAt) finishedAtUnixSeconds=\(observationFinishedAt)
+        orientation=\(XCUIDevice.shared.orientation.rawValue)
+        window count=\(windowCount) history-owner-window count=\(historyOwnerWindowCount) exists=\(historyOwnerWindowExists) frame=\(historyOwnerWindowFrame)
+        prepare exists=\(prepareExists) enabled=\(prepareEnabled) hittable=\(prepareHittable) frame=\(prepareFrame)
+        history exists=\(historyExists) frame=\(historyFrame)
+        composer exists=\(composerExists) frame=\(composerFrame)
+        input exists=\(inputExists)
+        keyboard count=\(keyboardCount) exists=\(keyboardExists) frame=\(keyboardFrame)
+        screenshot startedAtUnixSeconds=\(screenshotStartedAt) finishedAtUnixSeconds=\(screenshotFinishedAt)
+        """
+        // Bound AX reads to one timestamped sample so launch-time changes remain visible in the evidence.
+        XCTContext.runActivity(named: "Visit preparation initial native geometry") { activity in
+            let details = XCTAttachment(string: observation)
+            details.name = "visit-preparation-action-geometry"
+            details.lifetime = .keepAlways
+            activity.add(details)
+            initialScreenshot.name = "visit-preparation-action-screen"
+            initialScreenshot.lifetime = .keepAlways
+            activity.add(initialScreenshot)
+        }
+        XCTAssertTrue(historyExists && inputExists, observation)
+        XCTAssertEqual(historyOwnerWindowCount, 1, observation)
+        XCTAssertTrue(prepareExists && prepareEnabledValue == true, observation)
         RecordingFixtureUITestConditions.capture(app, "visit-preparation-action-before-scroll", testCase: self)
-        // Accessibility text can expand the scrollable conversation header beyond the current viewport.
+        // Accessibility text can expand the conversation header beyond the initial viewport.
         UITestConditions.scrollTo(prepare, in: history)
-        XCTAssertTrue(prepare.isHittable, app.debugDescription)
-        XCTAssertGreaterThanOrEqual(prepare.frame.height, 44, app.debugDescription)
+        let postScrollObservationStartedAt = Date().timeIntervalSince1970
+        let prepareExistsAfterScroll = prepare.exists
+        let prepareHittableAfterScroll: Bool? = prepareExistsAfterScroll ? prepare.isHittable : nil
+        let prepareFrameAfterScroll: CGRect? = prepareExistsAfterScroll ? prepare.frame : nil
+        let postScrollObservationFinishedAt = Date().timeIntervalSince1970
+        let postScrollHittableDescription = prepareHittableAfterScroll.map { String($0) } ?? "unavailable"
+        let postScrollFrameDescription = prepareFrameAfterScroll.map { String(describing: $0) } ?? "unavailable"
+        let postScrollObservation = """
+        observation startedAtUnixSeconds=\(postScrollObservationStartedAt) finishedAtUnixSeconds=\(postScrollObservationFinishedAt)
+        prepare exists=\(prepareExistsAfterScroll) hittable=\(postScrollHittableDescription) frame=\(postScrollFrameDescription)
+        """
+        XCTAssertTrue(prepareExistsAfterScroll && prepareHittableAfterScroll == true, postScrollObservation)
+        if let prepareFrameAfterScroll {
+            XCTAssertGreaterThanOrEqual(prepareFrameAfterScroll.height, 44, postScrollObservation)
+        } else {
+            XCTFail(postScrollObservation)
+        }
         XCTAssertFalse(UITestConditions.element(app, "inline-visit-review").exists)
         RecordingFixtureUITestConditions.capture(app, "visit-preparation-before-explicit-action", testCase: self)
 
