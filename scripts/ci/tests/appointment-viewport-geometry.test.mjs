@@ -13,6 +13,13 @@ test('appointment viewport rejects unsafe edges, clipped title and undersized hi
       main,
       `import Foundation
 typealias G = AppointmentViewportGeometry
+precondition(G.ownsSinglePageScroll(ownerID: "page", primary: ["page"], secondary: ["page"], primaryComplete: true, secondaryComplete: true, primaryNested: 0, secondaryNested: 0))
+precondition(!G.ownsSinglePageScroll(ownerID: "page", primary: ["nested", "page"], secondary: ["page"], primaryComplete: true, secondaryComplete: true, primaryNested: 0, secondaryNested: 0))
+precondition(!G.ownsSinglePageScroll(ownerID: "page", primary: ["page"], secondary: ["other"], primaryComplete: true, secondaryComplete: true, primaryNested: 0, secondaryNested: 0))
+precondition(!G.ownsSinglePageScroll(ownerID: "page", primary: ["page"], secondary: ["page"], primaryComplete: true, secondaryComplete: true, primaryNested: 1, secondaryNested: 0))
+precondition(!G.ownsSinglePageScroll(ownerID: "page", primary: ["page"], secondary: ["page"], primaryComplete: false, secondaryComplete: true, primaryNested: 0, secondaryNested: 0))
+precondition(!G.ownsSinglePageScroll(ownerID: "", primary: [""], secondary: [""], primaryComplete: true, secondaryComplete: true, primaryNested: 0, secondaryNested: 0))
+precondition(!G.ownsSinglePageScroll(ownerID: "page", primary: ["page", "page"], secondary: ["page"], primaryComplete: true, secondaryComplete: true, primaryNested: 0, secondaryNested: 0))
 let openWindow = CGRect(x: 0, y: 0, width: 951, height: 669)
 let applicationEnvelope = CGRect(x: 0, y: 0, width: 669, height: 951)
 precondition(applicationEnvelope != openWindow)

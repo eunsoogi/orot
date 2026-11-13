@@ -49,6 +49,14 @@ enum AppointmentViewportGeometry {
             abs(window.width - nativeBounds.width) <= tolerance && abs(window.height - nativeBounds.height) <= tolerance
     }
 
+    /// Both sections must traverse the one page owner without introducing their own scroll views.
+    static func ownsSinglePageScroll(ownerID: String, primary: [String], secondary: [String],
+                                     primaryComplete: Bool, secondaryComplete: Bool, primaryNested: Int, secondaryNested: Int) -> Bool
+    {
+        !ownerID.isEmpty && primaryComplete && secondaryComplete && primary == [ownerID] && secondary == [ownerID] &&
+            primaryNested == 0 && secondaryNested == 0
+    }
+
     /// Cached duplicates and samples from a previous launch cannot establish a current window.
     static func samplesBracketAX(launch: Double, axStart: Double, firstStart: Double, firstEnd: Double,
                                  secondStart: Double, secondEnd: Double, firstWindow: String, secondWindow: String) -> Bool

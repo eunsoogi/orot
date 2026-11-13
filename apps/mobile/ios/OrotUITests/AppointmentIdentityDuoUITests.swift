@@ -1,6 +1,44 @@
 import XCTest
 
 extension AppointmentsUITests {
+    /// Correlate the page's native scroll owner with the exact AX window and section frames.
+    @MainActor
+    func assertAppointmentScrollOwnership(_ app: XCUIApplication, scroll: XCUIElement, primary: XCUIElement, secondary: XCUIElement) throws {
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        XCTAssertTrue(marker.exists)
+        let raw = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any])
+        let geometry = try XCTUnwrap(raw["windowGeometry"] as? [String: Any])
+        let dock = try XCTUnwrap(geometry["dockControls"] as? [String: Any])
+        let page = try XCTUnwrap(dock["appointmentPage"] as? [String: Any])
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: page, options: .sortedKeys), uniformTypeIdentifier: "public.json")
+        attachment.name = "appointment-page-scroll-ownership"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        XCTAssertEqual(page["status"] as? String, "sampled")
+        XCTAssertEqual(page["counts"] as? [Int], [1, 1, 1])
+        XCTAssertEqual(page["ownerCount"] as? Int, 1)
+        XCTAssertEqual(page["truncated"] as? Bool, false)
+        XCTAssertEqual(page["windowID"] as? String, dock["windowID"] as? String)
+        let ownerID = try XCTUnwrap(page["ownerID"] as? String)
+        XCTAssertTrue(try AppointmentViewportGeometry.ownsSinglePageScroll(
+            ownerID: ownerID, primary: XCTUnwrap(page["primaryAncestors"] as? [String]),
+            secondary: XCTUnwrap(page["secondaryAncestors"] as? [String]),
+            primaryComplete: page["primaryComplete"] as? Bool == true, secondaryComplete: page["secondaryComplete"] as? Bool == true,
+            primaryNested: XCTUnwrap(page["primaryNested"] as? Int), secondaryNested: XCTUnwrap(page["secondaryNested"] as? Int),
+        ))
+        let window = try XCTUnwrap(FormWindowOwnership.resolve(app, scroll: scroll, target: primary))
+        for (key, actual) in [("windowFrameInScreen", window.frame), ("wrapperFrame", scroll.frame),
+                              ("primaryFrame", primary.frame), ("secondaryFrame", secondary.frame)]
+        {
+            let source = key == "windowFrameInScreen" ? dock : page
+            let frame = try XCTUnwrap(source[key] as? [String: Double])
+            XCTAssertEqual(actual.minX, try XCTUnwrap(frame["x"]), accuracy: 0.5)
+            XCTAssertEqual(actual.minY, try XCTUnwrap(frame["y"]), accuracy: 0.5)
+            XCTAssertEqual(actual.width, try XCTUnwrap(frame["width"]), accuracy: 0.5)
+            XCTAssertEqual(actual.height, try XCTUnwrap(frame["height"]), accuracy: 0.5)
+        }
+    }
+
     /// Select the exact saved record only after its real page target is fully reachable.
     @MainActor
     func selectAppointment(_ app: XCUIApplication, identity: String) {

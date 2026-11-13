@@ -170,9 +170,11 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         let scroll = UITestConditions.element(app, "appointments-scroll")
         XCTAssertTrue(scroll.exists && !scroll.frame.isEmpty, app.debugDescription)
         XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "appointments-scroll").count, 1)
-        XCTAssertEqual(scroll.descendants(matching: .scrollView).count, 0, "Appointment sections must not introduce nested scroll owners")
+        // AX may expose the identified wrapper as Other and its physical scrolling surface as a child.
+        XCTAssertLessThanOrEqual(scroll.descendants(matching: .scrollView).count, 1)
         XCTAssertEqual(scroll.descendants(matching: .any).matching(identifier: "appointments-columns-primary").count, 1)
         XCTAssertEqual(scroll.descendants(matching: .any).matching(identifier: "appointments-columns-secondary").count, 1)
+        try assertAppointmentScrollOwnership(app, scroll: scroll, primary: primary, secondary: secondary)
         let primaryFrame = primary.frame
         let secondaryFrame = secondary.frame
         let sideBySide = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 &&

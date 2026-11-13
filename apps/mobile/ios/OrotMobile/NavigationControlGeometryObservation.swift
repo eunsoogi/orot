@@ -102,7 +102,10 @@
                     "windowFrameInScene": NavigationGeometryTestObservation.finiteRect(windowSceneFrame),
                     "windowFrameInScreen": NavigationGeometryTestObservation.finiteRect(windowScreenFrame),
                     "screenCoordinateSpace": "UIKit-screen-base", "sceneCoordinateSpace": "UIWindowScene.coordinateSpace",
-                    "controls": records, "sampleStartedAtMs": started, "sampleEndedAtMs": Date().timeIntervalSince1970 * 1000]
+                    "controls": records,
+                    "appointmentPage": UserDefaults.standard.string(forKey: "OROT_E2E_PROBE") == "appointments"
+                        ? AppointmentPageScrollObservation.snapshot(window: window, identity: identity) : ["status": "not-requested"],
+                    "sampleStartedAtMs": started, "sampleEndedAtMs": Date().timeIntervalSince1970 * 1000]
         }
 
         private static func finite(_ rect: CGRect) -> Bool {

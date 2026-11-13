@@ -120,6 +120,7 @@
 		F94600000000000000000001 /* MenuPresentationTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94600000000000000000002 /* MenuPresentationTestObservation.swift */; };
 		F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26700000000000000000003 /* NavigationGeometryTestObservation.swift */; };
 		758C6BC402C846F0B8531FF3 /* NavigationControlGeometryObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */; };
+		A77400000000000000000007 /* AppointmentPageScrollObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77400000000000000000008 /* AppointmentPageScrollObservation.swift */; };
 		F94600000000000000000007 /* NavigationRailMountTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94600000000000000000008 /* NavigationRailMountTestObservation.swift */; };
 		A49300000000000000000003 /* ConversationHitTestObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A49300000000000000000004 /* ConversationHitTestObservation.swift */; };
 		E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D4A0000000000000000002 /* NavigationRotationProbe.swift */; };
@@ -278,6 +279,7 @@
 		7EF8676A771B42A0A6C47DD7 /* RecordingExportPresentationFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = A59528AB17894BC1AB6CA085 /* RecordingExportPresentationFixture.swift */; };
 		E648492F5D474C5293C721B1 /* WindowPresentationAnchorIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */; };
 		A77400000000000000000001 /* RotationGeometryGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77400000000000000000002 /* RotationGeometryGuardTests.swift */; };
+		A77400000000000000000009 /* AppointmentPageScrollOwnershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7740000000000000000000A /* AppointmentPageScrollOwnershipTests.swift */; };
 		F561A51C3C3D4D4F9C7E1A21 /* WindowPresentationAnchorIntegrationTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F561A51C3C3D4D4F9C7E1A22 /* WindowPresentationAnchorIntegrationTestSupport.swift */; };
 		A7D33F4106284AE897BBC52A /* OrientationPresentationAnchorUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C94FA27D314E2B80A74D16 /* OrientationPresentationAnchorUITests.swift */; };
 		E861CA5F0AD594C900DF3700 /* MicrophoneMeteringUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39C42E5DC7ACE20B85151727 /* MicrophoneMeteringUITests.swift */; };
@@ -453,6 +455,7 @@
 		AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StatePersistenceIntegrationTests.swift; sourceTree = "<group>"; };
 		F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowPresentationAnchorIntegrationTests.swift; sourceTree = "<group>"; };
 		A77400000000000000000002 /* RotationGeometryGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotationGeometryGuardTests.swift; sourceTree = "<group>"; };
+		A7740000000000000000000A /* AppointmentPageScrollOwnershipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentPageScrollOwnershipTests.swift; sourceTree = "<group>"; };
 		F561A51C3C3D4D4F9C7E1A22 /* WindowPresentationAnchorIntegrationTestSupport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowPresentationAnchorIntegrationTestSupport.swift; sourceTree = "<group>"; };
 		B1011000B1011000B1011001 /* NavigationGlassView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGlassView.swift; sourceTree = "<group>"; };
 		B1011000B1011000B1011002 /* NavigationGlassViewManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NavigationGlassViewManager.m; sourceTree = "<group>"; };
@@ -461,6 +464,7 @@
 		F94600000000000000000002 /* MenuPresentationTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MenuPresentationTestObservation.swift; path = OrotMobile/MenuPresentationTestObservation.swift; sourceTree = "<group>"; };
 		F26700000000000000000003 /* NavigationGeometryTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationGeometryTestObservation.swift; path = OrotMobile/NavigationGeometryTestObservation.swift; sourceTree = "<group>"; };
 		058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationControlGeometryObservation.swift; path = OrotMobile/NavigationControlGeometryObservation.swift; sourceTree = "<group>"; };
+		A77400000000000000000008 /* AppointmentPageScrollObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppointmentPageScrollObservation.swift; path = OrotMobile/AppointmentPageScrollObservation.swift; sourceTree = "<group>"; };
 		F94600000000000000000008 /* NavigationRailMountTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationRailMountTestObservation.swift; path = OrotMobile/NavigationRailMountTestObservation.swift; sourceTree = "<group>"; };
 		A49300000000000000000004 /* ConversationHitTestObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConversationHitTestObservation.swift; path = OrotMobile/ConversationHitTestObservation.swift; sourceTree = "<group>"; };
 		E7D4A0000000000000000002 /* NavigationRotationProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NavigationRotationProbe.swift; path = OrotMobile/NavigationRotationProbe.swift; sourceTree = "<group>"; };
@@ -789,6 +793,7 @@
 				F94600000000000000000002 /* MenuPresentationTestObservation.swift */,
 				F26700000000000000000003 /* NavigationGeometryTestObservation.swift */,
 				058E3261C8134B628E13FE14 /* NavigationControlGeometryObservation.swift */,
+				A77400000000000000000008 /* AppointmentPageScrollObservation.swift */,
 				F94600000000000000000008 /* NavigationRailMountTestObservation.swift */,
 				A49300000000000000000004 /* ConversationHitTestObservation.swift */,
 				E7D4A0000000000000000002 /* NavigationRotationProbe.swift */,
@@ -883,6 +888,7 @@
 				A59528AB17894BC1AB6CA085 /* RecordingExportPresentationFixture.swift */,
 				F3A1E76C2B9D4F5086C2E73 /* WindowPresentationAnchorIntegrationTests.swift */,
 				A77400000000000000000002 /* RotationGeometryGuardTests.swift */,
+				A7740000000000000000000A /* AppointmentPageScrollOwnershipTests.swift */,
 				F561A51C3C3D4D4F9C7E1A22 /* WindowPresentationAnchorIntegrationTestSupport.swift */,
 				1147F5B3B0385D117589F2B5 /* AppleWorkflowIntegrationTests.swift */,
 				C341C63DE1282F3A1AC6BE91 /* RagWorkflowIntegrationTests.swift */,
@@ -1330,6 +1336,7 @@
 				F94600000000000000000001 /* MenuPresentationTestObservation.swift in Sources */,
 				F26700000000000000000001 /* NavigationGeometryTestObservation.swift in Sources */,
 				758C6BC402C846F0B8531FF3 /* NavigationControlGeometryObservation.swift in Sources */,
+				A77400000000000000000007 /* AppointmentPageScrollObservation.swift in Sources */,
 				F94600000000000000000007 /* NavigationRailMountTestObservation.swift in Sources */,
 				A49300000000000000000003 /* ConversationHitTestObservation.swift in Sources */,
 				E7D4A0000000000000000001 /* NavigationRotationProbe.swift in Sources */,
@@ -1607,6 +1614,7 @@
 				7EF8676A771B42A0A6C47DD7 /* RecordingExportPresentationFixture.swift in Sources */,
 				E648492F5D474C5293C721B1 /* WindowPresentationAnchorIntegrationTests.swift in Sources */,
 				A77400000000000000000001 /* RotationGeometryGuardTests.swift in Sources */,
+				A77400000000000000000009 /* AppointmentPageScrollOwnershipTests.swift in Sources */,
 				F561A51C3C3D4D4F9C7E1A21 /* WindowPresentationAnchorIntegrationTestSupport.swift in Sources */,
 				CA78D0E959578C2643221424 /* AppleWorkflowIntegrationTests.swift in Sources */,
 				DDD6CDDD2ACEA9829A30A5D2 /* RagWorkflowIntegrationTests.swift in Sources */,
