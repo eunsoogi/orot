@@ -23,10 +23,45 @@ final class ConversationVisitPreparationUITests: OrotFailFastTestCase {
         let composer = UITestConditions.element(app, "rag-conversation-composer")
         let input = FormUITestConditions.multilineInput(app, identifier: "rag-conversation-input")
         let prepare = app.buttons.matching(identifier: "conversation-visit-prepare").firstMatch
-        XCTAssertTrue(UITestConditions.exists(history) && UITestConditions.exists(input), app.debugDescription)
-        XCTAssertTrue(UITestConditions.exists(prepare), app.debugDescription)
+        let window = app.windows.firstMatch
+        let keyboard = app.keyboards.firstMatch
+        let windowExists = window.exists
+        let windowFrame = window.frame
+        let historyExists = UITestConditions.exists(history)
+        let historyFrame = history.frame
+        let composerExists = composer.exists
+        let composerFrame = composer.frame
+        let inputExists = UITestConditions.exists(input)
+        let prepareExists = prepare.exists
+        let prepareFrame = prepare.frame
+        let prepareEnabled = prepare.isEnabled
+        let prepareHittable = prepare.isHittable
+        let keyboardCount = app.keyboards.count
+        let keyboardFrame = keyboard.frame
+        let observation = """
+        orientation=\(XCUIDevice.shared.orientation.rawValue)
+        window exists=\(windowExists) frame=\(windowFrame)
+        prepare exists=\(prepareExists) enabled=\(prepareEnabled) hittable=\(prepareHittable) frame=\(prepareFrame)
+        history exists=\(historyExists) frame=\(historyFrame)
+        composer exists=\(composerExists) frame=\(composerFrame)
+        input exists=\(inputExists)
+        keyboard count=\(keyboardCount) frame=\(keyboardFrame)
+        """
+        // Keep one pre-scroll observation so a missing window is distinguishable from an offscreen action.
+        XCTContext.runActivity(named: "Visit preparation initial native geometry") { activity in
+            let details = XCTAttachment(string: observation)
+            details.name = "visit-preparation-action-geometry"
+            details.lifetime = .keepAlways
+            activity.add(details)
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "visit-preparation-action-screen"
+            screenshot.lifetime = .keepAlways
+            activity.add(screenshot)
+        }
+        XCTAssertTrue(historyExists && inputExists, observation)
+        XCTAssertTrue(prepareExists && prepareEnabled, observation)
         RecordingFixtureUITestConditions.capture(app, "visit-preparation-action-before-scroll", testCase: self)
-        // Accessibility text can expand the scrollable conversation header beyond the current viewport.
+        // Accessibility text can expand the conversation header beyond the initial viewport.
         UITestConditions.scrollTo(prepare, in: history)
         XCTAssertTrue(prepare.isHittable, app.debugDescription)
         XCTAssertGreaterThanOrEqual(prepare.frame.height, 44, app.debugDescription)
