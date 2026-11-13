@@ -31,9 +31,17 @@ export function useControlledDailyReportPreview() {
                 : {
                     status: 'ready',
                     cutoff: '2035-01-01T03:00:00Z',
+                    timeZone: 'Asia/Seoul',
                     count: 1,
                     partial: false,
-                    coverage: [],
+                    coverage: [
+                      {
+                        source: 'health_observation',
+                        status: 'unknown',
+                        limitationCodes: ['source_sync_unknown'],
+                      },
+                    ],
+                    sourceCounts: new Map([['health_observation', 1]]),
                     latestSourceTime: null,
                   },
             );

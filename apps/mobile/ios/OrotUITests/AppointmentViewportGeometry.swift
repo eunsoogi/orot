@@ -40,6 +40,23 @@ enum AppointmentViewportGeometry {
         valid(frame) && frame.width >= 44 && frame.height >= 44 && hittable
     }
 
+    /// The AX owning window and UIKit screen frame share screen coordinates; app envelopes need not.
+    static func matchesOwningWindow(_ window: CGRect, screen: CGRect, nativeBounds: CGRect) -> Bool {
+        guard valid(window), valid(screen), valid(nativeBounds) else { return false }
+        let tolerance: CGFloat = 0.5
+        return abs(window.minX - screen.minX) <= tolerance && abs(window.minY - screen.minY) <= tolerance &&
+            abs(window.width - screen.width) <= tolerance && abs(window.height - screen.height) <= tolerance &&
+            abs(window.width - nativeBounds.width) <= tolerance && abs(window.height - nativeBounds.height) <= tolerance
+    }
+
+    /// Both sections must traverse the one page owner without introducing their own scroll views.
+    static func ownsSinglePageScroll(ownerID: String, primary: [String], secondary: [String],
+                                     primaryComplete: Bool, secondaryComplete: Bool, primaryNested: Int, secondaryNested: Int) -> Bool
+    {
+        !ownerID.isEmpty && primaryComplete && secondaryComplete && primary == [ownerID] && secondary == [ownerID] &&
+            primaryNested == 0 && secondaryNested == 0
+    }
+
     /// Cached duplicates and samples from a previous launch cannot establish a current window.
     static func samplesBracketAX(launch: Double, axStart: Double, firstStart: Double, firstEnd: Double,
                                  secondStart: Double, secondEnd: Double, firstWindow: String, secondWindow: String) -> Bool
