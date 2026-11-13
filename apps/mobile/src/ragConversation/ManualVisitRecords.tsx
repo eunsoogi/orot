@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
 import { t } from '../i18n';
 import { styles } from './manualVisitRecordStyles';
+import { ManualVisitQuestionCard } from './ManualVisitQuestionCard';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
@@ -42,6 +43,7 @@ export function ManualVisitRecords({
   } = useManualVisitDraft(appointmentId, drafts);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [saveUnconfirmed, setSaveUnconfirmed] = useState(false);
   const saving = useRef(false);
   const contentVersion = useRef(0);
   const [reload, setReload] = useState(0);
@@ -86,12 +88,14 @@ export function ManualVisitRecords({
     };
   }, [appointmentId, open, reload]);
   const save = async () => {
+    // The ref blocks repeated taps before React renders the busy button state.
     if (!service || !draft || saving.current) return;
     const item = items.find(value => matchesManualVisitDraft(value, draft));
     if (!item) return;
     saving.current = true;
     const version = contentVersion.current;
     setBusy(true);
+    setSaveUnconfirmed(false);
     setError('');
     try {
       const value = draft.answer.trim() || null;
@@ -112,9 +116,12 @@ export function ManualVisitRecords({
       if (contentVersion.current !== version) return;
       setItems(loaded);
       clearDraft();
+      setSaveUnconfirmed(false);
     } catch {
-      if (contentVersion.current === version)
+      if (contentVersion.current === version) {
         setError(t('visitQuestions.manual.saveUnconfirmed'));
+        setSaveUnconfirmed(true);
+      }
     } finally {
       saving.current = false;
       setBusy(false);
@@ -128,107 +135,31 @@ export function ManualVisitRecords({
       </Text>
       <Text>{t('visitQuestions.manual.instructions')}</Text>
       {items.map(item => (
-        <View key={item.question.id} style={styles.card}>
-          <Text>{item.question.questionText}</Text>
-          {item.records.map(record => (
-            <View key={record.id}>
-              {record.questionText !== item.question.questionText && (
-                <Text>
-                  {t('visitQuestions.manual.questionAtConfirmation', {
-                    question: record.questionText,
-                  })}
-                </Text>
-              )}
-              <Text>
-                {item.staleAutomaticIds?.includes(record.id)
-                  ? t('visitQuestions.manual.source.stale')
-                  : record.sourceMethod === 'manual_confirmed'
-                    ? t('visitQuestions.manual.source.confirmed')
-                    : t('visitQuestions.manual.source.recordingAnalysis')}
-              </Text>
-              {record.editOrigin === 'user_edit' ? (
-                <Text>{t('visitQuestions.manual.answer.userEdited')}</Text>
-              ) : null}
-              {record.sourceMethod === 'ai_generated' &&
-                !item.staleAutomaticIds?.includes(record.id) && (
-                  <Text>
-                    {record.automaticSource?.result.status === 'not_found'
-                      ? t('visitQuestions.manual.evidence.notFound')
-                      : record.automaticSource?.result.status ===
-                          'indeterminate'
-                        ? t('visitQuestions.manual.evidence.indeterminate')
-                        : t('visitQuestions.manual.evidence.found')}
-                  </Text>
-                )}
-              {record.sourceMethod === 'ai_generated' &&
-                !item.staleAutomaticIds?.includes(record.id) &&
-                record.editOrigin === 'ai_analysis' &&
-                record.automaticSource?.result.answers.map((result, index) => (
-                  <View key={index}>
-                    <Text>{result.summary}</Text>
-                    <Text>
-                      {t('visitQuestions.manual.answer.speakerUncertainty', {
-                        uncertainty: result.speakerUncertainty,
-                      })}
-                    </Text>
-                  </View>
-                ))}
-              {record.sourceMethod === 'manual_confirmed' ||
-              record.editOrigin === 'user_edit' ? (
-                <Text>{record.answer ?? emptyAnswerLabel}</Text>
-              ) : null}
-              <Button
-                title={t('visitQuestions.manual.actions.edit')}
-                disabled={busy}
-                onPress={() => {
-                  begin(item, record);
-                  setError('');
-                }}
-              />
-            </View>
-          ))}
-          {!item.records.some(
-            record => record.sourceMethod === 'manual_confirmed',
-          ) && (
-            <Pressable
-              accessibilityRole="button"
-              style={styles.action}
-              disabled={busy}
-              onPress={() => {
-                begin(item);
-                setError('');
-              }}
-            >
-              <Text>{t('visitQuestions.manual.actions.confirmAsked')}</Text>
-            </Pressable>
-          )}
-          {draft && matchesManualVisitDraft(item, draft) && (
-            <View style={styles.editor}>
-              <Text>{t('visitQuestions.manual.answer.label')}</Text>
-              <TextInput
-                accessibilityLabel={t('visitQuestions.manual.answer.label')}
-                multiline
-                value={draft.answer}
-                onChangeText={setAnswer}
-                editable={!busy}
-                style={styles.input}
-              />
-              <Button
-                title={t('visitQuestions.manual.actions.save')}
-                disabled={busy}
-                onPress={save}
-              />
-              <Button
-                title={t('visitQuestions.manual.actions.cancel')}
-                disabled={busy}
-                onPress={() => {
-                  clearDraft();
-                  setError('');
-                }}
-              />
-            </View>
-          )}
-        </View>
+        <ManualVisitQuestionCard
+          key={item.question.id}
+          item={item}
+          draft={draft}
+          emptyAnswerLabel={emptyAnswerLabel}
+          busy={busy}
+          saveUnconfirmed={saveUnconfirmed}
+          onConfirm={() => {
+            begin(item);
+            setSaveUnconfirmed(false);
+            setError('');
+          }}
+          onEdit={record => {
+            begin(item, record);
+            setSaveUnconfirmed(false);
+            setError('');
+          }}
+          onAnswerChange={setAnswer}
+          onSave={save}
+          onCancel={() => {
+            clearDraft();
+            setSaveUnconfirmed(false);
+            setError('');
+          }}
+        />
       ))}
       {error ? (
         <>
@@ -236,7 +167,10 @@ export function ManualVisitRecords({
           <Button
             title={t('visitQuestions.manual.actions.reload')}
             disabled={busy}
-            onPress={() => setReload(value => value + 1)}
+            onPress={() => {
+              setSaveUnconfirmed(false);
+              setReload(value => value + 1);
+            }}
           />
         </>
       ) : null}
