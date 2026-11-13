@@ -104,6 +104,14 @@ test('Duo photo validation admits only its explicit single journey', () => {
         run.calls.some((call) => call.name === 'xcodebuild'),
         accepted,
       );
+      if (accepted) {
+        const seeds = run.calls.filter(
+          (call) =>
+            call.name === 'xcrun' && call.args[0] === 'simctl' && call.args[1] === 'addmedia',
+        );
+        assert.equal(seeds.length, 1);
+        assert.equal(seeds[0].args[2], 'fixture-udid');
+      }
     } finally {
       rmSync(run.directory, { recursive: true, force: true });
     }

@@ -20,7 +20,10 @@ import {
   verifyEncounterReviewPhaseSelection,
 } from './encounter-review-persistence-test-phases.mjs';
 import { iosTestXcodeArguments } from './ios-test-xcode-arguments.mjs';
-import { prepareMedicalDocumentPhoto } from './medical-document-photo-fixture.mjs';
+import {
+  photoDocumentJourney,
+  prepareMedicalDocumentPhoto,
+} from './medical-document-photo-fixture.mjs';
 
 const [profile, runFile, ownerFile, results, ...selected] = process.argv.slice(2);
 if (!results)
@@ -161,6 +164,10 @@ if (new Set(tests.map((test) => test.split('/')[0])).size !== 1)
 if (profile === 'duo' && process.env.TEST_RUNNER_OROT_DUO_PHOTO_VALIDATION === 'YES') {
   // Seed the owned Photos library so XCTest still selects the synthetic image through Photos.
   prepareMedicalDocumentPhoto(profile, owner, tests[0]);
+}
+if (isFixtureProfile && !fixtureSession && tests.includes(photoDocumentJourney)) {
+  // Standalone runs seed Photos here; a host fixture session owns its per-case preparation.
+  prepareMedicalDocumentPhoto(profile, owner, photoDocumentJourney);
 }
 const stopSampling = await iosTestResourceSampler(resolve(results) + '.resources.jsonl', {
   skipInitialProcessSnapshot: true,

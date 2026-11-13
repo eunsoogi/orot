@@ -211,17 +211,17 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
 
     @MainActor
     private func recordsPage(_ app: XCUIApplication) -> XCUIElement {
-        // Resolve the tagged route container to the native scroll view that owns the viewport.
+        // Keep the tagged viewport owner because Duo window selection cannot use its untagged child scroll view.
         let route = app.descendants(matching: .any).matching(identifier: "navigation-route-scroll")
         XCTAssertEqual(route.count, 1, app.debugDescription)
         let routeContainer = route.firstMatch
         XCTAssertTrue(routeContainer.exists && !routeContainer.frame.isEmpty, app.debugDescription)
         let scrollViews = routeContainer.scrollViews
         XCTAssertEqual(scrollViews.count, 1, app.debugDescription)
-        let page = scrollViews.firstMatch
-        XCTAssertTrue(page.exists && !page.frame.isEmpty, app.debugDescription)
-        XCTAssertEqual(page.scrollViews.count, 0, app.debugDescription)
-        return page
+        let nativeScroll = scrollViews.firstMatch
+        XCTAssertTrue(nativeScroll.exists && !nativeScroll.frame.isEmpty, app.debugDescription)
+        XCTAssertEqual(nativeScroll.scrollViews.count, 0, app.debugDescription)
+        return routeContainer
     }
 
     @MainActor

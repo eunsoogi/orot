@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { existsSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
+import { fixture } from './fixtures/ios-test-runner.mjs';
 import {
   photoDocumentJourney,
   prepareMedicalDocumentPhoto,
@@ -60,4 +61,20 @@ test('seeds the explicit Duo photo acceptance journey on its owned destination',
 test('photo journey is admitted to both real fixture profiles', () => {
   assert.ok(iosTestInventory('fixtures', 'calendar').includes(photoDocumentJourney));
   assert.ok(iosTestInventory('health-import').includes(photoDocumentJourney));
+});
+
+test('fixture runner seeds its owned Photos library before the selected photo journey', () => {
+  const run = fixture(0, 'fixtures', 'all', [photoDocumentJourney]);
+  try {
+    assert.equal(run.outcome.status, 0, run.outcome.stderr);
+    const seeds = run.calls.filter(
+      (call) => call.name === 'xcrun' && call.args[0] === 'simctl' && call.args[1] === 'addmedia',
+    );
+    const test = run.calls.findIndex((call) => call.name === 'xcodebuild');
+    assert.equal(seeds.length, 1);
+    assert.ok(test > run.calls.indexOf(seeds[0]));
+    assert.equal(seeds[0].args[2], 'fixture-udid');
+  } finally {
+    rmSync(run.directory, { recursive: true, force: true });
+  }
 });

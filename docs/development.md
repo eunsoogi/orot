@@ -142,6 +142,21 @@ node scripts/ci/ios-test-results.mjs duo build/ios-duo-photo.xcresult build/ios-
 node scripts/ci/ios-test-simulator.mjs cleanup duo build/ios-duo-owner.json
 ```
 
+일반 iPhone에서는 `fixtures` 프로필에 사진 여정을 선택합니다. runner는 소유한 fixture Simulator에만 합성 사진을 넣고, XCTest가 Photos picker에서 직접 선택해 저장·복귀 후 44pt Back 배치를 확인합니다.
+
+```sh
+node scripts/ci/build-ios-tests.mjs fixtures build/integration-tests-fixtures
+node scripts/ci/ios-test-simulator.mjs prepare fixtures build/ios-fixtures-owner.json
+node scripts/ci/ios-test-simulator.mjs verify fixtures build/ios-fixtures-owner.json
+node scripts/ci/run-ios-tests.mjs fixtures \
+  build/integration-tests-fixtures/Build/Products/OrotTests_iphonesimulator27.2-arm64.xctestrun \
+  build/ios-fixtures-owner.json \
+  build/ios-iphone-photo.xcresult \
+  OrotUITests/MedicalDocumentPhotoJourneyUITests/testSelectedPhotoSavesAndSurvivesRelaunch
+node scripts/ci/ios-test-results.mjs fixtures build/ios-iphone-photo.xcresult build/ios-iphone-photo-results.json OrotUITests/MedicalDocumentPhotoJourneyUITests/testSelectedPhotoSavesAndSurvivesRelaunch
+node scripts/ci/ios-test-simulator.mjs cleanup fixtures build/ios-fixtures-owner.json
+```
+
 실제 검증에서는 소유권 파일의 UDID를 지정한 `xcodebuild -showBuildSettings` 결과의 SDK·구성·architecture와 공개 runtime inventory의 식별자·build를 함께 읽어 확인합니다. 프로필 설정이나 단위 테스트만으로 런타임 준비·실행·종료가 확인됐다고 판단하지 않습니다.
 
 CI의 CocoaPods 의존성 준비, `OrotTests` 제품, Production 앱, OAuth 패키지 및 Simulator 빌드는 `scripts/ci/fail-on-warning.mjs`를 거칩니다. 이 도구는 `warning:`, `WARN`, CocoaPods `[!]`, `DVTAssertions: Warning` 기록을 원문 그대로 전달하고, 자식 명령이 0으로 끝나도 발견된 경고로 실패합니다. 현재 저장소는 `AppIntent`와 `AppShortcut`을 선언하지 않습니다. Xcode 27의 `appintentsmetadataprocessor`가 내는 정확한 `Metadata extraction skipped, no AppIntents.framework dependency found` 문구는 문서화된 도구 알림으로 분류해 허용합니다. CocoaPods 설치에서는 고정된 `React-Core-prebuilt`, `ReactNativeDependencies`, `hermes-engine` podspec의 스크립트 단계 알림 세 문구도 각각 정확히 한 번씩 모두 나타날 때만 허용합니다. 이 단계들은 Debug와 Release에 맞는 사전 빌드 아카이브를 선택합니다. 하나라도 빠지거나 중복되거나 문구가 바뀌면, 또는 다른 CocoaPods 알림이나 경고가 나타나면 명령은 실패합니다. 허용된 알림도 로그에 그대로 남으며, 게이트 결과는 전체·허용·차단 경고 수를 따로 기록합니다. 자식 명령의 실패 코드는 유지하며, 취소 신호를 자식에게 전달한 뒤 종료를 기다립니다. 근거와 원시 로그는 [경고 처리 기록](../vendor/patches/warning-dispositions.md)에 있습니다.
