@@ -32,6 +32,8 @@ const settingsManager = (
 ).SettingsManager;
 const launchSettings =
   settingsManager?.settings ?? settingsManager?.getConstants?.().settings ?? {};
+const historySavedOutputLayoutEnabled =
+  launchSettings.OROT_TEST_HISTORY_SAVED_OUTPUT_LAYOUT === 'YES';
 // The provider creates its store once, so opt into retained identity before the source journey mounts.
 const visualSessionOptions =
   launchSettings.OROT_TEST_CONVERSATION_TOOL_SOURCE === 'YES'
@@ -69,7 +71,21 @@ function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
             navigation.onBack();
           };
           if (navigation.route.name === 'history')
-            return <ConversationHistoryScreen onBack={onBack} />;
+            return (
+              <ConversationHistoryScreen
+                onBack={onBack}
+                onOpenSavedAnalysis={
+                  historySavedOutputLayoutEnabled
+                    ? keepHistoryLayoutMounted
+                    : undefined
+                }
+                onOpenSavedVisitQuestions={
+                  historySavedOutputLayoutEnabled
+                    ? keepHistoryLayoutMounted
+                    : undefined
+                }
+              />
+            );
           if (navigation.route.name === 'evidence')
             return (
               <EvidenceSourceDetailScreen
@@ -110,6 +126,11 @@ function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
       </NavigationRouteAdapter>
     </ConversationSessionsProvider>
   );
+}
+
+/** This layout-only fixture has no saved-output destination; production routing is covered separately. */
+function keepHistoryLayoutMounted() {
+  return undefined;
 }
 
 /** Select the synthetic outcome before interaction, independent of keyboard text correction. */

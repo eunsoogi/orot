@@ -157,7 +157,7 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
             }, object: nil)
             XCTAssertEqual(UITestConditions.wait(for: [sameAnchor]), .completed)
             RecordingFixtureUITestConditions.capture(app, "conversation-cancelled-\(suffix)", testCase: self)
-            sessionToggle(app).tap()
+            NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
             let row = node(app, pendingRowID)
             XCTAssertTrue(UITestConditions.exists(row))
             let rowID = row.identifier
@@ -205,19 +205,13 @@ final class KeyboardSafeAreaUITests: OrotFailFastTestCase {
     @MainActor
     @discardableResult
     private func reopenConversation(_ app: XCUIApplication) -> String {
-        sessionToggle(app).tap()
+        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
         let latest = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "conversation-history-session-")).firstMatch
         XCTAssertTrue(UITestConditions.exists(latest))
         let identifier = latest.identifier
         latest.tap()
         XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
         return identifier
-    }
-
-    @MainActor
-    private func sessionToggle(_ app: XCUIApplication) -> XCUIElement {
-        // The sessions control is a button, so avoid scanning unrelated accessibility element types.
-        app.buttons.matching(identifier: "rag-conversation-sessions-toggle").firstMatch
     }
 
     @MainActor

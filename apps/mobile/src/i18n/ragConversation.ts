@@ -152,8 +152,15 @@ export const ragConversationKo = {
   'ragConversation.sourceKind.previousAiOutput': '이전 AI 결과',
   'ragConversation.history.today': '오늘',
   'ragConversation.history.yesterday': '어제',
+  'ragConversation.history.savedOutputsTitle': '저장된 AI 결과',
   'ragConversation.history.savedAnalysis': '저장된 요약과 가능성',
+  'ragConversation.history.savedAnalysisDescription':
+    '저장된 요약과 가능성을 다시 살펴봐요.',
   'ragConversation.history.savedVisitQuestions': '저장된 진료 질문',
+  'ragConversation.history.savedVisitQuestionsDescription':
+    '저장된 진료 질문을 다시 살펴봐요.',
+  'ragConversation.history.savedOutputOpenHint':
+    '저장된 내용만 열어요. 새 AI 요청은 시작하지 않아요.',
   'ragConversation.history.title': '대화 기록',
   'ragConversation.history.newConversation': '새 대화',
   'ragConversation.history.count': '{count}개의 대화',

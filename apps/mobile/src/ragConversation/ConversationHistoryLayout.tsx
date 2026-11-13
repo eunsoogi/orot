@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { ComponentRef, ReactNode } from 'react';
+import type { ComponentRef } from 'react';
 import { ScrollView, View, useWindowDimensions } from 'react-native';
 import type { HostInstance, ViewStyle } from 'react-native';
 import { resolveAdaptiveColumns } from '../layout/adaptiveColumnsPlan';
@@ -24,20 +24,22 @@ import type { ConversationHistoryRow } from './ConversationHistoryScreen';
 /** Measures this screen's usable parent so Duo panels honor the actual native regions. */
 export function ConversationHistoryLayout({
   deleted,
-  header,
   onBack,
   onCreateSession,
   onDeleteSession,
+  onOpenSavedAnalysis,
+  onOpenSavedVisitQuestions,
   onSelectSession,
   onUndoRemove,
   rows,
   selectedSession,
 }: {
   readonly deleted: boolean;
-  readonly header?: ReactNode;
   readonly onBack: () => void;
   readonly onCreateSession: () => void;
   readonly onDeleteSession: (id: number) => void;
+  readonly onOpenSavedAnalysis?: () => void;
+  readonly onOpenSavedVisitQuestions?: () => void;
   readonly onSelectSession: (id: number) => void;
   readonly onUndoRemove: () => void;
   readonly rows: readonly ConversationHistoryRow[];
@@ -180,7 +182,7 @@ export function ConversationHistoryLayout({
 
   return (
     <View style={[styles.screen, inset]} testID="conversation-history-screen">
-      {/* A single page moves both the native rows and the selected preview. */}
+      {/* A single page moves the header, native rows, and selected preview together. */}
       <ScrollView
         ref={pageRef}
         testID="conversation-history-page"
@@ -206,7 +208,6 @@ export function ConversationHistoryLayout({
           style={styles.measurementHost}
           testID="conversation-history-measurement-host"
         >
-          {header}
           <View
             style={[styles.layout, layoutStyle]}
             testID="conversation-history-layout"
@@ -219,6 +220,8 @@ export function ConversationHistoryLayout({
                 deleted={deleted}
                 onCreateSession={create}
                 onDeleteSession={onDeleteSession}
+                onOpenSavedAnalysis={onOpenSavedAnalysis}
+                onOpenSavedVisitQuestions={onOpenSavedVisitQuestions}
                 onSelectSession={select}
                 onUndoRemove={onUndoRemove}
                 rows={rows}
