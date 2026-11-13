@@ -55,6 +55,17 @@ enum ViewportObservation {
                 result[key] = value
             }
         }
+        if let supported = geometry["reservedRegionsSupported"] as? Bool {
+            result["reservedRegionsSupported"] = supported
+        }
+        if let regions = geometry["reservedRegions"] as? [[String: Any]] {
+            result["reservedRegions"] = regions.compactMap { region -> [String: Any]? in
+                guard let kind = region["kind"] as? String, ["division", "occlusion"].contains(kind),
+                      let active = region["isActive"] as? Bool, let frame = region["frame"] as? [String: Any] else { return nil }
+                return ["kind": kind, "isActive": active,
+                        "frame": frame.filter { ["x", "y", "width", "height"].contains($0.key) && $0.value is NSNumber }]
+            }
+        }
         result["timestampUnits"] = "unix-milliseconds"
         let bounds = result["windowBounds"] as? [String: Any] ?? [:]
         let insets = result["safeAreaInsets"] as? [String: Any] ?? [:]

@@ -38,6 +38,9 @@ final class TestHostConnectionTests: OrotFailFastTestCase {
         transitionAttachment.name = "appointment-rotation-transition"
         transitionAttachment.lifetime = .keepAlways
         add(transitionAttachment)
+        // A terminal diagnostic must not report success when UIKit rejects or omits the scene change.
+        XCTAssertTrue((transitionReceipt["error"] as? [String: Any])?.isEmpty == true, "Scene geometry request failed")
+        XCTAssertFalse((transitionReceipt["events"] as? [[String: Any]] ?? []).isEmpty, "Scene geometry event was not observed")
         let data = Data(request.label.utf8)
         let receipt = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         XCTAssertEqual(receipt["requestId"] as? String, session)
