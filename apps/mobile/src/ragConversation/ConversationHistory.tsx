@@ -8,6 +8,7 @@ import { styles } from './ConversationScreen.styles';
 import { ConversationMessage } from './ConversationMessage';
 import type { DisplayMessage } from './ConversationMessage';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
+import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserTurn';
 import { t } from '../i18n';
 
 /** Owns the scrollable transcript and keeps visit targets before messages in visual and source order. */
@@ -27,6 +28,7 @@ export function ConversationHistory({
   onRetrySave,
   restoreFailed = false,
   onRetryRestore,
+  sessionId,
   toolSourceSessionId,
   resolveToolSource,
   renderVisitQuestions,
@@ -50,6 +52,7 @@ export function ConversationHistory({
   readonly onRetrySave?: () => void;
   readonly restoreFailed?: boolean;
   readonly onRetryRestore?: () => void;
+  readonly sessionId?: number;
   readonly toolSourceSessionId?: string | null;
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
@@ -65,6 +68,12 @@ export function ConversationHistory({
     offset: number;
   } | null>(null);
   const expectedOffset = useRef<number | null>(null);
+  useConversationHistoryUserTurnFollow(
+    sessionId ?? null,
+    messages,
+    followsBottom,
+    expectedOffset,
+  );
   // A single keyed list preserves the mounted answer across draft validation and cancellation.
   const visibleMessages: readonly DisplayMessage[] = pendingMessage
     ? [...messages, { ...pendingMessage, role: 'assistant', streaming: true }]

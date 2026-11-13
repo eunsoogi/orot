@@ -160,6 +160,7 @@ export function ConversationScreen({
             }
           >
             <ConversationHistory
+              sessionId={id}
               compact={composerLayout.compact}
               header={header}
               messages={messages}

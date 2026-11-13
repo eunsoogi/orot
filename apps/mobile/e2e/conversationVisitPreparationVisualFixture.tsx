@@ -20,6 +20,8 @@ const appointment: Appointment = {
 };
 
 const question: NextVisitQuestion<VisitQuestionEvidenceItem> = {
+  // This patient timeline prompt is a clarification and does not need citations.
+  kind: 'clarification',
   questionText:
     '진료 전에 지난 한 달 동안 증상이 처음 시작된 날짜와 강도를 기록한 시점, 복용 중인 약의 변경 시기, 수면과 활동량의 변화가 서로 어떤 순서로 나타났는지 의사에게 어떻게 설명하면 좋을까요?',
   rationale:
