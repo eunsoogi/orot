@@ -112,6 +112,14 @@ enum UITestConditions {
         let requested = try command(landscape ? "request" : "portrait")
         XCTAssertEqual(requested["status"] as? String, "sampled")
         let receipt = try command("read")
+        // Preserve only the probe's scalar geometry and session metadata for failure diagnosis.
+        let receiptData = try JSONSerialization.data(withJSONObject: receipt, options: .sortedKeys)
+        XCTContext.runActivity(named: "Scene geometry receipt") { activity in
+            let attachment = XCTAttachment(data: receiptData, uniformTypeIdentifier: "public.json")
+            attachment.name = landscape ? "scene-geometry-landscape" : "scene-geometry-portrait"
+            attachment.lifetime = .keepAlways
+            activity.add(attachment)
+        }
         XCTAssertEqual(receipt["status"] as? String, "sampled")
         XCTAssertTrue((receipt["error"] as? [String: Any])?.isEmpty == true)
         XCTAssertLessThanOrEqual(try XCTUnwrap(receipt["requestCount"] as? Int), 1)
