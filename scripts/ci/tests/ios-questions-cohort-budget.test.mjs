@@ -23,7 +23,7 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
       id.includes('/ConversationHealthSummaryUITests/') ||
       id.includes('/ConversationVisitPreparationUITests/'),
   );
-  assert.equal(expected.length, 12);
+  assert.equal(expected.length, 15);
   const full = iosTestExecutionPlan();
   assert.equal(full.length, 28);
   const selected = iosTestExecutionPlan(cohorts);
@@ -43,7 +43,7 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
     return tasks[0].identifiers;
   });
   assert.deepEqual(identifiers.slice().sort(), expected.slice().sort());
-  assert.equal(new Set(identifiers).size, 12);
+  assert.equal(new Set(identifiers).size, 15);
   // The conversation journeys share their existing budget; no method is cut into phases.
   assert.deepEqual(iosTestCohortTasks(cohorts[0])[0].identifiers, [
     composer,
@@ -51,14 +51,17 @@ test('Conversation methods have two independent 20-minute jobs in Full and selec
     'OrotUITests/ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
     'OrotUITests/ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
     'OrotUITests/ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
+    'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterCommittedCompletion',
+    'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterProviderFailure',
+    'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterExplicitStop',
     toolEvents,
   ]);
   assert.equal(iosTestCohortTasks(cohorts[1])[0].identifiers.length, 6);
   const actual = full.flatMap(({ cohort }) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(actual.length, 212);
-  assert.equal(new Set(actual).size, 212);
+  assert.equal(actual.length, 215);
+  assert.equal(new Set(actual).size, 215);
 
   const jobs = cohortJobs(workflow('.github/workflows/e2e-test.yml').jobs);
   for (const cohort of cohorts) {
@@ -113,6 +116,6 @@ test('Summary and Literature own separate complete methods and hosted budgets', 
   const all = full.flatMap(({ cohort }) =>
     iosTestCohortTasks(cohort).flatMap((task) => task.identifiers),
   );
-  assert.equal(all.length, 212);
-  assert.equal(new Set(all).size, 212);
+  assert.equal(all.length, 215);
+  assert.equal(new Set(all).size, 215);
 });

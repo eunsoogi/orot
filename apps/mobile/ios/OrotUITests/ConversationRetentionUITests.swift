@@ -114,6 +114,56 @@ final class ConversationRetentionUITests: OrotFailFastTestCase {
         observe(app, "dispatches:1 completions:1 previews:0 interrupted:0")
     }
 
+    /// The retained request ID must lose its own native lease after each terminal outcome.
+    private func verifyLeaseRelease(_ question: String, stop: Bool, completionCount: Int) {
+        let app = XCUIApplication()
+        app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-lease-release", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        defer { UITestConditions.terminateStandaloneApp(app) }
+        send(app, question: question)
+        observe(app, "lease:active")
+        if stop {
+            app.buttons["rag-conversation-cancel"].tap()
+        } else {
+            app.buttons["retention-probe-release"].tap()
+        }
+        let cancel = app.buttons["rag-conversation-cancel"]
+        let terminal = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !cancel.exists }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [terminal]), .completed)
+        if completionCount == 1 {
+            XCTAssertTrue(UITestConditions.exists(app.staticTexts["Synthetic committed response"]))
+        } else if stop {
+            XCTAssertTrue(UITestConditions.exists(app.staticTexts["답변 생성을 중지했어요."]))
+        } else {
+            let error = UITestConditions.element(app, "rag-conversation-error")
+            XCTAssertTrue(UITestConditions.exists(error))
+            XCTAssertEqual(UITestConditions.text(error), "선택한 AI 서비스가 이 요청에 답하지 않았어요. 질문을 바꿔 다시 시도해 주세요.")
+        }
+        app.buttons["retention-probe-await-release"].tap()
+        let statusElement = app.staticTexts["retention-probe-status"]
+        let leaseResult = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.state == .notRunning || statusElement.label.contains("lease:released") || statusElement.label.contains("lease-observation-failed")
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [leaseResult]), .completed)
+        guard app.state != .notRunning else { XCTFail("Application terminated before lease release"); return }
+        let status = statusElement.label
+        XCTAssertTrue(status.contains("lease:released"), status)
+        XCTAssertTrue(status.contains("dispatches:1 completions:\(completionCount)"), status)
+        if stop { XCTAssertTrue(status.contains("interrupted:1"), status) }
+    }
+
+    func testNativeLeaseEndsAfterCommittedCompletion() {
+        verifyLeaseRelease("Synthetic success question", stop: false, completionCount: 1)
+    }
+
+    func testNativeLeaseEndsAfterProviderFailure() {
+        verifyLeaseRelease("Synthetic failure question", stop: false, completionCount: 0)
+    }
+
+    func testNativeLeaseEndsAfterExplicitStop() {
+        verifyLeaseRelease("Synthetic stop question", stop: true, completionCount: 0)
+    }
+
     /// A test-only wakeup arrives only after the protected commit and UIKit lease check.
     func testCompletionCommitsWhileBackgroundLeaseIsActive() {
         let token = UUID().uuidString

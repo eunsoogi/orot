@@ -116,6 +116,9 @@ test('fresh creation, migration, document import, backup and native permission c
     'OrotUITests/ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
     'OrotUITests/ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
     'OrotUITests/ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
+    'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterCommittedCompletion',
+    'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterProviderFailure',
+    'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterExplicitStop',
     // Tool-event disclosure uses the same fresh fixture store as the conversation journeys.
     'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
     'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable',

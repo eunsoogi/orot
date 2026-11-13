@@ -11,10 +11,10 @@ test('fixture groups partition appointment, document-import, and orientation jou
   const groups = Object.keys(iosFixtureGroups).map((group) => iosTestInventory('fixtures', group));
   assert.deepEqual(
     groups.map((group) => group.length),
-    [13, 11, 19, 25],
+    [13, 11, 22, 25],
   );
   assert.equal(new Set(groups.flat()).size, original.length);
-  assert.equal(original.length, 68);
+  assert.equal(original.length, 71);
   assert.equal(
     iosTestInventory('fixtures', 'questions').filter(
       (identifier) =>
