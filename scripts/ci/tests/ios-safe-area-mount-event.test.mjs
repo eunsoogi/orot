@@ -28,7 +28,7 @@ test('safe-area mount replays real insets once after attachment', () => {
 
 test('queued inset replay cannot mutate recycled, unmounted, or reparented views', () => {
   assert.match(additions, /__weak RNCSafeAreaProviderComponentView \*weakSelf = self/);
-  assert.match(additions, /__weak typeof\(self.window\) mountWindow = self.window/);
+  assert.match(additions, /__weak UIWindow \*mountWindow = self.window/);
   assert.match(additions, /__weak UIView \*mountSuperview = self.superview/);
   assert.match(additions, /strongSelf == nil \|\| strongSelf->_mountGeneration != generation/);
   assert.match(additions, /strongSelf.window == nil/);
