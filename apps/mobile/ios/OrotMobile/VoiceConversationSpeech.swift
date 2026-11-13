@@ -1,8 +1,9 @@
 import AVFoundation
 import Foundation
 
-/// Plays one answer using a retained synthesizer; the caller owns audio-session arbitration.
-final class VoiceConversationSpeech: NSObject, AVSpeechSynthesizerDelegate {
+/// Mutable speech state is main-queue confined; delegate callbacks hop there before touching it.
+/// The caller owns audio-session arbitration and keeps the synthesizer alive through completion.
+final class VoiceConversationSpeech: NSObject, AVSpeechSynthesizerDelegate, @unchecked Sendable {
     private let synthesizer = AVSpeechSynthesizer()
     private var utterance: AVSpeechUtterance?
     private var completion: ((Bool) -> Void)?
