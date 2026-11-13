@@ -31,8 +31,9 @@ export function createReplyOpen(input: {
       if (!answer) return 'missing';
       const before = input.controller.getSnapshot();
       const decision = await input.confirm(before.currentRoute.key);
+      if (!currentOwner()) return 'deferred';
       if (decision === 'declined') return 'cancelled';
-      if (!currentOwner() || !input.canEnter()) return 'deferred';
+      if (!input.canEnter()) return 'deferred';
       if (decision !== 'approved') return 'deferred';
       const existing = input.sessions.getSnapshot().sessions.find(session => {
         const lease = input.retention?.activeLease(session.id);
