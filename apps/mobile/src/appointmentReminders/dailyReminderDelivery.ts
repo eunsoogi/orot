@@ -86,6 +86,7 @@ export function createDailyReminderDelivery(port: {
   acknowledge(timestamp: string): Promise<void>;
   confirm(): Promise<'approved' | 'declined' | 'busy'>;
   onBusy(): void;
+  onOpened?(): void;
   unavailable(): void;
   alreadyHandled?(entry: DailyReminderEntry): Promise<boolean>;
 }) {
@@ -141,7 +142,10 @@ export function createDailyReminderDelivery(port: {
                 return;
               }
               if (result === 'unavailable') port.unavailable();
-              else lastOpened = parsed.entryKey;
+              else {
+                lastOpened = parsed.entryKey;
+                port.onOpened?.();
+              }
             }
           }
         }

@@ -6,6 +6,7 @@ import type { AppNavigationRoute } from '../routes/appNavigationRoute';
 import type { AppRootTab } from '../navigation/rootTabs';
 import type { ReplyDeliverySettings } from '../replyNotifications/replyDeliverySettings';
 import { reconcileReplyPrivacy } from '../replyNotifications/reconcileReplyPrivacy';
+import { nativeReplyNotifications } from '../replyNotifications/nativeReplyNotifications';
 import { createEntryArbiter } from '../appEntry/entryArbiter';
 import { RootURLDeliveryHost } from '../appEntry/RootURLDeliveryHost';
 import { rootURLBridge } from '../appEntry/rootURLBridge';
@@ -68,9 +69,9 @@ export function ReminderGate({
   const canRestoreEntry = useMemo(
     () => async () => {
       try {
-        return (
-          !explicitEntryWon.current && (await rootURLBridge.peek()) == null
-        );
+        if (explicitEntryWon.current || (await rootURLBridge.peek()) != null)
+          return false;
+        return (await nativeReplyNotifications().consumeTarget()) == null;
       } catch {
         return false;
       }
@@ -152,6 +153,7 @@ export function ReminderGate({
         executeReplyEntry={execute}
         executeReminderEntry={execute}
         canRestoreEntry={canRestoreEntry}
+        onExplicitReminderOpened={onRootApplied}
       />
     </>
   );

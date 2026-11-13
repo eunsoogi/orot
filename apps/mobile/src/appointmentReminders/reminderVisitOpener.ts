@@ -10,6 +10,7 @@ export function createReminderVisitOpener(input: {
   runtime: AppointmentReminderRuntime;
   routeIsCurrent: () => boolean;
   onBusy: () => void;
+  onOpened?: () => void;
 }) {
   return (appointment: Appointment): boolean => {
     if (!input.routeIsCurrent()) {
@@ -31,6 +32,7 @@ export function createReminderVisitOpener(input: {
       appointmentId: appointment.id,
       timeKey: plan.timeKey,
     });
+    input.onOpened?.();
     return true;
   };
 }

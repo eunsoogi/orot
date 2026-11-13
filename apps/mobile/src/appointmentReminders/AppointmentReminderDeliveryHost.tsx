@@ -5,15 +5,16 @@ import type { AppNavigationRoute } from '../routes/appNavigationRoute';
 import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
 import { createAppointmentReminderDelivery } from './reminderCoordinator';
 import { createReminderVisitOpener } from './reminderVisitOpener';
-import {
-  createDailyReminderDelivery,
-  registerDailyReminderConsumer,
-} from './dailyReminderDelivery';
+import { registerDailyReminderConsumer } from './dailyReminderDelivery';
+import { createTrackedDailyReminderDelivery } from './trackedDailyReminderDelivery';
 import { createDailyReminderDestination } from './dailyReminderDestination';
 import { createReminderNavigationDecisions } from './reminderNavigationDecisions';
 import { dailyReminderIntentStore } from './dailyReminderIntentStore';
 import { pruneClosedReminderRoutes } from './dailyReminderRouteCleanup';
-import { createDailyReminderDrain } from './dailyReminderDrain';
+import {
+  createDailyReminderDrain,
+  executeReminderWork,
+} from './dailyReminderDrain';
 import { restoreDailyReportConversation } from '../aiFeatures/integration/restoreDailyReportConversation';
 import { dailyReportConversationIntentStore } from '../aiFeatures/integration/dailyReportConversationIntentStore';
 import { createReminderRouteCleanups } from './reminderRouteCleanups';
@@ -38,9 +39,15 @@ export function AppointmentReminderDeliveryHost(
       work: () => Promise<void>,
     ) => Promise<void>;
     readonly canRestoreEntry?: () => Promise<boolean>;
+    readonly onExplicitReminderOpened?: () => void;
   } & ReplyDeliverySettings,
 ) {
-  const { controller, executeReminderEntry, canRestoreEntry } = props;
+  const {
+    controller,
+    executeReminderEntry,
+    canRestoreEntry,
+    onExplicitReminderOpened,
+  } = props;
   const runtime = useAppointmentReminderRuntime();
   useReplyDeliveryFromHost(props);
   useEffect(() => {
@@ -93,16 +100,15 @@ export function AppointmentReminderDeliveryHost(
     const unregisterDaily = registerDailyReminderConsumer(destination.accept);
     const reconcile = () =>
       runtime.coordinator.reconcile().catch(() => undefined);
-    const deliverDaily = createDailyReminderDelivery({
+    const deliverDaily = createTrackedDailyReminderDelivery({
       consume: consumeDailyReminderTarget,
       acknowledge: acknowledgeDailyReminderTarget,
       alreadyHandled: destination.alreadyHandled,
-      onBusy: () => {
-        retryWhenNavigationAvailable = true;
-      },
+      onBusy: retryNavigation,
       // The destination confirms after durable storage, immediately before pushing the route.
       confirm: async () => 'approved',
       unavailable: showDailyReminderUnavailable,
+      onOpened: onExplicitReminderOpened,
     });
     const deliver = createAppointmentReminderDelivery({
       consumeTarget: consumeAppointmentReminderTarget,
@@ -113,6 +119,7 @@ export function AppointmentReminderDeliveryHost(
         runtime,
         routeIsCurrent: navigationDecisions.appointmentRouteIsCurrent,
         onBusy: retryNavigation,
+        onOpened: onExplicitReminderOpened,
       }),
       onUnavailable: showReminderUnavailable,
     });
@@ -126,8 +133,7 @@ export function AppointmentReminderDeliveryHost(
       controller,
       dismiss: destination.dismiss,
     });
-    const execute =
-      executeReminderEntry ?? (async (work: () => Promise<void>) => work());
+    const execute = executeReminderEntry ?? executeReminderWork;
     const drainConversation = () => {
       conversationQueue = conversationQueue
         .then(() =>
@@ -170,13 +176,11 @@ export function AppointmentReminderDeliveryHost(
     });
     const drainDaily = () => execute(dailyDrain).catch(() => undefined);
     const drain = () => {
-      appointmentQueue = appointmentQueue
-        .then(() =>
-          execute(async () => {
-            await deliver();
-          }),
-        )
-        .catch(() => undefined);
+      const previous = appointmentQueue;
+      appointmentQueue = execute(async () => {
+        await previous;
+        await deliver();
+      }).catch(() => undefined);
       drainConversation();
       drainDaily();
     };
@@ -228,6 +232,12 @@ export function AppointmentReminderDeliveryHost(
       subscription.remove();
       navigation();
     };
-  }, [controller, runtime, executeReminderEntry, canRestoreEntry]);
+  }, [
+    controller,
+    runtime,
+    executeReminderEntry,
+    canRestoreEntry,
+    onExplicitReminderOpened,
+  ]);
   return null;
 }
