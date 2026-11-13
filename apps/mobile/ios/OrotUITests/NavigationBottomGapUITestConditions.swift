@@ -7,8 +7,21 @@ enum NavigationBottomGapUITestConditions {
         let scroll = UITestConditions.element(app, "navigation-route-scroll").frame
         let content = UITestConditions.element(app, "overview-screen").frame
         let region = UITestConditions.element(app, "navigation-content-region").frame
-        let overlay = UITestConditions.element(app, "navigation-action-bar-overlay").frame
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-overview").toolbar.frame
+        let rail = navigation.height > navigation.width && navigation.minX >= region.maxX - 1
+        let overlayElement = UITestConditions.element(app, "navigation-action-bar-overlay")
+        let overlayExists = overlayElement.exists
+        let observation = XCTAttachment(string: "sideRail=\(rail), actionOverlayExists=\(overlayExists)")
+        observation.name = "Bottom action overlay presence"
+        observation.lifetime = .keepAlways
+        testCase.add(observation)
+        // A side rail intentionally omits this bottom-only AX element. Never query its frame
+        // when absent; zero denotes an observed absence, not a fabricated measured rectangle.
+        guard rail || overlayExists else {
+            XCTFail("Bottom navigation must expose its action overlay")
+            return
+        }
+        let overlay = overlayExists ? overlayElement.frame : CGRect.zero
         let safe = try NavigationUITestConditions.safeArea(app, testCase: testCase)
         try NavigationUITestConditions.panelSnapshot(app, frames: [
             "window": app.frame, "nativeSafeAreaRoot": safe.frame,
@@ -22,7 +35,6 @@ enum NavigationBottomGapUITestConditions {
         XCTAssertLessThanOrEqual(content.minY, scroll.minY)
         XCTAssertEqual(scroll.maxY, region.maxY, accuracy: 1)
         let overlap = max(0, min(scroll.maxY, overlay.maxY) - max(scroll.minY, overlay.minY))
-        let rail = navigation.height > navigation.width && navigation.minX >= region.maxX - 1
         if rail {
             XCTAssertEqual(overlap, 0, accuracy: 1, "A side rail must not create a bottom overlay")
             XCTAssertEqual(scroll.maxY - content.maxY, 16, accuracy: 1, "Unexpected bottom band beside the rail")
