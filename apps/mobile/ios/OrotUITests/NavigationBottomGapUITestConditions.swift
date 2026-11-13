@@ -8,10 +8,12 @@ enum NavigationBottomGapUITestConditions {
         let content = UITestConditions.element(app, "overview-screen").frame
         let region = UITestConditions.element(app, "navigation-content-region").frame
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-overview").toolbar.frame
+        let window = app.frame
+        let keyboardExists = app.keyboards.firstMatch.exists
         let rail = navigation.height > navigation.width && navigation.minX >= region.maxX - 1
         let overlayElement = UITestConditions.element(app, "navigation-action-bar-overlay")
         let overlayExists = overlayElement.exists
-        let observation = XCTAttachment(string: "sideRail=\(rail), actionOverlayExists=\(overlayExists)")
+        let observation = XCTAttachment(string: "sideRail=\(rail), actionOverlayExists=\(overlayExists), keyboardExists=\(keyboardExists)")
         observation.name = "Bottom action overlay presence"
         observation.lifetime = .keepAlways
         testCase.add(observation)
@@ -24,7 +26,7 @@ enum NavigationBottomGapUITestConditions {
         let overlay = overlayExists ? overlayElement.frame : CGRect.zero
         let safe = try NavigationUITestConditions.safeArea(app, testCase: testCase)
         try NavigationUITestConditions.panelSnapshot(app, frames: [
-            "window": app.frame, "nativeSafeAreaRoot": safe.frame,
+            "window": window, "nativeSafeAreaRoot": safe.frame,
             "contentRegion": region, "scrollViewport": scroll, "longHomeContent": content,
             "actionOverlay": overlay, "nativeNavigation": navigation,
         ], testCase: testCase)
@@ -41,6 +43,13 @@ enum NavigationBottomGapUITestConditions {
         } else {
             XCTAssertEqual(scroll.maxY - content.maxY, overlap + 16, accuracy: 1, "Reserve only the measured bottom action and shared gap")
         }
-        XCTAssertLessThanOrEqual(scroll.maxY, safe.frame.maxY - safe.bottom + 1)
+        // This Home observation has no keyboard or modal owner. Bind the listener to the
+        // actual app root before requiring the viewport to fill, not merely fit, its safe bottom.
+        XCTAssertFalse(keyboardExists, "Home bottom geometry requires a dismissed keyboard")
+        XCTAssertEqual(safe.frame.minX, window.minX, accuracy: 1)
+        XCTAssertEqual(safe.frame.minY, window.minY, accuracy: 1)
+        XCTAssertEqual(safe.frame.width, window.width, accuracy: 1)
+        XCTAssertEqual(safe.frame.height, window.height, accuracy: 1)
+        XCTAssertEqual(scroll.maxY, safe.frame.maxY - safe.bottom, accuracy: 1, "The viewport must fill the available safe height")
     }
 }
