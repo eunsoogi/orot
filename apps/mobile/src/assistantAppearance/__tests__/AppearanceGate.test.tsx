@@ -116,3 +116,28 @@ test('clearing gates entry without unmounting the existing work and can be confi
   );
   expect(unmounted).not.toHaveBeenCalled();
 });
+
+test('a failed clear restores entry and leaves the committed appearance intact', async () => {
+  store.load.mockResolvedValue({ avatar: 'leaf', name: '오롯' });
+  store.clear.mockRejectedValue(new Error('locked'));
+  let canEnter = () => false;
+  function EntryProbe() {
+    const appearance = useAssistantAppearance();
+    if (appearance) canEnter = appearance.canEnter;
+    return <Content />;
+  }
+  await render(
+    <AssistantAppearanceProvider>
+      <EntryProbe />
+    </AssistantAppearanceProvider>,
+  );
+  await screen.findByText('일반 화면');
+  expect(canEnter()).toBe(true);
+  await fireEvent.press(screen.getByRole('button', { name: '편집' }));
+  await fireEvent.press(screen.getByRole('button', { name: '선택 지우기' }));
+  await screen.findByText('설정을 지우지 못했어요. 다시 시도해 주세요.');
+  expect(canEnter()).toBe(true);
+  await fireEvent.press(screen.getByRole('button', { name: '취소' }));
+  expect(screen.getByText('오롯')).toBeTruthy();
+  expect(store.save).not.toHaveBeenCalled();
+});
