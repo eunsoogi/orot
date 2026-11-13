@@ -61,6 +61,12 @@ test('Duo remains opt-in with its exact native test inventory', () => {
     'OrotUITests/HealthImportDuoUITests/testMedicationHistoryAndPeriodSurviveDuoReflow';
   const keyboardUndoReflow =
     'OrotUITests/KeyboardSafeAreaUITests/testConversationOutputComposerAndSwipeUndoAcrossAppearances';
+  const conversationLongTitlesAndFullSwipe =
+    'OrotUITests/KeyboardSafeAreaUITests/testConversationLongTitlesAndFullSwipeAcrossTextSizes';
+  const savedOutputActions =
+    'OrotUITests/ConversationHistoryDuoUITests/testSavedOutputActionsOpenAndReturnFromHistory';
+  const conversationFailureRecovery =
+    'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable';
   const syncStatusReflow =
     'OrotUITests/SettingsSyncStatusDuoUITests/testSyncStatusAndRecoveryStayInsideDuoRegionsAcrossReflow';
   const recordingLiveReflow =
@@ -94,7 +100,7 @@ test('Duo remains opt-in with its exact native test inventory', () => {
   const providerSelectionTests = iosTestInventory('provider-selection');
   const speechTests = iosTestInventory('speech');
   // Keep Duo-only cohorts explicit so the exact inventory cannot drift silently.
-  assert.equal(duoInventory.length, 60);
+  assert.equal(duoInventory.length, 63);
   assert.deepEqual(duoInventory, [
     'OrotUITests/ChartConsumerAcceptanceUITests/testHomeLargeTextChartValuesRemainReachable',
     'OrotUITests/DailyReportEntryUITests/testSavedReportAndFollowUpFitPortraitDuoAtLargeTextInBothAppearances',
@@ -150,6 +156,9 @@ test('Duo remains opt-in with its exact native test inventory', () => {
     healthRecordDetailReflow,
     medicationHistoryReflow,
     keyboardUndoReflow,
+    conversationLongTitlesAndFullSwipe,
+    savedOutputActions,
+    conversationFailureRecovery,
     'OrotUITests/ConversationComposerDockUITests/testDuoComposerAndActionsRemainReachable',
     syncStatusReflow,
     recordingLiveReflow,
