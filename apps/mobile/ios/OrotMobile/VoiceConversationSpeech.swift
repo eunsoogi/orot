@@ -14,11 +14,13 @@ final class VoiceConversationSpeech: NSObject, AVSpeechSynthesizerDelegate, @unc
         synthesizer.delegate = self
     }
 
-    func speak(_ text: String, language: String, completion: @escaping (Bool) -> Void) -> Bool {
+    func speak(_ text: String, language: String, volume: Float = 1, completion: @escaping (Bool) -> Void) -> Bool {
         dispatchPrecondition(condition: .onQueue(.main))
         guard utterance == nil, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         let value = AVSpeechUtterance(string: text)
         value.voice = AVSpeechSynthesisVoice(language: language)
+        // Explicit volume preserves normal playback while permitting silent system-lifecycle observations.
+        value.volume = min(1, max(0, volume))
         utterance = value
         stopRequested = false
         self.completion = completion

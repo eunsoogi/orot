@@ -1,5 +1,7 @@
 /** These cases require a disposable install, explicit process boundaries, or a scheduled system event. */
 export const iosAcceptanceDiagnosticTests = [
+  // Real system synthesis is opt-in; the production adapter is silent and never opens the microphone.
+  'OrotIntegrationTests/VoiceConversationLifecycleTests/testSystemSpeechCompletionAndStopReleasePlayback',
   'OrotIntegrationTests/AutomaticRecapPersistenceIntegrationTests/testSyntheticTranscriptionAutomaticallySavesOfficialRecap',
   'OrotIntegrationTests/AutomaticRecapPersistenceIntegrationTests/testOfficialRecapReadbackMatchesAfterNewProcess',
   'OrotIntegrationTests/DailyReminderSystemCenterTests/testDailyPreferenceRegistersPrivacySafeRequestWithSystemCenter',

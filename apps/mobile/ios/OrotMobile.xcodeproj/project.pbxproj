@@ -242,6 +242,7 @@
 		A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */; };
 		AFC900000000000000000004 /* ReplyNotificationInboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */; };
 		A68FAB000000000000000006 /* AudioSessionOwnershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */; };
+		AC2B9D1074EF4C3EB2B83091 /* VoiceConversationLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC2B9D1074EF4C3EB2B83091 /* VoiceConversationLifecycleTests.swift */; };
 		A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */; };
 		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
 		DF18ABCD019B40AA9C138D21 /* SettingsPortraitNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF18ABCD019B40AA9C138D22 /* SettingsPortraitNavigationUITests.swift */; };
@@ -618,6 +619,7 @@
 		B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderNotificationTests.swift; sourceTree = "<group>"; };
 		BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyNotificationInboxTests.swift; sourceTree = "<group>"; };
 		B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionOwnershipTests.swift; sourceTree = "<group>"; };
+		BC2B9D1074EF4C3EB2B83091 /* VoiceConversationLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceConversationLifecycleTests.swift; sourceTree = "<group>"; };
 		B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderDiagnosticTests.swift; sourceTree = "<group>"; };
 		B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnifiedImportUITests.swift; sourceTree = "<group>"; };
 		B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeAreaNavigationUITests.swift; sourceTree = "<group>"; };
@@ -949,6 +951,7 @@
 				B821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift */,
 				BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */,
 				B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */,
+				BC2B9D1074EF4C3EB2B83091 /* VoiceConversationLifecycleTests.swift */,
 				B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
@@ -1712,6 +1715,7 @@
 				A821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift in Sources */,
 				AFC900000000000000000004 /* ReplyNotificationInboxTests.swift in Sources */,
 				A68FAB000000000000000006 /* AudioSessionOwnershipTests.swift in Sources */,
+				AC2B9D1074EF4C3EB2B83091 /* VoiceConversationLifecycleTests.swift in Sources */,
 				A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,
