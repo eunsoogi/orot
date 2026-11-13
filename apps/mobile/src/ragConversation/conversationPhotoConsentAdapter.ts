@@ -51,6 +51,7 @@ async function waitForPhotoDecision<T>(
 function containsPhotoEvidence(
   request: OutboundProcessingRequest,
   document: StagedMedicalDocument,
+  photoEvidenceIds: readonly string[],
 ): boolean {
   const evidence: unknown[] = [];
   for (const message of request.payload.messages) {
@@ -75,13 +76,13 @@ function containsPhotoEvidence(
       // Ordinary user messages need not contain an evidence envelope.
     }
   }
-  return document.sections.every(section => {
+  return document.sections.every((section, index) => {
     const matches = evidence.filter(
       item =>
         item &&
         typeof item === 'object' &&
         'evidenceId' in item &&
-        item.evidenceId === section.id,
+        item.evidenceId === photoEvidenceIds[index],
     );
     return (
       matches.length === 1 &&
@@ -103,9 +104,11 @@ export async function authorizeConversationPhoto(input: {
   readonly identity: PhotoRequestIdentity;
   readonly document: StagedMedicalDocument;
   readonly stagingGeneration: number;
+  /** Turn-local evidence aliases, in the same order as the OCR sections. */
+  readonly photoEvidenceIds: readonly string[];
   readonly selected: Selection;
   readonly request: OutboundProcessingRequest;
-  /** Revalidates protected file, source revision, session and request against the real owners. */
+  /** Revalidates file, source, request and each alias-to-section mapping against their real owners. */
   readonly isCurrent: () => Promise<boolean>;
   /** Present an explicit decision for this provider and close the prompt when its signal aborts. */
   readonly confirm: (
@@ -128,6 +131,9 @@ export async function authorizeConversationPhoto(input: {
     /^sha256:[0-9a-f]{64}$/i.test(document.contentHash) &&
     new Set(document.sections.map(section => section.id)).size ===
       document.sections.length &&
+    input.photoEvidenceIds.length === document.sections.length &&
+    new Set(input.photoEvidenceIds).size === input.photoEvidenceIds.length &&
+    input.photoEvidenceIds.every(id => Boolean(id)) &&
     document.sections.every(
       section =>
         Boolean(section.id && section.text.trim()) &&
@@ -159,10 +165,11 @@ export async function authorizeConversationPhoto(input: {
         document.previewData.split(',')[1] ?? document.previewData,
       )
     ) &&
-    containsPhotoEvidence(request, document);
+    containsPhotoEvidence(request, document, input.photoEvidenceIds);
   const snapshot = () =>
     stableJson({
       identity: input.identity,
+      photoEvidenceIds: input.photoEvidenceIds,
       source: {
         id: document.id,
         hash: document.contentHash,

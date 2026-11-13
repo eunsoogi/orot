@@ -37,7 +37,7 @@ const payload = () => ({
       content: JSON.stringify({
         evidence: [
           {
-            evidenceId: 'span',
+            evidenceId: 'e1',
             sourceKind: 'personal_record',
             content: 'synthetic OCR',
           },
@@ -70,6 +70,7 @@ test('requires a separate explicit approval even for a local selected provider',
   const result = await authorizeConversationPhoto({
     identity,
     document,
+    photoEvidenceIds: ['e1'],
     stagingGeneration: currentMedicalDocumentGeneration(),
     selected,
     request: request(signal),
@@ -95,6 +96,7 @@ test('denial, changed payload and unsupported provider fail closed', async () =>
   const base = {
     identity,
     document,
+    photoEvidenceIds: ['e1'],
     stagingGeneration: currentMedicalDocumentGeneration(),
     selected,
     request: request(signal),
@@ -103,6 +105,13 @@ test('denial, changed payload and unsupported provider fail closed', async () =>
   expect(
     await authorizeConversationPhoto({ ...base, confirm: async () => false }),
   ).toBe('consent_required');
+  expect(
+    await authorizeConversationPhoto({
+      ...base,
+      photoEvidenceIds: ['wrong-alias'],
+      confirm: async () => true,
+    }),
+  ).toBe('unavailable');
   expect(
     await authorizeConversationPhoto({
       ...base,
@@ -133,6 +142,7 @@ test('a changed payload or deleted source during confirmation cannot be approved
   const result = await authorizeConversationPhoto({
     identity,
     document,
+    photoEvidenceIds: ['e1'],
     stagingGeneration: currentMedicalDocumentGeneration(),
     selected,
     request: outbound,
@@ -155,6 +165,7 @@ test('aborting while the explicit decision is pending stops authorization', asyn
   const result = authorizeConversationPhoto({
     identity,
     document,
+    photoEvidenceIds: ['e1'],
     stagingGeneration: currentMedicalDocumentGeneration(),
     selected,
     request: request(controller.signal),
@@ -174,6 +185,7 @@ test('a mutated provider payload cannot reuse an earlier approval', async () => 
   const result = await authorizeConversationPhoto({
     identity,
     document,
+    photoEvidenceIds: ['e1'],
     stagingGeneration: currentMedicalDocumentGeneration(),
     selected,
     request: outbound,
