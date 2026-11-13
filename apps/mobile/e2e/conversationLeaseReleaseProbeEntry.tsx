@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
 import { ConversationScreen } from '../src/ragConversation/ConversationScreen';
 import { ConversationHistoryScreen } from '../src/ragConversation/ConversationHistoryScreen';
@@ -20,6 +20,7 @@ import { openLocalAgentMemoryDatabase } from '../src/storage/secureDatabase';
 import { NavigationRouteAdapter } from '../src/navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../src/navigation/navigationController';
 import type { ConversationSender } from '../src/ragConversation/conversationSessionTypes';
+import { LeaseProbeOverlay } from './LeaseProbeOverlay';
 import { runSyntheticStages } from './conversationLeaseProbeStage';
 
 // This opt-in test entry uses the app's protected database; only synthetic values enter its counter.
@@ -157,7 +158,7 @@ function Probe() {
     <SafeAreaProvider>
       <ConversationSessionsProvider options={options}>
         <View style={styles.root}>
-          <SafeAreaView edges={['top']}>
+          <LeaseProbeOverlay>
             <View style={styles.controls}>
               <View style={styles.control}>
                 <Button
@@ -202,7 +203,7 @@ function Probe() {
             >
               {status}
             </Text>
-          </SafeAreaView>
+          </LeaseProbeOverlay>
           {otherTab ? (
             <Text testID="retention-probe-other-tab">Other test tab</Text>
           ) : (
