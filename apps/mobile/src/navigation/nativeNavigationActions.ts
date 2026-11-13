@@ -6,6 +6,7 @@ import type {
   NavigationGlassAction,
   NavigationGlassActionEventHandler,
 } from './NavigationGlassSurface';
+import type { NavigationRouteBackAction } from './useNavigationPrimaryAction';
 import type {
   NavigationController,
   NavigationSnapshot,
@@ -17,19 +18,22 @@ export function createNativeNavigationBindings<Name extends string>({
   snapshot,
   backDisabled,
   primaryAction,
+  routeBackAction,
   rootTabs,
 }: {
   readonly controller: NavigationController<Name>;
   readonly snapshot: NavigationSnapshot<Name>;
   readonly backDisabled: boolean;
   readonly primaryAction?: NavigationPrimaryAction;
+  readonly routeBackAction?: NavigationRouteBackAction;
   readonly rootTabs?: NavigationRootTabs;
 }): {
   readonly actions: readonly NavigationGlassAction[];
   readonly onAction: NavigationGlassActionEventHandler;
 } {
   const actions: NavigationGlassAction[] = [];
-  if (snapshot.canGoBack) {
+  // An in-route detail uses the same native Back item and takes precedence over stack navigation.
+  if (snapshot.canGoBack || routeBackAction) {
     actions.push({
       id: 'back',
       label: navigationText.back.label,
@@ -71,8 +75,16 @@ export function createNativeNavigationBindings<Name extends string>({
   }
 
   const onAction: NavigationGlassActionEventHandler = ({ nativeEvent }) => {
-    if (nativeEvent.id === 'back' && snapshot.canGoBack && !backDisabled) {
-      settleNavigationRequest(controller.requestBack());
+    if (
+      nativeEvent.id === 'back' &&
+      (snapshot.canGoBack || routeBackAction) &&
+      !backDisabled
+    ) {
+      settleNavigationRequest(
+        routeBackAction
+          ? Promise.resolve(routeBackAction.onPress())
+          : controller.requestBack(),
+      );
       return;
     }
     if (

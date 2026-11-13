@@ -115,6 +115,33 @@ describe('bottom navigation actions', () => {
     expect(openRecording).toHaveBeenCalledTimes(1);
   });
 
+  it('uses the common accessible Back control for an in-route detail above root tabs', async () => {
+    const controller = createNavigationController<'home'>('home');
+    const requestBack = jest.spyOn(controller, 'requestBack');
+    const closeDetail = jest.fn();
+
+    await render(
+      <NavigationActionBar
+        controller={controller}
+        routeBackAction={{ onPress: closeDetail }}
+        rootTabs={{ activeTab: 'records', onSelect: jest.fn() }}
+        surface={FallbackSurface}
+        safeAreaHandledByParent
+      />,
+    );
+
+    const back = screen.getByRole('button', {
+      name: '이전 화면으로 돌아가기',
+    });
+    expect(back.props.testID).toBe('navigation-back');
+    expect(StyleSheet.flatten(back.props.style)).toEqual(
+      expect.objectContaining({ minHeight: 50, minWidth: 72 }),
+    );
+    await fireEvent.press(back);
+    expect(closeDetail).toHaveBeenCalledTimes(1);
+    expect(requestBack).not.toHaveBeenCalled();
+  });
+
   it('updates when the shared controller pushes a child route', async () => {
     const controller = createNavigationController<'home' | 'details'>('home');
     await render(

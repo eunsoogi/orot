@@ -22,6 +22,8 @@ final class NavigationRootGlassBar: UIVisualEffectView {
     static let exteriorWidth: CGFloat = 48
     /// Five 52pt targets plus four 4pt gaps keep rail buttons the same size as bottom targets.
     static let railHeight: CGFloat = 276
+    /// The common Back target plus its clear gap sit above the fixed five-tab surface.
+    static let contextualBackGroupHeight: CGFloat = 52
 
     private let stack = UIStackView()
     private let indicator = UIView()
@@ -179,6 +181,55 @@ final class NavigationRootGlassBar: UIVisualEffectView {
     @objc private func motionPreferenceChanged() {
         if UIAccessibility.isReduceMotionEnabled {
             moveIndicator(animated: false)
+        }
+    }
+}
+
+/// Reconciles contextual controls beside the root material without replacing stable Back buttons.
+extension NavigationGlassSurfaceView {
+    func renderInnerActions(_ descriptors: [NavigationActionDescriptor], onAction: @escaping (String) -> Void) {
+        let back = descriptors.first { $0.id == "back" }
+        let actions = descriptors.filter { $0.id != "back" }
+        let desiredIDs = Set(descriptors.map(\.id))
+        let removedIDs = contextualButtons.keys.filter { !desiredIDs.contains($0) }
+        for id in removedIDs {
+            guard let button = contextualButtons.removeValue(forKey: id) else { continue }
+            innerActions.removeArrangedSubview(button)
+            button.removeFromSuperview()
+            contextualButtonWidthConstraints.removeValue(forKey: id)?.isActive = false
+            contextualButtonFixedWidthConstraints.removeValue(forKey: id)?.isActive = false
+        }
+
+        for action in descriptors {
+            let button: UIButton
+            if let existing = contextualButtons[action.id] {
+                button = existing
+                NavigationGlassButton.update(button, for: action)
+            } else {
+                button = NavigationGlassButton.make(for: action, onAction: onAction)
+                contextualButtons[action.id] = button
+            }
+            NavigationGlassButton.updateMinimumWidth(for: action, button: button, usesRightRail: layoutMode != "bottom", constraints: &contextualButtonWidthConstraints)
+            NavigationRailConstraints.updateFixedWidth(for: action, button: button, usesRightRail: layoutMode != "bottom", constraints: &contextualButtonFixedWidthConstraints)
+            NavigationGlassButton.setHeight(bottomHeight, for: action, button: button, usesRightRail: layoutMode != "bottom")
+        }
+
+        var orderedViews: [UIView] = []
+        if let back, let button = contextualButtons[back.id] {
+            orderedViews.append(button)
+        }
+        orderedViews.append(innerActionsSpacer)
+        orderedViews.append(contentsOf: actions.compactMap { contextualButtons[$0.id] })
+        for (index, view) in orderedViews.enumerated() {
+            if innerActions.arrangedSubviews.indices.contains(index),
+               innerActions.arrangedSubviews[index] === view
+            {
+                continue
+            }
+            if innerActions.arrangedSubviews.contains(where: { $0 === view }) {
+                innerActions.removeArrangedSubview(view)
+            }
+            innerActions.insertArrangedSubview(view, at: index)
         }
     }
 }

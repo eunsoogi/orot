@@ -74,8 +74,9 @@ export function NavigationActionBarPresentation({
     : pageActions;
   const hasRootTabs = actions.some(action => action.rootTab);
   const contextualActionCount = actions.filter(
-    action => action.id !== 'primary',
+    action => !action.rootTab && action.id !== 'primary',
   ).length;
+  const hasContextualBack = actions.some(action => action.id === 'back');
   const {
     rightLayout,
     pageLayout,
@@ -87,6 +88,7 @@ export function NavigationActionBarPresentation({
     hasRootTabs,
     contextualActionCount,
     taskActions.length,
+    hasContextualBack,
   );
   const isRightRail = rightLayout !== undefined;
   const laneActions = actions.some(action => action.id === 'primary')

@@ -13,6 +13,7 @@ import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDo
 import { RecordsRecentSources } from './RecordsRecentSources';
 import { hubSpacing } from '../layout/hubSpacing';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
+import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
 import { RecordsRouteEntries } from './RecordsRouteEntries';
 import { LegacySymptomData } from './LegacySymptomData';
 
@@ -55,6 +56,18 @@ export function RecordsRoute({
     sourceMessage,
     stagedDocument,
   } = useMedicalDocumentImport(documentImportService);
+  const routeScrollPosition = useNavigationRouteScrollPosition();
+
+  function openSavedDocumentAtListPosition(sourceId: string) {
+    // The root-tab ScrollView stays mounted while detail replaces the long Records list.
+    routeScrollPosition?.preserve();
+    openSavedDocument(sourceId);
+  }
+
+  function returnToRecordsList() {
+    closeSavedDocument();
+    routeScrollPosition?.restore();
+  }
 
   // Keep review actions before every extracted page inside the Records scene's single scroll owner.
   if (stagedDocument) {
@@ -81,7 +94,7 @@ export function RecordsRoute({
     return (
       <MedicalDocumentSourceView
         document={sourceDetail}
-        onBack={closeSavedDocument}
+        onBack={returnToRecordsList}
       />
     );
   }
@@ -120,7 +133,7 @@ export function RecordsRoute({
           documentsOpening={sourceLoading}
           onRetryRecordings={onRetryRecordings}
           onRetryDocuments={reloadSavedDocuments}
-          onOpenMedicalDocument={openSavedDocument}
+          onOpenMedicalDocument={openSavedDocumentAtListPosition}
           onOpenSavedRecordings={onOpenSavedRecordings}
         />
         {sourceMessage ? (

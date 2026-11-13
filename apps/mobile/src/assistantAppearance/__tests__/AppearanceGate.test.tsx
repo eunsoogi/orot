@@ -5,6 +5,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { useEffect } from 'react';
+import { NativeModules } from 'react-native';
 import { AppText } from '../../layout/AppText';
 import {
   AssistantAppearanceProvider,
@@ -24,6 +25,8 @@ jest.mock(
       children,
 );
 const store = jest.mocked(appearanceStore);
+const nativeModules = NativeModules as unknown as Record<string, unknown>;
+const previousSettingsManager = nativeModules.SettingsManager;
 
 function Content() {
   const appearance = useAssistantAppearance();
@@ -36,7 +39,18 @@ function Content() {
   );
 }
 
-beforeEach(() => jest.resetAllMocks());
+beforeEach(() => {
+  jest.resetAllMocks();
+  nativeModules.SettingsManager = { settings: {} };
+});
+
+afterAll(() => {
+  if (previousSettingsManager === undefined) {
+    delete nativeModules.SettingsManager;
+  } else {
+    nativeModules.SettingsManager = previousSettingsManager;
+  }
+});
 
 test('requires explicit selection and keeps failed save at setup before opening content', async () => {
   store.load.mockResolvedValue(null);
@@ -86,8 +100,27 @@ test('read errors retry without writing and edit cancellation preserves the save
   expect(store.save).not.toHaveBeenCalled();
 });
 
-test('clearing gates entry without unmounting the existing work and can be configured again', async () => {
-  store.load.mockResolvedValue({ avatar: 'leaf', name: null });
+test('ignores synthetic flags in the production gate', async () => {
+  nativeModules.SettingsManager = {
+    settings: {
+      OROT_TEST_PROFILE: 'core',
+      OROT_E2E_PROBE: 'medical-document-import',
+      OROT_TEST_ASSISTANT_APPEARANCE: 'synthetic',
+    },
+  };
+  store.load.mockResolvedValue(null);
+  await render(
+    <AssistantAppearanceProvider>
+      <Content />
+    </AssistantAppearanceProvider>,
+  );
+  await screen.findByText('비서 꾸미기');
+  expect(screen.queryByText('일반 화면')).toBeNull();
+  expect(store.save).not.toHaveBeenCalled();
+});
+
+test('keeps clear/reconfigure behind the gate after loading a saved appearance', async () => {
+  store.load.mockResolvedValue({ avatar: 'neutral', name: null });
   store.clear.mockResolvedValue();
   store.save.mockResolvedValue({ avatar: 'star', name: null });
   const unmounted = jest.fn();
@@ -101,6 +134,7 @@ test('clearing gates entry without unmounting the existing work and can be confi
     </AssistantAppearanceProvider>,
   );
   await screen.findByText('일반 화면');
+  expect(store.save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
   await fireEvent.press(screen.getByRole('button', { name: '선택 지우기' }));
   await screen.findByText('비서 꾸미기');
@@ -114,6 +148,7 @@ test('clearing gates entry without unmounting the existing work and can be confi
   await waitFor(() =>
     expect(store.save).toHaveBeenCalledWith({ avatar: 'star', name: null }),
   );
+  expect(store.save).toHaveBeenCalledTimes(1);
   expect(unmounted).not.toHaveBeenCalled();
 });
 
