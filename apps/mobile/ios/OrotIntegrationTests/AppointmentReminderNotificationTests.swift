@@ -100,7 +100,7 @@ final class AppointmentReminderNotificationTests: OrotFailFastTestCase {
         value["title"] = "Synthetic private title"
         value["body"] = "Synthetic private body"
         let request = try AppointmentReminderNotificationPlan(value as NSDictionary).request()
-        XCTAssertEqual(request.content.title, "Orot")
+        XCTAssertEqual(request.content.title, "오롯")
         XCTAssertEqual(request.content.body, "준비할 내용을 확인해 보세요.")
         XCTAssertEqual(Set(request.content.userInfo.keys.compactMap { $0 as? String }), ["appointmentId", "timeKey"])
         XCTAssertEqual(request.content.userInfo["appointmentId"] as? String, "synthetic-visit")
@@ -164,7 +164,7 @@ final class AppointmentReminderNotificationTests: OrotFailFastTestCase {
         XCTAssertEqual(request.appointmentId, "synthetic-next-visit")
         XCTAssertEqual(request.timeKey, "instant:\(Int64(updatedStart))")
         XCTAssertEqual(request.userInfoKeys, ["appointmentId", "timeKey"])
-        XCTAssertEqual(request.title, "Orot")
+        XCTAssertEqual(request.title, "오롯")
         XCTAssertEqual(request.body, "준비할 내용을 확인해 보세요.")
         XCTAssertEqual(
             try XCTUnwrap(request.nextTriggerAt),

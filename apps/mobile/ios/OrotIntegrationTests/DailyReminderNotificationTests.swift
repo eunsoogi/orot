@@ -47,6 +47,7 @@ final class DailyReminderNotificationTests: XCTestCase {
         _ = await scheduler.save(preference)
         XCTAssertEqual(center.requests.count, 1)
         let request = try XCTUnwrap(center.requests[DailyReminderNotifications.requestIdentifier])
+        XCTAssertEqual(request.content.title, "오롯")
         XCTAssertEqual(request.content.body, "오늘의 기록을 확인해 보세요.")
         XCTAssertEqual(request.content.userInfo as? [String: String], ["kind": "daily_report"])
         let trigger = try XCTUnwrap(request.trigger as? UNCalendarNotificationTrigger)
@@ -88,6 +89,43 @@ final class DailyReminderNotificationTests: XCTestCase {
         XCTAssertEqual(center.cancelled.last, DailyReminderNotifications.requestIdentifier)
         XCTAssertFalse(center.cancelled.contains(AppointmentReminderNotifications.requestIdentifier))
         XCTAssertEqual(center.prompts, 0)
+    }
+
+    func testReconcileRefreshesOlderPendingTitleWithoutChangingReminder() async throws {
+        let suite = "daily-reminder-upgrade-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let center = DailyReminderCenterFixture()
+        let scheduler = DailyReminderNotifications(defaults: defaults, center: center)
+        let preference: [String: Any] = ["enabled": true, "hour": 9, "minute": 30]
+        _ = await scheduler.save(preference)
+
+        // Model persisted opt-in settings and a pending request left by an older app build.
+        let existing = try XCTUnwrap(center.requests[DailyReminderNotifications.requestIdentifier])
+        let oldContent = UNMutableNotificationContent()
+        oldContent.title = "Orot"
+        oldContent.body = existing.content.body
+        oldContent.userInfo = existing.content.userInfo
+        center.requests[existing.identifier] = UNNotificationRequest(
+            identifier: existing.identifier,
+            content: oldContent,
+            trigger: existing.trigger,
+        )
+
+        let restarted = DailyReminderNotifications(defaults: defaults, center: center)
+        let reconciled = await restarted.reconcile()
+        XCTAssertEqual(reconciled["status"] as? String, "scheduled")
+        XCTAssertEqual(center.prompts, 0)
+        XCTAssertEqual(center.requests.count, 1)
+        let refreshed = try XCTUnwrap(center.requests[DailyReminderNotifications.requestIdentifier])
+        XCTAssertEqual(refreshed.identifier, existing.identifier)
+        XCTAssertEqual(refreshed.content.title, "오롯")
+        XCTAssertEqual(refreshed.content.body, "오늘의 기록을 확인해 보세요.")
+        XCTAssertEqual(refreshed.content.userInfo as? [String: String], ["kind": "daily_report"])
+        let trigger = try XCTUnwrap(refreshed.trigger as? UNCalendarNotificationTrigger)
+        XCTAssertTrue(trigger.repeats)
+        XCTAssertEqual(trigger.dateComponents.hour, 9)
+        XCTAssertEqual(trigger.dateComponents.minute, 30)
     }
 
     func testFailureAndDisableRemoveOnlyDailyRequest() async throws {
