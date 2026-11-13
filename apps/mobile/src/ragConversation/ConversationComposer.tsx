@@ -12,7 +12,7 @@ import { useNavigationContentInset } from '../navigation/useNavigationContentIns
 import { ComposerGlassBackground } from './ComposerGlassBackground';
 import { ConversationGlassAction } from './ConversationGlassAction';
 import { ConversationPhotoAttachment } from './ConversationPhotoAttachment';
-import type { PhotoDraftFailure } from './conversationPhotoDraft';
+import type { PhotoDraftFailure } from './conversationPhotoTypes';
 import { styles } from './ConversationScreen.styles';
 import { getRagConversationCopy } from './copy';
 
@@ -42,7 +42,7 @@ export function ConversationComposer({
   /** A separately owned action may occupy the trailing composer slot. */
   readonly trailingAction?: ReactNode;
   readonly photo?: {
-    readonly status: 'empty' | 'preparing' | 'ready' | 'error';
+    readonly status: 'empty' | 'preparing' | 'ready' | 'transferring' | 'error';
     readonly previewData?: string;
     readonly hasPhoto?: boolean;
     readonly errorReason?: PhotoDraftFailure;
@@ -121,6 +121,7 @@ export function ConversationComposer({
           (disabled ||
             !value.trim() ||
             photo?.status === 'preparing' ||
+            photo?.status === 'transferring' ||
             photo?.status === 'error' ||
             (photo?.status === 'ready' &&
               (!photo.deliveryReady || photo.deliveryMode !== 'ocr')))

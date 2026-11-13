@@ -157,6 +157,29 @@ test('composer cannot send a text-only request while its photo is being prepared
   expect(onSend).not.toHaveBeenCalled();
 });
 
+test('a photo being handed to a request cannot be sent or replaced again', async () => {
+  await render(
+    <ConversationComposer
+      value="합성 질문"
+      busy={false}
+      onChangeText={jest.fn()}
+      onSend={jest.fn()}
+      onCancel={jest.fn()}
+      photo={{
+        status: 'transferring',
+        hasPhoto: true,
+        onSelect: jest.fn(),
+        onRemove: jest.fn(),
+      }}
+    />,
+  );
+  expect(screen.getByTestId('rag-conversation-send').props.disabled).toBe(true);
+  expect(screen.getByRole('button', { name: '사진 첨부' })).toBeDisabled();
+  expect(
+    screen.getByText('사진을 안전하게 전송할 준비를 하고 있어요.'),
+  ).toBeTruthy();
+});
+
 test('a selected photo cannot be silently omitted when attachment delivery is unavailable', async () => {
   const base = {
     value: '합성 질문',

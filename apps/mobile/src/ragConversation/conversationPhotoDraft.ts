@@ -1,36 +1,30 @@
 import { createConversationPhotoCleanup } from './conversationPhotoCleanup';
-
-export type PhotoDraftFailure =
-  'unsupported' | 'empty' | 'protection' | 'unavailable';
-type State<T> =
-  | { readonly status: 'empty' }
-  | { readonly status: 'preparing'; readonly photo?: T }
-  | { readonly status: 'ready'; readonly photo: T }
-  | {
-      readonly status: 'error';
-      readonly photo?: T;
-      readonly reason?: PhotoDraftFailure;
-    };
+import { createConversationPhotoHandoffs } from './conversationPhotoHandoff';
+import { notifyPhotoListeners } from './conversationPhotoNotifications';
+import type { PhotoRequestIdentity } from './conversationPhotoHandoff';
+import type {
+  ConversationPhotoState as State,
+  PhotoDraftFailure,
+} from './conversationPhotoTypes';
 
 /** Owns selected originals until the session explicitly removes or transfers them. */
 export function createConversationPhotoDrafts<T>(operations: {
   readonly pick: () => Promise<T | null>;
   readonly discard: (photo: T) => Promise<void>;
   readonly captureValidity?: () => () => boolean;
+  readonly captureGeneration?: () => number;
   readonly errorReason?: (error: unknown) => PhotoDraftFailure | undefined;
+  readonly snapshot?: (photo: T) => T;
 }) {
   const states = new Map<number, State<T>>();
   const empty: State<T> = { status: 'empty' };
   const listeners = new Set<() => void>();
-  const notify = () =>
-    listeners.forEach(listener => {
-      try {
-        listener();
-      } catch {
-        /* A view cannot interrupt protected-file ownership. */
-      }
-    });
+  const notify = () => notifyPhotoListeners(listeners);
   const revisions = new Map<number, number>();
+  const validity = new Map<
+    number,
+    { valid: () => boolean; generation?: number }
+  >();
   const cleanup = createConversationPhotoCleanup(operations.discard, notify);
   const removing = new Map<number, Promise<void>>();
   let picking = false;
@@ -48,12 +42,33 @@ export function createConversationPhotoDrafts<T>(operations: {
     revisions.set(id, revision);
     return revision;
   };
+  const handoffs = createConversationPhotoHandoffs<T>({
+    committed: id => {
+      validity.delete(id);
+      update(id, empty);
+    },
+    rolledBack: async (id, photo, removed) => {
+      if (removed) {
+        validity.delete(id);
+        update(id, empty);
+        await retire(id, photo);
+      } else update(id, { status: 'ready', photo });
+    },
+  });
   const remove = (id: number): Promise<void> => {
     const pending = removing.get(id);
     if (pending) return pending;
+    const handoff = handoffs.detach(id);
+    if (handoff) {
+      advance(id);
+      validity.delete(id);
+      update(id, empty);
+      return handoff;
+    }
     const current = previousPhoto(get(id));
     const revision = advance(id);
     if (!current) {
+      validity.delete(id);
       update(id, empty);
       return Promise.resolve();
     }
@@ -67,7 +82,10 @@ export function createConversationPhotoDrafts<T>(operations: {
       } finally {
         removing.delete(id);
       }
-      if (revisions.get(id) === revision) update(id, empty);
+      if (revisions.get(id) === revision) {
+        validity.delete(id);
+        update(id, empty);
+      }
     })();
     removing.set(id, work);
     return work;
@@ -85,6 +103,23 @@ export function createConversationPhotoDrafts<T>(operations: {
     failedCleanupSessionIds: cleanup.failedIds,
     retryCleanup,
     remove,
+    beginHandoff(id: number, identity: PhotoRequestIdentity) {
+      const state = get(id);
+      if (clearing || picking || removing.has(id) || state.status !== 'ready')
+        return null;
+      const captured = validity.get(id);
+      const valid = captured?.valid ?? (() => true);
+      const photo = operations.snapshot?.(state.photo) ?? state.photo;
+      const lease = handoffs.begin(
+        id,
+        photo,
+        identity,
+        valid,
+        captured?.generation,
+      );
+      if (lease) update(id, { status: 'transferring', photo });
+      return lease;
+    },
     clear() {
       if (clearing) return clearing;
       let resolve!: () => void;
@@ -97,15 +132,17 @@ export function createConversationPhotoDrafts<T>(operations: {
       const current = [...states].map(([id, state]) => ({
         id,
         photo: previousPhoto(state),
+        handoff: handoffs.detach(id),
       }));
       // Hide every draft before asynchronous cleanup; a failed deletion must not restore visible health data.
       for (const { id } of current) {
         advance(id);
+        validity.delete(id);
         update(id, empty);
       }
       const work = [
-        ...current.flatMap(({ id, photo }) =>
-          photo ? [retire(id, photo)] : [],
+        ...current.flatMap(({ id, photo, handoff }) =>
+          handoff ? [handoff] : photo ? [retire(id, photo)] : [],
         ),
         ...cleanup.pendingIds().map(retryCleanup),
       ];
@@ -124,13 +161,17 @@ export function createConversationPhotoDrafts<T>(operations: {
         clearing ||
         picking ||
         removing.has(id) ||
+        handoffs.has(id) ||
         get(id).status === 'preparing'
       )
         return;
       picking = true;
       try {
         const prior = previousPhoto(get(id));
-        const valid = operations.captureValidity?.() ?? (() => true);
+        const previousValidity = prior ? validity.get(id)?.valid : undefined;
+        const currentValidity = operations.captureValidity?.() ?? (() => true);
+        const valid = () => currentValidity() && (previousValidity?.() ?? true);
+        const generation = operations.captureGeneration?.();
         const revision = advance(id);
         update(id, { status: 'preparing', photo: prior });
         // Subscribers may synchronously remove the session before the picker is presented.
@@ -198,6 +239,7 @@ export function createConversationPhotoDrafts<T>(operations: {
           await retire(id, selected);
           return;
         }
+        validity.set(id, { valid, generation });
         update(id, { status: 'ready', photo: selected });
       } finally {
         picking = false;

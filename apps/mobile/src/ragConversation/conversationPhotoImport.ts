@@ -17,6 +17,15 @@ export function createConversationPhotoImport(
   return createConversationPhotoDrafts({
     pick: () => service.selectDocument('photos'),
     discard: document => service.discardDocument(document),
+    captureGeneration: currentMedicalDocumentGeneration,
+    // Freeze one request snapshot; preview stays memory-only and must never enter a checkpoint.
+    snapshot: document =>
+      Object.freeze({
+        ...document,
+        sections: Object.freeze(
+          document.sections.map(section => Object.freeze({ ...section })),
+        ),
+      }),
     captureValidity: () => {
       const generation = currentMedicalDocumentGeneration();
       return () => canUseMedicalDocumentGeneration(generation);

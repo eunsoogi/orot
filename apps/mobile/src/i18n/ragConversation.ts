@@ -8,6 +8,8 @@ export const ragConversationKo = {
   'ragConversation.photo.remove': '첨부 사진 제거',
   'ragConversation.photo.preview': '첨부할 사진 미리보기',
   'ragConversation.photo.preparing': '사진을 준비하고 있어요.',
+  'ragConversation.photo.transferring':
+    '사진을 안전하게 전송할 준비를 하고 있어요.',
   'ragConversation.photo.error':
     '사진을 준비하지 못했어요. 다시 선택해 주세요.',
   'ragConversation.photo.unavailable':
@@ -25,6 +27,16 @@ export const ragConversationKo = {
     '이전 임시 사진을 정리하지 못했어요. 다시 시도해 주세요.',
   'ragConversation.photo.ocrDisclosure':
     '사진에서 추출한 글자를 질문과 함께 보내요. 사진 자체는 보내지 않아요.',
+  'ragConversation.photo.consentTitle':
+    '{provider}에서 사진의 글자를 처리해요.',
+  'ragConversation.photo.consentDestination':
+    '모델: {model}\n처리 대상: {recipient}',
+  'ragConversation.photo.consentRemote':
+    '추출한 글자가 선택한 서비스로 전송돼요. 사진 원본은 보내지 않아요.',
+  'ragConversation.photo.consentLocal':
+    '추출한 글자를 이 기기에서 처리해요. 사진 원본은 보내지 않아요.',
+  'ragConversation.photo.consentApprove': '동의하고 계속',
+  'ragConversation.photo.consentCancel': '취소',
   'ragConversation.sessions': '대화 목록',
   'ragConversation.newConversation': '새 대화',
   'ragConversation.transmissionNotice':

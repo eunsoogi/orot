@@ -4,7 +4,7 @@ import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
-import type { PhotoDraftFailure } from './conversationPhotoDraft';
+import type { PhotoDraftFailure } from './conversationPhotoTypes';
 
 /** Renders only draft controls; selecting a photo never triggers a conversation send. */
 export function ConversationPhotoAttachment({
@@ -12,7 +12,9 @@ export function ConversationPhotoAttachment({
   previewData,
   deliveryReady = false,
   deliveryMode,
-  hasPhoto = status === 'ready' || Boolean(previewData),
+  hasPhoto = status === 'ready' ||
+    status === 'transferring' ||
+    Boolean(previewData),
   errorReason,
   cleanupPending = false,
   onRetryCleanup,
@@ -22,7 +24,7 @@ export function ConversationPhotoAttachment({
   onRemove,
   children,
 }: {
-  readonly status: 'empty' | 'preparing' | 'ready' | 'error';
+  readonly status: 'empty' | 'preparing' | 'ready' | 'transferring' | 'error';
   readonly previewData?: string;
   readonly deliveryReady?: boolean;
   readonly deliveryMode?: 'ocr';
@@ -36,7 +38,11 @@ export function ConversationPhotoAttachment({
   readonly onRemove: () => void;
   readonly children?: ReactNode;
 }) {
-  const selectDisabled = disabled || pickerDisabled || status === 'preparing';
+  const selectDisabled =
+    disabled ||
+    pickerDisabled ||
+    status === 'preparing' ||
+    status === 'transferring';
   const errorKeys = {
     unsupported: 'ragConversation.photo.unsupported',
     empty: 'ragConversation.photo.empty',
@@ -67,14 +73,18 @@ export function ConversationPhotoAttachment({
           </Pressable>
         </View>
       ) : null}
-      {status === 'preparing' || status === 'error' ? (
+      {status === 'preparing' ||
+      status === 'transferring' ||
+      status === 'error' ? (
         <Text accessibilityLiveRegion="polite" style={styles.status}>
           {t(
             status === 'preparing'
               ? 'ragConversation.photo.preparing'
-              : errorReason
-                ? errorKeys[errorReason]
-                : 'ragConversation.photo.error',
+              : status === 'transferring'
+                ? 'ragConversation.photo.transferring'
+                : errorReason
+                  ? errorKeys[errorReason]
+                  : 'ragConversation.photo.error',
           )}
         </Text>
       ) : null}
