@@ -103,6 +103,8 @@ export const fixtureTests = [
   'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable',
   'OrotUITests/ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
   'OrotUITests/ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
+  // Keep the visit-entry review, long question, large text and native keyboard boundary in the fixture suite.
+  'OrotUITests/ConversationVisitPreparationUITests/testLongPreparedQuestionKeepsAccessibleOrderWithLargeTextAndKeyboard',
   'OrotUITests/KeyboardSafeAreaUITests/testConversationLongTitlesAndFullSwipeAcrossTextSizes',
   'OrotUITests/PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe',
   'OrotUITests/HealthImportUITests/testDisplayOnlyBloodPressureCompletionCounts',
