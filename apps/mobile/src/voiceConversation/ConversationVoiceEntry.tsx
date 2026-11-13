@@ -208,7 +208,13 @@ export function ConversationVoiceEntry(
         phase={state.phase}
         status={displayStatus}
         identity={
-          currentSession ? <AssistantHeader session={currentSession} /> : null
+          currentSession ? (
+            <AssistantHeader
+              session={currentSession}
+              status={displayStatus}
+              editable={false}
+            />
+          ) : null
         }
         onEnd={() => {
           session.current?.stop();

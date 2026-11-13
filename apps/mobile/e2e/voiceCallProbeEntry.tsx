@@ -115,7 +115,9 @@ function VoiceCallProbeEntry() {
         visible={visible}
         phase={state.phase}
         status={`Synthetic ${state.phase}`}
-        identity={<Text>Orot synthetic fixture</Text>}
+        identity={
+          <Text testID="voice-fixture-identity">Orot synthetic fixture</Text>
+        }
         onEnd={() => {
           session.current?.stop();
           setVisible(false);
