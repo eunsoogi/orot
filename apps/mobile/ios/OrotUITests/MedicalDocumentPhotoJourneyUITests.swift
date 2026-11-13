@@ -21,9 +21,11 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
             ProcessInfo.processInfo.environment["OROT_DUO_PHOTO_VALIDATION"] == "YES"
         let app = XCUIApplication()
         defer { app.terminate() }
+        // The separate appearance journey covers onboarding; this test seeds only its neutral synthetic prerequisite.
         app.launchArguments = [
             "-OROT_TEST_PROFILE", "core",
             "-OROT_E2E_PROBE", "medical-document-import",
+            "-OROT_TEST_ASSISTANT_APPEARANCE", "synthetic",
             "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
