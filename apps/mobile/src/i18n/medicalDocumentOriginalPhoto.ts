@@ -1,5 +1,8 @@
-/** Korean copy for saved photo loading, recoverable states, and accessible zoom. */
+/** Korean copy for selecting and viewing medical-document original photos. */
 export const medicalDocumentOriginalPhotoKo = {
+  'medicalDocument.review.originalPhoto': '선택한 원본 사진',
+  'medicalDocument.review.photoReselect':
+    '글자가 정확하지 않으면 가져오지 않고 다른 사진을 선택해 주세요.',
   'medicalDocument.source.original.title': '원본 사진',
   'medicalDocument.source.original.loading':
     '저장된 원본 사진을 불러오고 있어요.',

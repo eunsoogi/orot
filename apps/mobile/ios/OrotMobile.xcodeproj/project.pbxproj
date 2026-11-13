@@ -150,6 +150,8 @@
 		A37000000000000000000001 /* MedicalDocumentTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */; };
 		A37000000000000000000006 /* MedicalDocumentPhotoPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000006 /* MedicalDocumentPhotoPicker.swift */; };
 		A37000000000000000000002 /* MedicalDocumentFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000002 /* MedicalDocumentFileStore.swift */; };
+		A9C7D2E48F5B4178BA2C0004 /* MedicalDocumentFileStoreFailure.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C7D2E48F5B4178BA2C0005 /* MedicalDocumentFileStoreFailure.swift */; };
+		A9C7D2E48F5B4178BA2C0006 /* MedicalDocumentImportErrorMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C7D2E48F5B4178BA2C0007 /* MedicalDocumentImportErrorMapper.swift */; };
 		A37000000000000000000003 /* MedicalDocumentImportModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000003 /* MedicalDocumentImportModule.swift */; };
 		A37000000000000000000004 /* MedicalDocumentImportModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000004 /* MedicalDocumentImportModule.m */; };
 		A37000000000000000000005 /* MedicalDocumentImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000005 /* MedicalDocumentImportTests.swift */; };
@@ -530,6 +532,8 @@
 		B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentTextExtractor.swift; path = OrotMobile/MedicalDocumentTextExtractor.swift; sourceTree = "<group>"; };
 		B37000000000000000000006 /* MedicalDocumentPhotoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentPhotoPicker.swift; path = OrotMobile/MedicalDocumentPhotoPicker.swift; sourceTree = "<group>"; };
 		B37000000000000000000002 /* MedicalDocumentFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentFileStore.swift; path = OrotMobile/MedicalDocumentFileStore.swift; sourceTree = "<group>"; };
+		A9C7D2E48F5B4178BA2C0005 /* MedicalDocumentFileStoreFailure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentFileStoreFailure.swift; path = OrotMobile/MedicalDocumentFileStoreFailure.swift; sourceTree = "<group>"; };
+		A9C7D2E48F5B4178BA2C0007 /* MedicalDocumentImportErrorMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentImportErrorMapper.swift; path = OrotMobile/MedicalDocumentImportErrorMapper.swift; sourceTree = "<group>"; };
 		B37000000000000000000003 /* MedicalDocumentImportModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentImportModule.swift; path = OrotMobile/MedicalDocumentImportModule.swift; sourceTree = "<group>"; };
 		B37000000000000000000004 /* MedicalDocumentImportModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MedicalDocumentImportModule.m; path = OrotMobile/MedicalDocumentImportModule.m; sourceTree = "<group>"; };
 		B37000000000000000000005 /* MedicalDocumentImportTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentImportTests.swift; sourceTree = "<group>"; };
@@ -799,6 +803,8 @@
 				B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */,
 				B37000000000000000000006 /* MedicalDocumentPhotoPicker.swift */,
 				B37000000000000000000002 /* MedicalDocumentFileStore.swift */,
+				A9C7D2E48F5B4178BA2C0005 /* MedicalDocumentFileStoreFailure.swift */,
+				A9C7D2E48F5B4178BA2C0007 /* MedicalDocumentImportErrorMapper.swift */,
 				B37000000000000000000003 /* MedicalDocumentImportModule.swift */,
 				B37000000000000000000004 /* MedicalDocumentImportModule.m */,
 				16BE8A107CE0469394AD138F /* MedicalDocumentFileOperations.swift */,
@@ -1493,6 +1499,8 @@
 				A37000000000000000000001 /* MedicalDocumentTextExtractor.swift in Sources */,
 				A37000000000000000000006 /* MedicalDocumentPhotoPicker.swift in Sources */,
 				A37000000000000000000002 /* MedicalDocumentFileStore.swift in Sources */,
+				A9C7D2E48F5B4178BA2C0004 /* MedicalDocumentFileStoreFailure.swift in Sources */,
+				A9C7D2E48F5B4178BA2C0006 /* MedicalDocumentImportErrorMapper.swift in Sources */,
 				A37000000000000000000003 /* MedicalDocumentImportModule.swift in Sources */,
 				A37000000000000000000004 /* MedicalDocumentImportModule.m in Sources */,
 				80FB7B5097A24412B9D2FD96 /* MedicalDocumentFileOperations.swift in Sources */,

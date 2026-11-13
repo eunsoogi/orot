@@ -25,7 +25,6 @@ export const coreTests = [
   'OrotIntegrationTests/DailyReminderNotificationTests/testFailureAndDisableRemoveOnlyDailyRequest',
   'OrotIntegrationTests/DailyReminderNotificationTests/testDeniedPermissionAndInvalidTimeDoNotSchedule',
   'OrotIntegrationTests/DailyReminderNotificationTests/testOnlyExplicitEnableRequestsUndeterminedPermission',
-  'OrotIntegrationTests/DailyReminderNotificationTests/testReconcileRefreshesOlderPendingTitleWithoutChangingReminder',
   'OrotIntegrationTests/AppointmentReminderDiagnosticTests/testSentinelNSErrorIsRedactedAndRethrownByIdentity',
   'OrotIntegrationTests/AppointmentReminderDiagnosticTests/testOriginCarrierSurvivesActualRNSerializationWithoutOriginalNSError',
   // Notification privacy, trigger identity, replacement and cold-start delivery remain native obligations.
