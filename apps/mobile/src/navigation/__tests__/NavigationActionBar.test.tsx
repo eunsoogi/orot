@@ -68,23 +68,23 @@ describe('bottom navigation actions', () => {
     expect(requestBack).toHaveBeenCalledTimes(1);
   });
 
-  it('distinguishes home from back and leaves the root with the same guard', async () => {
+  it('exposes Back without a Home action', async () => {
     const controller = createNavigationController<'home' | 'details'>('home');
     controller.push('details');
-    const requestHome = jest.spyOn(controller, 'requestHome');
+    const requestBack = jest.spyOn(controller, 'requestBack');
 
     await render(
       <NavigationActionBar
         controller={controller}
-        showHome
+
         surface={FallbackSurface}
         safeAreaHandledByParent
       />,
     );
 
-    const home = screen.getByRole('button', { name: '홈 화면으로 이동' });
-    await fireEvent.press(home);
-    expect(requestHome).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('navigation-home')).toBeNull();
+    await fireEvent.press(screen.getByTestId('navigation-back'));
+    expect(requestBack).toHaveBeenCalledTimes(1);
   });
 
   it('shows the core action at the root with its descriptive accessible name', async () => {
@@ -167,7 +167,7 @@ describe('bottom navigation actions', () => {
     await render(
       <NavigationActionBar
         controller={controller}
-        showHome
+
         safeAreaHandledByParent
         surface={FallbackSurface}
       />,
@@ -175,7 +175,7 @@ describe('bottom navigation actions', () => {
 
     expect(screen.getByTestId('navigation-bar-fallback')).toBeVisible();
     expect(
-      screen.getByRole('button', { name: '홈 화면으로 이동' }),
+      screen.getByRole('button', { name: '이전 화면으로 돌아가기' }),
     ).toBeVisible();
   });
 

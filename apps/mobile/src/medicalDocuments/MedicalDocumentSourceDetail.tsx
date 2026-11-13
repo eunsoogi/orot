@@ -6,13 +6,15 @@ import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { appColors } from '../layout/appColors';
 import { useNavigationBackAction } from '../navigation/useNavigationPrimaryAction';
 import type { SavedMedicalDocument } from './medicalDocumentImportService';
+import { MedicalDocumentOriginalPhoto } from './MedicalDocumentOriginalPhoto';
+import { isSavedMedicalDocumentPhoto } from './medicalDocumentOriginalPhotoUtils';
 
 interface MedicalDocumentSourceViewProps {
   readonly document: SavedMedicalDocument;
   readonly onBack: () => void;
 }
 
-/** Keeps saved metadata and spans in one measured region while the Records scene scrolls. */
+/** Keeps saved metadata, original photos, and OCR spans in the Records scene's measured scroll. */
 export function MedicalDocumentSourceView({
   document,
   onBack,
@@ -60,6 +62,12 @@ export function MedicalDocumentSourceView({
               })}
             </Text>
           </View>
+          {isSavedMedicalDocumentPhoto(document.title) ? (
+            <MedicalDocumentOriginalPhoto
+              expectedContentHash={document.contentHash ?? null}
+              sourceId={document.id}
+            />
+          ) : null}
           <View
             style={[styles.panel, styles.evidenceContent]}
             testID="medical-document-source-evidence"

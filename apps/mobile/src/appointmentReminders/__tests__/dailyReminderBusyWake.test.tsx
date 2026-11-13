@@ -54,7 +54,7 @@ test('a busy explicit daily tap does not immediately restore and re-prompt itsel
   const runtime = createAppointmentReminderRuntime(
     async () => createAppointmentStore([]).repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   const confirm = jest.fn(async () => false);
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,

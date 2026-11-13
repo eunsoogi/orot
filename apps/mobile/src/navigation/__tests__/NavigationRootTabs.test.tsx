@@ -27,7 +27,7 @@ test('renders five tabs and routes the selected destination', async () => {
   const root = controller.getSnapshot().currentRoute;
   controller.registerLeaveGuard(root.key, async () => true);
   const onSelect = jest.fn();
-  const rootTabs: NavigationRootTabs = { activeTab: 'home', onSelect };
+  const rootTabs: NavigationRootTabs = { activeTab: 'overview', onSelect };
   await render(
     <NavigationActionBar
       controller={controller}
@@ -37,14 +37,22 @@ test('renders five tabs and routes the selected destination', async () => {
     />,
   );
 
-  for (const tab of ['home', 'records', 'schedule', 'ai', 'settings']) {
+  for (const tab of [
+    'conversation',
+    'overview',
+    'records',
+    'schedule',
+    'settings',
+  ]) {
     expect(screen.getByTestId(`navigation-tab-${tab}`)).toBeVisible();
   }
   expect(
-    screen.getByTestId('navigation-tab-home').props.accessibilityState,
+    screen.getByTestId('navigation-tab-overview').props.accessibilityState,
   ).toEqual({ selected: true, disabled: false });
   expect(
-    StyleSheet.flatten(screen.getByTestId('navigation-tab-home').props.style),
+    StyleSheet.flatten(
+      screen.getByTestId('navigation-tab-overview').props.style,
+    ),
   ).toEqual(expect.objectContaining({ borderRadius: 26, minHeight: 52 }));
   expect(StyleSheet.flatten(screen.getByText('⌂').props.style)).toEqual(
     expect.objectContaining({ fontSize: 18, lineHeight: 20 }),
@@ -58,8 +66,8 @@ test('renders five tabs and routes the selected destination', async () => {
     screen.getByTestId('navigation-tab-records').props.accessibilityState,
   ).toEqual({ selected: false, disabled: false });
   expect(
-    screen.getByTestId('navigation-tab-home').props.accessibilityLabel,
-  ).toBe('홈 탭');
+    screen.getByTestId('navigation-tab-overview').props.accessibilityLabel,
+  ).toBe('한눈에 탭');
   expect(screen.queryByTestId('navigation-back')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-tab-records'));
   await waitFor(() => expect(onSelect).toHaveBeenCalledWith('records'));
@@ -74,7 +82,7 @@ test('keeps the current tab when its registered leave guard denies switching', a
   await render(
     <NavigationActionBar
       controller={controller}
-      rootTabs={{ activeTab: 'home', onSelect }}
+      rootTabs={{ activeTab: 'overview', onSelect }}
       safeAreaHandledByParent
       surface={FallbackSurface}
     />,
@@ -93,7 +101,10 @@ test('animates changed selections and settles immediately with Reduce Motion', a
     stop: jest.fn(),
     reset: jest.fn(),
   } as unknown as Animated.CompositeAnimation);
-  const renderBar = (activeTab: 'home' | 'records', reduceMotion = false) => (
+  const renderBar = (
+    activeTab: 'overview' | 'records',
+    reduceMotion = false,
+  ) => (
     <NavigationMotionContext.Provider value={reduceMotion}>
       <NavigationActionBar
         controller={controller}
@@ -104,7 +115,7 @@ test('animates changed selections and settles immediately with Reduce Motion', a
     </NavigationMotionContext.Provider>
   );
 
-  const view = await render(renderBar('home'));
+  const view = await render(renderBar('overview'));
   expect(timing).not.toHaveBeenCalled();
 
   await view.rerender(renderBar('records'));
@@ -129,9 +140,9 @@ test('animates changed selections and settles immediately with Reduce Motion', a
   );
 
   timing.mockClear();
-  await view.rerender(renderBar('home', true));
+  await view.rerender(renderBar('overview', true));
   expect(timing).not.toHaveBeenCalled();
   expect(
-    screen.getByTestId('navigation-tab-home').props.accessibilityState,
+    screen.getByTestId('navigation-tab-overview').props.accessibilityState,
   ).toEqual({ selected: true, disabled: false });
 });

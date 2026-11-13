@@ -65,12 +65,16 @@ export function AiFeatureFlowScreen({
       entryContext={{
         intent: intent ?? 'conversation',
         entryKey: navigationRouteKey ?? route,
-        appointmentId: reminderRuntime?.homePreparationTargets.get(
+        appointmentId: reminderRuntime?.overviewPreparationTargets.get(
           navigationRouteKey ?? '',
         ),
         ...(followUp ? { dailyReport: followUp } : {}),
       }}
       providerSelection={providerSelection}
+      voiceSelection={{
+        revision: selectedAiRevision,
+        resolve: resolveSelectedAi,
+      }}
       renderStoredReportTask={(card, onChat, onTaskIdentity, onTaskResult) => (
         <ConversationReportTask
           card={card}

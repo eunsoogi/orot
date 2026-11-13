@@ -16,7 +16,7 @@ final class MedicalDocumentPickerRecoveryUITests: OrotFailFastTestCase {
         cancelPhotoPicker.tap()
         try assertImportActionsReady(app)
 
-        try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         try assertImportActionsReady(app)
 
@@ -55,7 +55,7 @@ final class MedicalDocumentPickerRecoveryUITests: OrotFailFastTestCase {
         XCTAssertTrue(pickerCancel.waitForNonExistence(timeout: 5), app.debugDescription)
         try assertImportActionsReady(app)
 
-        try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "records-import-medical-photo")
         let reopenedCancel = waitForPhotoPicker(app, photoAction, name: "medical-photo-picker-after-gesture-reopen")
@@ -96,7 +96,7 @@ final class MedicalDocumentPickerRecoveryUITests: OrotFailFastTestCase {
             cancel.tap()
         }
         try assertImportActionsReady(app)
-        try NavigationUITestConditions.openTab(app, "home", markers: ["welcome-title"])
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "records-import-medical-photo")
         let reopenedCancel = waitForPhotoPicker(app, photoAction, name: "medical-photo-picker-after-foreground")
@@ -149,7 +149,7 @@ final class MedicalDocumentPickerRecoveryUITests: OrotFailFastTestCase {
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
-        XCTAssertTrue(node(app, "welcome-title").waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(node(app, "rag-conversation-screen").waitForAppearance(), app.debugDescription)
         DebugUITestConditions.dismissWarningToast(app)
     }
 

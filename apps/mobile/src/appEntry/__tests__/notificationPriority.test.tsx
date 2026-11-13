@@ -87,7 +87,7 @@ test('a cold appointment tap wins over a saved passive conversation restore', as
   const runtime = createAppointmentReminderRuntime(
     async () => store.repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
     async () => true,
@@ -126,7 +126,7 @@ test('a pending reply prevents passive daily restoration before reply validation
   const runtime = createAppointmentReminderRuntime(
     async () => createAppointmentStore([]).repository,
   );
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   controller.registerLeaveGuard(
     controller.getSnapshot().currentRoute.key,
     async () => true,

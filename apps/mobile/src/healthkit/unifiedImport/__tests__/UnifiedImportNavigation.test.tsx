@@ -52,7 +52,7 @@ test('keeps the run when leaving is declined and cancels only after confirmed sh
   );
   controller.push('import');
   await render(
-    <NavigationRouteAdapter controller={controller} showHome>
+    <NavigationRouteAdapter controller={controller}>
       {actions =>
         actions.route.name === 'import' ? (
           <HealthKitImportScreen
@@ -107,7 +107,7 @@ test('keeps the run when leaving is declined and cancels only after confirmed sh
   expect(runFeature).not.toHaveBeenCalled();
 });
 
-test.each(['navigation-back', 'navigation-home'])(
+test.each(['navigation-back'])(
   'blocks %s while a selected calendar candidate is saving and releases it after completion',
   async navigationID => {
     // Hold the actual coordinator persistence boundary while using the production navigation shell.
@@ -119,7 +119,7 @@ test.each(['navigation-back', 'navigation-home'])(
     );
     controller.push('import');
     await render(
-      <NavigationRouteAdapter controller={controller} showHome>
+      <NavigationRouteAdapter controller={controller}>
         {actions =>
           actions.route.name === 'import' ? (
             <HealthKitImportScreen
@@ -151,7 +151,7 @@ test.each(['navigation-back', 'navigation-home'])(
       screen.getByTestId('unified-import-eventkit-confirm'),
     ).toBeDisabled();
     expect(screen.getByTestId('navigation-back')).toBeDisabled();
-    expect(screen.getByTestId('navigation-home')).toBeDisabled();
+    expect(screen.queryByTestId('navigation-home')).toBeNull();
     const confirmationsBefore = jest.mocked(confirmNavigationLeave).mock.calls
       .length;
     await fireEvent.press(screen.getByTestId(navigationID));
@@ -161,7 +161,7 @@ test.each(['navigation-back', 'navigation-home'])(
     await act(async () => save.resolve());
     await screen.findByTestId('unified-import-eventkit-confirmed');
     expect(screen.getByTestId('navigation-back')).toBeEnabled();
-    expect(screen.getByTestId('navigation-home')).toBeEnabled();
+    expect(screen.queryByTestId('navigation-home')).toBeNull();
     await fireEvent.press(screen.getByTestId(navigationID));
     await screen.findByTestId('records-home');
     expect(confirmCalendarEvent).toHaveBeenCalledTimes(1);

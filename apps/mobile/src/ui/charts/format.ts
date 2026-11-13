@@ -36,10 +36,10 @@ export function formatChartValue(
 ): string {
   const amount = formatNumber(value, { maximumSignificantDigits: 21 });
   if (metric === 'sleep' && unit === 'min')
-    return `${amount}${t('home.metricUnit.minutes')}`;
+    return `${amount}${t('overview.metricUnit.minutes')}`;
   if (metric === 'heartRate' && unit === 'count/min')
-    return `${amount}${t('home.metricUnit.countPerMinute')}`;
+    return `${amount}${t('overview.metricUnit.countPerMinute')}`;
   if (metric === 'steps' && unit === 'count')
-    return `${amount}${t('home.metricUnit.steps')}`;
+    return `${amount}${t('overview.metricUnit.steps')}`;
   return unit ? `${amount} ${unit}` : amount;
 }

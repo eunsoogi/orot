@@ -31,7 +31,7 @@ jest.mock('react-native-safe-area-context', () => {
 });
 
 describe('measured bottom navigation', () => {
-  it('fits Back, Home, Save and Cancel in a 390 point window without hiding actions', async () => {
+  it('fits Back, Save and Cancel in a 390 point window without hiding actions', async () => {
     const originalWindow = Dimensions.get('window');
     const originalScreen = Dimensions.get('screen');
     const metricsControl = globalThis as typeof globalThis & {
@@ -56,7 +56,7 @@ describe('measured bottom navigation', () => {
       await render(
         <NavigationActionBar
           controller={controller}
-          showHome
+
           safeAreaHandledByParent
           pageActions={actions}
         />,
@@ -69,8 +69,8 @@ describe('measured bottom navigation', () => {
           nativeEvent: {
             revision: dock.props.pageMetricsRequest.revision,
             width: 374,
-            widths: [48, 64, 88, 88, 44],
-            heights: [48, 48, 48, 48, 48],
+            widths: [48, 88, 88, 44],
+            heights: [48, 48, 48, 48],
           },
         }),
       );
@@ -83,8 +83,8 @@ describe('measured bottom navigation', () => {
           nativeEvent: {
             revision: resizedDock.props.pageMetricsRequest.revision,
             width: 374,
-            widths: [48, 64, 88, 88, 44],
-            heights: [48, 48, 48, 48, 48],
+            widths: [48, 88, 88, 44],
+            heights: [48, 48, 48, 48],
           },
         }),
       );
@@ -121,7 +121,7 @@ describe('measured bottom navigation', () => {
         <NavigationActionBar
           controller={controller}
           safeAreaHandledByParent
-          rootTabs={{ activeTab: 'home', onSelect }}
+          rootTabs={{ activeTab: 'overview', onSelect }}
           pageActions={[
             {
               id: 'retry',
@@ -148,7 +148,7 @@ describe('measured bottom navigation', () => {
         }),
       );
       expect(screen.getByTestId('navigation-bottom-single-row')).toBeTruthy();
-      expect(screen.getByTestId('navigation-tab-home')).toBeTruthy();
+      expect(screen.getByTestId('navigation-tab-overview')).toBeTruthy();
       expect(
         screen.getByTestId('navigation-page-action-overflow'),
       ).toBeTruthy();
@@ -162,7 +162,7 @@ describe('measured bottom navigation', () => {
         <NavigationActionBar
           controller={controller}
           safeAreaHandledByParent
-          rootTabs={{ activeTab: 'home', onSelect }}
+          rootTabs={{ activeTab: 'overview', onSelect }}
           pageActions={[
             {
               id: 'retry',
@@ -192,7 +192,7 @@ describe('measured bottom navigation', () => {
       await render(
         <NavigationActionBar
           controller={controller}
-          showHome
+
           safeAreaHandledByParent
           pageActions={[
             {
@@ -215,8 +215,8 @@ describe('measured bottom navigation', () => {
           nativeEvent: {
             revision,
             width: 390,
-            widths: [48, 64, 80, 44],
-            heights: [48, 48, 48, 48],
+            widths: [48, 80, 44],
+            heights: [48, 48, 48],
           },
         }),
       );
@@ -230,7 +230,7 @@ describe('measured bottom navigation', () => {
         expect.objectContaining({ position: 'absolute', zIndex: 1 }),
       );
       expect(screen.getByTestId('navigation-back')).toBeTruthy();
-      expect(screen.getByTestId('navigation-home')).toBeTruthy();
+      expect(screen.queryByTestId('navigation-home')).toBeNull();
       expect(screen.getByTestId('save')).toBeTruthy();
     } finally {
       delete metricsControl.__OROT_TEST_PAGE_METRICS__;

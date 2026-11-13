@@ -214,7 +214,7 @@ test('a Duo selection rejects Core-only cases when none of the selected cases be
 // The allowlist must admit this existing keyboard case before the runner invokes Xcode.
 test('a keyboard navigation case is selectable on the dedicated Duo profile', () => {
   const identifier =
-    'OrotUITests/RootNavigationUITests/testContextualNavigationRemainsAboveKeyboardAndHomeDismissesIt';
+    'OrotUITests/RootNavigationUITests/testContextualBackRemainsAboveKeyboardAndDismissesIt';
   const accepted = fixture(0, 'duo', 'all', [identifier]);
   try {
     assert.equal(accepted.outcome.status, 0, accepted.outcome.stderr);

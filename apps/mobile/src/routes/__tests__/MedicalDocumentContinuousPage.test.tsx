@@ -82,10 +82,10 @@ async function renderRecords(
   Dimensions.set({ window: viewport, screen: viewport });
   await render(
     <NavigationRouteAdapter
-      controller={createNavigationController<AppNavigationRoute>('home')}
+      controller={createNavigationController<AppNavigationRoute>('root')}
       contentLayoutOwner={appContentLayoutOwner}
       rootTabs={{ activeTab: 'records', onSelect: jest.fn() }}
-      scrollable={route => route.name === 'home'}
+      scrollable={route => route.name === 'root'}
     >
       {() => (
         <RecordsRoute

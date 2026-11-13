@@ -41,8 +41,6 @@ export interface NavigationPrimaryAction {
 export interface NavigationActionBarProps<Name extends string> {
   readonly controller: NavigationController<Name>;
   readonly leaveDisabled?: boolean;
-  readonly showHome?: boolean;
-  readonly homeAction?: () => void | Promise<unknown>;
   readonly primaryAction?: NavigationPrimaryAction;
   readonly pageActions?: readonly NavigationRouteAction[];
   readonly routeBackAction?: NavigationRouteBackAction;
@@ -58,8 +56,6 @@ export interface NavigationActionBarProps<Name extends string> {
 export function NavigationActionBar<Name extends string>({
   controller,
   leaveDisabled = false,
-  showHome = false,
-  homeAction,
   primaryAction,
   pageActions = [],
   routeBackAction,
@@ -88,11 +84,9 @@ export function NavigationActionBar<Name extends string>({
   }, []);
 
   const backDisabled = snapshot.isTransitioning || leaveDisabled;
-  const canGoHome = showHome && snapshot.routes.length > 1;
   if (
     !snapshot.canGoBack &&
     !routeBackAction &&
-    !canGoHome &&
     !primaryAction &&
     !pageActions.length &&
     !rootTabs
@@ -104,8 +98,6 @@ export function NavigationActionBar<Name extends string>({
     controller,
     snapshot,
     backDisabled,
-    canGoHome,
-    homeAction,
     routeBackAction,
     rootTabs,
   });
@@ -115,6 +107,7 @@ export function NavigationActionBar<Name extends string>({
       style={rootTabs ? styles.rootTabs : styles.actions}
       testID="bottom-navigation-action-bar"
     >
+      {/* Keep contextual Back first, ahead of persistent root tabs in the rail. */}
       {routeBackAction || (snapshot.canGoBack && !rootTabs) ? (
         <NavigationActionButton
           accessibilityLabel={navigationText.back.accessibilityLabel}
@@ -138,20 +131,6 @@ export function NavigationActionBar<Name extends string>({
           controller={controller}
           disabled={backDisabled}
           rootTabs={rootTabs}
-        />
-      ) : null}
-      {canGoHome && !rootTabs ? (
-        <NavigationActionButton
-          accessibilityLabel={navigationText.home.accessibilityLabel}
-          disabled={backDisabled}
-          isDarkAppearance={isDarkAppearance}
-          label={navigationText.home.label}
-          onPress={() =>
-            settleNavigationRequest(
-              Promise.resolve(homeAction?.() ?? controller.requestHome()),
-            )
-          }
-          testID="navigation-home"
         />
       ) : null}
     </View>

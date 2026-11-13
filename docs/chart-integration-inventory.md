@@ -15,7 +15,7 @@ Home and saved-observation adapters and updates the shared presentation.
 
 | Screen and metric                                    | Route to renderer                                                                                                                                                      | Data contract and scope                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Home: sleep, heart rate, body mass, steps            | `routes/home/HomeMetrics.tsx` selects `HomeMetricCard` or its placeholder; `HomeMetricCard.tsx` adapts `homeMetricChart.ts` into `ui/charts/ChartPlot.tsx` using bars. | Selection is two to four unique metrics, initially sleep and heart rate. `metricProjection.ts` maps sleep to daily asleep minutes, steps to daily sum, heart rate to daily mean, and body mass to latest daily observation. The separate comparison uses daily means for body mass and heart rate, daily sums for steps, and daily sleep duration; partial days are excluded. Missing days remain null rather than zero. |
+| Home: sleep, heart rate, body mass, steps            | `routes/overview/OverviewMetrics.tsx` selects `OverviewMetricCard` or its placeholder; `OverviewMetricCard.tsx` adapts `overviewMetricChart.ts` into `ui/charts/ChartPlot.tsx` using bars. | Selection is two to four unique metrics, initially sleep and heart rate. `metricProjection.ts` maps sleep to daily asleep minutes, steps to daily sum, heart rate to daily mean, and body mass to latest daily observation. The separate comparison uses daily means for body mass and heart rate, daily sums for steps, and daily sleep duration; partial days are excluded. Missing days remain null rather than zero. |
 | Health-record category: blood pressure               | `HealthRecordsCategoryCard.tsx` -> `HealthRecordsCategoryCharts.tsx` -> `HealthRecordsLineChart.tsx` -> `ChartPlot` using lines.                                       | One chart per stored unit group; systolic and diastolic are distinct labeled series, with solid and dashed styles. Values are saved observations, not daily aggregates.                                                                                                                                                                                                                                                  |
 | Health-record category: heart rate, steps, body mass | Same health-record path as blood pressure.                                                                                                                             | Each category and unit group has its own line chart. Points retain saved values, timestamps and source labels. Invalid numeric values or dates are dropped, instants are sorted, and duplicate instants are retained. The initial category page covers a month and `hasMore` reports partial coverage.                                                                                                                   |
 
@@ -47,12 +47,12 @@ These are source observations, not native interaction or performance results.
 
 ## Loading, deletion and lifecycle
 
-`useHomeMetrics.ts` invalidates its snapshot after local data
+`useOverviewMetrics.ts` invalidates its snapshot after local data
 clear, source deletion and app return to active; load generations reject older
 completions. Recoverable refresh failure retains a snapshot as stale, while a
 new selection has a separate generation guard. Midnight schedules a refresh.
-The component tests `useHomeMetricsInvalidation.test.tsx`,
-`useHomeMetrics.test.tsx` and `HomeMetricsChartState.test.tsx` are relevant;
+The component tests `useOverviewMetricsInvalidation.test.tsx`,
+`useOverviewMetrics.test.tsx` and `OverviewMetricsChartState.test.tsx` are relevant;
 their presence here does not establish a pass at the integration revision.
 
 The integrated `useHealthRecordCategoryPages.ts` retains valid pages as stale
@@ -65,8 +65,8 @@ loss is a separate observation from committed deletion.
 ## Evidence mapping and outstanding acceptance
 
 - `metricProjection.test.ts` covers examples of gap/partial handling, latest
-  weight versus comparison means, and zero versus missing. `HomeMetricCard.test.tsx`
-  and `HomeMetricsChartState.test.tsx` observe the adapter with a mocked chart.
+  weight versus comparison means, and zero versus missing. `OverviewMetricCard.test.tsx`
+  and `OverviewMetricsChartState.test.tsx` observe the adapter with a mocked chart.
 - `HealthRecordsChartAdapter.test.tsx` checks blood-pressure styles, separate
   units, invalid inputs, duplicate instants, coverage and provenance through a
   mocked facade. `healthRecordsChartModel.test.ts` checks saved pressure series.

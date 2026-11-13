@@ -12,11 +12,11 @@ import { useCalendarAutoSync } from './src/calendar/useCalendarAutoSync';
 import { loadRecordingSummaries } from './src/recording/loadRecordingSummaries';
 import { AiFeatureSharedNavigationStateProvider } from './src/aiFeatures/integration/AiFeatureSharedNavigationState';
 import {
-  AppAiFeatureScene,
+  AppConversationScene,
   isAppAiRoute,
   useAppAiServices,
-} from './src/routes/AppAiFeatureScene';
-import { renderVisitQuestionsRoute } from './src/routes/HomeVisitQuestionsRoute';
+} from './src/routes/AppConversationScene';
+import { renderVisitQuestionsRoute } from './src/routes/OverviewVisitQuestionsRoute';
 import MedicalAppointmentRoute from './src/medicalAppointments/MedicalAppointmentRoute';
 import {
   createNavigationController,
@@ -27,8 +27,8 @@ import type { NavigationRootTabs, AppRootTab } from './src/navigation/rootTabs';
 import type { AppNavigationRoute } from './src/routes/AppRouteContent';
 import { AppRouteContent } from './src/routes/AppRouteContent';
 import type { AppProps } from './src/routes/AppEntryProps';
-import { useAppHomeData } from './src/routes/useAppHomeData';
-import { useHomeActivity } from './src/routes/useHomeActivity';
+import { useAppOverviewData } from './src/routes/useAppOverviewData';
+import { useOverviewActivity } from './src/routes/useOverviewActivity';
 import { useBackupPreparation } from './src/backup/useBackupPreparation';
 import { appColors } from './src/layout/appColors';
 import { syncLocalPreviouslyRequestedHealthKit } from './src/healthkit/autoSyncLocal';
@@ -77,7 +77,7 @@ function App({
     [ai.services],
   );
   const calendarSync = useCalendarAutoSync(calendarBridge);
-  const [activeTab, setActiveTab] = useState<AppRootTab>('home');
+  const [activeTab, setActiveTab] = useState<AppRootTab>('conversation');
   const activeTabRef = useRef(activeTab);
   const selectActiveTab = (tab: AppRootTab) => {
     activeTabRef.current = tab;
@@ -87,12 +87,12 @@ function App({
   const [healthRecordDetailSelection, setHealthRecordDetailSelection] =
     useState<HealthRecordsDetailSelection | null>(null);
   const [appNavigation] = useState(() =>
-    createNavigationController<AppNavigationRoute>('home'),
+    createNavigationController<AppNavigationRoute>('root'),
   );
-  const homeData = useAppHomeData(
+  const homeData = useAppOverviewData(
     loadAppointments,
     loadRecordings,
-    useHomeActivity(appNavigation, activeTab),
+    useOverviewActivity(appNavigation, activeTab),
   );
   const backupPreparation = useBackupPreparation();
 
@@ -132,31 +132,28 @@ function App({
             controller={appNavigation}
             // Root tabs share one scroll host; guarded detail routes own their scrollers.
             scrollable={route =>
-              route.name === 'home' &&
-              ['home', 'records', 'settings'].includes(activeTab)
+              route.name === 'root' &&
+              ['overview', 'records', 'settings'].includes(activeTab)
             }
-            showHome
-            homeAction={async () => {
-              if (await appNavigation.requestHome()) selectActiveTab('home');
-            }}
-            rootTabs={route => (route.name === 'home' ? rootTabs : undefined)}
+            rootTabs={route => (route.name === 'root' ? rootTabs : undefined)}
             contentLayoutOwner={appContentLayoutOwner}
           >
             {/* Settings and AI use the same account services and persisted selection. */}
             {actions =>
               isAppAiRoute(actions.route.name) ||
-              (actions.route.name === 'home' && activeTab === 'ai') ? (
-                <AppAiFeatureScene
+              (actions.route.name === 'root' &&
+                activeTab === 'conversation') ? (
+                <AppConversationScene
                   actions={actions}
-                  defaultConversation={actions.route.name === 'home'}
+                  defaultConversation={actions.route.name === 'root'}
                   isEntryCurrent={() => {
                     const snapshot = appNavigation.getSnapshot();
                     return (
                       AppState.currentState === 'active' &&
                       !snapshot.isTransitioning &&
                       snapshot.currentRoute.key === actions.route.key &&
-                      (actions.route.name !== 'home' ||
-                        activeTabRef.current === 'ai')
+                      (actions.route.name !== 'root' ||
+                        activeTabRef.current === 'conversation')
                     );
                   }}
                   consent={ai.consent}

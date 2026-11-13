@@ -29,14 +29,20 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         surface.railBottomInset = 46
         let systemRegion = CGRect(x: 867, y: 0, width: 84, height: 180)
         let contentSafeFrame = CGRect(x: 0, y: 0, width: 867, height: 635)
-        surface.actions = [ // Keep contextual Back separate from the fixed five-tab surface.
-            ("back", "chevron.backward", false), ("home", "house.fill", true),
-            ("records", "doc.text", true), ("schedule", "calendar", true),
-            ("ai", "sparkles", true), ("settings", "gearshape", true),
+        // Contextual Back is measured separately from the fixed five root-tab targets.
+        surface.actions = [
+            ("back", "chevron.backward", false),
+            ("conversation", "sparkles", true),
+            ("overview", "house", true),
+            ("records", "doc.text", true),
+            ("schedule", "calendar", true),
+            ("settings", "gearshape", true),
         ].map { tab, symbol, isRootTab -> [String: Any] in
-            return ["id": isRootTab ? "tab-\(tab)" : tab, "label": tab, "accessibilityLabel": "\(tab) tab",
+            return ["id": isRootTab ? "tab-\(tab)" : tab, "label": tab,
+                    "accessibilityLabel": isRootTab ? "\(tab) tab" : "Back",
                     "testID": isRootTab ? "navigation-tab-\(tab)" : "navigation-back",
-                    "rootTab": isRootTab, "selected": isRootTab && tab == "home", "systemImageName": symbol]
+                    "rootTab": isRootTab, "selected": isRootTab && tab == "conversation",
+                    "systemImageName": symbol]
         } as NSArray
         surface.layoutIfNeeded()
         let portal = try XCTUnwrap(controller.view.subviews.compactMap { $0 as? NavigationWindowRailHost }.first)

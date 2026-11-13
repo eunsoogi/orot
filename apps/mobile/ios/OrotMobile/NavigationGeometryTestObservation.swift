@@ -131,10 +131,10 @@
                 let frame = view.convert(view.bounds, to: window)
                 guard !frame.isEmpty, frame.intersects(window.bounds) else { continue }
                 if identity != nil, let control = view as? UIControl,
-                   ["navigation-tab-home", "navigation-tab-records", "navigation-tab-schedule", "navigation-tab-ai", "navigation-tab-settings", "navigation-back", "navigation-home"].contains(control.accessibilityIdentifier ?? "")
+                   ["navigation-tab-overview", "navigation-tab-records", "navigation-tab-schedule", "navigation-tab-conversation", "navigation-tab-settings", "navigation-back", "navigation-home"].contains(control.accessibilityIdentifier ?? "")
                 {
                     navigation.append(control)
-                    if control.accessibilityIdentifier == "navigation-tab-home" {
+                    if control.accessibilityIdentifier == "navigation-tab-overview" {
                         homes.append(control)
                     }
                 }

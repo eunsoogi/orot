@@ -9,6 +9,12 @@ final class RootURLInbox {
     private let key = "com.orot.mobile.root-url-inbox.v1"
     private let destinations: Set<String> = ["conversation", "overview", "records", "schedule", "settings"]
 
+    /// Normalize legacy links and queued entries without storing the original URL.
+    private func canonicalDestination(_ value: String) -> String? {
+        let canonical = value == "ai" ? "conversation" : value == "home" ? "overview" : value
+        return destinations.contains(canonical) ? canonical : nil
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
     }
@@ -17,8 +23,8 @@ final class RootURLInbox {
         let raw = url.absoluteString
         let prefix = "orot://open/v1/"
         guard raw.hasPrefix(prefix) else { return }
-        let destination = String(raw.dropFirst(prefix.count))
-        guard destinations.contains(destination), raw == prefix + destination else { return }
+        let input = String(raw.dropFirst(prefix.count))
+        guard let destination = canonicalDestination(input), raw == prefix + input else { return }
         lock.lock()
         var entries = defaults.array(forKey: key) ?? []
         entries.append(["id": UUID().uuidString, "destination": destination])
@@ -35,9 +41,9 @@ final class RootURLInbox {
         while let first = entries.first {
             if let entry = first as? [String: String],
                let id = entry["id"], UUID(uuidString: id) != nil,
-               let destination = entry["destination"], destinations.contains(destination), entry.count == 2
+               let rawDestination = entry["destination"], let destination = canonicalDestination(rawDestination), entry.count == 2
             {
-                return entry
+                return ["id": id, "destination": destination]
             }
             entries.removeFirst()
             defaults.set(entries, forKey: key)

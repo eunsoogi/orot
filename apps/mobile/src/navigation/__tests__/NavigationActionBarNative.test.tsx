@@ -40,7 +40,7 @@ describe('native bottom navigation toolbar', () => {
     await render(
       <NavigationActionBar
         controller={controller}
-        showHome
+
         primaryAction={{
           label: '녹음',
           accessibilityLabel: '녹음 화면으로 이동',
@@ -60,13 +60,6 @@ describe('native bottom navigation toolbar', () => {
         accessibilityLabel: '이전 화면으로 돌아가기',
         testID: 'navigation-back',
         systemImageName: 'chevron.backward',
-      }),
-      expect.objectContaining({
-        id: 'home',
-        label: '홈',
-        accessibilityLabel: '홈 화면으로 이동',
-        testID: 'navigation-home',
-        systemImageName: 'house',
       }),
     ]);
     const pageDock = screen.getByTestId('navigation-page-action-surface');
@@ -99,7 +92,7 @@ describe('native bottom navigation toolbar', () => {
     await render(
       <NavigationActionBar
         controller={controller}
-        rootTabs={{ activeTab: 'home', onSelect: jest.fn() }}
+        rootTabs={{ activeTab: 'overview', onSelect: jest.fn() }}
         safeAreaHandledByParent
       />,
     );
@@ -107,6 +100,13 @@ describe('native bottom navigation toolbar', () => {
     const toolbar = screen.getByTestId('navigation-bar-native-surface');
     const actions = toolbar.props.actions as Array<Record<string, unknown>>;
     expect(actions).toHaveLength(5);
+    expect(actions.map(action => action.id)).toEqual([
+      'tab-conversation',
+      'tab-overview',
+      'tab-records',
+      'tab-schedule',
+      'tab-settings',
+    ]);
     expect(actions.map(action => action.rootTab)).toEqual([
       true,
       true,
@@ -116,19 +116,19 @@ describe('native bottom navigation toolbar', () => {
     ]);
     expect(
       actions.filter(action => action.selected).map(action => action.id),
-    ).toEqual(['tab-home']);
+    ).toEqual(['tab-overview']);
     expect(actions[0]).toEqual(
       expect.objectContaining({
-        id: 'tab-home',
-        selected: true,
-        systemImageName: 'house.fill',
+        id: 'tab-conversation',
+        selected: false,
+        systemImageName: 'sparkle',
       }),
     );
     expect(actions[1]).toEqual(
       expect.objectContaining({
-        id: 'tab-records',
-        selected: false,
-        systemImageName: 'doc.text',
+        id: 'tab-overview',
+        selected: true,
+        systemImageName: 'house.fill',
       }),
     );
     expect(StyleSheet.flatten(toolbar.props.style)).toEqual(
@@ -198,18 +198,13 @@ describe('native bottom navigation toolbar', () => {
     controller.push('editor');
 
     await render(
-      <NavigationActionBar controller={controller} showHome keyboardVisible />,
+      <NavigationActionBar controller={controller} keyboardVisible />,
     );
 
     const toolbar = screen.getByTestId('navigation-bar-native-surface');
     expect(toolbar).toBeVisible();
     expect(toolbar.props.actions).toEqual([
       expect.objectContaining({ id: 'back', disabled: false }),
-      expect.objectContaining({
-        id: 'home',
-        accessibilityLabel: '홈 화면으로 이동',
-        disabled: false,
-      }),
     ]);
     expect(
       screen.getByTestId('navigation-action-bar-safe-area').props

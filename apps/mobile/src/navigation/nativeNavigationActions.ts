@@ -17,8 +17,6 @@ export function createNativeNavigationBindings<Name extends string>({
   controller,
   snapshot,
   backDisabled,
-  canGoHome,
-  homeAction,
   primaryAction,
   routeBackAction,
   rootTabs,
@@ -26,8 +24,6 @@ export function createNativeNavigationBindings<Name extends string>({
   readonly controller: NavigationController<Name>;
   readonly snapshot: NavigationSnapshot<Name>;
   readonly backDisabled: boolean;
-  readonly canGoHome: boolean;
-  readonly homeAction?: () => void | Promise<unknown>;
   readonly primaryAction?: NavigationPrimaryAction;
   readonly routeBackAction?: NavigationRouteBackAction;
   readonly rootTabs?: NavigationRootTabs;
@@ -45,18 +41,6 @@ export function createNativeNavigationBindings<Name extends string>({
       testID: 'navigation-back',
       systemImageName: 'chevron.backward',
       showsTitleWithSystemImage: true,
-      disabled: backDisabled,
-    });
-  }
-  if (canGoHome) {
-    actions.push({
-      id: 'home',
-      label: navigationText.home.label,
-      accessibilityLabel: navigationText.home.accessibilityLabel,
-      testID: 'navigation-home',
-      systemImageName: 'house',
-      showsTitleWithSystemImage: true,
-      titleBelowImage: true,
       disabled: backDisabled,
     });
   }
@@ -100,12 +84,6 @@ export function createNativeNavigationBindings<Name extends string>({
         routeBackAction
           ? Promise.resolve(routeBackAction.onPress())
           : controller.requestBack(),
-      );
-      return;
-    }
-    if (nativeEvent.id === 'home' && canGoHome && !backDisabled) {
-      settleNavigationRequest(
-        Promise.resolve(homeAction?.() ?? controller.requestHome()),
       );
       return;
     }

@@ -1,4 +1,4 @@
-/** Native coverage for document parsing, provider reads, protected originals, and duplicate recovery. */
+/** Native coverage for document reads, protected originals, photo lookup, and duplicate recovery. */
 export const medicalDocumentCoreTests = [
   'OrotIntegrationTests/MedicalDocumentImportTests/testPlainTextOffsetsUseUtf16CodeUnitsAndHashOriginalBytes',
   'OrotIntegrationTests/MedicalDocumentImportTests/testPDFExtractionRetainsEachPageNumberAndRejectsImageOnlyPages',
@@ -15,6 +15,11 @@ export const medicalDocumentCoreTests = [
   'OrotIntegrationTests/MedicalDocumentFileOperationsTests/testDuplicateSourceRecoveryIsIdempotentForSameID',
   'OrotIntegrationTests/MedicalDocumentFileOperationsTests/testDuplicateSourceRecoveryFailuresKeepCandidateAndCanonicalBytes',
   'OrotIntegrationTests/MedicalDocumentFileOperationsTests/testDuplicateSourceRecoveryRejectsCandidateHashMismatch',
+  'OrotIntegrationTests/MedicalDocumentOriginalPhotoTests/testOriginalPhotoResolutionPreservesSyntheticImageBytesAndOrientationAfterReopen',
+  'OrotIntegrationTests/MedicalDocumentOriginalPhotoTests/testOriginalPhotoLookupDistinguishesMissingUnsupportedAndCorruptFiles',
+  'OrotIntegrationTests/MedicalDocumentOriginalPhotoTests/testOriginalPhotoRejectsMalformedAndAmbiguousSourceIdentityWithoutChangingFiles',
+  'OrotIntegrationTests/MedicalDocumentOriginalPhotoTests/testDeletingOnePhotoRetainsTheOtherDocumentOriginal',
+  'OrotIntegrationTests/MedicalDocumentOriginalPhotoTests/testProtectedDirectoryReadFailureRemainsUnavailable',
   'OrotIntegrationTests/MedicalDocumentPhotoPickerCompletionTests/testInteractiveDismissCompletesOnceAndLateCallbacksCannotRetireNextRequest',
   'OrotIntegrationTests/MedicalDocumentPhotoPickerCompletionTests/testSelectionCompletesAfterBothResultAndDismissalInEitherOrder',
   'OrotIntegrationTests/MedicalDocumentPhotoPickerCompletionTests/testExplicitCancelAndPresentationFailureCompleteOnce',

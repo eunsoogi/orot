@@ -2,7 +2,7 @@ import { Button, Text, View } from 'react-native';
 import SafeAreaLayout from '../layout/SafeAreaLayout';
 import { t } from '../i18n';
 import { navigationText } from '../i18n/navigation';
-import { appRouteStyles } from './WelcomeRoute';
+import { appRouteStyles } from './OverviewRoute';
 
 interface CalendarOpeningRouteProps {
   error: string;

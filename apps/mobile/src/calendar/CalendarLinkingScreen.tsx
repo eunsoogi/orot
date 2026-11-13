@@ -31,7 +31,6 @@ interface CalendarLinkingScreenProps {
   onOpenMedicalAppointments?: () => void;
   onAppointmentsChanged?: () => void;
   onBack?: () => void;
-  onHome?: () => void;
   onOpenRecording?: () => void;
 }
 
@@ -45,7 +44,6 @@ export default function CalendarLinkingScreen({
   onOpenMedicalAppointments,
   onAppointmentsChanged,
   onBack,
-  onHome,
   onOpenRecording,
 }: CalendarLinkingScreenProps) {
   const navigationInset = useNavigationContentInset();
@@ -219,7 +217,6 @@ export default function CalendarLinkingScreen({
       {onBack ? (
         <BottomNavigationMenu
           onBack={onBack}
-          onHome={onHome}
           primaryAction={
             onOpenRecording
               ? {

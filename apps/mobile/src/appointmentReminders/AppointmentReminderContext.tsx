@@ -27,7 +27,7 @@ export function createAppointmentReminderRuntime(load: Loader) {
     // A route key binds a delivered tap to its own visit, never the next visit.
     targets: new Map<string, AppointmentReminderTarget>(),
     // Home can show manual or already-started visits; these read-only targets never enter reminder scheduling or inference.
-    homePreparationTargets: new Map<string, string>(),
+    overviewPreparationTargets: new Map<string, string>(),
     // The exact observed day is retained for this route, including provider detours.
     dailyReportTargets: new Map<string, DailyReminderEntry>(),
     dailyReportSelection: {

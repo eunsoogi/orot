@@ -116,11 +116,11 @@ extension RootNavigationUITests {
             try service.enable()
             XCTAssertTrue(service.isEnabled)
             app.launch()
-            NavigationUITestConditions.route(app, markers: ["welcome-title"])
-            let home = try NavigationUITestConditions.navigationAction(app, "navigation-tab-home").control
-            try focusWithVoiceOver(home, expected: "홈 탭", service: service, observationApp: app)
+            NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
+            let conversation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation").control
+            try focusWithVoiceOver(conversation, expected: "대화 탭", service: service, observationApp: app)
             // The five existing root actions form a single ordered navigation group in both Duo states.
-            for label in ["기록 탭", "일정 탭", "AI 탭", "설정 탭"] {
+            for label in ["한눈에 탭", "기록 탭", "일정 탭", "설정 탭"] {
                 try assertVoiceOverSpeech("root-forward-\(label)", expected: label) { try service.moveForward() }
             }
             let settings = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings").control
@@ -142,9 +142,9 @@ extension RootNavigationUITests {
             health.doubleTap()
             NavigationUITestConditions.route(app, markers: ["health-data-title"])
             try focusWithVoiceOver(back, expected: "이전 화면으로 돌아가기", service: service)
-            try assertVoiceOverSpeech("context-forward-home", expected: "홈 화면으로 이동") { try service.moveForward() }
-            try NavigationUITestConditions.navigationAction(app, "navigation-home").control.doubleTap()
-            NavigationUITestConditions.route(app, markers: ["welcome-title"])
+            XCTAssertFalse(app.buttons["navigation-home"].exists)
+            back.doubleTap()
+            NavigationUITestConditions.route(app, markers: ["settings-title"])
             XCTAssertTrue(service.isEnabled)
         } catch {
             voiceOverError(error, phase: "journey")

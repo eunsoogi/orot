@@ -55,8 +55,8 @@
 		2E36EE573FDE4C56822B9AC1 /* AuthConsentWaitRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4C008D18154122AA378350 /* AuthConsentWaitRegression.swift */; };
 		2F12B87418286448ACE4235E /* RenderedTextUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1972BAC3D96A140512956AE4 /* RenderedTextUITestConditions.swift */; };
 		32E95890ED81D9F662C886C9 /* UITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A89139838EEBFC807829E10F /* UITestConditions.swift */; };
-		B51E2A969CE74D4DA5B8B302 /* HomeMetricScrollUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3FBD4A586A2465C82F30711 /* HomeMetricScrollUITestConditions.swift */; };
-		D4687A5C9F8E4A2B913C7601 /* HomeMetricScrollGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4687A5C9F8E4A2B913C7602 /* HomeMetricScrollGeometry.swift */; };
+		B51E2A969CE74D4DA5B8B302 /* OverviewMetricScrollUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3FBD4A586A2465C82F30711 /* OverviewMetricScrollUITestConditions.swift */; };
+		D4687A5C9F8E4A2B913C7601 /* OverviewMetricScrollGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4687A5C9F8E4A2B913C7602 /* OverviewMetricScrollGeometry.swift */; };
 		33125F96DD23032175139352 /* RecordingExportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F894914E4F39E9162E577E /* RecordingExportUITests.swift */; };
 		332AA54B93E428EC915A3358 /* SafeAreaNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */; };
 		3A75AFBE5AEA25C67C0B75F1 /* HealthImportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A804856FDBE326F89B7A06E2 /* HealthImportUITests.swift */; };
@@ -150,6 +150,8 @@
 		A37000000000000000000001 /* MedicalDocumentTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */; };
 		A37000000000000000000006 /* MedicalDocumentPhotoPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000006 /* MedicalDocumentPhotoPicker.swift */; };
 		A37000000000000000000002 /* MedicalDocumentFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000002 /* MedicalDocumentFileStore.swift */; };
+		A9C7D2E48F5B4178BA2C0004 /* MedicalDocumentFileStoreFailure.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C7D2E48F5B4178BA2C0005 /* MedicalDocumentFileStoreFailure.swift */; };
+		A9C7D2E48F5B4178BA2C0006 /* MedicalDocumentImportErrorMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C7D2E48F5B4178BA2C0007 /* MedicalDocumentImportErrorMapper.swift */; };
 		A37000000000000000000003 /* MedicalDocumentImportModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000003 /* MedicalDocumentImportModule.swift */; };
 		A37000000000000000000004 /* MedicalDocumentImportModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000004 /* MedicalDocumentImportModule.m */; };
 		A37000000000000000000005 /* MedicalDocumentImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37000000000000000000005 /* MedicalDocumentImportTests.swift */; };
@@ -157,6 +159,7 @@
 		80FB7B5097A24412B9D2FD96 /* MedicalDocumentFileOperations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16BE8A107CE0469394AD138F /* MedicalDocumentFileOperations.swift */; };
 		3265054CF71C4F5BA3483FD5 /* MedicalDocumentPickerTestFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80A3E27206C24EDA9ED12CCF /* MedicalDocumentPickerTestFixtures.swift */; };
 		98501818630D4B3B9C48B305 /* MedicalDocumentFileOperationsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCDBE2C355E44BA8EDDAA48 /* MedicalDocumentFileOperationsTests.swift */; };
+		A9C7D2E48F5B4178BA2C0003 /* MedicalDocumentOriginalPhotoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C7D2E48F5B4178BA2C0002 /* MedicalDocumentOriginalPhotoTests.swift */; };
 		4B5890F6C08D4E85AB0CA6C2 /* MedicalDocumentImportJourneyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3AB3D75A20472F9E2F315A /* MedicalDocumentImportJourneyUITests.swift */; };
 		A87EAF0329384AAAB987CA11 /* MedicalDocumentPhotoJourneyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87EAF0329384AAAB987CA12 /* MedicalDocumentPhotoJourneyUITests.swift */; };
 		4B5890F6C08D4E85AB0CA6C3 /* MedicalDocumentPickerRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C3AB3D75A20472F9E2F315B /* MedicalDocumentPickerRecoveryUITests.swift */; };
@@ -197,6 +200,12 @@
 		A64F00000000000000000002 /* RecordingModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000002 /* RecordingModule.m */; };
 		A64F00000000000000000003 /* RecordingModule+Commands.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000003 /* RecordingModule+Commands.swift */; };
 		A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */; };
+		A741AA000000000000000001 /* AudioSessionOwnership.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA000000000000000001 /* AudioSessionOwnership.swift */; };
+		A741AA000000000000000002 /* VoiceConversationCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA000000000000000002 /* VoiceConversationCapture.swift */; };
+		A741AA000000000000000003 /* VoiceConversationSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA000000000000000003 /* VoiceConversationSpeech.swift */; };
+		A68FAB000000000000000004 /* VoiceConversationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68FAB000000000000000004 /* VoiceConversationModule.swift */; };
+		A68FAB000000000000000005 /* VoiceConversationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B68FAB000000000000000005 /* VoiceConversationModule.m */; };
+		A68FAB000000000000000007 /* RecordingAudioOwnership.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68FAB000000000000000007 /* RecordingAudioOwnership.swift */; };
 		A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000005 /* RecordingSimulatorProbe.swift */; };
 		A64F00000000000000000006 /* RecordingFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000006 /* RecordingFileStore.swift */; };
 		A64F00000000000000000007 /* RecordingSyntheticCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64F00000000000000000007 /* RecordingSyntheticCapture.swift */; };
@@ -230,6 +239,7 @@
 		A821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift */; };
 		A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */; };
 		AFC900000000000000000004 /* ReplyNotificationInboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */; };
+		A68FAB000000000000000006 /* AudioSessionOwnershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */; };
 		A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */; };
 		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
 		DF18ABCD019B40AA9C138D21 /* SettingsPortraitNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF18ABCD019B40AA9C138D22 /* SettingsPortraitNavigationUITests.swift */; };
@@ -275,8 +285,8 @@
 		E17A00000000000000000003 /* MedicationDoseCursor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17A00000000000000000013 /* MedicationDoseCursor.swift */; };
 		E19800000000000000000001 /* ExportDismissalGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000003 /* ExportDismissalGeometry.swift */; };
 		E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */; };
-		A7C87A6DBF7A4A8FA2D86B11 /* HomeMetricGeometryConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C87A6DBF7A4A8FA2D86B12 /* HomeMetricGeometryConditions.swift */; };
-		FA6E3C21B77B41D198C04A31 /* HomeDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */; };
+		A7C87A6DBF7A4A8FA2D86B11 /* OverviewMetricGeometryConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C87A6DBF7A4A8FA2D86B12 /* OverviewMetricGeometryConditions.swift */; };
+		FA6E3C21B77B41D198C04A31 /* OverviewDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */; };
 		195917C9C1387243AC8FDFDD /* ChartConsumerAcceptanceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */; };
 		F933D6D520F547F18E488B09 /* HealthImportDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */; };
 		7217B3F63921437EA941492F /* DiseaseHypothesesDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */; };
@@ -465,8 +475,8 @@
 		a23c13bada0fd75e87404dfe /* ProviderSelectionDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderSelectionDuoUITests.swift; sourceTree = "<group>"; };
 		7105E581D5A4BCA2DF07F257 /* SettingsBackupDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsBackupDuoUITests.swift; sourceTree = "<group>"; };
 		A89139838EEBFC807829E10F /* UITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UITestConditions.swift; sourceTree = "<group>"; };
-		D3FBD4A586A2465C82F30711 /* HomeMetricScrollUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeMetricScrollUITestConditions.swift; sourceTree = "<group>"; };
-		D4687A5C9F8E4A2B913C7602 /* HomeMetricScrollGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeMetricScrollGeometry.swift; sourceTree = "<group>"; };
+		D3FBD4A586A2465C82F30711 /* OverviewMetricScrollUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverviewMetricScrollUITestConditions.swift; sourceTree = "<group>"; };
+		D4687A5C9F8E4A2B913C7602 /* OverviewMetricScrollGeometry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverviewMetricScrollGeometry.swift; sourceTree = "<group>"; };
 		AAC7EA95F80AE2A7C829EC81 /* HealthKitAuthorizationPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthKitAuthorizationPlan.swift; path = OrotMobile/HealthKitAuthorizationPlan.swift; sourceTree = "<group>"; };
 		AAE5FD532A41BF53E5123ED4 /* AutomaticSpeechPersistenceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AutomaticSpeechPersistenceTests.swift; sourceTree = "<group>"; };
 		ADD4A3114EC9D36BD5B1D7F1 /* FixtureIsolationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FixtureIsolationTests.swift; sourceTree = "<group>"; };
@@ -492,8 +502,8 @@
 		F26700000000000000000004 /* WindowGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WindowGeometryUITests.swift; sourceTree = "<group>"; };
 		193AB495711C4DDBB8F3E62D /* NavigationWindowGeometryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationWindowGeometryUITestConditions.swift; sourceTree = "<group>"; };
 		CA48CD63B8574397A72A3267 /* NavigationGeometryReservedRegionMatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationGeometryReservedRegionMatcher.swift; sourceTree = "<group>"; };
-		A7C87A6DBF7A4A8FA2D86B12 /* HomeMetricGeometryConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeMetricGeometryConditions.swift; sourceTree = "<group>"; };
-		FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HomeDuoUITests.swift; sourceTree = "<group>"; };
+		A7C87A6DBF7A4A8FA2D86B12 /* OverviewMetricGeometryConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverviewMetricGeometryConditions.swift; sourceTree = "<group>"; };
+		FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverviewDuoUITests.swift; sourceTree = "<group>"; };
 		1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChartConsumerAcceptanceUITests.swift; sourceTree = "<group>"; };
 		0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthImportDuoUITests.swift; sourceTree = "<group>"; };
 		F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DiseaseHypothesesDuoUITests.swift; sourceTree = "<group>"; };
@@ -522,6 +532,8 @@
 		B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentTextExtractor.swift; path = OrotMobile/MedicalDocumentTextExtractor.swift; sourceTree = "<group>"; };
 		B37000000000000000000006 /* MedicalDocumentPhotoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentPhotoPicker.swift; path = OrotMobile/MedicalDocumentPhotoPicker.swift; sourceTree = "<group>"; };
 		B37000000000000000000002 /* MedicalDocumentFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentFileStore.swift; path = OrotMobile/MedicalDocumentFileStore.swift; sourceTree = "<group>"; };
+		A9C7D2E48F5B4178BA2C0005 /* MedicalDocumentFileStoreFailure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentFileStoreFailure.swift; path = OrotMobile/MedicalDocumentFileStoreFailure.swift; sourceTree = "<group>"; };
+		A9C7D2E48F5B4178BA2C0007 /* MedicalDocumentImportErrorMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentImportErrorMapper.swift; path = OrotMobile/MedicalDocumentImportErrorMapper.swift; sourceTree = "<group>"; };
 		B37000000000000000000003 /* MedicalDocumentImportModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentImportModule.swift; path = OrotMobile/MedicalDocumentImportModule.swift; sourceTree = "<group>"; };
 		B37000000000000000000004 /* MedicalDocumentImportModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MedicalDocumentImportModule.m; path = OrotMobile/MedicalDocumentImportModule.m; sourceTree = "<group>"; };
 		B37000000000000000000005 /* MedicalDocumentImportTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentImportTests.swift; sourceTree = "<group>"; };
@@ -529,6 +541,7 @@
 		16BE8A107CE0469394AD138F /* MedicalDocumentFileOperations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentFileOperations.swift; path = OrotMobile/MedicalDocumentFileOperations.swift; sourceTree = "<group>"; };
 		80A3E27206C24EDA9ED12CCF /* MedicalDocumentPickerTestFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MedicalDocumentPickerTestFixtures.swift; path = OrotMobile/MedicalDocumentPickerTestFixtures.swift; sourceTree = "<group>"; };
 		ABCDBE2C355E44BA8EDDAA48 /* MedicalDocumentFileOperationsTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentFileOperationsTests.swift; sourceTree = "<group>"; };
+		A9C7D2E48F5B4178BA2C0002 /* MedicalDocumentOriginalPhotoTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentOriginalPhotoTests.swift; sourceTree = "<group>"; };
 		9C3AB3D75A20472F9E2F315A /* MedicalDocumentImportJourneyUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentImportJourneyUITests.swift; sourceTree = "<group>"; };
 		A87EAF0329384AAAB987CA12 /* MedicalDocumentPhotoJourneyUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentPhotoJourneyUITests.swift; sourceTree = "<group>"; };
 		9C3AB3D75A20472F9E2F315B /* MedicalDocumentPickerRecoveryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MedicalDocumentPickerRecoveryUITests.swift; sourceTree = "<group>"; };
@@ -562,6 +575,12 @@
 		B64F00000000000000000002 /* RecordingModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RecordingModule.m; path = OrotMobile/RecordingModule.m; sourceTree = "<group>"; };
 		B64F00000000000000000003 /* RecordingModule+Commands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecordingModule+Commands.swift"; path = "OrotMobile/RecordingModule+Commands.swift"; sourceTree = "<group>"; };
 		B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingCaptureLifecycle.swift; path = OrotMobile/RecordingCaptureLifecycle.swift; sourceTree = "<group>"; };
+		B741AA000000000000000001 /* AudioSessionOwnership.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AudioSessionOwnership.swift; path = OrotMobile/AudioSessionOwnership.swift; sourceTree = "<group>"; };
+		B741AA000000000000000002 /* VoiceConversationCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceConversationCapture.swift; path = OrotMobile/VoiceConversationCapture.swift; sourceTree = "<group>"; };
+		B741AA000000000000000003 /* VoiceConversationSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceConversationSpeech.swift; path = OrotMobile/VoiceConversationSpeech.swift; sourceTree = "<group>"; };
+		B68FAB000000000000000004 /* VoiceConversationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceConversationModule.swift; path = OrotMobile/VoiceConversationModule.swift; sourceTree = "<group>"; };
+		B68FAB000000000000000005 /* VoiceConversationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceConversationModule.m; path = OrotMobile/VoiceConversationModule.m; sourceTree = "<group>"; };
+		B68FAB000000000000000007 /* RecordingAudioOwnership.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingAudioOwnership.swift; path = OrotMobile/RecordingAudioOwnership.swift; sourceTree = "<group>"; };
 		B64F00000000000000000005 /* RecordingSimulatorProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSimulatorProbe.swift; path = OrotMobile/RecordingSimulatorProbe.swift; sourceTree = "<group>"; };
 		B64F00000000000000000006 /* RecordingFileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingFileStore.swift; path = OrotMobile/RecordingFileStore.swift; sourceTree = "<group>"; };
 		B64F00000000000000000007 /* RecordingSyntheticCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordingSyntheticCapture.swift; path = OrotMobile/RecordingSyntheticCapture.swift; sourceTree = "<group>"; };
@@ -595,6 +614,7 @@
 		B821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootURLInboxTests.swift; sourceTree = "<group>"; };
 		B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderNotificationTests.swift; sourceTree = "<group>"; };
 		BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyNotificationInboxTests.swift; sourceTree = "<group>"; };
+		B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionOwnershipTests.swift; sourceTree = "<group>"; };
 		B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderDiagnosticTests.swift; sourceTree = "<group>"; };
 		B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnifiedImportUITests.swift; sourceTree = "<group>"; };
 		B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeAreaNavigationUITests.swift; sourceTree = "<group>"; };
@@ -750,6 +770,12 @@
 				B64F00000000000000000002 /* RecordingModule.m */,
 				B64F00000000000000000003 /* RecordingModule+Commands.swift */,
 				B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */,
+				B741AA000000000000000001 /* AudioSessionOwnership.swift */,
+				B741AA000000000000000002 /* VoiceConversationCapture.swift */,
+				B741AA000000000000000003 /* VoiceConversationSpeech.swift */,
+				B68FAB000000000000000004 /* VoiceConversationModule.swift */,
+				B68FAB000000000000000005 /* VoiceConversationModule.m */,
+				B68FAB000000000000000007 /* RecordingAudioOwnership.swift */,
 				B64F00000000000000000005 /* RecordingSimulatorProbe.swift */,
 				B64F00000000000000000006 /* RecordingFileStore.swift */,
 				B64F00000000000000000031 /* RecordingPlaybackCompletion.swift */,
@@ -777,6 +803,8 @@
 				B37000000000000000000001 /* MedicalDocumentTextExtractor.swift */,
 				B37000000000000000000006 /* MedicalDocumentPhotoPicker.swift */,
 				B37000000000000000000002 /* MedicalDocumentFileStore.swift */,
+				A9C7D2E48F5B4178BA2C0005 /* MedicalDocumentFileStoreFailure.swift */,
+				A9C7D2E48F5B4178BA2C0007 /* MedicalDocumentImportErrorMapper.swift */,
 				B37000000000000000000003 /* MedicalDocumentImportModule.swift */,
 				B37000000000000000000004 /* MedicalDocumentImportModule.m */,
 				16BE8A107CE0469394AD138F /* MedicalDocumentFileOperations.swift */,
@@ -916,6 +944,7 @@
 				B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */,
 				B821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift */,
 				BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */,
+				B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */,
 				B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
@@ -954,6 +983,7 @@
 				B37000000000000000000005 /* MedicalDocumentImportTests.swift */,
 				B37000000000000000000007 /* MedicalDocumentPhotoPickerCompletionTests.swift */,
 				ABCDBE2C355E44BA8EDDAA48 /* MedicalDocumentFileOperationsTests.swift */,
+				A9C7D2E48F5B4178BA2C0002 /* MedicalDocumentOriginalPhotoTests.swift */,
 			);
 			name = OrotIntegrationTests;
 			path = OrotIntegrationTests;
@@ -1010,11 +1040,11 @@
 				9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */,
 				D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */,
 				AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */,
-				FA6E3C21B77B41D198C04A32 /* HomeDuoUITests.swift */,
+				FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */,
 				1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */,
-				A7C87A6DBF7A4A8FA2D86B12 /* HomeMetricGeometryConditions.swift */,
-				D4687A5C9F8E4A2B913C7602 /* HomeMetricScrollGeometry.swift */,
-				D3FBD4A586A2465C82F30711 /* HomeMetricScrollUITestConditions.swift */,
+				A7C87A6DBF7A4A8FA2D86B12 /* OverviewMetricGeometryConditions.swift */,
+				D4687A5C9F8E4A2B913C7602 /* OverviewMetricScrollGeometry.swift */,
+				D3FBD4A586A2465C82F30711 /* OverviewMetricScrollUITestConditions.swift */,
 				0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */,
 				F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */,
 				975D5F70DE3447D880CAFE1E /* EvidenceSourceDuoUITests.swift */,
@@ -1436,6 +1466,12 @@
 				A64F00000000000000000002 /* RecordingModule.m in Sources */,
 				A64F00000000000000000003 /* RecordingModule+Commands.swift in Sources */,
 				A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */,
+				A741AA000000000000000001 /* AudioSessionOwnership.swift in Sources */,
+				A741AA000000000000000002 /* VoiceConversationCapture.swift in Sources */,
+				A741AA000000000000000003 /* VoiceConversationSpeech.swift in Sources */,
+				A68FAB000000000000000004 /* VoiceConversationModule.swift in Sources */,
+				A68FAB000000000000000005 /* VoiceConversationModule.m in Sources */,
+				A68FAB000000000000000007 /* RecordingAudioOwnership.swift in Sources */,
 				A64F00000000000000000005 /* RecordingSimulatorProbe.swift in Sources */,
 				A64F00000000000000000006 /* RecordingFileStore.swift in Sources */,
 				A64F00000000000000000031 /* RecordingPlaybackCompletion.swift in Sources */,
@@ -1463,6 +1499,8 @@
 				A37000000000000000000001 /* MedicalDocumentTextExtractor.swift in Sources */,
 				A37000000000000000000006 /* MedicalDocumentPhotoPicker.swift in Sources */,
 				A37000000000000000000002 /* MedicalDocumentFileStore.swift in Sources */,
+				A9C7D2E48F5B4178BA2C0004 /* MedicalDocumentFileStoreFailure.swift in Sources */,
+				A9C7D2E48F5B4178BA2C0006 /* MedicalDocumentImportErrorMapper.swift in Sources */,
 				A37000000000000000000003 /* MedicalDocumentImportModule.swift in Sources */,
 				A37000000000000000000004 /* MedicalDocumentImportModule.m in Sources */,
 				80FB7B5097A24412B9D2FD96 /* MedicalDocumentFileOperations.swift in Sources */,
@@ -1535,8 +1573,8 @@
 				B2850AD9AAFAE36D783F2D67 /* OrotFailFastTestCase.swift in Sources */,
 				BFE2E63FDD5B34C5C8D0BDB9 /* TestHostConnectionTests.swift in Sources */,
 				32E95890ED81D9F662C886C9 /* UITestConditions.swift in Sources */,
-				D4687A5C9F8E4A2B913C7601 /* HomeMetricScrollGeometry.swift in Sources */,
-				B51E2A969CE74D4DA5B8B302 /* HomeMetricScrollUITestConditions.swift in Sources */,
+				D4687A5C9F8E4A2B913C7601 /* OverviewMetricScrollGeometry.swift in Sources */,
+				B51E2A969CE74D4DA5B8B302 /* OverviewMetricScrollUITestConditions.swift in Sources */,
 				A62440000000000000000001 /* TranscriptEvidenceUITests.swift in Sources */,
 				D40E9817CB8A4FAF92E6B210 /* EncounterReviewUITests.swift in Sources */,
 				292920F729004E4DB0E3C207 /* FormScrollObservation.swift in Sources */,
@@ -1544,9 +1582,9 @@
 				93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */,
 				D3A73F6214CB458BAE72EAD1 /* NavigationGeometryUITestConditions.swift in Sources */,
 				AC917F6214CB458BAE72EAD1 /* NavigationMeasuredReservation.swift in Sources */,
-				FA6E3C21B77B41D198C04A31 /* HomeDuoUITests.swift in Sources */,
+				FA6E3C21B77B41D198C04A31 /* OverviewDuoUITests.swift in Sources */,
 				195917C9C1387243AC8FDFDD /* ChartConsumerAcceptanceUITests.swift in Sources */,
-				A7C87A6DBF7A4A8FA2D86B11 /* HomeMetricGeometryConditions.swift in Sources */,
+				A7C87A6DBF7A4A8FA2D86B11 /* OverviewMetricGeometryConditions.swift in Sources */,
 				F933D6D520F547F18E488B09 /* HealthImportDuoUITests.swift in Sources */,
 				7217B3F63921437EA941492F /* DiseaseHypothesesDuoUITests.swift in Sources */,
 				69CCDA09AD7D4D7B894E04FA /* EvidenceSourceDuoUITests.swift in Sources */,
@@ -1665,6 +1703,7 @@
 				A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */,
 				A821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift in Sources */,
 				AFC900000000000000000004 /* ReplyNotificationInboxTests.swift in Sources */,
+				A68FAB000000000000000006 /* AudioSessionOwnershipTests.swift in Sources */,
 				A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,
@@ -1703,6 +1742,7 @@
 				A37000000000000000000005 /* MedicalDocumentImportTests.swift in Sources */,
 				A37000000000000000000007 /* MedicalDocumentPhotoPickerCompletionTests.swift in Sources */,
 				98501818630D4B3B9C48B305 /* MedicalDocumentFileOperationsTests.swift in Sources */,
+				A9C7D2E48F5B4178BA2C0003 /* MedicalDocumentOriginalPhotoTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

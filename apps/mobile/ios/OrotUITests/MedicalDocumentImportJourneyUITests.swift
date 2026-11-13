@@ -83,7 +83,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
 
         app.terminate()
         app.launch()
-        XCTAssertTrue(node(app, "welcome-title").waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(node(app, "rag-conversation-screen").waitForAppearance(), app.debugDescription)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "medical-document-source-0")
         try assertSavedSource(app)
@@ -144,7 +144,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ] + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
         app.launch()
-        XCTAssertTrue(node(app, "welcome-title").waitForAppearance(), app.debugDescription)
+        XCTAssertTrue(node(app, "rag-conversation-screen").waitForAppearance(), app.debugDescription)
         DebugUITestConditions.dismissWarningToast(app)
     }
 

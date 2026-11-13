@@ -43,7 +43,7 @@ test('uses the production history route lane for a selected Duo preview and comp
   const sessionHook = jest
     .spyOn(sessionsContext, 'useConversationSessions')
     .mockReturnValue(store);
-  const controller = createNavigationController<AppNavigationRoute>('home');
+  const controller = createNavigationController<AppNavigationRoute>('root');
   controller.push('rag-conversation');
   controller.push('conversation-history');
 
