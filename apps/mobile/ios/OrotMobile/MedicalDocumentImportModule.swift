@@ -72,9 +72,25 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
             self.photoPicker.present(from: presenter) { result in
                 switch result {
                 case let .success(document): resolve(document as Any? ?? NSNull())
-                case let .failure(error): Self.reject(reject, error: error)
+                case let .failure(error): MedicalDocumentImportErrorMapper.reject(reject, error: error)
                 }
             }
+        }
+    }
+
+    /// Reads a previously saved photo by source identity without exposing its protected file path.
+    @objc(loadMedicalDocumentOriginalPhoto:expectedContentHash:resolver:rejecter:)
+    public func loadMedicalDocumentOriginalPhoto(
+        _ sourceID: String,
+        expectedContentHash: String?,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock,
+    ) {
+        perform(resolve: resolve, reject: reject) {
+            try self.fileStore.originalPhoto(
+                sourceID: sourceID,
+                expectedContentHash: expectedContentHash,
+            )
         }
     }
 
@@ -172,7 +188,7 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
                 let document = try importDocument(at: url)
                 promise.resolve(document)
             } catch {
-                Self.reject(promise.reject, error: error)
+                MedicalDocumentImportErrorMapper.reject(promise.reject, error: error)
             }
         }
     }
@@ -207,7 +223,7 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
             do {
                 try resolve(operation())
             } catch {
-                Self.reject(reject, error: error)
+                MedicalDocumentImportErrorMapper.reject(reject, error: error)
             }
         }
     }
@@ -216,23 +232,6 @@ public final class MedicalDocumentImportModule: NSObject, UIDocumentPickerDelega
         pendingPicker = nil
         defer { pendingPromise = nil }
         return pendingPromise
-    }
-
-    private static func reject(_ reject: RCTPromiseRejectBlock, error: Error) {
-        if let failure = error as? MedicalDocumentExtractionFailure {
-            reject(failure.code, "The selected document could not be read.", nil)
-        } else if let failure = error as? MedicalDocumentFileStoreFailure {
-            switch failure {
-            case .fileProtectionUnavailable:
-                reject("FILE_PROTECTION_UNAVAILABLE", "Protected document storage is unavailable.", nil)
-            case .cleanupFailed:
-                reject("CLEANUP_FAILED", "The document file could not be safely removed.", nil)
-            case .directoryUnavailable, .invalidIdentifier, .originalUnavailable:
-                reject("IMPORT_FAILED", "The document file operation could not be completed.", nil)
-            }
-        } else {
-            reject("IMPORT_FAILED", "The selected document could not be imported.", nil)
-        }
     }
 
     private static func activePresenter() -> UIViewController? {

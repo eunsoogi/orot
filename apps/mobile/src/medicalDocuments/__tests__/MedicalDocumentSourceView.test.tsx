@@ -1,27 +1,41 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { NavigationGeometryProvider } from '../../navigation/NavigationGeometryProvider';
+import { medicalDocumentNativeBridge } from '../medicalDocumentNativeBridge';
 import { MedicalDocumentSourceView } from '../MedicalDocumentSourceView';
+import type { SavedMedicalDocument } from '../medicalDocumentImportService';
+import type { StoredMedicalDocumentPhoto } from '../medicalDocumentNativeBridge';
 import { savedSourceDocument } from '../testSupport/medicalDocumentSourceViewFixtures';
 
 const noInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 
-async function renderSource(
-  evidenceSpans = savedSourceDocument().evidenceSpans,
+async function renderDocument(
+  document: SavedMedicalDocument,
   onBack = jest.fn(),
 ) {
   await render(
     <SafeAreaInsetsContext.Provider value={noInsets}>
       <NavigationGeometryProvider>
-        <MedicalDocumentSourceView
-          document={savedSourceDocument(evidenceSpans)}
-          onBack={onBack}
-        />
+        <MedicalDocumentSourceView document={document} onBack={onBack} />
       </NavigationGeometryProvider>
     </SafeAreaInsetsContext.Provider>,
   );
   return onBack;
 }
+
+async function renderSource(
+  evidenceSpans = savedSourceDocument().evidenceSpans,
+  onBack = jest.fn(),
+) {
+  return renderDocument(savedSourceDocument(evidenceSpans), onBack);
+}
+
+afterEach(() => jest.restoreAllMocks());
 
 test('shows saved text with its imported time, review state and original locator variants', async () => {
   const onBack = await renderSource();
@@ -66,4 +80,32 @@ test('keeps an empty saved extracted-source detail distinct from original-file s
   );
   expect(screen.getByTestId('medical-document-source-evidence')).toBeTruthy();
   expect(screen.queryByText(/원본 파일|PDF 파일 상태|하이라이트/)).toBeNull();
+});
+
+test('loads a saved photo by its persisted identity while retaining OCR as separate evidence', async () => {
+  const document: SavedMedicalDocument = {
+    ...savedSourceDocument(),
+    title: 'Synthetic saved photo.png',
+    contentHash: 'sha256:synthetic-photo',
+  };
+  const photo: StoredMedicalDocumentPhoto = {
+    sourceId: document.id,
+    mimeType: 'image/png',
+    base64Data: 'c3ludGhldGlj',
+  };
+  const load = jest
+    .spyOn(medicalDocumentNativeBridge, 'loadOriginalPhoto')
+    .mockResolvedValue(photo);
+
+  await renderDocument(document);
+  await waitFor(() => {
+    expect(load).toHaveBeenCalledWith(document.id, document.contentHash);
+  });
+
+  expect(
+    screen.getByTestId('medical-document-source-original-photo'),
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('medical-document-source-text-0'),
+  ).toHaveTextContent('Synthetic saved page text');
 });

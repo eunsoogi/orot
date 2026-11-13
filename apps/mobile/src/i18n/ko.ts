@@ -3,6 +3,7 @@ import { bloodPressureKo } from './healthkitBloodPressure';
 import { healthkitUnifiedImportKo } from './healthkitUnifiedImport';
 import { aiFeatureCatalogsKo } from './aiFeatureCatalogs';
 import { medicalAppointmentsKo } from './medicalAppointments';
+import { medicalDocumentOriginalPhotoKo } from './medicalDocumentOriginalPhoto';
 import { backupKo } from './backupKo';
 import { recordingKo } from './recordingKo';
 import { providerAccountsKo } from './providerAccounts';
@@ -24,6 +25,7 @@ export const ko = {
   ...overviewKo,
   ...probeKo,
   ...manualHistoryKo,
+  ...medicalDocumentOriginalPhotoKo,
   ...backupKo,
   'app.welcome.title': '오롯',
   'app.welcome.message': '흩어진 건강 기록을 한곳에 모아요',
@@ -70,9 +72,6 @@ export const ko = {
   'medicalDocument.import.opening': '문서를 선택해 주세요.',
   'medicalDocument.review.title': '문서 내용 확인',
   'medicalDocument.review.content': '가져올 문서 내용',
-  'medicalDocument.review.originalPhoto': '선택한 원본 사진',
-  'medicalDocument.review.photoReselect':
-    '글자가 정확하지 않으면 가져오지 않고 다른 사진을 선택해 주세요.',
   'medicalDocument.review.description':
     '내용을 확인한 뒤 저장해 주세요. 진단과 약 변경은 자동으로 확정되지 않아요.',
   'medicalDocument.review.page': '{page}쪽',
