@@ -1,6 +1,19 @@
 import XCTest
 
 extension AppointmentsUITests {
+    /// Select the exact saved record only after its real page target is fully reachable.
+    @MainActor
+    func selectAppointment(_ app: XCUIApplication, identity: String) {
+        let selection = UITestConditions.element(app, "appointment-select-\(identity)")
+        XCTAssertTrue(selection.waitForAppearance())
+        FormUITestConditions.reveal(selection, in: app, scrollID: "appointments-scroll")
+        XCTAssertTrue(selection.exists && selection.isHittable)
+        XCTAssertGreaterThanOrEqual(selection.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(selection.frame.height, 44)
+        selection.tap()
+        XCTAssertTrue(selection.isSelected)
+    }
+
     /// Verify the Add control after revealing it only when the route scroll owns it.
     @MainActor
     func verifyAppointmentAdd(_ app: XCUIApplication, add: XCUIElement, scroll: XCUIElement, safeFrame: CGRect, toolbar: XCUIElement) throws {
@@ -47,11 +60,7 @@ extension AppointmentsUITests {
         tap(app, "appointment-add")
         fill(app, clinic: clinic, date: date, time: time, note: "")
         let identity = UITestConditions.appointmentIdentity(app, previous: previous)
-        let selection = UITestConditions.element(app, "appointment-select-\(identity)")
-        if !selection.isSelected {
-            tap(app, "appointment-select-\(identity)")
-        }
-        XCTAssertTrue(selection.isSelected)
+        selectAppointment(app, identity: identity)
         let clinics = app.staticTexts.matching(identifier: "appointment-clinic-\(identity)")
         let savedClinic = clinics.firstMatch
         XCTAssertTrue(savedClinic.waitForAppearance())
@@ -80,9 +89,7 @@ extension AppointmentsUITests {
         let second = createAppointment(app, clinic: "Neurology clinic", date: "2027-06-03", time: "10:15", previous: first)
         XCTAssertNotEqual(first, second)
         let selection = UITestConditions.element(app, "appointment-select-\(second)")
-        XCTAssertTrue(selection.waitForAppearance())
-        selection.tap()
-        XCTAssertTrue(selection.isSelected)
+        selectAppointment(app, identity: second)
         let clinic = UITestConditions.element(app, "appointment-clinic-\(second)")
         XCTAssertTrue(clinic.waitForAppearance())
         XCTAssertEqual(UITestConditions.text(clinic), "Neurology clinic")
@@ -99,8 +106,7 @@ extension AppointmentsUITests {
         app.terminate()
         try launch(app, extra: AppearanceUITestConditions.observationArguments)
         let restored = UITestConditions.element(app, "appointment-select-\(second)")
-        XCTAssertTrue(restored.waitForAppearance())
-        restored.tap()
+        selectAppointment(app, identity: second)
         XCTAssertTrue(restored.isSelected)
         XCTAssertEqual(UITestConditions.text(UITestConditions.element(app, "appointment-clinic-\(second)")), "Neurology clinic")
     }

@@ -32,9 +32,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         XCTAssertNotEqual(firstIdentity, identity)
 
         let selection = UITestConditions.element(app, "appointment-select-\(identity)")
-        XCTAssertTrue(selection.waitForAppearance(), app.debugDescription)
-        selection.tap()
-        XCTAssertTrue(selection.isSelected, app.debugDescription)
+        selectAppointment(app, identity: identity)
         let clinic = UITestConditions.element(app, "appointment-clinic-\(identity)")
         XCTAssertTrue(clinic.waitForAppearance(), app.debugDescription)
         XCTAssertEqual(UITestConditions.text(clinic), "Neurology clinic")
