@@ -79,6 +79,7 @@ test('a save paused before persistence cannot re-protect a deleted source', asyn
     forgetAll: jest.fn().mockResolvedValue(0),
   } as unknown as AgentMemoryService;
   const service = createMedicalDocumentImportService({
+    retainedConversationSourceIds: async () => [],
     loadRepository: async () => repository,
     now: () => '2026-10-26T10:00:00.000Z',
   });

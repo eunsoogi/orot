@@ -62,6 +62,8 @@ async function openDefault(): Promise<AiFeatureLocalData> {
   const repository = createLocalHealthEvidenceRepository(database);
   const rag = createLocalE5RagService(database);
   const memoryStorage = new SqlCipherAgentMemoryStorage(database);
+  let conversationStorage:
+    Promise<ReturnType<typeof createConversationArtifactStorage>> | undefined;
   const data: AiFeatureLocalData = {
     repository,
     rag,
@@ -99,9 +101,38 @@ async function openDefault(): Promise<AiFeatureLocalData> {
       });
     },
     async openConversationArtifactStorage() {
-      const { createConversationArtifactStorage } =
-        await import('../../storage/conversationArtifactStorage');
-      return createConversationArtifactStorage(database);
+      // One wrapper owns notification serialization and deletion observers for this protected database.
+      conversationStorage ??= Promise.all([
+        import('../../storage/conversationArtifactStorage'),
+        import('../../replyNotifications/replyNotificationStorage'),
+      ])
+        .then(
+          ([
+            { createConversationArtifactStorage },
+            { createReplyNotificationStorage },
+          ]) =>
+            createReplyNotificationStorage(
+              createConversationArtifactStorage(database),
+              database,
+            ),
+        )
+        .catch(error => {
+          conversationStorage = undefined;
+          throw error;
+        });
+      return conversationStorage;
+    },
+    async validateConversationPhotoInput(input, signal) {
+      const [
+        { createConversationArtifactStorage },
+        { createConversationPhotoInputValidator },
+      ] = await Promise.all([
+        import('../../storage/conversationArtifactStorage'),
+        import('./conversationPhotoInputValidation'),
+      ]);
+      return createConversationPhotoInputValidator(
+        createConversationArtifactStorage(database),
+      )(input, signal);
     },
     async openResearchArtifactStorage() {
       const { createResearchArtifactStorage } =

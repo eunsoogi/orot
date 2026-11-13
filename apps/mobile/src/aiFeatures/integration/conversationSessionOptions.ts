@@ -17,11 +17,14 @@ import { validateInterruptedPhotoInputs } from './conversationInterruptedPhotoVa
 import { orderRestoredConversationTurns } from './conversationRestoredTurnOrder';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { createConversationSessionStorage } from './conversationSessionStorage';
+import { conversationPhotoPreparationOption } from './conversationPhotoPreparation';
+import type { requireSelectedAi } from './provider';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
   readonly loadLocalData: () => Promise<AiFeatureLocalData>;
   readonly registry: LocalEvidenceReferenceRegistry;
+  readonly selectedAi?: () => Promise<ReturnType<typeof requireSelectedAi>>;
   readonly restoreHealthSummary?: (
     reference: import('../../ragConversation/healthSummary').HealthSummaryReference,
   ) => Promise<
@@ -30,7 +33,9 @@ export function createConversationSessionOptions(input: {
   readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
 }): ConversationSessionOptions {
   const openStorage = createConversationSessionStorage(input.loadLocalData);
+  const photo = conversationPhotoPreparationOption(input);
   return {
+    ...photo,
     execution: conversationExecutionNative() ?? undefined,
     listSessions: async cursor => (await openStorage()).listSessions(cursor),
     restoreTasks: async (sessionId, signal) => {
@@ -42,6 +47,7 @@ export function createConversationSessionOptions(input: {
       openStorage,
       createId: createConversationDurableIdentity,
       now: () => new Date().toISOString(),
+      retirePhoto: photo.photoPreparation?.retirement.retire,
       captureToolSources: async (event, sessionId) =>
         captureConversationToolSources(
           event,

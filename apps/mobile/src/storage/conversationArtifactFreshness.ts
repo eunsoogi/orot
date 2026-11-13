@@ -6,6 +6,7 @@ import {
 import {
   isGeneratedConversationSource,
   isGeneratedSummarySource,
+  isConversationPhotoSource,
 } from '../ragConversation/conversationArtifactSources';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
@@ -52,7 +53,10 @@ export async function assertConversationArtifactCurrent(
     await assertConversationRequestSource(tx, current);
     await assertConversationSourcesNotRemoved(tx, current);
     for (const source of current.sources) {
-      if (isGeneratedSummarySource(source)) {
+      if (isConversationPhotoSource(source)) {
+        // The protected request/source join above is the authority for this photo.
+        continue;
+      } else if (isGeneratedSummarySource(source)) {
         await assertConversationSummaryParent(tx, database, source);
       } else if (isGeneratedConversationSource(source)) {
         const result = await tx.execute(

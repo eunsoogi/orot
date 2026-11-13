@@ -53,6 +53,12 @@ export function createConversationStopHandler(input: {
   controllers: Map<number, AbortController>;
   pendingTurns: Map<number, PendingTurn>;
   activities: Map<number, ReturnType<typeof createConversationTurnActivity>>;
+  snapshots: Map<
+    number,
+    ReturnType<
+      typeof import('./conversationActivity').createConversationActivity
+    >
+  >;
   lifetime: ReturnType<typeof createConversationRequestLifetime>;
   find: (id: number) => ConversationSession;
   update: (id: number, change: Partial<ConversationSession>) => void;
@@ -66,6 +72,9 @@ export function createConversationStopHandler(input: {
     const controller = input.controllers.get(id);
     if (!controller) return;
     const turn = input.pendingTurns.get(id);
+    const snapshot = input.snapshots.get(id);
+    snapshot?.cancel();
+    if (snapshot) input.update(id, { requestActivity: snapshot.getSnapshot() });
     const status = input.lifetime.status(id, controller) ?? reason;
     input.lifetime.interrupt(id, status);
     controller.abort();
@@ -77,7 +86,9 @@ export function createConversationStopHandler(input: {
       return;
     input.controllers.delete(id);
     input.pendingTurns.delete(id);
-    input.update(id, { artifactContinuation: null });
+    snapshot?.settle();
+    if (input.snapshots.get(id) === snapshot) input.snapshots.delete(id);
+    input.update(id, { artifactContinuation: null, requestActivity: null });
     showStoppedConversationTurn({ ...input, id, status, turn });
   };
 }

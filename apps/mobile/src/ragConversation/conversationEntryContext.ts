@@ -9,6 +9,30 @@ const intents = new Set([
   'medical-literature',
 ]);
 
+/** The attachment instruction is an app task, never an invented user question. */
+export function conversationTaskInput(
+  question: string,
+  context: JsonValue | undefined,
+  evidence: readonly EvidenceItem[],
+) {
+  const photo =
+    context &&
+    typeof context === 'object' &&
+    !Array.isArray(context) &&
+    (context as Readonly<Record<string, JsonValue>>).photoAttachment === true;
+  return {
+    question,
+    entryContext: conversationEntryContext(context, evidence),
+    displayTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    ...(photo
+      ? {
+          attachmentIntent:
+            '사용자가 현재 대화에 선택한 사진의 글자를 살펴봐 주세요.',
+        }
+      : {}),
+  };
+}
+
 /** Only app-selected intent and an admitted evidence alias may cross the model boundary. */
 export function conversationEntryContext(
   context: JsonValue | undefined,

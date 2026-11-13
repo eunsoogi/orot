@@ -9,11 +9,14 @@ import {
   isGeneratedConversationSource,
   isGeneratedResearchSource,
   isOriginalConversationSource,
+  isConversationPhotoSource,
 } from '../../ragConversation/conversationArtifactSources';
 import { restoreConversationSummarySource } from './restoreConversationSummarySource';
 import { restoreConversationParentSource } from './restoreConversationParentSource';
 import { restoreResearchSource } from './restoreResearchSource';
 import { rebindConversationVisitCandidates } from './rebindConversationVisitCandidates';
+import { registerConversationPhotoEvidence } from './conversationPhotoEvidence';
+import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 
 /** Restore opaque source links only while the saved result and every local input remain current. */
 export async function restoreConversationArtifact(input: {
@@ -49,6 +52,30 @@ export async function restoreConversationArtifact(input: {
     input.data,
   );
   if (restored.sourceChanged || input.signal.aborted) return null;
+  const photoSources = saved.sources.filter(isConversationPhotoSource);
+  if (photoSources.length) {
+    if (
+      !saved.submittedInput?.ocr ||
+      !input.data.validateConversationPhotoInput
+    )
+      return null;
+    const submitted = saved.submittedInput;
+    const photoItems = registerConversationPhotoEvidence({
+      submitted,
+      registry: input.registry,
+      isCurrent: signal =>
+        input.data.validateConversationPhotoInput!(submitted, signal),
+    });
+    for (const source of photoSources) {
+      const item = photoItems.find(
+        candidate =>
+          stableJson(input.registry.resolve(candidate)) ===
+          stableJson(source.reference),
+      );
+      if (!item) return null;
+      restored.mapping.set(stableJson(source.reference), referenceOnly(item));
+    }
+  }
   let inheritedSourceUnknown = false;
   for (const source of saved.sources) {
     if (

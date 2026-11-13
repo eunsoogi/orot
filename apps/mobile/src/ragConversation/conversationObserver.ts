@@ -16,6 +16,22 @@ export type RagConversationObserver = Pick<
 > & {
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
+  /** The checkpoint and explicit photo consent are owned by this specific turn. */
+  readonly photoInput?: {
+    readonly submitted: import('./conversationSubmittedInput').ConversationSubmittedInput;
+    readonly stagingGeneration: number;
+    readonly previewData?: string;
+    readonly settleUnsent?: () => Promise<void>;
+    readonly confirm: (
+      details: {
+        readonly providerName: string;
+        readonly modelId: string;
+        readonly recipient: string;
+        readonly remoteProcessing: boolean;
+      },
+      signal: AbortSignal,
+    ) => Promise<boolean>;
+  };
   /** Durable request identity, distinct from a transient UI response number. */
   readonly retentionRequestId?: string;
   readonly retainedHistory?: readonly {

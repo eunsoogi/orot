@@ -7,6 +7,7 @@ import {
 } from '../aiFeatures/integration/evidenceUtils';
 import { savedManualHistorySource } from '../aiFeatures/integration/manualHistoryEvidence';
 import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
+import { requireNonPhotoSources } from '../ragConversation/conversationArtifactSources';
 import { assertRetainedEvidenceCurrent } from '../storage/retainedEvidenceFreshness';
 import { createSymptomSummaryStorage } from '../storage/symptomSummaryStorage';
 import { t } from '../i18n';
@@ -75,7 +76,12 @@ function choice(
         try {
           await database.transaction(async tx => {
             const history = createManualHistoryRepository(database);
-            await assertRetainedEvidenceCurrent(tx, sources, history, false);
+            await assertRetainedEvidenceCurrent(
+              tx,
+              requireNonPhotoSources(sources),
+              history,
+              false,
+            );
             await assertTreatmentAttribution(tx, history, context, sources);
           });
           return !signal.aborted;

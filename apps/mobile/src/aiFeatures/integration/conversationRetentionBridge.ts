@@ -15,6 +15,7 @@ export function createConversationRetentionBridge(input: {
   readonly observer?: RagConversationObserver;
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly question: string;
+  readonly submittedInput?: import('../../ragConversation/conversationSubmittedInput').ConversationSubmittedInput;
   readonly providerId: string;
   readonly modelId: string;
   readonly entryContext?: ConversationEntryContext;
@@ -95,6 +96,9 @@ export function createConversationRetentionBridge(input: {
           throw new Error('Answer capture was cancelled.');
         return {
           question: input.question,
+          ...(input.submittedInput
+            ? { submittedInput: input.submittedInput }
+            : {}),
           answer: outcome.answer,
           ...(outcome.completion === 'partial'
             ? { status: 'partial' as const }

@@ -142,7 +142,11 @@ test('uses the feature route lane for Duo regions and preserves an active conver
     )?.width,
   ).toBeLessThanOrEqual(640);
   expect(screen.queryByTestId('rag-conversation-columns-secondary')).toBeNull();
-  expect(screen.getByTestId('rag-conversation-progress')).toBeTruthy();
+  expect(
+    screen.getByTestId('rag-conversation-activity-bubble', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
     '다음 질문 초안',
   );
@@ -168,7 +172,11 @@ test('uses the feature route lane for Duo regions and preserves an active conver
   expect(screen.getAllByLabelText(copy.sessions)).toHaveLength(1);
   expect(screen.getAllByLabelText(copy.newConversation)).toHaveLength(1);
   expect(screen.getByTestId('rag-conversation-sessions-toggle')).toBeTruthy();
-  expect(screen.getByTestId('rag-conversation-progress')).toBeTruthy();
+  expect(
+    screen.getByTestId('rag-conversation-activity-bubble', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
     '다음 질문 초안',
   );
