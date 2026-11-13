@@ -101,6 +101,13 @@ export function createConversationRequestStorage(
         );
         if (!session.rows.length)
           throw new Error('Conversation is unavailable.');
+        // A turn identity already associated with an answer or its tombstone cannot be repurposed.
+        const occupied = await tx.execute(
+          'SELECT id FROM conversation_artifacts WHERE id = ? UNION ALL SELECT id FROM conversation_deleted_artifacts WHERE id = ? UNION ALL SELECT message_id FROM conversation_tool_events WHERE message_id = ? LIMIT 1',
+          [input.id, input.id, input.id],
+        );
+        if (occupied.rows.length)
+          throw new Error('Conversation request identity is unavailable.');
         await tx.execute(
           'INSERT INTO conversation_requests (id, session_id, session_version, question, created_at, status) VALUES (?, ?, ?, ?, ?, ?)',
           [
