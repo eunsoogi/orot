@@ -22,7 +22,17 @@ extension AppointmentsUITests {
             frames.append(("ownerFrame", axOwners[0].frame))
         }
         let axEnd = Date().timeIntervalSince1970 * 1000
-        let after = try sample()
+        // The marker updates asynchronously; require a native sample started after
+        // the AX reads instead of accepting the most recently published sample.
+        var freshAfter: (dock: [String: Any], page: [String: Any])?
+        let fresh = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard let candidate = try? sample(),
+                  let started = candidate.dock["sampleStartedAtMs"] as? Double, started >= axEnd else { return false }
+            freshAfter = candidate
+            return true
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [fresh], timeout: 5), .completed, "A fresh native page sample was not published")
+        let after = try XCTUnwrap(freshAfter)
         let dock = before.dock, page = before.page
         let receipt: [String: Any] = ["before": page, "after": after.page, "axStartMs": axStart, "axEndMs": axEnd]
         let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: receipt, options: .sortedKeys), uniformTypeIdentifier: "public.json")
