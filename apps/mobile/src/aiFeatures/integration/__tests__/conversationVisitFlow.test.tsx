@@ -13,6 +13,7 @@ import { AiFeatureFlowScreen } from '../AiFeatureFlowScreen';
 import { AiFeatureSharedNavigationStateProvider } from '../AiFeatureSharedNavigationState';
 import { createAiFeatureServices } from '../featureServices';
 import type { AiFeatureServices } from '../featureServices';
+import { conversationIntentRequests } from '../conversationIntent';
 import { defaultVisitQuestionRouteOperations } from '../visitQuestionsRouteOperations';
 
 jest.mock(
@@ -21,7 +22,7 @@ jest.mock(
 );
 afterEach(() => jest.restoreAllMocks());
 
-test('the visit entry shows editable questions in chat, saves explicitly and keeps ordinary follow-up separate', async () => {
+test('the explicit visit action shows prepared questions in chat and keeps ordinary follow-up separate', async () => {
   const services = createAiFeatureServices({ authorize: jest.fn() });
   const review = createInlineVisitReview(
     'owner-1',
@@ -96,14 +97,22 @@ test('the visit entry shows editable questions in chat, saves explicitly and kee
       />
     </AiFeatureSharedNavigationStateProvider>,
   );
-  await fireEvent.changeText(
-    screen.getByTestId('rag-conversation-input'),
-    '수정한 요청',
-  );
-  await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+  expect(screen.getByTestId('conversation-visit-prepare')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
+  expect(prepare).not.toHaveBeenCalled();
+  expect(send).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('conversation-visit-prepare'));
   await waitFor(() =>
     expect(screen.getByTestId('inline-visit-review')).toBeTruthy(),
   );
+  expect(prepare).toHaveBeenCalledWith(
+    expect.objectContaining({
+      question: conversationIntentRequests['visit-questions'],
+      context: expect.objectContaining({ intent: 'visit-questions' }),
+    }),
+  );
+  expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
+  expect(send).not.toHaveBeenCalled();
   await fireEvent.press(
     screen.getByTestId('rag-tool-event-visit-run-call-1-toggle'),
   );

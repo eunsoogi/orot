@@ -8,6 +8,7 @@ import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
 import { invokePreparedEvidenceSearch, prepareEvidenceSearch } from './prepareEvidenceSearch';
 import { toolProviderStop } from './evidenceToolModelBudget';
+import { deferEvidenceAdapter } from './modelCallFreshness';
 import type { Runtime } from '@langchain/langgraph/web';
 import { appendNativeToolResultMessage } from './nativeTools';
 
@@ -28,6 +29,16 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         'stale_evidence',
       );
       return completeState();
+    }
+    if (context.beforeTaskInputChange) {
+      const fenced = await observeUntilAbort(
+        deferEvidenceAdapter(context.signal, () => context.beforeTaskInputChange!(context.signal)),
+        context.signal,
+      );
+      if (fenced.kind === 'cancelled') canceled(context, 'not_started');
+      else if (fenced.kind !== 'value')
+        stop(context, 'The conversation input could not be prepared safely.', 'stale_evidence');
+      if (fenced.kind !== 'value') return completeState();
     }
     reportProgress(context, {
       type: 'evidence_search',

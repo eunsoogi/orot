@@ -17,6 +17,11 @@ import type { createResearchArtifactDiscovery } from './researchArtifactDiscover
 export type { StaleEvidenceArtifact } from './transcriptInvalidations';
 
 export interface AiFeatureLocalData extends LocalEvidenceData {
+  /** Checks the protected original and source generation; this does not authorize a new transmission. */
+  validateConversationPhotoInput?(
+    input: import('../../ragConversation/conversationSubmittedInput').ConversationSubmittedInput,
+    signal: AbortSignal,
+  ): Promise<boolean>;
   readonly repository: LocalHealthEvidenceRepository;
   readonly rag: Pick<LocalE5RagService, 'index' | 'search'>;
   readonly memoryStorage: Pick<SqlCipherAgentMemoryStorage, 'listRecords'>;

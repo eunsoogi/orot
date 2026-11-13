@@ -91,6 +91,11 @@ export function createConversationSessionVisibility(
           'UPDATE conversation_artifact_sessions SET hidden = 0, version = version + 1 WHERE id = ?',
           [id],
         );
+        // Undo may restore protected inputs, but never resumes an earlier provider request.
+        await tx.execute(
+          "UPDATE conversation_requests SET session_version = ?, status = CASE WHEN status = 'active' THEN 'interrupted' ELSE status END WHERE session_id = ? AND session_version = ?",
+          [expectedVersion + 1, id, expectedVersion - 1],
+        );
       });
       return expectedVersion + 1;
     },

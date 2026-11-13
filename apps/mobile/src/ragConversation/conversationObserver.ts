@@ -8,7 +8,11 @@ import type {
 /** Progress, scoped continuation and local retention callbacks for a conversation turn. */
 export type RagConversationObserver = Pick<
   MultiAgentInvocation,
-  'onProgress' | 'onTaskStreamEvent' | 'onToolEvent'
+  | 'onProgress'
+  | 'onTaskStreamEvent'
+  | 'onToolEvent'
+  | 'beforeTaskStream'
+  | 'beforeTaskInputChange'
 > & {
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
@@ -31,4 +35,14 @@ export type RagConversationObserver = Pick<
   readonly onRetentionFailure?: (
     retryPreparation?: PrepareConversationRetention,
   ) => void;
+  /** Private preview preparation is separate from validated answer retention. */
+  readonly onPreviewBoundary?: () => Promise<number>;
+  readonly onPreviewPrepared?: (
+    boundary: number,
+    template: {
+      providerId: string;
+      modelId: string;
+      sources: readonly import('./conversationArtifactSources').ConversationArtifactSource[];
+    },
+  ) => Promise<void>;
 };

@@ -81,7 +81,11 @@ export function createConversationTurnActivity(input: {
         });
     },
     observer: {
-      onToolEvent: observe,
+      // A provider may deliver a callback after cancellation or a newer retry.
+      // Only the request that still owns this activity may record that callback.
+      onToolEvent(event: ConversationToolEvent) {
+        if (input.current()) observe(event);
+      },
       onProgress(event: Parameters<typeof progressCopy>[0]) {
         const pending = input.find(input.id)?.pendingMessage;
         if (input.current() && pending?.id === input.responseId)

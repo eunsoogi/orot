@@ -1,46 +1,19 @@
 import { validConversationReportTarget } from './conversationReportTarget';
-import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import { isRecordKind } from '@orot/storage';
-import type { ConversationArtifactSource } from '../ragConversation/conversationArtifactSources';
-import type { EvidenceReference } from '@orot/agent-runtime';
 import { parseHealthContextScope } from '../healthEvidence/healthContext/scope';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
-import {
-  parseHealthSummaryReference,
-  type HealthSummaryReference,
-} from '../ragConversation/healthSummary';
+import { parseHealthSummaryReference } from '../ragConversation/healthSummary';
 import { parseConversationVisitQuestionReference } from '../ragConversation/conversationVisitQuestionReference';
-import type { ConversationVisitQuestionReference } from '../ragConversation/conversationVisitQuestionReference';
 import { referenceOnly } from '../diseaseHypotheses/resultValidation';
 import { hasValidTreatmentContext } from '../treatmentContext/validation';
-import type { TreatmentContext } from '../treatmentContext/types';
+import type { ConversationArtifact } from './conversationArtifactTypes';
+export type { ConversationArtifact } from './conversationArtifactTypes';
+import {
+  artifactInputObject as object,
+  validConversationArtifactInput,
+} from './conversationArtifactInput';
 
 export const CONVERSATION_SOURCE_LIMIT = 24;
-
-export interface ConversationArtifact {
-  readonly id: string;
-  readonly sessionId: string;
-  readonly createdAt: string;
-  readonly providerId: string;
-  readonly modelId: string;
-  readonly entryIntent?: 'possibilities';
-  readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
-  readonly priorDialogue?: readonly { question: string; answer: string }[];
-  readonly priorUserReports?: readonly string[];
-  readonly priorDialogueOmitted?: true;
-  readonly status: 'complete' | 'partial';
-  readonly question: string;
-  readonly answer: string;
-  readonly sources: readonly ConversationArtifactSource[];
-  readonly citations?: readonly EvidenceReference[];
-  readonly healthSummary?: HealthSummaryReference;
-  readonly visitQuestions?: ConversationVisitQuestionReference;
-  readonly treatmentContext?: TreatmentContext;
-}
-
-function object(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
 
 /** Persisted JSON is untrusted; reject malformed dependencies before using their table identities. */
 export function decodeConversationArtifact(
@@ -58,12 +31,12 @@ export function decodeConversationArtifact(
         'createdAt',
         'providerId',
         'modelId',
-        'question',
         'answer',
       ].every(
         key =>
           typeof value[key] === 'string' && (value[key] as string).length > 0,
       ) ||
+      typeof value.question !== 'string' ||
       !Number.isFinite(Date.parse(value.createdAt as string)) ||
       new Date(value.createdAt as string).toISOString() !== value.createdAt ||
       (value.status !== 'complete' && value.status !== 'partial') ||
@@ -94,6 +67,7 @@ export function decodeConversationArtifact(
       value.sources.length > CONVERSATION_SOURCE_LIMIT
     )
       return null;
+    if (!validConversationArtifactInput(value)) return null;
     for (const source of value.sources) {
       if (!object(source) || !object(source.reference)) return null;
       const ref = source.reference;
