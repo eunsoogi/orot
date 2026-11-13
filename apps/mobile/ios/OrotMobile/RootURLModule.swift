@@ -6,8 +6,13 @@ import React
 final class RootURLModule: RCTEventEmitter {
     private var observer: NSObjectProtocol?
 
-    @objc override static func requiresMainQueueSetup() -> Bool { false }
-    override func supportedEvents() -> [String]! { ["rootURLOpened"] }
+    @objc override static func requiresMainQueueSetup() -> Bool {
+        false
+    }
+
+    override func supportedEvents() -> [String]! {
+        ["rootURLOpened"]
+    }
 
     override func startObserving() {
         DispatchQueue.main.async { [weak self] in
@@ -15,7 +20,9 @@ final class RootURLModule: RCTEventEmitter {
             observer = NotificationCenter.default.addObserver(forName: RootURLInbox.changed, object: nil, queue: .main) { [weak self] _ in
                 self?.sendEvent(withName: "rootURLOpened", body: nil)
             }
-            if RootURLInbox.shared.peek() != nil { sendEvent(withName: "rootURLOpened", body: nil) }
+            if RootURLInbox.shared.peek() != nil {
+                sendEvent(withName: "rootURLOpened", body: nil)
+            }
         }
     }
 
@@ -28,7 +35,9 @@ final class RootURLModule: RCTEventEmitter {
     }
 
     deinit {
-        if let observer { NotificationCenter.default.removeObserver(observer) }
+        if let observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     @objc(peek:rejecter:)

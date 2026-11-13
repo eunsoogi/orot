@@ -9,18 +9,18 @@ final class RootURLInboxTests: OrotFailFastTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let inbox = RootURLInbox(defaults: defaults)
-        inbox.receive(try XCTUnwrap(URL(string: "orot://open/v1/records")))
-        inbox.receive(try XCTUnwrap(URL(string: "orot://open/v1/conversation")))
+        try inbox.receive(XCTUnwrap(URL(string: "orot://open/v1/records")))
+        try inbox.receive(XCTUnwrap(URL(string: "orot://open/v1/conversation")))
         let first = try XCTUnwrap(inbox.peek())
         XCTAssertEqual(first["destination"], "records")
         XCTAssertEqual(RootURLInbox(defaults: defaults).peek(), first)
         inbox.acknowledge("not-the-delivery")
         XCTAssertEqual(inbox.peek(), first)
-        inbox.acknowledge(try XCTUnwrap(first["id"]))
+        try inbox.acknowledge(XCTUnwrap(first["id"]))
         let second = try XCTUnwrap(inbox.peek())
         XCTAssertEqual(second["destination"], "conversation")
         XCTAssertNotEqual(first["id"], second["id"])
-        inbox.acknowledge(try XCTUnwrap(second["id"]))
+        try inbox.acknowledge(XCTUnwrap(second["id"]))
         XCTAssertNil(inbox.peek())
     }
 
@@ -29,10 +29,10 @@ final class RootURLInboxTests: OrotFailFastTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let inbox = RootURLInbox(defaults: defaults)
-        inbox.receive(try XCTUnwrap(URL(string: "orot://open/v1/settings")))
+        try inbox.receive(XCTUnwrap(URL(string: "orot://open/v1/settings")))
         let first = inbox.peek()
         for raw in ["orot://open/v1/records?record=secret", "orot://open/v1/settings/extra", "orot://user@open/v1/settings"] {
-            inbox.receive(try XCTUnwrap(URL(string: raw)))
+            try inbox.receive(XCTUnwrap(URL(string: raw)))
         }
         XCTAssertEqual(inbox.peek(), first)
     }
