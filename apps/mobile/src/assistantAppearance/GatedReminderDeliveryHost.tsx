@@ -82,6 +82,15 @@ export function ReminderGate({
     () => () => listeners.forEach(listener => listener()),
     [listeners],
   );
+  const subscribeReady = useMemo(
+    () => (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    [listeners],
+  );
   const markExplicitEntry = useMemo(
     () => () => {
       explicitEntryWon.current = true;
@@ -151,6 +160,8 @@ export function ReminderGate({
         loadLocalData={loadLocalData}
         canEnterReply={canEnterReply}
         executeReplyEntry={execute}
+        subscribeReplyEntryReady={subscribeReady}
+        onReplyOpened={markExplicitEntry}
         executeReminderEntry={execute}
         canRestoreEntry={canRestoreEntry}
         onExplicitReminderOpened={markExplicitEntry}

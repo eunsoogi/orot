@@ -12,6 +12,12 @@ jest.mock(
 jest.mock('../src/appEntry/RootURLDeliveryHost', () => ({
   RootURLDeliveryHost: () => null,
 }));
+jest.mock('../src/appEntry/rootURLBridge', () => ({
+  rootURLBridge: { peek: jest.fn(async () => null) },
+}));
+jest.mock('../src/replyNotifications/nativeReplyNotifications', () => ({
+  nativeReplyNotifications: () => ({ consumeTarget: async () => null }),
+}));
 jest.mock('../src/replyNotifications/reconcileReplyPrivacy', () => ({
   reconcileReplyPrivacy: () => () => {},
 }));
@@ -71,8 +77,11 @@ test('the production app forwards reply dependencies and a live shared gate to i
   expect(props.retention).toBe(mockRetention);
   expect(props.loadLocalData).toBe(mockLoadLocalData);
   expect(props.canEnterReply?.()).toBe(false);
+  expect(await props.canRestoreEntry?.()).toBe(true);
   await props.executeReplyEntry?.(async () => {
     expect(props.canEnterReply?.()).toBe(true);
+    props.onReplyOpened?.();
   });
   expect(props.canEnterReply?.()).toBe(false);
+  expect(await props.canRestoreEntry?.()).toBe(false);
 });
