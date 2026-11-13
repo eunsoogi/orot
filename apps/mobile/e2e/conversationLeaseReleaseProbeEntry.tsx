@@ -20,6 +20,7 @@ import { openLocalAgentMemoryDatabase } from '../src/storage/secureDatabase';
 import { NavigationRouteAdapter } from '../src/navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../src/navigation/navigationController';
 import type { ConversationSender } from '../src/ragConversation/conversationSessionTypes';
+import { runSyntheticStages } from './conversationLeaseProbeStage';
 
 // This opt-in test entry uses the app's protected database; only synthetic values enter its counter.
 const options = createConversationSessionOptions({
@@ -28,6 +29,7 @@ const options = createConversationSessionOptions({
 });
 let release: (() => void) | undefined;
 let publish: ((value: string) => void) | undefined;
+let publishStage: ((value: string) => void) | undefined;
 let observedRequestId: string | undefined;
 const nativeExecution = NativeModules.ConversationExecutionModule as {
   isActive(id: string): Promise<boolean>;
@@ -44,63 +46,71 @@ async function database() {
 }
 
 /** A controllable sender exercises the actual session owner and encrypted request store. */
-const send: ConversationSender = async (
-  question,
-  _history,
-  signal,
-  observer,
-) => {
-  const db = await database();
-  await db.execute(
-    'INSERT INTO conversation_retention_probe_dispatches DEFAULT VALUES',
-  );
-  const boundary = await observer!.onPreviewBoundary!();
-  await observer!.onPreviewPrepared!(boundary, {
-    providerId: 'synthetic',
-    modelId: 'synthetic',
-    sources: [],
-  });
-  observer!.onTaskStreamEvent!({ type: 'started' });
-  observer!.onTaskStreamEvent!({ type: 'text_delta', text: partial });
-  const requests = (
-    await db.execute(
-      "SELECT id FROM conversation_requests WHERE question = ? AND status = 'active'",
-      [question],
-    )
-  ).rows;
-  if (
-    requests.length !== 1 ||
-    typeof requests[0]?.id !== 'string' ||
-    !nativeExecution?.isActive
-  )
-    throw new Error('Unique native request identity unavailable.');
-  observedRequestId = requests[0].id;
-  if (!(await nativeExecution.isActive(observedRequestId)))
-    throw new Error('Native execution lease was not acquired.');
-  const waiting = new Promise<void>(resolve => {
-    release = resolve;
-    signal?.addEventListener('abort', () => resolve(), { once: true });
-  });
-  publish?.(await readProbe());
-  await waiting;
-  release = undefined;
-  if (signal?.aborted) return { status: 'failure', kind: 'cancelled' };
-  if (question === 'Synthetic failure question')
-    return { status: 'failure', kind: 'provider_refused' };
-  await observer!.onRetentionCandidate!(
-    {
-      question,
-      answer,
-      providerId: 'synthetic',
-      modelId: 'synthetic',
-      sources: [],
-      citations: [],
+const send: ConversationSender = async (question, _history, signal, observer) =>
+  runSyntheticStages(
+    value => publishStage?.(value),
+    async mark => {
+      mark('database');
+      const db = await database();
+      await db.execute(
+        'INSERT INTO conversation_retention_probe_dispatches DEFAULT VALUES',
+      );
+      mark('preview-boundary');
+      const boundary = await observer!.onPreviewBoundary!();
+      mark('preview-prepare');
+      await observer!.onPreviewPrepared!(boundary, {
+        providerId: 'synthetic',
+        modelId: 'synthetic',
+        sources: [],
+      });
+      mark('preview-stream');
+      observer!.onTaskStreamEvent!({ type: 'started' });
+      observer!.onTaskStreamEvent!({ type: 'text_delta', text: partial });
+      mark('request-identity');
+      const requests = (
+        await db.execute(
+          "SELECT id FROM conversation_requests WHERE question = ? AND status = 'active'",
+          [question],
+        )
+      ).rows;
+      if (
+        requests.length !== 1 ||
+        typeof requests[0]?.id !== 'string' ||
+        !nativeExecution?.isActive
+      )
+        throw new Error('Unique native request identity unavailable.');
+      observedRequestId = requests[0].id;
+      mark('lease-check');
+      if (!(await nativeExecution.isActive(observedRequestId)))
+        throw new Error('Native execution lease was not acquired.');
+      const waiting = new Promise<void>(resolve => {
+        release = resolve;
+        signal?.addEventListener('abort', () => resolve(), { once: true });
+      });
+      mark('probe-read');
+      publish?.(await readProbe());
+      mark('await-release');
+      await waiting;
+      release = undefined;
+      if (signal?.aborted) return { status: 'failure', kind: 'cancelled' };
+      if (question === 'Synthetic failure question')
+        return { status: 'failure', kind: 'provider_refused' };
+      mark('commit-candidate');
+      await observer!.onRetentionCandidate!(
+        {
+          question,
+          answer,
+          providerId: 'synthetic',
+          modelId: 'synthetic',
+          sources: [],
+          citations: [],
+        },
+        signal!,
+      );
+      publish?.(await readProbe());
+      return { status: 'answer', answer, citations: [] };
     },
-    signal!,
   );
-  publish?.(await readProbe());
-  return { status: 'answer', answer, citations: [] };
-};
 
 /** Counts and checkpoint state expose no health data and survive the test process restart. */
 async function readProbe() {
@@ -140,7 +150,9 @@ function Probe() {
     createNavigationController<'conversation' | 'history'>('conversation'),
   );
   const [status, setStatus] = useState('unread');
+  const [stage, setStage] = useState('stage:not-entered result:unavailable');
   publish = setStatus;
+  publishStage = setStage;
   return (
     <SafeAreaProvider>
       <ConversationSessionsProvider options={options}>
@@ -184,7 +196,12 @@ function Probe() {
                 />
               </View>
             </View>
-            <Text testID="retention-probe-status">{status}</Text>
+            <Text
+              testID="retention-probe-status"
+              accessibilityLabel={`${stage} ${status}`}
+            >
+              {status}
+            </Text>
           </SafeAreaView>
           {otherTab ? (
             <Text testID="retention-probe-other-tab">Other test tab</Text>
@@ -222,7 +239,6 @@ function Probe() {
     </SafeAreaProvider>
   );
 }
-
 AppRegistry.registerComponent(appName, () => Probe);
 
 const styles = StyleSheet.create({

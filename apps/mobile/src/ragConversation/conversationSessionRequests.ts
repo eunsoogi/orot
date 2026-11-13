@@ -14,6 +14,8 @@ import {
 import { conversationCompletedAnswer } from './conversationCompletedAnswer';
 import { observeSummaryCommit } from './conversationSummaryCommit';
 import { prepareConversationRequest } from './conversationRequestStart';
+import { bindRequestCancel } from './conversationRequestIdentity';
+import { requestIdentityObserver } from './conversationRequestIdentity';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import { createConversationRequestLifetime } from './conversationRequestLifetime';
 import { startConversationRetainedRequest } from './conversationPhotoRequestStart';
@@ -87,6 +89,7 @@ export function createConversationSessionRequests(
       onSend: ConversationSender,
       explicitQuestion?: string,
       hasPhoto = false,
+      onOwner?: (cancel: () => boolean) => void,
     ) {
       const session = find(id);
       const start = prepareConversationRequest(
@@ -105,6 +108,7 @@ export function createConversationSessionRequests(
       snapshots.set(id, snapshot);
       controllers.set(id, controller);
       pendingTurns.set(id, request);
+      onOwner?.(bindRequestCancel(controllers, id, controller, cancel));
       update(id, { ...change, requestActivity: snapshot.getSnapshot() });
       const current = () =>
         controllers.get(id) === controller && !controller.signal.aborted;
@@ -160,9 +164,7 @@ export function createConversationSessionRequests(
           conversationScope: conversationScope(id),
           ...(photoInput ? { photoInput } : {}),
           retainedHistory: retainedHistoryTurns(session.messages, question),
-          ...(retention?.activeLease(id)
-            ? { retentionSession: retention.activeLease(id)! }
-            : {}),
+          ...requestIdentityObserver(retention, retained, id),
           artifactContinuation: session.artifactContinuation ?? null,
           onArtifactContinuation(value) {
             if (current()) update(id, { artifactContinuation: value });
