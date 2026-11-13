@@ -72,7 +72,7 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let banner = ReminderJourneyObservation.deliveredBanner(
             in: springboard,
-            bodyText: "오늘의 기록을 확인해 보세요."
+            bodyText: "오늘의 기록을 확인해 보세요.",
         )
         let notification = banner.body
         // Wait for the actual delivered UI and its hit target; no clock change or injected tap is used.

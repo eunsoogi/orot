@@ -43,7 +43,7 @@ enum ReminderJourneyObservation {
             container: container,
             title: container.staticTexts.matching(identifier: "NotificationTitle").firstMatch,
             body: container.staticTexts.matching(identifier: "TextContent.Primary").firstMatch,
-            appIcon: springboard.icons["오롯"]
+            appIcon: springboard.icons["오롯"],
         )
     }
 
