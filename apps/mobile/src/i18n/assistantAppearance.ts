@@ -1,0 +1,35 @@
+export const assistantAppearanceKo = {
+  'assistantAppearance.defaultName': '비서',
+  'assistantAppearance.loading': '설정을 불러오는 중',
+  'assistantAppearance.loadError': '비서 설정을 불러오지 못했어요.',
+  'assistantAppearance.retry': '다시 시도',
+  'assistantAppearance.title': '비서 꾸미기',
+  'assistantAppearance.introduction':
+    '함께할 비서의 모습을 선택해 주세요. 선택은 이 기기에만 저장돼요.',
+  'assistantAppearance.neutral': '기본',
+  'assistantAppearance.sun': '햇살',
+  'assistantAppearance.leaf': '잎',
+  'assistantAppearance.star': '별',
+  'assistantAppearance.selected': '선택됨',
+  'assistantAppearance.nameLabel': '비서 이름',
+  'assistantAppearance.nameOptional': '비서 이름 (선택)',
+  'assistantAppearance.namePlaceholder': '어떤 이름으로 부를까요?',
+  'assistantAppearance.nameHelp':
+    '이름을 비우면 ‘비서’로 표시해요. 24글자까지 입력할 수 있어요.',
+  'assistantAppearance.privacy': '개인정보나 건강 정보는 입력하지 마세요.',
+  'assistantAppearance.invalidLength': '이름은 24글자 이내로 입력해 주세요.',
+  'assistantAppearance.invalidCharacters':
+    '줄바꿈이나 제어 문자는 사용할 수 없어요.',
+  'assistantAppearance.saveError': '저장하지 못했어요. 다시 시도해 주세요.',
+  'assistantAppearance.clearError':
+    '설정을 지우지 못했어요. 다시 시도해 주세요.',
+  'assistantAppearance.save': '저장',
+  'assistantAppearance.cancel': '취소',
+  'assistantAppearance.clear': '선택 지우기',
+  'assistantAppearance.preparing': '요청을 준비하고 있어요',
+  'assistantAppearance.waiting': '응답을 기다리고 있어요',
+  'assistantAppearance.records': '기록을 살펴보고 있어요',
+  'assistantAppearance.literature': '의학 자료를 찾고 있어요',
+  'assistantAppearance.streaming': '답변을 작성하고 있어요',
+  'assistantAppearance.cancelling': '요청을 중단하고 있어요',
+} as const;

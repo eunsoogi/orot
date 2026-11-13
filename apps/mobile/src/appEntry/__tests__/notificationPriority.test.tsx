@@ -70,23 +70,19 @@ beforeEach(() => {
 });
 
 test('a cold appointment tap wins over a saved passive conversation restore', async () => {
-  jest
-    .mocked(dailyReportConversationIntentStore.read)
-    .mockResolvedValue({
-      active: true,
-      intent: { kind: 'daily-report', entryKey: 'saved', request: {} },
-    } as never);
+  jest.mocked(dailyReportConversationIntentStore.read).mockResolvedValue({
+    active: true,
+    intent: { kind: 'daily-report', entryKey: 'saved', request: {} },
+  } as never);
   const plan = buildAppointmentReminder(
     [appointment],
     { appointmentId: appointment.id, leadMinutes: 60 },
     0,
   )!;
-  jest
-    .mocked(consumeAppointmentReminderTarget)
-    .mockResolvedValueOnce({
-      appointmentId: appointment.id,
-      timeKey: plan.timeKey,
-    });
+  jest.mocked(consumeAppointmentReminderTarget).mockResolvedValueOnce({
+    appointmentId: appointment.id,
+    timeKey: plan.timeKey,
+  });
   const store = createAppointmentStore([appointment]);
   const runtime = createAppointmentReminderRuntime(
     async () => store.repository,
@@ -116,16 +112,14 @@ test('a cold appointment tap wins over a saved passive conversation restore', as
 });
 
 test('a pending reply prevents passive daily restoration before reply validation', async () => {
-  jest
-    .mocked(nativeReplyNotifications)
-    .mockReturnValue({
-      consumeTarget: jest.fn(async () => ({
-        requestId: 'r',
-        sessionId: 's',
-        messageId: 'm',
-        sessionVersion: '1',
-      })),
-    } as never);
+  jest.mocked(nativeReplyNotifications).mockReturnValue({
+    consumeTarget: jest.fn(async () => ({
+      requestId: 'r',
+      sessionId: 's',
+      messageId: 'm',
+      sessionVersion: '1',
+    })),
+  } as never);
   jest
     .mocked(dailyReminderIntentStore.read)
     .mockResolvedValue({ active: true, entry: {} } as never);

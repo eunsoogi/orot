@@ -47,12 +47,10 @@ test('a busy explicit daily tap does not immediately restore and re-prompt itsel
     .mockImplementation(async value => {
       saved = value;
     });
-  jest
-    .mocked(consumeDailyReminderTarget)
-    .mockResolvedValue({
-      kind: 'daily_report',
-      deliveryTimestamp: '1700000000',
-    });
+  jest.mocked(consumeDailyReminderTarget).mockResolvedValue({
+    kind: 'daily_report',
+    deliveryTimestamp: '1700000000',
+  });
   const runtime = createAppointmentReminderRuntime(
     async () => createAppointmentStore([]).repository,
   );

@@ -9,18 +9,19 @@ import {
 } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
+import { t } from '../i18n';
 import type { ConversationSession } from '../ragConversation/conversationSessionTypes';
 import { AvatarSymbol } from './AppearanceEditor';
 import { defaultAssistantName } from './appearance';
 import { useAssistantAppearance } from './AssistantAppearanceProvider';
 
 const stages = {
-  preparing: '요청을 준비하고 있어요',
-  waiting: '응답을 기다리고 있어요',
-  records: '기록을 살펴보고 있어요',
-  literature: '의학 자료를 찾고 있어요',
-  streaming: '답변을 작성하고 있어요',
-  cancelling: '요청을 중단하고 있어요',
+  preparing: 'assistantAppearance.preparing',
+  waiting: 'assistantAppearance.waiting',
+  records: 'assistantAppearance.records',
+  literature: 'assistantAppearance.literature',
+  streaming: 'assistantAppearance.streaming',
+  cancelling: 'assistantAppearance.cancelling',
 } as const;
 
 export function activityLabel(session: ConversationSession): string | null {
@@ -28,7 +29,7 @@ export function activityLabel(session: ConversationSession): string | null {
   return activity &&
     activity.sessionId === session.id &&
     activity.requestId === session.pendingMessage?.id
-    ? stages[activity.stage]
+    ? t(stages[activity.stage])
     : null;
 }
 
@@ -75,7 +76,7 @@ function ActiveAssistantHeader({
       accessibilityLabel={[
         appearance.value.name ?? defaultAssistantName,
         stage,
-        '비서 꾸미기',
+        t('assistantAppearance.title'),
       ]
         .filter(Boolean)
         .join(', ')}

@@ -1,4 +1,5 @@
 import Graphemer from 'graphemer';
+import { t } from '../i18n';
 
 export const avatarIds = ['neutral', 'sun', 'leaf', 'star'] as const;
 export type AvatarId = (typeof avatarIds)[number];
@@ -6,7 +7,7 @@ export type AssistantAppearance = Readonly<{
   avatar: AvatarId;
   name: string | null;
 }>;
-export const defaultAssistantName = '비서';
+export const defaultAssistantName = t('assistantAppearance.defaultName');
 export const maximumNameGraphemes = 24;
 const splitter = new Graphemer();
 

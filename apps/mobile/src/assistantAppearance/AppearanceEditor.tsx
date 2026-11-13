@@ -14,6 +14,7 @@ import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
+import { t } from '../i18n';
 import SafeAreaLayout from '../layout/SafeAreaLayout';
 import {
   avatarIds,
@@ -24,10 +25,13 @@ import type { AssistantAppearance, AvatarId } from './appearance';
 import { appearanceStore } from './appearanceStore';
 
 const avatars: Record<AvatarId, { label: string; symbol: string }> = {
-  neutral: { label: '기본', symbol: 'person.crop.circle' },
-  sun: { label: '햇살', symbol: 'sun.max' },
-  leaf: { label: '잎', symbol: 'leaf' },
-  star: { label: '별', symbol: 'star' },
+  neutral: {
+    label: t('assistantAppearance.neutral'),
+    symbol: 'person.crop.circle',
+  },
+  sun: { label: t('assistantAppearance.sun'), symbol: 'sun.max' },
+  leaf: { label: t('assistantAppearance.leaf'), symbol: 'leaf' },
+  star: { label: t('assistantAppearance.star'), symbol: 'star' },
 };
 
 export function AvatarSymbol({ avatar }: { avatar: AvatarId }) {
@@ -74,8 +78,8 @@ export function AppearanceEditor({
     } catch (cause) {
       setError(
         cause instanceof Error && cause.message === 'length'
-          ? '이름은 24글자 이내로 입력해 주세요.'
-          : '줄바꿈이나 제어 문자는 사용할 수 없어요.',
+          ? t('assistantAppearance.invalidLength')
+          : t('assistantAppearance.invalidCharacters'),
       );
       return;
     }
@@ -85,7 +89,7 @@ export function AppearanceEditor({
     try {
       onSave(await appearanceStore.save({ avatar, name: normalized }));
     } catch {
-      setError('저장하지 못했어요. 다시 시도해 주세요.');
+      setError(t('assistantAppearance.saveError'));
     } finally {
       saving.current = false;
       setBusy(false);
@@ -102,7 +106,7 @@ export function AppearanceEditor({
       onClear?.();
     } catch {
       onClearFailed?.();
-      setError('설정을 지우지 못했어요. 다시 시도해 주세요.');
+      setError(t('assistantAppearance.clearError'));
     } finally {
       saving.current = false;
       setBusy(false);
@@ -124,11 +128,9 @@ export function AppearanceEditor({
             keyboardShouldPersistTaps="handled"
           >
             <AppText accessibilityRole="header" style={styles.title}>
-              비서 꾸미기
+              {t('assistantAppearance.title')}
             </AppText>
-            <AppText>
-              함께할 비서의 모습을 선택해 주세요. 선택은 이 기기에만 저장돼요.
-            </AppText>
+            <AppText>{t('assistantAppearance.introduction')}</AppText>
             <View style={styles.preview}>
               {avatar ? <AvatarSymbol avatar={avatar} /> : null}
               <AppText>{name.trim() || defaultAssistantName}</AppText>
@@ -146,40 +148,42 @@ export function AppearanceEditor({
                   <AvatarSymbol avatar={id} />
                   <AppText>
                     {avatars[id].label}
-                    {avatar === id ? ' 선택됨' : ''}
+                    {avatar === id
+                      ? ` ${t('assistantAppearance.selected')}`
+                      : ''}
                   </AppText>
                 </Pressable>
               ))}
             </View>
-            <AppText nativeID="assistant-name-label">비서 이름 (선택)</AppText>
+            <AppText nativeID="assistant-name-label">
+              {t('assistantAppearance.nameOptional')}
+            </AppText>
             <TextInput
-              accessibilityLabel="비서 이름"
+              accessibilityLabel={t('assistantAppearance.nameLabel')}
               accessibilityLabelledBy="assistant-name-label"
               style={styles.input}
               value={name}
               onChangeText={setName}
-              placeholder="어떤 이름으로 부를까요?"
+              placeholder={t('assistantAppearance.namePlaceholder')}
               placeholderTextColor={appColors.secondary}
               returnKeyType="done"
             />
-            <AppText>
-              이름을 비우면 ‘비서’로 표시해요. 24글자까지 입력할 수 있어요.
-            </AppText>
-            <AppText>개인정보나 건강 정보는 입력하지 마세요.</AppText>
+            <AppText>{t('assistantAppearance.nameHelp')}</AppText>
+            <AppText>{t('assistantAppearance.privacy')}</AppText>
             {error ? (
               <AppText accessibilityRole="alert" style={styles.error}>
                 {error}
               </AppText>
             ) : null}
             <AppButton
-              title="저장"
+              title={t('assistantAppearance.save')}
               disabled={!avatar}
               busy={busy}
               onPress={save}
             />
             {onCancel ? (
               <AppButton
-                title="취소"
+                title={t('assistantAppearance.cancel')}
                 variant="cancel"
                 disabled={busy}
                 onPress={onCancel}
@@ -187,7 +191,7 @@ export function AppearanceEditor({
             ) : null}
             {onClear ? (
               <AppButton
-                title="선택 지우기"
+                title={t('assistantAppearance.clear')}
                 variant="text"
                 disabled={busy}
                 onPress={clear}

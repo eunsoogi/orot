@@ -7,6 +7,7 @@ import SafeAreaLayout from '../layout/SafeAreaLayout';
 import { appearanceStore } from './appearanceStore';
 import type { AssistantAppearance } from './appearance';
 import { AppearanceEditor } from './AppearanceEditor';
+import { t } from '../i18n';
 
 type State =
   | { status: 'loading' | 'error' | 'unconfigured' }
@@ -70,7 +71,9 @@ export function AssistantAppearanceProvider({
   if (state.status === 'loading')
     return (
       <SafeAreaLayout>
-        <ActivityIndicator accessibilityLabel="설정을 불러오는 중" />
+        <ActivityIndicator
+          accessibilityLabel={t('assistantAppearance.loading')}
+        />
       </SafeAreaLayout>
     );
   if (state.status === 'error')
@@ -78,10 +81,10 @@ export function AssistantAppearanceProvider({
       <SafeAreaLayout>
         <View>
           <AppText accessibilityRole="alert">
-            비서 설정을 불러오지 못했어요.
+            {t('assistantAppearance.loadError')}
           </AppText>
           <AppButton
-            title="다시 시도"
+            title={t('assistantAppearance.retry')}
             onPress={() => {
               setState({ status: 'loading' });
               setRevision(value => value + 1);
