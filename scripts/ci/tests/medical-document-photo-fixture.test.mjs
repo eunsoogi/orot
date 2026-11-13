@@ -37,6 +37,26 @@ test('seeds only the selected photo journey after verifying the owned booted des
   assert.deepEqual(calls, ['verified', 'seeded']);
 });
 
+test('seeds the explicit Duo photo acceptance journey on its owned destination', () => {
+  const owner = { udid: 'synthetic-duo-device' };
+  const calls = [];
+  const verify = (observed, profile) => {
+    assert.equal(observed, owner);
+    assert.equal(profile, 'duo');
+    calls.push('verified');
+    return { state: 'Booted' };
+  };
+  const run = (args) => {
+    assert.deepEqual(args.slice(0, 2), ['addmedia', owner.udid]);
+    assert.ok(existsSync(args[2]));
+    calls.push('seeded');
+  };
+
+  prepareMedicalDocumentPhoto('duo', owner, photoDocumentJourney, verify, run);
+
+  assert.deepEqual(calls, ['verified', 'seeded']);
+});
+
 test('photo journey is admitted to both real fixture profiles', () => {
   assert.ok(iosTestInventory('fixtures', 'calendar').includes(photoDocumentJourney));
   assert.ok(iosTestInventory('health-import').includes(photoDocumentJourney));
