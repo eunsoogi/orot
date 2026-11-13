@@ -28,7 +28,6 @@ export function ConversationHistory({
   onRetrySave,
   restoreFailed = false,
   onRetryRestore,
-  sessionId,
   toolSourceSessionId,
   resolveToolSource,
   renderVisitQuestions,
