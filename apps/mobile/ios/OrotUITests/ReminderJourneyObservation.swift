@@ -94,11 +94,14 @@ enum ReminderJourneyObservation {
         XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let body = springboard.staticTexts["준비할 내용을 확인해 보세요."]
+        let title = springboard.staticTexts["오롯"]
         // Await the actual OS banner, not a sleep or an injected notification response.
         XCTAssertTrue(UITestConditions.exists(body))
-        // The banner can enter AX before its arrival animation completes. This provisional five-second
-        // readiness bound fails a missing or non-hittable delivered notification before any tap.
-        let bannerReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in body.exists && body.isHittable }, object: nil)
+        // Check the visible notification title separately from the pending-request receipt.
+        // This short readiness bound covers the banner animation before any tap.
+        let bannerReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            title.exists && title.isHittable && body.exists && body.isHittable
+        }, object: nil)
         let readiness = XCTWaiter.wait(for: [bannerReady], timeout: 5.0)
         XCTAssertEqual(readiness, .completed)
         guard readiness == .completed else { return }

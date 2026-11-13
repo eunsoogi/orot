@@ -38,6 +38,17 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
+        // A previous reminder tap can restore this conversation; return home without resetting saved reminder state.
+        let settingsTab = app.buttons.matching(identifier: "navigation-tab-settings").firstMatch
+        let homeAction = app.buttons.matching(identifier: "navigation-home").firstMatch
+        let navigationReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            settingsTab.exists || homeAction.exists
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [navigationReady]), .completed, app.debugDescription)
+        if !settingsTab.exists {
+            XCTAssertTrue(homeAction.exists && homeAction.isHittable, app.debugDescription)
+            try NavigationUITestConditions.tapNavigation(app, "navigation-home")
+        }
         let settingsAction = try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings")
         XCTAssertTrue(settingsAction.control.exists && settingsAction.control.isHittable, app.debugDescription)
         attach(app, name: "daily-reminder-home")
@@ -66,12 +77,19 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [delivered]), .completed)
         guard notification.exists, notification.isHittable else { return }
+        let title = springboard.staticTexts["오롯"]
+        // Check the banner title separately from its pending-request receipt before tapping the delivered target.
+        let titleReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in title.exists && title.isHittable }, object: nil)
+        let titleReadiness = XCTWaiter.wait(for: [titleReady], timeout: 5.0)
+        XCTAssertEqual(titleReadiness, .completed, springboard.debugDescription)
+        guard titleReadiness == .completed else { return }
         attach(springboard, name: "daily-reminder-system-banner")
         notification.tap()
         let foreground = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.state == .runningForeground }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [foreground]), .completed)
-        let report = UITestConditions.element(app, "daily-report-screen")
-        XCTAssertTrue(UITestConditions.exists(report), app.debugDescription)
+        // Reminder taps open the report task inside the AI conversation; its date is visible before explicit generation.
+        let reportDate = UITestConditions.element(app, "daily-report-date")
+        XCTAssertTrue(UITestConditions.exists(reportDate), app.debugDescription)
         attach(app, name: "daily-reminder-preparation")
     }
 
