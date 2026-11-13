@@ -13,6 +13,9 @@
 		A11200000000000000000004 /* DailyReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000004 /* DailyReminderNotificationTests.swift */; };
 		256A00003303DB744E18775C /* DailyReminderSystemCenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1E1B6CD4A067306EEE635A /* DailyReminderSystemCenterTests.swift */; };
 		A11200000000000000000003 /* DailyReminderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000003 /* DailyReminderModule.m */; };
+		AFC900000000000000000001 /* ReplyNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC900000000000000000001 /* ReplyNotificationService.swift */; };
+		AFC900000000000000000002 /* ReplyNotificationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC900000000000000000002 /* ReplyNotificationModule.swift */; };
+		AFC900000000000000000003 /* ReplyNotificationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = BFC900000000000000000003 /* ReplyNotificationModule.m */; };
 		A11200000000000000000002 /* DailyReminderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000002 /* DailyReminderModule.swift */; };
 		A11200000000000000000001 /* DailyReminderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000001 /* DailyReminderNotifications.swift */; };
 		A19500000000000000000003 /* NavigationContextualActionContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19500000000000000000003 /* NavigationContextualActionContent.swift */; };
@@ -218,6 +221,7 @@
 		A821C7E44F1D4E9B981B2103 /* RootURLModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B821C7E44F1D4E9B981B2103 /* RootURLModule.m */; };
 		A821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift */; };
 		A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */; };
+		AFC900000000000000000004 /* ReplyNotificationInboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */; };
 		A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */; };
 		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
 		DF18ABCD019B40AA9C138D21 /* SettingsPortraitNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF18ABCD019B40AA9C138D22 /* SettingsPortraitNavigationUITests.swift */; };
@@ -339,6 +343,9 @@
 		B11200000000000000000004 /* DailyReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyReminderNotificationTests.swift; sourceTree = "<group>"; };
 		6E1E1B6CD4A067306EEE635A /* DailyReminderSystemCenterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyReminderSystemCenterTests.swift; sourceTree = "<group>"; };
 		B11200000000000000000003 /* DailyReminderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = DailyReminderModule.m; path = OrotMobile/DailyReminderModule.m; sourceTree = "<group>"; };
+		BFC900000000000000000001 /* ReplyNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReplyNotificationService.swift; path = OrotMobile/ReplyNotificationService.swift; sourceTree = "<group>"; };
+		BFC900000000000000000002 /* ReplyNotificationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReplyNotificationModule.swift; path = OrotMobile/ReplyNotificationModule.swift; sourceTree = "<group>"; };
+		BFC900000000000000000003 /* ReplyNotificationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ReplyNotificationModule.m; path = OrotMobile/ReplyNotificationModule.m; sourceTree = "<group>"; };
 		B11200000000000000000002 /* DailyReminderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DailyReminderModule.swift; path = OrotMobile/DailyReminderModule.swift; sourceTree = "<group>"; };
 		B11200000000000000000001 /* DailyReminderNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DailyReminderNotifications.swift; path = OrotMobile/DailyReminderNotifications.swift; sourceTree = "<group>"; };
 		A84C19E6D37B4A5098E3F202 /* AppSymbolSizingIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSymbolSizingIntegrationTests.swift; sourceTree = "<group>"; };
@@ -572,6 +579,7 @@
 		B821C7E44F1D4E9B981B2103 /* RootURLModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RootURLModule.m; path = OrotMobile/RootURLModule.m; sourceTree = "<group>"; };
 		B821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootURLInboxTests.swift; sourceTree = "<group>"; };
 		B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderNotificationTests.swift; sourceTree = "<group>"; };
+		BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyNotificationInboxTests.swift; sourceTree = "<group>"; };
 		B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderDiagnosticTests.swift; sourceTree = "<group>"; };
 		B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnifiedImportUITests.swift; sourceTree = "<group>"; };
 		B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeAreaNavigationUITests.swift; sourceTree = "<group>"; };
@@ -766,6 +774,9 @@
 				B11200000000000000000001 /* DailyReminderNotifications.swift */,
 				B11200000000000000000002 /* DailyReminderModule.swift */,
 				B11200000000000000000003 /* DailyReminderModule.m */,
+				BFC900000000000000000001 /* ReplyNotificationService.swift */,
+				BFC900000000000000000002 /* ReplyNotificationModule.swift */,
+				BFC900000000000000000003 /* ReplyNotificationModule.m */,
 				B67F00000000000000000001 /* AppointmentReminderModule.swift */,
 				B67F00000000000000000002 /* AppointmentReminderModule.m */,
 				B67F00000000000000000003 /* AppointmentReminderNotifications.swift */,
@@ -882,6 +893,7 @@
 				6E1E1B6CD4A067306EEE635A /* DailyReminderSystemCenterTests.swift */,
 				B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */,
 				B821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift */,
+				BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */,
 				B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
@@ -1437,6 +1449,9 @@
 				A11200000000000000000001 /* DailyReminderNotifications.swift in Sources */,
 				A11200000000000000000002 /* DailyReminderModule.swift in Sources */,
 				A11200000000000000000003 /* DailyReminderModule.m in Sources */,
+				AFC900000000000000000001 /* ReplyNotificationService.swift in Sources */,
+				AFC900000000000000000002 /* ReplyNotificationModule.swift in Sources */,
+				AFC900000000000000000003 /* ReplyNotificationModule.m in Sources */,
 				A67F00000000000000000001 /* AppointmentReminderModule.swift in Sources */,
 				A67F00000000000000000002 /* AppointmentReminderModule.m in Sources */,
 				A67F00000000000000000003 /* AppointmentReminderNotifications.swift in Sources */,
@@ -1611,6 +1626,7 @@
 				256A00003303DB744E18775C /* DailyReminderSystemCenterTests.swift in Sources */,
 				A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */,
 				A821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift in Sources */,
+				AFC900000000000000000004 /* ReplyNotificationInboxTests.swift in Sources */,
 				A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,

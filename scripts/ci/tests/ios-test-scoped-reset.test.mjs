@@ -95,7 +95,7 @@ test('cold pollution proof requires real database, files, keys, permission and f
     );
 });
 
-test('fresh creation, migration, document import, backup and native permission cases retain full resets', () => {
+test('fresh creation, visit preparation, migration, document import, backup and native permission cases retain full resets', () => {
   const full = fixtureTests.filter(
     (identifier) => iosFixtureResetMode('fixtures', identifier) === 'fresh-install',
   );
@@ -116,11 +116,15 @@ test('fresh creation, migration, document import, backup and native permission c
     'OrotUITests/ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
     'OrotUITests/ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
     'OrotUITests/ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
+    'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterCommittedCompletion',
+    'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterProviderFailure',
+    'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterExplicitStop',
     // Tool-event disclosure uses the same fresh fixture store as the conversation journeys.
     'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
     'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable',
     'OrotUITests/ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
     'OrotUITests/ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
+    // The visit-preparation UI fixture keeps its synthetic conversation in a fresh app container.
     'OrotUITests/ConversationVisitPreparationUITests/testLongPreparedQuestionKeepsAccessibleOrderWithLargeTextAndKeyboard',
     'OrotUITests/StorageMigrationUITests/testLegacyEncryptedSchemaReopensThroughAppointmentsAfterProcessRestart',
     'OrotUITests/AppointmentTextSelectionUITests/testAppointmentClinicReplacementClearsASCIIAndUnicodeValues',

@@ -9,6 +9,8 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
     private var pending: [String: String]?
     private let defaults: UserDefaults
     private let dailyKey = "com.orot.daily-report.delivery-inbox"
+    private let replyKey = "com.orot.reply.delivery-inbox"
+    private let replyHandledKey = "com.orot.reply.handled-inbox"
     private var dailyState: [String: Any] {
         defaults.dictionary(forKey: dailyKey) ?? [:]
     }
@@ -42,7 +44,26 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
     func hasPendingTarget() -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        return pending != nil || !((dailyState["pending"] as? [[String: String]]) ?? []).isEmpty
+        return pending != nil || !((dailyState["pending"] as? [[String: String]]) ?? []).isEmpty || !(defaults.array(forKey: replyKey) ?? []).isEmpty
+    }
+
+    /// The inbox survives cold entry and contains only opaque IDs, never the preview.
+    func consumeReplyTarget() -> [String: String]? {
+        lock.lock()
+        defer { lock.unlock() }
+        return (defaults.array(forKey: replyKey) as? [[String: String]])?.first
+    }
+
+    func acknowledgeReplyTarget(_ requestId: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        var targets = defaults.array(forKey: replyKey) as? [[String: String]] ?? []
+        guard targets.first?["requestId"] == requestId else { return }
+        targets.removeFirst()
+        var handled = defaults.stringArray(forKey: replyHandledKey) ?? []
+        handled.append(requestId)
+        defaults.set(targets, forKey: replyKey)
+        defaults.set(Array(handled.suffix(256)), forKey: replyHandledKey)
     }
 
     func consumeTarget() -> [String: String]? {
@@ -64,6 +85,26 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
 
     /// Captures default-action taps only; dismissal cannot become navigation intent.
     func receive(_ request: UNNotificationRequest, actionIdentifier: String, deliveredAt: Date? = nil) {
+        if request.identifier.hasPrefix(ReplyNotificationService.prefix),
+           actionIdentifier == UNNotificationDefaultActionIdentifier,
+           let requestId = request.content.userInfo["requestId"] as? String,
+           request.identifier == ReplyNotificationService.prefix + requestId,
+           let sessionId = request.content.userInfo["sessionId"] as? String,
+           let messageId = request.content.userInfo["messageId"] as? String,
+           let version = request.content.userInfo["sessionVersion"] as? Int,
+           version >= 0, [requestId, sessionId, messageId].allSatisfy({ !$0.isEmpty && $0.count <= 200 })
+        {
+            let target = ["requestId": requestId, "sessionId": sessionId, "messageId": messageId, "sessionVersion": String(version)]
+            lock.lock()
+            var targets = defaults.array(forKey: replyKey) as? [[String: String]] ?? []
+            let handled = defaults.stringArray(forKey: replyHandledKey) ?? []
+            if !handled.contains(requestId), !targets.contains(where: { $0["requestId"] == requestId }) {
+                targets.append(target); defaults.set(targets, forKey: replyKey)
+            }
+            lock.unlock()
+            NotificationCenter.default.post(name: Self.changed, object: nil)
+            return
+        }
         if request.identifier == DailyReminderNotifications.requestIdentifier,
            actionIdentifier == UNNotificationDefaultActionIdentifier
         {

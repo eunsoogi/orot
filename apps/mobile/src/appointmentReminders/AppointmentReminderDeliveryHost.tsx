@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
-import { Alert, AppState } from 'react-native';
-import { t } from '../i18n';
+import { AppState } from 'react-native';
 import type { NavigationController } from '../navigation/navigationController';
 import type { AppNavigationRoute } from '../routes/appNavigationRoute';
 import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
@@ -13,14 +12,17 @@ import {
 import { createDailyReminderDestination } from './dailyReminderDestination';
 import { createReminderNavigationDecisions } from './reminderNavigationDecisions';
 import { dailyReminderIntentStore } from './dailyReminderIntentStore';
-import {
-  createDailyReminderRouteCleanup,
-  pruneClosedReminderRoutes,
-} from './dailyReminderRouteCleanup';
+import { pruneClosedReminderRoutes } from './dailyReminderRouteCleanup';
 import { createDailyReminderDrain } from './dailyReminderDrain';
 import { restoreDailyReportConversation } from '../aiFeatures/integration/restoreDailyReportConversation';
 import { dailyReportConversationIntentStore } from '../aiFeatures/integration/dailyReportConversationIntentStore';
-import { createDailyConversationRouteCleanup } from '../aiFeatures/integration/dailyConversationRouteCleanup';
+import { createReminderRouteCleanups } from './reminderRouteCleanups';
+import type { ReplyDeliverySettings } from '../replyNotifications/replyDeliverySettings';
+import { useReplyDeliveryFromHost } from '../replyNotifications/observeReplyFromHost';
+import {
+  showDailyReminderUnavailable,
+  showReminderUnavailable,
+} from './reminderUnavailable';
 import {
   consumeAppointmentReminderTarget,
   consumeDailyReminderTarget,
@@ -29,21 +31,24 @@ import {
 } from './nativeReminderBridge';
 
 /** One inbox drain lives outside retained navigation scenes. */
-export function AppointmentReminderDeliveryHost({
-  controller,
-}: {
-  readonly controller: NavigationController<AppNavigationRoute>;
-}) {
+export function AppointmentReminderDeliveryHost(
+  props: {
+    readonly controller: NavigationController<AppNavigationRoute>;
+  } & ReplyDeliverySettings,
+) {
+  const { controller } = props;
   const runtime = useAppointmentReminderRuntime();
+  useReplyDeliveryFromHost(props);
   useEffect(() => {
     if (!runtime) return;
     let retryWhenNavigationAvailable = false;
+    const retryNavigation = () => {
+      retryWhenNavigationAvailable = true;
+    };
     const navigationDecisions = createReminderNavigationDecisions(
       controller,
       runtime,
-      () => {
-        retryWhenNavigationAvailable = true;
-      },
+      retryNavigation,
     );
     const destination = createDailyReminderDestination({
       ...dailyReminderIntentStore,
@@ -93,8 +98,7 @@ export function AppointmentReminderDeliveryHost({
       },
       // The destination confirms after durable storage, immediately before pushing the route.
       confirm: async () => 'approved',
-      unavailable: () =>
-        Alert.alert(t('dailyReminder.openTitle'), t('dailyReminder.openError')),
+      unavailable: showDailyReminderUnavailable,
     });
     const deliver = createAppointmentReminderDelivery({
       consumeTarget: consumeAppointmentReminderTarget,
@@ -123,28 +127,16 @@ export function AppointmentReminderDeliveryHost({
         });
         return true;
       },
-      onUnavailable: reason =>
-        Alert.alert(
-          t('medicalAppointments.reminder.openTitle'),
-          reason === 'stale'
-            ? t('medicalAppointments.reminder.stale')
-            : t('medicalAppointments.reminder.unavailable'),
-        ),
+      onUnavailable: showReminderUnavailable,
     });
     // Inbox storage is independent; only navigation decisions share a queue.
     let appointmentQueue = Promise.resolve();
     let conversationQueue = Promise.resolve();
     let conversationRestorePending = true;
     let conversationRestoreDeferred = false;
-    const cleanupConversation = createDailyConversationRouteCleanup({
+    const cleanups = createReminderRouteCleanups({
       runtime,
-      routeExists: key =>
-        controller.getSnapshot().routes.some(route => route.key === key),
-    });
-    const cleanupDaily = createDailyReminderRouteCleanup({
-      runtime,
-      routeExists: key =>
-        controller.getSnapshot().routes.some(route => route.key === key),
+      controller,
       dismiss: destination.dismiss,
     });
     const drainConversation = () => {
@@ -174,11 +166,8 @@ export function AppointmentReminderDeliveryHost({
         // A storage read or write failure is retried on a later lifecycle event.
         .catch(() => undefined);
     };
-    const retryNavigation = () => {
-      retryWhenNavigationAvailable = true;
-    };
     const drainDaily = createDailyReminderDrain({
-      cleanup: cleanupDaily,
+      cleanup: cleanups.daily,
       restore: destination.restore,
       deliver: deliverDaily,
       onBusy: retryNavigation,
@@ -201,7 +190,7 @@ export function AppointmentReminderDeliveryHost({
     }
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') {
-        cleanupConversation();
+        cleanups.conversation();
         if (conversationRestoreDeferred) {
           conversationRestorePending = true;
           conversationRestoreDeferred = false;
@@ -222,7 +211,7 @@ export function AppointmentReminderDeliveryHost({
       pruneClosedReminderRoutes(runtime, key =>
         snapshot.routes.some(route => route.key === key),
       );
-      cleanupConversation();
+      cleanups.conversation();
       const dailyRouteClosed = [...runtime.dailyReportTargets.keys()].some(
         key => !snapshot.routes.some(route => route.key === key),
       );

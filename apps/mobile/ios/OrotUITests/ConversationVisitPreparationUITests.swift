@@ -23,8 +23,13 @@ final class ConversationVisitPreparationUITests: OrotFailFastTestCase {
         let composer = UITestConditions.element(app, "rag-conversation-composer")
         let input = FormUITestConditions.multilineInput(app, identifier: "rag-conversation-input")
         let prepare = app.buttons.matching(identifier: "conversation-visit-prepare").firstMatch
-        XCTAssertTrue(UITestConditions.exists(history) && UITestConditions.exists(input))
-        XCTAssertTrue(UITestConditions.exists(prepare) && prepare.isHittable)
+        XCTAssertTrue(UITestConditions.exists(history) && UITestConditions.exists(input), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(prepare), app.debugDescription)
+        RecordingFixtureUITestConditions.capture(app, "visit-preparation-action-before-scroll", testCase: self)
+        // Accessibility text can expand the scrollable conversation header beyond the current viewport.
+        UITestConditions.scrollTo(prepare, in: history)
+        XCTAssertTrue(prepare.isHittable, app.debugDescription)
+        XCTAssertGreaterThanOrEqual(prepare.frame.height, 44, app.debugDescription)
         XCTAssertFalse(UITestConditions.element(app, "inline-visit-review").exists)
         RecordingFixtureUITestConditions.capture(app, "visit-preparation-before-explicit-action", testCase: self)
 

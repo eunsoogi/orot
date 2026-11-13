@@ -17,6 +17,7 @@ export const capabilityScenarios = [
   'conversation-visual',
   'conversation-retention',
   'conversation-background-retention',
+  'conversation-lease-release',
   'conversation-failure-visual',
   'summary-visual',
   'daily-report-visual',

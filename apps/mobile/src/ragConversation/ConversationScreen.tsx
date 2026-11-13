@@ -31,6 +31,7 @@ import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { useConversationPhotoControls } from './useConversationPhotoControls';
 import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
 import { t } from '../i18n';
+import { useReplyFocusForSession } from '../replyNotifications/replyFocus';
 import {
   ConversationTaskHeader,
   ConversationStoredTaskCards,
@@ -80,6 +81,7 @@ export function ConversationScreen({
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
   const photo = useConversationPhotoControls(store, id);
+  const focus = useReplyFocusForSession(id);
   const selectedReport =
     session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
   // Source validation uses the retained identity, not the session's view-only numeric ID.
@@ -164,6 +166,7 @@ export function ConversationScreen({
             }
           >
             <ConversationHistory
+              replyFocus={focus}
               compact={composerLayout.compact}
               header={header}
               messages={messages}

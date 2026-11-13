@@ -26,6 +26,7 @@ export const coreTests = [
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testColdStartInboxRetainsTheTargetUntilOneConsumerDrainsIt',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDailyTapUsesDeliveryInstantWithoutReplacingAppointmentTarget',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
+  'OrotIntegrationTests/ReplyNotificationInboxTests/testReplyTapSurvivesRestartAndDoesNotReplaceOtherReminderTargets',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testMalformedTimesAndUnsupportedDurationsCannotReachTheOS',
   // The structural observer must retain its object-identity, missing-target, and privacy contracts in CI.
   'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',
