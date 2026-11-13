@@ -30,8 +30,12 @@ export function observeReplyDelivery(input: {
   const execute = input.execute;
   let active = true;
   const lifetime = new AbortController();
+  let blocked: 'navigation' | number | null = null;
   const open = createReplyOpen({
     ...input,
+    onBlocked: reason => {
+      blocked = reason;
+    },
     isCurrent: () => active,
     signal: lifetime.signal,
     async read(identity) {
@@ -62,6 +66,19 @@ export function observeReplyDelivery(input: {
   });
   let pending = false;
   let running = false;
+  let navigationWasBusy = input.controller.getSnapshot().isTransitioning;
+  let busySessions = new Set<number>();
+  let navigationReady = false;
+  const readySessions = new Set<number>();
+  const readBusySessions = () =>
+    new Set(
+      (input.sessions.getSnapshot?.().sessions ?? [])
+        .filter(
+          session => session.busy || session.restoring || session.restoreFailed,
+        )
+        .map(session => session.id),
+    );
+  busySessions = readBusySessions();
   let queue = Promise.resolve();
   const drain = () => {
     if (!active) return;
@@ -71,6 +88,9 @@ export function observeReplyDelivery(input: {
         // An entry owner may defer without invoking the callback while its gate is closed.
         pending = true;
         running = true;
+        blocked = null;
+        navigationReady = false;
+        readySessions.clear();
         try {
           await execute(async () => {
             if (!active) return;
@@ -87,6 +107,16 @@ export function observeReplyDelivery(input: {
           });
         } finally {
           running = false;
+          // Only a readiness transition for the actual blocker can wake an in-flight defer.
+          if (
+            pending &&
+            (blocked === 'navigation'
+              ? navigationReady
+              : blocked !== null && readySessions.has(blocked))
+          ) {
+            pending = false;
+            drain();
+          }
         }
       })
       .catch(() => {
@@ -103,6 +133,9 @@ export function observeReplyDelivery(input: {
     if (value === 'active') drain();
   });
   const navigation = input.controller.subscribe(() => {
+    const busy = input.controller.getSnapshot().isTransitioning;
+    if (running && navigationWasBusy && !busy) navigationReady = true;
+    navigationWasBusy = busy;
     if (
       pending &&
       !running &&
@@ -113,6 +146,11 @@ export function observeReplyDelivery(input: {
     }
   });
   const sessions = input.sessions.subscribe(() => {
+    const nextBusy = readBusySessions();
+    if (running)
+      for (const id of busySessions)
+        if (!nextBusy.has(id)) readySessions.add(id);
+    busySessions = nextBusy;
     if (pending && !running) {
       pending = false;
       drain();
