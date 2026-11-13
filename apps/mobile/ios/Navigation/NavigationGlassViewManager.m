@@ -2,18 +2,10 @@
 #import <React/RCTComponent.h>
 #import <UIKit/UIKit.h>
 
-// Native trailing swipe actions emit only the selected session identity.
+// React owns history text and actions; the native table emits row selection and deletion
+// identities.
 @interface RCT_EXTERN_MODULE (ConversationHistoryViewManager, RCTViewManager)
 RCT_EXPORT_VIEW_PROPERTY(rows, NSArray)
-// The enclosing page scrolls the table's title, rows, and React-owned preview together.
-RCT_EXPORT_VIEW_PROPERTY(headerTitle, NSString)
-RCT_EXPORT_VIEW_PROPERTY(headerCount, NSString)
-RCT_EXPORT_VIEW_PROPERTY(newSessionLabel, NSString)
-RCT_EXPORT_VIEW_PROPERTY(showsNewSession, BOOL)
-RCT_EXPORT_VIEW_PROPERTY(headerTextColor, UIColor)
-RCT_EXPORT_VIEW_PROPERTY(headerSecondaryColor, UIColor)
-RCT_EXPORT_VIEW_PROPERTY(headerTintColor, UIColor)
-RCT_EXPORT_VIEW_PROPERTY(onCreateSession, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onSelectSession, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onDeleteSession, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onContentHeightChange, RCTDirectEventBlock)

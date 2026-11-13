@@ -6,25 +6,17 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import type { ColorValue, NativeSyntheticEvent, ViewProps } from 'react-native';
+import type { NativeSyntheticEvent, ViewProps } from 'react-native';
 import { AppButton } from '../layout/AppButton';
-import { AppSymbol } from '../layout/AppSymbol';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { ComposerGlassBackground } from './ComposerGlassBackground';
+import { ConversationHistoryHeader } from './ConversationHistoryHeader';
 import type { ConversationHistoryRow } from './ConversationHistoryScreen';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
 import { t } from '../i18n';
 
 interface NativeHistoryProps extends ViewProps {
   readonly rows: readonly ConversationHistoryRow[];
-  readonly headerTitle: string;
-  readonly headerCount: string;
-  readonly newSessionLabel: string;
-  readonly headerTextColor: ColorValue;
-  readonly headerSecondaryColor: ColorValue;
-  readonly headerTintColor: ColorValue;
-  readonly onCreateSession: () => void;
   readonly onSelectSession: (
     event: NativeSyntheticEvent<{ id: number }>,
   ) => void;
@@ -34,7 +26,6 @@ interface NativeHistoryProps extends ViewProps {
   readonly onContentHeightChange: (
     event: NativeSyntheticEvent<{ height: number }>,
   ) => void;
-  readonly showsNewSession: boolean;
 }
 
 const NativeHistory =
@@ -42,11 +33,13 @@ const NativeHistory =
     ? requireNativeComponent<NativeHistoryProps>('ConversationHistoryView')
     : null;
 
-/** Keeps UIKit row gestures and reversible deletion tied to the existing session actions. */
+/** Keeps UIKit row gestures beside the React-owned header and reversible session actions. */
 export function ConversationHistoryListPane({
   deleted,
   onCreateSession,
   onDeleteSession,
+  onOpenSavedAnalysis,
+  onOpenSavedVisitQuestions,
   onSelectSession,
   onUndoRemove,
   rows,
@@ -54,6 +47,8 @@ export function ConversationHistoryListPane({
   readonly deleted: boolean;
   readonly onCreateSession: () => void;
   readonly onDeleteSession: (id: number) => void;
+  readonly onOpenSavedAnalysis?: () => void;
+  readonly onOpenSavedVisitQuestions?: () => void;
   readonly onSelectSession: (id: number) => void;
   readonly onUndoRemove: () => void;
   readonly rows: readonly ConversationHistoryRow[];
@@ -70,48 +65,19 @@ export function ConversationHistoryListPane({
     },
   ]);
   return (
-    <View style={styles.pane}>
-      {!NativeHistory ? (
-        <View style={styles.header}>
-          <View style={styles.titleRow}>
-            <Text accessibilityRole="header" style={styles.heading}>
-              {t('ragConversation.history.title')}
-            </Text>
-            {!hasDock ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t(
-                  'ragConversation.history.newConversation',
-                )}
-                style={styles.newButton}
-                onPress={onCreateSession}
-                testID="conversation-history-new"
-              >
-                <ComposerGlassBackground />
-                <AppSymbol name="plus" color={appColors.primaryText} />
-              </Pressable>
-            ) : null}
-          </View>
-          <Text style={styles.count}>
-            {t('ragConversation.history.count', { count: rows.length })}
-          </Text>
-        </View>
-      ) : null}
+    <View style={styles.pane} testID="conversation-history-pane">
+      <ConversationHistoryHeader
+        conversationCount={rows.length}
+        onCreateSession={onCreateSession}
+        onOpenSavedAnalysis={onOpenSavedAnalysis}
+        onOpenSavedVisitQuestions={onOpenSavedVisitQuestions}
+        showNewSession={!hasDock}
+      />
       {NativeHistory ? (
         <NativeHistory
           testID="conversation-history-list"
           style={[styles.list, { height: nativeHeight }]}
           rows={rows}
-          headerTitle={t('ragConversation.history.title')}
-          headerCount={t('ragConversation.history.count', {
-            count: rows.length,
-          })}
-          newSessionLabel={t('ragConversation.history.newConversation')}
-          showsNewSession={!hasDock}
-          headerTextColor={appColors.text}
-          headerSecondaryColor={appColors.secondary}
-          headerTintColor={appColors.primaryText}
-          onCreateSession={onCreateSession}
           onSelectSession={event => onSelectSession(event.nativeEvent.id)}
           onDeleteSession={event => onDeleteSession(event.nativeEvent.id)}
           onContentHeightChange={event => {
@@ -167,19 +133,6 @@ export function ConversationHistoryListPane({
 
 const styles = StyleSheet.create({
   pane: { flex: 1, minWidth: 0, minHeight: 0 },
-  header: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 8, gap: 8 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  // Keep the large title in the scrolling hierarchy instead of fixing its viewport height.
-  heading: { flex: 1, fontSize: 34, fontWeight: '700' },
-  count: { color: appColors.secondary, fontSize: 14 },
-  newButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   list: { minWidth: 0 },
   undo: {
     marginHorizontal: 24,

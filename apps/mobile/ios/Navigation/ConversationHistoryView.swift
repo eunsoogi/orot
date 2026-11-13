@@ -9,46 +9,11 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
 
     @objc var onSelectSession: RCTDirectEventBlock?
     @objc var onDeleteSession: RCTDirectEventBlock?
-    @objc var onCreateSession: RCTDirectEventBlock?
     @objc var onContentHeightChange: RCTDirectEventBlock? {
         didSet { onContentHeightChange?(["height": table.contentSize.height]) }
     }
 
-    @objc var headerTitle = "" {
-        didSet { updateHeaderText() }
-    }
-
-    @objc var headerCount = "" {
-        didSet { updateHeaderText() }
-    }
-
-    @objc var newSessionLabel = "" {
-        didSet { updateHeaderText() }
-    }
-
-    /// The page dock may own creation; hidden controls leave both layout and accessibility.
-    @objc var showsNewSession = true {
-        didSet { createButton.isHidden = !showsNewSession; setNeedsLayout() }
-    }
-
-    @objc var headerTextColor: UIColor = .label {
-        didSet { heading.textColor = headerTextColor }
-    }
-
-    @objc var headerSecondaryColor: UIColor = .secondaryLabel {
-        didSet { count.textColor = headerSecondaryColor }
-    }
-
-    @objc var headerTintColor: UIColor = .systemBlue {
-        didSet { createSymbol.tintColor = headerTintColor }
-    }
-
     private let table = UITableView(frame: .zero, style: .insetGrouped)
-    private let header = UIStackView()
-    private let heading = UILabel()
-    private let count = UILabel()
-    private let createButton = UIButton(type: .system)
-    private let createSymbol = AppSymbolView()
     private var sections = [(title: String, rows: [[String: Any]])]()
     private var contentSizeObservation: NSKeyValueObservation?
 
@@ -56,7 +21,7 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
         super.init(frame: frame)
         table.dataSource = self
         table.delegate = self
-        // The enclosing React page owns vertical scrolling; UIKit still owns row swipes.
+        // React renders the page header; this non-scrolling table keeps UIKit row gestures in the same page scroller.
         table.isScrollEnabled = false
         contentSizeObservation = table.observe(\.contentSize, options: [.new]) { [weak self] table, _ in
             guard table.contentSize.height.isFinite else { return }
@@ -70,7 +35,6 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
         table.estimatedRowHeight = 82
         table.rowHeight = UITableView.automaticDimension
         table.sectionHeaderTopPadding = 0
-        configureHeader()
         addSubview(table)
         if #available(iOS 17.0, *) {
             registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (view: ConversationHistorySurfaceView, _: UITraitCollection) in
@@ -83,7 +47,7 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
 
     deinit { NotificationCenter.default.removeObserver(self) }
 
-    /// The table caches its header height; older supported iOS versions also need font changes to invalidate it.
+    /// Refresh the native row layout after the system text size changes on older iOS versions.
     @objc private func contentSizeChanged() {
         setNeedsLayout()
     }
@@ -96,73 +60,6 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
     override func layoutSubviews() {
         super.layoutSubviews()
         table.frame = bounds
-        guard bounds.width > 0 else { return }
-        let target = CGSize(width: bounds.width, height: UIView.layoutFittingCompressedSize.height)
-        let height = header.systemLayoutSizeFitting(target, withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel).height
-        if table.tableHeaderView !== header || header.frame.size != CGSize(width: bounds.width, height: height) {
-            header.frame = CGRect(x: 0, y: 0, width: bounds.width, height: height)
-            table.tableHeaderView = header
-        }
-    }
-
-    /// Keep the original large-title styling inside the scrolling owner; Undo stays in React's visible footer.
-    private func configureHeader() {
-        header.axis = .vertical
-        header.spacing = 8
-        header.isLayoutMarginsRelativeArrangement = true
-        header.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 24, bottom: 8, trailing: 24)
-        header.accessibilityIdentifier = "conversation-history-header"
-        let titleRow = UIStackView(arrangedSubviews: [heading, createButton])
-        titleRow.axis = .horizontal
-        titleRow.alignment = .center
-        titleRow.spacing = 12
-        // React text uses body-category scaling even for custom font sizes; do not cap accessibility text.
-        heading.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: 34, weight: .bold))
-        heading.adjustsFontForContentSizeCategory = true
-        heading.numberOfLines = 0
-        heading.accessibilityTraits.insert(.header)
-        count.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: 14))
-        count.adjustsFontForContentSizeCategory = true
-        count.numberOfLines = 0
-        heading.textColor = headerTextColor
-        count.textColor = headerSecondaryColor
-        // Share the original React action's material/symbol composition, including dynamic foreground ownership.
-        let material = ComposerGlassSurfaceView()
-        material.translatesAutoresizingMaskIntoConstraints = false
-        createButton.addSubview(material)
-        NSLayoutConstraint.activate([
-            material.leadingAnchor.constraint(equalTo: createButton.leadingAnchor),
-            material.trailingAnchor.constraint(equalTo: createButton.trailingAnchor),
-            material.topAnchor.constraint(equalTo: createButton.topAnchor),
-            material.bottomAnchor.constraint(equalTo: createButton.bottomAnchor),
-        ])
-        createSymbol.symbolName = "plus"
-        createSymbol.pointSize = 20
-        createSymbol.tintColor = headerTintColor
-        createSymbol.translatesAutoresizingMaskIntoConstraints = false
-        createButton.addSubview(createSymbol)
-        NSLayoutConstraint.activate([
-            createSymbol.centerXAnchor.constraint(equalTo: createButton.centerXAnchor),
-            createSymbol.centerYAnchor.constraint(equalTo: createButton.centerYAnchor),
-            createSymbol.widthAnchor.constraint(equalToConstant: 20),
-            createSymbol.heightAnchor.constraint(equalToConstant: 20),
-        ])
-        createButton.accessibilityIdentifier = "conversation-history-new"
-        // UIStackView collapses the hidden button when the dock owns creation.
-        let createWidth = createButton.widthAnchor.constraint(equalToConstant: 44)
-        createWidth.priority = .defaultHigh
-        createWidth.isActive = true
-        createButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
-        createButton.addAction(UIAction { [weak self] _ in self?.onCreateSession?([:]) }, for: .touchUpInside)
-        header.addArrangedSubview(titleRow)
-        header.addArrangedSubview(count)
-    }
-
-    private func updateHeaderText() {
-        heading.text = headerTitle
-        count.text = headerCount
-        createButton.accessibilityLabel = newSessionLabel
-        setNeedsLayout()
     }
 
     private func rebuildSections() {

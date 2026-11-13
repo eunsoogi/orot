@@ -85,29 +85,12 @@ export function ConversationHistoryScreen({
         </>
       ) : null}
       <ConversationHistoryLayout
-        header={
-          <>
-            {/* Saved outputs remain reachable without restoring a feature-selection dashboard. */}
-            {onOpenSavedAnalysis ? (
-              <Button
-                title={t('ragConversation.history.savedAnalysis')}
-                onPress={onOpenSavedAnalysis}
-                testID="conversation-saved-analysis"
-              />
-            ) : null}
-            {onOpenSavedVisitQuestions ? (
-              <Button
-                title={t('ragConversation.history.savedVisitQuestions')}
-                onPress={onOpenSavedVisitQuestions}
-                testID="conversation-saved-visit-questions"
-              />
-            ) : null}
-          </>
-        }
         deleted={state.deleted !== null}
         onBack={onBack}
         onCreateSession={store.create}
         onDeleteSession={store.remove}
+        onOpenSavedAnalysis={onOpenSavedAnalysis}
+        onOpenSavedVisitQuestions={onOpenSavedVisitQuestions}
         onSelectSession={store.select}
         onUndoRemove={store.undoRemove}
         rows={rows}

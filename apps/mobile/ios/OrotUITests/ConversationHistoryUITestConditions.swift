@@ -12,6 +12,7 @@ enum ConversationHistoryUITestConditions {
             app.launchArguments = [
                 "-OROT_TEST_SCENARIO", "conversation-visual",
                 "-UIPreferredContentSizeCategoryName", largeText ? "UICTContentSizeCategoryAccessibilityXXXL" : "UICTContentSizeCategoryL",
+                "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES",
                 "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
             ] + AppearanceUITestConditions.observationArguments
             app.launch()
@@ -64,7 +65,9 @@ enum ConversationHistoryUITestConditions {
                 XCTAssertFalse(node(app, rowID).exists)
                 reveal(undo, in: page)
                 XCTAssertTrue(undo.isHittable)
-                XCTAssertTrue(app.frame.contains(undo.frame))
+                XCTAssertGreaterThanOrEqual(undo.frame.width, 44)
+                XCTAssertGreaterThanOrEqual(undo.frame.height, 44)
+                try assertOwnedWindowContains(undo, in: app, testCase: testCase)
                 RecordingFixtureUITestConditions.capture(app, "history-full-swipe-deleted-\(suffix)", testCase: testCase)
                 undo.tap()
                 let restored = node(app, rowID)
@@ -145,6 +148,24 @@ enum ConversationHistoryUITestConditions {
 
     private static func node(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         UITestConditions.element(app, id)
+    }
+
+    /// Bind the screen-space AX target to its owner after matching the independent UIKit window bounds.
+    private static func assertOwnedWindowContains(_ target: XCUIElement, in app: XCUIApplication, testCase: XCTestCase) throws {
+        let snapshot = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "history-undo-native-window")
+        let geometry = try XCTUnwrap(snapshot?["windowGeometry"] as? [String: Any])
+        let bounds = try XCTUnwrap(geometry["windowBounds"] as? [String: Double])
+        let width = try CGFloat(XCTUnwrap(bounds["width"]))
+        let height = try CGFloat(XCTUnwrap(bounds["height"]))
+        let windows = app.windows.allElementsBoundByIndex.filter {
+            $0.exists && $0.descendants(matching: .any).matching(identifier: target.identifier).count > 0
+        }
+        XCTAssertEqual(windows.count, 1, "The undo control must belong to one AX window")
+        let window = try XCTUnwrap(windows.first)
+        // UIKit reports window-local bounds; XCTest reports screen-space frames, so correlate the owner by size before containment.
+        XCTAssertEqual(window.frame.width, width, accuracy: 0.5)
+        XCTAssertEqual(window.frame.height, height, accuracy: 0.5)
+        XCTAssertTrue(window.frame.contains(target.frame), "Undo \(target.frame), owning AX window \(window.frame)")
     }
 
     /// At maximum text size the section header can push a valid row below the viewport.

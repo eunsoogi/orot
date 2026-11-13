@@ -9,7 +9,22 @@ import { ConversationHistoryScreen } from '../ConversationHistoryScreen';
 import * as sessionsContext from '../ConversationSessionsContext';
 import { createConversationSessions } from '../conversationSessions';
 
-test('keeps the large heading and new-session action inside the scrolling native list', async () => {
+interface TestTreeNode {
+  readonly parent: TestTreeNode | null;
+  readonly children: readonly TestTreeNode[];
+  readonly props: { readonly testID?: string };
+}
+
+function directChildOf(
+  parent: TestTreeNode,
+  descendant: TestTreeNode,
+): TestTreeNode {
+  let current = descendant;
+  while (current.parent && current.parent !== parent) current = current.parent;
+  return current;
+}
+
+test('keeps the page heading and new-session action inside the single history scroll', async () => {
   const store = createConversationSessions();
   const onBack = jest.fn();
   const sessionHook = jest
@@ -27,16 +42,119 @@ test('keeps the large heading and new-session action inside the scrolling native
       nativeEvent: { height: 640 },
     });
     expect(StyleSheet.flatten(list.props.style).height).toBe(640);
-    // A fixed React header can consume the entire list viewport at accessibility sizes.
-    expect(screen.queryByText('대화 기록')).toBeNull();
-    expect(list.props).toMatchObject({
-      headerTitle: '대화 기록',
-      headerCount: '1개의 대화',
-      newSessionLabel: '새 대화',
+    expect(
+      screen.getByTestId('conversation-history-title').props,
+    ).toMatchObject({
+      accessibilityRole: 'header',
+      children: '대화 기록',
     });
-    await fireEvent(list, 'createSession', { nativeEvent: {} });
+    expect(
+      screen.getByTestId('conversation-history-count').props.children,
+    ).toBe('1개의 대화');
+    await fireEvent.press(screen.getByTestId('conversation-history-new'));
     expect(store.getSnapshot().sessions).toHaveLength(2);
     expect(onBack).toHaveBeenCalledTimes(1);
+  } finally {
+    sessionHook.mockRestore();
+    store.dispose();
+  }
+});
+
+test('places the title and count before available saved outputs and the session list', async () => {
+  const store = createConversationSessions();
+  store.create();
+  const onBack = jest.fn();
+  const onOpenSavedAnalysis = jest.fn();
+  const onOpenSavedVisitQuestions = jest.fn();
+  const sessionHook = jest
+    .spyOn(sessionsContext, 'useConversationSessions')
+    .mockReturnValue(store);
+  try {
+    await render(
+      <ConversationHistoryScreen
+        onBack={onBack}
+        onOpenSavedAnalysis={onOpenSavedAnalysis}
+        onOpenSavedVisitQuestions={onOpenSavedVisitQuestions}
+      />,
+    );
+    const pane = screen.getByTestId('conversation-history-pane');
+    const header = within(pane).getByTestId('conversation-history-header');
+    const titleRow = within(header).getByTestId(
+      'conversation-history-title-row',
+    );
+    const title = within(titleRow).getByTestId('conversation-history-title');
+    const count = within(header).getByTestId('conversation-history-count');
+    const savedOutputs = within(header).getByTestId(
+      'conversation-history-saved-outputs',
+    );
+    expect(titleRow.parent).toBe(header);
+    expect(count.parent).toBe(header);
+    expect(savedOutputs.parent).toBe(header);
+    expect(header.children.indexOf(titleRow)).toBeLessThan(
+      header.children.indexOf(count),
+    );
+    expect(header.children.indexOf(count)).toBeLessThan(
+      header.children.indexOf(savedOutputs),
+    );
+    expect(title.props).toMatchObject({
+      accessibilityRole: 'header',
+      children: '대화 기록',
+    });
+    expect(count.props.children).toBe('2개의 대화');
+    expect(within(savedOutputs).getByText('저장된 AI 결과')).toBeTruthy();
+    const savedAnalysis = within(savedOutputs).getByTestId(
+      'conversation-saved-analysis',
+    );
+    const savedVisitQuestions = within(savedOutputs).getByTestId(
+      'conversation-saved-visit-questions',
+    );
+    expect(savedAnalysis.props).toMatchObject({
+      accessibilityRole: 'button',
+      accessibilityHint: expect.stringContaining('새 AI 요청'),
+    });
+    expect(savedVisitQuestions.props.accessibilityRole).toBe('button');
+
+    const list = within(pane).getByTestId('conversation-history-list');
+    const listSection = directChildOf(
+      pane as TestTreeNode,
+      list as TestTreeNode,
+    );
+    expect(pane.children.indexOf(header)).toBeLessThan(
+      pane.children.indexOf(listSection as (typeof pane.children)[number]),
+    );
+    await fireEvent.press(savedAnalysis);
+    await fireEvent.press(savedVisitQuestions);
+    expect(onOpenSavedAnalysis).toHaveBeenCalledTimes(1);
+    expect(onOpenSavedVisitQuestions).toHaveBeenCalledTimes(1);
+    expect(store.getSnapshot().sessions).toHaveLength(2);
+    expect(onBack).not.toHaveBeenCalled();
+  } finally {
+    sessionHook.mockRestore();
+    store.dispose();
+  }
+});
+
+test('omits saved output shortcuts when their routes are unavailable', async () => {
+  const store = createConversationSessions();
+  const sessionHook = jest
+    .spyOn(sessionsContext, 'useConversationSessions')
+    .mockReturnValue(store);
+  try {
+    await render(
+      <ConversationHistoryScreen
+        onBack={jest.fn()}
+        onOpenSavedAnalysis={jest.fn()}
+      />,
+    );
+    const savedOutputs = screen.getByTestId(
+      'conversation-history-saved-outputs',
+    );
+    expect(
+      within(savedOutputs).getByTestId('conversation-saved-analysis'),
+    ).toBeTruthy();
+    expect(
+      within(savedOutputs).queryByTestId('conversation-saved-visit-questions'),
+    ).toBeNull();
   } finally {
     sessionHook.mockRestore();
     store.dispose();

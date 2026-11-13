@@ -1,15 +1,32 @@
-import { useEffect, useState } from 'react';
-import { AppRegistry, NativeModules, Text } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  AppRegistry,
+  AppState,
+  NativeModules,
+  Pressable,
+  StyleSheet,
+  Text,
+} from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
 import App from '../App';
 import { openLocalAgentMemoryDatabase } from '../src/storage/secureDatabase';
 import { createConversationArtifactStorage } from '../src/storage/conversationArtifactStorage';
+import { createReplyNotificationStorage } from '../src/replyNotifications/replyNotificationStorage';
 import { nativeReplyNotifications } from '../src/replyNotifications/nativeReplyNotifications';
 
-/** Seed a synthetic committed answer through the real protected storage adapter. */
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  button: { minHeight: 44, justifyContent: 'center' },
+});
+
+/** Reserve a synthetic request; commit only after backgrounding so production eligibility is exercised. */
 async function prepare() {
   const database = await openLocalAgentMemoryDatabase();
-  const storage = createConversationArtifactStorage(database);
+  const storage = createReplyNotificationStorage(
+    createConversationArtifactStorage(database),
+    database,
+  );
   const sessionId = 'synthetic-native-reply-session';
   const requestId = 'synthetic-native-reply-request';
   const createdAt = '2026-01-01T00:00:00.000Z';
@@ -24,32 +41,6 @@ async function prepare() {
     question: 'Synthetic question',
     createdAt,
   });
-  await storage.append({
-    id: requestId,
-    sessionId,
-    question: 'Synthetic question',
-    createdAt,
-    providerId: 'synthetic',
-    modelId: 'synthetic',
-    status: 'complete',
-    answer: 'Synthetic retained reply',
-    sources: [],
-    citations: [],
-  });
-  const saved = await storage.read(requestId);
-  const completions = await storage.listCompletionIdentities();
-  if (
-    saved?.answer !== 'Synthetic retained reply' ||
-    !Array.isArray(saved.citations) ||
-    !completions.some(
-      item =>
-        item.requestId === requestId &&
-        item.sessionId === sessionId &&
-        item.messageId === requestId &&
-        item.sessionVersion === sessionVersion,
-    )
-  )
-    throw new Error('The synthetic reply was not durably prepared.');
   const bridge = NativeModules.OrotTestControl as {
     enqueueSyntheticReply(input: {
       requestId: string;
@@ -70,27 +61,36 @@ async function prepare() {
     if ((error as { code?: unknown }).code !== 'INVALID_FIXTURE') throw error;
     rejected = true;
   }
-  if (!rejected) throw new Error('The invalid synthetic reply was admitted.');
-  // Rejection must leave the production inbox empty before any valid request is enqueued.
-  if ((await nativeReplyNotifications().consumeTarget()) != null)
-    throw new Error('The invalid synthetic reply mutated the inbox.');
-  await bridge.enqueueSyntheticReply({
-    requestId,
-    sessionId,
-    messageId: requestId,
-    sessionVersion,
-  });
+  if (!rejected || (await nativeReplyNotifications().consumeTarget()) != null)
+    throw new Error('Invalid synthetic identity was admitted.');
+  return () =>
+    storage.append({
+      id: requestId,
+      sessionId,
+      question: 'Synthetic question',
+      createdAt,
+      providerId: 'synthetic',
+      modelId: 'synthetic',
+      status: 'complete',
+      answer: 'Synthetic retained reply',
+      sources: [],
+      citations: [],
+    });
 }
 
 function AssistantReplyAcceptanceApp() {
-  const [state, setState] = useState<'preparing' | 'ready' | 'failed'>(
-    'preparing',
-  );
+  const [state, setState] = useState<
+    'preparing' | 'enable' | 'ready' | 'failed'
+  >('preparing');
+  const commit = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
     let current = true;
     prepare().then(
-      () => {
-        if (current) setState('ready');
+      append => {
+        if (current) {
+          commit.current = append;
+          setState('enable');
+        }
       },
       () => {
         if (current) setState('failed');
@@ -100,9 +100,44 @@ function AssistantReplyAcceptanceApp() {
       current = false;
     };
   }, []);
+  async function enable() {
+    try {
+      const result = await nativeReplyNotifications().save({
+        enabled: true,
+        preview: true,
+      });
+      if (result !== 'authorized') throw new Error('Notifications unavailable');
+      // Commit once, on the first real background transition; do not synthesize an inbox tap.
+      const listener = AppState.addEventListener('change', next => {
+        if (next !== 'background' || !commit.current) return;
+        const append = commit.current;
+        commit.current = null;
+        listener.remove();
+        append().catch(() => undefined);
+      });
+      setState('ready');
+    } catch {
+      setState('failed');
+    }
+  }
   if (state === 'ready') return <App />;
-  return <Text testID="assistant-reply-fixture-state">{state}</Text>;
+  return (
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.screen}>
+        <Text testID="assistant-reply-fixture-state">{state}</Text>
+        {state === 'enable' ? (
+          <Pressable
+            accessibilityRole="button"
+            testID="assistant-reply-enable"
+            onPress={enable}
+            style={styles.button}
+          >
+            <Text>Enable synthetic reply notification</Text>
+          </Pressable>
+        ) : null}
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
 }
 
-// The production gate and delivery observer mount only after the real inbox contains the synthetic tap.
 AppRegistry.registerComponent(appName, () => AssistantReplyAcceptanceApp);
