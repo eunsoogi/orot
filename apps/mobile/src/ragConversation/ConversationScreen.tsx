@@ -158,6 +158,7 @@ export function ConversationScreen({
               replyFocus={focus}
               requestSessionId={id}
               requestActivity={session.requestActivity}
+              sessionId={id}
               compact={composerLayout.compact}
               header={header}
               messages={messages}

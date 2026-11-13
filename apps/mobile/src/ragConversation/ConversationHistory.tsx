@@ -9,6 +9,8 @@ import { ReplyMessageContainer } from './ReplyMessageContainer';
 import { ConversationActivityBubble } from './ConversationActivityBubble';
 import { conversationHistoryActivity } from './conversationHistoryActivity';
 import type { ConversationHistoryProps } from './ConversationHistoryProps';
+import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserTurn';
+import { t } from '../i18n';
 
 /** Owns the scrollable transcript and keeps visit targets before messages in visual and source order. */
 export function ConversationHistory({
@@ -27,6 +29,7 @@ export function ConversationHistory({
   onRetrySave,
   restoreFailed = false,
   onRetryRestore,
+  sessionId,
   toolSourceSessionId,
   resolveToolSource,
   renderVisitQuestions,
@@ -56,6 +59,12 @@ export function ConversationHistory({
     pendingMessage,
     requestSessionId,
     requestActivity,
+  );
+  useConversationHistoryUserTurnFollow(
+    sessionId ?? null,
+    messages,
+    followsBottom,
+    expectedOffset,
   );
   const followLatest = () => {
     if (!visibleMessages.length || !followsBottom.current || replyFocus) return;
