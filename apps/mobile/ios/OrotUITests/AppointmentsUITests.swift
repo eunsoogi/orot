@@ -155,7 +155,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         ViewportObservation.captureIfEnabled(app, entry: "appointments-probe", stage: "before-scroll-44pt-guard", testCase: self)
         let action = try NavigationUITestConditions.navigationAction(app, "appointments-back")
         let safeFrame = try ViewportObservation.verifyAppointmentViewport(app, scroll: scroll, title: title, action: action, launchedAt: launchedAt, testCase: self)
-        try verifyAppointmentAdd(app, add: add, scroll: scroll, safeFrame: safeFrame)
+        try verifyAppointmentAdd(app, add: add, scroll: scroll, safeFrame: safeFrame, toolbar: action.toolbar.frame)
         XCTAssertGreaterThanOrEqual(action.control.frame.minY, action.toolbar.frame.minY)
         XCTAssertLessThanOrEqual(action.control.frame.maxY, action.toolbar.frame.maxY)
         XCTAssertFalse(UITestConditions.element(app, "appointments-top-back").exists)

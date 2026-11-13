@@ -3,7 +3,7 @@ import XCTest
 extension AppointmentsUITests {
     /// Verify the Add control after revealing it only when the route scroll owns it.
     @MainActor
-    func verifyAppointmentAdd(_ app: XCUIApplication, add: XCUIElement, scroll: XCUIElement, safeFrame: CGRect) throws {
+    func verifyAppointmentAdd(_ app: XCUIApplication, add: XCUIElement, scroll: XCUIElement, safeFrame: CGRect, toolbar: CGRect) throws {
         let matches = app.descendants(matching: .any).matching(identifier: "appointment-add")
         let inScroll = scroll.descendants(matching: .any).matching(identifier: "appointment-add").count
         func record(_ stage: String, window: XCUIElement) throws {
@@ -14,6 +14,7 @@ extension AppointmentsUITests {
                                               "addFrame": ViewportObservation.rect(add.frame), "addEnabled": add.isEnabled,
                                               "addHittable": add.isHittable, "scrollFrame": ViewportObservation.rect(scroll.frame),
                                               "windowFrame": ViewportObservation.rect(window.frame), "safeFrame": ViewportObservation.rect(safeFrame),
+                                              "toolbarFrame": ViewportObservation.rect(toolbar),
                                               "keyboardFrame": keyboard.exists ? ViewportObservation.rect(keyboard.frame) as Any : NSNull()]
             let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: observation), uniformTypeIdentifier: "public.json")
             attachment.name = "appointment-add-\(stage)"
@@ -34,6 +35,9 @@ extension AppointmentsUITests {
         let frame = add.frame
         XCTAssertTrue(AppointmentViewportGeometry.isUsableTarget(frame, hittable: add.isHittable), "Add must remain a hittable 44-point target")
         XCTAssertTrue(safeFrame.insetBy(dx: -0.5, dy: -0.5).contains(frame), "Add must remain inside the native safe area")
+        if inScroll == 1 {
+            XCTAssertFalse(frame.intersects(toolbar), "The page Add control must clear navigation")
+        }
     }
 
     /// Binds each displayed clinic to the repository identity after its save succeeds.
