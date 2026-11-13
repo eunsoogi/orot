@@ -9,6 +9,8 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  // The test-only scene observer must reject duplicate and unrelated geometry phases.
+  'OrotIntegrationTests/RotationGeometryGuardTests/testDuplicateRequestsAndForeignPhasesAreRejected',
   'OrotIntegrationTests/SVGFoundationIntegrationTests/testTextPropsAndGradientStorageSurviveNativeReuse',
   // Keep daily reminder preference and notification boundaries in the core integration cohort.
   'OrotIntegrationTests/DailyReminderNotificationTests/testOptInRestartRevocationAndOwnedCancellation',
