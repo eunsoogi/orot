@@ -20,6 +20,7 @@ import type { NavigationSurface } from './NavigationActionBar';
 import type { NavigationPrimaryAction } from './NavigationActionBar';
 import type { NavigationRootTabs } from './rootTabs';
 import { useNavigationSnapshot } from './useNavigationSnapshot';
+import { useNavigationEntryAvailability } from './useNavigationEntryAvailability';
 import { useNavigationPrimaryActionHost } from './useNavigationPrimaryAction';
 import { NativeRouteStack } from './NativeRouteStack';
 import { NavigationRouteScene } from './NavigationRouteScene';
@@ -36,7 +37,6 @@ interface RegisteredLeaveState<Name extends string> {
   readonly token: symbol;
   readonly source: NavigationLeaveStateSource<Name>;
 }
-
 export interface NavigationRouteAdapterProps<Name extends string> {
   readonly controller: NavigationController<Name>;
   readonly leaveState?: NavigationLeaveStateSource<Name>;
@@ -54,7 +54,6 @@ export interface NavigationRouteAdapterProps<Name extends string> {
     | ((route: NavigationRoute<Name>) => NavigationRootTabs | undefined);
   readonly onNativeRouteRemovalComplete?: (routeKey: string) => void;
 }
-
 /** Shares route guards and Reduce Motion state with the native stack and action bar. */
 export function NavigationRouteAdapter<Name extends string>({
   controller,
@@ -79,7 +78,6 @@ export function NavigationRouteAdapter<Name extends string>({
     new Map<string, RegisteredLeaveState<Name>>(),
   );
   leaveStateRef.current = leaveState;
-
   const getLeaveStateSource = useCallback((routeKey: string) => {
     return (
       registeredLeaveStates.current.get(routeKey)?.source ??
@@ -109,7 +107,11 @@ export function NavigationRouteAdapter<Name extends string>({
     },
     [controller],
   );
-
+  useNavigationEntryAvailability(
+    controller,
+    snapshot.currentRoute.key,
+    getLeaveStateSource,
+  );
   const canNativeGoBack = (routeKey: string) => {
     if (snapshot.isTransitioning) {
       observeNavigationTest('native-guard-transitioning', { routeKey });

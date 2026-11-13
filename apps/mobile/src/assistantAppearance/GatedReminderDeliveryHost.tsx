@@ -85,11 +85,13 @@ export function ReminderGate({
   const subscribeReady = useMemo(
     () => (listener: () => void) => {
       listeners.add(listener);
+      const unsubscribe = controller.subscribeEntryAvailability(listener);
       return () => {
         listeners.delete(listener);
+        unsubscribe();
       };
     },
-    [listeners],
+    [controller, listeners],
   );
   const markExplicitEntry = useMemo(
     () => () => {
@@ -116,9 +118,12 @@ export function ReminderGate({
       subscribe: listener => {
         listeners.add(listener);
         const unsubscribe = controller.subscribe(listener);
+        const unsubscribeAvailability =
+          controller.subscribeEntryAvailability(listener);
         return () => {
           listeners.delete(listener);
           unsubscribe();
+          unsubscribeAvailability();
         };
       },
       push: name =>

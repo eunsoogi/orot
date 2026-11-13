@@ -95,6 +95,7 @@ export function RootURLDeliveryHost({
       transitioning = snapshot.isTransitioning;
       if (changed || (settled && !ownGuard)) drain();
     });
+    const availability = controller.subscribeEntryAvailability(drain);
     drain();
     return () => {
       mounted = false;
@@ -102,6 +103,7 @@ export function RootURLDeliveryHost({
       unsubscribe();
       lifecycle.remove();
       navigation();
+      availability();
     };
   }, [arbiter, controller]);
   useEffect(() => {
