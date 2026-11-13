@@ -1,6 +1,20 @@
 import XCTest
 
 final class TestHostConnectionTests: OrotFailFastTestCase {
+    /// Capture separate native and AX geometry around one rotation request without waiting for a resize.
+    @MainActor
+    func testAppointmentRotationGeometryObservation() {
+        let app = XCUIApplication()
+        XCUIDevice.shared.orientation = .portrait
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "appointments", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
+        app.launch()
+        defer { app.terminate(); XCUIDevice.shared.orientation = .portrait }
+        XCTAssertTrue(UITestConditions.element(app, "appointments-title").waitForAppearance())
+        ViewportObservation.capture(app, entry: "appointments-rotation", stage: "before", testCase: self)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        ViewportObservation.capture(app, entry: "appointments-rotation", stage: "after-request", testCase: self)
+    }
+
     /// The exported geometry must not carry labels or other content from the native marker.
     @MainActor
     func testViewportObservationFiltersNativeMarker() {

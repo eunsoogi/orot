@@ -10,5 +10,6 @@ export const iosAcceptanceDiagnosticTests = [
 
 /** Keep the direct speech observation selectable while the Duo runtime cannot return it reliably. */
 export const duoAcceptanceDiagnosticTests = [
+  'OrotUITests/TestHostConnectionTests/testAppointmentRotationGeometryObservation',
   'OrotUITests/ChartConsumerAcceptanceUITests/testBloodPressureValuesAndDiastolicVoiceOver',
 ];
