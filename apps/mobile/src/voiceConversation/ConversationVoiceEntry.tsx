@@ -15,7 +15,11 @@ import { initialVoiceState, type VoiceState } from './voiceTurn';
 let nextTurn = 0;
 
 /** Binds explicit voice consent and request ownership to the currently visible conversation. */
-export function ConversationVoiceEntry(props: ConversationVoiceProps) {
+export function ConversationVoiceEntry(
+  props: ConversationVoiceProps & {
+    readonly onStatusChange?: (status: string) => void;
+  },
+) {
   const latest = useRef(props);
   latest.current = props;
   const [state, setState] = useState<VoiceState>(initialVoiceState);
@@ -182,6 +186,13 @@ export function ConversationVoiceEntry(props: ConversationVoiceProps) {
               : state.phase === 'cleaning'
                 ? t('ragConversation.voice.cleaning')
                 : '';
+  const displayStatus = !available ? t('ragConversation.voice.error') : status;
+  const onStatusChange = props.onStatusChange;
+  useEffect(() => {
+    onStatusChange?.(displayStatus);
+    // A removed session must not leave its transient voice message in the next composer.
+    return () => onStatusChange?.('');
+  }, [displayStatus, onStatusChange]);
   return (
     <VoiceConversationControl
       phase={state.phase}
@@ -190,7 +201,8 @@ export function ConversationVoiceEntry(props: ConversationVoiceProps) {
       stopLabel={t('ragConversation.voice.stop')}
       finishLabel={t('ragConversation.voice.finish')}
       recoverLabel={t('ragConversation.voice.retry')}
-      status={!available ? t('ragConversation.voice.error') : status}
+      status={displayStatus}
+      statusExternallyRendered={Boolean(onStatusChange)}
       onStart={() => {
         start().catch(() => setError(true));
       }}

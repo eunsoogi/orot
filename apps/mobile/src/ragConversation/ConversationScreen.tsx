@@ -67,7 +67,7 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, draft, messages, pendingMessage, busy, error } = session;
-  const { photo, focus, voice } = useConversationScreenControls(
+  const { photo, focus, ...composer } = useConversationScreenControls(
     store,
     id,
     isEntryCurrent,
@@ -218,7 +218,7 @@ export function ConversationScreen({
               }
             />
             <ConversationComposer
-              trailingAction={voice}
+              {...composer}
               photo={photo}
               value={draft}
               busy={busy}
