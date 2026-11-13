@@ -125,8 +125,8 @@ export function NavigationRouteAdapter<Name extends string>({
         typeof contentLayoutOwner === 'function'
           ? contentLayoutOwner(route, routeRootTabs)
           : contentLayoutOwner;
-      // Keep the rail inside its native route while the stack spans the window;
-      // retained routes cannot publish or receive input from an inactive rail.
+      // Keep the rail inside its native route while the stack spans the window.
+      // Route-owned Back follows the active rail; retained routes stay inert.
       return (
         <NavigationViewport
           active={active}
@@ -137,6 +137,7 @@ export function NavigationRouteAdapter<Name extends string>({
                 controller={controller}
                 leaveDisabled={activeLeaveDisabled}
                 pageActions={primary.actions}
+                routeBackAction={primary.routeBackAction}
                 primaryAction={
                   primary.actions.length ? undefined : primaryAction
                 }
@@ -173,6 +174,7 @@ export function NavigationRouteAdapter<Name extends string>({
       getLeaveStateSource,
       primary.host,
       primary.actions,
+      primary.routeBackAction,
       registerLeaveState,
       rootTabs,
       scrollable,

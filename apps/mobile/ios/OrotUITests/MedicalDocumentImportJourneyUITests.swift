@@ -74,20 +74,19 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         XCTAssertTrue(savedSource.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(UITestConditions.text(savedSource).contains("MedicalDocumentTextFixture.pdf"))
         tap(app, "medical-document-source-0")
-        assertSavedSource(app)
+        try assertSavedSource(app)
         capture(app, "medical-document-source-with-provenance")
-        tap(app, "medical-document-source-back")
-        FormUITestConditions.reveal(savedSource, in: app, scroll: recordsPage(app))
-        XCTAssertTrue(savedSource.exists && savedSource.isHittable, app.debugDescription)
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        XCTAssertTrue(savedSource.waitForAppearance() && savedSource.isHittable, app.debugDescription)
         tap(app, "medical-document-source-0")
-        assertSavedSource(app)
+        try assertSavedSource(app)
 
         app.terminate()
         app.launch()
         XCTAssertTrue(node(app, "rag-conversation-screen").waitForAppearance(), app.debugDescription)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tap(app, "medical-document-source-0")
-        assertSavedSource(app)
+        try assertSavedSource(app)
         capture(app, "medical-document-source-after-relaunch")
     }
 
@@ -114,7 +113,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.text(duplicateStatus).contains("같은 문서가 이미 저장되어 있어요."))
         XCTAssertTrue(node(app, "medical-document-source-0").exists)
         tap(app, "medical-document-source-0")
-        assertSavedSource(app)
+        try assertSavedSource(app)
         capture(app, "medical-document-source-after-duplicate-import")
     }
 
@@ -190,8 +189,9 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func assertSavedSource(_ app: XCUIApplication) {
+    private func assertSavedSource(_ app: XCUIApplication) throws {
         // Verify the production native UI exposes each stable detail region after entry or relaunch.
+        try MedicalDocumentNavigationUITestConditions.assertSharedSavedSourceBack(app)
         XCTAssertTrue(node(app, "medical-document-source-detail-layout-primary").exists, app.debugDescription)
         XCTAssertTrue(node(app, "medical-document-source-evidence").exists, app.debugDescription)
         XCTAssertTrue(node(app, "medical-document-source-title").waitForAppearance(), app.debugDescription)
@@ -211,17 +211,17 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
 
     @MainActor
     private func recordsPage(_ app: XCUIApplication) -> XCUIElement {
-        // Resolve the tagged route container to the native scroll view that owns the viewport.
+        // Keep the tagged viewport owner because Duo window selection cannot use its untagged child scroll view.
         let route = app.descendants(matching: .any).matching(identifier: "navigation-route-scroll")
         XCTAssertEqual(route.count, 1, app.debugDescription)
         let routeContainer = route.firstMatch
         XCTAssertTrue(routeContainer.exists && !routeContainer.frame.isEmpty, app.debugDescription)
         let scrollViews = routeContainer.scrollViews
         XCTAssertEqual(scrollViews.count, 1, app.debugDescription)
-        let page = scrollViews.firstMatch
-        XCTAssertTrue(page.exists && !page.frame.isEmpty, app.debugDescription)
-        XCTAssertEqual(page.scrollViews.count, 0, app.debugDescription)
-        return page
+        let nativeScroll = scrollViews.firstMatch
+        XCTAssertTrue(nativeScroll.exists && !nativeScroll.frame.isEmpty, app.debugDescription)
+        XCTAssertEqual(nativeScroll.scrollViews.count, 0, app.debugDescription)
+        return routeContainer
     }
 
     @MainActor

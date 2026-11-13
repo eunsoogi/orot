@@ -59,8 +59,16 @@ export function resolveIosTestProfileSelection(
   const hostPreparation = isIosHostPreparation(tests, preparationPhase);
   const isFixtureProfile = fixtureProfiles.includes(profile);
   const profileCandidates = profile === 'duo' ? [...fixtureProfiles, 'duo'] : fixtureProfiles;
-  const explicitDuoDiagnostic = tests.some((test) => duoAcceptanceDiagnosticTests.includes(test));
-  if (explicitDuoDiagnostic && (profile !== 'duo' || tests.length !== 1))
+  const includesDuoAcceptanceDiagnostic = tests.some((test) =>
+    duoAcceptanceDiagnosticTests.includes(test),
+  );
+  const explicitDuoDiagnostic = profile === 'duo' && includesDuoAcceptanceDiagnostic;
+  // A Duo diagnostic may also be fixture-owned; preserve that profile's host-reset admission.
+  const existingFixtureAdmission =
+    isFixtureProfile && tests.every((test) => iosTestInventory(profile).includes(test));
+  if (includesDuoAcceptanceDiagnostic && !explicitDuoDiagnostic && !existingFixtureAdmission)
+    throw new Error('Duo acceptance diagnostics require Duo or their existing fixture profile');
+  if (explicitDuoDiagnostic && tests.length !== 1)
     throw new Error('Duo acceptance diagnostics require an explicit single journey');
   // Host preparation is an explicit exception; otherwise a partial Duo match must fail closed.
   if (
@@ -70,6 +78,10 @@ export function resolveIosTestProfileSelection(
     tests.some((test) => !iosTestInventory('duo').includes(test))
   )
     throw new Error('Duo cases require their dedicated host-orchestrated destination');
+  if (explicitDuoDiagnostic) {
+    // A selected Duo journey may also belong to a fixture inventory; keep its dedicated route independent of that profile's setup guard.
+    return { fixtureSelection: null, hostPreparation: false, isFixtureProfile: false };
+  }
   const fixtureSelection =
     profileCandidates.includes(profile) &&
     tests.every((test) => iosTestInventory(profile).includes(test))

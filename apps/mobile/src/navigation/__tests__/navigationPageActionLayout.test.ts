@@ -23,18 +23,18 @@ test('keeps a safe root rail when the complete centered action group fits', () =
     systemBottomInset: 0,
   };
   expect(
-    navigationRailPresentation(layout, 0, true, 5, 0).rightLayout,
+    navigationRailPresentation(layout, 0, true, 0, 0).rightLayout,
   ).toBeDefined();
-  const withActions = navigationRailPresentation(layout, 0, true, 5, 2);
+  const withActions = navigationRailPresentation(layout, 0, true, 0, 2);
   expect(withActions.rightLayout).toEqual(layout);
   expect(withActions.pageLayout?.capacity).toBe(2);
   // UIKit's spacer adds a 12pt gap before the first of two 48pt controls.
   expect(
-    navigationRailPresentation({ ...layout, windowHeight: 444 }, 0, true, 5, 2)
+    navigationRailPresentation({ ...layout, windowHeight: 444 }, 0, true, 0, 2)
       .pageLayout?.capacity,
   ).toBe(2);
   expect(
-    navigationRailPresentation({ ...layout, windowHeight: 443 }, 0, true, 5, 2)
+    navigationRailPresentation({ ...layout, windowHeight: 443 }, 0, true, 0, 2)
       .pageLayout?.capacity,
   ).toBe(1);
   const page = withActions.pageLayout!;
@@ -42,7 +42,7 @@ test('keeps a safe root rail when the complete centered action group fits', () =
     layout.windowHeight - page.pageBottomInset - page.pageTopInset,
   ).toBeGreaterThanOrEqual(120);
   expect(
-    navigationRailPresentation({ ...layout, windowHeight: 300 }, 0, true, 5, 0)
+    navigationRailPresentation({ ...layout, windowHeight: 300 }, 0, true, 0, 0)
       .rightLayout,
   ).toBeUndefined();
 });
