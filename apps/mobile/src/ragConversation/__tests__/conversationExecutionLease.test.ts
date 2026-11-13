@@ -108,6 +108,7 @@ test('foreground reconciliation catches an expiration whose event was missed', a
   jest.mocked(f.adapter.isActive).mockResolvedValue(false);
   f.emit({ kind: 'foreground' });
   await Promise.resolve();
+  await Promise.resolve();
   expect(interrupt).toHaveBeenCalledWith('expired');
   end();
 });

@@ -33,9 +33,10 @@ export async function beginConversationExecutionLease(
     // Recheck after foregrounding in case suspension delayed the expiration event.
     if (event.kind === 'foreground' && acquired)
       adapter
-        .isActive(requestId)
-        .then(active => {
-          if (!active) notify('expired');
+        .protectedDataAvailable()
+        .then(async available => {
+          if (!available) notify('protected-data');
+          else if (!(await adapter.isActive(requestId))) notify('expired');
         })
         .catch(() => notify('expired'));
   });
@@ -44,6 +45,8 @@ export async function beginConversationExecutionLease(
     if (!interrupted) {
       acquired = await adapter.begin(requestId);
       if (!acquired) notify('expired');
+      else if (!(await adapter.protectedDataAvailable()))
+        notify('protected-data');
       else if (!(await adapter.isActive(requestId))) notify('expired');
     }
   } catch {
