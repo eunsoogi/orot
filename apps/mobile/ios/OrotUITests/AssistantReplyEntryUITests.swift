@@ -48,7 +48,14 @@ final class AssistantReplyEntryUITests: OrotFailFastTestCase {
 
         let history = UITestConditions.element(app, "rag-conversation-history")
         let answers = app.staticTexts.matching(identifier: "rag-conversation-answer-body").matching(NSPredicate(format: "label == %@", "Synthetic retained reply"))
-        let answer = answers.matching(NSPredicate(format: "hittable == YES")).firstMatch
+        var visibleAnswer: XCUIElement?
+        let answerReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            visibleAnswer = answers.allElementsBoundByIndex.first { $0.isHittable }
+            return visibleAnswer != nil
+        }, object: nil)
+        let answerResult = UITestConditions.wait(for: [answerReady])
+        XCTAssertEqual(answerResult, .completed, app.debugDescription)
+        guard let answer = visibleAnswer, answerResult == .completed else { return }
         XCTAssertTrue(UITestConditions.exists(history), app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(answer), app.debugDescription)
         XCTAssertTrue(answer.isHittable, answer.debugDescription)
