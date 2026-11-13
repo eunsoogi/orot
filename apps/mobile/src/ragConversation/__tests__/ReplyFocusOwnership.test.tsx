@@ -1,7 +1,8 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { useRef } from 'react';
 import type { ComponentRef } from 'react';
-import type { ScrollView } from 'react-native';
+import { AppState } from 'react-native';
+import type { AppStateStatus, ScrollView } from 'react-native';
 import {
   replyFocus,
   useReplyFocusForSession,
@@ -110,4 +111,98 @@ test('a missing scroll ref or route authority never consumes focus', async () =>
   expect(view.result.current.expectedOffset.current).toBeNull();
   expect(unauthorized.result.current?.canReveal()).toBe(false);
   expect(unauthorized.result.current?.complete()).toBe(false);
+});
+
+test('foreground resumes the already laid out target without another layout event', async () => {
+  let resume: (state: AppStateStatus) => void = () => {};
+  const subscription = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_type, listener) => {
+      resume = listener;
+      return { remove: jest.fn() };
+    });
+  let current = false;
+  const scroll = { scrollTo: jest.fn() };
+  const view = await renderHook(() => useTranscript(() => current, scroll));
+  try {
+    await act(() => replyFocus.set({ sessionId: 7, messageId: 'answer' }));
+    await act(() => {
+      view.result.current.layout.container(100);
+      view.result.current.layout.message(25);
+    });
+    expect(scroll.scrollTo).not.toHaveBeenCalled();
+    expect(replyFocus.get()?.messageId).toBe('answer');
+    current = true;
+    await act(() => resume('active'));
+    expect(scroll.scrollTo).toHaveBeenCalledTimes(1);
+    expect(scroll.scrollTo).toHaveBeenCalledWith({ y: 125, animated: false });
+    expect(replyFocus.get()).toBeNull();
+    await act(() => resume('active'));
+    expect(scroll.scrollTo).toHaveBeenCalledTimes(1);
+  } finally {
+    view.unmount();
+    subscription.mockRestore();
+  }
+});
+
+test('a stale foreground callback cannot reveal a newer generation', async () => {
+  const callbacks: Array<(state: AppStateStatus) => void> = [];
+  const subscription = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_type, listener) => {
+      callbacks.push(listener);
+      return { remove: jest.fn() };
+    });
+  let current = false;
+  const scroll = { scrollTo: jest.fn() };
+  const view = await renderHook(() => useTranscript(() => current, scroll));
+  try {
+    await act(() => replyFocus.set({ sessionId: 7, messageId: 'answer' }));
+    await act(() => {
+      view.result.current.layout.container(100);
+      view.result.current.layout.message(20);
+    });
+    const stale = callbacks[callbacks.length - 1]!;
+    await act(() => replyFocus.set({ sessionId: 7, messageId: 'answer' }));
+    const generation = view.result.current.focus?.generation;
+    current = true;
+    await act(() => stale('active'));
+    expect(scroll.scrollTo).not.toHaveBeenCalled();
+    expect(replyFocus.get()?.generation).toBe(generation);
+    await act(() => view.result.current.layout.message(30));
+    expect(scroll.scrollTo).toHaveBeenCalledTimes(1);
+  } finally {
+    view.unmount();
+    subscription.mockRestore();
+  }
+});
+
+test('rechecks laid out focus when route authority commits after the foreground event', async () => {
+  let resume: (state: AppStateStatus) => void = () => {};
+  const subscription = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_type, listener) => {
+      resume = listener;
+      return { remove: jest.fn() };
+    });
+  let current = false;
+  const scroll = { scrollTo: jest.fn() };
+  const view = await renderHook(() => useTranscript(() => current, scroll));
+  try {
+    await act(() => replyFocus.set({ sessionId: 7, messageId: 'answer' }));
+    await act(() => {
+      view.result.current.layout.container(100);
+      view.result.current.layout.message(25);
+    });
+    await act(() => resume('active'));
+    expect(scroll.scrollTo).not.toHaveBeenCalled();
+    current = true;
+    await view.rerender(undefined);
+    expect(scroll.scrollTo).toHaveBeenCalledTimes(1);
+    expect(scroll.scrollTo).toHaveBeenCalledWith({ y: 125, animated: false });
+    expect(replyFocus.get()).toBeNull();
+  } finally {
+    view.unmount();
+    subscription.mockRestore();
+  }
 });
