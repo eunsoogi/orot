@@ -18,6 +18,8 @@ export type ConversationActivitySnapshot = Readonly<{
 type ToolState = {
   readonly status: ConversationToolEvent['status'];
   readonly kind: ConversationToolEvent['inputSummary']['sourceKind'];
+  readonly name: string;
+  readonly order: number;
 };
 
 /** A request owns this tracker; callbacks from a settled request cannot reopen it. */
@@ -78,13 +80,22 @@ export function createConversationActivity(
         calls.set(event.operationRunId, run);
       }
       const prior = run.get(event.callId);
+      // A call identity cannot be reused for another operation within one run.
+      if (
+        prior &&
+        (prior.kind !== event.inputSummary.sourceKind ||
+          prior.name !== event.toolName ||
+          prior.order !== event.order)
+      )
+        return;
       // A terminal observation wins over delayed starts and duplicate callbacks.
       if (prior && (prior.status !== 'started' || event.status === 'started'))
         return;
-      if (prior && prior.kind !== event.inputSummary.sourceKind) return;
       run.set(event.callId, {
         status: event.status,
         kind: event.inputSummary.sourceKind,
+        name: event.toolName,
+        order: event.order,
       });
       publish();
     },

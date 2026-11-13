@@ -69,3 +69,21 @@ test('unknown tools do not invent a stage or expose tool metadata', () => {
   activity.settle();
   expect(activity.getSnapshot()).toBeNull();
 });
+
+test('ignores conflicting call identity and settles failed parallel calls independently', () => {
+  const activity = createConversationActivity(1, 2);
+  activity.waiting();
+  const records = tool('a', 'personal_record', 'started');
+  activity.tool(records);
+  activity.tool({ ...records, status: 'failed', toolName: 'different' });
+  expect(activity.getSnapshot()?.stage).toBe('records');
+  activity.tool({ ...records, status: 'failed', order: 1 });
+  expect(activity.getSnapshot()?.stage).toBe('records');
+  activity.tool({ ...records, operationRunId: 'other-run' });
+  activity.tool({ ...records, status: 'failed' });
+  expect(activity.getSnapshot()?.stage).toBe('records');
+  activity.tool({ ...records, operationRunId: 'other-run', status: 'failed' });
+  expect(activity.getSnapshot()?.stage).toBe('waiting');
+  activity.tool(records);
+  expect(activity.getSnapshot()?.stage).toBe('waiting');
+});
