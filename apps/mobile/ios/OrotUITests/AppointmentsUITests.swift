@@ -168,7 +168,8 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         let secondary = UITestConditions.element(app, "appointments-columns-secondary")
         XCTAssertTrue(primary.exists && !primary.frame.isEmpty, app.debugDescription)
         XCTAssertTrue(secondary.exists && !secondary.frame.isEmpty, app.debugDescription)
-        let scroll = app.scrollViews.matching(identifier: "appointments-scroll").firstMatch
+        // React Native exposes this identified scroll as Other on the native AX tree.
+        let scroll = UITestConditions.element(app, "appointments-scroll")
         XCTAssertTrue(scroll.exists && !scroll.frame.isEmpty, app.debugDescription)
         XCTAssertEqual(scroll.descendants(matching: .scrollView).count, 0, "Appointment sections must not introduce nested scroll owners")
         XCTAssertEqual(scroll.descendants(matching: .any).matching(identifier: "appointments-columns-primary").count, 1)
