@@ -116,7 +116,7 @@ final class ConversationVisitPreparationUITests: OrotFailFastTestCase {
         XCTAssertTrue(readyPrepareExists && readyPrepareEnabledValue == true, readinessObservation)
         RecordingFixtureUITestConditions.capture(app, "visit-preparation-action-before-scroll", testCase: self)
         // Accessibility text can expand the conversation header beyond the initial viewport.
-        UITestConditions.scrollTo(prepare, in: history)
+        scrollToAndMeasure(prepare, in: history)
         let postScrollObservationStartedAt = Date().timeIntervalSince1970
         let prepareExistsAfterScroll = prepare.exists
         let prepareHittableAfterScroll: Bool? = prepareExistsAfterScroll ? prepare.isHittable : nil
@@ -180,5 +180,53 @@ final class ConversationVisitPreparationUITests: OrotFailFastTestCase {
         XCTAssertLessThanOrEqual(history.frame.maxY, composer.frame.minY + 1)
         XCTAssertLessThanOrEqual(composer.frame.maxY, app.keyboards.firstMatch.frame.minY + 1)
         RecordingFixtureUITestConditions.capture(app, "visit-preparation-question-keyboard-at-accessibility-xxxl", testCase: self)
+    }
+
+    /// Records target and viewport geometry around each gesture without weakening the hit-target assertion.
+    @MainActor
+    private func scrollToAndMeasure(_ element: XCUIElement, in container: XCUIElement) {
+        for step in 1 ... 8 {
+            let existsBefore = element.exists
+            let frameBefore: CGRect? = existsBefore ? element.frame : nil
+            let containerFrameBefore = container.frame
+            let hittableBefore = existsBefore ? element.isHittable : false
+            let orientationBefore = XCUIDevice.shared.orientation.rawValue
+            if existsBefore && hittableBefore { return }
+
+            let swipeDown = frameBefore.map { $0.midY < containerFrameBefore.midY } ?? false
+            let direction = swipeDown ? "down" : "up"
+            if swipeDown {
+                container.swipeDown()
+            } else {
+                container.swipeUp()
+            }
+
+            let existsAfter = element.exists
+            let frameAfter: CGRect? = existsAfter ? element.frame : nil
+            let containerFrameAfter = container.frame
+            let hittableAfter = existsAfter ? element.isHittable : false
+            let orientationAfter = XCUIDevice.shared.orientation.rawValue
+            let deltaY = if let frameBefore, let frameAfter {
+                String(format: "%.1f", frameAfter.midY - frameBefore.midY)
+            } else {
+                "unavailable"
+            }
+            let targetFrameBefore = frameBefore.map { String(describing: $0) } ?? "unavailable"
+            let targetFrameAfter = frameAfter.map { String(describing: $0) } ?? "unavailable"
+            let observation = """
+            step=\(step) direction=\(direction) orientationBefore=\(orientationBefore) orientationAfter=\(orientationAfter)
+            before: target exists=\(existsBefore) hittable=\(hittableBefore) frame=\(targetFrameBefore)
+            before: container frame=\(containerFrameBefore)
+            after: target exists=\(existsAfter) hittable=\(hittableAfter) frame=\(targetFrameAfter) deltaY=\(deltaY)
+            after: container frame=\(containerFrameAfter)
+            """
+            let attachment = XCTAttachment(string: observation)
+            attachment.name = "visit-preparation-reveal-step-\(step)"
+            attachment.lifetime = .keepAlways
+            XCTContext.runActivity(named: "Measure visit preparation reveal gesture \(step)") { activity in
+                activity.add(attachment)
+            }
+        }
+        XCTAssertTrue(element.exists && element.isHittable, element.debugDescription)
     }
 }
