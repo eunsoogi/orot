@@ -27,10 +27,8 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         let rotationSession = UUID().uuidString
         try launch(app, extra: AppearanceUITestConditions.observationArguments + ["-OROT_TEST_ROTATION_GEOMETRY_SESSION", rotationSession])
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
-        createAppointment(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45")
-        let firstIdentity = UITestConditions.appointmentIdentity(app)
-        createAppointment(app, clinic: "Neurology clinic", date: "2027-06-03", time: "10:15")
-        let identity = UITestConditions.appointmentIdentity(app, previous: firstIdentity)
+        let firstIdentity = createAppointment(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45")
+        let identity = createAppointment(app, clinic: "Neurology clinic", date: "2027-06-03", time: "10:15", previous: firstIdentity)
         XCTAssertNotEqual(firstIdentity, identity)
 
         let selection = UITestConditions.element(app, "appointment-select-\(identity)")
@@ -76,8 +74,7 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         }
         try launch(app, largeText: true)
         let longClinic = "Cardiology and Neurology appointment center"
-        createAppointment(app, clinic: longClinic, date: "2027-06-02", time: "09:45")
-        let identity = UITestConditions.appointmentIdentity(app)
+        let identity = createAppointment(app, clinic: longClinic, date: "2027-06-02", time: "09:45")
         let selection = UITestConditions.element(app, "appointment-select-\(identity)")
         XCTAssertTrue(selection.waitForAppearance(), app.debugDescription)
         XCTAssertTrue(selection.isSelected, app.debugDescription)
@@ -168,10 +165,16 @@ final class AppointmentsUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    func createAppointment(_ app: XCUIApplication, clinic: String, date: String, time: String) {
+    func createAppointment(_ app: XCUIApplication, clinic: String, date: String, time: String, previous: String = "") -> String {
         tap(app, "appointment-add")
         fill(app, clinic: clinic, date: date, time: time, note: "")
-        visible(app, clinic)
+        let identity = UITestConditions.appointmentIdentity(app, previous: previous)
+        let savedClinic = UITestConditions.element(app, "appointment-clinic-\(identity)")
+        XCTAssertTrue(savedClinic.waitForAppearance())
+        FormUITestConditions.reveal(savedClinic, in: app, scrollID: "appointments-scroll", towardTop: true)
+        XCTAssertTrue(savedClinic.isHittable)
+        XCTAssertEqual(UITestConditions.text(savedClinic), clinic)
+        return identity
     }
 
     @MainActor

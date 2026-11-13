@@ -15,10 +15,8 @@ extension AppointmentsUITests {
         }
         try launch(app, extra: AppearanceUITestConditions.observationArguments)
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
-        createAppointment(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45")
-        let first = UITestConditions.appointmentIdentity(app)
-        createAppointment(app, clinic: "Neurology clinic", date: "2027-06-03", time: "10:15")
-        let second = UITestConditions.appointmentIdentity(app, previous: first)
+        let first = createAppointment(app, clinic: "Cardiology clinic", date: "2027-06-02", time: "09:45")
+        let second = createAppointment(app, clinic: "Neurology clinic", date: "2027-06-03", time: "10:15", previous: first)
         XCTAssertNotEqual(first, second)
         let selection = UITestConditions.element(app, "appointment-select-\(second)")
         XCTAssertTrue(selection.waitForAppearance())
