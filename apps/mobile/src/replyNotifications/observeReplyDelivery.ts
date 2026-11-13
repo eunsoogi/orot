@@ -23,11 +23,17 @@ export function observeReplyDelivery(input: {
   ): Promise<'approved' | 'declined' | 'unavailable' | 'busy'>;
   canEnter(): boolean;
   execute?: ReplyEntryExecutor;
+  subscribeReady?: (listener: () => void) => () => void;
+  onReplyOpened?: () => void;
 }) {
   if (!input.retention || !input.execute) return () => {};
   const execute = input.execute;
+  let active = true;
+  const lifetime = new AbortController();
   const open = createReplyOpen({
     ...input,
+    isCurrent: () => active,
+    signal: lifetime.signal,
     async read(identity) {
       const data = await (input.loadLocalData
         ? input.loadLocalData()
@@ -45,6 +51,8 @@ export function observeReplyDelivery(input: {
   const deliver = createReplyDestination({
     consume: () => nativeReplyNotifications().consumeTarget(),
     acknowledge: id => nativeReplyNotifications().acknowledgeTarget(id),
+    discardInvalid: () => nativeReplyNotifications().discardInvalidTarget(),
+    isCurrent: () => active,
     open,
     unavailable: () =>
       Alert.alert(
@@ -52,18 +60,27 @@ export function observeReplyDelivery(input: {
         t('replyNotification.missingBody'),
       ),
   });
-  let active = true;
   let pending = false;
   let queue = Promise.resolve();
   const drain = () => {
     if (!active) return;
     queue = queue
       .then(async () => {
+        if (!active) return;
+        // An entry owner may defer without invoking the callback while its gate is closed.
+        pending = true;
         await execute(async () => {
           if (!active) return;
           const result = await deliver();
+          if (!active) return;
           pending = result === 'deferred';
-          if (result === 'opened' || result === 'missing') drain();
+          if (
+            result === 'opened' ||
+            result === 'missing' ||
+            result === 'cancelled' ||
+            result === 'invalid'
+          )
+            drain();
         });
       })
       .catch(() => {
@@ -91,12 +108,15 @@ export function observeReplyDelivery(input: {
       drain();
     }
   });
+  const ready = input.subscribeReady?.(drain) ?? (() => {});
   drain();
   return () => {
     active = false;
+    lifetime.abort();
     unsubscribe();
     state.remove();
     navigation();
     sessions();
+    ready();
   };
 }

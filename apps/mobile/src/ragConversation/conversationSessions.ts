@@ -165,12 +165,12 @@ export function createConversationSessions(
       if (!disposed) requests.cancel(id);
     },
     retrySave,
-    retryRestore: (id: number) =>
+    retryRestore: (id: number, signal?: AbortSignal) =>
       disposed
         ? Promise.resolve()
         : taskRefresh.has(id)
           ? taskRefresh.retry(id)
-          : restoration.retry(id),
+          : restoration.retry(id, signal),
     refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
       if (disposed) return;
       taskState.invalidateWrites();

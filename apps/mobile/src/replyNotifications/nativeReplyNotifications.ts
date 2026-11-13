@@ -22,6 +22,7 @@ export interface ReplyNotificationNative {
   removeSession(sessionId: string): Promise<void>;
   removeAll(): Promise<void>;
   consumeTarget(): Promise<unknown>;
+  discardInvalidTarget(): Promise<void>;
   acknowledgeTarget(requestId: string): Promise<void>;
 }
 

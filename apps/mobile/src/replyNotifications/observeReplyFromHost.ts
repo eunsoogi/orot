@@ -26,6 +26,8 @@ export function observeReplyFromHost(
     canEnter: () =>
       AppState.currentState === 'active' && input.canEnterReply?.() === true,
     execute: input.executeReplyEntry,
+    subscribeReady: input.subscribeReplyEntryReady,
+    onReplyOpened: input.onReplyOpened,
   });
 }
 
@@ -42,6 +44,8 @@ export function useReplyDeliveryFromHost(
     loadLocalData,
     canEnterReply,
     executeReplyEntry,
+    subscribeReplyEntryReady,
+    onReplyOpened,
   } = input;
   useEffect(
     () =>
@@ -52,6 +56,8 @@ export function useReplyDeliveryFromHost(
         loadLocalData,
         canEnterReply,
         executeReplyEntry,
+        subscribeReplyEntryReady,
+        onReplyOpened,
       }),
     [
       controller,
@@ -60,6 +66,8 @@ export function useReplyDeliveryFromHost(
       loadLocalData,
       canEnterReply,
       executeReplyEntry,
+      subscribeReplyEntryReady,
+      onReplyOpened,
     ],
   );
 }
