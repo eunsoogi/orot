@@ -37,8 +37,10 @@ const visitQuestions = {
     [],
     () => 'synthetic-conversation-question',
   ),
-  validateSource: async (_reference: VisitQuestionEvidenceItem, signal: AbortSignal) =>
-    !signal.aborted,
+  validateSource: async (
+    _reference: VisitQuestionEvidenceItem,
+    signal: AbortSignal,
+  ) => !signal.aborted,
 };
 
 /** This fixture returns local synthetic content only; it never reads records or invokes a provider. */
@@ -63,7 +65,9 @@ const operations: VisitQuestionRouteOperations = {
   loadAppointment: async () => appointment,
   generate: async () => ({ status: 'cancelled' }),
   save: async () => {
-    throw new Error('The synthetic conversation fixture does not save questions.');
+    throw new Error(
+      'The synthetic conversation fixture does not save questions.',
+    );
   },
 };
 const services: Pick<
