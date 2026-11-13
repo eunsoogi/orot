@@ -47,43 +47,67 @@ function orientationPolicy(value: unknown): Record<string, unknown> {
 /** Exposes one requested native sample to the isolated rotation diagnostic. */
 export function RotationGeometryRequest({ session }: { session: unknown }) {
   const [rotationReceipt, setRotationReceipt] = useState('{}');
+  const [transitionReceipt, setTransitionReceipt] = useState('{}');
+  const [transitionStep, setTransitionStep] = useState(0);
   return (
     <>
       {typeof session === 'string' ? (
-        <Text
-          accessible
-          accessibilityLabel={rotationReceipt}
-          onPress={() => {
-            const requestId = session;
-            const requestedAtMs = Date.now();
-            // One explicit test request invokes UIKit; periodic marker contents cannot satisfy it.
-            NativeModules.OrotTestControl.navigationSnapshot().then(
-              (value: { windowGeometry?: Record<string, unknown> }) => {
-                const geometry = value.windowGeometry;
-                setRotationReceipt(
-                  JSON.stringify({
-                    requestId,
-                    requestedAtMs,
-                    windowGeometry: geometry && {
-                      windowBounds: geometry.windowBounds,
-                      safeAreaInsets: geometry.safeAreaInsets,
-                      sceneOrientation: geometry.sceneOrientation,
-                      sampleStartedAtMs: geometry.sampleStartedAtMs,
-                      sampleEndedAtMs: geometry.sampleEndedAtMs,
-                      orientationPolicy: orientationPolicy(
-                        geometry.orientationPolicy,
-                      ),
-                    },
-                  }),
-                );
-              },
-            );
-          }}
-          style={styles.request}
-          testID="rotation-geometry-request"
-        >
-          Geometry request
-        </Text>
+        <>
+          <Text
+            accessible
+            accessibilityLabel={rotationReceipt}
+            onPress={() => {
+              const requestId = session;
+              const requestedAtMs = Date.now();
+              // One explicit test request invokes UIKit; periodic marker contents cannot satisfy it.
+              NativeModules.OrotTestControl.navigationSnapshot().then(
+                (value: { windowGeometry?: Record<string, unknown> }) => {
+                  const geometry = value.windowGeometry;
+                  setRotationReceipt(
+                    JSON.stringify({
+                      requestId,
+                      requestedAtMs,
+                      windowGeometry: geometry && {
+                        windowBounds: geometry.windowBounds,
+                        safeAreaInsets: geometry.safeAreaInsets,
+                        sceneOrientation: geometry.sceneOrientation,
+                        sampleStartedAtMs: geometry.sampleStartedAtMs,
+                        sampleEndedAtMs: geometry.sampleEndedAtMs,
+                        orientationPolicy: orientationPolicy(
+                          geometry.orientationPolicy,
+                        ),
+                      },
+                    }),
+                  );
+                },
+              );
+            }}
+            style={styles.request}
+            testID="rotation-geometry-request"
+          >
+            Geometry request
+          </Text>
+          <Text
+            accessible
+            accessibilityLabel={transitionReceipt}
+            onPress={() => {
+              const mode = ['start', 'request', 'read'][
+                Math.min(transitionStep, 2)
+              ];
+              NativeModules.OrotTestControl.rotationGeometryCommand(
+                session,
+                mode,
+              ).then((receipt: unknown) => {
+                setTransitionReceipt(JSON.stringify(receipt));
+                setTransitionStep(current => current + 1);
+              });
+            }}
+            style={styles.transitionRequest}
+            testID="rotation-transition-request"
+          >
+            Transition request
+          </Text>
+        </>
       ) : null}
     </>
   );
@@ -93,6 +117,14 @@ const styles = StyleSheet.create({
   request: {
     position: 'absolute',
     left: 0,
+    top: 0,
+    width: 44,
+    height: 44,
+    fontSize: 1,
+  },
+  transitionRequest: {
+    position: 'absolute',
+    left: 44,
     top: 0,
     width: 44,
     height: 44,

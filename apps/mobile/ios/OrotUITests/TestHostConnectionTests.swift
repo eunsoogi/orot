@@ -12,12 +12,32 @@ final class TestHostConnectionTests: OrotFailFastTestCase {
         defer { app.terminate(); XCUIDevice.shared.orientation = .portrait }
         XCTAssertTrue(UITestConditions.element(app, "appointments-title").waitForAppearance())
         ViewportObservation.capture(app, entry: "appointments-rotation", stage: "before", testCase: self)
+        let transition = UITestConditions.element(app, "rotation-transition-request")
+        XCTAssertTrue(transition.exists && transition.isHittable)
+        transition.tap()
+        ViewportObservation.capture(app, entry: "appointments-rotation", stage: "armed", testCase: self)
+        let armed = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(transition.label.utf8)) as? [String: Any])
+        XCTAssertEqual(armed["session"] as? String, session)
+        XCTAssertEqual(armed["status"] as? String, "sampled")
+        XCTAssertEqual(armed["mode"] as? String, "start")
         XCUIDevice.shared.orientation = .landscapeLeft
+        transition.tap()
         let requestAt = Date().timeIntervalSince1970 * 1000
         let request = UITestConditions.element(app, "rotation-geometry-request")
         XCTAssertTrue(request.exists && request.isHittable)
         request.tap()
         ViewportObservation.capture(app, entry: "appointments-rotation", stage: "after-request", testCase: self)
+        transition.tap()
+        ViewportObservation.capture(app, entry: "appointments-rotation", stage: "after-transition-read", testCase: self)
+        let transitionData = Data(transition.label.utf8)
+        let transitionReceipt = try XCTUnwrap(JSONSerialization.jsonObject(with: transitionData) as? [String: Any])
+        XCTAssertEqual(transitionReceipt["session"] as? String, session)
+        XCTAssertEqual(transitionReceipt["mode"] as? String, "read")
+        XCTAssertLessThanOrEqual(try XCTUnwrap(transitionReceipt["requestCount"] as? Int), 1)
+        let transitionAttachment = XCTAttachment(data: transitionData, uniformTypeIdentifier: "public.json")
+        transitionAttachment.name = "appointment-rotation-transition"
+        transitionAttachment.lifetime = .keepAlways
+        add(transitionAttachment)
         let data = Data(request.label.utf8)
         let receipt = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         XCTAssertEqual(receipt["requestId"] as? String, session)

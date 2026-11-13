@@ -43,3 +43,27 @@ test('requests a fresh sample and emits only the allowed geometry fields', async
   });
   expect(navigationSnapshot).toHaveBeenCalledTimes(1);
 });
+
+test('arms, requests once, and then reads the transition receipt', async () => {
+  const rotationGeometryCommand = jest
+    .fn()
+    .mockImplementation(async (session, mode) => ({ session, mode }));
+  NativeModules.OrotTestControl = { rotationGeometryCommand };
+  await render(<RotationGeometryRequest session="transition-session" />);
+  for (const mode of ['start', 'request', 'read']) {
+    await fireEvent.press(screen.getByTestId('rotation-transition-request'));
+    await waitFor(() =>
+      expect(
+        JSON.parse(
+          screen.getByTestId('rotation-transition-request').props
+            .accessibilityLabel,
+        ).mode,
+      ).toBe(mode),
+    );
+  }
+  expect(rotationGeometryCommand.mock.calls.map(call => call[1])).toEqual([
+    'start',
+    'request',
+    'read',
+  ]);
+});
