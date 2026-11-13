@@ -73,6 +73,7 @@ export function createConversationSessions(
     update,
     id => `${owner}:${id}`,
     options.retention,
+    options.execution,
   );
   const restoration = createConversationSessionRestoreState({
     read: options.restoreSession,

@@ -22,6 +22,7 @@ import {
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 import { createConversationToolEventStorage } from './conversationToolEventStorage';
 import { createFilteredToolPeriodStorage } from './conversationToolFilteredStorage';
+import { createConversationPreviewStorage } from './conversationPreviewStorage';
 import {
   commitConversationRequest,
   createConversationRequestStorage,
@@ -54,6 +55,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   return {
+    ...createConversationPreviewStorage(database, ensure),
     ...createConversationRequestStorage(database, ensure),
     ...createConversationTaskCardStorage(database, ensure),
     ...createConversationToolEventStorage(database, ensure),

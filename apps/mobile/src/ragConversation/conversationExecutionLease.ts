@@ -7,7 +7,7 @@ export interface ConversationExecutionAdapter {
   begin(requestId: string): Promise<boolean>;
   end(requestId: string): void;
   isActive(requestId: string): Promise<boolean>;
-  protectedDataAvailable(): Promise<boolean>;
+  protectedDataAvailable(): Promise<boolean | null>;
   subscribe(listener: (event: ConversationExecutionEvent) => void): () => void;
 }
 
@@ -35,17 +35,18 @@ export async function beginConversationExecutionLease(
       adapter
         .protectedDataAvailable()
         .then(async available => {
-          if (!available) notify('protected-data');
+          if (available === false) notify('protected-data');
           else if (!(await adapter.isActive(requestId))) notify('expired');
         })
         .catch(() => notify('expired'));
   });
   try {
-    if (!(await adapter.protectedDataAvailable())) notify('protected-data');
+    if ((await adapter.protectedDataAvailable()) === false)
+      notify('protected-data');
     if (!interrupted) {
       acquired = await adapter.begin(requestId);
       if (!acquired) notify('expired');
-      else if (!(await adapter.protectedDataAvailable()))
+      else if ((await adapter.protectedDataAvailable()) === false)
         notify('protected-data');
       else if (!(await adapter.isActive(requestId))) notify('expired');
     }

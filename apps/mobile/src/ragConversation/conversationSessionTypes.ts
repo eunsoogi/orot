@@ -16,6 +16,7 @@ export type ConversationSessions = ReturnType<
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly execution?: import('./conversationExecutionLease').ConversationExecutionAdapter;
   readonly listSessions?: (cursor?: {
     readonly updatedAt: string;
     readonly id: string;
@@ -47,6 +48,8 @@ export interface ConversationSessionOptions {
       question: string;
       submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
       answer: string;
+      preview?: string;
+      interrupted?: true;
       citations: readonly EvidenceReference[];
       healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
       completion?: 'complete' | 'partial';

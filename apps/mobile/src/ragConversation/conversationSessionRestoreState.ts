@@ -8,6 +8,8 @@ type RestoredTurn = {
   readonly question: string;
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly answer: string;
+  readonly preview?: string;
+  readonly interrupted?: true;
   readonly citations: readonly EvidenceReference[];
   readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
   readonly completion?: 'complete' | 'partial';
@@ -66,11 +68,11 @@ export function createConversationSessionRestoreState(input: {
         {
           id: -(2 * index + 2),
           role: 'assistant' as const,
-          content: turn.answer,
+          content: turn.preview ?? turn.answer,
           citations: turn.citations,
           healthSources: turn.healthSources,
           toolMessageId: turn.toolMessageId,
-          ...(turn.question && turn.toolMessageId
+          ...(turn.question && turn.toolMessageId && !turn.interrupted
             ? { retainedTurnId: turn.toolMessageId }
             : {}),
           toolEvents: turn.toolEvents,
@@ -80,7 +82,8 @@ export function createConversationSessionRestoreState(input: {
           visitQuestions: turn.visitQuestions,
           visitQuestionsUnavailable: turn.visitQuestionsUnavailable,
           ...(turn.dailyReport ? { dailyReport: turn.dailyReport } : {}),
-          ...(!turn.answer && turn.completion === 'partial'
+          ...(turn.interrupted ||
+          (!turn.answer && turn.completion === 'partial')
             ? {
                 incomplete: true,
                 activity: t('ragConversation.progressInterrupted'),

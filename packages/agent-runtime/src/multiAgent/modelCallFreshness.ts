@@ -68,6 +68,40 @@ export async function callModelWithEvidenceFreshness<TResult>(
   };
 
   if (!options.execution.remoteProcessing && !(await ensureCurrent('not_started'))) return;
+  if (onTextEvent && context.beforeTaskStream) {
+    let snapshot: string;
+    try {
+      snapshot = JSON.stringify({ request, evidence: context.currentEvidence });
+    } catch {
+      stop(context, 'The conversation stream could not be prepared safely.', 'stale_evidence');
+      return;
+    }
+    // A failed local fence must stop before provider dispatch; never expose the callback error.
+    const prepared = await observeUntilAbort(
+      deferEvidenceAdapter(signal, () =>
+        context.beforeTaskStream!({ request, evidence: context.currentEvidence }, signal),
+      ),
+      signal,
+    );
+    if (prepared.kind === 'cancelled') canceled(context, 'not_started');
+    else if (prepared.kind !== 'value')
+      stop(context, 'The conversation stream could not be prepared safely.', 'stale_evidence');
+    if (prepared.kind !== 'value') return;
+    try {
+      if (snapshot !== JSON.stringify({ request, evidence: context.currentEvidence })) {
+        stop(
+          context,
+          'The conversation stream input changed during preparation.',
+          'stale_evidence',
+        );
+        return;
+      }
+    } catch {
+      stop(context, 'The conversation stream could not be prepared safely.', 'stale_evidence');
+      return;
+    }
+    if (!(await ensureCurrent('not_started'))) return;
+  }
   const outcome = await callModel(
     options.provider,
     request,

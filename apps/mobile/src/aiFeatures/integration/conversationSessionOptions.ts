@@ -1,3 +1,4 @@
+import { restoreInterruptedPreviews } from './restoreInterruptedPreviews';
 import { createConversationSessionRetention } from '../../ragConversation/conversationSessionRetention';
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
 import { createConversationDurableIdentity } from '../../ragConversation/conversationDurableIdentity';
@@ -14,6 +15,8 @@ import { createTreatmentSourceResolver } from './resolveTreatmentSource';
 import { restoreConversationTaskCards } from './restoreConversationTaskCards';
 import { validateInterruptedPhotoInputs } from './conversationInterruptedPhotoValidation';
 import { orderRestoredConversationTurns } from './conversationRestoredTurnOrder';
+import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
+import { createConversationSessionStorage } from './conversationSessionStorage';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
@@ -26,23 +29,9 @@ export function createConversationSessionOptions(input: {
   >;
   readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
 }): ConversationSessionOptions {
-  let recovered: Promise<void> | undefined;
-  const openStorage = async () => {
-    const data = await input.loadLocalData();
-    if (!data.openConversationArtifactStorage)
-      throw new Error('Conversation storage is unavailable.');
-    const storage = await data.openConversationArtifactStorage();
-    // Recovery happens before beginTurn can dispatch a new tool, never during a live restoration.
-    await (recovered ??= (async () => {
-      await storage.recoverInterruptedToolEvents();
-      await storage.interruptRecoveredRequests();
-    })().catch(error => {
-      recovered = undefined;
-      throw error;
-    }));
-    return storage;
-  };
+  const openStorage = createConversationSessionStorage(input.loadLocalData);
   return {
+    execution: conversationExecutionNative() ?? undefined,
     listSessions: async cursor => (await openStorage()).listSessions(cursor),
     restoreTasks: async (sessionId, signal) => {
       const storage = await openStorage();
@@ -243,7 +232,13 @@ export function createConversationSessionOptions(input: {
         ...toolTurns.map(turn => [turn.messageId, turn.createdAt] as const),
         ...interrupted.map(request => [request.id, request.createdAt] as const),
       ]);
-      return orderRestoredConversationTurns(restored, times);
+      return restoreInterruptedPreviews(
+        orderRestoredConversationTurns(restored, times),
+        interrupted,
+        storage,
+        sessionId,
+        version,
+      );
     },
   };
 }

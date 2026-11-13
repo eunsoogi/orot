@@ -18,6 +18,7 @@ import {
 } from './typedDeletionMarkers';
 import { setupConversationTaskCards } from './conversationTaskCards';
 import { setupConversationRequests } from './conversationRequestSchema';
+import { setupConversationPreviewSchema } from './conversationPreviewSchema';
 
 /** Install dependency cleanup in the same encrypted store as records and retained output. */
 export async function setupConversationArtifactSchema(tx: SqlExecutor) {
@@ -241,4 +242,5 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   await setupConversationToolGuards(tx);
   await setupResearchArtifactGuards(tx);
   await setupResearchInputGuards(tx);
+  await setupConversationPreviewSchema(tx);
 }

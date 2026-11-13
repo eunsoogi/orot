@@ -1,4 +1,4 @@
-import { getRagConversationCopy, getRagConversationFailureCopy } from './copy';
+import { getRagConversationFailureCopy } from './copy';
 import { createConversationTurnActivity } from './conversationTurnActivity';
 import {
   conversationHistoryPayload,
@@ -8,23 +8,31 @@ import { conversationCompletedAnswer } from './conversationCompletedAnswer';
 import { observeSummaryCommit } from './conversationSummaryCommit';
 import { prepareConversationRequest } from './conversationRequestStart';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
+import { createConversationRequestLifetime } from './conversationRequestLifetime';
+import type { ConversationExecutionAdapter } from './conversationExecutionLease';
+import type { createConversationTurnRetention } from './conversationTurnRetention';
 import {
-  retainPartial as retainFailedPartial,
-  restoreFailedPrompt,
-} from './conversationFailedPrompt';
+  createConversationRequestPreview,
+  conversationPreviewObserver,
+} from './conversationRequestPreview';
+import {
+  createRetainConversationPartial,
+  createConversationStopHandler,
+} from './conversationStoppedTurn';
+import { restoreFailedPrompt } from './conversationFailedPrompt';
 import type {
   ConversationSender,
   ConversationSession,
   ConversationSessionOptions,
   PendingTurn,
 } from './conversationSessionTypes';
-
 /** Owns composer and explicit-prompt lifetimes without letting late results clear a newer retry. */
 export function createConversationSessionRequests(
   find: (id: number) => ConversationSession,
   update: (id: number, change: Partial<ConversationSession>) => void,
   conversationScope: (id: number) => string,
   retention?: ConversationSessionOptions['retention'],
+  execution?: ConversationExecutionAdapter,
 ) {
   let messageId = 0;
   const saveRecovery = createConversationRequestSaveRecovery(update, find);
@@ -34,52 +42,31 @@ export function createConversationSessionRequests(
     number,
     ReturnType<typeof createConversationTurnActivity>
   >();
-
-  const retainPartial = (id: number, activity: string, retainEmpty = false) =>
-    retainFailedPartial(
-      find,
-      update,
-      () => ++messageId,
-      id,
-      activity,
-      retainEmpty,
-    );
-
-  /** Stops only the active request, keeps an incomplete user-visible stream, and restores its prompt. */
-  const cancel = (id: number, settled = false) => {
-    const controller = controllers.get(id);
-    if (!controller) return;
-    const turn = pendingTurns.get(id);
-    controller.abort();
-    activities.get(id)?.finish('cancelled');
-    // A database commit may already have won; wait for that write's outcome.
-    if (
-      (turn?.saving || turn?.summarySaving || turn?.summaryCommitted) &&
-      !settled
-    )
-      return;
-    controllers.delete(id);
-    pendingTurns.delete(id);
-    update(id, { artifactContinuation: null });
-    retainPartial(id, getRagConversationCopy().progressCancelled, true);
-    if (turn)
-      restoreFailedPrompt(
-        find,
-        update,
-        id,
-        turn.question,
-        turn.userMessageId,
-        undefined,
-        true,
-        turn.restorePromptToComposer,
-      );
-    else update(id, { busy: false });
-  };
-
+  const lifetime = createConversationRequestLifetime({
+    execution,
+    interrupt: id => cancel(id, false, 'interrupted'),
+    reportFenceFailure: id =>
+      update(id, { error: getRagConversationFailureCopy('unavailable') }),
+  });
+  const retainPartial = createRetainConversationPartial(
+    find,
+    update,
+    () => ++messageId,
+  );
+  const cancel = createConversationStopHandler({
+    controllers,
+    pendingTurns,
+    activities,
+    lifetime,
+    find,
+    update,
+    retainPartial,
+  });
   return {
     cancel,
     abandon(id: number) {
       saveRecovery.suspend(id);
+      lifetime.interrupt(id, 'cancelled', true);
       controllers.get(id)?.abort();
       activities.get(id)?.finish('cancelled');
       controllers.delete(id);
@@ -92,7 +79,10 @@ export function createConversationSessionRequests(
     },
     dispose() {
       saveRecovery.dispose();
-      controllers.forEach(controller => controller.abort());
+      controllers.forEach((controller, id) => {
+        lifetime.interrupt(id, 'interrupted');
+        controller.abort();
+      });
       activities.forEach(activity => activity.finish('cancelled'));
       controllers.clear();
       pendingTurns.clear();
@@ -120,11 +110,26 @@ export function createConversationSessionRequests(
         controllers.get(id) === controller && !controller.signal.aborted;
       let activity:
         ReturnType<typeof createConversationTurnActivity> | undefined;
+      let retained:
+        ReturnType<typeof createConversationTurnRetention> | undefined;
+      let preview:
+        ReturnType<typeof createConversationRequestPreview> | undefined;
       try {
-        const retained = retention
+        retained = retention
           ? await retention.beginTurn(id, controller.signal)
           : undefined;
         if (!current()) return;
+        if (retained) await lifetime.start(id, controller, retained, question);
+        if (!current()) return;
+        if (retained)
+          preview = createConversationRequestPreview({
+            turn: retained,
+            current,
+            reportFailure: () => {
+              if (!find(id)?.error)
+                update(id, { error: copy.previewSaveFailed });
+            },
+          });
         activity = createConversationTurnActivity({
           id,
           responseId,
@@ -149,6 +154,7 @@ export function createConversationSessionRequests(
           },
           ...observeSummaryCommit(request),
           ...activity.observer,
+          ...(preview ? conversationPreviewObserver(preview, activity) : {}),
         });
         if (
           !current() &&
@@ -161,7 +167,6 @@ export function createConversationSessionRequests(
         if (outcome.status === 'failure' || outcome.status === 'unavailable') {
           const kind =
             outcome.status === 'failure' ? outcome.kind : 'unavailable';
-          // A retained stream and its retry guidance must describe the same failure.
           const failureCopy = getRagConversationFailureCopy(kind);
           retainPartial(id, failureCopy);
           restoreFailedPrompt(
@@ -186,6 +191,9 @@ export function createConversationSessionRequests(
           activity,
           retainedTurnId:
             request.committed && retained ? retained.toolMessageId : undefined,
+          retentionUnavailable: Boolean(
+            retained && outcome.status === 'answer' && !request.committed,
+          ),
           restorePromptToComposer: request.restorePromptToComposer,
           find,
           update,
@@ -206,7 +214,19 @@ export function createConversationSessionRequests(
         }
       } finally {
         activity?.finish(controller.signal.aborted ? 'cancelled' : 'failed');
+        await preview?.flush();
         await activity?.flush();
+        if (request.committed && find(id)?.error === copy.previewSaveFailed)
+          update(id, { error: '' });
+        if (
+          retained &&
+          !request.committed &&
+          !retained.hasPending() &&
+          !controller.signal.aborted
+        )
+          lifetime.interrupt(id, 'interrupted');
+        const stopStatus = lifetime.status(id, controller);
+        await lifetime.settle(id, controller);
         if (activities.get(id) === activity) activities.delete(id);
         if (controllers.get(id) === controller) {
           if (
@@ -214,7 +234,7 @@ export function createConversationSessionRequests(
             !request.committed &&
             !request.summaryCommitted
           ) {
-            cancel(id, true);
+            cancel(id, true, stopStatus);
             return;
           }
           controllers.delete(id);

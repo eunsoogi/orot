@@ -5,6 +5,7 @@ import { healthSummaryRetry } from './healthSummaryRetry';
 import { answerUsesDeletedHealthEvidence } from './conversationHealthDeletion';
 import { restoreFailedPrompt } from './conversationFailedPrompt';
 import { getRagConversationFailureCopy } from './copy';
+import { t } from '../i18n';
 
 /** Attach a validated answer and keep each summary retry bound to its own message. */
 export function conversationCompletedAnswer(input: {
@@ -13,6 +14,7 @@ export function conversationCompletedAnswer(input: {
   userMessageId: number;
   restorePromptToComposer: boolean;
   retainedTurnId?: string;
+  retentionUnavailable?: boolean;
   dailyReport?: ConversationSession['dailyReport'];
   copy: { noEvidence: string; insufficient: string };
   outcome: Exclude<
@@ -57,6 +59,9 @@ export function conversationCompletedAnswer(input: {
         : input.copy.insufficient;
   update(id, {
     pendingMessage: null,
+    ...(input.retentionUnavailable && !session.error
+      ? { error: t('ragConversation.conversation.answerSaveSourceUnavailable') }
+      : {}),
     messages: [
       ...find(id).messages,
       {
