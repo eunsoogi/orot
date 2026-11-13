@@ -30,6 +30,7 @@ test('cancellation retains saved and unrelated staged IDs without writing or del
   trackStagedMedicalDocument(staged);
   try {
     const service = createMedicalDocumentImportService({
+      retainedConversationSourceIds: async () => [],
       loadRepository: async () => repository,
     });
     await expect(service.selectDocument('photos')).resolves.toBeNull();

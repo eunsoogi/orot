@@ -142,6 +142,8 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
     onProgress: invocation.onProgress,
     onToolEvent: invocation.onToolEvent,
     onTaskStreamEvent: invocation.onTaskStreamEvent,
+    beforeTaskStream: invocation.beforeTaskStream,
+    beforeTaskInputChange: invocation.beforeTaskInputChange,
     currentEvidence: options.initialEvidence,
   };
   try {

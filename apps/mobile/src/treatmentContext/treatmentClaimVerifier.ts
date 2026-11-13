@@ -10,6 +10,7 @@ import {
 } from './hypertensionEducation';
 import { parseTreatmentContext } from './validation';
 import type { TreatmentClaimVerifier } from './safety';
+import { requireNonPhotoSources } from '../ragConversation/conversationArtifactSources';
 
 /** Closed claims do not infer the person's condition or an appropriate therapy. */
 export function createTreatmentClaimVerifier(
@@ -78,7 +79,7 @@ export function createTreatmentClaimVerifier(
         await database.transaction(async tx => {
           await assertRetainedEvidenceCurrent(
             tx,
-            request.sources,
+            requireNonPhotoSources(request.sources),
             history,
             false,
           );

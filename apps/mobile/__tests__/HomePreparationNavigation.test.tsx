@@ -10,7 +10,6 @@ import { defaultVisitQuestionRouteOperations } from '../src/aiFeatures/integrati
 import { createAppleSelectionOption } from '../src/providers/selection/options';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 import { savedHomeQuestions } from '../test-helpers/homeOverviewFixtures';
-import { conversationIntentRequests } from '../src/aiFeatures/integration/conversationIntent';
 
 const mockLoadQuestions = jest.fn(async (id: string) =>
   savedHomeQuestions(id, ['예약별 합성 질문: ' + id]),
@@ -142,7 +141,7 @@ test.each(['manual', 'ongoing-calendar'] as const)(
   },
 );
 
-test('a valid future Calendar visit opens an editable conversation request without generation', async () => {
+test('a valid future Calendar visit opens an explicit conversation action without generation', async () => {
   const shown = appointment('생성할 Calendar 예약', 3_600_000, true);
   const store = createAppointmentStore([shown]);
   const option = createAppleSelectionOption('available');
@@ -175,13 +174,7 @@ test('a valid future Calendar visit opens an editable conversation request witho
       'value',
       '',
     );
-    await fireEvent.press(
-      screen.getByTestId('conversation-intent-use-suggestion'),
-    );
-    expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
-      'value',
-      conversationIntentRequests['visit-questions'],
-    );
+    expect(screen.getByTestId('conversation-visit-prepare')).toBeTruthy();
     expect(screen.queryByTestId('next-visit-generate')).toBeNull();
     expect(query).not.toHaveBeenCalled();
   } finally {

@@ -1,17 +1,21 @@
 import { getRagConversationCopy } from './copy';
+import { t } from '../i18n';
 import type {
   ConversationSession,
   PendingTurn,
 } from './conversationSessionTypes';
 
-/** Consumes a sendable draft and replaces only a failed prompt being retried. */
+/** Starts a composer turn or an explicit turn without exposing its prompt as a draft. */
 export function prepareConversationRequest(
   session: ConversationSession,
   nextId: () => number,
+  explicitQuestion?: string,
+  hasPhoto = false,
 ) {
-  const question = session.draft.trim();
+  const restorePromptToComposer = explicitQuestion === undefined;
+  const question = (explicitQuestion ?? session.draft).trim();
   if (
-    !question ||
+    (!question && !hasPhoto) ||
     session.busy ||
     session.restoring ||
     session.retryingSave ||
@@ -25,6 +29,7 @@ export function prepareConversationRequest(
   const request: PendingTurn = {
     question,
     userMessageId: nextId(),
+    restorePromptToComposer,
     saving: false,
     committed: false,
     summarySaving: false,
@@ -32,8 +37,10 @@ export function prepareConversationRequest(
   };
   const responseId = nextId();
   const change: Partial<ConversationSession> = {
-    draft: '',
-    title: session.messages.length ? session.title : question.slice(0, 36),
+    ...(restorePromptToComposer ? { draft: '' } : {}),
+    title: session.messages.length
+      ? session.title
+      : (question || t('ragConversation.photo.message')).slice(0, 36),
     messages: [
       ...session.messages.filter(
         message =>
@@ -43,7 +50,12 @@ export function prepareConversationRequest(
             message.content === question
           ),
       ),
-      { id: request.userMessageId, role: 'user', content: question },
+      {
+        id: request.userMessageId,
+        role: 'user',
+        content: question,
+        ...(hasPhoto ? { photoAttached: true } : {}),
+      },
     ],
     busy: true,
     error: session.unsavedCount ? copy.unsavedAnswersRemain() : '',

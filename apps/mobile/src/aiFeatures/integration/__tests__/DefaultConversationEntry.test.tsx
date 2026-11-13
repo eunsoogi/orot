@@ -5,6 +5,7 @@ import { conversationIntentRequests } from '../conversationIntent';
 import { AiFeatureSharedNavigationStateProvider } from '../AiFeatureSharedNavigationState';
 import { createAiFeatureServices } from '../featureServices';
 import type { AiFeatureServices } from '../featureServices';
+import { AppointmentReminderProvider } from '../../../appointmentReminders/AppointmentReminderContext';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -64,29 +65,38 @@ test.each([
     const prepareVisitQuestionTurn = jest.fn(async () => ({
       status: 'no_evidence' as const,
     }));
+    const reminderRuntime = {
+      homePreparationTargets:
+        route === 'visit-questions'
+          ? new Map([['intent-entry', 'appointment-home']])
+          : new Map(),
+      dailyReportFollowUps: new Map(),
+    } as never;
     await render(
-      <AiFeatureSharedNavigationStateProvider>
-        <AiFeatureFlowScreen
-          route={route}
-          navigationRouteKey="intent-entry"
-          onRouteStateChange={jest.fn()}
-          onBack={jest.fn()}
-          onOpenDiseaseHypotheses={jest.fn()}
-          onOpenRagConversation={jest.fn()}
-          onOpenExternalEvidence={jest.fn()}
-          onOpenProviderSelection={jest.fn()}
-          onOpenSource={jest.fn()}
-          resolveSelectedAi={async () => ({ status: 'selection-required' })}
-          confirmConsent={jest.fn()}
-          selectedAiRevision={0}
-          services={{
-            ...services,
-            sendRagMessage: send,
-            prepareVisitQuestionTurn,
-          }}
-          onOpenArticle={jest.fn()}
-        />
-      </AiFeatureSharedNavigationStateProvider>,
+      <AppointmentReminderProvider runtime={reminderRuntime}>
+        <AiFeatureSharedNavigationStateProvider>
+          <AiFeatureFlowScreen
+            route={route}
+            navigationRouteKey="intent-entry"
+            onRouteStateChange={jest.fn()}
+            onBack={jest.fn()}
+            onOpenDiseaseHypotheses={jest.fn()}
+            onOpenRagConversation={jest.fn()}
+            onOpenExternalEvidence={jest.fn()}
+            onOpenProviderSelection={jest.fn()}
+            onOpenSource={jest.fn()}
+            resolveSelectedAi={async () => ({ status: 'selection-required' })}
+            confirmConsent={jest.fn()}
+            selectedAiRevision={0}
+            services={{
+              ...services,
+              sendRagMessage: send,
+              prepareVisitQuestionTurn,
+            }}
+            onOpenArticle={jest.fn()}
+          />
+        </AiFeatureSharedNavigationStateProvider>
+      </AppointmentReminderProvider>,
     );
     expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
     expect(screen.queryByTestId('ai-features-screen')).toBeNull();
@@ -96,7 +106,30 @@ test.each([
       '',
     );
     expect(send).not.toHaveBeenCalled();
-    if (intent !== 'conversation') {
+    if (intent === 'visit-questions') {
+      expect(screen.getByTestId('conversation-visit-prepare')).toBeTruthy();
+      expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
+        'value',
+        '',
+      );
+      await fireEvent.press(screen.getByTestId('conversation-visit-prepare'));
+      expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
+        'value',
+        '',
+      );
+      expect(prepareVisitQuestionTurn).toHaveBeenCalledTimes(1);
+      expect(prepareVisitQuestionTurn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          question: conversationIntentRequests[intent],
+          context: {
+            intent,
+            entryKey: 'intent-entry',
+            appointmentId: 'appointment-home',
+          },
+        }),
+      );
+      expect(send).not.toHaveBeenCalled();
+    } else if (intent !== 'conversation') {
       await fireEvent.press(
         screen.getByTestId('conversation-intent-use-suggestion'),
       );
@@ -112,17 +145,18 @@ test.each([
     );
     await fireEvent.press(screen.getByTestId('rag-conversation-send'));
     if (intent === 'visit-questions') {
-      expect(prepareVisitQuestionTurn).toHaveBeenCalledWith(
-        expect.objectContaining({
-          question: '수정한 요청',
-          context: {
-            intent,
-            entryKey: 'intent-entry',
-            appointmentId: undefined,
-          },
-        }),
+      expect(send).toHaveBeenCalledWith(
+        '수정한 요청',
+        expect.any(Array),
+        expect.any(AbortSignal),
+        expect.any(Object),
+        {
+          intent,
+          entryKey: 'intent-entry',
+          appointmentId: 'appointment-home',
+        },
       );
-      expect(send).not.toHaveBeenCalled();
+      expect(prepareVisitQuestionTurn).toHaveBeenCalledTimes(1);
     } else
       expect(send).toHaveBeenCalledWith(
         '수정한 요청',

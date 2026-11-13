@@ -8,6 +8,7 @@ import type {
   PrepareConversationRetention,
 } from './conversationRetention';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
+import { createConversationRetainedPreview } from './conversationRetainedPreview';
 
 /** One turn keeps the same payload and identity across write retries, without another model call. */
 export function createConversationTurnRetention(input: {
@@ -18,7 +19,13 @@ export function createConversationTurnRetention(input: {
     Partial<
       Pick<
         ReturnType<typeof createConversationArtifactStorage>,
-        'appendToolEvent' | 'discardToolEvent'
+        | 'appendToolEvent'
+        | 'discardToolEvent'
+        | 'startRequest'
+        | 'interruptRequest'
+        | 'invalidatePreview'
+        | 'preparePreview'
+        | 'writePreview'
       >
     >;
   readonly sessionId: string;
@@ -78,7 +85,43 @@ export function createConversationTurnRetention(input: {
     return value;
   };
   return {
+    ...createConversationRetainedPreview(input),
     toolMessageId: input.turnId,
+    /** The protected checkpoint must commit before any provider transmission starts. */
+    async startRequest(
+      question: string,
+      signal: AbortSignal,
+      submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput,
+    ) {
+      if (
+        !input.storage.startRequest ||
+        !input.storage.interruptRequest ||
+        signal.aborted
+      )
+        throw new Error('Conversation request storage is unavailable.');
+      await input.storage.startRequest({
+        id: input.turnId,
+        sessionId: input.sessionId,
+        sessionVersion: input.sessionVersion ?? 0,
+        question,
+        createdAt: input.createdAt,
+        ...(submittedInput ? { submittedInput } : {}),
+      });
+      if (signal.aborted) {
+        // The lifetime owner fences the committed checkpoint with the chosen stop reason.
+        throw new Error('The conversation request was cancelled.');
+      }
+    },
+    async interruptRequest(status: 'cancelled' | 'interrupted') {
+      if (!input.storage.interruptRequest)
+        throw new Error('Conversation request storage is unavailable.');
+      await input.storage.interruptRequest(
+        input.turnId,
+        input.sessionId,
+        input.sessionVersion ?? 0,
+        status,
+      );
+    },
     async recordToolEvent(
       event: import('@orot/agent-runtime').ConversationToolEvent,
     ) {

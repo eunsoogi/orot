@@ -2,6 +2,7 @@ import type { StoredConversationToolTurn } from '../../storage/conversationToolE
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { restoreRetainedSources } from './restoreRetainedSources';
+import { requireNonPhotoSources } from '../../ragConversation/conversationArtifactSources';
 import { stableJson } from './evidenceUtils';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { bindConversationToolSource } from './bindConversationToolSource';
@@ -38,12 +39,14 @@ export async function restoreConversationToolTurns(
           if (!lineage || signal.aborted)
             throw new Error('Tool source is unavailable.');
           const restored = await restoreRetainedSources(
-            lineage.sources.filter(
-              (source): source is ConversationArtifactSource =>
-                !(
-                  'kind' in source &&
-                  source.kind === 'filtered_medication_period'
-                ) && !isExternalToolResearch(source),
+            requireNonPhotoSources(
+              lineage.sources.filter(
+                (source): source is ConversationArtifactSource =>
+                  !(
+                    'kind' in source &&
+                    source.kind === 'filtered_medication_period'
+                  ) && !isExternalToolResearch(source),
+              ),
             ),
             registry,
             data,

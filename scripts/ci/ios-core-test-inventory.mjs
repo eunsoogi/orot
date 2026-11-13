@@ -16,6 +16,7 @@ export const coreTests = [
   'OrotIntegrationTests/SVGFoundationIntegrationTests/testTextPropsAndGradientStorageSurviveNativeReuse',
   // Keep daily reminder preference and notification boundaries in the core integration cohort.
   'OrotIntegrationTests/DailyReminderNotificationTests/testOptInRestartRevocationAndOwnedCancellation',
+  'OrotIntegrationTests/DailyReminderNotificationTests/testReconcileRefreshesOlderPendingTitleWithoutChangingReminder',
   'OrotIntegrationTests/DailyReminderNotificationTests/testFailureAndDisableRemoveOnlyDailyRequest',
   'OrotIntegrationTests/DailyReminderNotificationTests/testDeniedPermissionAndInvalidTimeDoNotSchedule',
   'OrotIntegrationTests/DailyReminderNotificationTests/testOnlyExplicitEnableRequestsUndeterminedPermission',
@@ -30,6 +31,10 @@ export const coreTests = [
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testColdStartInboxRetainsTheTargetUntilOneConsumerDrainsIt',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDailyTapUsesDeliveryInstantWithoutReplacingAppointmentTarget',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
+  'OrotIntegrationTests/ReplyNotificationInboxTests/testReplyTapSurvivesRestartAndDoesNotReplaceOtherReminderTargets',
+  'OrotIntegrationTests/RootURLInboxTests/testValidDeliveriesSurviveReopenAndAcknowledgeOneAtATime',
+  'OrotIntegrationTests/RootURLInboxTests/testInvalidInputCannotOverwriteAValidDelivery',
+  'OrotIntegrationTests/RootURLInboxTests/testMalformedStoredHeadDoesNotBlockLaterValidDelivery',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testMalformedTimesAndUnsupportedDurationsCannotReachTheOS',
   // The structural observer must retain its object-identity, missing-target, and privacy contracts in CI.
   'OrotIntegrationTests/ProgressIndicatorIntegrationTests/testAnimationFollowsWindowAndRequestLifetime',

@@ -1,4 +1,5 @@
 import { createConversationSessionRequests } from './conversationSessionRequests';
+import { startOwnedConversationRequest } from './conversationOwnedRequest';
 import type {
   ConversationSender,
   ConversationSession,
@@ -22,6 +23,8 @@ import { createConversationTaskState } from './conversationTaskState';
 import { createConversationHistoryLoader } from './conversationHistoryLoader';
 import { createConversationSessionRemoval } from './conversationSessionRemoval';
 import { createConversationTaskRefresh } from './conversationTaskRefresh';
+import { createConversationPhotoImport } from './conversationPhotoImport';
+import { createConversationPhotoConsentController } from './conversationPhotoConsentController';
 export type { ConversationSender, ConversationSession };
 export type { ConversationSessions } from './conversationSessionTypes';
 let nextSessionOwner = 0;
@@ -36,6 +39,8 @@ export function createConversationSessions(
   const listeners = createConversationListeners();
   let disposed = false;
   let lifecycle = 0;
+  const photoDrafts = createConversationPhotoImport();
+  const photoConsent = createConversationPhotoConsentController();
   const emit = listeners.emit;
   const apply = (next: ConversationSnapshot | null) => {
     if (next) {
@@ -73,6 +78,13 @@ export function createConversationSessions(
     update,
     id => `${owner}:${id}`,
     options.retention,
+    options.execution,
+    {
+      requested: false,
+      drafts: photoDrafts,
+      consent: photoConsent,
+      preparation: options.photoPreparation,
+    },
   );
   const restoration = createConversationSessionRestoreState({
     read: options.restoreSession,
@@ -114,8 +126,17 @@ export function createConversationSessions(
     restoration,
     disposed: () => disposed,
     lifecycle: () => lifecycle,
+    finalizeDraft: id => {
+      photoDrafts.retireSession(id).catch(() => {});
+    },
   });
   return {
+    photoDrafts,
+    photoConsent,
+    photoRetirement: options.photoPreparation?.retirement,
+    photoDeliveryAvailable: Boolean(
+      options.photoPreparation && options.retention,
+    ),
     attachExisting,
     loadHistory,
     subscribe: listeners.subscribe,
@@ -145,12 +166,12 @@ export function createConversationSessions(
       if (!disposed) requests.cancel(id);
     },
     retrySave,
-    retryRestore: (id: number) =>
+    retryRestore: (id: number, signal?: AbortSignal) =>
       disposed
         ? Promise.resolve()
         : taskRefresh.has(id)
           ? taskRefresh.retry(id)
-          : restoration.retry(id),
+          : restoration.retry(id, signal),
     refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
       if (disposed) return;
       taskState.invalidateWrites();
@@ -174,6 +195,8 @@ export function createConversationSessions(
     },
     invalidateAll() {
       if (disposed) return;
+      photoConsent.dispose();
+      photoDrafts.clear().catch(() => {});
       lifecycle++;
       taskState.invalidate();
       taskRefresh.invalidate();
@@ -187,6 +210,8 @@ export function createConversationSessions(
     },
     // View subscribers never cancel on exit; only the app owner disposes requests.
     dispose() {
+      photoConsent.dispose();
+      photoDrafts.clear().catch(() => {});
       disposed = true;
       lifecycle++;
       taskState.invalidate();
@@ -199,7 +224,24 @@ export function createConversationSessions(
         options.retention?.finalize(snapshot.deleted.handle).catch(() => {});
     },
     send: (id: number, onSend: ConversationSender) =>
-      disposed ? Promise.resolve() : requests.send(id, onSend),
+      disposed
+        ? Promise.resolve()
+        : requests.send(
+            id,
+            onSend,
+            undefined,
+            photoDrafts.get(id).status !== 'empty',
+          ),
+    sendPrompt: (id: number, prompt: string, onSend: ConversationSender) =>
+      disposed ? Promise.resolve() : requests.send(id, onSend, prompt),
+    /** Binds cancellation and committed completion to one explicit request. */
+    sendOwnedPrompt: (id: number, prompt: string, onSend: ConversationSender) =>
+      startOwnedConversationRequest({
+        retention: disposed ? undefined : options.retention,
+        sender: onSend,
+        start: (sender, registerOwner) =>
+          requests.send(id, sender, prompt, false, registerOwner),
+      }),
     treatment: conversationTreatmentOwnership(options, () =>
       disposed ? undefined : snapshot,
     ),

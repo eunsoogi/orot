@@ -5,6 +5,7 @@ import type { AiFeatureLocalData } from './localData';
 import { restoreRetainedSources } from './restoreRetainedSources';
 import { treatmentPublicSourceUrl } from './treatmentPublicSourceUrl';
 import type { ResolveTreatmentSource } from '../../treatmentContext/treatmentSourceLinks';
+import { isConversationPhotoSource } from '../../ragConversation/conversationArtifactSources';
 
 /** Reuse the existing source detail registry while keeping treatment lineage authoritative. */
 export function createTreatmentSourceResolver(input: {
@@ -13,6 +14,7 @@ export function createTreatmentSourceResolver(input: {
 }): ResolveTreatmentSource {
   return async (link, signal) => {
     const { source, isCurrent } = link;
+    if (isConversationPhotoSource(source)) return null;
     if (!(await isCurrent(signal))) return null;
     // Public references have no local detail alias. Keep the exact verified locator.
     if (source.reference.sourceKind === 'external_medical')

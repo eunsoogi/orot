@@ -9,6 +9,10 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { restoreConversationArtifact } from './restoreConversationArtifact';
 import { restoreConversationSessionPage } from './conversationSessionRestoration';
 import { fingerprint } from './evidenceUtils';
+import {
+  isConversationPhotoSource,
+  requireNonPhotoSources,
+} from '../../ragConversation/conversationArtifactSources';
 import { retainedResearchSearchText } from './retainedResearchSearch';
 import {
   treatmentArtifactPredicate,
@@ -141,7 +145,7 @@ export function createConversationArtifactDiscovery(input: {
         }
         if (
           !needle ||
-          `${saved.question} ${saved.answer} ${retainedResearchSearchText(saved.sources)}`
+          `${saved.question} ${saved.answer} ${saved.sources.some(isConversationPhotoSource) ? '' : retainedResearchSearchText(requireNonPhotoSources(saved.sources))}`
             .normalize('NFKC')
             .toLowerCase()
             .includes(needle)

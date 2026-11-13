@@ -8,6 +8,10 @@ import { getRagConversationCopy } from './copy';
 import { t } from '../i18n';
 import type { ConversationSession } from './conversationSessionTypes';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
+import type { createConversationActivity } from './conversationActivity';
+export type ConversationTurnActivity = ReturnType<
+  typeof createConversationTurnActivity
+>;
 
 /** The response bubble and durable turn share one call map; content never enters tool metadata. */
 export function createConversationTurnActivity(input: {
@@ -17,6 +21,8 @@ export function createConversationTurnActivity(input: {
   update: (id: number, change: Partial<ConversationSession>) => void;
   current: () => boolean;
   retained?: ReturnType<typeof createConversationTurnRetention>;
+  activity?: ReturnType<typeof createConversationActivity>;
+  activityChanged?: () => void;
 }) {
   let events: readonly ConversationToolEvent[] = [];
   let writing = Promise.resolve();
@@ -66,6 +72,11 @@ export function createConversationTurnActivity(input: {
           : message,
       ),
     });
+    if (input.current() && pending?.id === input.responseId && input.activity) {
+      const before = input.activity.getSnapshot();
+      input.activity.tool(event);
+      if (before !== input.activity.getSnapshot()) input.activityChanged?.();
+    }
   };
   return {
     metadata,
@@ -81,7 +92,11 @@ export function createConversationTurnActivity(input: {
         });
     },
     observer: {
-      onToolEvent: observe,
+      // A provider may deliver a callback after cancellation or a newer retry.
+      // Only the request that still owns this activity may record that callback.
+      onToolEvent(event: ConversationToolEvent) {
+        if (input.current()) observe(event);
+      },
       onProgress(event: Parameters<typeof progressCopy>[0]) {
         const pending = input.find(input.id)?.pendingMessage;
         if (input.current() && pending?.id === input.responseId)
@@ -97,6 +112,30 @@ export function createConversationTurnActivity(input: {
       },
       onTaskStreamEvent(event: Parameters<typeof applyWorkflowStreamEvent>[1]) {
         const pending = input.find(input.id)?.pendingMessage;
+        if (
+          input.current() &&
+          pending?.id === input.responseId &&
+          event.type === 'started' &&
+          input.activity
+        ) {
+          const before = input.activity.getSnapshot();
+          input.activity.waiting();
+          if (before !== input.activity.getSnapshot())
+            input.activityChanged?.();
+        }
+        // A stream start alone is not output; report writing only after text arrives.
+        if (
+          input.current() &&
+          pending?.id === input.responseId &&
+          event.type !== 'started' &&
+          event.text.length > 0 &&
+          input.activity
+        ) {
+          const before = input.activity.getSnapshot();
+          input.activity.stream();
+          if (before !== input.activity.getSnapshot())
+            input.activityChanged?.();
+        }
         if (
           input.current() &&
           pending?.id === input.responseId &&

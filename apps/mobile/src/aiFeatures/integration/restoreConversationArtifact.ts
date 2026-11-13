@@ -9,11 +9,14 @@ import {
   isGeneratedConversationSource,
   isGeneratedResearchSource,
   isOriginalConversationSource,
+  isConversationPhotoSource,
 } from '../../ragConversation/conversationArtifactSources';
 import { restoreConversationSummarySource } from './restoreConversationSummarySource';
 import { restoreConversationParentSource } from './restoreConversationParentSource';
 import { restoreResearchSource } from './restoreResearchSource';
 import { rebindConversationVisitCandidates } from './rebindConversationVisitCandidates';
+import { registerConversationPhotoEvidence } from './conversationPhotoEvidence';
+import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 
 /** Restore opaque source links only while the saved result and every local input remain current. */
 export async function restoreConversationArtifact(input: {
@@ -30,6 +33,15 @@ export async function restoreConversationArtifact(input: {
   const saved = await input.storage.read(input.id);
   if (!saved || saved.citations === undefined || input.signal.aborted)
     return null;
+  // A database row alone cannot prove a staged native original still exists unchanged.
+  if (
+    saved.submittedInput?.ocr &&
+    !(await input.data.validateConversationPhotoInput?.(
+      saved.submittedInput,
+      input.signal,
+    ))
+  )
+    return null;
   // Generic restoration cannot perform the closed treatment claim checks.
   // Keep treatment turns out of both visible history and model context until
   // the treatment-specific reopen path is integrated with this source binding.
@@ -40,6 +52,30 @@ export async function restoreConversationArtifact(input: {
     input.data,
   );
   if (restored.sourceChanged || input.signal.aborted) return null;
+  const photoSources = saved.sources.filter(isConversationPhotoSource);
+  if (photoSources.length) {
+    if (
+      !saved.submittedInput?.ocr ||
+      !input.data.validateConversationPhotoInput
+    )
+      return null;
+    const submitted = saved.submittedInput;
+    const photoItems = registerConversationPhotoEvidence({
+      submitted,
+      registry: input.registry,
+      isCurrent: signal =>
+        input.data.validateConversationPhotoInput!(submitted, signal),
+    });
+    for (const source of photoSources) {
+      const item = photoItems.find(
+        candidate =>
+          stableJson(input.registry.resolve(candidate)) ===
+          stableJson(source.reference),
+      );
+      if (!item) return null;
+      restored.mapping.set(stableJson(source.reference), referenceOnly(item));
+    }
+  }
   let inheritedSourceUnknown = false;
   for (const source of saved.sources) {
     if (
@@ -76,7 +112,15 @@ export async function restoreConversationArtifact(input: {
     restored.mapping.get(stableJson(source.reference)),
   );
   if (sourceAliases.some(ref => !ref)) return null;
-  // Deletion or editing may commit while aliases are being rebuilt.
+  // Recheck the native original before the final database read, which fences concurrent deletion.
+  if (
+    saved.submittedInput?.ocr &&
+    !(await input.data.validateConversationPhotoInput?.(
+      saved.submittedInput,
+      input.signal,
+    ))
+  )
+    return null;
   const latest = await input.storage.read(input.id);
   if (
     !latest ||
@@ -114,6 +158,7 @@ export async function restoreConversationArtifact(input: {
     ...(saved.dailyReport ? { dailyReport: saved.dailyReport } : {}),
     status: saved.status,
     question: saved.question,
+    ...(saved.submittedInput ? { submittedInput: saved.submittedInput } : {}),
     answer: saved.answer,
     ...(saved.healthSummary ? { healthSummary: saved.healthSummary } : {}),
     ...(saved.visitQuestions

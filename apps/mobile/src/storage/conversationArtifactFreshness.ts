@@ -6,6 +6,7 @@ import {
 import {
   isGeneratedConversationSource,
   isGeneratedSummarySource,
+  isConversationPhotoSource,
 } from '../ragConversation/conversationArtifactSources';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
@@ -18,6 +19,7 @@ import { assertConversationSummaryParent } from './conversationSummaryParent';
 import { validateDailyReportArtifact } from './dailyReportArtifactValidation';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
 import { assertTreatmentAttribution } from '../treatmentContext/attribution';
+import { assertConversationRequestSource } from './conversationRequestSources';
 
 /** Validate a bounded ancestry in one transaction, rejecting cycles and unavailable parents. */
 export async function assertConversationArtifactCurrent(
@@ -48,9 +50,13 @@ export async function assertConversationArtifactCurrent(
         'Conversation ancestry is cyclic or too large.',
       );
     path.add(current.id);
+    await assertConversationRequestSource(tx, current);
     await assertConversationSourcesNotRemoved(tx, current);
     for (const source of current.sources) {
-      if (isGeneratedSummarySource(source)) {
+      if (isConversationPhotoSource(source)) {
+        // The protected request/source join above is the authority for this photo.
+        continue;
+      } else if (isGeneratedSummarySource(source)) {
         await assertConversationSummaryParent(tx, database, source);
       } else if (isGeneratedConversationSource(source)) {
         const result = await tx.execute(

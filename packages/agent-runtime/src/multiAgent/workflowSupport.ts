@@ -26,6 +26,7 @@ import { checkpointMatchesRun, MultiAgentState, routeForPhase } from './state';
 import type { WorkflowState } from './state';
 import { isOrderedTimestampRange } from './timestamps';
 import { validToolModelCost } from './evidenceToolModelBudget';
+import { validPhotoInput } from './photoInputValidation';
 
 function validEvidenceTool(tool: EvidenceSearchTool, scope: AllowedEvidenceScope): boolean {
   // Network access is reserved for external medical sources; local health and memory tools stay local.
@@ -43,6 +44,7 @@ function validEvidenceTool(tool: EvidenceSearchTool, scope: AllowedEvidenceScope
 export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResult>): boolean {
   const { execution, provider, task } = options;
   const id = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
+  const evidenceOnly = validPhotoInput(options);
   return (
     execution.operationRunId === execution.operationRunId.trim() &&
     id.test(execution.operationRunId) &&
@@ -51,7 +53,8 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
     execution.recipient.trim().length > 0 &&
     provider.id === execution.providerId &&
     requireTaskContract(task) &&
-    options.request.trim().length > 0 &&
+    (!options.photoInput || evidenceOnly) &&
+    (options.request.trim().length > 0 || evidenceOnly) &&
     execution.allowedScope.sourceKinds.length > 0 &&
     execution.allowedScope.sourceKinds.every((kind) =>
       ['personal_record', 'reviewed_memory', 'generated_artifact', 'external_medical'].includes(

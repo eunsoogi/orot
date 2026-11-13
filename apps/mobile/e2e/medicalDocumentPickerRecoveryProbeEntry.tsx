@@ -13,6 +13,8 @@ const syntheticRepository = {
 } as unknown as RecordRepository;
 const pickerService = createMedicalDocumentImportService({
   loadRepository: async () => syntheticRepository,
+  // The probe owns no retained conversation originals and must not open user storage.
+  retainedConversationSourceIds: async () => [],
   fileDeletion: { ...medicalDocumentFileDeletion, reconcile: async () => {} },
 });
 export const pickerRecoveryProbeService = {

@@ -1,4 +1,4 @@
-import { selectEvidence } from './selectEvidence';
+import { conversationInitialEvidence } from './conversationInitialEvidence';
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
 import {
   providerDiagnostic,
@@ -34,8 +34,8 @@ import type {
 import { failureFromWorkflow } from './outcome';
 import type { RagConversationOutcome } from './outcome';
 import type { ConversationIntent } from '../aiFeatures/integration/conversationIntent';
-import { includeConversationTargets } from './conversationTargetEvidence';
 import { bufferPossibilityStream } from './possibilityStreamBoundary';
+import { validConversationPhotoRun } from './conversationPhotoRunValidation';
 
 export type {
   RagConversationFailureKind,
@@ -49,6 +49,8 @@ export interface RagConversationRunOptions {
   readonly entryIntent?: ConversationIntent;
   readonly targetVisitEvidence?: EvidenceItem;
   readonly dailyReportEvidence?: readonly EvidenceItem[];
+  /** Photo evidence and its explicit payload consent must arrive together. */
+  readonly photoEvidence?: readonly EvidenceItem[];
   readonly previousMessages: readonly RagConversationMessage[];
   /** Locally revalidated prior turns; assistant text is dialogue context, not medical evidence. */
   readonly validatedPriorTurns?: readonly {
@@ -84,46 +86,23 @@ export async function runRagConversationTurn(
   invocation: MultiAgentInvocation = {},
 ): Promise<RagConversationOutcome> {
   const question = options.question.trim();
-  if (!question || question.length > 1000)
+  const validPhoto = validConversationPhotoRun(options);
+  if (
+    (!question && !validPhoto) ||
+    question.length > 1000 ||
+    Boolean(options.photoEvidence) !== Boolean(validPhoto) ||
+    Boolean(options.workflow.photoInput) !== Boolean(validPhoto)
+  )
     return { status: 'failure', kind: 'validation_failed' };
   let stage: 'data' | 'workflow' = 'data';
   try {
     providerDiagnostic('rag', 'data', 'started');
-    const snapshot = await options.loadCurrentEvidence(
+    const initialEvidence = await conversationInitialEvidence(
+      options,
       question,
-      invocation.signal ?? new AbortController().signal,
+      invocation.signal,
     );
-    // An empty library must not require the on-device embedding engine before literature research.
-    const hits = snapshot.chunks.length
-      ? await options.rag.search(question, snapshot.chunks, 5, {
-          signal: invocation.signal,
-        })
-      : [];
     providerDiagnostic('rag', 'data', 'completed');
-    const localEvidence = selectEvidence(snapshot.batch, hits);
-    const combinedEvidence = options.publicEvidence
-      ? {
-          items: [...localEvidence.items, ...options.publicEvidence.items],
-          coverage: [
-            ...localEvidence.coverage,
-            ...options.publicEvidence.coverage,
-          ],
-          conflicts: [
-            ...localEvidence.conflicts,
-            ...options.publicEvidence.conflicts,
-          ],
-        }
-      : localEvidence;
-    // Only an explicit target needs to reserve a share of the workflow budget.
-    const initialEvidence =
-      options.targetVisitEvidence || options.dailyReportEvidence?.length
-        ? includeConversationTargets(
-            combinedEvidence,
-            options.targetVisitEvidence,
-            options.dailyReportEvidence ?? [],
-            options.workflow.execution.budget.maxEvidenceItems,
-          )
-        : combinedEvidence;
     // The model may answer a social or clarifying turn even when retrieval has no hits.
     // The task/runtime still require a lookup and citations for substantive factual claims.
     stage = 'workflow';

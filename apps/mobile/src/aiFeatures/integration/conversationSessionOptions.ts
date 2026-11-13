@@ -1,6 +1,7 @@
+import { restoreInterruptedPreviews } from './restoreInterruptedPreviews';
 import { createConversationSessionRetention } from '../../ragConversation/conversationSessionRetention';
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
-import { operationRunId } from './featureRunIdentity';
+import { createConversationDurableIdentity } from '../../ragConversation/conversationDurableIdentity';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { captureConversationToolSources } from './captureConversationToolSources';
@@ -12,11 +13,18 @@ import type { AiFeatureServices } from './featureServices';
 import { healthSourceDependencies } from '../../ragConversation/conversationHealthDeletion';
 import { createTreatmentSourceResolver } from './resolveTreatmentSource';
 import { restoreConversationTaskCards } from './restoreConversationTaskCards';
+import { validateInterruptedPhotoInputs } from './conversationInterruptedPhotoValidation';
+import { orderRestoredConversationTurns } from './conversationRestoredTurnOrder';
+import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
+import { createConversationSessionStorage } from './conversationSessionStorage';
+import { conversationPhotoPreparationOption } from './conversationPhotoPreparation';
+import type { requireSelectedAi } from './provider';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
   readonly loadLocalData: () => Promise<AiFeatureLocalData>;
   readonly registry: LocalEvidenceReferenceRegistry;
+  readonly selectedAi?: () => Promise<ReturnType<typeof requireSelectedAi>>;
   readonly restoreHealthSummary?: (
     reference: import('../../ragConversation/healthSummary').HealthSummaryReference,
   ) => Promise<
@@ -24,20 +32,11 @@ export function createConversationSessionOptions(input: {
   >;
   readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
 }): ConversationSessionOptions {
-  let recovered: Promise<void> | undefined;
-  const openStorage = async () => {
-    const data = await input.loadLocalData();
-    if (!data.openConversationArtifactStorage)
-      throw new Error('Conversation storage is unavailable.');
-    const storage = await data.openConversationArtifactStorage();
-    // Recovery happens before beginTurn can dispatch a new tool, never during a live restoration.
-    await (recovered ??= storage.recoverInterruptedToolEvents().catch(error => {
-      recovered = undefined;
-      throw error;
-    }));
-    return storage;
-  };
+  const openStorage = createConversationSessionStorage(input.loadLocalData);
+  const photo = conversationPhotoPreparationOption(input);
   return {
+    ...photo,
+    execution: conversationExecutionNative() ?? undefined,
     listSessions: async cursor => (await openStorage()).listSessions(cursor),
     restoreTasks: async (sessionId, signal) => {
       const storage = await openStorage();
@@ -46,8 +45,9 @@ export function createConversationSessionOptions(input: {
     resolveTreatmentSource: createTreatmentSourceResolver(input),
     retention: createConversationSessionRetention({
       openStorage,
-      createId: operationRunId,
+      createId: createConversationDurableIdentity,
       now: () => new Date().toISOString(),
+      retirePhoto: photo.photoPreparation?.retirement.retire,
       captureToolSources: async (event, sessionId) =>
         captureConversationToolSources(
           event,
@@ -97,6 +97,18 @@ export function createConversationSessionOptions(input: {
         throw new Error('Conversation restoration was cancelled.');
       const storage = await openStorage();
       const savedToolTurns = await storage.readToolTurns(sessionId, version);
+      const interrupted = await storage.listInterruptedRequests(
+        sessionId,
+        version,
+      );
+      await validateInterruptedPhotoInputs({
+        requests: interrupted,
+        storage,
+        data,
+        sessionId,
+        version,
+        signal,
+      });
       const toolTurns = await restoreConversationToolTurns(
         savedToolTurns,
         input.registry,
@@ -132,6 +144,9 @@ export function createConversationSessionOptions(input: {
               : undefined;
           return {
             question: turn.question,
+            ...(turn.submittedInput
+              ? { submittedInput: turn.submittedInput }
+              : {}),
             answer: turn.answer,
             citations: turn.citations,
             healthSources: healthSourceDependencies(
@@ -167,7 +182,10 @@ export function createConversationSessionOptions(input: {
         throw new Error('Conversation content changed during restoration.');
       // Interrupted tool-only turns have no validated prose, but remain visible and never running.
       for (const turn of toolTurns)
-        if (!restored.some(item => item.toolMessageId === turn.messageId))
+        if (
+          !restored.some(item => item.toolMessageId === turn.messageId) &&
+          !interrupted.some(item => item.id === turn.messageId)
+        )
           restored.push({
             question: '',
             answer: '',
@@ -177,22 +195,55 @@ export function createConversationSessionOptions(input: {
             toolMessageId: turn.messageId,
             toolEvents: turn.toolEvents,
           });
+      for (const request of interrupted)
+        if (!restored.some(item => item.toolMessageId === request.id))
+          restored.push({
+            question: request.question,
+            ...(request.submittedInput
+              ? { submittedInput: request.submittedInput }
+              : {}),
+            answer: '',
+            citations: [],
+            healthSources: [],
+            completion: 'partial',
+            toolMessageId: request.id,
+            toolEvents:
+              toolTurns.find(turn => turn.messageId === request.id)
+                ?.toolEvents ?? [],
+          });
       // Visit restoration performs additional reads; recheck the session after those reads too.
       if (
         signal.aborted ||
-        !(await discovery.revalidateSession(sessionId, version, turns, signal))
+        !(await discovery.revalidateSession(
+          sessionId,
+          version,
+          turns,
+          signal,
+        )) ||
+        fingerprint(
+          await storage.listInterruptedRequests(sessionId, version),
+        ) !== fingerprint(interrupted)
       )
         throw new Error('Conversation content changed during restoration.');
+      await validateInterruptedPhotoInputs({
+        requests: interrupted,
+        storage,
+        data,
+        sessionId,
+        version,
+        signal,
+      });
       const times = new Map([
         ...turns.map(turn => [turn.id, turn.createdAt] as const),
         ...toolTurns.map(turn => [turn.messageId, turn.createdAt] as const),
+        ...interrupted.map(request => [request.id, request.createdAt] as const),
       ]);
-      return restored.sort(
-        (a, b) =>
-          times
-            .get(a.toolMessageId)!
-            .localeCompare(times.get(b.toolMessageId)!) ||
-          a.toolMessageId.localeCompare(b.toolMessageId),
+      return restoreInterruptedPreviews(
+        orderRestoredConversationTurns(restored, times),
+        interrupted,
+        storage,
+        sessionId,
+        version,
       );
     },
   };

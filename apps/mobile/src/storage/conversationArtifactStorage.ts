@@ -11,6 +11,7 @@ import {
 import { setupConversationArtifactSchema } from './conversationArtifactSchema';
 import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 import { createConversationArtifactReader } from './conversationArtifactRead';
+import { createConversationCompletionReader } from './conversationCompletionReader';
 import { listConversationArtifactPage } from './conversationArtifactPages';
 import { createConversationSessionVisibility } from './conversationSessionVisibility';
 import { assertConversationNotCancelled } from './conversationArtifactCancellation';
@@ -18,10 +19,16 @@ import {
   isGeneratedSummarySource,
   isGeneratedConversationSource,
   isGeneratedResearchSource,
+  isConversationPhotoSource,
 } from '../ragConversation/conversationArtifactSources';
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 import { createConversationToolEventStorage } from './conversationToolEventStorage';
 import { createFilteredToolPeriodStorage } from './conversationToolFilteredStorage';
+import { createConversationPreviewStorage } from './conversationPreviewStorage';
+import {
+  commitConversationRequest,
+  createConversationRequestStorage,
+} from './conversationRequestStorage';
 import {
   appendTreatmentTaskCard,
   createConversationTaskCardStorage,
@@ -50,11 +57,17 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   return {
+    ...createConversationPreviewStorage(database, ensure),
+    ...createConversationRequestStorage(database, ensure),
     ...createConversationTaskCardStorage(database, ensure),
     ...createConversationToolEventStorage(database, ensure),
     ...createFilteredToolPeriodStorage(database, ensure),
     ...createConversationSessionVisibility(database, ensure),
     ...createConversationArtifactReader(database, ensure),
+    readCommittedCompletion: createConversationCompletionReader(
+      database,
+      ensure,
+    ),
     async currentGeneration() {
       await ensure();
       return generation(database);
@@ -148,6 +161,12 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
           if (existing.rows[0]?.result_json !== serialized)
             throw new Error('A different output already owns this identity.');
           assertConversationNotCancelled(signal);
+          await commitConversationRequest(
+            tx,
+            decoded,
+            expectedSessionVersion,
+            true,
+          );
           return;
         }
         await tx.execute(
@@ -157,7 +176,10 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         if (decoded.treatmentContext)
           await appendTreatmentTaskCard(tx, decoded);
         for (const source of decoded.sources) {
-          if (
+          if (isConversationPhotoSource(source)) {
+            // The request-source table owns the photo; no medical-record row is fabricated.
+            continue;
+          } else if (
             isGeneratedSummarySource(source) ||
             isGeneratedConversationSource(source) ||
             isGeneratedResearchSource(source)
@@ -196,6 +218,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         }
         // After this check, commit wins; the caller must report the saved result even if cancellation arrives later.
         assertConversationNotCancelled(signal);
+        await commitConversationRequest(tx, decoded, expectedSessionVersion);
       });
     },
     async list(

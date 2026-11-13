@@ -18,6 +18,7 @@ export function createConversationSessionRetention(input: {
   openStorage: () => Promise<Storage>;
   createId: () => string;
   now: () => string;
+  retirePhoto?: (sourceId: string) => Promise<void>;
   captureToolSources?: (
     event: ConversationToolEvent,
     sessionId: string,
@@ -91,6 +92,11 @@ export function createConversationSessionRetention(input: {
         ? { id: slot.id, version: slot.version }
         : null;
     },
+    async readCommittedCompletion(
+      identity: import('../storage/conversationCompletionReader').ConversationCompletionIdentity,
+    ) {
+      return (await input.openStorage()).readCommittedCompletion(identity);
+    },
     prepareRemoval(id: number) {
       const slot = slots.get(id);
       if (!slot) return;
@@ -111,12 +117,14 @@ export function createConversationSessionRetention(input: {
       id: number,
       durableId: string,
       expectedVersion: number,
+      isCurrent: () => boolean = () => true,
     ) {
       if (
         slots.has(id) ||
         !durableId ||
         !Number.isSafeInteger(expectedVersion) ||
-        expectedVersion < 0
+        expectedVersion < 0 ||
+        !isCurrent()
       )
         throw new Error('Conversation session state is invalid.');
       // A read started before a local-data clear must never attach its old result.
@@ -124,6 +132,7 @@ export function createConversationSessionRetention(input: {
       const storage = await input.openStorage();
       if (
         (await storage.activeSessionVersion(durableId)) !== expectedVersion ||
+        !isCurrent() ||
         started !== lifecycle ||
         slots.has(id) ||
         [...slots.values()].some(slot => slot.id === durableId)
@@ -136,6 +145,16 @@ export function createConversationSessionRetention(input: {
         ready: Promise.resolve(),
         turns: new Set(),
       });
+    },
+    /** Drop an unpublished attachment without deleting its protected conversation. */
+    discardUnpublished(id: number, durableId: string, version: number) {
+      const slot = slots.get(id);
+      if (
+        slot?.id === durableId &&
+        slot.version === version &&
+        slot.turns.size === 0
+      )
+        slots.delete(id);
     },
     async beginSession(id: number, signal: AbortSignal) {
       const { current, version } = await ensureSession(id, signal);
@@ -215,7 +234,13 @@ export function createConversationSessionRetention(input: {
     async finalize(handle: { id: string; version: number | null } | null) {
       if (handle?.version == null) return;
       const storage = await input.openStorage();
-      await storage.finalizeHiddenSession(handle.id, handle.version);
+      const sources = await storage.finalizeHiddenSession(
+        handle.id,
+        handle.version,
+      );
+      await Promise.allSettled(
+        sources.map(source => input.retirePhoto?.(source)),
+      );
     },
   };
 }

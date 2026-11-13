@@ -9,6 +9,7 @@ import { useSettingsRouteSummaries } from './SettingsRouteAccountSummaries';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { SettingsRouteAppInfo, SettingsRouteRow } from './SettingsRouteRows';
 import { SettingsDailyReminderSection } from './SettingsDailyReminderSection';
+import { SettingsReplyNotificationSection } from './SettingsReplyNotificationSection';
 
 interface SettingsRouteProps {
   /** Tracks the latest committed choice after persisted resolution confirms it is valid. */
@@ -138,6 +139,7 @@ export function SettingsRoute({
             </View>
 
             <SettingsDailyReminderSection />
+            <SettingsReplyNotificationSection />
 
             <View style={styles.section} testID="settings-section-app-info">
               <Text accessibilityRole="header" style={styles.sectionTitle}>
