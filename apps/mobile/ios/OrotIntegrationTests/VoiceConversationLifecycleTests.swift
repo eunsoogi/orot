@@ -14,7 +14,9 @@ final class VoiceConversationLifecycleTests: OrotFailFastTestCase {
         let speech = VoiceConversationSpeech()
         defer {
             speech.stop()
-            if !released { try? owner.release(token) }
+            if !released {
+                try? owner.release(token)
+            }
         }
         try owner.activate(token, category: .playback, mode: .spokenAudio)
         let completed = expectation(description: "Actual system speech delegate completes the synthetic phrase")
