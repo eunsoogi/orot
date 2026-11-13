@@ -4,6 +4,7 @@ import { name as appName } from '../app.json';
 import App from '../App';
 import { openLocalAgentMemoryDatabase } from '../src/storage/secureDatabase';
 import { createConversationArtifactStorage } from '../src/storage/conversationArtifactStorage';
+import { nativeReplyNotifications } from '../src/replyNotifications/nativeReplyNotifications';
 
 /** Seed a synthetic committed answer through the real protected storage adapter. */
 async function prepare() {
@@ -70,7 +71,9 @@ async function prepare() {
     rejected = true;
   }
   if (!rejected) throw new Error('The invalid synthetic reply was admitted.');
-  // The valid call verifies the real inbox head, so an invalid enqueue cannot hide ahead of it.
+  // Rejection must leave the production inbox empty before any valid request is enqueued.
+  if ((await nativeReplyNotifications().consumeTarget()) != null)
+    throw new Error('The invalid synthetic reply mutated the inbox.');
   await bridge.enqueueSyntheticReply({
     requestId,
     sessionId,
