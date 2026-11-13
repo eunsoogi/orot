@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { VisitQuestionRecord } from '@orot/domain';
 import type { ManualVisitQuestion } from './manualVisitRecordService';
 
-interface ManualVisitDraft {
+export interface ManualVisitDraft {
   readonly questionId: string;
   readonly questionRevision: string;
   readonly answer: string;
