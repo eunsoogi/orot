@@ -1,3 +1,4 @@
+import { requireLocalVoiceProcessing } from '../voiceSettings/voiceSettingsStore';
 import { AppState } from 'react-native';
 import type { RefObject } from 'react';
 import type { SelectedAiResolution } from '../aiFeatures/integration/provider';
@@ -68,7 +69,12 @@ export function conversationVoiceDependencies(input: {
       latest.current.photoPending ||
       latest.current.store.photoDrafts.get(id).status !== 'empty',
     async authorize(identity, signal) {
-      if (signal.aborted || !current(identity)) return false;
+      if (
+        signal.aborted ||
+        !current(identity) ||
+        !(await requireLocalVoiceProcessing())
+      )
+        return false;
       const result = await latest.current.resolveSelectedAi();
       const approved = selected.current?.value;
       return Boolean(

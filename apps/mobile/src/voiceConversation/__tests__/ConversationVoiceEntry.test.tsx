@@ -1,3 +1,4 @@
+import { getGenericPassword } from 'react-native-keychain';
 import {
   act,
   fireEvent,
@@ -14,6 +15,12 @@ jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
+
+jest.mock('react-native-keychain', () => ({
+  ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'device-only' },
+  getGenericPassword: jest.fn(async () => false),
+  setGenericPassword: jest.fn(),
+}));
 
 const mockIdentity = jest.fn((_props: unknown) => null);
 jest.mock('../../assistantAppearance/AssistantHeader', () => ({
@@ -86,6 +93,23 @@ test('explicit consent binds one voice turn while preserving the text draft', as
       onSend={jest.fn()}
     />,
   );
+  // An API model selection must never enter the local native pipeline.
+  jest.mocked(getGenericPassword).mockResolvedValueOnce({
+    password: JSON.stringify({
+      mode: 'openai-api',
+      model: 'gpt-realtime-2.1',
+      apiKey: 'synthetic',
+    }),
+  } as never);
+  await fireEvent.press(screen.getByRole('button', { name: '음성 대화 시작' }));
+  await waitFor(() =>
+    expect(alert).toHaveBeenCalledWith(
+      'Realtime 음성 연결 미지원',
+      expect.any(String),
+    ),
+  );
+  expect(mockNative.start).not.toHaveBeenCalled();
+  alert.mockClear();
   await fireEvent.press(screen.getByRole('button', { name: '음성 대화 시작' }));
   await waitFor(() => expect(alert).toHaveBeenCalled());
   expect(mockNative.start).not.toHaveBeenCalled();
