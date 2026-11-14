@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import type { AgentMemoryHit } from '@orot/agent-memory';
+import { AppSymbol } from '../layout/AppSymbol';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -71,26 +72,49 @@ export function SavedMemoryBrowser({
 
   return (
     <View style={styles.section} testID="saved-memory-browser">
-      <Text accessibilityRole="header" style={styles.title}>
-        기억
-      </Text>
-      <Text style={styles.description}>
-        오롯이 저장한 기억을 확인해요. 이 기기에서만 불러오며 AI에 전송하지
-        않아요.
-      </Text>
-      <AppButton
-        variant="neutral"
-        title={expanded ? '기억 닫기' : '저장된 기억 보기'}
-        onPress={
-          expanded
-            ? close
-            : () => {
-                refresh();
-              }
-        }
-      />
+      <View style={styles.entry}>
+        <AppButton
+          variant="list"
+          title="기억"
+          summary="이 기기에 저장된 기억을 확인해요"
+          accessibilityLabel={expanded ? '기억 닫기' : '저장된 기억 보기'}
+          accessibilityState={{ expanded }}
+          trailingContent={
+            <AppSymbol
+              name={expanded ? 'chevron.down' : 'chevron.right'}
+              size={16}
+              color={appColors.secondary}
+            />
+          }
+          onPress={
+            expanded
+              ? close
+              : () => {
+                  refresh();
+                }
+          }
+        />
+      </View>
       {expanded && (
-        <>
+        <View style={styles.panel}>
+          <View style={styles.header}>
+            <Text accessibilityRole="header" style={styles.title}>
+              기억
+            </Text>
+            {state === 'ready' && (
+              <AppButton
+                variant="neutral"
+                size="compact"
+                title="새로고침"
+                onPress={() => {
+                  refresh();
+                }}
+              />
+            )}
+          </View>
+          <Text style={styles.description}>
+            이 기기에서만 불러오며 AI에 전송하지 않아요.
+          </Text>
           {state === 'loading' && (
             <Text accessibilityLiveRegion="polite">
               기억을 불러오는 중이에요.
@@ -118,17 +142,10 @@ export function SavedMemoryBrowser({
                   ? `저장된 기억 ${rows.length}개`
                   : '아직 저장된 기억이 없어요.'}
               </Text>
-              <AppButton
-                variant="neutral"
-                title="새로고침"
-                onPress={() => {
-                  refresh();
-                }}
-              />
               {rows.slice(0, visible).map(row => (
                 <View key={row.id} style={styles.row}>
-                  <Text style={styles.kind}>{kindLabels[row.kind]}</Text>
                   <Text style={styles.body}>{row.text}</Text>
+                  <Text style={styles.kind}>{kindLabels[row.kind]}</Text>
                   <Text style={styles.description}>
                     저장: {formatDateTime(new Date(row.createdAt))}
                   </Text>
@@ -149,17 +166,34 @@ export function SavedMemoryBrowser({
               )}
             </>
           )}
-        </>
+        </View>
       )}
     </View>
   );
 }
 const styles = StyleSheet.create({
-  section: {
+  section: { gap: 12, minWidth: 0 },
+  entry: {
+    borderRadius: 18,
+    backgroundColor: appColors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: appColors.border,
+  },
+  panel: {
     gap: 12,
     padding: 16,
     borderRadius: 18,
     backgroundColor: appColors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: appColors.border,
+  },
+  // Wrapping keeps shared 44pt controls and large text inside narrow layouts.
+  header: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   title: { fontSize: 18, fontWeight: '700', color: appColors.text },
   description: { fontSize: 14, lineHeight: 20, color: appColors.secondary },
