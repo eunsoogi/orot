@@ -26,7 +26,7 @@ final class NavigationSelectionGlass: UIVisualEffectView {
     @objc func updateMaterial() {
         if UIAccessibility.isReduceTransparencyEnabled {
             effect = nil
-            backgroundColor = NavigationGlassPalette.selectedRootTabBackground
+            backgroundColor = .systemGray4
         } else if #available(iOS 26.0, *) {
             let glass = UIGlassEffect(style: .regular)
             glass.tintColor = .systemBlue.withAlphaComponent(0.18)
