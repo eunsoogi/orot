@@ -119,3 +119,16 @@ test('request start publishes only a local receipt and rejects a duplicate busy 
     prepareConversationRequest({ ...session, ...started.change }, () => ++id),
   ).toBeNull();
 });
+
+test('supplies localized early copy as task data while keeping system instructions English', () => {
+  const { ragConversationTask } = require('../task');
+  const [message] = ragConversationTask.createMessages({
+    request: 'synthetic',
+    evidence: { items: [], coverage: [], conflicts: [] },
+  });
+  expect(JSON.parse(message.content).initialResponseText).toBe(
+    initialConversationResponse,
+  );
+  expect(ragConversationTask.systemPrompt).not.toMatch(/[\uAC00-\uD7A3]/u);
+  expect(ragConversationTask.systemPrompt).toContain('initialResponseText');
+});
