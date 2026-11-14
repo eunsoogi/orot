@@ -2,6 +2,8 @@ import { useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { ConversationSession } from '../ragConversation/conversationSessionTypes';
 import { useAssistantAppearance } from './AssistantAppearanceProvider';
+import { FloatingProfileGradient } from './FloatingProfileGradient';
+import { FloatingIdentityInset } from './FloatingIdentityInset';
 import { AssistantHeader } from './AssistantHeader';
 
 /** Float within the already safe, adaptive content panel, never against window coordinates. */
@@ -17,10 +19,9 @@ export function FloatingAssistantSurface({
   const reservedHeight = appearance?.ready ? height : 0;
   return (
     <View style={styles.surface} testID="assistant-floating-surface">
-      {/* Reserve only measured identity height so controls remain reachable under the overlay. */}
-      <View style={[styles.surface, { paddingTop: reservedHeight }]}>
+      <FloatingIdentityInset.Provider value={reservedHeight}>
         {children}
-      </View>
+      </FloatingIdentityInset.Provider>
       {appearance?.ready ? (
         <View
           pointerEvents="box-none"
@@ -28,6 +29,7 @@ export function FloatingAssistantSurface({
           testID="assistant-floating-overlay"
           onLayout={event => setHeight(event.nativeEvent.layout.height)}
         >
+          <FloatingProfileGradient />
           <AssistantHeader session={session} />
         </View>
       ) : null}

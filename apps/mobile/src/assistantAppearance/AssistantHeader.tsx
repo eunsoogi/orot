@@ -106,33 +106,43 @@ function ActiveAssistantHeader({
       style={styles.container}
       testID="assistant-floating-identity"
     >
-      <ComposerGlassBackground />
-      <AvatarSymbol avatar={appearance.value.avatar} />
+      <View style={styles.avatar}>
+        <AvatarSymbol avatar={appearance.value.avatar} size={64} />
+      </View>
       <View style={styles.identity}>
+        <ComposerGlassBackground />
         <AppText style={styles.name}>
           {appearance.value.name ?? defaultAssistantName}
         </AppText>
-        {stage ? <AppText style={styles.stage}>{stage}</AppText> : null}
       </View>
     </Pressable>
   );
 }
 const styles = StyleSheet.create({
   container: {
-    minHeight: 48,
-    flexDirection: 'row',
+    minHeight: 100,
+    flexDirection: 'column',
     alignItems: 'center',
-    gap: 10,
-    maxWidth: 360,
-    width: '100%',
+    gap: 0,
+    maxWidth: 280,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    overflow: 'hidden',
+    paddingVertical: 0,
   },
-  identity: { flex: 1, minWidth: 0 },
-  name: { color: appColors.text, fontWeight: '700' },
-  stage: { color: appColors.secondary },
+  avatar: {
+    height: 64,
+    width: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  identity: {
+    minHeight: 36,
+    minWidth: 44,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  name: { color: appColors.text, fontWeight: '700', textAlign: 'center' },
 });

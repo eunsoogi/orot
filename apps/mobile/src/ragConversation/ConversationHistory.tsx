@@ -1,3 +1,4 @@
+import { useFloatingIdentityInset } from '../assistantAppearance/FloatingIdentityInset';
 import { useRef } from 'react';
 import type { ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -36,6 +37,7 @@ export function ConversationHistory({
   requestSessionId,
   requestActivity,
 }: ConversationHistoryProps) {
+  const identityInset = useFloatingIdentityInset();
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
   const userScrolling = useRef(false);
@@ -92,6 +94,7 @@ export function ConversationHistory({
       ref={historyView}
       style={styles.history}
       contentContainerStyle={{
+        paddingTop: identityInset,
         paddingBottom: bottomInset + (compact ? 0 : 20),
       }}
       keyboardShouldPersistTaps="handled"
