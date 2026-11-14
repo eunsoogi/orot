@@ -1,3 +1,4 @@
+import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
 export type ConversationInterruptionReason =
   | 'expired'
   | 'protected-data'
@@ -35,10 +36,12 @@ export type ConversationExecutionEvent =
       readonly reason?: 'bridge-unavailable';
     }
   | { readonly kind: 'foreground' }
+  | { readonly kind: 'phase' }
   | { readonly kind: 'protectedData'; readonly available: boolean };
 
 export interface ConversationExecutionAdapter {
   readonly bridgeAvailable?: boolean;
+  currentPhase?(): 'active' | 'background' | 'inactive' | 'unknown';
   begin(requestId: string): Promise<boolean>;
   end(requestId: string): void;
   isActive(requestId: string): Promise<boolean>;
@@ -52,12 +55,18 @@ export async function beginConversationExecutionLease(
   requestId: string,
   interrupt: (reason: ConversationInterruptionReason) => void,
 ) {
+  const diagnose = createExecutionDiagnostics(
+    adapter.bridgeAvailable,
+    () => adapter.currentPhase?.() ?? 'unknown',
+  );
+  diagnose('begin');
   let closed = false;
   let interrupted = false;
   let acquired = false;
   const notify = (reason: ConversationInterruptionReason) => {
     if (closed || interrupted) return;
     interrupted = true;
+    diagnose('interrupt', reason);
     interrupt(reason);
   };
   const unsubscribe = adapter.subscribe(event => {
@@ -65,6 +74,8 @@ export async function beginConversationExecutionLease(
       notify(event.reason ?? 'expired');
     if (event.kind === 'protectedData' && !event.available)
       notify('protected-data');
+    if (event.kind === 'foreground') diagnose('foreground');
+    if (event.kind === 'phase') diagnose('phase');
     // Recheck after foregrounding in case suspension delayed the expiration event.
     if (event.kind === 'foreground' && acquired)
       adapter
@@ -80,6 +91,7 @@ export async function beginConversationExecutionLease(
       notify('protected-data');
     if (!interrupted) {
       acquired = await adapter.begin(requestId);
+      diagnose(acquired ? 'acquired' : 'denied');
       if (!acquired)
         notify(
           adapter.bridgeAvailable === false
@@ -96,6 +108,7 @@ export async function beginConversationExecutionLease(
   return () => {
     if (closed) return;
     closed = true;
+    diagnose('release');
     unsubscribe();
     if (acquired) adapter.end(requestId);
   };

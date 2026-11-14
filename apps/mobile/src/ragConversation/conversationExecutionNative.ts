@@ -27,6 +27,7 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
   const emitter = new NativeEventEmitter(module);
   return {
     bridgeAvailable: true,
+    currentPhase,
     begin: id => module.begin(id),
     end: id => module.end(id),
     isActive: id => module.isActive(id),
@@ -53,6 +54,7 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
       );
       const state = AppState.addEventListener('change', value => {
         if (value === 'active') listener({ kind: 'foreground' });
+        else listener({ kind: 'phase' });
       });
       return () => {
         subscription.remove();
@@ -67,6 +69,7 @@ function backgroundInterruptFallback(): ConversationExecutionAdapter {
   let background = AppState.currentState === 'background';
   return {
     bridgeAvailable: false,
+    currentPhase,
     async begin(id) {
       if (background) return false;
       active.add(id);
@@ -81,6 +84,7 @@ function backgroundInterruptFallback(): ConversationExecutionAdapter {
     subscribe(listener) {
       const subscription = AppState.addEventListener('change', state => {
         background = state === 'background';
+        if (state !== 'active') listener({ kind: 'phase' });
         if (background)
           for (const requestId of active)
             listener({
@@ -93,4 +97,12 @@ function backgroundInterruptFallback(): ConversationExecutionAdapter {
       return () => subscription.remove();
     },
   };
+}
+
+/** Only the bounded lifecycle state enters diagnostics, never native payloads. */
+function currentPhase() {
+  const state = AppState.currentState;
+  return state === 'active' || state === 'background' || state === 'inactive'
+    ? state
+    : 'unknown';
 }
