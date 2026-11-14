@@ -24,7 +24,7 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
                 XCTAssertTrue(UITestConditions.exists(app.staticTexts["저장된 요약이 없어요."]))
                 capture(app, "summary-history-empty-\(suffix)")
             }
-            try back(app)
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             NavigationPageActionUITestConditions.tap(app, id: "symptom-summary-generate", label: "증상과 기록 요약하기")
             XCTAssertTrue(UITestConditions.exists(node(app, "symptom-summary-saved")))
             assertSummary(app)
@@ -37,7 +37,7 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(node(app, "ai-feature-source-detail")))
             XCTAssertTrue(UITestConditions.exists(app.staticTexts["70.5 kg"]))
             capture(app, "summary-restored-source-\(suffix)")
-            try back(app)
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             // No fixture reseeding or generation happens between termination and restoration.
             app.terminate()
             launch(app)
@@ -53,7 +53,7 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(node(app, "symptom-summary-saved")))
             assertSummary(app)
             capture(app, "summary-restored-\(suffix)")
-            try back(app)
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             XCTAssertTrue(UITestConditions.exists(node(app, "summary-visual-picker")))
             node(app, "summary-visual-read-failure").tap()
             NavigationPageActionUITestConditions.tap(app, id: "symptom-summary-history-open", label: "저장된 요약 보기")
@@ -62,8 +62,8 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             NavigationPageActionUITestConditions.tap(app, id: "symptom-summary-reload", label: "다시 불러오기")
             XCTAssertTrue(UITestConditions.exists(row))
             capture(app, "summary-history-recovered-\(suffix)")
-            try back(app)
-            try back(app)
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         }
     }
 
@@ -113,7 +113,7 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             if !dark {
                 open.tap()
                 XCTAssertTrue(UITestConditions.exists(node(app, "synthetic-article-opened")))
-                try back(app)
+                try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             }
             XCTAssertEqual(node(app, "external-evidence-query").value as? String, "sleep synthetic")
             XCTAssertTrue(secondResult.isSelected)
@@ -132,13 +132,13 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             node(app, "external-evidence-search").tap()
             XCTAssertTrue(UITestConditions.exists(node(app, "external-evidence-loading")))
             capture(app, "literature-loading-\(suffix)")
-            try back(app)
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
             XCTAssertTrue(UITestConditions.exists(node(app, "summary-visual-picker")))
             node(app, "summary-visual-literature").tap()
             XCTAssertFalse(node(app, "external-evidence-loading").exists)
             XCTAssertFalse(title.exists)
             capture(app, "literature-cancelled-\(suffix)")
-            try back(app)
+            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         }
         // Compare the same supplied title before and after a fresh large-text launch.
         node(app, "summary-visual-literature").tap()
@@ -154,14 +154,18 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
         node(app, "summary-visual-literature").tap()
         query(app, "long synthetic")
         let search = node(app, "external-evidence-search")
-        FormUITestConditions.reveal(search, in: app, scrollID: "external-medical-evidence-screen")
-        XCTAssertTrue(search.isHittable)
+        // Search belongs to the native action dock, not the scroll content beneath it.
+        try NavigationPageActionUITestConditions.requireKeyboardAction(search, in: app, testCase: self)
+        XCTAssertEqual(node(app, "external-evidence-query").value as? String, "long synthetic")
         search.tap()
         XCTAssertTrue(UITestConditions.exists(node(app, "external-evidence-selected-source")))
         XCTAssertTrue(row.frame.height.isFinite)
         XCTAssertGreaterThan(row.frame.height, defaultTitleHeight)
         let open = node(app, "external-evidence-open-selected-source")
-        FormUITestConditions.reveal(open, in: app, scrollID: "external-medical-evidence-screen")
+        // The bottom article action must clear the actual XXXL dock, not only the scroll viewport.
+        try NavigationUITestConditions.scrollToBottom(app, "external-medical-evidence-screen")
+        XCTAssertTrue(app.frame.contains(open.frame))
+        XCTAssertLessThanOrEqual(open.frame.maxY, search.frame.minY - 16)
         XCTAssertTrue(open.isHittable)
         XCTAssertGreaterThanOrEqual(open.frame.height, 44)
         capture(app, "literature-long-content-large-text")
@@ -195,15 +199,9 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
 
     @MainActor
     private func query(_ app: XCUIApplication, _ text: String) {
+        // Use native selection and synchronized characters; reject partial input before any search.
         let input = node(app, "external-evidence-query")
-        node(app, "external-medical-evidence-screen").swipeDown()
-        UITestConditions.scrollTo(input, in: app)
-        input.tap()
-        let previous = (input.value as? String) ?? ""
-        if previous != "예: 수면과 혈압의 관계", !previous.isEmpty {
-            input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: previous.count))
-        }
-        input.typeText(text)
+        XCTAssertTrue(FormUITestConditions.replace(input, with: text, in: app, scrollID: "external-medical-evidence-screen", useNativeSelectAllMenu: true))
     }
 
     @MainActor
@@ -236,11 +234,6 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
     @MainActor
     private func node(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         UITestConditions.element(app, id)
-    }
-
-    @MainActor
-    private func back(_ app: XCUIApplication) throws {
-        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
     }
 
     @MainActor
