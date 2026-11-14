@@ -1,5 +1,10 @@
 import { createContext } from 'react';
-import { StyleSheet, View, useColorScheme } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  useColorScheme,
+  useWindowDimensions,
+} from 'react-native';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { AppText as Text } from '../layout/AppText';
 import { appColorPalettes, appColors } from '../layout/appColors';
@@ -8,12 +13,13 @@ import { t } from '../i18n';
 /** Standalone record routes retain their heading; the hub supplies it once. */
 export const RecordsHubHeadingContext = createContext(false);
 
-/** Decorative, data-free waves reproduce the approved banner without storing mockup images. */
+/** Decorative, data-free waves follow the requested banner direction without storing mockup images. */
 export function RecordsHubBanner() {
+  const compact = useWindowDimensions().fontScale > 1.5;
   const palette =
     appColorPalettes[useColorScheme() === 'dark' ? 'dark' : 'light'];
   return (
-    <View style={styles.banner}>
+    <View style={[styles.banner, compact && styles.compactBanner]}>
       <View
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
@@ -45,20 +51,24 @@ export function RecordsHubBanner() {
       </View>
       <Text
         accessibilityRole="header"
-        style={styles.title}
+        style={[styles.title, compact && styles.compactTitle]}
         testID="records-title"
       >
         {t('records.title')}
       </Text>
-      <Text style={styles.subtitle} testID="records-subtitle">
-        {t('records.subtitle')}
-      </Text>
+      {!compact && (
+        <Text style={styles.subtitle} testID="records-subtitle">
+          {t('records.subtitle')}
+        </Text>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   banner: { minHeight: 108, padding: 20, gap: 8 },
+  compactBanner: { minHeight: 0, padding: 12 },
+  compactTitle: { fontSize: 24 },
   title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   subtitle: { color: appColors.secondary, fontSize: 16, lineHeight: 24 },
 });

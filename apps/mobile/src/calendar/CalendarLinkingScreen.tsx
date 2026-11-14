@@ -1,5 +1,3 @@
-import { useNavigationContentFrame } from '../navigation/navigationContentFrame';
-import { calendarScrollEdge } from './calendarScrollEdge';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -49,11 +47,6 @@ export default function CalendarLinkingScreen({
   onOpenRecording,
 }: CalendarLinkingScreenProps) {
   const navigationInset = useNavigationContentInset();
-  const frame = useNavigationContentFrame();
-  const scrollEdge = calendarScrollEdge(
-    frame,
-    adaptiveScheduleLayout && !onBack,
-  );
   const calendar = useCalendarLinking(repository, bridge, calendarSync);
   const queryWindow: CalendarQueryWindow | null = calendarSync.query
     ? calendarQueryWindowFromCoverage(calendarSync.query)
@@ -139,14 +132,9 @@ export default function CalendarLinkingScreen({
   }, [calendar.notice, onAppointmentsChanged]);
 
   return (
-    <View style={[styles.screen, { marginBottom: -scrollEdge }]}>
+    <View style={styles.screen}>
       <ScrollView
-        // Let the calendar scroll through the system edge; preserve that clearance at its end.
-        contentContainerStyle={[
-          styles.container,
-          navigationInset,
-          { paddingBottom: navigationInset.paddingBottom + scrollEdge },
-        ]}
+        contentContainerStyle={[styles.container, navigationInset]}
         testID="calendar-screen"
       >
         {/* Calendar access and recovery details live in Settings, outside this passive schedule view. */}

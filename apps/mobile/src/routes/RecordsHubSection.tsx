@@ -37,7 +37,7 @@ export function RecordsHubSection({
           {(['records', 'schedule'] as const).map(section => (
             <Pressable
               key={section}
-              accessibilityRole="tab"
+              accessibilityRole="button"
               accessibilityLabel={t(`navigation.tabs.${section}`)}
               testID={`records-section-${section}`}
               accessibilityState={{

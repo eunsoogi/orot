@@ -72,10 +72,10 @@ test('retains the same route, edited input and selection across side and viewpor
     navigationSide: 'right',
   };
   const transitions = [
-    { payload: full, x: 0, width: 916, height: 766 },
-    { payload: left, x: 72, width: 397, height: 635 },
-    { payload: right, x: 0, width: 416, height: 766 },
-    { payload: full, x: 0, width: 916, height: 766 },
+    { payload: full, x: 0, width: 916, height: 800 },
+    { payload: left, x: 72, width: 397, height: 669 },
+    { payload: right, x: 0, width: 416, height: 800 },
+    { payload: full, x: 0, width: 916, height: 800 },
   ];
   for (const { payload, x, width, height } of transitions) {
     await fireEvent(sensor, 'geometryChange', { nativeEvent: payload });
