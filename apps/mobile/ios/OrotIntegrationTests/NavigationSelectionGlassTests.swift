@@ -24,11 +24,11 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
         indicator.move(to: second, animated: true, vertical: true)
         if !UIAccessibility.isReduceMotionEnabled {
             let group = try XCTUnwrap(indicator.layer.animation(forKey: "navigation-droplet") as? CAAnimationGroup)
-            let bounds = try XCTUnwrap(group.animations?.compactMap { $0 as? CAKeyframeAnimation }.first { $0.keyPath == "bounds" })
+            let bounds = try XCTUnwrap(group.animations?.compactMap { $0 as? CAKeyframeAnimation }.first { $0.keyPath == "transform" })
             XCTAssertEqual(bounds.duration, group.duration)
-            let middle = try XCTUnwrap(bounds.values?[1] as? NSValue).cgRectValue
-            XCTAssertGreaterThan(middle.height, second.height)
-            XCTAssertLessThan(middle.width, second.width)
+            let middle = try XCTUnwrap(bounds.values?[1] as? NSValue).caTransform3DValue
+            XCTAssertGreaterThan(middle.m22, 1)
+            XCTAssertLessThan(middle.m11, 1)
         }
         if UIAccessibility.isReduceMotionEnabled {
             XCTAssertNil(indicator.layer.animation(forKey: "navigation-droplet"))
@@ -45,11 +45,11 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
         indicator.move(to: first.offsetBy(dx: 60, dy: 0), animated: true, vertical: false)
         if !UIAccessibility.isReduceMotionEnabled {
             let group = try XCTUnwrap(indicator.layer.animation(forKey: "navigation-droplet") as? CAAnimationGroup)
-            let bounds = try XCTUnwrap(group.animations?.compactMap { $0 as? CAKeyframeAnimation }.first { $0.keyPath == "bounds" })
+            let bounds = try XCTUnwrap(group.animations?.compactMap { $0 as? CAKeyframeAnimation }.first { $0.keyPath == "transform" })
             XCTAssertEqual(bounds.duration, group.duration)
-            let middle = try XCTUnwrap(bounds.values?[1] as? NSValue).cgRectValue
-            XCTAssertGreaterThan(middle.width, first.width)
-            XCTAssertLessThan(middle.height, first.height)
+            let middle = try XCTUnwrap(bounds.values?[1] as? NSValue).caTransform3DValue
+            XCTAssertGreaterThan(middle.m11, 1)
+            XCTAssertLessThan(middle.m22, 1)
         }
     }
 

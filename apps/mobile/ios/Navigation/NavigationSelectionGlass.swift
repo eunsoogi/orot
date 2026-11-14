@@ -56,12 +56,12 @@ final class NavigationSelectionGlass: UIView {
         let previous = layer.presentation() ?? layer
         let startPosition = origin.map { CGPoint(x: $0.midX, y: $0.midY) } ?? previous.position
         let startBounds = origin.map { CGRect(origin: .zero, size: $0.size) } ?? previous.bounds
-        let startRadius = origin.map { min($0.width, $0.height) / 2 } ?? previous.cornerRadius
         let canAnimate = animated && !UIAccessibility.isReduceMotionEnabled && (!targetFrame.isEmpty || origin != nil)
         layer.removeAllAnimations()
         targetFrame = destination
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        layer.transform = CATransform3DIdentity
         frame = destination
         layer.cornerRadius = destination.width / 2
         CATransaction.commit()
@@ -78,10 +78,12 @@ final class NavigationSelectionGlass: UIView {
         let midpoint = CGPoint(x: (startPosition.x + layer.position.x) / 2,
                                y: (startPosition.y + layer.position.y) / 2)
         let position = keyframes("position", [NSValue(cgPoint: startPosition), NSValue(cgPoint: midpoint), NSValue(cgPoint: layer.position)])
-        let size = keyframes("bounds", [NSValue(cgRect: startBounds), NSValue(cgRect: elongated), NSValue(cgRect: layer.bounds)])
-        let radius = keyframes("cornerRadius", [startRadius, min(elongated.width, elongated.height) / 2, destination.width / 2])
+        // Transform the entire material container; changing only its bounds clips the glass child.
+        let start = origin == nil ? previous.transform : CATransform3DMakeScale(startBounds.width / destination.width, startBounds.height / destination.height, 1)
+        let stretched = CATransform3DMakeScale(elongated.width / destination.width, elongated.height / destination.height, 1)
+        let shape = keyframes("transform", [NSValue(caTransform3D: start), NSValue(caTransform3D: stretched), NSValue(caTransform3D: CATransform3DIdentity)])
         let group = CAAnimationGroup()
-        group.animations = [position, size, radius]
+        group.animations = [position, shape]
         group.duration = 0.32
         // Explicit model-state settlement makes cancellation, layout changes and rapid taps deterministic.
         layer.add(group, forKey: "navigation-droplet")
