@@ -33,7 +33,7 @@ extension RootNavigationUITests {
         NavigationUITestConditions.route(app, markers: ["overview-title"])
         let keyboardDismissed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !keyboard.exists }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [keyboardDismissed]), .completed, app.debugDescription)
-        try NavigationUITestConditions.assertSharedViewport(app, testCase: self)
+        try NavigationUITestConditions.assertSharedViewport(app, reclaimsSystemBottom: true, testCase: self)
         try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-tab-overview", name: "home-after-keyboard-navigation", testCase: self)
     }
 }

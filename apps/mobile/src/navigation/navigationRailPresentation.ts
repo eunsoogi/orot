@@ -10,7 +10,7 @@ import {
 } from './navigationRootLayout';
 import { pageActionRailLayout } from './navigationPageActionLayout';
 
-/** Preserve the measured rail and its keyboard fallback independently from bottom planning. */
+/** Keyboard occlusion may suspend controls, but must not change window navigation identity. */
 export function navigationRailPresentation(
   layout: NavigationRootLayout,
   keyboardHeight: number,
@@ -55,9 +55,27 @@ export function navigationRailPresentation(
         hasContextualBack,
       })
     : undefined;
-  const rightLayout = navFits && pageLayout?.fits ? candidate : undefined;
+  const fits = navFits && pageLayout?.fits === true;
+  // A genuine compact window still falls back normally. Only an otherwise
+  // usable rail can be retained while the transient keyboard covers it.
+  const keyboardSuspended = Boolean(
+    candidate &&
+    keyboardHeight > 0 &&
+    !fits &&
+    pageActionRailLayout({
+      height: candidate.windowHeight,
+      top: candidate.railTopInset,
+      bottom: candidate.railBottomInset,
+      rootTabs,
+      navigationCount,
+      actionCount,
+      hasContextualBack,
+    }).fits,
+  );
+  const rightLayout = fits || keyboardSuspended ? candidate : undefined;
   return {
     rightLayout,
+    keyboardSuspended,
     pageLayout,
     height: rightLayout ? height : 0,
     bottomInset: rightLayout ? bottomInset : undefined,
