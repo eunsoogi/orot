@@ -83,6 +83,7 @@ export function VoiceSettingsPanel({
       </Text>
       <Button
         title="연결된 계정 관리"
+        variant="text"
         onPress={onOpenAccounts}
         disabled={!onOpenAccounts}
         testID="voice-open-accounts"
@@ -94,6 +95,8 @@ export function VoiceSettingsPanel({
       </Text>
       <Button
         title={catalog.busy ? '모델 불러오는 중' : '음성 모델 새로고침'}
+        variant="secondary"
+        busy={catalog.busy}
         testID="voice-model-refresh"
         disabled={catalog.busy || !catalog.connected}
         onPress={() => {

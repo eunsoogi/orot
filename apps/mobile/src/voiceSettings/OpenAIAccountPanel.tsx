@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
+import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
 import { voiceSettingsStore } from './voiceSettingsStore';
@@ -86,6 +87,7 @@ export function OpenAIAccountPanel() {
       />
       <Button
         title="API 키 저장"
+        busy={busy}
         testID="openai-api-key-save"
         disabled={busy || failed || !key.trim()}
         onPress={() => {
@@ -95,6 +97,7 @@ export function OpenAIAccountPanel() {
       {connected ? (
         <Button
           title="OpenAI API 연결 해제"
+          variant="destructive"
           testID="openai-api-key-remove"
           disabled={busy || failed}
           onPress={() => {
@@ -110,5 +113,12 @@ export function OpenAIAccountPanel() {
 
 const styles = StyleSheet.create({
   panel: { gap: 12 },
-  input: { minHeight: 44, padding: 12 },
+  input: {
+    minHeight: 44,
+    padding: 12,
+    color: appColors.text,
+    borderWidth: 1,
+    borderColor: appColors.border,
+    borderRadius: 12,
+  },
 });

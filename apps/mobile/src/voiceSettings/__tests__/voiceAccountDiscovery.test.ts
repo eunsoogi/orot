@@ -63,6 +63,7 @@ it('preserves legacy credential and revision when a write fails', async () => {
 it('uses only model discovery and returns sanitized IDs, not secrets or provider bodies', async () => {
   fetchMock.mockResolvedValue({
     ok: true,
+    url: 'https://api.openai.com/v1/models',
     json: async () => ({
       data: [
         { id: 'gpt-realtime-2.1' },
@@ -91,7 +92,12 @@ it.each([
   [500, 'server'],
 ])('redacts HTTP %s errors', async (status, error) => {
   const json = jest.fn();
-  fetchMock.mockResolvedValue({ ok: false, status, json });
+  fetchMock.mockResolvedValue({
+    ok: false,
+    status,
+    json,
+    url: 'https://api.openai.com/v1/models',
+  });
   await expect(
     voiceSettingsStore.discoverModels(new AbortController().signal),
   ).rejects.toThrow(String(error));
@@ -111,6 +117,7 @@ it('rejects stale discovery after the connected credential changes', async () =>
   await voiceSettingsStore.setAccountKey('synthetic-new');
   resolve({
     ok: true,
+    url: 'https://api.openai.com/v1/models',
     json: async () => ({ data: [{ id: 'gpt-realtime-2.1' }] }),
   });
   await expect(result).rejects.toThrow('account-changed');
@@ -139,4 +146,22 @@ it('does not commit a model from a previous account catalog after replacement', 
     }),
   ).rejects.toThrow('API account changed');
   expect((await voiceSettingsStore.load()).model).toBe('gpt-realtime-2.1');
+});
+
+it('rejects redirected responses and cancels before contacting the provider', async () => {
+  fetchMock.mockResolvedValue({
+    ok: true,
+    url: 'https://untrusted.example/models',
+    json: jest.fn(),
+  });
+  await expect(
+    voiceSettingsStore.discoverModels(new AbortController().signal),
+  ).rejects.toThrow('redirect');
+  fetchMock.mockClear();
+  const abort = new AbortController();
+  abort.abort();
+  await expect(voiceSettingsStore.discoverModels(abort.signal)).rejects.toThrow(
+    'account-changed',
+  );
+  expect(fetchMock).not.toHaveBeenCalled();
 });

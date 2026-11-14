@@ -33,7 +33,7 @@ copy without middle dots. They do not prove live provider availability or native
 Keychain behavior. The existing service identifier and native accessibility
 protection are preserved.
 
-Local checks: 21 provider/voice suites, 85 tests; app TypeScript; changed-file ESLint;
+Local checks: 21 provider/voice suites, 86 tests; app TypeScript; changed-file ESLint;
 Prettier and source LOC policy. No real credential, provider request, microphone,
 physical device, paid session or release is used for this verification. Required
 remote PR checks remain necessary and are not replaced by these focused results.
@@ -42,3 +42,10 @@ Previous panel assertions for runtime consent and persistence failure remain in
 the panel suite. Credential readback and deletion assertions move to the account
 panel and store suites; deletion now explicitly preserves the saved destination
 instead of choosing local mode.
+
+The installed React Native 0.87.1 iOS `RCTHTTPRequestHandler` replaces all original
+HTTP headers with destination-cookie headers on redirect, so the original bearer
+header is not forwarded. The fetch polyfill does not itself enforce
+`redirect: error`; that option alone is not claimed as proof. The application also
+rejects results whose final response URL differs from the fixed models endpoint.
+This is source inspection plus mocked response validation, not a live redirect test.

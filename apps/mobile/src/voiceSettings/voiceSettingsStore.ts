@@ -149,10 +149,12 @@ export const voiceSettingsStore = {
     saving = operation;
     return operation;
   },
-  async accountStatus() {
+  async accountStatus(): Promise<{ connected: boolean; revision: number }> {
     await saving.catch(() => undefined);
+    const revision = accountRevision;
     const value = await read();
-    return { connected: Boolean(value.apiKey), revision: accountRevision };
+    if (revision !== accountRevision) return voiceSettingsStore.accountStatus();
+    return { connected: Boolean(value.apiKey), revision };
   },
   /** Only explicit catalog refresh uses this boundary, never audio or inference.
    * Provider payloads/errors are not returned; an account change invalidates results.
@@ -163,6 +165,8 @@ export const voiceSettingsStore = {
     await saving.catch(() => undefined);
     const revision = accountRevision;
     const value = await read();
+    if (signal.aborted || revision !== accountRevision)
+      throw new Error('account-changed');
     if (!value.apiKey) throw new Error('no-account');
     if (value.apiKey.length > 4096 || !/^[\x21-\x7e]+$/.test(value.apiKey))
       throw new Error('access');
@@ -176,6 +180,10 @@ export const voiceSettingsStore = {
     } catch {
       throw new Error('network');
     }
+    // RN iOS drops original headers on redirects; also reject redirected results.
+    // Do not treat fetch's redirect option alone as an enforced native boundary.
+    if (response.url !== 'https://api.openai.com/v1/models')
+      throw new Error('redirect');
     if (response.status === 401 || response.status === 403)
       throw new Error('access');
     if (response.status === 429) throw new Error('rate-limit');
