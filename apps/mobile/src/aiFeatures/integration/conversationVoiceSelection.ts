@@ -28,7 +28,9 @@ export async function resolveConversationSelection(
         provider: conversationBackgroundProvider(
           selected.provider,
           selected.remoteProcessing,
-          extend => observer?.onExecutionState?.(extend ? 'working' : 'local'),
+          observer?.onExecutionState
+            ? extend => observer.onExecutionState?.(extend ? 'working' : 'local')
+            : undefined,
         ),
       }
     : null;

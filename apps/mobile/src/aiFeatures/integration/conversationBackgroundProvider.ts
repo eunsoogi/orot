@@ -53,6 +53,8 @@ export function conversationConsentScope<
   port: { authorize(request: Request): Promise<Result> },
   observer?: RagConversationObserver,
 ) {
+  // Preserve the original port when no background lifetime is being observed.
+  if (!observer?.onExecutionState) return port;
   return {
     async authorize(request: Request): Promise<Result> {
       const stop = observeExecutionDecision(request.signal, () =>
