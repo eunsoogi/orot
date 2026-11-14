@@ -1,5 +1,6 @@
+import { NavigationModal } from '../navigation/NavigationModal';
 import type { ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import SafeAreaLayout from '../layout/SafeAreaLayout';
 import { AppText } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -64,9 +65,8 @@ export function VoiceConversationScreen({
     </Pressable>
   );
   return (
-    <Modal
+    <NavigationModal
       visible={visible}
-      animationType="none"
       presentationStyle="fullScreen"
       onRequestClose={onEnd}
     >
@@ -142,7 +142,7 @@ export function VoiceConversationScreen({
           )}
         </View>
       </SafeAreaLayout>
-    </Modal>
+    </NavigationModal>
   );
 }
 const styles = StyleSheet.create({

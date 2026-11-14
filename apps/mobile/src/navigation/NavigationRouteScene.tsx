@@ -159,7 +159,9 @@ export function NavigationRouteScene<Name extends string>({
   );
 
   return rootTabs ? (
-    <NavigationContentTransition transitionKey={rootTabs.activeTab}>
+    <NavigationContentTransition
+      transitionKey={rootTabs.contentKey ?? rootTabs.activeTab}
+    >
       {scene}
     </NavigationContentTransition>
   ) : (

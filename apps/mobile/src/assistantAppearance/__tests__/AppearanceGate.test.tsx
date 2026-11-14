@@ -5,7 +5,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { useEffect } from 'react';
-import { NativeModules } from 'react-native';
+import { AccessibilityInfo, NativeModules } from 'react-native';
 import { AppText } from '../../layout/AppText';
 import {
   AssistantAppearanceProvider,
@@ -41,6 +41,10 @@ function Content() {
 
 beforeEach(() => {
   jest.resetAllMocks();
+  jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(false);
+  jest
+    .mocked(AccessibilityInfo.addEventListener)
+    .mockReturnValue({ remove: jest.fn() });
   nativeModules.SettingsManager = { settings: {} };
 });
 

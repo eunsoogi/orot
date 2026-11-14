@@ -1,4 +1,5 @@
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { NavigationModal } from '../navigation/NavigationModal';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -23,7 +24,7 @@ export function ConversationPhotoConsent({
   readonly onCancel: () => void;
 }) {
   return (
-    <Modal
+    <NavigationModal
       visible={visible}
       presentationStyle="pageSheet"
       allowSwipeDismissal
@@ -59,7 +60,7 @@ export function ConversationPhotoConsent({
           />
         </View>
       </ScrollView>
-    </Modal>
+    </NavigationModal>
   );
 }
 

@@ -13,7 +13,7 @@ interface DisplayedContent {
   readonly children: ReactNode;
 }
 
-/** Keeps outgoing root content mounted until a short translation makes room for the selected tab. */
+/** Keeps outgoing root content mounted until a short, perceptible translation makes room for the selected tab. */
 export function NavigationContentTransition({
   transitionKey,
   children,
@@ -61,13 +61,15 @@ export function NavigationContentTransition({
 
     const generation = ++transitionGeneration.current;
     const exitMotion = Animated.timing(offset, {
-      toValue: -4,
-      duration: 90,
+      toValue: -12,
+      duration: 100,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     });
     exitMotion.start(({ finished }) => {
       if (!finished || transitionGeneration.current !== generation) return;
+      // Enter from the opposite edge of the small travel range, never by fading glass.
+      offset.setValue(20);
       setDisplayed(latestContent.current);
       setEnterPending(true);
     });
@@ -94,16 +96,20 @@ export function NavigationContentTransition({
     }
     if (displayed.transitionKey !== transitionKey) return;
 
+    let active = true;
     const enterMotion = Animated.timing(offset, {
       toValue: 0,
-      duration: 140,
+      duration: 200,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     });
     enterMotion.start(({ finished }) => {
-      if (finished) setEnterPending(false);
+      if (finished && active) setEnterPending(false);
     });
-    return () => enterMotion.stop();
+    return () => {
+      active = false;
+      enterMotion.stop();
+    };
   }, [
     displayed.transitionKey,
     enterPending,

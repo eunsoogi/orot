@@ -1,5 +1,6 @@
+import { NavigationModal } from '../navigation/NavigationModal';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Modal, Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -24,8 +25,7 @@ export function SettingsDailyReminderTimePicker({
   visible,
 }: SettingsDailyReminderTimePickerProps) {
   return (
-    <Modal
-      animationType="slide"
+    <NavigationModal
       onDismiss={onCancel}
       onRequestClose={onCancel}
       presentationStyle="pageSheet"
@@ -69,7 +69,7 @@ export function SettingsDailyReminderTimePicker({
           />
         </View>
       </View>
-    </Modal>
+    </NavigationModal>
   );
 }
 
