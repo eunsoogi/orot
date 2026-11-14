@@ -69,7 +69,11 @@ export async function restoreColdConversationRegistry(input: {
   });
   for (const source of sources) {
     check();
-    if ('kind' in source && source.kind === 'generated_research') {
+    if (
+      'kind' in source &&
+      (source.kind === 'generated_research' ||
+        source.kind === 'generated_conversation')
+    ) {
       const readSource = (signal: AbortSignal) => research.read(source, signal);
       fresh.add({
         reference: source.reference,
