@@ -69,7 +69,10 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
         let citation = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
         XCTAssertTrue(UITestConditions.exists(citation))
-        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
+        // Compact session controls scroll with the header; they are not native dock or overflow actions.
+        let sessions = app.buttons.matching(identifier: "rag-conversation-sessions-toggle").firstMatch
+        guard FormUITestConditions.reveal(sessions, in: app, scrollID: "rag-conversation-history", towardTop: true) != nil else { return }
+        sessions.tap()
         let history = UITestConditions.element(app, "conversation-history-screen")
         let row = UITestConditions.element(app, "conversation-history-session-1")
         XCTAssertTrue(UITestConditions.exists(history) && UITestConditions.exists(row))
@@ -79,7 +82,9 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         row.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")))
         XCTAssertFalse(history.exists)
-        NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-new-session", label: "새 대화")
+        let newSession = app.buttons.matching(identifier: "rag-conversation-new-session").firstMatch
+        guard FormUITestConditions.reveal(newSession, in: app, scrollID: "rag-conversation-history", towardTop: true) != nil else { return }
+        newSession.tap()
         XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
         XCTAssertFalse(citation.exists)
     }
