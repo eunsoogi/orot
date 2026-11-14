@@ -7,9 +7,10 @@ import type {
 import { stableJson } from './evidenceUtils';
 import { stableEvidenceReference } from './stableEvidenceReference';
 
-/** Keeps the original validated input in memory; a missing alias is never recovered by rerunning a tool. */
+/** Retains exact batches; protected snapshots never authorize transmission or rerun a search. */
 export function conversationWorkflowEvidenceCache<T>(
   options: MultiAgentWorkflowOptions<T>,
+  restored?: readonly EvidenceBatch[],
 ) {
   const items = new Map<string, EvidenceBatch['items'][number]>();
   const batches: EvidenceBatch[] = [];
@@ -18,9 +19,31 @@ export function conversationWorkflowEvidenceCache<T>(
     batch.items.forEach(item => items.set(stableEvidenceReference(item), item));
     return batch;
   };
-  remember(options.initialEvidence);
+  if (restored) {
+    if (
+      !Array.isArray(restored) ||
+      !restored.length ||
+      stableJson(restored[0]) !== stableJson(options.initialEvidence) ||
+      stableJson(restored).length > 2_000_000 ||
+      restored.some(
+        batch =>
+          !batch ||
+          !Array.isArray(batch.items) ||
+          !Array.isArray(batch.coverage) ||
+          !Array.isArray(batch.conflicts),
+      )
+    )
+      throw new Error('Invalid protected evidence snapshot.');
+    // Provenance/source freshness comes from the reconstructed adapters and runtime,
+    // not from accepting a serialized batch here. Never substitute a new search.
+    (JSON.parse(JSON.stringify(restored)) as EvidenceBatch[]).forEach(remember);
+  } else remember(options.initialEvidence);
   return {
     ...options,
+    /** Private storage only; copy so later callers cannot mutate the live owner. */
+    snapshotEvidence(): readonly EvidenceBatch[] {
+      return JSON.parse(JSON.stringify(batches));
+    },
     tools: options.tools.map(tool =>
       wrapEvidenceSearch(tool, async (_request, _runtime, dispatch) => {
         const result = await dispatch();

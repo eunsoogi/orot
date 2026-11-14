@@ -143,3 +143,52 @@ test('empty search coverage survives restoration without a repeated search', asy
     ),
   ).toBeUndefined();
 });
+
+test('fresh cache restores protected exact batches and empty coverage without a search', async () => {
+  const first = item('first');
+  const empty: EvidenceBatch = {
+    items: [],
+    conflicts: [],
+    coverage: [
+      {
+        sourceKind: 'external_medical',
+        searchedSourceIds: ['synthetic'],
+        gaps: ['empty'],
+        truncated: false,
+        resultLimit: 5,
+        returnedCount: 0,
+      },
+    ],
+  };
+  const search = jest.fn(async () => empty);
+  const options = {
+    initialEvidence: batch(first),
+    tools: [{ search }],
+    execution: { budget: DEFAULT_MULTI_AGENT_BUDGET },
+  } as unknown as MultiAgentWorkflowOptions<unknown>;
+  const old = conversationWorkflowEvidenceCache(options);
+  await old.tools[0]!.search({} as never);
+  const snapshot = old.snapshotEvidence();
+  search.mockClear();
+  const fresh = conversationWorkflowEvidenceCache(options, snapshot);
+  const restored = await fresh.restoreEvidence(
+    [first],
+    new AbortController().signal,
+  );
+  expect(restored.items).toEqual([first]);
+  expect(restored.coverage).toContainEqual(
+    expect.objectContaining({
+      sourceKind: 'external_medical',
+      searchedSourceIds: ['synthetic'],
+      gaps: ['empty'],
+      returnedCount: 0,
+    }),
+  );
+  expect(search).not.toHaveBeenCalled();
+  expect(() =>
+    conversationWorkflowEvidenceCache(
+      { ...options, initialEvidence: batch(item('changed')) },
+      snapshot,
+    ),
+  ).toThrow('snapshot');
+});

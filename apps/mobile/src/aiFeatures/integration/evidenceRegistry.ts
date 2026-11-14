@@ -1,3 +1,8 @@
+import {
+  captureRegistry,
+  restoreRegistry,
+  type EvidenceRegistrySnapshot,
+} from './evidenceRegistrySnapshot';
 import { LocalEvidenceIdentifiers } from './evidenceIdentifiers';
 import type { EvidenceItem, EvidenceReference } from '@orot/agent-runtime';
 import type { ReviewState } from '@orot/domain';
@@ -14,24 +19,20 @@ export type {
   EvidenceSourceDocument,
   EvidenceSourceReadResult,
 } from './evidenceSourceDocument';
-
 export interface EvidenceValidationContext {
   once<T>(key: object, load: () => Promise<T>): Promise<T>;
 }
-
 type ReferenceValidator = (
   signal: AbortSignal,
   context: EvidenceValidationContext,
 ) => Promise<boolean>;
-
 type SourceReader = (signal: AbortSignal) => Promise<EvidenceSourceReadResult>;
-
-interface RegistryEntry {
+export interface RegistryEntry {
+  readonly alias: EvidenceReference;
   readonly original: EvidenceReference;
   readonly validate: ReferenceValidator;
   readonly readSource: SourceReader;
 }
-
 function validationContext(): EvidenceValidationContext {
   const loads = new Map<object, Promise<unknown>>();
   return {
@@ -45,24 +46,43 @@ function validationContext(): EvidenceValidationContext {
     },
   };
 }
-
 /** Keeps raw local identifiers behind a turn-local citation that can be revalidated before use. */
 export class LocalEvidenceReferenceRegistry {
   private nextAlias = 0;
   private readonly searchChunks = new WeakMap<EvidenceChunk, EvidenceChunk>();
   private readonly entries = new Map<string, RegistryEntry>();
   readonly toolReferences = new ToolReferenceIndex();
-  private readonly identifiers = new LocalEvidenceIdentifiers();
-
+  private identifiers = new LocalEvidenceIdentifiers();
+  /** Protected-storage snapshot only; no closures, provider payloads or network operations. */
+  snapshot(): EvidenceRegistrySnapshot {
+    return captureRegistry(
+      this.entries,
+      this.identifiers.snapshot(),
+      this.nextAlias,
+    );
+  }
+  /** Caller supplies freshly validated readers; restoration never reads or searches sources. */
+  static restore(
+    snapshot: EvidenceRegistrySnapshot,
+    fresh: LocalEvidenceReferenceRegistry,
+  ) {
+    const restored = new LocalEvidenceReferenceRegistry();
+    const plan = restoreRegistry(snapshot, fresh.entries);
+    restored.identifiers = plan.identifiers;
+    restored.nextAlias = snapshot.nextAlias;
+    for (const [reference, entry] of plan.entries) {
+      restored.entries.set(stableReference(reference), entry);
+      restored.toolReferences.add(reference);
+    }
+    return restored;
+  }
   /** Resolves a provider scope locally before any database candidates are selected. */
   localSourceIds(aliases: readonly string[]): readonly string[] {
     return this.identifiers.localSources(aliases);
   }
-
   registerSensitiveIdentifier(value: string): string {
     return this.identifiers.register(value);
   }
-
   add(input: {
     readonly reference: EvidenceReference;
     readonly content: string;
@@ -87,6 +107,7 @@ export class LocalEvidenceReferenceRegistry {
       locator: { kind: 'local-evidence', token },
     };
     this.entries.set(stable(reference), {
+      alias: reference,
       original: { ...input.reference },
       validate: input.validate,
       readSource: input.readSource,
@@ -94,11 +115,9 @@ export class LocalEvidenceReferenceRegistry {
     this.toolReferences.add(reference);
     return { ...reference, content: this.redactText(input.content) };
   }
-
   redactText(value: string): string {
     return this.identifiers.redact(value);
   }
-
   toSearchChunk(
     item: EvidenceItem,
     text: string,
@@ -163,7 +182,6 @@ export class LocalEvidenceReferenceRegistry {
     );
     return chunk;
   }
-
   /** Only the local encrypted index receives storage identities; provider references stay opaque. */
   localSearchChunk(chunk: EvidenceChunk): EvidenceChunk {
     const local = this.searchChunks.get(chunk);
@@ -171,19 +189,16 @@ export class LocalEvidenceReferenceRegistry {
       throw new Error('Search chunk is outside the current registry.');
     return local;
   }
-
   resolve(reference: EvidenceReference): EvidenceReference | undefined {
     const entry = this.entries.get(stableReference(reference));
     return entry ? { ...entry.original } : undefined;
   }
-
   /** Rehydrate a live projected alias before validating its durable source. */
   resolveToolReference(
     reference: import('@orot/agent-runtime').ToolSourceReference,
   ) {
     return this.toolReferences.find(reference);
   }
-
   /** Resolve only after rechecking the saved call and research source at click time. */
   async resolveToolSource(
     reference: import('@orot/agent-runtime').ToolSourceReference,
@@ -192,7 +207,6 @@ export class LocalEvidenceReferenceRegistry {
   ) {
     return resolveConversationToolSource(this, reference, signal, scope);
   }
-
   /** Reads a clicked citation only while its saved row and derived chunk still match. */
   async readSource(
     reference: EvidenceReference,
@@ -215,7 +229,6 @@ export class LocalEvidenceReferenceRegistry {
       return { status: 'unavailable' };
     }
   }
-
   async revalidateEvidence(
     references: readonly EvidenceReference[],
     signal: AbortSignal,
