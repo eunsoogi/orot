@@ -49,3 +49,15 @@ export interface NavigationRootTabs {
   readonly contentKey?: AppRootTab;
   readonly onSelect: (tab: AppRootTab) => void | Promise<unknown>;
 }
+
+/** Keeps nested content distinct while its parent tab remains selected. */
+export function createNavigationRootTabs(
+  contentKey: AppRootTab,
+  onSelect: NavigationRootTabs['onSelect'],
+): NavigationRootTabs {
+  return {
+    activeTab: contentKey === 'schedule' ? 'records' : contentKey,
+    contentKey,
+    onSelect,
+  };
+}

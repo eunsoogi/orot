@@ -23,7 +23,10 @@ import {
   NavigationRouteAdapter,
 } from './src/navigation';
 import { appContentLayoutOwner } from './src/navigation/appContentLayoutPolicy';
-import type { NavigationRootTabs, AppRootTab } from './src/navigation/rootTabs';
+import {
+  createNavigationRootTabs,
+  type AppRootTab,
+} from './src/navigation/rootTabs';
 import type { AppNavigationRoute } from './src/routes/AppRouteContent';
 import { AppRouteContent } from './src/routes/AppRouteContent';
 import type { AppProps } from './src/routes/AppEntryProps';
@@ -117,11 +120,7 @@ function App({
     appNavigation.push('recording');
   }
 
-  const rootTabs: NavigationRootTabs = {
-    activeTab: activeTab === 'schedule' ? 'records' : activeTab,
-    contentKey: activeTab,
-    onSelect: selectActiveTab,
-  };
+  const rootTabs = createNavigationRootTabs(activeTab, selectActiveTab);
 
   return (
     <View style={styles.appShell}>
