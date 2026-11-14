@@ -1,3 +1,5 @@
+import { reuseResearchInputAliases } from './researchInputAliasReuse';
+import { reusableResearchInputGraph } from './researchInputGraph';
 import type { AiFeatureLocalData } from './localData';
 import type {
   LocalEvidenceReferenceRegistry,
@@ -19,11 +21,26 @@ export async function readResearchSource(
   const current = await discovery.read(id, signal);
   if (!current) return { status: 'missing' };
   if (current.metadata.revision !== revision) return { status: 'changed' };
-  const restored = await restoreRetainedSources(
+  const supported = await reusableResearchInputGraph(
     current.content.inputSources,
-    registry,
     data,
+    signal,
   );
+  const restored = supported
+    ? {
+        sourceChanged: false,
+        mapping: await reuseResearchInputAliases(
+          current.content.inputSources,
+          registry,
+          data,
+          signal,
+        ),
+      }
+    : await restoreRetainedSources(
+        current.content.inputSources,
+        registry,
+        data,
+      );
   if (restored.sourceChanged || signal.aborted) return { status: 'changed' };
   const inputs = current.content.inputSources.map(source =>
     restored.mapping.get(stableJson(source.reference)),
