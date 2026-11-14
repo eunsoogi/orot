@@ -1,3 +1,4 @@
+import { executeInitialEvidenceSearch } from './initialEvidenceSearch';
 import { END, START, StateGraph } from '@langchain/langgraph/web';
 import type { MultiAgentWorkflowOptions } from './contracts';
 import type { RuntimeContext } from './runtimeContext';
@@ -26,7 +27,14 @@ export function makeGraph<TResult>(
     .addNode('prepareResearcher', wrap(nodes.prepareResearcher))
     .addNode('invokeResearcher', wrap(nodes.invokeResearcher))
     .addNode('prepareSearch', wrap(nodes.prepareSearch))
-    .addNode('executeSearch', wrap(nodes.executeSearch))
+    .addNode(
+      'executeSearch',
+      wrap((state, runtime) =>
+        state.initialSearchStatus === 'pending'
+          ? executeInitialEvidenceSearch(context, state, runtime, nodes.executeSearch)
+          : nodes.executeSearch(state, runtime),
+      ),
+    )
     .addNode(
       'prepareRevision',
       wrap((state) => nodes.prepareRevision(state)),

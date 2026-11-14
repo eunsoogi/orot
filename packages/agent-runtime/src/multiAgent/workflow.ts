@@ -33,7 +33,6 @@ interface WorkflowRunControl {
   timedOut: () => boolean;
   dispose: () => void;
 }
-
 // Optional deadlines cover queueing and graph work; explicit null keeps caller cancellation only.
 function createWorkflowRunControl(
   callerSignal: AbortSignal | undefined,
@@ -145,6 +144,7 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
     beforeTaskStream: invocation.beforeTaskStream,
     beforeTaskInputChange: invocation.beforeTaskInputChange,
     currentEvidence: options.initialEvidence,
+    researchInput: options.initialSearch?.input,
   };
   try {
     const graph = makeGraph(context, {

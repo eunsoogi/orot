@@ -1,3 +1,4 @@
+import { validInitialEvidenceSearch, validInitialSearchResume } from './initialEvidenceSearch';
 import type {
   MultiAgentCheckpointState,
   AllowedEvidenceScope,
@@ -51,6 +52,7 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
     execution.recipient.trim().length > 0 &&
     provider.id === execution.providerId &&
     requireTaskContract(task) &&
+    validInitialEvidenceSearch(options) &&
     (!options.photoInput || evidenceOnly) &&
     (options.request.trim().length > 0 || evidenceOnly) &&
     execution.allowedScope.sourceKinds.length > 0 &&
@@ -82,13 +84,14 @@ export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult
     modelId: source.modelId,
     allowedScope: source.allowedScope,
     budget: source.budget,
-    phase: 'task_response',
+    phase: options.initialSearch ? 'evidence_search' : 'task_response',
     modelCalls: 0,
     toolCalls: 0,
     researchCycles: 0,
     evidenceReferences: referencesFromBatch(options.initialEvidence),
     evidenceNeed: undefined,
-    selectedToolId: undefined,
+    selectedToolId: options.initialSearch?.toolId,
+    initialSearchStatus: options.initialSearch ? 'pending' : undefined,
     pendingOperation: undefined,
     awaitingAuthorization: undefined,
     terminal: false,
@@ -120,6 +123,7 @@ export function resumeState<TResult>(
   // Reject out-of-scope references before any revalidation or restoration callback can resolve them.
   if (
     !validResumeShape(saved) ||
+    !validInitialSearchResume(saved, options) ||
     !checkpointMatchesRun(saved, options.execution) ||
     !Array.isArray(saved.evidenceReferences) ||
     saved.evidenceReferences.some(
@@ -154,6 +158,7 @@ export function resumeState<TResult>(
     (saved.phase === 'evidence_research' && !saved.evidenceNeed) ||
     (saved.phase === 'task_response' &&
       !saved.awaitingAuthorization &&
+      !saved.initialSearchStatus &&
       (saved.modelCalls > 0 || saved.toolCalls > 0 || saved.researchCycles > 0)) ||
     (saved.phase === 'revised_response' &&
       (saved.toolCalls === 0 || saved.evidenceReferences.length === 0)) ||
@@ -164,6 +169,7 @@ export function resumeState<TResult>(
   }
   return {
     ...saved,
+    initialSearchStatus: saved.initialSearchStatus,
     awaitingAuthorization: saved.awaitingAuthorization,
     evidenceReferences: saved.evidenceReferences.map(projectEvidenceReference),
     evidenceNeed: saved.evidenceNeed,

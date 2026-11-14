@@ -95,6 +95,15 @@ const topics = [
   ['headache', /두통|headache/iu],
 ] as const;
 
+/** App-owned public concepts only; private text never becomes the outgoing search query. */
+export function defaultPublicSearchInput(request: string) {
+  const selected = topics
+    .filter(([, pattern]) => pattern.test(request))
+    .slice(0, 4)
+    .map(([topic]) => topic);
+  return { topics: selected.length ? selected : ['general_health'] };
+}
+
 /** Executes one isolated, consent-checked public lookup before feature generation. */
 export async function runDefaultPublicSearch(input: {
   readonly tool: EvidenceSearchTool | undefined;
@@ -104,13 +113,11 @@ export async function runDefaultPublicSearch(input: {
 }): Promise<DefaultPublicSearchResult> {
   if (input.signal.aborted) return { status: 'cancelled' };
   if (!input.tool) return { status: 'unavailable' };
-  const matched = topics.filter(([, pattern]) => pattern.test(input.request));
-  const selected = matched.slice(0, 4).map(([topic]) => topic);
   try {
     const result = await input.tool.search({
       operationRunId: input.operationRunId,
       operationKey: 'default-public-search',
-      input: { topics: selected.length ? selected : ['general_health'] },
+      input: defaultPublicSearchInput(input.request),
       allowedScope: { sourceKinds: ['external_medical'] },
       resultLimit: 1,
       maxPayloadBytes: 65536,

@@ -17,6 +17,7 @@ export function continuationInput(options: MultiAgentWorkflowOptions<unknown>) {
     context: options.context ?? null,
     photo: options.photoInput ?? null,
     execution: options.execution,
+    initialSearch: options.initialSearch ?? null,
     task: options.task,
     tools: options.tools.map(tool => ({
       id: tool.id,

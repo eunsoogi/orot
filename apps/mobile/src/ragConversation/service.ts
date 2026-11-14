@@ -47,6 +47,9 @@ export type { RagConversationObserver } from './conversationObserver';
 
 export interface RagConversationRunOptions {
   readonly continuation?: ConversationWorkflowContinuation;
+  readonly onInitialSearchStatus?: (
+    status: import('@orot/agent-runtime').MultiAgentCheckpointState['initialSearchStatus'],
+  ) => void;
   readonly question: string;
   readonly entryIntent?: ConversationIntent;
   readonly targetVisitEvidence?: EvidenceItem;
@@ -127,6 +130,7 @@ export async function runRagConversationTurn(
       bufferPossibilityStream(options.entryIntent, invocation),
       options.continuation,
     );
+    options.onInitialSearchStatus?.(result.checkpoint.initialSearchStatus);
     reportWorkflowOutcome(
       'rag',
       result.status,

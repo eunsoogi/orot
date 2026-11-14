@@ -69,13 +69,11 @@ export type TaskResultValidation<TResult> =
   | { readonly status: 'valid'; readonly value: TResult }
   | { readonly status: 'invalid'; readonly reason: string }
   | { readonly status: 'needs_clarification'; readonly message: string };
-
 /** Task-approved result shape whose display copy may survive an evidence-coverage stop. */
 export interface TaskClarificationValue {
   readonly status: 'needs_clarification';
   readonly message: string;
 }
-
 export interface TaskResponderContract<TResult = JsonValue> {
   readonly taskType: string;
   readonly taskVersion: string;
@@ -122,7 +120,6 @@ export interface TaskResponderContract<TResult = JsonValue> {
   correctionInstructionForInvalidEnvelope?(reason: string): string | undefined;
   validateResult(value: JsonValue, input: TaskResponderInput): TaskResultValidation<TResult>;
 }
-
 export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
   readonly execution: MultiAgentExecutionIdentity;
   readonly provider: LanguageModelProvider;
@@ -131,6 +128,8 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
   readonly context?: JsonValue;
   readonly task: TaskResponderContract<TResult>;
   readonly initialEvidence: EvidenceBatch;
+  /** Host-owned query stays in protected invocation context, never graph channels. */
+  readonly initialSearch?: { readonly toolId: string; readonly input: JsonObject };
   readonly tools: readonly import('./evidenceContracts').EvidenceSearchTool[];
   readonly consent: ExecutionConsentPort;
   /** Return false for any missing or tombstoned reference so resume fails before evidence restoration. */
@@ -169,6 +168,7 @@ export interface MultiAgentCheckpointState {
     readonly kind: 'model' | 'tool';
     readonly operationKey: string;
   };
+  readonly initialSearchStatus?: 'pending' | 'success' | 'empty' | 'consent_required';
   readonly awaitingAuthorization?: string;
   readonly terminal: boolean;
 }

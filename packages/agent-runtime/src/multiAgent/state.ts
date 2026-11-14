@@ -39,6 +39,10 @@ export const MultiAgentState = Annotation.Root({
     value: (_current, update) => update,
     default: () => undefined,
   }),
+  initialSearchStatus: Annotation<MultiAgentCheckpointState['initialSearchStatus']>({
+    value: (_current, update) => update,
+    default: () => undefined,
+  }),
   terminal: Annotation<boolean>(),
 });
 
@@ -75,6 +79,7 @@ export function checkpointFromState(state: WorkflowState): MultiAgentCheckpointS
     selectedToolId: state.selectedToolId,
     pendingOperation: state.pendingOperation,
     awaitingAuthorization: state.awaitingAuthorization,
+    initialSearchStatus: state.initialSearchStatus,
     terminal: state.terminal,
   };
 }

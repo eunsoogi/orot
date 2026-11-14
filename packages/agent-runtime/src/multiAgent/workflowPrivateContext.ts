@@ -16,7 +16,9 @@ export async function preparePrivateOperationContext<TResult>(
   const binding = JSON.parse(
     JSON.stringify({
       execution: context.options.execution,
+      initialSearch: context.options.initialSearch,
       phase: state.phase,
+      initialSearchStatus: state.initialSearchStatus,
       modelCalls: state.modelCalls,
       toolCalls: state.toolCalls,
       researchCycles: state.researchCycles,

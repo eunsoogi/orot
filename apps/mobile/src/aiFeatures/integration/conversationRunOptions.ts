@@ -57,6 +57,7 @@ export function conversationRunInvocation(
 /** Keep history and selected evidence lineage attached to the responder input. */
 export function conversationRunRequest(input: {
   readonly continuation?: RagConversationRunOptions['continuation'];
+  readonly onInitialSearchStatus?: RagConversationRunOptions['onInitialSearchStatus'];
   readonly question: string;
   readonly photoEvidence?: RagConversationRunOptions['photoEvidence'];
   readonly entryIntent?: RagConversationRunOptions['entryIntent'];
@@ -71,6 +72,7 @@ export function conversationRunRequest(input: {
 }): RagConversationRunOptions {
   return {
     continuation: input.continuation,
+    onInitialSearchStatus: input.onInitialSearchStatus,
     question: input.question,
     ...(input.photoEvidence ? { photoEvidence: input.photoEvidence } : {}),
     entryIntent: input.entryIntent,

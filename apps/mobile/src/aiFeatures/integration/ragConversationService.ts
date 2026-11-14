@@ -1,3 +1,4 @@
+import { conversationPublicSearchPlan } from './conversationPublicSearchPlan';
 import { prepareConversationContinuation as continuationFor } from './prepareConversationContinuation';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import { finishRagConversation } from './finishRagConversation';
@@ -33,10 +34,7 @@ import {
   conversationInputsAreCurrent,
   resolveConversationTargets,
 } from './conversationEntryTargets';
-import {
-  conversationExternalEvidence,
-  conversationPublicSearch,
-} from './conversationExternalEvidence';
+import { conversationExternalEvidence } from './conversationExternalEvidence';
 /** Keeps local availability checks ahead of provider resolution and model dispatch. */
 export function createRagConversationService({
   consent: consentPort,
@@ -65,9 +63,8 @@ export function createRagConversationService({
     const signal = linked.controller.signal;
     const consent = background.consent(consentPort, observer);
     const queryConsent = background.consent(queryConsentPort, observer);
-    let stage: 'selection' | 'data' | 'workflow' = 'selection';
+    let stage: 'selection' | 'data' | 'workflow' = 'data';
     try {
-      stage = 'data';
       const target = await resolveConversationTargets({
         context: entryContext,
         loadLocalData,
@@ -138,16 +135,15 @@ export function createRagConversationService({
         observer,
         researchInputs,
       });
-      const runId = createOperationRunId?.() ?? operationRunId();
-      const publicSearch = normalizedQuestion
-        ? await conversationPublicSearch({
-            external,
-            observer,
-            runId,
-            question: normalizedQuestion,
-            signal,
-          })
-        : { status: 'unavailable' as const };
+      const searchPlan = await conversationPublicSearchPlan({
+        external,
+        observer,
+        runId: createOperationRunId?.() ?? operationRunId(),
+        question: normalizedQuestion,
+        signal,
+        continuation: await continuationFor(observer, selected, selectedAi),
+      });
+      const publicSearch = searchPlan.eager;
       if (publicSearch.status === 'cancelled')
         return { status: 'failure', kind: 'cancelled' };
       const { tools, generated, localRetrievalFailed } =
@@ -157,7 +153,7 @@ export function createRagConversationService({
           observer,
           researchInputs,
           external,
-          publicSearchSucceeded: publicSearch.status === 'success',
+          publicSearchSucceeded: searchPlan.includeExternalTools,
         });
       const retention = createConversationRetentionBridge({
         observer,
@@ -175,7 +171,7 @@ export function createRagConversationService({
       const baseExecution = executionOptions({
         consentPurpose: 'record_conversation',
         selected,
-        operationRunId: runId,
+        operationRunId: searchPlan.operationRunId,
         consent,
         registry,
         tools,
@@ -194,7 +190,8 @@ export function createRagConversationService({
         return { status: 'failure', kind: 'retrieval_failed' };
       const outcome = await ragRunner(
         conversationRunRequest({
-          continuation: await continuationFor(observer, selected, selectedAi),
+          continuation: searchPlan.continuation,
+          onInitialSearchStatus: searchPlan.onInitialSearchStatus,
           question: normalizedQuestion,
           photoEvidence,
           entryIntent: entryContext?.intent,
@@ -205,13 +202,16 @@ export function createRagConversationService({
           rag: data.rag,
           search: publicSearch,
           registry,
-          workflow: conversationRunWorkflow(
-            execution,
-            historyIsCurrent,
-            !!history.references.length || !!report,
-            publicSearch,
-            Boolean(normalizedQuestion && external.publicWebTool),
-          ),
+          workflow: {
+            ...conversationRunWorkflow(
+              execution,
+              historyIsCurrent,
+              !!history.references.length || !!report,
+              publicSearch,
+              searchPlan.chargeEagerSearch,
+            ),
+            initialSearch: searchPlan.initialSearch,
+          },
         }),
         conversationRunInvocation(
           observer,
@@ -234,7 +234,7 @@ export function createRagConversationService({
       if (fallback) return fallback;
       return await finishRagConversation({
         outcome,
-        publicSearch,
+        publicSearch: searchPlan.currentSearch,
         skipPublicSearchNotice: !normalizedQuestion,
         retention,
         signal,

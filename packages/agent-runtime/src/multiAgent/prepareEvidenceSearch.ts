@@ -1,3 +1,4 @@
+import { availableEvidenceTools } from './initialEvidenceSearch';
 import { journaledEvidenceSearch } from './journaledEvidenceSearch';
 import { canceled, completeState, emitToolEvent, operationKey, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
@@ -25,7 +26,9 @@ export function prepareEvidenceSearch<TResult>(
     canceled(context);
     return completeState();
   }
-  const tool = context.options.tools.find((candidate) => candidate.id === state.selectedToolId);
+  const tool = availableEvidenceTools(context.options, state).find(
+    (candidate) => candidate.id === state.selectedToolId,
+  );
   if (
     !tool ||
     !context.researchInput ||
