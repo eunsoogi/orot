@@ -33,7 +33,12 @@ copy without middle dots. They do not prove live provider availability or native
 Keychain behavior. The existing service identifier and native accessibility
 protection are preserved.
 
-Local checks: 21 provider/voice suites, 83 tests; app TypeScript; changed-file ESLint;
+Local checks: 21 provider/voice suites, 85 tests; app TypeScript; changed-file ESLint;
 Prettier and source LOC policy. No real credential, provider request, microphone,
 physical device, paid session or release is used for this verification. Required
 remote PR checks remain necessary and are not replaced by these focused results.
+
+Previous panel assertions for runtime consent and persistence failure remain in
+the panel suite. Credential readback and deletion assertions move to the account
+panel and store suites; deletion now explicitly preserves the saved destination
+instead of choosing local mode.
