@@ -60,6 +60,10 @@ test('keeps tool calls collapsed by default and expands each call independently'
     />,
   );
 
+  const group = screen.getByTestId('rag-tool-group-toggle');
+  expect(group.props.accessibilityState.expanded).toBe(false);
+  expect(group.props.accessibilityLabel).toContain('실패');
+  await fireEvent.press(group);
   const firstToggle = screen.getByTestId(
     `rag-tool-event-${first.operationRunId}-${first.callId}-toggle`,
   );
@@ -83,6 +87,11 @@ test('keeps tool calls collapsed by default and expands each call independently'
   await fireEvent.press(secondToggle);
   expect(firstToggle.props.accessibilityState.expanded).toBe(true);
   expect(secondToggle.props.accessibilityState.expanded).toBe(true);
+  expect(screen.getByTestId(firstDetailsId)).toBeTruthy();
+  expect(screen.getByTestId(secondDetailsId)).toBeTruthy();
+  await fireEvent.press(group);
+  expect(screen.queryByTestId(firstDetailsId)).toBeNull();
+  await fireEvent.press(group);
   expect(screen.getByTestId(firstDetailsId)).toBeTruthy();
   expect(screen.getByTestId(secondDetailsId)).toBeTruthy();
 });

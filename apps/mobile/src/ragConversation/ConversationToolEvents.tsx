@@ -9,6 +9,7 @@ import { styles } from './ConversationScreen.styles';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import { ConversationToolEventSources } from './ConversationToolEventSources';
+import { conversationToolLabel } from './conversationToolLabels';
 import { sourceKindLabel } from './ConversationToolEventPresentation';
 
 function statusLabel(status: ConversationToolEvent['status']) {
@@ -52,7 +53,7 @@ function ConversationToolEventDisclosure({
     <View style={styles.toolEventCard}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${event.toolName} · ${statusLabel(event.status)}`}
+        accessibilityLabel={`${conversationToolLabel(event.toolName)}  ${statusLabel(event.status)}`}
         accessibilityHint={
           expanded
             ? t('ragConversation.tool.collapseHint')
@@ -64,7 +65,7 @@ function ConversationToolEventDisclosure({
         testID={toggleId}
       >
         <Text numberOfLines={2} style={styles.toolEventName}>
-          {event.toolName}
+          {conversationToolLabel(event.toolName)}
         </Text>
         <Text
           accessibilityLiveRegion={
@@ -138,23 +139,56 @@ export function ConversationToolEvents({
   readonly onLinkError: () => void;
   readonly allowSourceActions?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const grouped = events.length > 1;
+  // Keep every distinct state visible in the summary; never call mixed outcomes successful.
+  const summary = [
+    ...new Set(events.map(event => statusLabel(event.status))),
+  ].join(', ');
   return (
     <View style={styles.toolEvents} testID="rag-conversation-tool-events">
-      {events.map(event => {
-        // Retries may reuse a call ID, so their run identities keep disclosures separate.
-        return (
-          <ConversationToolEventDisclosure
-            event={event}
-            key={`${sessionId}/${messageId}/${event.operationRunId}/${event.callId}`}
-            sessionId={sessionId}
-            durableMessageId={durableMessageId}
-            resolveToolSource={resolveToolSource}
-            onOpenSource={onOpenSource}
-            onLinkError={onLinkError}
-            allowSourceActions={allowSourceActions}
+      {grouped ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          accessibilityLabel={
+            t('ragConversation.tool.group', { count: events.length }) +
+            ', ' +
+            summary
+          }
+          onPress={() => setExpanded(value => !value)}
+          style={styles.toolEventToggle}
+          testID="rag-tool-group-toggle"
+        >
+          <Text style={styles.toolEventName}>
+            {t('ragConversation.tool.group', { count: events.length })}
+          </Text>
+          <Text style={styles.toolEventStatus}>{summary}</Text>
+          <AppSymbol
+            color={appColors.secondary}
+            name={expanded ? 'chevron.up' : 'chevron.down'}
+            size={16}
           />
-        );
-      })}
+        </Pressable>
+      ) : null}
+      {/* Keep disclosure state mounted through group toggles and streaming updates. */}
+      <View style={grouped && !expanded ? { display: 'none' } : undefined}>
+        {events.map(event => {
+          // Retries may reuse a call ID, so their run identities keep disclosures separate.
+          return (
+            <ConversationToolEventDisclosure
+              event={event}
+              key={`${sessionId}/${messageId}/${event.operationRunId}/${event.callId}`}
+              sessionId={sessionId}
+              durableMessageId={durableMessageId}
+              resolveToolSource={resolveToolSource}
+              onOpenSource={onOpenSource}
+              onLinkError={onLinkError}
+              allowSourceActions={allowSourceActions}
+            />
+          );
+        })}
+      </View>
     </View>
   );
 }

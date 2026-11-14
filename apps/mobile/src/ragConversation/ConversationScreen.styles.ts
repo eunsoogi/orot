@@ -62,13 +62,10 @@ export const styles = StyleSheet.create({
   compactStreamingBody: { paddingBottom: 0 },
   messageText: { fontSize: 16, lineHeight: 24 },
   activity: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
-  toolEvents: { gap: 8 },
+  toolEvents: { gap: 0 },
   toolEventCard: {
-    borderWidth: 1,
-    borderColor: appColors.border,
-    borderRadius: 14,
-    backgroundColor: appColors.background,
-    overflow: 'hidden',
+    // Secondary activity keeps touch targets without prominent nested cards.
+    backgroundColor: 'transparent',
   },
   // Keep each disclosure's native press target comfortable at larger text sizes.
   toolEventToggle: {
@@ -76,8 +73,8 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 0,
+    paddingVertical: 4,
   },
   toolEventName: {
     flex: 1,
