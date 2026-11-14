@@ -1,3 +1,7 @@
+import {
+  subscribeLocalSourceDeletion,
+  subscribeLocalDataClear,
+} from '../storage/localDataClearEvents';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { t } from '../i18n';
 import { useNavigationLeaveStateRegistration } from '../navigation';
@@ -10,7 +14,7 @@ import type {
 import { MedicalDocumentImportError } from './medicalDocumentNativeBridge';
 import type { StagedMedicalDocument } from './medicalDocumentNativeBridge';
 
-type ImportActivity = 'selecting' | 'saving' | 'discarding' | null;
+type ImportActivity = 'selecting' | 'saving' | 'discarding' | 'deleting' | null;
 
 function errorMessage(error: unknown): string {
   if (!(error instanceof MedicalDocumentImportError)) {
@@ -71,6 +75,7 @@ export function useMedicalDocumentImport(
   const [sourceLoading, setSourceLoading] = useState(false);
   const [sourceMessage, setSourceMessage] = useState<string | null>(null);
   const listGeneration = useRef(0);
+  const sourceGeneration = useRef(0);
 
   const loadSavedDocuments = useCallback(async () => {
     const generation = ++listGeneration.current;
@@ -93,6 +98,24 @@ export function useMedicalDocumentImport(
     loadSavedDocuments().catch(() => undefined);
     return () => {
       listGeneration.current += 1;
+    };
+  }, [loadSavedDocuments]);
+
+  useEffect(() => {
+    // Drop visible/cached excerpts at invalidation, before asynchronous file cleanup.
+    const invalidate = () => {
+      sourceGeneration.current += 1;
+      setSourceDetail(null);
+      setSavedDocuments([]);
+      setSourceLoading(false);
+      loadSavedDocuments().catch(() => undefined);
+    };
+    const stopSource = subscribeLocalSourceDeletion(invalidate);
+    const stopAll = subscribeLocalDataClear(invalidate);
+    return () => {
+      sourceGeneration.current += 1;
+      stopSource();
+      stopAll();
     };
   }, [loadSavedDocuments]);
 
@@ -168,28 +191,38 @@ export function useMedicalDocumentImport(
   }
 
   async function openSavedDocument(sourceId: string) {
+    if (operationInProgress.current) return;
+    const generation = ++sourceGeneration.current;
     setSourceLoading(true);
     setSourceMessage(null);
     try {
       const document = await service.getDocument(sourceId);
+      if (generation !== sourceGeneration.current) return;
       if (!document) {
         setSourceMessage(t('medicalDocument.source.notFound'));
         return;
       }
       setSourceDetail(document);
     } catch {
-      setSourceMessage(t('medicalDocument.source.loadError'));
+      if (generation === sourceGeneration.current)
+        setSourceMessage(t('medicalDocument.source.loadError'));
     } finally {
-      setSourceLoading(false);
+      if (generation === sourceGeneration.current) setSourceLoading(false);
     }
   }
 
   function closeSavedDocument() {
+    sourceGeneration.current += 1;
+    setSourceLoading(false);
     setSourceDetail(null);
     setSourceMessage(null);
   }
 
   return {
+    setDeletionBusy: (busy: boolean) => {
+      operationInProgress.current = busy;
+      setActivity(busy ? 'deleting' : null);
+    },
     closeSavedDocument,
     activity,
     discardMedicalDocument,

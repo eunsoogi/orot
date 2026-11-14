@@ -1,5 +1,7 @@
+import { medicalDocumentDeletionKo } from './medicalDocumentDeletion';
 /** Korean copy for selecting and viewing medical-document original photos. */
 export const medicalDocumentOriginalPhotoKo = {
+  ...medicalDocumentDeletionKo,
   'medicalDocument.review.originalPhoto': '선택한 원본 사진',
   'medicalDocument.review.photoReselect':
     '글자가 정확하지 않으면 가져오지 않고 다른 사진을 선택해 주세요.',
