@@ -56,8 +56,8 @@ test('keeps only the latest root tab transition when rapid taps interrupt moveme
   await view.rerender(transition('schedule', 'Schedule'));
   expect(pendingAnimations).toHaveLength(2);
   expect(pendingAnimations[0]?.stop).toHaveBeenCalled();
-  expect(pendingAnimations[0]?.toValue).toBe(-4);
-  expect(pendingAnimations[1]?.toValue).toBe(-4);
+  expect(pendingAnimations[0]?.toValue).toBe(-12);
+  expect(pendingAnimations[1]?.toValue).toBe(-12);
   expect(
     screen.getByText('Home', { includeHiddenElements: true }),
   ).toBeTruthy();
@@ -78,7 +78,7 @@ test('keeps only the latest root tab transition when rapid taps interrupt moveme
   ).toBeTruthy();
   expect(screen.queryByText('Records')).toBeNull();
   expect(pendingAnimations[2]?.toValue).toBe(0);
-  expect(pendingAnimations[2]?.duration).toBe(140);
+  expect(pendingAnimations[2]?.duration).toBe(200);
   await act(async () => {
     pendingAnimations[2]?.complete({ finished: true });
   });
@@ -169,4 +169,21 @@ test('keeps glass ancestors fully opaque throughout root transitions', async () 
       includeHiddenElements: true,
     }),
   ).toHaveStyle({ opacity: 1 });
+});
+
+test('an obsolete enter completion cannot unlock a newer destination', async () => {
+  const view = await render(transition('home', 'Home'));
+  await view.rerender(transition('records', 'Records'));
+  await act(async () => pendingAnimations[0]!.complete({ finished: true }));
+  const obsoleteEnter = pendingAnimations[1]!;
+  await view.rerender(transition('schedule', 'Schedule'));
+  await act(async () => pendingAnimations[2]!.complete({ finished: true }));
+  await act(async () => obsoleteEnter.complete({ finished: true }));
+  expect(
+    screen.getByTestId('navigation-content-transition', {
+      includeHiddenElements: true,
+    }).props.pointerEvents,
+  ).toBe('none');
+  await act(async () => pendingAnimations[3]!.complete({ finished: true }));
+  expect(screen.getByText('Schedule')).toBeVisible();
 });

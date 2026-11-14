@@ -1,10 +1,10 @@
+import { NavigationModal } from '../navigation/NavigationModal';
 import { AvatarArtwork as AvatarSymbol } from './AvatarArtwork';
 import { appearanceEditorStyles as styles } from './appearanceEditorStyles';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   AccessibilityInfo,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -106,9 +106,8 @@ export function AppearanceEditor({
     }
   }
   return (
-    <Modal
+    <NavigationModal
       visible
-      animationType="none"
       onRequestClose={busy ? () => {} : (onCancel ?? (() => {}))}
     >
       <SafeAreaLayout>
@@ -222,6 +221,6 @@ export function AppearanceEditor({
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaLayout>
-    </Modal>
+    </NavigationModal>
   );
 }

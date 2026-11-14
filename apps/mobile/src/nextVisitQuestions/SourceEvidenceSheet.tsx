@@ -1,11 +1,5 @@
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { NavigationModal } from '../navigation/NavigationModal';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import type {
   NextVisitEvidenceReference,
@@ -30,8 +24,7 @@ export function SourceEvidenceSheet<
     : copy.evidence.noDate;
 
   return (
-    <Modal
-      animationType="slide"
+    <NavigationModal
       onRequestClose={onClose}
       transparent
       visible={reference !== null}
@@ -71,7 +64,7 @@ export function SourceEvidenceSheet<
           ) : null}
         </ScrollView>
       </View>
-    </Modal>
+    </NavigationModal>
   );
 }
 
