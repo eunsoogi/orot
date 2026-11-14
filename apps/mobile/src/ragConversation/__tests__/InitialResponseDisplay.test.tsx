@@ -36,8 +36,8 @@ test('does not flash a receipt for fast answers and clears its timer when cancel
   jest.useFakeTimers();
   const { act } = require('@testing-library/react-native');
   const receipt = { source: 'receipt' as const, text: '질문을 받았어요.' };
-  const scheduled = jest.spyOn(global, 'setTimeout');
-  const cleared = jest.spyOn(global, 'clearTimeout');
+  const scheduled = jest.spyOn(globalThis, 'setTimeout');
+  const cleared = jest.spyOn(globalThis, 'clearTimeout');
   try {
     const view = await render(
       <ConversationInitialResponse key="first" response={receipt} />,
@@ -61,7 +61,10 @@ test('does not flash a receipt for fast answers and clears its timer when cancel
     ).toBeNull();
     const receiptTimer =
       scheduled.mock.results[
-        scheduled.mock.calls.findLastIndex(call => call[1] === 750)
+        scheduled.mock.calls.reduce(
+          (last, call, index) => (call[1] === 750 ? index : last),
+          -1,
+        )
       ]?.value;
     expect(receiptTimer).toBeDefined();
     await view.unmount();
