@@ -83,3 +83,5 @@ export type {
 } from './healthObservationPageFilter';
 export { localQueryTimestampKey, localQueryTimestampKeyExpression } from './localQueryTimestamp';
 export type { HealthMedicationPage, HealthMedicationPageRequest } from './healthMedicationPages';
+
+export { insertManualHistoryEntry, readManualHistoryEntry } from './manualHistoryPersistence';

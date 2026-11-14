@@ -3,6 +3,7 @@ import { t } from '../i18n';
 /** Labels never replace durable tool IDs or invent an unknown tool's purpose. */
 export const conversationToolLabelKeys = {
   'local-health-context': 'health',
+  'save-past-health-history': 'saveHistory',
   'local-personal-records': 'records',
   'local-reviewed-memory': 'memory',
   'local-generated-artifacts': 'summaries',

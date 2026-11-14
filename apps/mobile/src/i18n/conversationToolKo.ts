@@ -1,5 +1,6 @@
 /** Localized display names for conversation tools, independent of persisted identifiers. */
 export const conversationToolKo = {
+  'ragConversation.tool.name.saveHistory': '과거 건강 기록 저장',
   'ragConversation.tool.name.health': '건강 기록 확인',
   'ragConversation.tool.name.records': '개인 기록 검색',
   'ragConversation.tool.name.memory': '확인된 기억 검색',
