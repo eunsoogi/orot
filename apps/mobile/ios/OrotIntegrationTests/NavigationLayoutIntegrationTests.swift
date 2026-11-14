@@ -160,7 +160,7 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
         let button = try XCTUnwrap(stack.arrangedSubviews.compactMap { $0 as? UIButton }.first)
         let attachedLayer = button.layer
 
-        // One route action stays mounted while its save label and accessibility identity change.
+        // Preserve mounted identity and inspect the rendered UILabel, not the styling-only configuration.
         for (label, testID, disabled) in [
             ("저장 중", "next-visit-review-save", true),
             ("검토한 질문을 다시 수정합니다", "next-visit-saved-edit", false),
@@ -170,7 +170,7 @@ final class NavigationLayoutIntegrationTests: OrotFailFastTestCase {
             let current = try XCTUnwrap(stack.arrangedSubviews.compactMap { $0 as? UIButton }.first)
             XCTAssertTrue(button === current)
             XCTAssertTrue(attachedLayer === current.layer)
-            XCTAssertEqual(current.configuration?.title, label)
+            XCTAssertEqual(try XCTUnwrap(descendants(current).first { $0.accessibilityIdentifier == testID + "-UILabel" } as? UILabel).text, label)
             XCTAssertEqual(current.accessibilityIdentifier, testID)
             XCTAssertEqual(current.accessibilityLabel, label)
             XCTAssertEqual(current.isEnabled, !disabled)
