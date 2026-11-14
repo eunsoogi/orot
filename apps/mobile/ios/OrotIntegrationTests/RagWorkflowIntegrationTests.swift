@@ -18,8 +18,9 @@ final class RagWorkflowIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(result["actualModel"] as? String, "not-run")
         XCTAssertEqual(result["availability"] as? String, "available")
         XCTAssertEqual(result["retrieval"] as? String, "observed")
+        // Consent and transport must preserve the exact public query; abstract coverage is checked on results.
         let consent = try XCTUnwrap(result["consent"] as? [[String: String]])
-        XCTAssertEqual(consent, [["query": "(sleep duration adults) AND HAS_ABSTRACT:y", "decision": "authorized"]])
+        XCTAssertEqual(consent, [["query": "sleep duration adults", "decision": "authorized"]])
         for key in ["requests", "responses", "publications"] {
             XCTAssertFalse(try XCTUnwrap(result[key] as? [Any]).isEmpty, key)
         }
@@ -32,7 +33,7 @@ final class RagWorkflowIntegrationTests: OrotFailFastTestCase {
         let query = try XCTUnwrap(request.queryItems)
         XCTAssertEqual(query.count, 4)
         // URLSearchParams uses form encoding for spaces; Foundation queryItems preserves its plus signs.
-        XCTAssertEqual(query.first { $0.name == "query" }?.value?.replacingOccurrences(of: "+", with: " "), "(sleep duration adults) AND HAS_ABSTRACT:y")
+        XCTAssertEqual(query.first { $0.name == "query" }?.value?.replacingOccurrences(of: "+", with: " "), "sleep duration adults")
         let publications = try XCTUnwrap(result["publications"] as? [[String: Any]])
         XCTAssertEqual(publications.count, 5)
         let publication = try XCTUnwrap(publications.first)
