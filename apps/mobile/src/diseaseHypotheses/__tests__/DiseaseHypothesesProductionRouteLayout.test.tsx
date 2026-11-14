@@ -42,7 +42,7 @@ jest
       );
       return;
     }
-    if (testID === 'disease-hypotheses-columns-frame-host') {
+    if (testID === 'summary-history-columns-frame-host') {
       // The inner screen measures its actual route parent when the scene owns layout.
       const parentPanel = routeKey
         ? screen.queryByTestId(`navigation-route-columns-${routeKey}-primary`)
@@ -108,7 +108,7 @@ function viewport(width: number) {
 
 function columnsAxis() {
   return StyleSheet.flatten(
-    screen.getByTestId('disease-hypotheses-columns').props.style,
+    screen.getByTestId('summary-history-columns').props.style,
   )?.flexDirection;
 }
 
@@ -163,6 +163,16 @@ test('restores saved analysis and source across expanded and narrow production r
   const services = {
     summarizeSymptoms: summary,
     generateDiseaseHypotheses: assessment,
+    summaryHistory: {
+      list: async () => [
+        {
+          id: 'saved-summary',
+          createdAt: '2035-01-01T00:00:00Z',
+          modelName: 'Synthetic',
+        },
+      ],
+      read: async () => restored,
+    },
   } as unknown as AiFeatureServices;
   const rootTabs = { activeTab: 'conversation' as const, onSelect: noop };
 
@@ -205,6 +215,9 @@ test('restores saved analysis and source across expanded and narrow production r
 
   await fireEvent.press(screen.getByTestId('open-saved-analysis'));
   const routeKey = controller.getSnapshot().currentRoute.key;
+  await fireEvent.press(
+    await screen.findByRole('button', { name: /Synthetic/ }),
+  );
   expect(await screen.findByText('Synthetic symptom summary')).toBeTruthy();
 
   activeGeometry = geometry(1280, true);
@@ -215,9 +228,7 @@ test('restores saved analysis and source across expanded and narrow production r
     screen.queryByTestId(`navigation-route-columns-${routeKey}`),
   ).toBeNull();
   expect(columnsAxis()).toBe('column');
-  expect(
-    screen.getByTestId('disease-hypotheses-columns-secondary'),
-  ).toBeTruthy();
+  expect(screen.getByTestId('conversation-saved-summary-detail')).toBeTruthy();
   expect(screen.queryByTestId('symptom-summary-generate')).toBeNull();
   expect(screen.queryByTestId('disease-hypotheses-generate')).toBeNull();
   await fireEvent.press(screen.getByLabelText('원문 근거 열기 · 건강 기록'));
@@ -230,9 +241,7 @@ test('restores saved analysis and source across expanded and narrow production r
   });
   expect(columnsAxis()).toBe('column');
   expect(screen.getByText('Synthetic symptom summary')).toBeTruthy();
-  expect(
-    screen.getByTestId('disease-hypotheses-columns-secondary'),
-  ).toBeTruthy();
+  expect(screen.getByTestId('conversation-saved-summary-detail')).toBeTruthy();
   expect(screen.queryByTestId('symptom-summary-generate')).toBeNull();
   expect(screen.queryByTestId('disease-hypotheses-generate')).toBeNull();
   await fireEvent.press(screen.getByLabelText('원문 근거 열기 · 건강 기록'));
