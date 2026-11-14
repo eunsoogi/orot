@@ -102,6 +102,33 @@ final class EncounterInputObservation {
     import XCTest
 
     @MainActor extension EncounterInputObservation {
+        /// Observe one unchanged tap; AX frames/center are not UIKit hit-test or synthesized-point proof.
+        static func tapTranscriptSave(_ button: XCUIElement, in app: XCUIApplication, testCase: XCTestCase) {
+            for phase in ["before", "after"] {
+                let ids = ["navigation-route-scroll", "navigation-content-region", "bottom-navigation-action-bar", "navigation-action-bar-overlay", "transcript-save-0", "transcript-input-0"]
+                let states = ids.map { id in
+                    let matches = app.descendants(matching: .any).matching(identifier: id)
+                    let item = matches.firstMatch
+                    return "\(id): count=\(matches.count), exists=\(item.exists), enabled=\(item.exists && item.isEnabled), hittable=\(item.exists && item.isHittable), frame=\(item.exists ? String(describing: item.frame) : "missing")"
+                }.joined(separator: "\n")
+                let keyboard = app.keyboards.firstMatch
+                let frame = button.frame
+                let windows = app.windows.allElementsBoundByIndex.map { "window: frame=\($0.frame), hittable=\($0.isHittable)" }.joined(separator: "\n")
+                let state = "windows=\(windows)\nphase=\(phase), uptime=\(ProcessInfo.processInfo.systemUptime), app=\(app.frame), targetCenter=(\(frame.midX),\(frame.midY)), keyboard=\(keyboard.exists ? String(describing: keyboard.frame) : "missing")\n\(states)"
+                let attachment = XCTAttachment(string: state)
+                attachment.name = "transcript-save-\(phase)-geometry"
+                attachment.lifetime = .keepAlways
+                testCase.add(attachment)
+                let screenshot = XCTAttachment(screenshot: app.screenshot())
+                screenshot.name = "transcript-save-\(phase)-screen"
+                screenshot.lifetime = .keepAlways
+                testCase.add(screenshot)
+                if phase == "before" {
+                    button.tap()
+                }
+            }
+        }
+
         /// Retain the live keyboard, controls and native navigation receipt before evaluating their placement.
         static func captureSaveNavigationState(_ app: XCUIApplication, input: XCUIElement, testCase: XCTestCase) {
             let ids = ["next-visit-review-save", "navigation-back", "navigation-toolbar", "navigation-page-action-toolbar", "navigation-content-region"]
