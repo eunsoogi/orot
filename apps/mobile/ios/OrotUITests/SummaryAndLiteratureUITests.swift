@@ -199,15 +199,9 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
 
     @MainActor
     private func query(_ app: XCUIApplication, _ text: String) {
+        // Use native selection and synchronized characters; reject partial input before any search.
         let input = node(app, "external-evidence-query")
-        node(app, "external-medical-evidence-screen").swipeDown()
-        UITestConditions.scrollTo(input, in: app)
-        input.tap()
-        let previous = (input.value as? String) ?? ""
-        if previous != "예: 수면과 혈압의 관계", !previous.isEmpty {
-            input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: previous.count))
-        }
-        input.typeText(text)
+        XCTAssertTrue(FormUITestConditions.replace(input, with: text, in: app, scrollID: "external-medical-evidence-screen", useNativeSelectAllMenu: true))
     }
 
     @MainActor
