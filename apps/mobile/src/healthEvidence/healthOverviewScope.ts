@@ -13,7 +13,7 @@ export const HEALTH_OVERVIEW_KINDS = new Set<RecordKind>([
 // Other measurements remain eligible; this bounded view never claims an exhaustive history.
 export const HEALTH_OVERVIEW_PRIORITY_SQL = `CASE WHEN lower(json_extract(r.payload_json, '$.concept')) IN (
   'blood pressure systolic', 'blood_pressure_systolic', 'blood pressure diastolic',
-  'blood_pressure_diastolic', 'heart_rate', 'body_mass', 'weight', 'step_count',
+  'blood_pressure_diastolic', 'heart_rate', 'body_mass', 'weight', 'step_count', 'workout_duration',
   'hkcategorytypeidentifiersleepanalysis', 'sleep') THEN 1 ELSE 0 END`;
 
 export type HealthOverviewGroup =
@@ -41,7 +41,8 @@ export function healthOverviewGroup(
   if (entry.kind === 'symptom_entry') return 'symptoms';
   if (entry.kind !== 'health_observation') return undefined;
   const concept = entry.record.concept.toLowerCase();
-  if (concept === 'step_count') return 'activity';
+  if (concept === 'step_count' || concept === 'workout_duration')
+    return 'activity';
   if (
     concept === 'sleep' ||
     concept === 'hkcategorytypeidentifiersleepanalysis'

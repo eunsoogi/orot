@@ -1,5 +1,6 @@
 // Empty HealthKit results cannot establish denial because read authorization is unobservable.
 export const commonObservationsKo = {
+  'healthkit.commonObservations.workouts': '운동 기록',
   'healthkit.commonObservations.open': '건강 기록 가져오기',
   'healthkit.commonObservations.title': '건강 기록 가져오기',
   'healthkit.commonObservations.description':
