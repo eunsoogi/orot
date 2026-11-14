@@ -39,16 +39,10 @@ export function AppearanceEditor({
   initial,
   onSave,
   onCancel,
-  onClear,
-  onClearStart,
-  onClearFailed,
 }: {
   initial?: AssistantAppearance;
   onSave: (value: AssistantAppearance) => void;
   onCancel?: () => void;
-  onClear?: () => void;
-  onClearStart?: () => void;
-  onClearFailed?: () => void;
 }) {
   const [avatar, setAvatar] = useState<AvatarId | null>(
     initial?.avatar ?? null,
@@ -80,23 +74,6 @@ export function AppearanceEditor({
       onSave(await appearanceStore.save({ avatar, name: normalized }));
     } catch {
       setError(t('assistantAppearance.saveError'));
-    } finally {
-      saving.current = false;
-      setBusy(false);
-    }
-  }
-  async function clear() {
-    if (saving.current) return;
-    saving.current = true;
-    setBusy(true);
-    setError('');
-    onClearStart?.();
-    try {
-      await appearanceStore.clear();
-      onClear?.();
-    } catch {
-      onClearFailed?.();
-      setError(t('assistantAppearance.clearError'));
     } finally {
       saving.current = false;
       setBusy(false);
@@ -194,14 +171,6 @@ export function AppearanceEditor({
             variant="cancel"
             disabled={busy}
             onPress={onCancel}
-          />
-        ) : null}
-        {onClear ? (
-          <AppButton
-            title={t('assistantAppearance.clear')}
-            variant="text"
-            disabled={busy}
-            onPress={clear}
           />
         ) : null}
       </SafeAreaLayout>
