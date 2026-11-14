@@ -97,3 +97,49 @@ test('prototype tool methods preserve their original receiver', async () => {
     batch(item('owned')),
   );
 });
+
+test('empty search coverage survives restoration without a repeated search', async () => {
+  const empty: EvidenceBatch = {
+    items: [],
+    conflicts: [],
+    coverage: [
+      {
+        sourceKind: 'external_medical',
+        searchedSourceIds: ['synthetic-search'],
+        gaps: ['No matching publications'],
+        truncated: true,
+        resultLimit: 1,
+        returnedCount: 0,
+      },
+    ],
+  };
+  const tool = { search: jest.fn(async () => empty) };
+  const cache = conversationWorkflowEvidenceCache({
+    initialEvidence: { items: [], coverage: [], conflicts: [] },
+    tools: [tool],
+    execution: { budget: DEFAULT_MULTI_AGENT_BUDGET },
+  } as unknown as MultiAgentWorkflowOptions<unknown>);
+  await cache.tools[0]!.search({} as never);
+  const restored = await cache.restoreEvidence(
+    [],
+    new AbortController().signal,
+  );
+  expect(restored.items).toEqual([]);
+  expect(restored.coverage).toEqual([
+    expect.objectContaining({
+      sourceKind: 'external_medical',
+      searchedSourceIds: ['synthetic-search'],
+      gaps: ['No matching publications'],
+      truncated: true,
+      returnedCount: 0,
+    }),
+  ]);
+  expect(tool.search).toHaveBeenCalledTimes(1);
+  expect(
+    validateEvidenceBatch(
+      restored,
+      { sourceKinds: ['external_medical'] },
+      DEFAULT_MULTI_AGENT_BUDGET,
+    ),
+  ).toBeUndefined();
+});

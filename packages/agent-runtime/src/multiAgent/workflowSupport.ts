@@ -180,10 +180,14 @@ export async function restoreRunEvidence<TResult>(
 ): Promise<MultiAgentWorkflowOptions<TResult>['initialEvidence'] | undefined> {
   // Resume only after current source revisions match; checkpoint references never restore content.
   const refs = state.evidenceReferences;
-  if (refs.length === 0) return { items: [], coverage: [], conflicts: [] };
-  if (!options.restoreEvidence) return undefined;
-  const freshness = await observeUntilAbort(options.revalidateEvidence(refs, signal), signal);
-  if (freshness.kind !== 'value' || !freshness.value) return undefined;
+  // An empty search still has coverage and gaps. A registered restorer owns that
+  // metadata too; never replace its result with a fabricated unsearched batch.
+  if (!options.restoreEvidence)
+    return refs.length === 0 ? { items: [], coverage: [], conflicts: [] } : undefined;
+  if (refs.length > 0) {
+    const freshness = await observeUntilAbort(options.revalidateEvidence(refs, signal), signal);
+    if (freshness.kind !== 'value' || !freshness.value) return undefined;
+  }
   const restoration = await observeUntilAbort(options.restoreEvidence(refs, signal), signal);
   if (restoration.kind !== 'value') return undefined;
   const restored = restoration.value;

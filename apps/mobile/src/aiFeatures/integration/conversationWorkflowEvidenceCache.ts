@@ -44,7 +44,13 @@ export function conversationWorkflowEvidenceCache<T>(
           items.get(stableEvidenceReference(reference))!,
         ),
         coverage: [
-          ...new Set(references.map(reference => reference.sourceKind)),
+          // Zero-result batches carry real search limitations even without a citation.
+          ...new Set([
+            ...references.map(reference => reference.sourceKind),
+            ...batches
+              .filter(batch => batch.items.length === 0)
+              .flatMap(batch => batch.coverage.map(value => value.sourceKind)),
+          ]),
         ].map(sourceKind => {
           const original = batches
             .flatMap(batch => batch.coverage)
