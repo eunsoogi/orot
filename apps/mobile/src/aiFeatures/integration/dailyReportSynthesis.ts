@@ -6,6 +6,7 @@ import {
   incomparableDailyReportIndexes,
 } from './dailyReportFacts';
 
+import { stableJson } from './evidenceUtils';
 import { visibleValue } from './evidenceSourceValues';
 
 type Claim = DailyReportOutput['supportedContext'][number];
@@ -76,6 +77,7 @@ export function dailyReportSynthesis(
       at: string;
       unit: string;
       concept: string;
+      pointMeasurement: boolean;
     }[]
   >();
   for (const [index, item] of values.entries()) {
@@ -89,12 +91,17 @@ export function dailyReportSynthesis(
     if (record.value.kind !== 'quantity') continue;
     // Compare only the same metric, unit and source. Do not sum overlapping
     // wearables, cumulative samples, or compare incompatible measurement methods.
-    const key = JSON.stringify([
+    const key = stableJson([
       record.concept,
       record.value.unit,
       record.provenance.origin,
-      record.provenance.source?.system,
-      record.provenance.source?.sourceName,
+      record.provenance.source,
+      // Imported samples without stable source identity cannot establish a
+      // same-source comparison merely because their display names match.
+      record.provenance.origin === 'imported' &&
+      !record.provenance.source?.sourceIdentifier
+        ? record.id
+        : undefined,
     ]);
     const group = groups.get(key) ?? [];
     group.push({
@@ -108,6 +115,24 @@ export function dailyReportSynthesis(
             : record.value.unit,
       at: record.effectiveAt,
       concept: visibleValue(record.concept, 'concept') ?? record.concept,
+      // Interval totals and cumulative quantities (steps, energy, sleep) are
+      // not comparable point readings, even with equal units and provenance.
+      pointMeasurement:
+        (!record.endedAt ||
+          compareTimestamps(record.endedAt, record.effectiveAt) === 0) &&
+        [
+          'heart_rate',
+          'resting_heart_rate',
+          'body_mass',
+          'weight',
+          'blood_pressure_systolic',
+          'blood_pressure_diastolic',
+          'blood pressure systolic',
+          'blood pressure diastolic',
+          'body_temperature',
+          'blood_glucose',
+          'oxygen_saturation',
+        ].includes(record.concept),
     });
     groups.set(key, group);
   }
@@ -137,6 +162,13 @@ export function dailyReportSynthesis(
               }),
             ]),
           ],
+        ),
+      );
+    } else if (!group.every(item => item.pointMeasurement)) {
+      result.push(
+        claim(
+          `오늘 ${first.concept} 기록은 구간 또는 누적 측정일 수 있어 첫 값과 마지막 값을 비교해 증가·감소로 해석하지 않았어요. 측정 구간과 원본 값을 아래 기록에서 함께 확인해 주세요.`,
+          indexes,
         ),
       );
     } else if (

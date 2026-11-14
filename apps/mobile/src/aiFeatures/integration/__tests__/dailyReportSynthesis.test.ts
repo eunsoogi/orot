@@ -125,3 +125,65 @@ test('rejects a source identity mismatch', () => {
     ),
   ).toThrow('Snapshot source mismatch');
 });
+
+test.each(['sourceIdentifier', 'productType', 'device'] as const)(
+  'keeps different %s sources separate even with matching names',
+  field => {
+    const values = [measurement('a', 70), measurement('b', 90, '09')];
+    values.forEach((item, index) => {
+      item.record.provenance = {
+        origin: 'imported',
+        sourceRecordIds: [],
+        source: {
+          system: 'healthkit',
+          sourceName: 'Health',
+          sourceIdentifier: 'same.app',
+          ...(field === 'sourceIdentifier'
+            ? { sourceIdentifier: `app.${index}` }
+            : field === 'productType'
+              ? { productType: `Watch${index}` }
+              : { device: { model: `Device${index}` } }),
+        },
+      };
+    });
+    const result = summarize(values);
+    expect(result).toHaveLength(2);
+    expect(
+      result.every(item => item.text.includes('변화는 알 수 없어요')),
+    ).toBe(true);
+  },
+);
+
+test('does not compare imported samples lacking a stable source identifier', () => {
+  const values = [measurement('a', 70), measurement('b', 90, '09')];
+  values.forEach(item => {
+    item.record.provenance = {
+      origin: 'imported',
+      sourceRecordIds: [],
+      source: { system: 'healthkit', sourceName: 'Health' },
+    };
+  });
+  expect(summarize(values)).toHaveLength(2);
+});
+
+test.each([
+  ['step_count', false],
+  ['step_count', true],
+  ['heart_rate', true],
+])('does not infer direction from %s interval=%s', (concept, interval) => {
+  const values = [
+    measurement('a', 1000, '01', 'count'),
+    measurement('b', 50, '09', 'count'),
+  ];
+  values.forEach((item, index) => {
+    if (item.kind !== 'health_observation') throw new Error('fixture');
+    item.record.concept = String(concept);
+    if (interval)
+      item.record.endedAt = index
+        ? '2035-01-01T09:01:00Z'
+        : '2035-01-01T02:00:00Z';
+  });
+  const result = summarize(values);
+  expect(result[0]?.text).toContain('증가·감소로 해석하지 않았어요');
+  expect(result[0]?.sourceReferences).toHaveLength(2);
+});
