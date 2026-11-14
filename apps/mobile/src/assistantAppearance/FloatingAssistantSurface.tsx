@@ -10,9 +10,11 @@ import { AssistantHeader } from './AssistantHeader';
 export function FloatingAssistantSurface({
   session,
   children,
+  identityWidth,
 }: {
   session: ConversationSession;
   children: ReactNode;
+  identityWidth?: number;
 }) {
   const [height, setHeight] = useState(0);
   const appearance = useAssistantAppearance();
@@ -25,7 +27,13 @@ export function FloatingAssistantSurface({
       {appearance?.ready ? (
         <View
           pointerEvents="box-none"
-          style={styles.overlay}
+          style={[
+            styles.overlay,
+            identityWidth !== undefined && {
+              width: identityWidth,
+              right: undefined,
+            },
+          ]}
           testID="assistant-floating-overlay"
           onLayout={event => setHeight(event.nativeEvent.layout.height)}
         >

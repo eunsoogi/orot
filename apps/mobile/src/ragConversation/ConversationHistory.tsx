@@ -1,3 +1,5 @@
+import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
+import { transcriptMessageVisible } from './conversationWorkspaceLayout';
 import { useFloatingIdentityInset } from '../assistantAppearance/FloatingIdentityInset';
 import { useRef } from 'react';
 import type { ComponentRef } from 'react';
@@ -38,6 +40,7 @@ export function ConversationHistory({
   requestActivity,
 }: ConversationHistoryProps) {
   const identityInset = useFloatingIdentityInset();
+  const separatedActivity = useSeparatedConversationActivity();
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
   const userScrolling = useRef(false);
@@ -193,26 +196,33 @@ export function ConversationHistory({
         testID="conversation-message-container"
         onLayout={event => replyScroll.container(event.nativeEvent.layout.y)}
       >
-        {visibleMessages.map(message => (
-          <ReplyMessageContainer
-            key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
-            focused={Boolean(
-              replyFocus && message.retainedTurnId === replyFocus.messageId,
-            )}
-            onLayout={replyScroll.message}
-          >
-            <ConversationMessage
-              message={message}
-              onOpenSource={onOpenSource}
-              onLinkError={onLinkError}
-              compact={compact}
-              toolSourceSessionId={toolSourceSessionId}
-              resolveToolSource={resolveToolSource}
-              renderVisitQuestions={renderVisitQuestions}
-            />
-          </ReplyMessageContainer>
-        ))}
-        {showActivityBubble ? <ConversationActivityBubble /> : null}
+        {visibleMessages
+          .filter(message =>
+            transcriptMessageVisible(message, separatedActivity),
+          )
+          .map(message => (
+            <ReplyMessageContainer
+              key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
+              focused={Boolean(
+                replyFocus && message.retainedTurnId === replyFocus.messageId,
+              )}
+              onLayout={replyScroll.message}
+            >
+              <ConversationMessage
+                message={message}
+                showToolActivity={false}
+                onOpenSource={onOpenSource}
+                onLinkError={onLinkError}
+                compact={compact}
+                toolSourceSessionId={toolSourceSessionId}
+                resolveToolSource={resolveToolSource}
+                renderVisitQuestions={renderVisitQuestions}
+              />
+            </ReplyMessageContainer>
+          ))}
+        {showActivityBubble && !separatedActivity ? (
+          <ConversationActivityBubble />
+        ) : null}
         <ConversationHistoryStatus
           {...{
             error,

@@ -44,6 +44,7 @@ export function ConversationMessage({
   onOpenSource,
   onLinkError,
   showCitations = true,
+  showToolActivity = true,
   compact = false,
   toolSourceSessionId,
   resolveToolSource,
@@ -53,6 +54,7 @@ export function ConversationMessage({
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly onLinkError: () => void;
   readonly showCitations?: boolean;
+  readonly showToolActivity?: boolean;
   readonly compact?: boolean;
   readonly toolSourceSessionId?: string | null;
   readonly resolveToolSource?: ResolveConversationToolSource;
@@ -68,21 +70,22 @@ export function ConversationMessage({
       : message.incomplete
         ? 'rag-conversation-incomplete-body'
         : 'rag-conversation-answer-body';
-  const activity = message.activity ? (
-    <Text
-      accessibilityLiveRegion={message.streaming ? 'none' : 'polite'}
-      style={styles.activity}
-      testID={
-        message.streaming
-          ? 'rag-conversation-progress'
-          : message.incomplete
-            ? 'rag-conversation-incomplete-activity'
-            : undefined
-      }
-    >
-      {message.activity}
-    </Text>
-  ) : null;
+  const activity =
+    message.activity && (showToolActivity || message.incomplete) ? (
+      <Text
+        accessibilityLiveRegion={message.streaming ? 'none' : 'polite'}
+        style={styles.activity}
+        testID={
+          message.streaming
+            ? 'rag-conversation-progress'
+            : message.incomplete
+              ? 'rag-conversation-incomplete-activity'
+              : undefined
+        }
+      >
+        {message.activity}
+      </Text>
+    ) : null;
   // Keep the last streamed line at the end of a short reading viewport.
   const activityBeforeText = compact && message.streaming;
   return (
@@ -124,16 +127,24 @@ export function ConversationMessage({
         ) : null}
         {activityBeforeText ? activity : null}
         {!user && message.toolEvents?.length ? (
-          <ConversationToolEvents
-            allowSourceActions={showCitations}
-            durableMessageId={message.toolMessageId}
-            events={message.toolEvents}
-            messageId={message.toolMessageId ?? String(message.id)}
-            onLinkError={onLinkError}
-            onOpenSource={onOpenSource}
-            resolveToolSource={resolveToolSource}
-            sessionId={toolSourceSessionId}
-          />
+          <View
+            style={!showToolActivity && styles.toolEventsHidden}
+            accessibilityElementsHidden={!showToolActivity}
+            importantForAccessibility={
+              showToolActivity ? 'auto' : 'no-hide-descendants'
+            }
+          >
+            <ConversationToolEvents
+              allowSourceActions={showCitations}
+              durableMessageId={message.toolMessageId}
+              events={message.toolEvents}
+              messageId={message.toolMessageId ?? String(message.id)}
+              onLinkError={onLinkError}
+              onOpenSource={onOpenSource}
+              resolveToolSource={resolveToolSource}
+              sessionId={toolSourceSessionId}
+            />
+          </View>
         ) : null}
         {user && (message.photoAttached || message.submittedInput?.ocr) ? (
           <Text style={[styles.messageText, styles.userText]}>
