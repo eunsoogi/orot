@@ -58,7 +58,9 @@ export function ConversationComposer({
     readonly onRemove: () => void;
   };
 }) {
-  const navigationInset = useNavigationContentInset(compact ? 0 : undefined);
+  // Fixed controls need a small visual gap, not the larger scroll-content gutter.
+  // The hook still preserves every authoritative navigation and system reservation.
+  const navigationInset = useNavigationContentInset(compact ? 0 : 4);
   const copy = getRagConversationCopy();
   const { fontScale, height } = useWindowDimensions();
   const textScale = Math.max(1, fontScale);
