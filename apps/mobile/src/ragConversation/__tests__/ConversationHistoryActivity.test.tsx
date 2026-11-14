@@ -130,7 +130,7 @@ test('hands off to partial streaming, stays visible during tool work, and clears
   );
 });
 
-test('keeps existing tool cards beside the bubble while another request phase is active', async () => {
+test('hides inline tool cards while preserving the active request indicator', async () => {
   const [toolEvent] = conversationToolEventFixtures;
   if (!toolEvent) throw new Error('Expected a synthetic tool event.');
 
@@ -149,10 +149,10 @@ test('keeps existing tool cards beside the bubble while another request phase is
   );
 
   expect(
-    screen.getByTestId(
+    screen.queryByTestId(
       `rag-tool-event-${toolEvent.operationRunId}-${toolEvent.callId}-toggle`,
     ),
-  ).toBeTruthy();
+  ).toBeNull();
   expect(
     screen.getByTestId('rag-conversation-activity-bubble', {
       includeHiddenElements: true,

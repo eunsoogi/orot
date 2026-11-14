@@ -113,12 +113,16 @@ test('the explicit visit action shows prepared questions in chat and keeps ordin
   );
   expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
   expect(send).not.toHaveBeenCalled();
-  await fireEvent.press(
-    screen.getByTestId('rag-tool-event-visit-run-call-1-toggle'),
-  );
+  // Small-screen tool cards are intentionally hidden; canonical events stay retained.
+  // Side-pane disclosure interaction is covered by ConversationWorkspace.test.tsx.
   expect(
-    screen.getByTestId('rag-tool-event-visit-run-call-1-details'),
-  ).toBeTruthy();
+    screen.queryByTestId('rag-tool-event-visit-run-call-1-toggle'),
+  ).toBeNull();
+  expect(
+    screen.getAllByTestId('rag-tool-event-visit-run-call-1-toggle', {
+      includeHiddenElements: true,
+    }).length,
+  ).toBeGreaterThan(0);
   expect(screen.getByTestId('inline-visit-review')).toBeTruthy();
   expect(save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('inline-visit-select-0'));

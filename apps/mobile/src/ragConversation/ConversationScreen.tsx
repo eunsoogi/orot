@@ -1,9 +1,9 @@
-import { AppButton as Button } from '../layout/AppButton';
+import { ConversationBackButton } from './ConversationBackButton';
 import { AppText as Text } from '../layout/AppText';
 import { useMemo, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationComposer } from './ConversationComposer';
-import { FloatingAssistantSurface } from '../assistantAppearance/FloatingAssistantSurface';
+import { ConversationWorkspace } from './ConversationWorkspace';
 import { ConversationHeaderTitle } from './ConversationHeaderTitle';
 import { styles } from './ConversationScreen.styles';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
@@ -11,7 +11,6 @@ import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
 import { ConversationEntryAction } from './ConversationEntryAction';
 import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
-import { navigationText } from '../i18n/navigation';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useConversationSessionActions } from './useConversationSessionActions';
@@ -30,7 +29,6 @@ import {
   ConversationTaskHeader,
   ConversationStoredTaskCards,
 } from './ConversationTaskPanels';
-
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
   isEntryCurrent,
@@ -87,6 +85,12 @@ export function ConversationScreen({
   );
   const onLinkError = () =>
     store.setError(id, t('ragConversation.conversation.sourceOpenFailed'));
+  const sourceActions = {
+    onOpenSource,
+    onLinkError,
+    toolSourceSessionId,
+    resolveToolSource,
+  };
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
     {
@@ -97,16 +101,14 @@ export function ConversationScreen({
     0,
     onNavigationStateChange,
   );
-
+  const sendMessage = () => {
+    sendConversationMessage(store, id, onSend, prepareVisitQuestions).catch(
+      () => {},
+    );
+  };
   const header = (
     <View style={styles.header}>
-      {!navigationRouteKey && (
-        <Button
-          accessibilityLabel={navigationText.back.accessibilityLabel}
-          onPress={onBack}
-          title={navigationText.back.label}
-        />
-      )}
+      {!navigationRouteKey && <ConversationBackButton onBack={onBack} />}
       <ConversationHeaderTitle
         title={copy.title}
         historyLabel={copy.sessions}
@@ -152,11 +154,15 @@ export function ConversationScreen({
         primary={
           <View
             style={styles.content}
+            testID="conversation-content-viewport"
             onLayout={event =>
               setContentHeight(event.nativeEvent.layout.height)
             }
           >
-            <FloatingAssistantSurface session={session}>
+            <ConversationWorkspace
+              session={session}
+              sourceActions={sourceActions}
+            >
               <ConversationHistory
                 replyFocus={focus}
                 sessionId={id}
@@ -216,7 +222,7 @@ export function ConversationScreen({
                   />
                 }
               />
-            </FloatingAssistantSurface>
+            </ConversationWorkspace>
             <ConversationComposer
               {...composer}
               photo={photo}
@@ -232,14 +238,7 @@ export function ConversationScreen({
               compact={composerLayout.compact}
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
-              onSend={() => {
-                sendConversationMessage(
-                  store,
-                  id,
-                  onSend,
-                  prepareVisitQuestions,
-                ).catch(() => {});
-              }}
+              onSend={sendMessage}
               onCancel={() => store.cancel(id)}
             />
           </View>
