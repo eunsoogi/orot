@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import {
   fireEvent,
   render,
@@ -61,9 +62,7 @@ test('shows the empty connection state beside its original sign-in action', asyn
   const subscription = within(
     screen.getByTestId('subscription-account-section'),
   );
-  expect(
-    subscription.getByRole('header', { name: 'ChatGPT 구독 계정 로그인' }),
-  ).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'ChatGPT' })).toBeTruthy();
   expect(subscription.getByTestId('chatgpt-account-action')).toBeTruthy();
   expect(subscription.queryByTestId('openai-api-key')).toBeNull();
   const api = within(screen.getByTestId('openai-api-account'));
@@ -163,7 +162,11 @@ test('preserves the connected account sign-out target and progress label', async
     />,
   );
 
+  const alert = jest.spyOn(Alert, 'alert');
   await fireEvent.press(screen.getByTestId('chatgpt-account-sign-out'));
+  expect(onSignOut).not.toHaveBeenCalled();
+  alert.mock.calls[0][2]![1].onPress!();
+  alert.mockRestore();
   expect(onSignOut).toHaveBeenCalledWith(connectedAccount.issuedClientID);
   await rerender(
     <SettingsAccountsPanels
@@ -178,7 +181,7 @@ test('preserves the connected account sign-out target and progress label', async
   );
 
   expect(
-    screen.getByText(providerSelectionText.chatGPTSigningOut(1)),
+    screen.getByLabelText(providerSelectionText.chatGPTSigningOut(1)),
   ).toBeTruthy();
   expect(
     screen.getByTestId('chatgpt-account-sign-out').props.accessibilityState

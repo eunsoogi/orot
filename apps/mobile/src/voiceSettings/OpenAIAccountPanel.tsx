@@ -60,60 +60,61 @@ export function OpenAIAccountPanel() {
     }
   };
   return (
-    <View testID="openai-api-account" style={styles.panel}>
-      <Text accessibilityRole="header">OpenAI API 연결</Text>
-      <Text>{connected ? 'API 키 연결됨' : 'API 키 연결 안 됨'}</Text>
-      <Text>
-        ChatGPT 구독 및 로그인과 별개의 연결입니다. API 통화에는 별도 요금이
-        발생할 수 있습니다.
+    <View testID="openai-api-account" style={styles.section}>
+      <Text accessibilityRole="header" style={styles.heading}>
+        OpenAI API
       </Text>
-      <Text>
-        기존 음성 설정의 키를 그대로 사용합니다. 키는 이 기기가 잠금 해제된
-        동안에만 접근할 수 있는 Keychain에 보관하며 표시하지 않습니다.
-      </Text>
-      <APIPlatformLink />
-      <TextInput
-        accessibilityLabel="OpenAI API 키"
-        testID="openai-api-key"
-        value={key}
-        onChangeText={setKey}
-        editable={!busy && !failed}
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoComplete="off"
-        textContentType="none"
-        maxLength={4096}
-        placeholder={connected ? '변경할 API 키 입력' : 'API 키 입력'}
-        style={styles.input}
-      />
-      <Button
-        title="API 키 저장"
-        busy={busy}
-        testID="openai-api-key-save"
-        disabled={busy || failed || !key.trim()}
-        onPress={() => {
-          save();
-        }}
-      />
-      {connected ? (
+      <View style={styles.panel}>
+        <Text>{connected ? 'API 키 연결됨' : 'API 키 연결 안 됨'}</Text>
+        <Text>
+          ChatGPT 구독과 별도이며, API 사용 요금이 발생할 수 있습니다.
+        </Text>
+        <APIPlatformLink />
+        <TextInput
+          accessibilityLabel="OpenAI API 키"
+          testID="openai-api-key"
+          value={key}
+          onChangeText={setKey}
+          editable={!busy && !failed}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="off"
+          textContentType="none"
+          maxLength={4096}
+          placeholder={connected ? '변경할 API 키 입력' : 'API 키 입력'}
+          style={styles.input}
+        />
         <Button
-          title="OpenAI API 연결 해제"
-          variant="destructive"
-          testID="openai-api-key-remove"
-          disabled={busy || failed}
+          title="API 키 저장"
+          busy={busy}
+          testID="openai-api-key-save"
+          disabled={busy || failed || !key.trim()}
           onPress={() => {
-            save(true);
+            save();
           }}
         />
-      ) : null}
-      <Text>저장만으로 API 요청이나 음성 전송은 시작되지 않습니다.</Text>
-      {message ? <Text accessibilityRole="alert">{message}</Text> : null}
+        {connected ? (
+          <Button
+            title="OpenAI API 연결 해제"
+            variant="destructive"
+            testID="openai-api-key-remove"
+            disabled={busy || failed}
+            onPress={() => {
+              save(true);
+            }}
+          />
+        ) : null}
+        <Text>저장만으로 API 요청이나 음성 전송은 시작되지 않습니다.</Text>
+        {message ? <Text accessibilityRole="alert">{message}</Text> : null}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  section: { gap: 12 },
+  heading: { color: appColors.text, fontWeight: '600' },
   panel: {
     gap: 12,
     padding: 16,
