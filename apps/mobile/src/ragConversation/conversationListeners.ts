@@ -1,4 +1,4 @@
-/** Keeps state synchronous while limiting token-driven React notifications to one per frame. */
+/** Keeps state synchronous while coalescing token-driven React notifications in 16ms windows. */
 export function createConversationListeners() {
   const listeners = new Set<() => void>();
   let pending: ReturnType<typeof setTimeout> | undefined;

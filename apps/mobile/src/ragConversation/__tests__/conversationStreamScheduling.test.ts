@@ -63,3 +63,20 @@ test('real conversation state retains every token before paint and Stop rejects 
   await sending;
   store.dispose();
 });
+
+test('the last unsubscribe drops its pending timer before a new subscriber joins', () => {
+  const listeners = createConversationListeners();
+  const old = jest.fn();
+  const unsubscribe = listeners.subscribe(old);
+  listeners.emitStream();
+  unsubscribe();
+  const current = jest.fn();
+  listeners.subscribe(current);
+  jest.runOnlyPendingTimers();
+  expect(old).not.toHaveBeenCalled();
+  expect(current).not.toHaveBeenCalled();
+  listeners.emitStream();
+  jest.advanceTimersByTime(16);
+  expect(current).toHaveBeenCalledTimes(1);
+  listeners.dispose();
+});
