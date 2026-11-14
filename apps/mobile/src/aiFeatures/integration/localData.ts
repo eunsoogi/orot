@@ -17,6 +17,11 @@ import type { createResearchArtifactDiscovery } from './researchArtifactDiscover
 export type { StaleEvidenceArtifact } from './transcriptInvalidations';
 
 export interface AiFeatureLocalData extends LocalEvidenceData {
+  /** Local mutation capability, deliberately absent from read-only evidence tools. */
+  saveConversationHistory?(
+    input: import('../../storage/conversationHealthHistory').ConversationHistorySave,
+    signal: AbortSignal,
+  ): Promise<string>;
   /** Checks the protected original and source generation; this does not authorize a new transmission. */
   validateConversationPhotoInput?(
     input: import('../../ragConversation/conversationSubmittedInput').ConversationSubmittedInput,
@@ -66,6 +71,11 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     Promise<ReturnType<typeof createConversationArtifactStorage>> | undefined;
   const data: AiFeatureLocalData = {
     repository,
+    async saveConversationHistory(input, signal) {
+      const { saveConversationHealthHistory } =
+        await import('../../storage/conversationHealthHistory');
+      return saveConversationHealthHistory(database, input, signal);
+    },
     rag,
     memoryStorage,
     ...createLocalEvidenceData(database),

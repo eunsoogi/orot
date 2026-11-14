@@ -150,7 +150,7 @@ export const healthkitSettingsKo = {
   'dailyReport.savedRevision': '저장된 버전 {revision}',
   'dailyReport.reportCutoff': '기록 확인 기준 시각: {time}',
   'dailyReport.observations': '확인된 기록',
-  'dailyReport.supportedContext': '기록으로 확인한 맥락',
+  'dailyReport.supportedContext': '오늘 건강 요약',
   'dailyReport.suggestedQuestions': 'AI가 제안한 질문',
   'dailyReport.reportCaution':
     'AI가 고른 기록이며, 독립적인 의학적 사실이나 진단이 아니에요.',

@@ -8,7 +8,8 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
         try await verifyRouteReplacementInWindow()
         let indicator = NavigationSelectionGlass()
         if #available(iOS 26.0, *), !UIAccessibility.isReduceTransparencyEnabled {
-            XCTAssertTrue(indicator.effect is UIGlassEffect)
+            let glass = try XCTUnwrap(indicator.effect as? UIGlassEffect)
+            XCTAssertNil(glass.tintColor, "The selection material must retain the system neutral glass appearance.")
         }
         if UIAccessibility.isReduceTransparencyEnabled {
             XCTAssertNil(indicator.effect)

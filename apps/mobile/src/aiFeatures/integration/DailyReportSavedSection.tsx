@@ -64,12 +64,6 @@ export function DailyReportSavedSection({
           ),
         })}
       </AppText>
-      <AppText accessibilityRole="header">
-        {t('dailyReport.observations')}
-      </AppText>
-      {saved.report.observations.map((item, index) => (
-        <AppText key={index}>{item.text}</AppText>
-      ))}
       {saved.report.supportedContext.length > 0 ? (
         <>
           <AppText accessibilityRole="header">
@@ -80,6 +74,12 @@ export function DailyReportSavedSection({
           ))}
         </>
       ) : null}
+      <AppText accessibilityRole="header">
+        {t('dailyReport.observations')}
+      </AppText>
+      {saved.report.observations.map((item, index) => (
+        <AppText key={index}>{item.text}</AppText>
+      ))}
       <DailyReportCoverage
         coverage={saved.report.coverage}
         sourceCounts={sourceCounts}

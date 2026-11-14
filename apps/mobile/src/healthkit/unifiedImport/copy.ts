@@ -12,6 +12,7 @@ export const unifiedHealthImportCopy: HealthKitImportScreenCopy = {
   importButton: t('healthkit.unifiedImport.import'),
   cancelButton: t('healthkit.unifiedImport.cancel'),
   featureNames: {
+    workouts: t('healthkit.unifiedImport.feature.workouts'),
     medications: t('healthkit.unifiedImport.feature.medications'),
     bloodPressure: t('healthkit.unifiedImport.feature.bloodPressure'),
     sleep: t('healthkit.unifiedImport.feature.sleep'),

@@ -45,7 +45,7 @@ test('keeps one settings end gutter beyond the navigation overlap', async () => 
     screen.getByTestId('navigation-route-scroll').props.contentContainerStyle,
   );
   const panel = StyleSheet.flatten(
-    screen.getByTestId('settings-title').parent!.props.style,
+    screen.getByTestId('settings-panel').props.style,
   );
   expect(scroll.paddingBottom + panel.paddingBottom).toBe(80);
 });

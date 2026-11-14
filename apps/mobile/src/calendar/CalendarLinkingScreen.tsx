@@ -1,7 +1,7 @@
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 import type { AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
@@ -22,6 +22,7 @@ import { navigationText } from '../i18n/navigation';
 import { useCalendarNavigationLeaveState } from './useCalendarNavigationLeaveState';
 
 interface CalendarLinkingScreenProps {
+  scrollHeader?: ReactNode;
   repository: AppointmentRepository;
   bridge: CalendarBridge;
   calendarSync?: CalendarAutoSyncState;
@@ -35,6 +36,7 @@ interface CalendarLinkingScreenProps {
 }
 
 export default function CalendarLinkingScreen({
+  scrollHeader,
   repository,
   bridge,
   calendarSync = emptyCalendarAutoSyncState,
@@ -137,6 +139,9 @@ export default function CalendarLinkingScreen({
         contentContainerStyle={[styles.container, navigationInset]}
         testID="calendar-screen"
       >
+        {scrollHeader ? (
+          <View style={styles.scrollHeader}>{scrollHeader}</View>
+        ) : null}
         {/* Calendar access and recovery details live in Settings, outside this passive schedule view. */}
         <View style={styles.heading}>
           <Text

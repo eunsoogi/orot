@@ -20,6 +20,7 @@ const sampleKindByFeature: Record<
   heartRate: ['heartRate'],
   steps: ['steps'],
   bodyMass: ['bodyMass'],
+  workouts: ['workouts'],
 };
 
 export function validateSampleQuery(query: HealthKitSampleQuery): void {

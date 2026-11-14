@@ -1,4 +1,5 @@
 import { NavigationInlineTransition } from '../navigation/NavigationInlineTransition';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -52,12 +53,18 @@ export function RecordsRoute({
     savedDocuments,
     savedDocumentsState,
     savedDocumentsError,
+    setDeletionBusy,
     sourceDetail,
     sourceLoading,
     sourceMessage,
     stagedDocument,
   } = useMedicalDocumentImport(documentImportService);
   const routeScrollPosition = useNavigationRouteScrollPosition();
+  useEffect(() => {
+    // Source invalidation closes detail before file cleanup settles.
+    if (activity === 'deleting' && !sourceDetail)
+      routeScrollPosition?.restore();
+  }, [activity, sourceDetail, routeScrollPosition]);
 
   function openSavedDocumentAtListPosition(sourceId: string) {
     // The root-tab ScrollView stays mounted while detail replaces the long Records list.
@@ -66,6 +73,7 @@ export function RecordsRoute({
   }
 
   function returnToRecordsList() {
+    if (activity === 'deleting') return;
     closeSavedDocument();
     routeScrollPosition?.restore();
   }
@@ -105,6 +113,12 @@ export function RecordsRoute({
         <MedicalDocumentSourceView
           document={sourceDetail}
           onBack={returnToRecordsList}
+          onDeletionBusyChange={setDeletionBusy}
+          onDeleted={() => {
+            closeSavedDocument();
+            routeScrollPosition?.restore();
+            reloadSavedDocuments().catch(() => undefined);
+          }}
         />
       </NavigationInlineTransition>
     );
@@ -145,7 +159,7 @@ export function RecordsRoute({
             documents={savedDocuments}
             documentsState={savedDocumentsState}
             documentsError={savedDocumentsError}
-            documentsOpening={sourceLoading}
+            documentsOpening={sourceLoading || activity === 'deleting'}
             onRetryRecordings={onRetryRecordings}
             onRetryDocuments={reloadSavedDocuments}
             onOpenMedicalDocument={openSavedDocumentAtListPosition}

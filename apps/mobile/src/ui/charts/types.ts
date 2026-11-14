@@ -1,6 +1,6 @@
 /** Feature owners supply provenance and coverage; charts never fetch health data. */
 export type ChartMetric =
-  'sleep' | 'heartRate' | 'bodyMass' | 'steps' | 'bloodPressure';
+  'workouts' | 'sleep' | 'heartRate' | 'bodyMass' | 'steps' | 'bloodPressure';
 export type ChartStatus =
   'ready' | 'loading' | 'permission' | 'empty' | 'error' | 'partial' | 'stale';
 export type ChartCoverage = {

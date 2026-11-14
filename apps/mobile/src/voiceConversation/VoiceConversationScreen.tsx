@@ -1,6 +1,6 @@
 import { NavigationModal } from '../navigation/NavigationModal';
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import SafeAreaLayout from '../layout/SafeAreaLayout';
 import { AppText } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -70,78 +70,77 @@ export function VoiceConversationScreen({
       presentationStyle="fullScreen"
       onRequestClose={onEnd}
     >
-      <SafeAreaLayout>
-        <ScrollView
-          testID="voice-call-screen"
-          contentContainerStyle={styles.content}
-        >
-          <AppText maxFontSizeMultiplier={2} style={styles.note}>
-            {manualFinish ? '기기 음성 대화' : '실시간 음성 대화'}
+      <SafeAreaLayout
+        scrollable
+        scrollTestID="voice-call-screen"
+        scrollContentStyle={styles.content}
+      >
+        <AppText maxFontSizeMultiplier={2} style={styles.note}>
+          {manualFinish ? '기기 음성 대화' : '실시간 음성 대화'}
+        </AppText>
+        <View style={styles.center}>
+          <View style={styles.identity}>{identity}</View>
+          {/* This is a phase symbol, not a fabricated audio amplitude or waveform. */}
+          <AppSymbol
+            name={
+              muted
+                ? 'mic.slash'
+                : phase === 'listening' || phase === 'speaking'
+                  ? 'waveform'
+                  : 'ellipsis'
+            }
+            size={32}
+            color={appColors.primary}
+          />
+          <AppText accessibilityLiveRegion="polite" style={styles.status}>
+            {muted ? t('ragConversation.voice.muted') : status}
           </AppText>
-          <View style={styles.center}>
-            <View style={styles.identity}>{identity}</View>
-            {/* This is a phase symbol, not a fabricated audio amplitude or waveform. */}
-            <AppSymbol
-              name={
-                muted
-                  ? 'mic.slash'
-                  : phase === 'listening' || phase === 'speaking'
-                    ? 'waveform'
-                    : 'ellipsis'
-              }
-              size={32}
-              color={appColors.primary}
-            />
-            <AppText accessibilityLiveRegion="polite" style={styles.status}>
-              {muted ? t('ragConversation.voice.muted') : status}
-            </AppText>
-            <AppText maxFontSizeMultiplier={2} style={styles.note}>
-              {pipeline ?? t('ragConversation.voice.localPipeline')}
-            </AppText>
-          </View>
-          {transcript}
-          <View style={styles.actions}>
-            {manualFinish &&
-              phase === 'listening' &&
-              action(
-                t('ragConversation.voice.finish'),
-                onFinish,
-                'voice-call-finish',
-              )}
-            {interruptible &&
-              action(
-                t('ragConversation.voice.interrupt'),
-                onInterrupt,
-                'voice-call-interrupt',
-              )}
-          </View>
-          <View style={styles.actions}>
-            {muted
-              ? action(
-                  t('ragConversation.voice.resume'),
-                  onResume,
-                  'voice-call-resume',
-                  false,
-                  'mic',
-                )
-              : phase !== 'cleaning' &&
-                phase !== 'error' &&
-                action(
-                  t('ragConversation.voice.mute'),
-                  onMute,
-                  'voice-call-mute',
-                  false,
-                  'mic.slash',
-                )}
-            {action(
-              t('ragConversation.voice.endCall'),
-              onEnd,
-              'voice-call-end',
-              true,
-              'phone.down.fill',
+          <AppText maxFontSizeMultiplier={2} style={styles.note}>
+            {pipeline ?? t('ragConversation.voice.localPipeline')}
+          </AppText>
+        </View>
+        {transcript}
+        <View style={styles.actions}>
+          {manualFinish &&
+            phase === 'listening' &&
+            action(
+              t('ragConversation.voice.finish'),
+              onFinish,
+              'voice-call-finish',
             )}
-          </View>
-        </ScrollView>
+          {interruptible &&
+            action(
+              t('ragConversation.voice.interrupt'),
+              onInterrupt,
+              'voice-call-interrupt',
+            )}
+        </View>
+        <View style={styles.actions}>
+          {muted
+            ? action(
+                t('ragConversation.voice.resume'),
+                onResume,
+                'voice-call-resume',
+                false,
+                'mic',
+              )
+            : phase !== 'cleaning' &&
+              phase !== 'error' &&
+              action(
+                t('ragConversation.voice.mute'),
+                onMute,
+                'voice-call-mute',
+                false,
+                'mic.slash',
+              )}
+          {action(
+            t('ragConversation.voice.endCall'),
+            onEnd,
+            'voice-call-end',
+            true,
+            'phone.down.fill',
+          )}
+        </View>
       </SafeAreaLayout>
     </NavigationModal>
   );

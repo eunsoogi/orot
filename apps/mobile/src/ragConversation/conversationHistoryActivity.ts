@@ -17,7 +17,9 @@ export function conversationHistoryActivity(
       ? requestActivity
       : null;
   const hasPendingContent = Boolean(
-    pending?.content.trim() || pending?.toolEvents?.length,
+    pending?.initialResponse ||
+    pending?.content.trim() ||
+    pending?.toolEvents?.length,
   );
   const visibleMessages =
     !pending || (activity && !hasPendingContent)
