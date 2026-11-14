@@ -1,6 +1,6 @@
 import type { ConversationSession } from './conversationSessionTypes';
 
-/** Reviewing a stopped request is not workflow replay: completed tool effects remain untouched. */
+/** Identify an interrupted turn that needs honest recovery feedback, never a resend action. */
 export function conversationRecoveryDraft(session: ConversationSession) {
   if (
     session.busy ||

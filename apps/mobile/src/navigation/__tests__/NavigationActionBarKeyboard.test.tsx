@@ -43,7 +43,7 @@ function PresentationSurface({
   );
 }
 
-test('uses the bottom bar when the keyboard leaves too little room for the complete rail', async () => {
+test('retains the rail identity without obscured controls when the keyboard leaves too little room for the complete rail', async () => {
   await render(
     <NavigationRootLayoutContext.Provider value={rightLayout}>
       <NavigationActionBarPresentation
@@ -60,16 +60,17 @@ test('uses the bottom bar when the keyboard leaves too little room for the compl
     </NavigationRootLayoutContext.Provider>,
   );
 
-  expect(screen.queryByTestId('navigation-right-rail')).toBeNull();
   expect(
-    screen.getByTestId('navigation-bar-fallback').props.accessibilityHint,
-  ).toBe('bottom');
+    screen.getByTestId('navigation-right-rail').props.accessibilityHint,
+  ).toBe('right');
+  expect(screen.queryByTestId('navigation-bar-fallback')).toBeNull();
+  expect(screen.queryByTestId('bottom-navigation-actions')).toBeNull();
   expect(
-    screen.getByTestId('navigation-bar-fallback-actions').props.children,
-  ).toBe('tab-home');
+    screen.getByTestId('navigation-right-rail-actions').props.children,
+  ).toBe('navigation-overflow');
 });
 
-test('uses the bottom bar when the keyboard leaves too little room for contextual actions', async () => {
+test('retains the rail identity without obscured controls when the keyboard leaves too little room for contextual actions', async () => {
   await render(
     <NavigationRootLayoutContext.Provider value={rightLayout}>
       <NavigationActionBarPresentation
@@ -99,8 +100,46 @@ test('uses the bottom bar when the keyboard leaves too little room for contextua
     </NavigationRootLayoutContext.Provider>,
   );
 
+  expect(
+    screen.getByTestId('navigation-right-rail').props.accessibilityHint,
+  ).toBe('right');
+  expect(screen.queryByTestId('navigation-bar-fallback')).toBeNull();
+  expect(screen.queryByTestId('bottom-navigation-actions')).toBeNull();
+  expect(
+    screen.getByTestId('navigation-right-rail-actions').props.children,
+  ).toBe('');
+});
+
+test('restores actions after repeated keyboard frames while genuine window changes still adapt', async () => {
+  const view = (keyboardHeight: number, layout = rightLayout) => (
+    <NavigationRootLayoutContext.Provider value={layout}>
+      <NavigationActionBarPresentation
+        actions={[{ ...rootTab, selected: true }]}
+        bottomActions={<View testID="bottom-navigation-actions" />}
+        isDarkAppearance={false}
+        keyboardHeight={keyboardHeight}
+        keyboardVisible={keyboardHeight > 0}
+        onAction={jest.fn()}
+        reclaimRootTabInset={false}
+        safeAreaHandledByParent
+        surface={PresentationSurface}
+      />
+    </NavigationRootLayoutContext.Provider>
+  );
+  const rendered = await render(view(0));
+  for (const height of [200, 300, 0, 250, 0]) {
+    await rendered.rerender(view(height));
+    expect(
+      screen.getByTestId('navigation-right-rail').props.accessibilityHint,
+    ).toBe('right');
+    expect(screen.queryByTestId('bottom-navigation-actions')).toBeNull();
+    expect(
+      screen.getByTestId('navigation-right-rail-actions').props.children,
+    ).toBe(height ? 'navigation-overflow' : 'tab-home');
+  }
+  await rendered.rerender(view(0, { ...rightLayout, windowHeight: 300 }));
   expect(screen.queryByTestId('navigation-right-rail')).toBeNull();
   expect(
-    screen.getByTestId('navigation-bar-fallback-actions').props.children,
-  ).toBe('back,home');
+    screen.getByTestId('navigation-bar-fallback').props.accessibilityHint,
+  ).toBe('bottom');
 });

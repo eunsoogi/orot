@@ -80,3 +80,27 @@ test('actual child authorization signal observes a disclosure but cached approva
   executionNeedsDecision(child.signal);
   expect(onExecutionState).toHaveBeenCalledTimes(1);
 });
+
+test('authorized public search dispatch participates in the same bounded background work', async () => {
+  const working = jest.fn();
+  const search = jest.fn(async () => ({
+    ok: true as const,
+    value: { text: '', callCount: 1, citations: [] },
+  }));
+  const wrapped = conversationBackgroundProvider(
+    { ...provider(), searchPublicWeb: search },
+    true,
+    working,
+  );
+  expect(working).not.toHaveBeenCalled();
+  const signal = new AbortController().signal;
+  await wrapped.searchPublicWeb!(
+    { query: 'synthetic public topic' },
+    { signal },
+  );
+  expect(working).toHaveBeenCalledWith(true);
+  expect(search).toHaveBeenCalledWith(
+    { query: 'synthetic public topic' },
+    { signal },
+  );
+});

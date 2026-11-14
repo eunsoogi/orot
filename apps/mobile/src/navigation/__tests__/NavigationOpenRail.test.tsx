@@ -96,7 +96,7 @@ function Fixture({
   );
 }
 
-test('retains draft and disabled primary action across continuous Open geometry and keyboard fallback', async () => {
+test('retains draft and disabled primary action across continuous Open geometry and keyboard occlusion', async () => {
   const { rerender } = await render(<Fixture geometry={openGeometry} />);
   await fireEvent.press(screen.getByTestId('edit-draft'));
   // The native surface's trailing anchor is local to this edge-aligned lane;
@@ -110,7 +110,7 @@ test('retains draft and disabled primary action across continuous Open geometry 
   );
   expect(
     screen.getByTestId('navigation-right-rail-insets').props.children,
-  ).toBe(`${143 / 6},136`);
+  ).toBe(`${143 / 6},427`);
   expect(
     screen.getByTestId('navigation-right-rail-actions').props.children,
   ).toBe('back:false,home:false');
@@ -124,15 +124,16 @@ test('retains draft and disabled primary action across continuous Open geometry 
     screen.getByTestId('navigation-right-rail').props.accessibilityHint,
   ).toBe('right');
 
-  // Fit remains a presentation decision even after the continuous geometry admits a rail.
+  // Keyboard occlusion retains the stable lane without unsafe targets or a bottom replacement.
   await rerender(<Fixture geometry={rotatedGeometry} keyboardHeight={850} />);
-  expect(screen.queryByTestId('navigation-right-rail')).toBeNull();
+  expect(screen.getByTestId('navigation-right-rail')).toBeVisible();
+  expect(screen.queryByTestId('navigation-bar-fallback')).toBeNull();
   expect(
-    screen.getByTestId('navigation-bar-fallback-actions').props.children,
-  ).toBe('back:false,home:false');
+    screen.getByTestId('navigation-right-rail-actions').props.children,
+  ).toBe('');
   expect(
-    screen.getByTestId('navigation-page-action-surface-actions').props.children,
-  ).toBe('page:primary:true');
+    screen.queryByTestId('navigation-page-action-surface-actions'),
+  ).toBeNull();
   expect(screen.getByTestId('draft').props.children).toBe('edited');
 
   await rerender(<Fixture geometry={rotatedGeometry} />);

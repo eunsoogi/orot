@@ -79,7 +79,7 @@ test('uses the persisted Unicode name and selected avatar and retains editing', 
   mockName = '내가 지은 이름 🌿';
   await render(<AssistantHeader session={{ id: 1 } as ConversationSession} />);
   expect(screen.getByText(mockName)).toBeTruthy();
-  expect(mockAvatar).toHaveBeenCalledWith({ avatar: 'star' });
+  expect(mockAvatar).toHaveBeenCalledWith({ avatar: 'star', size: 64 });
   expect(screen.getByText(mockName).props.numberOfLines).toBeUndefined();
   await fireEvent.press(screen.getByRole('button'));
   expect(mockEdit).toHaveBeenCalled();

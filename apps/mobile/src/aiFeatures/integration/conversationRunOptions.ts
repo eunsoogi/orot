@@ -46,6 +46,7 @@ export function conversationRunInvocation(
   signal: AbortSignal,
 ) {
   return {
+    onApprovalWait: observer?.onApprovalWait,
     onProgress: observer?.onProgress,
     onToolEvent: observer?.onToolEvent,
     ...conversationStreamObservers(observer, retained, registry, selection),
@@ -55,6 +56,7 @@ export function conversationRunInvocation(
 
 /** Keep history and selected evidence lineage attached to the responder input. */
 export function conversationRunRequest(input: {
+  readonly continuation?: RagConversationRunOptions['continuation'];
   readonly question: string;
   readonly photoEvidence?: RagConversationRunOptions['photoEvidence'];
   readonly entryIntent?: RagConversationRunOptions['entryIntent'];
@@ -68,6 +70,7 @@ export function conversationRunRequest(input: {
   readonly workflow: RagConversationRunOptions['workflow'];
 }): RagConversationRunOptions {
   return {
+    continuation: input.continuation,
     question: input.question,
     ...(input.photoEvidence ? { photoEvidence: input.photoEvidence } : {}),
     entryIntent: input.entryIntent,

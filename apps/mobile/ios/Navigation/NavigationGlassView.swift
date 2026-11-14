@@ -198,7 +198,8 @@ final class NavigationGlassSurfaceView: UIView {
         railPlacementConstraints.forEach { $0.isActive = usesRightRail }
         // Mirror the measured lane for left-side multitasking; the legacy inset property is edge-relative.
         railPlacementConstraints[0].constant = layoutMode == "left" ? -max(0, host.bounds.width - NavigationRootGlassBar.exteriorWidth - railRightInset) : -railRightInset
-        railPlacementConstraints[3].constant = (railTopInset - railBottomInset) / 2
+        // Anchor the root surface to the usable lane bottom, not the screen edge.
+        railPlacementConstraints[3].constant = -railBottomInset
         railPlacementConstraints[4].constant = layoutMode == "left" ? railRightInset : 0
         railPlacementConstraints[5].constant = layoutMode == "left" ? -max(0, host.bounds.width - NavigationRootGlassBar.exteriorWidth - railRightInset) : -railRightInset
         if usesRightRail,
@@ -206,9 +207,9 @@ final class NavigationGlassSurfaceView: UIView {
            renderedActions.contains(where: { $0.id == "back" })
         {
             // Anchor Back 4pt above the uncompressed root bar, including any page-action offset.
-            let rootCenterY = host.bounds.midY + (railTopInset - railBottomInset) / 2
+            let rootTopY = host.bounds.height - railBottomInset - NavigationRootGlassBar.railHeight
             railPlacementConstraints[6].constant =
-                rootCenterY - NavigationRootGlassBar.railHeight / 2 -
+                rootTopY -
                 NavigationRootGlassBar.contextualBackGroupHeight
         } else {
             railPlacementConstraints[6].constant = railTopInset

@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { AiFeatureRoute } from '../AiFeatureRoute';
-import { pressPageAction } from '../testSupport/pressPageAction';
 import { createAiFeatureServices } from '../featureServices';
 import type { AiFeatureServices } from '../featureServices';
 import type { DiseaseHypothesisAnalysis } from '../../../diseaseHypotheses/types';
@@ -18,16 +17,6 @@ jest.mock(
 
 const originalWindow = Dimensions.get('window');
 const noInsets = { top: 0, right: 0, bottom: 0, left: 0 };
-
-async function openHistory() {
-  const direct = screen.queryByTestId('symptom-summary-history-open');
-  if (direct) await fireEvent.press(direct);
-  else
-    await pressPageAction(
-      screen.getByTestId('navigation-page-action-overflow'),
-      '저장된 요약 보기',
-    );
-}
 
 function viewport(width: number, height: number, fontScale = 1) {
   return { ...originalWindow, width, height, fontScale };
@@ -135,13 +124,14 @@ test('keeps history in a measured region and restores saved content and provenan
     generateDiseaseHypotheses: generate,
     summarizeSymptoms: generate,
   } as unknown as AiFeatureServices);
+  const onBack = jest.fn();
   await render(
-    <AiFeatureRoute initialRoute="saved-analysis" onBack={jest.fn()} />,
+    <AiFeatureRoute initialRoute="conversation-history" onBack={onBack} />,
   );
   const sensor = screen.getByTestId('navigation-window-geometry-sensor');
   const duoGeometry = geometry(1400, 900, true);
   await fireEvent(sensor, 'geometryChange', { nativeEvent: duoGeometry });
-  await openHistory();
+  await fireEvent.press(screen.getByTestId('conversation-saved-analysis'));
   expect(await screen.findByTestId('summary-history-screen')).toBeTruthy();
   expect(screen.queryByTestId('symptom-summary-generate')).toBeNull();
   await screen.findByRole('button', { name: /Synthetic/ });
@@ -165,12 +155,15 @@ test('keeps history in a measured region and restores saved content and provenan
   expect(
     screen.getByLabelText('원문 근거 열기 · 건강 기록 · 2035-01-01'),
   ).toBeTruthy();
-  expect(screen.queryByTestId('summary-history-screen')).toBeNull();
+  expect(screen.getByTestId('summary-history-screen')).toBeTruthy();
+  expect(screen.getByTestId('conversation-saved-summary-detail')).toBeTruthy();
   expect(history.read).toHaveBeenCalledWith('saved');
   expect(generate).not.toHaveBeenCalled();
-  await openHistory();
   expect(await screen.findByTestId('summary-history-screen')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(await screen.findByText('저장된 활동 기록이에요.')).toBeTruthy();
+  expect(await screen.findByTestId('conversation-saved-analysis')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('conversation-saved-analysis'));
+  expect(await screen.findByRole('button', { name: /Synthetic/ })).toBeTruthy();
+  expect(history.list).toHaveBeenCalled();
   expect(generate).not.toHaveBeenCalled();
 });

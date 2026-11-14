@@ -19,16 +19,16 @@ import { requestIdentityObserver } from './conversationRequestIdentity';
 import { ownsOutcome } from './conversationOutcomeOwnership';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import { createConversationRequestLifetime } from './conversationRequestLifetime';
+import type { createConversationTurnRetention } from './conversationTurnRetention';
 import { startConversationRetainedRequest } from './conversationPhotoRequestStart';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
-import type { createConversationTurnRetention } from './conversationTurnRetention';
 import {
   createConversationRequestPreview,
   conversationPreviewObserver,
 } from './conversationRequestPreview';
 import { conversationPreviewSetup } from './conversationPreviewSetup';
 import {
-  createRetainConversationPartial,
+  createRetainConversationPartial as retainPartialFor,
   createConversationStopHandler,
 } from './conversationStoppedTurn';
 import { conversationFailureReporter as failureReporter } from './conversationFailedPrompt';
@@ -55,15 +55,13 @@ export function createConversationSessionRequests(
   const activities = new Map<number, ConversationTurnActivity>();
   const lifetime = createConversationRequestLifetime({
     execution,
+    pauseState: (id, continueWorkflow) => update(id, { continueWorkflow }),
     interrupt: id => cancel(id, false, 'interrupted'),
     reportFenceFailure: id =>
       update(id, { error: getRagConversationFailureCopy('unavailable') }),
   });
-  const retainPartial = createRetainConversationPartial(
-    find,
-    update,
-    () => ++messageId,
-  );
+  const nextMessage = () => ++messageId;
+  const retainPartial = retainPartialFor(find, update, nextMessage);
   const cancel = createConversationStopHandler({
     controllers,
     pendingTurns,

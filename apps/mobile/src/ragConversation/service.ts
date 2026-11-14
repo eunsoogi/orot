@@ -1,5 +1,6 @@
 import { conversationInitialEvidence } from './conversationInitialEvidence';
-import { runMultiAgentWorkflow } from '@orot/agent-runtime';
+import { runContinuableConversationWorkflow } from './conversationWorkflowContinuation';
+import type { ConversationWorkflowContinuation } from './conversationWorkflowContinuation';
 import {
   providerDiagnostic,
   reportWorkflowOutcome,
@@ -45,6 +46,7 @@ export type {
 export type { RagConversationObserver } from './conversationObserver';
 
 export interface RagConversationRunOptions {
+  readonly continuation?: ConversationWorkflowContinuation;
   readonly question: string;
   readonly entryIntent?: ConversationIntent;
   readonly targetVisitEvidence?: EvidenceItem;
@@ -107,7 +109,7 @@ export async function runRagConversationTurn(
     // The task/runtime still require a lookup and citations for substantive factual claims.
     stage = 'workflow';
     providerDiagnostic('rag', 'workflow', 'started');
-    const result = await runMultiAgentWorkflow(
+    const result = await runContinuableConversationWorkflow(
       {
         ...options.workflow,
         request: question,
@@ -123,6 +125,7 @@ export async function runRagConversationTurn(
           ),
       },
       bufferPossibilityStream(options.entryIntent, invocation),
+      options.continuation,
     );
     reportWorkflowOutcome(
       'rag',

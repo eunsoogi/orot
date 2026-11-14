@@ -54,7 +54,7 @@ test('renders five tabs and routes the selected destination', async () => {
       screen.getByTestId('navigation-tab-overview').props.style,
     ),
   ).toEqual(expect.objectContaining({ borderRadius: 26, minHeight: 52 }));
-  expect(StyleSheet.flatten(screen.getByText('⌂').props.style)).toEqual(
+  expect(StyleSheet.flatten(screen.getAllByText('▦')[0].props.style)).toEqual(
     expect.objectContaining({ fontSize: 18, lineHeight: 20 }),
   );
   expect(
@@ -68,6 +68,9 @@ test('renders five tabs and routes the selected destination', async () => {
   expect(
     screen.getByTestId('navigation-tab-overview').props.accessibilityLabel,
   ).toBe('한눈에 탭');
+  expect(screen.getByText('🗨︎')).toBeVisible();
+  expect(screen.queryByText('✧')).toBeNull();
+  expect(screen.queryByText('⌂')).toBeNull();
   expect(screen.queryByTestId('navigation-back')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-tab-records'));
   await waitFor(() => expect(onSelect).toHaveBeenCalledWith('records'));

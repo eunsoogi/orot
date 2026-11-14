@@ -83,6 +83,7 @@ function MeasuredOverviewMetricChart({
     >
       <ChartPlot
         data={data}
+        compact
         height={112}
         kind="bar"
         testID={`overview-metric-chart-${metric}`}
@@ -140,9 +141,6 @@ export function OverviewMetricCard({
         </Text>
       </View>
       <MeasuredOverviewMetricChart metric={metric.metric} data={chartData} />
-      {metric.days.at(-1)?.partial && (
-        <Text style={styles.detail}>{t('overview.partialToday')}</Text>
-      )}
     </View>
   );
 }

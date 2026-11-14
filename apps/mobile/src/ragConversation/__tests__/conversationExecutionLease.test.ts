@@ -210,3 +210,27 @@ test('continued processing status is owner-scoped and does not itself interrupt'
   expect(interrupt).not.toHaveBeenCalled();
   end();
 });
+
+test('a short-lease warning requests one safe drain without aborting work', async () => {
+  const f = fixture();
+  const interrupt = jest.fn();
+  const pause = jest.fn();
+  const end = await beginConversationExecutionLease(
+    f.adapter,
+    'one',
+    interrupt,
+    () => false,
+    pause,
+  );
+  f.emit({ kind: 'pause-requested', requestId: 'other' });
+  expect(pause).not.toHaveBeenCalled();
+  f.emit({ kind: 'pause-requested', requestId: 'one' });
+  f.emit({ kind: 'pause-requested', requestId: 'one' });
+  expect(pause).toHaveBeenCalledTimes(1);
+  expect(interrupt).not.toHaveBeenCalled();
+  f.emit({ kind: 'expired', requestId: 'one' });
+  expect(interrupt).toHaveBeenCalledWith('expired');
+  end();
+  f.emit({ kind: 'pause-requested', requestId: 'one' });
+  expect(pause).toHaveBeenCalledTimes(1);
+});

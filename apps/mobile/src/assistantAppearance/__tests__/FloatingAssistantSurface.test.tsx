@@ -1,3 +1,4 @@
+import { useFloatingIdentityInset } from '../FloatingIdentityInset';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Text, View } from 'react-native';
 import { FloatingAssistantSurface } from '../FloatingAssistantSurface';
@@ -7,11 +8,18 @@ jest.mock('../AssistantAppearanceProvider', () => ({
   useAssistantAppearance: () => ({ ready: mockReady }),
 }));
 jest.mock('../AssistantHeader', () => ({ AssistantHeader: () => null }));
+jest.mock('../FloatingProfileGradient', () => ({
+  FloatingProfileGradient: () => null,
+}));
+function Transcript() {
+  const inset = useFloatingIdentityInset();
+  return <View testID="transcript" style={{ paddingTop: inset }} />;
+}
 const session = { id: 1 } as ConversationSession;
 test('measures only the floating group and leaves one independent transcript surface', async () => {
   await render(
     <FloatingAssistantSurface session={session}>
-      <View testID="transcript" />
+      <Transcript />
     </FloatingAssistantSurface>,
   );
   const overlay = screen.getByTestId('assistant-floating-overlay');
@@ -26,13 +34,13 @@ test('measures only the floating group and leaves one independent transcript sur
   await fireEvent(overlay, 'layout', {
     nativeEvent: { layout: { height: 96 } },
   });
-  expect(screen.getByTestId('transcript').parent).toHaveStyle({
+  expect(screen.getByTestId('transcript')).toHaveStyle({
     paddingTop: 96,
   });
   await fireEvent(overlay, 'layout', {
     nativeEvent: { layout: { height: 64 } },
   });
-  expect(screen.getByTestId('transcript').parent).toHaveStyle({
+  expect(screen.getByTestId('transcript')).toHaveStyle({
     paddingTop: 64,
   });
 });

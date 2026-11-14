@@ -1,4 +1,5 @@
 import React from 'react';
+import { conversationInterruptionKo } from '../../i18n/conversationInterruptionKo';
 import { render, fireEvent, screen } from '@testing-library/react-native';
 import { ConversationInterruptionRecovery } from '../ConversationInterruptionRecovery';
 import type { ConversationSession } from '../conversationSessionTypes';
@@ -36,26 +37,14 @@ function fixture() {
   };
 }
 
-test('review only restores the draft and never performs a send', async () => {
+test('an uncertain interrupted request has no resend disguised as continuation', async () => {
   const f = fixture();
   await render(
     <ConversationInterruptionRecovery store={f.store} session={f.get()} />,
   );
-  await fireEvent.press(screen.getByText('질문 검토 후 이어하기'));
-  expect(f.store.setDraft).toHaveBeenCalledWith(1, '합성 질문');
-  expect(screen.getByText(/자동으로 실행하지 않아요/)).toBeTruthy();
-});
-
-test('a new draft or active request arriving before the tap is preserved', async () => {
-  const f = fixture();
-  await render(
-    <ConversationInterruptionRecovery store={f.store} session={f.get()} />,
-  );
-  f.replace({ ...f.get(), draft: '다른 작성 내용' });
-  await fireEvent.press(screen.getByText('질문 검토 후 이어하기'));
-  expect(f.store.setDraft).not.toHaveBeenCalled();
-  f.replace({ ...f.get(), draft: '', busy: true });
-  await fireEvent.press(screen.getByText('질문 검토 후 이어하기'));
+  expect(screen.getByText(/안전하게 이어갈 수 있는 실행 상태/)).toBeTruthy();
+  expect(screen.queryByText('질문 검토 후 이어하기')).toBeNull();
+  expect(screen.queryByText('작업 이어하기')).toBeNull();
   expect(f.store.setDraft).not.toHaveBeenCalled();
 });
 
@@ -74,19 +63,26 @@ test('intentional Stop does not produce a system-interruption recovery action', 
   expect(screen.queryByText('질문 검토 후 이어하기')).toBeNull();
 });
 
-test('photo recovery is explained rather than silently sending a text-only substitute', async () => {
+test('a safe graph continuation invokes its live owner without changing the question', async () => {
   const f = fixture();
-  f.replace({
-    ...f.get(),
-    messages: [
-      { ...f.get().messages[0]!, photoAttached: true },
-      f.get().messages[1]!,
-    ],
-  });
+  const continueWorkflow = jest.fn();
+  f.replace({ ...f.get(), busy: true, continueWorkflow });
   await render(
     <ConversationInterruptionRecovery store={f.store} session={f.get()} />,
   );
-  await fireEvent.press(screen.getByText('질문 검토 후 이어하기'));
+  await fireEvent.press(screen.getByText('작업 이어하기'));
+  expect(continueWorkflow).toHaveBeenCalledTimes(1);
   expect(f.store.setDraft).not.toHaveBeenCalled();
-  expect(screen.getByText(/사진이 포함된 질문/)).toBeTruthy();
+  f.replace({ ...f.get(), continueWorkflow: undefined });
+  await fireEvent.press(screen.getByText('작업 이어하기'));
+  expect(continueWorkflow).toHaveBeenCalledTimes(1);
+});
+
+test('interruption guidance never presents resending as workflow continuation', () => {
+  expect(Object.values(conversationInterruptionKo).join(' ')).not.toMatch(
+    /다시 보내|질문 검토 후/,
+  );
+  expect(
+    conversationInterruptionKo['conversationInterruption.process-interrupted'],
+  ).toContain('자동으로 다시 실행하지 않아요');
 });

@@ -93,6 +93,10 @@ test('renders a retry as a separate call when the run changes but the call ID re
     />,
   );
 
+  expect(
+    screen.queryByTestId(`rag-tool-event-first-attempt-${event.callId}-toggle`),
+  ).toBeNull();
+  await fireEvent.press(screen.getByTestId('rag-tool-group-toggle'));
   const first = screen.getByTestId(
     `rag-tool-event-first-attempt-${event.callId}-toggle`,
   );

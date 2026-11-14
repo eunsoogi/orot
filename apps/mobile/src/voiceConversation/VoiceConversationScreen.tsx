@@ -42,15 +42,25 @@ export function VoiceConversationScreen({
     press: () => void,
     testID: string,
     danger = false,
+    symbol?: string,
   ) => (
     <Pressable
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={press}
-      style={[styles.button, danger && styles.end]}
+      style={symbol ? styles.callAction : styles.button}
     >
-      <AppText style={danger ? styles.endText : styles.label}>{label}</AppText>
+      {symbol ? (
+        <View style={[styles.controlDisc, danger && styles.end]}>
+          <AppSymbol
+            name={symbol}
+            size={28}
+            color={danger ? appColors.onDanger : appColors.text}
+          />
+        </View>
+      ) : null}
+      <AppText style={styles.label}>{label}</AppText>
     </Pressable>
   );
   return (
@@ -65,19 +75,27 @@ export function VoiceConversationScreen({
           testID="voice-call-screen"
           contentContainerStyle={styles.content}
         >
-          <View style={styles.identity}>{identity}</View>
+          <AppText maxFontSizeMultiplier={2} style={styles.note}>
+            {manualFinish ? '기기 음성 대화' : '실시간 음성 대화'}
+          </AppText>
           <View style={styles.center}>
+            <View style={styles.identity}>{identity}</View>
+            {/* This is a phase symbol, not a fabricated audio amplitude or waveform. */}
             <AppSymbol
-              name={muted ? 'mic.slash' : 'waveform'}
+              name={
+                muted
+                  ? 'mic.slash'
+                  : phase === 'listening' || phase === 'speaking'
+                    ? 'waveform'
+                    : 'ellipsis'
+              }
+              size={32}
               color={appColors.primary}
             />
-            <AppText accessibilityRole="header" style={styles.title}>
-              {t('ragConversation.voice.callTitle')}
-            </AppText>
             <AppText accessibilityLiveRegion="polite" style={styles.status}>
               {muted ? t('ragConversation.voice.muted') : status}
             </AppText>
-            <AppText style={styles.note}>
+            <AppText maxFontSizeMultiplier={2} style={styles.note}>
               {pipeline ?? t('ragConversation.voice.localPipeline')}
             </AppText>
           </View>
@@ -96,11 +114,15 @@ export function VoiceConversationScreen({
                 onInterrupt,
                 'voice-call-interrupt',
               )}
+          </View>
+          <View style={styles.actions}>
             {muted
               ? action(
                   t('ragConversation.voice.resume'),
                   onResume,
                   'voice-call-resume',
+                  false,
+                  'mic',
                 )
               : phase !== 'cleaning' &&
                 phase !== 'error' &&
@@ -108,12 +130,15 @@ export function VoiceConversationScreen({
                   t('ragConversation.voice.mute'),
                   onMute,
                   'voice-call-mute',
+                  false,
+                  'mic.slash',
                 )}
             {action(
               t('ragConversation.voice.endCall'),
               onEnd,
               'voice-call-end',
               true,
+              'phone.down.fill',
             )}
           </View>
         </ScrollView>
@@ -125,24 +150,34 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, padding: 24, gap: 24 },
   identity: { alignSelf: 'center', maxWidth: '100%' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 20 },
-  title: {
-    color: appColors.text,
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
   status: { color: appColors.text, textAlign: 'center' },
-  note: { color: appColors.secondary, textAlign: 'center' },
-  actions: { gap: 12 },
+  note: { fontSize: 14, color: appColors.secondary, textAlign: 'center' },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 20,
+  },
   button: {
-    minHeight: 48,
-    borderRadius: 24,
+    minHeight: 76,
+    minWidth: 92,
+    maxWidth: 160,
+    gap: 8,
+    borderRadius: 38,
     padding: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: appColors.surface,
   },
-  label: { color: appColors.text },
+  callAction: { minWidth: 100, maxWidth: 160, alignItems: 'center', gap: 10 },
+  controlDisc: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: appColors.surface,
+  },
+  label: { color: appColors.text, textAlign: 'center' },
   end: { backgroundColor: appColors.dangerAction },
-  endText: { color: appColors.onDanger },
 });

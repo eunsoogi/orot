@@ -26,7 +26,7 @@ const metricsControl = globalThis as typeof globalThis & {
   __OROT_TEST_PAGE_METRICS__?: null;
 };
 
-test('keeps a bottom menu and its latest callback when keyboard reflow restores the rail', async () => {
+test('keeps a side menu and its latest callback when keyboard reflow restores full tabs', async () => {
   metricsControl.__OROT_TEST_PAGE_METRICS__ = null;
   const show = jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions');
   const dismiss = jest
@@ -56,20 +56,8 @@ test('keeps a bottom menu and its latest callback when keyboard reflow restores 
   );
   try {
     const view = await render(fixture(304, oldCallback));
-    const surface = screen.getByTestId('navigation-bar-native-surface', {
-      includeHiddenElements: true,
-    });
-    await act(async () =>
-      surface.props.onPageMetrics({
-        nativeEvent: {
-          revision: surface.props.pageMetricsRequest.revision,
-          width: 382,
-          widths: [100, 100, 100, 100, 100, 80],
-          heights: [84, 84, 84, 84, 84, 84],
-        },
-      }),
-    );
-    const ready = screen.getByTestId('navigation-bar-native-surface');
+    expect(screen.queryByTestId('navigation-bar-native-surface')).toBeNull();
+    const ready = screen.getByTestId('navigation-right-rail');
     await act(async () =>
       ready.props.onAction({ nativeEvent: { id: 'navigation-overflow' } }),
     );

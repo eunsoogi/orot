@@ -12,6 +12,15 @@ export function conversationBackgroundProvider(
   if (!working) return provider;
   return {
     ...provider,
+    // Public-search model transport also starts only after its own consent boundary.
+    ...(provider.searchPublicWeb
+      ? ({
+          searchPublicWeb(request, options) {
+            if (!options?.signal?.aborted) working(remoteProcessing);
+            return provider.searchPublicWeb!(request, options);
+          },
+        } satisfies Pick<LanguageModelProvider, 'searchPublicWeb'>)
+      : {}),
     generate(request, options) {
       if (!options?.signal?.aborted) working(remoteProcessing);
       return provider.generate(request, options);

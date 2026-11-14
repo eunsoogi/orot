@@ -12,6 +12,8 @@ final class ConversationExecutionModule: RCTEventEmitter {
     private var saved = Set<String>()
     private var observers: [NSObjectProtocol] = []
     private var listening = false
+    private var deadlineTimer: Timer?
+    private var pauseRequested = Set<String>()
 
     override static func requiresMainQueueSetup() -> Bool {
         true
@@ -61,11 +63,6 @@ final class ConversationExecutionModule: RCTEventEmitter {
         guard !requestId.isEmpty, !requests.contains(requestId) else { resolve(false); return }
         let task = UIApplication.shared.beginBackgroundTask(withName: "Conversation request") { [weak self] in
             guard let self else { return }
-            #if OROT_TESTS && targetEnvironment(simulator)
-                if let token = UserDefaults.standard.string(forKey: "OROT_TEST_BACKGROUND_TOKEN") {
-                    signalBackgroundFailure(token)
-                }
-            #endif
             // A granted continued task replaces only the short execution deadline.
             if #available(iOS 26.0, *),
                let work = continued[requestId] as? ConversationContinuedProcessing, work.active
@@ -75,12 +72,22 @@ final class ConversationExecutionModule: RCTEventEmitter {
                 }
                 return
             }
+            #if OROT_TESTS && targetEnvironment(simulator)
+                if let token = UserDefaults.standard.string(forKey: "OROT_TEST_BACKGROUND_TOKEN") {
+                    signalBackgroundFailure(token)
+                }
+            #endif
             endLease(requestId)
             publish(["kind": "expired", "requestId": requestId])
         }
         guard task != .invalid else { resolve(false); return }
         leases[requestId] = task
         requests.insert(requestId)
+        if deadlineTimer == nil {
+            deadlineTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                self?.requestSafePauseBeforeExpiration()
+            }
+        }
         resolve(true)
     }
 
@@ -164,8 +171,30 @@ final class ConversationExecutionModule: RCTEventEmitter {
         }
     }
 
+    /// Only a finite short-lease deadline requests a safe graph drain. A granted continued
+    /// task keeps running until completion or the system's actual cancellation/expiration.
+    private func requestSafePauseBeforeExpiration() {
+        guard UIApplication.shared.applicationState == .background else { return }
+        let remaining = UIApplication.shared.backgroundTimeRemaining
+        guard remaining.isFinite, remaining > 0, remaining <= 10 else { return }
+        for requestId in requests where !pauseRequested.contains(requestId) {
+            if #available(iOS 26.0, *),
+               let work = continued[requestId] as? ConversationContinuedProcessing, work.active
+            {
+                continue
+            }
+            pauseRequested.insert(requestId)
+            publish(["kind": "pause-requested", "requestId": requestId])
+        }
+    }
+
     private func endLease(_ requestId: String) {
         requests.remove(requestId)
+        pauseRequested.remove(requestId)
+        if requests.isEmpty {
+            deadlineTimer?.invalidate()
+            deadlineTimer = nil
+        }
         let success = saved.remove(requestId) != nil
         if #available(iOS 26.0, *) {
             (continued.removeValue(forKey: requestId) as? ConversationContinuedProcessing)?.finish(success: success)

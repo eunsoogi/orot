@@ -1,4 +1,3 @@
-import { END, START, StateGraph } from '@langchain/langgraph/web';
 import type {
   MultiAgentCheckpointState,
   AllowedEvidenceScope,
@@ -19,10 +18,9 @@ import {
   validateEvidenceBatch,
 } from './evidence';
 import { observeUntilAbort } from './modelCall';
-import { createNodes } from './nodes';
 import { requireTaskContract } from './responses';
-import type { PrivateOutcome, RuntimeContext } from './runtimeContext';
-import { checkpointMatchesRun, MultiAgentState, routeForPhase } from './state';
+import type { PrivateOutcome } from './runtimeContext';
+import { checkpointMatchesRun } from './state';
 import type { WorkflowState } from './state';
 import { isOrderedTimestampRange } from './timestamps';
 import { validToolModelCost } from './evidenceToolModelBudget';
@@ -92,6 +90,7 @@ export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult
     evidenceNeed: undefined,
     selectedToolId: undefined,
     pendingOperation: undefined,
+    awaitingAuthorization: undefined,
     terminal: false,
   };
 }
@@ -131,6 +130,10 @@ export function resumeState<TResult>(
     saved.terminal ||
     saved.phase === 'complete' ||
     saved.pendingOperation ||
+    (saved.awaitingAuthorization !== undefined &&
+      (!options.operationJournal ||
+        saved.modelCalls < 1 ||
+        saved.awaitingAuthorization !== `model-${saved.modelCalls}`)) ||
     saved.phase === 'evidence_search' ||
     !isNonNegativeSafeInteger(saved.modelCalls) ||
     !isNonNegativeSafeInteger(saved.toolCalls) ||
@@ -141,6 +144,7 @@ export function resumeState<TResult>(
     saved.evidenceReferences.length > options.execution.budget.maxEvidenceItems ||
     (saved.phase === 'evidence_research' && !saved.evidenceNeed) ||
     (saved.phase === 'task_response' &&
+      !saved.awaitingAuthorization &&
       (saved.modelCalls > 0 || saved.toolCalls > 0 || saved.researchCycles > 0)) ||
     (saved.phase === 'revised_response' &&
       (saved.toolCalls === 0 || saved.evidenceReferences.length === 0)) ||
@@ -151,6 +155,7 @@ export function resumeState<TResult>(
   }
   return {
     ...saved,
+    awaitingAuthorization: saved.awaitingAuthorization,
     evidenceReferences: saved.evidenceReferences.map(projectEvidenceReference),
     evidenceNeed: saved.evidenceNeed,
     selectedToolId: saved.selectedToolId,
@@ -182,41 +187,7 @@ export async function restoreRunEvidence<TResult>(
     : undefined;
 }
 
-export function makeGraph<TResult>(
-  context: RuntimeContext<TResult>,
-  graphOptions: Pick<MultiAgentWorkflowOptions<TResult>, 'checkpointer' | 'store'> = {},
-) {
-  const nodes = createNodes(context);
-  const routeMap = {
-    task_response: 'prepareResponder',
-    research: 'prepareResearcher',
-    search: 'prepareSearch',
-    revision: 'prepareRevision',
-    stop: END,
-  } as const;
-  const route = (state: WorkflowState) => routeForPhase(state.phase);
-  return new StateGraph(MultiAgentState)
-    .addNode('prepareResponder', (state) => nodes.prepareResponder(state))
-    .addNode('invokeResponder', nodes.invokeResponder)
-    .addNode('prepareResearcher', nodes.prepareResearcher)
-    .addNode('invokeResearcher', nodes.invokeResearcher)
-    .addNode('prepareSearch', nodes.prepareSearch)
-    .addNode('executeSearch', nodes.executeSearch)
-    .addNode('prepareRevision', (state) => nodes.prepareRevision(state))
-    .addNode('invokeRevision', nodes.invokeRevision)
-    .addConditionalEdges(START, route, routeMap)
-    .addConditionalEdges('prepareResponder', (state) => (state.terminal ? END : 'invokeResponder'))
-    .addConditionalEdges('invokeResponder', route, routeMap)
-    .addConditionalEdges('prepareResearcher', (state) =>
-      state.terminal ? END : 'invokeResearcher',
-    )
-    .addConditionalEdges('invokeResearcher', route, routeMap)
-    .addConditionalEdges('prepareSearch', (state) => (state.terminal ? END : 'executeSearch'))
-    .addConditionalEdges('executeSearch', route, routeMap)
-    .addConditionalEdges('prepareRevision', (state) => (state.terminal ? END : 'invokeRevision'))
-    .addConditionalEdges('invokeRevision', route, routeMap)
-    .compile({ store: graphOptions.store, checkpointer: graphOptions.checkpointer });
-}
+export { makeGraph } from './workflowGraph';
 
 export function publicResult<TResult>(
   outcome: PrivateOutcome<TResult>,

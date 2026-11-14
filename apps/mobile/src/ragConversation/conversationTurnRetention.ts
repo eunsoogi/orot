@@ -20,6 +20,7 @@ export function createConversationTurnRetention(input: {
     Partial<
       Pick<
         ReturnType<typeof createConversationArtifactStorage>,
+        | 'openWorkflowContinuation'
         | 'appendToolEvent'
         | 'discardToolEvent'
         | 'startRequest'
@@ -89,6 +90,9 @@ export function createConversationTurnRetention(input: {
   return {
     ...createConversationRetainedPreview(input),
     toolMessageId: input.turnId,
+    ...(input.storage.openWorkflowContinuation
+      ? { openWorkflowContinuation: input.storage.openWorkflowContinuation }
+      : {}),
     /** The protected checkpoint must commit before any provider transmission starts. */
     async startRequest(
       question: string,

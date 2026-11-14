@@ -1,3 +1,5 @@
+import { AvatarArtwork as AvatarSymbol } from './AvatarArtwork';
+import { appearanceEditorStyles as styles } from './appearanceEditorStyles';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -6,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   TextInput,
   View,
 } from 'react-native';
@@ -27,22 +28,14 @@ import { appearanceStore } from './appearanceStore';
 const avatars: Record<AvatarId, { label: string; symbol: string }> = {
   neutral: {
     label: t('assistantAppearance.neutral'),
-    symbol: 'person.crop.circle',
+    symbol: 'face.smiling',
   },
-  sun: { label: t('assistantAppearance.sun'), symbol: 'sun.max' },
-  leaf: { label: t('assistantAppearance.leaf'), symbol: 'leaf' },
-  star: { label: t('assistantAppearance.star'), symbol: 'star' },
+  sun: { label: t('assistantAppearance.sun'), symbol: 'sun.max.fill' },
+  leaf: { label: t('assistantAppearance.leaf'), symbol: 'leaf.fill' },
+  star: { label: t('assistantAppearance.star'), symbol: 'star.fill' },
 };
 
-export function AvatarSymbol({ avatar }: { avatar: AvatarId }) {
-  return (
-    <AppSymbol
-      name={avatars[avatar].symbol}
-      size={32}
-      color={appColors.primaryText}
-    />
-  );
-}
+export { AvatarArtwork as AvatarSymbol } from './AvatarArtwork';
 
 /** Draft selection stays local until one protected transaction succeeds. */
 export function AppearanceEditor({
@@ -129,12 +122,28 @@ export function AppearanceEditor({
             keyboardShouldPersistTaps="handled"
           >
             <AppText accessibilityRole="header" style={styles.title}>
-              {t('assistantAppearance.title')}
+              {t(
+                initial
+                  ? 'assistantAppearance.title'
+                  : 'assistantAppearance.welcome',
+              )}
             </AppText>
             <AppText>{t('assistantAppearance.introduction')}</AppText>
             <View style={styles.preview}>
-              {avatar ? <AvatarSymbol avatar={avatar} /> : null}
-              <AppText>{name.trim() || defaultAssistantName}</AppText>
+              <View style={styles.previewDisc}>
+                {avatar ? (
+                  <AvatarSymbol avatar={avatar} size={156} />
+                ) : (
+                  <AppSymbol
+                    name="person.crop.circle.dashed"
+                    size={72}
+                    color={appColors.secondary}
+                  />
+                )}
+              </View>
+              <AppText style={styles.previewName}>
+                {name.trim() || defaultAssistantName}
+              </AppText>
             </View>
             <View style={styles.choices}>
               {avatarIds.map(id => (
@@ -144,9 +153,16 @@ export function AppearanceEditor({
                   accessibilityLabel={avatars[id].label}
                   accessibilityState={{ checked: avatar === id }}
                   onPress={() => setAvatar(id)}
-                  style={[styles.choice, avatar === id && styles.selected]}
+                  style={styles.choice}
                 >
-                  <AvatarSymbol avatar={id} />
+                  <View
+                    style={[
+                      styles.choiceDisc,
+                      avatar === id && styles.selected,
+                    ]}
+                  >
+                    <AvatarSymbol avatar={id} size={60} />
+                  </View>
                   <AppText>
                     {avatars[id].label}
                     {avatar === id
@@ -178,7 +194,11 @@ export function AppearanceEditor({
             ) : null}
             <AppButton
               testID="assistant-appearance-save"
-              title={t('assistantAppearance.save')}
+              title={t(
+                initial
+                  ? 'assistantAppearance.save'
+                  : 'assistantAppearance.start',
+              )}
               disabled={!avatar}
               busy={busy}
               onPress={save}
@@ -205,33 +225,3 @@ export function AppearanceEditor({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: appColors.background },
-  content: { flexGrow: 1, padding: 24, gap: 16 },
-  title: { fontSize: 25, fontWeight: '700' },
-  preview: { alignItems: 'center', gap: 8, padding: 20 },
-  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  choice: {
-    minWidth: 72,
-    minHeight: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    borderRadius: 16,
-  },
-  selected: { borderWidth: 2, borderColor: appColors.primaryText },
-  input: {
-    minHeight: 48,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    borderRadius: 12,
-    color: appColors.text,
-    backgroundColor: appColors.surface,
-  },
-  error: { color: appColors.danger },
-});

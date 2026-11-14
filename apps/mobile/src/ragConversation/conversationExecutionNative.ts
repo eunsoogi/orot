@@ -55,6 +55,11 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
               requestId: event.requestId,
               state: event.state,
             });
+          else if (
+            event.kind === 'pause-requested' &&
+            typeof event.requestId === 'string'
+          )
+            listener({ kind: 'pause-requested', requestId: event.requestId });
           else if (event.kind === 'foreground')
             listener({ kind: 'foreground' });
           else if (

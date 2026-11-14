@@ -11,7 +11,7 @@ import {
 } from '../navigationRootLayout';
 import { navigationRailPresentation } from '../navigationRailPresentation';
 
-test('keeps a safe root rail when the complete centered action group fits', () => {
+test('keeps a safe root rail when the complete bottom-anchored action group fits', () => {
   const layout = {
     placement: 'right' as const,
     reservedRightWidth: 72,
@@ -66,7 +66,7 @@ test.each([
   ['the observed one-action rail', 768, 148, 157, 1],
   ['a two-action rail', 678, 30, 30, 2],
 ])(
-  'centers the complete page-action and root-tab group for %s',
+  'bottom-anchors the complete page-action and root-tab group for %s',
   (_scenario, height, top, bottom, actionCount) => {
     const layout = pageActionRailLayout({
       height,
@@ -82,14 +82,14 @@ test.each([
         NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING);
     const pageActionBottom = height - layout.pageBottomInset;
     const pageActionTop = pageActionBottom - actionStackHeight;
-    const rootCenter = height / 2 + (layout.navigationTopInset - bottom) / 2;
-    const rootBottom = rootCenter + NAVIGATION_ROOT_RAIL_HEIGHT / 2;
-    const completeGroupCenter = (pageActionTop + rootBottom) / 2;
-    const usableSegmentCenter = (top + height - bottom) / 2;
+    const rootBottom = height - bottom;
+    const rootTop = rootBottom - NAVIGATION_ROOT_RAIL_HEIGHT;
 
     expect(layout.fits).toBe(true);
     expect(layout.capacity).toBeGreaterThanOrEqual(actionCount);
-    expect(completeGroupCenter).toBeCloseTo(usableSegmentCenter, 5);
+    expect(pageActionTop).toBeGreaterThanOrEqual(top);
+    expect(rootTop - pageActionBottom).toBe(8);
+    expect(layout.navigationTopInset).toBeCloseTo(pageActionTop, 5);
   },
 );
 
@@ -149,10 +149,10 @@ test('places Back before page actions and preserves Home at the rail end', () =>
   };
   const layout = pageActionRailLayout(input);
   expect(layout.fits).toBe(true);
-  expect(layout.navigationTopInset).toBe(input.top);
+  expect(layout.navigationTopInset).toBeGreaterThanOrEqual(input.top);
   expect(layout.pageTopInset).toBeGreaterThan(layout.navigationTopInset);
   expect(layout.pageTopInset).toBe(
-    input.top +
+    layout.navigationTopInset +
       NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT +
       NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING +
       8,

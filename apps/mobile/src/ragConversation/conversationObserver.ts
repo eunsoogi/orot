@@ -8,12 +8,23 @@ import type {
 /** Progress, scoped continuation and local retention callbacks for a conversation turn. */
 export type RagConversationObserver = Pick<
   MultiAgentInvocation,
+  | 'onApprovalWait'
   | 'onProgress'
   | 'onTaskStreamEvent'
   | 'onToolEvent'
   | 'beforeTaskStream'
   | 'beforeTaskInputChange'
 > & {
+  readonly openWorkflowContinuation?: (
+    identity: import('../storage/conversationWorkflowContinuationIdentity').ConversationContinuationIdentity,
+  ) => Promise<
+    import('./conversationWorkflowContinuation').ConversationWorkflowContinuation['persisted']
+  >;
+  /** Owned pause/continue controls never submit a new question. */
+  readonly onWorkflowPauseController?: (requestPause: () => void) => void;
+  readonly onWorkflowPaused?: (
+    reason?: 'expired' | 'decision-required',
+  ) => Promise<boolean>;
   readonly onExecutionState?: (state: 'working' | 'local' | 'decision') => void;
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };

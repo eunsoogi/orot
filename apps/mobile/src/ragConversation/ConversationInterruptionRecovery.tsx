@@ -7,40 +7,35 @@ import type {
 } from './conversationSessionTypes';
 import { conversationRecoveryDraft } from './conversationRecoveryDraft';
 
-/** This explicit review action never sends a prompt or repeats an already completed tool. */
+/** Only a live, safe LangGraph boundary gets a continue action. Uncertain work is never resubmitted. */
 export function ConversationInterruptionRecovery({
   store,
   session,
 }: {
-  store: Pick<ConversationSessions, 'getSnapshot' | 'setDraft'>;
+  store: Pick<ConversationSessions, 'getSnapshot'>;
   session: ConversationSession;
 }) {
-  const recovery = conversationRecoveryDraft(session);
-  if (!recovery) return null;
+  if (session.continueWorkflow)
+    return (
+      <>
+        <AppText accessibilityRole="alert">
+          {t('conversationInterruption.pausedNotice')}
+        </AppText>
+        <AppButton
+          title={t('conversationInterruption.resumeAction')}
+          onPress={() => {
+            store
+              .getSnapshot()
+              .sessions.find(value => value.id === session.id)
+              ?.continueWorkflow?.();
+          }}
+        />
+      </>
+    );
+  if (!conversationRecoveryDraft(session)) return null;
   return (
-    <>
-      <AppText accessibilityRole="alert">
-        {t('conversationInterruption.reviewNotice')}
-      </AppText>
-      {recovery.attachment ? (
-        <AppText>{t('conversationInterruption.reviewAttachment')}</AppText>
-      ) : null}
-      {recovery.conflictingDraft ? (
-        <AppText>{t('conversationInterruption.reviewDraftConflict')}</AppText>
-      ) : null}
-      <AppButton
-        title={t('conversationInterruption.reviewAction')}
-        disabled={recovery.attachment || recovery.conflictingDraft}
-        onPress={() => {
-          // Re-read on tap to fence a newer draft, request or removed session.
-          const current = store
-            .getSnapshot()
-            .sessions.find(value => value.id === session.id);
-          const latest = current && conversationRecoveryDraft(current);
-          if (latest && !latest.attachment && !latest.conflictingDraft)
-            store.setDraft(session.id, latest.question);
-        }}
-      />
-    </>
+    <AppText accessibilityRole="alert">
+      {t('conversationInterruption.resumeUnavailable')}
+    </AppText>
   );
 }

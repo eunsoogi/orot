@@ -5,7 +5,7 @@ import { ConversationReportTask } from './ConversationReportTask';
 import { conversationIntentForRoute } from './conversationIntent';
 import { AiProviderSelectorRow } from './AiProviderSelectorRow';
 import { SummaryHistoryScreen } from '../../diseaseHypotheses/SummaryHistoryScreen';
-import { DiseaseHypothesesScreen } from '../../diseaseHypotheses/DiseaseHypothesesScreen';
+import { ConversationSummaryHistory } from '../../diseaseHypotheses/ConversationSummaryHistory';
 import { ConversationScreen } from '../../ragConversation/ConversationScreen';
 import { ConversationHistoryScreen } from '../../ragConversation/ConversationHistoryScreen';
 import { useColorScheme } from 'react-native';
@@ -25,9 +25,7 @@ export function AiFeatureFlowScreen({
   isEntryCurrent,
   onOpenSavedAnalysis,
   onOpenSavedVisitQuestions,
-  onOpenSummaryHistory,
   onRestoreSummary,
-  restoredSummary,
   route,
   navigationRouteKey,
   onFeatureNavigationStateChange,
@@ -194,18 +192,10 @@ export function AiFeatureFlowScreen({
         : conversation;
     case 'saved-analysis':
       return (
-        <DiseaseHypothesesScreen
-          readOnly
-          onOpenHistory={onOpenSummaryHistory}
-          restoredSummary={restoredSummary}
-          summaryHistory={services.summaryHistory}
-          providerSelection={providerSelection}
+        <ConversationSummaryHistory
           navigationRouteKey={navigationRouteKey}
           onNavigationStateChange={onFeatureNavigationStateChange}
-          onBack={onBack}
-          onGenerate={services.generateDiseaseHypotheses}
-          onSummarize={services.summarizeSymptoms}
-          onOpenProviderSelection={onOpenProviderSelection}
+          history={services.summaryHistory}
           onOpenSource={onOpenSource}
         />
       );

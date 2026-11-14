@@ -84,12 +84,14 @@ test('keeps Duo actions contextual when its small window requires bottom navigat
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe('');
 });
 
-test('keeps Duo conversation actions in navigation when the keyboard moves the rail to the bottom', async () => {
+test('keeps the Duo side placement under full keyboard occlusion and restores page actions', async () => {
   let showKeyboard: ((event: KeyboardEvent) => void) | undefined;
+  let hideKeyboard: ((event: KeyboardEvent) => unknown) | undefined;
   const listener = jest
     .spyOn(Keyboard, 'addListener')
     .mockImplementation((name, callback) => {
       if (name === 'keyboardDidShow') showKeyboard = callback;
+      if (name === 'keyboardDidHide') hideKeyboard = callback;
       return { remove: jest.fn() };
     });
   try {
@@ -149,8 +151,17 @@ test('keeps Duo conversation actions in navigation when the keyboard moves the r
         },
       },
     );
+    expect(screen.getByTestId('navigation-right-rail-host')).toBeTruthy();
+    expect(screen.queryByTestId('navigation-bar-native-surface')).toBeNull();
+    expect(screen.getByTestId('navigation-right-rail').props.actions).toEqual(
+      [],
+    );
+    expect(screen.queryByTestId('navigation-page-action-surface')).toBeNull();
+    await act(async () =>
+      hideKeyboard?.({ endCoordinates: { height: 0 } } as KeyboardEvent),
+    );
     await waitFor(() =>
-      expect(screen.queryByTestId('navigation-right-rail-host')).toBeNull(),
+      expect(screen.getByTestId('navigation-page-action-surface')).toBeTruthy(),
     );
     const dock = screen.getByTestId('navigation-page-action-surface');
     expect(

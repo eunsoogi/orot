@@ -135,3 +135,14 @@ type StatefulGraphCompileOptions = Parameters<
 export function createStatefulTwoNodeGraph(options?: StatefulGraphCompileOptions) {
   return createStatefulGraphBuilder().compile(options);
 }
+
+export {
+  createMultiAgentPauseController,
+  isMultiAgentCheckpointResumable,
+} from './multiAgent/workflowPause';
+export type { MultiAgentPauseController, MultiAgentPausedResult } from './multiAgent/workflowPause';
+export type {
+  WorkflowOperationJournal,
+  WorkflowOperationIdentity,
+  WorkflowOperationRecord,
+} from './multiAgent/workflowOperationJournal';

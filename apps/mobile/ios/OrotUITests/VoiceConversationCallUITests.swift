@@ -12,7 +12,7 @@ final class VoiceConversationCallUITests: OrotFailFastTestCase {
         ]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
-        let identity = UITestConditions.element(app, "voice-fixture-identity")
+        let identity = UITestConditions.element(app, "voice-call-identity")
         guard UITestConditions.exists(identity) else { XCTFail("Synthetic fixture readiness cancelled"); return }
         // Readiness is established independently; a wrong exact-ID query now fails immediately.
         let surface = UITestConditions.element(app, "voice-call-screen")

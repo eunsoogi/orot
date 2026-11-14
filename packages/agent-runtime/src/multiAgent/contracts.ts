@@ -20,7 +20,6 @@ import type {
   MultiAgentBudget,
   MultiAgentExecutionIdentity,
 } from './evidenceContracts';
-
 export type {
   AllowedEvidenceScope,
   ConsentDecision,
@@ -43,7 +42,6 @@ export type {
   OutboundProcessingRequest,
 } from './evidenceContracts';
 export { DEFAULT_MULTI_AGENT_BUDGET, MAX_MULTI_AGENT_BUDGET } from './evidenceContracts';
-
 export interface TaskResponderInput {
   readonly request: string;
   readonly context?: JsonValue;
@@ -67,7 +65,6 @@ export interface TaskResponderInput {
     readonly remainingResearchCycles: number;
   };
 }
-
 export type TaskResultValidation<TResult> =
   | { readonly status: 'valid'; readonly value: TResult }
   | { readonly status: 'invalid'; readonly reason: string }
@@ -145,6 +142,7 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
     references: readonly EvidenceReference[],
     signal: AbortSignal,
   ) => Promise<EvidenceBatch>;
+  readonly operationJournal?: import('./workflowOperationJournal').WorkflowOperationJournal;
   readonly checkpointer?: BaseCheckpointSaver;
   /** Persistent graph context is injected by LangGraph and stays outside checkpoint state. */
   readonly store?: BaseStore;
@@ -171,13 +169,14 @@ export interface MultiAgentCheckpointState {
     readonly kind: 'model' | 'tool';
     readonly operationKey: string;
   };
+  readonly awaitingAuthorization?: string;
   readonly terminal: boolean;
 }
-
 export type ProviderStopObservation =
   'not_started' | 'iterator_return_requested' | 'underlying_call_unconfirmed';
 
 export type MultiAgentRunResult<TResult> =
+  | import('./workflowPause').MultiAgentPausedResult
   | {
       readonly status: 'result';
       readonly value: TResult;
@@ -213,10 +212,11 @@ export type MultiAgentRunResult<TResult> =
       readonly downstreamDispatchStopped: true;
       readonly checkpoint: MultiAgentCheckpointState;
     };
-
 export interface MultiAgentInvocation {
   readonly config?: RunnableConfig;
   readonly resumeFrom?: MultiAgentCheckpointState;
+  readonly onApprovalWait?: (waiting: boolean) => void;
+  readonly pause?: import('./workflowPause').MultiAgentPauseController;
   readonly signal?: AbortSignal;
   /** Safe phase and source-kind updates; these events never include prompt, query, or evidence content. */
   readonly onProgress?: (event: MultiAgentProgressEvent) => void;

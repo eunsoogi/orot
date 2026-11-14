@@ -38,7 +38,7 @@ test('keeps Back separate from root tabs and falls back below the complete group
   ).toBeDefined();
 });
 
-test('centers Back with the fixed root tabs inside the measured rail segment', () => {
+test('bottom-anchors Back with the fixed root tabs inside the measured rail segment', () => {
   const layout = pageActionRailLayout({
     height: 669,
     top: 192,
@@ -48,19 +48,18 @@ test('centers Back with the fixed root tabs inside the measured rail segment', (
     actionCount: 0,
     hasContextualBack: true,
   });
-  const rootCenter = 669 / 2 + (layout.navigationTopInset - 46) / 2;
+  const rootCenter = 669 - 46 - NAVIGATION_ROOT_RAIL_HEIGHT / 2;
   const rootTop = rootCenter - NAVIGATION_ROOT_RAIL_HEIGHT / 2;
   const backTop = rootTop - NAVIGATION_ROOT_BACK_GROUP_HEIGHT;
   const backBottom = backTop + NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT;
-  const completeGroupCenter =
-    (backTop + rootCenter + NAVIGATION_ROOT_RAIL_HEIGHT / 2) / 2;
 
   expect(layout.fits).toBe(true);
   expect(layout.navigationTopInset).toBe(
-    192 + NAVIGATION_ROOT_BACK_GROUP_HEIGHT,
+    669 - 46 - NAVIGATION_ROOT_RAIL_HEIGHT - NAVIGATION_ROOT_BACK_GROUP_HEIGHT,
   );
   expect(rootTop - backBottom).toBeCloseTo(4, 5);
-  expect(completeGroupCenter).toBeCloseTo((192 + 669 - 46) / 2, 5);
+  expect(rootTop + NAVIGATION_ROOT_RAIL_HEIGHT).toBe(669 - 46);
+  expect(backTop).toBeGreaterThanOrEqual(192);
 });
 
 test('keeps measured page actions above Back and the fixed root rail', () => {
@@ -73,7 +72,7 @@ test('keeps measured page actions above Back and the fixed root rail', () => {
     actionCount: 1,
     hasContextualBack: true,
   });
-  const rootCenter = 768 / 2 + (layout.navigationTopInset - 157) / 2;
+  const rootCenter = 768 - 157 - NAVIGATION_ROOT_RAIL_HEIGHT / 2;
   const rootTop = rootCenter - NAVIGATION_ROOT_RAIL_HEIGHT / 2;
   const backTop = rootTop - NAVIGATION_ROOT_BACK_GROUP_HEIGHT;
   const pageActionBottom = 768 - layout.pageBottomInset;

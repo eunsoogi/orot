@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   useCallback,
   useEffect,
@@ -24,6 +25,7 @@ import type { ConversationHistoryRow } from './ConversationHistoryScreen';
 /** Measures this screen's usable parent so Duo panels honor the actual native regions. */
 export function ConversationHistoryLayout({
   deleted,
+  feedback,
   onBack,
   onCreateSession,
   onDeleteSession,
@@ -35,6 +37,7 @@ export function ConversationHistoryLayout({
   selectedSession,
 }: {
   readonly deleted: boolean;
+  readonly feedback?: ReactNode;
   readonly onBack: () => void;
   readonly onCreateSession: () => void;
   readonly onDeleteSession: (id: number) => void;
@@ -218,6 +221,7 @@ export function ConversationHistoryLayout({
             >
               <ConversationHistoryListPane
                 deleted={deleted}
+                feedback={feedback}
                 onCreateSession={create}
                 onDeleteSession={onDeleteSession}
                 onOpenSavedAnalysis={onOpenSavedAnalysis}

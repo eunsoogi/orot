@@ -1,3 +1,4 @@
+import { prepareConversationContinuation as continuationFor } from './prepareConversationContinuation';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import { finishRagConversation } from './finishRagConversation';
 import type * as Conversation from '../../ragConversation/service';
@@ -193,6 +194,7 @@ export function createRagConversationService({
         return { status: 'failure', kind: 'retrieval_failed' };
       const outcome = await ragRunner(
         conversationRunRequest({
+          continuation: await continuationFor(observer, selected, selectedAi),
           question: normalizedQuestion,
           photoEvidence,
           entryIntent: entryContext?.intent,

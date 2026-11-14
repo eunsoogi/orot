@@ -32,6 +32,7 @@ export function decodeConversationRecoveryReason(
 }
 
 export type ConversationExecutionEvent =
+  | { readonly kind: 'pause-requested'; readonly requestId: string }
   | {
       readonly kind: 'expired';
       readonly requestId: string;
@@ -64,6 +65,7 @@ export async function beginConversationExecutionLease(
   requestId: string,
   interrupt: (reason: ConversationInterruptionReason) => void,
   needsDecision: () => boolean = () => false,
+  requestPause: () => void = () => {},
 ) {
   const diagnose = createExecutionDiagnostics(
     adapter.bridgeAvailable,
@@ -73,6 +75,7 @@ export async function beginConversationExecutionLease(
   let closed = false;
   let interrupted = false;
   let acquired = false;
+  let pauseRequested = false;
   const notify = (reason: ConversationInterruptionReason) => {
     if (closed || interrupted) return;
     interrupted = true;
@@ -80,6 +83,17 @@ export async function beginConversationExecutionLease(
     interrupt(reason);
   };
   const unsubscribe = adapter.subscribe(event => {
+    // A drain is advisory, not an abort: in-flight effects must reach a safe boundary.
+    if (
+      event.kind === 'pause-requested' &&
+      event.requestId === requestId &&
+      !closed &&
+      !interrupted &&
+      !pauseRequested
+    ) {
+      pauseRequested = true;
+      requestPause();
+    }
     if (event.kind === 'continued' && event.requestId === requestId)
       diagnose(event.state);
     if (event.kind === 'expired' && event.requestId === requestId)

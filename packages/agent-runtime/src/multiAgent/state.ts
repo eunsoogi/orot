@@ -1,4 +1,4 @@
-import { Annotation } from '@langchain/langgraph/web';
+import { Annotation, END } from '@langchain/langgraph/web';
 import type {
   AllowedEvidenceScope,
   EvidenceNeed,
@@ -32,6 +32,10 @@ export const MultiAgentState = Annotation.Root({
     default: () => undefined,
   }),
   pendingOperation: Annotation<MultiAgentCheckpointState['pendingOperation']>({
+    value: (_current, update) => update,
+    default: () => undefined,
+  }),
+  awaitingAuthorization: Annotation<string | undefined>({
     value: (_current, update) => update,
     default: () => undefined,
   }),
@@ -70,6 +74,7 @@ export function checkpointFromState(state: WorkflowState): MultiAgentCheckpointS
     evidenceNeed: state.evidenceNeed,
     selectedToolId: state.selectedToolId,
     pendingOperation: state.pendingOperation,
+    awaitingAuthorization: state.awaitingAuthorization,
     terminal: state.terminal,
   };
 }
@@ -102,3 +107,12 @@ export function checkpointMatchesRun(
     JSON.stringify(checkpoint.budget) === JSON.stringify(identity.budget)
   );
 }
+
+/** Named graph destinations are stable across durable pause and resume attempts. */
+export const workflowNodeRoutes = {
+  task_response: 'prepareResponder',
+  research: 'prepareResearcher',
+  search: 'prepareSearch',
+  revision: 'prepareRevision',
+  stop: END,
+} as const;

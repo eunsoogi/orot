@@ -115,6 +115,8 @@ export type ConversationSender = (
 
 /** Memory-only conversation state keeps drafts and request activity scoped to one session. */
 export interface ConversationSession {
+  /** Live safe-checkpoint continuation; never reconstructed as a new send after restart. */
+  readonly continueWorkflow?: () => void;
   readonly id: number;
   /** Live request activity is memory-only and is never restored as running. */
   readonly requestActivity?:
