@@ -18,6 +18,7 @@ import {
   type TranscriptRecordingView,
 } from '../../transcription/transcriptEvidenceService';
 import { RecordingReviewRoute } from '../RecordingReviewRoute';
+import { NavigationRouteScrollView } from '../../navigation/NavigationRouteScrollView';
 
 const selectedSource = { ...recordingSource, id: 'recording-a' };
 const selectedSegment = {
@@ -38,8 +39,9 @@ const transcriptView: TranscriptRecordingView = {
 
 jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 jest.mock('../../navigation/NavigationRouteScrollView', () => ({
-  NavigationRouteScrollView: ({ children }: { children: ReactNode }) =>
-    children,
+  NavigationRouteScrollView: jest.fn(
+    ({ children }: { children: ReactNode }) => children,
+  ),
 }));
 jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
@@ -160,6 +162,10 @@ async function setMeasuredHostWidth(width: number): Promise<void> {
 /** Reflow must keep the recording transcript and encounter review drafts in their mounted route panels. */
 test('reflows source and review panels without losing edits, selection, or request ownership', async () => {
   await render(<RecordingReviewRoute reviewService={encounterReviewService} />);
+  expect(
+    jest.mocked(NavigationRouteScrollView).mock.calls.at(-1)?.[0]
+      .keyboardShouldPersistTaps,
+  ).toBe('always');
   await screen.findByTestId('transcript-text-0');
   await screen.findByTestId('encounter-save');
 
