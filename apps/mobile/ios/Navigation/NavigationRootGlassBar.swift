@@ -8,6 +8,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
     var railHeight: CGFloat {
         CGFloat(buttons.count) * 52 + CGFloat(max(0, buttons.count - 1)) * Self.railSpacing
     }
+
     /// The common Back target plus its clear gap sit above the current root-tab surface.
     static let contextualBackGroupHeight: CGFloat = 52
 
