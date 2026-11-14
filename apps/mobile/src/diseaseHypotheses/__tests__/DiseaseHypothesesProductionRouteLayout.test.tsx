@@ -8,9 +8,8 @@ import type { NavigationGeometryPayload } from '../../navigation/navigationGeome
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../navigation/navigationController';
 import type { AppNavigationRoute } from '../../routes/appNavigationRoute';
-import type { DiseaseHypothesisAnalysis } from '../types';
+import { source, restored } from './savedSummaryRouteFixture';
 
-const noop = () => undefined;
 const noInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const originalWindow = Dimensions.get('window');
 const originalScreen = Dimensions.get('screen');
@@ -43,7 +42,6 @@ jest
       return;
     }
     if (testID === 'summary-history-columns-frame-host') {
-      // The inner screen measures its actual route parent when the scene owns layout.
       const parentPanel = routeKey
         ? screen.queryByTestId(`navigation-route-columns-${routeKey}-primary`)
         : null;
@@ -112,37 +110,6 @@ function columnsAxis() {
   )?.flexDirection;
 }
 
-const source = {
-  sourceKind: 'personal_record' as const,
-  sourceId: 'synthetic-record',
-  evidenceId: 'synthetic-evidence',
-  sourceRevision: '1',
-  evidenceRevision: '1',
-  locator: { kind: 'structured_record' as const, recordId: 'synthetic-record' },
-  effectiveTime: null,
-  reviewState: 'reviewed' as const,
-};
-
-const restored: DiseaseHypothesisAnalysis = {
-  presentation: 'symptom_summary',
-  savedSummary: {
-    status: 'saved',
-    id: 'saved-summary',
-    createdAt: '2035-01-01T00:00:00Z',
-    modelName: 'Synthetic',
-  },
-  hypotheses: [
-    {
-      title: 'Synthetic symptom summary',
-      summary: 'Synthetic route result.',
-      supportingEvidence: [source],
-      contraryEvidence: [],
-      uncertainty: 'Synthetic evidence only.',
-      missingData: [],
-    },
-  ],
-};
-
 beforeEach(() => {
   routeController = undefined;
   activeGeometry = geometry(1280, false);
@@ -174,7 +141,10 @@ test('restores saved analysis and source across expanded and narrow production r
       read: async () => restored,
     },
   } as unknown as AiFeatureServices;
-  const rootTabs = { activeTab: 'conversation' as const, onSelect: noop };
+  const rootTabs = {
+    activeTab: 'conversation' as const,
+    onSelect: () => undefined,
+  };
 
   await render(
     <NavigationRouteAdapter
@@ -192,21 +162,20 @@ test('restores saved analysis and source across expanded and narrow production r
         ) : actions.route.name === 'saved-analysis' ? (
           <AiFeatureFlowScreen
             route="saved-analysis"
-            restoredSummary={restored}
             navigationRouteKey={actions.route.key}
-            onFeatureNavigationStateChange={noop}
-            onRouteStateChange={noop}
-            onBack={noop}
-            onOpenDiseaseHypotheses={noop}
-            onOpenRagConversation={noop}
-            onOpenExternalEvidence={noop}
-            onOpenProviderSelection={noop}
+            onFeatureNavigationStateChange={() => undefined}
+            onRouteStateChange={() => undefined}
+            onBack={() => undefined}
+            onOpenDiseaseHypotheses={() => undefined}
+            onOpenRagConversation={() => undefined}
+            onOpenExternalEvidence={() => undefined}
+            onOpenProviderSelection={() => undefined}
             onOpenSource={onOpenSource}
             resolveSelectedAi={async () => ({ status: 'selection-required' })}
             confirmConsent={async () => true}
             selectedAiRevision={0}
             services={services}
-            onOpenArticle={noop}
+            onOpenArticle={() => undefined}
           />
         ) : null
       }
