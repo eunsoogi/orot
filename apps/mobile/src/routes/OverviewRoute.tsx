@@ -1,3 +1,4 @@
+import { HubBanner } from './HubBanner';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
@@ -55,14 +56,11 @@ export default function OverviewRoute({
   return (
     <View style={styles.container} testID="overview-screen">
       <View style={styles.header}>
-        <Text
-          accessibilityRole="header"
-          style={styles.title}
-          testID="overview-title"
-        >
-          {t('overview.title')}
-        </Text>
-        <Text style={styles.message}>{t('overview.greeting')}</Text>
+        <HubBanner
+          title={t('overview.title')}
+          subtitle={t('overview.greeting')}
+          testID="overview"
+        />
         <Text style={styles.message}>
           {formatDate(new Date())} ·{' '}
           {t('overview.localTimeZone', {
@@ -116,9 +114,13 @@ const styles = StyleSheet.create({
     paddingBottom: hubSpacing.bottom - NAVIGATION_CONTENT_GAP,
     backgroundColor: appColors.background,
   },
-  header: { gap: 8 },
+  header: {
+    gap: 8,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: appColors.surface,
+  },
   sections: { gap: hubSpacing.item, minWidth: 0 },
-  title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
   message: { color: appColors.secondary, fontSize: 16, lineHeight: 24 },
 });
 
