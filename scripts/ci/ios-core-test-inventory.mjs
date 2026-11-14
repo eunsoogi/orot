@@ -9,6 +9,13 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testMuteReleasesAudioAndResumesSameServerConversation',
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testOldCaptureFailureCannotStopNewCall',
+  // Injected Realtime ports prove lifecycle boundaries without network or microphone access.
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testSessionConfigurationGatesAudioAndStopClosesEverything',
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testBargeInTruncatesHeardAudioAndDropsLateOutput',
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testAlreadyDrainedResponseReturnsToListening',
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testReleaseFailureRetainsOwnershipForRetry',
   // Audio reservation tests use fake mutations and never activate the system session.
   'OrotIntegrationTests/AudioSessionOwnershipTests/testBusyAndStaleOwnersCannotMutateNewOwner',
   'OrotIntegrationTests/AudioSessionOwnershipTests/testFailedDeactivationRetainsReservationUntilRetry',

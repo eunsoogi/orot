@@ -52,6 +52,33 @@ export const voiceSettingsStore = {
       hasApiKey: Boolean(value.apiKey),
     };
   },
+  /** Reads only for the explicitly selected Realtime model after caller-owned audio consent.
+   * This is not a consent grant or a network validity check. Keep the returned secret
+   * out of React state, persistence, errors and logs; discard it after authentication.
+   */
+  async realtimeCredentials(
+    expectedModel: string,
+  ): Promise<{ model: string; apiKey: string }> {
+    try {
+      // A selection write already in flight must settle before choosing its destination.
+      await saving.catch(() => undefined);
+      const value = await read();
+      if (
+        value.mode !== 'openai-api' ||
+        value.model !== expectedModel ||
+        !validVoiceModel('openai-api', expectedModel) ||
+        value.apiKey.length === 0 ||
+        value.apiKey.length > 4096 ||
+        !/^[\x21-\x7e]+$/.test(value.apiKey)
+      ) {
+        throw new Error('Unavailable');
+      }
+      return { model: value.model, apiKey: value.apiKey };
+    } catch {
+      // Native storage errors must not surface credential payloads to the call UI.
+      throw new Error('Realtime credentials unavailable or selection changed');
+    }
+  },
   save(value: {
     mode: VoiceMode;
     model: string;
@@ -98,7 +125,7 @@ export const voiceSettingsStore = {
   },
 };
 
-/** The API transport is deliberately unavailable; saving settings never authorizes transmission. */
+/** The local adapter must never consume an API model selection or authorize external audio. */
 export async function requireLocalVoiceProcessing(): Promise<boolean> {
   return (await voiceSettingsStore.load()).mode === 'local';
 }

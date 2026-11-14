@@ -104,7 +104,7 @@ test('explicit consent binds one voice turn while preserving the text draft', as
   await fireEvent.press(screen.getByRole('button', { name: '음성 대화 시작' }));
   await waitFor(() =>
     expect(alert).toHaveBeenCalledWith(
-      'Realtime 음성 연결 미지원',
+      '음성 모델이 변경되었습니다',
       expect.any(String),
     ),
   );

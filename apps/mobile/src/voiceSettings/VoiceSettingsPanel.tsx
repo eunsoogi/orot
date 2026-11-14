@@ -1,3 +1,4 @@
+import { hasRealtimeVoiceRuntime } from './voiceRuntimeCapability';
 import { localVoiceModel, voiceModels } from './voiceModels';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -8,6 +9,7 @@ import { voiceSettingsStore, type VoiceMode } from './voiceSettingsStore';
 
 /** This configuration surface is not an audio transport or permission/consent dialog. */
 export function VoiceSettingsPanel() {
+  const realtimeAvailable = hasRealtimeVoiceRuntime();
   const [mode, setMode] = useState<VoiceMode>('local');
   const [model, setModel] = useState<string>(localVoiceModel);
   const [key, setKey] = useState('');
@@ -61,7 +63,7 @@ export function VoiceSettingsPanel() {
       }
       setKey('');
       setMessage(
-        '음성 설정을 저장했습니다. API 통화 연결은 아직 지원하지 않습니다.',
+        '음성 설정을 저장했습니다. 통화는 대화 화면에서 별도로 시작해 주세요.',
       );
     } catch {
       if (mounted.current)
@@ -115,9 +117,9 @@ export function VoiceSettingsPanel() {
             가능한 크레딧은 API 계정에서 확인하세요.
           </Text>
           <Text accessibilityRole="alert">
-            현재는 설정 저장만 지원합니다. API를 선택하면 음성 통화를 시작할 수
-            없으며, 기기 내 처리로 자동 전환하지 않습니다. 키 확인이나 음성
-            전송은 하지 않습니다.
+            {realtimeAvailable
+              ? '통화를 시작할 때 마이크 사용과 OpenAI로의 음성 전송에 별도로 동의해야 합니다. 설정 저장만으로 키를 확인하거나 음성을 전송하지 않습니다.'
+              : '이 빌드에는 Realtime 통화 기능이 없어 설정만 저장할 수 있습니다. 통화를 시작할 수 없으며, 기기 내 처리로 자동 전환하지 않습니다.'}
           </Text>
           <TextInput
             accessibilityLabel="음성 API 키"

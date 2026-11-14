@@ -1,3 +1,4 @@
+import { hasRealtimeVoiceRuntime } from '../voiceRuntimeCapability';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { voiceSettingsStore } from '../voiceSettingsStore';
@@ -8,7 +9,11 @@ jest.mock('../voiceSettingsStore', () => ({
     save: jest.fn(),
   },
 }));
+jest.mock('../voiceRuntimeCapability', () => ({
+  hasRealtimeVoiceRuntime: jest.fn(),
+}));
 beforeEach(() => {
+  jest.mocked(hasRealtimeVoiceRuntime).mockReturnValue(false);
   jest.clearAllMocks();
   jest.mocked(voiceSettingsStore.load).mockResolvedValue({
     mode: 'local',
@@ -26,7 +31,7 @@ it('offers concrete models rather than a generic API toggle and saves only on ex
     ).toBe(false),
   );
   await fireEvent.press(view.getByTestId('voice-model-gpt-realtime-2.1-mini'));
-  expect(view.getByText(/현재는 설정 저장만 지원합니다/)).toBeTruthy();
+  expect(view.getByText(/이 빌드에는 Realtime 통화 기능이 없어/)).toBeTruthy();
   expect(voiceSettingsStore.save).not.toHaveBeenCalled();
   await fireEvent.changeText(
     view.getByTestId('voice-api-key'),
@@ -91,4 +96,20 @@ it('reports failed persistence without claiming that the model changed', async (
   await waitFor(() =>
     expect(view.getByText(/저장하지 못했습니다/)).toBeTruthy(),
   );
+});
+
+it('describes available runtime without treating settings as transmission consent', async () => {
+  jest.mocked(hasRealtimeVoiceRuntime).mockReturnValue(true);
+  const view = await render(<VoiceSettingsPanel />);
+  await waitFor(() =>
+    expect(
+      view.getByTestId('voice-model-apple-system-speech').props
+        .accessibilityState.disabled,
+    ).toBe(false),
+  );
+  await fireEvent.press(view.getByTestId('voice-model-gpt-realtime-2.1'));
+  expect(view.getByText(/별도로 동의해야 합니다/)).toBeTruthy();
+  expect(view.getByText(/API 사용 요금/)).toBeTruthy();
+  expect(view.queryByText(/이 빌드에는 Realtime 통화 기능이 없어/)).toBeNull();
+  expect(voiceSettingsStore.save).not.toHaveBeenCalled();
 });

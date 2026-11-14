@@ -90,3 +90,67 @@ it('blocks Realtime activation instead of falling back or invoking a provider', 
   expect(await canActivateVoiceModel()).toBe(true);
   alert.mockRestore();
 });
+
+it('returns a runtime credential only for the explicitly selected API model', async () => {
+  await voiceSettingsStore.save({ ...api, replacementKey: 'synthetic-key' });
+  expect(await voiceSettingsStore.realtimeCredentials(api.model)).toEqual({
+    model: api.model,
+    apiKey: 'synthetic-key',
+  });
+  expect(await voiceSettingsStore.load()).toEqual({ ...api, hasApiKey: true });
+  await expect(
+    voiceSettingsStore.realtimeCredentials('gpt-realtime-2.1-mini'),
+  ).rejects.toThrow('selection changed');
+  await voiceSettingsStore.save({
+    mode: 'local',
+    model: 'apple-system-speech',
+  });
+  await expect(
+    voiceSettingsStore.realtimeCredentials(api.model),
+  ).rejects.toThrow('selection changed');
+});
+it.each([
+  '',
+  ' ',
+  'synthetic key',
+  'synthetic\nkey',
+  'synthetic\tkey',
+  'x'.repeat(4097),
+])(
+  'rejects malformed stored runtime credentials without exposing them',
+  async key => {
+    persisted = JSON.stringify({ ...api, apiKey: key });
+    await expect(
+      voiceSettingsStore.realtimeCredentials(api.model),
+    ).rejects.toThrow('Realtime credentials unavailable or selection changed');
+  },
+);
+it('does not expose native credential errors or use unknown models', async () => {
+  read.mockRejectedValue(new Error('private synthetic storage payload'));
+  await expect(
+    voiceSettingsStore.realtimeCredentials(api.model),
+  ).rejects.toThrow('Realtime credentials unavailable or selection changed');
+  read.mockImplementation(
+    async () =>
+      ({
+        password: JSON.stringify({
+          ...api,
+          model: 'gpt-text',
+          apiKey: 'synthetic',
+        }),
+      }) as never,
+  );
+  await expect(
+    voiceSettingsStore.realtimeCredentials('gpt-text'),
+  ).rejects.toThrow();
+});
+it('observes a pending selection write before exposing credentials', async () => {
+  persisted = JSON.stringify({ ...api, apiKey: 'synthetic-key' });
+  const selection = voiceSettingsStore.save({
+    mode: 'local',
+    model: 'apple-system-speech',
+  });
+  const credentials = voiceSettingsStore.realtimeCredentials(api.model);
+  await selection;
+  await expect(credentials).rejects.toThrow('selection changed');
+});

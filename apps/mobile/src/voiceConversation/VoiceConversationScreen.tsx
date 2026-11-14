@@ -13,21 +13,27 @@ export function VoiceConversationScreen({
   phase,
   status,
   identity,
+  pipeline,
+  transcript,
   onEnd,
   onMute,
   onResume,
   onInterrupt,
   onFinish,
+  manualFinish = true,
 }: {
   visible: boolean;
   phase: VoicePhase;
   status: string;
   identity?: ReactNode;
+  pipeline?: string;
+  transcript?: ReactNode;
   onEnd: () => void;
   onMute: () => void;
   onResume: () => void;
   onInterrupt: () => void;
   onFinish: () => void;
+  manualFinish?: boolean;
 }) {
   const muted = phase === 'stopped' || phase === 'ended';
   const interruptible = phase === 'processing' || phase === 'speaking';
@@ -72,11 +78,13 @@ export function VoiceConversationScreen({
               {muted ? t('ragConversation.voice.muted') : status}
             </AppText>
             <AppText style={styles.note}>
-              {t('ragConversation.voice.localPipeline')}
+              {pipeline ?? t('ragConversation.voice.localPipeline')}
             </AppText>
           </View>
+          {transcript}
           <View style={styles.actions}>
-            {phase === 'listening' &&
+            {manualFinish &&
+              phase === 'listening' &&
               action(
                 t('ragConversation.voice.finish'),
                 onFinish,

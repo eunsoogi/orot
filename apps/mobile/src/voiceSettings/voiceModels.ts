@@ -14,13 +14,13 @@ export const voiceModels = [
     id: 'gpt-realtime-2.1',
     mode: 'openai-api',
     title: 'GPT Realtime 2.1',
-    detail: 'OpenAI API · 음성 대화 모델 · 통화 연결 미지원',
+    detail: 'OpenAI Realtime API · 음성 입출력 · 네트워크·API 키 필요',
   },
   {
     id: 'gpt-realtime-2.1-mini',
     mode: 'openai-api',
     title: 'GPT Realtime 2.1 mini',
-    detail: 'OpenAI API · 음성 대화 모델 · 통화 연결 미지원',
+    detail: 'OpenAI Realtime API · 음성 입출력 · 네트워크·API 키 필요',
   },
 ] as const;
 export const localVoiceModel = voiceModels[0].id;
