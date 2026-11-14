@@ -291,3 +291,30 @@ workflow나 `scripts/ci`가 비교 범위에 포함된 PR은 공유 영향이 �
 완료 후 정확한 run과 attempt의 `ios-candidate-selection-*` 및 `ios-focused-result-*` artifact와 실행 로그, Simulator 정리 결과를 확인합니다. 결과에는 선택한 식별자, 제품 manifest digest와 실제 runtime 관측이 포함됩니다. 선택 실행은 기록된 사례만 증명하며 Full 또는 release 증거가 아닙니다. `ios-focused.yml`은 Full E2E의 Keychain authentication에도 재사용됩니다.
 
 PR 상태 변경과 제목·본문 수정, main push는 E2E를 시작하지 않습니다. `main`의 수동 Full 실행은 동일한 검증 graph를 실행하지만 release 증거가 되지는 않습니다. 실패·누락·취소·오래된 결과가 있으면 nightly Full receipt와 release 검증은 실패하며, 다음 일일 schedule의 exact main SHA 결과를 기다려야 합니다.
+
+## Separate protected-document security integration
+
+Use a supported Mac and an explicitly owned Simulator after the normal preflight.
+Build the integration test product at the recorded source SHA with the existing
+core build-for-testing command. Retain build logs, xctestrun, dependency/SDK/runtime
+identity and source SHA together; a repository HEAD alone cannot authenticate an
+older binary. Then run the unchanged original 20-case security inventory:
+
+```sh
+node scripts/ci/medical-document-security-validation.mjs \
+  "$XCTESTRUN" "platform=iOS Simulator,id=$OWNED_SIMULATOR_UDID" \
+  "$SECURITY_RESULT_BUNDLE" "$SECURITY_RESULT_JSON"
+```
+
+Use fresh output paths. The runner requires every original case to pass once;
+it does not retry or convert skips to success. Tests inspect the volume of their
+actual temporary root before protected-store operations. Only an explicitly
+unsupported volume is skipped with a reason; unknown capability and supported
+volumes failing protection remain failures. A non-success runner report means
+failed or unavailable validation; inspect the retained xcresult to distinguish
+unsupported skips from real failures. Never report a skipped/unrun security suite
+as passed. Host capability diagnostics alone do not substitute for the target URL
+probe. Hosted E2E keeps seven extraction/read cases, four picker completion cases
+and actual document user journeys; its completeness does not attest this separate
+security inventory. Product encryption/protection, required PR checks and branch
+protection are unchanged. Real physical-device locked-state behavior is separate.

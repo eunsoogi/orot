@@ -174,6 +174,7 @@ final class MedicalDocumentImportTests: XCTestCase {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("medical-document-test-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let store = MedicalDocumentFileStore(rootDirectory: root)
         let retainedID = UUID().uuidString.lowercased()
         let orphanID = UUID().uuidString.lowercased()

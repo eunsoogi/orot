@@ -1,5 +1,5 @@
-/** Native coverage for document reads, protected originals, photo lookup, and duplicate recovery. */
-export const medicalDocumentCoreTests = [
+/** Original supported-host security integration inventory; all native assertions remain unchanged. */
+export const medicalDocumentSecurityTests = [
   'OrotIntegrationTests/MedicalDocumentImportTests/testPlainTextOffsetsUseUtf16CodeUnitsAndHashOriginalBytes',
   'OrotIntegrationTests/MedicalDocumentImportTests/testPDFExtractionRetainsEachPageNumberAndRejectsImageOnlyPages',
   'OrotIntegrationTests/MedicalDocumentImportTests/testPlainTextRejectsUnsupportedEncodingAndEmptyContent',
@@ -20,8 +20,20 @@ export const medicalDocumentCoreTests = [
   'OrotIntegrationTests/MedicalDocumentOriginalPhotoTests/testOriginalPhotoRejectsMalformedAndAmbiguousSourceIdentityWithoutChangingFiles',
   'OrotIntegrationTests/MedicalDocumentOriginalPhotoTests/testDeletingOnePhotoRetainsTheOtherDocumentOriginal',
   'OrotIntegrationTests/MedicalDocumentOriginalPhotoTests/testProtectedDirectoryReadFailureRemainsUnavailable',
+];
+
+/** Picker completion and pure document reads remain hosted E2E obligations. */
+export const medicalDocumentPickerTests = [
   'OrotIntegrationTests/MedicalDocumentPhotoPickerCompletionTests/testInteractiveDismissCompletesOnceAndLateCallbacksCannotRetireNextRequest',
   'OrotIntegrationTests/MedicalDocumentPhotoPickerCompletionTests/testSelectionCompletesAfterBothResultAndDismissalInEitherOrder',
   'OrotIntegrationTests/MedicalDocumentPhotoPickerCompletionTests/testExplicitCancelAndPresentationFailureCompleteOnce',
   'OrotIntegrationTests/MedicalDocumentPhotoPickerCompletionTests/testProviderFailureWaitsForDismissalAndRejectsConcurrentRequests',
 ];
+
+// The first seven cases exercise extraction/coordinated reads without protected-file attributes.
+export const medicalDocumentReadTests = medicalDocumentSecurityTests.slice(0, 7);
+export const medicalDocumentCoreTests = [
+  ...medicalDocumentReadTests,
+  ...medicalDocumentPickerTests,
+];
+export const medicalDocumentProtectionTests = medicalDocumentSecurityTests.slice(7);

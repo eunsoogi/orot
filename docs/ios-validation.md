@@ -360,3 +360,25 @@ Validation on the candidate working tree (before its implementation commit):
 Local build/test logs and the six-case `.xcresult` remain in `build/realtime-validation/` and are not committed. Initial local dependency failures (a transient CocoaPods path error and duplicate screens archive anchors) were resolved using unchanged dependency locks and checksum-verified official archives, not by relaxing checks. The initial stale-dialog unit fixture lacked an active AppState subscription mock; it was corrected without weakening the assertion.
 
 Not validated: real API authentication/model access, paid requests, real microphone input, acoustic echo cancellation, natural barge-in quality, native credential-entry UI, or physical devices. The final JS cancellation/consent hardening was unit-tested after the native run; the recorded native binary predates those JS-only edits. This is candidate evidence, not Full inventory or release acceptance, and does not resolve unrelated protected-file acceptance failures.
+
+## Document security scope separation, 2026-11-14
+
+Under explicit user direction, protected-store integration is separate from
+hosted user-journey E2E. The original 20 medical-document native methods remain
+in `medicalDocumentSecurityTests`; 13 protected-store/recovery cases leave hosted
+core, while seven extraction/read cases and four picker-completion cases remain.
+All document UI journeys are retained. The deliberately weaker injected metadata
+rejection remains unconditional; environment-dependent cases may skip only after
+the actual test-directory volume explicitly reports unsupported protection.
+Unknown capability is failure, supported capability retains all original checks.
+
+Previously recorded supported-Mac evidence: the original 20 cases passed at
+source `2c811a05f522e862f71f862b2e5a5261cb9f5139` (recorded native evidence). This is historical revision-scoped
+evidence, not a new execution or proof of the new capability gate. The historical
+hosted failure with absent raw protection and non-complete URL protection remains
+preserved; separating scope does not turn that failure into a pass. No native
+rerun was performed for this change. New security validation is unexecuted until
+its own matching build, environment and exact 20-case result are recorded.
+Physical-device encryption/locked-state behavior remains unverified. Hosted Full
+receipt completeness now refers to the maintained application E2E inventory only;
+it is not a separate security attestation or a release approval.
