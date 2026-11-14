@@ -8,9 +8,8 @@ import type { NavigationGeometryPayload } from '../../navigation/navigationGeome
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../navigation/navigationController';
 import type { AppNavigationRoute } from '../../routes/appNavigationRoute';
-import type { DiseaseHypothesisAnalysis } from '../types';
+import { source, restored } from '../__fixtures__/savedSummaryRouteFixture';
 
-const noop = () => undefined;
 const noInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const originalWindow = Dimensions.get('window');
 const originalScreen = Dimensions.get('screen');
@@ -42,8 +41,7 @@ jest
       );
       return;
     }
-    if (testID === 'disease-hypotheses-columns-frame-host') {
-      // The inner screen measures its actual route parent when the scene owns layout.
+    if (testID === 'summary-history-columns-frame-host') {
       const parentPanel = routeKey
         ? screen.queryByTestId(`navigation-route-columns-${routeKey}-primary`)
         : null;
@@ -108,40 +106,9 @@ function viewport(width: number) {
 
 function columnsAxis() {
   return StyleSheet.flatten(
-    screen.getByTestId('disease-hypotheses-columns').props.style,
+    screen.getByTestId('summary-history-columns').props.style,
   )?.flexDirection;
 }
-
-const source = {
-  sourceKind: 'personal_record' as const,
-  sourceId: 'synthetic-record',
-  evidenceId: 'synthetic-evidence',
-  sourceRevision: '1',
-  evidenceRevision: '1',
-  locator: { kind: 'structured_record' as const, recordId: 'synthetic-record' },
-  effectiveTime: null,
-  reviewState: 'reviewed' as const,
-};
-
-const restored: DiseaseHypothesisAnalysis = {
-  presentation: 'symptom_summary',
-  savedSummary: {
-    status: 'saved',
-    id: 'saved-summary',
-    createdAt: '2035-01-01T00:00:00Z',
-    modelName: 'Synthetic',
-  },
-  hypotheses: [
-    {
-      title: 'Synthetic symptom summary',
-      summary: 'Synthetic route result.',
-      supportingEvidence: [source],
-      contraryEvidence: [],
-      uncertainty: 'Synthetic evidence only.',
-      missingData: [],
-    },
-  ],
-};
 
 beforeEach(() => {
   routeController = undefined;
@@ -163,8 +130,21 @@ test('restores saved analysis and source across expanded and narrow production r
   const services = {
     summarizeSymptoms: summary,
     generateDiseaseHypotheses: assessment,
+    summaryHistory: {
+      list: async () => [
+        {
+          id: 'saved-summary',
+          createdAt: '2035-01-01T00:00:00Z',
+          modelName: 'Synthetic',
+        },
+      ],
+      read: async () => restored,
+    },
   } as unknown as AiFeatureServices;
-  const rootTabs = { activeTab: 'conversation' as const, onSelect: noop };
+  const rootTabs = {
+    activeTab: 'conversation' as const,
+    onSelect: () => undefined,
+  };
 
   await render(
     <NavigationRouteAdapter
@@ -182,21 +162,20 @@ test('restores saved analysis and source across expanded and narrow production r
         ) : actions.route.name === 'saved-analysis' ? (
           <AiFeatureFlowScreen
             route="saved-analysis"
-            restoredSummary={restored}
             navigationRouteKey={actions.route.key}
-            onFeatureNavigationStateChange={noop}
-            onRouteStateChange={noop}
-            onBack={noop}
-            onOpenDiseaseHypotheses={noop}
-            onOpenRagConversation={noop}
-            onOpenExternalEvidence={noop}
-            onOpenProviderSelection={noop}
+            onFeatureNavigationStateChange={() => undefined}
+            onRouteStateChange={() => undefined}
+            onBack={() => undefined}
+            onOpenDiseaseHypotheses={() => undefined}
+            onOpenRagConversation={() => undefined}
+            onOpenExternalEvidence={() => undefined}
+            onOpenProviderSelection={() => undefined}
             onOpenSource={onOpenSource}
             resolveSelectedAi={async () => ({ status: 'selection-required' })}
             confirmConsent={async () => true}
             selectedAiRevision={0}
             services={services}
-            onOpenArticle={noop}
+            onOpenArticle={() => undefined}
           />
         ) : null
       }
@@ -205,6 +184,9 @@ test('restores saved analysis and source across expanded and narrow production r
 
   await fireEvent.press(screen.getByTestId('open-saved-analysis'));
   const routeKey = controller.getSnapshot().currentRoute.key;
+  await fireEvent.press(
+    await screen.findByRole('button', { name: /Synthetic/ }),
+  );
   expect(await screen.findByText('Synthetic symptom summary')).toBeTruthy();
 
   activeGeometry = geometry(1280, true);
@@ -215,9 +197,7 @@ test('restores saved analysis and source across expanded and narrow production r
     screen.queryByTestId(`navigation-route-columns-${routeKey}`),
   ).toBeNull();
   expect(columnsAxis()).toBe('column');
-  expect(
-    screen.getByTestId('disease-hypotheses-columns-secondary'),
-  ).toBeTruthy();
+  expect(screen.getByTestId('conversation-saved-summary-detail')).toBeTruthy();
   expect(screen.queryByTestId('symptom-summary-generate')).toBeNull();
   expect(screen.queryByTestId('disease-hypotheses-generate')).toBeNull();
   await fireEvent.press(screen.getByLabelText('원문 근거 열기 · 건강 기록'));
@@ -230,9 +210,7 @@ test('restores saved analysis and source across expanded and narrow production r
   });
   expect(columnsAxis()).toBe('column');
   expect(screen.getByText('Synthetic symptom summary')).toBeTruthy();
-  expect(
-    screen.getByTestId('disease-hypotheses-columns-secondary'),
-  ).toBeTruthy();
+  expect(screen.getByTestId('conversation-saved-summary-detail')).toBeTruthy();
   expect(screen.queryByTestId('symptom-summary-generate')).toBeNull();
   expect(screen.queryByTestId('disease-hypotheses-generate')).toBeNull();
   await fireEvent.press(screen.getByLabelText('원문 근거 열기 · 건강 기록'));
