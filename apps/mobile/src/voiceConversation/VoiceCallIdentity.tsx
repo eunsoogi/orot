@@ -26,7 +26,11 @@ export function SavedVoiceCallIdentity({
           <AvatarSymbol avatar={value.avatar} />
         </View>
       </View>
-      <AppText accessibilityRole="header" style={styles.name}>
+      <AppText
+        accessibilityRole="header"
+        maxFontSizeMultiplier={1.5}
+        style={styles.name}
+      >
         {value.name ?? defaultAssistantName}
       </AppText>
     </View>
@@ -44,6 +48,8 @@ const styles = StyleSheet.create({
   },
   avatar: { transform: [{ scale: 2 }] },
   name: {
+    flexShrink: 1,
+    maxWidth: '100%',
     fontSize: 34,
     fontWeight: '700',
     textAlign: 'center',

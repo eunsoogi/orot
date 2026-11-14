@@ -75,7 +75,7 @@ export function VoiceConversationScreen({
           testID="voice-call-screen"
           contentContainerStyle={styles.content}
         >
-          <AppText style={styles.note}>
+          <AppText maxFontSizeMultiplier={2} style={styles.note}>
             {manualFinish ? '기기 음성 대화' : '실시간 음성 대화'}
           </AppText>
           <View style={styles.center}>
@@ -95,7 +95,7 @@ export function VoiceConversationScreen({
             <AppText accessibilityLiveRegion="polite" style={styles.status}>
               {muted ? t('ragConversation.voice.muted') : status}
             </AppText>
-            <AppText style={styles.note}>
+            <AppText maxFontSizeMultiplier={2} style={styles.note}>
               {pipeline ?? t('ragConversation.voice.localPipeline')}
             </AppText>
           </View>
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   identity: { alignSelf: 'center', maxWidth: '100%' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 20 },
   status: { color: appColors.text, textAlign: 'center' },
-  note: { color: appColors.secondary, textAlign: 'center' },
+  note: { fontSize: 14, color: appColors.secondary, textAlign: 'center' },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
