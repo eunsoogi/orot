@@ -154,6 +154,7 @@ export function ConversationScreen({
         primary={
           <View
             style={styles.content}
+            testID="conversation-content-viewport"
             onLayout={event =>
               setContentHeight(event.nativeEvent.layout.height)
             }

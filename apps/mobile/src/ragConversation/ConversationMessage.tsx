@@ -70,22 +70,21 @@ export function ConversationMessage({
       : message.incomplete
         ? 'rag-conversation-incomplete-body'
         : 'rag-conversation-answer-body';
-  const activity =
-    message.activity && (showToolActivity || message.incomplete) ? (
-      <Text
-        accessibilityLiveRegion={message.streaming ? 'none' : 'polite'}
-        style={styles.activity}
-        testID={
-          message.streaming
-            ? 'rag-conversation-progress'
-            : message.incomplete
-              ? 'rag-conversation-incomplete-activity'
-              : undefined
-        }
-      >
-        {message.activity}
-      </Text>
-    ) : null;
+  const activity = message.activity ? (
+    <Text
+      accessibilityLiveRegion={message.streaming ? 'none' : 'polite'}
+      style={styles.activity}
+      testID={
+        message.streaming
+          ? 'rag-conversation-progress'
+          : message.incomplete
+            ? 'rag-conversation-incomplete-activity'
+            : undefined
+      }
+    >
+      {message.activity}
+    </Text>
+  ) : null;
   // Keep the last streamed line at the end of a short reading viewport.
   const activityBeforeText = compact && message.streaming;
   return (
