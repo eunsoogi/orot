@@ -1,3 +1,7 @@
+// Exercise the retired UI only in this harness to preserve its safety and data tests.
+jest.mock('../ConversationTaskPanels', () =>
+  require('../testFixtures/LegacyTreatmentTaskPanels'),
+);
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { t } from '../../i18n';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';

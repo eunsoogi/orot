@@ -3,8 +3,6 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import { todayIdentity } from '../aiFeatures/integration/dailyReportTodayIdentity';
 import { t } from '../i18n';
-import { TreatmentConversationAction } from '../treatmentContext/TreatmentConversationAction';
-import type { SavedTreatmentChoice } from '../treatmentContext/treatmentSavedLibrary';
 import { DailyReportConversationHeader } from './DailyReportConversationHeader';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import type {
@@ -19,22 +17,6 @@ type Common = {
   onOpenSource: (source: EvidenceReference) => void;
 };
 
-function treatmentActions(store: ConversationSessions, id: number) {
-  return {
-    onSavedItem: (item: SavedTreatmentChoice) => {
-      store
-        .saveTaskCard(id, `treatment:${item.id}`, {
-          kind: 'treatment',
-          artifactId: item.id,
-        })
-        .catch(() =>
-          store.setError(id, t('ragConversation.conversation.restoreFailed')),
-        );
-    },
-    onDeletedItem: (item: SavedTreatmentChoice) =>
-      store.forgetTaskCard(id, `treatment:${item.id}`),
-  };
-}
 function reportActions(
   store: ConversationSessions,
   session: ConversationSession,
@@ -85,7 +67,6 @@ function reportActions(
 export function ConversationTaskHeader({
   store,
   session,
-  onOpenSource,
   selectedReport,
   routeKey,
   reportOwner,
@@ -129,13 +110,6 @@ export function ConversationTaskHeader({
   );
   return (
     <>
-      <TreatmentConversationAction
-        key={id}
-        sessionId={id}
-        ownership={store.treatment}
-        onOpenSource={onOpenSource}
-        {...treatmentActions(store, id)}
-      />
       <DailyReportConversationHeader
         report={selectedReport}
         onRequest={
@@ -169,16 +143,13 @@ export function ConversationTaskHeader({
 export function ConversationStoredTaskCards({
   store,
   session,
-  onOpenSource,
   routeKey,
-  durableSessionId,
   renderStoredReportTask,
 }: Common & {
   routeKey?: string;
   durableSessionId: string | null;
   renderStoredReportTask?: ConversationScreenProps['renderStoredReportTask'];
 }) {
-  const { id } = session;
   return (
     <>
       {session.taskCards
@@ -197,21 +168,9 @@ export function ConversationStoredTaskCards({
               </Fragment>
             );
           }
-          return durableSessionId ? (
-            <TreatmentConversationAction
-              key={card.id}
-              sessionId={id}
-              ownership={store.treatment}
-              onOpenSource={onOpenSource}
-              initialSaved={{
-                id: card.task.artifactId,
-                artifactRevision: card.task.artifactRevision,
-                sessionId: durableSessionId,
-                createdAt: card.createdAt,
-              }}
-              {...treatmentActions(store, id)}
-            />
-          ) : null;
+          // Retain historical artifacts in storage without reopening the retired
+          // treatment workflow or exposing new generation/follow-up actions.
+          return null;
         })}
     </>
   );
