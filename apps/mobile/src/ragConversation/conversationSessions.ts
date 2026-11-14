@@ -48,7 +48,11 @@ export function createConversationSessions(
       emit();
     }
   };
-  const update = (id: number, change: Partial<ConversationSession>) => {
+  const update = (
+    id: number,
+    change: Partial<ConversationSession>,
+    stream = false,
+  ) => {
     if (disposed) return;
     snapshot = {
       ...snapshot,
@@ -56,7 +60,8 @@ export function createConversationSessions(
         session.id === id ? { ...session, ...change } : session,
       ),
     };
-    emit();
+    if (stream) listeners.emitStream();
+    else emit();
   };
   const find = (id: number) =>
     snapshot.sessions.find(session => session.id === id)!;
@@ -213,6 +218,7 @@ export function createConversationSessions(
       photoConsent.dispose();
       photoDrafts.clear().catch(() => {});
       disposed = true;
+      listeners.dispose();
       lifecycle++;
       taskState.invalidate();
       taskRefresh.invalidate();
