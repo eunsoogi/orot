@@ -86,6 +86,10 @@ test.each([2, 3, 4])(
         screen.getByTestId(`overview-metric-chart-${metric}`),
       );
       const selectedPointID = `overview-metric-chart-${metric}-selected-point`;
+      expect(chart.queryByTestId(selectedPointID)).toBeNull();
+      await fireEvent.press(
+        chart.getByTestId(`overview-metric-chart-${metric}-details`),
+      );
       const selectedPoint = chart.getByTestId(selectedPointID);
       expect(selectedPoint.props.accessibilityLabel).toContain('2026-10-14');
       expect(selectedPoint.props.accessibilityLabel).toContain(

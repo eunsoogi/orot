@@ -16,6 +16,8 @@ type Props = {
   testID?: string;
   selectedPointTestID?: string;
   kind: 'line' | 'bar';
+  /** Overview cards reveal metadata on demand; all other chart consumers retain their full presentation. */
+  compact?: boolean;
 };
 
 function comparePositions(left: number | string, right: number | string) {
@@ -33,9 +35,12 @@ export function ChartPlot({
   testID,
   selectedPointTestID,
   kind,
+  compact = false,
 }: Props) {
   const axis = kind === 'line' ? 'time' : 'day';
   const [pageIndex, setPageIndex] = useState(0);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const showDetails = !compact || detailsOpen;
   const canShow =
     data.coverage.status !== 'permission' && data.coverage.status !== 'empty';
   const pages = canShow ? chartWindows(data, axis) : [];
@@ -66,11 +71,13 @@ export function ChartPlot({
       testID={testID}
       accessibilityState={{ busy: data.coverage.status === 'loading' }}
     >
-      <Text accessibilityRole="header">{title}</Text>
-      <Text accessibilityState={{ busy: data.coverage.status === 'loading' }}>
-        {t(`chart.state.${data.coverage.status}`)}
-      </Text>
-      <Text>{t('chart.coverage', data.coverage)}</Text>
+      {showDetails ? <Text accessibilityRole="header">{title}</Text> : null}
+      {showDetails || !['ready', 'partial'].includes(data.coverage.status) ? (
+        <Text accessibilityState={{ busy: data.coverage.status === 'loading' }}>
+          {t(`chart.state.${data.coverage.status}`)}
+        </Text>
+      ) : null}
+      {showDetails ? <Text>{t('chart.coverage', data.coverage)}</Text> : null}
       {pages.length > 1 && positions.length > 0 && (
         <View>
           <Text testID={testID ? `${testID}-page` : undefined}>
@@ -104,7 +111,7 @@ export function ChartPlot({
           </Pressable>
         </View>
       )}
-      {visible && (
+      {visible && showDetails && (
         <View style={styles.legend}>
           {visible.series
             .filter(series => series.points.length > 0)
@@ -129,14 +136,31 @@ export function ChartPlot({
       ) : (
         <View style={{ height }} />
       )}
-      <ChartPointSelection
-        data={visible}
-        axis={axis}
-        testID={
-          selectedPointTestID ??
-          (testID ? `${testID}-selected-point` : undefined)
-        }
-      />
+      {compact ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t(
+            detailsOpen ? 'chart.hideDetails' : 'chart.details',
+          )}
+          accessibilityHint={t(`chart.state.${data.coverage.status}`)}
+          accessibilityState={{ expanded: detailsOpen }}
+          onPress={() => setDetailsOpen(value => !value)}
+          style={styles.pageButton}
+          testID={testID ? `${testID}-details` : undefined}
+        >
+          <Text>{t(detailsOpen ? 'chart.hideDetails' : 'chart.details')}</Text>
+        </Pressable>
+      ) : null}
+      {showDetails ? (
+        <ChartPointSelection
+          data={visible}
+          axis={axis}
+          testID={
+            selectedPointTestID ??
+            (testID ? `${testID}-selected-point` : undefined)
+          }
+        />
+      ) : null}
     </View>
   );
 }

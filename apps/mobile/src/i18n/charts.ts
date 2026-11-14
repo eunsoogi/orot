@@ -1,5 +1,7 @@
 /** Shared chart states and data descriptions use the same wording on every screen. */
 export const chartsKo = {
+  'chart.details': '측정값 상세 보기',
+  'chart.hideDetails': '상세 정보 접기',
   'chart.state.ready': '기록을 표시하고 있어요.',
   'chart.state.loading': '기록을 불러오는 중이에요.',
   'chart.state.permission': '건강 기록 접근 권한이 필요해요.',
