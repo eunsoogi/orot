@@ -27,3 +27,5 @@ export type {
   AgentMemoryToolPolicy,
   PersistedMemoryRecord,
 } from './types';
+
+export { listSavedMemories } from './savedMemories';

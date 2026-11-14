@@ -1,4 +1,5 @@
-import { useContext } from 'react';
+import { useContext, type ReactNode } from 'react';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { RecordsHubHeadingContext } from './RecordsHubBanner';
 import { Pressable, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
@@ -10,6 +11,8 @@ import { ManualHistoryAction } from '../manualHistory/ManualHistoryAction';
 import { styles } from './recordsRouteEntryStyles';
 
 interface RecordsRouteEntriesProps {
+  /** Optional remembered-content panel shares measured space without another scroll owner. */
+  readonly secondary?: ReactNode;
   readonly onOpenSavedRecordings: () => void;
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
@@ -22,6 +25,7 @@ interface RecordsRouteEntriesProps {
 
 /** Groups capture actions and existing record destinations without adding a new scroll owner. */
 export function RecordsRouteEntries({
+  secondary,
   onOpenSavedRecordings,
   onOpenRecording,
   onOpenHealthLibrary,
@@ -72,42 +76,48 @@ export function RecordsRouteEntries({
         </Pressable>
       </View>
 
-      <View style={styles.materials} testID="records-materials">
-        <Text accessibilityRole="header" style={styles.materialsTitle}>
-          {t('records.myMaterials')}
-        </Text>
-        <View style={styles.materialRows}>
-          <MedicalDocumentImportAction
-            opening={medicalDocumentOpening}
-            disabled={medicalDocumentDisabled}
-            onPress={onImportMedicalDocument}
-            showDivider
-          />
-          <MedicalDocumentImportAction
-            source="photos"
-            opening={medicalDocumentOpening}
-            disabled={medicalDocumentDisabled}
-            onPress={onImportMedicalPhoto}
-            showDivider
-          />
-          <RecordsLibraryAction
-            icon="doc.text"
-            title={t('recording.library.title')}
-            summary={t('records.savedRecordingsSummary')}
-            onPress={onOpenSavedRecordings}
-            testID="records-open-saved-recordings"
-            showDivider
-          />
-          <ManualHistoryAction onPress={onOpenManualHistory} showDivider />
-          <RecordsLibraryAction
-            icon="folder"
-            title={t('records.healthRecords')}
-            summary={t('healthRecords.description')}
-            onPress={onOpenHealthLibrary}
-            testID="records-open-health-library"
-          />
-        </View>
-      </View>
+      <AdaptiveColumns
+        testID="records-material-columns"
+        secondary={secondary}
+        primary={
+          <View style={styles.materials} testID="records-materials">
+            <Text accessibilityRole="header" style={styles.materialsTitle}>
+              {t('records.myMaterials')}
+            </Text>
+            <View style={styles.materialRows}>
+              <MedicalDocumentImportAction
+                opening={medicalDocumentOpening}
+                disabled={medicalDocumentDisabled}
+                onPress={onImportMedicalDocument}
+                showDivider
+              />
+              <MedicalDocumentImportAction
+                source="photos"
+                opening={medicalDocumentOpening}
+                disabled={medicalDocumentDisabled}
+                onPress={onImportMedicalPhoto}
+                showDivider
+              />
+              <RecordsLibraryAction
+                icon="doc.text"
+                title={t('recording.library.title')}
+                summary={t('records.savedRecordingsSummary')}
+                onPress={onOpenSavedRecordings}
+                testID="records-open-saved-recordings"
+                showDivider
+              />
+              <ManualHistoryAction onPress={onOpenManualHistory} showDivider />
+              <RecordsLibraryAction
+                icon="folder"
+                title={t('records.healthRecords')}
+                summary={t('healthRecords.description')}
+                onPress={onOpenHealthLibrary}
+                testID="records-open-health-library"
+              />
+            </View>
+          </View>
+        }
+      />
     </View>
   );
 }

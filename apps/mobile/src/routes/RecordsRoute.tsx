@@ -16,6 +16,7 @@ import { hubSpacing } from '../layout/hubSpacing';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
 import { RecordsRouteEntries } from './RecordsRouteEntries';
+import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
 import { LegacySymptomData } from './LegacySymptomData';
 
 export interface RecordsRouteProps {
@@ -118,6 +119,7 @@ export function RecordsRoute({
       <View testID="records-layout" style={styles.page}>
         <View style={styles.primaryPanel}>
           <RecordsRouteEntries
+            secondary={<SavedMemoryBrowser />}
             onOpenSavedRecordings={onOpenSavedRecordings}
             onOpenRecording={onOpenRecording}
             onOpenHealthLibrary={onOpenHealthLibrary}
