@@ -183,6 +183,7 @@ test('preserves the early reply while hiding tool calls at compact and wide widt
   const pending = {
     id: 3,
     content: '',
+    activity: '',
     initialResponse: {
       callId: 'early',
       text: '먼저 확인할 내용을 알려드릴게요.',
