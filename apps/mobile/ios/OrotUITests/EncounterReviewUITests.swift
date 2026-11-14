@@ -223,14 +223,15 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
 
     @MainActor
     private func tools(_ app: XCUIApplication, open: Bool) {
-        if open, UITestConditions.element(app, "encounter-probe-close").exists {
+        let modal = UITestConditions.element(app, "encounter-probe-close")
+        if open, modal.exists {
             return
         }
         let button = UITestConditions.element(app, open ? "encounter-probe-tools" : "encounter-probe-close")
-        XCTAssertTrue(UITestConditions.exists(button))
-        XCTAssertTrue(button.isHittable)
+        // The fixture opener belongs to route content, so restore its measured visibility after editing.
+        guard !open || FormUITestConditions.reveal(button, in: app, scrollID: "navigation-route-scroll", towardTop: true) != nil else { return }
+        XCTAssertTrue(UITestConditions.exists(button) && button.isHittable)
         button.tap()
-        let modal = UITestConditions.element(app, "encounter-probe-close")
         let state = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == %@", NSNumber(value: open)), object: modal)
         XCTAssertEqual(UITestConditions.wait(for: [state]), .completed)
     }
