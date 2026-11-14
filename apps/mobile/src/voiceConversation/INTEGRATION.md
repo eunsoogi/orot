@@ -52,3 +52,30 @@ A 1.2-second stable partial transcript is an endpoint heuristic, not acoustic VA
 missing finals fail closed after five seconds. Compilation and mocked event tests do not
 prove these device behaviors. Do not open an ambient microphone or use a physical device
 without separately authorized, scoped validation. Keep #741 open pending its full criteria.
+
+## Voice model configuration
+
+Settings > AI selection now offers a separate voice-model catalog: Apple system
+Speech/synthesis, GPT Realtime 2.1, and GPT Realtime 2.1 mini. Apple does not expose
+a selectable version here; its local recognition still requires runtime language
+and device support. It is not a local conversational LLM: the existing selected
+text provider still generates its answer under existing transmission consent.
+
+The Realtime entries are configuration-only, explicitly marked unsupported for
+calls. Selecting one blocks activation before native capture and never silently
+falls back to Apple. A saved change cancels an existing local voice owner; the
+local authorization boundary rechecks persisted settings before use. A future
+transport implementation needs separate audio consent, short-lived client
+credentials, request ownership and lifecycle validation. Saving does not grant
+transmission consent or start any permission, model, network, or microphone call.
+
+Configuration and the optional API credential use a dedicated device-only,
+when-unlocked Keychain item, separate from ChatGPT account credentials and the
+text-model selection. Readbacks expose only whether a key exists, not the secret.
+Key deletion explicitly selects Apple system speech. Invalid or locked storage
+fails closed. API model IDs come from the official
+[Realtime guide](https://developers.openai.com/api/docs/guides/realtime) and
+[Realtime 2.1 mini model page](https://developers.openai.com/api/docs/models/gpt-realtime-2.1-mini),
+checked 2026-11-14; the static catalog does not assert account access. API costs
+and audio transfer are disclosed without making assumptions about subscription
+credits. This configuration does not prove live Realtime or local speech quality.

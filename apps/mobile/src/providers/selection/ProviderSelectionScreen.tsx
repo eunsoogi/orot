@@ -1,3 +1,4 @@
+import { VoiceSettingsPanel } from '../../voiceSettings/VoiceSettingsPanel';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
@@ -242,6 +243,7 @@ export default function ProviderSelectionScreen({
             saving={saving}
           />
         ) : null}
+        {presentation === 'settings-provider' ? <VoiceSettingsPanel /> : null}
       </ScrollView>
     </View>
   );

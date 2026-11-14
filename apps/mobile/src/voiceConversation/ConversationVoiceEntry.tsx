@@ -1,3 +1,6 @@
+import { voiceStatus } from './voiceStatus';
+import { canActivateVoiceModel } from '../voiceSettings/voiceActivation';
+import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import { t } from '../i18n';
@@ -13,7 +16,6 @@ import { VoiceConversationScreen } from './VoiceConversationScreen';
 import { nativeVoiceConversation } from './nativeVoiceConversation';
 import { createVoiceSession } from './voiceSession';
 import { initialVoiceState, type VoiceState } from './voiceTurn';
-
 let nextTurn = 0;
 /** Binds explicit voice consent and request ownership to the currently visible conversation. */
 export function ConversationVoiceEntry(
@@ -37,7 +39,6 @@ export function ConversationVoiceEntry(
   const attempt = useRef(0);
   const starting = useRef(false);
   const mounted = useRef(false);
-
   useEffect(() => {
     const attemptRef = attempt;
     mounted.current = true;
@@ -54,6 +55,10 @@ export function ConversationVoiceEntry(
       },
     );
     session.current = voice;
+    const unsubscribeSettings = voiceSettingsStore.subscribe(() => {
+      attemptRef.current++;
+      voice.stop();
+    });
     const subscription = AppState.addEventListener('change', value => {
       if (value === 'background') voice.stop();
     });
@@ -63,9 +68,9 @@ export function ConversationVoiceEntry(
       voice.dispose();
       session.current = null;
       subscription.remove();
+      unsubscribeSettings();
     };
   }, []);
-
   useEffect(() => {
     attempt.current++;
     session.current?.revalidate();
@@ -105,6 +110,7 @@ export function ConversationVoiceEntry(
     setError(false);
     let dialogOpen = false;
     try {
+      if (!(await canActivateVoiceModel())) return;
       const result = await live.resolveSelectedAi();
       if (
         result.status !== 'ready' ||
@@ -175,21 +181,7 @@ export function ConversationVoiceEntry(
       }
     }
   };
-  const status = props.photoPending
-    ? t('ragConversation.voice.photo')
-    : error || state.phase === 'error'
-      ? t('ragConversation.voice.error')
-      : state.phase === 'authorizing' || preparing
-        ? t('ragConversation.voice.authorizing')
-        : state.phase === 'listening'
-          ? t('ragConversation.voice.listening')
-          : state.phase === 'processing'
-            ? t('ragConversation.voice.processing')
-            : state.phase === 'speaking'
-              ? t('ragConversation.voice.speaking')
-              : state.phase === 'cleaning'
-                ? t('ragConversation.voice.cleaning')
-                : '';
+  const status = voiceStatus(props.photoPending, error, preparing, state);
   const displayStatus = !available ? t('ragConversation.voice.error') : status;
   const onStatusChange = props.onStatusChange;
   useEffect(() => {
