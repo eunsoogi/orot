@@ -7,10 +7,15 @@ export function NavigationModal(props: Omit<ModalProps, 'animationType'>) {
   useEffect(() => {
     let mounted = true;
     let changed = false;
+    // Accessibility reads must not leave an approval or cancel surface hidden indefinitely.
+    const fallback = setTimeout(() => {
+      if (mounted && !changed) setReduceMotion(true);
+    }, 150);
     const subscription = AccessibilityInfo.addEventListener(
       'reduceMotionChanged',
       enabled => {
         changed = true;
+        clearTimeout(fallback);
         if (mounted) setReduceMotion(enabled);
       },
     );
@@ -18,14 +23,17 @@ export function NavigationModal(props: Omit<ModalProps, 'animationType'>) {
     // the first frame never animates against an already enabled system preference.
     AccessibilityInfo.isReduceMotionEnabled().then(
       enabled => {
+        clearTimeout(fallback);
         if (mounted && !changed) setReduceMotion(enabled);
       },
       () => {
+        clearTimeout(fallback);
         if (mounted && !changed) setReduceMotion(true);
       },
     );
     return () => {
       mounted = false;
+      clearTimeout(fallback);
       subscription.remove();
     };
   }, []);

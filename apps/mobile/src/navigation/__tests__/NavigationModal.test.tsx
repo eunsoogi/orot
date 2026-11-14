@@ -79,3 +79,23 @@ test('setting read failure presents without motion instead of blocking dismissal
   expect(read().visible).toBe(true);
   expect(read().animationType).toBe('none');
 });
+
+test('a stalled accessibility read cannot indefinitely hide approval and cancel controls', async () => {
+  jest.useFakeTimers();
+  try {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+      .mockReturnValue(new Promise(() => {}));
+    await render(
+      <NavigationModal visible>
+        <Text>Approval controls</Text>
+      </NavigationModal>,
+    );
+    expect(read().visible).toBe(false);
+    await act(async () => jest.advanceTimersByTime(150));
+    expect(read().visible).toBe(true);
+    expect(read().animationType).toBe('none');
+  } finally {
+    jest.useRealTimers();
+  }
+});

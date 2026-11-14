@@ -1,12 +1,12 @@
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Animated, Text, TextInput } from 'react-native';
 import { useState } from 'react';
 import { NavigationInlineTransition } from '../NavigationInlineTransition';
 import { NavigationMotionContext } from '../NavigationMotionContext';
 
 function Form() {
-  const [draft] = useState('unsaved input');
-  return <TextInput testID="draft" value={draft} />;
+  const [draft, setDraft] = useState('initial input');
+  return <TextInput testID="draft" value={draft} onChangeText={setDraft} />;
 }
 function content(key: string, label: string, reduced = false) {
   return (
@@ -27,6 +27,7 @@ test('replaces revoked content immediately without retaining outgoing children o
     .mockReturnValue({ start: jest.fn(), stop, reset: jest.fn() });
   const view = await render(content('form', 'Current source'));
   expect(animate).not.toHaveBeenCalled();
+  await fireEvent.changeText(screen.getByTestId('draft'), 'unsaved input');
   await view.rerender(content('sources', 'Allowed sources'));
   expect(screen.queryByText('Current source')).toBeNull();
   expect(screen.getByText('Allowed sources')).toBeVisible();
