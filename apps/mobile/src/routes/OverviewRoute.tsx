@@ -61,13 +61,14 @@ export default function OverviewRoute({
           subtitle={t('overview.greeting')}
           testID="overview"
         />
-        <Text style={styles.message}>
-          {formatDate(new Date())} ·{' '}
-          {t('overview.localTimeZone', {
-            zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          })}
-        </Text>
       </View>
+      {/* Keep date text outside the rounded decorative clip, including at large type sizes. */}
+      <Text style={styles.message}>
+        {formatDate(new Date())} ·{' '}
+        {t('overview.localTimeZone', {
+          zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        })}
+      </Text>
 
       {/* The shell consumes system/navigation geometry once and owns the only vertical scroll. */}
       <View style={styles.sections} testID="overview-overview-sections">
