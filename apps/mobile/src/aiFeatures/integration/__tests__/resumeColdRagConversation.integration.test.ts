@@ -24,6 +24,7 @@ const identity = {
 /** Real SQLite + LangGraph + app factory and final retention gates; all provider responses synthetic. */
 test.each([
   'complete',
+  'eager',
   'repause',
   'concurrent',
   'selection',
@@ -35,7 +36,11 @@ test.each([
   const connection = openSqliteTestDatabase(':memory:');
   try {
     await runMigrations(connection.database);
-    const f = await coldRagFactoryFixture();
+    const f = await coldRagFactoryFixture(
+      mode === 'eager'
+        ? { version: 1, status: 'consent_required', charged: true }
+        : undefined,
+    );
     const { generate } = makeProvider([
       JSON.stringify({
         type: 'result',
@@ -62,7 +67,6 @@ test.each([
       pause();
       return 'authorized';
     });
-    // Capture the exact pre-search factory, while the live storage hook supplies boundary/epoch binding.
     const persisted = await requests.openWorkflowContinuation(
       identity,
       async input => ({
@@ -151,7 +155,7 @@ test.each([
           onRetentionCandidate,
         },
       });
-    if (!['complete', 'repause', 'concurrent'].includes(mode)) {
+    if (!['complete', 'repause', 'concurrent', 'eager'].includes(mode)) {
       await expect(resume()).rejects.toThrow();
       expect(generate).not.toHaveBeenCalled();
       expect(f.search).not.toHaveBeenCalled();
@@ -212,7 +216,7 @@ test.each([
         expect(result.registry).not.toBe(f.dependencies.registry);
       }
       expect(generate).toHaveBeenCalledTimes(1);
-      expect(f.search).toHaveBeenCalledTimes(1);
+      expect(f.search).toHaveBeenCalledTimes(mode === 'eager' ? 0 : 1);
       expect(register).toHaveBeenCalledTimes(mode === 'repause' ? 2 : 1);
       expect(onRetentionCandidate).toHaveBeenCalledTimes(1);
       expect(
@@ -224,7 +228,7 @@ test.each([
       ).toEqual([{ id: 'request' }]);
       await expect(resume()).rejects.toThrow();
       expect(generate).toHaveBeenCalledTimes(1);
-      expect(f.search).toHaveBeenCalledTimes(1);
+      expect(f.search).toHaveBeenCalledTimes(mode === 'eager' ? 0 : 1);
     }
     expect(
       (

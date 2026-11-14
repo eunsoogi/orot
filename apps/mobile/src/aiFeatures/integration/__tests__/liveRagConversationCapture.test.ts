@@ -67,3 +67,19 @@ test('unsupported paging refuses cold capture rather than losing its cursor or r
   ).rejects.toThrow('paging');
   expect(capture).not.toHaveBeenCalled();
 });
+
+// The production capture closure preserves the completed preflight, not its dispatch function.
+test.each(['success', 'empty', 'consent_required'] as const)(
+  'preserves eager %s on the protected reconstruction',
+  async status => {
+    const publicSearch = { version: 1 as const, status, charged: true };
+    const result = await liveRagConversationCapture(state, () => ({
+      ...completion,
+      publicSearch,
+    }))(input);
+    expect(result.publicSearch).toEqual(publicSearch);
+    expect(JSON.parse(JSON.stringify(result)).publicSearch).toEqual(
+      publicSearch,
+    );
+  },
+);

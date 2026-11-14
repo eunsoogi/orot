@@ -1,4 +1,4 @@
-import { conversationPublicSearchPlan } from './conversationPublicSearchPlan';
+import { conversationPublicSearchPlan as planSearch } from './conversationPublicSearchPlan';
 import { prepareLiveRagContinuation as continuationFor } from './liveRagConversationCapture';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import { finishConversationWorkflow } from './finishConversationWorkflow';
@@ -22,8 +22,8 @@ import {
   validConversationInput,
 } from './conversationVoiceSelection';
 import {
-  bindConversationPhotoExecution,
-  prepareConversationPhoto,
+  bindConversationPhotoExecution as bindPhoto,
+  prepareConversationPhoto as preparePhoto,
 } from './conversationPhotoService';
 import * as targets from './conversationEntryTargets';
 import { conversationExternalEvidence } from './conversationExternalEvidence';
@@ -46,9 +46,9 @@ export function createRagConversationService({
     observer?: Conversation.RagConversationObserver,
     entryContext?: ConversationEntryContext,
   ): Promise<Conversation.RagConversationOutcome> {
-    const normalizedQuestion = question.trim();
+    const request = question.trim();
     const photo = background.photo(observer);
-    if (!validConversationInput(normalizedQuestion, photo))
+    if (!validConversationInput(request, photo))
       return { status: 'failure', kind: 'validation_failed' };
     const linked = background.scope(parentSignal, observer);
     const signal = linked.controller.signal;
@@ -71,7 +71,7 @@ export function createRagConversationService({
         !report &&
         !photo &&
         (await conversationEarlyResponse({
-          question: normalizedQuestion,
+          question: request,
           observer,
           loadLocalData,
           targetData: target.data,
@@ -88,9 +88,9 @@ export function createRagConversationService({
       stage = 'data';
       const data =
         target.data ?? (await withProviderStage('rag', 'data', loadLocalData));
-      const photoEvidence = await prepareConversationPhoto({
+      const photoEvidence = await preparePhoto({
         photo,
-        question: normalizedQuestion,
+        question: request,
         sessionId: observer?.retentionSession?.id,
         selected,
         data,
@@ -126,11 +126,11 @@ export function createRagConversationService({
         observer,
         researchInputs,
       });
-      const searchPlan = await conversationPublicSearchPlan({
+      const { eager: publicSearch, ...searchPlan } = await planSearch({
         external,
         observer,
         runId: createOperationRunId?.() ?? operationRunId(),
-        question: normalizedQuestion,
+        question: request,
         signal,
         continuation: await continuationFor(
           observer,
@@ -148,10 +148,10 @@ export function createRagConversationService({
             reportReferences: report?.items ?? [],
             localRetrievalFailed: localRetrievalFailed(),
             hasPagingState: generated.hasPagingState(),
+            publicSearch: searchPlan.coldSearch,
           }),
         ),
       });
-      const publicSearch = searchPlan.eager;
       if (publicSearch.status === 'cancelled')
         return { status: 'failure', kind: 'cancelled' };
       const { tools, generated, localRetrievalFailed } =
@@ -166,7 +166,7 @@ export function createRagConversationService({
       const retention = createConversationRetentionBridge({
         observer,
         registry,
-        question: normalizedQuestion,
+        question: request,
         ...(photo ? { submittedInput: photo.submitted } : {}),
         providerId: selected.provider.id,
         modelId: selected.modelId,
@@ -186,7 +186,7 @@ export function createRagConversationService({
         external,
       });
       const execution = photo
-        ? bindConversationPhotoExecution(baseExecution, photo, photoEvidence!, {
+        ? bindPhoto(baseExecution, photo, photoEvidence!, {
             selected,
             data,
             registry,
@@ -200,7 +200,7 @@ export function createRagConversationService({
         run.conversationRunRequest({
           continuation: searchPlan.continuation,
           onInitialSearchStatus: searchPlan.onInitialSearchStatus,
-          question: normalizedQuestion,
+          question: request,
           photoEvidence,
           entryIntent: entryContext?.intent,
           targetVisitEvidence: target.evidence,
@@ -236,7 +236,7 @@ export function createRagConversationService({
         localRetrievalFailed,
         historyIsCurrent,
         publicSearch: searchPlan.currentSearch,
-        skipPublicSearchNotice: !normalizedQuestion,
+        skipPublicSearchNotice: !request,
         retention,
         signal,
         reportIsCurrent: report?.isCurrent,

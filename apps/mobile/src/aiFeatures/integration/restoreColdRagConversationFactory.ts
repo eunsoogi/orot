@@ -1,3 +1,5 @@
+import { readColdConversationSearch } from './coldConversationSearch';
+import { budgetAfterPublicSearch } from './defaultPublicSearch';
 import { validateColdRagBatches } from './validateColdRagBatches';
 import type {
   EvidenceBatch,
@@ -121,13 +123,14 @@ export async function restoreColdRagConversationFactory(input: {
     researchInputs: tracker,
     restored: saved.external as unknown as SelectedExternalEvidenceSnapshot,
   });
+  const publicSearch = readColdConversationSearch(saved);
   const bundle = createConversationToolBundle({
     data,
     registry,
     observer: input.observer,
     researchInputs: tracker,
     external,
-    publicSearchSucceeded: true,
+    publicSearchSucceeded: !publicSearch || publicSearch.status === 'success',
   });
   const execution = executionOptions({
     selected,
@@ -144,6 +147,18 @@ export async function restoreColdRagConversationFactory(input: {
     (!aliases.length || (await registry.revalidateEvidence(aliases, signal)));
   const options: MultiAgentWorkflowOptions<GroundedRagAnswer> = {
     ...guardHistory(execution, historyIsCurrent, true),
+    ...(publicSearch
+      ? {
+          execution: {
+            ...execution.execution,
+            budget: budgetAfterPublicSearch(
+              execution.execution.budget,
+              publicSearch,
+              publicSearch.charged,
+            ),
+          },
+        }
+      : {}),
     request: original.request,
     context: original.context as JsonObject,
     initialEvidence: original.initialEvidence as EvidenceBatch,
@@ -175,6 +190,7 @@ export async function restoreColdRagConversationFactory(input: {
     );
   return {
     options,
+    publicSearch,
     registry,
     bundle,
     historyIsCurrent,
@@ -187,8 +203,8 @@ export async function restoreColdRagConversationFactory(input: {
       )
         throw new Error('Cold selection or original sources changed.');
     },
-    capture: async (batches: readonly EvidenceBatch[]) =>
-      captureColdRagConversationState({
+    capture: async (batches: readonly EvidenceBatch[]) => ({
+      ...(await captureColdRagConversationState({
         registry,
         tracker,
         external,
@@ -197,6 +213,8 @@ export async function restoreColdRagConversationFactory(input: {
         batches,
         options,
         signal,
-      }),
+      })),
+      ...(publicSearch ? { publicSearch: { ...publicSearch } } : {}),
+    }),
   };
 }

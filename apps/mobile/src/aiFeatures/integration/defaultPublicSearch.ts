@@ -16,7 +16,7 @@ export type DefaultPublicSearchResult =
 /** Reserve the preflight provider call inside the feature's existing budget. */
 export function budgetAfterPublicSearch(
   budget: MultiAgentBudget,
-  search: DefaultPublicSearchResult,
+  search: Pick<DefaultPublicSearchResult, 'status'>,
   hasTool: boolean,
 ): MultiAgentBudget {
   const spent =

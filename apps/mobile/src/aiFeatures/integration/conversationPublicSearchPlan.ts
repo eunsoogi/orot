@@ -26,6 +26,15 @@ export async function conversationPublicSearchPlan(
     operationRunId: input.runId,
     includeExternalTools: deferred || eager.status === 'success',
     eager,
+    // Completed preflight status/budget only; no reusable authorization is persisted.
+    coldSearch:
+      !deferred && eager.status !== 'cancelled'
+        ? {
+            version: 1 as const,
+            status: eager.status,
+            charged: Boolean(input.question && tool),
+          }
+        : undefined,
     chargeEagerSearch: Boolean(!deferred && input.question && tool),
     initialSearch: deferred
       ? { toolId: tool!.id, input: defaultPublicSearchInput(input.question) }

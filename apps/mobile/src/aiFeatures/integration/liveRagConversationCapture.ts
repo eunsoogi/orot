@@ -18,6 +18,7 @@ export function liveRagConversationCapture(
     reportReferences: readonly EvidenceReference[];
     localRetrievalFailed: boolean;
     hasPagingState: boolean;
+    publicSearch?: import('./coldConversationSearch').ColdConversationSearch;
   },
 ): ConversationColdReconstruction {
   return async input => {
@@ -36,6 +37,9 @@ export function liveRagConversationCapture(
     });
     return {
       ...reconstruction,
+      ...(saved.publicSearch
+        ? { publicSearch: { ...saved.publicSearch } }
+        : {}),
       completion: JSON.parse(
         JSON.stringify({
           version: 1,

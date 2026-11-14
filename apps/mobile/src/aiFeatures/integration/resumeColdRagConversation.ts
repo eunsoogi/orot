@@ -74,9 +74,6 @@ export async function resumeColdRagConversation(input: {
           descriptor.manifest.operationRunId,
         ),
     });
-    // Legacy eager-search budgets/status are not yet a reconstructable cold contract.
-    if (!factory.options.initialSearch)
-      throw new Error('Cold initial-search contract unavailable.');
     const completion = await readColdRagCompletion(
       descriptor.reconstruction,
       factory.registry,
@@ -175,7 +172,7 @@ export async function resumeColdRagConversation(input: {
           result.checkpoint.initialSearchStatus &&
           result.checkpoint.initialSearchStatus !== 'pending'
             ? result.checkpoint.initialSearchStatus
-            : 'unavailable',
+            : (factory.publicSearch?.status ?? 'unavailable'),
       },
       skipPublicSearchNotice: !descriptor.request,
     });

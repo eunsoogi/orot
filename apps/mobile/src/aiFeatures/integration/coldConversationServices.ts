@@ -1,3 +1,4 @@
+import { readColdConversationSearch } from './coldConversationSearch';
 import type { SqlDatabase } from '@orot/storage';
 import type { ConversationToolEvent } from '@orot/agent-runtime';
 import type { ConversationContinuationIdentity } from '../../storage/conversationWorkflowContinuationIdentity';
@@ -86,11 +87,14 @@ export function createColdConversationServices(
         signal.aborted ||
         saved?.reconstruction.factoryVersion !== COLD_RAG_FACTORY_VERSION ||
         !saved.reconstruction.completion ||
-        !saved.reconstruction.invocation ||
-        !(saved.reconstruction.invocation as { initialSearch?: unknown })
-          .initialSearch
+        !saved.reconstruction.invocation
       )
         return undefined;
+      try {
+        readColdConversationSearch(saved.reconstruction);
+      } catch {
+        return undefined;
+      }
       return {
         attempt: saved.attempt,
         operationRunId: saved.manifest.operationRunId,

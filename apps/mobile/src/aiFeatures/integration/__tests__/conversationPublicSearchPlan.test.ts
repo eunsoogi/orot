@@ -39,6 +39,7 @@ test('retained search preparation transmits nothing and uses only app-owned topi
     input: { topics: ['sleep'] },
   });
   expect(plan.chargeEagerSearch).toBe(false);
+  expect(plan.coldSearch).toBeUndefined();
   expect(plan.operationRunId).toBe('synthetic-run');
   plan.onInitialSearchStatus('pending');
   expect(plan.currentSearch.status).toBe('unavailable');
@@ -54,4 +55,9 @@ test('nonretained calls preserve the existing one-shot eager lookup', async () =
   expect(plan.currentSearch.status).toBe('empty');
   expect(plan.chargeEagerSearch).toBe(true);
   expect(plan.includeExternalTools).toBe(false);
+  expect(plan.coldSearch).toEqual({
+    version: 1,
+    status: 'empty',
+    charged: true,
+  });
 });

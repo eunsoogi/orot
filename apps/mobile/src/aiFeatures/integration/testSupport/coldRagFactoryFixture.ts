@@ -1,3 +1,5 @@
+import { budgetAfterPublicSearch } from '../defaultPublicSearch';
+import type { ColdConversationSearch } from '../coldConversationSearch';
 import { localData } from '../featureServiceFixtures';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
@@ -14,7 +16,7 @@ import type { ConversationColdResumeDescriptor } from '../../../storage/conversa
 import { ragConversationTask } from '../../../ragConversation/task';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 
-export async function coldRagFactoryFixture() {
+export async function coldRagFactoryFixture(eager?: ColdConversationSearch) {
   const f = publicEvidenceFixture();
   const local = localData([]);
   const registry = new LocalEvidenceReferenceRegistry();
@@ -43,7 +45,7 @@ export async function coldRagFactoryFixture() {
     registry,
     researchInputs: tracker,
     external,
-    publicSearchSucceeded: true,
+    publicSearchSucceeded: !eager || eager.status === 'success',
   });
   const options = {
     ...executionOptions({
@@ -64,6 +66,17 @@ export async function coldRagFactoryFixture() {
       input: { topics: ['sleep'] },
     },
   };
+  if (eager) {
+    Object.assign(options, { initialSearch: undefined });
+    options.execution.budget = {
+      ...options.execution.budget,
+      maxModelCalls: budgetAfterPublicSearch(
+        options.execution.budget,
+        eager,
+        eager.charged,
+      ).maxModelCalls,
+    };
+  }
   const descriptor: ConversationColdResumeDescriptor = {
     version: 1,
     sourceEpoch: 0,
@@ -89,5 +102,10 @@ export async function coldRagFactoryFixture() {
       signal: f.controller.signal,
     }),
   };
+  if (eager)
+    descriptor.reconstruction = {
+      ...descriptor.reconstruction,
+      publicSearch: { ...eager },
+    };
   return { ...f, local, dependencies, descriptor, options };
 }
