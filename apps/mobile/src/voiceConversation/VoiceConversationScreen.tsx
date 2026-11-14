@@ -42,6 +42,7 @@ export function VoiceConversationScreen({
     press: () => void,
     testID: string,
     danger = false,
+    symbol?: string,
   ) => (
     <Pressable
       testID={testID}
@@ -50,6 +51,13 @@ export function VoiceConversationScreen({
       onPress={press}
       style={[styles.button, danger && styles.end]}
     >
+      {symbol ? (
+        <AppSymbol
+          name={symbol}
+          size={28}
+          color={danger ? appColors.onDanger : appColors.text}
+        />
+      ) : null}
       <AppText style={danger ? styles.endText : styles.label}>{label}</AppText>
     </Pressable>
   );
@@ -65,15 +73,23 @@ export function VoiceConversationScreen({
           testID="voice-call-screen"
           contentContainerStyle={styles.content}
         >
-          <View style={styles.identity}>{identity}</View>
+          <AppText style={styles.note}>
+            {manualFinish ? '기기 음성 대화' : '실시간 음성 대화'}
+          </AppText>
           <View style={styles.center}>
+            <View style={styles.identity}>{identity}</View>
+            {/* This is a phase symbol, not a fabricated audio amplitude or waveform. */}
             <AppSymbol
-              name={muted ? 'mic.slash' : 'waveform'}
+              name={
+                muted
+                  ? 'mic.slash'
+                  : phase === 'listening' || phase === 'speaking'
+                    ? 'waveform'
+                    : 'ellipsis'
+              }
+              size={32}
               color={appColors.primary}
             />
-            <AppText accessibilityRole="header" style={styles.title}>
-              {t('ragConversation.voice.callTitle')}
-            </AppText>
             <AppText accessibilityLiveRegion="polite" style={styles.status}>
               {muted ? t('ragConversation.voice.muted') : status}
             </AppText>
@@ -101,6 +117,8 @@ export function VoiceConversationScreen({
                   t('ragConversation.voice.resume'),
                   onResume,
                   'voice-call-resume',
+                  false,
+                  'mic',
                 )
               : phase !== 'cleaning' &&
                 phase !== 'error' &&
@@ -108,12 +126,15 @@ export function VoiceConversationScreen({
                   t('ragConversation.voice.mute'),
                   onMute,
                   'voice-call-mute',
+                  false,
+                  'mic.slash',
                 )}
             {action(
               t('ragConversation.voice.endCall'),
               onEnd,
               'voice-call-end',
               true,
+              'phone.down.fill',
             )}
           </View>
         </ScrollView>
@@ -133,10 +154,18 @@ const styles = StyleSheet.create({
   },
   status: { color: appColors.text, textAlign: 'center' },
   note: { color: appColors.secondary, textAlign: 'center' },
-  actions: { gap: 12 },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 20,
+  },
   button: {
-    minHeight: 48,
-    borderRadius: 24,
+    minHeight: 76,
+    minWidth: 92,
+    maxWidth: 160,
+    gap: 8,
+    borderRadius: 38,
     padding: 12,
     alignItems: 'center',
     justifyContent: 'center',

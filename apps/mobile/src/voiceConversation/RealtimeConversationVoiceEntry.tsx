@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
-import { AssistantHeader } from '../assistantAppearance/AssistantHeader';
+import { VoiceCallIdentity } from './VoiceCallIdentity';
 import { AppText } from '../layout/AppText';
 import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
 import type { ConversationVoiceProps } from './conversationVoiceDependencies';
@@ -146,9 +146,6 @@ export function RealtimeConversationVoiceEntry(
       ],
     );
   };
-  const session = props.store
-    .getSnapshot()
-    .sessions.find(item => item.id === props.sessionId);
   return (
     <>
       <VoiceConversationScreen
@@ -156,7 +153,7 @@ export function RealtimeConversationVoiceEntry(
         visible={visible}
         phase={state.phase}
         status={status}
-        pipeline={`OpenAI ${props.model} · API 음성 처리 · 기존 기록 미전송`}
+        pipeline={`OpenAI ${props.model} API 음성 처리 (기존 기록 미전송)`}
         transcript={
           <>
             {transcripts.map(item => (
@@ -166,15 +163,7 @@ export function RealtimeConversationVoiceEntry(
             ))}
           </>
         }
-        identity={
-          session ? (
-            <AssistantHeader
-              session={session}
-              status={status}
-              editable={false}
-            />
-          ) : null
-        }
+        identity={<VoiceCallIdentity />}
         onEnd={() => {
           owner.current?.stop();
           setVisible(false);

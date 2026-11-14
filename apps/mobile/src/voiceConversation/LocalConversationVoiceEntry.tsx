@@ -4,7 +4,7 @@ import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import { t } from '../i18n';
-import { AssistantHeader } from '../assistantAppearance/AssistantHeader';
+import { VoiceCallIdentity } from './VoiceCallIdentity';
 import type { ConversationSessions } from '../ragConversation/conversationSessionTypes';
 import {
   conversationVoiceDependencies,
@@ -189,24 +189,13 @@ export function LocalConversationVoiceEntry(
     // A removed session must not leave its transient voice message in the next composer.
     return () => onStatusChange?.('');
   }, [displayStatus, onStatusChange]);
-  const currentSession = props.store
-    .getSnapshot()
-    .sessions.find(item => item.id === props.sessionId);
   return (
     <>
       <VoiceConversationScreen
         visible={visible}
         phase={state.phase}
         status={displayStatus}
-        identity={
-          currentSession ? (
-            <AssistantHeader
-              session={currentSession}
-              status={displayStatus}
-              editable={false}
-            />
-          ) : null
-        }
+        identity={<VoiceCallIdentity />}
         onEnd={() => {
           session.current?.stop();
           setVisible(false);
