@@ -1,4 +1,4 @@
-import { VoiceSettingsPanel } from '../../voiceSettings/VoiceSettingsPanel';
+import { VoiceSettingsPanel as VoicePanel } from '../../voiceSettings/VoiceSettingsPanel';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
@@ -21,7 +21,6 @@ import type {
   ProviderSelectionRequirements,
   ProviderSelectionStore,
 } from './types';
-
 interface ProviderSelectionScreenProps {
   readonly presentation?: ProviderSelectionPresentation;
   readonly screenTitle?: string;
@@ -40,7 +39,6 @@ interface ProviderSelectionScreenProps {
     state: ProviderSelectionScreenNavigationState,
   ) => void;
 }
-
 export default function ProviderSelectionScreen({
   presentation = 'feature',
   screenTitle,
@@ -243,7 +241,9 @@ export default function ProviderSelectionScreen({
             saving={saving}
           />
         ) : null}
-        {presentation === 'settings-provider' ? <VoiceSettingsPanel /> : null}
+        {presentation === 'settings-provider' && (
+          <VoicePanel onOpenAccounts={chatGPTSetup?.onOpenAccounts} />
+        )}
       </ScrollView>
     </View>
   );

@@ -1,3 +1,4 @@
+import { OpenAIAccountPanel } from '../../voiceSettings/OpenAIAccountPanel';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
@@ -29,6 +30,7 @@ export default function SettingsAccountsPanels({
       <AdaptiveColumns
         primary={
           <View style={styles.pageSections}>
+            <OpenAIAccountPanel />
             <View style={styles.panel} testID="settings-accounts-list">
               {setup.statusMessage ? (
                 <Text
