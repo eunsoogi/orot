@@ -110,7 +110,7 @@ test('retains draft and disabled primary action across continuous Open geometry 
   );
   expect(
     screen.getByTestId('navigation-right-rail-insets').props.children,
-  ).toBe(`${143 / 6},136`);
+  ).toBe(`${143 / 6},427`);
   expect(
     screen.getByTestId('navigation-right-rail-actions').props.children,
   ).toBe('back:false,home:false');

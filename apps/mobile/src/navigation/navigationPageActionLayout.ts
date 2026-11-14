@@ -70,25 +70,25 @@ export function pageActionRailLayout({
   const displayed = Math.min(actionCount, capacity);
   const fits = available >= navHeight && (actionCount === 0 || displayed > 0);
   const displayedActionHeight = displayed * step;
-  // Center the complete action-and-tab group around the measured usable segment.
+  // Bottom-anchor the whole group; page actions sit immediately before the
+  // navigation group, with contextual Back retaining its preceding target.
   const actionGroupHeight =
-    displayed > 0 ? displayedActionHeight + groupGap : 0;
-  // Keep Back at the lane top and Home at its bottom; page actions use the space between them.
+    displayed > 0 ? displayedActionHeight + railGapCount * groupGap : 0;
+  const groupTop = Math.max(
+    top,
+    height - bottom - navHeight - actionGroupHeight,
+  );
   const pageTopInset =
-    !rootTabs && navigationCount > 0 ? top + step + groupGap : top;
+    !rootTabs && navigationCount > 0 ? groupTop + step + groupGap : groupTop;
   const pageBottom = rootTabs
-    ? top + (available - navHeight) / 2 - groupGap + actionGroupHeight / 2
-    : pageTopInset + displayed * step;
+    ? height - bottom - navHeight - groupGap
+    : pageTopInset + displayedActionHeight;
   return {
     fits,
     capacity,
     pageTopInset,
     pageBottomInset: Math.max(0, height - pageBottom),
-    navigationTopInset: rootTabs
-      ? top +
-        actionGroupHeight +
-        (hasContextualBack ? NAVIGATION_ROOT_BACK_GROUP_HEIGHT : 0)
-      : top,
+    navigationTopInset: groupTop,
   };
 }
 

@@ -135,7 +135,7 @@ enum NavigationRailConstraints {
             rootBar.trailingAnchor.constraint(equalTo: host.trailingAnchor),
             rootBar.widthAnchor.constraint(equalToConstant: NavigationRootGlassBar.exteriorWidth),
             rootBar.heightAnchor.constraint(equalToConstant: NavigationRootGlassBar.railHeight),
-            rootBar.centerYAnchor.constraint(equalTo: host.centerYAnchor),
+            rootBar.bottomAnchor.constraint(equalTo: host.bottomAnchor),
             innerActions.leadingAnchor.constraint(equalTo: host.leadingAnchor),
             innerActions.trailingAnchor.constraint(equalTo: host.trailingAnchor),
             innerActions.topAnchor.constraint(equalTo: host.topAnchor),
