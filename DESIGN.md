@@ -196,8 +196,8 @@ size. Do not apply opacity below 1 or clipping masks to Glass ancestors. A
 filled, opaque system control is used on earlier iOS and with Reduce Transparency.
 The non-iOS fallback remains a React Native control, not Liquid Glass.
 
-The floating profile and text-entry field remain decorative material surfaces,
-not buttons. The Dots-style profile fade is a separate background gradient, not
+The floating profile and text-entry field retain decorative material backings;
+the containing profile edit action remains separate from the name material. The Dots-style profile fade is a separate background gradient, not
 a Liquid Glass implementation. The adaptive root rail is custom UIKit navigation
 with native material and a custom selection transition, not a system UITabBar;
 these distinctions must remain explicit in design validation.

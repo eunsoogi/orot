@@ -31,6 +31,8 @@ final class GlassIconButton: UIButton {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+        // A directly initialized UIButton subclass must expose its own accessible action.
+        isAccessibilityElement = true
         addAction(UIAction { [weak self] _ in
             guard let self, isEnabled else { return }
             onAction?([:])
