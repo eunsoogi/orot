@@ -45,5 +45,7 @@ export type AppRootTab = (typeof rootTabItems)[number]['id'] | 'schedule';
 
 export interface NavigationRootTabs {
   readonly activeTab: AppRootTab;
+  /** Distinguishes nested content while retaining its parent navigation selection. */
+  readonly contentKey?: AppRootTab;
   readonly onSelect: (tab: AppRootTab) => void | Promise<unknown>;
 }

@@ -1,12 +1,13 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, StyleSheet, Text, View } from 'react-native';
 import { FeatureEntryScreen } from '../../aiFeatures/FeatureEntryScreen';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { appContentLayoutOwner } from '../appContentLayoutPolicy';
 import { createNavigationController } from '../navigationController';
 import { NavigationRouteAdapter } from '../NavigationRouteAdapter';
+import { NavigationMotionContext } from '../NavigationMotionContext';
 import type {
   NavigationLeaveStateSource,
   NavigationRouteActions,
@@ -240,3 +241,32 @@ test.each(['overview', 'records', 'conversation', 'settings'] as const)(
     ).toBeNull();
   },
 );
+
+test('uses nested content identity without changing the selected Records navigation tab', async () => {
+  const controller = createNavigationController<TestRoute>('root');
+  const content = (contentKey: 'records' | 'schedule') => (
+    <NavigationMotionContext.Provider value={false}>
+      <NavigationRouteAdapter
+        controller={controller}
+        rootTabs={() => ({
+          activeTab: 'records',
+          contentKey,
+          onSelect: jest.fn(),
+        })}
+      >
+        {() => <Text>{contentKey}</Text>}
+      </NavigationRouteAdapter>
+    </NavigationMotionContext.Provider>
+  );
+  const view = await render(content('records'));
+  const timing = jest.spyOn(Animated, 'timing');
+  try {
+    await view.rerender(content('schedule'));
+    expect(timing).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ toValue: -12 }),
+    );
+  } finally {
+    timing.mockRestore();
+  }
+});

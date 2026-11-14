@@ -119,6 +119,7 @@ function App({
 
   const rootTabs: NavigationRootTabs = {
     activeTab: activeTab === 'schedule' ? 'records' : activeTab,
+    contentKey: activeTab,
     onSelect: selectActiveTab,
   };
 
