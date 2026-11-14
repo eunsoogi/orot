@@ -56,6 +56,9 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         let app = XCUIApplication()
         defer { app.terminate() }
         launch(app, probe: "medical-appointment-app-navigation", observeGeometry: true)
+        // Fresh fixtures must finish the real appearance choice before the default conversation opens.
+        tap(app, "별")
+        tap(app, "assistant-appearance-save")
         XCTAssertTrue(node(app, "rag-conversation-screen").waitForAppearance())
         try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
         tap(app, "open-medical-appointments")
