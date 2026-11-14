@@ -42,8 +42,7 @@ export function RecordingReviewRoute({
   });
   const source = selection?.summary.source;
   return (
-    // Transcript Save must receive the first tap while its text input is focused.
-    <NavigationRouteScrollView keyboardShouldPersistTaps="always">
+    <NavigationRouteScrollView>
       <View style={styles.page}>
         {source && selection ? (
           /* Stable route-owned panel slots keep transcript drafts and review requests mounted through window reflow. */

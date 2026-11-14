@@ -31,10 +31,8 @@ export function useNavigationRouteScrollPosition() {
 /** Lets route content fill its viewport and scroll behind the shared glass actions. */
 export function NavigationRouteScrollView({
   children,
-  keyboardShouldPersistTaps = 'handled',
 }: {
   readonly children: ReactNode;
-  readonly keyboardShouldPersistTaps?: 'handled' | 'always';
 }) {
   const navigationInset = useNavigationContentInset();
   const scrollViewRef = useRef<ComponentRef<typeof ScrollView> | null>(null);
@@ -79,7 +77,7 @@ export function NavigationRouteScrollView({
         ref={scrollViewRef}
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={[styles.content, navigationInset]}
-        keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+        keyboardShouldPersistTaps="handled"
         onScroll={updateCurrentOffset}
         scrollEventThrottle={16}
         style={styles.fill}
