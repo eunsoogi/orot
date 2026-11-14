@@ -83,3 +83,9 @@ final class NavigationSelectionGlass: UIVisualEffectView {
         return animation
     }
 }
+
+/// Weak window keys isolate independent scenes and release selection history with their window.
+@MainActor
+enum NavigationSelectionHistory {
+    static let last = NSMapTable<UIWindow, NSString>(keyOptions: .weakMemory, valueOptions: .strongMemory)
+}

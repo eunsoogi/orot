@@ -5,6 +5,7 @@ import XCTest
 final class NavigationSelectionGlassTests: OrotFailFastTestCase {
     @MainActor
     func testMaterialDropletSettlesAndReplacesInterruptedTransitions() throws {
+        try verifyRouteReplacementInWindow()
         let indicator = NavigationSelectionGlass()
         if #available(iOS 26.0, *), !UIAccessibility.isReduceTransparencyEnabled {
             XCTAssertTrue(indicator.effect is UIGlassEffect)
@@ -48,5 +49,52 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
             XCTAssertGreaterThan(middle.width, first.width)
             XCTAssertLessThan(middle.height, first.height)
         }
+    }
+
+    /// Exercise the real bar lifecycle, because route replacement creates a new native view.
+    @MainActor
+    private func verifyRouteReplacementInWindow() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = UIViewController()
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let first = bar(selected: 0)
+        window.rootViewController?.view.addSubview(first)
+        first.layoutIfNeeded()
+        first.removeFromSuperview()
+        let replacement = bar(selected: 2)
+        window.rootViewController?.view.addSubview(replacement)
+        replacement.layoutIfNeeded()
+        let selection = try XCTUnwrap(replacement.contentView.subviews.compactMap { $0 as? NavigationSelectionGlass }.first)
+        if UIAccessibility.isReduceMotionEnabled {
+            XCTAssertNil(selection.layer.animation(forKey: "navigation-droplet"))
+        } else {
+            XCTAssertNotNil(selection.layer.animation(forKey: "navigation-droplet"))
+        }
+        XCTAssertEqual(NavigationSelectionHistory.last.object(forKey: window), "tab-2")
+        let otherWindow = UIWindow(windowScene: scene)
+        otherWindow.rootViewController = UIViewController()
+        otherWindow.isHidden = false
+        defer { otherWindow.isHidden = true }
+        let independent = bar(selected: 1)
+        otherWindow.rootViewController?.view.addSubview(independent)
+        independent.layoutIfNeeded()
+        let independentSelection = try XCTUnwrap(independent.contentView.subviews.compactMap { $0 as? NavigationSelectionGlass }.first)
+        XCTAssertNil(independentSelection.layer.animation(forKey: "navigation-droplet"))
+        XCTAssertEqual(NavigationSelectionHistory.last.object(forKey: window), "tab-2")
+    }
+
+    @MainActor
+    private func bar(selected: Int) -> NavigationRootGlassBar {
+        let bar = NavigationRootGlassBar()
+        bar.frame = CGRect(x: 20, y: 200, width: 350, height: 60)
+        let actions = (0 ..< 5).compactMap { index in
+            NavigationActionDescriptor(["id": "tab-\(index)", "label": "Tab \(index)",
+                                        "accessibilityLabel": "Tab \(index)", "testID": "tab-\(index)",
+                                        "rootTab": true, "selected": selected == index])
+        }
+        bar.render(actions, animated: false, onAction: { _ in })
+        return bar
     }
 }
