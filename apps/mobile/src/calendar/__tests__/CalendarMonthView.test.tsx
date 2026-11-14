@@ -10,6 +10,16 @@ import { CalendarMonthView } from '../CalendarMonthView';
 import { calendarEventDayRange } from '../calendarMonth';
 import { appColors } from '../../layout/appColors';
 
+// These assertions cover the ordinary seven-column layout, not the accessible list.
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  default: () => ({
+    width: 393,
+    height: 852,
+    scale: 3,
+    fontScale: 1,
+  }),
+}));
+
 function queryWindow(start: string, end: string) {
   return { startDay: start, endDay: end };
 }
