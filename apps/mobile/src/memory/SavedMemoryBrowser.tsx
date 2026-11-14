@@ -72,7 +72,7 @@ export function SavedMemoryBrowser({
   return (
     <View style={styles.section} testID="saved-memory-browser">
       <Text accessibilityRole="header" style={styles.title}>
-        AI 메모리
+        기억
       </Text>
       <Text style={styles.description}>
         오롯이 저장한 기억을 확인해요. 이 기기에서만 불러오며 AI에 전송하지
@@ -80,7 +80,7 @@ export function SavedMemoryBrowser({
       </Text>
       <AppButton
         variant="neutral"
-        title={expanded ? '메모리 닫기' : '저장된 메모리 보기'}
+        title={expanded ? '기억 닫기' : '저장된 기억 보기'}
         onPress={
           expanded
             ? close
@@ -93,13 +93,13 @@ export function SavedMemoryBrowser({
         <>
           {state === 'loading' && (
             <Text accessibilityLiveRegion="polite">
-              메모리를 불러오는 중이에요.
+              기억을 불러오는 중이에요.
             </Text>
           )}
           {state === 'failed' && (
             <>
               <Text accessibilityRole="alert">
-                메모리를 불러오지 못했어요. 기기를 잠금 해제한 뒤 다시 시도해
+                기억을 불러오지 못했어요. 기기를 잠금 해제한 뒤 다시 시도해
                 주세요.
               </Text>
               <AppButton
@@ -115,8 +115,8 @@ export function SavedMemoryBrowser({
             <>
               <Text accessibilityLiveRegion="polite">
                 {rows.length
-                  ? `저장된 메모리 ${rows.length}개`
-                  : '아직 저장된 메모리가 없어요.'}
+                  ? `저장된 기억 ${rows.length}개`
+                  : '아직 저장된 기억이 없어요.'}
               </Text>
               <AppButton
                 variant="neutral"
