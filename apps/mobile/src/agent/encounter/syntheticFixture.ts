@@ -8,15 +8,16 @@ export const syntheticEncounterText =
   '합성약 5 mg을 논의했어요. 다음 주 기록을 확인해요.';
 export const syntheticEncounterTime = '2035-01-02T00:00:00Z';
 
-/** Synthetic fixtures only. SQLCipher and graph behavior remain production implementations in native tests. */
+/** Synthetic fixtures only. Native callers supply their wall clock so later real-time corrections cannot predate the seed. */
 export async function seedSyntheticEncounter(
   repository: RecordRepository,
   sourceId: string,
+  recordedAt = syntheticEncounterTime,
 ) {
   const metadata = {
-    effectiveAt: syntheticEncounterTime,
-    recordedAt: syntheticEncounterTime,
-    ingestedAt: syntheticEncounterTime,
+    effectiveAt: recordedAt,
+    recordedAt,
+    ingestedAt: recordedAt,
     reviewState: { status: 'unreviewed' as const },
   };
   await repository.put('source_record', {
