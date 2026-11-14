@@ -60,10 +60,10 @@ it('never opens a cancelled call after waiting for another call cleanup', async 
     'synthetic-key',
     'ko-KR',
   );
-  const rejected = expect(pending).rejects.toThrow('Voice call cancelled');
+  const outcome = pending.catch(error => error);
   await adapter.stop('cancelled-new');
   release();
-  await rejected;
+  await expect(outcome).resolves.toEqual(new Error('Voice call cancelled'));
   expect(open).not.toHaveBeenCalled();
   delete NativeModules.VoiceRealtimeModule;
 });
