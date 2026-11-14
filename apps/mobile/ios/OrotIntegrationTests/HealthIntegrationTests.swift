@@ -37,7 +37,7 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
     func testAuthorizationScopesAndSyntheticSamplesStayExplicit() async throws {
         try verifyMedicationPickerWaitsForDismissedSampleConsent()
         try verifyMedicationConsentRouting()
-        try await verifyWorkoutReadScopeAndDuration()
+        try verifyWorkoutReadScopeAndDuration()
         let summary = try await run("healthkit")
         for field in ["authorizationPlan=feature-scoped", "writeTypes=0", "sampleTypes=passed", "syntheticSteps=passed", "unrelatedSleep=passed", "emptyQuery=completed", "realSamples=unverified"] {
             XCTAssertTrue(summary.contains(field), summary)
@@ -45,8 +45,8 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
         XCTAssertNotNil(summary.range(of: "availability=(available|unavailable)", options: .regularExpression))
     }
 
-    /// Synthetic SDK sample proves source duration is not reconstructed from wall time.
-    private func verifyWorkoutReadScopeAndDuration() async throws {
+    /// Synthetic conversion covers the shipping mapper without granting HealthKit write access.
+    private func verifyWorkoutReadScopeAndDuration() throws {
         let plan = try XCTUnwrap(HealthKitBatchAuthorization.plan(for: ["workouts"]))
         XCTAssertEqual(plan.readTypes, [HKObjectType.workoutType()])
         XCTAssertTrue(plan.shareTypes.isEmpty)
@@ -54,20 +54,9 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(HealthKitBoundary.sampleType(feature: "workouts", kind: "workouts"),
                        HKObjectType.workoutType())
         XCTAssertNil(HealthKitBoundary.sampleType(feature: "steps", kind: "workouts"))
-        let start = Date(timeIntervalSince1970: 1_760_000_000)
-        let configuration = HKWorkoutConfiguration()
-        configuration.activityType = .running
-        let builder = HKWorkoutBuilder(healthStore: HKHealthStore(), configuration: configuration, device: nil)
-        // Only an unpublished synthetic workout is collected; never finish/save or request write access.
-        defer { builder.discardWorkout() }
-        try await builder.beginCollection(at: start)
-        try await builder.addWorkoutEvents([
-            HKWorkoutEvent(type: .pause, dateInterval: DateInterval(start: start.addingTimeInterval(1200), duration: 0), metadata: nil),
-            HKWorkoutEvent(type: .resume, dateInterval: DateInterval(start: start.addingTimeInterval(2400), duration: 0), metadata: nil),
-        ])
-        let end = start.addingTimeInterval(5400)
-        try await builder.endCollection(at: end)
-        let snapshot = HealthKitBoundary.workoutValues(activity: configuration.activityType, duration: builder.elapsedTime(at: end))
+        // HKWorkoutBuilder requires write permission even without saving, so it is not a read-only fixture.
+        // The shipping snapshot passes HKWorkout.duration to this exact mapper; no start/end is accepted.
+        let snapshot = HealthKitBoundary.workoutValues(activity: .running, duration: 4200)
         XCTAssertEqual(snapshot["value"] as? Double, 70)
         XCTAssertEqual(snapshot["unit"] as? String, "min")
         XCTAssertEqual(snapshot["workoutActivityName"] as? String, "running")
