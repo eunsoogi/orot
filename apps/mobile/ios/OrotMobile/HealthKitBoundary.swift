@@ -130,10 +130,7 @@ enum HealthKitBoundary {
         }
         if let workout = sample as? HKWorkout {
             // Preserve the duration provided by HealthKit, including its pause semantics; never derive it from start/end.
-            result["value"] = workout.duration / 60
-            result["unit"] = "min"
-            result["workoutActivityType"] = workout.workoutActivityType.rawValue
-            result["workoutActivityName"] = Self.workoutActivityName(workout.workoutActivityType)
+            result.merge(Self.workoutValues(activity: workout.workoutActivityType, duration: workout.duration)) { _, value in value }
         }
         if let category = sample as? HKCategorySample {
             result["categoryValue"] = category.value
@@ -156,6 +153,12 @@ enum HealthKitBoundary {
             result["scheduleTypeName"] = Self.scheduleTypeName(dose.scheduleType.rawValue)
         }
         return result
+    }
+
+    /// Shared conversion accepts the SDK duration, never a reconstructed start/end interval.
+    static func workoutValues(activity: HKWorkoutActivityType, duration: TimeInterval) -> [String: Any] {
+        ["value": duration / 60, "unit": "min", "workoutActivityType": activity.rawValue,
+         "workoutActivityName": workoutActivityName(activity)]
     }
 
     /// Stable app-owned names retain unknown source codes without guessing the activity.

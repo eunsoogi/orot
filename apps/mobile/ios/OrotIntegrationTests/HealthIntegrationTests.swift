@@ -37,7 +37,7 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
     func testAuthorizationScopesAndSyntheticSamplesStayExplicit() async throws {
         try verifyMedicationPickerWaitsForDismissedSampleConsent()
         try verifyMedicationConsentRouting()
-        try verifyWorkoutReadScopeAndDuration()
+        try await verifyWorkoutReadScopeAndDuration()
         let summary = try await run("healthkit")
         for field in ["authorizationPlan=feature-scoped", "writeTypes=0", "sampleTypes=passed", "syntheticSteps=passed", "unrelatedSleep=passed", "emptyQuery=completed", "realSamples=unverified"] {
             XCTAssertTrue(summary.contains(field), summary)
@@ -46,7 +46,7 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
     }
 
     /// Synthetic SDK sample proves source duration is not reconstructed from wall time.
-    private func verifyWorkoutReadScopeAndDuration() throws {
+    private func verifyWorkoutReadScopeAndDuration() async throws {
         let plan = try XCTUnwrap(HealthKitBatchAuthorization.plan(for: ["workouts"]))
         XCTAssertEqual(plan.readTypes, [HKObjectType.workoutType()])
         XCTAssertTrue(plan.shareTypes.isEmpty)
@@ -55,10 +55,19 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
                        HKObjectType.workoutType())
         XCTAssertNil(HealthKitBoundary.sampleType(feature: "steps", kind: "workouts"))
         let start = Date(timeIntervalSince1970: 1_760_000_000)
-        let workout = HKWorkout(activityType: .running, start: start,
-                                end: start.addingTimeInterval(5400), duration: 4200,
-                                totalEnergyBurned: nil, totalDistance: nil, metadata: nil)
-        let snapshot = try HealthKitBoundary.snapshot(workout)
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = .running
+        let builder = HKWorkoutBuilder(healthStore: HKHealthStore(), configuration: configuration, device: nil)
+        // Only an unpublished synthetic workout is collected; never finish/save or request write access.
+        defer { builder.discardWorkout() }
+        try await builder.beginCollection(at: start)
+        try await builder.addWorkoutEvents([
+            HKWorkoutEvent(type: .pause, dateInterval: DateInterval(start: start.addingTimeInterval(1200), duration: 0), metadata: nil),
+            HKWorkoutEvent(type: .resume, dateInterval: DateInterval(start: start.addingTimeInterval(2400), duration: 0), metadata: nil),
+        ])
+        let end = start.addingTimeInterval(5400)
+        try await builder.endCollection(at: end)
+        let snapshot = HealthKitBoundary.workoutValues(activity: configuration.activityType, duration: builder.elapsedTime(at: end))
         XCTAssertEqual(snapshot["value"] as? Double, 70)
         XCTAssertEqual(snapshot["unit"] as? String, "min")
         XCTAssertEqual(snapshot["workoutActivityName"] as? String, "running")
