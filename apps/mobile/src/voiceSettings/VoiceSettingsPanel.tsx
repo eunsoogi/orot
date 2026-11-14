@@ -147,7 +147,7 @@ export function VoiceSettingsPanel() {
         testID="voice-settings-save"
         disabled={busy || failedLoad}
         onPress={() => {
-          void save();
+          save();
         }}
       />
       {hasKey && (
@@ -156,7 +156,7 @@ export function VoiceSettingsPanel() {
           testID="voice-key-remove"
           disabled={busy || failedLoad}
           onPress={() => {
-            void save(true);
+            save(true);
           }}
         />
       )}
