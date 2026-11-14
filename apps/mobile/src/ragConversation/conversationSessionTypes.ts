@@ -16,6 +16,9 @@ export type ConversationSessions = ReturnType<
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly coldResume?: ReturnType<
+    typeof import('../aiFeatures/integration/coldConversationServices').createColdConversationServices
+  >;
   readonly photoPreparation?: ReturnType<
     typeof import('../aiFeatures/integration/conversationPhotoPreparation').createConversationPhotoPreparation
   >;
@@ -47,6 +50,8 @@ export interface ConversationSessionOptions {
     | 'saveTaskCard'
     | 'discardUnpublished'
     | 'readCommittedCompletion'
+    | 'adoptTurn'
+    | 'releaseAdoptedTurn'
   > &
     Partial<
       Pick<
@@ -55,6 +60,8 @@ export interface ConversationSessionOptions {
         | 'saveTaskCard'
         | 'discardUnpublished'
         | 'readCommittedCompletion'
+        | 'adoptTurn'
+        | 'releaseAdoptedTurn'
       >
     >;
   readonly restoreSession?: (
@@ -67,6 +74,7 @@ export interface ConversationSessionOptions {
       answer: string;
       preview?: string;
       interrupted?: true;
+      coldResume?: { readonly attempt: number };
       interruptionReason?: import('./conversationExecutionLease').ConversationRecoveryReason;
       citations: readonly EvidenceReference[];
       healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
@@ -104,6 +112,9 @@ export type PendingTurn = {
   committed: boolean;
   summarySaving: boolean;
   summaryCommitted: boolean;
+  readonly coldResponseId?: number;
+  coldStopping?: boolean;
+  readonly stopCold?: () => void;
 };
 
 export type ConversationSender = (
@@ -126,6 +137,7 @@ export interface ConversationSession {
   readonly draft: string;
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: {
+    readonly sourceOwner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner;
     id: number;
     content: string;
     activity: string;

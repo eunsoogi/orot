@@ -13,6 +13,7 @@ export interface AiFeatureSharedNavigationState {
     readonly routeKey: string;
     readonly value: DiseaseHypothesisAnalysis;
   } | null;
+  readonly sourceOwner?: import('./coldConversationSourceResolvers').ColdConversationSourceOwner;
   readonly sourceReference: EvidenceReference | null;
   readonly sourceReturnRoute: FeatureScreenRoute;
   readonly sourceReturnRouteKey: string | null;

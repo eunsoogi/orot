@@ -1,3 +1,4 @@
+import { coldPreviewPatch } from './replaceColdConversationAnswer';
 import { t } from '../i18n';
 import type { ConversationInterruptionReason } from './conversationExecutionLease';
 import { getRagConversationCopy } from './copy';
@@ -30,6 +31,29 @@ export function showStoppedConversationTurn(input: {
   retainPartial: (id: number, activity: string, retainEmpty?: boolean) => void;
 }) {
   const copy = getRagConversationCopy();
+  if (input.turn?.coldResponseId !== undefined) {
+    const session = input.find(input.id);
+    input.update(input.id, {
+      busy: false,
+      pendingMessage: null,
+      messages: session.messages.map(message =>
+        message.id === input.turn!.coldResponseId
+          ? {
+              ...message,
+              ...coldPreviewPatch(session, message),
+              incomplete: true,
+              coldResume: undefined,
+              interruptionReason:
+                input.interruptionReason ??
+                (input.status === 'cancelled'
+                  ? 'user-stopped'
+                  : 'provider-failed'),
+            }
+          : message,
+      ),
+    });
+    return;
+  }
   input.retainPartial(
     input.id,
     input.status === 'interrupted'
@@ -98,12 +122,16 @@ export function createConversationStopHandler(input: {
     snapshot?.cancel();
     if (snapshot) input.update(id, { requestActivity: snapshot.getSnapshot() });
     const status = input.lifetime.status(id, controller) ?? reason;
+    if (status === 'cancelled') turn?.stopCold?.();
     input.lifetime.interrupt(id, status);
     controller.abort();
     // System interruption is not an explicit user cancellation; persist the true state.
     input.activities.get(id)?.finish(status);
     if (
-      (turn?.saving || turn?.summarySaving || turn?.summaryCommitted) &&
+      (turn?.coldStopping ||
+        turn?.saving ||
+        turn?.summarySaving ||
+        turn?.summaryCommitted) &&
       !settled
     )
       return;

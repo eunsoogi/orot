@@ -1,12 +1,14 @@
 import type { ConversationContinuationIdentity } from './conversationWorkflowContinuationIdentity';
-import { createConversationWorkflowContinuationStore } from './conversationWorkflowContinuationStore';
+import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
 
 export async function openConversationWorkflowContinuationStore(
   identity: ConversationContinuationIdentity,
+  reconstruct?: import('./conversationContinuationCapture').ConversationColdReconstruction,
 ) {
   const { openLocalAgentMemoryDatabase } = await import('./secureDatabase');
-  return createConversationWorkflowContinuationStore(
-    await openLocalAgentMemoryDatabase(),
+  const database = await openLocalAgentMemoryDatabase();
+  return conversationWorkflowContinuationOpener(database)(
     identity,
+    reconstruct,
   );
 }

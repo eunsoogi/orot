@@ -1,3 +1,7 @@
+import {
+  protectedExternalReferences,
+  type ProtectedExternalReferences,
+} from './protectedExternalReferences';
 import type {
   EvidenceBatch,
   EvidenceReference,
@@ -35,6 +39,7 @@ export function createPublicWebEvidence(input: {
   readonly selected: ReturnType<typeof requireSelectedAi>;
   readonly consent: ExecutionConsentPort;
   readonly now?: () => string;
+  readonly restoredReferences?: ProtectedExternalReferences;
   readonly beforeDispatch?: (
     query: string,
     signal: AbortSignal,
@@ -43,8 +48,10 @@ export function createPublicWebEvidence(input: {
   const { selected, consent } = input;
   const search = selected.provider.searchPublicWeb;
   if (!selected.remoteProcessing || !search) return undefined;
-  const references = new Set<string>();
-  let sequence = 0;
+  const references = protectedExternalReferences(
+    'public-web',
+    input.restoredReferences,
+  );
   const tool: EvidenceSearchTool = {
     id: 'public-web-search',
     sourceKind: 'external_medical',
@@ -69,6 +76,7 @@ export function createPublicWebEvidence(input: {
           request.allowedScope.sourceIds.includes(PUBLIC_WEB_SOURCE_ID));
       if (
         !parsed ||
+        !references.hasSequenceCapacity() ||
         !scoped() ||
         !Number.isSafeInteger(request.resultLimit) ||
         request.resultLimit < 1
@@ -124,6 +132,8 @@ export function createPublicWebEvidence(input: {
             );
           if (request.signal.aborted)
             throw new Error('Public web search was cancelled.');
+          // Reserve before external dispatch so an exhausted restored counter cannot repeat an identity.
+          const sequence = references.nextSequence();
           const result = await boundedPublicWebRequest(
             search.bind(selected.provider),
             query,
@@ -155,7 +165,7 @@ export function createPublicWebEvidence(input: {
             sourceKind: 'external_medical' as const,
             sourceId: PUBLIC_WEB_SOURCE_ID,
             sourceRevision: `retrieved:${at}`,
-            evidenceId: `web-result-${++sequence}`,
+            evidenceId: `web-result-${sequence}`,
             evidenceRevision: `snapshot:${at}:${sequence}`,
             effectiveTime: null,
             reviewState: 'unknown' as const,
@@ -190,7 +200,7 @@ export function createPublicWebEvidence(input: {
           };
           if (jsonByteLength(batch) > request.maxPayloadBytes)
             throw new Error('Public web evidence exceeded the payload bound.');
-          references.add(stableJson(referenceOnly(item)));
+          references.add(referenceOnly(item));
           return batch;
         },
       };
@@ -198,7 +208,8 @@ export function createPublicWebEvidence(input: {
   };
   return {
     tool,
+    snapshot: references.snapshot,
     validates: (reference: EvidenceReference) =>
-      references.has(stableJson(reference)),
+      references.validates(reference),
   };
 }

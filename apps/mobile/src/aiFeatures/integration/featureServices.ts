@@ -1,3 +1,4 @@
+import { createColdConversationServices } from './coldConversationServices';
 import { operationRunId } from './featureRunIdentity';
 import { publicMedicalQueryConsent } from '../../agent/execution/publicMedicalQueryConsent';
 import { createPrivateEvidenceRag } from './privateEvidenceRag';
@@ -195,7 +196,7 @@ export function createAiFeatureServices(
     registry,
     report: dailyReport,
   });
-  const sendRagMessage = createRagConversationService({
+  const conversationDependencies = {
     consent,
     queryConsent,
     externalEvidence: literatureService,
@@ -205,7 +206,9 @@ export function createAiFeatureServices(
     ragRunner,
     createOperationRunId: dependencies.createOperationRunId,
     resolveDailyReport: dailyReportSources,
-  });
+  };
+  const sendRagMessage = createRagConversationService(conversationDependencies);
+  const coldResume = createColdConversationServices(conversationDependencies);
 
   const visitQuestions = createVisitQuestionFeatureServices({
     loadLocalData,
@@ -215,6 +218,7 @@ export function createAiFeatureServices(
   return {
     dailyReport,
     dailyReportSources,
+    readColdConversationSource: coldResume.readColdConversationSource,
     ...createConversationSummaryIntegration({
       consent,
       dependencies,
@@ -223,6 +227,7 @@ export function createAiFeatureServices(
       registry,
       diseaseRunner,
       sendRagMessage,
+      coldResume,
       loadSavedVisitQuestions: visitQuestions.loadSavedVisitQuestions,
     }),
     ...visitQuestions,

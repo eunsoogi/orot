@@ -20,11 +20,11 @@ export function lazyConversationContinuationStore(
     get operationJournal() {
       return ready().operationJournal;
     },
-    async initialize(options, signal) {
+    async initialize(options, signal, snapshotEvidence) {
       if (store)
         throw new Error('Continuation storage is already initialized.');
       store = await open();
-      await store.initialize(options, signal);
+      await store.initialize(options, signal, snapshotEvidence);
     },
     paused: checkpoint => ready().paused(checkpoint),
     claim: signal => ready().claim(signal),

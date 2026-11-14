@@ -67,7 +67,10 @@ export interface ConversationScreenProps {
     observer?: RagConversationObserver,
     entryContext?: ConversationEntryContext,
   ) => Promise<RagConversationOutcome>;
-  readonly onOpenSource: (reference: EvidenceReference) => void;
+  readonly onOpenSource: (
+    reference: EvidenceReference,
+    owner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner,
+  ) => void;
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly prepareVisitQuestions?: NonNullable<
     ConversationScreenProps['onSend']

@@ -1,4 +1,4 @@
-import { createConversationWorkflowContinuationStore } from './conversationWorkflowContinuationStore';
+import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
 import {
   localQueryTimestampKey,
   type SqlDatabase,
@@ -58,11 +58,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   return {
-    async openWorkflowContinuation(
-      identity: import('./conversationWorkflowContinuationIdentity').ConversationContinuationIdentity,
-    ) {
-      return createConversationWorkflowContinuationStore(database, identity);
-    },
+    openWorkflowContinuation: conversationWorkflowContinuationOpener(database),
     ...createConversationPreviewStorage(database, ensure),
     ...createConversationRequestStorage(database, ensure),
     ...createConversationTaskCardStorage(database, ensure),

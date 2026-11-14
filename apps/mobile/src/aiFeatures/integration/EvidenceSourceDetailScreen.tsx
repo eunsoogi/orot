@@ -21,6 +21,12 @@ import { useAiFeatureScreenNavigationState } from './useAiFeatureNavigationState
 interface EvidenceSourceDetailScreenProps {
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
+  readonly sourceOwner?: import('./coldConversationSourceResolvers').ColdConversationSourceOwner;
+  readonly readColdSource?: (
+    owner: import('./coldConversationSourceResolvers').ColdConversationSourceOwner,
+    reference: EvidenceReference,
+    signal: AbortSignal,
+  ) => Promise<EvidenceSourceReadResult>;
   readonly reference: EvidenceReference;
   readonly onBack: () => void;
   readonly readSource: (
@@ -41,6 +47,8 @@ export function EvidenceSourceDetailScreen({
   reference,
   onBack,
   readSource,
+  sourceOwner,
+  readColdSource,
 }: EvidenceSourceDetailScreenProps) {
   const navigationInset = useNavigationContentInset();
   const [attempt, setAttempt] = useState(0);
@@ -81,7 +89,12 @@ export function EvidenceSourceDetailScreen({
     const controller = new AbortController();
     let mounted = true;
     setState({ status: 'loading' });
-    readSource(selectedReference, controller.signal)
+    // A cold alias without its owner-bound reader is unavailable, never a global lookup.
+    const reading = sourceOwner
+      ? (readColdSource?.(sourceOwner, selectedReference, controller.signal) ??
+        Promise.resolve<EvidenceSourceReadResult>({ status: 'unavailable' }))
+      : readSource(selectedReference, controller.signal);
+    reading
       .then(result => {
         if (mounted) setState(result);
       })
@@ -92,7 +105,7 @@ export function EvidenceSourceDetailScreen({
       mounted = false;
       controller.abort();
     };
-  }, [attempt, readSource, selectedReference]);
+  }, [attempt, readSource, readColdSource, sourceOwner, selectedReference]);
 
   useEffect(() => setSourceStack([]), [reference]);
 

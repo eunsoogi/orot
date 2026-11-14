@@ -60,6 +60,8 @@ export function conversationGeneratedTools(
   }
   return {
     tools,
+    /** Paging handles are not yet part of the protected cold factory. */
+    hasPagingState: () => pages.size > 0 || citedPages.size > 0,
     choose(outcome: RagConversationOutcome): ArtifactContinuation | null {
       if (outcome.status === 'no_evidence' || outcome.status === 'insufficient')
         return pages.get('summary') ?? pages.get('conversation') ?? null;

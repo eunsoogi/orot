@@ -30,7 +30,6 @@ import {
   ConversationTaskHeader,
   ConversationStoredTaskCards,
 } from './ConversationTaskPanels';
-
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
   isEntryCurrent,
@@ -97,7 +96,6 @@ export function ConversationScreen({
     0,
     onNavigationStateChange,
   );
-
   const header = (
     <View style={styles.header}>
       {!navigationRouteKey && (
@@ -159,6 +157,12 @@ export function ConversationScreen({
             <FloatingAssistantSurface session={session}>
               <ConversationHistory
                 replyFocus={focus}
+                coldResumeBusy={
+                  busy || session.restoring || session.retryingSave
+                }
+                onContinueCold={requestId => {
+                  store.resumeCold(id, requestId).catch(() => {});
+                }}
                 sessionId={id}
                 requestSessionId={id}
                 requestActivity={session.requestActivity}
@@ -169,13 +173,9 @@ export function ConversationScreen({
                 error={error}
                 unsavedCount={session.unsavedCount}
                 retryingSave={session.retryingSave || busy}
-                onRetrySave={() => {
-                  store.retrySave(id);
-                }}
+                onRetrySave={() => store.retrySave(id)}
                 restoreFailed={session.restoreFailed}
-                onRetryRestore={() => {
-                  store.retryRestore(id);
-                }}
+                onRetryRestore={() => store.retryRestore(id)}
                 onOpenSource={onOpenSource}
                 resolveToolSource={resolveToolSource}
                 renderVisitQuestions={

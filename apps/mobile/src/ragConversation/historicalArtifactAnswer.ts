@@ -38,7 +38,10 @@ export const HISTORICAL_ARTIFACT_MESSAGE = t(
 /** Return a link only after the artifact and its original sources are checked again. */
 export async function historicalArtifactOutcome(
   result: Extract<MultiAgentRunResult<GroundedRagAnswer>, { status: 'result' }>,
-  options: RagConversationRunOptions,
+  options: Pick<
+    RagConversationRunOptions,
+    'readHistoricalArtifact' | 'resolveLocalEvidenceIdentity' | 'workflow'
+  >,
   signal: AbortSignal,
 ): Promise<RagConversationOutcome> {
   if (

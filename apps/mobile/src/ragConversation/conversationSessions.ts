@@ -85,6 +85,7 @@ export function createConversationSessions(
       consent: photoConsent,
       preparation: options.photoPreparation,
     },
+    options.coldResume,
   );
   const restoration = createConversationSessionRestoreState({
     read: options.restoreSession,
@@ -131,6 +132,7 @@ export function createConversationSessions(
     },
   });
   return {
+    resumeCold: requests.resumeCold,
     photoDrafts,
     photoConsent,
     photoRetirement: options.photoPreparation?.retirement,

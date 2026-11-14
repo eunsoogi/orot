@@ -16,8 +16,9 @@ test('opens only on graph initialization and preserves the actual signal and pro
   expect(() => lazy.checkpointer).toThrow('not initialized');
   const signal = new AbortController().signal;
   const options = {} as never;
-  await lazy.initialize(options, signal);
-  expect(persisted.initialize).toHaveBeenCalledWith(options, signal);
+  const snapshot = () => [];
+  await lazy.initialize(options, signal, snapshot);
+  expect(persisted.initialize).toHaveBeenCalledWith(options, signal, snapshot);
   expect(lazy.checkpointer).toBe(persisted.checkpointer);
   expect(lazy.operationJournal).toBe(persisted.operationJournal);
   await expect(lazy.initialize(options, signal)).rejects.toThrow(

@@ -26,7 +26,6 @@ import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPr
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
 import { requestDailyReportFromConversation } from './dailyReportConversationEntry';
 import { useConversationVisibility } from './useConversationVisibility';
-
 export interface AiFeatureFlowProps {
   readonly isEntryCurrent?: () => boolean;
   readonly navigation: NavigationRouteActions<AiFeatureRouteName>;
@@ -217,6 +216,9 @@ export function AiFeatureFlow({
               onNavigationStateChange={reportFeatureNavigationState}
               onBack={requestBack}
               readSource={services.readSource}
+              readColdSource={services.readColdConversationSource}
+              sourceOwner={shared.sourceOwner}
+              key={JSON.stringify([sourceReference, shared.sourceOwner])}
               reference={sourceReference}
             />
           </View>

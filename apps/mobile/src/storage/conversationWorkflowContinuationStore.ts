@@ -42,6 +42,8 @@ export async function createConversationWorkflowContinuationStore(
   const threadId = `conversation-resume:${identity.requestId}`;
   const config = { configurable: { thread_id: threadId } };
   let original: MultiAgentWorkflowOptions<unknown> | undefined;
+  let snapshotEvidence:
+    (() => readonly import('@orot/agent-runtime').EvidenceBatch[]) | undefined;
   let exactInput = '';
   let submittedInput: unknown;
   let manifest: ConversationResumeManifest | undefined;
@@ -53,8 +55,7 @@ export async function createConversationWorkflowContinuationStore(
   let operationJournal:
     import('@orot/agent-runtime').WorkflowOperationJournal | undefined;
   let claimSignal: AbortSignal | undefined;
-  // Graph/runtime rechecks exact evidence and consent before dispatch. Do not call
-  // those adapters inside a SQL transaction: they may read this DB or prompt the user.
+  // Revalidate outside SQL: adapters can read the DB or prompt for consent.
   async function validate(
     sql: SqlExecutor,
     m: ConversationResumeManifest,
@@ -115,7 +116,7 @@ export async function createConversationWorkflowContinuationStore(
     get operationJournal() {
       return operationJournal;
     },
-    async initialize(options, signal?: AbortSignal) {
+    async initialize(options, signal, snapshot) {
       if (original) throw new Error('Continuation already initialized.');
       // The request must already exist; initialization never manufactures a new turn.
       const input = (
@@ -128,6 +129,7 @@ export async function createConversationWorkflowContinuationStore(
         throw new Error('Original conversation input changed.');
       submittedInput = input.input_json;
       original = options;
+      snapshotEvidence = snapshot;
       exactInput = continuationInput(options);
       manifest = continuationManifest(identity, threadId, options);
       await store.register(manifest);
@@ -193,6 +195,7 @@ export async function createConversationWorkflowContinuationStore(
           checkpointId,
           attempt,
           submittedInput,
+          evidenceBatches: snapshotEvidence?.(),
         });
         await artifacts.interruptRequest(
           identity.requestId,

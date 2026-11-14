@@ -1,3 +1,7 @@
+import {
+  protectedExternalReferences,
+  type ProtectedExternalReferences,
+} from './protectedExternalReferences';
 import { wrapEvidenceSearch } from './wrapEvidenceSearch';
 import { Alert } from 'react-native';
 import { createEuropePmcEvidenceSearchTool } from '@orot/agent-runtime';
@@ -12,16 +16,6 @@ import {
   publicWebQuerySchema,
 } from '../../agent/execution/publicWebQuery';
 import type { JsonObject } from '@orot/model-runtime';
-
-function canonical(value: unknown): string {
-  if (!value || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return JSON.stringify(value.map(canonical));
-  return JSON.stringify(
-    Object.entries(value)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, item]) => [key, canonical(item)]),
-  );
-}
 
 function referenceOnly({
   content: _content,
@@ -63,9 +57,15 @@ export const externalConversationConsent: ExternalMedicalQueryConsentPort = {
 export function createExternalConversationEvidence(
   service: EuropePmcMedicalEvidenceService,
   consent = externalConversationConsent,
-  options: { readonly requireAbstract?: boolean } = {},
+  options: {
+    readonly requireAbstract?: boolean;
+    readonly restoredReferences?: ProtectedExternalReferences;
+  } = {},
 ) {
-  const references = new Set<string>();
+  const references = protectedExternalReferences(
+    'europe-pmc',
+    options.restoredReferences,
+  );
   // A metadata-only hit cannot support a medical explanation. Filter the bounded service page
   // before the adapter's result limit so another available abstract can occupy that citation slot.
   const contextService: EuropePmcMedicalEvidenceService =
@@ -105,7 +105,7 @@ export function createExternalConversationEvidence(
               : batch;
           if (!request.signal.aborted && !('status' in result))
             for (const item of result.items)
-              references.add(canonical(referenceOnly(item)));
+              references.add(referenceOnly(item));
           return result;
         },
         request => {
@@ -125,8 +125,9 @@ export function createExternalConversationEvidence(
           : undefined;
       },
     },
+    snapshot: references.snapshot,
     validates(reference: EvidenceReference) {
-      return references.has(canonical(reference));
+      return references.validates(reference);
     },
   };
 }

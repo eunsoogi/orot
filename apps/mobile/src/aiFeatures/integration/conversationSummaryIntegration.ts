@@ -14,6 +14,7 @@ import { operationRunId } from './featureRunIdentity';
 
 /** Wire only an explicit summary turn to its own generation, storage and retry operation. */
 export function createConversationSummaryIntegration(input: {
+  coldResume?: import('../../ragConversation/conversationSessionTypes').ConversationSessionOptions['coldResume'];
   consent: MultiAgentWorkflowOptions['consent'];
   dependencies: AiFeatureServiceDependencies;
   loadData: () => Promise<AiFeatureLocalData>;
@@ -38,6 +39,7 @@ export function createConversationSummaryIntegration(input: {
     conversationSessionOptions: () =>
       createConversationSessionOptions({
         loadLocalData: input.loadData,
+        coldResume: input.coldResume,
         registry: input.registry,
         selectedAi: input.selectedAi,
         loadSavedVisitQuestions: input.loadSavedVisitQuestions,

@@ -34,6 +34,7 @@ export function createConversationTurnRetention(input: {
   readonly sessionId: string;
   readonly turnId: string;
   readonly createdAt: string;
+  readonly restored?: true;
   readonly sessionVersion?: number;
   readonly captureToolSources?: (
     event: import('@orot/agent-runtime').ConversationToolEvent,
@@ -99,6 +100,8 @@ export function createConversationTurnRetention(input: {
       signal: AbortSignal,
       submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput,
     ) {
+      if (input.restored)
+        throw new Error('An adopted request must not be resubmitted.');
       if (
         !input.storage.startRequest ||
         !input.storage.interruptRequest ||

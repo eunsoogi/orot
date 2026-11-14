@@ -9,6 +9,7 @@ export async function prepareConversationContinuation(
   observer: RagConversationObserver | undefined,
   selected: Extract<SelectedAiResolution, { status: 'ready' }>,
   selectedAi: () => Promise<Extract<SelectedAiResolution, { status: 'ready' }>>,
+  reconstruct?: import('../../storage/conversationContinuationCapture').ConversationColdReconstruction,
 ): Promise<ConversationWorkflowContinuation | undefined> {
   if (
     !observer?.retentionRequestId ||
@@ -41,11 +42,14 @@ export async function prepareConversationContinuation(
     bindPause: observer.onWorkflowPauseController,
     waitForContinue: observer.onWorkflowPaused,
     persisted: lazyConversationContinuationStore(() =>
-      observer.openWorkflowContinuation!({
-        requestId: observer.retentionRequestId!,
-        sessionId: observer.retentionSession!.id,
-        sessionVersion: observer.retentionSession!.version,
-      }),
+      observer.openWorkflowContinuation!(
+        {
+          requestId: observer.retentionRequestId!,
+          sessionId: observer.retentionSession!.id,
+          sessionVersion: observer.retentionSession!.version,
+        },
+        reconstruct,
+      ),
     ),
   };
 }

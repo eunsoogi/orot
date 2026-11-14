@@ -13,6 +13,7 @@ export type ConversationLifetimeEntry = {
   id: number;
   executionId: string;
   leaseAttempt: number;
+  leasePrefix?: string;
   waitingForDecision?: boolean;
   resumableApproval?: boolean;
   requestPause?: () => void;
@@ -34,44 +35,89 @@ export function createConversationRequestLifetime(input: {
 }) {
   const entries = new Map<number, ConversationLifetimeEntry>();
   const owners = new WeakMap<AbortController, ConversationLifetimeEntry>();
+  async function attach(
+    id: number,
+    controller: AbortController,
+    turn: Turn,
+    prefix: string,
+    start: () => Promise<void>,
+    exclusive = false,
+  ) {
+    // New turns may supersede an old UI owner; cold adoption must never displace a live request.
+    if (
+      (exclusive && entries.has(id)) ||
+      owners.has(controller) ||
+      controller.signal.aborted
+    )
+      throw new Error('Conversation lifetime already owned or cancelled.');
+    const entry: ConversationLifetimeEntry = {
+      id,
+      controller,
+      turn,
+      leaseAttempt: 1,
+      executionId: `${prefix}:1`,
+      leasePrefix: prefix,
+    };
+    entries.set(id, entry);
+    owners.set(controller, entry);
+    entry.start = start();
+    await entry.start;
+    if (controller.signal.aborted || entries.get(id) !== entry) return;
+    if (input.execution) {
+      const release = await beginConversationExecutionLease(
+        input.execution,
+        entry.executionId,
+        reason => {
+          if (entries.get(id) === entry && !controller.signal.aborted) {
+            entry.interruptionReason = reason;
+            input.interrupt(id);
+          }
+        },
+        () => requiresConversationDecisionAbort(entry, input.execution),
+        () => entry.requestPause?.(),
+      );
+      if (
+        controller.signal.aborted ||
+        entries.get(id) !== entry ||
+        entry.status
+      )
+        release();
+      else entry.release = release;
+    }
+  }
   return {
-    async start(
+    start(
       id: number,
       controller: AbortController,
       turn: Turn,
       question: string,
       submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput,
     ) {
-      const entry: ConversationLifetimeEntry = {
+      return attach(
         id,
         controller,
         turn,
-        leaseAttempt: 1,
-        executionId: `${turn.toolMessageId}:lease:${id}:1`,
-      };
-      entries.set(id, entry);
-      owners.set(controller, entry);
-      entry.start = turn.startRequest(
-        question,
-        controller.signal,
-        submittedInput,
+        `${turn.toolMessageId}:lease:${id}`,
+        () => turn.startRequest(question, controller.signal, submittedInput),
       );
-      await entry.start;
-      if (controller.signal.aborted) return;
-      if (input.execution) {
-        entry.release = await beginConversationExecutionLease(
-          input.execution,
-          entry.executionId,
-          reason => {
-            if (entries.get(id) === entry && !controller.signal.aborted) {
-              entry.interruptionReason = reason;
-              input.interrupt(id);
-            }
-          },
-          () => requiresConversationDecisionAbort(entry, input.execution),
-          () => entry.requestPause?.(),
-        );
-      }
+    },
+    /** Adopt a cold attempt's OS lease without creating or resubmitting its protected request. */
+    resume(
+      id: number,
+      controller: AbortController,
+      turn: Turn,
+      attempt: number,
+    ) {
+      if (!Number.isSafeInteger(attempt) || attempt < 1)
+        return Promise.reject(new Error('Invalid cold continuation attempt.'));
+      return attach(
+        id,
+        controller,
+        turn,
+        `${turn.toolMessageId}:cold:${id}:${attempt}`,
+        async () => {},
+        true,
+      );
     },
     executionObserver(controller: AbortController) {
       return {

@@ -1,3 +1,4 @@
+import { createConversationColdRequest } from './conversationColdRequest';
 import { getRagConversationFailureCopy } from './copy';
 import { createConversationTurnActivity } from './conversationTurnActivity';
 import type { ConversationTurnActivity } from './conversationTurnActivity';
@@ -46,6 +47,7 @@ export function createConversationSessionRequests(
   retention?: ConversationSessionOptions['retention'],
   execution?: ConversationExecutionAdapter,
   photo?: Parameters<typeof startConversationRetainedRequest>[0]['photo'],
+  cold?: ConversationSessionOptions['coldResume'],
 ) {
   let messageId = 0;
   const saveRecovery = createConversationRequestSaveRecovery(update, find);
@@ -62,27 +64,23 @@ export function createConversationSessionRequests(
   });
   const nextMessage = () => ++messageId;
   const retainPartial = retainPartialFor(find, update, nextMessage);
-  const cancel = createConversationStopHandler({
+  const ownership = {
+    find,
+    update,
+    conversationScope,
+    cold,
+    retention,
     controllers,
     pendingTurns,
     activities,
     snapshots,
     lifetime,
-    find,
-    update,
-    retainPartial,
-  });
+    saveRecovery,
+  };
+  const cancel = createConversationStopHandler({ ...ownership, retainPartial });
   return {
     cancel,
-    ...createConversationRequestDisposal({
-      controllers,
-      pendingTurns,
-      activities,
-      snapshots,
-      lifetime,
-      saveRecovery,
-      update,
-    }),
+    ...createConversationRequestDisposal(ownership),
     async send(
       id: number,
       onSend: ConversationSender,
@@ -241,6 +239,7 @@ export function createConversationSessionRequests(
         }
       }
     },
+    resumeCold: createConversationColdRequest({ ...ownership, cancel }),
     retrySave: saveRecovery.retry,
     resumeSaves: saveRecovery.resume,
     forgetSaves: saveRecovery.forget,

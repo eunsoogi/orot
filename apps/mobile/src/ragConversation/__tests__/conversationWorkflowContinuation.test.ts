@@ -32,7 +32,12 @@ test('continues the exact persisted thread only after explicit action and atomic
     persisted: {
       checkpointer,
       threadId: 'original-thread',
-      initialize: async () => {
+      initialize: async (
+        _options: unknown,
+        _signal: AbortSignal,
+        snapshot?: () => readonly unknown[],
+      ) => {
+        expect(snapshot?.()).toEqual([options.initialEvidence]);
         order.push('initialize');
       },
       paused: async () => {

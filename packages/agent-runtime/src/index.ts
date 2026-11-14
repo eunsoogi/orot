@@ -148,3 +148,4 @@ export type {
 } from './multiAgent/workflowOperationJournal';
 
 export type { PreparedEvidenceSearch } from './multiAgent/evidenceContracts';
+export { validateEvidenceBatch } from './multiAgent/evidence';

@@ -32,6 +32,10 @@ export function ConversationInterruptionRecovery({
         />
       </>
     );
+  if (
+    session.messages.some(message => message.incomplete && message.coldResume)
+  )
+    return null;
   if (!conversationRecoveryDraft(session)) return null;
   return (
     <AppText accessibilityRole="alert">

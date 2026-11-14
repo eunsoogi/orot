@@ -20,7 +20,7 @@ export async function waitForWorkflowContinue(
       if (settled) return;
       settled = true;
       entry.controller.signal.removeEventListener('abort', aborted);
-      input.pauseState?.(entry.id);
+      if (entries.get(entry.id) === entry) input.pauseState?.(entry.id);
       resolve(result);
     };
     const aborted = () => finish(false);
@@ -36,23 +36,42 @@ export async function waitForWorkflowContinue(
       resuming = true;
       input.pauseState?.(entry.id);
       (async () => {
-        entry.executionId = `${entry.turn.toolMessageId}:lease:${entry.id}:${++entry.leaseAttempt}`;
-        if (input.execution)
-          entry.release = await beginConversationExecutionLease(
+        entry.executionId = `${entry.leasePrefix ?? `${entry.turn.toolMessageId}:lease:${entry.id}`}:${++entry.leaseAttempt}`;
+        if (input.execution) {
+          const release = await beginConversationExecutionLease(
             input.execution,
             entry.executionId,
             reason => {
+              if (
+                entries.get(entry.id) !== entry ||
+                entry.controller.signal.aborted ||
+                entry.status
+              )
+                return;
               entry.interruptionReason = reason;
               input.interrupt(entry.id);
             },
             () => requiresConversationDecisionAbort(entry, input.execution),
             () => entry.requestPause?.(),
           );
-        if (entry.controller.signal.aborted) {
+          if (
+            entries.get(entry.id) !== entry ||
+            entry.controller.signal.aborted ||
+            entry.status
+          )
+            release();
+          else entry.release = release;
+        }
+        if (
+          entry.controller.signal.aborted ||
+          entries.get(entry.id) !== entry
+        ) {
           entry.release?.();
           entry.release = undefined;
         }
-        finish(!entry.controller.signal.aborted);
+        finish(
+          !entry.controller.signal.aborted && entries.get(entry.id) === entry,
+        );
       })().catch(() => finish(false));
     });
     if (entry.controller.signal.aborted) finish(false);

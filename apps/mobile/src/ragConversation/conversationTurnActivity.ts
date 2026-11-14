@@ -17,6 +17,7 @@ export type ConversationTurnActivity = ReturnType<
 export function createConversationTurnActivity(input: {
   id: number;
   responseId: number;
+  initialToolEvents?: readonly ConversationToolEvent[];
   find: (id: number) => ConversationSession;
   update: (id: number, change: Partial<ConversationSession>) => void;
   current: () => boolean;
@@ -24,7 +25,7 @@ export function createConversationTurnActivity(input: {
   activity?: ReturnType<typeof createConversationActivity>;
   activityChanged?: () => void;
 }) {
-  let events: readonly ConversationToolEvent[] = [];
+  let events: readonly ConversationToolEvent[] = input.initialToolEvents ?? [];
   let writing = Promise.resolve();
   let failed = false;
   let healthBodyWithheld = false;

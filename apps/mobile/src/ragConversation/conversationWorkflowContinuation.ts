@@ -1,4 +1,5 @@
 import {
+  type EvidenceBatch,
   createMultiAgentPauseController,
   runMultiAgentWorkflow,
   type MultiAgentInvocation,
@@ -23,6 +24,7 @@ export interface ConversationWorkflowContinuation {
     initialize(
       options: MultiAgentWorkflowOptions<unknown>,
       signal: AbortSignal,
+      snapshotEvidence?: () => readonly EvidenceBatch[],
     ): Promise<void>;
     paused(
       checkpoint: Extract<
@@ -46,6 +48,7 @@ export async function runContinuableConversationWorkflow<T>(
   await continuation.persisted.initialize(
     options as MultiAgentWorkflowOptions<unknown>,
     signal,
+    original.snapshotEvidence,
   );
   const durable = {
     ...original,

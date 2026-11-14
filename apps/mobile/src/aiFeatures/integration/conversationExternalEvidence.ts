@@ -1,7 +1,10 @@
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { createResearchInputTracker } from './researchInputTracker';
-import { createSelectedExternalEvidence } from './selectedExternalEvidence';
+import {
+  createSelectedExternalEvidence,
+  type SelectedExternalEvidenceSnapshot,
+} from './selectedExternalEvidence';
 import { retainLiteratureResults } from './researchRetention';
 import { observeConversationTool } from '../../ragConversation/observeConversationTool';
 import { runDefaultPublicSearch } from './defaultPublicSearch';
@@ -17,6 +20,7 @@ export function conversationExternalEvidence(input: {
   loadLocalData: RagConversationServiceDependencies['loadLocalData'];
   observer?: RagConversationObserver;
   researchInputs: ReturnType<typeof createResearchInputTracker>;
+  restored?: SelectedExternalEvidenceSnapshot;
 }) {
   const {
     selected,
@@ -30,6 +34,7 @@ export function conversationExternalEvidence(input: {
   return createSelectedExternalEvidence({
     selected,
     consent,
+    restored: input.restored,
     literature: retainLiteratureResults(
       externalEvidence,
       loadLocalData,

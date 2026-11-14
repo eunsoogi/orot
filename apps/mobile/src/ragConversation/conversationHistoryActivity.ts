@@ -19,11 +19,15 @@ export function conversationHistoryActivity(
   const hasPendingContent = Boolean(
     pending?.content.trim() || pending?.toolEvents?.length,
   );
+  // Cold Continue replaces its interrupted bubble visually, not in retained data.
+  const settled = pending
+    ? messages.filter(message => message.id !== pending.id)
+    : messages;
   const visibleMessages =
     !pending || (activity && !hasPendingContent)
-      ? messages
+      ? settled
       : [
-          ...messages,
+          ...settled,
           {
             ...pending,
             activity: activity ? undefined : pending.activity,

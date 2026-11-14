@@ -1,3 +1,4 @@
+import { interruptColdConversationAttempt } from '../storage/interruptColdConversationAttempt';
 import {
   SqliteCheckpointSaver,
   isMultiAgentCheckpointResumable,
@@ -35,6 +36,7 @@ export async function runColdConversationWorkflow<T>(input: {
   invocation: MultiAgentInvocation;
   validateSelection(signal: AbortSignal): Promise<void>;
   capture(batches: readonly EvidenceBatch[]): Promise<JsonObject>;
+  onClaim?(): void;
 }) {
   const { database, descriptor: d, options } = input;
   const signal = input.invocation.signal ?? new AbortController().signal;
@@ -93,57 +95,76 @@ export async function runColdConversationWorkflow<T>(input: {
     );
   };
   const claim = await store.claim(d, signal, validate);
-  await input.validateSelection(signal);
-  if (signal.aborted) throw new Error('Cold workflow cancelled.');
-  const result = await runMultiAgentWorkflow(durable, {
-    ...input.invocation,
-    signal,
-    config,
-  });
-  if (result.status !== 'paused') return result;
-  const latest = await checkpointer.getTuple(config);
-  if (
-    !latest ||
-    Object.entries(result.checkpoint).some(
-      ([key, value]) =>
-        stableJson(latest.checkpoint.channel_values[key] ?? null) !==
-        stableJson(value ?? null),
+  try {
+    await input.validateSelection(signal);
+    if (signal.aborted) throw new Error('Cold workflow cancelled.');
+    input.onClaim?.();
+    const result = await runMultiAgentWorkflow(durable, {
+      ...input.invocation,
+      signal,
+      config,
+    });
+    if (result.status !== 'paused') return result;
+    const latest = await checkpointer.getTuple(config);
+    if (
+      !latest ||
+      Object.entries(result.checkpoint).some(
+        ([key, value]) =>
+          stableJson(latest.checkpoint.channel_values[key] ?? null) !==
+          stableJson(value ?? null),
+      )
     )
-  )
-    throw new Error('Cold continuation checkpoint changed.');
-  const resume = createConversationWorkflowResumeStorage(
-    database,
-    async () => {},
-    async () => false,
-  );
-  await resume.saveBoundary(
-    d.manifest,
-    {
-      checkpointId: latest.checkpoint.id,
-      phase: result.checkpoint.phase as ConversationResumeBoundary['phase'],
-      awaitingAuthorization: result.checkpoint.awaitingAuthorization,
-      pendingOperation: false,
-      terminal: false,
-    },
-    claim.attempt,
-  );
-  await saveConversationColdBoundary(database, d.manifest, async () => ({
-    ...(await input.capture(cache.snapshotEvidence())),
-    evidenceBatches:
-      cache.snapshotEvidence() as unknown as JsonObject['evidenceBatches'],
-  }))({
-    options,
-    checkpoint: result.checkpoint,
-    checkpointId: latest.checkpoint.id,
-    attempt: claim.attempt,
-    submittedInput: d.submittedInput,
-  });
-  await createConversationArtifactStorage(database).interruptRequest(
-    d.manifest.requestId,
-    d.manifest.sessionId,
-    d.manifest.sessionVersion,
-    'interrupted',
-    result.checkpoint.awaitingAuthorization ? 'decision-required' : 'expired',
-  );
-  return result;
+      throw new Error('Cold continuation checkpoint changed.');
+    const resume = createConversationWorkflowResumeStorage(
+      database,
+      async () => {},
+      async () => false,
+    );
+    await resume.saveBoundary(
+      d.manifest,
+      {
+        checkpointId: latest.checkpoint.id,
+        phase: result.checkpoint.phase as ConversationResumeBoundary['phase'],
+        awaitingAuthorization: result.checkpoint.awaitingAuthorization,
+        pendingOperation: false,
+        terminal: false,
+      },
+      claim.attempt,
+    );
+    try {
+      await saveConversationColdBoundary(database, d.manifest, async () => ({
+        ...(await input.capture(cache.snapshotEvidence())),
+        evidenceBatches:
+          cache.snapshotEvidence() as unknown as JsonObject['evidenceBatches'],
+      }))({
+        options,
+        checkpoint: result.checkpoint,
+        checkpointId: latest.checkpoint.id,
+        attempt: claim.attempt,
+        submittedInput: d.submittedInput,
+      });
+    } catch (error) {
+      // An unsupported new private state cannot leave an older descriptor reusable.
+      await database.execute(
+        'DELETE FROM conversation_cold_resumes WHERE request_id = ?',
+        [d.manifest.requestId],
+      );
+      throw error;
+    } finally {
+      // Even capture failure must end the active request; it never means retry the external dispatch.
+      await createConversationArtifactStorage(database).interruptRequest(
+        d.manifest.requestId,
+        d.manifest.sessionId,
+        d.manifest.sessionVersion,
+        'interrupted',
+        result.checkpoint.awaitingAuthorization
+          ? 'decision-required'
+          : 'expired',
+      );
+    }
+    return result;
+  } catch (error) {
+    await interruptColdConversationAttempt(database, d.manifest, claim.attempt);
+    throw error;
+  }
 }

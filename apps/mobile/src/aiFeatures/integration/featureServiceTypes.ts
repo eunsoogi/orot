@@ -19,6 +19,11 @@ import type { createConversationArtifactDiscovery } from './conversationArtifact
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
 
 export interface AiFeatureServices extends VisitQuestionSourceService {
+  readColdConversationSource?(
+    owner: import('./coldConversationSourceResolvers').ColdConversationSourceOwner,
+    reference: EvidenceReference,
+    signal: AbortSignal,
+  ): Promise<EvidenceSourceReadResult>;
   readonly dailyReport?: ReturnType<
     typeof import('./dailyReportFeature').createDailyReportFeature
   >;

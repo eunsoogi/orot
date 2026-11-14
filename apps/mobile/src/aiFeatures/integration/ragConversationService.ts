@@ -1,7 +1,7 @@
 import { conversationPublicSearchPlan } from './conversationPublicSearchPlan';
-import { prepareConversationContinuation as continuationFor } from './prepareConversationContinuation';
+import { prepareLiveRagContinuation as continuationFor } from './liveRagConversationCapture';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
-import { finishRagConversation } from './finishRagConversation';
+import { finishConversationWorkflow } from './finishConversationWorkflow';
 import type * as Conversation from '../../ragConversation/service';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import { executionOptions } from './featureServiceExecution';
@@ -11,16 +11,11 @@ import { createConversationToolBundle } from './conversationToolBundle';
 import { withProviderStage } from '../../providers/diagnostics';
 import { ragConversationFailure } from './ragConversationFailure';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
-import {
-  conversationRunInvocation,
-  conversationRunRequest,
-  conversationRunWorkflow,
-} from './conversationRunOptions';
+import * as run from './conversationRunOptions';
 import { createResearchInputTracker } from './researchInputTracker';
 import type { ConversationEntryContext } from './conversationIntent';
 import { conversationEarlyResponse } from './conversationEarlyResponse';
 import { loadConversationHistory } from './conversationHistorySources';
-import { conversationFallbackOutcome } from './conversationFallbackOutcome';
 import {
   conversationTargetFailure,
   resolveConversationSelection,
@@ -30,10 +25,7 @@ import {
   bindConversationPhotoExecution,
   prepareConversationPhoto,
 } from './conversationPhotoService';
-import {
-  conversationInputsAreCurrent,
-  resolveConversationTargets,
-} from './conversationEntryTargets';
+import * as targets from './conversationEntryTargets';
 import { conversationExternalEvidence } from './conversationExternalEvidence';
 /** Keeps local availability checks ahead of provider resolution and model dispatch. */
 export function createRagConversationService({
@@ -56,16 +48,15 @@ export function createRagConversationService({
   ): Promise<Conversation.RagConversationOutcome> {
     const normalizedQuestion = question.trim();
     const photo = background.photo(observer);
-    if (!validConversationInput(normalizedQuestion, photo)) {
+    if (!validConversationInput(normalizedQuestion, photo))
       return { status: 'failure', kind: 'validation_failed' };
-    }
     const linked = background.scope(parentSignal, observer);
     const signal = linked.controller.signal;
     const consent = background.consent(consentPort, observer);
     const queryConsent = background.consent(queryConsentPort, observer);
     let stage: 'selection' | 'data' | 'workflow' = 'data';
     try {
-      const target = await resolveConversationTargets({
+      const target = await targets.resolveConversationTargets({
         context: entryContext,
         loadLocalData,
         resolveDailyReport,
@@ -115,7 +106,7 @@ export function createRagConversationService({
         registry,
         signal,
       });
-      const historyIsCurrent = conversationInputsAreCurrent(
+      const historyIsCurrent = targets.conversationInputsAreCurrent(
         registry,
         history.references,
         signal,
@@ -141,7 +132,24 @@ export function createRagConversationService({
         runId: createOperationRunId?.() ?? operationRunId(),
         question: normalizedQuestion,
         signal,
-        continuation: await continuationFor(observer, selected, selectedAi),
+        continuation: await continuationFor(
+          observer,
+          selected,
+          selectedAi,
+          {
+            registry,
+            tracker: researchInputs,
+            external,
+            signal,
+          },
+          () => ({
+            history,
+            entryContext,
+            reportReferences: report?.items ?? [],
+            localRetrievalFailed: localRetrievalFailed(),
+            hasPagingState: generated.hasPagingState(),
+          }),
+        ),
       });
       const publicSearch = searchPlan.eager;
       if (publicSearch.status === 'cancelled')
@@ -189,7 +197,7 @@ export function createRagConversationService({
       if (!(await historyIsCurrent()))
         return { status: 'failure', kind: 'retrieval_failed' };
       const outcome = await ragRunner(
-        conversationRunRequest({
+        run.conversationRunRequest({
           continuation: searchPlan.continuation,
           onInitialSearchStatus: searchPlan.onInitialSearchStatus,
           question: normalizedQuestion,
@@ -203,7 +211,7 @@ export function createRagConversationService({
           search: publicSearch,
           registry,
           workflow: {
-            ...conversationRunWorkflow(
+            ...run.conversationRunWorkflow(
               execution,
               historyIsCurrent,
               !!history.references.length || !!report,
@@ -213,7 +221,7 @@ export function createRagConversationService({
             initialSearch: searchPlan.initialSearch,
           },
         }),
-        conversationRunInvocation(
+        run.conversationRunInvocation(
           observer,
           Boolean(history.references.length || report || photo),
           registry,
@@ -221,24 +229,16 @@ export function createRagConversationService({
           signal,
         ),
       );
-      if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
-      if (!(await historyIsCurrent()))
-        return { status: 'failure', kind: 'retrieval_failed' };
-      const continuation = generated.choose(outcome);
-      observer?.onArtifactContinuation?.(continuation);
-      const fallback = conversationFallbackOutcome(
+      return await finishConversationWorkflow({
         outcome,
-        Boolean(continuation),
-        localRetrievalFailed(),
-      );
-      if (fallback) return fallback;
-      return await finishRagConversation({
-        outcome,
+        observer,
+        generated,
+        localRetrievalFailed,
+        historyIsCurrent,
         publicSearch: searchPlan.currentSearch,
         skipPublicSearchNotice: !normalizedQuestion,
         retention,
         signal,
-        continuation: Boolean(continuation),
         reportIsCurrent: report?.isCurrent,
       });
     } catch (error) {

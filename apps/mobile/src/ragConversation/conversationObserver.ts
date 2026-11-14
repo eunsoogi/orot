@@ -17,6 +17,7 @@ export type RagConversationObserver = Pick<
 > & {
   readonly openWorkflowContinuation?: (
     identity: import('../storage/conversationWorkflowContinuationIdentity').ConversationContinuationIdentity,
+    reconstruct?: import('../storage/conversationContinuationCapture').ConversationColdReconstruction,
   ) => Promise<
     import('./conversationWorkflowContinuation').ConversationWorkflowContinuation['persisted']
   >;

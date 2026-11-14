@@ -118,7 +118,10 @@ export function useAiFeatureFlowNavigation(
   ]);
 
   const openSource = useCallback(
-    (reference: EvidenceReference) => {
+    (
+      reference: EvidenceReference,
+      owner?: import('./coldConversationSourceResolvers').ColdConversationSourceOwner,
+    ) => {
       const returnRoute =
         routeName === 'provider-selection'
           ? providerReturnRoute
@@ -135,6 +138,7 @@ export function useAiFeatureFlowNavigation(
       setState(current => ({
         ...current,
         sourceReference: reference,
+        sourceOwner: owner ? { ...owner } : undefined,
         sourceReturnRoute: returnRoute,
         sourceReturnRouteKey: returnRouteKey,
       }));

@@ -23,6 +23,10 @@ export function continuationInput(options: MultiAgentWorkflowOptions<unknown>) {
     tools: options.tools.map(tool => ({
       id: tool.id,
       execution: tool.execution,
+      sourceKind: tool.sourceKind,
+      inputSchema: tool.inputSchema,
+      description: tool.description,
+      additionalModelCalls: tool.additionalModelCalls ?? 0,
     })),
   });
 }
