@@ -25,12 +25,11 @@ import {
 import { conversationTaskInput } from './conversationEntryContext';
 import { priorDialogue } from './priorDialogue';
 import { possibilityPrompt } from './possibilityPrompt';
-
+import * as initialReply from './initialResponse';
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
   readonly content: string;
 }
-
 export interface GroundedRagAnswer {
   readonly answer: string;
   /** A validated answer may cover only part of the user's request. */
@@ -45,7 +44,8 @@ export interface GroundedRagAnswer {
  * Publish prose only after complete-response validation. Tool progress has its own observer. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  taskVersion: '6',
+  taskVersion: '7',
+  initialToolResponse: initialReply.validateInitialConversationResponse,
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
   allowPagedGeneratedArtifacts: true,
@@ -59,6 +59,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   },
   isEvidenceIndependentResult: isEvidenceIndependentConversation,
   systemPrompt:
+    initialReply.initialResponseInstruction +
     'Choose answerKind=conversation for greetings, acknowledgements, emotional support without factual or clinical claims, and questions that clarify what the user means. Reply naturally without citations or an evidence disclaimer. Do not require a search merely to continue a conversation. ' +
     'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
     'Choose answerKind=prior_output only to show a previously generated result; cite generated artifact IDs. The application will display the retained text itself. ' +
@@ -102,6 +103,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
             input.context,
             input.evidence.items,
           ),
+          initialResponseText: initialReply.initialConversationResponse,
           answerRequirements:
             'Answer directly in Korean, briefly for a simple fact and in short paragraphs for multiple requested topics. Use available follow-up tools for missing requested topics before treating a partial search as insufficient. For medication questions, report recorded medications and dose facts without unrelated consultation plans. Describe the state at the record time rather than asserting current status.',
           temporalRequirements:
@@ -242,7 +244,6 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     } as const;
   },
 };
-
 export interface RagConversationCurrentEvidence {
   readonly batch: EvidenceBatch;
   readonly chunks: readonly import('@orot/rag').EvidenceChunk[];

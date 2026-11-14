@@ -27,6 +27,12 @@ export function isHistoryPointer(text: string): boolean {
 }
 
 export function isReferentialHistoryCommand(question: string): boolean {
+  const explicit = question
+    .trim()
+    .match(
+      /^(?:과거 건강 기록으로 저장해(?:\s*줘)?|save (?:this )?as past health history)\s*[:：]\s*([\s\S]+)$/iu,
+    );
+  if (explicit && isHistoryPointer(explicit[1])) return true;
   const prefix = question
     .trim()
     .replace(

@@ -123,6 +123,11 @@ export interface ConversationSession {
   readonly draft: string;
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: {
+    initialResponse?: {
+      readonly callId: string;
+      readonly text: string;
+      readonly source?: 'receipt';
+    };
     id: number;
     content: string;
     activity: string;

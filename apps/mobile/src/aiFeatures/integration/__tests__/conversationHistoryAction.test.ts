@@ -138,6 +138,7 @@ test('ambiguous repeated prior wording and referential commands cannot be stored
     '그 내용을 건강 기록에 저장해줘',
     '이 내용을 기억해줘',
     '그것을 기억해 줘',
+    '과거 건강 기록으로 저장해: 이거',
   ]) {
     const { action, saveConversationHistory } = fixture(question);
     expect(action.parseInput({ userMessage: question })).toBeUndefined();
