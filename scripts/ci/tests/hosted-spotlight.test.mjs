@@ -161,7 +161,7 @@ test('the supervisor preserves a completed operation status and output', () => {
 
 test('every native producer and consumer suppresses indexing before dependencies or product download', () => {
   const stages = [
-    workflow('.github/workflows/native-swift-host.yml').jobs.host_regressions.steps,
+    workflow('.github/workflows/unit-test.yml').jobs.host_regressions.steps,
     workflow('.github/workflows/ios-test-products-build.yml').jobs.validation.steps,
     workflow('.github/workflows/ios-production-validation.yml').jobs.validation.steps,
     workflow('.github/workflows/ios-focused.yml').jobs.products.steps,

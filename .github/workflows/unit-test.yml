@@ -126,3 +126,23 @@ jobs:
           path: artifacts/unit/
           if-no-files-found: error
           retention-days: 14
+
+  # Pure Swift unit regressions use a Mac runner, not a separate test level.
+  host_regressions:
+    name: Swift host regressions
+    runs-on: xcode-27
+    timeout-minutes: 15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Disable and verify Spotlight
+        uses: ./.github/actions/ios-host-bootstrap
+        with:
+          log_directory: artifacts/native-swift-host
+      - name: Observe host file-protection capability
+        run: swift scripts/tests/host-file-protection-capability.swift
+      - name: Run shipping Swift regressions
+        run: scripts/tests/native-swift-regressions-host.sh
