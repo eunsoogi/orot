@@ -22,15 +22,19 @@ test('persists ordered choices and rejects invalid selections without changing t
   await expect(
     saveOverviewMetricSelection(repository, ['sleep']),
   ).rejects.toThrow();
-  await saveOverviewMetricSelection(repository, overviewMetrics);
+  const fourMetrics = ['workouts', 'steps', 'sleep', 'bodyMass'] as const;
+  await expect(
+    saveOverviewMetricSelection(repository, overviewMetrics),
+  ).rejects.toThrow();
+  await saveOverviewMetricSelection(repository, fourMetrics);
   await expect(loadOverviewMetricSelection(repository)).resolves.toEqual(
-    overviewMetrics,
+    fourMetrics,
   );
   await expect(
     saveOverviewMetricSelection(repository, ['sleep', 'sleep']),
   ).rejects.toThrow();
   await expect(loadOverviewMetricSelection(repository)).resolves.toEqual(
-    overviewMetrics,
+    fourMetrics,
   );
 });
 

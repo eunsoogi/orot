@@ -141,7 +141,7 @@ describe('HealthKit import authorization ordering', () => {
     expect(result.status).toBe('partial');
   });
 
-  it('uses one batch call for all six selected HealthKit features', async () => {
+  it('uses one batch call for all selected HealthKit features', async () => {
     const base = createTestServices();
     const requestReadAuthorizations = jest.fn(
       base.services.healthKit.requestReadAuthorizations,
@@ -160,11 +160,14 @@ describe('HealthKit import authorization ordering', () => {
     expect(requestReadAuthorizations).toHaveBeenCalledTimes(1);
     expect(requestReadAuthorizations).toHaveBeenCalledWith(healthKitFeatures);
     expect(runFeature).toHaveBeenCalledTimes(healthKitFeatures.length);
-    expect(base.timeline.indexOf('storage.open')).toBeGreaterThan(
-      base.timeline.indexOf(
-        'healthKit.authorization:medications,bloodPressure,sleep,heartRate,steps,bodyMass',
-      ),
+    const authorized = base.timeline.indexOf(
+      `healthKit.authorization:${healthKitFeatures.join(',')}`,
     );
+    const storageOpened = base.timeline.indexOf('storage.open');
+    // Missing events must fail instead of accidentally comparing against index -1.
+    expect(authorized).toBeGreaterThanOrEqual(0);
+    expect(storageOpened).toBeGreaterThanOrEqual(0);
+    expect(storageOpened).toBeGreaterThan(authorized);
     expect(result.status).toBe('complete');
   });
 

@@ -24,6 +24,7 @@ export const overviewMetricTitle = (metric: OverviewMetric) =>
     heartRate: t('overview.metricHeartRate'),
     bodyMass: t('overview.metricBodyMass'),
     steps: t('overview.metricSteps'),
+    workouts: t('healthRecords.category.workouts'),
   })[metric];
 
 const overviewMetricAccent = (metric: OverviewMetric) =>
@@ -32,6 +33,7 @@ const overviewMetricAccent = (metric: OverviewMetric) =>
     heartRate: appColors.pink,
     bodyMass: appColors.primaryText,
     steps: appColors.green,
+    workouts: appColors.green,
   })[metric];
 
 const overviewMetricSymbol = (metric: OverviewMetric) =>
@@ -40,6 +42,7 @@ const overviewMetricSymbol = (metric: OverviewMetric) =>
     heartRate: 'heart',
     bodyMass: 'scalemass',
     steps: 'figure.walk',
+    workouts: 'figure.run',
   })[metric];
 
 /** Keeps metric identity visible in both loaded cards and reserved chart placeholders. */
@@ -85,6 +88,7 @@ function MeasuredOverviewMetricChart({
         data={data}
         compact
         hideDetails
+        barTooltip
         height={112}
         kind="bar"
         testID={`overview-metric-chart-${metric}`}

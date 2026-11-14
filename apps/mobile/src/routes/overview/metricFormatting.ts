@@ -28,6 +28,7 @@ export function overviewMetricStatistic(metric: OverviewMetric): string {
     heartRate: t('overview.dailyMean'),
     bodyMass: t('overview.dailyLatest'),
     steps: t('overview.dailySum'),
+    workouts: t('overview.dailySum'),
   }[metric];
 }
 

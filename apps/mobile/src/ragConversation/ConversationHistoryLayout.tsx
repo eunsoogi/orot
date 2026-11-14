@@ -178,9 +178,12 @@ export function ConversationHistoryLayout({
     if (plan.columns === 1) onBack();
   };
   const select = (id: number) => {
+    // Native row events can arrive after deletion; never open an unrelated session.
+    if (!rows.some(row => row.id === id)) return;
     onSelectSession(id);
-    // Compact history keeps its original return-to-conversation selection flow.
-    if (plan.columns === 1) onBack();
+    // Selecting history opens the actual conversation on every screen width.
+    // Use the existing guarded return route rather than creating another chat.
+    onBack();
   };
 
   return (

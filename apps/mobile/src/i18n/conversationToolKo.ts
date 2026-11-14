@@ -2,6 +2,7 @@
 export const conversationToolKo = {
   'ragConversation.workspace.activity': 'AI 작업 기록',
   'ragConversation.workspace.empty': '대화 중 수행한 작업이 여기에 표시돼요.',
+  'ragConversation.tool.name.saveHistory': '과거 건강 기록 저장',
   'ragConversation.tool.name.health': '건강 기록 확인',
   'ragConversation.tool.name.records': '개인 기록 검색',
   'ragConversation.tool.name.memory': '확인된 기억 검색',

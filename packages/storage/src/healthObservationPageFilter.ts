@@ -8,6 +8,7 @@ export const HEALTH_OBSERVATION_PAGE_CATEGORIES = [
   'heart_rate',
   'steps',
   'body_mass',
+  'workouts',
   'sleep',
   'other',
 ] as const;
@@ -25,6 +26,7 @@ const concept = "json_extract(payload_json, '$.concept')";
 const categoryExpression = `CASE
   WHEN ${concept} IN ('blood pressure systolic', 'blood pressure diastolic') THEN 'blood_pressure'
   WHEN ${concept} = 'heart_rate' THEN 'heart_rate'
+  WHEN ${concept} = 'workout_duration' THEN 'workouts'
   WHEN ${concept} = 'step_count' THEN 'steps'
   WHEN ${concept} = 'body_mass' THEN 'body_mass'
   WHEN ${concept} = 'HKCategoryTypeIdentifierSleepAnalysis' THEN 'sleep'
@@ -33,7 +35,7 @@ const timeExpression = localQueryTimestampKeyExpression('effective_at');
 
 /** Added once during schema migration; existing rows and source times remain unchanged. */
 export async function createHealthObservationLibraryIndex(executor: SqlExecutor): Promise<void> {
-  await executor.execute(`CREATE INDEX IF NOT EXISTS health_observations_library_idx
+  await executor.execute(`CREATE INDEX IF NOT EXISTS health_observations_library_workouts_idx
     ON health_observations ((${categoryExpression}), (${timeExpression}) DESC, id ASC)`);
 }
 

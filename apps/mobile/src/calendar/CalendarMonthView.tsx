@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { View, useWindowDimensions } from 'react-native';
+import { CalendarAccessibleDates } from './CalendarAccessibleDates';
 import { AppText as Text } from '../layout/AppText';
 import type { Appointment } from '@orot/storage';
 import { t } from '../i18n';
@@ -28,7 +29,6 @@ import {
 import { calendarStyles as styles } from './calendarStyles';
 import type { CalendarEvent } from './types';
 import { calendarEventsEqual } from './calendarSnapshot';
-
 interface CalendarMonthViewProps {
   appointmentsLoading: boolean;
   candidatesLoaded: boolean;
@@ -41,15 +41,12 @@ interface CalendarMonthViewProps {
   queryWindow: CalendarQueryWindow | null;
   resultsMayBeIncomplete: boolean;
 }
-
 function localDateKey(date: Date): string {
   return calendarDateKey(date.getFullYear(), date.getMonth(), date.getDate());
 }
-
 function dateNumber(dateKey: string): number {
   return Number(dateKey.slice(-2));
 }
-
 export function CalendarMonthView({
   appointmentsLoading,
   candidatesLoaded,
@@ -62,6 +59,9 @@ export function CalendarMonthView({
   queryWindow,
   resultsMayBeIncomplete,
 }: CalendarMonthViewProps) {
+  const { fontScale } = useWindowDimensions();
+  // Keep ordinary seven-column geometry; large-text rows share the same selection owner.
+  const accessibleDates = fontScale > 1.5;
   const initialDateKey = localDateKey(initialDate);
   // The today marker follows the same local civil-day key used for initial selection.
   const todayDateKey = localDateKey(new Date());
@@ -94,7 +94,6 @@ export function CalendarMonthView({
   const eventsOnSelectedDate = rangedEvents.filter(
     item => item.startDay <= selectedDate && selectedDate <= item.endDay,
   );
-
   const focusDate = useCallback((dateKey: string) => {
     setSelectedDate(dateKey);
     const [year, month] = dateKey.split('-').map(Number);
@@ -160,27 +159,39 @@ export function CalendarMonthView({
         style={styles.calendarDateGridContent}
         testID="calendar-date-grid-content"
       >
-        <CalendarWeekdayHeader />
-        <View style={styles.calendarGrid} testID="calendar-date-grid">
-          {gridDays.map(day => {
-            const dayEvents = eventsForDay(day.dateKey);
-            return (
-              <CalendarDayCell
-                day={day}
-                dayEvents={dayEvents}
-                key={day.dateKey}
-                label={calendarDayAccessibilityLabel(
-                  day.dateKey,
-                  dayEvents,
-                  day.dateKey === todayDateKey,
-                )}
-                onPress={focusDate}
-                selected={day.dateKey === selectedDate}
-                today={day.dateKey === todayDateKey}
-              />
-            );
-          })}
-        </View>
+        {accessibleDates ? (
+          <CalendarAccessibleDates
+            days={gridDays}
+            eventsForDay={eventsForDay}
+            selectedDate={selectedDate}
+            todayDate={todayDateKey}
+            onSelect={focusDate}
+          />
+        ) : (
+          <>
+            <CalendarWeekdayHeader />
+            <View style={styles.calendarGrid} testID="calendar-date-grid">
+              {gridDays.map(day => {
+                const dayEvents = eventsForDay(day.dateKey);
+                return (
+                  <CalendarDayCell
+                    day={day}
+                    dayEvents={dayEvents}
+                    key={day.dateKey}
+                    label={calendarDayAccessibilityLabel(
+                      day.dateKey,
+                      dayEvents,
+                      day.dateKey === todayDateKey,
+                    )}
+                    onPress={focusDate}
+                    selected={day.dateKey === selectedDate}
+                    today={day.dateKey === todayDateKey}
+                  />
+                );
+              })}
+            </View>
+          </>
+        )}
       </View>
       <View style={styles.calendarSelectedDateEvents}>
         <Text

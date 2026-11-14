@@ -20,6 +20,11 @@ export const healthRecordCategoryPresentation: Record<
     color: appColors.pink,
     background: appColors.pinkSoft,
   },
+  workouts: {
+    symbol: 'figure.run',
+    color: appColors.green,
+    background: appColors.surface,
+  },
   steps: {
     symbol: 'shoe',
     color: appColors.primaryText,

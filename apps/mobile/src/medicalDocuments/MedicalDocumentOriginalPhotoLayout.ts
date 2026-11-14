@@ -22,6 +22,7 @@ export const medicalDocumentOriginalPhotoStyles = StyleSheet.create({
     overflow: 'hidden',
     width: '100%',
   },
+  fullScreenViewport: { flex: 1, minHeight: 0, overflow: 'hidden' },
   zoomView: { flex: 1 },
   zoomContent: { flexGrow: 1 },
   image: { height: '100%', width: '100%' },

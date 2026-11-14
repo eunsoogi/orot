@@ -9,10 +9,13 @@ import type {
 } from './contracts';
 import { projectEvidenceReference } from './evidence';
 
-export type WorkflowRoute = 'task_response' | 'research' | 'search' | 'revision' | 'stop';
+export type WorkflowRoute =
+  'task_response' | 'research' | 'search' | 'revision' | 'action' | 'stop';
 
 // Graph channels intentionally exclude user text, source content, queries, and model output.
 export const MultiAgentState = Annotation.Root({
+  actionContract: Annotation<string | undefined>(),
+  committedAction: Annotation<boolean | undefined>(),
   operationRunId: Annotation<string>(),
   providerId: Annotation<string>(),
   modelId: Annotation<string>(),
@@ -46,6 +49,8 @@ export function routeForPhase(phase: MultiAgentPhase): WorkflowRoute {
       return 'task_response';
     case 'evidence_research':
       return 'research';
+    case 'local_action':
+      return 'action';
     case 'evidence_search':
       return 'search';
     case 'revised_response':
@@ -57,6 +62,8 @@ export function routeForPhase(phase: MultiAgentPhase): WorkflowRoute {
 
 export function checkpointFromState(state: WorkflowState): MultiAgentCheckpointState {
   return {
+    actionContract: state.actionContract,
+    committedAction: state.committedAction,
     operationRunId: state.operationRunId,
     providerId: state.providerId,
     modelId: state.modelId,
