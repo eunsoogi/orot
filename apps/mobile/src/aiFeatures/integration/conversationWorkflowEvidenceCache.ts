@@ -1,3 +1,4 @@
+import { wrapEvidenceSearch } from './wrapEvidenceSearch';
 import type {
   EvidenceBatch,
   EvidenceReference,
@@ -20,19 +21,12 @@ export function conversationWorkflowEvidenceCache<T>(
   remember(options.initialEvidence);
   return {
     ...options,
-    tools: options.tools.map(tool => ({
-      id: tool.id,
-      sourceKind: tool.sourceKind,
-      execution: tool.execution,
-      additionalModelCalls: tool.additionalModelCalls,
-      description: tool.description,
-      inputSchema: tool.inputSchema,
-      parseInput: (value: unknown) => tool.parseInput(value),
-      async search(...args: Parameters<typeof tool.search>) {
-        const result = await tool.search(...args);
+    tools: options.tools.map(tool =>
+      wrapEvidenceSearch(tool, async (_request, _runtime, dispatch) => {
+        const result = await dispatch();
         return 'items' in result ? remember(result) : result;
-      },
-    })),
+      }),
+    ),
     async restoreEvidence(
       references: readonly EvidenceReference[],
       signal: AbortSignal,

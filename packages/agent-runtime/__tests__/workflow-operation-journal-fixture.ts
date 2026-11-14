@@ -6,13 +6,30 @@ import type {
 
 /** Synthetic in-memory journal proves runtime call ordering, not production SQLite durability. */
 export function operationJournalFixture() {
-  const records = new Map<string, { input: string; state: WorkflowOperationRecord }>();
+  const records = new Map<
+    string,
+    {
+      input: string;
+      refs: WorkflowOperationIdentity['evidenceReferences'];
+      state: WorkflowOperationRecord;
+    }
+  >();
   const identityMatches = (id: WorkflowOperationIdentity) =>
     records.get(id.operationId)?.input === id.input;
   const journal: WorkflowOperationJournal = {
+    async loadPrepared(operationId) {
+      const row = records.get(operationId);
+      return row?.state.status === 'ready'
+        ? { operationId, input: row.input, evidenceReferences: row.refs }
+        : undefined;
+    },
     async loadOrCreate(id) {
       if (!records.has(id.operationId))
-        records.set(id.operationId, { input: id.input, state: { status: 'ready', revision: 0 } });
+        records.set(id.operationId, {
+          input: id.input,
+          refs: id.evidenceReferences,
+          state: { status: 'ready', revision: 0 },
+        });
       return identityMatches(id) ? records.get(id.operationId)!.state : { status: 'invalidated' };
     },
     async begin(id) {

@@ -1,3 +1,4 @@
+import { wrapEvidenceSearch } from './wrapEvidenceSearch';
 import type {
   EvidenceReference,
   EvidenceSearchTool,
@@ -79,10 +80,9 @@ export function createResearchInputTracker(
       }
     },
     wrap(tools: readonly EvidenceSearchTool[]): EvidenceSearchTool[] {
-      return tools.map(tool => ({
-        ...tool,
-        async search(request, runtime) {
-          const result = await tool.search(request, runtime);
+      return tools.map(tool =>
+        wrapEvidenceSearch(tool, async (request, _runtime, dispatch) => {
+          const result = await dispatch();
           if (!('status' in result) && !request.signal.aborted) {
             for (const item of result.items) {
               const reference = referenceOnly(item);
@@ -90,8 +90,8 @@ export function createResearchInputTracker(
             }
           }
           return result;
-        },
-      }));
+        }),
+      );
     },
     async capture(signal: AbortSignal) {
       if (incomplete) throw new Error('Research input lineage is unavailable.');

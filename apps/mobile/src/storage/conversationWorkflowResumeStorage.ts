@@ -1,3 +1,9 @@
+import {
+  isSafeConversationResumePhase,
+  decodeConversationResumeBoundary,
+  type ConversationResumeBoundary,
+} from './conversationWorkflowResumeBoundary';
+export type { ConversationResumeBoundary } from './conversationWorkflowResumeBoundary';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { setupConversationWorkflowResume } from './conversationWorkflowResumeSchema';
@@ -17,12 +23,6 @@ export interface ConversationResumeManifest {
   budgetIdentity: string;
   workflowVersion: string;
 }
-export interface ConversationResumeBoundary {
-  checkpointId: string;
-  phase: 'task_response' | 'evidence_research' | 'revised_response';
-  pendingOperation: boolean;
-  terminal: boolean;
-}
 export interface ConversationResumeClaim {
   requestId: string;
   checkpointId: string;
@@ -39,8 +39,7 @@ export type ConversationResumeEligibility =
   | 'source_or_approval_invalid';
 
 /** Storage fencing only: callers must validate graph shape, exact input/evidence revisions,
- * budget and current consent in the same transaction. This is not permission to dispatch.
- * No expired-owner takeover is allowed: its external call may still have completed.
+ * Budget/consent validation does not authorize dispatch; no expired-owner takeover is allowed.
  */
 export function createConversationWorkflowResumeStorage(
   database: SqlDatabase,
@@ -84,15 +83,11 @@ export function createConversationWorkflowResumeStorage(
     if (row.claimed !== 0) return 'already_claimed';
     if (row.checkpoint_id !== checkpointId || typeof row.boundary !== 'string')
       return 'missing_checkpoint';
-    const b = JSON.parse(row.boundary) as ConversationResumeBoundary;
+    const b = decodeConversationResumeBoundary(row.boundary);
+    if (!b) return 'missing_checkpoint';
     if (b.pendingOperation !== false) return 'unconfirmed_operation';
     if (b.terminal !== false) return 'terminal';
-    if (
-      !['task_response', 'evidence_research', 'revised_response'].includes(
-        b.phase,
-      )
-    )
-      return 'missing_checkpoint';
+    if (!isSafeConversationResumePhase(b)) return 'missing_checkpoint';
     try {
       if (!(await validate(sql, m, checkpointId)))
         return 'source_or_approval_invalid';
@@ -175,7 +170,12 @@ export function createConversationWorkflowResumeStorage(
         await sql.execute(
           `UPDATE conversation_workflow_resumes SET checkpoint_id = ?,
           boundary = ?, claimed = 0 WHERE request_id = ? AND attempt = ?`,
-          [boundary.checkpointId, stableJson(boundary), m.requestId, attempt],
+          [
+            boundary.checkpointId,
+            JSON.stringify(boundary),
+            m.requestId,
+            attempt,
+          ],
         );
       });
     },

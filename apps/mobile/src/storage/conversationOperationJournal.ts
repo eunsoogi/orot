@@ -6,6 +6,7 @@ import type {
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import type { ConversationContinuationIdentity } from './conversationWorkflowContinuationIdentity';
+import { preparedConversationOperation } from './conversationPreparedOperation';
 import { setupConversationOperationJournal } from './conversationOperationJournalSchema';
 
 /** One live request/run owner; grants are deliberately not cached. A pending intent never replays. */
@@ -88,6 +89,7 @@ export async function createConversationOperationJournal(
     value.input === identity.input &&
     value.refs === stableJson(identity.evidenceReferences);
   return {
+    loadPrepared: preparedConversationOperation({ database, live, row, valid }),
     async loadOrCreate(identity) {
       const epoch = await valid(identity);
       if (epoch === undefined) return { status: 'invalidated' };

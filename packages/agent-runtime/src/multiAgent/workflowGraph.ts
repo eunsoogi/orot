@@ -49,7 +49,11 @@ export function makeGraph<TResult>(
       { ...workflowNodeRoutes, invokeResearcher: 'invokeResearcher' },
     )
     .addConditionalEdges('prepareSearch', (state) => (state.terminal ? END : 'executeSearch'))
-    .addConditionalEdges('executeSearch', route, workflowNodeRoutes)
+    .addConditionalEdges(
+      'executeSearch',
+      (s) => (s.awaitingAuthorization ? 'executeSearch' : route(s)),
+      { ...workflowNodeRoutes, executeSearch: 'executeSearch' },
+    )
     .addConditionalEdges('prepareRevision', (state) => (state.terminal ? END : 'invokeRevision'))
     .addConditionalEdges(
       'invokeRevision',

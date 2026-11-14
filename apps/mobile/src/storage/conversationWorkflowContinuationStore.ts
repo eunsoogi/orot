@@ -1,4 +1,8 @@
 import {
+  isSafeConversationResumePhase,
+  type ConversationResumeBoundary,
+} from './conversationWorkflowResumeBoundary';
+import {
   SqliteCheckpointSaver,
   type MultiAgentCheckpointState,
   type MultiAgentWorkflowOptions,
@@ -154,9 +158,7 @@ export async function createConversationWorkflowContinuationStore(
           checkpoint.operationRunId !== original.execution.operationRunId ||
           checkpoint.providerId !== original.execution.providerId ||
           checkpoint.modelId !== original.execution.modelId ||
-          !['task_response', 'evidence_research', 'revised_response'].includes(
-            checkpoint.phase,
-          )
+          !isSafeConversationResumePhase(checkpoint)
         )
           throw new Error('Workflow has no safe continuation boundary.');
         const tuple = await latest();
@@ -176,8 +178,8 @@ export async function createConversationWorkflowContinuationStore(
           manifest,
           {
             checkpointId,
-            phase: checkpoint.phase as
-              'task_response' | 'evidence_research' | 'revised_response',
+            phase: checkpoint.phase as ConversationResumeBoundary['phase'],
+            awaitingAuthorization: checkpoint.awaitingAuthorization,
             pendingOperation: false,
             terminal: false,
           },

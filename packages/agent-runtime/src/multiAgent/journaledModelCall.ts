@@ -67,7 +67,10 @@ export async function journaledModelCall<TResult>(
     );
   }
   if (record.status !== 'ready') return { status: 'unavailable', errorCode: 'invalid_request' };
-  const approval = context.pause?.approvalSignal(signal);
+  const approval =
+    options.checkpointer && journal.loadPrepared
+      ? context.pause?.approvalSignal(signal)
+      : undefined;
   const approvalSignal = approval?.signal ?? signal;
   const notify = (waiting: boolean) => {
     try {
@@ -77,7 +80,7 @@ export async function journaledModelCall<TResult>(
     }
   };
   try {
-    notify(Boolean(context.pause && options.checkpointer));
+    notify(Boolean(approval));
     const prepared = prepare ? await prepare(approvalSignal) : 'ready';
     if (approvalSignal.aborted && !signal.aborted && options.checkpointer)
       throw new AuthorizationPaused();

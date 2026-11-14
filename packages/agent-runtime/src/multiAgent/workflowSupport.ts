@@ -131,10 +131,19 @@ export function resumeState<TResult>(
     saved.phase === 'complete' ||
     saved.pendingOperation ||
     (saved.awaitingAuthorization !== undefined &&
-      (!options.operationJournal ||
-        saved.modelCalls < 1 ||
-        saved.awaitingAuthorization !== `model-${saved.modelCalls}`)) ||
-    saved.phase === 'evidence_search' ||
+      (!options.operationJournal?.loadPrepared ||
+        (saved.phase === 'evidence_search'
+          ? saved.toolCalls < 1 ||
+            saved.awaitingAuthorization !== `tool-${saved.toolCalls}` ||
+            !options.tools.some(
+              (tool) =>
+                tool.id === saved.selectedToolId &&
+                tool.execution === 'external_read_only' &&
+                typeof tool.prepareAuthorizedSearch === 'function',
+            )
+          : saved.modelCalls < 1 ||
+            saved.awaitingAuthorization !== `model-${saved.modelCalls}`))) ||
+    (saved.phase === 'evidence_search' && !saved.awaitingAuthorization) ||
     !isNonNegativeSafeInteger(saved.modelCalls) ||
     !isNonNegativeSafeInteger(saved.toolCalls) ||
     !isNonNegativeSafeInteger(saved.researchCycles) ||

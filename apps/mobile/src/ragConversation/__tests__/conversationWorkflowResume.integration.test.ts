@@ -1,4 +1,5 @@
 import { runMigrations } from '@orot/storage';
+import { wrapEvidenceSearch } from '../../aiFeatures/integration/wrapEvidenceSearch';
 import { createEuropePmcEvidenceSearchTool } from '@orot/agent-runtime';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import type {
@@ -45,13 +46,20 @@ test('explicit continue uses the same persisted graph and invokes a completed to
       service,
       consent: { authorize: async () => 'authorized' },
     });
-    const search = jest.fn(async (...args: Parameters<typeof tool.search>) => {
-      const result = await tool.search(...args);
-      pause();
-      return result;
-    });
+    const search = jest.fn(
+      async (dispatch: () => ReturnType<typeof tool.search>) => {
+        const result = await dispatch();
+        pause();
+        return result;
+      },
+    );
     const { provider, generate } = makeProvider(scriptedOutputs());
-    const options = workflowOptions(provider, { ...tool, search });
+    const options = workflowOptions(
+      provider,
+      wrapEvidenceSearch(tool, (_request, _runtime, dispatch) =>
+        search(dispatch),
+      ),
+    );
     await requests.startRequest({
       id: 'request',
       sessionId: 'session',

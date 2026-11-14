@@ -176,3 +176,42 @@ test('hidden, replaced and cancelled sessions cannot claim saved work', async ()
     f.connection.close();
   }
 });
+
+test('external search requires an explicit pre-dispatch tool authorization boundary', async () => {
+  const f = await fixture();
+  try {
+    await f.requests.interruptRequest('r', 's', 0, 'interrupted');
+    for (const awaitingAuthorization of [
+      undefined,
+      'model-1',
+      'tool-0',
+      'tool-x',
+    ]) {
+      await f.resume.saveBoundary(
+        m,
+        { ...b, phase: 'evidence_search', awaitingAuthorization },
+        0,
+      );
+      expect(await f.resume.eligibility(m, 'c')).toBe('missing_checkpoint');
+    }
+    await f.resume.saveBoundary(
+      m,
+      {
+        ...b,
+        phase: 'evidence_search',
+        awaitingAuthorization: 'tool-1',
+        pendingOperation: true,
+      },
+      0,
+    );
+    expect(await f.resume.eligibility(m, 'c')).toBe('unconfirmed_operation');
+    await f.resume.saveBoundary(
+      m,
+      { ...b, phase: 'evidence_search', awaitingAuthorization: 'tool-1' },
+      0,
+    );
+    expect(await f.resume.eligibility(m, 'c')).toBe('eligible');
+  } finally {
+    f.connection.close();
+  }
+});

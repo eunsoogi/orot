@@ -19,6 +19,7 @@ export type WorkflowOperationRecord =
  * Authorization decisions are deliberately absent and must not be stored with these records.
  */
 export interface WorkflowOperationJournal {
+  loadPrepared?(operationId: string): Promise<WorkflowOperationIdentity | undefined>;
   loadOrCreate(identity: WorkflowOperationIdentity): Promise<WorkflowOperationRecord>;
   begin(
     identity: WorkflowOperationIdentity & { readonly revision: number },

@@ -1,3 +1,4 @@
+import { wrapEvidenceSearch } from './wrapEvidenceSearch';
 import { Alert } from 'react-native';
 import { createEuropePmcEvidenceSearchTool } from '@orot/agent-runtime';
 import type {
@@ -88,7 +89,32 @@ export function createExternalConversationEvidence(
   });
   return {
     tool: {
-      ...adapter,
+      ...wrapEvidenceSearch(
+        adapter,
+        async (request, _runtime, dispatch) => {
+          const batch = await dispatch();
+          const result =
+            options.requireAbstract && !('status' in batch)
+              ? {
+                  ...batch,
+                  coverage: batch.coverage.map(item => ({
+                    ...item,
+                    truncated: true,
+                  })),
+                }
+              : batch;
+          if (!request.signal.aborted && !('status' in result))
+            for (const item of result.items)
+              references.add(canonical(referenceOnly(item)));
+          return result;
+        },
+        request => {
+          const labels = publicMedicalTopicLabels(request.input);
+          if (!labels)
+            throw new Error('The public literature topics were invalid.');
+          return { ...request, input: { query: labels.join(' AND ') } };
+        },
+      ),
       // The model may select a public concept but cannot send source text or identifiers.
       inputSchema: publicWebQuerySchema,
       description:
@@ -97,32 +123,6 @@ export function createExternalConversationEvidence(
         return publicMedicalTopicLabels(value)
           ? (value as JsonObject)
           : undefined;
-      },
-      async search(request: Parameters<typeof adapter.search>[0]) {
-        const labels = publicMedicalTopicLabels(request.input);
-        if (!labels)
-          throw new Error('The public literature topics were invalid.');
-        const batch = await adapter.search({
-          ...request,
-          input: { query: labels.join(' AND ') },
-        });
-        // This filtered literature sample is never a complete review. Preserve actual adapter
-        // gaps and conflicts; an omitted metadata-only hit is not missing personal health data.
-        const result =
-          options.requireAbstract && !('status' in batch)
-            ? {
-                ...batch,
-                coverage: batch.coverage.map(item => ({
-                  ...item,
-                  truncated: true,
-                })),
-              }
-            : batch;
-        if (!request.signal.aborted && !('status' in result)) {
-          for (const item of result.items)
-            references.add(canonical(referenceOnly(item)));
-        }
-        return result;
       },
     },
     validates(reference: EvidenceReference) {

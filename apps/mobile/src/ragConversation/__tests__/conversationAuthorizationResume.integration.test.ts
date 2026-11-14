@@ -82,7 +82,7 @@ test('second partition approval resumes the real graph without replaying first p
       ]);
       const records = (
         await f.connection.database.execute(
-          'SELECT status FROM conversation_operation_journal ORDER BY operation_id',
+          "SELECT status FROM conversation_operation_journal WHERE operation_id NOT LIKE '%:context' ORDER BY operation_id",
         )
       ).rows;
       expect(records.map(row => row.status)).toEqual(['completed', 'ready']);

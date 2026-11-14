@@ -2,6 +2,8 @@ import { isGraphDrained, RunControl, type Runtime } from '@langchain/langgraph/w
 import type { MultiAgentCheckpointState, MultiAgentWorkflowOptions } from './contracts';
 import type { RuntimeContext } from './runtimeContext';
 import { checkpointFromState, type WorkflowState } from './state';
+import { preparePrivateOperationContext } from './workflowPrivateContext';
+import { completeState, stop } from './runtimeContext';
 import { isAuthorizationPaused } from './journaledModelCall';
 import { resumeState } from './workflowSupport';
 
@@ -62,8 +64,18 @@ export function pauseBoundaryWrapper<TResult>(context: RuntimeContext<TResult>) 
       const pending =
         state.pendingOperation ??
         (state.awaitingAuthorization
-          ? { kind: 'model' as const, operationKey: state.awaitingAuthorization }
+          ? {
+              kind: state.phase === 'evidence_search' ? ('tool' as const) : ('model' as const),
+              operationKey: state.awaitingAuthorization,
+            }
           : undefined);
+      if (
+        pending &&
+        !(await preparePrivateOperationContext(context, state, pending.operationKey))
+      ) {
+        stop(context, 'Prepared operation context is no longer current.', 'stale_evidence');
+        return completeState();
+      }
       context.activeModelOperation =
         pending?.kind === 'model'
           ? { operationKey: pending.operationKey, callIndex: 0 }
@@ -71,8 +83,8 @@ export function pauseBoundaryWrapper<TResult>(context: RuntimeContext<TResult>) 
       let update: Partial<WorkflowState>;
       try {
         update = {
-          ...(await node({ ...state, pendingOperation: pending }, runtime)),
           awaitingAuthorization: undefined,
+          ...(await node({ ...state, pendingOperation: pending }, runtime)),
         };
       } catch (error) {
         if (!isAuthorizationPaused(error) || context.signal.aborted || pending?.kind !== 'model')

@@ -59,6 +59,12 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         stop(context, 'The allowlisted evidence search failed.', 'unavailable');
         return completeState();
       }
+      if (searched.value.status === 'paused') {
+        return {
+          pendingOperation: undefined,
+          awaitingAuthorization: state.pendingOperation!.operationKey,
+        };
+      }
       if (searched.value.status === 'cancelled') {
         canceled(context, searched.value.providerStop ?? toolProviderStop(tool));
         return completeState();

@@ -146,3 +146,5 @@ export type {
   WorkflowOperationIdentity,
   WorkflowOperationRecord,
 } from './multiAgent/workflowOperationJournal';
+
+export type { PreparedEvidenceSearch } from './multiAgent/evidenceContracts';
