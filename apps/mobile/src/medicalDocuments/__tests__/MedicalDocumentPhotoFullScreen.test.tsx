@@ -122,3 +122,26 @@ test('modal decode failure closes it and shows the existing recoverable error', 
     screen.getByTestId('medical-document-source-original-corrupt'),
   ).toBeTruthy();
 });
+
+test('loading cannot open, and the accessible activation opens after decode', async () => {
+  await render(
+    <MedicalDocumentOriginalPhoto
+      sourceId={photo.sourceId}
+      expectedContentHash="hash"
+    />,
+  );
+  await fireEvent.press(
+    screen.getByTestId('medical-document-photo-open-fullscreen'),
+  );
+  expect(screen.queryByTestId('medical-document-photo-fullscreen')).toBeNull();
+  await fireEvent(
+    screen.getByTestId('medical-document-source-original-image-loading'),
+    'load',
+  );
+  await fireEvent(
+    screen.getByTestId('medical-document-source-original-image'),
+    'accessibilityAction',
+    { nativeEvent: { actionName: 'activate' } },
+  );
+  expect(screen.getByTestId('medical-document-photo-fullscreen')).toBeTruthy();
+});
