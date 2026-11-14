@@ -178,3 +178,38 @@ test('keeps the live request and draft when the Duo pane folds and expands', asy
   await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
   expect(onSend.mock.calls[0]?.[2]?.aborted).toBe(true);
 });
+
+test('preserves the early reply while hiding tool calls at compact and wide widths', async () => {
+  const pending = {
+    id: 3,
+    content: '',
+    initialResponse: {
+      callId: 'early',
+      text: '먼저 확인할 내용을 알려드릴게요.',
+    },
+    toolEvents: conversationToolEventFixtures,
+  };
+  await render(
+    <ConversationWorkspace
+      session={{ ...session, pendingMessage: pending }}
+      sourceActions={actions}
+    >
+      <ConversationHistory
+        {...actions}
+        messages={session.messages}
+        pendingMessage={pending}
+        error=""
+      />
+    </ConversationWorkspace>,
+  );
+  for (const width of [390, 1000, 390]) {
+    await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
+      nativeEvent: { layout: { width } },
+    });
+    const history = within(screen.getByTestId('rag-conversation-history'));
+    expect(
+      history.getByTestId('rag-conversation-initial-response'),
+    ).toHaveTextContent(pending.initialResponse.text);
+    expect(history.queryByTestId('rag-conversation-tool-events')).toBeNull();
+  }
+});

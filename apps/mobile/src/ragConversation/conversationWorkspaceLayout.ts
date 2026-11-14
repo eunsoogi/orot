@@ -19,5 +19,9 @@ export function transcriptMessageVisible(
   message: DisplayMessage,
   separated: boolean,
 ) {
-  return !message.streaming || (!separated && Boolean(message.content.trim()));
+  return (
+    !message.streaming ||
+    Boolean(message.initialResponse?.text.trim()) ||
+    (!separated && Boolean(message.content.trim()))
+  );
 }
