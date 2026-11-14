@@ -1,3 +1,4 @@
+import { conversationExecutionDiagnostics } from '../conversationExecutionDiagnostics';
 import {
   beginConversationExecutionLease,
   type ConversationExecutionAdapter,
@@ -139,4 +140,37 @@ test('a failed lease check is not reported as an observed OS expiration', async 
   );
   expect(interrupt).toHaveBeenCalledWith('lease-check-failed');
   end();
+});
+
+test('phase observations retain lease ownership without interrupting healthy work', async () => {
+  const f = fixture();
+  let phase: 'active' | 'background' = 'active';
+  f.adapter.currentPhase = () => phase;
+  const interrupt = jest.fn();
+  const end = await beginConversationExecutionLease(
+    f.adapter,
+    'private-id',
+    interrupt,
+  );
+  const owner = conversationExecutionDiagnostics().at(-1)!.sequence;
+  phase = 'background';
+  f.emit({ kind: 'phase' });
+  phase = 'active';
+  f.emit({ kind: 'foreground' });
+  await Promise.resolve();
+  await Promise.resolve();
+  end();
+  const observations = conversationExecutionDiagnostics().filter(
+    item => item.sequence === owner,
+  );
+  expect(observations.map(item => item.event)).toEqual([
+    'begin',
+    'acquired',
+    'phase',
+    'foreground',
+    'release',
+  ]);
+  expect(observations[2].phase).toBe('background');
+  expect(JSON.stringify(observations)).not.toContain('private-id');
+  expect(interrupt).not.toHaveBeenCalled();
 });
