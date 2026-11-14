@@ -1,3 +1,4 @@
+import { observeTranscriptTap } from '../transcription/transcriptTapObservation';
 import type { ComponentRef, ReactNode } from 'react';
 import {
   createContext,
@@ -79,6 +80,8 @@ export function NavigationRouteScrollView({
         contentContainerStyle={[styles.content, navigationInset]}
         keyboardShouldPersistTaps="handled"
         onScroll={updateCurrentOffset}
+        onResponderGrant={() => observeTranscriptTap('scroll-grant')}
+        onResponderRelease={() => observeTranscriptTap('scroll-release')}
         scrollEventThrottle={16}
         style={styles.fill}
         testID="navigation-route-scroll"

@@ -1,3 +1,4 @@
+import { observeTranscriptTap } from './transcriptTapObservation';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import type { TranscriptEvidenceSegment } from '@orot/domain';
@@ -100,17 +101,19 @@ export default function TranscriptEvidencePanel({
       setBusy(false);
     }
   }
-
   async function saveCorrection(): Promise<void> {
+    observeTranscriptTap('save-enter');
     if (!editingSegmentId) return;
     setBusy(true);
     setError(null);
     try {
       await service.correct(editingSegmentId, draft);
+      observeTranscriptTap('save-complete');
       setEditingSegmentId(null);
       setDraft('');
       await reload();
     } catch {
+      observeTranscriptTap('save-failed');
       setError('correct');
     } finally {
       setBusy(false);

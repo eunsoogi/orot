@@ -1,3 +1,4 @@
+import { registerTranscriptTapObserver } from '../transcription/transcriptTapObservation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
@@ -192,6 +193,7 @@ function ProbeRoute() {
           {actions => (
             <>
               {/* The fixture toolbar occupies route content, never overlays native navigation or the keyboard dock. */}
+              <TranscriptTapProbe />
               <AppButton
                 title="검증 도구"
                 testID="encounter-probe-tools"
@@ -209,4 +211,27 @@ function ProbeRoute() {
     </View>
   );
 }
-const styles = StyleSheet.create({ fill: { flex: 1 } });
+/** Keep diagnostic rerenders out of the production route and active press responder tree. */
+function TranscriptTapProbe() {
+  const [tapEvents, setTapEvents] = useState('[]');
+  useEffect(() => {
+    const events: { event: string; at: number }[] = [];
+    return registerTranscriptTapObserver(event => {
+      events.push({ event, at: Date.now() });
+      setTapEvents(JSON.stringify(events.slice(-32)));
+    });
+  }, []);
+  return (
+    <AppText
+      testID="transcript-tap-observation"
+      numberOfLines={1}
+      style={styles.observation}
+    >
+      {tapEvents}
+    </AppText>
+  );
+}
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  observation: { height: 1, fontSize: 1 },
+});
