@@ -84,6 +84,7 @@ function MeasuredOverviewMetricChart({
       <ChartPlot
         data={data}
         compact
+        hideDetails
         height={112}
         kind="bar"
         testID={`overview-metric-chart-${metric}`}

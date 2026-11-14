@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import { OverviewMetrics } from './OverviewMetrics';
 import { useOverviewMetrics } from './useOverviewMetrics';
 import type { OverviewMetric } from './metricSelection';
@@ -67,12 +67,14 @@ test.each([
     expect(screen.getByText(formattedValue)).toBeTruthy();
     expect(screen.queryByText('최근 날짜별 기록')).toBeNull();
     expect(screen.queryByText(`일별 집계 · ${unit}`)).toBeNull();
-    await fireEvent.press(
-      screen.getByTestId(`overview-metric-chart-${metric}-details`),
-    );
-    expect(screen.getByText(`일별 집계 · ${unit}`)).toBeTruthy();
     expect(
-      screen.getByTestId(`overview-metric-chart-${metric}-selected-point`).props
+      screen.queryByTestId(`overview-metric-chart-${metric}-details`),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId(`overview-metric-chart-${metric}-selected-point`),
+    ).toBeNull();
+    expect(
+      screen.getByTestId(`overview-metric-chart-${metric}-plot`).props
         .accessibilityLabel,
     ).toContain('출처: 건강 기록');
     expect(screen.queryByText(/Synthetic Watch App|Asia\/Seoul/u)).toBeNull();
