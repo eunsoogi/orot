@@ -7,7 +7,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { providerSelectionText } from './text';
 import type { ChatGPTAccountSetup } from './types';
 
-/** Reflows existing account status and actions while ProviderSelectionFlow owns their state. */
+/** Separate credential cards retain flow-owned account selection and action targets. */
 export default function SettingsAccountsPanels({
   setup,
 }: {
@@ -30,81 +30,98 @@ export default function SettingsAccountsPanels({
       <AdaptiveColumns
         primary={
           <View style={styles.pageSections}>
-            <OpenAIAccountPanel />
-            <View style={styles.panel} testID="settings-accounts-list">
-              {setup.statusMessage ? (
-                <Text
-                  accessibilityRole={setup.statusIsError ? 'alert' : undefined}
-                  style={setup.statusIsError ? styles.error : undefined}
-                  testID="chatgpt-account-status"
-                >
-                  {setup.statusMessage}
-                </Text>
-              ) : null}
-              {setup.accounts.map((account, index) => {
-                const selected =
-                  account.issuedClientID === setup.selectedAccountID;
-                const status = account.requiresSignIn
-                  ? providerSelectionText.chatGPTAccountSignedOut
-                  : account.hasDirectPlanAccess
-                    ? providerSelectionText.chatGPTAccountSignedIn
-                    : providerSelectionText.chatGPTAccountMissingScope;
+            <View
+              style={styles.connectionCard}
+              testID="subscription-account-section"
+            >
+              <Text accessibilityRole="header" style={styles.accountTitle}>
+                ChatGPT 구독 계정 로그인
+              </Text>
+              <Text>
+                ChatGPT 계정으로 로그인하고 이 계정에서 사용할 수 있는 대화
+                모델을 확인합니다. OpenAI API 키와 사용 요금은 별도입니다.
+              </Text>
+              <View style={styles.panel} testID="settings-accounts-list">
+                {setup.statusMessage ? (
+                  <Text
+                    accessibilityRole={
+                      setup.statusIsError ? 'alert' : undefined
+                    }
+                    style={setup.statusIsError ? styles.error : undefined}
+                    testID="chatgpt-account-status"
+                  >
+                    {setup.statusMessage}
+                  </Text>
+                ) : null}
+                {setup.accounts.map((account, index) => {
+                  const selected =
+                    account.issuedClientID === setup.selectedAccountID;
+                  const status = account.requiresSignIn
+                    ? providerSelectionText.chatGPTAccountSignedOut
+                    : account.hasDirectPlanAccess
+                      ? providerSelectionText.chatGPTAccountSignedIn
+                      : providerSelectionText.chatGPTAccountMissingScope;
 
-                return (
-                  <Pressable
-                    key={account.issuedClientID}
-                    accessibilityRole="radio"
-                    accessibilityState={{ disabled: setup.busy, selected }}
+                  return (
+                    <Pressable
+                      key={account.issuedClientID}
+                      accessibilityRole="radio"
+                      accessibilityState={{ disabled: setup.busy, selected }}
+                      disabled={setup.busy}
+                      onPress={() =>
+                        setup.onAccountSelected(account.issuedClientID)
+                      }
+                      style={[
+                        styles.account,
+                        selected && styles.selectedAccount,
+                      ]}
+                      testID={`chatgpt-account-${index}`}
+                    >
+                      <Text style={styles.accountTitle}>
+                        {providerSelectionText.chatGPTAccountName(index + 1)}
+                      </Text>
+                      <Text>{status}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={styles.panel} testID="settings-accounts-actions">
+                {selectedAccount && !selectedAccount.requiresSignIn ? (
+                  // Keep the existing numbered action so multiple saved accounts remain distinguishable.
+                  <Button
                     disabled={setup.busy}
                     onPress={() =>
-                      setup.onAccountSelected(account.issuedClientID)
+                      setup.onSignOut(selectedAccount.issuedClientID)
                     }
-                    style={[styles.account, selected && styles.selectedAccount]}
-                    testID={`chatgpt-account-${index}`}
-                  >
-                    <Text style={styles.accountTitle}>
-                      {providerSelectionText.chatGPTAccountName(index + 1)}
-                    </Text>
-                    <Text>{status}</Text>
-                  </Pressable>
-                );
-              })}
+                    testID="chatgpt-account-sign-out"
+                    title={
+                      setup.signingOut
+                        ? providerSelectionText.chatGPTSigningOut(
+                            selectedAccountIndex + 1,
+                          )
+                        : providerSelectionText.chatGPTSignOutAccount(
+                            selectedAccountIndex + 1,
+                          )
+                    }
+                  />
+                ) : null}
+                {setup.signingIn ? (
+                  <Button
+                    onPress={setup.onCancelSignIn}
+                    testID="chatgpt-cancel-sign-in"
+                    title={providerSelectionText.chatGPTCancelLogin}
+                  />
+                ) : showAccountAction ? (
+                  <Button
+                    disabled={setup.busy || setup.actionDisabled}
+                    onPress={setup.onAction}
+                    testID="chatgpt-account-action"
+                    title={setup.actionTitle}
+                  />
+                ) : null}
+              </View>
             </View>
-            <View style={styles.panel} testID="settings-accounts-actions">
-              {selectedAccount && !selectedAccount.requiresSignIn ? (
-                // Keep the existing numbered action so multiple saved accounts remain distinguishable.
-                <Button
-                  disabled={setup.busy}
-                  onPress={() =>
-                    setup.onSignOut(selectedAccount.issuedClientID)
-                  }
-                  testID="chatgpt-account-sign-out"
-                  title={
-                    setup.signingOut
-                      ? providerSelectionText.chatGPTSigningOut(
-                          selectedAccountIndex + 1,
-                        )
-                      : providerSelectionText.chatGPTSignOutAccount(
-                          selectedAccountIndex + 1,
-                        )
-                  }
-                />
-              ) : null}
-              {setup.signingIn ? (
-                <Button
-                  onPress={setup.onCancelSignIn}
-                  testID="chatgpt-cancel-sign-in"
-                  title={providerSelectionText.chatGPTCancelLogin}
-                />
-              ) : showAccountAction ? (
-                <Button
-                  disabled={setup.busy || setup.actionDisabled}
-                  onPress={setup.onAction}
-                  testID="chatgpt-account-action"
-                  title={setup.actionTitle}
-                />
-              ) : null}
-            </View>
+            <OpenAIAccountPanel />
           </View>
         }
         testID="settings-accounts-panels"
@@ -116,8 +133,14 @@ export default function SettingsAccountsPanels({
 const styles = StyleSheet.create({
   container: {
     gap: 10,
+    padding: 0,
+  },
+  connectionCard: {
     padding: 16,
-    borderRadius: 12,
+    gap: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: appColors.border,
     backgroundColor: appColors.surface,
   },
   panel: { gap: 10, minWidth: 0 },
