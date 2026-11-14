@@ -1,3 +1,4 @@
+import { formatHealthDuration } from '../../i18n/healthDuration';
 import { formatNumber, t, type TranslationKey } from '../../i18n';
 import type { OverviewMetric } from './metricSelection';
 
@@ -36,6 +37,8 @@ export function formatOverviewMetricValue(
   value: number,
   unit: string,
 ): string {
+  const duration = formatHealthDuration(metric, value, unit);
+  if (duration !== undefined) return duration;
   const unitKeys = localizedUnitKeys[metric];
   // Inherited names such as "constructor" are not registered metric units.
   const unitKey =
