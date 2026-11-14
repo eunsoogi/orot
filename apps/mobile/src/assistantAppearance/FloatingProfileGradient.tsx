@@ -25,7 +25,7 @@ export function FloatingProfileGradient() {
         setOpaque(value);
       },
     );
-    void AccessibilityInfo.isReduceTransparencyEnabled()
+    AccessibilityInfo.isReduceTransparencyEnabled()
       .then(value => {
         if (current && !notified) setOpaque(value);
       })
