@@ -5,7 +5,6 @@ import {
   type NavigationContentFrame,
 } from '../../navigation/navigationContentFrame';
 import { NavigationOcclusionContext } from '../../navigation/useNavigationContentInset';
-import { calendarScrollEdge } from '../calendarScrollEdge';
 import CalendarLinkingScreen from '../CalendarLinkingScreen';
 import { bridge, repository } from '../calendarLinkingTestFixtures';
 
@@ -18,24 +17,8 @@ const frame: NavigationContentFrame = {
   reservedRegions: [],
 };
 
-it('reclaims only the measured bottom edge and leaves keyboard and standalone bounds alone', () => {
-  expect(calendarScrollEdge(frame, true)).toBe(34);
-  expect(calendarScrollEdge(frame, false)).toBe(0);
-  expect(calendarScrollEdge(null, true)).toBe(0);
-  expect(
-    calendarScrollEdge(
-      {
-        ...frame,
-        viewportFrame: { ...frame.viewportFrame, height: 420 },
-        availableContentFrame: { ...frame.availableContentFrame, height: 420 },
-      },
-      true,
-    ),
-  ).toBe(0);
-});
-
 it.each(['right', 'bottom'] as const)(
-  'moves the edge into scroll-end clearance without losing %s navigation overlap',
+  'uses shared %s clearance once without a calendar-only viewport offset',
   async placement => {
     const overlap = placement === 'bottom' ? 60 : 0;
     const zero = { top: 0, left: 0, right: 0, bottom: 0 };
@@ -48,7 +31,7 @@ it.each(['right', 'bottom'] as const)(
             placement,
             systemInsets: { ...zero, bottom: 34 },
             viewportInsets: { ...zero, bottom: 34 },
-            scrollContentInsets: { ...zero, bottom: overlap },
+            scrollContentInsets: { ...zero, bottom: Math.max(overlap, 34) },
           }}
         >
           <CalendarLinkingScreen
@@ -62,9 +45,9 @@ it.each(['right', 'bottom'] as const)(
     const scroll = screen.getByTestId('calendar-screen');
     expect(
       StyleSheet.flatten(scroll.props.contentContainerStyle).paddingBottom,
-    ).toBe(overlap + 16 + 34);
-    expect(StyleSheet.flatten(scroll.parent!.props.style).marginBottom).toBe(
-      -34,
-    );
+    ).toBe(Math.max(overlap, 34) + 16);
+    expect(
+      StyleSheet.flatten(scroll.parent!.props.style).marginBottom,
+    ).toBeUndefined();
   },
 );
