@@ -9,6 +9,8 @@ import { readResearchSource } from './researchSourceReader';
 export function createResearchArtifactTool(
   data: AiFeatureLocalData,
   registry: LocalEvidenceReferenceRegistry,
+  /** A retained cursor is live state even when a later page has no next token. */
+  onPagingState?: (hasPagingState: boolean) => void,
 ): EvidenceSearchTool {
   const cursors = new Map<
     string,
@@ -150,6 +152,7 @@ export function createResearchArtifactTool(
           cursor: nextCursor,
         });
       }
+      onPagingState?.(cursors.size > 0);
       return {
         items,
         conflicts: [],

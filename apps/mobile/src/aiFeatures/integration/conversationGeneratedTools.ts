@@ -16,6 +16,7 @@ export function conversationGeneratedTools(
   observer: RagConversationObserver | undefined,
 ) {
   const tools: EvidenceSearchTool[] = [];
+  let researchPaging = false;
   const pages = new Map<'summary' | 'conversation', ArtifactContinuation>();
   const citedPages = new Map<string, ArtifactContinuation | null>();
   const onPage =
@@ -53,7 +54,11 @@ export function conversationGeneratedTools(
       }),
     );
   if (data.researchArtifactDiscovery)
-    tools.push(createResearchArtifactTool(data, registry));
+    tools.push(
+      createResearchArtifactTool(data, registry, value => {
+        researchPaging = value;
+      }),
+    );
   if (tools.length) {
     tools.push(createArtifactSourceTool('personal_record', data, registry));
     tools.push(createArtifactSourceTool('reviewed_memory', data, registry));
@@ -61,7 +66,8 @@ export function conversationGeneratedTools(
   return {
     tools,
     /** Paging handles are not yet part of the protected cold factory. */
-    hasPagingState: () => pages.size > 0 || citedPages.size > 0,
+    hasPagingState: () =>
+      researchPaging || pages.size > 0 || citedPages.size > 0,
     choose(outcome: RagConversationOutcome): ArtifactContinuation | null {
       if (outcome.status === 'no_evidence' || outcome.status === 'insufficient')
         return pages.get('summary') ?? pages.get('conversation') ?? null;
