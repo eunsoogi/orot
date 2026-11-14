@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { Text } from 'react-native';
+import { Text, StyleSheet, Keyboard } from 'react-native';
 import { render } from '@testing-library/react-native';
 import SafeAreaLayout from '../SafeAreaLayout';
 
@@ -9,6 +9,7 @@ jest.mock('react-native-safe-area-context', () => {
   const { View } = require('react-native') as typeof import('react-native');
 
   return {
+    useSafeAreaInsets: () => ({ top: 0, right: 0, left: 0, bottom: 34 }),
     SafeAreaProvider: ({ children }: { children?: ReactNode }) =>
       React.createElement(React.Fragment, null, children),
     SafeAreaView: ({
@@ -52,10 +53,32 @@ test('configures keyboard-aware scrolling for overflowing route content', async 
 
   const scroll = getByTestId('safe-area-scroll');
   expect(scroll.props.automaticallyAdjustKeyboardInsets).toBe(true);
-  expect(scroll.props.contentContainerStyle).toMatchObject({
+  expect(getByTestId('safe-area-root').props.accessibilityHint).toBe(
+    'top,right,left',
+  );
+  expect(scroll.props.contentInsetAdjustmentBehavior).toBe('never');
+  expect(StyleSheet.flatten(scroll.props.contentContainerStyle)).toMatchObject({
     flexGrow: 1,
-    paddingBottom: 68,
+    paddingBottom: 50,
   });
   expect(scroll.props.keyboardShouldPersistTaps).toBe('handled');
   expect(getByTestId('route-content')).toBeVisible();
 });
+
+test.each([true, false])(
+  'preserves end clearance independently of keyboard visibility (%s)',
+  async visible => {
+    const spy = jest.spyOn(Keyboard, 'isVisible').mockReturnValue(visible);
+    const { getByTestId } = await render(
+      <SafeAreaLayout scrollable scrollContentStyle={{ padding: 24 }}>
+        <Text>Editable content</Text>
+      </SafeAreaLayout>,
+    );
+    expect(
+      StyleSheet.flatten(
+        getByTestId('safe-area-scroll').props.contentContainerStyle,
+      ).paddingBottom,
+    ).toBe(58);
+    spy.mockRestore();
+  },
+);
