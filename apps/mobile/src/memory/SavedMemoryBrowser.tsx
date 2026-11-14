@@ -72,29 +72,31 @@ export function SavedMemoryBrowser({
 
   return (
     <View style={styles.section} testID="saved-memory-browser">
-      <View style={styles.entry}>
-        <AppButton
-          variant="list"
-          title="기억"
-          summary="이 기기에 저장된 기억을 확인해요"
-          accessibilityLabel={expanded ? '기억 닫기' : '저장된 기억 보기'}
-          accessibilityState={{ expanded }}
-          trailingContent={
-            <AppSymbol
-              name={expanded ? 'chevron.down' : 'chevron.right'}
-              size={16}
-              color={appColors.secondary}
-            />
-          }
-          onPress={
-            expanded
-              ? close
-              : () => {
-                  refresh();
-                }
-          }
-        />
-      </View>
+      {!expanded && (
+        <View style={styles.entry}>
+          <AppButton
+            variant="list"
+            title="기억"
+            summary="이 기기에 저장된 기억을 확인해요"
+            accessibilityLabel={expanded ? '기억 닫기' : '저장된 기억 보기'}
+            accessibilityState={{ expanded }}
+            trailingContent={
+              <AppSymbol
+                name={expanded ? 'chevron.down' : 'chevron.right'}
+                size={16}
+                color={appColors.secondary}
+              />
+            }
+            onPress={
+              expanded
+                ? close
+                : () => {
+                    refresh();
+                  }
+            }
+          />
+        </View>
+      )}
       {expanded && (
         <View style={styles.panel}>
           <View style={styles.header}>
@@ -166,6 +168,13 @@ export function SavedMemoryBrowser({
               )}
             </>
           )}
+          <AppButton
+            variant="neutral"
+            title="닫기"
+            accessibilityLabel="기억 닫기"
+            accessibilityState={{ expanded: true }}
+            onPress={close}
+          />
         </View>
       )}
     </View>

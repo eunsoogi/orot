@@ -105,6 +105,7 @@ export function RecordsRoute({
       <View testID="records-layout" style={styles.page}>
         <View style={styles.primaryPanel}>
           <RecordsRouteEntries
+            secondary={<SavedMemoryBrowser />}
             onOpenSavedRecordings={onOpenSavedRecordings}
             onOpenRecording={onOpenRecording}
             onOpenHealthLibrary={onOpenHealthLibrary}
@@ -124,7 +125,6 @@ export function RecordsRoute({
             </Text>
           ) : null}
         </View>
-        <SavedMemoryBrowser />
         <LegacySymptomData />
         <RecordsRecentSources
           recordings={recordings}
