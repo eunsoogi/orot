@@ -1,3 +1,4 @@
+import { createResearchPagingState } from './researchPagingState';
 import type { EvidenceItem, EvidenceSearchTool } from '@orot/agent-runtime';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -11,12 +12,10 @@ export function createResearchArtifactTool(
   registry: LocalEvidenceReferenceRegistry,
   /** A retained cursor is live state even when a later page has no next token. */
   onPagingState?: (hasPagingState: boolean) => void,
+  paging = createResearchPagingState(),
 ): EvidenceSearchTool {
-  const cursors = new Map<
-    string,
-    { query: string; scope: string; cursor: string }
-  >();
-  let sequence = 0;
+  const cursors = paging.state.tokens;
+  onPagingState?.(cursors.size > 0);
   return {
     id: 'local-research-artifacts',
     sourceKind: 'generated_artifact',
@@ -143,7 +142,11 @@ export function createResearchArtifactTool(
       )
         throw new Error('A research snapshot changed during search.');
       const nextCursor = resumeCursor ?? page.nextCursor;
-      const nextToken = nextCursor ? `research-page-${++sequence}` : undefined;
+      if (nextCursor && !Number.isSafeInteger(paging.state.sequence + 1))
+        throw new Error('Research cursor sequence exhausted.');
+      const nextToken = nextCursor
+        ? `research-page-${++paging.state.sequence}`
+        : undefined;
       if (nextToken && nextCursor) {
         if (cursors.size >= 1024) cursors.delete(cursors.keys().next().value!);
         cursors.set(nextToken, {

@@ -102,6 +102,10 @@ export function withDeferredEvidenceAdapters<TResult>(
     ...options,
     revalidateEvidence: (references, signal) =>
       deferEvidenceAdapter(signal, () => options.revalidateEvidence(references, signal)),
+    restoreEvidenceBatches: options.restoreEvidenceBatches
+      ? (references, signal) =>
+          deferEvidenceAdapter(signal, () => options.restoreEvidenceBatches!(references, signal))
+      : undefined,
     restoreEvidence: options.restoreEvidence
       ? (references, signal) =>
           deferEvidenceAdapter(signal, () => options.restoreEvidence!(references, signal))

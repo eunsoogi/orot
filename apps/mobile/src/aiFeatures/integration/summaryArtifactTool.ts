@@ -11,17 +11,7 @@ import { registerArtifactSource } from './artifactLineage';
 import { artifactExcerpt } from './artifactExcerpt';
 import { summaryArtifactCoverage } from './summaryArtifactCoverage';
 
-// A service registry survives conversation turns; tokens never expose database identities.
-const cursorStates = new WeakMap<
-  LocalEvidenceReferenceRegistry,
-  {
-    sequence: number;
-    readonly tokens: Map<
-      string,
-      { scope: string; query: string; cursor: string }
-    >;
-  }
->();
+import { artifactCursorState } from './artifactCursorState';
 
 function parseInput(value: unknown): JsonObject | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -56,12 +46,7 @@ export function createSummaryArtifactTool(
     readonly referenceOnly?: boolean;
   } = {},
 ): EvidenceSearchTool {
-  let cursorState = cursorStates.get(registry);
-  if (!cursorState) {
-    cursorState = { sequence: 0, tokens: new Map() };
-    cursorStates.set(registry, cursorState);
-  }
-  const state = cursorState;
+  const state = artifactCursorState(registry, 'summary');
   return {
     id: 'local-generated-artifacts',
     sourceKind: 'generated_artifact',

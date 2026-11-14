@@ -14,7 +14,10 @@ export function conversationWorkflowEvidenceCache<T>(
 ) {
   const items = new Map<string, EvidenceBatch['items'][number]>();
   const batches: EvidenceBatch[] = [];
-  const remember = (batch: EvidenceBatch) => {
+  const remember = (value: EvidenceBatch) => {
+    // Protected storage sorts object keys. Normalize before the first provider request too,
+    // so JSON embedded inside task message strings stays identical after reconstruction.
+    const batch: EvidenceBatch = JSON.parse(stableJson(value));
     batches.push(batch);
     batch.items.forEach(item => items.set(stableEvidenceReference(item), item));
     return batch;
@@ -40,6 +43,10 @@ export function conversationWorkflowEvidenceCache<T>(
   } else remember(options.initialEvidence);
   return {
     ...options,
+    initialEvidence: batches[0]!,
+    ...(options.context
+      ? { context: JSON.parse(stableJson(options.context)) }
+      : {}),
     /** Private storage only; copy so later callers cannot mutate the live owner. */
     snapshotEvidence(): readonly EvidenceBatch[] {
       return JSON.parse(JSON.stringify(batches));
@@ -50,6 +57,23 @@ export function conversationWorkflowEvidenceCache<T>(
         return 'items' in result ? remember(result) : result;
       }),
     ),
+    async restoreEvidenceBatches(
+      references: readonly EvidenceReference[],
+      signal: AbortSignal,
+    ): Promise<readonly EvidenceBatch[]> {
+      const original = batches.flatMap(batch => batch.items);
+      if (
+        signal.aborted ||
+        original.length !== references.length ||
+        original.some(
+          (item, index) =>
+            stableEvidenceReference(item) !==
+            stableEvidenceReference(references[index]!),
+        )
+      )
+        throw new Error('Original ordered evidence batches are unavailable.');
+      return JSON.parse(JSON.stringify(batches));
+    },
     async restoreEvidence(
       references: readonly EvidenceReference[],
       signal: AbortSignal,

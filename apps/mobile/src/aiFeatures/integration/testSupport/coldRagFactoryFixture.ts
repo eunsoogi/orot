@@ -16,9 +16,13 @@ import type { ConversationColdResumeDescriptor } from '../../../storage/conversa
 import { ragConversationTask } from '../../../ragConversation/task';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 
-export async function coldRagFactoryFixture(eager?: ColdConversationSearch) {
+export async function coldRagFactoryFixture(
+  eager?: ColdConversationSearch,
+  prepareData?: (data: import('../localData').AiFeatureLocalData) => void,
+) {
   const f = publicEvidenceFixture();
   const local = localData([]);
+  prepareData?.(local.data);
   const registry = new LocalEvidenceReferenceRegistry();
   const dependencies = {
     consent: f.consent,
@@ -107,5 +111,15 @@ export async function coldRagFactoryFixture(eager?: ColdConversationSearch) {
       ...descriptor.reconstruction,
       publicSearch: { ...eager },
     };
-  return { ...f, local, dependencies, descriptor, options };
+  return {
+    ...f,
+    local,
+    dependencies,
+    descriptor,
+    options,
+    bundle,
+    registry,
+    tracker,
+    external,
+  };
 }

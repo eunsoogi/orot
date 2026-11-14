@@ -1,3 +1,4 @@
+import type { EvidenceRestoration } from './evidenceRestoration';
 import type {
   JsonObject,
   JsonValue,
@@ -120,7 +121,7 @@ export interface TaskResponderContract<TResult = JsonValue> {
   correctionInstructionForInvalidEnvelope?(reason: string): string | undefined;
   validateResult(value: JsonValue, input: TaskResponderInput): TaskResultValidation<TResult>;
 }
-export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
+export interface MultiAgentWorkflowOptions<TResult = JsonValue> extends EvidenceRestoration {
   readonly execution: MultiAgentExecutionIdentity;
   readonly provider: LanguageModelProvider;
   readonly request: string;
@@ -137,10 +138,6 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
     references: readonly EvidenceReference[],
     signal: AbortSignal,
   ) => Promise<boolean>;
-  readonly restoreEvidence?: (
-    references: readonly EvidenceReference[],
-    signal: AbortSignal,
-  ) => Promise<EvidenceBatch>;
   readonly operationJournal?: import('./workflowOperationJournal').WorkflowOperationJournal;
   readonly checkpointer?: BaseCheckpointSaver;
   /** Persistent graph context is injected by LangGraph and stays outside checkpoint state. */

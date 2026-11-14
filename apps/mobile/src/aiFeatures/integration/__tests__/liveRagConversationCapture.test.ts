@@ -83,3 +83,28 @@ test.each(['success', 'empty', 'consent_required'] as const)(
     );
   },
 );
+
+// Only the protected snapshot crosses capture; the live closure is never serialized.
+test('captures supported research paging with the original run and no stored function', async () => {
+  const paging = {
+    version: 1 as const,
+    sequence: 1,
+    tokens: [
+      {
+        token: 'research-page-1',
+        query: 'synthetic',
+        scope: 'original-run',
+        cursor: 'research-9',
+      },
+    ],
+  };
+  const snapshot = jest.fn(() => paging);
+  await liveRagConversationCapture(state, () => ({
+    ...completion,
+    researchPaging: snapshot,
+  }))(input);
+  expect(snapshot).toHaveBeenCalledWith('original-run');
+  expect(capture).toHaveBeenCalledWith(
+    expect.objectContaining({ researchPaging: paging }),
+  );
+});

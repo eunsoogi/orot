@@ -15,12 +15,14 @@ export function createConversationToolBundle(input: {
   readonly researchInputs: ReturnType<typeof createResearchInputTracker>;
   readonly external: ReturnType<typeof conversationExternalEvidence>;
   readonly publicSearchSucceeded: boolean;
+  readonly researchPaging?: { snapshot: unknown; operationRunId: string };
 }) {
   let failed = false;
   const generated = conversationGeneratedTools(
     input.data,
     input.registry,
     input.observer,
+    input.researchPaging,
   );
   const tools = [
     ...observeLocalSearchFailures(

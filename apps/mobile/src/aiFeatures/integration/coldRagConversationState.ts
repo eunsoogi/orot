@@ -22,6 +22,7 @@ export async function captureColdRagConversationState(input: {
   knownCallIds: readonly string[];
   batches: readonly EvidenceBatch[];
   options: MultiAgentWorkflowOptions<unknown>;
+  researchPaging?: import('./researchPagingState').ResearchPagingSnapshot;
   signal: AbortSignal;
 }): Promise<JsonObject> {
   if (input.options.photoInput)
@@ -53,6 +54,7 @@ export async function captureColdRagConversationState(input: {
         },
         photo: null,
       },
+      ...(input.researchPaging ? { researchPaging: input.researchPaging } : {}),
       registry,
       sources: captured.sources,
       research: input.tracker.snapshot(),

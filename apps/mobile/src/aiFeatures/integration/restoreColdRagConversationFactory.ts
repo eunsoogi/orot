@@ -131,6 +131,14 @@ export async function restoreColdRagConversationFactory(input: {
     researchInputs: tracker,
     external,
     publicSearchSucceeded: !publicSearch || publicSearch.status === 'success',
+    ...('researchPaging' in saved
+      ? {
+          researchPaging: {
+            snapshot: saved.researchPaging,
+            operationRunId: scope.operationRunId,
+          },
+        }
+      : {}),
   });
   const execution = executionOptions({
     selected,
@@ -203,7 +211,9 @@ export async function restoreColdRagConversationFactory(input: {
       )
         throw new Error('Cold selection or original sources changed.');
     },
-    capture: async (batches: readonly EvidenceBatch[]) => ({
+    capture: async (
+      batches: readonly EvidenceBatch[],
+    ): Promise<JsonObject> => ({
       ...(await captureColdRagConversationState({
         registry,
         tracker,
@@ -211,6 +221,9 @@ export async function restoreColdRagConversationFactory(input: {
         ...scope,
         knownCallIds: await input.readKnownCallIds(),
         batches,
+        researchPaging: bundle.generated.researchPagingSnapshot?.(
+          scope.operationRunId,
+        ),
         options,
         signal,
       })),

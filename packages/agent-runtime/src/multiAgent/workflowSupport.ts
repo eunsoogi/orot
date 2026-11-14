@@ -1,3 +1,4 @@
+import { restoreOrderedEvidenceBatches } from './evidenceRestoration';
 import { validInitialEvidenceSearch, validInitialSearchResume } from './initialEvidenceSearch';
 import type {
   MultiAgentCheckpointState,
@@ -160,8 +161,11 @@ export function resumeState<TResult>(
       !saved.awaitingAuthorization &&
       !saved.initialSearchStatus &&
       (saved.modelCalls > 0 || saved.toolCalls > 0 || saved.researchCycles > 0)) ||
+    // An empty completed tool batch may still have a prepared, never-dispatched model approval.
+    // Without that exact journal-backed wait, zero-reference revision checkpoints remain unsafe.
     (saved.phase === 'revised_response' &&
-      (saved.toolCalls === 0 || saved.evidenceReferences.length === 0)) ||
+      (saved.toolCalls === 0 ||
+        (saved.evidenceReferences.length === 0 && !saved.awaitingAuthorization))) ||
     (saved.selectedToolId !== undefined &&
       !options.tools.some((tool) => tool.id === saved.selectedToolId))
   ) {
@@ -188,13 +192,14 @@ export async function restoreRunEvidence<TResult>(
   const refs = state.evidenceReferences;
   // An empty search still has coverage and gaps. A registered restorer owns that
   // metadata too; never replace its result with a fabricated unsearched batch.
-  if (!options.restoreEvidence)
+  if (!options.restoreEvidence && !options.restoreEvidenceBatches)
     return refs.length === 0 ? { items: [], coverage: [], conflicts: [] } : undefined;
   if (refs.length > 0) {
     const freshness = await observeUntilAbort(options.revalidateEvidence(refs, signal), signal);
     if (freshness.kind !== 'value' || !freshness.value) return undefined;
   }
-  const restoration = await observeUntilAbort(options.restoreEvidence(refs, signal), signal);
+  if (options.restoreEvidenceBatches) return restoreOrderedEvidenceBatches(options, refs, signal);
+  const restoration = await observeUntilAbort(options.restoreEvidence!(refs, signal), signal);
   if (restoration.kind !== 'value') return undefined;
   const restored = restoration.value;
   if (validateEvidenceBatch(restored, options.execution.allowedScope, options.execution.budget))

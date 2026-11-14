@@ -147,7 +147,7 @@ export function createRagConversationService({
             entryContext,
             reportReferences: report?.items ?? [],
             localRetrievalFailed: localRetrievalFailed(),
-            hasPagingState: generated.hasPagingState(),
+            ...generated.coldPaging(),
             publicSearch: searchPlan.coldSearch,
           }),
         ),

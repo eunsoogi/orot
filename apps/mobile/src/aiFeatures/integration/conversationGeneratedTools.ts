@@ -1,3 +1,5 @@
+import { createResearchPagingState } from './researchPagingState';
+import { hasArtifactCursorState } from './artifactCursorState';
 import type { EvidenceItem, EvidenceSearchTool } from '@orot/agent-runtime';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { RagConversationOutcome } from '../../ragConversation/service';
@@ -14,9 +16,13 @@ export function conversationGeneratedTools(
   data: AiFeatureLocalData,
   registry: LocalEvidenceReferenceRegistry,
   observer: RagConversationObserver | undefined,
+  restoredResearchPaging?: { snapshot: unknown; operationRunId: string },
 ) {
   const tools: EvidenceSearchTool[] = [];
   let researchPaging = false;
+  const paging = createResearchPagingState(restoredResearchPaging);
+  if (restoredResearchPaging && !data.researchArtifactDiscovery)
+    throw new Error('Research paging catalog unavailable.');
   const pages = new Map<'summary' | 'conversation', ArtifactContinuation>();
   const citedPages = new Map<string, ArtifactContinuation | null>();
   const onPage =
@@ -55,19 +61,39 @@ export function conversationGeneratedTools(
     );
   if (data.researchArtifactDiscovery)
     tools.push(
-      createResearchArtifactTool(data, registry, value => {
-        researchPaging = value;
-      }),
+      createResearchArtifactTool(
+        data,
+        registry,
+        value => {
+          researchPaging = value;
+        },
+        paging,
+      ),
     );
   if (tools.length) {
     tools.push(createArtifactSourceTool('personal_record', data, registry));
     tools.push(createArtifactSourceTool('reviewed_memory', data, registry));
   }
+  const hasUnsupportedPagingState = () =>
+    hasArtifactCursorState(registry) || pages.size > 0 || citedPages.size > 0;
+  const researchPagingSnapshot = data.researchArtifactDiscovery
+    ? paging.snapshot
+    : undefined;
   return {
     tools,
-    /** Paging handles are not yet part of the protected cold factory. */
+    researchPagingSnapshot,
+    hasUnsupportedPagingState,
+    // Keep snapshot production live until capture supplies the original operation run.
+    coldPaging: () => ({
+      hasPagingState: hasUnsupportedPagingState(),
+      researchPaging: researchPagingSnapshot,
+    }),
+    /** All live paging state, including research cursors now supported by protected reconstruction. */
     hasPagingState: () =>
-      researchPaging || pages.size > 0 || citedPages.size > 0,
+      researchPaging ||
+      hasArtifactCursorState(registry) ||
+      pages.size > 0 ||
+      citedPages.size > 0,
     choose(outcome: RagConversationOutcome): ArtifactContinuation | null {
       if (outcome.status === 'no_evidence' || outcome.status === 'insufficient')
         return pages.get('summary') ?? pages.get('conversation') ?? null;

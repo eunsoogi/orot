@@ -116,7 +116,7 @@ export async function resumeColdRagConversation(input: {
           factory.registry,
         ),
       capture: async batches => {
-        if (factory.bundle.generated.hasPagingState())
+        if (factory.bundle.generated.hasUnsupportedPagingState())
           throw new Error('Cold paging reconstruction unavailable.');
         return {
           ...(await factory.capture(batches)),
