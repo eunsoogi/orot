@@ -26,9 +26,9 @@ function fixture(
   const observer = {
     retentionSession: { id: 'session', version: 1 },
     retentionRequestId: 'request',
-    retainedHistory: (prior ?? [source]).map((question, i) => ({
+    retainedHistory: (prior ?? [source]).map((priorQuestion, i) => ({
       id: i ? `prior-${i}` : 'prior',
-      question,
+      question: priorQuestion,
     })),
     confirmHistorySave,
   };
@@ -127,12 +127,12 @@ test('current clear request wins over identical prior messages', async () => {
 });
 
 test('ambiguous repeated prior wording and referential commands cannot be stored as facts', async () => {
-  const { action } = fixture(undefined, [
+  const { action: ambiguousAction } = fixture(undefined, [
     '예전에 수술했어요.',
     '예전에 수술했어요.',
   ]);
   expect(
-    action.parseInput({ userMessage: '예전에 수술했어요.' }),
+    ambiguousAction.parseInput({ userMessage: '예전에 수술했어요.' }),
   ).toBeUndefined();
   for (const question of [
     '그 내용을 건강 기록에 저장해줘',
