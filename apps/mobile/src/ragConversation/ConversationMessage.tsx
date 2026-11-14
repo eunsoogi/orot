@@ -151,6 +151,7 @@ export function ConversationMessage({
         ) : null}
         {message.healthSummary ? (
           <HealthSummaryCard
+            testIDPrefix={`rag-conversation-message-${message.id}-summary`}
             result={message.healthSummary}
             showCitations={showCitations}
             onOpenSource={onOpenSource}
@@ -179,6 +180,7 @@ export function ConversationMessage({
           : null}
         {showCitations ? (
           <ConversationSources
+            testIDPrefix={`rag-conversation-message-${message.id}`}
             references={message.citations ?? []}
             onOpenSource={onOpenSource}
             onLinkError={onLinkError}

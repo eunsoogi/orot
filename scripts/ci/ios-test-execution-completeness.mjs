@@ -52,6 +52,9 @@ export function validateIosTestExecutionResults(
   if (unexpected.length)
     throw new Error(`Unexpected integration job results: ${unexpected.join(', ')}`);
   return {
+    // Completeness is hosted application E2E, not evidence of supported-host file protection.
+    scope: 'hosted-application-e2e',
+    securityIntegration: 'separate-not-attested',
     selectedCohorts,
     notSelectedCohorts,
     executedCohorts: selectedCohorts,

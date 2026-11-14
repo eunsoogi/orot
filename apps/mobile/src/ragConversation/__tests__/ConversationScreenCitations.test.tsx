@@ -73,6 +73,10 @@ test('keeps citations with earlier and latest assistant answers and opens each s
   // Transcript order keeps each source action associated with its own answer.
   const sourceActions = screen.getAllByLabelText(/원문 근거 열기/u);
   expect(sourceActions).toHaveLength(2);
+  expect(sourceActions.map(action => action.props.testID)).toEqual([
+    'rag-conversation-message-2-citation-0',
+    'rag-conversation-message-4-citation-0',
+  ]);
   await fireEvent.press(sourceActions[0]);
   await fireEvent.press(sourceActions[1]);
   expect(onOpenSource).toHaveBeenNthCalledWith(1, earlierCitation);

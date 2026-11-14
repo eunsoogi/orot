@@ -4,6 +4,13 @@ import XCTest
 final class EncounterReviewUITests: OrotFailFastTestCase {
     private var readbackSequence = 0
     private var inputObservation: EncounterInputObservation?
+
+    override func setUp() {
+        super.setUp()
+        // A failed native precondition must stop before a subsequent save or unbounded status wait.
+        continueAfterFailure = false
+    }
+
     @MainActor
     func testSavedRecordingReviewRestoresWithoutAutomaticExtractionOrApproval() throws {
         let fixture = "test-persistence-" + UUID().uuidString.lowercased()
@@ -25,7 +32,7 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         XCTAssertTrue(evidence.exists)
         status(app, contains: "근거와 충돌")
         let input = FormUITestConditions.multilineInput(app, identifier: "encounter-text-candidate-0")
-        FormUITestConditions.replace(input, with: "회전 중 유지할 검토", in: app, scrollID: "navigation-route-scroll")
+        guard FormUITestConditions.replace(input, with: "회전 중 유지할 검토", in: app, scrollID: "navigation-route-scroll", useNativeSelectAllMenu: true) else { return }
         XCUIDevice.shared.orientation = .landscapeLeft
         XCTAssertEqual(input.value as? String, "회전 중 유지할 검토")
         XCUIDevice.shared.orientation = .portrait
@@ -39,8 +46,13 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         XCTAssertEqual(try report(app)["modelCalls"] as? Int, 0)
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
         let restoredInput = FormUITestConditions.multilineInput(app, identifier: "encounter-text-candidate-0")
-        FormUITestConditions.replace(restoredInput, with: "사용자가 검토한 약물 언급", in: app, scrollID: "navigation-route-scroll", observeInput: inputObservation?.record)
-        reveal(app, "encounter-save", avoiding: restoredInput).tap()
+        // Observe Select All rather than assuming Command-A selected the complete native field.
+        guard FormUITestConditions.replace(restoredInput, with: "사용자가 검토한 약물 언급", in: app, scrollID: "navigation-route-scroll", observeInput: inputObservation?.record, useNativeSelectAllMenu: true) else { return }
+        // Save is a native dock action; observe keyboard clearance without scrolling through the editor.
+        let save = UITestConditions.element(app, "encounter-save")
+        try NavigationPageActionUITestConditions.requireKeyboardAction(save, in: app, testCase: self)
+        XCTAssertEqual(restoredInput.value as? String, "사용자가 검토한 약물 언급")
+        save.tap()
         status(app, contains: "저장했어요")
         app.terminate()
         launch(app, fixture: fixture, mode: "restore")
@@ -107,7 +119,7 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-save")))
         tap(app, "transcript-edit-0", upward: true)
         let input = FormUITestConditions.multilineInput(app, identifier: "transcript-input-0")
-        FormUITestConditions.replace(input, with: "수정한 전사", in: app, scrollID: "navigation-route-scroll")
+        guard FormUITestConditions.replace(input, with: "수정한 전사", in: app, scrollID: "navigation-route-scroll", useNativeSelectAllMenu: true) else { return }
         reveal(app, "transcript-save-0", avoiding: input).tap()
         UITestConditions.value(UITestConditions.element(app, "transcript-text-0"), equals: "수정한 전사")
         tap(app, "encounter-save")
@@ -125,10 +137,12 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         tap(app, "encounter-start")
         attachStartDiagnostic(app)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-save")))
+        tools(app, open: true)
         let remove = UITestConditions.element(app, "encounter-probe-remove-source")
         XCTAssertTrue(remove.isHittable)
         remove.tap()
         UITestConditions.value(UITestConditions.element(app, "encounter-probe-report"), equals: "removed")
+        tools(app, open: false)
         tap(app, "encounter-save")
         status(app, contains: "사용할 수 없어요")
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
@@ -136,21 +150,10 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
 
     @MainActor
     private func attachStartDiagnostic(_ app: XCUIApplication) {
-        // Observe the real settled attempt before the original unbounded Save wait. Observation cannot fail its oracle.
+        // Read the settled attempt through the same modal recovery contract as ordinary report assertions.
         var diagnostic: [String: Any] = ["status": "UNKNOWN", "recordCount": "UNKNOWN", "modelCalls": "UNKNOWN", "failure": ["stage": "UNKNOWN", "category": "UNKNOWN"]]
-        let button = UITestConditions.element(app, "encounter-probe-readback")
-        if button.isHittable {
-            readbackSequence += 1
-            button.tap()
-            let element = UITestConditions.element(app, "encounter-probe-report")
-            let loaded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "\"readback\":\(readbackSequence),"), object: element)
-            if UITestConditions.wait(for: [loaded]) == .completed,
-               let data = UITestConditions.text(element).data(using: .utf8),
-               let report = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let snapshot = report["diagnostic"] as? [String: Any]
-            {
-                diagnostic = snapshot
-            }
+        if let report = try? report(app), let snapshot = report["diagnostic"] as? [String: Any] {
+            diagnostic = snapshot
         }
         if let data = try? JSONSerialization.data(withJSONObject: diagnostic) {
             let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
@@ -171,6 +174,7 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         }
         app.launch()
         UITestConditions.value(UITestConditions.element(app, "encounter-probe-ready"), equals: "ready")
+        tools(app, open: false)
     }
 
     @MainActor
@@ -205,6 +209,8 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
 
     @MainActor
     private func report(_ app: XCUIApplication) throws -> [String: Any] {
+        tools(app, open: true)
+        defer { tools(app, open: false) }
         readbackSequence += 1
         let button = UITestConditions.element(app, "encounter-probe-readback")
         XCTAssertTrue(button.isHittable)
@@ -216,8 +222,24 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
     }
 
     @MainActor
+    private func tools(_ app: XCUIApplication, open: Bool) {
+        let modal = UITestConditions.element(app, "encounter-probe-close")
+        if open, modal.exists {
+            return
+        }
+        let button = UITestConditions.element(app, open ? "encounter-probe-tools" : "encounter-probe-close")
+        // The toolbar is pinned above the scroller; wait for rotation/layout to settle without scrolling it.
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in button.exists && button.isEnabled && button.isHittable && app.frame.contains(button.frame) }, object: button)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+        button.tap()
+        let state = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == %@", NSNumber(value: open)), object: modal)
+        XCTAssertEqual(UITestConditions.wait(for: [state]), .completed)
+    }
+
+    @MainActor
     private func clean(_ app: XCUIApplication) {
         XCUIDevice.shared.orientation = .portrait
+        tools(app, open: true)
         let button = UITestConditions.element(app, "encounter-probe-cleanup")
         XCTAssertTrue(UITestConditions.exists(button))
         XCTAssertTrue(button.isHittable)

@@ -1,3 +1,4 @@
+import { medicalDocumentSecurityTests } from '../medical-document-test-inventory.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -35,7 +36,7 @@ test('separate Core and Speech runners cover every registered boundary without d
   // Target boundaries stop dependent UI work while preserving the full original inventory.
   // Root navigation runs in Core; blood-pressure speech stays explicitly selectable on Duo.
   for (const [profile, integrationCount, uiCount] of [
-    ['core', 102, 15],
+    ['core', 89, 15],
     ['speech', 6, 1],
   ]) {
     const all = iosTestInventory(profile);
@@ -112,8 +113,8 @@ test('each profile declares unique existing cases and every test method is sched
       assertTestMethodDeclared(identifier);
     }
   }
-  // Gated diagnostics are checked for declaration but never included in default suites.
-  for (const identifier of explicitIosDiagnosticSelectors()) {
+  // Separate security integration and gated diagnostics must remain executable, not unscheduled skips.
+  for (const identifier of [...medicalDocumentSecurityTests, ...explicitIosDiagnosticSelectors()]) {
     seen.add(identifier);
     assertTestMethodDeclared(identifier);
   }
