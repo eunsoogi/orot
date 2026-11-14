@@ -119,7 +119,7 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-save")))
         tap(app, "transcript-edit-0", upward: true)
         let input = FormUITestConditions.multilineInput(app, identifier: "transcript-input-0")
-        FormUITestConditions.replace(input, with: "수정한 전사", in: app, scrollID: "navigation-route-scroll")
+        guard FormUITestConditions.replace(input, with: "수정한 전사", in: app, scrollID: "navigation-route-scroll", useNativeSelectAllMenu: true) else { return }
         reveal(app, "transcript-save-0", avoiding: input).tap()
         UITestConditions.value(UITestConditions.element(app, "transcript-text-0"), equals: "수정한 전사")
         tap(app, "encounter-save")
