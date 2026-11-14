@@ -53,7 +53,8 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         tap(app, "next-visit-source-close")
         top(app)
         replace(app, "검토해 수정한 합성 질문")
-        try reveal(app, "next-visit-review-save")
+        try NavigationPageActionUITestConditions.requireKeyboardAction(node(app, "next-visit-review-save"), in: app, testCase: self)
+        XCTAssertEqual(node(app, "next-visit-question-text-0").value as? String, "검토해 수정한 합성 질문")
         tap(app, "next-visit-review-save")
         UITestConditions.value(node(app, "next-visit-save-message"), equals: "검토한 질문을 이 예약에 저장했어요.")
         try savedQuestion(app)
@@ -71,8 +72,8 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
         top(app)
         // A short edit still opens the keyboard before cancel and the viewport restoration check.
         replace(app, "임시")
-        try reveal(app, "next-visit-review-cancel")
-        try NavigationUITestConditions.contentAboveBar(app, scrollID: "next-visit-questions-scroll", contentID: "next-visit-review-cancel")
+        try NavigationPageActionUITestConditions.requireKeyboardAction(node(app, "next-visit-review-cancel"), in: app, testCase: self)
+        XCTAssertEqual(node(app, "next-visit-question-text-0").value as? String, "임시")
         tap(app, "next-visit-review-cancel")
         try savedQuestion(app)
         XCTAssertFalse(app.staticTexts["임시"].exists)
@@ -189,7 +190,7 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
     @MainActor
     private func savedQuestion(_ app: XCUIApplication) throws {
         top(app)
-        let saved = app.staticTexts.matching(NSPredicate(format: "label == %@", "검토해 수정한 합성 질문")).firstMatch
+        let saved = app.staticTexts["next-visit-saved-question-text-0"]
         FormUITestConditions.reveal(saved, in: app, scrollID: "next-visit-questions-scroll", requireHittable: false)
         XCTAssertTrue(node(app, "next-visit-saved-list").exists)
         try RenderedTextUITestConditions.verify(saved, equals: "검토해 수정한 합성 질문", in: app, testCase: self)

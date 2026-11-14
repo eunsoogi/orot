@@ -67,7 +67,13 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             value={question.questionText}
           />
         ) : (
-          <Text style={styles.questionText}>{question.questionText}</Text>
+          // Preserve a stable native identity independently of the reviewed wording and keyboard windows.
+          <Text
+            style={styles.questionText}
+            testID={`next-visit-saved-question-text-${index}`}
+          >
+            {question.questionText}
+          </Text>
         )}
         {editable ? (
           <Pressable
