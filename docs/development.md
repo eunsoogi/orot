@@ -40,7 +40,7 @@ pnpm test:unit
 
 `pnpm format:write`는 검사 대상 파일을 정리합니다. 코드 표면과 제외 근거는 [코드 품질 검사 안내](code-quality.md)에 있습니다.
 
-macOS에서 배송 Swift 소스의 복약 용량 커서와 주입된 native tool lifecycle 회귀를 실행합니다.
+macOS에서 배송 Swift 소스의 복약 용량 커서와 주입된 native tool lifecycle 단위 회귀를 실행합니다. CI에서는 별도 최상위 workflow가 아니라 `Unit Test`의 `Swift host regressions` macOS job으로 실행하며, Linux 단위·컴포넌트 검사와 독립적으로 병렬 실행합니다. 파일 보호 지원 여부 출력은 환경 진단이며 보호 검증 성공을 뜻하지 않습니다.
 
 ```sh
 scripts/tests/native-swift-regressions-host.sh
