@@ -22,6 +22,7 @@ const comparisonMetric = (
       heartRate: 'count/min',
       bodyMass: 'kg',
       steps: 'count',
+      workouts: 'min',
     }[metric],
     source: 'Watch',
     measuredAt: null,

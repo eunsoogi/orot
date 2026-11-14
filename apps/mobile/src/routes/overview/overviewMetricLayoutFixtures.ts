@@ -6,6 +6,7 @@ const metricUnits: Record<OverviewMetric, string> = {
   heartRate: 'count/min',
   bodyMass: 'kg',
   steps: 'count',
+  workouts: 'min',
 };
 
 /** Synthetic observations make the layout independent of stored health data. */

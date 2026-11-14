@@ -123,7 +123,7 @@ test('ignores synthetic flags in the production gate', async () => {
   expect(store.save).not.toHaveBeenCalled();
 });
 
-test('keeps clear/reconfigure behind the gate after loading a saved appearance', async () => {
+test('keeps saved appearance while allowing replacement without a clear action', async () => {
   store.load.mockResolvedValue({ avatar: 'neutral', name: null });
   store.clear.mockResolvedValue();
   store.save.mockResolvedValue({ avatar: 'star', name: null });
@@ -140,17 +140,10 @@ test('keeps clear/reconfigure behind the gate after loading a saved appearance',
   await screen.findByText('일반 화면');
   expect(store.save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
-  await fireEvent.press(screen.getByRole('button', { name: '선택 지우기' }));
-  await screen.findByText('함께할 비서를 골라주세요');
-  expect(unmounted).not.toHaveBeenCalled();
-  expect(
-    screen.getByRole('button', { name: '설정하고 시작하기' }).props
-      .accessibilityState.disabled,
-  ).toBe(true);
+  expect(screen.queryByRole('button', { name: '선택 지우기' })).toBeNull();
+  expect(store.clear).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('radio', { name: '별' }));
-  await fireEvent.press(
-    screen.getByRole('button', { name: '설정하고 시작하기' }),
-  );
+  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
   await waitFor(() =>
     expect(store.save).toHaveBeenCalledWith({ avatar: 'star', name: null }),
   );
@@ -158,7 +151,7 @@ test('keeps clear/reconfigure behind the gate after loading a saved appearance',
   expect(unmounted).not.toHaveBeenCalled();
 });
 
-test('a failed clear restores entry and leaves the committed appearance intact', async () => {
+test('cancel preserves the committed appearance and entry without deleting data', async () => {
   store.load.mockResolvedValue({ avatar: 'leaf', name: '오롯' });
   store.clear.mockRejectedValue(new Error('locked'));
   let canEnter = () => false;
@@ -175,8 +168,9 @@ test('a failed clear restores entry and leaves the committed appearance intact',
   await screen.findByText('일반 화면');
   expect(canEnter()).toBe(true);
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
-  await fireEvent.press(screen.getByRole('button', { name: '선택 지우기' }));
-  await screen.findByText('설정을 지우지 못했어요. 다시 시도해 주세요.');
+  expect(screen.queryByRole('button', { name: '선택 지우기' })).toBeNull();
+  await fireEvent.press(screen.getByRole('radio', { name: '별' }));
+  expect(store.clear).not.toHaveBeenCalled();
   expect(canEnter()).toBe(true);
   await fireEvent.press(screen.getByRole('button', { name: '취소' }));
   expect(screen.getByText('오롯')).toBeTruthy();

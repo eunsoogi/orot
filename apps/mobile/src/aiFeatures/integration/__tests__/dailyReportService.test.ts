@@ -78,6 +78,10 @@ test('uses real SQLite for explicit generation, source validation, save and reus
       ],
     });
     expect(result.report.observations[0]?.text).toContain('72');
+    expect(result.report.supportedContext[0]?.text).toContain('오늘 심박수');
+    expect(result.report.supportedContext[0]?.sourceReferences).toEqual(
+      result.report.observations[0]?.sourceReferences,
+    );
     expect(result.report.coverage).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: 'calendar', status: 'partial' }),

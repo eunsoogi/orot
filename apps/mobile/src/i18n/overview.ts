@@ -17,6 +17,7 @@ export const overviewKo = {
   'overview.metricHeartRate': '심박수',
   'overview.metricBodyMass': '체중',
   'overview.metricSteps': '기록된 걸음 샘플 합계',
+  'overview.duration.hoursMinutes': '{hours}시간 {minutes}분',
   'overview.metricUnit.minutes': '분',
   'overview.metricUnit.countPerMinute': '회/분',
   'overview.metricUnit.steps': '걸음',

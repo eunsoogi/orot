@@ -139,7 +139,8 @@ export function CalendarMonthEventRow({
   selectionDisabled,
   onSelectEvent,
 }: CalendarMonthEventRowProps) {
-  // The shared wrapper supplies an appearance-aware color for the unstyled event time.
+  // Selection uses explicit copy and accessibility state, not a saturated fill.
+  // The shared wrapper keeps the full event time readable in either appearance.
   const title =
     item.event.calendarEventSnapshot.title || t('calendar.eventNoTitle');
   const time = formatCalendarEventRange(item.event);
@@ -182,7 +183,7 @@ export function CalendarMonthEventRow({
           title={t(
             selected ? 'calendar.selectedEvent' : 'calendar.selectEvent',
           )}
-          variant={selected ? 'primary' : 'secondary'}
+          variant="neutral"
         />
       ) : null}
     </View>

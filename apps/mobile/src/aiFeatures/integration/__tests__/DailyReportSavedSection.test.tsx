@@ -40,10 +40,14 @@ test('a delayed lookup for an old revision cannot open follow-up after the revis
     />,
   );
   expect(screen.getByText('저장된 버전 1')).toBeTruthy();
-  expect(
-    screen.getByRole('header', { name: '기록으로 확인한 맥락' }),
-  ).toBeTruthy();
+  expect(screen.getByRole('header', { name: '오늘 건강 요약' })).toBeTruthy();
   expect(screen.getByText('합성 근거로 확인한 맥락')).toBeTruthy();
+  const headers = screen
+    .getAllByRole('header')
+    .map(header => header.props.children);
+  expect(headers.indexOf('오늘 건강 요약')).toBeLessThan(
+    headers.indexOf('확인된 기록'),
+  );
   expect(screen.getByRole('header', { name: 'AI가 제안한 질문' })).toBeTruthy();
   expect(screen.getByText('합성 질문을 더 확인할까요?')).toBeTruthy();
   await fireEvent.press(screen.getByText('이 보고서에 관해 대화하기'));

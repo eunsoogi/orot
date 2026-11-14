@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { useContext, type ReactNode } from 'react';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { RecordsHubHeadingContext } from './RecordsHubBanner';
 import { Pressable, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -34,18 +35,23 @@ export function RecordsRouteEntries({
   onImportMedicalDocument,
   onImportMedicalPhoto,
 }: RecordsRouteEntriesProps) {
+  const hubOwnsHeading = useContext(RecordsHubHeadingContext);
   return (
     <View style={styles.container}>
-      <Text
-        accessibilityRole="header"
-        style={styles.title}
-        testID="records-title"
-      >
-        {t('records.title')}
-      </Text>
-      <Text style={styles.subtitle} testID="records-subtitle">
-        {t('records.subtitle')}
-      </Text>
+      {!hubOwnsHeading ? (
+        <>
+          <Text
+            accessibilityRole="header"
+            style={styles.title}
+            testID="records-title"
+          >
+            {t('records.title')}
+          </Text>
+          <Text style={styles.subtitle} testID="records-subtitle">
+            {t('records.subtitle')}
+          </Text>
+        </>
+      ) : null}
       <View style={styles.captureActions} testID="records-capture-actions">
         <Pressable
           accessibilityRole="button"

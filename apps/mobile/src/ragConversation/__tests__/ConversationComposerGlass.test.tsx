@@ -4,7 +4,7 @@ import {
   screen,
   within,
 } from '@testing-library/react-native';
-import { Dimensions, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Dimensions, StyleSheet } from 'react-native';
 import { ConversationComposer } from '../ConversationComposer';
 import { ConversationScreen } from '../ConversationScreen';
 
@@ -140,4 +140,41 @@ test('shares a 44pt single-line baseline and grows without flex compressing the 
   await view.rerender(<ConversationComposer {...props} value="" />);
   expect(input().props.scrollEnabled).toBe(true);
   expect(StyleSheet.flatten(input().props.style).height).toBe(44);
+});
+
+test('places the passive matching fade behind controls without moving the composer', async () => {
+  const preference = jest
+    .spyOn(AccessibilityInfo, 'isReduceTransparencyEnabled')
+    .mockResolvedValue(false);
+  const props = {
+    value: '',
+    busy: false,
+    onChangeText: jest.fn(),
+    onSend: jest.fn(),
+    onCancel: jest.fn(),
+  };
+  const view = await render(<ConversationComposer {...props} />);
+  const backdrop = () =>
+    screen.getByTestId('conversation-composer-gradient', {
+      includeHiddenElements: true,
+    });
+  expect(backdrop().props.pointerEvents).toBe('none');
+  expect(StyleSheet.flatten(backdrop().props.style)).toMatchObject({
+    position: 'absolute',
+    top: -16,
+  });
+  expect(
+    within(screen.getByTestId('rag-conversation-composer-field')).queryByTestId(
+      'conversation-composer-gradient',
+      { includeHiddenElements: true },
+    ),
+  ).toBeNull();
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('rag-conversation-composer').props.style,
+    ).opacity,
+  ).toBeUndefined();
+  await view.rerender(<ConversationComposer {...props} compact />);
+  expect(StyleSheet.flatten(backdrop().props.style).top).toBe(0);
+  preference.mockRestore();
 });

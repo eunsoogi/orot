@@ -12,7 +12,7 @@ enum HealthKitBatchAuthorization {
     }
 
     static func plan(for features: [String]) -> Plan? {
-        let knownFeatures = ["medications", "bloodPressure", "sleep", "heartRate", "steps", "bodyMass"]
+        let knownFeatures = ["medications", "bloodPressure", "sleep", "heartRate", "steps", "bodyMass", "workouts"]
         guard !features.isEmpty,
               Set(features).count == features.count,
               features.allSatisfy(knownFeatures.contains)
@@ -86,6 +86,8 @@ extension HealthKitBoundary {
             return HKObjectType.quantityType(forIdentifier: .heartRate).map { Set<HKObjectType>([$0]) }
         case "steps":
             return HKObjectType.quantityType(forIdentifier: .stepCount).map { Set<HKObjectType>([$0]) }
+        case "workouts":
+            return [HKObjectType.workoutType()]
         case "bodyMass":
             return HKObjectType.quantityType(forIdentifier: .bodyMass).map { Set<HKObjectType>([$0]) }
         default:

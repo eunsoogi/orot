@@ -4,6 +4,7 @@ import { AppText as Text } from '../../layout/AppText';
 import { t } from '../../i18n';
 import { ChartPointSelection } from './ChartPointSelection';
 import { chartAccessibilitySummary } from './chartAccessibilitySummary';
+import { ChartBarTooltip } from './ChartBarTooltip';
 import { ChartRenderer } from './ChartRenderer';
 import { formatChartTick } from './format';
 import { chartWindows } from './window';
@@ -21,6 +22,8 @@ type Props = {
   compact?: boolean;
   /** Overview removes detail UI entirely while retaining an accessible chart description. */
   hideDetails?: boolean;
+  /** Opt-in selection without restoring the removed details disclosure. */
+  barTooltip?: boolean;
 };
 
 function comparePositions(left: number | string, right: number | string) {
@@ -40,6 +43,7 @@ export function ChartPlot({
   kind,
   compact = false,
   hideDetails = false,
+  barTooltip = false,
 }: Props) {
   const axis = kind === 'line' ? 'time' : 'day';
   const [pageIndex, setPageIndex] = useState(0);
@@ -130,27 +134,42 @@ export function ChartPlot({
             ))}
         </View>
       )}
-      <View
-        accessible={hideDetails}
-        accessibilityRole={hideDetails ? 'image' : undefined}
-        accessibilityLabel={
-          hideDetails
-            ? chartAccessibilitySummary(visible, axis, title)
-            : undefined
-        }
-        testID={testID ? `${testID}-plot` : undefined}
-      >
-        {visible && positions.length > 0 && width > 0 ? (
-          <ChartRenderer
-            data={visible}
-            width={width}
-            height={height}
-            kind={kind}
-          />
-        ) : (
-          <View style={{ height }} />
-        )}
-      </View>
+      {barTooltip &&
+      kind === 'bar' &&
+      visible &&
+      positions.length > 0 &&
+      width > 0 ? (
+        <ChartBarTooltip
+          key={JSON.stringify(visible)}
+          data={visible}
+          width={width}
+          height={height}
+          title={title}
+          testID={testID ? `${testID}-plot` : undefined}
+        />
+      ) : (
+        <View
+          accessible={hideDetails}
+          accessibilityRole={hideDetails ? 'image' : undefined}
+          accessibilityLabel={
+            hideDetails
+              ? chartAccessibilitySummary(visible, axis, title)
+              : undefined
+          }
+          testID={testID ? `${testID}-plot` : undefined}
+        >
+          {visible && positions.length > 0 && width > 0 ? (
+            <ChartRenderer
+              data={visible}
+              width={width}
+              height={height}
+              kind={kind}
+            />
+          ) : (
+            <View style={{ height }} />
+          )}
+        </View>
+      )}
       {compact && !hideDetails ? (
         <Pressable
           accessibilityRole="button"

@@ -1,5 +1,6 @@
 import { getRagConversationCopy } from './copy';
 import { t } from '../i18n';
+import { conversationRequestReceipt } from './initialResponse';
 import type {
   ConversationSession,
   PendingTurn,
@@ -59,7 +60,18 @@ export function prepareConversationRequest(
     ],
     busy: true,
     error: session.unsavedCount ? copy.unsavedAnswersRemain() : '',
-    pendingMessage: { id: responseId, content: '', activity: copy.loading },
+    // A local receipt covers retrieval and provider latency without another model call.
+    // It is ephemeral, not an answer, a tool-progress claim, or a retained health fact.
+    pendingMessage: {
+      id: responseId,
+      content: '',
+      activity: copy.loading,
+      initialResponse: {
+        callId: `received:${responseId}`,
+        source: 'receipt',
+        text: conversationRequestReceipt,
+      },
+    },
   };
   return { request, responseId, change, copy };
 }
