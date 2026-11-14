@@ -37,7 +37,6 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
     func testAuthorizationScopesAndSyntheticSamplesStayExplicit() async throws {
         try verifyMedicationPickerWaitsForDismissedSampleConsent()
         try verifyMedicationConsentRouting()
-        try verifyWorkoutReadScopeAndDuration()
         let summary = try await run("healthkit")
         for field in ["authorizationPlan=feature-scoped", "writeTypes=0", "sampleTypes=passed", "syntheticSteps=passed", "unrelatedSleep=passed", "emptyQuery=completed", "realSamples=unverified"] {
             XCTAssertTrue(summary.contains(field), summary)
@@ -46,7 +45,7 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
     }
 
     /// Synthetic conversion covers the shipping mapper without granting HealthKit write access.
-    private func verifyWorkoutReadScopeAndDuration() throws {
+    func testWorkoutReadScopeAndDurationStayExplicit() throws {
         let plan = try XCTUnwrap(HealthKitBatchAuthorization.plan(for: ["workouts"]))
         XCTAssertEqual(plan.readTypes, [HKObjectType.workoutType()])
         XCTAssertTrue(plan.shareTypes.isEmpty)
