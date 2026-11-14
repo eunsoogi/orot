@@ -121,14 +121,14 @@ describe('native bottom navigation toolbar', () => {
       expect.objectContaining({
         id: 'tab-conversation',
         selected: false,
-        systemImageName: 'sparkle',
+        systemImageName: 'bubble.left.and.bubble.right',
       }),
     );
     expect(actions[1]).toEqual(
       expect.objectContaining({
         id: 'tab-overview',
         selected: true,
-        systemImageName: 'house.fill',
+        systemImageName: 'square.grid.2x2.fill',
       }),
     );
     expect(StyleSheet.flatten(toolbar.props.style)).toEqual(
