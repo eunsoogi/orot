@@ -112,6 +112,7 @@ const featureScreens = [
       'ragConversation.title',
       'ragConversation.workspace.activity',
       'ragConversation.workspace.empty',
+      'assistantAppearance.cancelling',
       'aiActivity.cancel',
       'ragConversation.placeholder',
       'ragConversation.photo.select',
