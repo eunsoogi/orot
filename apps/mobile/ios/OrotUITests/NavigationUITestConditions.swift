@@ -160,7 +160,7 @@ enum NavigationUITestConditions {
     }
 
     /// Compare the shared frame against the real keyboard or public window edge, never generated pixels.
-    static func assertSharedViewport(_ app: XCUIApplication, keyboard: XCUIElement? = nil, testCase: XCTestCase) throws {
+    static func assertSharedViewport(_ app: XCUIApplication, keyboard: XCUIElement? = nil, reclaimsSystemBottom: Bool = false, testCase: XCTestCase) throws {
         var lastBottom: Double?
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             let marker = UITestConditions.element(app, "navigation-test-observation")
@@ -181,7 +181,7 @@ enum NavigationUITestConditions {
             if let keyboard {
                 return y + height <= Double(keyboard.frame.minY) + 1
             }
-            return abs(y + height - (windowY + windowHeight - bottom)) <= 1
+            return abs(y + height - (windowY + windowHeight - (reclaimsSystemBottom ? 0 : bottom))) <= 1
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed, "Shared viewport bottom: \(String(describing: lastBottom))")
         _ = observationSnapshot(app, testCase: testCase, attachmentName: keyboard == nil ? "shared-viewport-restored" : "shared-viewport-keyboard")
