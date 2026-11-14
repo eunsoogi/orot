@@ -1,3 +1,4 @@
+import { createColdResearchSourceReader } from './coldResearchSourceReader';
 import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
 import { requireNonPhotoSources } from '../../ragConversation/conversationArtifactSources';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -61,8 +62,24 @@ export async function restoreColdConversationRegistry(input: {
       throw new Error('Unsupported cold source descriptor.');
   }
   const fresh = new LocalEvidenceReferenceRegistry();
+  const research = createColdResearchSourceReader({
+    snapshot,
+    sources,
+    data: input.data,
+  });
   for (const source of sources) {
     check();
+    if ('kind' in source && source.kind === 'generated_research') {
+      const readSource = (signal: AbortSignal) => research.read(source, signal);
+      fresh.add({
+        reference: source.reference,
+        content: '',
+        readSource,
+        validate: async signal =>
+          (await readSource(signal)).status === 'available',
+      });
+      continue;
+    }
     // The existing source readers perform local revision checks. They do not invoke tools/models.
     const result = await restoreRetainedSources([source], fresh, input.data);
     check();
@@ -72,12 +89,14 @@ export async function restoreColdConversationRegistry(input: {
     )
       throw new Error('Cold source changed or is unavailable.');
   }
-  // Include reader-created dependency aliases, not just the requested top-level sources.
-  for (const { alias } of fresh.snapshot().entries) {
+  // Import before validating research: its dependency links must point into this final owner.
+  const restored = LocalEvidenceReferenceRegistry.restore(snapshot, fresh);
+  research.bind(restored);
+  for (const { alias } of restored.snapshot().entries) {
     check();
-    if (!(await fresh.revalidateEvidence([alias], input.signal)))
+    if (!(await restored.revalidateEvidence([alias], input.signal)))
       throw new Error('Cold source failed fresh validation.');
-    const read = await fresh.readSource(alias, input.signal);
+    const read = await restored.readSource(alias, input.signal);
     check();
     if (
       read.status !== 'available' ||
@@ -87,5 +106,5 @@ export async function restoreColdConversationRegistry(input: {
       throw new Error('Cold source is no longer current.');
   }
   check();
-  return LocalEvidenceReferenceRegistry.restore(snapshot, fresh);
+  return restored;
 }
