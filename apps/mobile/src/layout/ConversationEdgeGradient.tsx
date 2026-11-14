@@ -44,13 +44,11 @@ export function ConversationEdgeGradient({
       subscription.remove();
     };
   }, []);
+  const top = opaque || fadeOverlap === 0 ? 0 : -fadeOverlap;
   return (
     <View
       pointerEvents="none"
-      style={[
-        StyleSheet.absoluteFill,
-        { top: opaque || fadeOverlap === 0 ? 0 : -fadeOverlap },
-      ]}
+      style={[StyleSheet.absoluteFill, { top }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID={testID}
