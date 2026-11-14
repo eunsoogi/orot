@@ -16,7 +16,7 @@ test('keeps a safe root rail when the complete bottom-anchored action group fits
     placement: 'right' as const,
     reservedRightWidth: 72,
     contentWidth: 400,
-    windowHeight: 444,
+    windowHeight: 382,
     railTopInset: 20,
     railBottomInset: 20,
     railRightInset: 12,
@@ -30,11 +30,11 @@ test('keeps a safe root rail when the complete bottom-anchored action group fits
   expect(withActions.pageLayout?.capacity).toBe(2);
   // UIKit's spacer adds a 12pt gap before the first of two 48pt controls.
   expect(
-    navigationRailPresentation({ ...layout, windowHeight: 444 }, 0, true, 0, 2)
+    navigationRailPresentation({ ...layout, windowHeight: 382 }, 0, true, 0, 2)
       .pageLayout?.capacity,
   ).toBe(2);
   expect(
-    navigationRailPresentation({ ...layout, windowHeight: 443 }, 0, true, 0, 2)
+    navigationRailPresentation({ ...layout, windowHeight: 381 }, 0, true, 0, 2)
       .pageLayout?.capacity,
   ).toBe(1);
   const page = withActions.pageLayout!;
@@ -42,7 +42,7 @@ test('keeps a safe root rail when the complete bottom-anchored action group fits
     layout.windowHeight - page.pageBottomInset - page.pageTopInset,
   ).toBeGreaterThanOrEqual(120);
   expect(
-    navigationRailPresentation({ ...layout, windowHeight: 300 }, 0, true, 0, 0)
+    navigationRailPresentation({ ...layout, windowHeight: 238 }, 0, true, 0, 0)
       .rightLayout,
   ).toBeUndefined();
 });

@@ -116,13 +116,13 @@ test('moves the upper action below the current usable-region boundary', () => {
 
 test('keeps bottom navigation when the full rail cannot fit below reserved regions', () => {
   const shortWindow = snapshot({
-    windowBounds: { x: 0, y: 0, width: 1000, height: 400 },
+    windowBounds: { x: 0, y: 0, width: 1000, height: 350 },
     safeAreaInsets: { top: 40, right: 0, bottom: 30, left: 0 },
     reservedRegions: [
       {
         id: 'display-division',
         kind: 'division',
-        frame: { x: 450, y: 0, width: 40, height: 400 },
+        frame: { x: 450, y: 0, width: 40, height: 350 },
         margins: noMargins,
         isActive: true,
       },
