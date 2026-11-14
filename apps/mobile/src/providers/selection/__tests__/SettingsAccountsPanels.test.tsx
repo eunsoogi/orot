@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import SettingsAccountsPanels from '../SettingsAccountsPanels';
 import { providerSelectionText } from '../text';
 import type { ChatGPTAccountSetup } from '../types';
@@ -53,6 +58,18 @@ test('shows the empty connection state beside its original sign-in action', asyn
     />,
   );
 
+  const subscription = within(
+    screen.getByTestId('subscription-account-section'),
+  );
+  expect(
+    subscription.getByRole('header', { name: 'ChatGPT 구독 계정 로그인' }),
+  ).toBeTruthy();
+  expect(subscription.getByTestId('chatgpt-account-action')).toBeTruthy();
+  expect(subscription.queryByTestId('openai-api-key')).toBeNull();
+  const api = within(screen.getByTestId('openai-api-account'));
+  expect(api.getByTestId('openai-api-key-save')).toBeTruthy();
+  expect(api.getByRole('link')).toBeTruthy();
+  expect(api.queryByTestId('chatgpt-account-action')).toBeNull();
   expect(screen.getByTestId('settings-accounts-list')).toBeTruthy();
   expect(screen.getByTestId('settings-accounts-actions')).toBeTruthy();
   expect(screen.queryByTestId('settings-accounts-panels-secondary')).toBeNull();

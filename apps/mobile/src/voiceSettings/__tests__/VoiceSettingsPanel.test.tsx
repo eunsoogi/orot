@@ -1,5 +1,11 @@
 import { hasRealtimeVoiceRuntime } from '../voiceRuntimeCapability';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { voiceSettingsStore } from '../voiceSettingsStore';
 
@@ -49,6 +55,12 @@ it('does not present a static catalog or credentials and refreshes only explicit
   await waitFor(() =>
     expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy(),
   );
+  const local = within(view.getByTestId('voice-model-group-local'));
+  const api = within(view.getByTestId('voice-model-group-openai-api'));
+  expect(local.getByTestId('voice-model-apple-system-speech')).toBeTruthy();
+  expect(local.queryByTestId('voice-model-gpt-realtime-2.1-mini')).toBeNull();
+  expect(api.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy();
+  expect(api.queryByTestId('voice-model-apple-system-speech')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-text')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-realtime-2.1')).toBeNull();
   await fireEvent.press(view.getByTestId('voice-model-gpt-realtime-2.1-mini'));

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { AppButton } from '../layout/AppButton';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '../layout/AppText';
+import { RecordsHubBanner, RecordsHubHeadingContext } from './RecordsHubBanner';
 import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
 import { t } from '../i18n';
@@ -30,23 +31,40 @@ export function RecordsHubSection({
   }
   return (
     <View style={selected === 'schedule' ? styles.screen : styles.records}>
-      <View style={styles.tabs} testID="records-section-tabs">
-        {(['records', 'schedule'] as const).map(section => (
-          <AppButton
-            key={section}
-            title={t(`navigation.tabs.${section}`)}
-            testID={`records-section-${section}`}
-            accessibilityState={{ selected: selected === section }}
-            variant={selected === section ? 'neutral' : 'text'}
-            disabled={pending || !onSelect}
-            onPress={() => {
-              settleNavigationRequest(select(section));
-            }}
-            style={styles.tab}
-          />
-        ))}
+      <View style={styles.header} testID="records-hub-header">
+        <RecordsHubBanner />
+        <View style={styles.tabs} testID="records-section-tabs">
+          {(['records', 'schedule'] as const).map(section => (
+            <Pressable
+              key={section}
+              accessibilityRole="tab"
+              accessibilityLabel={t(`navigation.tabs.${section}`)}
+              testID={`records-section-${section}`}
+              accessibilityState={{
+                selected: selected === section,
+                disabled: pending || !onSelect,
+              }}
+              disabled={pending || !onSelect}
+              onPress={() => {
+                settleNavigationRequest(select(section));
+              }}
+              style={[styles.tab, selected === section && styles.selectedTab]}
+            >
+              <Text
+                style={[
+                  styles.label,
+                  selected === section && styles.selectedLabel,
+                ]}
+              >
+                {t(`navigation.tabs.${section}`)}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
-      {children}
+      <RecordsHubHeadingContext.Provider value>
+        {children}
+      </RecordsHubHeadingContext.Provider>
     </View>
   );
 }
@@ -54,12 +72,41 @@ export function RecordsHubSection({
 const styles = StyleSheet.create({
   screen: { flex: 1, minHeight: 0, backgroundColor: appColors.background },
   records: { flexGrow: 1, backgroundColor: appColors.background },
+  header: {
+    marginHorizontal: hubSpacing.horizontal,
+    marginTop: hubSpacing.top,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: appColors.border,
+    backgroundColor: appColors.surface,
+    overflow: 'hidden',
+  },
   tabs: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingHorizontal: hubSpacing.horizontal,
-    paddingTop: hubSpacing.top,
+    margin: 16,
+    marginTop: 0,
+    padding: 3,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: appColors.border,
+    backgroundColor: appColors.background,
   },
-  tab: { flexGrow: 1, flexBasis: 120 },
+  tab: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 21,
+  },
+  selectedTab: { backgroundColor: appColors.text },
+  label: {
+    color: appColors.secondary,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  selectedLabel: { color: appColors.background },
 });
