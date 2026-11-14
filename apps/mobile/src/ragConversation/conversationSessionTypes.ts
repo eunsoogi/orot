@@ -67,6 +67,7 @@ export interface ConversationSessionOptions {
       answer: string;
       preview?: string;
       interrupted?: true;
+      interruptionReason?: import('./conversationExecutionLease').ConversationRecoveryReason;
       citations: readonly EvidenceReference[];
       healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
       completion?: 'complete' | 'partial';

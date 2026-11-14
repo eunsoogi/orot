@@ -112,7 +112,10 @@ export function createConversationTurnRetention(input: {
         throw new Error('The conversation request was cancelled.');
       }
     },
-    async interruptRequest(status: 'cancelled' | 'interrupted') {
+    async interruptRequest(
+      status: 'cancelled' | 'interrupted',
+      reason?: import('./conversationExecutionLease').ConversationRecoveryReason,
+    ) {
       if (!input.storage.interruptRequest)
         throw new Error('Conversation request storage is unavailable.');
       await input.storage.interruptRequest(
@@ -120,6 +123,7 @@ export function createConversationTurnRetention(input: {
         input.sessionId,
         input.sessionVersion ?? 0,
         status,
+        reason,
       );
     },
     async recordToolEvent(

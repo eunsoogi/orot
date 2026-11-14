@@ -1,5 +1,10 @@
 /** Bounded lifecycle reasons never include provider payloads or private records. */
 export const conversationInterruptionKo = {
+  'conversationInterruption.user-stopped': '답변 생성을 중지했어요.',
+  'conversationInterruption.provider-failed':
+    '답변을 완료하지 못했어요. 연결 상태와 남은 내용을 확인한 뒤 다시 보내 주세요.',
+  'conversationInterruption.process-interrupted':
+    '이전 실행에서 답변을 완료하지 못했어요. 남은 내용을 확인한 뒤 다시 보내 주세요.',
   'conversationInterruption.expired':
     'iOS 백그라운드 실행 시간이 끝나 답변이 중단됐어요. 돌아온 뒤 내용을 확인하고 다시 보내 주세요.',
   'conversationInterruption.protected-data':

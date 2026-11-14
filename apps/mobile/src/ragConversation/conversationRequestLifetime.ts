@@ -64,7 +64,11 @@ export function createConversationRequestLifetime(input: {
       entry.fence = (async () => {
         // A stop during the initial write must fence the row after it exists.
         await entry.start?.catch(() => {});
-        await entry.turn.interruptRequest(erase ? 'cancelled' : 'interrupted');
+        await entry.turn.interruptRequest(
+          erase ? 'cancelled' : 'interrupted',
+          entry.interruptionReason ??
+            (status === 'cancelled' ? 'user-stopped' : 'provider-failed'),
+        );
       })().catch(() => {
         if (entries.get(id) === entry) input.reportFenceFailure(id);
       });
@@ -91,7 +95,8 @@ export function createConversationRequestLifetime(input: {
       } while (observed !== entry.fence);
       entry.release?.();
       if (entries.get(id) === entry) entries.delete(id);
-      owners.delete(controller);
+      // Weak ownership preserves the terminal reason for delayed Stop rendering.
+      // Releasing the controller still allows this entry to be collected.
     },
   };
 }

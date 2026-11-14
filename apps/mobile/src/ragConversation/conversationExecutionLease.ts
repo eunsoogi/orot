@@ -5,6 +5,29 @@ export type ConversationInterruptionReason =
   | 'lease-denied'
   | 'lease-check-failed';
 
+export type ConversationRecoveryReason =
+  | ConversationInterruptionReason
+  | 'user-stopped'
+  | 'provider-failed'
+  | 'process-interrupted';
+export function decodeConversationRecoveryReason(
+  value: unknown,
+): ConversationRecoveryReason | undefined {
+  return typeof value === 'string' &&
+    [
+      'expired',
+      'protected-data',
+      'bridge-unavailable',
+      'lease-denied',
+      'lease-check-failed',
+      'user-stopped',
+      'provider-failed',
+      'process-interrupted',
+    ].includes(value)
+    ? (value as ConversationRecoveryReason)
+    : undefined;
+}
+
 export type ConversationExecutionEvent =
   | {
       readonly kind: 'expired';

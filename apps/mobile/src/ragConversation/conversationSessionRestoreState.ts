@@ -10,6 +10,7 @@ type RestoredTurn = {
   readonly answer: string;
   readonly preview?: string;
   readonly interrupted?: true;
+  interruptionReason?: import('./conversationExecutionLease').ConversationRecoveryReason;
   readonly citations: readonly EvidenceReference[];
   readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
   readonly completion?: 'complete' | 'partial';
@@ -91,7 +92,9 @@ export function createConversationSessionRestoreState(input: {
           (!turn.answer && turn.completion === 'partial')
             ? {
                 incomplete: true,
-                activity: t('ragConversation.progressInterrupted'),
+                activity: turn.interruptionReason
+                  ? t(`conversationInterruption.${turn.interruptionReason}`)
+                  : t('ragConversation.progressInterrupted'),
               }
             : {}),
           ...(turn.completion ? { completion: turn.completion } : {}),

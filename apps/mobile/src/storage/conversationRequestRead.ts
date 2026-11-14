@@ -1,3 +1,4 @@
+import { decodeConversationRecoveryReason } from '../ragConversation/conversationExecutionLease';
 import type { SqlDatabase } from '@orot/storage';
 import {
   decodeConversationSubmittedInput,
@@ -13,7 +14,7 @@ export function createConversationRequestReader(
     async listInterruptedRequests(sessionId: string, version: number) {
       await ensure();
       const result = await database.execute(
-        "SELECT r.id, r.question, r.created_at, r.input_json FROM conversation_requests r JOIN conversation_artifact_sessions s ON s.id = r.session_id AND s.hidden = 0 AND s.version = r.session_version JOIN conversation_artifact_generation g ON g.singleton = 1 AND g.generation = s.generation WHERE r.session_id = ? AND r.session_version = ? AND r.status = 'interrupted' ORDER BY r.created_at, r.id",
+        "SELECT r.id, r.question, r.created_at, r.input_json, r.interruption_reason FROM conversation_requests r JOIN conversation_artifact_sessions s ON s.id = r.session_id AND s.hidden = 0 AND s.version = r.session_version JOIN conversation_artifact_generation g ON g.singleton = 1 AND g.generation = s.generation WHERE r.session_id = ? AND r.session_version = ? AND r.status = 'interrupted' ORDER BY r.created_at, r.id",
         [sessionId, version],
       );
       return result.rows.map(row => {
@@ -46,6 +47,13 @@ export function createConversationRequestReader(
         }
         return {
           id: row.id,
+          ...(decodeConversationRecoveryReason(row.interruption_reason)
+            ? {
+                interruptionReason: decodeConversationRecoveryReason(
+                  row.interruption_reason,
+                ),
+              }
+            : {}),
           question: row.question,
           createdAt: row.created_at,
           ...(submittedInput ? { submittedInput } : {}),

@@ -85,6 +85,9 @@ test('OS expiry preserves completed tools and marks only running tools interrupt
         event => event.status,
       ),
     ).toEqual(['completed', 'interrupted']);
+    expect(
+      await storage.listInterruptedRequests('retained-1', 0),
+    ).toMatchObject([{ interruptionReason: 'expired' }]);
     sessions.dispose();
   } finally {
     fixture.close();
