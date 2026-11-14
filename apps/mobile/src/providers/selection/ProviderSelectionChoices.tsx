@@ -23,7 +23,7 @@ interface ProviderSelectionChoicesProps {
   readonly chatGPTSetup?: ChatGPTAccountSetup;
 }
 
-/** Keeps selection state in the screen while provider panels adapt to measured usable regions. */
+/** Name the local and subscription boundaries without changing screen-owned selection. */
 export function ProviderSelectionChoices({
   options,
   loading,
@@ -65,7 +65,9 @@ export function ProviderSelectionChoices({
           : 'provider-selection-local-panel'
       }
     >
-      <Text style={styles.heading}>이 기기에서</Text>
+      <Text accessibilityRole="header" style={styles.heading}>
+        Apple · 기기 내 처리
+      </Text>
       {cards(true)}
     </View>
   );
@@ -81,7 +83,13 @@ export function ProviderSelectionChoices({
           : 'provider-selection-connected-panel'
       }
     >
-      <Text style={styles.heading}>연결한 계정</Text>
+      <Text accessibilityRole="header" style={styles.heading}>
+        ChatGPT 구독 계정 로그인
+      </Text>
+      <Text>
+        이 계정에서 조회한 대화 모델입니다. OpenAI API 연결과 별개이며 구독에
+        API 사용 요금이나 크레딧이 포함되지는 않습니다.
+      </Text>
       <View style={styles.account}>
         {chatGPTSetup ? <ProviderCatalogAccount setup={chatGPTSetup} /> : null}
         {cards(false)}

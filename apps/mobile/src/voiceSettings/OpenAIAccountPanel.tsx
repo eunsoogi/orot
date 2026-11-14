@@ -3,6 +3,7 @@ import { StyleSheet, TextInput, View } from 'react-native';
 import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
+import { APIPlatformLink } from './APIPlatformLink';
 import { voiceSettingsStore } from './voiceSettingsStore';
 
 /** Manage the one OpenAI API credential independently from ChatGPT subscription
@@ -60,7 +61,7 @@ export function OpenAIAccountPanel() {
   };
   return (
     <View testID="openai-api-account" style={styles.panel}>
-      <Text accessibilityRole="header">OpenAI API 계정</Text>
+      <Text accessibilityRole="header">OpenAI API 연결</Text>
       <Text>{connected ? 'API 키 연결됨' : 'API 키 연결 안 됨'}</Text>
       <Text>
         ChatGPT 구독 및 로그인과 별개의 연결입니다. API 통화에는 별도 요금이
@@ -70,6 +71,7 @@ export function OpenAIAccountPanel() {
         기존 음성 설정의 키를 그대로 사용합니다. 키는 이 기기가 잠금 해제된
         동안에만 접근할 수 있는 Keychain에 보관하며 표시하지 않습니다.
       </Text>
+      <APIPlatformLink />
       <TextInput
         accessibilityLabel="OpenAI API 키"
         testID="openai-api-key"
@@ -112,7 +114,14 @@ export function OpenAIAccountPanel() {
 }
 
 const styles = StyleSheet.create({
-  panel: { gap: 12 },
+  panel: {
+    gap: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: appColors.border,
+    backgroundColor: appColors.surface,
+  },
   input: {
     minHeight: 44,
     padding: 12,

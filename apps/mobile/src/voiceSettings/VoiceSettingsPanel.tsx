@@ -82,7 +82,7 @@ export function VoiceSettingsPanel({
         처리하며, 답변은 위에서 선택한 대화 AI가 만듭니다.
       </Text>
       <Button
-        title="연결된 계정 관리"
+        title="OpenAI API 연결 관리"
         variant="text"
         onPress={onOpenAccounts}
         disabled={!onOpenAccounts}
@@ -92,6 +92,11 @@ export function VoiceSettingsPanel({
         {catalog.connected
           ? 'OpenAI API 계정이 연결되어 있습니다. ChatGPT 로그인과는 별개입니다.'
           : 'OpenAI API 계정이 연결되지 않았습니다.'}
+      </Text>
+      <Text accessibilityRole="header">OpenAI API 연결</Text>
+      <Text>
+        ChatGPT 구독 계정과 별도인 API 키로 사용합니다. 사용량에 따른 요금과
+        크레딧은 API 계정에서 확인하세요.
       </Text>
       <Button
         title={catalog.busy ? '모델 불러오는 중' : '음성 모델 새로고침'}
@@ -119,37 +124,55 @@ export function VoiceSettingsPanel({
           선택은 유지되며 다른 모델로 자동 전환하지 않습니다.
         </Text>
       ) : null}
-      {voiceModels
-        .filter(item => item.mode === 'local' || catalog.ids.includes(item.id))
-        .map(item => (
-          <Pressable
-            key={item.id}
-            accessibilityRole="radio"
-            accessibilityState={{
-              selected: model === item.id,
-              disabled:
-                busy ||
-                failedLoad ||
-                (item.mode === 'openai-api' && !catalog.fresh),
-            }}
-            disabled={
-              busy ||
-              failedLoad ||
-              (item.mode === 'openai-api' && !catalog.fresh)
-            }
-            onPress={() => {
-              setMode(item.mode);
-              setModel(item.id);
-              setMessage('');
-            }}
-            testID={`voice-model-${item.id}`}
-            style={[styles.option, model === item.id && styles.selected]}
-          >
-            <Text>{item.title}</Text>
-            {item.mode === 'openai-api' ? <Text>{item.id}</Text> : null}
-            <Text>{item.detail}</Text>
-          </Pressable>
-        ))}
+      {/* Keep local processing visually separate without changing saved selection. */}
+      {(['local', 'openai-api'] as const).map(connection => (
+        <View
+          key={connection}
+          style={styles.modelGroup}
+          testID={`voice-model-group-${connection}`}
+        >
+          <Text accessibilityRole="header">
+            {connection === 'local'
+              ? 'Apple 기기 내 음성 처리'
+              : 'OpenAI API 음성 모델'}
+          </Text>
+          {voiceModels
+            .filter(
+              item =>
+                item.mode === connection &&
+                (item.mode === 'local' || catalog.ids.includes(item.id)),
+            )
+            .map(item => (
+              <Pressable
+                key={item.id}
+                accessibilityRole="radio"
+                accessibilityState={{
+                  selected: model === item.id,
+                  disabled:
+                    busy ||
+                    failedLoad ||
+                    (item.mode === 'openai-api' && !catalog.fresh),
+                }}
+                disabled={
+                  busy ||
+                  failedLoad ||
+                  (item.mode === 'openai-api' && !catalog.fresh)
+                }
+                onPress={() => {
+                  setMode(item.mode);
+                  setModel(item.id);
+                  setMessage('');
+                }}
+                testID={`voice-model-${item.id}`}
+                style={[styles.option, model === item.id && styles.selected]}
+              >
+                <Text>{item.title}</Text>
+                {item.mode === 'openai-api' ? <Text>{item.id}</Text> : null}
+                <Text>{item.detail}</Text>
+              </Pressable>
+            ))}
+        </View>
+      ))}
       <Text>
         기기 내 처리: 음성 인식과 읽어주기는 기기에서 실행합니다. 인식된
         텍스트는 선택한 대화 AI에 기존 동의 절차로 전달될 수 있습니다.
@@ -191,6 +214,13 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 16,
     backgroundColor: appColors.surface,
+  },
+  modelGroup: {
+    gap: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: appColors.border,
+    borderRadius: 12,
   },
   title: { fontSize: 18, fontWeight: '600', color: appColors.text },
   option: {
