@@ -36,11 +36,13 @@ export function NavigationViewport({
   actionBar,
   childHandlesSafeArea,
   active = true,
+  scrollable = false,
 }: {
   readonly children: ReactNode;
   readonly actionBar: ReactNode;
   readonly childHandlesSafeArea: boolean;
   readonly active?: boolean;
+  readonly scrollable?: boolean;
 }) {
   const [contentFrame, setContentFrame] =
     useState<NavigationLayoutFrame | null>(null);
@@ -70,8 +72,9 @@ export function NavigationViewport({
                 (geometry?.viewportBounds?.y ?? geometry?.windowBounds.y ?? 0),
             }
           : null,
+        scrollable,
       ),
-    [geometry, layout, viewportBounds],
+    [geometry, layout, viewportBounds, scrollable],
   );
   useEffect(() => {
     if (active && sharedFrame)
@@ -121,10 +124,31 @@ export function NavigationViewport({
           consumed ? 0 : viewportOcclusion.viewportInsets.bottom,
         )
       : null;
-  const occlusion = resolveNavigationOcclusion({
+  const resolvedOcclusion = resolveNavigationOcclusion({
     ...occlusionInput,
     measuredBottomActionOcclusion,
   });
+  // Extend only scrolling scenes. Keep the last item above the system edge without
+  // clipping every intermediate item at that edge or reserving it above a keyboard.
+  const scrollSafeBottom =
+    scrollable && viewport && geometry
+      ? Math.max(
+          0,
+          viewport.y +
+            viewport.height -
+            (geometry.safeAreaFrame.y + geometry.safeAreaFrame.height),
+        )
+      : 0;
+  const occlusion = {
+    ...resolvedOcclusion,
+    scrollContentInsets: {
+      ...resolvedOcclusion.scrollContentInsets,
+      bottom: Math.max(
+        resolvedOcclusion.scrollContentInsets.bottom,
+        scrollSafeBottom,
+      ),
+    },
+  };
   // The measured parent shrinks with KeyboardAvoidingView. Derive its edge clearance once,
   // rather than deducting the full-window home area again above an already visible keyboard.
   const contentRegionStyle = consumed

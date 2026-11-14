@@ -98,3 +98,25 @@ test('shares the observed bottom fallback while candidate rail admission stays a
     'bottom',
   );
 });
+
+// Drawing through a system edge and keeping the last item clear are separate contracts.
+test('extends scrolling content to the physical bottom but not beyond a contracted keyboard host', () => {
+  const geometry = createNavigationGeometrySnapshot(openGeometry);
+  const layout = resolveNavigationRootLayout(geometry);
+  expect(
+    resolveNavigationContentFrame(geometry, layout, null, true)
+      ?.availableContentFrame,
+  ).toEqual({ x: 0, y: 0, width: 867, height: 669 });
+  expect(
+    resolveNavigationContentFrame(
+      geometry,
+      layout,
+      { x: 0, y: 0, width: 951, height: 420 },
+      true,
+    )?.availableContentFrame,
+  ).toEqual({ x: 0, y: 0, width: 867, height: 420 });
+  expect(
+    resolveNavigationContentFrame(geometry, layout)?.availableContentFrame
+      .height,
+  ).toBe(635);
+});

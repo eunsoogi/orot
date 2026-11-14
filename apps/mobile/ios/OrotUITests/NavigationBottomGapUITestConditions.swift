@@ -30,8 +30,8 @@ enum NavigationBottomGapUITestConditions {
             "contentRegion": region, "scrollViewport": scroll, "longHomeContent": content,
             "actionOverlay": overlay, "nativeNavigation": navigation,
         ], testCase: testCase)
-        // The whole Home view includes its internal 16pt padding. The outer scroller adds only
-        // the shared 16pt gap and real bottom-action overlap, not another absent-bar reservation.
+        // The whole Home view includes its internal 16pt padding. The outer scroller adds
+        // the shared 16pt gap and the greater of system clearance or real action overlap.
         XCTAssertFalse(scroll.isEmpty || content.isEmpty || region.isEmpty || navigation.isEmpty)
         XCTAssertGreaterThan(content.height, scroll.height, "Long content is required; clipped AX frames cannot prove bottom padding")
         XCTAssertLessThanOrEqual(content.minY, scroll.minY)
@@ -39,17 +39,18 @@ enum NavigationBottomGapUITestConditions {
         let overlap = max(0, min(scroll.maxY, overlay.maxY) - max(scroll.minY, overlay.minY))
         if rail {
             XCTAssertEqual(overlap, 0, accuracy: 1, "A side rail must not create a bottom overlay")
-            XCTAssertEqual(scroll.maxY - content.maxY, 16, accuracy: 1, "Unexpected bottom band beside the rail")
+            XCTAssertEqual(scroll.maxY - content.maxY, safe.bottom + 16, accuracy: 1, "Unexpected bottom band beside the rail")
         } else {
-            XCTAssertEqual(scroll.maxY - content.maxY, overlap + 16, accuracy: 1, "Reserve only the measured bottom action and shared gap")
+            XCTAssertEqual(scroll.maxY - content.maxY, max(overlap, safe.bottom) + 16, accuracy: 1, "Reserve only the measured bottom action and shared gap")
         }
         // This Home observation has no keyboard or modal owner. Bind the listener to the
-        // actual app root before requiring the viewport to fill, not merely fit, its safe bottom.
+        // actual app root before requiring the viewport to fill, not merely fit, the physical bottom while preserving end-item clearance.
         XCTAssertFalse(keyboardExists, "Home bottom geometry requires a dismissed keyboard")
         XCTAssertEqual(safe.frame.minX, window.minX, accuracy: 1)
         XCTAssertEqual(safe.frame.minY, window.minY, accuracy: 1)
         XCTAssertEqual(safe.frame.width, window.width, accuracy: 1)
         XCTAssertEqual(safe.frame.height, window.height, accuracy: 1)
-        XCTAssertEqual(scroll.maxY, safe.frame.maxY - safe.bottom, accuracy: 1, "The viewport must fill the available safe height")
+        XCTAssertEqual(scroll.maxY, safe.frame.maxY, accuracy: 1, "Scrolling pixels must reach the physical bottom")
+        XCTAssertLessThanOrEqual(content.maxY, safe.frame.maxY - safe.bottom, "The last item must remain clear of the home indicator")
     }
 }
