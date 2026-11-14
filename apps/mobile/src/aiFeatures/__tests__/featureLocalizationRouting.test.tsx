@@ -135,7 +135,6 @@ const featureScreens = [
       'ragConversation.insufficient',
       'ragConversation.unavailable',
       'ragConversation.speakerUser',
-      'treatmentSafety.open',
     ],
   },
   {

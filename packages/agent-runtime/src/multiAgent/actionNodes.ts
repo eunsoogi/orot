@@ -121,6 +121,7 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
         context.pendingNativeToolCallId = undefined;
         return {
           phase: 'revised_response' as const,
+          committedAction: true,
           evidenceReferences: referencesFromBatch(combined),
           pendingOperation: undefined,
         };

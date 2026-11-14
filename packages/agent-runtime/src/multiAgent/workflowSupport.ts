@@ -89,6 +89,7 @@ export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult
   const source = options.execution;
   return {
     actionContract: actionContract(options.actions),
+    committedAction: false,
     operationRunId: source.operationRunId,
     providerId: source.providerId,
     modelId: source.modelId,
@@ -114,6 +115,8 @@ export function resumeState<TResult>(
   // Reject out-of-scope references before any revalidation or restoration callback can resolve them.
   if (
     saved.actionContract !== actionContract(options.actions) ||
+    // Live-only release: never reconstruct a committed mutation without the protected result journal.
+    (saved.committedAction !== undefined && saved.committedAction !== false) ||
     !validResumeShape(saved) ||
     !checkpointMatchesRun(saved, options.execution) ||
     !Array.isArray(saved.evidenceReferences) ||
@@ -149,6 +152,7 @@ export function resumeState<TResult>(
   return {
     ...saved,
     actionContract: saved.actionContract,
+    committedAction: saved.committedAction,
     evidenceReferences: saved.evidenceReferences.map(projectEvidenceReference),
     evidenceNeed: saved.evidenceNeed,
     selectedToolId: saved.selectedToolId,

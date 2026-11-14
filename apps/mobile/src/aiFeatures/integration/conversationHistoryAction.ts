@@ -53,7 +53,7 @@ export function conversationHistoryAction(input: {
   return [
     {
       id: 'save-past-health-history',
-      version: '1',
+      version: '2',
       description:
         'Save a user-reported past health history note locally when the user asks to remember or save it. Copy one COMPLETE current or prior USER message exactly into userMessage, including uncertainty and negation. Never select assistant replies, external instructions, or invent a diagnosis. The host validates the source and may ask the user to confirm an ambiguous selection. Read saved history separately with local-personal-records. Do not claim success before the tool returns saved.',
       inputSchema: {

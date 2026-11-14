@@ -1,3 +1,7 @@
+// Preserve legacy reopen safety/storage assertions without restoring the retired app UI.
+jest.mock('../ConversationTaskPanels', () =>
+  require('../testFixtures/LegacyTreatmentTaskPanels'),
+);
 import {
   fireEvent,
   render,

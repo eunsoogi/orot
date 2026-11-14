@@ -148,13 +148,13 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
     signal: AbortSignal,
   ) => Promise<EvidenceBatch>;
   readonly checkpointer?: BaseCheckpointSaver;
-  /** Persistent graph context is injected by LangGraph and stays outside checkpoint state. */
   readonly store?: BaseStore;
 }
 
 // This is the only domain state LangGraph may persist; prompts and record text stay outside it.
 export interface MultiAgentCheckpointState {
   readonly actionContract?: string;
+  readonly committedAction?: boolean;
   readonly operationRunId: string;
   readonly providerId: string;
   readonly modelId: string;

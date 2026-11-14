@@ -135,3 +135,18 @@ test('old action contracts and pending actions cannot resume as fresh work', () 
   ).toBeUndefined();
   expect(resumeState(saved, options)).toBeDefined();
 });
+
+test('live-only release fences committed action resumes but leaves read-only safe boundaries resumable', () => {
+  const { options } = setup();
+  const state = {
+    ...initialState(options),
+    phase: 'revised_response' as const,
+    toolCalls: 1,
+    modelCalls: 1,
+    evidenceReferences: [{ ...item, content: undefined }],
+    selectedToolId: undefined,
+    pendingOperation: undefined,
+  };
+  expect(resumeState({ ...state, committedAction: false }, options)).toBeDefined();
+  expect(resumeState({ ...state, committedAction: true }, options)).toBeUndefined();
+});
