@@ -1,4 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  notifyLocalDataCleared,
+  notifyLocalSourceDeleted,
+} from '../../storage/localDataClearEvents';
 import { AppState } from 'react-native';
 import { SavedMemoryBrowser } from '../SavedMemoryBrowser';
 
@@ -80,3 +84,44 @@ it('bounds displayed rows and resets the page on refresh', async () => {
   await fireEvent.press(screen.getByText('새로고침'));
   expect(screen.queryByText('합성 20')).toBeNull();
 });
+
+const deletionEvents = [
+  ['all data', () => notifyLocalDataCleared()],
+  ['local source', () => notifyLocalSourceDeleted('local')],
+  ['HealthKit source', () => notifyLocalSourceDeleted('healthkit')],
+] as const;
+
+it.each(deletionEvents)(
+  'clears cached memory after %s deletion',
+  async (_name, notify) => {
+    await render(<SavedMemoryBrowser load={async () => [memory]} />);
+    await fireEvent.press(screen.getByText('저장된 메모리 보기'));
+    expect(screen.getByText(memory.text)).toBeTruthy();
+    await act(async () => notify());
+    expect(screen.queryByText(memory.text)).toBeNull();
+    expect(screen.getByText('저장된 메모리 보기')).toBeTruthy();
+  },
+);
+
+it.each(deletionEvents)(
+  'rejects late reads after %s deletion and permits a fresh open',
+  async (_name, notify) => {
+    let resolve!: (value: (typeof memory)[]) => void;
+    const load = jest
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise(done => {
+            resolve = done;
+          }),
+      )
+      .mockResolvedValue([]);
+    await render(<SavedMemoryBrowser load={load} />);
+    await fireEvent.press(screen.getByText('저장된 메모리 보기'));
+    await act(async () => notify());
+    await fireEvent.press(screen.getByText('저장된 메모리 보기'));
+    await act(async () => resolve([memory]));
+    expect(screen.queryByText(memory.text)).toBeNull();
+    expect(screen.getByText('아직 저장된 메모리가 없어요.')).toBeTruthy();
+  },
+);

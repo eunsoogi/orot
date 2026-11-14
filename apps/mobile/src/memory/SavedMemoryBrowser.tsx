@@ -5,6 +5,10 @@ import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { formatDateTime } from '../i18n';
+import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../storage/localDataClearEvents';
 import { loadSavedLocalMemories } from './savedLocalMemories';
 
 type SavedMemory = Omit<AgentMemoryHit, 'score'>;
@@ -35,12 +39,17 @@ export function SavedMemoryBrowser({
     setState('idle');
   };
   useEffect(() => {
+    // Deletion fences invalidate cached text and pending reads, even if later cleanup fails.
+    const unsubscribeClear = subscribeLocalDataClear(close);
+    const unsubscribeSource = subscribeLocalSourceDeletion(close);
     const subscription = AppState.addEventListener('change', next => {
       if (next !== 'active') close();
     });
     return () => {
       generation.current += 1;
       subscription.remove();
+      unsubscribeClear();
+      unsubscribeSource();
     };
   }, []);
 
