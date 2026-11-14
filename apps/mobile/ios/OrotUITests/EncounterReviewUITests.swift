@@ -4,6 +4,13 @@ import XCTest
 final class EncounterReviewUITests: OrotFailFastTestCase {
     private var readbackSequence = 0
     private var inputObservation: EncounterInputObservation?
+
+    override func setUp() {
+        super.setUp()
+        // A failed native precondition must stop before a subsequent save or unbounded status wait.
+        continueAfterFailure = false
+    }
+
     @MainActor
     func testSavedRecordingReviewRestoresWithoutAutomaticExtractionOrApproval() throws {
         let fixture = "test-persistence-" + UUID().uuidString.lowercased()
@@ -25,7 +32,7 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         XCTAssertTrue(evidence.exists)
         status(app, contains: "근거와 충돌")
         let input = FormUITestConditions.multilineInput(app, identifier: "encounter-text-candidate-0")
-        FormUITestConditions.replace(input, with: "회전 중 유지할 검토", in: app, scrollID: "navigation-route-scroll")
+        guard FormUITestConditions.replace(input, with: "회전 중 유지할 검토", in: app, scrollID: "navigation-route-scroll", useNativeSelectAllMenu: true) else { return }
         XCUIDevice.shared.orientation = .landscapeLeft
         XCTAssertEqual(input.value as? String, "회전 중 유지할 검토")
         XCUIDevice.shared.orientation = .portrait
@@ -39,8 +46,11 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         XCTAssertEqual(try report(app)["modelCalls"] as? Int, 0)
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
         let restoredInput = FormUITestConditions.multilineInput(app, identifier: "encounter-text-candidate-0")
-        FormUITestConditions.replace(restoredInput, with: "사용자가 검토한 약물 언급", in: app, scrollID: "navigation-route-scroll", observeInput: inputObservation?.record)
-        reveal(app, "encounter-save", avoiding: restoredInput).tap()
+        // Observe Select All rather than assuming Command-A selected the complete native field.
+        guard FormUITestConditions.replace(restoredInput, with: "사용자가 검토한 약물 언급", in: app, scrollID: "navigation-route-scroll", observeInput: inputObservation?.record, useNativeSelectAllMenu: true) else { return }
+        let save = reveal(app, "encounter-save", avoiding: restoredInput)
+        XCTAssertEqual(restoredInput.value as? String, "사용자가 검토한 약물 언급")
+        save.tap()
         status(app, contains: "저장했어요")
         app.terminate()
         launch(app, fixture: fixture, mode: "restore")
