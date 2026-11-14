@@ -71,6 +71,8 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
             XCTAssertNil(selection.layer.animation(forKey: "navigation-droplet"))
         } else {
             XCTAssertNotNil(selection.layer.animation(forKey: "navigation-droplet"))
+            selection.move(to: selection.targetFrame, animated: false, vertical: false)
+            XCTAssertNotNil(selection.layer.animation(forKey: "navigation-droplet"))
         }
         XCTAssertEqual(NavigationSelectionHistory.last.object(forKey: window), "tab-2")
         let otherWindow = UIWindow(windowScene: scene)

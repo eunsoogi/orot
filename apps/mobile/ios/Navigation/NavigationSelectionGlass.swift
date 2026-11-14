@@ -41,6 +41,10 @@ final class NavigationSelectionGlass: UIVisualEffectView {
 
     /// Sample an interrupted presentation before replacing animations; the model always rests circular.
     func move(to destination: CGRect, animated: Bool, vertical: Bool) {
+        // Repeated bridge/layout delivery of the same selection must not cancel its active journey.
+        if destination == targetFrame, !UIAccessibility.isReduceMotionEnabled {
+            return
+        }
         let previous = layer.presentation() ?? layer
         let startPosition = previous.position
         let startBounds = previous.bounds
