@@ -8,7 +8,7 @@ function queryWindow(start: string, end: string) {
   return { startDay: start, endDay: end };
 }
 
-it('uses a filled next-visit card and a scalable compact selection action', async () => {
+it('uses a neutral next-visit card and a scalable compact selection action', async () => {
   const longTitle =
     'Synthetic Cardiology and Neurology appointment center for follow-up care';
   const source = event('clinic', '2035-06-02T00:00:00.000Z');
@@ -34,10 +34,10 @@ it('uses a filled next-visit card and a scalable compact selection action', asyn
 
   const card = calendar.getByTestId('calendar-next-visit');
   expect(StyleSheet.flatten(card.props.style)).toMatchObject({
-    backgroundColor: appColors.primarySoft,
+    backgroundColor: appColors.background,
     borderRadius: 12,
-    borderWidth: 0,
-    borderLeftWidth: 0,
+    borderWidth: 1,
+    borderLeftWidth: 1,
     minWidth: 0,
     padding: 14,
   });
@@ -52,7 +52,7 @@ it('uses a filled next-visit card and a scalable compact selection action', asyn
   const badge = calendar.getByText('다음 외래 방문');
   expect(StyleSheet.flatten(badge.props.style)).toMatchObject({
     backgroundColor: appColors.surface,
-    color: appColors.primaryText,
+    color: appColors.text,
     flexShrink: 1,
   });
   const selection = calendar.getByTestId('calendar-candidate-clinic');
@@ -98,7 +98,7 @@ it('exposes the exact selected event and disables choices while confirmation is 
     disabled: true,
   });
   expect(StyleSheet.flatten(selectedAction.props.style)).toMatchObject({
-    backgroundColor: appColors.primaryAction,
+    backgroundColor: appColors.surface,
   });
   expect(calendar.getByText('선택됨')).toBeTruthy();
   const otherAction = calendar.getByTestId('calendar-candidate-other-clinic');
@@ -109,4 +109,35 @@ it('exposes the exact selected event and disables choices while confirmation is 
 
   await fireEvent.press(selectedAction);
   expect(onSelectEvent).not.toHaveBeenCalled();
+});
+
+// The selected date retains its shape and trait without blue selection paint.
+it('keeps selected dates neutral and explicitly selected', async () => {
+  const calendar = await render(
+    <CalendarMonthView
+      appointmentsLoading={false}
+      candidatesLoaded
+      events={[]}
+      initialDate={new Date(2035, 5, 2)}
+      linkedAppointment={null}
+      onSelectEvent={jest.fn()}
+      queryWindow={queryWindow('2035-06-01', '2035-06-10')}
+      resultsMayBeIncomplete={false}
+    />,
+  );
+  expect(
+    calendar.getByTestId('calendar-day-2035-06-02').props.accessibilityState,
+  ).toEqual({ selected: true });
+  expect(
+    StyleSheet.flatten(
+      calendar.getByTestId('calendar-day-face-2035-06-02').props.style,
+    ),
+  ).toMatchObject({ backgroundColor: appColors.border });
+  await fireEvent.press(calendar.getByTestId('calendar-day-2035-06-03'));
+  expect(
+    calendar.getByTestId('calendar-day-2035-06-03').props.accessibilityState,
+  ).toEqual({ selected: true });
+  expect(
+    calendar.getByTestId('calendar-day-2035-06-02').props.accessibilityState,
+  ).toEqual({ selected: false });
 });
