@@ -23,7 +23,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   status: { color: appColors.secondary },
-  disabled: { opacity: 0.5 },
 });
 
 /** Displays only the owner-reported voice state; pressing never starts audio by itself. */
@@ -96,7 +95,7 @@ export function VoiceConversationControl({
         }}
         disabled={unavailable}
         onPress={phase === 'error' ? onRecover : active ? onStop : onStart}
-        style={[styles.button, unavailable && styles.disabled]}
+        style={styles.button}
         testID="conversation-voice-control"
       >
         <ComposerGlassBackground testID="voice-control-glass" />
@@ -108,7 +107,8 @@ export function VoiceConversationControl({
                 ? 'stop.fill'
                 : 'waveform'
           }
-          color={appColors.text}
+          // Dim only the glyph; UIVisualEffectView and its ancestors must keep alpha 1.
+          color={unavailable ? appColors.secondary : appColors.text}
         />
       </Pressable>
     </View>

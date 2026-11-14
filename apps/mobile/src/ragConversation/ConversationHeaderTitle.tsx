@@ -34,13 +34,14 @@ export function ConversationHeaderTitle({
               accessibilityLabel={historyLabel}
               disabled={!onHistory}
               onPress={onHistory}
-              style={[styles.sessionAction, !onHistory && styles.disabled]}
+              style={styles.sessionAction}
               testID="rag-conversation-sessions-toggle"
             >
               <ComposerGlassBackground testID="rag-conversation-history-glass" />
               <AppSymbol
                 name="clock.arrow.circlepath"
-                color={appColors.primaryText}
+                // A disabled action must not fade its native Glass backing.
+                color={onHistory ? appColors.primaryText : appColors.secondary}
               />
             </Pressable>
             <Pressable
