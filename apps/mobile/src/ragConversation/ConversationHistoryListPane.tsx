@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import {
   Platform,
@@ -36,6 +37,7 @@ const NativeHistory =
 /** Keeps UIKit row gestures beside the React-owned header and reversible session actions. */
 export function ConversationHistoryListPane({
   deleted,
+  feedback,
   onCreateSession,
   onDeleteSession,
   onOpenSavedAnalysis,
@@ -45,6 +47,7 @@ export function ConversationHistoryListPane({
   rows,
 }: {
   readonly deleted: boolean;
+  readonly feedback?: ReactNode;
   readonly onCreateSession: () => void;
   readonly onDeleteSession: (id: number) => void;
   readonly onOpenSavedAnalysis?: () => void;
@@ -73,6 +76,7 @@ export function ConversationHistoryListPane({
         onOpenSavedVisitQuestions={onOpenSavedVisitQuestions}
         showNewSession={!hasDock}
       />
+      {feedback}
       {NativeHistory ? (
         <NativeHistory
           testID="conversation-history-list"
