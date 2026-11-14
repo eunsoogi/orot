@@ -49,16 +49,18 @@ export function VoiceConversationScreen({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={press}
-      style={[styles.button, danger && styles.end]}
+      style={symbol ? styles.callAction : styles.button}
     >
       {symbol ? (
-        <AppSymbol
-          name={symbol}
-          size={28}
-          color={danger ? appColors.onDanger : appColors.text}
-        />
+        <View style={[styles.controlDisc, danger && styles.end]}>
+          <AppSymbol
+            name={symbol}
+            size={28}
+            color={danger ? appColors.onDanger : appColors.text}
+          />
+        </View>
       ) : null}
-      <AppText style={danger ? styles.endText : styles.label}>{label}</AppText>
+      <AppText style={styles.label}>{label}</AppText>
     </Pressable>
   );
   return (
@@ -112,6 +114,8 @@ export function VoiceConversationScreen({
                 onInterrupt,
                 'voice-call-interrupt',
               )}
+          </View>
+          <View style={styles.actions}>
             {muted
               ? action(
                   t('ragConversation.voice.resume'),
@@ -146,12 +150,6 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, padding: 24, gap: 24 },
   identity: { alignSelf: 'center', maxWidth: '100%' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 20 },
-  title: {
-    color: appColors.text,
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
   status: { color: appColors.text, textAlign: 'center' },
   note: { color: appColors.secondary, textAlign: 'center' },
   actions: {
@@ -171,7 +169,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: appColors.surface,
   },
-  label: { color: appColors.text },
+  callAction: { minWidth: 100, maxWidth: 160, alignItems: 'center', gap: 10 },
+  controlDisc: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: appColors.surface,
+  },
+  label: { color: appColors.text, textAlign: 'center' },
   end: { backgroundColor: appColors.dangerAction },
-  endText: { color: appColors.onDanger },
 });
