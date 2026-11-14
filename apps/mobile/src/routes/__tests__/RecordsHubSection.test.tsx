@@ -1,14 +1,39 @@
-import { fireEvent, render, screen, act } from '@testing-library/react-native';
-import { Text } from 'react-native';
-import { RecordsHubSection } from '../RecordsHubSection';
+import {
+  fireEvent,
+  render,
+  screen,
+  act,
+  within,
+} from '@testing-library/react-native';
+import { useContext } from 'react';
+import { Text, ScrollView } from 'react-native';
+import {
+  RecordsHubSection,
+  RecordsHubScrollHeaderContext,
+} from '../RecordsHubSection';
+
+function ScheduleContent() {
+  const header = useContext(RecordsHubScrollHeaderContext);
+  return (
+    <ScrollView testID="schedule-scroll">
+      {header}
+      <Text>Calendar content</Text>
+    </ScrollView>
+  );
+}
 
 test('exposes separate neutral record and schedule selections without mixing content', async () => {
   const select = jest.fn(async () => {});
   await render(
     <RecordsHubSection selected="schedule" onSelect={select}>
-      <Text>Calendar content</Text>
+      <ScheduleContent />
     </RecordsHubSection>,
   );
+  expect(
+    within(screen.getByTestId('schedule-scroll')).getByTestId(
+      'records-hub-header',
+    ),
+  ).toBeVisible();
   expect(
     screen.getByTestId('records-section-schedule').props.accessibilityState
       .selected,
