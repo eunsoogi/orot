@@ -16,7 +16,11 @@ final class AssistantAppearanceUITests: OrotFailFastTestCase {
         XCTAssertTrue(name.isHittable)
         name.tap()
         ConversationComposerDockUITestConditions.waitForVisibleKeyboard(in: app)
-        name.typeText("Momo")
+        // Synchronize controlled input events, then prove the exact draft before persistence.
+        for character in "Momo" {
+            app.typeText(String(character))
+        }
+        guard waitForName(name, equals: "Momo") else { return }
         let save = app.buttons["assistant-appearance-save"]
         guard FormUITestConditions.reveal(save, in: app, scrollID: "assistant-appearance-scroll") != nil else { return }
         XCTAssertTrue(save.isHittable && save.isEnabled)

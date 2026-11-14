@@ -146,7 +146,10 @@ test('scalar traces preserve ordering, error isolation, gates and bounded output
     const form = readFileSync('apps/mobile/ios/OrotUITests/FormUITestConditions.swift', 'utf8');
     assert.match(form, /app\.typeKey\("a", modifierFlags: \.command\)/);
     assert.match(form, /app\.typeText\(XCUIKeyboardKey.delete.rawValue\)/);
-    assert.match(form, /measure\("exact-empty"\) \{ exactValue\(input, equals: ""\) \}/);
+    assert.match(
+      form,
+      /guard measure\("exact-empty", \{ exactValue\(input, equals: ""\) \}\) else \{ return false \}/,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

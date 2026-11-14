@@ -197,7 +197,8 @@ final class NextVisitReviewUITests: OrotFailFastTestCase {
 
     @MainActor
     private func replace(_ app: XCUIApplication, _ text: String) {
-        FormUITestConditions.replace(node(app, "next-visit-question-text-0"), with: text, in: app, scrollID: "next-visit-questions-scroll")
+        // This modal does not reliably honor hardware Command-A; use its visible native selection action.
+        FormUITestConditions.replace(node(app, "next-visit-question-text-0"), with: text, in: app, scrollID: "next-visit-questions-scroll", useNativeSelectAllMenu: true)
     }
 
     @MainActor
