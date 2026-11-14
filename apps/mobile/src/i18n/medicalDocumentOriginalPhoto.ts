@@ -3,6 +3,9 @@ export const medicalDocumentOriginalPhotoKo = {
   'medicalDocument.review.originalPhoto': '선택한 원본 사진',
   'medicalDocument.review.photoReselect':
     '글자가 정확하지 않으면 가져오지 않고 다른 사진을 선택해 주세요.',
+  'medicalDocument.source.original.openFullScreen':
+    '원본 사진 전체 화면으로 보기',
+  'medicalDocument.source.original.closeFullScreen': '전체 화면 닫기',
   'medicalDocument.source.original.title': '원본 사진',
   'medicalDocument.source.original.loading':
     '저장된 원본 사진을 불러오고 있어요.',
