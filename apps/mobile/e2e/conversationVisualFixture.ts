@@ -207,13 +207,15 @@ export const sendSyntheticConversation: ComponentProps<
     // Exercise the production observer with summary-only events; this path never calls a model or persistence layer.
     for (const event of syntheticToolEvents) observer?.onToolEvent?.(event);
   }
-  if (question.includes('failure')) return { status: 'unavailable' };
+  // Native autocapitalization may change fixture keywords on commit, not their intended control state.
+  const controlQuestion = question.toLowerCase();
+  if (controlQuestion.includes('failure')) return { status: 'unavailable' };
   observer?.onTaskStreamEvent?.({ type: 'started' });
   observer?.onTaskStreamEvent?.({
     type: 'text_delta',
     text: syntheticConversationAnswer,
   });
-  if (question.includes('pending')) {
+  if (controlQuestion.includes('pending')) {
     // Stay pending until the real Stop action aborts; do not make timing determine the state.
     return new Promise(resolve => {
       if (signal?.aborted) resolve({ status: 'unavailable' });
