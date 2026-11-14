@@ -51,9 +51,8 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         let rootFrame = root.convert(root.bounds, to: window)
         verify(rootFrame, in: window, avoiding: systemRegion, content: contentSafeFrame)
         XCTAssertEqual(rootFrame.height, NavigationRootGlassBar.railHeight, accuracy: 0.5)
-        // The root stack is centered below the real indicator, independently of its fixed hit targets.
-        let rootCenter = (192 + 669 - 46) / 2 + NavigationRootGlassBar.contextualBackGroupHeight / 2
-        XCTAssertEqual(rootFrame.midY, rootCenter, accuracy: 0.5)
+        // Bottom anchoring uses the measured system clearance while preserving fixed hit targets.
+        XCTAssertEqual(rootFrame.maxY, 669 - 46, accuracy: 0.5)
         let backStack = try XCTUnwrap(portal.subviews.compactMap { $0 as? UIStackView }.first { $0.accessibilityIdentifier == "navigation-toolbar" })
         let backButton = try XCTUnwrap(backStack.arrangedSubviews.compactMap { $0 as? UIButton }.first)
         let backFrame = backButton.convert(backButton.bounds, to: window)
