@@ -118,6 +118,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
     readonly by: 'source_kind';
     mergeValues(values: readonly JsonValue[], input: TaskResponderInput): JsonValue;
   };
+  /** Optional content-free reply on the first validated native tool selection, never final output. */
+  initialToolResponse?(text: string): string | undefined;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;
@@ -149,10 +151,8 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
   /** Persistent graph context is injected by LangGraph and stays outside checkpoint state. */
   readonly store?: BaseStore;
 }
-
 export type MultiAgentPhase =
   'task_response' | 'evidence_research' | 'evidence_search' | 'revised_response' | 'complete';
-
 // This is the only domain state LangGraph may persist; prompts and record text stay outside it.
 export interface MultiAgentCheckpointState {
   readonly operationRunId: string;
@@ -173,7 +173,6 @@ export interface MultiAgentCheckpointState {
   };
   readonly terminal: boolean;
 }
-
 export type ProviderStopObservation =
   'not_started' | 'iterator_return_requested' | 'underlying_call_unconfirmed';
 
@@ -245,6 +244,7 @@ export type MultiAgentProgressEvent =
     };
 
 export type MultiAgentResponderStreamEvent =
+  | { readonly type: 'initial_response'; readonly callId: string; readonly text: string }
   | { readonly type: 'started' }
   | { readonly type: 'text_delta'; readonly text: string }
   | { readonly type: 'text_snapshot'; readonly text: string };

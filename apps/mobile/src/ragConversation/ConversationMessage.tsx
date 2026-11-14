@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText as Text } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
+import { ConversationInitialResponse } from './ConversationInitialResponse';
 import { ConversationSources } from './ConversationSources';
 import { ConversationToolEvents } from './ConversationToolEvents';
 import { HealthSummaryCard } from './HealthSummaryCard';
@@ -20,6 +21,12 @@ export interface DisplayMessage extends RagConversationMessage {
   >;
   readonly citations?: readonly EvidenceReference[];
   readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
+  /** Ephemeral early reply, separate from validated answers and durable history. */
+  readonly initialResponse?: {
+    readonly callId: string;
+    readonly text: string;
+    readonly source?: 'receipt';
+  };
   readonly activity?: string;
   readonly streaming?: boolean;
   readonly incomplete?: boolean;
@@ -139,6 +146,12 @@ export function ConversationMessage({
           <Text style={[styles.messageText, styles.userText]}>
             {t('ragConversation.photo.message')}
           </Text>
+        ) : null}
+        {!user && message.streaming && message.initialResponse ? (
+          <ConversationInitialResponse
+            key={message.initialResponse.callId}
+            response={message.initialResponse}
+          />
         ) : null}
         {message.content ? (
           <MessageText
