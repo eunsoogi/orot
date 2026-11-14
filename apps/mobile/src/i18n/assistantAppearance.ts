@@ -3,6 +3,8 @@ export const assistantAppearanceKo = {
   'assistantAppearance.loading': '설정을 불러오는 중',
   'assistantAppearance.loadError': '비서 설정을 불러오지 못했어요.',
   'assistantAppearance.retry': '다시 시도',
+  'assistantAppearance.welcome': '함께할 비서를 골라주세요',
+  'assistantAppearance.start': '설정하고 시작하기',
   'assistantAppearance.title': '비서 꾸미기',
   'assistantAppearance.introduction':
     '함께할 비서의 모습을 선택해 주세요. 선택은 이 기기에만 저장돼요.',

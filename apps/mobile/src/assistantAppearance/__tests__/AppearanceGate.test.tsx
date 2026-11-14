@@ -62,17 +62,21 @@ test('requires explicit selection and keeps failed save at setup before opening 
       <Content />
     </AssistantAppearanceProvider>,
   );
-  await screen.findByText('비서 꾸미기');
+  await screen.findByText('함께할 비서를 골라주세요');
   expect(screen.queryByText('일반 화면')).toBeNull();
   expect(
-    screen.getByRole('button', { name: '저장' }).props.accessibilityState
-      .disabled,
+    screen.getByRole('button', { name: '설정하고 시작하기' }).props
+      .accessibilityState.disabled,
   ).toBe(true);
   await fireEvent.press(screen.getByRole('radio', { name: '기본' }));
-  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: '설정하고 시작하기' }),
+  );
   await screen.findByText('저장하지 못했어요. 다시 시도해 주세요.');
   expect(screen.queryByText('일반 화면')).toBeNull();
-  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: '설정하고 시작하기' }),
+  );
   await screen.findByText('일반 화면');
   expect(store.save).toHaveBeenCalledTimes(2);
 });
@@ -114,7 +118,7 @@ test('ignores synthetic flags in the production gate', async () => {
       <Content />
     </AssistantAppearanceProvider>,
   );
-  await screen.findByText('비서 꾸미기');
+  await screen.findByText('함께할 비서를 골라주세요');
   expect(screen.queryByText('일반 화면')).toBeNull();
   expect(store.save).not.toHaveBeenCalled();
 });
@@ -137,14 +141,16 @@ test('keeps clear/reconfigure behind the gate after loading a saved appearance',
   expect(store.save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
   await fireEvent.press(screen.getByRole('button', { name: '선택 지우기' }));
-  await screen.findByText('비서 꾸미기');
+  await screen.findByText('함께할 비서를 골라주세요');
   expect(unmounted).not.toHaveBeenCalled();
   expect(
-    screen.getByRole('button', { name: '저장' }).props.accessibilityState
-      .disabled,
+    screen.getByRole('button', { name: '설정하고 시작하기' }).props
+      .accessibilityState.disabled,
   ).toBe(true);
   await fireEvent.press(screen.getByRole('radio', { name: '별' }));
-  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: '설정하고 시작하기' }),
+  );
   await waitFor(() =>
     expect(store.save).toHaveBeenCalledWith({ avatar: 'star', name: null }),
   );
