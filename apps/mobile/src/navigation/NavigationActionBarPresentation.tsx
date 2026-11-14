@@ -79,6 +79,7 @@ export function NavigationActionBarPresentation({
   const hasContextualBack = actions.some(action => action.id === 'back');
   const {
     rightLayout,
+    keyboardSuspended,
     pageLayout,
     height: railHeight,
     bottomInset: railBottomInset,
@@ -126,14 +127,16 @@ export function NavigationActionBarPresentation({
   const navWidth = row.plan?.navWidth ?? 0;
   const pageWidth = row.plan?.pageWidth ?? 0;
   const pageLeft = row.plan?.pageLeft ?? 0;
-  const displayedNavigation = singleRow
-    ? hasRootTabs && row.overflow
-      ? [
-          ...row.directNavigation,
-          { ...row.more, disabled: pageActionsDisabled },
-        ]
-      : row.directNavigation
-    : laneActions;
+  const displayedNavigation = keyboardSuspended
+    ? []
+    : singleRow
+      ? hasRootTabs && row.overflow
+        ? [
+            ...row.directNavigation,
+            { ...row.more, disabled: pageActionsDisabled },
+          ]
+        : row.directNavigation
+      : laneActions;
   const railFrameStyle = navigationRailFrameStyle(rightLayout, railHeight);
   const surfaceTestID =
     Surface === NavigationGlassSurface && Platform.OS === 'ios'
@@ -155,7 +158,8 @@ export function NavigationActionBarPresentation({
   const hostStyle: StyleProp<ViewStyle> = isRightRail
     ? [styles.railHost, railFrameStyle]
     : styles.safeArea;
-  const pageDock = managedBottom ? (
+  // Keep transiently occluded controls out of native hit testing and VoiceOver.
+  const pageDock = keyboardSuspended ? null : managedBottom ? (
     singleRow &&
     (row.directPage.length > 0 || (!hasRootTabs && row.overflow)) ? (
       <NavigationBottomPageActions
