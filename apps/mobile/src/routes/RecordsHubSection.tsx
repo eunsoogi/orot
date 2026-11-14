@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { createContext, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { RecordsHubBanner, RecordsHubHeadingContext } from './RecordsHubBanner';
@@ -6,6 +6,9 @@ import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
 import { t } from '../i18n';
 import { settleNavigationRequest } from '../navigation/nativeNavigationActions';
+
+// Schedule owns its vertical scroll; hand the same header into that owner.
+export const RecordsHubScrollHeaderContext = createContext<ReactNode>(null);
 
 type RecordsSection = 'records' | 'schedule';
 
@@ -29,42 +32,49 @@ export function RecordsHubSection({
       setPending(false);
     }
   }
+  const header = (
+    <View style={styles.header} testID="records-hub-header">
+      <RecordsHubBanner />
+      <View style={styles.tabs} testID="records-section-tabs">
+        {(['records', 'schedule'] as const).map(section => (
+          <Pressable
+            key={section}
+            accessibilityRole="button"
+            accessibilityLabel={t(`navigation.tabs.${section}`)}
+            testID={`records-section-${section}`}
+            accessibilityState={{
+              selected: selected === section,
+              disabled: pending || !onSelect,
+            }}
+            disabled={pending || !onSelect}
+            onPress={() => {
+              settleNavigationRequest(select(section));
+            }}
+            style={[styles.tab, selected === section && styles.selectedTab]}
+          >
+            <Text
+              style={[
+                styles.label,
+                selected === section && styles.selectedLabel,
+              ]}
+            >
+              {t(`navigation.tabs.${section}`)}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
   return (
     <View style={selected === 'schedule' ? styles.screen : styles.records}>
-      <View style={styles.header} testID="records-hub-header">
-        <RecordsHubBanner />
-        <View style={styles.tabs} testID="records-section-tabs">
-          {(['records', 'schedule'] as const).map(section => (
-            <Pressable
-              key={section}
-              accessibilityRole="button"
-              accessibilityLabel={t(`navigation.tabs.${section}`)}
-              testID={`records-section-${section}`}
-              accessibilityState={{
-                selected: selected === section,
-                disabled: pending || !onSelect,
-              }}
-              disabled={pending || !onSelect}
-              onPress={() => {
-                settleNavigationRequest(select(section));
-              }}
-              style={[styles.tab, selected === section && styles.selectedTab]}
-            >
-              <Text
-                style={[
-                  styles.label,
-                  selected === section && styles.selectedLabel,
-                ]}
-              >
-                {t(`navigation.tabs.${section}`)}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-      <RecordsHubHeadingContext.Provider value>
-        {children}
-      </RecordsHubHeadingContext.Provider>
+      {selected === 'records' ? header : null}
+      <RecordsHubScrollHeaderContext.Provider
+        value={selected === 'schedule' ? header : null}
+      >
+        <RecordsHubHeadingContext.Provider value>
+          {children}
+        </RecordsHubHeadingContext.Provider>
+      </RecordsHubScrollHeaderContext.Provider>
     </View>
   );
 }
