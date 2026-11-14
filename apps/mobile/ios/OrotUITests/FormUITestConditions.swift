@@ -124,7 +124,7 @@ enum FormUITestConditions {
             observeInput?(.beforeDelete)
             measure("delete-existing") { app.typeText(XCUIKeyboardKey.delete.rawValue) }
             observeInput?(.afterDelete)
-            _ = measure("exact-empty") { exactValue(input, equals: "") }
+            guard measure("exact-empty", { exactValue(input, equals: "") }) else { return false }
             observeInput?(.afterEmptyAssertion)
         }
         if !text.isEmpty {

@@ -87,6 +87,23 @@ enum NavigationPageActionUITestConditions {
         return exists && hittable && keyboardExists
     }
 
+    /// Native dock actions are not scroll content; observe their real keyboard boundary without dragging through it.
+    static func requireKeyboardAction(_ action: XCUIElement, in app: XCUIApplication, testCase: XCTestCase) throws {
+        ConversationComposerDockUITestConditions.waitForVisibleKeyboard(in: app)
+        let keyboard = app.keyboards.firstMatch
+        // Keyboard presentation can precede the dock layout; observe readiness without synthesizing corrective gestures.
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            action.exists && action.isEnabled && action.isHittable && app.frame.contains(action.frame) && action.frame.maxY <= keyboard.frame.minY
+        }, object: nil)
+        let settled = UITestConditions.wait(for: [ready]) == .completed
+        guard settled, keyboardActionReady(action, keyboard: keyboard, app: app, testCase: testCase) else {
+            XCTFail("The native action must remain directly reachable above the keyboard")
+            throw NSError(domain: "NavigationActionReadiness", code: 1)
+        }
+        XCTAssertTrue(action.isEnabled && app.frame.contains(action.frame))
+        XCTAssertLessThanOrEqual(action.frame.maxY, keyboard.frame.minY)
+    }
+
     /// Check real target frames in an already-open, standard-text detail route.
     static func assertSingleBottomRow(_ app: XCUIApplication, ids: [String], minimumWidths: [CGFloat], disabledIDs: Set<String>) {
         XCTAssertEqual(ids.count, minimumWidths.count)

@@ -87,8 +87,8 @@ for deletes in [true, false] {
       precondition(absent.0 == ["reveal", "tap", "focus", "select", "delete", "assert-empty", "type", "type", "assert-value"])
       precondition(absent.1 && absent.2 == "ab")
     } else {
-      precondition(absent.0.suffix(3) == ["type", "type", "assert-value"])
-      precondition(!absent.1 && absent.2 == "priorab")
+      precondition(absent.0 == ["reveal", "tap", "focus", "select", "delete", "assert-empty"])
+      precondition(!absent.1 && absent.2 == "prior")
     }
   }
 }
