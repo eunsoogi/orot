@@ -8,7 +8,7 @@ import type { NavigationGeometryPayload } from '../../navigation/navigationGeome
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../../navigation/navigationController';
 import type { AppNavigationRoute } from '../../routes/appNavigationRoute';
-import { source, restored } from './savedSummaryRouteFixture';
+import { source, restored } from '../__fixtures__/savedSummaryRouteFixture';
 
 const noInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const originalWindow = Dimensions.get('window');
