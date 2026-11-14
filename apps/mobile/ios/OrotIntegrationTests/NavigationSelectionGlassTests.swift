@@ -9,6 +9,10 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
         if #available(iOS 26.0, *), !UIAccessibility.isReduceTransparencyEnabled {
             XCTAssertTrue(indicator.effect is UIGlassEffect)
         }
+        if UIAccessibility.isReduceTransparencyEnabled {
+            XCTAssertNil(indicator.effect)
+            XCTAssertEqual(indicator.backgroundColor, .systemGray4)
+        }
         XCTAssertFalse(indicator.isUserInteractionEnabled)
         let first = CGRect(x: 2, y: 2, width: 44, height: 44)
         let second = first.offsetBy(dx: 0, dy: 56)
@@ -23,6 +27,9 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
             let middle = try XCTUnwrap(bounds.values?[1] as? NSValue).cgRectValue
             XCTAssertGreaterThan(middle.height, second.height)
             XCTAssertLessThan(middle.width, second.width)
+        }
+        if UIAccessibility.isReduceMotionEnabled {
+            XCTAssertNil(indicator.layer.animation(forKey: "navigation-droplet"))
         }
         indicator.move(to: third, animated: true, vertical: true)
         XCTAssertEqual(indicator.targetFrame, third)
