@@ -48,7 +48,9 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         let restoredInput = FormUITestConditions.multilineInput(app, identifier: "encounter-text-candidate-0")
         // Observe Select All rather than assuming Command-A selected the complete native field.
         guard FormUITestConditions.replace(restoredInput, with: "사용자가 검토한 약물 언급", in: app, scrollID: "navigation-route-scroll", observeInput: inputObservation?.record, useNativeSelectAllMenu: true) else { return }
-        let save = reveal(app, "encounter-save", avoiding: restoredInput)
+        // Save is a native dock action; observe keyboard clearance without scrolling through the editor.
+        let save = UITestConditions.element(app, "encounter-save")
+        try NavigationPageActionUITestConditions.requireKeyboardAction(save, in: app, testCase: self)
         XCTAssertEqual(restoredInput.value as? String, "사용자가 검토한 약물 언급")
         save.tap()
         status(app, contains: "저장했어요")
