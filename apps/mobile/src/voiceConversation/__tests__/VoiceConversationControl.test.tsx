@@ -20,6 +20,15 @@ test('offers explicit start and keeps stop reachable during active phases', asyn
     <VoiceConversationControl {...props} phase="idle" />,
   );
   expect(onStart).not.toHaveBeenCalled();
+  expect(screen.getByTestId('voice-control-glass').props.pointerEvents).toBe(
+    'none',
+  );
+  expect(screen.getByRole('button', { name: props.startLabel })).toHaveStyle({
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+  });
   await fireEvent.press(screen.getByRole('button', { name: props.startLabel }));
   expect(onStart).toHaveBeenCalledTimes(1);
   await view.rerender(

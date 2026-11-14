@@ -9,13 +9,16 @@ import {
 import { AppSymbol } from '../layout/AppSymbol';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
+import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
 import type { VoicePhase } from './voiceTurn';
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', justifyContent: 'flex-end' },
   button: {
-    minWidth: 44,
-    minHeight: 44,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -80,6 +83,7 @@ export function VoiceConversationControl({
           onPress={onFinish}
           style={styles.button}
         >
+          <ComposerGlassBackground />
           <AppSymbol name="checkmark" color={appColors.text} />
         </Pressable>
       ) : null}
@@ -95,6 +99,7 @@ export function VoiceConversationControl({
         style={[styles.button, unavailable && styles.disabled]}
         testID="conversation-voice-control"
       >
+        <ComposerGlassBackground testID="voice-control-glass" />
         <AppSymbol
           name={
             phase === 'error'

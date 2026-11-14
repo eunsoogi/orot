@@ -13,6 +13,15 @@ test('photo selection and removal are explicit actions, independent of send', as
       onRemove={onRemove}
     />,
   );
+  expect(screen.getByTestId('photo-control-glass').props.pointerEvents).toBe(
+    'none',
+  );
+  expect(screen.getByRole('button', { name: '사진 첨부' })).toHaveStyle({
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+  });
   await fireEvent.press(screen.getByRole('button', { name: '사진 첨부' }));
   expect(
     screen.getByRole('button', { name: '사진 첨부' }).props.accessibilityHint,
