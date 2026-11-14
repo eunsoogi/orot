@@ -124,12 +124,20 @@ export function createConversationColdRequest(input: {
       input.snapshots.set(id, snapshot);
       input.update(id, {
         requestActivity: snapshot.getSnapshot(),
+        // Replace globally reissued tool aliases before this owner can expose source actions.
+        messages: input
+          .find(id)
+          .messages.map(message =>
+            message.id === bubble.id
+              ? { ...message, sourceOwner, toolEvents: recovery.events }
+              : message,
+          ),
         pendingMessage: {
           id: bubble.id,
           content: bubble.content,
           activity: '',
           toolMessageId: requestId,
-          toolEvents: bubble.toolEvents,
+          toolEvents: recovery.events,
           sourceOwner,
         },
       });
@@ -141,7 +149,7 @@ export function createConversationColdRequest(input: {
         current,
         retained: turn,
         activity: snapshot,
-        initialToolEvents: bubble.toolEvents,
+        initialToolEvents: recovery.events,
         activityChanged: activityNotifier(current, input.update, id, snapshot),
       });
       input.activities.set(id, activity);

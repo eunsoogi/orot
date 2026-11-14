@@ -14,6 +14,12 @@ export interface ColdConversationSourceOwner {
   readonly requestId: string;
   readonly operationRunId: string;
 }
+export type ResolveColdConversationToolSource = (
+  owner: ColdConversationSourceOwner,
+  reference: ToolSourceReference,
+  signal: AbortSignal,
+  scope: ToolCallScope,
+) => Promise<EvidenceReference | undefined>;
 type Registration = {
   readonly owner: ColdConversationSourceOwner;
   readonly registry: LocalEvidenceReferenceRegistry;

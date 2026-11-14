@@ -71,6 +71,7 @@ export interface ConversationScreenProps {
     reference: EvidenceReference,
     owner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner,
   ) => void;
+  readonly resolveColdToolSource?: import('../aiFeatures/integration/coldConversationSourceResolvers').ResolveColdConversationToolSource;
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly prepareVisitQuestions?: NonNullable<
     ConversationScreenProps['onSend']

@@ -54,6 +54,7 @@ export function ConversationMessage({
   compact = false,
   toolSourceSessionId,
   resolveToolSource,
+  resolveColdToolSource,
   renderVisitQuestions,
 }: {
   readonly message: DisplayMessage;
@@ -67,6 +68,7 @@ export function ConversationMessage({
   readonly showCitations?: boolean;
   readonly compact?: boolean;
   readonly toolSourceSessionId?: string | null;
+  readonly resolveColdToolSource?: import('../aiFeatures/integration/coldConversationSourceResolvers').ResolveColdConversationToolSource;
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
 }) {
@@ -153,6 +155,7 @@ export function ConversationMessage({
         {activityBeforeText ? activity : null}
         {!user && message.toolEvents?.length ? (
           <ConversationToolEvents
+            key={JSON.stringify(message.sourceOwner ?? null)}
             allowSourceActions={showCitations}
             durableMessageId={message.toolMessageId}
             events={message.toolEvents}
@@ -160,7 +163,16 @@ export function ConversationMessage({
             onLinkError={onLinkError}
             onOpenSource={openSource}
             resolveToolSource={
-              message.sourceOwner ? undefined : resolveToolSource
+              message.sourceOwner
+                ? resolveColdToolSource &&
+                  ((reference, signal, scope) =>
+                    resolveColdToolSource(
+                      message.sourceOwner!,
+                      reference,
+                      signal,
+                      scope,
+                    ))
+                : resolveToolSource
             }
             sessionId={toolSourceSessionId}
           />

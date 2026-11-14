@@ -30,6 +30,7 @@ export interface ConversationHistoryProps {
   readonly onRetryRestore?: () => void;
   readonly sessionId?: number;
   readonly toolSourceSessionId?: string | null;
+  readonly resolveColdToolSource?: import('../aiFeatures/integration/coldConversationSourceResolvers').ResolveColdConversationToolSource;
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
   readonly replyFocus?: ReplyFocusHandle;

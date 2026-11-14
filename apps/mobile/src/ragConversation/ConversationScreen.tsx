@@ -47,6 +47,7 @@ export function ConversationScreen({
   onSend,
   onOpenSource,
   resolveToolSource,
+  resolveColdToolSource,
   prepareVisitQuestions,
   renderVisitQuestions,
   discoverManualVisits,
@@ -96,6 +97,7 @@ export function ConversationScreen({
     0,
     onNavigationStateChange,
   );
+  const coldResumeBusy = busy || session.restoring || session.retryingSave;
   const header = (
     <View style={styles.header}>
       {!navigationRouteKey && (
@@ -157,12 +159,10 @@ export function ConversationScreen({
             <FloatingAssistantSurface session={session}>
               <ConversationHistory
                 replyFocus={focus}
-                coldResumeBusy={
-                  busy || session.restoring || session.retryingSave
+                coldResumeBusy={coldResumeBusy}
+                onContinueCold={requestId =>
+                  store.resumeCold(id, requestId).catch(() => {})
                 }
-                onContinueCold={requestId => {
-                  store.resumeCold(id, requestId).catch(() => {});
-                }}
                 sessionId={id}
                 requestSessionId={id}
                 requestActivity={session.requestActivity}
@@ -177,7 +177,7 @@ export function ConversationScreen({
                 restoreFailed={session.restoreFailed}
                 onRetryRestore={() => store.retryRestore(id)}
                 onOpenSource={onOpenSource}
-                resolveToolSource={resolveToolSource}
+                {...{ resolveToolSource, resolveColdToolSource }}
                 renderVisitQuestions={
                   renderVisitQuestions
                     ? message =>

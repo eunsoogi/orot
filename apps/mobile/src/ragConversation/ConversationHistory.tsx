@@ -34,6 +34,7 @@ export function ConversationHistory({
   sessionId,
   toolSourceSessionId,
   resolveToolSource,
+  resolveColdToolSource,
   renderVisitQuestions,
   replyFocus,
   requestSessionId,
@@ -212,6 +213,7 @@ export function ConversationHistory({
               compact={compact}
               toolSourceSessionId={toolSourceSessionId}
               resolveToolSource={resolveToolSource}
+              resolveColdToolSource={resolveColdToolSource}
               renderVisitQuestions={renderVisitQuestions}
             />
           </ReplyMessageContainer>

@@ -1,3 +1,10 @@
+import type { ToolReferenceScopeSnapshot } from './toolReferenceScopeSnapshot';
+import {
+  coldConversationToolEvents,
+  coldSnapshotResearchTarget,
+} from './coldConversationToolEvents';
+import { sameToolSource } from '../../storage/conversationToolExternalSource';
+import type { EvidenceRegistrySnapshot } from './evidenceRegistrySnapshot';
 import { readColdConversationSearch } from './coldConversationSearch';
 import type { SqlDatabase } from '@orot/storage';
 import type { ConversationToolEvent } from '@orot/agent-runtime';
@@ -75,6 +82,7 @@ export function createColdConversationServices(
   }
   return {
     readColdConversationSource: readers.readSource,
+    resolveColdConversationToolSource: readers.resolveToolSource,
     async inspect(
       identity: ConversationContinuationIdentity,
       signal: AbortSignal,
@@ -98,6 +106,19 @@ export function createColdConversationServices(
       return {
         attempt: saved.attempt,
         operationRunId: saved.manifest.operationRunId,
+        events: coldConversationToolEvents(
+          await createConversationArtifactStorage(
+            await openDatabase(),
+          ).readToolTurns(identity.sessionId, identity.sessionVersion),
+          { ...identity, operationRunId: saved.manifest.operationRunId },
+          saved.reconstruction.registry as unknown as EvidenceRegistrySnapshot,
+          coldSnapshotResearchTarget(
+            saved.reconstruction.scope as unknown as ToolReferenceScopeSnapshot,
+            saved.reconstruction
+              .registry as unknown as EvidenceRegistrySnapshot,
+            { ...identity, operationRunId: saved.manifest.operationRunId },
+          ),
+        ),
       };
     },
     async stop(identity: ConversationContinuationIdentity) {
@@ -129,7 +150,40 @@ export function createColdConversationServices(
             owner,
             registry,
           });
-          readers.register({ owner, registry, isCurrent: current });
+          readers.register({
+            owner,
+            registry,
+            isCurrent: current,
+            async toolSourceIsCurrent(reference, scope, readSignal) {
+              if (readSignal.aborted || !(await current(owner, readSignal)))
+                return false;
+              const events = coldConversationToolEvents(
+                await createConversationArtifactStorage(
+                  await openDatabase(),
+                ).readToolTurns(owner.sessionId, owner.sessionVersion),
+                owner,
+                registry.snapshot(),
+                (source, callId) => {
+                  const alias = registry.toolReferences.findResearch(
+                    source,
+                    { ...owner, callId },
+                    true,
+                  );
+                  return alias && registry.resolve(alias);
+                },
+              );
+              const calls = events.filter(
+                event => event.callId === scope.callId,
+              );
+              return (
+                !readSignal.aborted &&
+                calls.length === 1 &&
+                calls[0]!.sources.filter(source =>
+                  sameToolSource(source, reference),
+                ).length === 1
+              );
+            },
+          });
         },
       });
       if (!sourceOwner) throw new Error('Cold readers unavailable.');
