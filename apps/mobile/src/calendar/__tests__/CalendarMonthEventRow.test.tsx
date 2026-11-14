@@ -3,6 +3,10 @@ import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { CalendarMonthView } from '../CalendarMonthView';
 import { appointmentFor, event } from '../calendarTestUtils';
+// Event-card assertions use ordinary text; large-text rows have separate coverage.
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  default: () => ({ width: 393, height: 852, scale: 3, fontScale: 1 }),
+}));
 
 function queryWindow(start: string, end: string) {
   return { startDay: start, endDay: end };
