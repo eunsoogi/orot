@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		EBAE3A6E40FC4104951D98F5 /* GlassIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 572A3A3D79AD451BAD30D047 /* GlassIconButton.swift */; };
 		BCAC2A2B2A95E636B5C9C15E /* RealtimeVoiceCallLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41E6911C62CADEA6C14E15AF /* RealtimeVoiceCallLifecycle.swift */; };
 		765B8D5B2F4B561748A82885 /* RealtimeVoiceCallEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C5E2B537DA5D2494BD14FF /* RealtimeVoiceCallEvents.swift */; };
 		F9ABB0000000000000000001 /* AppointmentViewportGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9ABB0000000000000000002 /* AppointmentViewportGeometry.swift */; };
@@ -377,6 +378,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		572A3A3D79AD451BAD30D047 /* GlassIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassIconButton.swift; sourceTree = "<group>"; };
 		41E6911C62CADEA6C14E15AF /* RealtimeVoiceCallLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCallLifecycle.swift; sourceTree = "<group>"; };
 		F0C5E2B537DA5D2494BD14FF /* RealtimeVoiceCallEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCallEvents.swift; sourceTree = "<group>"; };
 		F9ABB0000000000000000002 /* AppointmentViewportGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentViewportGeometry.swift; sourceTree = "<group>"; };
@@ -1065,6 +1067,7 @@
 				B19500000000000000000001 /* NavigationGlassButton.swift */,
 				B19500000000000000000003 /* NavigationContextualActionContent.swift */,
 				5314A0EDC2A24E8488D3D89E /* ComposerGlassView.swift */,
+				572A3A3D79AD451BAD30D047 /* GlassIconButton.swift */,
 				B1011000B1011000B1011003 /* AppSymbolView.swift */,
 				B20400000000000000000001 /* AppProgressView.swift */,
 				B1011000B1011000B1011002 /* NavigationGlassViewManager.m */,
@@ -1494,6 +1497,7 @@
 				A19500000000000000000001 /* NavigationGlassButton.swift in Sources */,
 				A19500000000000000000003 /* NavigationContextualActionContent.swift in Sources */,
 				2D2444A0FF364D46BDF72F7C /* ComposerGlassView.swift in Sources */,
+				EBAE3A6E40FC4104951D98F5 /* GlassIconButton.swift in Sources */,
 				A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */,
 				A20400000000000000000001 /* AppProgressView.swift in Sources */,
 				A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */,

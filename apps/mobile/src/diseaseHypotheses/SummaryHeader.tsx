@@ -1,8 +1,6 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
-import { AppSymbol } from '../layout/AppSymbol';
-import { appColors } from '../layout/appColors';
-import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
+import { GlassIconButton } from '../layout/GlassIconButton';
 
 /** Shares the conversation screen's native Liquid Glass history action and 44pt touch target. */
 export function SummaryHeader({
@@ -20,7 +18,7 @@ export function SummaryHeader({
         {title}
       </AppText>
       {onOpenHistory ? (
-        <Pressable
+        <GlassIconButton
           accessibilityRole="button"
           accessibilityLabel="저장된 요약 보기"
           accessibilityState={{ disabled }}
@@ -28,13 +26,8 @@ export function SummaryHeader({
           onPress={onOpenHistory}
           style={styles.action}
           testID="symptom-summary-history-open"
-        >
-          <ComposerGlassBackground testID="symptom-summary-history-glass" />
-          <AppSymbol
-            name="clock.arrow.circlepath"
-            color={appColors.primaryText}
-          />
-        </Pressable>
+          symbolName="clock.arrow.circlepath"
+        />
       ) : null}
     </View>
   );

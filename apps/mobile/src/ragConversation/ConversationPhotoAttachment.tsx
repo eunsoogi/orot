@@ -4,7 +4,7 @@ import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
-import { ComposerGlassBackground } from './ComposerGlassBackground';
+import { GlassIconButton } from '../layout/GlassIconButton';
 import type { PhotoDraftFailure } from './conversationPhotoTypes';
 
 /** Renders only draft controls; selecting a photo never triggers a conversation send. */
@@ -117,7 +117,7 @@ export function ConversationPhotoAttachment({
         </View>
       ) : null}
       <View style={styles.row}>
-        <Pressable
+        <GlassIconButton
           accessibilityRole="button"
           accessibilityLabel={t('ragConversation.photo.select')}
           accessibilityHint={t('ragConversation.photo.selectHint')}
@@ -125,10 +125,8 @@ export function ConversationPhotoAttachment({
           disabled={selectDisabled}
           onPress={onSelect}
           style={[styles.action, styles.glassAction]}
-        >
-          <ComposerGlassBackground testID="photo-control-glass" />
-          <AppSymbol name="photo" color={appColors.text} />
-        </Pressable>
+          symbolName="photo"
+        />
         {children}
       </View>
     </View>

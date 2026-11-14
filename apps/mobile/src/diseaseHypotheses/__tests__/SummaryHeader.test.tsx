@@ -7,7 +7,9 @@ test('opens saved summaries from the trailing native glass history action', asyn
   await render(
     <SummaryHeader title="증상 정리" disabled={false} onOpenHistory={open} />,
   );
-  expect(screen.getByTestId('symptom-summary-history-glass')).toBeTruthy();
+  expect(
+    screen.getByTestId('symptom-summary-history-open').props.onAction,
+  ).toEqual(expect.any(Function));
   const action = screen.getByRole('button', { name: '저장된 요약 보기' });
   expect(StyleSheet.flatten(action.props.style)).toMatchObject({
     width: 44,
