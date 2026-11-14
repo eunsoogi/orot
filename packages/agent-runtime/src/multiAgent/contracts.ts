@@ -1,3 +1,5 @@
+import type { MultiAgentPhase } from './actionContracts';
+export type { MultiAgentPhase } from './actionContracts';
 import type {
   JsonObject,
   JsonValue,
@@ -43,7 +45,6 @@ export type {
   OutboundProcessingRequest,
 } from './evidenceContracts';
 export { DEFAULT_MULTI_AGENT_BUDGET, MAX_MULTI_AGENT_BUDGET } from './evidenceContracts';
-
 export interface TaskResponderInput {
   readonly request: string;
   readonly context?: JsonValue;
@@ -134,6 +135,7 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
   readonly context?: JsonValue;
   readonly task: TaskResponderContract<TResult>;
   readonly initialEvidence: EvidenceBatch;
+  readonly actions?: readonly import('./actionContracts').LocalActionTool[];
   readonly tools: readonly import('./evidenceContracts').EvidenceSearchTool[];
   readonly consent: ExecutionConsentPort;
   /** Return false for any missing or tombstoned reference so resume fails before evidence restoration. */
@@ -150,11 +152,9 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
   readonly store?: BaseStore;
 }
 
-export type MultiAgentPhase =
-  'task_response' | 'evidence_research' | 'evidence_search' | 'revised_response' | 'complete';
-
 // This is the only domain state LangGraph may persist; prompts and record text stay outside it.
 export interface MultiAgentCheckpointState {
+  readonly actionContract?: string;
   readonly operationRunId: string;
   readonly providerId: string;
   readonly modelId: string;

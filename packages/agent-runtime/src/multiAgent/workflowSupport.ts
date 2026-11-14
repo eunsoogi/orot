@@ -1,3 +1,6 @@
+import { validResumeShape } from './resumeShape';
+import { actionContract, validLocalActions } from './actionContracts';
+import { createActionNodes } from './actionNodes';
 import { END, START, StateGraph } from '@langchain/langgraph/web';
 import type {
   MultiAgentCheckpointState,
@@ -64,6 +67,12 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
     provider.capabilities.inputTypes.includes('text') &&
     new Set(options.tools.map((tool) => tool.id)).size === options.tools.length &&
     options.tools.every((tool) => validEvidenceTool(tool, execution.allowedScope)) &&
+    validLocalActions(options.actions, execution.allowedScope) &&
+    new Set([
+      ...options.tools.map((tool) => tool.id),
+      ...(options.actions ?? []).map((action) => action.id),
+    ]).size ===
+      options.tools.length + (options.actions?.length ?? 0) &&
     (!execution.allowedScope.timeRange ||
       isOrderedTimestampRange(
         execution.allowedScope.timeRange.fromInclusive,
@@ -79,6 +88,7 @@ function isNonNegativeSafeInteger(value: number): boolean {
 export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult>): WorkflowState {
   const source = options.execution;
   return {
+    actionContract: actionContract(options.actions),
     operationRunId: source.operationRunId,
     providerId: source.providerId,
     modelId: source.modelId,
@@ -96,23 +106,6 @@ export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult
   };
 }
 
-function validResumeShape(saved: MultiAgentCheckpointState): boolean {
-  // Durable phase and evidence-need values must match a state the graph knows how to route.
-  return (
-    [
-      'task_response',
-      'evidence_research',
-      'evidence_search',
-      'revised_response',
-      'complete',
-    ].includes(saved.phase) &&
-    (saved.evidenceNeed === undefined ||
-      ['missing_coverage', 'verify_conflict', 'confirm_value', 'other'].includes(
-        saved.evidenceNeed,
-      ))
-  );
-}
-
 export function resumeState<TResult>(
   saved: NonNullable<MultiAgentInvocation['resumeFrom']>,
   options: MultiAgentWorkflowOptions<TResult>,
@@ -120,6 +113,7 @@ export function resumeState<TResult>(
   // A checkpoint taken during a side effect cannot prove whether that operation already completed.
   // Reject out-of-scope references before any revalidation or restoration callback can resolve them.
   if (
+    saved.actionContract !== actionContract(options.actions) ||
     !validResumeShape(saved) ||
     !checkpointMatchesRun(saved, options.execution) ||
     !Array.isArray(saved.evidenceReferences) ||
@@ -132,6 +126,7 @@ export function resumeState<TResult>(
     saved.phase === 'complete' ||
     saved.pendingOperation ||
     saved.phase === 'evidence_search' ||
+    saved.phase === 'local_action' ||
     !isNonNegativeSafeInteger(saved.modelCalls) ||
     !isNonNegativeSafeInteger(saved.toolCalls) ||
     !isNonNegativeSafeInteger(saved.researchCycles) ||
@@ -145,12 +140,15 @@ export function resumeState<TResult>(
     (saved.phase === 'revised_response' &&
       (saved.toolCalls === 0 || saved.evidenceReferences.length === 0)) ||
     (saved.selectedToolId !== undefined &&
-      !options.tools.some((tool) => tool.id === saved.selectedToolId))
+      ![...options.tools, ...(options.actions ?? [])].some(
+        (tool) => tool.id === saved.selectedToolId,
+      ))
   ) {
     return undefined;
   }
   return {
     ...saved,
+    actionContract: saved.actionContract,
     evidenceReferences: saved.evidenceReferences.map(projectEvidenceReference),
     evidenceNeed: saved.evidenceNeed,
     selectedToolId: saved.selectedToolId,
@@ -187,15 +185,19 @@ export function makeGraph<TResult>(
   graphOptions: Pick<MultiAgentWorkflowOptions<TResult>, 'checkpointer' | 'store'> = {},
 ) {
   const nodes = createNodes(context);
+  const actions = createActionNodes(context);
   const routeMap = {
     task_response: 'prepareResponder',
     research: 'prepareResearcher',
     search: 'prepareSearch',
+    action: 'prepareAction',
     revision: 'prepareRevision',
     stop: END,
   } as const;
   const route = (state: WorkflowState) => routeForPhase(state.phase);
   return new StateGraph(MultiAgentState)
+    .addNode('prepareAction', actions.prepareAction)
+    .addNode('executeAction', actions.executeAction)
     .addNode('prepareResponder', (state) => nodes.prepareResponder(state))
     .addNode('invokeResponder', nodes.invokeResponder)
     .addNode('prepareResearcher', nodes.prepareResearcher)
@@ -205,6 +207,8 @@ export function makeGraph<TResult>(
     .addNode('prepareRevision', (state) => nodes.prepareRevision(state))
     .addNode('invokeRevision', nodes.invokeRevision)
     .addConditionalEdges(START, route, routeMap)
+    .addConditionalEdges('prepareAction', (state) => (state.terminal ? END : 'executeAction'))
+    .addConditionalEdges('executeAction', route, routeMap)
     .addConditionalEdges('prepareResponder', (state) => (state.terminal ? END : 'invokeResponder'))
     .addConditionalEdges('invokeResponder', route, routeMap)
     .addConditionalEdges('prepareResearcher', (state) =>
