@@ -3,7 +3,7 @@
 const { Animated } = require('react-native');
 
 /** Settles short route transitions so app tests see final tabs while motion tests supply their own driver. */
-const navigationAnimationDurations = new Set([90, 140]);
+const navigationAnimationDurations = new Set([90, 100, 140, 200]);
 const originalTiming = Animated.timing.bind(Animated);
 
 beforeEach(() => {
