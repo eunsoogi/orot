@@ -134,7 +134,8 @@ it('opens classification with the saved AI and reaches the separate manual page'
   expect(classify).not.toHaveBeenCalled();
   expect(calendar.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
 
-  await fireEvent.press(screen.getByTestId('navigation-tab-schedule'));
+  await fireEvent.press(screen.getByTestId('navigation-tab-records'));
+  await fireEvent.press(screen.getByTestId('records-section-schedule'));
   await fireEvent.press(await screen.findByTestId('open-medical-appointments'));
   expect(
     await screen.findByText(medicalAppointmentCopy.localNotice),
@@ -195,7 +196,8 @@ it('keeps manual entry available while the saved AI lookup is pending', async ()
     />,
   );
 
-  await fireEvent.press(screen.getByTestId('navigation-tab-schedule'));
+  await fireEvent.press(screen.getByTestId('navigation-tab-records'));
+  await fireEvent.press(screen.getByTestId('records-section-schedule'));
   await fireEvent.press(await screen.findByTestId('open-medical-appointments'));
   await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
   expect(screen.getByTestId('navigation-back')).toBeEnabled();
@@ -230,7 +232,8 @@ it('shows the manual fallback when the saved provider lookup fails', async () =>
     />,
   );
 
-  await fireEvent.press(screen.getByTestId('navigation-tab-schedule'));
+  await fireEvent.press(screen.getByTestId('navigation-tab-records'));
+  await fireEvent.press(screen.getByTestId('records-section-schedule'));
   await fireEvent.press(await screen.findByTestId('open-medical-appointments'));
   expect(
     await screen.findByText(medicalAppointmentCopy.providerUnavailable),

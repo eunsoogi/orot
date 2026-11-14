@@ -138,7 +138,11 @@ test.each(['manual', 'ongoing-calendar'] as const)(
     );
     expect(await screen.findByTestId('calendar-screen')).toBeTruthy();
     expect(
-      screen.getByTestId('navigation-tab-schedule').props.accessibilityState,
+      screen.getByTestId('records-section-schedule').props.accessibilityState
+        .selected,
+    ).toBe(true);
+    expect(
+      screen.getByTestId('navigation-tab-records').props.accessibilityState,
     ).toEqual(expect.objectContaining({ selected: true }));
   },
 );
