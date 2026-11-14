@@ -130,6 +130,7 @@ export function NavigationRouteAdapter<Name extends string>({
       return (
         <NavigationViewport
           active={active}
+          scrollable={routeIsScrollable}
           childHandlesSafeArea
           actionBar={
             active ? (

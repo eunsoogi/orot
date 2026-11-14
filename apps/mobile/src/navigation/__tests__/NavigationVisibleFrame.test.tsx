@@ -5,6 +5,7 @@ import { NavigationGeometryProvider } from '../NavigationGeometryProvider';
 import { NavigationViewport } from '../NavigationViewport';
 import { useNavigationContentFrame } from '../navigationContentFrame';
 import { NavigationRootLayoutContext } from '../navigationRootLayout';
+import { useNavigationContentInset } from '../useNavigationContentInset';
 import { openGeometry } from '../__fixtures__/navigationOpenGeometry';
 
 jest.mock(
@@ -84,4 +85,40 @@ test('shares the visible keyboard frame and observed fallback without latching c
     availableContentFrame: { width: 867, height: 635 },
   });
   expect(screen.getByText('edited')).toBeTruthy();
+});
+
+function EndClearance() {
+  const inset = useNavigationContentInset();
+  return <Text testID="end-clearance">{inset.paddingBottom}</Text>;
+}
+
+test('scrolling scenes draw through the home area with safe end padding, then release it for the keyboard', async () => {
+  await render(
+    <NavigationGeometryProvider>
+      <NavigationViewport scrollable childHandlesSafeArea actionBar={<View />}>
+        <EndClearance />
+      </NavigationViewport>
+    </NavigationGeometryProvider>,
+  );
+  await fireEvent(
+    screen.getByTestId('navigation-window-geometry-sensor'),
+    'geometryChange',
+    {
+      nativeEvent: { ...openGeometry, hasHinge: true, navigationSide: 'right' },
+    },
+  );
+  const viewport = screen.getByTestId('navigation-visible-viewport');
+  await fireEvent(viewport, 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 951, height: 669 } },
+  });
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('navigation-content-region').props.style,
+    ).bottom,
+  ).toBe(0);
+  expect(screen.getByTestId('end-clearance').props.children).toBe(50);
+  await fireEvent(viewport, 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 951, height: 420 } },
+  });
+  expect(screen.getByTestId('end-clearance').props.children).toBe(16);
 });
