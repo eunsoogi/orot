@@ -7,6 +7,7 @@ import {
   type ViewProps,
 } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
+import { ConversationEdgeGradient } from '../layout/ConversationEdgeGradient';
 import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
@@ -149,6 +150,12 @@ export function ConversationComposer({
       testID="rag-conversation-composer"
       onLayout={onLayout}
     >
+      {/* Extend only the passive fade into history; keep keyboard and safe-area measurements unchanged. */}
+      <ConversationEdgeGradient
+        edge="bottom"
+        testID="conversation-composer-gradient"
+        fadeOverlap={compact ? 0 : 16}
+      />
       {/* Long voice and attachment warnings need the full row; inline status can consume the editor's width. */}
       {status ? (
         <Text accessibilityLiveRegion="polite" style={styles.composerStatus}>
