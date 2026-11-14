@@ -30,15 +30,6 @@ export const rootTabItems = [
     fallbackSymbol: '▤',
   },
   {
-    id: 'schedule',
-    label: t('navigation.tabs.schedule'),
-    accessibilityLabel: t('navigation.tabs.scheduleAccessibility'),
-    testID: 'navigation-tab-schedule',
-    systemImageName: 'calendar',
-    selectedSystemImageName: 'calendar',
-    fallbackSymbol: '▦',
-  },
-  {
     id: 'settings',
     label: t('navigation.tabs.settings'),
     accessibilityLabel: t('navigation.tabs.settingsAccessibility'),
@@ -49,7 +40,8 @@ export const rootTabItems = [
   },
 ] as const;
 
-export type AppRootTab = (typeof rootTabItems)[number]['id'];
+// Schedule remains a compatible deep-link destination inside the Records hub.
+export type AppRootTab = (typeof rootTabItems)[number]['id'] | 'schedule';
 
 export interface NavigationRootTabs {
   readonly activeTab: AppRootTab;

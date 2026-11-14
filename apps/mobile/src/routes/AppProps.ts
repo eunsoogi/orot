@@ -28,6 +28,9 @@ export interface AppRouteContentProps {
   readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
   readonly activeTab: AppRootTab;
+  readonly onSelectRecordsSection?: (
+    tab: 'records' | 'schedule',
+  ) => Promise<void>;
   readonly selectTab: (tab: AppRootTab) => void;
   readonly appointmentRepository: AppointmentRepository | null;
   readonly backupPreparationState: BackupPreparationDisplayState;

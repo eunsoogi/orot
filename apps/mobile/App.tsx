@@ -118,7 +118,7 @@ function App({
   }
 
   const rootTabs: NavigationRootTabs = {
-    activeTab,
+    activeTab: activeTab === 'schedule' ? 'records' : activeTab,
     onSelect: selectActiveTab,
   };
 
@@ -192,6 +192,11 @@ function App({
                   actions={actions}
                   activeTab={activeTab}
                   selectTab={selectActiveTab}
+                  onSelectRecordsSection={async tab => {
+                    // Subtabs use the same guard as root tabs: never discard a staged import.
+                    if (await appNavigation.requestTabSwitch())
+                      selectActiveTab(tab);
+                  }}
                   backupPreparationState={backupPreparation.state}
                   retryBackupPreparation={backupPreparation.retry}
                   calendarBridge={calendarBridge}
