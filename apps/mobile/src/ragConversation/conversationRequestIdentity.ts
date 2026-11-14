@@ -1,3 +1,4 @@
+import { confirmHistorySave } from './confirmHistorySave';
 import type { ConversationSessionOptions } from './conversationSessionTypes';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 
@@ -9,7 +10,11 @@ export function requestIdentityObserver(
 ) {
   const session = retention?.activeLease(id);
   return session && turn
-    ? { retentionSession: session, retentionRequestId: turn.toolMessageId }
+    ? {
+        retentionSession: session,
+        retentionRequestId: turn.toolMessageId,
+        confirmHistorySave,
+      }
     : {};
 }
 

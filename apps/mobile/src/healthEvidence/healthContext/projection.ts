@@ -48,7 +48,9 @@ export function projectHealthContext(
     calendarDays: dates.length,
     partialDates: report.days.filter(day => day.partial).map(day => day.date),
     quantities: report.quantities.map((series, index) => {
-      const step = series.concept === 'step_count';
+      const step =
+        series.concept === 'step_count' ||
+        series.concept === 'workout_duration';
       const complete = series.days.filter(day =>
         completeDates.includes(day.date),
       );
@@ -149,9 +151,14 @@ export function projectHealthContext(
       ...report.limitations,
       'unrecorded_days_are_unknown_not_zero_or_missed_doses',
       'medication_registration_and_current_confirmation_are_distinct_from_individual_dose_completion',
-      ...(report.quantities.some(series => series.concept === 'step_count')
+      ...(report.quantities.some(
+        series =>
+          series.concept === 'step_count' ||
+          series.concept === 'workout_duration',
+      )
         ? [
             'sensor_step_sample_sums_may_overlap_do_not_add_series_or_infer_complete_daily_totals',
+            'workout_durations_are_source_samples_may_overlap_and_are_assigned_to_start_day_without_proration',
           ]
         : []),
     ],

@@ -17,6 +17,7 @@ const metrics: Partial<Record<HealthObservationCategory, ChartMetric>> = {
   blood_pressure: 'bloodPressure',
   heart_rate: 'heartRate',
   steps: 'steps',
+  workouts: 'workouts',
   body_mass: 'bodyMass',
 };
 

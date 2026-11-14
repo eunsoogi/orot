@@ -2,6 +2,7 @@ import { createContext, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { RecordsHubBanner, RecordsHubHeadingContext } from './RecordsHubBanner';
+import { sectionTabStyles as tabs } from '../layout/sectionTabPresentation';
 import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
 import { t } from '../i18n';
@@ -35,7 +36,10 @@ export function RecordsHubSection({
   const header = (
     <View style={styles.header} testID="records-hub-header">
       <RecordsHubBanner />
-      <View style={styles.tabs} testID="records-section-tabs">
+      <View
+        style={[tabs.tabs, styles.tabsMargin]}
+        testID="records-section-tabs"
+      >
         {(['records', 'schedule'] as const).map(section => (
           <Pressable
             key={section}
@@ -50,13 +54,10 @@ export function RecordsHubSection({
             onPress={() => {
               settleNavigationRequest(select(section));
             }}
-            style={[styles.tab, selected === section && styles.selectedTab]}
+            style={[tabs.tab, selected === section && tabs.selectedTab]}
           >
             <Text
-              style={[
-                styles.label,
-                selected === section && styles.selectedLabel,
-              ]}
+              style={[tabs.label, selected === section && tabs.selectedLabel]}
             >
               {t(`navigation.tabs.${section}`)}
             </Text>
@@ -91,32 +92,5 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.surface,
     overflow: 'hidden',
   },
-  tabs: {
-    flexDirection: 'row',
-    margin: 16,
-    marginTop: 0,
-    padding: 3,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    backgroundColor: appColors.background,
-  },
-  tab: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 44,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 21,
-  },
-  selectedTab: { backgroundColor: appColors.text },
-  label: {
-    color: appColors.secondary,
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  selectedLabel: { color: appColors.background },
+  tabsMargin: { margin: 16, marginTop: 0 },
 });

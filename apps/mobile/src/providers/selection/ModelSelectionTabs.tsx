@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
-import { appColors } from '../../layout/appColors';
+import { sectionTabStyles as tabs } from '../../layout/sectionTabPresentation';
 import { VoiceSettingsPanel } from '../../voiceSettings/VoiceSettingsPanel';
 
 /** Retain drafts and catalog requests across tab switches; hiding a panel never saves it. */
@@ -21,7 +21,7 @@ export function ModelSelectionTabs({
   if (!enabled) return <>{children}</>;
   return (
     <>
-      <View style={styles.tabs}>
+      <View style={tabs.tabs}>
         {(['language', 'voice'] as const).map(tab => (
           <Pressable
             key={tab}
@@ -29,13 +29,13 @@ export function ModelSelectionTabs({
             accessibilityState={{ selected: active === tab, disabled: locked }}
             disabled={locked}
             testID={`model-tab-${tab}`}
-            style={[styles.tab, active === tab && styles.active]}
+            style={[tabs.tab, active === tab && tabs.selectedTab]}
             onPress={() => {
               setActive(tab);
               if (tab === 'voice') setVisitedVoice(true);
             }}
           >
-            <Text>
+            <Text style={[tabs.label, active === tab && tabs.selectedLabel]}>
               {tab === 'language' ? '언어 모델 선택' : '보이스 모델 선택'}
             </Text>
           </Pressable>
@@ -51,28 +51,15 @@ export function ModelSelectionTabs({
             active === 'voice' ? 'auto' : 'no-hide-descendants'
           }
         >
-          <VoiceSettingsPanel onOpenAccounts={onOpenAccounts} />
+          <VoiceSettingsPanel
+            active={active === 'voice'}
+            onOpenAccounts={onOpenAccounts}
+          />
         </View>
       ) : null}
     </>
   );
 }
 const styles = StyleSheet.create({
-  tabs: {
-    flexDirection: 'row',
-    gap: 4,
-    padding: 4,
-    borderRadius: 16,
-    backgroundColor: appColors.background,
-  },
-  tab: {
-    flex: 1,
-    minHeight: 44,
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-  },
-  active: { backgroundColor: appColors.surface },
   hidden: { display: 'none' },
 });

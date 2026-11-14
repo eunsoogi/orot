@@ -29,6 +29,7 @@ const token: Record<
   heartRate: 'pink',
   bodyMass: 'primaryText',
   steps: 'green',
+  workouts: 'green',
   bloodPressure: 'danger',
 };
 

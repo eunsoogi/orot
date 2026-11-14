@@ -29,13 +29,12 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         surface.railBottomInset = 46
         let systemRegion = CGRect(x: 867, y: 0, width: 84, height: 180)
         let contentSafeFrame = CGRect(x: 0, y: 0, width: 867, height: 635)
-        // Contextual Back is measured separately from the fixed five root-tab targets.
+        // Contextual Back is measured separately from the current four root-tab targets.
         surface.actions = [
             ("back", "chevron.backward", false),
             ("conversation", "sparkles", true),
             ("overview", "house", true),
             ("records", "doc.text", true),
-            ("schedule", "calendar", true),
             ("settings", "gearshape", true),
         ].map { tab, symbol, isRootTab -> [String: Any] in
             return ["id": isRootTab ? "tab-\(tab)" : tab, "label": tab,
@@ -50,7 +49,7 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         let root = try XCTUnwrap(portal.subviews.compactMap { $0 as? NavigationRootGlassBar }.first)
         let rootFrame = root.convert(root.bounds, to: window)
         verify(rootFrame, in: window, avoiding: systemRegion, content: contentSafeFrame)
-        XCTAssertEqual(rootFrame.height, NavigationRootGlassBar.railHeight, accuracy: 0.5)
+        XCTAssertEqual(rootFrame.height, 214, accuracy: 0.5)
         // Bottom anchoring uses the measured system clearance while preserving fixed hit targets.
         XCTAssertEqual(rootFrame.maxY, 669 - 46, accuracy: 0.5)
         let backStack = try XCTUnwrap(portal.subviews.compactMap { $0 as? UIStackView }.first { $0.accessibilityIdentifier == "navigation-toolbar" })
@@ -71,7 +70,10 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         let rootStack = try XCTUnwrap(root.contentView.subviews.compactMap { $0 as? UIStackView }.first)
         rootStack.layoutIfNeeded()
         let rootButtons = rootStack.arrangedSubviews.compactMap { $0 as? UIButton }
-        XCTAssertEqual(rootButtons.count, 5)
+        XCTAssertEqual(rootButtons.count, 4)
+        for (previous, next) in zip(rootButtons, rootButtons.dropFirst()) {
+            XCTAssertEqual(next.frame.minY - previous.frame.maxY, 2, accuracy: 0.5)
+        }
         for button in rootButtons {
             // Centered root targets keep their 44pt minimum inside the 48pt bar.
             XCTAssertGreaterThanOrEqual(button.bounds.width, 44)

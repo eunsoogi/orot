@@ -135,3 +135,5 @@ type StatefulGraphCompileOptions = Parameters<
 export function createStatefulTwoNodeGraph(options?: StatefulGraphCompileOptions) {
   return createStatefulGraphBuilder().compile(options);
 }
+
+export type { LocalActionTool } from './multiAgent/actionContracts';

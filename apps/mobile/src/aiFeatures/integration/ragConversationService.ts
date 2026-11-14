@@ -1,3 +1,4 @@
+import { conversationMutationExecution } from './conversationMutationExecution';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import { finishRagConversation } from './finishRagConversation';
 import type {
@@ -27,10 +28,7 @@ import {
   resolveConversationSelection,
   validConversationInput,
 } from './conversationVoiceSelection';
-import {
-  bindConversationPhotoExecution,
-  prepareConversationPhoto,
-} from './conversationPhotoService';
+import { prepareConversationPhoto } from './conversationPhotoService';
 import {
   conversationInputsAreCurrent,
   resolveConversationTargets,
@@ -181,14 +179,17 @@ export function createRagConversationService({
         tools,
         external,
       });
-      const execution = photo
-        ? bindConversationPhotoExecution(baseExecution, photo, photoEvidence!, {
-            selected,
-            data,
-            registry,
-            sessionVersion: observer!.retentionSession!.version,
-          })
-        : baseExecution;
+      const execution = conversationMutationExecution({
+        baseExecution,
+        photo,
+        photoEvidence,
+        selected,
+        data,
+        registry,
+        observer,
+        question: normalizedQuestion,
+        history,
+      });
       stage = 'workflow';
       if (!(await historyIsCurrent()))
         return { status: 'failure', kind: 'retrieval_failed' };

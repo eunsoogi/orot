@@ -12,6 +12,7 @@ export const unifiedImportProbeCopy: HealthKitImportScreenCopy = {
   importButton: '선택 항목 가져오기',
   cancelButton: '다음 단계 취소',
   featureNames: {
+    workouts: '운동 기록',
     medications: '약 및 복용 기록',
     bloodPressure: '혈압',
     sleep: '수면',

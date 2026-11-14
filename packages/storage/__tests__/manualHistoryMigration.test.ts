@@ -15,7 +15,7 @@ describe('manual history schema migration', () => {
     await database.execute('PRAGMA user_version = 2');
     await runMigrations(database);
 
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(16);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(17);
     expect(await repository.get('source_record', sampleRecord.id)).toEqual(sampleRecord);
     await database.execute(
       'INSERT INTO manual_history_entries ' +
@@ -57,7 +57,7 @@ describe('manual history schema migration', () => {
     await database.execute('PRAGMA user_version = 10');
     await runMigrations(database);
 
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(16);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(17);
     expect(await repository.get('source_record', sampleRecord.id)).toEqual(sampleRecord);
     expect(
       (

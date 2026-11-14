@@ -60,7 +60,7 @@ export async function loadOverviewMetrics(
       json_extract(r.payload_json, '$.provenance.source.sourceIdentifier') AS identifier,
       r.effective_at AS measured_at, ${at} AS at_key
       FROM health_observations r WHERE ${currentEvidenceCondition('health_observation')}
-      AND ((json_extract(r.payload_json, '$.concept') IN ('heart_rate', 'body_mass', 'weight', 'step_count') AND ${at} >= ? AND ${at} < ?
+      AND ((json_extract(r.payload_json, '$.concept') IN ('heart_rate', 'body_mass', 'weight', 'step_count', 'workout_duration') AND ${at} >= ? AND ${at} < ?
       AND json_extract(r.payload_json, '$.value.kind') = 'quantity' AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real'))
       OR (json_extract(r.payload_json, '$.concept') IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep') AND ${at} < ? AND ${end} > ?
       AND julianday(json_extract(r.payload_json, '$.endedAt')) > julianday(r.effective_at)
@@ -117,12 +117,14 @@ export async function loadOverviewMetrics(
         heartRate: 'heart_rate',
         bodyMass: 'body_mass',
         steps: 'step_count',
+        workouts: 'workout_duration',
       }[metric];
       const unit = {
         sleep: 'min',
         heartRate: 'count/min',
         bodyMass: 'kg',
         steps: 'count',
+        workouts: 'min',
       }[metric];
       const series = report.quantities.find(
         item => item.concept === concept && item.unit === unit,

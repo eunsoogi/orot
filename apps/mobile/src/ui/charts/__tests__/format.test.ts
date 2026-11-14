@@ -33,6 +33,10 @@ test.each([
   [1501, '25시간 1분'],
 ])('shares duration rounding for %s minutes', (value, expected) => {
   expect(formatChartValue('sleep', Number(value), 'min')).toBe(expected);
+  expect(formatChartValue('workouts', Number(value), 'min')).toBe(expected);
+  expect(formatOverviewMetricValue('workouts', Number(value), 'min')).toBe(
+    expected,
+  );
   expect(formatOverviewMetricValue('sleep', Number(value), 'min')).toBe(
     expected,
   );
