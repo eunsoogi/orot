@@ -1,3 +1,4 @@
+import type { ConversationContinuationCapture } from './conversationContinuationCapture';
 import {
   isSafeConversationResumePhase,
   type ConversationResumeBoundary,
@@ -31,6 +32,7 @@ import {
 export async function createConversationWorkflowContinuationStore(
   database: SqlDatabase,
   identity: ConversationContinuationIdentity,
+  capture?: ConversationContinuationCapture,
 ): Promise<ConversationWorkflowContinuation['persisted']> {
   const artifacts = createConversationArtifactStorage(database);
   await artifacts.currentGeneration();
@@ -185,6 +187,13 @@ export async function createConversationWorkflowContinuationStore(
           },
           attempt,
         );
+        await capture?.({
+          options: original,
+          checkpoint,
+          checkpointId,
+          attempt,
+          submittedInput,
+        });
         await artifacts.interruptRequest(
           identity.requestId,
           identity.sessionId,
@@ -234,12 +243,4 @@ export async function createConversationWorkflowContinuationStore(
   };
 }
 
-export async function openConversationWorkflowContinuationStore(
-  identity: ConversationContinuationIdentity,
-) {
-  const { openLocalAgentMemoryDatabase } = await import('./secureDatabase');
-  return createConversationWorkflowContinuationStore(
-    await openLocalAgentMemoryDatabase(),
-    identity,
-  );
-}
+export { openConversationWorkflowContinuationStore } from './openConversationWorkflowContinuationStore';

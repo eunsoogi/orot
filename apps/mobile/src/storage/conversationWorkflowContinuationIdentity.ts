@@ -15,6 +15,7 @@ export function continuationInput(options: MultiAgentWorkflowOptions<unknown>) {
   return stableJson({
     request: options.request,
     context: options.context ?? null,
+    initialEvidence: options.initialEvidence ?? null,
     photo: options.photoInput ?? null,
     execution: options.execution,
     initialSearch: options.initialSearch ?? null,
