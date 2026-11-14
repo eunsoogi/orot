@@ -1,9 +1,15 @@
 import { navigationKeyboardRailActions } from '../navigationKeyboardRailActions';
 
 const actions = [
-  { id: 'back', label: 'Back', accessibilityLabel: 'Back' },
+  {
+    id: 'back',
+    testID: 'navigation-back',
+    label: 'Back',
+    accessibilityLabel: 'Back',
+  },
   {
     id: 'tab-conversation',
+    testID: 'navigation-tab-conversation',
     label: 'Conversation',
     accessibilityLabel: 'Conversation',
     selected: true,
