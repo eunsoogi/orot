@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
+import { providerSettingsStyles } from '../layout/providerSettingsPresentation';
 import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
@@ -61,7 +62,7 @@ export function OpenAIAccountPanel() {
   };
   return (
     <View testID="openai-api-account" style={styles.section}>
-      <Text accessibilityRole="header" style={styles.heading}>
+      <Text accessibilityRole="header" style={providerSettingsStyles.heading}>
         OpenAI API
       </Text>
       <View style={styles.panel}>
@@ -114,7 +115,6 @@ export function OpenAIAccountPanel() {
 
 const styles = StyleSheet.create({
   section: { gap: 12 },
-  heading: { color: appColors.text, fontWeight: '600' },
   panel: {
     gap: 12,
     padding: 16,
