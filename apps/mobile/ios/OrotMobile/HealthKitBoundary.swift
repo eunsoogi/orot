@@ -35,7 +35,7 @@ enum HealthKitBoundary {
     }
 
     static func isSupported(_ feature: String) -> Bool {
-        guard ["medications", "bloodPressure", "sleep", "heartRate", "steps", "bodyMass"].contains(feature) else {
+        guard ["medications", "bloodPressure", "sleep", "heartRate", "steps", "bodyMass", "workouts"].contains(feature) else {
             return false
         }
         if feature == "medications" {
@@ -51,7 +51,7 @@ enum HealthKitBoundary {
         switch (feature, kind) {
         case ("medications", "medicationDoseEvents"), ("bloodPressure", "bloodPressure"),
              ("sleep", "sleep"), ("heartRate", "heartRate"), ("steps", "steps"),
-             ("bodyMass", "bodyMass"):
+             ("bodyMass", "bodyMass"), ("workouts", "workouts"):
             true
         default:
             false
@@ -74,6 +74,8 @@ enum HealthKitBoundary {
             return HKObjectType.quantityType(forIdentifier: .heartRate)
         case "steps":
             return HKObjectType.quantityType(forIdentifier: .stepCount)
+        case "workouts":
+            return HKObjectType.workoutType()
         case "bodyMass":
             return HKObjectType.quantityType(forIdentifier: .bodyMass)
         default:
@@ -126,6 +128,13 @@ enum HealthKitBoundary {
                 "reason": "healthkit_does_not_expose_original_display_unit",
             ]
         }
+        if let workout = sample as? HKWorkout {
+            // Preserve the duration provided by HealthKit, including its pause semantics; never derive it from start/end.
+            result["value"] = workout.duration / 60
+            result["unit"] = "min"
+            result["workoutActivityType"] = workout.workoutActivityType.rawValue
+            result["workoutActivityName"] = Self.workoutActivityName(workout.workoutActivityType)
+        }
         if let category = sample as? HKCategorySample {
             result["categoryValue"] = category.value
         }
@@ -147,6 +156,23 @@ enum HealthKitBoundary {
             result["scheduleTypeName"] = Self.scheduleTypeName(dose.scheduleType.rawValue)
         }
         return result
+    }
+
+    /// Stable app-owned names retain unknown source codes without guessing the activity.
+    private static func workoutActivityName(_ activity: HKWorkoutActivityType) -> String {
+        switch activity {
+        case .walking: "walking"
+        case .running: "running"
+        case .cycling: "cycling"
+        case .swimming: "swimming"
+        case .hiking: "hiking"
+        case .yoga: "yoga"
+        case .traditionalStrengthTraining: "strength"
+        case .functionalStrengthTraining: "functionalStrength"
+        case .mixedCardio: "cardio"
+        case .highIntensityIntervalTraining: "interval"
+        default: "other"
+        }
     }
 
     private static func unit(for identifier: String) -> HKUnit {

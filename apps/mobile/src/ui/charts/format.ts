@@ -1,3 +1,4 @@
+import { formatWorkoutMinutes } from '../../healthkit/workoutPresentation';
 import {
   formatDate,
   formatDateTime,
@@ -34,6 +35,8 @@ export function formatChartValue(
   value: number,
   unit: string,
 ): string {
+  if (metric === 'workouts' && unit === 'min')
+    return formatWorkoutMinutes(value);
   const amount = formatNumber(value, { maximumSignificantDigits: 21 });
   if (metric === 'sleep' && unit === 'min')
     return `${amount}${t('overview.metricUnit.minutes')}`;

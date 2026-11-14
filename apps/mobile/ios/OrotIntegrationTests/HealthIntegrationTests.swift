@@ -37,11 +37,32 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
     func testAuthorizationScopesAndSyntheticSamplesStayExplicit() async throws {
         try verifyMedicationPickerWaitsForDismissedSampleConsent()
         try verifyMedicationConsentRouting()
+        try verifyWorkoutReadScopeAndDuration()
         let summary = try await run("healthkit")
         for field in ["authorizationPlan=feature-scoped", "writeTypes=0", "sampleTypes=passed", "syntheticSteps=passed", "unrelatedSleep=passed", "emptyQuery=completed", "realSamples=unverified"] {
             XCTAssertTrue(summary.contains(field), summary)
         }
         XCTAssertNotNil(summary.range(of: "availability=(available|unavailable)", options: .regularExpression))
+    }
+
+    /// Synthetic SDK sample proves source duration is not reconstructed from wall time.
+    private func verifyWorkoutReadScopeAndDuration() throws {
+        let plan = try XCTUnwrap(HealthKitBatchAuthorization.plan(for: ["workouts"]))
+        XCTAssertEqual(plan.readTypes, [HKObjectType.workoutType()])
+        XCTAssertTrue(plan.shareTypes.isEmpty)
+        XCTAssertTrue(plan.perObjectReadTypes.isEmpty)
+        XCTAssertEqual(HealthKitBoundary.sampleType(feature: "workouts", kind: "workouts"),
+                       HKObjectType.workoutType())
+        XCTAssertNil(HealthKitBoundary.sampleType(feature: "steps", kind: "workouts"))
+        let start = Date(timeIntervalSince1970: 1_760_000_000)
+        let workout = HKWorkout(activityType: .running, start: start,
+                                end: start.addingTimeInterval(5400), duration: 4200,
+                                totalEnergyBurned: nil, totalDistance: nil, metadata: nil)
+        let snapshot = try HealthKitBoundary.snapshot(workout)
+        XCTAssertEqual(snapshot["value"] as? Double, 70)
+        XCTAssertEqual(snapshot["unit"] as? String, "min")
+        XCTAssertEqual(snapshot["workoutActivityName"] as? String, "running")
+        XCTAssertEqual(snapshot["workoutActivityType"] as? UInt, HKWorkoutActivityType.running.rawValue)
     }
 
     private func verifyMedicationConsentRouting() throws {

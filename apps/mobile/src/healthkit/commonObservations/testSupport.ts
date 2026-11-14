@@ -8,12 +8,14 @@ const sampleTypes: Record<CommonObservationFeature, string> = {
   heartRate: 'HKQuantityTypeIdentifierHeartRate',
   steps: 'HKQuantityTypeIdentifierStepCount',
   bodyMass: 'HKQuantityTypeIdentifierBodyMass',
+  workouts: 'HKWorkoutTypeIdentifier',
 };
 
 const sampleUnits: Record<CommonObservationFeature, string> = {
   heartRate: 'count/min',
   steps: 'count',
   bodyMass: 'kg',
+  workouts: 'min',
 };
 
 /** Builds HealthKit-shaped fixture samples without pretending they came from a real account. */
@@ -23,6 +25,9 @@ export function healthKitSample(
 ): HealthKitSampleSnapshot {
   return {
     id: 'sample-1',
+    ...(feature === 'workouts'
+      ? { workoutActivityType: 37, workoutActivityName: 'running' }
+      : {}),
     typeIdentifier: sampleTypes[feature],
     startDate: '2026-10-04T10:00:00.000Z',
     endDate: '2026-10-04T10:00:00.000Z',

@@ -1,4 +1,5 @@
 import type { HealthObservation } from '@orot/domain';
+import { formatWorkoutMinutes } from './workoutPresentation';
 import { t } from '../i18n';
 
 /** Uses original quantity data only when storage says that representation is available. */
@@ -15,6 +16,8 @@ export function displayedQuantity(
 /** Provides a readable value without making missing source metadata look complete. */
 export function displayRecordValue(observation: HealthObservation): string {
   const quantity = displayedQuantity(observation);
+  if (observation.concept === 'workout_duration' && quantity?.unit === 'min')
+    return formatWorkoutMinutes(quantity.amount);
   if (quantity) return quantity.amount + ' ' + quantity.unit;
   switch (observation.value.kind) {
     case 'text':

@@ -1,3 +1,4 @@
+import { formatWorkoutMinutes } from '../../healthkit/workoutPresentation';
 import { formatNumber, t, type TranslationKey } from '../../i18n';
 import type { OverviewMetric } from './metricSelection';
 
@@ -27,6 +28,7 @@ export function overviewMetricStatistic(metric: OverviewMetric): string {
     heartRate: t('overview.dailyMean'),
     bodyMass: t('overview.dailyLatest'),
     steps: t('overview.dailySum'),
+    workouts: t('overview.dailySum'),
   }[metric];
 }
 
@@ -36,6 +38,8 @@ export function formatOverviewMetricValue(
   value: number,
   unit: string,
 ): string {
+  if (metric === 'workouts' && unit === 'min')
+    return formatWorkoutMinutes(value);
   const unitKeys = localizedUnitKeys[metric];
   // Inherited names such as "constructor" are not registered metric units.
   const unitKey =

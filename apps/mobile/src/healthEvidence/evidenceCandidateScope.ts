@@ -67,6 +67,22 @@ export function candidateScopeCondition(
 const EVIDENCE_QUERY_CONCEPTS = [
   [['혈압', '수축기', '이완기'], 'blood pressure'],
   [['심박수', '심박', '맥박'], 'heart_rate'],
+  [
+    [
+      '운동',
+      '운동기록',
+      '운동 기록',
+      '피트니스',
+      'workout',
+      '달리기',
+      '러닝',
+      '수영',
+      '요가',
+      '사이클',
+      '근력 운동',
+    ],
+    'workout_duration',
+  ],
   [['걸음 수', '걸음', '걷기', '걷는', '보행'], 'step_count'],
   [['복약', '복용', '투약', '약물', '먹는 약'], 'medication'],
   [['체중', '몸무게'], 'body_mass'],
