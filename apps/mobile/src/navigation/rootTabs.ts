@@ -1,24 +1,24 @@
 import { t } from '../i18n';
 
-/** Shared root destinations keep the native and fallback tab bars in sync. */
+/** Shared destination symbols describe conversation and overview, not branding or a home route. */
 export const rootTabItems = [
   {
     id: 'conversation',
     label: t('navigation.tabs.conversation'),
     accessibilityLabel: t('navigation.tabs.conversationAccessibility'),
     testID: 'navigation-tab-conversation',
-    systemImageName: 'sparkle',
-    selectedSystemImageName: 'sparkle',
-    fallbackSymbol: '✧',
+    systemImageName: 'bubble.left.and.bubble.right',
+    selectedSystemImageName: 'bubble.left.and.bubble.right.fill',
+    fallbackSymbol: '🗨︎',
   },
   {
     id: 'overview',
     label: t('navigation.tabs.overview'),
     accessibilityLabel: t('navigation.tabs.overviewAccessibility'),
     testID: 'navigation-tab-overview',
-    systemImageName: 'house',
-    selectedSystemImageName: 'house.fill',
-    fallbackSymbol: '⌂',
+    systemImageName: 'square.grid.2x2',
+    selectedSystemImageName: 'square.grid.2x2.fill',
+    fallbackSymbol: '▦',
   },
   {
     id: 'records',
