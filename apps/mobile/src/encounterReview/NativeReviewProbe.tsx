@@ -1,4 +1,3 @@
-import { registerTranscriptTapObserver } from '../transcription/transcriptTapObservation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
@@ -99,7 +98,11 @@ function ProbeRoute() {
       if (!source && mode === 'restore')
         throw new Error('Restore cannot seed a missing source.');
       if (!source) {
-        await seedSyntheticEncounter(repository, sourceId);
+        await seedSyntheticEncounter(
+          repository,
+          sourceId,
+          new Date().toISOString(),
+        );
         source = await repository.get('source_record', sourceId);
       }
       if (source?.sourceKind !== 'audio_recording')
@@ -193,7 +196,6 @@ function ProbeRoute() {
           {actions => (
             <>
               {/* The fixture toolbar occupies route content, never overlays native navigation or the keyboard dock. */}
-              <TranscriptTapProbe />
               <AppButton
                 title="검증 도구"
                 testID="encounter-probe-tools"
@@ -211,27 +213,4 @@ function ProbeRoute() {
     </View>
   );
 }
-/** Keep diagnostic rerenders out of the production route and active press responder tree. */
-function TranscriptTapProbe() {
-  const [tapEvents, setTapEvents] = useState('[]');
-  useEffect(() => {
-    const events: { event: string; at: number }[] = [];
-    return registerTranscriptTapObserver(event => {
-      events.push({ event, at: Date.now() });
-      setTapEvents(JSON.stringify(events.slice(-32)));
-    });
-  }, []);
-  return (
-    <AppText
-      testID="transcript-tap-observation"
-      numberOfLines={1}
-      style={styles.observation}
-    >
-      {tapEvents}
-    </AppText>
-  );
-}
-const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  observation: { height: 1, fontSize: 1 },
-});
+const styles = StyleSheet.create({ fill: { flex: 1 } });

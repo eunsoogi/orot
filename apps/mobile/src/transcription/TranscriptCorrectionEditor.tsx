@@ -1,4 +1,3 @@
-import { observeTranscriptTap } from './transcriptTapObservation';
 import { TextInput, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -24,12 +23,7 @@ export default function TranscriptCorrectionEditor({
   onCancel,
 }: Props) {
   return (
-    <View
-      style={styles.editor}
-      testID={`transcript-editor-${ordinal}`}
-      onTouchStart={() => observeTranscriptTap('editor-touch-start')}
-      onTouchEnd={() => observeTranscriptTap('editor-touch-end')}
-    >
+    <View style={styles.editor} testID={`transcript-editor-${ordinal}`}>
       <Text accessibilityRole="header" style={styles.editorTitle}>
         {t('recording.transcript.edit')}
       </Text>
@@ -39,7 +33,6 @@ export default function TranscriptCorrectionEditor({
         editable={!busy}
         multiline
         onChangeText={onChange}
-        onBlur={() => observeTranscriptTap('input-blur')}
         style={styles.input}
         testID={`transcript-input-${ordinal}`}
         value={draft}
@@ -59,10 +52,7 @@ export default function TranscriptCorrectionEditor({
           <AppButton
             busy={busy}
             disabled={busy}
-            onPress={() => {
-              observeTranscriptTap('save-press');
-              return onSave();
-            }}
+            onPress={onSave}
             testID={`transcript-save-${ordinal}`}
             title={t('recording.transcript.save')}
           />

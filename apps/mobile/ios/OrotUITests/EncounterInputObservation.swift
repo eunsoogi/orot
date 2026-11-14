@@ -114,8 +114,7 @@ final class EncounterInputObservation {
                 let keyboard = app.keyboards.firstMatch
                 let frame = button.frame
                 let windows = app.windows.allElementsBoundByIndex.map { "window: frame=\($0.frame), hittable=\($0.isHittable)" }.joined(separator: "\n")
-                let events = UITestConditions.element(app, "transcript-tap-observation")
-                let state = "events=\(events.exists ? UITestConditions.text(events) : "missing")\nwindows=\(windows)\nphase=\(phase), uptime=\(ProcessInfo.processInfo.systemUptime), app=\(app.frame), targetCenter=(\(frame.midX),\(frame.midY)), keyboard=\(keyboard.exists ? String(describing: keyboard.frame) : "missing")\n\(states)"
+                let state = "windows=\(windows)\nphase=\(phase), uptime=\(ProcessInfo.processInfo.systemUptime), app=\(app.frame), targetCenter=(\(frame.midX),\(frame.midY)), keyboard=\(keyboard.exists ? String(describing: keyboard.frame) : "missing")\n\(states)"
                 let attachment = XCTAttachment(string: state)
                 attachment.name = "transcript-save-\(phase)-geometry"
                 attachment.lifetime = .keepAlways
