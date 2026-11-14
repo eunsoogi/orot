@@ -92,6 +92,8 @@ export function createConversationSessionRestoreState(input: {
           (!turn.answer && turn.completion === 'partial')
             ? {
                 incomplete: true,
+                interruptionReason:
+                  turn.interruptionReason ?? 'process-interrupted',
                 activity: turn.interruptionReason
                   ? t(`conversationInterruption.${turn.interruptionReason}`)
                   : t('ragConversation.progressInterrupted'),

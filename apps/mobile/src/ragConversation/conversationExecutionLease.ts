@@ -1,5 +1,6 @@
 import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
 export type ConversationInterruptionReason =
+  | 'decision-required'
   | 'expired'
   | 'protected-data'
   | 'bridge-unavailable'
@@ -16,6 +17,7 @@ export function decodeConversationRecoveryReason(
 ): ConversationRecoveryReason | undefined {
   return typeof value === 'string' &&
     [
+      'decision-required',
       'expired',
       'protected-data',
       'bridge-unavailable',
@@ -35,6 +37,11 @@ export type ConversationExecutionEvent =
       readonly requestId: string;
       readonly reason?: 'bridge-unavailable';
     }
+  | {
+      readonly kind: 'continued';
+      readonly requestId: string;
+      readonly state: 'continued-granted' | 'continued-refused';
+    }
   | { readonly kind: 'foreground' }
   | { readonly kind: 'phase' }
   | { readonly kind: 'protectedData'; readonly available: boolean };
@@ -44,6 +51,8 @@ export interface ConversationExecutionAdapter {
   currentPhase?(): 'active' | 'background' | 'inactive' | 'unknown';
   begin(requestId: string): Promise<boolean>;
   end(requestId: string): void;
+  work?(requestId: string, active: boolean): void;
+  milestone?(requestId: string, stage: 'answered' | 'committed'): void;
   isActive(requestId: string): Promise<boolean>;
   protectedDataAvailable(): Promise<boolean | null>;
   subscribe(listener: (event: ConversationExecutionEvent) => void): () => void;
@@ -54,6 +63,7 @@ export async function beginConversationExecutionLease(
   adapter: ConversationExecutionAdapter,
   requestId: string,
   interrupt: (reason: ConversationInterruptionReason) => void,
+  needsDecision: () => boolean = () => false,
 ) {
   const diagnose = createExecutionDiagnostics(
     adapter.bridgeAvailable,
@@ -70,12 +80,18 @@ export async function beginConversationExecutionLease(
     interrupt(reason);
   };
   const unsubscribe = adapter.subscribe(event => {
+    if (event.kind === 'continued' && event.requestId === requestId)
+      diagnose(event.state);
     if (event.kind === 'expired' && event.requestId === requestId)
       notify(event.reason ?? 'expired');
     if (event.kind === 'protectedData' && !event.available)
       notify('protected-data');
     if (event.kind === 'foreground') diagnose('foreground');
-    if (event.kind === 'phase') diagnose('phase');
+    if (event.kind === 'phase') {
+      diagnose('phase');
+      if (needsDecision() && adapter.currentPhase?.() === 'background')
+        notify('decision-required');
+    }
     // Recheck after foregrounding in case suspension delayed the expiration event.
     if (event.kind === 'foreground' && acquired)
       adapter

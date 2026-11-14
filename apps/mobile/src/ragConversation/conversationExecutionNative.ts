@@ -12,6 +12,9 @@ import type {
 type NativeExecution = {
   begin(requestId: string): Promise<boolean>;
   end(requestId: string): void;
+  work?(requestId: string, active: boolean): void;
+  answered?(requestId: string): void;
+  committed?(requestId: string): void;
   isActive(requestId: string): Promise<boolean>;
   protectedDataAvailable(): Promise<boolean>;
   addListener(event: string): void;
@@ -30,6 +33,8 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
     currentPhase,
     begin: id => module.begin(id),
     end: id => module.end(id),
+    work: (id, active) => module.work?.(id, active),
+    milestone: (id, stage) => module[stage]?.(id),
     isActive: id => module.isActive(id),
     protectedDataAvailable: () => module.protectedDataAvailable(),
     subscribe(listener) {
@@ -39,7 +44,19 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
           // Native events are untrusted across the bridge; ignore malformed payloads.
           if (!value || typeof value !== 'object') return;
           const event = value as Partial<ConversationExecutionEvent>;
-          if (event.kind === 'foreground') listener({ kind: 'foreground' });
+          if (
+            event.kind === 'continued' &&
+            typeof event.requestId === 'string' &&
+            (event.state === 'continued-granted' ||
+              event.state === 'continued-refused')
+          )
+            listener({
+              kind: 'continued',
+              requestId: event.requestId,
+              state: event.state,
+            });
+          else if (event.kind === 'foreground')
+            listener({ kind: 'foreground' });
           else if (
             event.kind === 'expired' &&
             typeof event.requestId === 'string'

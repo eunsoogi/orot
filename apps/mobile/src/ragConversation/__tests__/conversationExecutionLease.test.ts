@@ -174,3 +174,39 @@ test('phase observations retain lease ownership without interrupting healthy wor
   expect(JSON.stringify(observations)).not.toContain('private-id');
   expect(interrupt).not.toHaveBeenCalled();
 });
+
+test('a real pending decision stops on background entry, not while active', async () => {
+  const f = fixture();
+  let phase: 'active' | 'background' = 'active';
+  f.adapter.currentPhase = () => phase;
+  const interrupt = jest.fn();
+  const end = await beginConversationExecutionLease(
+    f.adapter,
+    'one',
+    interrupt,
+    () => true,
+  );
+  f.emit({ kind: 'phase' });
+  expect(interrupt).not.toHaveBeenCalled();
+  phase = 'background';
+  f.emit({ kind: 'phase' });
+  expect(interrupt).toHaveBeenCalledWith('decision-required');
+  end();
+});
+
+test('continued processing status is owner-scoped and does not itself interrupt', async () => {
+  const f = fixture();
+  const interrupt = jest.fn();
+  const end = await beginConversationExecutionLease(
+    f.adapter,
+    'one',
+    interrupt,
+  );
+  f.emit({ kind: 'continued', requestId: 'other', state: 'continued-granted' });
+  f.emit({ kind: 'continued', requestId: 'one', state: 'continued-refused' });
+  expect(conversationExecutionDiagnostics().at(-1)?.event).toBe(
+    'continued-refused',
+  );
+  expect(interrupt).not.toHaveBeenCalled();
+  end();
+});

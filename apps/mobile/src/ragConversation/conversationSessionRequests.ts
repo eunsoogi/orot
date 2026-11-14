@@ -16,6 +16,7 @@ import { observeSummaryCommit } from './conversationSummaryCommit';
 import { prepareConversationRequest } from './conversationRequestStart';
 import { bindRequestCancel } from './conversationRequestIdentity';
 import { requestIdentityObserver } from './conversationRequestIdentity';
+import { ownsOutcome } from './conversationOutcomeOwnership';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import { createConversationRequestLifetime } from './conversationRequestLifetime';
 import { startConversationRetainedRequest } from './conversationPhotoRequestStart';
@@ -161,6 +162,7 @@ export function createConversationSessionRequests(
           ...(retained
             ? saveRecovery.observer(id, retained, request, current)
             : {}),
+          ...lifetime.executionObserver(controller),
           conversationScope: conversationScope(id),
           ...(photoInput ? { photoInput } : {}),
           retainedHistory: retainedHistoryTurns(session.messages, question),
@@ -174,11 +176,7 @@ export function createConversationSessionRequests(
           ...(preview ? conversationPreviewObserver(preview, activity) : {}),
         });
         if (
-          !current() &&
-          !(
-            controllers.get(id) === controller &&
-            (request.committed || request.summaryCommitted)
-          )
+          !ownsOutcome(current(), controllers.get(id) === controller, request)
         )
           return;
         if (outcome.status === 'failure' || outcome.status === 'unavailable') {
@@ -188,6 +186,8 @@ export function createConversationSessionRequests(
           fail(failureCopy);
           return;
         }
+        if (outcome.status === 'answer')
+          lifetime.answered(controller, request.committed);
         conversationCompletedAnswer({
           id,
           userMessageId,

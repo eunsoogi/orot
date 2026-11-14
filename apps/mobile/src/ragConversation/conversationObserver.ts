@@ -14,6 +14,7 @@ export type RagConversationObserver = Pick<
   | 'beforeTaskStream'
   | 'beforeTaskInputChange'
 > & {
+  readonly onExecutionState?: (state: 'working' | 'local' | 'decision') => void;
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
   /** The checkpoint and explicit photo consent are owned by this specific turn. */

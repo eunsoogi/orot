@@ -1,5 +1,15 @@
 /** Bounded lifecycle reasons never include provider payloads or private records. */
 export const conversationInterruptionKo = {
+  'conversationInterruption.decision-required':
+    '확인이 필요해 응답을 잠시 중단했어요. 앱에서 내용을 검토하고 이어가 주세요.',
+  'conversationInterruption.reviewAction': '질문 검토 후 이어하기',
+  'conversationInterruption.reviewNotice':
+    '이전 작업은 중단됐어요. 이 버튼은 질문을 입력창에 가져오며 자동으로 실행하지 않아요. 이미 완료된 작업과 남은 내용을 확인하고 다시 보내 주세요.',
+  'conversationInterruption.reviewAttachment':
+    '사진이 포함된 질문은 첨부와 전송 동의를 다시 확인해 주세요.',
+  'conversationInterruption.reviewDraftConflict':
+    '작성 중인 다른 질문을 지우지 않도록 입력창을 그대로 두었어요.',
+
   'conversationInterruption.user-stopped': '답변 생성을 중지했어요.',
   'conversationInterruption.provider-failed':
     '답변을 완료하지 못했어요. 연결 상태와 남은 내용을 확인한 뒤 다시 보내 주세요.',

@@ -2,6 +2,8 @@ import type { ConversationInterruptionReason } from './conversationExecutionLeas
 
 type Phase = 'active' | 'background' | 'inactive' | 'unknown';
 type Event =
+  | 'continued-granted'
+  | 'continued-refused'
   | 'begin'
   | 'acquired'
   | 'denied'

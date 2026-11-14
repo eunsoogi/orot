@@ -8,6 +8,8 @@ import type { createConversationTurnRetention } from './conversationTurnRetentio
 type Turn = ReturnType<typeof createConversationTurnRetention>;
 type StopStatus = 'cancelled' | 'interrupted';
 type Entry = {
+  id: number;
+  waitingForDecision?: boolean;
   controller: AbortController;
   turn: Turn;
   status?: StopStatus;
@@ -33,7 +35,7 @@ export function createConversationRequestLifetime(input: {
       question: string,
       submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput,
     ) {
-      const entry: Entry = { controller, turn };
+      const entry: Entry = { id, controller, turn };
       entries.set(id, entry);
       owners.set(controller, entry);
       entry.start = turn.startRequest(
@@ -53,8 +55,48 @@ export function createConversationRequestLifetime(input: {
               input.interrupt(id);
             }
           },
+          () => entry.waitingForDecision === true,
         );
       }
+    },
+    executionObserver(controller: AbortController) {
+      return {
+        onExecutionState: (state: 'working' | 'local' | 'decision') => {
+          const entry = owners.get(controller);
+          if (
+            !entry ||
+            entries.get(entry.id) !== entry ||
+            controller.signal.aborted
+          )
+            return;
+          entry.waitingForDecision = state === 'decision';
+          input.execution?.work?.(
+            entry.turn.toolMessageId,
+            state === 'working',
+          );
+          if (
+            state === 'decision' &&
+            input.execution?.currentPhase?.() === 'background'
+          ) {
+            entry.interruptionReason = 'decision-required';
+            input.interrupt(entry.id);
+          }
+        },
+      };
+    },
+    /** Only observed workflow milestones advance the system UI; never elapsed-time estimates. */
+    answered(controller: AbortController, committed: boolean) {
+      const entry = owners.get(controller);
+      if (
+        !entry ||
+        entries.get(entry.id) !== entry ||
+        entry.status ||
+        controller.signal.aborted
+      )
+        return;
+      input.execution?.milestone?.(entry.turn.toolMessageId, 'answered');
+      if (committed)
+        input.execution?.milestone?.(entry.turn.toolMessageId, 'committed');
     },
     interrupt(id: number, status: StopStatus, erase = false) {
       const entry = entries.get(id);

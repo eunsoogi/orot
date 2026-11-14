@@ -1,3 +1,4 @@
+import { notifyConversationInterruption } from '../replyNotifications/notifyConversationInterruption';
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import {
   decodeConversationArtifact,
@@ -23,6 +24,7 @@ export function createConversationTurnRetention(input: {
         | 'discardToolEvent'
         | 'startRequest'
         | 'interruptRequest'
+        | 'listInterruptedRequests'
         | 'invalidatePreview'
         | 'preparePreview'
         | 'writePreview'
@@ -125,6 +127,19 @@ export function createConversationTurnRetention(input: {
         status,
         reason,
       );
+      if (
+        status === 'interrupted' &&
+        reason !== 'user-stopped' &&
+        input.storage.listInterruptedRequests
+      )
+        await notifyConversationInterruption(
+          { listInterruptedRequests: input.storage.listInterruptedRequests },
+          {
+            requestId: input.turnId,
+            sessionId: input.sessionId,
+            sessionVersion: input.sessionVersion ?? 0,
+          },
+        ).catch(() => {}); // Notification delivery cannot turn a saved checkpoint into a failed write.
     },
     async recordToolEvent(
       event: import('@orot/agent-runtime').ConversationToolEvent,

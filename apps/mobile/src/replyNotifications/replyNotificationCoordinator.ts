@@ -1,6 +1,7 @@
 import { replyPreview } from './replyPreview';
 
 export type ReplyIdentity = {
+  purpose?: 'interruption';
   requestId: string;
   sessionId: string;
   messageId: string;

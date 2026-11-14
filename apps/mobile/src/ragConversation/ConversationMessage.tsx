@@ -23,6 +23,7 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly activity?: string;
   readonly streaming?: boolean;
   readonly incomplete?: boolean;
+  readonly interruptionReason?: import('./conversationExecutionLease').ConversationRecoveryReason;
   readonly completion?: 'complete' | 'partial';
   readonly toolMessageId?: string;
   /** Only committed turns may be used as durable conversation history. */

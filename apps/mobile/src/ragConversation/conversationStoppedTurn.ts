@@ -39,6 +39,22 @@ export function showStoppedConversationTurn(input: {
       : copy.progressCancelled,
     true,
   );
+  if (input.status === 'interrupted') {
+    const session = input.find(input.id);
+    const last = session.messages.at(-1);
+    if (last?.role === 'assistant' && last.incomplete)
+      input.update(input.id, {
+        messages: session.messages.map(message =>
+          message === last
+            ? {
+                ...message,
+                interruptionReason:
+                  input.interruptionReason ?? 'provider-failed',
+              }
+            : message,
+        ),
+      });
+  }
   if (input.turn)
     restoreFailedPrompt(
       input.find,

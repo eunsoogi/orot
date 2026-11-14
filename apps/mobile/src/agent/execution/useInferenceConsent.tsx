@@ -1,3 +1,4 @@
+import { executionNeedsDecision } from './executionDecisionObserver';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type {
@@ -56,7 +57,8 @@ export function useInferenceConsent(): InferenceConsentController {
           finish(false);
           return;
         }
-        setPendingRequest(request);
+        executionNeedsDecision(request.signal);
+        if (!request.signal.aborted) setPendingRequest(request);
       }),
     [finish],
   );

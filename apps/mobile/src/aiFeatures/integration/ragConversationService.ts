@@ -1,12 +1,9 @@
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import { finishRagConversation } from './finishRagConversation';
-import type {
-  RagConversationOutcome,
-  RagConversationObserver,
-} from '../../ragConversation/service';
+import type * as Conversation from '../../ragConversation/service';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import { executionOptions } from './featureServiceExecution';
-import { createLinkedAbortController } from './linkedAbortController';
+import * as background from './conversationBackgroundProvider';
 import { operationRunId } from './featureRunIdentity';
 import { createConversationToolBundle } from './conversationToolBundle';
 import { withProviderStage } from '../../providers/diagnostics';
@@ -41,8 +38,8 @@ import {
 } from './conversationExternalEvidence';
 /** Keeps local availability checks ahead of provider resolution and model dispatch. */
 export function createRagConversationService({
-  consent,
-  queryConsent,
+  consent: consentPort,
+  queryConsent: queryConsentPort,
   externalEvidence,
   loadLocalData,
   selectedAi,
@@ -55,16 +52,18 @@ export function createRagConversationService({
     question: string,
     previousMessages: readonly RagConversationMessage[],
     parentSignal?: AbortSignal,
-    observer?: RagConversationObserver,
+    observer?: Conversation.RagConversationObserver,
     entryContext?: ConversationEntryContext,
-  ): Promise<RagConversationOutcome> {
+  ): Promise<Conversation.RagConversationOutcome> {
     const normalizedQuestion = question.trim();
-    const photo = observer?.photoInput;
+    const photo = background.photo(observer);
     if (!validConversationInput(normalizedQuestion, photo)) {
       return { status: 'failure', kind: 'validation_failed' };
     }
-    const linked = createLinkedAbortController(parentSignal);
+    const linked = background.scope(parentSignal, observer);
     const signal = linked.controller.signal;
+    const consent = background.consent(consentPort, observer);
+    const queryConsent = background.consent(queryConsentPort, observer);
     let stage: 'selection' | 'data' | 'workflow' = 'selection';
     try {
       stage = 'data';
