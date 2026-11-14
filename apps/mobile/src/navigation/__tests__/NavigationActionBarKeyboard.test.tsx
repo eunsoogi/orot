@@ -67,7 +67,7 @@ test('retains the rail identity without obscured controls when the keyboard leav
   expect(screen.queryByTestId('bottom-navigation-actions')).toBeNull();
   expect(
     screen.getByTestId('navigation-right-rail-actions').props.children,
-  ).toBe('');
+  ).toBe('navigation-overflow');
 });
 
 test('retains the rail identity without obscured controls when the keyboard leaves too little room for contextual actions', async () => {
@@ -135,7 +135,7 @@ test('restores actions after repeated keyboard frames while genuine window chang
     expect(screen.queryByTestId('bottom-navigation-actions')).toBeNull();
     expect(
       screen.getByTestId('navigation-right-rail-actions').props.children,
-    ).toBe(height ? '' : 'tab-home');
+    ).toBe(height ? 'navigation-overflow' : 'tab-home');
   }
   await rendered.rerender(view(0, { ...rightLayout, windowHeight: 300 }));
   expect(screen.queryByTestId('navigation-right-rail')).toBeNull();

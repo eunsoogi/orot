@@ -1,15 +1,7 @@
+import { navigationKeyboardRailActions } from './navigationKeyboardRailActions';
 import { useContext } from 'react';
-import type { ReactNode } from 'react';
 import { Platform, type StyleProp, type ViewStyle } from 'react-native';
-import {
-  NavigationGlassSurface,
-  type NavigationGlassAction,
-  type NavigationGlassActionEventHandler,
-} from './NavigationGlassSurface';
-import type {
-  NavigationPrimaryAction,
-  NavigationSurface,
-} from './NavigationActionBar';
+import { NavigationGlassSurface } from './NavigationGlassSurface';
 import { navigationActionBarStyles as styles } from './navigationActionBarStyles';
 import { NavigationRootLayoutContext } from './navigationRootLayout';
 import { NavigationSurfacePosition } from './NavigationSurfacePosition';
@@ -23,24 +15,7 @@ import {
   navigationRailPresentation,
 } from './navigationRailPresentation';
 import { useNavigationAllocationObservation } from './useNavigationAllocationObservation';
-import type { NavigationRouteAction } from './useNavigationPrimaryAction';
-
-interface NavigationActionBarPresentationProps {
-  readonly actions: readonly NavigationGlassAction[];
-  readonly bottomActions: ReactNode;
-  readonly isDarkAppearance: boolean;
-  readonly keyboardHeight: number;
-  readonly keyboardVisible: boolean;
-  readonly onAction: NavigationGlassActionEventHandler;
-  readonly primaryAction?: NavigationPrimaryAction;
-  readonly pageActions?: readonly NavigationRouteAction[];
-  readonly pageActionsDisabled?: boolean;
-  readonly routeKey?: string;
-  readonly reclaimRootTabInset: boolean;
-  readonly safeAreaHandledByParent: boolean;
-  readonly surface: NavigationSurface;
-  readonly availableWidthOverride?: number;
-}
+import type { NavigationActionBarPresentationProps } from './NavigationActionBarPresentationProps';
 
 /** Keeps one native host mounted while the content lane, rail, and bottom action change size. */
 export function NavigationActionBarPresentation({
@@ -95,6 +70,12 @@ export function NavigationActionBarPresentation({
   const laneActions = actions.some(action => action.id === 'primary')
     ? actions.filter(action => action.id !== 'primary')
     : actions;
+  const compactRail = navigationKeyboardRailActions(
+    laneActions,
+    railHeight,
+    rightLayout?.railTopInset ?? 0,
+    railBottomInset ?? 0,
+  );
   const managedBottom =
     !isRightRail && Platform.OS === 'ios' && Surface === NavigationGlassSurface;
   const row = useBottomNavigationRow({
@@ -118,8 +99,12 @@ export function NavigationActionBarPresentation({
     routeKey,
     navigation: laneActions,
     pages: taskActions,
-    overflowNavigationIds: row.overflowNavigation.map(action => action.id),
-    overflowPageIds: row.overflowPages.map(action => action.id),
+    overflowNavigationIds: keyboardSuspended
+      ? compactRail.overflow
+      : row.overflowNavigation.map(action => action.id),
+    overflowPageIds: keyboardSuspended
+      ? taskActions.map(action => action.id)
+      : row.overflowPages.map(action => action.id),
     disabled: pageActionsDisabled,
     onNavigation: onAction,
   });
@@ -128,7 +113,7 @@ export function NavigationActionBarPresentation({
   const pageWidth = row.plan?.pageWidth ?? 0;
   const pageLeft = row.plan?.pageLeft ?? 0;
   const displayedNavigation = keyboardSuspended
-    ? []
+    ? compactRail.actions
     : singleRow
       ? hasRootTabs && row.overflow
         ? [
@@ -147,8 +132,9 @@ export function NavigationActionBarPresentation({
         layoutMode: rightLayout.railSide ?? ('right' as const),
         railBottomInset,
         railRightInset: rightLayout.railRightInset,
-        railTopInset:
-          pageLayout?.navigationTopInset ?? rightLayout.railTopInset,
+        railTopInset: keyboardSuspended
+          ? rightLayout.railTopInset
+          : (pageLayout?.navigationTopInset ?? rightLayout.railTopInset),
         railAvailableHeight: railHeight,
       }
     : { layoutMode: 'bottom' as const };
