@@ -74,9 +74,12 @@ export async function runHealthContextPersistenceTestOperation(
       },
       registry,
       signal,
+      [item],
     );
     const saved: SavedSymptomSummary = {
       ...captured,
+      // This synthetic model receives only item; its full admitted input set was captured above.
+      inputLineage: 'complete',
       id: 'synthetic-period-summary',
       createdAt: '2026-10-05T00:00:00Z',
       modelId: 'synthetic-local',
