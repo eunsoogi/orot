@@ -1,11 +1,19 @@
 import UIKit
 
 /// A single material-backed droplet moves independently of the fixed, accessible tab targets.
-final class NavigationSelectionGlass: UIVisualEffectView {
+final class NavigationSelectionGlass: UIView {
+    private let material = UIVisualEffectView(effect: nil)
+    var effect: UIVisualEffect? {
+        material.effect
+    }
+
     private(set) var targetFrame = CGRect.zero
 
     init() {
-        super.init(effect: nil)
+        super.init(frame: .zero)
+        material.frame = bounds
+        material.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(material)
         accessibilityIdentifier = "navigation-root-selection-indicator"
         isUserInteractionEnabled = false
         clipsToBounds = true
@@ -25,16 +33,16 @@ final class NavigationSelectionGlass: UIVisualEffectView {
     /// Accessibility uses an opaque semantic selection, never a fake transparent glass substitute.
     @objc func updateMaterial() {
         if UIAccessibility.isReduceTransparencyEnabled {
-            effect = nil
+            material.effect = nil
             backgroundColor = .systemGray4
         } else if #available(iOS 26.0, *) {
             let glass = UIGlassEffect(style: .regular)
             glass.tintColor = .systemBlue.withAlphaComponent(0.18)
             glass.isInteractive = false
-            effect = glass
+            material.effect = glass
             backgroundColor = .clear
         } else {
-            effect = UIBlurEffect(style: .systemMaterial)
+            material.effect = UIBlurEffect(style: .systemMaterial)
             backgroundColor = NavigationGlassPalette.selectedRootTabBackground
         }
     }
@@ -81,6 +89,8 @@ final class NavigationSelectionGlass: UIVisualEffectView {
 
     private func keyframes(_ key: String, _ values: [Any]) -> CAKeyframeAnimation {
         let animation = CAKeyframeAnimation(keyPath: key)
+        // Group duration does not supply the child animation duration.
+        animation.duration = 0.32
         animation.values = values
         animation.keyTimes = [0, 0.45, 1]
         animation.timingFunctions = [CAMediaTimingFunction(name: .easeOut), CAMediaTimingFunction(name: .easeInEaseOut)]

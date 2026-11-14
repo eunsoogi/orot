@@ -143,9 +143,13 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         super.didMoveToWindow()
         guard let window else { return }
         // Routes own their bars; carry only selection identity across replacements in this window.
-        previousWindowSelection = NavigationSelectionHistory.last.object(forKey: window)
-        if previousWindowSelection == nil {
-            moveIndicator(animated: false)
+        let previous = NavigationSelectionHistory.last.object(forKey: window)
+        // React applies final constraints after attachment; resume after that layout transaction.
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window, self.window === window else { return }
+            previousWindowSelection = previous
+            layoutIfNeeded()
+            moveIndicator(animated: previous != nil)
         }
         setNeedsLayout()
     }

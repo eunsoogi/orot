@@ -4,8 +4,8 @@ import XCTest
 
 final class NavigationSelectionGlassTests: OrotFailFastTestCase {
     @MainActor
-    func testMaterialDropletSettlesAndReplacesInterruptedTransitions() throws {
-        try verifyRouteReplacementInWindow()
+    func testMaterialDropletSettlesAndReplacesInterruptedTransitions() async throws {
+        try await verifyRouteReplacementInWindow()
         let indicator = NavigationSelectionGlass()
         if #available(iOS 26.0, *), !UIAccessibility.isReduceTransparencyEnabled {
             XCTAssertTrue(indicator.effect is UIGlassEffect)
@@ -25,6 +25,7 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
         if !UIAccessibility.isReduceMotionEnabled {
             let group = try XCTUnwrap(indicator.layer.animation(forKey: "navigation-droplet") as? CAAnimationGroup)
             let bounds = try XCTUnwrap(group.animations?.compactMap { $0 as? CAKeyframeAnimation }.first { $0.keyPath == "bounds" })
+            XCTAssertEqual(bounds.duration, group.duration)
             let middle = try XCTUnwrap(bounds.values?[1] as? NSValue).cgRectValue
             XCTAssertGreaterThan(middle.height, second.height)
             XCTAssertLessThan(middle.width, second.width)
@@ -45,6 +46,7 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
         if !UIAccessibility.isReduceMotionEnabled {
             let group = try XCTUnwrap(indicator.layer.animation(forKey: "navigation-droplet") as? CAAnimationGroup)
             let bounds = try XCTUnwrap(group.animations?.compactMap { $0 as? CAKeyframeAnimation }.first { $0.keyPath == "bounds" })
+            XCTAssertEqual(bounds.duration, group.duration)
             let middle = try XCTUnwrap(bounds.values?[1] as? NSValue).cgRectValue
             XCTAssertGreaterThan(middle.width, first.width)
             XCTAssertLessThan(middle.height, first.height)
@@ -53,7 +55,7 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
 
     /// Exercise the real bar lifecycle, because route replacement creates a new native view.
     @MainActor
-    private func verifyRouteReplacementInWindow() throws {
+    private func verifyRouteReplacementInWindow() async throws {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = UIWindow(windowScene: scene)
         window.rootViewController = UIViewController()
@@ -62,10 +64,12 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
         let first = bar(selected: 0)
         window.rootViewController?.view.addSubview(first)
         first.layoutIfNeeded()
+        try await Task.sleep(for: .milliseconds(30))
         first.removeFromSuperview()
         let replacement = bar(selected: 2)
         window.rootViewController?.view.addSubview(replacement)
         replacement.layoutIfNeeded()
+        try await Task.sleep(for: .milliseconds(30))
         let selection = try XCTUnwrap(replacement.contentView.subviews.compactMap { $0 as? NavigationSelectionGlass }.first)
         if UIAccessibility.isReduceMotionEnabled {
             XCTAssertNil(selection.layer.animation(forKey: "navigation-droplet"))
@@ -82,6 +86,7 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
         let independent = bar(selected: 1)
         otherWindow.rootViewController?.view.addSubview(independent)
         independent.layoutIfNeeded()
+        try await Task.sleep(for: .milliseconds(30))
         let independentSelection = try XCTUnwrap(independent.contentView.subviews.compactMap { $0 as? NavigationSelectionGlass }.first)
         XCTAssertNil(independentSelection.layer.animation(forKey: "navigation-droplet"))
         XCTAssertEqual(NavigationSelectionHistory.last.object(forKey: window)?.id, "tab-2")
