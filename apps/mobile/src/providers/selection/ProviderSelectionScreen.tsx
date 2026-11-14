@@ -1,4 +1,4 @@
-import { VoiceSettingsPanel as VoicePanel } from '../../voiceSettings/VoiceSettingsPanel';
+import { ModelSelectionTabs } from './ModelSelectionTabs';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
@@ -64,7 +64,6 @@ export default function ProviderSelectionScreen({
   const publishNavigationState = useProviderSelectionNavigationState(
     onNavigationStateChange,
   );
-
   useEffect(() => {
     let mounted = true;
     selectionStore
@@ -82,18 +81,16 @@ export default function ProviderSelectionScreen({
       mounted = false;
     };
   }, [selectionStore]);
-
   const resolution = useMemo(
     () => resolveProviderSelection(savedSelection, options, requirements),
     [savedSelection, options, requirements],
   );
-  const selectedOption = resolution.ok
-    ? options.find(
-        option =>
-          option.provider.id === savedSelection?.providerId &&
-          option.modelId === savedSelection?.modelId,
-      )
-    : undefined;
+  // Saved identity remains visible even before the account catalog is refreshed.
+  const selectedOption = options.find(
+    option =>
+      option.provider.id === savedSelection?.providerId &&
+      option.modelId === savedSelection?.modelId,
+  );
   const pendingSelection = pendingOption
     ? { providerId: pendingOption.provider.id, modelId: pendingOption.modelId }
     : null;
@@ -162,7 +159,7 @@ export default function ProviderSelectionScreen({
       : resolution.ok
         ? `${providerSelectionText.selectedPrefix} ${selectedOption?.displayName ?? ''}`
         : savedSelection
-          ? providerSelectionText.unavailableSelection
+          ? `${providerSelectionText.selectedPrefix} ${savedSelection.modelId}\n${providerSelectionText.unavailableSelection}`
           : providerSelectionText.selectPrompt;
 
   return (
@@ -187,7 +184,6 @@ export default function ProviderSelectionScreen({
             title={navigationText.back.label}
           />
         ) : null}
-        {/* AI keeps combined controls; Settings exposes provider choices or account actions by route. */}
         <Text accessibilityRole="header" style={styles.title}>
           {presentation === 'feature'
             ? 'AI 선택'
@@ -201,49 +197,52 @@ export default function ProviderSelectionScreen({
         {chatGPTSetup && presentation === 'settings-accounts' ? (
           <ChatGPTAccountSetupCard setup={chatGPTSetup} />
         ) : null}
-        {presentation !== 'settings-accounts' ? (
-          <ProviderSelectionChoices
-            chatGPTSetup={chatGPTSetup}
-            loading={loading}
-            onChoose={option => {
-              publishNavigationState(
-                { hasPendingSelection: true, isSavingSelection: false },
-                true,
-              );
-              setPendingOption(option);
-              setSaveError(false);
-            }}
-            options={options}
-            pendingOption={pendingOption}
-            presentation={presentation}
-            requirements={requirements}
-            saving={saving}
-            selectedOption={selectedOption}
-          />
-        ) : null}
-        {presentation !== 'settings-accounts' ? (
-          <ProviderSelectionFooter
-            message={selectionMessage}
-            saveError={saveError}
-            remoteAvailable={options.some(
-              option => option.privacyBoundary !== 'on-device',
-            )}
-            resolution={pendingResolution}
-            onCancel={() => {
-              publishNavigationState(
-                { hasPendingSelection: false, isSavingSelection: false },
-                true,
-              );
-              setPendingOption(null);
-            }}
-            onConfirm={confirmSelection}
-            option={pendingOption ? confirmationOption : null}
-            saving={saving}
-          />
-        ) : null}
-        {presentation === 'settings-provider' && (
-          <VoicePanel onOpenAccounts={chatGPTSetup?.onOpenAccounts} />
-        )}
+        <ModelSelectionTabs
+          enabled={presentation === 'settings-provider'}
+          locked={saving || pendingOption !== null}
+          onOpenAccounts={chatGPTSetup?.onOpenAccounts}
+        >
+          {presentation !== 'settings-accounts' ? (
+            <ProviderSelectionChoices
+              chatGPTSetup={chatGPTSetup}
+              loading={loading}
+              onChoose={option => {
+                publishNavigationState(
+                  { hasPendingSelection: true, isSavingSelection: false },
+                  true,
+                );
+                setPendingOption(option);
+                setSaveError(false);
+              }}
+              options={options}
+              pendingOption={pendingOption}
+              presentation={presentation}
+              requirements={requirements}
+              saving={saving}
+              selectedOption={selectedOption}
+            />
+          ) : null}
+          {presentation !== 'settings-accounts' ? (
+            <ProviderSelectionFooter
+              message={selectionMessage}
+              saveError={saveError}
+              remoteAvailable={options.some(
+                option => option.privacyBoundary !== 'on-device',
+              )}
+              resolution={pendingResolution}
+              onCancel={() => {
+                publishNavigationState(
+                  { hasPendingSelection: false, isSavingSelection: false },
+                  true,
+                );
+                setPendingOption(null);
+              }}
+              onConfirm={confirmSelection}
+              option={pendingOption ? confirmationOption : null}
+              saving={saving}
+            />
+          ) : null}
+        </ModelSelectionTabs>
       </ScrollView>
     </View>
   );
