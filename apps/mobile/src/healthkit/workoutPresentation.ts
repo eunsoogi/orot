@@ -1,4 +1,5 @@
 import type { HealthObservation } from '@orot/domain';
+import { formatHealthDuration } from '../i18n/healthDuration';
 import { t } from '../i18n';
 
 /** Names come from the native SDK mapping; a future code never becomes a guessed sport. */
@@ -23,11 +24,8 @@ export function workoutActivityLabel(observation: HealthObservation): string {
 
 /** Round only presentation to whole minutes; stored source duration stays unchanged. */
 export function formatWorkoutMinutes(value: number): string {
-  const minutes = Math.round(value);
-  return minutes >= 60
-    ? t('healthRecords.workout.hoursMinutes', {
-        hours: Math.floor(minutes / 60),
-        minutes: minutes % 60,
-      })
-    : t('healthRecords.workout.minutes', { minutes });
+  return (
+    formatHealthDuration('workouts', value, 'min') ??
+    t('healthRecords.workout.minutes', { minutes: value })
+  );
 }

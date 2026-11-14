@@ -9,7 +9,6 @@ export const healthRecordsKo = {
   'healthRecords.workout.functionalStrength': '기능성 근력 운동',
   'healthRecords.workout.cardio': '유산소 운동',
   'healthRecords.workout.interval': '인터벌 운동',
-  'healthRecords.workout.hoursMinutes': '{hours}시간 {minutes}분',
   'healthRecords.workout.minutes': '{minutes}분',
   'healthRecords.category.workouts': '운동 기록',
   'records.openHealthLibrary': '가져온 건강 기록 보기',

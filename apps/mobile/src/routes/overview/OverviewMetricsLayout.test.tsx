@@ -178,8 +178,10 @@ test.each([
     expect(StyleSheet.flatten(comparison.props.style)?.flexDirection).toBe(
       direction,
     );
-    expect(comparison).toHaveTextContent(/420분/u);
-    expect(comparison).toHaveTextContent(/450분/u);
+    expect(comparison).toHaveTextContent(/7시간 0분/u);
+    expect(comparison).toHaveTextContent(/7시간 30분/u);
+    expect(comparison.props.accessibilityLabel).toContain('7시간 0분');
+    expect(comparison.props.accessibilityLabel).toContain('7시간 30분');
     expect(comparison.props.accessibilityLabel).toContain('기록된 날: 3일/7일');
     expect(comparison.props.accessibilityLabel).toContain('기록된 날: 4일/7일');
     const identity = StyleSheet.flatten(

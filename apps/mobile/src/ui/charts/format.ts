@@ -1,4 +1,4 @@
-import { formatWorkoutMinutes } from '../../healthkit/workoutPresentation';
+import { formatHealthDuration } from '../../i18n/healthDuration';
 import {
   formatDate,
   formatDateTime,
@@ -29,14 +29,14 @@ export function formatChartTimeTick(value: number): string {
   return `${formatDate(instant, { month: 'numeric', day: 'numeric' })} ${formatTime(instant)}`;
 }
 
-/** Format actual values without imposing metric-specific rounding or precision. */
+/** Durations share overview rounding; other measurements retain their precision. */
 export function formatChartValue(
   metric: ChartMetric,
   value: number,
   unit: string,
 ): string {
-  if (metric === 'workouts' && unit === 'min')
-    return formatWorkoutMinutes(value);
+  const duration = formatHealthDuration(metric, value, unit);
+  if (duration !== undefined) return duration;
   const amount = formatNumber(value, { maximumSignificantDigits: 21 });
   if (metric === 'sleep' && unit === 'min')
     return `${amount}${t('overview.metricUnit.minutes')}`;
