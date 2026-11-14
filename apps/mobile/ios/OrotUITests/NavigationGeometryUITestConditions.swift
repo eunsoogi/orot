@@ -149,10 +149,7 @@ enum NavigationGeometryUITestConditions {
             let available = try XCTUnwrap(rect(shared["availableContentFrame"]))
             let isRight = shared["side"] as? String == "right"
             let laneCenter = isRight ? (available.maxX + window.maxX) / 2 : (window.minX + available.minX) / 2
-            // Keyboard occlusion contracts height, not the measured horizontal side lane.
-            let fullWidth = rect(shared["viewportFrame"]).map {
-                abs($0.minX - window.minX) <= 0.5 && abs($0.maxX - window.maxX) <= 0.5
-            } ?? false
+            let fullWidth = rect(shared["viewportFrame"]).map { abs($0.minX - window.minX) <= 0.5 && abs($0.maxX - window.maxX) <= 0.5 } ?? false
             let observed = isRight && fullWidth && NavigationMeasuredReservation.matches(shared, window: window, available: available)
             let centerX = laneCenter + (!isRight && NavigationMeasuredReservation.leftSplit(shared, window: window) ? 35.0 / 6.0 : (observed ? -35.0 / 6.0 : 0))
             XCTAssertEqual(measuredBar.width, 48, accuracy: 0.5)
