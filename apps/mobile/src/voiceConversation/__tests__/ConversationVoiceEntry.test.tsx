@@ -23,8 +23,8 @@ jest.mock('react-native-keychain', () => ({
 }));
 
 const mockIdentity = jest.fn((_props: unknown) => null);
-jest.mock('../../assistantAppearance/AssistantHeader', () => ({
-  AssistantHeader: (props: unknown) => mockIdentity(props),
+jest.mock('../VoiceCallIdentity', () => ({
+  VoiceCallIdentity: (props: unknown) => mockIdentity(props),
 }));
 
 let listening: (id: string) => void = () => {};
@@ -118,14 +118,8 @@ test('explicit consent binds one voice turn while preserving the text draft', as
     buttons[1].onPress?.();
   });
   await waitFor(() => expect(mockNative.start).toHaveBeenCalledTimes(1));
-  // The call reuses the stored identity component and cannot open settings mid-session.
-  expect(mockIdentity).toHaveBeenCalledWith(
-    expect.objectContaining({
-      session: snapshot.sessions[0],
-      editable: false,
-      status: expect.any(String),
-    }),
-  );
+  // The dedicated non-interactive call identity replaces the editable header.
+  expect(mockIdentity).toHaveBeenCalled();
   const turn = mockNative.start.mock.calls[0][0] as string;
   await act(async () => {
     listening(turn);

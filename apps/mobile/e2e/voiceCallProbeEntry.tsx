@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppRegistry, AppState, Text } from 'react-native';
 import { name as appName } from '../app.json';
+import { SavedVoiceCallIdentity } from '../src/voiceConversation/VoiceCallIdentity';
 import { VoiceConversationScreen } from '../src/voiceConversation/VoiceConversationScreen';
 import { createDuplexVoiceSession } from '../src/voiceConversation/duplexVoiceSession';
 import type { VoiceConversationDependencies } from '../src/voiceConversation/createVoicePorts';
@@ -116,7 +117,9 @@ function VoiceCallProbeEntry() {
         phase={state.phase}
         status={`Synthetic ${state.phase}`}
         identity={
-          <Text testID="voice-fixture-identity">Orot synthetic fixture</Text>
+          <SavedVoiceCallIdentity
+            value={{ avatar: 'star', name: 'Orot synthetic fixture' }}
+          />
         }
         onEnd={() => {
           session.current?.stop();
