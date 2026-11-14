@@ -26,7 +26,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
     static let contextualBackGroupHeight: CGFloat = 52
 
     private let stack = UIStackView()
-    private let indicator = UIView()
+    private let indicator = NavigationSelectionGlass()
     private var descriptors: [NavigationActionDescriptor] = []
     private var buttons: [UIButton] = []
     private var usesVerticalLayout = false
@@ -47,7 +47,6 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         clipsToBounds = true
         indicator.accessibilityIdentifier = "navigation-root-selection-indicator"
         indicator.isUserInteractionEnabled = false
-        indicator.backgroundColor = NavigationGlassPalette.selectedRootTabBackground
         indicator.layer.cornerRadius = 24
         contentView.addSubview(indicator)
         stack.axis = .horizontal
@@ -155,17 +154,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
     private func moveIndicator(animated: Bool) {
         guard let frame = selectedFrame else { indicator.isHidden = true; return }
         indicator.isHidden = false
-        indicator.layer.cornerRadius = frame.width / 2
-        guard animated, !UIAccessibility.isReduceMotionEnabled, !indicator.frame.isEmpty else {
-            indicator.layer.removeAllAnimations()
-            indicator.frame = frame
-            return
-        }
-        UIView.animate(withDuration: 0.24, delay: 0,
-                       options: [.beginFromCurrentState, .allowUserInteraction, .curveEaseInOut])
-        {
-            self.indicator.frame = frame
-        }
+        indicator.move(to: frame, animated: animated, vertical: usesVerticalLayout)
     }
 
     override func layoutSubviews() {
@@ -173,7 +162,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         stack.layoutIfNeeded()
         // Compare final target geometry, not only bar size: initial child layout can arrive later.
         // The model frame already equals the destination during animation, so this preserves its presentation path.
-        if let target = selectedFrame, indicator.isHidden || indicator.frame != target {
+        if let target = selectedFrame, indicator.isHidden || indicator.targetFrame != target {
             moveIndicator(animated: false)
         }
     }
