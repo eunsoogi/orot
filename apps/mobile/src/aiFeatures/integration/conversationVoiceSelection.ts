@@ -29,7 +29,8 @@ export async function resolveConversationSelection(
           selected.provider,
           selected.remoteProcessing,
           observer?.onExecutionState
-            ? extend => observer.onExecutionState?.(extend ? 'working' : 'local')
+            ? extend =>
+                observer.onExecutionState?.(extend ? 'working' : 'local')
             : undefined,
         ),
       }
