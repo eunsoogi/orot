@@ -15,6 +15,7 @@ import { hubSpacing } from '../layout/hubSpacing';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
 import { RecordsRouteEntries } from './RecordsRouteEntries';
+import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
 import { LegacySymptomData } from './LegacySymptomData';
 
 export interface RecordsRouteProps {
@@ -123,6 +124,7 @@ export function RecordsRoute({
             </Text>
           ) : null}
         </View>
+        <SavedMemoryBrowser />
         <LegacySymptomData />
         <RecordsRecentSources
           recordings={recordings}
