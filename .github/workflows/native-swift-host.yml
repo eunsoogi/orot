@@ -30,5 +30,7 @@ jobs:
         uses: ./.github/actions/ios-host-bootstrap
         with:
           log_directory: artifacts/native-swift-host
+      - name: Observe host file-protection capability
+        run: swift scripts/tests/host-file-protection-capability.swift
       - name: Run shipping Swift regressions
         run: scripts/tests/native-swift-regressions-host.sh
