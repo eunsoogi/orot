@@ -49,11 +49,6 @@ export function APIPlatformLink() {
       >
         <Text style={styles.label}>OpenAI API 키 관리 페이지 열기</Text>
       </Pressable>
-      <Text>
-        기본 브라우저에서 열립니다. Safari를 기본 브라우저로 설정한 경우
-        Safari에서 열립니다. 링크를 여는 것만으로 키 발급이나 결제가 이루어지지
-        않습니다.
-      </Text>
       {failed ? (
         <Text accessibilityRole="alert">
           페이지를 열지 못했습니다. 위 링크를 눌러 다시 시도해 주세요.

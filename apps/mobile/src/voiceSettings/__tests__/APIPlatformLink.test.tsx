@@ -21,7 +21,7 @@ it('opens only the official public HTTPS destination and permits retry', async (
     ['https://platform.openai.com/api-keys'],
     ['https://platform.openai.com/api-keys'],
   ]);
-  expect(view.getByText(/Safari를 기본 브라우저/)).toBeTruthy();
+  expect(view.queryByText(/기본 브라우저/)).toBeNull();
 });
 it('blocks repeated activation and tolerates completion after navigation away', async () => {
   let finish!: () => void;
