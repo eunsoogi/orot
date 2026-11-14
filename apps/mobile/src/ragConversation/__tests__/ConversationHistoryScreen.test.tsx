@@ -185,3 +185,50 @@ test('lets deletion feedback wrap and restores the removed session', async () =>
     store.dispose();
   }
 });
+
+test('keeps restore recovery after the header inside the page and preserves rows across retries', async () => {
+  const store = createConversationSessions();
+  const restore = jest
+    .spyOn(store, 'loadHistory')
+    .mockRejectedValueOnce(new Error('offline'))
+    .mockRejectedValueOnce(new Error('offline'))
+    .mockResolvedValueOnce(undefined);
+  const hook = jest
+    .spyOn(sessionsContext, 'useConversationSessions')
+    .mockReturnValue(store);
+  try {
+    await render(<ConversationHistoryScreen onBack={jest.fn()} />);
+    const page = screen.getByTestId('conversation-history-page');
+    const pane = within(page).getByTestId('conversation-history-pane');
+    const header = within(pane).getByTestId('conversation-history-header');
+    const recovery = await screen.findByTestId('conversation-history-recovery');
+    expect(within(pane).getByTestId('conversation-history-recovery')).toBe(
+      recovery,
+    );
+    expect(pane.children.indexOf(header)).toBeLessThan(
+      pane.children.indexOf(recovery),
+    );
+    expect(StyleSheet.flatten(recovery.props.style)).toMatchObject({
+      marginHorizontal: 24,
+    });
+    const initialRows = screen.getByTestId('conversation-history-list').props
+      .rows;
+    await fireEvent.press(screen.getByTestId('conversation-history-retry'));
+    expect(
+      await screen.findByTestId('conversation-history-recovery'),
+    ).toBeTruthy();
+    expect(screen.getByTestId('conversation-history-list').props.rows).toEqual(
+      initialRows,
+    );
+    await fireEvent.press(screen.getByTestId('conversation-history-retry'));
+    expect(screen.queryByTestId('conversation-history-recovery')).toBeNull();
+    expect(screen.getByTestId('conversation-history-list').props.rows).toEqual(
+      initialRows,
+    );
+    expect(restore).toHaveBeenCalledTimes(3);
+  } finally {
+    hook.mockRestore();
+    restore.mockRestore();
+    store.dispose();
+  }
+});
