@@ -152,3 +152,19 @@ or verify this cleanup when accepting the child result.
 
 Use [Development](docs/development.md) for executable Simulator preparation,
 run, shutdown, deletion, and inventory commands.
+
+## Separate file-protection security integration
+
+The user-approved E2E scope separates environment-dependent protected-document
+store assertions from hosted application E2E. Hosted core retains seven pure
+extraction/coordinated-read cases and four picker-completion cases; document
+import, saved-original, duplicate and picker recovery user journeys remain.
+The original 20 native document methods remain executable separately through
+`medical-document-security-validation.mjs` (see Development). No product
+protection assertion is removed or relaxed. An explicit false capability on the
+actual test directory volume permits an explained XCTest skip. Unknown/error
+capability fails, and supported volumes must satisfy the original assertions.
+A skipped security case is not a security pass. Hosted Full completeness attests
+only its maintained E2E scope, not these separately recorded security results.
+Required PR checks and branch protection are unchanged. Security acceptance and
+physical-device locked-state evidence must be reported separately.

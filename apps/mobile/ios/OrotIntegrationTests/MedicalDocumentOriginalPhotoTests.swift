@@ -10,6 +10,7 @@ final class MedicalDocumentOriginalPhotoTests: XCTestCase {
     func testOriginalPhotoResolutionPreservesSyntheticImageBytesAndOrientationAfterReopen() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let store = MedicalDocumentFileStore(rootDirectory: root)
         let reopenedStore = MedicalDocumentFileStore(rootDirectory: root)
         let formats = [
@@ -68,6 +69,7 @@ final class MedicalDocumentOriginalPhotoTests: XCTestCase {
     func testOriginalPhotoLookupDistinguishesMissingUnsupportedAndCorruptFiles() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let store = MedicalDocumentFileStore(rootDirectory: root)
         let missingID = UUID().uuidString.lowercased()
 
@@ -116,6 +118,7 @@ final class MedicalDocumentOriginalPhotoTests: XCTestCase {
     func testOriginalPhotoRejectsMalformedAndAmbiguousSourceIdentityWithoutChangingFiles() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let store = MedicalDocumentFileStore(rootDirectory: root)
 
         XCTAssertThrowsError(try store.originalPhoto(sourceID: "not-a-uuid", expectedContentHash: nil)) { error in
@@ -142,6 +145,7 @@ final class MedicalDocumentOriginalPhotoTests: XCTestCase {
     func testDeletingOnePhotoRetainsTheOtherDocumentOriginal() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let store = MedicalDocumentFileStore(rootDirectory: root)
         let reopenedStore = MedicalDocumentFileStore(rootDirectory: root)
         let deletedID = UUID().uuidString.lowercased()
@@ -167,6 +171,7 @@ final class MedicalDocumentOriginalPhotoTests: XCTestCase {
     func testProtectedDirectoryReadFailureRemainsUnavailable() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let manager = InaccessibleDirectoryFileManager()
         let store = MedicalDocumentFileStore(fileManager: manager, rootDirectory: root)
 
@@ -228,5 +233,15 @@ final class MedicalDocumentOriginalPhotoTests: XCTestCase {
 private final class InaccessibleDirectoryFileManager: FileManager {
     override func contentsOfDirectory(atPath _: String) throws -> [String] {
         throw CocoaError(.fileReadNoPermission)
+    }
+}
+
+/// Probe the actual test directory volume; unknown capability fails rather than pretending unsupported.
+func requireMedicalDocumentProtectionSupport(_ url: URL) throws {
+    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    let values = try (url as NSURL).resourceValues(forKeys: [.volumeSupportsFileProtectionKey])
+    let supported = try XCTUnwrap(values[.volumeSupportsFileProtectionKey] as? NSNumber, "Test volume file-protection capability unavailable")
+    if !supported.boolValue {
+        throw XCTSkip("Environment unsupported: test volume explicitly lacks file protection")
     }
 }

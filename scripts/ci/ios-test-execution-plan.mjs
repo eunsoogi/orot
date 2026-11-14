@@ -35,7 +35,7 @@ const names = [
 
 export const IOS_TEST_COHORT_NAMES = Object.freeze(names.map(([cohort]) => cohort));
 
-/** Validate the maintained full inventory before returning a requested subset of complete cohort tasks. */
+/** Validate the maintained hosted E2E inventory; separate security integration never counts as an executed cohort. */
 export function iosTestExecutionPlan(selectedCohorts = IOS_TEST_COHORT_NAMES) {
   const plan = names.map(([cohort, name]) => {
     const definition = iosTestCohort(cohort);

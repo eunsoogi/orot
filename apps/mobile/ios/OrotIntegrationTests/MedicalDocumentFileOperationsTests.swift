@@ -18,6 +18,7 @@ final class MedicalDocumentFileOperationsTests: XCTestCase {
     func testProtectedSyntheticOriginalUsesCompleteProtectionAndExcludesBackup() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let store = MedicalDocumentFileStore(rootDirectory: root)
         let id = UUID().uuidString.lowercased()
         try store.store(data: Data("Synthetic".utf8), identifier: id, fileExtension: "txt")
@@ -41,6 +42,7 @@ final class MedicalDocumentFileOperationsTests: XCTestCase {
     func testDuplicateSourceRecoveryRestoresMissingCanonicalOriginal() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let store = MedicalDocumentFileStore(rootDirectory: root)
         let retainedID = UUID().uuidString.lowercased()
         let stagedID = UUID().uuidString.lowercased()
@@ -71,6 +73,7 @@ final class MedicalDocumentFileOperationsTests: XCTestCase {
     func testDuplicateSourceRecoveryDoesNotReplaceCanonicalOriginal() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let store = MedicalDocumentFileStore(rootDirectory: root)
         let retainedID = UUID().uuidString.lowercased()
         let stagedID = UUID().uuidString.lowercased()
@@ -92,6 +95,7 @@ final class MedicalDocumentFileOperationsTests: XCTestCase {
     func testDuplicateSourceRecoveryIsIdempotentForSameID() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let store = MedicalDocumentFileStore(rootDirectory: root)
         let retainedID = UUID().uuidString.lowercased()
         let bytes = Data("Synthetic same-id original".utf8)
@@ -115,6 +119,7 @@ final class MedicalDocumentFileOperationsTests: XCTestCase {
     func testDuplicateSourceRecoveryFailuresKeepCandidateAndCanonicalBytes() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let fileManager = FailureInjectingFileManager()
         let store = MedicalDocumentFileStore(fileManager: fileManager, rootDirectory: root)
 
@@ -172,6 +177,7 @@ final class MedicalDocumentFileOperationsTests: XCTestCase {
     func testDuplicateSourceRecoveryRejectsCandidateHashMismatch() throws {
         let root = temporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
+        try requireMedicalDocumentProtectionSupport(root)
         let store = MedicalDocumentFileStore(rootDirectory: root)
         let retainedID = UUID().uuidString.lowercased()
         let stagedID = UUID().uuidString.lowercased()
