@@ -1,6 +1,7 @@
 import { OpenAIAccountPanel } from '../../voiceSettings/OpenAIAccountPanel';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { AccountConnectionActions } from './AccountConnectionActions';
+import { providerSettingsStyles } from '../../layout/providerSettingsPresentation';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { AppText as Text } from '../../layout/AppText';
 import { appColors } from '../../layout/appColors';
@@ -19,7 +20,10 @@ export default function SettingsAccountsPanels({
       <AdaptiveColumns
         primary={
           <View style={styles.pageSections}>
-            <Text accessibilityRole="header" style={styles.accountTitle}>
+            <Text
+              accessibilityRole="header"
+              style={providerSettingsStyles.heading}
+            >
               ChatGPT
             </Text>
             <View

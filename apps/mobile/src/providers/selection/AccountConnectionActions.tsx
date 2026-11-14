@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppSymbol } from '../../layout/AppSymbol';
+import { providerSettingsStyles } from '../../layout/providerSettingsPresentation';
 import { appColors } from '../../layout/appColors';
 import { providerSelectionText as copy } from './text';
 import type { ChatGPTAccountSetup } from './types';
@@ -73,12 +74,12 @@ export function AccountConnectionActions({
           disabled={setup.busy}
           onPress={confirm}
           testID="chatgpt-account-sign-out"
-          style={styles.target}
+          style={providerSettingsStyles.action}
         >
           <AppSymbol
             name="rectangle.portrait.and.arrow.right"
             size={18}
-            color={appColors.text}
+            color={appColors.primary}
           />
         </Pressable>
       ) : null}
@@ -100,12 +101,12 @@ export function AccountConnectionActions({
               ? 'chatgpt-cancel-sign-in'
               : 'chatgpt-account-action'
           }
-          style={styles.target}
+          style={providerSettingsStyles.action}
         >
           <AppSymbol
             name={setup.signingIn ? 'xmark' : 'person.crop.circle.badge.plus'}
             size={18}
-            color={appColors.text}
+            color={appColors.primary}
           />
         </Pressable>
       ) : null}
@@ -114,10 +115,4 @@ export function AccountConnectionActions({
 }
 const styles = StyleSheet.create({
   actions: { width: 44, justifyContent: 'center', alignItems: 'center' },
-  target: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });
