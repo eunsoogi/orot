@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText } from '../layout/AppText';
@@ -11,17 +12,21 @@ import { t } from '../i18n';
 /** Show only the validated sections and their original source links. */
 export function HealthSummaryCard({
   result,
+  testIDPrefix,
   onOpenSource,
   onLinkError,
   onRetry,
   showCitations = true,
 }: {
   result: HealthSummaryResult;
+  testIDPrefix?: string;
   onOpenSource: (reference: EvidenceReference) => void;
   onLinkError: () => void;
   onRetry?: () => void;
   showCitations?: boolean;
 }) {
+  const instanceId = useId();
+  const identity = testIDPrefix ?? `health-summary-${instanceId}`;
   const { window } = result.reference;
   const saved = result.analysis.savedSummary;
   return (
@@ -79,6 +84,7 @@ export function HealthSummaryCard({
           ))}
           {showCitations ? (
             <ConversationSources
+              testIDPrefix={`${identity}-section-${index}`}
               references={[
                 ...section.supportingEvidence,
                 ...section.contraryEvidence,

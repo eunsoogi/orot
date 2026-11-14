@@ -147,8 +147,9 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         XCTAssertTrue(send.isHittable)
         ConversationHitUITestObservation.assertDockGeometry(app, phase: "send-ready", session: observationSession, testCase: self)
         send.tap()
-        let citation = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
+        let citation = app.buttons.matching(identifier: "rag-conversation-message-2-citation-0").firstMatch
         XCTAssertTrue(UITestConditions.exists(citation))
+        XCTAssertTrue(citation.label.contains("원문 근거 열기"))
         FormUITestConditions.reveal(citation, in: app, scroll: history)
         XCTAssertTrue(citation.isHittable)
         XCTAssertLessThanOrEqual(citation.frame.maxY, composer.frame.minY + 1)

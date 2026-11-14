@@ -43,15 +43,16 @@ final class ConversationHealthSummaryUITests: OrotFailFastTestCase {
         let saved = UITestConditions.element(app, "health-summary-save-status")
         XCTAssertTrue(UITestConditions.exists(saved))
         XCTAssertTrue(saved.label.contains("저장됨"))
-        let source = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "원문 근거 열기")).firstMatch
+        let source = app.buttons.matching(identifier: "rag-conversation-message-2-summary-section-0-citation-0").firstMatch
         XCTAssertTrue(UITestConditions.exists(source))
+        XCTAssertTrue(source.label.hasPrefix("원문 근거 열기"))
         FormUITestConditions.reveal(source, in: app, scroll: history, requireHittable: true)
         XCTAssertTrue(source.exists && source.isHittable)
         source.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "ai-feature-source-detail")))
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "health-summary-card")))
-        let restoredSource = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "원문 근거 열기")).firstMatch
+        let restoredSource = app.buttons.matching(identifier: "rag-conversation-message-2-summary-section-0-citation-0").firstMatch
         FormUITestConditions.reveal(restoredSource, in: app, scroll: history, requireHittable: true)
         try voiceOver.assertSpeech(from: restoredSource, expected: "원문 근거 열기", forbiddenTerms: ["HealthKit"], phase: "summary-source", testCase: self)
     }

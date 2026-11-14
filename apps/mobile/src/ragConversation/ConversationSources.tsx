@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Linking, Pressable, ScrollView } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText as Text } from '../layout/AppText';
@@ -13,13 +13,18 @@ import { t } from '../i18n';
 /** Compact citations retain access to every actual source and its external provenance. */
 export function ConversationSources({
   references,
+  testIDPrefix,
   onOpenSource,
   onLinkError,
 }: {
+  readonly testIDPrefix?: string;
   readonly references: readonly EvidenceReference[];
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly onLinkError: () => void;
 }) {
+  const instanceId = useId();
+  // Scope repeated citations to their owning answer/section, never to translated labels.
+  const identity = testIDPrefix ?? `rag-source-${instanceId}`;
   const [expanded, setExpanded] = useState(false);
   // An empty scroll view still creates a flex gap below the message or progress text.
   if (references.length === 0) return null;
@@ -69,6 +74,7 @@ export function ConversationSources({
         return (
           <Pressable
             key={`${reference.sourceId}:${reference.evidenceId}:${index}`}
+            testID={`${identity}-citation-${index}`}
             accessibilityRole="button"
             accessibilityLabel={t(
               'ragConversation.conversation.linkEvidenceSource',
