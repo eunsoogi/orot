@@ -2,7 +2,10 @@ import type { LocalActionTool } from '@orot/agent-runtime';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { RagConversationObserver } from '../../ragConversation/service';
-import { conversationHistoryIntent } from '../../manualHistory/conversationHistoryIntent';
+import {
+  conversationHistoryIntent,
+  isReferentialHistoryCommand,
+} from '../../manualHistory/conversationHistoryIntent';
 import { buildManualHistoryEvidence } from './manualHistoryEvidence';
 
 /** The model selects user-authored context, not a new diagnosis or a write grant.
@@ -36,11 +39,15 @@ export function conversationHistoryAction(input: {
     const matches = candidates.filter(
       candidate => candidate.question === obj.userMessage,
     );
-    if (matches.length !== 1) return undefined;
+    // Repeated prior wording must not make the current turn ambiguous.
+    const selected =
+      matches.find(candidate => candidate.id === requestId) ??
+      (matches.length === 1 ? matches[0] : undefined);
+    if (!selected || isReferentialHistoryCommand(selected.question))
+      return undefined;
     return {
-      requestId: matches[0].id,
-      text:
-        conversationHistoryIntent(matches[0].question) ?? matches[0].question,
+      requestId: selected.id,
+      text: conversationHistoryIntent(selected.question) ?? selected.question,
     };
   };
   return [

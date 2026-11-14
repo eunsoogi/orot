@@ -2,7 +2,10 @@ import { conversationHistoryAction } from '../conversationHistoryAction';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import type { AiFeatureLocalData } from '../localData';
 
-function fixture(question = '그 내용을 건강 기록에 저장해줘') {
+function fixture(
+  question = '그 내용을 건강 기록에 저장해줘',
+  prior?: string[],
+) {
   const saveConversationHistory = jest.fn(async () => 'saved');
   const confirmHistorySave = jest.fn(async () => true);
   const source = '몇 년 전 수술을 받았던 것 같아요.';
@@ -23,7 +26,10 @@ function fixture(question = '그 내용을 건강 기록에 저장해줘') {
   const observer = {
     retentionSession: { id: 'session', version: 1 },
     retentionRequestId: 'request',
-    retainedHistory: [{ id: 'prior', question: source }],
+    retainedHistory: (prior ?? [source]).map((question, i) => ({
+      id: i ? `prior-${i}` : 'prior',
+      question,
+    })),
     confirmHistorySave,
   };
   const [action] = conversationHistoryAction({
@@ -31,7 +37,7 @@ function fixture(question = '그 내용을 건강 기록에 저장해줘') {
     observer,
     registry: new LocalEvidenceReferenceRegistry(),
     question,
-    admittedQuestions: [source],
+    admittedQuestions: prior ?? [source],
   });
   return { action, source, confirmHistorySave, saveConversationHistory };
 }
@@ -99,4 +105,45 @@ test('rejects invented text, partial quotes, assistant answers, denial and cance
     await action.authorize({ userMessage: source }, controller.signal),
   ).toBe(false);
   expect(saveConversationHistory).not.toHaveBeenCalled();
+});
+
+test('current clear request wins over identical prior messages', async () => {
+  const question = '작년에 수술했어요. 기억해 줘';
+  const { action, confirmHistorySave, saveConversationHistory } = fixture(
+    question,
+    [question, question],
+  );
+  const input = { userMessage: question };
+  expect(action.parseInput(input)).toEqual(input);
+  expect(await action.authorize(input, signal)).toBe(true);
+  await action.execute(request(input));
+  expect(confirmHistorySave).not.toHaveBeenCalled();
+  expect(saveConversationHistory).toHaveBeenCalledWith(
+    expect.objectContaining({
+      approvedSource: { requestId: 'request', text: '작년에 수술했어요.' },
+    }),
+    signal,
+  );
+});
+
+test('ambiguous repeated prior wording and referential commands cannot be stored as facts', async () => {
+  const { action } = fixture(undefined, [
+    '예전에 수술했어요.',
+    '예전에 수술했어요.',
+  ]);
+  expect(
+    action.parseInput({ userMessage: '예전에 수술했어요.' }),
+  ).toBeUndefined();
+  for (const question of [
+    '그 내용을 건강 기록에 저장해줘',
+    '이 내용을 기억해줘',
+    '그것을 기억해 줘',
+  ]) {
+    const { action, saveConversationHistory } = fixture(question);
+    expect(action.parseInput({ userMessage: question })).toBeUndefined();
+    expect(await action.authorize({ userMessage: question }, signal)).toBe(
+      false,
+    );
+    expect(saveConversationHistory).not.toHaveBeenCalled();
+  }
 });
