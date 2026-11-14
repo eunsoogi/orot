@@ -1,22 +1,5 @@
 import UIKit
 
-/** Cross-fades native navigation action updates and honors Reduce Motion. */
-enum NavigationToolbarTransition {
-    static func apply(to view: UIView, animated: Bool, changes: @escaping () -> Void) {
-        guard animated, !UIAccessibility.isReduceMotionEnabled else {
-            changes()
-            return
-        }
-
-        UIView.transition(
-            with: view,
-            duration: 0.14,
-            options: [.transitionCrossDissolve, .beginFromCurrentState, .allowAnimatedContent, .allowUserInteraction],
-            animations: changes,
-        )
-    }
-}
-
 /// Preserves one joined Glass surface and moving selection while switching between bottom and side layouts.
 final class NavigationRootGlassBar: UIVisualEffectView {
     static let exteriorWidth: CGFloat = 48
@@ -26,10 +9,11 @@ final class NavigationRootGlassBar: UIVisualEffectView {
     static let contextualBackGroupHeight: CGFloat = 52
 
     private let stack = UIStackView()
-    private let indicator = UIView()
+    private let indicator = NavigationSelectionGlass()
     private var descriptors: [NavigationActionDescriptor] = []
     private var buttons: [UIButton] = []
     private var usesVerticalLayout = false
+    private var previousWindowSelection: NavigationSelectionHistory?
 
     init() {
         let material: UIVisualEffect
@@ -47,7 +31,6 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         clipsToBounds = true
         indicator.accessibilityIdentifier = "navigation-root-selection-indicator"
         indicator.isUserInteractionEnabled = false
-        indicator.backgroundColor = NavigationGlassPalette.selectedRootTabBackground
         indicator.layer.cornerRadius = 24
         contentView.addSubview(indicator)
         stack.axis = .horizontal
@@ -143,7 +126,11 @@ final class NavigationRootGlassBar: UIVisualEffectView {
     }
 
     private var selectedFrame: CGRect? {
-        guard let index = descriptors.firstIndex(where: \.selected), buttons.indices.contains(index) else { return nil }
+        descriptors.firstIndex(where: \.selected).flatMap(frameForButton)
+    }
+
+    private func frameForButton(_ index: Int) -> CGRect? {
+        guard buttons.indices.contains(index) else { return nil }
         guard buttons[index].bounds.width > 0, buttons[index].bounds.height > 0 else { return nil }
         let buttonFrame = buttons[index].convert(buttons[index].bounds, to: contentView)
         // The visual selection is a centered circle; the original rectangular hit target remains unchanged.
@@ -152,20 +139,42 @@ final class NavigationRootGlassBar: UIVisualEffectView {
                       width: diameter, height: diameter)
     }
 
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard let window else { return }
+        // Routes own their bars; carry only selection identity across replacements in this window.
+        let previous = NavigationSelectionHistory.last.object(forKey: window)
+        // React applies final constraints after attachment; resume after that layout transaction.
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window, self.window === window else { return }
+            previousWindowSelection = previous
+            layoutIfNeeded()
+            moveIndicator(animated: previous != nil)
+        }
+        setNeedsLayout()
+    }
+
+    override func willMove(toWindow nextWindow: UIWindow?) {
+        if nextWindow == nil, let window, NavigationSelectionHistory.last.object(forKey: window)?.id == descriptors.first(where: \.selected)?.id {
+            NavigationSelectionHistory.last.object(forKey: window)?.capture(indicator, vertical: usesVerticalLayout)
+        }
+        super.willMove(toWindow: nextWindow)
+    }
+
     private func moveIndicator(animated: Bool) {
         guard let frame = selectedFrame else { indicator.isHidden = true; return }
         indicator.isHidden = false
-        indicator.layer.cornerRadius = frame.width / 2
-        guard animated, !UIAccessibility.isReduceMotionEnabled, !indicator.frame.isEmpty else {
-            indicator.layer.removeAllAnimations()
-            indicator.frame = frame
-            return
-        }
-        UIView.animate(withDuration: 0.24, delay: 0,
-                       options: [.beginFromCurrentState, .allowUserInteraction, .curveEaseInOut])
+        var resumeFrame: CGRect?
+        if let previous = previousWindowSelection,
+           let index = descriptors.firstIndex(where: { $0.id == previous.id }), let origin = frameForButton(index)
         {
-            self.indicator.frame = frame
+            resumeFrame = previous.origin(fallback: origin, vertical: usesVerticalLayout)
         }
+        previousWindowSelection = nil
+        if let window, let selected = descriptors.first(where: \.selected) {
+            NavigationSelectionHistory.last.setObject(NavigationSelectionHistory(id: selected.id), forKey: window)
+        }
+        indicator.move(to: frame, animated: animated || resumeFrame != nil, vertical: usesVerticalLayout, origin: resumeFrame)
     }
 
     override func layoutSubviews() {
@@ -173,7 +182,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         stack.layoutIfNeeded()
         // Compare final target geometry, not only bar size: initial child layout can arrive later.
         // The model frame already equals the destination during animation, so this preserves its presentation path.
-        if let target = selectedFrame, indicator.isHidden || indicator.frame != target {
+        if let target = selectedFrame, previousWindowSelection != nil || indicator.isHidden || indicator.targetFrame != target {
             moveIndicator(animated: false)
         }
     }
