@@ -1,3 +1,4 @@
+import { AvatarArtwork as AvatarSymbol } from './AvatarArtwork';
 import { appearanceEditorStyles as styles } from './appearanceEditorStyles';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -27,28 +28,14 @@ import { appearanceStore } from './appearanceStore';
 const avatars: Record<AvatarId, { label: string; symbol: string }> = {
   neutral: {
     label: t('assistantAppearance.neutral'),
-    symbol: 'person.crop.circle',
+    symbol: 'face.smiling',
   },
-  sun: { label: t('assistantAppearance.sun'), symbol: 'sun.max' },
-  leaf: { label: t('assistantAppearance.leaf'), symbol: 'leaf' },
-  star: { label: t('assistantAppearance.star'), symbol: 'star' },
+  sun: { label: t('assistantAppearance.sun'), symbol: 'sun.max.fill' },
+  leaf: { label: t('assistantAppearance.leaf'), symbol: 'leaf.fill' },
+  star: { label: t('assistantAppearance.star'), symbol: 'star.fill' },
 };
 
-export function AvatarSymbol({
-  avatar,
-  size = 32,
-}: {
-  avatar: AvatarId;
-  size?: number;
-}) {
-  return (
-    <AppSymbol
-      name={avatars[avatar].symbol}
-      size={size}
-      color={appColors.primaryText}
-    />
-  );
-}
+export { AvatarArtwork as AvatarSymbol } from './AvatarArtwork';
 
 /** Draft selection stays local until one protected transaction succeeds. */
 export function AppearanceEditor({
@@ -145,7 +132,7 @@ export function AppearanceEditor({
             <View style={styles.preview}>
               <View style={styles.previewDisc}>
                 {avatar ? (
-                  <AvatarSymbol avatar={avatar} size={72} />
+                  <AvatarSymbol avatar={avatar} size={156} />
                 ) : (
                   <AppSymbol
                     name="person.crop.circle.dashed"
@@ -174,7 +161,7 @@ export function AppearanceEditor({
                       avatar === id && styles.selected,
                     ]}
                   >
-                    <AvatarSymbol avatar={id} size={36} />
+                    <AvatarSymbol avatar={id} size={60} />
                   </View>
                   <AppText>
                     {avatars[id].label}
