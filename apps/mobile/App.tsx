@@ -193,7 +193,6 @@ function App({
                   activeTab={activeTab}
                   selectTab={selectActiveTab}
                   onSelectRecordsSection={async tab => {
-                    // Subtabs use the same guard as root tabs: never discard a staged import.
                     if (await appNavigation.requestTabSwitch())
                       selectActiveTab(tab);
                   }}
