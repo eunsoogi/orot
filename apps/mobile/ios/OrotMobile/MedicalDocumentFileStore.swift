@@ -165,7 +165,8 @@ struct MedicalDocumentFileStore {
             values.isExcludedFromBackup = true
             try mutableURL.setResourceValues(values)
 
-            let raw = try fileManager.attributesOfItem(atPath: url.path)[.protectionKey]
+            let attributes = try fileManager.attributesOfItem(atPath: url.path)
+            let raw = attributes[.protectionKey]
             // Only absent metadata permits the URL fallback; malformed or weaker values fail closed.
             if raw == nil {
                 try (url as NSURL).setResourceValue(URLFileProtection.complete.rawValue, forKey: .fileProtectionKey)
@@ -176,6 +177,14 @@ struct MedicalDocumentFileStore {
             guard isProtected, isExcluded else {
                 // These closed boolean diagnostics identify the failed boundary without exposing file paths.
                 NSLog("medical-document-protection: protected=%d backup-excluded=%d", isProtected, isExcluded)
+                #if OROT_TESTS
+                    // Fixed categories identify hosted metadata differences; never emit raw values or private paths.
+                    let rawState = raw == nil ? "absent" : (raw as? FileProtectionType) == nil ? "unsupported-type" : (raw as? FileProtectionType) == .complete ? "complete" : "non-complete"
+                    let resourceState = observed.fileProtection == nil ? "absent" : observed.fileProtection == .complete ? "complete" : "non-complete"
+                    let kind = attributes[.type] as? FileAttributeType
+                    let itemState = kind == .typeDirectory ? "directory" : kind == .typeRegular ? "file" : "other"
+                    NSLog("medical-document-protection-diagnostic: raw=%@ resource=%@ item=%@", rawState, resourceState, itemState)
+                #endif
                 throw MedicalDocumentFileStoreFailure.fileProtectionUnavailable
             }
         } catch {
