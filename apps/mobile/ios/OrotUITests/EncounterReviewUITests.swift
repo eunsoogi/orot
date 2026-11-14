@@ -137,10 +137,12 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         tap(app, "encounter-start")
         attachStartDiagnostic(app)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "encounter-save")))
+        tools(app, open: true)
         let remove = UITestConditions.element(app, "encounter-probe-remove-source")
         XCTAssertTrue(remove.isHittable)
         remove.tap()
         UITestConditions.value(UITestConditions.element(app, "encounter-probe-report"), equals: "removed")
+        tools(app, open: false)
         tap(app, "encounter-save")
         status(app, contains: "사용할 수 없어요")
         XCTAssertEqual(try (report(app)["records"] as? [[String: Any]])?.count, 0)
@@ -148,21 +150,10 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
 
     @MainActor
     private func attachStartDiagnostic(_ app: XCUIApplication) {
-        // Observe the real settled attempt before the original unbounded Save wait. Observation cannot fail its oracle.
+        // Read the settled attempt through the same modal recovery contract as ordinary report assertions.
         var diagnostic: [String: Any] = ["status": "UNKNOWN", "recordCount": "UNKNOWN", "modelCalls": "UNKNOWN", "failure": ["stage": "UNKNOWN", "category": "UNKNOWN"]]
-        let button = UITestConditions.element(app, "encounter-probe-readback")
-        if button.isHittable {
-            readbackSequence += 1
-            button.tap()
-            let element = UITestConditions.element(app, "encounter-probe-report")
-            let loaded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "\"readback\":\(readbackSequence),"), object: element)
-            if UITestConditions.wait(for: [loaded]) == .completed,
-               let data = UITestConditions.text(element).data(using: .utf8),
-               let report = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let snapshot = report["diagnostic"] as? [String: Any]
-            {
-                diagnostic = snapshot
-            }
+        if let report = try? report(app), let snapshot = report["diagnostic"] as? [String: Any] {
+            diagnostic = snapshot
         }
         if let data = try? JSONSerialization.data(withJSONObject: diagnostic) {
             let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
@@ -183,6 +174,7 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
         }
         app.launch()
         UITestConditions.value(UITestConditions.element(app, "encounter-probe-ready"), equals: "ready")
+        tools(app, open: false)
     }
 
     @MainActor
@@ -217,6 +209,8 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
 
     @MainActor
     private func report(_ app: XCUIApplication) throws -> [String: Any] {
+        tools(app, open: true)
+        defer { tools(app, open: false) }
         readbackSequence += 1
         let button = UITestConditions.element(app, "encounter-probe-readback")
         XCTAssertTrue(button.isHittable)
@@ -228,8 +222,23 @@ final class EncounterReviewUITests: OrotFailFastTestCase {
     }
 
     @MainActor
+    private func tools(_ app: XCUIApplication, open: Bool) {
+        if open, UITestConditions.element(app, "encounter-probe-close").exists {
+            return
+        }
+        let button = UITestConditions.element(app, open ? "encounter-probe-tools" : "encounter-probe-close")
+        XCTAssertTrue(UITestConditions.exists(button))
+        XCTAssertTrue(button.isHittable)
+        button.tap()
+        let modal = UITestConditions.element(app, "encounter-probe-close")
+        let state = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == %@", NSNumber(value: open)), object: modal)
+        XCTAssertEqual(UITestConditions.wait(for: [state]), .completed)
+    }
+
+    @MainActor
     private func clean(_ app: XCUIApplication) {
         XCUIDevice.shared.orientation = .portrait
+        tools(app, open: true)
         let button = UITestConditions.element(app, "encounter-probe-cleanup")
         XCTAssertTrue(UITestConditions.exists(button))
         XCTAssertTrue(button.isHittable)

@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { NativeModules, StyleSheet, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  Modal,
+  NativeModules,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { RecordingSelectionProvider } from '../recording/RecordingSelectionContext';
@@ -43,6 +49,7 @@ function ProbeRoute() {
   const [navigation] = useState(() =>
     createNavigationController<AppNavigationRoute>('saved-recordings'),
   );
+  const [toolsVisible, setToolsVisible] = useState(true);
   const [ready, setReady] = useState(false);
   const [report, setReport] = useState('loading');
   const [failure, setFailure] = useState(false);
@@ -140,40 +147,63 @@ function ProbeRoute() {
   }
   return (
     <View style={styles.fill}>
-      <AppText testID="encounter-probe-ready">
-        {failure ? 'failed' : ready ? 'ready' : 'loading'}
-      </AppText>
-      <AppText numberOfLines={1} testID="encounter-probe-report">
-        {report}
-      </AppText>
-      <AppButton
-        title="검증 읽기"
-        testID="encounter-probe-readback"
-        onPress={readback}
-      />
-      <AppButton
-        title="테스트 자료 정리"
-        testID="encounter-probe-cleanup"
-        onPress={cleanup}
-      />
-      <AppButton
-        title="다른 화면의 녹음 삭제 재현"
-        testID="encounter-probe-remove-source"
-        onPress={removeSource}
-      />
+      {/* Diagnostics must not offset the window-relative keyboard layout of the real route. */}
+      <Modal
+        visible={toolsVisible}
+        onRequestClose={() => setToolsVisible(false)}
+      >
+        <SafeAreaView style={styles.fill}>
+          <ScrollView>
+            <AppText testID="encounter-probe-ready">
+              {failure ? 'failed' : ready ? 'ready' : 'loading'}
+            </AppText>
+            <AppText numberOfLines={1} testID="encounter-probe-report">
+              {report}
+            </AppText>
+            <AppButton
+              title="검증 읽기"
+              testID="encounter-probe-readback"
+              onPress={readback}
+            />
+            <AppButton
+              title="테스트 자료 정리"
+              testID="encounter-probe-cleanup"
+              onPress={cleanup}
+            />
+            <AppButton
+              title="다른 화면의 녹음 삭제 재현"
+              testID="encounter-probe-remove-source"
+              onPress={removeSource}
+            />
+            <AppButton
+              title="검증 도구 닫기"
+              testID="encounter-probe-close"
+              onPress={() => setToolsVisible(false)}
+            />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
       {ready ? (
         <NavigationRouteAdapter
           controller={navigation}
           contentLayoutOwner={appContentLayoutOwner}
           contentSafeAreaHandledByChild
         >
-          {actions =>
-            actions.route.name === 'saved-recordings' ? (
-              <SavedRecordingsRoute actions={actions} />
-            ) : actions.route.name === 'recording-review' ? (
-              <RecordingReviewRoute reviewService={service} />
-            ) : null
-          }
+          {actions => (
+            <>
+              {/* The fixture toolbar occupies route content, never overlays native navigation or the keyboard dock. */}
+              <AppButton
+                title="검증 도구"
+                testID="encounter-probe-tools"
+                onPress={() => setToolsVisible(true)}
+              />
+              {actions.route.name === 'saved-recordings' ? (
+                <SavedRecordingsRoute actions={actions} />
+              ) : actions.route.name === 'recording-review' ? (
+                <RecordingReviewRoute reviewService={service} />
+              ) : null}
+            </>
+          )}
         </NavigationRouteAdapter>
       ) : null}
     </View>
