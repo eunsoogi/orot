@@ -66,6 +66,12 @@ export function createConversationRequestLifetime(input: {
     status(id: number, controller: AbortController) {
       return owners.get(controller)?.status;
     },
+    /** Final cleanup must retain the same interruption reason already used by Stop. */
+    failureStatus(controller: AbortController): StopStatus | 'failed' {
+      return controller.signal.aborted
+        ? (owners.get(controller)?.status ?? 'cancelled')
+        : 'failed';
+    },
     async settle(id: number, controller: AbortController) {
       const entry = owners.get(controller);
       if (!entry) return;

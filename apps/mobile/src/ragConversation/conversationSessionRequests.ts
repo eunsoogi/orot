@@ -211,7 +211,7 @@ export function createConversationSessionRequests(
         }
       } finally {
         await photoInput?.settleUnsent?.().catch(() => {});
-        activity?.finish(controller.signal.aborted ? 'cancelled' : 'failed');
+        activity?.finish(lifetime.failureStatus(controller));
         await preview?.flush();
         await activity?.flush();
         if (request.committed && find(id)?.error === copy.previewSaveFailed)

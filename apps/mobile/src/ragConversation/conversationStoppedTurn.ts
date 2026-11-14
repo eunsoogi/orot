@@ -41,7 +41,8 @@ export function showStoppedConversationTurn(input: {
       input.id,
       input.turn.question,
       input.turn.userMessageId,
-      input.status === 'interrupted' ? copy.progressInterrupted : undefined,
+      // The retained assistant activity already presents the interruption once.
+      input.status === 'interrupted' ? '' : undefined,
       true,
       input.turn.restorePromptToComposer,
     );
@@ -78,7 +79,8 @@ export function createConversationStopHandler(input: {
     const status = input.lifetime.status(id, controller) ?? reason;
     input.lifetime.interrupt(id, status);
     controller.abort();
-    input.activities.get(id)?.finish('cancelled');
+    // System interruption is not an explicit user cancellation; persist the true state.
+    input.activities.get(id)?.finish(status);
     if (
       (turn?.saving || turn?.summarySaving || turn?.summaryCommitted) &&
       !settled

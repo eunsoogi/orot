@@ -80,7 +80,7 @@ export function createConversationTurnActivity(input: {
   };
   return {
     metadata,
-    finish(status: 'failed' | 'cancelled') {
+    finish(status: 'failed' | 'cancelled' | 'interrupted') {
       for (const event of events)
         if (event.status === 'started') observe({ ...event, status });
     },
