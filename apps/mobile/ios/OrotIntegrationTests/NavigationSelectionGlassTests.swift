@@ -74,7 +74,7 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
             selection.move(to: selection.targetFrame, animated: false, vertical: false)
             XCTAssertNotNil(selection.layer.animation(forKey: "navigation-droplet"))
         }
-        XCTAssertEqual(NavigationSelectionHistory.last.object(forKey: window), "tab-2")
+        XCTAssertEqual(NavigationSelectionHistory.last.object(forKey: window)?.id, "tab-2")
         let otherWindow = UIWindow(windowScene: scene)
         otherWindow.rootViewController = UIViewController()
         otherWindow.isHidden = false
@@ -84,7 +84,7 @@ final class NavigationSelectionGlassTests: OrotFailFastTestCase {
         independent.layoutIfNeeded()
         let independentSelection = try XCTUnwrap(independent.contentView.subviews.compactMap { $0 as? NavigationSelectionGlass }.first)
         XCTAssertNil(independentSelection.layer.animation(forKey: "navigation-droplet"))
-        XCTAssertEqual(NavigationSelectionHistory.last.object(forKey: window), "tab-2")
+        XCTAssertEqual(NavigationSelectionHistory.last.object(forKey: window)?.id, "tab-2")
     }
 
     @MainActor

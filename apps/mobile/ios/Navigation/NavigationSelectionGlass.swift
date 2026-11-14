@@ -40,16 +40,16 @@ final class NavigationSelectionGlass: UIVisualEffectView {
     }
 
     /// Sample an interrupted presentation before replacing animations; the model always rests circular.
-    func move(to destination: CGRect, animated: Bool, vertical: Bool) {
+    func move(to destination: CGRect, animated: Bool, vertical: Bool, origin: CGRect? = nil) {
         // Repeated bridge/layout delivery of the same selection must not cancel its active journey.
-        if destination == targetFrame, !UIAccessibility.isReduceMotionEnabled {
+        if origin == nil, destination == targetFrame, !UIAccessibility.isReduceMotionEnabled {
             return
         }
         let previous = layer.presentation() ?? layer
-        let startPosition = previous.position
-        let startBounds = previous.bounds
-        let startRadius = previous.cornerRadius
-        let canAnimate = animated && !UIAccessibility.isReduceMotionEnabled && !targetFrame.isEmpty
+        let startPosition = origin.map { CGPoint(x: $0.midX, y: $0.midY) } ?? previous.position
+        let startBounds = origin.map { CGRect(origin: .zero, size: $0.size) } ?? previous.bounds
+        let startRadius = origin.map { min($0.width, $0.height) / 2 } ?? previous.cornerRadius
+        let canAnimate = animated && !UIAccessibility.isReduceMotionEnabled && (!targetFrame.isEmpty || origin != nil)
         layer.removeAllAnimations()
         targetFrame = destination
         CATransaction.begin()
@@ -88,8 +88,42 @@ final class NavigationSelectionGlass: UIVisualEffectView {
     }
 }
 
-/// Weak window keys isolate independent scenes and release selection history with their window.
+/// Weak window keys isolate scenes; captured presentation geometry survives route view disposal.
 @MainActor
-enum NavigationSelectionHistory {
-    static let last = NSMapTable<UIWindow, NSString>(keyOptions: .weakMemory, valueOptions: .strongMemory)
+final class NavigationSelectionHistory: NSObject {
+    static let last = NSMapTable<UIWindow, NavigationSelectionHistory>(keyOptions: .weakMemory, valueOptions: .strongMemory)
+    let id: String
+    private var presentationFrame: CGRect?
+    private var wasVertical = false
+
+    init(id: String) {
+        self.id = id
+    }
+
+    func capture(_ indicator: NavigationSelectionGlass, vertical: Bool) {
+        presentationFrame = indicator.layer.presentation()?.frame ?? indicator.frame
+        wasVertical = vertical
+    }
+
+    func origin(fallback: CGRect, vertical: Bool) -> CGRect {
+        guard wasVertical == vertical, let presentationFrame, !presentationFrame.isEmpty else { return fallback }
+        return presentationFrame
+    }
+}
+
+/** Cross-fades native navigation action updates and honors Reduce Motion. */
+enum NavigationToolbarTransition {
+    static func apply(to view: UIView, animated: Bool, changes: @escaping () -> Void) {
+        guard animated, !UIAccessibility.isReduceMotionEnabled else {
+            changes()
+            return
+        }
+
+        UIView.transition(
+            with: view,
+            duration: 0.14,
+            options: [.transitionCrossDissolve, .beginFromCurrentState, .allowAnimatedContent, .allowUserInteraction],
+            animations: changes,
+        )
+    }
 }

@@ -1,22 +1,5 @@
 import UIKit
 
-/** Cross-fades native navigation action updates and honors Reduce Motion. */
-enum NavigationToolbarTransition {
-    static func apply(to view: UIView, animated: Bool, changes: @escaping () -> Void) {
-        guard animated, !UIAccessibility.isReduceMotionEnabled else {
-            changes()
-            return
-        }
-
-        UIView.transition(
-            with: view,
-            duration: 0.14,
-            options: [.transitionCrossDissolve, .beginFromCurrentState, .allowAnimatedContent, .allowUserInteraction],
-            animations: changes,
-        )
-    }
-}
-
 /// Preserves one joined Glass surface and moving selection while switching between bottom and side layouts.
 final class NavigationRootGlassBar: UIVisualEffectView {
     static let exteriorWidth: CGFloat = 48
@@ -30,7 +13,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
     private var descriptors: [NavigationActionDescriptor] = []
     private var buttons: [UIButton] = []
     private var usesVerticalLayout = false
-    private var previousWindowSelection: String?
+    private var previousWindowSelection: NavigationSelectionHistory?
 
     init() {
         let material: UIVisualEffect
@@ -160,25 +143,34 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         super.didMoveToWindow()
         guard let window else { return }
         // Routes own their bars; carry only selection identity across replacements in this window.
-        previousWindowSelection = (NavigationSelectionHistory.last.object(forKey: window) as String?) ?? descriptors.first(where: \.selected)?.id
+        previousWindowSelection = NavigationSelectionHistory.last.object(forKey: window)
+        if previousWindowSelection == nil {
+            moveIndicator(animated: false)
+        }
         setNeedsLayout()
+    }
+
+    override func willMove(toWindow nextWindow: UIWindow?) {
+        if nextWindow == nil, let window, NavigationSelectionHistory.last.object(forKey: window)?.id == descriptors.first(where: \.selected)?.id {
+            NavigationSelectionHistory.last.object(forKey: window)?.capture(indicator, vertical: usesVerticalLayout)
+        }
+        super.willMove(toWindow: nextWindow)
     }
 
     private func moveIndicator(animated: Bool) {
         guard let frame = selectedFrame else { indicator.isHidden = true; return }
         indicator.isHidden = false
-        var resumesSelection = false
+        var resumeFrame: CGRect?
         if let previous = previousWindowSelection,
-           let index = descriptors.firstIndex(where: { $0.id == previous }), let origin = frameForButton(index)
+           let index = descriptors.firstIndex(where: { $0.id == previous.id }), let origin = frameForButton(index)
         {
-            indicator.move(to: origin, animated: false, vertical: usesVerticalLayout)
-            resumesSelection = origin != frame
+            resumeFrame = previous.origin(fallback: origin, vertical: usesVerticalLayout)
         }
         previousWindowSelection = nil
         if let window, let selected = descriptors.first(where: \.selected) {
-            NavigationSelectionHistory.last.setObject(selected.id as NSString, forKey: window)
+            NavigationSelectionHistory.last.setObject(NavigationSelectionHistory(id: selected.id), forKey: window)
         }
-        indicator.move(to: frame, animated: animated || resumesSelection, vertical: usesVerticalLayout)
+        indicator.move(to: frame, animated: animated || resumeFrame != nil, vertical: usesVerticalLayout, origin: resumeFrame)
     }
 
     override func layoutSubviews() {
