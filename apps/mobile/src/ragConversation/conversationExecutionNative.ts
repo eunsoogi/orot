@@ -26,6 +26,7 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
   if (!module) return backgroundInterruptFallback();
   const emitter = new NativeEventEmitter(module);
   return {
+    bridgeAvailable: true,
     begin: id => module.begin(id),
     end: id => module.end(id),
     isActive: id => module.isActive(id),
@@ -65,6 +66,7 @@ function backgroundInterruptFallback(): ConversationExecutionAdapter {
   const active = new Set<string>();
   let background = AppState.currentState === 'background';
   return {
+    bridgeAvailable: false,
     async begin(id) {
       if (background) return false;
       active.add(id);
@@ -81,7 +83,11 @@ function backgroundInterruptFallback(): ConversationExecutionAdapter {
         background = state === 'background';
         if (background)
           for (const requestId of active)
-            listener({ kind: 'expired', requestId });
+            listener({
+              kind: 'expired',
+              requestId,
+              reason: 'bridge-unavailable',
+            });
         else if (state === 'active') listener({ kind: 'foreground' });
       });
       return () => subscription.remove();

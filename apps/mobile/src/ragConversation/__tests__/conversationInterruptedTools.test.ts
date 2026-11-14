@@ -73,6 +73,11 @@ test('OS expiry preserves completed tools and marks only running tools interrupt
       ['completed', 'interrupted'],
     );
     expect(session.error).toBe('');
+    expect(
+      session.messages.some(message =>
+        message.activity?.includes('iOS 백그라운드 실행 시간이'),
+      ),
+    ).toBe(true);
     expect(session.draft).toBe('Synthetic question');
     expect(sender).toHaveBeenCalledTimes(1);
     expect(

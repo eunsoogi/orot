@@ -1,4 +1,7 @@
-import type { ConversationExecutionAdapter } from './conversationExecutionLease';
+import type {
+  ConversationExecutionAdapter,
+  ConversationInterruptionReason,
+} from './conversationExecutionLease';
 import { beginConversationExecutionLease } from './conversationExecutionLease';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 
@@ -8,6 +11,7 @@ type Entry = {
   controller: AbortController;
   turn: Turn;
   status?: StopStatus;
+  interruptionReason?: ConversationInterruptionReason;
   start?: Promise<void>;
   fence?: Promise<void>;
   release?: () => void;
@@ -43,9 +47,11 @@ export function createConversationRequestLifetime(input: {
         entry.release = await beginConversationExecutionLease(
           input.execution,
           turn.toolMessageId,
-          () => {
-            if (entries.get(id) === entry && !controller.signal.aborted)
+          reason => {
+            if (entries.get(id) === entry && !controller.signal.aborted) {
+              entry.interruptionReason = reason;
               input.interrupt(id);
+            }
           },
         );
       }
@@ -65,6 +71,9 @@ export function createConversationRequestLifetime(input: {
     },
     status(id: number, controller: AbortController) {
       return owners.get(controller)?.status;
+    },
+    interruptionReason(controller: AbortController) {
+      return owners.get(controller)?.interruptionReason;
     },
     /** Final cleanup must retain the same interruption reason already used by Stop. */
     failureStatus(controller: AbortController): StopStatus | 'failed' {

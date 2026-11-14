@@ -1,9 +1,21 @@
+export type ConversationInterruptionReason =
+  | 'expired'
+  | 'protected-data'
+  | 'bridge-unavailable'
+  | 'lease-denied'
+  | 'lease-check-failed';
+
 export type ConversationExecutionEvent =
-  | { readonly kind: 'expired'; readonly requestId: string }
+  | {
+      readonly kind: 'expired';
+      readonly requestId: string;
+      readonly reason?: 'bridge-unavailable';
+    }
   | { readonly kind: 'foreground' }
   | { readonly kind: 'protectedData'; readonly available: boolean };
 
 export interface ConversationExecutionAdapter {
+  readonly bridgeAvailable?: boolean;
   begin(requestId: string): Promise<boolean>;
   end(requestId: string): void;
   isActive(requestId: string): Promise<boolean>;
@@ -15,19 +27,19 @@ export interface ConversationExecutionAdapter {
 export async function beginConversationExecutionLease(
   adapter: ConversationExecutionAdapter,
   requestId: string,
-  interrupt: (reason: 'expired' | 'protected-data') => void,
+  interrupt: (reason: ConversationInterruptionReason) => void,
 ) {
   let closed = false;
   let interrupted = false;
   let acquired = false;
-  const notify = (reason: 'expired' | 'protected-data') => {
+  const notify = (reason: ConversationInterruptionReason) => {
     if (closed || interrupted) return;
     interrupted = true;
     interrupt(reason);
   };
   const unsubscribe = adapter.subscribe(event => {
     if (event.kind === 'expired' && event.requestId === requestId)
-      notify('expired');
+      notify(event.reason ?? 'expired');
     if (event.kind === 'protectedData' && !event.available)
       notify('protected-data');
     // Recheck after foregrounding in case suspension delayed the expiration event.
@@ -38,20 +50,25 @@ export async function beginConversationExecutionLease(
           if (available === false) notify('protected-data');
           else if (!(await adapter.isActive(requestId))) notify('expired');
         })
-        .catch(() => notify('expired'));
+        .catch(() => notify('lease-check-failed'));
   });
   try {
     if ((await adapter.protectedDataAvailable()) === false)
       notify('protected-data');
     if (!interrupted) {
       acquired = await adapter.begin(requestId);
-      if (!acquired) notify('expired');
+      if (!acquired)
+        notify(
+          adapter.bridgeAvailable === false
+            ? 'bridge-unavailable'
+            : 'lease-denied',
+        );
       else if ((await adapter.protectedDataAvailable()) === false)
         notify('protected-data');
       else if (!(await adapter.isActive(requestId))) notify('expired');
     }
   } catch {
-    notify('expired');
+    notify('lease-check-failed');
   }
   return () => {
     if (closed) return;

@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+import type { ConversationInterruptionReason } from './conversationExecutionLease';
 import { getRagConversationCopy } from './copy';
 import { restoreFailedPrompt, retainPartial } from './conversationFailedPrompt';
 import type {
@@ -21,6 +23,7 @@ export function createRetainConversationPartial(
 export function showStoppedConversationTurn(input: {
   id: number;
   status: 'cancelled' | 'interrupted';
+  interruptionReason?: ConversationInterruptionReason;
   turn?: PendingTurn;
   find: (id: number) => ConversationSession;
   update: (id: number, change: Partial<ConversationSession>) => void;
@@ -30,7 +33,9 @@ export function showStoppedConversationTurn(input: {
   input.retainPartial(
     input.id,
     input.status === 'interrupted'
-      ? copy.progressInterrupted
+      ? input.interruptionReason
+        ? t(`conversationInterruption.${input.interruptionReason}`)
+        : copy.progressInterrupted
       : copy.progressCancelled,
     true,
   );
@@ -91,6 +96,12 @@ export function createConversationStopHandler(input: {
     snapshot?.settle();
     if (input.snapshots.get(id) === snapshot) input.snapshots.delete(id);
     input.update(id, { artifactContinuation: null, requestActivity: null });
-    showStoppedConversationTurn({ ...input, id, status, turn });
+    showStoppedConversationTurn({
+      ...input,
+      id,
+      status,
+      turn,
+      interruptionReason: input.lifetime.interruptionReason(controller),
+    });
   };
 }

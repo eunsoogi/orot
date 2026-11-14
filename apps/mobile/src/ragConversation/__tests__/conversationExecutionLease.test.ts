@@ -68,7 +68,7 @@ test('an unavailable lease interrupts instead of pretending work can continue', 
     'one',
     interrupt,
   );
-  expect(interrupt).toHaveBeenCalledWith('expired');
+  expect(interrupt).toHaveBeenCalledWith('lease-denied');
   end();
   expect(f.adapter.end).not.toHaveBeenCalled();
 });
@@ -110,5 +110,33 @@ test('foreground reconciliation catches an expiration whose event was missed', a
   await Promise.resolve();
   await Promise.resolve();
   expect(interrupt).toHaveBeenCalledWith('expired');
+  end();
+});
+
+test('a healthy foreground reconciliation leaves the in-flight request alone', async () => {
+  const f = fixture();
+  const interrupt = jest.fn();
+  const end = await beginConversationExecutionLease(
+    f.adapter,
+    'one',
+    interrupt,
+  );
+  f.emit({ kind: 'foreground' });
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(interrupt).not.toHaveBeenCalled();
+  end();
+});
+
+test('a failed lease check is not reported as an observed OS expiration', async () => {
+  const f = fixture();
+  jest.mocked(f.adapter.isActive).mockRejectedValue(new Error('synthetic'));
+  const interrupt = jest.fn();
+  const end = await beginConversationExecutionLease(
+    f.adapter,
+    'one',
+    interrupt,
+  );
+  expect(interrupt).toHaveBeenCalledWith('lease-check-failed');
   end();
 });
