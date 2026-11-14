@@ -26,9 +26,14 @@ test('milestones fence stopped and superseded requests and distinguish received 
   const controller = new AbortController();
   await lifetime.start(1, controller, turn, 'synthetic question');
   lifetime.answered(controller, false);
-  expect(milestone.mock.calls).toEqual([['synthetic-turn', 'answered']]);
+  expect(milestone.mock.calls).toEqual([
+    ['synthetic-turn:lease:1:1', 'answered'],
+  ]);
   lifetime.answered(controller, true);
-  expect(milestone.mock.calls.at(-1)).toEqual(['synthetic-turn', 'committed']);
+  expect(milestone.mock.calls.at(-1)).toEqual([
+    'synthetic-turn:lease:1:1',
+    'committed',
+  ]);
   lifetime.interrupt(1, 'interrupted');
   const count = milestone.mock.calls.length;
   lifetime.answered(controller, true);
