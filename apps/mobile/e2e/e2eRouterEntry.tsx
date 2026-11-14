@@ -15,6 +15,9 @@ const launchSettings =
   settingsManager?.settings ?? settingsManager?.getConstants?.().settings ?? {};
 
 switch (selectEntryRoute(launchSettings)) {
+  case 'voice-call':
+    require('./voiceCallProbeEntry');
+    break;
   case 'agent-memory':
     require('./agentMemoryProbeEntry');
     break;

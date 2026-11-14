@@ -1,6 +1,11 @@
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
+import {
+  nativeDuplexVoice,
+  type DuplexNativeModule,
+  type NativeDuplexVoice,
+} from './nativeDuplexVoice';
 
-interface VoiceNativeModule {
+interface VoiceNativeModule extends Partial<DuplexNativeModule> {
   start(turnId: string, language: string): Promise<string>;
   finishCapture(turnId: string): void;
   speak(turnId: string, text: string, language: string): Promise<void>;
@@ -15,7 +20,13 @@ export function nativeVoiceConversation() {
     Platform.OS === 'ios' ? NativeModules.VoiceConversationModule : undefined;
   if (!module) return null;
   const events = new NativeEventEmitter(module);
-  return {
+  const voice = {
+    duplex: (module.openCall
+      ? nativeDuplexVoice(
+          module as VoiceNativeModule & DuplexNativeModule,
+          events,
+        )
+      : undefined) as NativeDuplexVoice | undefined,
     start: (turnId: string, language: string) => module.start(turnId, language),
     finishCapture: (turnId: string) => module.finishCapture(turnId),
     speak: (turnId: string, text: string, language: string) =>
@@ -42,4 +53,5 @@ export function nativeVoiceConversation() {
       return () => subscription.remove();
     },
   };
+  return voice as Omit<typeof voice, 'duplex'> & { duplex?: NativeDuplexVoice };
 }

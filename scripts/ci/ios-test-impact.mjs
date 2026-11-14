@@ -197,6 +197,9 @@ function nativeTestImpact(path) {
 
   if (path.includes('/OrotMobile.xcodeproj/')) return full('native-project-configuration');
   if (path.includes('/OrotMobile/')) {
+    // The Realtime module shares audio ownership but uses its own transport and injected lifecycle suite.
+    if (/^(realtimevoice|voicerealtimemodule)/i.test(file))
+      return impact(['core-integration', 'microphone'], 'realtime-voice-native-module');
     if (['windowpresentationanchor.swift', 'popoversourceregion.swift'].includes(lower))
       return impact(windowAnchorCohorts, 'current-window-presentation-anchor');
     if (/^(test|syntheticcalendar|testfixture|testcontrol|testoperation)/i.test(file))

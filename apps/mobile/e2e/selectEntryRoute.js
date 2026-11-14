@@ -8,6 +8,7 @@ function selectEntryRoute(settings) {
     // Only an explicit test launch argument may opt into a synthetic app entry.
     const probe = launchSettings.OROT_E2E_PROBE;
     if (
+      probe !== 'voice-call' &&
       probe !== 'appointments' &&
       probe !== 'medical-appointment-classification' &&
       probe !== 'medical-appointment-app-navigation' &&

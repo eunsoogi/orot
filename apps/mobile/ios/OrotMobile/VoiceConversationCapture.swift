@@ -11,6 +11,8 @@ final class VoiceConversationCapture {
     private var completion: ((Result<String, Error>) -> Void)?
     private var tapInstalled = false
     private var generation: UUID?
+    private var endOfTurn: DispatchWorkItem?
+    private var partialTranscript = ""
 
     enum Failure: Error {
         case unavailable
@@ -31,7 +33,7 @@ final class VoiceConversationCapture {
         guard format.sampleRate > 0, format.channelCount > 0 else { throw Failure.unavailable }
         let recognition = SFSpeechAudioBufferRecognitionRequest()
         recognition.requiresOnDeviceRecognition = true
-        recognition.shouldReportPartialResults = false
+        recognition.shouldReportPartialResults = true
         request = recognition
         self.completion = completion
         let current = UUID()
@@ -48,6 +50,20 @@ final class VoiceConversationCapture {
                     self.finish(text.isEmpty ? .failure(Failure.emptyTranscript) : .success(text))
                 } else if let error {
                     self.finish(.failure(error))
+                } else if let result {
+                    let text = result.bestTranscription.formattedString
+                    if !text.isEmpty, text != self.partialTranscript {
+                        self.partialTranscript = text
+                        self.endOfTurn?.cancel()
+                        // A stable on-device partial ends this turn after a short pause. This is
+                        // transcript endpointing, not simultaneous listening during TTS playback.
+                        let end = DispatchWorkItem { [weak self] in
+                            guard let self, generation == current else { return }
+                            completeTurn()
+                        }
+                        self.endOfTurn = end
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: end)
+                    }
                 }
             }
         }
@@ -65,6 +81,8 @@ final class VoiceConversationCapture {
     func completeTurn() {
         dispatchPrecondition(condition: .onQueue(.main))
         guard completion != nil else { return }
+        endOfTurn?.cancel()
+        endOfTurn = nil
         engine.stop()
         removeTap()
         request?.endAudio()
@@ -80,6 +98,9 @@ final class VoiceConversationCapture {
         let callback = completion
         completion = nil
         generation = nil
+        partialTranscript = ""
+        endOfTurn?.cancel()
+        endOfTurn = nil
         engine.stop()
         removeTap()
         request?.endAudio()

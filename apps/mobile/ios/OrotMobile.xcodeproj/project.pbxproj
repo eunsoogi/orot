@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BCAC2A2B2A95E636B5C9C15E /* RealtimeVoiceCallLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41E6911C62CADEA6C14E15AF /* RealtimeVoiceCallLifecycle.swift */; };
+		765B8D5B2F4B561748A82885 /* RealtimeVoiceCallEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C5E2B537DA5D2494BD14FF /* RealtimeVoiceCallEvents.swift */; };
 		F9ABB0000000000000000001 /* AppointmentViewportGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9ABB0000000000000000002 /* AppointmentViewportGeometry.swift */; };
 		F9ABA0000000000000000001 /* ViewportObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9ABA0000000000000000002 /* ViewportObservation.swift */; };
 		A7C843720000000000000001 /* ChartFoundationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C843720000000000000002 /* ChartFoundationUITests.swift */; };
@@ -108,6 +110,7 @@
 		A989C53E0100000000000011 /* AssistantReplyEntryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A989C53E0100000000000012 /* AssistantReplyEntryUITests.swift */; };
 		A989C53E0100000000000021 /* ReplyFocusGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A989C53E0100000000000022 /* ReplyFocusGeometryUITests.swift */; };
 		A989C53E0100000000000001 /* AssistantAppearanceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A989C53E0100000000000002 /* AssistantAppearanceUITests.swift */; };
+		A741BB000000000000000001 /* VoiceConversationCallUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741BB000000000000000001 /* VoiceConversationCallUITests.swift */; };
 		A652EBA3110F4C94A4E35001 /* ConversationToolEventsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A652EBA3110F4C94A4E35002 /* ConversationToolEventsUITests.swift */; };
 		8F8F6C104A42FB5DDB18E1CD /* KeyboardSafeAreaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */; };
 		91F6C9596417D23704B50D29 /* OrotFailFastTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30BB9F6ADDD67E1E7C35C22 /* OrotFailFastTestCase.swift */; };
@@ -244,6 +247,7 @@
 		A67F00000000000000000005 /* AppointmentReminderNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */; };
 		AFC900000000000000000004 /* ReplyNotificationInboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */; };
 		A68FAB000000000000000006 /* AudioSessionOwnershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */; };
+		AC2B9D1074EF4C3EB2B83091 /* VoiceConversationLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC2B9D1074EF4C3EB2B83091 /* VoiceConversationLifecycleTests.swift */; };
 		A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */; };
 		A8D884E4B042451A9822514A /* RootSettingsNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A87175C6238944AD89F5EF49 /* RootSettingsNavigationUITests.swift */; };
 		DF18ABCD019B40AA9C138D21 /* SettingsPortraitNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF18ABCD019B40AA9C138D22 /* SettingsPortraitNavigationUITests.swift */; };
@@ -342,6 +346,15 @@
 		BBD39ED4CA5C1F73E2C05D80 /* EncounterInputObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4537E8AD8A8E77AE3DA54672 /* EncounterInputObservation.swift */; };
 		09748877AD3642DCA2AE5EE29131280C /* VisitQuestionInputGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48234CD5062B454DB27EE2CB6489F06B /* VisitQuestionInputGate.swift */; };
 		D09B8C3B135C4759A63CC2390808EC9B /* VisitQuestionInputObservationWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FB1C9E3891B420B996B02B6D9613670 /* VisitQuestionInputObservationWindow.swift */; };
+		A741AA00000000000000000B /* VoiceDuplexAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA00000000000000000B /* VoiceDuplexAudioEngine.swift */; };
+		A741AA00000000000000000C /* VoiceDuplexRecognition.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA00000000000000000C /* VoiceDuplexRecognition.swift */; };
+		A741AA00000000000000000D /* VoiceDuplexCallCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B741AA00000000000000000D /* VoiceDuplexCallCoordinator.swift */; };
+		5F5BF337ADDFF3C31D481496 /* RealtimeVoiceSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7479A548CDF9306903EC3C /* RealtimeVoiceSocket.swift */; };
+		5B7E3E3D246EBD004E71D1D5 /* RealtimeVoiceLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF536F275C819E8584C568C6 /* RealtimeVoiceLifecycleTests.swift */; };
+		4C2AF5E490C970D7280570DC /* VoiceRealtimeModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91CE52EE3566B42004FC3685 /* VoiceRealtimeModule.swift */; };
+		9B6FABDF3DF22BD34E800544 /* RealtimeVoiceAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267C792BEF189082393E1837 /* RealtimeVoiceAudio.swift */; };
+		1113A6544E30C3384BCBC06B /* RealtimeVoiceCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E7E1C0677D54DE47D10208 /* RealtimeVoiceCall.swift */; };
+		0755E89CA4DAFDA2A7697E13 /* VoiceRealtimeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 6DE51D3EDD32E9F459E0BC75 /* VoiceRealtimeModule.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -362,6 +375,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		41E6911C62CADEA6C14E15AF /* RealtimeVoiceCallLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCallLifecycle.swift; sourceTree = "<group>"; };
+		F0C5E2B537DA5D2494BD14FF /* RealtimeVoiceCallEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCallEvents.swift; sourceTree = "<group>"; };
 		F9ABB0000000000000000002 /* AppointmentViewportGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentViewportGeometry.swift; sourceTree = "<group>"; };
 		F9ABA0000000000000000002 /* ViewportObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewportObservation.swift; sourceTree = "<group>"; };
 		B11200000000000000000004 /* DailyReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyReminderNotificationTests.swift; sourceTree = "<group>"; };
@@ -622,6 +637,7 @@
 		B67F00000000000000000005 /* AppointmentReminderNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderNotificationTests.swift; sourceTree = "<group>"; };
 		BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyNotificationInboxTests.swift; sourceTree = "<group>"; };
 		B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionOwnershipTests.swift; sourceTree = "<group>"; };
+		BC2B9D1074EF4C3EB2B83091 /* VoiceConversationLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceConversationLifecycleTests.swift; sourceTree = "<group>"; };
 		B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentReminderDiagnosticTests.swift; sourceTree = "<group>"; };
 		B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnifiedImportUITests.swift; sourceTree = "<group>"; };
 		B9FACEC716BCC3F92395DE35 /* SafeAreaNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeAreaNavigationUITests.swift; sourceTree = "<group>"; };
@@ -690,6 +706,7 @@
 		A989C53E0100000000000012 /* AssistantReplyEntryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AssistantReplyEntryUITests.swift; sourceTree = "<group>"; };
 		A989C53E0100000000000022 /* ReplyFocusGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReplyFocusGeometryUITests.swift; sourceTree = "<group>"; };
 		A989C53E0100000000000002 /* AssistantAppearanceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AssistantAppearanceUITests.swift; sourceTree = "<group>"; };
+		B741BB000000000000000001 /* VoiceConversationCallUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VoiceConversationCallUITests.swift; sourceTree = "<group>"; };
 		A652EBA3110F4C94A4E35002 /* ConversationToolEventsUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationToolEventsUITests.swift; sourceTree = "<group>"; };
 		FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KeyboardSafeAreaUITests.swift; sourceTree = "<group>"; };
 		FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextVisitReviewUITests.swift; sourceTree = "<group>"; };
@@ -703,6 +720,15 @@
 		4537E8AD8A8E77AE3DA54672 /* EncounterInputObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EncounterInputObservation.swift; path = EncounterInputObservation.swift; sourceTree = "<group>"; };
 		48234CD5062B454DB27EE2CB6489F06B /* VisitQuestionInputGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VisitQuestionInputGate.swift; path = OrotMobile/VisitQuestionInputGate.swift; sourceTree = "<group>"; };
 		2FB1C9E3891B420B996B02B6D9613670 /* VisitQuestionInputObservationWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VisitQuestionInputObservationWindow.swift; path = OrotMobile/VisitQuestionInputObservationWindow.swift; sourceTree = "<group>"; };
+		B741AA00000000000000000B /* VoiceDuplexAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceDuplexAudioEngine.swift; path = OrotMobile/VoiceDuplexAudioEngine.swift; sourceTree = "<group>"; };
+		B741AA00000000000000000C /* VoiceDuplexRecognition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceDuplexRecognition.swift; path = OrotMobile/VoiceDuplexRecognition.swift; sourceTree = "<group>"; };
+		B741AA00000000000000000D /* VoiceDuplexCallCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceDuplexCallCoordinator.swift; path = OrotMobile/VoiceDuplexCallCoordinator.swift; sourceTree = "<group>"; };
+		6DE51D3EDD32E9F459E0BC75 /* VoiceRealtimeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceRealtimeModule.m; path = OrotMobile/VoiceRealtimeModule.m; sourceTree = "<group>"; };
+		E1E7E1C0677D54DE47D10208 /* RealtimeVoiceCall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RealtimeVoiceCall.swift; path = OrotMobile/RealtimeVoiceCall.swift; sourceTree = "<group>"; };
+		91CE52EE3566B42004FC3685 /* VoiceRealtimeModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceRealtimeModule.swift; path = OrotMobile/VoiceRealtimeModule.swift; sourceTree = "<group>"; };
+		267C792BEF189082393E1837 /* RealtimeVoiceAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RealtimeVoiceAudio.swift; path = OrotMobile/RealtimeVoiceAudio.swift; sourceTree = "<group>"; };
+		BF536F275C819E8584C568C6 /* RealtimeVoiceLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceLifecycleTests.swift; sourceTree = "<group>"; };
+		AA7479A548CDF9306903EC3C /* RealtimeVoiceSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RealtimeVoiceSocket.swift; path = OrotMobile/RealtimeVoiceSocket.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -741,6 +767,13 @@
 		13B07FAE1A68108700A75B9A /* OrotMobile */ = {
 			isa = PBXGroup;
 			children = (
+				6DE51D3EDD32E9F459E0BC75 /* VoiceRealtimeModule.m */,
+				91CE52EE3566B42004FC3685 /* VoiceRealtimeModule.swift */,
+				E1E7E1C0677D54DE47D10208 /* RealtimeVoiceCall.swift */,
+				41E6911C62CADEA6C14E15AF /* RealtimeVoiceCallLifecycle.swift */,
+				F0C5E2B537DA5D2494BD14FF /* RealtimeVoiceCallEvents.swift */,
+				AA7479A548CDF9306903EC3C /* RealtimeVoiceSocket.swift */,
+				267C792BEF189082393E1837 /* RealtimeVoiceAudio.swift */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				C1011000C1011000C1011001 /* Navigation */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
@@ -779,6 +812,9 @@
 				B64F00000000000000000003 /* RecordingModule+Commands.swift */,
 				B64F00000000000000000004 /* RecordingCaptureLifecycle.swift */,
 				B741AA000000000000000001 /* AudioSessionOwnership.swift */,
+				B741AA00000000000000000B /* VoiceDuplexAudioEngine.swift */,
+				B741AA00000000000000000C /* VoiceDuplexRecognition.swift */,
+				B741AA00000000000000000D /* VoiceDuplexCallCoordinator.swift */,
 				B741AA000000000000000002 /* VoiceConversationCapture.swift */,
 				B741AA000000000000000003 /* VoiceConversationSpeech.swift */,
 				B68FAB000000000000000004 /* VoiceConversationModule.swift */,
@@ -942,6 +978,7 @@
 		ABFF46896F35DA79FC1B1F87 /* OrotIntegrationTests */ = {
 			isa = PBXGroup;
 			children = (
+				BF536F275C819E8584C568C6 /* RealtimeVoiceLifecycleTests.swift */,
 				BB9FD1211C32C178478155AE /* SpeechCancellationTests.swift */,
 				86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */,
 				71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */,
@@ -953,6 +990,7 @@
 				B821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift */,
 				BFC900000000000000000004 /* ReplyNotificationInboxTests.swift */,
 				B68FAB000000000000000006 /* AudioSessionOwnershipTests.swift */,
+				BC2B9D1074EF4C3EB2B83091 /* VoiceConversationLifecycleTests.swift */,
 				B93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift */,
 				5685BC3FF0207DC9692FAE7A /* TestOperationBrokerTests.swift */,
 				125FDF1804BB1059B01C0647 /* NavigationLayoutIntegrationTests.swift */,
@@ -1132,6 +1170,7 @@
 				A989C53E0100000000000012 /* AssistantReplyEntryUITests.swift */,
 				A989C53E0100000000000022 /* ReplyFocusGeometryUITests.swift */,
 				A989C53E0100000000000002 /* AssistantAppearanceUITests.swift */,
+				B741BB000000000000000001 /* VoiceConversationCallUITests.swift */,
 				A652EBA3110F4C94A4E35002 /* ConversationToolEventsUITests.swift */,
 				FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */,
 				95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */,
@@ -1423,6 +1462,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0755E89CA4DAFDA2A7697E13 /* VoiceRealtimeModule.m in Sources */,
+				4C2AF5E490C970D7280570DC /* VoiceRealtimeModule.swift in Sources */,
+				1113A6544E30C3384BCBC06B /* RealtimeVoiceCall.swift in Sources */,
+				BCAC2A2B2A95E636B5C9C15E /* RealtimeVoiceCallLifecycle.swift in Sources */,
+				765B8D5B2F4B561748A82885 /* RealtimeVoiceCallEvents.swift in Sources */,
+				5F5BF337ADDFF3C31D481496 /* RealtimeVoiceSocket.swift in Sources */,
+				9B6FABDF3DF22BD34E800544 /* RealtimeVoiceAudio.swift in Sources */,
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */,
 				BD05DBD552E74175A662EBF9 /* NavigationGeometryView.swift in Sources */,
@@ -1479,6 +1525,9 @@
 				A64F00000000000000000003 /* RecordingModule+Commands.swift in Sources */,
 				A64F00000000000000000004 /* RecordingCaptureLifecycle.swift in Sources */,
 				A741AA000000000000000001 /* AudioSessionOwnership.swift in Sources */,
+				A741AA00000000000000000B /* VoiceDuplexAudioEngine.swift in Sources */,
+				A741AA00000000000000000C /* VoiceDuplexRecognition.swift in Sources */,
+				A741AA00000000000000000D /* VoiceDuplexCallCoordinator.swift in Sources */,
 				A741AA000000000000000002 /* VoiceConversationCapture.swift in Sources */,
 				A741AA000000000000000003 /* VoiceConversationSpeech.swift in Sources */,
 				A68FAB000000000000000004 /* VoiceConversationModule.swift in Sources */,
@@ -1664,6 +1713,7 @@
 				A989C53E0100000000000011 /* AssistantReplyEntryUITests.swift in Sources */,
 				A989C53E0100000000000021 /* ReplyFocusGeometryUITests.swift in Sources */,
 				A989C53E0100000000000001 /* AssistantAppearanceUITests.swift in Sources */,
+				A741BB000000000000000001 /* VoiceConversationCallUITests.swift in Sources */,
 				A652EBA3110F4C94A4E35001 /* ConversationToolEventsUITests.swift in Sources */,
 				8F8F6C104A42FB5DDB18E1CD /* KeyboardSafeAreaUITests.swift in Sources */,
 				062044E1CF9785EE1624BF5D /* AppearanceUITestConditions.swift in Sources */,
@@ -1708,6 +1758,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5B7E3E3D246EBD004E71D1D5 /* RealtimeVoiceLifecycleTests.swift in Sources */,
 				91F6C9596417D23704B50D29 /* OrotFailFastTestCase.swift in Sources */,
 				761BB559E6B44B51D6F155FF /* SpeechCancellationTests.swift in Sources */,
 				C2291949AD21549ED53E3D13 /* SpeechFixture.swift in Sources */,
@@ -1720,6 +1771,7 @@
 				A821C7E44F1D4E9B981B2104 /* RootURLInboxTests.swift in Sources */,
 				AFC900000000000000000004 /* ReplyNotificationInboxTests.swift in Sources */,
 				A68FAB000000000000000006 /* AudioSessionOwnershipTests.swift in Sources */,
+				AC2B9D1074EF4C3EB2B83091 /* VoiceConversationLifecycleTests.swift in Sources */,
 				A93EB73CCA8F43E5BE5F964D /* AppointmentReminderDiagnosticTests.swift in Sources */,
 				A41BA63BD8BF5F1E2D80BA11 /* TestOperationBrokerTests.swift in Sources */,
 				9E5D3EC520FA49BB3E6E2930 /* NavigationLayoutIntegrationTests.swift in Sources */,

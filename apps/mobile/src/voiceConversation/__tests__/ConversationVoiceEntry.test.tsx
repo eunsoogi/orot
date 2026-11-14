@@ -1,3 +1,4 @@
+import { getGenericPassword } from 'react-native-keychain';
 import {
   act,
   fireEvent,
@@ -9,6 +10,22 @@ import { Alert, AppState } from 'react-native';
 import { ConversationVoiceEntry } from '../ConversationVoiceEntry';
 import type { ConversationSessions } from '../../ragConversation/conversationSessionTypes';
 import type { SelectedAiResolution } from '../../aiFeatures/integration/provider';
+
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
+
+jest.mock('react-native-keychain', () => ({
+  ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'device-only' },
+  getGenericPassword: jest.fn(async () => false),
+  setGenericPassword: jest.fn(),
+}));
+
+const mockIdentity = jest.fn((_props: unknown) => null);
+jest.mock('../../assistantAppearance/AssistantHeader', () => ({
+  AssistantHeader: (props: unknown) => mockIdentity(props),
+}));
 
 let listening: (id: string) => void = () => {};
 let finishCapture: (text: string) => void = () => {};
@@ -76,6 +93,23 @@ test('explicit consent binds one voice turn while preserving the text draft', as
       onSend={jest.fn()}
     />,
   );
+  // An API model selection must never enter the local native pipeline.
+  jest.mocked(getGenericPassword).mockResolvedValueOnce({
+    password: JSON.stringify({
+      mode: 'openai-api',
+      model: 'gpt-realtime-2.1',
+      apiKey: 'synthetic',
+    }),
+  } as never);
+  await fireEvent.press(screen.getByRole('button', { name: '음성 대화 시작' }));
+  await waitFor(() =>
+    expect(alert).toHaveBeenCalledWith(
+      '음성 모델이 변경되었습니다',
+      expect.any(String),
+    ),
+  );
+  expect(mockNative.start).not.toHaveBeenCalled();
+  alert.mockClear();
   await fireEvent.press(screen.getByRole('button', { name: '음성 대화 시작' }));
   await waitFor(() => expect(alert).toHaveBeenCalled());
   expect(mockNative.start).not.toHaveBeenCalled();
@@ -84,6 +118,14 @@ test('explicit consent binds one voice turn while preserving the text draft', as
     buttons[1].onPress?.();
   });
   await waitFor(() => expect(mockNative.start).toHaveBeenCalledTimes(1));
+  // The call reuses the stored identity component and cannot open settings mid-session.
+  expect(mockIdentity).toHaveBeenCalledWith(
+    expect.objectContaining({
+      session: snapshot.sessions[0],
+      editable: false,
+      status: expect.any(String),
+    }),
+  );
   const turn = mockNative.start.mock.calls[0][0] as string;
   await act(async () => {
     listening(turn);
@@ -99,6 +141,9 @@ test('explicit consent binds one voice turn while preserving the text draft', as
   await waitFor(() =>
     expect(mockNative.speak).toHaveBeenCalledWith(turn, '합성 답변', 'ko-KR'),
   );
+  await waitFor(() => expect(mockNative.start).toHaveBeenCalledTimes(2));
+  await fireEvent.press(screen.getByRole('button', { name: '음성 대화 종료' }));
+  await waitFor(() => expect(mockNative.stop).toHaveBeenCalled());
   expect(sendOwnedPrompt).toHaveBeenCalledTimes(1);
   expect(snapshot.sessions[0].draft).toBe('보존할 초안');
   alert.mockRestore();

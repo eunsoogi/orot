@@ -1,4 +1,5 @@
 export type E2EEntryRoute =
+  | 'voice-call'
   | 'storage'
   | 'agent-memory'
   | 'appointments'

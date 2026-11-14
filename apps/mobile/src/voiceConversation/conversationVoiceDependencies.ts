@@ -1,3 +1,4 @@
+import { requireLocalVoiceProcessing } from '../voiceSettings/voiceSettingsStore';
 import { AppState } from 'react-native';
 import type { RefObject } from 'react';
 import type { SelectedAiResolution } from '../aiFeatures/integration/provider';
@@ -68,7 +69,12 @@ export function conversationVoiceDependencies(input: {
       latest.current.photoPending ||
       latest.current.store.photoDrafts.get(id).status !== 'empty',
     async authorize(identity, signal) {
-      if (signal.aborted || !current(identity)) return false;
+      if (
+        signal.aborted ||
+        !current(identity) ||
+        !(await requireLocalVoiceProcessing())
+      )
+        return false;
       const result = await latest.current.resolveSelectedAi();
       const approved = selected.current?.value;
       return Boolean(
@@ -111,8 +117,12 @@ export function conversationVoiceDependencies(input: {
       return result.answer;
     },
     async cancel(identity) {
-      if (owned.current?.turnId === identity.turnId)
-        owned.current.handle.cancel();
+      if (owned.current?.turnId !== identity.turnId) return;
+      const handle = owned.current.handle;
+      handle.cancel();
+      // New voice turns must not replace the owned handle while cancellation is still settling.
+      await handle.completion;
+      if (owned.current?.handle === handle) owned.current = null;
     },
   };
 }
