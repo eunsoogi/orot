@@ -1,3 +1,7 @@
+import {
+  decodeConversationRecoveryReason,
+  type ConversationRecoveryReason,
+} from '../ragConversation/conversationExecutionLease';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import type { ConversationArtifact } from './conversationArtifactCodec';
 import {
@@ -173,11 +177,26 @@ export function createConversationRequestStorage(
       sessionId: string,
       version: number,
       status: 'interrupted' | 'cancelled',
+      reason?: ConversationRecoveryReason,
     ) {
+      if (reason !== undefined && !decodeConversationRecoveryReason(reason))
+        throw new Error('Invalid interruption reason.');
       await ensure();
+      // Explicit Stop/abandon also fences a safely paused request. Automatic late
+      // failures must not replace the saved pause reason or the user's stop intent.
       await database.execute(
-        "UPDATE conversation_requests SET status = ?, question = CASE WHEN ? = 'cancelled' THEN '' ELSE question END, input_json = CASE WHEN ? = 'cancelled' THEN NULL ELSE input_json END WHERE id = ? AND session_id = ? AND session_version = ? AND status = 'active'",
-        [status, status, status, id, sessionId, version],
+        "UPDATE conversation_requests SET interruption_reason = ?, status = ?, question = CASE WHEN ? = 'cancelled' THEN '' ELSE question END, input_json = CASE WHEN ? = 'cancelled' THEN NULL ELSE input_json END WHERE id = ? AND session_id = ? AND session_version = ? AND (status = 'active' OR (status = 'interrupted' AND (? = 'cancelled' OR ? = 'user-stopped')))",
+        [
+          status === 'cancelled' ? null : (reason ?? null),
+          status,
+          status,
+          status,
+          id,
+          sessionId,
+          version,
+          status,
+          reason ?? null,
+        ],
       );
     },
     /** Call once on app startup before a new request starts; no provider is resubmitted. */
@@ -187,7 +206,7 @@ export function createConversationRequestStorage(
         recovery = ensure()
           .then(async () => {
             await database.execute(
-              "UPDATE conversation_requests SET status = 'interrupted' WHERE status = 'active'",
+              "UPDATE conversation_requests SET status = 'interrupted', interruption_reason = 'process-interrupted' WHERE status = 'active'",
             );
           })
           .catch(error => {

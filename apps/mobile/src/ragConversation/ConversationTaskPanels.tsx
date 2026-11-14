@@ -1,3 +1,4 @@
+import { ConversationInterruptionRecovery } from './ConversationInterruptionRecovery';
 import { Fragment } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
@@ -181,6 +182,7 @@ export function ConversationStoredTaskCards({
   const { id } = session;
   return (
     <>
+      <ConversationInterruptionRecovery store={store} session={session} />
       {session.taskCards
         ?.filter(card => card.id !== routeKey)
         .map(card => {

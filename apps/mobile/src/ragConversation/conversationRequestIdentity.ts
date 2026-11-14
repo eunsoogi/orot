@@ -9,7 +9,11 @@ export function requestIdentityObserver(
 ) {
   const session = retention?.activeLease(id);
   return session && turn
-    ? { retentionSession: session, retentionRequestId: turn.toolMessageId }
+    ? {
+        retentionSession: session,
+        retentionRequestId: turn.toolMessageId,
+        openWorkflowContinuation: turn.openWorkflowContinuation,
+      }
     : {};
 }
 

@@ -18,6 +18,8 @@ export function ConversationHistory({
   pendingMessage,
   error,
   onOpenSource,
+  onContinueCold,
+  coldResumeBusy,
   onLinkError,
   bottomInset = 0,
   header,
@@ -32,6 +34,7 @@ export function ConversationHistory({
   sessionId,
   toolSourceSessionId,
   resolveToolSource,
+  resolveColdToolSource,
   renderVisitQuestions,
   replyFocus,
   requestSessionId,
@@ -203,11 +206,14 @@ export function ConversationHistory({
           >
             <ConversationMessage
               message={message}
+              onContinueCold={onContinueCold}
+              coldResumeBusy={coldResumeBusy}
               onOpenSource={onOpenSource}
               onLinkError={onLinkError}
               compact={compact}
               toolSourceSessionId={toolSourceSessionId}
               resolveToolSource={resolveToolSource}
+              resolveColdToolSource={resolveColdToolSource}
               renderVisitQuestions={renderVisitQuestions}
             />
           </ReplyMessageContainer>

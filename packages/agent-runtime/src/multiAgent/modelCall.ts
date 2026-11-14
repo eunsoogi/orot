@@ -15,7 +15,9 @@ import type {
   ExecutionConsentPort,
   ProviderStopObservation,
 } from './contracts';
-import { utf8ByteLength } from './protocol';
+import { authorizeModelCall, type ModelAuthorizationGrant } from './modelAuthorization';
+import { observeUntilAbort } from './operationObservation';
+export { observeUntilAbort, type ObservedOperation } from './operationObservation';
 
 export type ModelCallOutcome =
   | { readonly status: 'response'; readonly response: LanguageModelResponse }
@@ -28,45 +30,6 @@ type LanguageModelTextEvent = Extract<
   LanguageModelStreamEvent,
   { readonly type: 'text_delta' | 'text_snapshot' }
 >;
-
-export type ObservedOperation<T> =
-  | { readonly kind: 'value'; readonly value: T }
-  | { readonly kind: 'error' }
-  | { readonly kind: 'cancelled' };
-
-export function observeUntilAbort<T>(
-  operation: Promise<T>,
-  signal: AbortSignal,
-): Promise<ObservedOperation<T>> {
-  if (signal.aborted) {
-    // Cancellation wins, but the already-started operation still needs a rejection handler.
-    operation.catch(() => undefined);
-    return Promise.resolve({ kind: 'cancelled' });
-  }
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (result: ObservedOperation<T>) => {
-      if (settled) return;
-      settled = true;
-      signal.removeEventListener('abort', onAbort);
-      resolve(result);
-    };
-    const onAbort = () => finish({ kind: 'cancelled' });
-    signal.addEventListener('abort', onAbort, { once: true });
-    operation.then(
-      (value) => finish({ kind: 'value', value }),
-      () => finish({ kind: 'error' }),
-    );
-  });
-}
-
-function serializedRequest(request: LanguageModelRequest): string | undefined {
-  try {
-    return JSON.stringify(request);
-  } catch {
-    return undefined;
-  }
-}
 
 // Returning an iterator is only a stop request; providers expose no stronger cancellation proof.
 async function collectStream(
@@ -157,41 +120,35 @@ export async function callModel(
   telemetry?: TelemetrySink,
   onTextEvent?: (event: LanguageModelTextEvent) => void,
 ): Promise<ModelCallOutcome> {
-  if (signal.aborted) return { status: 'cancelled', providerStop: 'not_started' };
-  const consentSnapshot = serializedRequest(request);
-  if (
-    consentSnapshot === undefined ||
-    utf8ByteLength(consentSnapshot) > execution.budget.maxPayloadBytes
-  ) {
-    return { status: 'unavailable', errorCode: 'invalid_request' };
+  const authorization = await authorizeModelCall(request, execution, consent, signal);
+  if (authorization.status !== 'authorized') return authorization;
+  return dispatchAuthorizedModelCall(
+    provider,
+    request,
+    execution,
+    authorization,
+    signal,
+    telemetry,
+    onTextEvent,
+  );
+}
+
+/** Called only after the caller has durably recorded dispatch intent, when journaling is active. */
+export async function dispatchAuthorizedModelCall(
+  provider: LanguageModelProvider,
+  request: LanguageModelRequest,
+  execution: MultiAgentExecutionIdentity,
+  authorization: ModelAuthorizationGrant,
+  signal: AbortSignal,
+  telemetry?: TelemetrySink,
+  onTextEvent?: (event: LanguageModelTextEvent) => void,
+): Promise<ModelCallOutcome> {
+  // The grant is invocation-local, single use, and bound to the unchanged exact payload.
+  if (!authorization.consume(request, execution, signal)) {
+    return signal.aborted
+      ? { status: 'cancelled', providerStop: 'not_started' }
+      : { status: 'consent_required' };
   }
-  if (execution.remoteProcessing) {
-    try {
-      const approval = await observeUntilAbort(
-        consent.authorize({
-          operationRunId: execution.operationRunId,
-          providerId: execution.providerId,
-          modelId: execution.modelId,
-          recipient: execution.recipient,
-          remoteProcessing: true,
-          ...(execution.consentScope ? { consentScope: execution.consentScope } : {}),
-          allowedScope: execution.allowedScope,
-          payload: request,
-          signal,
-        }),
-        signal,
-      );
-      if (approval.kind === 'cancelled') {
-        return { status: 'cancelled', providerStop: 'not_started' };
-      }
-      if (approval.kind === 'error') return { status: 'consent_required' };
-      if (approval.value !== 'authorized') return { status: 'consent_required' };
-      if (serializedRequest(request) !== consentSnapshot) return { status: 'consent_required' };
-    } catch {
-      return { status: 'consent_required' };
-    }
-  }
-  if (signal.aborted) return { status: 'cancelled', providerStop: 'not_started' };
   const guided = request.responseFormat !== undefined || Boolean(request.tools?.length);
   const canStreamGuidedResponse =
     provider.capabilities.structuredOutputStreaming !== false &&

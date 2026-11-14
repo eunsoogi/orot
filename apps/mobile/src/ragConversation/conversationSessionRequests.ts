@@ -1,3 +1,4 @@
+import { createConversationColdRequest } from './conversationColdRequest';
 import { getRagConversationFailureCopy } from './copy';
 import { createConversationTurnActivity } from './conversationTurnActivity';
 import type { ConversationTurnActivity } from './conversationTurnActivity';
@@ -16,18 +17,19 @@ import { observeSummaryCommit } from './conversationSummaryCommit';
 import { prepareConversationRequest } from './conversationRequestStart';
 import { bindRequestCancel } from './conversationRequestIdentity';
 import { requestIdentityObserver } from './conversationRequestIdentity';
+import { ownsOutcome } from './conversationOutcomeOwnership';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import { createConversationRequestLifetime } from './conversationRequestLifetime';
+import type { createConversationTurnRetention } from './conversationTurnRetention';
 import { startConversationRetainedRequest } from './conversationPhotoRequestStart';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
-import type { createConversationTurnRetention } from './conversationTurnRetention';
 import {
   createConversationRequestPreview,
   conversationPreviewObserver,
 } from './conversationRequestPreview';
 import { conversationPreviewSetup } from './conversationPreviewSetup';
 import {
-  createRetainConversationPartial,
+  createRetainConversationPartial as retainPartialFor,
   createConversationStopHandler,
 } from './conversationStoppedTurn';
 import { conversationFailureReporter as failureReporter } from './conversationFailedPrompt';
@@ -45,6 +47,7 @@ export function createConversationSessionRequests(
   retention?: ConversationSessionOptions['retention'],
   execution?: ConversationExecutionAdapter,
   photo?: Parameters<typeof startConversationRetainedRequest>[0]['photo'],
+  cold?: ConversationSessionOptions['coldResume'],
 ) {
   let messageId = 0;
   const saveRecovery = createConversationRequestSaveRecovery(update, find);
@@ -54,36 +57,30 @@ export function createConversationSessionRequests(
   const activities = new Map<number, ConversationTurnActivity>();
   const lifetime = createConversationRequestLifetime({
     execution,
+    pauseState: (id, continueWorkflow) => update(id, { continueWorkflow }),
     interrupt: id => cancel(id, false, 'interrupted'),
     reportFenceFailure: id =>
       update(id, { error: getRagConversationFailureCopy('unavailable') }),
   });
-  const retainPartial = createRetainConversationPartial(
+  const nextMessage = () => ++messageId;
+  const retainPartial = retainPartialFor(find, update, nextMessage);
+  const ownership = {
     find,
     update,
-    () => ++messageId,
-  );
-  const cancel = createConversationStopHandler({
+    conversationScope,
+    cold,
+    retention,
     controllers,
     pendingTurns,
     activities,
     snapshots,
     lifetime,
-    find,
-    update,
-    retainPartial,
-  });
+    saveRecovery,
+  };
+  const cancel = createConversationStopHandler({ ...ownership, retainPartial });
   return {
     cancel,
-    ...createConversationRequestDisposal({
-      controllers,
-      pendingTurns,
-      activities,
-      snapshots,
-      lifetime,
-      saveRecovery,
-      update,
-    }),
+    ...createConversationRequestDisposal(ownership),
     async send(
       id: number,
       onSend: ConversationSender,
@@ -161,6 +158,7 @@ export function createConversationSessionRequests(
           ...(retained
             ? saveRecovery.observer(id, retained, request, current)
             : {}),
+          ...lifetime.executionObserver(controller),
           conversationScope: conversationScope(id),
           ...(photoInput ? { photoInput } : {}),
           retainedHistory: retainedHistoryTurns(session.messages, question),
@@ -174,11 +172,7 @@ export function createConversationSessionRequests(
           ...(preview ? conversationPreviewObserver(preview, activity) : {}),
         });
         if (
-          !current() &&
-          !(
-            controllers.get(id) === controller &&
-            (request.committed || request.summaryCommitted)
-          )
+          !ownsOutcome(current(), controllers.get(id) === controller, request)
         )
           return;
         if (outcome.status === 'failure' || outcome.status === 'unavailable') {
@@ -188,6 +182,8 @@ export function createConversationSessionRequests(
           fail(failureCopy);
           return;
         }
+        if (outcome.status === 'answer')
+          lifetime.answered(controller, request.committed);
         conversationCompletedAnswer({
           id,
           userMessageId,
@@ -211,7 +207,7 @@ export function createConversationSessionRequests(
         }
       } finally {
         await photoInput?.settleUnsent?.().catch(() => {});
-        activity?.finish(controller.signal.aborted ? 'cancelled' : 'failed');
+        activity?.finish(lifetime.failureStatus(controller));
         await preview?.flush();
         await activity?.flush();
         if (request.committed && find(id)?.error === copy.previewSaveFailed)
@@ -243,6 +239,7 @@ export function createConversationSessionRequests(
         }
       }
     },
+    resumeCold: createConversationColdRequest({ ...ownership, cancel }),
     retrySave: saveRecovery.retry,
     resumeSaves: saveRecovery.resume,
     forgetSaves: saveRecovery.forget,

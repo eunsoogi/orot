@@ -1,3 +1,5 @@
+import { availableEvidenceTools } from './initialEvidenceSearch';
+import { journaledEvidenceSearch } from './journaledEvidenceSearch';
 import { canceled, completeState, emitToolEvent, operationKey, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
@@ -8,6 +10,7 @@ import type { EvidenceSearchReservation } from '../langchain/evidenceTool';
 import type { EvidenceBatch, EvidenceSearchTool, ProviderStopObservation } from './contracts';
 
 type PreparedSearchResult =
+  | { readonly status: 'paused' }
   | { readonly status: 'result'; readonly batch: EvidenceBatch }
   | (Extract<EvidenceSearchReservation, { status: string }> & {
       readonly providerStop?: ProviderStopObservation;
@@ -23,7 +26,9 @@ export function prepareEvidenceSearch<TResult>(
     canceled(context);
     return completeState();
   }
-  const tool = context.options.tools.find((candidate) => candidate.id === state.selectedToolId);
+  const tool = availableEvidenceTools(context.options, state).find(
+    (candidate) => candidate.id === state.selectedToolId,
+  );
   if (
     !tool ||
     !context.researchInput ||
@@ -57,6 +62,7 @@ export async function invokePreparedEvidenceSearch<TResult>(
   const input = context.researchInput;
   if (pending?.kind !== 'tool' || !input) return { status: 'stale_evidence' };
   let searchedBatch: EvidenceBatch | undefined;
+  let approvalPaused = false;
   const invocationTool: EvidenceSearchTool = {
     id: tool.id,
     description: tool.description,
@@ -67,9 +73,9 @@ export async function invokePreparedEvidenceSearch<TResult>(
     // Preserve the domain receiver even when a service implements methods on its prototype.
     parseInput: (value) => tool.parseInput(value),
     search: async (request, runtime) => {
-      let dispatched: ReturnType<typeof tool.search>;
+      let dispatched: ReturnType<typeof journaledEvidenceSearch>;
       try {
-        dispatched = tool.search(request, runtime);
+        dispatched = journaledEvidenceSearch(context, tool, request, runtime);
       } finally {
         // Emit only after entering the domain tool, including a synchronous dispatch error.
         context.activeToolEvent = {
@@ -85,6 +91,10 @@ export async function invokePreparedEvidenceSearch<TResult>(
         emitToolEvent(context, context.activeToolEvent);
       }
       const outcome = await dispatched;
+      if ('status' in outcome && outcome.status === 'paused') {
+        approvalPaused = true;
+        return { status: 'consent_required' };
+      }
       if ('status' in outcome) return outcome;
       // Optional undefined fields are absent in JSON. Retain insertion order for
       // existing range/reference comparisons and checkpoint restoration after validation.
@@ -110,6 +120,7 @@ export async function invokePreparedEvidenceSearch<TResult>(
   // Plain arguments keep native message conversion at its existing boundary. No graph
   // runnable config enters this private invocation, so query/evidence callbacks stay disabled.
   const result = JSON.parse(await standardTool.invoke(input)) as PreparedSearchResult;
+  if (approvalPaused) return { status: 'paused' };
   // Only a successful standard invocation releases the exact JSON data it validated.
   // Its canonical transport ordering must not rewrite the graph's domain representation.
   if (result.status !== 'result') return result;

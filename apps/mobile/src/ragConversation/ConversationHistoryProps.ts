@@ -8,10 +8,15 @@ import type { ReplyFocusHandle } from '../replyNotifications/replyFocus';
 
 /** Inputs shared by the transcript, activity indicator, and retained reply focus. */
 export interface ConversationHistoryProps {
+  readonly onContinueCold?: (requestId: string) => void;
+  readonly coldResumeBusy?: boolean;
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: ConversationSession['pendingMessage'];
   readonly error: string;
-  readonly onOpenSource: (reference: EvidenceReference) => void;
+  readonly onOpenSource: (
+    reference: EvidenceReference,
+    owner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner,
+  ) => void;
   readonly onLinkError: () => void;
   readonly bottomInset?: number;
   readonly header?: ReactNode;
@@ -25,6 +30,7 @@ export interface ConversationHistoryProps {
   readonly onRetryRestore?: () => void;
   readonly sessionId?: number;
   readonly toolSourceSessionId?: string | null;
+  readonly resolveColdToolSource?: import('../aiFeatures/integration/coldConversationSourceResolvers').ResolveColdConversationToolSource;
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
   readonly replyFocus?: ReplyFocusHandle;

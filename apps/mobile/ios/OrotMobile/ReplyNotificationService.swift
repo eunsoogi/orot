@@ -59,7 +59,7 @@ actor ReplyNotificationService {
     }
 
     /// This final native boundary does not force presentation over Focus or system preview settings.
-    func submit(requestId: String, sessionId: String, messageId: String, version: Int, preview: String, ticket: Int, sessionTicket: Int) async -> String {
+    func submit(requestId: String, sessionId: String, messageId: String, version: Int, preview: String, ticket: Int, sessionTicket: Int, interrupted: Bool = false) async -> String {
         guard [requestId, sessionId, messageId].allSatisfy({ !$0.isEmpty && $0.count <= 200 }),
               version >= 0, !preview.isEmpty, isCurrent(sessionId: sessionId, ticket: ticket, sessionTicket: sessionTicket),
               read()["enabled"] == true, await authorized()
@@ -70,10 +70,18 @@ actor ReplyNotificationService {
         guard available, read()["enabled"] == true,
               isCurrent(sessionId: sessionId, ticket: ticket, sessionTicket: sessionTicket) else { return "suppressed" }
         let identifier = Self.prefix + requestId
+        if interrupted, let identities = defaults.dictionary(forKey: identitiesKey) as? [String: [String]],
+           identities[sessionId]?.contains(identifier) == true
+        {
+            return "suppressed"
+        }
         let content = UNMutableNotificationContent()
         content.title = "오롯"
-        content.body = read()["preview"] == true ? preview : "새 답변이 도착했어요."
+        content.body = interrupted ? "AI 작업이 중단됐어요. 앱에서 남은 내용을 확인하고 이어서 진행해 주세요." : (read()["preview"] == true ? preview : "새 답변이 도착했어요.")
         content.userInfo = ["requestId": requestId, "sessionId": sessionId, "messageId": messageId, "sessionVersion": version]
+        if interrupted {
+            content.userInfo["purpose"] = "interruption"
+        }
         var identities = defaults.dictionary(forKey: identitiesKey) as? [String: [String]] ?? [:]
         var ids = identities[sessionId] ?? []
         if !ids.contains(identifier) {

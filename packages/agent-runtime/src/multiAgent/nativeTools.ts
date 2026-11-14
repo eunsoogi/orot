@@ -1,3 +1,4 @@
+import { availableEvidenceTools } from './initialEvidenceSearch';
 import type {
   LanguageModelMessage,
   LanguageModelRequest,
@@ -24,7 +25,7 @@ export function withNativeTools<TResult>(
   if (!context.options.provider.capabilities.toolCalling || context.options.tools.length === 0)
     return request;
   const requiredKind = missingNativeEvidenceKind(context);
-  const offeredTools = context.options.tools.filter(
+  const offeredTools = availableEvidenceTools(context.options, state).filter(
     (tool) =>
       (!requiredKind || tool.sourceKind === requiredKind) && canReserveToolModelCall(tool, state),
   );
@@ -82,7 +83,8 @@ export function consumeNativeToolCall<TResult>(
 ): Partial<WorkflowState> | undefined {
   if (!response.toolCalls.length) return undefined;
   const call = response.toolCalls[0];
-  const tool = call && context.options.tools.find((value) => value.id === call.name);
+  const tool =
+    call && availableEvidenceTools(context.options, state).find((value) => value.id === call.name);
   const requiredKind = missingNativeEvidenceKind(context);
   let input;
   try {

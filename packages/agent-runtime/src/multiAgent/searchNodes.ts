@@ -1,3 +1,4 @@
+import { availableEvidenceTools, requiresCompleteResearch } from './initialEvidenceSearch';
 import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coveragePolicy';
 import type { EvidenceBatch, EvidenceReference } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
@@ -21,7 +22,9 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       canceled(context);
       return completeState();
     }
-    const tool = options.tools.find((candidate) => candidate.id === state.selectedToolId);
+    const tool = availableEvidenceTools(options, state).find(
+      (candidate) => candidate.id === state.selectedToolId,
+    );
     if (!tool || !context.researchInput || state.pendingOperation?.kind !== 'tool') {
       stop(
         context,
@@ -58,6 +61,12 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       if (searched.kind === 'error') {
         stop(context, 'The allowlisted evidence search failed.', 'unavailable');
         return completeState();
+      }
+      if (searched.value.status === 'paused') {
+        return {
+          pendingOperation: undefined,
+          awaitingAuthorization: state.pendingOperation!.operationKey,
+        };
       }
       if (searched.value.status === 'cancelled') {
         canceled(context, searched.value.providerStop ?? toolProviderStop(tool));
@@ -158,7 +167,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         pendingOperation: undefined,
       };
     }
-    if (hasDuplicate || (next.length === 0 && !options.task.allowIncompleteEvidenceResearch)) {
+    if (hasDuplicate || (next.length === 0 && requiresCompleteResearch(options, state))) {
       finishToolEvent(context, 'completed', next);
       context.outcome = {
         status: 'needs_clarification',
@@ -176,7 +185,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     context.currentEvidence = combined;
     finishToolEvent(context, 'completed', next);
     if (
-      !options.task.allowIncompleteEvidenceResearch &&
+      requiresCompleteResearch(options, state) &&
       hasBlockingCoverage(
         combined,
         context.options.task.allowBoundedExternalEvidence,

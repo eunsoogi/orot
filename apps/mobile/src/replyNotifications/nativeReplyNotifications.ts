@@ -19,6 +19,9 @@ export interface ReplyNotificationNative {
   submit(
     value: ReplyIdentity & { preview: string; lease: ReplyNotificationLease },
   ): Promise<'submitted' | 'suppressed' | 'failed'>;
+  interrupt(
+    value: ReplyIdentity & { lease: ReplyNotificationLease },
+  ): Promise<'submitted' | 'suppressed' | 'failed'>;
   removeSession(sessionId: string): Promise<void>;
   removeAll(): Promise<void>;
   consumeTarget(): Promise<unknown>;

@@ -1,3 +1,4 @@
+import type { ProtectedExternalReferences } from './protectedExternalReferences';
 import type {
   ExecutionConsentPort,
   EvidenceReference,
@@ -13,6 +14,12 @@ import type { ResearchSessionLease } from '../../storage/researchArtifactStorage
 import type { SavedSummarySource } from '../../diseaseHypotheses/savedSummaries';
 import { isControlledPublicWebQuery } from '../../agent/execution/publicWebQuery';
 
+/** Protected provenance only; fresh consent and current provider selection remain mandatory. */
+export interface SelectedExternalEvidenceSnapshot {
+  readonly literature: ProtectedExternalReferences;
+  readonly web: ProtectedExternalReferences | null;
+}
+
 /** Offer each supported destination explicitly; neither adapter substitutes for the other. */
 export function createSelectedExternalEvidence(input: {
   readonly selected: ReturnType<typeof requireSelectedAi>;
@@ -20,6 +27,7 @@ export function createSelectedExternalEvidence(input: {
   readonly literature: EuropePmcMedicalEvidenceService;
   readonly literatureConsent: ExternalMedicalQueryConsentPort;
   readonly requireAbstract?: boolean;
+  readonly restored?: SelectedExternalEvidenceSnapshot;
   readonly loadData?: () => Promise<AiFeatureLocalData>;
   readonly originFeature?: string;
   readonly retentionSession?: ResearchSessionLease;
@@ -34,20 +42,29 @@ export function createSelectedExternalEvidence(input: {
     scope?: import('./toolReferenceIndex').RunCallIdentity,
   ) => Promise<void>;
 }) {
+  if (
+    input.restored &&
+    (!input.restored.literature || !Object.hasOwn(input.restored, 'web'))
+  )
+    throw new Error('Incomplete external provenance snapshot.');
   const literature = createExternalConversationEvidence(
     input.literature,
     input.literatureConsent,
     {
       requireAbstract: input.requireAbstract,
+      restoredReferences: input.restored?.literature,
     },
   );
   const web = createPublicWebEvidence({
     ...input,
+    restoredReferences: input.restored?.web ?? undefined,
     beforeDispatch: async (query, signal) =>
       isControlledPublicWebQuery(query) ||
       !input.validateResearchInputs ||
       input.validateResearchInputs(signal),
   });
+  if (input.restored && Boolean(web) !== Boolean(input.restored.web))
+    throw new Error('External destination availability changed.');
   const publicWebTool =
     web && input.loadData
       ? retainPublicWebResults(
@@ -65,6 +82,10 @@ export function createSelectedExternalEvidence(input: {
     tools: [literature.tool, ...(publicWebTool ? [publicWebTool] : [])],
     publicWebTool,
     usesPublicWeb: Boolean(web),
+    snapshot: (): SelectedExternalEvidenceSnapshot => ({
+      literature: literature.snapshot(),
+      web: web?.snapshot() ?? null,
+    }),
     validates: (reference: EvidenceReference) =>
       literature.validates(reference) || Boolean(web?.validates(reference)),
   };

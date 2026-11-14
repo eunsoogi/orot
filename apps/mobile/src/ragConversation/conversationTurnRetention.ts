@@ -1,3 +1,4 @@
+import { notifyConversationInterruption } from '../replyNotifications/notifyConversationInterruption';
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import {
   decodeConversationArtifact,
@@ -19,10 +20,12 @@ export function createConversationTurnRetention(input: {
     Partial<
       Pick<
         ReturnType<typeof createConversationArtifactStorage>,
+        | 'openWorkflowContinuation'
         | 'appendToolEvent'
         | 'discardToolEvent'
         | 'startRequest'
         | 'interruptRequest'
+        | 'listInterruptedRequests'
         | 'invalidatePreview'
         | 'preparePreview'
         | 'writePreview'
@@ -31,6 +34,7 @@ export function createConversationTurnRetention(input: {
   readonly sessionId: string;
   readonly turnId: string;
   readonly createdAt: string;
+  readonly restored?: true;
   readonly sessionVersion?: number;
   readonly captureToolSources?: (
     event: import('@orot/agent-runtime').ConversationToolEvent,
@@ -87,12 +91,17 @@ export function createConversationTurnRetention(input: {
   return {
     ...createConversationRetainedPreview(input),
     toolMessageId: input.turnId,
+    ...(input.storage.openWorkflowContinuation
+      ? { openWorkflowContinuation: input.storage.openWorkflowContinuation }
+      : {}),
     /** The protected checkpoint must commit before any provider transmission starts. */
     async startRequest(
       question: string,
       signal: AbortSignal,
       submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput,
     ) {
+      if (input.restored)
+        throw new Error('An adopted request must not be resubmitted.');
       if (
         !input.storage.startRequest ||
         !input.storage.interruptRequest ||
@@ -112,7 +121,10 @@ export function createConversationTurnRetention(input: {
         throw new Error('The conversation request was cancelled.');
       }
     },
-    async interruptRequest(status: 'cancelled' | 'interrupted') {
+    async interruptRequest(
+      status: 'cancelled' | 'interrupted',
+      reason?: import('./conversationExecutionLease').ConversationRecoveryReason,
+    ) {
       if (!input.storage.interruptRequest)
         throw new Error('Conversation request storage is unavailable.');
       await input.storage.interruptRequest(
@@ -120,7 +132,21 @@ export function createConversationTurnRetention(input: {
         input.sessionId,
         input.sessionVersion ?? 0,
         status,
+        reason,
       );
+      if (
+        status === 'interrupted' &&
+        reason !== 'user-stopped' &&
+        input.storage.listInterruptedRequests
+      )
+        await notifyConversationInterruption(
+          { listInterruptedRequests: input.storage.listInterruptedRequests },
+          {
+            requestId: input.turnId,
+            sessionId: input.sessionId,
+            sessionVersion: input.sessionVersion ?? 0,
+          },
+        ).catch(() => {}); // Notification delivery cannot turn a saved checkpoint into a failed write.
     },
     async recordToolEvent(
       event: import('@orot/agent-runtime').ConversationToolEvent,

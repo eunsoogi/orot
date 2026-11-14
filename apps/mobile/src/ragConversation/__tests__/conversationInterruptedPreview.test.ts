@@ -17,6 +17,7 @@ test('a restored preview is visible as interrupted and never enters later provid
         answer: '',
         preview: '작성 중인 답변',
         interrupted: true,
+        interruptionReason: 'protected-data',
         citations: [],
         completion: 'partial',
         toolMessageId: 'request',
@@ -27,6 +28,7 @@ test('a restored preview is visible as interrupted and never enters later provid
   expect(messages[1]).toEqual(
     expect.objectContaining({ content: '작성 중인 답변', incomplete: true }),
   );
+  expect(messages[1].activity).toContain('보호된 데이터에 접근할 수 없어');
   expect(messages[1].retainedTurnId).toBeUndefined();
   expect(conversationHistoryPayload(messages, '새 질문')).not.toEqual(
     expect.arrayContaining([
