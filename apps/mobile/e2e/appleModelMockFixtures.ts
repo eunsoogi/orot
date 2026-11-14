@@ -1,8 +1,8 @@
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { MockAppleStep } from './appleModelMockBridge';
 
-// This success scenario requires abstracts; missing abstracts must still fail shipping coverage checks.
-// Europe PMC documents HAS_ABSTRACT:y in its Web Service Reference Guide.
+// Preserve the consented public query; require abstracts through result coverage, not query rewriting.
+// Missing abstracts must still fail shipping coverage checks.
 export const RAG_WORKFLOW_PUBLIC_QUERY = 'sleep duration adults';
 
 const ALLOWED_CITATION_REFERENCES_PREFIX =
