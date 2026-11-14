@@ -85,6 +85,7 @@ function MeasuredOverviewMetricChart({
         data={data}
         compact
         hideDetails
+        barTooltip
         height={112}
         kind="bar"
         testID={`overview-metric-chart-${metric}`}
