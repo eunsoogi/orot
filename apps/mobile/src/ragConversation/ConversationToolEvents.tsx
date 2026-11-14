@@ -53,7 +53,7 @@ function ConversationToolEventDisclosure({
     <View style={styles.toolEventCard}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${conversationToolLabel(event.toolName)}  ${statusLabel(event.status)}`}
+        accessibilityLabel={`${conversationToolLabel(event.toolName)} ${statusLabel(event.status)}`}
         accessibilityHint={
           expanded
             ? t('ragConversation.tool.collapseHint')
@@ -172,7 +172,7 @@ export function ConversationToolEvents({
         </Pressable>
       ) : null}
       {/* Keep disclosure state mounted through group toggles and streaming updates. */}
-      <View style={grouped && !expanded ? { display: 'none' } : undefined}>
+      <View style={grouped && !expanded ? styles.toolEventsHidden : undefined}>
         {events.map(event => {
           // Retries may reuse a call ID, so their run identities keep disclosures separate.
           return (

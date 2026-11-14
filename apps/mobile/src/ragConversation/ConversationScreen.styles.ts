@@ -63,6 +63,7 @@ export const styles = StyleSheet.create({
   messageText: { fontSize: 16, lineHeight: 24 },
   activity: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
   toolEvents: { gap: 0 },
+  toolEventsHidden: { display: 'none' },
   toolEventCard: {
     // Secondary activity keeps touch targets without prominent nested cards.
     backgroundColor: 'transparent',
