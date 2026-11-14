@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
+import { providerSettingsStyles as shared } from '../../layout/providerSettingsPresentation';
 import { appColors } from '../../layout/appColors';
 import type { ChatGPTAccountSetup } from './types';
 import { providerSelectionText as copy } from './text';
@@ -45,20 +46,20 @@ export function ProviderCatalogAccount({
           actionVisible ? styles.contentWithAction : undefined,
         ]}
       >
-        <View style={styles.header}>
-          <View style={styles.icon}>
+        <View style={shared.header}>
+          <View style={shared.icon}>
             <OpenAIProviderMark />
           </View>
           <Pressable
-            style={styles.copy}
+            style={shared.copy}
             accessibilityRole="button"
             accessibilityLabel="ChatGPT 계정 관리"
             accessibilityState={{ expanded }}
             onPress={() => setExpanded(value => !value)}
             testID="chatgpt-account-details"
           >
-            <Text style={styles.title}>ChatGPT</Text>
-            <Text style={styles.secondary}>
+            <Text style={shared.title}>ChatGPT</Text>
+            <Text style={shared.secondary}>
               {account
                 ? copy.chatGPTAccountName(index + 1)
                 : copy.chatGPTNoAccounts}
@@ -102,7 +103,7 @@ export function ProviderCatalogAccount({
           <Text
             testID="chatgpt-account-status"
             accessibilityRole={setup.statusIsError ? 'alert' : undefined}
-            style={setup.statusIsError ? styles.error : styles.secondary}
+            style={setup.statusIsError ? styles.error : shared.secondary}
           >
             {setup.statusMessage}
           </Text>
@@ -128,7 +129,7 @@ export function ProviderCatalogAccount({
             testID="chatgpt-account-sign-out"
             style={styles.action}
           >
-            <Text style={styles.secondary}>
+            <Text style={shared.secondary}>
               {copy.chatGPTSignOutAccount(index + 1)}
             </Text>
           </Pressable>
@@ -152,7 +153,7 @@ export function ProviderCatalogAccount({
                   ? 'settings-provider-load-models'
                   : 'chatgpt-account-action'
             }
-            style={styles.iconAction}
+            style={shared.action}
           >
             <AppSymbol
               name="arrow.triangle.2.circlepath"
@@ -172,21 +173,9 @@ const styles = StyleSheet.create({
   contentWithAction: {
     paddingRight: CARD_PADDING + CARD_GAP + ACTION_TARGET_SIZE,
   },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  icon: {
-    width: 48,
-    height: 48,
-    borderRadius: 15,
-    backgroundColor: appColors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  copy: { flex: 1, gap: 5 },
   // A single bounded text column lets long locale copy wrap before the action lane.
   accountCopy: { flex: 1, minWidth: 0, gap: 2 },
   accountText: { flexShrink: 1, minWidth: 0, color: appColors.secondary },
-  title: { fontSize: 18, fontWeight: '600', color: appColors.text },
-  secondary: { fontSize: 13, color: appColors.secondary },
   // This full-height overlay centers the fixed target as the card grows.
   actionOverlay: {
     position: 'absolute',
@@ -194,12 +183,6 @@ const styles = StyleSheet.create({
     right: CARD_PADDING,
     bottom: 0,
     width: ACTION_TARGET_SIZE,
-    justifyContent: 'center',
-  },
-  iconAction: {
-    width: ACTION_TARGET_SIZE,
-    height: ACTION_TARGET_SIZE,
-    alignItems: 'center',
     justifyContent: 'center',
   },
   action: {

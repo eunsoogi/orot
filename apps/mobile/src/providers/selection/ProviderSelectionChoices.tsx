@@ -1,6 +1,6 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
-import { appColors } from '../../layout/appColors';
+import { providerSettingsStyles as styles } from '../../layout/providerSettingsPresentation';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { ProviderCatalogAccount } from './ProviderCatalogAccount';
 import ProviderSelectionOptionCard from './ProviderSelectionOptionCard';
@@ -66,7 +66,7 @@ export function ProviderSelectionChoices({
       }
     >
       <Text accessibilityRole="header" style={styles.heading}>
-        Apple · 기기 내 처리
+        Apple
       </Text>
       {cards(true)}
     </View>
@@ -84,7 +84,7 @@ export function ProviderSelectionChoices({
       }
     >
       <Text accessibilityRole="header" style={styles.heading}>
-        ChatGPT 구독 계정 로그인
+        ChatGPT
       </Text>
       <Text>
         이 계정에서 조회한 대화 모델입니다. OpenAI API 연결과 별개이며 구독에
@@ -123,20 +123,3 @@ export function ProviderSelectionChoices({
     </>
   );
 }
-const styles = StyleSheet.create({
-  section: { gap: 12, marginTop: 22 },
-  heading: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: appColors.text,
-    paddingHorizontal: 4,
-  },
-  account: {
-    gap: 8,
-    padding: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    backgroundColor: appColors.surface,
-  },
-});
