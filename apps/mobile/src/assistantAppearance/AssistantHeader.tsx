@@ -107,7 +107,7 @@ function ActiveAssistantHeader({
       testID="assistant-floating-identity"
     >
       <View style={styles.avatar}>
-        <AvatarSymbol avatar={appearance.value.avatar} />
+        <AvatarSymbol avatar={appearance.value.avatar} size={64} />
       </View>
       <View style={styles.identity}>
         <ComposerGlassBackground />
@@ -133,7 +133,6 @@ const styles = StyleSheet.create({
     width: 64,
     alignItems: 'center',
     justifyContent: 'center',
-    transform: [{ scale: 2 }],
   },
   identity: {
     minHeight: 36,
