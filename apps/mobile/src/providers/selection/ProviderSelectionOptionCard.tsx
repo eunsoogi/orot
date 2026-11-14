@@ -39,7 +39,7 @@ export default function ProviderSelectionOptionCard({
       accessibilityState={{ disabled: !selectable, selected }}
       disabled={!selectable}
       onPress={onPress}
-      style={[styles.option, selected && styles.selectedOption]}
+      style={styles.option}
       testID={`provider-option-${index}`}
     >
       <View style={styles.icon}>
@@ -69,9 +69,10 @@ export default function ProviderSelectionOptionCard({
           </Text>
         ) : null}
       </View>
-      <View style={[styles.radio, selected && styles.radioSelected]}>
-        {selected ? <View style={styles.radioDot} /> : null}
-      </View>
+      <AppSymbol
+        name={selected ? 'checkmark.circle.fill' : 'circle'}
+        color={appColors.text}
+      />
     </Pressable>
   );
 }
@@ -122,10 +123,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: appColors.surface,
   },
-  selectedOption: {
-    borderColor: appColors.primary,
-    backgroundColor: appColors.primarySoft,
-  },
   copy: { flex: 1, gap: 6 },
   icon: {
     width: 48,
@@ -134,25 +131,6 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.background,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  radio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: appColors.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioSelected: {
-    borderColor: appColors.primaryAction,
-    backgroundColor: appColors.primaryAction,
-  },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: appColors.onPrimary,
   },
   optionTitle: { color: appColors.text, fontSize: 18, fontWeight: '600' },
   privacyHeading: { color: appColors.secondary, fontSize: 14 },

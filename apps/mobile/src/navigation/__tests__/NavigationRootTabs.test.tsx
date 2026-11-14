@@ -22,7 +22,7 @@ function FallbackSurface({
   return <View testID={testID}>{children}</View>;
 }
 
-test('renders five tabs and routes the selected destination', async () => {
+test('renders four tabs and routes the selected destination', async () => {
   const controller = createNavigationController<'home' | 'records'>('home');
   const root = controller.getSnapshot().currentRoute;
   controller.registerLeaveGuard(root.key, async () => true);
@@ -37,13 +37,7 @@ test('renders five tabs and routes the selected destination', async () => {
     />,
   );
 
-  for (const tab of [
-    'conversation',
-    'overview',
-    'records',
-    'schedule',
-    'settings',
-  ]) {
+  for (const tab of ['conversation', 'overview', 'records', 'settings']) {
     expect(screen.getByTestId(`navigation-tab-${tab}`)).toBeVisible();
   }
   expect(

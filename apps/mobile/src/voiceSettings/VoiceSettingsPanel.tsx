@@ -1,10 +1,12 @@
+import { voiceSettingsStyles as styles } from './voiceSettingsPresentation';
 import { useVoiceCatalog } from './useVoiceCatalog';
 import { hasRealtimeVoiceRuntime } from './voiceRuntimeCapability';
 import { localVoiceModel, voiceModels } from './voiceModels';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
+import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { voiceSettingsStore, type VoiceMode } from './voiceSettingsStore';
 
@@ -16,8 +18,10 @@ export function VoiceSettingsPanel({
 }) {
   const catalog = useVoiceCatalog();
   const realtimeAvailable = hasRealtimeVoiceRuntime();
+  const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<VoiceMode>('local');
   const [model, setModel] = useState<string>(localVoiceModel);
+  const [savedModel, setSavedModel] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [failedLoad, setFailedLoad] = useState(false);
   const [message, setMessage] = useState('');
@@ -31,6 +35,7 @@ export function VoiceSettingsPanel({
         if (!mounted.current) return;
         setMode(value.mode);
         setModel(value.model);
+        setSavedModel(value.model);
       })
       .catch(() => {
         if (mounted.current) {
@@ -59,6 +64,7 @@ export function VoiceSettingsPanel({
           : {}),
       });
       if (!mounted.current) return;
+      setSavedModel(model);
       setMessage(
         '음성 설정을 저장했습니다. 통화는 대화 화면에서 별도로 시작해 주세요.',
       );
@@ -74,35 +80,54 @@ export function VoiceSettingsPanel({
   };
   return (
     <View style={styles.panel} testID="voice-settings-panel">
-      <Text accessibilityRole="header" style={styles.title}>
-        음성 모델 선택
-      </Text>
-      <Text>
-        대화 AI처럼 음성 모델을 선택하세요. Apple 시스템 음성은 인식과 합성만
-        처리하며, 답변은 위에서 선택한 대화 AI가 만듭니다.
-      </Text>
-      <Button
-        title="연결된 계정 관리"
-        variant="text"
-        onPress={onOpenAccounts}
-        disabled={!onOpenAccounts}
-        testID="voice-open-accounts"
-      />
-      <Text>
-        {catalog.connected
-          ? 'OpenAI API 계정이 연결되어 있습니다. ChatGPT 로그인과는 별개입니다.'
-          : 'OpenAI API 계정이 연결되지 않았습니다.'}
-      </Text>
-      <Button
-        title={catalog.busy ? '모델 불러오는 중' : '음성 모델 새로고침'}
-        variant="secondary"
-        busy={catalog.busy}
-        testID="voice-model-refresh"
-        disabled={catalog.busy || !catalog.connected}
-        onPress={() => {
-          catalog.refresh();
-        }}
-      />
+      <View style={styles.header}>
+        <Pressable
+          style={styles.copy}
+          accessibilityRole="button"
+          accessibilityLabel="OpenAI API 계정 정보"
+          accessibilityState={{ expanded }}
+          onPress={() => setExpanded(value => !value)}
+          testID="voice-account-details"
+        >
+          <Text accessibilityRole="header" style={styles.title}>
+            OpenAI API
+          </Text>
+          <Text>
+            {catalog.connected ? 'API 계정 연결됨' : 'API 계정 연결 필요'}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="음성 모델 새로고침"
+          accessibilityState={{
+            busy: catalog.busy,
+            disabled: catalog.busy || !catalog.connected,
+          }}
+          style={styles.refresh}
+          testID="voice-model-refresh"
+          disabled={catalog.busy || !catalog.connected}
+          onPress={() => {
+            catalog.refresh();
+          }}
+        >
+          <AppSymbol
+            name="arrow.triangle.2.circlepath"
+            color={appColors.primary}
+          />
+        </Pressable>
+      </View>
+      {expanded ? (
+        <Button
+          title="OpenAI API 연결 관리"
+          variant="text"
+          onPress={onOpenAccounts}
+          disabled={!onOpenAccounts}
+          testID="voice-open-accounts"
+        />
+      ) : null}
+      {!busy && !failedLoad ? (
+        <Text testID="voice-current-model">현재 선택: {savedModel}</Text>
+      ) : null}
       <Text accessibilityRole="status">{catalog.message}</Text>
       {!catalog.fresh && catalog.ids.length > 0 ? (
         <Text>
@@ -119,37 +144,63 @@ export function VoiceSettingsPanel({
           선택은 유지되며 다른 모델로 자동 전환하지 않습니다.
         </Text>
       ) : null}
-      {voiceModels
-        .filter(item => item.mode === 'local' || catalog.ids.includes(item.id))
-        .map(item => (
-          <Pressable
-            key={item.id}
-            accessibilityRole="radio"
-            accessibilityState={{
-              selected: model === item.id,
-              disabled:
-                busy ||
-                failedLoad ||
-                (item.mode === 'openai-api' && !catalog.fresh),
-            }}
-            disabled={
-              busy ||
-              failedLoad ||
-              (item.mode === 'openai-api' && !catalog.fresh)
-            }
-            onPress={() => {
-              setMode(item.mode);
-              setModel(item.id);
-              setMessage('');
-            }}
-            testID={`voice-model-${item.id}`}
-            style={[styles.option, model === item.id && styles.selected]}
-          >
-            <Text>{item.title}</Text>
-            {item.mode === 'openai-api' ? <Text>{item.id}</Text> : null}
-            <Text>{item.detail}</Text>
-          </Pressable>
-        ))}
+      {/* Keep local processing visually separate without changing saved selection. */}
+      {(['local', 'openai-api'] as const).map(connection => (
+        <View
+          key={connection}
+          style={styles.modelGroup}
+          testID={`voice-model-group-${connection}`}
+        >
+          <Text accessibilityRole="header">
+            {connection === 'local'
+              ? 'Apple 기기 내 음성 처리'
+              : 'OpenAI API 음성 모델'}
+          </Text>
+          {voiceModels
+            .filter(
+              item =>
+                item.mode === connection &&
+                (item.mode === 'local' || catalog.ids.includes(item.id)),
+            )
+            .map(item => (
+              <Pressable
+                key={item.id}
+                accessibilityRole="radio"
+                accessibilityState={{
+                  selected: model === item.id,
+                  disabled:
+                    busy ||
+                    failedLoad ||
+                    (item.mode === 'openai-api' && !catalog.fresh),
+                }}
+                disabled={
+                  busy ||
+                  failedLoad ||
+                  (item.mode === 'openai-api' && !catalog.fresh)
+                }
+                onPress={() => {
+                  setMode(item.mode);
+                  setModel(item.id);
+                  setMessage('');
+                }}
+                testID={`voice-model-${item.id}`}
+                style={styles.option}
+              >
+                <View style={styles.header}>
+                  <Text style={styles.copy}>{item.title}</Text>
+                  <AppSymbol
+                    name={
+                      model === item.id ? 'checkmark.circle.fill' : 'circle'
+                    }
+                    color={appColors.text}
+                  />
+                </View>
+                {item.mode === 'openai-api' ? <Text>{item.id}</Text> : null}
+                <Text>{item.detail}</Text>
+              </Pressable>
+            ))}
+        </View>
+      ))}
       <Text>
         기기 내 처리: 음성 인식과 읽어주기는 기기에서 실행합니다. 인식된
         텍스트는 선택한 대화 AI에 기존 동의 절차로 전달될 수 있습니다.
@@ -185,29 +236,3 @@ export function VoiceSettingsPanel({
     </View>
   );
 }
-const styles = StyleSheet.create({
-  panel: {
-    padding: 16,
-    gap: 12,
-    borderRadius: 16,
-    backgroundColor: appColors.surface,
-  },
-  title: { fontSize: 18, fontWeight: '600', color: appColors.text },
-  option: {
-    minHeight: 44,
-    justifyContent: 'center',
-    padding: 12,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    borderRadius: 12,
-  },
-  selected: { borderColor: appColors.primary, borderWidth: 2 },
-  input: {
-    minHeight: 44,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    borderRadius: 12,
-    color: appColors.text,
-  },
-});

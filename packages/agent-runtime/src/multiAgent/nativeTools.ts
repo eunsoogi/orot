@@ -8,7 +8,7 @@ import { toLangChainMessages, toNativeMessages } from '../langchain/messages';
 import { isSourceAllowed } from './evidence';
 import { guidedSchema } from './guidedSchema';
 import { canonicalJson, utf8ByteLength } from './protocol';
-import { completeState, stop } from './runtimeContext';
+import { completeState, reportTaskStreamEvent, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { missingNativeEvidenceKind } from './nativeEvidenceRequirements';
@@ -130,6 +130,18 @@ export function consumeNativeToolCall<TResult>(
   if (!assistantMessage || !AIMessage.isInstance(assistantMessage)) {
     stop(context, 'The model returned an invalid tool call message.', 'invalid_output');
     return completeState();
+  }
+  // This is a newly validated first tool selection, not a replayed receipt or final answer.
+  // Tasks must admit only non-clinical copy; raw provider prose must never reach the UI here.
+  if (!context.signal.aborted && state.toolCalls === 0 && !context.nativeToolMessages.length) {
+    let initial: string | undefined;
+    try {
+      initial = context.options.task.initialToolResponse?.(response.text);
+    } catch {
+      /* fail closed */
+    }
+    if (initial)
+      reportTaskStreamEvent(context, { type: 'initial_response', callId: call.id, text: initial });
   }
   context.nativeToolMessages.push(assistantMessage);
   context.pendingNativeToolCallId = call.id;

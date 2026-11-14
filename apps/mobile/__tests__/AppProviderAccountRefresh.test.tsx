@@ -1,4 +1,6 @@
+import { Alert } from 'react-native';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -119,7 +121,14 @@ test('refreshes provider state after connected accounts sign in and sign out', a
   await waitFor(() =>
     expect(screen.getByTestId('chatgpt-account-sign-out')).toBeEnabled(),
   );
+  const alert = jest.spyOn(Alert, 'alert');
   await fireEvent.press(screen.getByTestId('chatgpt-account-sign-out'));
+  // Credential removal starts only after the user's explicit confirmation.
+  expect(screen.getByTestId('chatgpt-account-sign-out')).toBeTruthy();
+  await act(async () => {
+    alert.mock.calls[0][2]![1].onPress!();
+  });
+  alert.mockRestore();
   await waitFor(() =>
     expect(screen.queryByTestId('chatgpt-account-sign-out')).toBeNull(),
   );

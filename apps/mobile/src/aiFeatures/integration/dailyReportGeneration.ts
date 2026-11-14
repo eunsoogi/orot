@@ -9,6 +9,7 @@ import {
   incomparableDailyReportIndexes,
   dailyReportFacts,
 } from './dailyReportFacts';
+import { dailyReportSynthesis } from './dailyReportSynthesis';
 import { selectDailyReportFacts } from './dailyReportModel';
 import { stableJson } from './evidenceUtils';
 import { dailyReportProviderFacts } from './dailyReportProjection';
@@ -180,7 +181,11 @@ export async function generateDailyReport(
         text: facts[index]!.text,
         sourceReferences: facts[index]!.sourceReferences,
       })),
-    supportedContext: [],
+    supportedContext: dailyReportSynthesis(
+      snapshot.values,
+      sourceSnapshot.records,
+      selection.indexes,
+    ),
     coverage: context.sourceSnapshot.coverage,
     followUpQuestions: [],
   };

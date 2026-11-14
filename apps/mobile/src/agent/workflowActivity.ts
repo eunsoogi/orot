@@ -30,6 +30,8 @@ export function applyWorkflowStreamEvent(
   current: string,
   event: MultiAgentResponderStreamEvent,
 ): string {
+  // An initial reply is not a streamed answer and must never enter saved partial previews.
+  if (event.type === 'initial_response') return current;
   if (event.type === 'started') return '';
   return event.type === 'text_delta' ? current + event.text : event.text;
 }

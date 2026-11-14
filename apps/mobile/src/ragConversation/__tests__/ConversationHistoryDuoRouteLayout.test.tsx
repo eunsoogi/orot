@@ -34,7 +34,7 @@ beforeEach(() => {
 });
 afterEach(() => Dimensions.set({ window: originalWindow }));
 
-test('uses the production history route lane for a selected Duo preview and compact return', async () => {
+test('returns to the exact conversation from wide and compact history', async () => {
   const store = createConversationSessions();
   const longAnswer = '첫 대화의 합성 답변 ' + '긴 근거 문장 '.repeat(80);
   await saveAnswer(store, '첫 대화의 합성 질문', longAnswer, [sourceReference]);
@@ -102,9 +102,16 @@ test('uses the production history route lane for a selected Duo preview and comp
 
     let list = screen.getByTestId('conversation-history-list');
     await fireEvent(list, 'selectSession', { nativeEvent: { id: 1 } });
-    expect(controller.getSnapshot().currentRoute.name).toBe(
-      'conversation-history',
+    await waitFor(() =>
+      expect(controller.getSnapshot().currentRoute.name).toBe(
+        'rag-conversation',
+      ),
     );
+    // Reentry still previews the same retained session without regenerating it.
+    await act(async () => {
+      controller.push('conversation-history');
+    });
+    list = screen.getByTestId('conversation-history-list');
     expect(store.getSnapshot().activeId).toBe(1);
     expect(screen.getByText(longAnswer)).toBeTruthy();
     expect(
@@ -127,6 +134,15 @@ test('uses the production history route lane for a selected Duo preview and comp
 
     list = screen.getByTestId('conversation-history-list');
     await fireEvent(list, 'selectSession', { nativeEvent: { id: 1 } });
+    await waitFor(() =>
+      expect(controller.getSnapshot().currentRoute.name).toBe(
+        'rag-conversation',
+      ),
+    );
+    await act(async () => {
+      controller.push('conversation-history');
+    });
+    list = screen.getByTestId('conversation-history-list');
     await fireEvent(list, 'deleteSession', { nativeEvent: { id: 1 } });
     expect(store.getSnapshot().activeId).toBe(2);
     expect(screen.getByText('두 번째 합성 답변')).toBeTruthy();
