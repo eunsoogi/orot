@@ -1,3 +1,4 @@
+import { HubBanner } from './HubBanner';
 import { NativeModules, StyleSheet, View } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppText as Text } from '../layout/AppText';
@@ -54,15 +55,14 @@ export function SettingsRoute({
       {/* Keep all settings sections in a single usable region. */}
       <AdaptiveColumns
         primary={
-          <View style={styles.panel}>
-            <Text
-              accessibilityRole="header"
-              style={styles.title}
-              testID="settings-title"
-            >
-              {t('settings.title')}
-            </Text>
-            <Text style={styles.subtitle}>{t('settings.summary')}</Text>
+          <View style={styles.panel} testID="settings-panel">
+            <View style={styles.banner}>
+              <HubBanner
+                title={t('settings.title')}
+                subtitle={t('settings.summary')}
+                testID="settings"
+              />
+            </View>
 
             <View style={styles.section} testID="settings-section-ai-accounts">
               <Text accessibilityRole="header" style={styles.sectionTitle}>
@@ -173,8 +173,11 @@ const styles = StyleSheet.create({
     // The outer route scroller already supplies the navigation gap.
     paddingBottom: 28 - NAVIGATION_CONTENT_GAP,
   },
-  title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
-  subtitle: { color: appColors.secondary, fontSize: 18 },
+  banner: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: appColors.surface,
+  },
   section: { gap: 8 },
   divider: {
     height: StyleSheet.hairlineWidth,
