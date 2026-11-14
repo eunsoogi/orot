@@ -30,7 +30,7 @@ test('disabled voice keeps its Glass surface opaque and never starts audio', asy
       onRecover={jest.fn()}
     />,
   );
-  expectOpaqueAncestors('voice-control-glass');
+  expectOpaqueAncestors('conversation-voice-control');
   const action = screen.getByRole('button', { name: '시작' });
   expect(action).toBeDisabled();
   await fireEvent.press(action);
@@ -48,7 +48,7 @@ test('unavailable history keeps Glass opaque while new conversation remains usab
       onNew={onNew}
     />,
   );
-  expectOpaqueAncestors('rag-conversation-history-glass');
+  expectOpaqueAncestors('rag-conversation-sessions-toggle');
   expect(screen.getByRole('button', { name: '기록' })).toBeDisabled();
   await fireEvent.press(screen.getByRole('button', { name: '새 대화' }));
   expect(onNew).toHaveBeenCalledTimes(1);

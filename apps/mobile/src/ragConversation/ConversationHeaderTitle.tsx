@@ -1,8 +1,6 @@
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
-import { AppSymbol } from '../layout/AppSymbol';
-import { appColors } from '../layout/appColors';
-import { ComposerGlassBackground } from './ComposerGlassBackground';
+import { GlassIconButton } from '../layout/GlassIconButton';
 import { styles } from './ConversationScreen.styles';
 
 /** Keep the title and conversation controls together for the adaptive header. */
@@ -29,31 +27,23 @@ export function ConversationHeaderTitle({
         </Text>
         {showActions ? (
           <View style={styles.sessionActions}>
-            <Pressable
+            <GlassIconButton
               accessibilityRole="button"
               accessibilityLabel={historyLabel}
               disabled={!onHistory}
               onPress={onHistory}
               style={styles.sessionAction}
               testID="rag-conversation-sessions-toggle"
-            >
-              <ComposerGlassBackground testID="rag-conversation-history-glass" />
-              <AppSymbol
-                name="clock.arrow.circlepath"
-                // A disabled action must not fade its native Glass backing.
-                color={onHistory ? appColors.primaryText : appColors.secondary}
-              />
-            </Pressable>
-            <Pressable
+              symbolName="clock.arrow.circlepath"
+            />
+            <GlassIconButton
               accessibilityRole="button"
               accessibilityLabel={newLabel}
               onPress={onNew}
               style={styles.sessionAction}
               testID="rag-conversation-new-session"
-            >
-              <ComposerGlassBackground testID="rag-conversation-new-glass" />
-              <AppSymbol name="plus" color={appColors.primaryText} />
-            </Pressable>
+              symbolName="plus"
+            />
           </View>
         ) : null}
       </View>

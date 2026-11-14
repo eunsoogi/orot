@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
-import { ComposerGlassBackground } from './ComposerGlassBackground';
+import { GlassIconButton } from '../layout/GlassIconButton';
 import { t } from '../i18n';
 
 interface SavedOutputAction {
@@ -55,16 +55,14 @@ export function ConversationHistoryHeader({
           {t('ragConversation.history.title')}
         </Text>
         {showNewSession ? (
-          <Pressable
+          <GlassIconButton
             accessibilityRole="button"
             accessibilityLabel={t('ragConversation.history.newConversation')}
             style={styles.newButton}
             onPress={onCreateSession}
             testID="conversation-history-new"
-          >
-            <ComposerGlassBackground />
-            <AppSymbol name="plus" color={appColors.primaryText} />
-          </Pressable>
+            symbolName="plus"
+          />
         ) : null}
       </View>
       <Text style={styles.count} testID="conversation-history-count">

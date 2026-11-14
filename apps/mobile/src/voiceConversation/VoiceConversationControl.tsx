@@ -1,15 +1,8 @@
 import { useEffect } from 'react';
-import {
-  AccessibilityInfo,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { AppSymbol } from '../layout/AppSymbol';
+import { AccessibilityInfo, Platform, StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
+import { GlassIconButton } from '../layout/GlassIconButton';
 import type { VoicePhase } from './voiceTurn';
 
 const styles = StyleSheet.create({
@@ -76,17 +69,15 @@ export function VoiceConversationControl({
         </AppText>
       ) : null}
       {phase === 'listening' ? (
-        <Pressable
+        <GlassIconButton
           accessibilityRole="button"
           accessibilityLabel={finishLabel}
           onPress={onFinish}
           style={styles.button}
-        >
-          <ComposerGlassBackground />
-          <AppSymbol name="checkmark" color={appColors.text} />
-        </Pressable>
+          symbolName="checkmark"
+        />
       ) : null}
-      <Pressable
+      <GlassIconButton
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityState={{
@@ -97,20 +88,14 @@ export function VoiceConversationControl({
         onPress={phase === 'error' ? onRecover : active ? onStop : onStart}
         style={styles.button}
         testID="conversation-voice-control"
-      >
-        <ComposerGlassBackground testID="voice-control-glass" />
-        <AppSymbol
-          name={
-            phase === 'error'
-              ? 'arrow.clockwise'
-              : active
-                ? 'stop.fill'
-                : 'waveform'
-          }
-          // Dim only the glyph; UIVisualEffectView and its ancestors must keep alpha 1.
-          color={unavailable ? appColors.secondary : appColors.text}
-        />
-      </Pressable>
+        symbolName={
+          phase === 'error'
+            ? 'arrow.clockwise'
+            : active
+              ? 'stop.fill'
+              : 'waveform'
+        }
+      />
     </View>
   );
 }

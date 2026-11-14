@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native';
-import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
+import { GlassIconButton } from '../layout/GlassIconButton';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { AppText as Text } from '../layout/AppText';
@@ -102,7 +102,7 @@ export default function RecordingLibrarySummaryRow({
             color={appColors.secondary}
           />
         </Pressable>
-        <Pressable
+        <GlassIconButton
           accessibilityRole="button"
           accessibilityLabel={t('recording.library.playAudio')}
           accessibilityHint={t('recording.library.playAudioHint')}
@@ -113,10 +113,8 @@ export default function RecordingLibrarySummaryRow({
           onPress={onPlay}
           style={styles.listPlaybackButton}
           testID={`recording-playback-list-button-${source.id}`}
-        >
-          <ComposerGlassBackground />
-          <AppSymbol name="play.fill" size={16} color={appColors.primaryText} />
-        </Pressable>
+          symbolName="play.fill"
+        />
       </View>
       <View style={styles.summaryMetadata}>
         <Text style={styles.copy}>{duration}</Text>

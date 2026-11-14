@@ -1,8 +1,6 @@
-import { Pressable, View } from 'react-native';
-import { AppSymbol } from '../layout/AppSymbol';
+import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
-import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
+import { GlassIconButton } from '../layout/GlassIconButton';
 import { t } from '../i18n';
 import { recordingControlStyles as styles } from './RecordingControls.styles';
 import type { RecordingStatus } from './recordingTypes';
@@ -53,7 +51,7 @@ export default function RecordingScreenHeader({
         {t('recording.title')}
       </Text>
       {onOpenSavedRecordings && !hasDock ? (
-        <Pressable
+        <GlassIconButton
           accessibilityLabel={t('recording.library.title')}
           accessibilityRole="button"
           disabled={
@@ -65,13 +63,8 @@ export default function RecordingScreenHeader({
           onPress={onOpenSavedRecordings}
           style={styles.history}
           testID="recording-open-saved"
-        >
-          <ComposerGlassBackground />
-          <AppSymbol
-            name="clock.arrow.circlepath"
-            color={appColors.primaryText}
-          />
-        </Pressable>
+          symbolName="clock.arrow.circlepath"
+        />
       ) : null}
     </View>
   );

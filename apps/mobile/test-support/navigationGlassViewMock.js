@@ -9,6 +9,20 @@ jest.mock('react-native/Libraries/ReactNative/requireNativeComponent', () => {
   return {
     __esModule: true,
     default: name => {
+      if (name === 'GlassIconButton') {
+        // This adapter models event/AX wiring only. Native configuration and rendering require UIKit tests.
+        return function GlassIconButtonTestAdapter(props) {
+          return React.createElement('View', {
+            ...props,
+            accessible: true,
+            accessibilityRole: 'button',
+            accessibilityLabel: props.actionLabel,
+            accessibilityHint: props.actionHint,
+            accessibilityState: { disabled: props.disabled, busy: props.busy },
+            onPress: props.onAction,
+          });
+        };
+      }
       if (name !== 'NavigationGlassView') {
         return mockNativeComponent(name);
       }

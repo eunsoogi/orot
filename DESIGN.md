@@ -184,3 +184,20 @@ Runtime records, model names, availability, progress, and errors must be real. W
 - Do safe areas, bottom or right navigation, system-reserved regions, and the keyboard leave final content and primary actions accessible?
 - Has the running screen been inspected in light, dark, and large-text modes, and where relevant, increased contrast and Reduce Transparency?
 - Are design references compared with authentic app captures, and are interaction and accessibility claims backed by checks recorded in the implementation PR or issue?
+
+### Native Glass icon actions
+
+Conversation history/new, photo and voice controls, summary history and recording
+controls use `GlassIconButton`, backed by UIKit `UIButton.Configuration.glass()`
+on iOS 26 and later. UIKit owns touch highlighting, capsule geometry and disabled
+state; React passes semantic labels, hints and callbacks without a passive Glass
+view or a second touch overlay. Targets retain their existing 44pt or larger
+size. Do not apply opacity below 1 or clipping masks to Glass ancestors. A
+filled, opaque system control is used on earlier iOS and with Reduce Transparency.
+The non-iOS fallback remains a React Native control, not Liquid Glass.
+
+The floating profile and text-entry field remain decorative material surfaces,
+not buttons. The Dots-style profile fade is a separate background gradient, not
+a Liquid Glass implementation. The adaptive root rail is custom UIKit navigation
+with native material and a custom selection transition, not a system UITabBar;
+these distinctions must remain explicit in design validation.
