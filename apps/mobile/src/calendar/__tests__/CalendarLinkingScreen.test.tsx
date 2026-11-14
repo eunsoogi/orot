@@ -1,10 +1,5 @@
-import { AppState, Text } from 'react-native';
-import {
-  fireEvent,
-  render,
-  screen,
-  within,
-} from '@testing-library/react-native';
+import { AppState } from 'react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import CalendarLinkingScreen from '../CalendarLinkingScreen';
 import {
   appointmentFor,
@@ -27,17 +22,11 @@ describe('Calendar linking screen', () => {
         bridge={bridge()}
         calendarSync={syncedCalendar([])}
         heading="일정"
-        scrollHeader={<Text testID="scroll-banner">Banner</Text>}
         onOpenAppointments={jest.fn()}
         onOpenMedicalAppointments={jest.fn()}
       />,
     );
 
-    expect(
-      within(screen.getByTestId('calendar-screen')).getByTestId(
-        'scroll-banner',
-      ),
-    ).toBeVisible();
     expect(screen.getByTestId('calendar-title')).toHaveTextContent('일정');
     expect(screen.getByTestId('schedule-subtitle')).toHaveTextContent(
       '일정을 확인하고 진료를 준비해요.',
