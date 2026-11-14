@@ -22,7 +22,7 @@ test('keeps the selected root tab direct when large text requires More without p
       <NavigationActionBar
         controller={controller}
         safeAreaHandledByParent
-        rootTabs={{ activeTab: 'schedule', onSelect: jest.fn() }}
+        rootTabs={{ activeTab: 'settings', onSelect: jest.fn() }}
       />,
     );
     expect(screen.getByRole('progressbar')).toBeTruthy();
@@ -35,13 +35,13 @@ test('keeps the selected root tab direct when large text requires More without p
         nativeEvent: {
           revision: surface.props.pageMetricsRequest.revision,
           width: 374,
-          widths: [100, 100, 100, 100, 100, 80],
-          heights: [110, 110, 110, 110, 110, 110],
+          widths: [100, 100, 100, 100, 80],
+          heights: [110, 110, 110, 110, 110],
         },
       }),
     );
     expect(
-      screen.getByTestId('navigation-tab-schedule').props.accessibilityState
+      screen.getByTestId('navigation-tab-settings').props.accessibilityState
         .selected,
     ).toBe(true);
     expect(screen.getByTestId('navigation-page-action-overflow')).toBeTruthy();
@@ -83,7 +83,7 @@ test('keeps the selected root and primary page action direct while More dispatch
       <NavigationActionBar
         controller={controller}
         safeAreaHandledByParent
-        rootTabs={{ activeTab: 'schedule', onSelect }}
+        rootTabs={{ activeTab: 'settings', onSelect }}
         pageActions={[
           {
             id: 'retry',
@@ -104,13 +104,13 @@ test('keeps the selected root and primary page action direct while More dispatch
         nativeEvent: {
           revision: surface.props.pageMetricsRequest.revision,
           width: 390,
-          widths: [44, 44, 44, 44, 44, 88, 44],
-          heights: [60, 60, 60, 60, 60, 48, 60],
+          widths: [80, 80, 80, 80, 88, 44],
+          heights: [60, 60, 60, 60, 48, 60],
         },
       }),
     );
     expect(
-      screen.getByTestId('navigation-tab-schedule').props.accessibilityState
+      screen.getByTestId('navigation-tab-settings').props.accessibilityState
         .selected,
     ).toBe(true);
     expect(screen.getByTestId('retry')).toBeTruthy();
