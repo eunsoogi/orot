@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, View } from 'react-native';
+import { AppButton } from '../layout/AppButton';
+import { useNavigationPrimaryAction } from '../navigation/useNavigationPrimaryAction';
 import { t } from '../i18n';
 import { AppText } from '../layout/AppText';
 import { deleteMedicalDocument } from './medicalDocumentDeletion';
@@ -52,36 +54,49 @@ export function MedicalDocumentDeleteAction({
       if (mounted.current) setBusy(false);
     }
   };
+  const confirm = () => {
+    if (claimed.current || !mounted.current) return;
+    Alert.alert(
+      t('medicalDocument.delete.confirm'),
+      t('medicalDocument.delete.description'),
+      [
+        { text: t('medicalDocument.delete.cancel'), style: 'cancel' },
+        {
+          text: t('medicalDocument.delete.delete'),
+          style: 'destructive',
+          onPress: () => {
+            remove().catch(() => undefined);
+          },
+        },
+      ],
+    );
+  };
+  const title = busy
+    ? t('medicalDocument.delete.busy')
+    : t('medicalDocument.delete.action');
+  // The shared dock places page actions above the Duo rail and beside compact navigation.
+  // Only presentation moves; confirmation and the synchronous deletion claim stay here.
+  const hosted = useNavigationPrimaryAction({
+    label: title,
+    navigationLabel: t('medicalDocument.delete.delete'),
+    accessibilityLabel: title,
+    testID: 'medical-document-delete',
+    systemImageName: 'trash',
+    destructive: true,
+    disabled: busy,
+    onPress: confirm,
+  });
   return (
     <View>
-      <Pressable
-        accessibilityRole="button"
-        disabled={busy}
-        testID="medical-document-delete"
-        style={styles.button}
-        onPress={() =>
-          Alert.alert(
-            t('medicalDocument.delete.confirm'),
-            t('medicalDocument.delete.description'),
-            [
-              { text: t('medicalDocument.delete.cancel'), style: 'cancel' },
-              {
-                text: t('medicalDocument.delete.delete'),
-                style: 'destructive',
-                onPress: () => {
-                  remove().catch(() => undefined);
-                },
-              },
-            ],
-          )
-        }
-      >
-        <AppText>
-          {busy
-            ? t('medicalDocument.delete.busy')
-            : t('medicalDocument.delete.action')}
-        </AppText>
-      </Pressable>
+      {hosted ? null : (
+        <AppButton
+          title={title}
+          variant="destructive"
+          disabled={busy}
+          testID="medical-document-delete"
+          onPress={confirm}
+        />
+      )}
       {error ? (
         <AppText accessibilityRole="alert">
           {t('medicalDocument.delete.failed')}
@@ -90,6 +105,3 @@ export function MedicalDocumentDeleteAction({
     </View>
   );
 }
-const styles = StyleSheet.create({
-  button: { minHeight: 44, justifyContent: 'center' },
-});

@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { emptyCalendarAutoSyncState } from '../../calendar/calendarAutoSync';
@@ -134,6 +135,19 @@ test.each([false, true])(
     );
     expect(controller.getSnapshot().canGoBack).toBe(true);
     expect(screen.queryByTestId('records-recent-sources')).toBeNull();
+    expect(screen.queryByTestId('records-hub-header')).toBeNull();
+    expect(screen.queryByTestId('records-section-tabs')).toBeNull();
+    expect(screen.getAllByTestId('medical-document-delete')).toHaveLength(1);
+    expect(
+      within(screen.getByTestId('navigation-page-action-surface')).getByTestId(
+        'medical-document-delete',
+      ),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId('medical-document-source-view')).queryByTestId(
+        'medical-document-delete',
+      ),
+    ).toBeNull();
     await fireEvent.press(screen.getByTestId('navigation-back'));
     expect(controller.getSnapshot().currentRoute.key).toBe(owner);
     await fireEvent.press(

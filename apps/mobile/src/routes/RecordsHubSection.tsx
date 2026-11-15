@@ -1,4 +1,10 @@
-import { createContext, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { RecordsHubBanner, RecordsHubHeadingContext } from './RecordsHubBanner';
@@ -10,6 +16,19 @@ import { settleNavigationRequest } from '../navigation/nativeNavigationActions';
 
 // Schedule owns its vertical scroll; hand the same header into that owner.
 export const RecordsHubScrollHeaderContext = createContext<ReactNode>(null);
+
+const RecordsDetailVisibilityContext = createContext<
+  ((visible: boolean) => void) | null
+>(null);
+
+/** Inline compatibility details hide root chrome and restore it on Back or unmount. */
+export function useRecordsDetailVisibility(visible: boolean) {
+  const setVisible = useContext(RecordsDetailVisibilityContext);
+  useLayoutEffect(() => {
+    setVisible?.(visible);
+    return () => setVisible?.(false);
+  }, [setVisible, visible]);
+}
 
 type RecordsSection = 'records' | 'schedule';
 
@@ -23,6 +42,7 @@ export function RecordsHubSection({
   readonly onSelect?: (section: RecordsSection) => Promise<void>;
   readonly children: ReactNode;
 }) {
+  const [detailVisible, setDetailVisible] = useState(false);
   const [pending, setPending] = useState(false);
   async function select(section: RecordsSection) {
     if (!onSelect || pending || section === selected) return;
@@ -68,12 +88,14 @@ export function RecordsHubSection({
   );
   return (
     <View style={selected === 'schedule' ? styles.screen : styles.records}>
-      {selected === 'records' ? header : null}
+      {selected === 'records' && !detailVisible ? header : null}
       <RecordsHubScrollHeaderContext.Provider
         value={selected === 'schedule' ? header : null}
       >
         <RecordsHubHeadingContext.Provider value>
-          {children}
+          <RecordsDetailVisibilityContext.Provider value={setDetailVisible}>
+            {children}
+          </RecordsDetailVisibilityContext.Provider>
         </RecordsHubHeadingContext.Provider>
       </RecordsHubScrollHeaderContext.Provider>
     </View>

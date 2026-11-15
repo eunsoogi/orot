@@ -15,6 +15,7 @@ import type { ReactNode } from 'react';
 import type { NavigationSurfaceProps } from '../../navigation/NavigationActionBar';
 import { createNavigationController } from '../../navigation/navigationController';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
+import { RecordsHubSection } from '../RecordsHubSection';
 import { RecordsRoute } from '../RecordsRoute';
 
 jest.mock('react-native-safe-area-context', () => {
@@ -116,21 +117,24 @@ test('saved medical source returns through the shared Back action without losing
       surface={FallbackSurface}
     >
       {() => (
-        <RecordsRoute
-          recordings={[]}
-          recordingState="ready"
-          onRetryRecordings={jest.fn()}
-          onOpenSavedRecordings={jest.fn()}
-          onOpenRecording={jest.fn()}
-          onOpenHealthLibrary={jest.fn()}
-          onOpenManualHistory={jest.fn()}
-          documentImportService={service}
-        />
+        <RecordsHubSection selected="records">
+          <RecordsRoute
+            recordings={[]}
+            recordingState="ready"
+            onRetryRecordings={jest.fn()}
+            onOpenSavedRecordings={jest.fn()}
+            onOpenRecording={jest.fn()}
+            onOpenHealthLibrary={jest.fn()}
+            onOpenManualHistory={jest.fn()}
+            documentImportService={service}
+          />
+        </RecordsHubSection>
       )}
     </NavigationRouteAdapter>,
   );
 
   await screen.findByTestId('medical-document-source-0');
+  expect(screen.getByTestId('records-hub-header')).toBeTruthy();
   await fireEvent.scroll(screen.getByTestId('navigation-route-scroll'), {
     nativeEvent: { contentOffset: { x: 0, y: 340 } },
   });
@@ -139,6 +143,8 @@ test('saved medical source returns through the shared Back action without losing
     await screen.findByTestId('medical-document-source-title'),
   ).toHaveTextContent(source.title);
   expect(screen.queryByTestId('medical-document-source-back')).toBeNull();
+  expect(screen.queryByTestId('records-hub-header')).toBeNull();
+  expect(screen.getAllByTestId('medical-document-delete')).toHaveLength(1);
 
   await fireEvent.scroll(screen.getByTestId('navigation-route-scroll'), {
     nativeEvent: { contentOffset: { x: 0, y: 720 } },
@@ -151,6 +157,8 @@ test('saved medical source returns through the shared Back action without losing
   });
 
   expect(screen.getByTestId('medical-document-source-0')).toBeTruthy();
+  expect(screen.getByTestId('records-hub-header')).toBeTruthy();
+  expect(screen.queryByTestId('medical-document-delete')).toBeNull();
   expect(screen.queryByTestId('navigation-back')).toBeNull();
   expect(controller.getSnapshot().currentRoute.name).toBe('records');
   expect(onSelectTab).not.toHaveBeenCalled();
