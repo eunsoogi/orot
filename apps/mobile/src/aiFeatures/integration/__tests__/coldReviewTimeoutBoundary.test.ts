@@ -40,7 +40,7 @@ test.each([false, true])(
           waitForContinue: async () => false,
         },
       );
-      // Auxiliary uncertainty does not block live final output; paused cold replay still fails closed.
+      // Auxiliary uncertainty does not block live final output; a later approval checkpoint skips, but never replays, that reviewer.
       expect(initial.status).toBe(paused ? 'paused' : 'result');
       expect(x.generate).toHaveBeenCalledTimes(paused ? 2 : 4);
       expect(x.search).toHaveBeenCalledTimes(paused ? 1 : 2);
@@ -52,15 +52,29 @@ test.each([false, true])(
       expect(
         x.liveEvents.mock.calls.filter(([e]) => e.type === 'initial_response'),
       ).toHaveLength(0);
-      expect(
-        await createConversationColdResumeStorage(x.db.database).open(
-          x.identity,
-        ),
-      ).toBeUndefined();
+      const saved = await createConversationColdResumeStorage(
+        x.db.database,
+      ).open(x.identity);
+      if (paused) {
+        expect(saved).toBeDefined();
+        expect((await x.resume()).status).toBe('completed');
+        expect(x.generate).toHaveBeenCalledTimes(4);
+        expect(x.search).toHaveBeenCalledTimes(2);
+        expect(
+          x.coldEvents.mock.calls.filter(
+            ([e]) => e.type === 'initial_response',
+          ),
+        ).toHaveLength(0);
+      } else {
+        expect(saved).toBeUndefined();
+      }
       await expect(x.resume()).rejects.toThrow();
-      expect(x.generate).toHaveBeenCalledTimes(paused ? 2 : 4);
-      expect(x.search).toHaveBeenCalledTimes(paused ? 1 : 2);
-      expect(x.coldEvents).not.toHaveBeenCalled();
+      expect(x.generate).toHaveBeenCalledTimes(4);
+      expect(x.search).toHaveBeenCalledTimes(2);
+      const pending = await x.db.database.execute(
+        "SELECT status FROM conversation_operation_journal WHERE purpose = 'preview_review'",
+      );
+      expect(pending.rows).toEqual([{ status: 'pending' }]);
     } finally {
       x.db.close();
     }
