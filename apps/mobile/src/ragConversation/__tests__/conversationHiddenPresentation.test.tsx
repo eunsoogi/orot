@@ -1,5 +1,5 @@
 import { useConversationPresentationSnapshot } from '../useConversationPresentationSnapshot';
-import { AppState, Text } from 'react-native';
+import { AppState, Text, type AppStateStatus } from 'react-native';
 import { act, render, screen } from '@testing-library/react-native';
 import { createConversationSessions } from '../conversationSessions';
 import type {
@@ -24,7 +24,7 @@ test('returning to a retained route reads all hidden text while cancellation sti
   }
   let observer: RagConversationObserver | undefined;
   let finish!: (value: RagConversationOutcome) => void;
-  const foregroundListeners: ((state: string) => void)[] = [];
+  const foregroundListeners: ((state: AppStateStatus) => void)[] = [];
   const remove = jest.fn();
   const spy = jest
     .spyOn(AppState, 'addEventListener')
