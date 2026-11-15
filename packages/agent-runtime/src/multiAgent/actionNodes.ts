@@ -1,3 +1,5 @@
+import { AuthorizationPaused, isAuthorizationPaused } from './journaledModelCall';
+import { observeUntilAbort } from './modelCall';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
 import { appendNativeToolResultMessage } from './nativeTools';
 import { canonicalJson, utf8ByteLength } from './protocol';
@@ -43,6 +45,19 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
         stop(context, 'The local action handoff is invalid.', 'invalid_output');
         return completeState();
       }
+      const approval =
+        context.options.checkpointer && context.options.operationJournal?.loadPrepared
+          ? context.pause?.approvalSignal(context.signal)
+          : undefined;
+      const approvalSignal = approval?.signal ?? context.signal;
+      let pausedBeforeDispatch = false;
+      const notify = (waiting: boolean) => {
+        try {
+          context.onApprovalWait?.(waiting);
+        } catch {
+          /* UI observers cannot grant access. */
+        }
+      };
       try {
         if (context.signal.aborted) {
           canceled(context);
@@ -53,7 +68,22 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
           canceled(context);
           return completeState();
         }
-        if (!(await tool.authorize(input, context.signal))) {
+        notify(Boolean(approval));
+        const decision = await observeUntilAbort(
+          tool.authorize(input, approvalSignal),
+          approvalSignal,
+        );
+        if (approvalSignal.aborted && !context.signal.aborted && approval) {
+          pausedBeforeDispatch = true;
+          throw new AuthorizationPaused();
+        }
+        approval?.finishApproval();
+        notify(false);
+        if (context.signal.aborted) {
+          canceled(context);
+          return completeState();
+        }
+        if (decision.kind !== 'value' || !decision.value) {
           stop(context, 'The local action needs an explicit user decision.', 'consent_required');
           return completeState();
         }
@@ -78,7 +108,7 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
           input,
           operationRunId: state.operationRunId,
           operationKey: state.pendingOperation.operationKey,
-          signal: context.signal,
+          signal: approvalSignal,
         });
         // The transaction's successful result is truthful even if cancellation arrives afterward.
         finishToolEvent(context, 'completed', batch.items);
@@ -136,9 +166,13 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
           evidenceReferences: referencesFromBatch(combined),
           pendingOperation: undefined,
         };
-      } catch {
+      } catch (error) {
+        if (pausedBeforeDispatch && isAuthorizationPaused(error)) throw error;
         stop(context, 'The action outcome is unknown; do not repeat it.', 'unavailable');
         return completeState();
+      } finally {
+        notify(false);
+        approval?.dispose();
       }
     },
   };

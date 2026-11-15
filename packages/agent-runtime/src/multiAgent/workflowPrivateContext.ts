@@ -75,8 +75,10 @@ export async function preparePrivateOperationContext<TResult>(
       )
         return false;
     }
-    if (state.phase === 'evidence_search') {
-      const tool = context.options.tools.find((candidate) => candidate.id === state.selectedToolId);
+    if (state.phase === 'evidence_search' || state.phase === 'local_action') {
+      const tool = (
+        state.phase === 'local_action' ? context.options.actions : context.options.tools
+      )?.find((candidate) => candidate.id === state.selectedToolId);
       const input = tool?.parseInput(decoded.researchInput);
       if (!input || canonicalJson(input) !== canonicalJson(decoded.researchInput)) return false;
       context.researchInput = input;

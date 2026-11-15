@@ -6,7 +6,7 @@ import { callModel, dispatchAuthorizedModelCall, type ModelCallOutcome } from '.
 import { canonicalJson } from './protocol';
 import type { RuntimeContext } from './runtimeContext';
 
-class AuthorizationPaused extends Error {}
+export class AuthorizationPaused extends Error {}
 export function isAuthorizationPaused(error: unknown): boolean {
   return error instanceof AuthorizationPaused;
 }
