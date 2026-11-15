@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import {
   fieldLabels,
   visibleValue,
@@ -6,7 +7,7 @@ import {
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceRepository';
 import type { EvidenceSourceDocument } from './evidenceRegistry';
-import type { ManualHistoryEvidence } from '@orot/domain';
+import { manualHistoryPresentation } from './manualHistorySourcePresentation';
 import { presentHealthContextDocument } from './healthContextPresentation';
 import { presentResearchSource } from './researchSourcePresentation';
 import { evidenceSourceManagementFields } from './evidenceSourceManagementFields';
@@ -51,7 +52,7 @@ function personalRecordRows(
         label:
           entry.kind === 'dose_event' &&
           (key === 'eventKind' || key === 'observationStatus')
-            ? '복용 상태'
+            ? t('evidenceSource.doseStatus')
             : (fieldLabels[key] ?? key),
         value: rendered,
       });
@@ -62,25 +63,26 @@ function personalRecordRows(
   if (source) {
     const rendered =
       visibleValue(source.sourceName) ?? visibleValue(source.system, 'system');
-    if (rendered) rows.push({ label: '출처', value: rendered });
+    if (rendered)
+      rows.push({ label: t('evidenceSource.source'), value: rendered });
   }
   return rows;
 }
 
 function recordTitle(entry: LocalHealthEvidenceRecord): string {
   const labels: Partial<Record<LocalHealthEvidenceRecord['kind'], string>> = {
-    appointment: '예약 기록',
-    dose_event: '복용 기록',
-    encounter: '진료 기록',
-    evidence_span: '원문 발췌',
-    health_observation: '건강 측정',
-    medication_assertion: '복용 정보',
-    medication_definition: '약 정보',
-    source_record: '저장된 출처',
-    symptom_entry: '증상 기록',
-    transcript_segment: '녹음 전사',
-    visit_brief: '진료 요약',
-    visit_question: '진료 질문',
+    appointment: t('evidenceSource.appointment'),
+    dose_event: t('evidenceSource.dose'),
+    encounter: t('evidenceSource.encounter'),
+    evidence_span: t('evidenceSource.excerpt'),
+    health_observation: t('evidenceSource.observation'),
+    medication_assertion: t('evidenceSource.medicationAssertion'),
+    medication_definition: t('evidenceSource.medicationDefinition'),
+    source_record: t('evidenceSource.sourceRecord'),
+    symptom_entry: t('evidenceSource.symptom'),
+    transcript_segment: t('evidenceSource.transcript'),
+    visit_brief: t('evidenceSource.visitBrief'),
+    visit_question: t('evidenceSource.visitQuestion'),
   };
   return labels[entry.kind] ?? entry.kind;
 }
@@ -98,53 +100,15 @@ function memoryRows(record: PersistedMemoryRecord): EvidenceSourceDetailRow[] {
         .filter((date): date is string => date !== undefined)
     : [];
   return [
-    { label: '저장된 내용', value: record.text },
+    { label: t('evidenceSource.savedContent'), value: record.text },
     ...(sourceDates.length
-      ? [{ label: '출처 날짜', value: sourceDates.join(', ') }]
+      ? [
+          {
+            label: t('evidenceSource.sourceDates'),
+            value: sourceDates.join(', '),
+          },
+        ]
       : []),
-  ];
-}
-
-function manualHistoryPresentation(
-  evidence: ManualHistoryEvidence,
-): EvidenceSourceDetailSection[] {
-  const kindLabels: Record<ManualHistoryEvidence['kind'], string> = {
-    diagnosis_history: '진단 또는 과거 병력',
-    procedure: '시술 또는 수술',
-    medication_context: '복용약 관련 내용',
-    note: '자유 메모',
-  };
-  return [
-    {
-      title: '직접 입력한 과거 건강 기록',
-      rows: [
-        { label: '기록 종류', value: kindLabels[evidence.kind] },
-        {
-          label: '기준일',
-          value:
-            evidence.effectiveDate.status === 'known'
-              ? evidence.effectiveDate.date
-              : '알 수 없음',
-        },
-        { label: '출처', value: '사용자 직접 입력' },
-        {
-          label: '검토 상태',
-          value:
-            evidence.reviewState.status === 'reviewed'
-              ? '확인됨'
-              : '의료진 미확인',
-        },
-        { label: '기록한 날짜', value: evidence.recordedAt },
-        ...(evidence.correctionNote
-          ? [{ label: '수정 메모', value: evidence.correctionNote }]
-          : []),
-      ],
-      hero: {
-        heading: kindLabels[evidence.kind],
-        body: evidence.text,
-        consumedLabels: [],
-      },
-    },
   ];
 }
 
@@ -157,9 +121,12 @@ export function presentEvidenceSource(
   if (document.sourceKind === 'reviewed_memory') {
     return [
       {
-        title: '검토된 기억',
+        title: t('evidenceSource.reviewedMemory'),
         rows: memoryRows(document.record),
-        hero: { body: document.record.text, consumedLabels: ['저장된 내용'] },
+        hero: {
+          body: document.record.text,
+          consumedLabels: [t('evidenceSource.savedContent')],
+        },
       },
     ];
   }
@@ -173,50 +140,67 @@ export function presentEvidenceSource(
   )
     return [
       {
-        title: '이전 AI 대화',
+        title: t('evidenceSource.priorConversation'),
         rows: [
-          { label: '생성 시각', value: document.metadata.createdAt },
+          {
+            label: t('evidenceSource.generatedAt'),
+            value: document.metadata.createdAt,
+          },
           ...(document.metadata.completion === 'partial'
-            ? [{ label: '완료 상태', value: '일부만 생성된 답변' }]
+            ? [
+                {
+                  label: t('evidenceSource.completion'),
+                  value: t('evidenceSource.partialAnswer'),
+                },
+              ]
             : []),
           {
-            label: '출처 상태',
+            label: t('evidenceSource.sourceStatus'),
             value:
               document.sourceStatus === 'current'
-                ? '현재 출처와 일치'
-                : '일부 출처 상태를 확인할 수 없음',
+                ? t('evidenceSource.currentSource')
+                : t('evidenceSource.unavailableSource'),
           },
           {
-            label: '주의',
-            value:
-              'AI가 생성한 이전 답변이며 독립적으로 확인된 의료 사실이 아닙니다.',
+            label: t('evidenceSource.caution'),
+            value: t('evidenceSource.priorAnswerNotice'),
           },
-          { label: '질문', value: document.conversation.question },
+          {
+            label: t('evidenceSource.question'),
+            value: document.conversation.question,
+          },
         ],
         hero: { body: document.conversation.answer, consumedLabels: [] },
       },
     ];
   if (document.sourceKind === 'generated_artifact')
     return document.analysis.hypotheses.map(section => ({
-      title: '이전에 생성된 AI 결과',
+      title: t('evidenceSource.priorResult'),
       rows: [
-        { label: '생성 시각', value: document.metadata.createdAt },
         {
-          label: '출처 상태',
+          label: t('evidenceSource.generatedAt'),
+          value: document.metadata.createdAt,
+        },
+        {
+          label: t('evidenceSource.sourceStatus'),
           value:
             document.sourceStatus === 'current'
-              ? '현재 출처와 일치'
+              ? t('evidenceSource.currentSource')
               : document.sourceStatus === 'changed'
-                ? '출처가 변경됨'
-                : '일부 출처 상태를 확인할 수 없음',
+                ? t('evidenceSource.changedSource')
+                : t('evidenceSource.unavailableSource'),
         },
         {
-          label: '주의',
-          value:
-            'AI가 생성한 이전 결과이며 독립적으로 확인된 의료 사실이 아닙니다.',
+          label: t('evidenceSource.caution'),
+          value: t('evidenceSource.priorResultNotice'),
         },
         ...(section.uncertainty
-          ? [{ label: '불확실성', value: section.uncertainty }]
+          ? [
+              {
+                label: t('evidenceSource.uncertainty'),
+                value: section.uncertainty,
+              },
+            ]
           : []),
       ],
       hero: {
@@ -228,7 +212,7 @@ export function presentEvidenceSource(
   if (document.sourceKind === 'conversation_photo')
     return [
       {
-        title: '첨부한 사진에서 추출한 글자',
+        title: t('evidenceSource.photoText'),
         rows: [],
         hero: { body: document.section.text, consumedLabels: [] },
       },
