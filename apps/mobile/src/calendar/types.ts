@@ -46,3 +46,18 @@ export interface EventKitImportBridge {
 }
 
 export type EventKitCalendarBridge = CalendarBridge & EventKitImportBridge;
+
+/** Read-only live-calendar boundary; missing/incomplete coverage never means no events. */
+export interface CalendarRangeEvents {
+  access: CalendarAccessState;
+  events: CalendarEvent[];
+  query?: Omit<CalendarQueryCoverage, 'horizonYears'>;
+}
+
+export interface CalendarRangeBridge {
+  listEventsInRange(
+    fromInclusive: string,
+    toExclusive: string,
+  ): Promise<CalendarRangeEvents>;
+  addEventStoreListener(listener: () => void): { remove(): void };
+}
