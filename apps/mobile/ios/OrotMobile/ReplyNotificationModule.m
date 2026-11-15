@@ -10,6 +10,8 @@ RCT_EXTERN_METHOD(lease : (NSString *)sessionId resolver : (RCTPromiseResolveBlo
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(submit : (NSDictionary *)value resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(interrupt : (NSDictionary *)value resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(removeSession : (NSString *)value resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(removeAll : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)

@@ -15,6 +15,10 @@ export async function reviewInitialToolResponse<TResult>(
   state: WorkflowState,
   candidate: string,
 ): Promise<{ accepted: boolean; modelCalls: number }> {
+  // Photo approval binds the complete OCR evidence payload. This optional text-only
+  // review cannot satisfy that contract; skip it instead of expanding transmission
+  // or weakening photo consent. The selected tool and grounded final flow keep their gates.
+  if (context.options.photoInput) return { accepted: false, modelCalls: state.modelCalls };
   // Keep capacity for the selected search and grounded final response; never raise a budget.
   const reserve = state.budget.maxModelCalls - state.modelCalls;
   if (reserve < 2) return { accepted: false, modelCalls: state.modelCalls };

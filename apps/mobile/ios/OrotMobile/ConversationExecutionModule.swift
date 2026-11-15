@@ -6,9 +6,14 @@ import UIKit
 /// Extends an active request only for the time iOS grants; expiration is terminal for the lease.
 @objc(ConversationExecutionModule)
 final class ConversationExecutionModule: RCTEventEmitter {
+    private var requests = Set<String>()
     private var leases: [String: UIBackgroundTaskIdentifier] = [:]
+    private var continued: [String: Any] = [:]
+    private var saved = Set<String>()
     private var observers: [NSObjectProtocol] = []
     private var listening = false
+    private var deadlineTimer: Timer?
+    private var pauseRequested = Set<String>()
 
     override static func requiresMainQueueSetup() -> Bool {
         true
@@ -55,9 +60,18 @@ final class ConversationExecutionModule: RCTEventEmitter {
 
     @objc(begin:resolver:rejecter:)
     func begin(_ requestId: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
-        guard !requestId.isEmpty, leases[requestId] == nil else { resolve(false); return }
+        guard !requestId.isEmpty, !requests.contains(requestId) else { resolve(false); return }
         let task = UIApplication.shared.beginBackgroundTask(withName: "Conversation request") { [weak self] in
             guard let self else { return }
+            // A granted continued task replaces only the short execution deadline.
+            if #available(iOS 26.0, *),
+               let work = continued[requestId] as? ConversationContinuedProcessing, work.active
+            {
+                if let short = leases.removeValue(forKey: requestId) {
+                    UIApplication.shared.endBackgroundTask(short)
+                }
+                return
+            }
             #if OROT_TESTS && targetEnvironment(simulator)
                 if let token = UserDefaults.standard.string(forKey: "OROT_TEST_BACKGROUND_TOKEN") {
                     signalBackgroundFailure(token)
@@ -68,7 +82,40 @@ final class ConversationExecutionModule: RCTEventEmitter {
         }
         guard task != .invalid else { resolve(false); return }
         leases[requestId] = task
+        requests.insert(requestId)
+        if deadlineTimer == nil {
+            deadlineTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                self?.requestSafePauseBeforeExpiration()
+            }
+        }
         resolve(true)
+    }
+
+    /// Called only when an authorized remote provider is dispatched, never while waiting for approval.
+    @objc(work:active:)
+    func work(_ requestId: String, active: Bool) {
+        guard requests.contains(requestId) else { return }
+        if !active {
+            if #available(iOS 26.0, *) {
+                (continued.removeValue(forKey: requestId) as? ConversationContinuedProcessing)?.finish(success: false)
+            }
+            return
+        }
+        guard continued[requestId] == nil, UIApplication.shared.isProtectedDataAvailable else { return }
+        if #available(iOS 26.0, *) {
+            let work = ConversationContinuedProcessing(status: { [weak self] state, failureCode in
+                var event: [String: Any] = ["kind": "continued", "state": state, "requestId": requestId]
+                if let failureCode {
+                    event["failureCode"] = failureCode
+                }
+                self?.publish(event)
+            }) { [weak self] in
+                self?.endLease(requestId)
+                self?.publish(["kind": "expired", "requestId": requestId])
+            }
+            continued[requestId] = work
+            work.begin()
+        }
     }
 
     @objc(end:)
@@ -78,7 +125,12 @@ final class ConversationExecutionModule: RCTEventEmitter {
 
     @objc(isActive:resolver:rejecter:)
     func isActive(_ requestId: String, resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
-        resolve(leases[requestId] != nil)
+        if #available(iOS 26.0, *),
+           let work = continued[requestId] as? ConversationContinuedProcessing, work.active
+        {
+            resolve(true); return
+        }
+        resolve(leases[requestId] != nil || (requests.contains(requestId) && UIApplication.shared.applicationState == .active))
     }
 
     #if OROT_TESTS && targetEnvironment(simulator)
@@ -104,7 +156,49 @@ final class ConversationExecutionModule: RCTEventEmitter {
         }
     #endif
 
+    /// Milestones contain no prompt, answer, provider identifiers or sensitive metadata.
+    @objc(answered:)
+    func answered(_ requestId: String) {
+        if #available(iOS 26.0, *) {
+            (continued[requestId] as? ConversationContinuedProcessing)?.receivedAnswer()
+        }
+    }
+
+    @objc(committed:)
+    func committed(_ requestId: String) {
+        if leases[requestId] != nil || continued[requestId] != nil {
+            saved.insert(requestId)
+        }
+    }
+
+    /// Only a finite short-lease deadline requests a safe graph drain. A granted continued
+    /// task keeps running until completion or the system's actual cancellation/expiration.
+    private func requestSafePauseBeforeExpiration() {
+        guard UIApplication.shared.applicationState == .background else { return }
+        let remaining = UIApplication.shared.backgroundTimeRemaining
+        guard remaining.isFinite, remaining > 0, remaining <= 10 else { return }
+        for requestId in requests where !pauseRequested.contains(requestId) {
+            if #available(iOS 26.0, *),
+               let work = continued[requestId] as? ConversationContinuedProcessing, work.active
+            {
+                continue
+            }
+            pauseRequested.insert(requestId)
+            publish(["kind": "pause-requested", "requestId": requestId])
+        }
+    }
+
     private func endLease(_ requestId: String) {
+        requests.remove(requestId)
+        pauseRequested.remove(requestId)
+        if requests.isEmpty {
+            deadlineTimer?.invalidate()
+            deadlineTimer = nil
+        }
+        let success = saved.remove(requestId) != nil
+        if #available(iOS 26.0, *) {
+            (continued.removeValue(forKey: requestId) as? ConversationContinuedProcessing)?.finish(success: success)
+        }
         guard let task = leases.removeValue(forKey: requestId) else { return }
         UIApplication.shared.endBackgroundTask(task)
     }
@@ -116,7 +210,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
 
     override func invalidate() {
         stopObserving()
-        for requestId in Array(leases.keys) {
+        for requestId in requests {
             endLease(requestId)
         }
         super.invalidate()

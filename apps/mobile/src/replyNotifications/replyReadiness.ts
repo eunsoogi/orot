@@ -36,7 +36,9 @@ export function createReplyReadiness(input: {
       message: !!found?.messages.some(
         value =>
           value.role === 'assistant' &&
-          value.retainedTurnId === identity.messageId,
+          (identity.purpose === 'interruption'
+            ? value.incomplete && value.toolMessageId === identity.messageId
+            : value.retainedTurnId === identity.messageId),
       ),
     };
   }

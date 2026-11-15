@@ -1,3 +1,4 @@
+import { availableEvidenceTools } from './initialEvidenceSearch';
 import type {
   LanguageModelMessage,
   LanguageModelRequest,
@@ -29,7 +30,7 @@ export function withNativeTools<TResult>(
     return request;
   const requiredKind = missingNativeEvidenceKind(context);
   const offeredTools = [
-    ...context.options.tools.filter(
+    ...availableEvidenceTools(context.options, state).filter(
       (tool) =>
         (!requiredKind || tool.sourceKind === requiredKind) && canReserveToolModelCall(tool, state),
     ),
@@ -90,7 +91,10 @@ export async function consumeNativeToolCall<TResult>(
   if (!response.toolCalls.length) return undefined;
   const call = response.toolCalls[0];
   const action = call && context.options.actions?.find((value) => value.id === call.name);
-  const tool = call && (context.options.tools.find((value) => value.id === call.name) ?? action);
+  const tool =
+    call &&
+    (availableEvidenceTools(context.options, state).find((value) => value.id === call.name) ??
+      action);
   const requiredKind = missingNativeEvidenceKind(context);
   let input;
   try {

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { localVoiceModel } from './voiceModels';
 import { voiceSettingsStore, type VoiceMode } from './voiceSettingsStore';
@@ -26,7 +27,7 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
       .catch(() => {
         if (mounted.current) {
           setFailedLoad(true);
-          setMessage('음성 설정을 읽지 못했습니다. 화면을 다시 열어 주세요.');
+          setMessage(t('modelSettings.voiceReadFailed'));
         }
       })
       .finally(() => {
@@ -51,14 +52,9 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
       });
       if (!mounted.current) return;
       setSavedModel(model);
-      setMessage(
-        '음성 설정을 저장했습니다. 통화는 대화 화면에서 별도로 시작해 주세요.',
-      );
+      setMessage(t('modelSettings.voiceSaved'));
     } catch {
-      if (mounted.current)
-        setMessage(
-          '저장하지 못했습니다. API 모드에는 모델과 API 키가 필요합니다.',
-        );
+      if (mounted.current) setMessage(t('modelSettings.voiceSaveFailed'));
     } finally {
       locked.current = false;
       if (mounted.current) setBusy(false);

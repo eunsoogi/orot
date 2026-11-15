@@ -105,3 +105,28 @@ test('uses a plain calendar message when the native bridge is unavailable', asyn
     /^Calendar access is unavailable\.$/u,
   );
 });
+
+test('range reads use only the explicit query and never request access', async () => {
+  const query = jest.fn(async () => ({
+    access: 'denied' as const,
+    events: [],
+  }));
+  const request = jest.fn(async () => 'fullAccess' as const);
+  const bridge = createCalendarBridge({
+    listEventsInRange: query,
+    requestEventAccess: request,
+    listUpcomingEvents: jest.fn(),
+    requestAccessAndListUpcomingEvents: jest.fn(),
+    findEvent: jest.fn(),
+    addListener: jest.fn(),
+    removeListeners: jest.fn(),
+  });
+  const from = '2035-06-01T00:00:00Z';
+  const to = '2035-06-02T00:00:00Z';
+  expect(await bridge.listEventsInRange(from, to)).toEqual({
+    access: 'denied',
+    events: [],
+  });
+  expect(query).toHaveBeenCalledWith(from, to);
+  expect(request).not.toHaveBeenCalled();
+});

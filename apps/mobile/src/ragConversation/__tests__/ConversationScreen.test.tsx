@@ -40,16 +40,16 @@ test('keeps the composer outside the conversation scroll and bounds long drafts'
   const history = screen.getByTestId('rag-conversation-history');
   const composer = screen.getByTestId('rag-conversation-composer');
   expect(within(history).queryByTestId('rag-conversation-composer')).toBeNull();
-  // The transcript now has a floating identity wrapper; composer must remain
-  // its sibling outside the scroll owner, not scroll with message content.
-  const floating = screen.getByTestId('assistant-floating-surface');
-  expect(within(floating).getByTestId('rag-conversation-history')).toBe(
+  // Both controls belong to the stable transcript pane, but only messages
+  // belong to the scroll owner. Folding must not remount the composer.
+  const transcript = screen.getByTestId('conversation-transcript-pane');
+  expect(within(transcript).getByTestId('rag-conversation-history')).toBe(
     history,
   );
-  expect(
-    within(floating).queryByTestId('rag-conversation-composer'),
-  ).toBeNull();
-  expect(composer.parent).toBe(floating.parent);
+  expect(within(transcript).getByTestId('rag-conversation-composer')).toBe(
+    composer,
+  );
+  expect(composer.parent).toBe(transcript);
   const input = screen.getByTestId('rag-conversation-input');
   await fireEvent.changeText(input, '합성 질문\n'.repeat(80));
   expect(StyleSheet.flatten(input.props.style).maxHeight).toBeGreaterThan(44);

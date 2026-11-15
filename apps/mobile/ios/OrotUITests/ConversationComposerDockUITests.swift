@@ -210,11 +210,11 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
 /// Verifies fixed controls against their dock and actual occluding system surfaces.
 @MainActor
 enum ConversationComposerDockUITestConditions {
-    /// Existence alone can describe a keyboard outside the current app window.
+    /// Existence and model bounds can precede keyboard presentation; require real hit testing.
     static func waitForVisibleKeyboard(in app: XCUIApplication) {
         let keyboard = app.keyboards.firstMatch
         let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            keyboard.exists && !keyboard.frame.intersection(app.frame).isEmpty
+            keyboard.exists && keyboard.isHittable && !keyboard.frame.intersection(app.frame).isEmpty
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [visible]), .completed)
     }

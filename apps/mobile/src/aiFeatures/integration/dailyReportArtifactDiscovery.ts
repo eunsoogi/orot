@@ -1,3 +1,4 @@
+import { registerReportCalendarCitation } from './dailyReportCalendarCitation';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { SqlDatabase } from '@orot/storage';
 import { compareTimestamps, DailyReportContextSchema } from '@orot/domain';
@@ -33,7 +34,7 @@ export async function readDailyReportArtifact(input: {
   const parsed = DailyReportContextSchema.safeParse(context);
   if (!parsed.success) return null;
   const store = createDailyReportStorage(input.database);
-  const saved = await store.lookup(parsed.data.identity);
+  const saved = await store.lookup(parsed.data.identity, input.signal);
   if (saved.status !== 'saved' || saved.runId !== input.id) return null;
   const sources: SavedRecordSummarySource[] = saved.lineage.map(item => ({
     reference: {
@@ -65,11 +66,6 @@ export async function readDailyReportArtifact(input: {
       restored.mapping.get(stableJson(sources[index]!.reference))!,
     ]),
   );
-  const references = [
-    ...new Map(
-      [...bySource.values()].map(ref => [stableJson(ref), ref]),
-    ).values(),
-  ];
   const claims = [
     ...saved.report.observations,
     ...saved.report.supportedContext,
@@ -81,7 +77,24 @@ export async function readDailyReportArtifact(input: {
     report: saved.report,
     lineage: saved.lineage,
   });
-  const latest = await store.lookup(parsed.data.identity);
+  if (saved.context.systemCalendar) {
+    const reference = registerReportCalendarCitation(
+      saved,
+      revision,
+      input.registry,
+      signal => store.lookup(parsed.data.identity, signal),
+    );
+    bySource.set(
+      stableJson(['system_calendar', saved.context.systemCalendar.recordId]),
+      reference,
+    );
+  }
+  const references = [
+    ...new Map(
+      [...bySource.values()].map(ref => [stableJson(ref), ref]),
+    ).values(),
+  ];
+  const latest = await store.lookup(parsed.data.identity, input.signal);
   if (
     latest.status !== 'saved' ||
     latest.runId !== saved.runId ||

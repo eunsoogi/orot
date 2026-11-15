@@ -1,0 +1,57 @@
+import type { SqlDatabase } from '@orot/storage';
+import type { StoredSteeringInstruction } from './conversationSteeringStorage';
+
+/** Display-only receipts for a validated completed turn; never returns bindings or resume authority. */
+export function conversationSteeringHistory(
+  database: SqlDatabase,
+  ensure: () => Promise<void>,
+) {
+  return async (
+    sessionId: string,
+    version: number,
+    requestId: string,
+    signal: AbortSignal,
+  ): Promise<readonly StoredSteeringInstruction[]> => {
+    await ensure();
+    let restored: readonly StoredSteeringInstruction[] = [];
+    await database.transaction(async sql => {
+      if (signal.aborted) return;
+      const table = await sql.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'conversation_steering'",
+      );
+      if (!table.rows.length) return;
+      const result = await sql.execute(
+        `SELECT q.id, q.text, q.sequence, q.status FROM conversation_steering q
+        JOIN conversation_requests r ON r.id = q.request_id
+        JOIN conversation_artifact_sessions s ON s.id = r.session_id
+        JOIN conversation_artifact_generation g ON g.singleton = 1
+        WHERE r.id = ? AND r.session_id = ? AND r.session_version = ? AND r.status = 'completed'
+        AND s.version = ? AND s.hidden = 0 AND s.generation = g.generation
+        ORDER BY q.sequence LIMIT 17`,
+        [requestId, sessionId, version, version],
+      );
+      if (signal.aborted || result.rows.length > 16) return;
+      const rows: StoredSteeringInstruction[] = [];
+      for (const row of result.rows) {
+        if (
+          typeof row.id !== 'string' ||
+          typeof row.text !== 'string' ||
+          row.text.length > 1000 ||
+          typeof row.sequence !== 'number' ||
+          !Number.isSafeInteger(row.sequence) ||
+          row.sequence < 1 ||
+          (row.status !== 'applied' && row.status !== 'not_applied')
+        )
+          return;
+        rows.push({
+          id: row.id,
+          text: row.text,
+          sequence: row.sequence,
+          status: row.status,
+        });
+      }
+      restored = rows;
+    });
+    return signal.aborted ? [] : restored;
+  };
+}

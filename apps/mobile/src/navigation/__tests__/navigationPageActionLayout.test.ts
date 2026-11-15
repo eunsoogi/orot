@@ -66,7 +66,7 @@ test.each([
   ['the observed one-action rail', 768, 148, 157, 1],
   ['a two-action rail', 678, 30, 30, 2],
 ])(
-  'bottom-anchors the complete page-action and root-tab group for %s',
+  'top-aligns page actions while keeping root navigation bottom-anchored for %s',
   (_scenario, height, top, bottom, actionCount) => {
     const layout = pageActionRailLayout({
       height,
@@ -87,9 +87,9 @@ test.each([
 
     expect(layout.fits).toBe(true);
     expect(layout.capacity).toBeGreaterThanOrEqual(actionCount);
-    expect(pageActionTop).toBeGreaterThanOrEqual(top);
-    expect(rootTop - pageActionBottom).toBe(8);
-    expect(layout.navigationTopInset).toBeCloseTo(pageActionTop, 5);
+    expect(pageActionTop).toBe(top);
+    expect(rootTop - pageActionBottom).toBeGreaterThanOrEqual(8);
+    expect(layout.navigationTopInset).toBeCloseTo(rootTop, 5);
   },
 );
 

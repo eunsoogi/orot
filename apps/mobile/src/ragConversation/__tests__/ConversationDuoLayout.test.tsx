@@ -31,7 +31,7 @@ afterEach(() => Dimensions.set({ window: originalWindow }));
 
 function panelAxis(): string | undefined {
   return StyleSheet.flatten(
-    screen.getByTestId('rag-conversation-columns').props.style,
+    screen.getByTestId('conversation-workspace').props.style,
   )?.flexDirection;
 }
 
@@ -60,6 +60,9 @@ test('keeps the request, draft, and exact citations through adaptive reflow', as
   );
 
   expect(panelAxis()).toBe('column');
+  expect(screen.getByTestId('conversation-transcript-pane')).toHaveStyle({
+    flex: 1,
+  });
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     '첫 질문',

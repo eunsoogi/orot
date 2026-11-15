@@ -56,7 +56,14 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
                   let message = target["messageId"], let text = target["sessionVersion"],
                   let version = Int(text), (0 ... 9_007_199_254_740_991).contains(version),
                   [request, session, message].allSatisfy({ !$0.isEmpty && $0.count <= 200 }) else { return nil }
-            return ["requestId": request, "sessionId": session, "messageId": message, "sessionVersion": String(version)]
+            if let purpose = target["purpose"], purpose != "interruption" {
+                return nil
+            }
+            var result = ["requestId": request, "sessionId": session, "messageId": message, "sessionVersion": String(version)]
+            if target["purpose"] == "interruption" {
+                result["purpose"] = "interruption"
+            }
+            return result
         }
         if (raw as? [[String: String]]) != valid {
             defaults.set(valid, forKey: replyKey)
@@ -117,7 +124,11 @@ final class AppointmentReminderDelivery: NSObject, UNUserNotificationCenterDeleg
            let version = request.content.userInfo["sessionVersion"] as? Int,
            (0 ... 9_007_199_254_740_991).contains(version), [requestId, sessionId, messageId].allSatisfy({ !$0.isEmpty && $0.count <= 200 })
         {
-            let target = ["requestId": requestId, "sessionId": sessionId, "messageId": messageId, "sessionVersion": String(version)]
+            var target = ["requestId": requestId, "sessionId": sessionId, "messageId": messageId, "sessionVersion": String(version)]
+            if let purpose = request.content.userInfo["purpose"] as? String {
+                guard purpose == "interruption" else { return }
+                target["purpose"] = purpose
+            }
             lock.lock()
             var targets = replyTargets()
             let handled = defaults.stringArray(forKey: replyHandledKey) ?? []

@@ -10,6 +10,8 @@ type RestoredTurn = {
   readonly answer: string;
   readonly preview?: string;
   readonly interrupted?: true;
+  readonly coldResume?: { readonly attempt: number };
+  interruptionReason?: import('./conversationExecutionLease').ConversationRecoveryReason;
   readonly citations: readonly EvidenceReference[];
   readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
   readonly completion?: 'complete' | 'partial';
@@ -25,6 +27,7 @@ type RestoredTurn = {
 /** Rebuild displayed turns with freshly validated sources, and keep failures retryable. */
 export function createConversationSessionRestoreState(input: {
   read?: (id: string, signal: AbortSignal) => Promise<readonly RestoredTurn[]>;
+  readSteering?: import('./conversationSessionTypes').ConversationSessionOptions['restoreSteering'];
   readTasks?: import('./conversationSessionTypes').ConversationSessionOptions['restoreTasks'];
   update: (id: number, change: Partial<ConversationSession>) => void;
 }) {
@@ -44,6 +47,15 @@ export function createConversationSessionRestoreState(input: {
         input.readTasks?.(entry.durableId, controller.signal) ??
           Promise.resolve([]),
       ]);
+      const latest = turns.at(-1);
+      const steeringInstructions =
+        latest?.toolMessageId && latest.completion === 'complete'
+          ? ((await input.readSteering?.(
+              entry.durableId,
+              latest.toolMessageId,
+              controller.signal,
+            )) ?? [])
+          : [];
       if (
         sessions.get(id) !== entry ||
         entry.controller !== controller ||
@@ -77,6 +89,7 @@ export function createConversationSessionRestoreState(input: {
           citations: turn.citations,
           healthSources: turn.healthSources,
           toolMessageId: turn.toolMessageId,
+          coldResume: turn.coldResume,
           ...(turn.question && turn.toolMessageId && !turn.interrupted
             ? { retainedTurnId: turn.toolMessageId }
             : {}),
@@ -91,7 +104,11 @@ export function createConversationSessionRestoreState(input: {
           (!turn.answer && turn.completion === 'partial')
             ? {
                 incomplete: true,
-                activity: t('ragConversation.progressInterrupted'),
+                interruptionReason:
+                  turn.interruptionReason ?? 'process-interrupted',
+                activity: turn.interruptionReason
+                  ? t(`conversationInterruption.${turn.interruptionReason}`)
+                  : t('ragConversation.progressInterrupted'),
               }
             : {}),
           ...(turn.completion ? { completion: turn.completion } : {}),
@@ -100,6 +117,8 @@ export function createConversationSessionRestoreState(input: {
       input.update(id, {
         messages,
         taskCards,
+        steeringInstructions,
+        steeringAvailable: false,
         dailyReport: reports.at(-1),
         // Only validated retained turns can restore an exploration intent.
         entryIntent: turns.some(turn => turn.entryIntent === 'possibilities')

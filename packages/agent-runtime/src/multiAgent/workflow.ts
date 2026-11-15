@@ -1,3 +1,4 @@
+import { invokeWithPause } from './workflowPause';
 import type { JsonValue } from '@orot/model-runtime';
 import { normalizeThreadId } from '../checkpointConfig';
 import type {
@@ -27,13 +28,11 @@ import {
   withCheckpointThreadLock,
   withDeferredEvidenceAdapters,
 } from './workflowCheckpoint';
-
 interface WorkflowRunControl {
   signal: AbortSignal;
   timedOut: () => boolean;
   dispose: () => void;
 }
-
 // Optional deadlines cover queueing and graph work; explicit null keeps caller cancellation only.
 function createWorkflowRunControl(
   callerSignal: AbortSignal | undefined,
@@ -90,7 +89,6 @@ export function runMultiAgentWorkflow<TResult = JsonValue>(
   }
   return runMultiAgentWorkflowUnlocked(options, invocation);
 }
-
 async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
   options: MultiAgentWorkflowOptions<TResult>,
   invocation: MultiAgentInvocation,
@@ -121,7 +119,6 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
       checkpoint: nonResumableCheckpoint(initialState(options)),
     };
   }
-
   const resumed = invocation.resumeFrom ? resumeState(invocation.resumeFrom, options) : undefined;
   if (invocation.resumeFrom && !resumed) {
     return {
@@ -137,14 +134,17 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
     createWorkflowRunControl(invocation.signal, options.execution.budget.timeoutMs);
   const context: RuntimeContext<TResult> = {
     options,
+    pause: invocation.pause,
     signal: runControl.signal,
     timedOut: runControl.timedOut,
     onProgress: invocation.onProgress,
     onToolEvent: invocation.onToolEvent,
     onTaskStreamEvent: invocation.onTaskStreamEvent,
+    onApprovalWait: invocation.onApprovalWait,
     beforeTaskStream: invocation.beforeTaskStream,
     beforeTaskInputChange: invocation.beforeTaskInputChange,
     currentEvidence: options.initialEvidence,
+    researchInput: options.initialSearch?.input,
   };
   try {
     const graph = makeGraph(context, {
@@ -221,12 +221,19 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
 
     if (runControl.signal.aborted) canceled(context);
     else {
+      if (persistedGraphResume) context.pause?.boundary(start, context);
       return await invokeWorkflowGraph(
         (input) =>
-          graph.invoke(input, {
-            ...invocation.config,
-            durability: 'sync',
-          }),
+          invokeWithPause(
+            () =>
+              graph.invoke(input, {
+                ...invocation.config,
+                durability: 'sync',
+                control: context.pause?.control,
+              }),
+            () => graph.getState(invocation.config!),
+            context,
+          ),
         persistedGraphResume ? null : start,
         start,
         context,

@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { ModelSelectionSummary } from '../../layout/ModelSelectionSummary';
 import { View } from 'react-native';
 import { AppButton as Button } from '../../layout/AppButton';
@@ -37,8 +38,8 @@ export function ProviderSelectionFooter({
   const hasDock = useNavigationRouteActions([
     {
       id: 'confirm-provider',
-      label: '이 AI 사용',
-      accessibilityLabel: '이 AI 사용',
+      label: t('modelSettings.confirmLanguage'),
+      accessibilityLabel: t('modelSettings.confirmLanguage'),
       testID: 'provider-selection-confirm',
       systemImageName: 'checkmark',
       disabled: saving || !option || resolution?.ok !== true,
@@ -96,7 +97,9 @@ export function ProviderSelectionFooter({
             }
             testID="provider-selection-current"
           />
-          {!hasDock ? <Button disabled title="이 AI 사용" /> : null}
+          {!hasDock ? (
+            <Button disabled title={t('modelSettings.confirmLanguage')} />
+          ) : null}
         </>
       )}
     </View>

@@ -1,14 +1,14 @@
+import { conversationComposerDisabled } from './conversationComposerDisabled';
 import { useConversationPresentationSnapshot } from './useConversationPresentationSnapshot';
 import { ConversationBackButton } from './ConversationBackButton';
 import { AppText as Text } from '../layout/AppText';
 import { useMemo } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
-import { ConversationComposer } from './ConversationComposer';
+import { ConversationSteeringComposer } from './ConversationSteeringComposer';
 import { ConversationWorkspace } from './ConversationWorkspace';
 import { ConversationHeaderTitle } from './ConversationHeaderTitle';
 import { styles } from './ConversationScreen.styles';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
-import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
 import { ConversationEntryAction } from './ConversationEntryAction';
 import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
@@ -21,7 +21,7 @@ import {
   conversationEntryForSession,
 } from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
-import { sendConversationMessage } from './conversationVisitDispatch';
+import { dispatchConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { useConversationScreenControls } from './useConversationScreenControls';
 import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
@@ -45,6 +45,7 @@ export function ConversationScreen({
   onSend,
   onOpenSource,
   resolveToolSource,
+  resolveColdToolSource,
   prepareVisitQuestions,
   renderVisitQuestions,
   discoverManualVisits,
@@ -64,7 +65,7 @@ export function ConversationScreen({
   const session = snapshot.sessions.find(
     item => item.id === snapshot.activeId,
   )!;
-  const { id, draft, messages, pendingMessage, busy, error } = session;
+  const { id, messages, pendingMessage, busy, error } = session;
   const { photo, focus, ...composer } = useConversationScreenControls(
     store,
     id,
@@ -100,11 +101,8 @@ export function ConversationScreen({
     0,
     onNavigationStateChange,
   );
-  const sendMessage = () => {
-    sendConversationMessage(store, id, onSend, prepareVisitQuestions).catch(
-      () => {},
-    );
-  };
+  const coldResumeBusy = busy || session.restoring || session.retryingSave;
+
   const header = (
     <View style={styles.header}>
       {!navigationRouteKey && <ConversationBackButton onBack={onBack} />}
@@ -148,103 +146,103 @@ export function ConversationScreen({
       testID="rag-conversation-screen"
     >
       <ConversationPhotoConsentSurface controller={store.photoConsent} />
-      <AdaptiveColumns
-        routeKey={navigationRouteKey}
-        testID="rag-conversation-columns"
-        primary={
-          <View
-            style={styles.content}
-            testID="conversation-content-viewport"
-            onLayout={event =>
-              setContentHeight(event.nativeEvent.layout.height)
-            }
-          >
-            <ConversationWorkspace
-              session={session}
-              sourceActions={sourceActions}
-            >
-              <ConversationHistory
-                replyFocus={focus}
-                sessionId={id}
-                requestSessionId={id}
-                requestActivity={session.requestActivity}
-                compact={composerLayout.compact}
-                header={header}
-                messages={messages}
-                pendingMessage={pendingMessage}
-                error={error}
-                unsavedCount={session.unsavedCount}
-                retryingSave={session.retryingSave || busy}
-                onRetrySave={() => {
-                  store.retrySave(id);
-                }}
-                restoreFailed={session.restoreFailed}
-                onRetryRestore={() => {
-                  store.retryRestore(id);
-                }}
-                onOpenSource={onOpenSource}
-                resolveToolSource={resolveToolSource}
-                renderVisitQuestions={
-                  renderVisitQuestions
-                    ? message =>
-                        renderVisitQuestions(message, id, store, () =>
-                          regenerateVisitQuestions({
-                            store,
-                            sessionId: id,
-                            message,
-                            prepare: prepareVisitQuestions,
-                          }),
-                        )
-                    : undefined
-                }
-                toolSourceSessionId={toolSourceSessionId}
-                onLinkError={onLinkError}
-                beforeMessages={
-                  <ManualVisitTargetPanels
-                    store={store}
-                    sessionId={id}
-                    durableSessionId={toolSourceSessionId}
-                    discover={discoverManualVisits}
-                    messages={messages}
-                    session={session}
-                    compact={composerLayout.compact}
-                    disclaimer={copy.disclaimer}
-                  />
-                }
-                footer={
-                  <ConversationTasks.ConversationStoredTaskCards
-                    store={store}
-                    session={session}
-                    onOpenSource={onOpenSource}
-                    routeKey={navigationRouteKey}
-                    durableSessionId={toolSourceSessionId}
-                    renderStoredReportTask={renderStoredReportTask}
-                  />
-                }
-              />
-            </ConversationWorkspace>
-            <ConversationComposer
+      <View
+        style={styles.content}
+        testID="conversation-content-viewport"
+        onLayout={event => setContentHeight(event.nativeEvent.layout.height)}
+      >
+        <ConversationWorkspace
+          session={session}
+          sourceActions={sourceActions}
+          routeKey={navigationRouteKey}
+          composer={
+            <ConversationSteeringComposer
               {...composer}
               photo={photo}
-              value={draft}
-              busy={busy}
+              session={session}
+              store={store}
               cancelling={session.requestActivity?.stage === 'cancelling'}
-              disabled={
-                session.restoring ||
-                session.restoreFailed ||
-                session.quarantined ||
-                session.retryingSave ||
-                (session.restoreAfterRetry && Boolean(session.unsavedCount))
-              }
+              disabled={conversationComposerDisabled(session)}
               compact={composerLayout.compact}
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
-              onSend={sendMessage}
+              onSend={() =>
+                dispatchConversationMessage(
+                  store,
+                  id,
+                  onSend,
+                  prepareVisitQuestions,
+                )
+              }
               onCancel={() => store.cancel(id)}
             />
-          </View>
-        }
-      />
+          }
+        >
+          <ConversationHistory
+            replyFocus={focus}
+            coldResumeBusy={coldResumeBusy}
+            onContinueCold={requestId =>
+              store.resumeCold(id, requestId).catch(() => {})
+            }
+            sessionId={id}
+            requestSessionId={id}
+            requestActivity={session.requestActivity}
+            compact={composerLayout.compact}
+            header={header}
+            messages={messages}
+            pendingMessage={pendingMessage}
+            error={error}
+            unsavedCount={session.unsavedCount}
+            retryingSave={session.retryingSave || busy}
+            onRetrySave={() => {
+              store.retrySave(id);
+            }}
+            restoreFailed={session.restoreFailed}
+            onRetryRestore={() => {
+              store.retryRestore(id);
+            }}
+            onOpenSource={onOpenSource}
+            {...{ resolveToolSource, resolveColdToolSource }}
+            renderVisitQuestions={
+              renderVisitQuestions
+                ? message =>
+                    renderVisitQuestions(message, id, store, () =>
+                      regenerateVisitQuestions({
+                        store,
+                        sessionId: id,
+                        message,
+                        prepare: prepareVisitQuestions,
+                      }),
+                    )
+                : undefined
+            }
+            toolSourceSessionId={toolSourceSessionId}
+            onLinkError={onLinkError}
+            beforeMessages={
+              <ManualVisitTargetPanels
+                store={store}
+                sessionId={id}
+                durableSessionId={toolSourceSessionId}
+                discover={discoverManualVisits}
+                messages={messages}
+                session={session}
+                compact={composerLayout.compact}
+                disclaimer={copy.disclaimer}
+              />
+            }
+            footer={
+              <ConversationTasks.ConversationStoredTaskCards
+                store={store}
+                session={session}
+                onOpenSource={onOpenSource}
+                routeKey={navigationRouteKey}
+                durableSessionId={toolSourceSessionId}
+                renderStoredReportTask={renderStoredReportTask}
+              />
+            }
+          />
+        </ConversationWorkspace>
+      </View>
     </KeyboardAvoidingView>
   );
 }

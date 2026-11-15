@@ -45,8 +45,8 @@ export interface GroundedRagAnswer {
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
   taskVersion: initialReply.initialResponseTaskVersion,
-  initialToolResponse: initialReply.validateInitialConversationResponse,
-  reviewInitialToolResponse: true,
+  // Contextual preview remains unprojected pending model-quality validation.
+  // No preview opt-in means no extra review call or unchecked first-answer exposure.
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
   allowPagedGeneratedArtifacts: true,

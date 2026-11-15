@@ -118,14 +118,15 @@ test('request start publishes loading without fabricated AI copy and rejects bus
   ).toBeNull();
 });
 
-test('requests actual contextual prose with semantic review instead of canned copy', () => {
+test('keeps contextual preview inactive until model-quality evidence is available', () => {
   const { ragConversationTask } = require('../task');
   const [message] = ragConversationTask.createMessages({
     request: 'synthetic',
     evidence: { items: [], coverage: [], conflicts: [] },
   });
   expect(JSON.parse(message.content).initialResponseText).toBeUndefined();
-  expect(ragConversationTask.reviewInitialToolResponse).toBe(true);
+  expect(ragConversationTask.initialToolResponse).toBeUndefined();
+  expect(ragConversationTask.reviewInitialToolResponse).toBeUndefined();
   expect(ragConversationTask.taskVersion).toBe('8');
   expect(
     validateInitialConversationResponse('어떤 흐름인지 함께 살펴볼게요.'),

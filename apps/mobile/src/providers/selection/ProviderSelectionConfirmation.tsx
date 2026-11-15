@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { AppText as Text } from '../../layout/AppText';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppButton as Button } from '../../layout/AppButton';
@@ -28,7 +29,8 @@ export default function ProviderSelectionConfirmation({
   const local = option.privacyBoundary === 'on-device';
   const summary = (
     <Text style={styles.summaryText}>
-      선택한 AI · <Text style={styles.name}>{option.displayName}</Text>
+      {t('modelSettings.selectedAiPrefix')}{' '}
+      <Text style={styles.name}>{option.displayName}</Text>
     </Text>
   );
   return (
@@ -68,7 +70,7 @@ export default function ProviderSelectionConfirmation({
           disabled={saving || !canConfirm}
           onPress={onConfirm}
           testID="provider-selection-confirm"
-          title="이 AI 사용"
+          title={t('modelSettings.confirmLanguage')}
         />
       ) : null}
     </View>
