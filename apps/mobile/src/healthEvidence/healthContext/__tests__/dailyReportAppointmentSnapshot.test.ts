@@ -43,17 +43,20 @@ test('confirmed appointments participate in bounded report sources and correctio
       { sourceIds: ['past'] },
     );
     expect(scoped.values.map(x => x.record.id)).toEqual(['past']);
-    expect(initial.values.map(x => x.record.id)).toEqual(['past', 'future']);
+    // Bounded snapshots now prefer the most recent eligible appointment.
+    expect(initial.values.map(x => x.record.id)).toEqual(['future', 'past']);
     expect(
       createDailyReportContext(calendar.context, initial.sourceSnapshot, {
         providerId: 'synthetic',
         modelId: 'synthetic',
       }).sourceSnapshot.records,
     ).toHaveLength(2);
-    expect(initial.lineage[0]).toMatchObject({
-      kind: 'appointment',
-      localId: 'past',
-    });
+    expect(initial.lineage.find(item => item.localId === 'past')).toMatchObject(
+      {
+        kind: 'appointment',
+        localId: 'past',
+      },
+    );
     expect(initial.sourceSnapshot.coverage).toContainEqual(
       expect.objectContaining({
         source: 'appointment',

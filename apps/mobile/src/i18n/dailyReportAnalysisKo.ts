@@ -1,5 +1,8 @@
 /** Section titles describe evidence roles, never an overall normal/abnormal verdict. */
 export const dailyReportAnalysisKo = {
+  'dailyReport.analysis.sampling':
+    '자료 종류별 용량 한도 안에서 최근 기록과 지표·출처별 표본을 골랐고, 매우 높은 혈압은 먼저 포함했어요. 빠진 기록이 있으며 하루 전체의 분포나 정상 여부를 뜻하지 않아요.',
+
   'dailyReport.analysis.model': '기록을 종합한 AI 해석과 실천 안내',
   'dailyReport.analysis.generated': 'AI 해석: {text}',
   'dailyReport.analysis.modelCaution':

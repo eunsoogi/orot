@@ -8,7 +8,7 @@ export const dailyReportActionsKo = {
   'dailyReport.baseline.limit':
     '최근 28일 중 접근 가능한 관측일만 비교했어요. 미측정일·다른 기기·단위·누적량은 채워 넣지 않았어요.',
   'dailyReport.baseline.comparison':
-    '{concept}: 오늘 측정값의 중앙값 {today} {unit}은 최근 28일 중 관측된 {days}일의 일별 중앙값을 다시 요약한 {baseline} {unit}과 비교해 {direction}. 같은 지표·단위·출처만 비교했으며 개인 정상 범위나 질병 진단 기준은 아니에요. 측정 조건을 확인하고 변화가 이어지거나 불편한 증상이 있으면 기록을 의료진과 함께 검토하세요. 현재의 주의 수치·응급 안내가 이 비교보다 우선해요.',
+    '{concept}: 이번 보고서에 포함된 오늘 측정값의 중앙값 {today} {unit}은 최근 28일 중 관측된 {days}일의 일별 중앙값을 다시 요약한 {baseline} {unit}과 비교해 {direction}. 안전 우선 선별·조회 범위의 영향을 받는 관측 자료 비교이며 하루 전체의 분포나 변화량은 아니에요. 같은 지표·단위·출처만 비교했으며 개인 정상 범위나 질병 진단 기준은 아니에요. 측정 조건을 확인하고 변화가 이어지거나 불편한 증상이 있으면 기록을 의료진과 함께 검토하세요. 현재의 주의 수치·응급 안내가 이 비교보다 우선해요.',
   'dailyReport.systemCalendar.unavailable':
     '시스템 캘린더 접근 또는 이번 보고서 범위를 확인하지 못했어요. 일정이 없다는 뜻은 아니에요.',
   'dailyReport.systemCalendar.sourceTitle':
