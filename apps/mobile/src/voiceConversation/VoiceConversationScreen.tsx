@@ -76,7 +76,9 @@ export function VoiceConversationScreen({
         scrollContentStyle={styles.content}
       >
         <AppText maxFontSizeMultiplier={2} style={styles.note}>
-          {manualFinish ? '기기 음성 대화' : '실시간 음성 대화'}
+          {manualFinish
+            ? t('realtimeDisplay.deviceTitle')
+            : t('realtimeDisplay.realtimeTitle')}
         </AppText>
         <View style={styles.center}>
           <View style={styles.identity}>{identity}</View>

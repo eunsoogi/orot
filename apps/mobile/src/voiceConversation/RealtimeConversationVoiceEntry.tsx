@@ -107,7 +107,7 @@ export function RealtimeConversationVoiceEntry(
   });
   const status = available
     ? state.phase === 'listening'
-      ? '듣고 있어요. 잠시 멈추면 Realtime 모델이 답해요.'
+      ? t('realtimeDisplay.listening')
       : voiceStatus(props.photoPending, false, false, state)
     : t('ragConversation.voice.error');
   const onStatusChange = props.onStatusChange;
@@ -123,12 +123,12 @@ export function RealtimeConversationVoiceEntry(
     const consentingOwner = owner.current;
     const revision = consentRevision.current;
     Alert.alert(
-      'OpenAI Realtime로 통화할까요?',
-      `${model}이 통화 음성과 대화 내용을 OpenAI API에서 처리하며 별도 API 사용료가 발생할 수 있어요. 건강정보 등 민감한 내용을 말하면 그 내용도 전송됩니다. 기존 기록·사진·이전 채팅은 보내지 않아요. 통화 내용은 이 화면에만 임시 표시하고 검증된 의료기록으로 저장하지 않아요. 종료하거나 마이크를 끌 때까지 답변 중에도 계속 들어요.`,
+      t('realtimeDisplay.consentTitle'),
+      t('realtimeDisplay.consentBody', { model }),
       [
-        { text: '취소', style: 'cancel' },
+        { text: t('realtimeDisplay.cancel'), style: 'cancel' },
         {
-          text: '동의하고 시작',
+          text: t('realtimeDisplay.agree'),
           onPress: () => {
             if (
               !current() ||
@@ -153,12 +153,13 @@ export function RealtimeConversationVoiceEntry(
         visible={visible}
         phase={state.phase}
         status={status}
-        pipeline={`OpenAI ${props.model} API 음성 처리 (기존 기록 미전송)`}
+        pipeline={t('realtimeDisplay.pipeline', { model: props.model })}
         transcript={
           <>
             {transcripts.map(item => (
               <AppText key={`${item.role}:${item.itemId}`}>
-                {item.role === 'user' ? '나' : 'AI'}: {item.text}
+                {item.role === 'user' ? t('realtimeDisplay.user') : 'AI'}:{' '}
+                {item.text}
               </AppText>
             ))}
           </>
