@@ -107,11 +107,12 @@ test('preserves complete export bytes including literal placeholders in source t
   );
 });
 
-test('preserves the existing missing timestamp representation', () => {
+test('preserves the existing missing timestamp representation for malformed legacy input', () => {
   expect(
     formatTranscriptExport({
       ...view([original]),
-      source: { ...source, effectiveAt: undefined },
+      // Simulate malformed legacy data without weakening the production SourceRecord type.
+      source: { ...source, effectiveAt: undefined } as unknown as SourceRecord,
     }),
   ).toContain('녹음 시작 시각: undefined');
 });
