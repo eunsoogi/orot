@@ -8,12 +8,30 @@ import type {
 /** Progress, scoped continuation and local retention callbacks for a conversation turn. */
 export type RagConversationObserver = Pick<
   MultiAgentInvocation,
+  | 'onApprovalWait'
   | 'onProgress'
   | 'onTaskStreamEvent'
   | 'onToolEvent'
   | 'beforeTaskStream'
   | 'beforeTaskInputChange'
 > & {
+  readonly onSteeringReady?: (
+    store: NonNullable<
+      import('@orot/agent-runtime').WorkflowOperationJournal['steering']
+    >,
+  ) => void;
+  readonly openWorkflowContinuation?: (
+    identity: import('../storage/conversationWorkflowContinuationIdentity').ConversationContinuationIdentity,
+    reconstruct?: import('../storage/conversationContinuationCapture').ConversationColdReconstruction,
+  ) => Promise<
+    import('./conversationWorkflowContinuation').ConversationWorkflowContinuation['persisted']
+  >;
+  /** Owned pause/continue controls never submit a new question. */
+  readonly onWorkflowPauseController?: (requestPause: () => void) => void;
+  readonly onWorkflowPaused?: (
+    reason?: 'expired' | 'decision-required',
+  ) => Promise<boolean>;
+  readonly onExecutionState?: (state: 'working' | 'local' | 'decision') => void;
   /** Confirm an ambiguous model-selected user statement locally; never authorizes provider transfer. */
   readonly confirmHistorySave?: (
     text: string,

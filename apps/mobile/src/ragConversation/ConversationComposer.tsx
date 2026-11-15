@@ -32,7 +32,9 @@ export function ConversationComposer({
   trailingAction,
   status = '',
   cancelling = false,
+  steeringControls,
 }: {
+  readonly steeringControls?: ReactNode;
   readonly value: string;
   readonly busy: boolean;
   /** Acknowledgment only: the request owner retains commit/settlement ownership. */
@@ -175,6 +177,7 @@ export function ConversationComposer({
           {status}
         </Text>
       ) : null}
+      {steeringControls}
       <View style={styles.composer}>
         {photo ? (
           <ConversationPhotoAttachment {...photo} disabled={disabled || busy}>

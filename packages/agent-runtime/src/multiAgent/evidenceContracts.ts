@@ -163,7 +163,15 @@ export interface EvidenceSearchRuntime {
   readonly store?: BaseStore;
 }
 
+export type PreparedEvidenceSearch =
+  | { readonly status: 'authorized'; dispatch(): Promise<EvidenceSearchOutcome> }
+  | { readonly status: 'consent_required' };
+
 export interface EvidenceSearchTool {
+  prepareAuthorizedSearch?(
+    request: EvidenceSearchRequest,
+    runtime?: EvidenceSearchRuntime,
+  ): Promise<PreparedEvidenceSearch>;
   readonly id: string;
   readonly sourceKind: EvidenceSourceKind;
   readonly execution: 'local_read_only' | 'external_read_only';

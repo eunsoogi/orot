@@ -1,3 +1,4 @@
+import { followConversationLatest } from './followConversationLatest';
 import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
 import { transcriptMessageVisible } from './conversationWorkspaceLayout';
 import { useFloatingIdentityInset } from '../assistantAppearance/FloatingIdentityInset';
@@ -20,6 +21,8 @@ export function ConversationHistory({
   pendingMessage,
   error,
   onOpenSource,
+  onContinueCold,
+  coldResumeBusy,
   onLinkError,
   bottomInset = 0,
   header,
@@ -34,6 +37,7 @@ export function ConversationHistory({
   sessionId,
   toolSourceSessionId,
   resolveToolSource,
+  resolveColdToolSource,
   renderVisitQuestions,
   replyFocus,
   requestSessionId,
@@ -70,27 +74,18 @@ export function ConversationHistory({
     followsBottom,
     expectedOffset,
   );
-  const followLatest = () => {
-    if (!visibleMessages.length || !followsBottom.current || replyFocus) return;
-    if (compact) {
-      if (messageEnd.current !== null && viewportHeight.current > 0) {
-        expectedOffset.current = Math.max(
-          0,
-          messageEnd.current - viewportHeight.current,
-        );
-        historyView.current?.scrollTo({
-          y: expectedOffset.current,
-          animated: false,
-        });
-      }
-    } else {
-      const geometry = scrollGeometry.current;
-      expectedOffset.current = geometry
-        ? Math.max(0, geometry.contentHeight - geometry.height)
-        : null;
-      historyView.current?.scrollToEnd({ animated: false });
-    }
-  };
+  const followLatest = () =>
+    followConversationLatest({
+      hasMessages: visibleMessages.length > 0,
+      compact,
+      focused: Boolean(replyFocus),
+      followsBottom,
+      messageEnd,
+      viewportHeight,
+      expectedOffset,
+      historyView,
+      scrollGeometry,
+    });
 
   return (
     <ScrollView
@@ -210,6 +205,9 @@ export function ConversationHistory({
             >
               <ConversationMessage
                 message={message}
+                onContinueCold={onContinueCold}
+                coldResumeBusy={coldResumeBusy}
+                resolveColdToolSource={resolveColdToolSource}
                 showToolActivity={false}
                 onOpenSource={onOpenSource}
                 onLinkError={onLinkError}

@@ -32,7 +32,11 @@ export function createReplyDestination(ports: Ports) {
       return 'invalid';
     }
     const target = value as Record<string, unknown>;
-    const { requestId, sessionId, messageId, sessionVersion } = target;
+    const { requestId, sessionId, messageId, sessionVersion, purpose } = target;
+    if (purpose !== undefined && purpose !== 'interruption') {
+      await ports.discardInvalid?.();
+      return 'invalid';
+    }
     if (
       typeof requestId !== 'string' ||
       !requestId ||
@@ -58,6 +62,7 @@ export function createReplyDestination(ports: Ports) {
         sessionId,
         messageId,
         sessionVersion: version,
+        ...(purpose === 'interruption' ? { purpose } : {}),
       });
       if (result === 'deferred') return result;
       // A stale owner cannot turn a late cancellation or missing result into an acknowledgement.

@@ -47,7 +47,15 @@ test('retains follow-up lineage and restores the exploration intent from SQLite'
       ) => {
         requests.push(options);
         if (invalidateSession) {
-          expect(invocation?.onTaskStreamEvent).toBeUndefined();
+          // The initial-receipt filter must still suppress draft health prose before deletion.
+          expect(invocation?.onTaskStreamEvent).toEqual(expect.any(Function));
+          invocation?.onTaskStreamEvent?.({
+            type: 'text_delta',
+            text: 'unvalidated retained exploration text',
+          });
+          expect(JSON.stringify(sessions.getSnapshot())).not.toContain(
+            'unvalidated retained exploration text',
+          );
           const version = await storage.hideSession(invalidateSession);
           if (version !== null)
             await storage.finalizeHiddenSession(invalidateSession, version);

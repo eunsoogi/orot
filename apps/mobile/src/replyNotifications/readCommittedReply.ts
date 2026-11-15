@@ -1,3 +1,4 @@
+import { readInterruptedReply } from './readInterruptedReply';
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import type { ReplyIdentity } from './replyNotificationCoordinator';
 
@@ -6,6 +7,8 @@ export async function readCommittedReply(
   storage: ReturnType<typeof createConversationArtifactStorage>,
   identity: ReplyIdentity,
 ) {
+  if (identity.purpose === 'interruption')
+    return readInterruptedReply(storage, identity);
   const current = (await storage.listCompletionIdentities()).some(
     value =>
       value.requestId === identity.requestId &&

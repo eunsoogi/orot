@@ -1,3 +1,4 @@
+import { availableEvidenceTools } from './initialEvidenceSearch';
 import type { JsonObject } from '@orot/model-runtime';
 import { isSourceAllowed } from './evidence';
 import { callModelWithEvidenceFreshness } from './modelCallFreshness';
@@ -50,7 +51,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       evidence: context.currentEvidence,
       research: responderResearchAvailability(
         options.execution,
-        options.tools,
+        availableEvidenceTools(options, state),
         state,
         false,
         options.provider.capabilities.toolCalling,
@@ -77,7 +78,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       canceled(context);
       return completeState();
     }
-    if (!state.evidenceNeed || options.tools.length === 0) {
+    if (!state.evidenceNeed || availableEvidenceTools(options, state).length === 0) {
       stop(context, 'No bounded evidence search is available for this request.');
       return completeState();
     }
@@ -115,14 +116,16 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       options.request,
       state.evidenceNeed,
       options.execution.allowedScope,
-      options.tools.filter((tool) => canReserveToolModelCall(tool, state)),
+      availableEvidenceTools(options, state).filter((tool) => canReserveToolModelCall(tool, state)),
       state.budget,
     );
     const outcome = await callModelWithEvidenceFreshness(context, request);
     if (!outcome) return completeState();
     if (outcome.status !== 'response') return finishModelFailure(context, outcome);
     const plan = await decodeResearchPlan(outcome.response, state.budget.maxPayloadBytes);
-    const tool = plan && options.tools.find((candidate) => candidate.id === plan.toolId);
+    const tool =
+      plan &&
+      availableEvidenceTools(options, state).find((candidate) => candidate.id === plan.toolId);
     let input: JsonObject | undefined;
     try {
       input = tool && plan ? tool.parseInput(plan.input) : undefined;
@@ -168,7 +171,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       evidence: context.currentEvidence,
       research: responderResearchAvailability(
         options.execution,
-        options.tools,
+        availableEvidenceTools(options, state),
         state,
         true,
         options.provider.capabilities.toolCalling,

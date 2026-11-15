@@ -59,6 +59,7 @@ export interface AiFeatureFlowScreenProps {
   readonly onOpenDiseaseHypotheses: () => void;
   readonly onOpenRagConversation: () => void;
   readonly onOpenDailyReport?: () => void;
+  readonly onOpenHealthSummary?: () => void;
   readonly onOpenDailyReportChat?: (
     target: NonNullable<ConversationEntryContext['dailyReport']>,
   ) => void;
@@ -66,7 +67,10 @@ export interface AiFeatureFlowScreenProps {
   readonly onOpenExternalEvidence: () => void;
   readonly onOpenConversationHistory?: () => void;
   readonly onOpenProviderSelection: () => void;
-  readonly onOpenSource: (reference: EvidenceReference) => void;
+  readonly onOpenSource: (
+    reference: EvidenceReference,
+    owner?: import('./coldConversationSourceResolvers').ColdConversationSourceOwner,
+  ) => void;
   readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
   readonly confirmConsent: (
     request: OutboundProcessingRequest,

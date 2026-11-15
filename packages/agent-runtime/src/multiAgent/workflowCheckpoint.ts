@@ -102,6 +102,10 @@ export function withDeferredEvidenceAdapters<TResult>(
     ...options,
     revalidateEvidence: (references, signal) =>
       deferEvidenceAdapter(signal, () => options.revalidateEvidence(references, signal)),
+    restoreEvidenceBatches: options.restoreEvidenceBatches
+      ? (references, signal) =>
+          deferEvidenceAdapter(signal, () => options.restoreEvidenceBatches!(references, signal))
+      : undefined,
     restoreEvidence: options.restoreEvidence
       ? (references, signal) =>
           deferEvidenceAdapter(signal, () => options.restoreEvidence!(references, signal))
@@ -211,6 +215,7 @@ export async function invokeWorkflowGraph<TResult>(
   }
 
   const finalState = result.value;
+  if (context.pausedCheckpoint) return { status: 'paused', checkpoint: context.pausedCheckpoint };
   if (!context.outcome)
     stop(context, 'The workflow ended without a validated result.', 'invalid_output');
   const finalOutcome = context.outcome!;

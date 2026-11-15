@@ -3,7 +3,10 @@ export async function restoreInterruptedPreviews<
   T extends { toolMessageId?: string },
 >(
   turns: readonly T[],
-  interrupted: readonly { id: string }[],
+  interrupted: readonly {
+    id: string;
+    interruptionReason?: import('../../ragConversation/conversationExecutionLease').ConversationRecoveryReason;
+  }[],
   storage: {
     readInterruptedPreview(lease: {
       requestId: string;
@@ -36,6 +39,9 @@ export async function restoreInterruptedPreviews<
     return {
       ...turn,
       interrupted: true as const,
+      ...(request.interruptionReason
+        ? { interruptionReason: request.interruptionReason }
+        : {}),
       ...(preview ? { preview } : {}),
     };
   });

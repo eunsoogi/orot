@@ -1,3 +1,7 @@
+import {
+  protectedExternalReferences,
+  type ProtectedExternalReferences,
+} from './protectedExternalReferences';
 import type {
   EvidenceBatch,
   EvidenceReference,
@@ -35,6 +39,7 @@ export function createPublicWebEvidence(input: {
   readonly selected: ReturnType<typeof requireSelectedAi>;
   readonly consent: ExecutionConsentPort;
   readonly now?: () => string;
+  readonly restoredReferences?: ProtectedExternalReferences;
   readonly beforeDispatch?: (
     query: string,
     signal: AbortSignal,
@@ -43,8 +48,10 @@ export function createPublicWebEvidence(input: {
   const { selected, consent } = input;
   const search = selected.provider.searchPublicWeb;
   if (!selected.remoteProcessing || !search) return undefined;
-  const references = new Set<string>();
-  let sequence = 0;
+  const references = protectedExternalReferences(
+    'public-web',
+    input.restoredReferences,
+  );
   const tool: EvidenceSearchTool = {
     id: 'public-web-search',
     sourceKind: 'external_medical',
@@ -54,7 +61,11 @@ export function createPublicWebEvidence(input: {
       'Search the general public web beyond Europe PMC using app-owned public topics. Output is a cited model explanation, not original source passages.',
     inputSchema: publicWebQuerySchema,
     parseInput: parsePublicTopics,
-    async search(request) {
+    async search(request, runtime) {
+      const prepared = await tool.prepareAuthorizedSearch!(request, runtime);
+      return prepared.status === 'authorized' ? prepared.dispatch() : prepared;
+    },
+    async prepareAuthorizedSearch(request) {
       const parsed = parsePublicTopics(request.input)
         ? parsePublicWebQuery(request.input)
         : undefined;
@@ -65,6 +76,7 @@ export function createPublicWebEvidence(input: {
           request.allowedScope.sourceIds.includes(PUBLIC_WEB_SOURCE_ID));
       if (
         !parsed ||
+        !references.hasSequenceCapacity() ||
         !scoped() ||
         !Number.isSafeInteger(request.resultLimit) ||
         request.resultLimit < 1
@@ -72,6 +84,16 @@ export function createPublicWebEvidence(input: {
         throw new Error('The public web query or source scope was invalid.');
       }
       const query = parsed.query as string;
+      const identity = () =>
+        stableJson({
+          run: request.operationRunId,
+          key: request.operationKey,
+          input: request.input,
+          scope: request.allowedScope,
+          limit: request.resultLimit,
+          bytes: request.maxPayloadBytes,
+        });
+      const original = identity();
       if (request.signal.aborted) return { status: 'consent_required' };
       const approved = await consent.authorize({
         operationRunId: request.operationRunId,
@@ -89,86 +111,105 @@ export function createPublicWebEvidence(input: {
       });
       if (approved !== 'authorized' || request.signal.aborted || !scoped())
         return { status: 'consent_required' };
-      if (
-        input.beforeDispatch &&
-        !(await input.beforeDispatch(query, request.signal))
-      )
-        throw new Error('A local research input changed before public search.');
-      if (request.signal.aborted)
-        throw new Error('Public web search was cancelled.');
-      const result = await boundedPublicWebRequest(
-        search.bind(selected.provider),
-        query,
-        request.signal,
-      );
-      if (request.signal.aborted)
-        throw new Error('Public web search was cancelled.');
-      if (
-        !result.ok &&
-        result.error.code === 'provider_unavailable' &&
-        result.error.connectivity === 'offline'
-      )
-        throw new PublicSearchOfflineError();
-      if (!result.ok)
-        throw new Error(
-          'The selected model could not return cited public web evidence.',
-        );
-      const response = result.value;
-      if (
-        !response.text.trim() ||
-        !Number.isSafeInteger(response.callCount) ||
-        response.callCount < 1 ||
-        response.callCount > 2
-      ) {
-        throw new Error('The public web response was invalid.');
-      }
-      const at = (input.now ?? (() => new Date().toISOString()))();
-      const item = {
-        sourceKind: 'external_medical' as const,
-        sourceId: PUBLIC_WEB_SOURCE_ID,
-        sourceRevision: `retrieved:${at}`,
-        evidenceId: `web-result-${++sequence}`,
-        evidenceRevision: `snapshot:${at}:${sequence}`,
-        effectiveTime: null,
-        reviewState: 'unknown' as const,
-        locator: {
-          kind: 'public_web_search',
-          provider: 'ChatGPT web search',
-          title: '공개 웹검색',
-          retrievedAt: at,
-          revisionBasis: 'retrieval_snapshot',
-          sources: response.citations.map(source => ({
-            title: source.title,
-            url: source.url,
-          })),
+      let consumed = false;
+      return {
+        status: 'authorized',
+        async dispatch() {
+          if (
+            consumed ||
+            request.signal.aborted ||
+            identity() !== original ||
+            !scoped()
+          )
+            throw new Error('Prepared public search is no longer available.');
+          consumed = true;
+          if (
+            input.beforeDispatch &&
+            !(await input.beforeDispatch(query, request.signal))
+          )
+            throw new Error(
+              'A local research input changed before public search.',
+            );
+          if (request.signal.aborted)
+            throw new Error('Public web search was cancelled.');
+          // Reserve before external dispatch so an exhausted restored counter cannot repeat an identity.
+          const sequence = references.nextSequence();
+          const result = await boundedPublicWebRequest(
+            search.bind(selected.provider),
+            query,
+            request.signal,
+          );
+          if (request.signal.aborted)
+            throw new Error('Public web search was cancelled.');
+          if (
+            !result.ok &&
+            result.error.code === 'provider_unavailable' &&
+            result.error.connectivity === 'offline'
+          )
+            throw new PublicSearchOfflineError();
+          if (!result.ok)
+            throw new Error(
+              'The selected model could not return cited public web evidence.',
+            );
+          const response = result.value;
+          if (
+            !response.text.trim() ||
+            !Number.isSafeInteger(response.callCount) ||
+            response.callCount < 1 ||
+            response.callCount > 2
+          ) {
+            throw new Error('The public web response was invalid.');
+          }
+          const at = (input.now ?? (() => new Date().toISOString()))();
+          const item = {
+            sourceKind: 'external_medical' as const,
+            sourceId: PUBLIC_WEB_SOURCE_ID,
+            sourceRevision: `retrieved:${at}`,
+            evidenceId: `web-result-${sequence}`,
+            evidenceRevision: `snapshot:${at}:${sequence}`,
+            effectiveTime: null,
+            reviewState: 'unknown' as const,
+            locator: {
+              kind: 'public_web_search',
+              provider: 'ChatGPT web search',
+              title: '공개 웹검색',
+              retrievedAt: at,
+              revisionBasis: 'retrieval_snapshot',
+              sources: response.citations.map(source => ({
+                title: source.title,
+                url: source.url,
+              })),
+            },
+            content: `Provenance: model-generated explanation from a bounded public web search, not original source passages or personal findings.\n${response.text}`,
+          };
+          if (!publicWebSources(item))
+            throw new Error('Public web source links were invalid.');
+          const batch: EvidenceBatch = {
+            items: [item],
+            conflicts: [],
+            coverage: [
+              {
+                sourceKind: 'external_medical',
+                searchedSourceIds: [PUBLIC_WEB_SOURCE_ID],
+                gaps: [],
+                truncated: true,
+                resultLimit: 1,
+                returnedCount: 1,
+              },
+            ],
+          };
+          if (jsonByteLength(batch) > request.maxPayloadBytes)
+            throw new Error('Public web evidence exceeded the payload bound.');
+          references.add(referenceOnly(item));
+          return batch;
         },
-        content: `Provenance: model-generated explanation from a bounded public web search, not original source passages or personal findings.\n${response.text}`,
       };
-      if (!publicWebSources(item))
-        throw new Error('Public web source links were invalid.');
-      const batch: EvidenceBatch = {
-        items: [item],
-        conflicts: [],
-        coverage: [
-          {
-            sourceKind: 'external_medical',
-            searchedSourceIds: [PUBLIC_WEB_SOURCE_ID],
-            gaps: [],
-            truncated: true,
-            resultLimit: 1,
-            returnedCount: 1,
-          },
-        ],
-      };
-      if (jsonByteLength(batch) > request.maxPayloadBytes)
-        throw new Error('Public web evidence exceeded the payload bound.');
-      references.add(stableJson(referenceOnly(item)));
-      return batch;
     },
   };
   return {
     tool,
+    snapshot: references.snapshot,
     validates: (reference: EvidenceReference) =>
-      references.has(stableJson(reference)),
+      references.validates(reference),
   };
 }

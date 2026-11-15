@@ -26,7 +26,6 @@ import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPr
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
 import { requestDailyReportFromConversation } from './dailyReportConversationEntry';
 import { useConversationVisibility } from './useConversationVisibility';
-
 export interface AiFeatureFlowProps {
   readonly isEntryCurrent?: () => boolean;
   readonly navigation: NavigationRouteActions<AiFeatureRouteName>;
@@ -131,11 +130,8 @@ export function AiFeatureFlow({
               renderVisitQuestions={renderVisitQuestions}
               onRouteStateChange={reportVisitQuestionsRouteState}
               onBack={requestBack}
-              onOpenVisitQuestions={
-                renderVisitQuestions
-                  ? () => pushFeatureRoute('visit-questions')
-                  : undefined
-              }
+              onOpenHealthSummary={() => pushFeatureRoute('health-summary')}
+              onOpenVisitQuestions={() => pushFeatureRoute('visit-questions')}
               onOpenDiseaseHypotheses={() =>
                 pushFeatureRoute('disease-hypotheses')
               }
@@ -217,6 +213,9 @@ export function AiFeatureFlow({
               onNavigationStateChange={reportFeatureNavigationState}
               onBack={requestBack}
               readSource={services.readSource}
+              readColdSource={services.readColdConversationSource}
+              sourceOwner={shared.sourceOwner}
+              key={JSON.stringify([sourceReference, shared.sourceOwner])}
               reference={sourceReference}
             />
           </View>
