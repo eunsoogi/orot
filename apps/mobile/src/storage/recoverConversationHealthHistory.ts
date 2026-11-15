@@ -1,3 +1,4 @@
+import { readHistoryOperationReceipt } from './conversationHistoryOperationReceipt';
 import {
   toManualHistoryEvidence,
   type ManualHistoryEvidence,
@@ -33,6 +34,7 @@ export async function recoverConversationHealthHistoryResult(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('conversation_history_receipts', 'conversation_action_receipts')",
     );
     if (tables.rows.length !== 2) return;
+    const additionalId = await readHistoryOperationReceipt(tx, input);
     const rows = await tx.execute(
       'SELECT h.entry_id, h.source_request_id, a.identity_json FROM conversation_history_receipts h ' +
         'JOIN conversation_action_receipts a ON a.request_id = h.request_id AND a.session_id = h.session_id ' +
@@ -48,12 +50,13 @@ export async function recoverConversationHealthHistoryResult(
       sourceId,
     ]);
     if (
-      !row ||
-      row.identity_json !== identity ||
-      row.source_request_id !== sourceId
+      !additionalId &&
+      (!row ||
+        row.identity_json !== identity ||
+        row.source_request_id !== sourceId)
     )
       return;
-    const id = String(row.entry_id);
+    const id = additionalId ?? String(row.entry_id);
     const entry = await readManualHistoryEntry(tx, id);
     if (!entry || entry.details !== details) return;
     const corrections = await tx.execute(
