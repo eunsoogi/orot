@@ -66,7 +66,7 @@ test('runs the production Apple adapter with a synthetic native stream and SQLit
     expect(result.status).toBe('completed');
     if (result.status !== 'completed')
       throw new Error('Synthetic Apple stream failed');
-    expect(result.report.observations[0]?.text).toContain('72 count/min');
+    expect(result.report.observations[0]?.text).toContain('72 회/분');
   } finally {
     connection.close();
   }
