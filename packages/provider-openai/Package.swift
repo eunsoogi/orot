@@ -20,6 +20,7 @@ let package = Package(
             dependencies: [
                 .product(name: "JWTKit", package: "jwt-kit"),
             ],
+            resources: [.process("Resources")],
         ),
         .testTarget(
             name: "OpenAIProviderTests",

@@ -137,7 +137,7 @@ public final class LoopbackCallbackServer: @unchecked Sendable {
             if request.range(of: headerEnd) != nil {
                 handleRequest(request, on: connection)
             } else if request.count >= 8192 || complete || error != nil {
-                respond(400, body: "콜백 요청이 올바르지 않습니다. Orot 앱으로 돌아가세요.", on: connection)
+                respond(400, body: ProviderDisplayCopy.text("callbackInvalid"), on: connection)
             } else {
                 receiveBytes(on: connection, buffered: request)
             }
@@ -148,7 +148,7 @@ public final class LoopbackCallbackServer: @unchecked Sendable {
         guard let port, let text = String(data: data, encoding: .utf8),
               let firstLine = text.components(separatedBy: "\r\n").first
         else {
-            respond(400, body: "콜백 요청이 올바르지 않습니다. Orot 앱으로 돌아가세요.", on: connection)
+            respond(400, body: ProviderDisplayCopy.text("callbackInvalid"), on: connection)
             return
         }
         let fields = firstLine.split(separator: " ", omittingEmptySubsequences: true)
@@ -158,13 +158,13 @@ public final class LoopbackCallbackServer: @unchecked Sendable {
               ),
               callbackURL.path == ChatGPTOAuthConstants.callbackPath
         else {
-            respond(404, body: "로그인 응답을 찾지 못했습니다. Orot 앱으로 돌아가세요.", on: connection)
+            respond(404, body: ProviderDisplayCopy.text("callbackMissing"), on: connection)
             return
         }
         let status = returnsToApp ? 302 : 200
         respond(
             status,
-            body: "로그인 응답을 받았습니다. Orot 앱으로 돌아가세요.",
+            body: ProviderDisplayCopy.text("callbackReceived"),
             on: connection,
             redirectTo: returnsToApp ? ChatGPTOAuthConstants.appReturnURL : nil,
         ) { [weak self] in
@@ -214,6 +214,6 @@ private enum LoopbackError: LocalizedError {
     case listenerUnavailable
 
     var errorDescription: String? {
-        "127.0.0.1 콜백 리스너를 시작하지 못했습니다."
+        ProviderDisplayCopy.text("listenerUnavailable")
     }
 }

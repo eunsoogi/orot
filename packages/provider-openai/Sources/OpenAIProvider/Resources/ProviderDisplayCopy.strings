@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>invalidHostIdentifier</key>
+	<string>기기 식별자 형식이 올바르지 않습니다.</string>
+	<key>invalidAuthorizationRequest</key>
+	<string>로그인 요청을 준비하지 못했습니다.</string>
+	<key>invalidRedirectURI</key>
+	<string>127.0.0.1 콜백 주소가 올바르지 않습니다.</string>
+	<key>discoveryUnavailable</key>
+	<string>ChatGPT 로그인 설정을 불러오지 못했습니다.</string>
+	<key>invalidCallback</key>
+	<string>로그인 콜백 응답이 올바르지 않습니다.</string>
+	<key>stateMismatch</key>
+	<string>로그인 응답이 현재 로그인 시도와 일치하지 않습니다.</string>
+	<key>registrationIncomplete</key>
+	<string>ChatGPT 동적 클라이언트 등록이 완료되지 않았습니다.</string>
+	<key>registrationMismatch</key>
+	<string>등록된 클라이언트가 요청과 일치하지 않습니다.</string>
+	<key>accessDenied</key>
+	<string>ChatGPT 권한 요청이 거부되었습니다.</string>
+	<key>providerFailure</key>
+	<string>ChatGPT 로그인을 완료하지 못했습니다.</string>
+	<key>invalidTokenResponse</key>
+	<string>ChatGPT가 올바르지 않은 토큰 응답을 보냈습니다.</string>
+	<key>invalidIdentity</key>
+	<string>ChatGPT ID 토큰 검증에 실패했습니다.</string>
+	<key>accountIdentityMismatch</key>
+	<string>선택한 ChatGPT 계정과 로그인 응답이 일치하지 않습니다.</string>
+	<key>planPermissionMissing</key>
+	<string>chatgpt.tokens.use.direct 권한이 허용되지 않았습니다.</string>
+	<key>modelCatalogUnavailable</key>
+	<string>/v1/models 목록을 가져오지 못했습니다.</string>
+	<key>credentialStoreUnavailable</key>
+	<string>보호된 로그인 정보를 저장하거나 불러오지 못했습니다.</string>
+	<key>accountNotFound</key>
+	<string>저장된 ChatGPT 계정을 찾지 못했습니다.</string>
+	<key>reauthorizationRequired</key>
+	<string>ChatGPT 로그인이 만료되었습니다. 다시 로그인해 주세요.</string>
+	<key>sessionSigningOut</key>
+	<string>ChatGPT 로그아웃이 진행 중입니다.</string>
+	<key>modelReauthentication</key>
+	<string>선택한 ChatGPT 계정을 다시 인증해야 합니다.</string>
+	<key>modelLimit</key>
+	<string>ChatGPT 요금제 사용 한도에 도달했습니다.</string>
+	<key>modelHTTPFailure</key>
+	<string>/v1/models 요청이 HTTP {status} 상태로 실패했습니다.</string>
+	<key>callbackInvalid</key>
+	<string>콜백 요청이 올바르지 않습니다. Orot 앱으로 돌아가세요.</string>
+	<key>callbackMissing</key>
+	<string>로그인 응답을 찾지 못했습니다. Orot 앱으로 돌아가세요.</string>
+	<key>callbackReceived</key>
+	<string>로그인 응답을 받았습니다. Orot 앱으로 돌아가세요.</string>
+	<key>listenerUnavailable</key>
+	<string>127.0.0.1 콜백 리스너를 시작하지 못했습니다.</string>
+</dict>
+</plist>

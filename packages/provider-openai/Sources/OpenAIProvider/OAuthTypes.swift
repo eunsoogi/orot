@@ -24,33 +24,34 @@ public enum ChatGPTOAuthError: Error, Equatable, LocalizedError, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidHostIdentifier: return "기기 식별자 형식이 올바르지 않습니다."
-        case .invalidAuthorizationRequest: return "로그인 요청을 준비하지 못했습니다."
-        case .invalidRedirectURI: return "127.0.0.1 콜백 주소가 올바르지 않습니다."
-        case .discoveryUnavailable: return "ChatGPT 로그인 설정을 불러오지 못했습니다."
-        case .invalidCallback: return "로그인 콜백 응답이 올바르지 않습니다."
-        case .stateMismatch: return "로그인 응답이 현재 로그인 시도와 일치하지 않습니다."
-        case .registrationIncomplete: return "ChatGPT 동적 클라이언트 등록이 완료되지 않았습니다."
-        case .registrationMismatch: return "등록된 클라이언트가 요청과 일치하지 않습니다."
-        case .accessDenied: return "ChatGPT 권한 요청이 거부되었습니다."
-        case .providerFailure: return "ChatGPT 로그인을 완료하지 못했습니다."
-        case .invalidTokenResponse: return "ChatGPT가 올바르지 않은 토큰 응답을 보냈습니다."
-        case .invalidIdentity: return "ChatGPT ID 토큰 검증에 실패했습니다."
-        case .accountIdentityMismatch: return "선택한 ChatGPT 계정과 로그인 응답이 일치하지 않습니다."
-        case .planPermissionMissing: return "chatgpt.tokens.use.direct 권한이 허용되지 않았습니다."
-        case .modelCatalogUnavailable: return "/v1/models 목록을 가져오지 못했습니다."
+        case .invalidHostIdentifier: return ProviderDisplayCopy.text("invalidHostIdentifier")
+        case .invalidAuthorizationRequest: return ProviderDisplayCopy.text("invalidAuthorizationRequest")
+        case .invalidRedirectURI: return ProviderDisplayCopy.text("invalidRedirectURI")
+        case .discoveryUnavailable: return ProviderDisplayCopy.text("discoveryUnavailable")
+        case .invalidCallback: return ProviderDisplayCopy.text("invalidCallback")
+        case .stateMismatch: return ProviderDisplayCopy.text("stateMismatch")
+        case .registrationIncomplete: return ProviderDisplayCopy.text("registrationIncomplete")
+        case .registrationMismatch: return ProviderDisplayCopy.text("registrationMismatch")
+        case .accessDenied: return ProviderDisplayCopy.text("accessDenied")
+        case .providerFailure: return ProviderDisplayCopy.text("providerFailure")
+        case .invalidTokenResponse: return ProviderDisplayCopy.text("invalidTokenResponse")
+        case .invalidIdentity: return ProviderDisplayCopy.text("invalidIdentity")
+        case .accountIdentityMismatch: return ProviderDisplayCopy.text("accountIdentityMismatch")
+        case .planPermissionMissing: return ProviderDisplayCopy.text("planPermissionMissing")
+        case .modelCatalogUnavailable: return ProviderDisplayCopy.text("modelCatalogUnavailable")
         case let .modelCatalogHTTPFailure(diagnostics):
             if diagnostics.httpStatusCode == 401 {
-                return "선택한 ChatGPT 계정을 다시 인증해야 합니다."
+                return ProviderDisplayCopy.text("modelReauthentication")
             }
             if diagnostics.httpStatusCode == 429 {
-                return "ChatGPT 요금제 사용 한도에 도달했습니다."
+                return ProviderDisplayCopy.text("modelLimit")
             }
-            return "/v1/models 요청이 HTTP \(diagnostics.httpStatusCode ?? 0) 상태로 실패했습니다."
-        case .credentialStoreUnavailable: return "보호된 로그인 정보를 저장하거나 불러오지 못했습니다."
-        case .accountNotFound: return "저장된 ChatGPT 계정을 찾지 못했습니다."
-        case .reauthorizationRequired: return "ChatGPT 로그인이 만료되었습니다. 다시 로그인해 주세요."
-        case .sessionSigningOut: return "ChatGPT 로그아웃이 진행 중입니다."
+            return ProviderDisplayCopy.text("modelHTTPFailure")
+                .replacingOccurrences(of: "{status}", with: String(diagnostics.httpStatusCode ?? 0))
+        case .credentialStoreUnavailable: return ProviderDisplayCopy.text("credentialStoreUnavailable")
+        case .accountNotFound: return ProviderDisplayCopy.text("accountNotFound")
+        case .reauthorizationRequired: return ProviderDisplayCopy.text("reauthorizationRequired")
+        case .sessionSigningOut: return ProviderDisplayCopy.text("sessionSigningOut")
         }
     }
 }
