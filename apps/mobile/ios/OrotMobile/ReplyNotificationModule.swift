@@ -48,7 +48,7 @@ final class ReplyNotificationModule: NSObject {
               let message = value["messageId"] as? String, request == "interruption:\(message)",
               let version = value["sessionVersion"] as? Int, let lease = value["lease"] as? [String: Int],
               let ticket = lease["global"], let sessionTicket = lease["session"] else { resolve("suppressed"); return }
-        Task { await resolve(ReplyNotificationService.shared.submit(requestId: request, sessionId: session, messageId: message, version: version, preview: "작업 중단", ticket: ticket, sessionTicket: sessionTicket, interrupted: true)) }
+        Task { await resolve(ReplyNotificationService.shared.submit(requestId: request, sessionId: session, messageId: message, version: version, preview: NSLocalizedString("replyNotification.interruptedPreview", tableName: "ReminderCopy", comment: "Generic interrupted preview without private content"), ticket: ticket, sessionTicket: sessionTicket, interrupted: true)) }
     }
 
     @objc(removeSession:resolver:rejecter:)

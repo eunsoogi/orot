@@ -14,5 +14,7 @@
 	<key>replyNotification.interrupted</key>
 	<string
     >AI 작업이 중단됐어요. 앱에서 남은 내용을 확인하고 이어서 진행해 주세요.</string>
+	<key>replyNotification.interruptedPreview</key>
+	<string>작업 중단</string>
 </dict>
 </plist>
