@@ -1,3 +1,4 @@
+import { realtimeDisplayKo } from './realtimeDisplayKo';
 import { visitQuestionDisplayKo } from './visitQuestionDisplayKo';
 import { summaryEvidenceKo } from './summaryEvidenceKo';
 import { summaryHistoryKo } from './summaryHistoryKo';
@@ -13,6 +14,7 @@ import { encounterReviewCopyKo } from './encounterReviewCopyKo';
 
 /** Incremental UI-copy migrations share one catalog entry point. */
 export const localizedCopyKo = {
+  ...realtimeDisplayKo,
   ...visitQuestionDisplayKo,
   ...summaryEvidenceKo,
   ...summaryHistoryKo,
