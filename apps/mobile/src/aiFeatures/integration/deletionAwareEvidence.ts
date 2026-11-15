@@ -1,3 +1,4 @@
+import type { DeletionRevalidationStorage } from '../../memory/deletionAwareEvidenceRevalidation';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { withLocalDeletionAwareRevalidation } from '../../memory/deletionAwareEvidenceRevalidation';
 import { compoundEvidenceReferences } from './compoundEvidenceReferences';
@@ -41,6 +42,7 @@ export function revalidateWithLocalDeletionGuard(
   signal: AbortSignal,
   revalidate: EvidenceRevalidator,
   resolveIdentity?: LocalEvidenceIdentityResolver,
+  storage?: DeletionRevalidationStorage,
 ): Promise<boolean> {
   if (
     !resolveIdentity &&
@@ -122,7 +124,8 @@ export function revalidateWithLocalDeletionGuard(
     return Promise.resolve(false);
 
   // Keep model-facing aliases unchanged for the registry's revision validation.
-  return withLocalDeletionAwareRevalidation((_identities, currentSignal) =>
-    revalidate(references, currentSignal),
+  return withLocalDeletionAwareRevalidation(
+    (_identities, currentSignal) => revalidate(references, currentSignal),
+    storage,
   )(guardIdentities as EvidenceReference[], signal);
 }

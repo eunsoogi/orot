@@ -1,3 +1,4 @@
+import type { DeletionRevalidationStorage } from '../../memory/deletionAwareEvidenceRevalidation';
 import type {
   MultiAgentWorkflowOptions,
   ExternalMedicalQueryConsentPort,
@@ -11,6 +12,7 @@ import type { createDailyReportSourceResolver } from './dailyReportSources';
 
 /** Ports needed to execute one conversation with local and public evidence. */
 export interface RagConversationServiceDependencies {
+  readonly deletionRevalidationStorage?: DeletionRevalidationStorage;
   readonly consent: MultiAgentWorkflowOptions['consent'];
   readonly queryConsent: ExternalMedicalQueryConsentPort;
   readonly externalEvidence: EuropePmcMedicalEvidenceService;

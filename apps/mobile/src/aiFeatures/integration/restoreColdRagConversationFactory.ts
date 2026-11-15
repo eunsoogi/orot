@@ -196,6 +196,7 @@ export async function restoreColdRagConversationFactory(input: {
         current,
         execution.revalidateEvidence,
         reference => registry.resolve(reference),
+        deps.deletionRevalidationStorage,
       ),
   };
   await validateColdRagBatches(
@@ -208,9 +209,7 @@ export async function restoreColdRagConversationFactory(input: {
     continuationInput(options) !== d.exactInput ||
     !(await historyIsCurrent())
   )
-    throw new Error(
-      'Cold invocation no longer matches current application policy.',
-    );
+    throw new Error('Cold invocation no longer matches current policy.');
   return {
     options,
     submittedInput: photo?.submitted,
