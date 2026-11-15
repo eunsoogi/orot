@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import {
   useAiFeatureScreenNavigationState,
   type AiFeatureNavigationStateChange,
@@ -47,13 +48,12 @@ export function ConversationSummaryHistory({
           contentContainerStyle={[styles.content, inset]}
         >
           <AppText accessibilityRole="header" style={styles.heading}>
-            대화 기록
+            {t('summaryHistory.conversationTitle')}
           </AppText>
-          <AppText accessibilityRole="header">저장된 요약과 가능성</AppText>
-          <AppText>
-            대화 연결 정보 없이 저장된 요약이에요. 원래 기록과 근거를 그대로
-            보여드려요.
+          <AppText accessibilityRole="header">
+            {t('summaryHistory.savedPossibilities')}
           </AppText>
+          <AppText>{t('summaryHistory.legacyDescription')}</AppText>
           {history ? (
             <SavedSummaryHistory
               history={history}
@@ -64,8 +64,7 @@ export function ConversationSummaryHistory({
             />
           ) : (
             <AppText accessibilityRole="alert">
-              저장된 요약을 불러올 수 없어요. 이전 화면으로 돌아가 다시 열어
-              주세요.
+              {t('summaryHistory.unavailable')}
             </AppText>
           )}
           {selected && history ? (
@@ -73,7 +72,9 @@ export function ConversationSummaryHistory({
               testID="conversation-saved-summary-detail"
               style={styles.detail}
             >
-              <AppText accessibilityRole="header">선택한 저장 기록</AppText>
+              <AppText accessibilityRole="header">
+                {t('summaryHistory.selected')}
+              </AppText>
               <DiseaseHypothesesScreenOutput
                 state={{ status: 'result', value: selected }}
                 preview=""
