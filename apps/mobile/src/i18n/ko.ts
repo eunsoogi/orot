@@ -1,4 +1,4 @@
-import { modelSettingsKo } from './modelSettings';
+import { localizedCopyKo } from './localizedCopy';
 import { commonObservationsKo } from './healthkitCommonObservations';
 import { bloodPressureKo } from './healthkitBloodPressure';
 import { healthkitUnifiedImportKo } from './healthkitUnifiedImport';
@@ -19,7 +19,7 @@ import { chartsKo } from './charts';
 import { assistantAppearanceKo } from './assistantAppearance';
 import { replyNotificationKo } from './replyNotificationKo';
 export const ko = {
-  ...modelSettingsKo,
+  ...localizedCopyKo,
   ...assistantAppearanceKo,
   ...chartsKo,
   ...replyNotificationKo,
