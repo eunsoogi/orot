@@ -1,3 +1,6 @@
+import { useRef, useEffect } from 'react';
+import { useConversationSessions } from '../ragConversation/ConversationSessionsContext';
+import { requestConversationReport } from '../ragConversation/requestConversationReport';
 import { useIsFocused } from '@react-navigation/native';
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
@@ -52,6 +55,16 @@ export function AppRouteContent({
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
   const active = useIsFocused();
+  const conversationStore = useConversationSessions();
+  const reportEntryCurrent = useRef(false);
+  reportEntryCurrent.current =
+    active && activeTab === 'overview' && actions.route.name === 'root';
+  useEffect(
+    () => () => {
+      reportEntryCurrent.current = false;
+    },
+    [],
+  );
   const reminderRuntime = useAppointmentReminderRuntime();
   function openOverviewPreparation() {
     if (!nextAppointment || !reminderRuntime) return;
@@ -83,7 +96,13 @@ export function AppRouteContent({
             onOpenRecords={() => selectTab('records')}
             loadSavedVisitQuestions={loadSavedVisitQuestions}
             onOpenRecording={openRecording}
-            onOpenDailyReport={() => actions.push('daily-report')}
+            onOpenDailyReport={() => {
+              requestConversationReport(
+                conversationStore,
+                () => reportEntryCurrent.current,
+                () => selectTab('conversation'),
+              );
+            }}
           />
         );
       case 'records':
