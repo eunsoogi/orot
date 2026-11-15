@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import type { ArtifactContinuation } from '../../ragConversation/artifactContinuation';
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import {
@@ -60,10 +61,10 @@ export async function continueArtifactSearch(input: {
       status: 'answer',
       citations: [],
       answer: next
-        ? '아직 일치하는 결과가 없어요. 더 이전 결과를 계속 찾아볼 수 있어요.'
+        ? t('ragConversation.conversation.continuationNoResults')
         : gaps
-          ? '일부 저장 결과를 읽지 못해 검색을 완료하지 못했어요.'
-          : '이전 결과를 끝까지 찾았지만 더 일치하는 내용은 없어요.',
+          ? t('ragConversation.conversation.continuationIncomplete')
+          : t('ragConversation.conversation.continuationExhausted'),
     };
   }
   const available = await confirmHistoricalArtifacts(
@@ -82,7 +83,11 @@ export async function continueArtifactSearch(input: {
     citations: result.items.map(referenceOnly),
     answer:
       HISTORICAL_ARTIFACT_MESSAGE +
-      (gaps ? '\n\n일부 저장 결과는 읽지 못했어요.' : '') +
-      (next ? '\n\n더 이전 결과를 계속 찾아볼 수 있어요.' : ''),
+      (gaps
+        ? '\n\n' + t('ragConversation.conversation.continuationGaps')
+        : '') +
+      (next
+        ? '\n\n' + t('ragConversation.conversation.continuationAvailable')
+        : ''),
   };
 }
