@@ -1,3 +1,4 @@
+import { useRecordsDetailVisibility } from './RecordsHubSection';
 import { NavigationInlineTransition } from '../navigation/NavigationInlineTransition';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -66,6 +67,7 @@ export function RecordsRoute({
     sourceMessage,
     stagedDocument,
   } = useMedicalDocumentImport(documentImportService);
+  useRecordsDetailVisibility(sourceDetail !== null);
   const routeScrollPosition = useNavigationRouteScrollPosition();
   useEffect(() => {
     // Source invalidation closes detail before file cleanup settles.
