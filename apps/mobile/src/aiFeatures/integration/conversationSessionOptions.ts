@@ -1,4 +1,4 @@
-import { restoreInterruptedPreviews } from './restoreInterruptedPreviews';
+import { restoreColdConversationPreviews } from './restoreColdConversationEligibility';
 import { createConversationSessionRetention } from '../../ragConversation/conversationSessionRetention';
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
 import { createConversationDurableIdentity } from '../../ragConversation/conversationDurableIdentity';
@@ -7,7 +7,7 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { captureConversationToolSources } from './captureConversationToolSources';
 import { restoreConversationToolTurns } from './restoreConversationToolTurns';
 import { fingerprint } from './evidenceUtils';
-import { bindLiveConversationToolSources } from './bindLiveConversationToolSources';
+import { conversationStoredToolObserver } from './conversationStoredToolObserver';
 import { restoreConversationVisitQuestions } from './restoreConversationVisitQuestions';
 import type { AiFeatureServices } from './featureServices';
 import { healthSourceDependencies } from '../../ragConversation/conversationHealthDeletion';
@@ -22,6 +22,7 @@ import type { requireSelectedAi } from './provider';
 
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
+  readonly coldResume?: ConversationSessionOptions['coldResume'];
   readonly loadLocalData: () => Promise<AiFeatureLocalData>;
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly selectedAi?: () => Promise<ReturnType<typeof requireSelectedAi>>;
@@ -36,6 +37,7 @@ export function createConversationSessionOptions(input: {
   const photo = conversationPhotoPreparationOption(input);
   return {
     ...photo,
+    coldResume: input.coldResume,
     execution: conversationExecutionNative() ?? undefined,
     listSessions: async cursor => (await openStorage()).listSessions(cursor),
     restoreTasks: async (sessionId, signal) => {
@@ -55,18 +57,11 @@ export function createConversationSessionOptions(input: {
           await openStorage(),
           sessionId,
         ),
-      onToolEventStored: async (event, sessionId) => {
-        if (
-          event.sources.some(source => source.sourceKind === 'external_medical')
-        )
-          await bindLiveConversationToolSources(
-            event,
-            sessionId,
-            await openStorage(),
-            await input.loadLocalData(),
-            input.registry,
-          );
-      },
+      onToolEventStored: conversationStoredToolObserver(
+        openStorage,
+        input.loadLocalData,
+        input.registry,
+      ),
     }),
     restoreSession: async (sessionId, signal) => {
       const data = await input.loadLocalData();
@@ -238,7 +233,9 @@ export function createConversationSessionOptions(input: {
         ...toolTurns.map(turn => [turn.messageId, turn.createdAt] as const),
         ...interrupted.map(request => [request.id, request.createdAt] as const),
       ]);
-      return restoreInterruptedPreviews(
+      return restoreColdConversationPreviews(
+        input.coldResume,
+        signal,
         orderRestoredConversationTurns(restored, times),
         interrupted,
         storage,

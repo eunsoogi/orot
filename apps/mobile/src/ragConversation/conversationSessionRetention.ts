@@ -1,17 +1,12 @@
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
-import { createConversationTurnRetention } from './conversationTurnRetention';
+import {
+  conversationSessionTurns,
+  type ConversationRetentionSlot as Slot,
+} from './conversationSessionTurns';
 import type { ConversationToolEvent } from '@orot/agent-runtime';
 import type { ToolLineage } from '../storage/conversationToolLineage';
 
 type Storage = ReturnType<typeof createConversationArtifactStorage>;
-type Turn = ReturnType<typeof createConversationTurnRetention>;
-type Slot = {
-  id: string;
-  version: number;
-  hidden: boolean;
-  ready?: Promise<void>;
-  turns: Set<Turn>;
-};
 
 /** Own durable session identities and invalidate turn leases across removal and undo. */
 export function createConversationSessionRetention(input: {
@@ -192,20 +187,11 @@ export function createConversationSessionRetention(input: {
         signal,
       });
     },
-    async beginTurn(id: number, signal: AbortSignal) {
-      const { storage, current, version } = await ensureSession(id, signal);
-      const turn = createConversationTurnRetention({
-        storage,
-        sessionId: current.id,
-        turnId: input.createId(),
-        createdAt: input.now(),
-        sessionVersion: version,
-        captureToolSources: input.captureToolSources,
-        onToolEventStored: input.onToolEventStored,
-      });
-      current.turns.add(turn);
-      return turn;
-    },
+    ...conversationSessionTurns({
+      ...input,
+      ensureSession,
+      slot: id => slots.get(id),
+    }),
     async hide(id: number) {
       const slot = slots.get(id);
       if (!slot) return null;

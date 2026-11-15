@@ -1,3 +1,4 @@
+import { ConversationInterruptionRecovery } from './ConversationInterruptionRecovery';
 import {
   ConversationRetainedActions,
   type RetainedHealthActions,
@@ -159,6 +160,7 @@ export function ConversationStoredTaskCards({
 }) {
   return (
     <>
+      <ConversationInterruptionRecovery store={store} session={session} />
       {session.taskCards
         ?.filter(card => card.id !== routeKey)
         .map(card => {

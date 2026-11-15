@@ -1,7 +1,8 @@
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { LanguageModelStreamEvent } from '@orot/model-runtime';
 import { referencesFromBatch } from './evidence';
-import { callModel, observeUntilAbort } from './modelCall';
+import { observeUntilAbort } from './modelCall';
+import { journaledModelCall } from './journaledModelCall';
 import type { ModelCallOutcome } from './modelCall';
 import type { ExecutionConsentPort } from './contracts';
 import { canceled, stop } from './runtimeContext';
@@ -50,7 +51,7 @@ export async function callModelWithEvidenceFreshness<TResult>(
     event: Extract<LanguageModelStreamEvent, { type: 'text_delta' | 'text_snapshot' }>,
   ) => void,
 ): Promise<ModelCallOutcome | undefined> {
-  const { options, signal } = context;
+  const { options } = context;
   const ensureCurrent = (providerStop: 'not_started' | 'underlying_call_unconfirmed') =>
     revalidateCurrentEvidence(context, providerStop);
 
@@ -67,91 +68,86 @@ export async function callModelWithEvidenceFreshness<TResult>(
     },
   };
 
-  if (!options.execution.remoteProcessing && !(await ensureCurrent('not_started'))) return;
-  if (options.photoInput) {
-    let before: string;
-    try {
-      before = JSON.stringify({ request, evidence: context.currentEvidence });
-    } catch {
-      return { status: 'consent_required' };
-    }
-    const approval = await observeUntilAbort(
-      deferEvidenceAdapter(signal, () =>
-        options.photoInput!.consent.authorize({
-          operationRunId: options.execution.operationRunId,
-          providerId: options.execution.providerId,
-          modelId: options.execution.modelId,
-          recipient: options.execution.recipient,
-          remoteProcessing: options.execution.remoteProcessing,
-          ...(options.execution.consentScope
-            ? { consentScope: options.execution.consentScope }
-            : {}),
-          allowedScope: options.execution.allowedScope,
-          payload: request,
-          signal,
-        }),
-      ),
-      signal,
-    );
-    if (approval.kind === 'cancelled') {
-      canceled(context, 'not_started');
-      return;
-    }
-    if (approval.kind !== 'value' || approval.value !== 'authorized')
-      return { status: 'consent_required' };
-    try {
-      if (before !== JSON.stringify({ request, evidence: context.currentEvidence }))
+  const prepare = async (signal: AbortSignal): Promise<ModelCallOutcome | 'ready' | undefined> => {
+    if (!options.execution.remoteProcessing && !(await ensureCurrent('not_started'))) return;
+    if (options.photoInput) {
+      let before: string;
+      try {
+        before = JSON.stringify({ request, evidence: context.currentEvidence });
+      } catch {
         return { status: 'consent_required' };
-    } catch {
-      return { status: 'consent_required' };
-    }
-    if (!(await ensureCurrent('not_started'))) return;
-  }
-  // A source fence is required even when private preview text is deliberately withheld.
-  if (context.beforeTaskStream) {
-    let snapshot: string;
-    try {
-      snapshot = JSON.stringify({ request, evidence: context.currentEvidence });
-    } catch {
-      stop(context, 'The conversation stream could not be prepared safely.', 'stale_evidence');
-      return;
-    }
-    // A failed local fence must stop before provider dispatch; never expose the callback error.
-    const prepared = await observeUntilAbort(
-      deferEvidenceAdapter(signal, () =>
-        context.beforeTaskStream!({ request, evidence: context.currentEvidence }, signal),
-      ),
-      signal,
-    );
-    if (prepared.kind === 'cancelled') canceled(context, 'not_started');
-    else if (prepared.kind !== 'value')
-      stop(context, 'The conversation stream could not be prepared safely.', 'stale_evidence');
-    if (prepared.kind !== 'value') return;
-    try {
-      if (snapshot !== JSON.stringify({ request, evidence: context.currentEvidence })) {
-        stop(
-          context,
-          'The conversation stream input changed during preparation.',
-          'stale_evidence',
-        );
+      }
+      const approval = await observeUntilAbort(
+        deferEvidenceAdapter(signal, () =>
+          options.photoInput!.consent.authorize({
+            operationRunId: options.execution.operationRunId,
+            providerId: options.execution.providerId,
+            modelId: options.execution.modelId,
+            recipient: options.execution.recipient,
+            remoteProcessing: options.execution.remoteProcessing,
+            ...(options.execution.consentScope
+              ? { consentScope: options.execution.consentScope }
+              : {}),
+            allowedScope: options.execution.allowedScope,
+            payload: request,
+            signal,
+          }),
+        ),
+        signal,
+      );
+      if (approval.kind === 'cancelled') {
+        canceled(context, 'not_started');
         return;
       }
-    } catch {
-      stop(context, 'The conversation stream could not be prepared safely.', 'stale_evidence');
-      return;
+      if (approval.kind !== 'value' || approval.value !== 'authorized')
+        return { status: 'consent_required' };
+      try {
+        if (before !== JSON.stringify({ request, evidence: context.currentEvidence }))
+          return { status: 'consent_required' };
+      } catch {
+        return { status: 'consent_required' };
+      }
+      if (!(await ensureCurrent('not_started'))) return;
     }
-    if (!(await ensureCurrent('not_started'))) return;
-  }
-  const outcome = await callModel(
-    options.provider,
-    request,
-    options.execution,
-    consent,
-    signal,
-    undefined,
-    onTextEvent,
-  );
-  if (staleAfterConsent || context.outcome) return;
+    // A source fence is required even when private preview text is deliberately withheld.
+    if (context.beforeTaskStream) {
+      let snapshot: string;
+      try {
+        snapshot = JSON.stringify({ request, evidence: context.currentEvidence });
+      } catch {
+        stop(context, 'The conversation stream could not be prepared safely.', 'stale_evidence');
+        return;
+      }
+      // A failed local fence must stop before provider dispatch; never expose the callback error.
+      const prepared = await observeUntilAbort(
+        deferEvidenceAdapter(signal, () =>
+          context.beforeTaskStream!({ request, evidence: context.currentEvidence }, signal),
+        ),
+        signal,
+      );
+      if (prepared.kind === 'cancelled') canceled(context, 'not_started');
+      else if (prepared.kind !== 'value')
+        stop(context, 'The conversation stream could not be prepared safely.', 'stale_evidence');
+      if (prepared.kind !== 'value') return;
+      try {
+        if (snapshot !== JSON.stringify({ request, evidence: context.currentEvidence })) {
+          stop(
+            context,
+            'The conversation stream input changed during preparation.',
+            'stale_evidence',
+          );
+          return;
+        }
+      } catch {
+        stop(context, 'The conversation stream could not be prepared safely.', 'stale_evidence');
+        return;
+      }
+      if (!(await ensureCurrent('not_started'))) return;
+    }
+    return 'ready';
+  };
+  const outcome = await journaledModelCall(context, request, consent, onTextEvent, prepare);
+  if (staleAfterConsent || context.outcome || !outcome) return;
   if (outcome.status !== 'response') return outcome;
   return (await ensureCurrent('underlying_call_unconfirmed')) ? outcome : undefined;
 }

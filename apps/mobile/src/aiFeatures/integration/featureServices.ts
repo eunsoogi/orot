@@ -1,3 +1,4 @@
+import { createColdConversationServices } from './coldConversationServices';
 import { operationRunId } from './featureRunIdentity';
 import { publicMedicalQueryConsent } from '../../agent/execution/publicMedicalQueryConsent';
 import { createPrivateEvidenceRag } from './privateEvidenceRag';
@@ -34,10 +35,8 @@ import { publicSummaryTask } from './publicSummaryTask';
 import { createVisitQuestionFeatureServices } from './visitQuestionFeatureServices';
 import { createDailyReportFeature } from './dailyReportFeature';
 import { createDailyReportSourceResolver } from './dailyReportSources';
-
 import type { AiFeatureServices } from './featureServiceTypes';
 export type { AiFeatureServices } from './featureServiceTypes';
-
 const DISEASE_REQUEST =
   '현재 앱 기록에서 검토할 수 있는 질환 가능성을 찾아 주세요. 확진하지 말고, 지지·반대 근거와 불확실성 및 더 필요한 자료를 모두 밝혀 주세요.';
 /** Connects selected AI, durable conversation sessions and revalidated local citations to feature screens. */
@@ -80,7 +79,6 @@ export function createAiFeatureServices(
       await resolveSelectedAiProvider(dependencies.selectedAi),
     );
   }
-
   async function analyze(
     summary: boolean,
     signal?: AbortSignal,
@@ -195,7 +193,7 @@ export function createAiFeatureServices(
     registry,
     report: dailyReport,
   });
-  const sendRagMessage = createRagConversationService({
+  const conversationDependencies = {
     consent,
     queryConsent,
     externalEvidence: literatureService,
@@ -205,7 +203,9 @@ export function createAiFeatureServices(
     ragRunner,
     createOperationRunId: dependencies.createOperationRunId,
     resolveDailyReport: dailyReportSources,
-  });
+  };
+  const sendRagMessage = createRagConversationService(conversationDependencies);
+  const coldResume = createColdConversationServices(conversationDependencies);
 
   const visitQuestions = createVisitQuestionFeatureServices({
     loadLocalData,
@@ -215,6 +215,9 @@ export function createAiFeatureServices(
   return {
     dailyReport,
     dailyReportSources,
+    readColdConversationSource: coldResume.readColdConversationSource,
+    resolveColdConversationToolSource:
+      coldResume.resolveColdConversationToolSource,
     ...createConversationSummaryIntegration({
       consent,
       dependencies,
@@ -223,6 +226,7 @@ export function createAiFeatureServices(
       registry,
       diseaseRunner,
       sendRagMessage,
+      coldResume,
       loadSavedVisitQuestions: visitQuestions.loadSavedVisitQuestions,
     }),
     ...visitQuestions,

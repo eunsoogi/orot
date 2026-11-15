@@ -8,12 +8,25 @@ import type {
 /** Progress, scoped continuation and local retention callbacks for a conversation turn. */
 export type RagConversationObserver = Pick<
   MultiAgentInvocation,
+  | 'onApprovalWait'
   | 'onProgress'
   | 'onTaskStreamEvent'
   | 'onToolEvent'
   | 'beforeTaskStream'
   | 'beforeTaskInputChange'
 > & {
+  readonly openWorkflowContinuation?: (
+    identity: import('../storage/conversationWorkflowContinuationIdentity').ConversationContinuationIdentity,
+    reconstruct?: import('../storage/conversationContinuationCapture').ConversationColdReconstruction,
+  ) => Promise<
+    import('./conversationWorkflowContinuation').ConversationWorkflowContinuation['persisted']
+  >;
+  /** Owned pause/continue controls never submit a new question. */
+  readonly onWorkflowPauseController?: (requestPause: () => void) => void;
+  readonly onWorkflowPaused?: (
+    reason?: 'expired' | 'decision-required',
+  ) => Promise<boolean>;
+  readonly onExecutionState?: (state: 'working' | 'local' | 'decision') => void;
   /** Confirm an ambiguous model-selected user statement locally; never authorizes provider transfer. */
   readonly confirmHistorySave?: (
     text: string,
@@ -22,6 +35,10 @@ export type RagConversationObserver = Pick<
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
   /** The checkpoint and explicit photo consent are owned by this specific turn. */
+  /** Fresh decision surface for a protected cold photo; no saved grant is accepted. */
+  readonly confirmPhotoResume?: NonNullable<
+    RagConversationObserver['photoInput']
+  >['confirm'];
   readonly photoInput?: {
     readonly submitted: import('./conversationSubmittedInput').ConversationSubmittedInput;
     readonly stagingGeneration: number;

@@ -1,3 +1,6 @@
+import { coldPreviewPatch } from './replaceColdConversationAnswer';
+import { t } from '../i18n';
+import type { ConversationInterruptionReason } from './conversationExecutionLease';
 import { getRagConversationCopy } from './copy';
 import { restoreFailedPrompt, retainPartial } from './conversationFailedPrompt';
 import type {
@@ -21,19 +24,61 @@ export function createRetainConversationPartial(
 export function showStoppedConversationTurn(input: {
   id: number;
   status: 'cancelled' | 'interrupted';
+  interruptionReason?: ConversationInterruptionReason;
   turn?: PendingTurn;
   find: (id: number) => ConversationSession;
   update: (id: number, change: Partial<ConversationSession>) => void;
   retainPartial: (id: number, activity: string, retainEmpty?: boolean) => void;
 }) {
   const copy = getRagConversationCopy();
+  if (input.turn?.coldResponseId !== undefined) {
+    const session = input.find(input.id);
+    input.update(input.id, {
+      busy: false,
+      pendingMessage: null,
+      messages: session.messages.map(message =>
+        message.id === input.turn!.coldResponseId
+          ? {
+              ...message,
+              ...coldPreviewPatch(session, message),
+              incomplete: true,
+              coldResume: undefined,
+              interruptionReason:
+                input.interruptionReason ??
+                (input.status === 'cancelled'
+                  ? 'user-stopped'
+                  : 'provider-failed'),
+            }
+          : message,
+      ),
+    });
+    return;
+  }
   input.retainPartial(
     input.id,
     input.status === 'interrupted'
-      ? copy.progressInterrupted
+      ? input.interruptionReason
+        ? t(`conversationInterruption.${input.interruptionReason}`)
+        : copy.progressInterrupted
       : copy.progressCancelled,
     true,
   );
+  if (input.status === 'interrupted') {
+    const session = input.find(input.id);
+    const last = session.messages.at(-1);
+    if (last?.role === 'assistant' && last.incomplete)
+      input.update(input.id, {
+        messages: session.messages.map(message =>
+          message === last
+            ? {
+                ...message,
+                interruptionReason:
+                  input.interruptionReason ?? 'provider-failed',
+              }
+            : message,
+        ),
+      });
+  }
   if (input.turn)
     restoreFailedPrompt(
       input.find,
@@ -41,7 +86,8 @@ export function showStoppedConversationTurn(input: {
       input.id,
       input.turn.question,
       input.turn.userMessageId,
-      input.status === 'interrupted' ? copy.progressInterrupted : undefined,
+      // The retained assistant activity already presents the interruption once.
+      input.status === 'interrupted' ? '' : undefined,
       true,
       input.turn.restorePromptToComposer,
     );
@@ -76,11 +122,16 @@ export function createConversationStopHandler(input: {
     snapshot?.cancel();
     if (snapshot) input.update(id, { requestActivity: snapshot.getSnapshot() });
     const status = input.lifetime.status(id, controller) ?? reason;
+    if (status === 'cancelled') turn?.stopCold?.();
     input.lifetime.interrupt(id, status);
     controller.abort();
-    input.activities.get(id)?.finish('cancelled');
+    // System interruption is not an explicit user cancellation; persist the true state.
+    input.activities.get(id)?.finish(status);
     if (
-      (turn?.saving || turn?.summarySaving || turn?.summaryCommitted) &&
+      (turn?.coldStopping ||
+        turn?.saving ||
+        turn?.summarySaving ||
+        turn?.summaryCommitted) &&
       !settled
     )
       return;
@@ -89,6 +140,12 @@ export function createConversationStopHandler(input: {
     snapshot?.settle();
     if (input.snapshots.get(id) === snapshot) input.snapshots.delete(id);
     input.update(id, { artifactContinuation: null, requestActivity: null });
-    showStoppedConversationTurn({ ...input, id, status, turn });
+    showStoppedConversationTurn({
+      ...input,
+      id,
+      status,
+      turn,
+      interruptionReason: input.lifetime.interruptionReason(controller),
+    });
   };
 }

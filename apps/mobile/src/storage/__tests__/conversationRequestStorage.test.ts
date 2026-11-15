@@ -80,6 +80,7 @@ test('recovery interrupts active requests and rejects a late answer without emit
     expect(await store.listInterruptedRequests('session', 0)).toEqual([
       {
         id: request.id,
+        interruptionReason: 'process-interrupted',
         question: request.question,
         createdAt: request.createdAt,
       },

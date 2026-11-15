@@ -1,7 +1,7 @@
+import { restoreOrderedEvidenceBatches } from './evidenceRestoration';
+import { validInitialEvidenceSearch, validInitialSearchResume } from './initialEvidenceSearch';
 import { validResumeShape } from './resumeShape';
 import { actionContract, validLocalActions } from './actionContracts';
-import { createActionNodes } from './actionNodes';
-import { END, START, StateGraph } from '@langchain/langgraph/web';
 import type {
   MultiAgentCheckpointState,
   AllowedEvidenceScope,
@@ -22,10 +22,9 @@ import {
   validateEvidenceBatch,
 } from './evidence';
 import { observeUntilAbort } from './modelCall';
-import { createNodes } from './nodes';
 import { requireTaskContract } from './responses';
-import type { PrivateOutcome, RuntimeContext } from './runtimeContext';
-import { checkpointMatchesRun, MultiAgentState, routeForPhase } from './state';
+import type { PrivateOutcome } from './runtimeContext';
+import { checkpointMatchesRun } from './state';
 import type { WorkflowState } from './state';
 import { isOrderedTimestampRange } from './timestamps';
 import { validToolModelCost } from './evidenceToolModelBudget';
@@ -56,6 +55,7 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
     execution.recipient.trim().length > 0 &&
     provider.id === execution.providerId &&
     requireTaskContract(task) &&
+    validInitialEvidenceSearch(options) &&
     (!options.photoInput || evidenceOnly) &&
     (options.request.trim().length > 0 || evidenceOnly) &&
     execution.allowedScope.sourceKinds.length > 0 &&
@@ -95,14 +95,16 @@ export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult
     modelId: source.modelId,
     allowedScope: source.allowedScope,
     budget: source.budget,
-    phase: 'task_response',
+    phase: options.initialSearch ? 'evidence_search' : 'task_response',
     modelCalls: 0,
     toolCalls: 0,
     researchCycles: 0,
     evidenceReferences: referencesFromBatch(options.initialEvidence),
     evidenceNeed: undefined,
-    selectedToolId: undefined,
+    selectedToolId: options.initialSearch?.toolId,
+    initialSearchStatus: options.initialSearch ? 'pending' : undefined,
     pendingOperation: undefined,
+    awaitingAuthorization: undefined,
     terminal: false,
   };
 }
@@ -118,6 +120,7 @@ export function resumeState<TResult>(
     // Live-only release: never reconstruct a committed mutation without the protected result journal.
     (saved.committedAction !== undefined && saved.committedAction !== false) ||
     !validResumeShape(saved) ||
+    !validInitialSearchResume(saved, options) ||
     !checkpointMatchesRun(saved, options.execution) ||
     !Array.isArray(saved.evidenceReferences) ||
     saved.evidenceReferences.some(
@@ -128,7 +131,20 @@ export function resumeState<TResult>(
     saved.terminal ||
     saved.phase === 'complete' ||
     saved.pendingOperation ||
-    saved.phase === 'evidence_search' ||
+    (saved.awaitingAuthorization !== undefined &&
+      (!options.operationJournal?.loadPrepared ||
+        (saved.phase === 'evidence_search'
+          ? saved.toolCalls < 1 ||
+            saved.awaitingAuthorization !== `tool-${saved.toolCalls}` ||
+            !options.tools.some(
+              (tool) =>
+                tool.id === saved.selectedToolId &&
+                tool.execution === 'external_read_only' &&
+                typeof tool.prepareAuthorizedSearch === 'function',
+            )
+          : saved.modelCalls < 1 ||
+            saved.awaitingAuthorization !== `model-${saved.modelCalls}`))) ||
+    (saved.phase === 'evidence_search' && !saved.awaitingAuthorization) ||
     saved.phase === 'local_action' ||
     !isNonNegativeSafeInteger(saved.modelCalls) ||
     !isNonNegativeSafeInteger(saved.toolCalls) ||
@@ -139,9 +155,14 @@ export function resumeState<TResult>(
     saved.evidenceReferences.length > options.execution.budget.maxEvidenceItems ||
     (saved.phase === 'evidence_research' && !saved.evidenceNeed) ||
     (saved.phase === 'task_response' &&
+      !saved.awaitingAuthorization &&
+      !saved.initialSearchStatus &&
       (saved.modelCalls > 0 || saved.toolCalls > 0 || saved.researchCycles > 0)) ||
+    // An empty completed tool batch may still have a prepared, never-dispatched model approval.
+    // Without that exact journal-backed wait, zero-reference revision checkpoints remain unsafe.
     (saved.phase === 'revised_response' &&
-      (saved.toolCalls === 0 || saved.evidenceReferences.length === 0)) ||
+      (saved.toolCalls === 0 ||
+        (saved.evidenceReferences.length === 0 && !saved.awaitingAuthorization))) ||
     (saved.selectedToolId !== undefined &&
       ![...options.tools, ...(options.actions ?? [])].some(
         (tool) => tool.id === saved.selectedToolId,
@@ -151,6 +172,8 @@ export function resumeState<TResult>(
   }
   return {
     ...saved,
+    initialSearchStatus: saved.initialSearchStatus,
+    awaitingAuthorization: saved.awaitingAuthorization,
     actionContract: saved.actionContract,
     committedAction: saved.committedAction,
     evidenceReferences: saved.evidenceReferences.map(projectEvidenceReference),
@@ -168,11 +191,16 @@ export async function restoreRunEvidence<TResult>(
 ): Promise<MultiAgentWorkflowOptions<TResult>['initialEvidence'] | undefined> {
   // Resume only after current source revisions match; checkpoint references never restore content.
   const refs = state.evidenceReferences;
-  if (refs.length === 0) return { items: [], coverage: [], conflicts: [] };
-  if (!options.restoreEvidence) return undefined;
-  const freshness = await observeUntilAbort(options.revalidateEvidence(refs, signal), signal);
-  if (freshness.kind !== 'value' || !freshness.value) return undefined;
-  const restoration = await observeUntilAbort(options.restoreEvidence(refs, signal), signal);
+  // An empty search still has coverage and gaps. A registered restorer owns that
+  // metadata too; never replace its result with a fabricated unsearched batch.
+  if (!options.restoreEvidence && !options.restoreEvidenceBatches)
+    return refs.length === 0 ? { items: [], coverage: [], conflicts: [] } : undefined;
+  if (refs.length > 0) {
+    const freshness = await observeUntilAbort(options.revalidateEvidence(refs, signal), signal);
+    if (freshness.kind !== 'value' || !freshness.value) return undefined;
+  }
+  if (options.restoreEvidenceBatches) return restoreOrderedEvidenceBatches(options, refs, signal);
+  const restoration = await observeUntilAbort(options.restoreEvidence!(refs, signal), signal);
   if (restoration.kind !== 'value') return undefined;
   const restored = restoration.value;
   if (validateEvidenceBatch(restored, options.execution.allowedScope, options.execution.budget))
@@ -184,47 +212,7 @@ export async function restoreRunEvidence<TResult>(
     : undefined;
 }
 
-export function makeGraph<TResult>(
-  context: RuntimeContext<TResult>,
-  graphOptions: Pick<MultiAgentWorkflowOptions<TResult>, 'checkpointer' | 'store'> = {},
-) {
-  const nodes = createNodes(context);
-  const actions = createActionNodes(context);
-  const routeMap = {
-    task_response: 'prepareResponder',
-    research: 'prepareResearcher',
-    search: 'prepareSearch',
-    action: 'prepareAction',
-    revision: 'prepareRevision',
-    stop: END,
-  } as const;
-  const route = (state: WorkflowState) => routeForPhase(state.phase);
-  return new StateGraph(MultiAgentState)
-    .addNode('prepareAction', actions.prepareAction)
-    .addNode('executeAction', actions.executeAction)
-    .addNode('prepareResponder', (state) => nodes.prepareResponder(state))
-    .addNode('invokeResponder', nodes.invokeResponder)
-    .addNode('prepareResearcher', nodes.prepareResearcher)
-    .addNode('invokeResearcher', nodes.invokeResearcher)
-    .addNode('prepareSearch', nodes.prepareSearch)
-    .addNode('executeSearch', nodes.executeSearch)
-    .addNode('prepareRevision', (state) => nodes.prepareRevision(state))
-    .addNode('invokeRevision', nodes.invokeRevision)
-    .addConditionalEdges(START, route, routeMap)
-    .addConditionalEdges('prepareAction', (state) => (state.terminal ? END : 'executeAction'))
-    .addConditionalEdges('executeAction', route, routeMap)
-    .addConditionalEdges('prepareResponder', (state) => (state.terminal ? END : 'invokeResponder'))
-    .addConditionalEdges('invokeResponder', route, routeMap)
-    .addConditionalEdges('prepareResearcher', (state) =>
-      state.terminal ? END : 'invokeResearcher',
-    )
-    .addConditionalEdges('invokeResearcher', route, routeMap)
-    .addConditionalEdges('prepareSearch', (state) => (state.terminal ? END : 'executeSearch'))
-    .addConditionalEdges('executeSearch', route, routeMap)
-    .addConditionalEdges('prepareRevision', (state) => (state.terminal ? END : 'invokeRevision'))
-    .addConditionalEdges('invokeRevision', route, routeMap)
-    .compile({ store: graphOptions.store, checkpointer: graphOptions.checkpointer });
-}
+export { makeGraph } from './workflowGraph';
 
 export function publicResult<TResult>(
   outcome: PrivateOutcome<TResult>,

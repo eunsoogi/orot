@@ -133,3 +133,10 @@ export function sendConversationMessage(
     return sendEntry(question, history, signal, observer);
   });
 }
+
+/** The session already exposes dispatch failures; UI event handlers must not leave rejected promises. */
+export function dispatchConversationMessage(
+  ...args: Parameters<typeof sendConversationMessage>
+) {
+  return sendConversationMessage(...args).catch(() => {});
+}

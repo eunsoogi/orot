@@ -1,3 +1,4 @@
+import { conversationComposerDisabled } from './conversationComposerDisabled';
 import { useConversationPresentationSnapshot } from './useConversationPresentationSnapshot';
 import { ConversationBackButton } from './ConversationBackButton';
 import { AppText as Text } from '../layout/AppText';
@@ -20,7 +21,7 @@ import {
   conversationEntryForSession,
 } from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
-import { sendConversationMessage } from './conversationVisitDispatch';
+import { dispatchConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { useConversationScreenControls } from './useConversationScreenControls';
 import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
@@ -44,6 +45,7 @@ export function ConversationScreen({
   onSend,
   onOpenSource,
   resolveToolSource,
+  resolveColdToolSource,
   prepareVisitQuestions,
   renderVisitQuestions,
   discoverManualVisits,
@@ -100,10 +102,9 @@ export function ConversationScreen({
     onNavigationStateChange,
   );
   const sendMessage = () => {
-    sendConversationMessage(store, id, onSend, prepareVisitQuestions).catch(
-      () => {},
-    );
+    dispatchConversationMessage(store, id, onSend, prepareVisitQuestions);
   };
+  const coldResumeBusy = busy || session.restoring || session.retryingSave;
   const header = (
     <View style={styles.header}>
       {!navigationRouteKey && <ConversationBackButton onBack={onBack} />}
@@ -163,13 +164,7 @@ export function ConversationScreen({
               value={draft}
               busy={busy}
               cancelling={session.requestActivity?.stage === 'cancelling'}
-              disabled={
-                session.restoring ||
-                session.restoreFailed ||
-                session.quarantined ||
-                session.retryingSave ||
-                (session.restoreAfterRetry && Boolean(session.unsavedCount))
-              }
+              disabled={conversationComposerDisabled(session)}
               compact={composerLayout.compact}
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
@@ -180,6 +175,10 @@ export function ConversationScreen({
         >
           <ConversationHistory
             replyFocus={focus}
+            coldResumeBusy={coldResumeBusy}
+            onContinueCold={requestId =>
+              store.resumeCold(id, requestId).catch(() => {})
+            }
             sessionId={id}
             requestSessionId={id}
             requestActivity={session.requestActivity}
@@ -198,7 +197,7 @@ export function ConversationScreen({
               store.retryRestore(id);
             }}
             onOpenSource={onOpenSource}
-            resolveToolSource={resolveToolSource}
+            {...{ resolveToolSource, resolveColdToolSource }}
             renderVisitQuestions={
               renderVisitQuestions
                 ? message =>
