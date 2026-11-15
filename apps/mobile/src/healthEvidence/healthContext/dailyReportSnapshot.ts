@@ -1,3 +1,5 @@
+import type { DailyReportSnapshotResult } from './dailyReportSnapshotResult';
+import { readDailyReportBaseline } from './dailyReportBaseline';
 import { readDailyReportMedicationContext } from './dailyReportMedicationContext';
 import {
   localQueryTimestampKey,
@@ -11,10 +13,7 @@ import type {
   DailyReportSourceRecord,
 } from '@orot/domain';
 import { compareTimestamps } from '@orot/domain';
-import {
-  fingerprint,
-  stableJson,
-} from '../../aiFeatures/integration/evidenceUtils';
+import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { candidateScopeCondition } from '../evidenceCandidateScope';
 import type { EvidenceCandidateScope } from '../evidenceCandidateScope';
 import { MAX_HEALTH_EVIDENCE_RECORD_BYTES } from '../localEvidenceQueries';
@@ -22,7 +21,7 @@ import type { LocalHealthEvidenceRecord } from '../localEvidenceQueries';
 import type { DailyReportLineage } from '../../storage/dailyReportStorageTypes';
 import type { DailyReportCalendarWindow } from './dailyReportWindow';
 import {
-  createDailyReportCalendarWindow,
+  validateDailyReportCalendarWindow,
   dailyReportSourceRecordIsAvailable,
 } from './dailyReportWindow';
 import {
@@ -46,33 +45,12 @@ export async function readDailyReportSnapshot(
   scope: EvidenceCandidateScope,
   signal?: AbortSignal,
 ) {
-  const validated = createDailyReportCalendarWindow({
-    localDate: calendar.identity.localDate,
-    timeZone: calendar.identity.timeZone,
-    requestedAt: calendar.generationCutoff,
-  });
-  if (
-    validated.status !== 'ready' ||
-    stableJson(validated.context) !== stableJson(calendar)
-  )
-    throw new Error('Invalid daily report calendar window.');
+  validateDailyReportCalendarWindow(calendar);
   if (scope.timeRange)
     throw new Error('Daily report scope cannot replace its calendar window.');
   // Sorting selected health records must not create plaintext temporary files.
   await database.execute('PRAGMA temp_store = MEMORY');
-  let output:
-    | {
-        values: LocalHealthEvidenceRecord[];
-        lineage: DailyReportLineage[];
-        sourceSnapshot: {
-          revision: string;
-          mutationGeneration: number;
-          deletionGeneration: number;
-          records: DailyReportSourceRecord[];
-          coverage: DailyReportSourceCoverage[];
-        };
-      }
-    | undefined;
+  let output: DailyReportSnapshotResult | undefined;
   await database.transaction(async tx => {
     await ensureHealthContextGeneration(tx);
     const generation = await readHealthContextGeneration(tx);
@@ -227,7 +205,26 @@ export async function readDailyReportSnapshot(
           code => code !== 'medication_names_not_resolved',
         );
     }
+    const baseline = await readDailyReportBaseline(
+      tx,
+      calendar,
+      scope,
+      values,
+      snapshotByteLimit - bytes,
+      signal,
+    );
+    records.push(...baseline.records);
+    lineage.push(...baseline.lineage);
+    coverage.push({
+      source: 'personal_baseline',
+      status: 'partial',
+      limitationCodes: [
+        'observed_days_not_complete_history',
+        ...(baseline.partial ? ['snapshot_incomplete'] : []),
+      ],
+    });
     output = {
+      baselineValues: baseline.values,
       values,
       lineage,
       sourceSnapshot: {

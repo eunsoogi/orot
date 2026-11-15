@@ -24,6 +24,8 @@ export function sourceLabel(value: string) {
       return t('dailyReport.source.dose');
     case 'appointment':
       return t('dailyReport.context.appointmentSource');
+    case 'personal_baseline':
+      return t('dailyReport.baseline.title');
     case 'system_calendar':
       return t('dailyReport.systemCalendar.sourceTitle');
     case 'calendar':
@@ -47,6 +49,7 @@ export function sourceSymbol(value: string) {
       return 'pills';
     case 'appointment':
     case 'system_calendar':
+    case 'personal_baseline':
     case 'calendar':
       return 'calendar';
     case 'report_selection':
@@ -121,6 +124,8 @@ export function syncStatusLabel(item: DailyReportSourceCoverage) {
 
 export function limitationLabel(code: string) {
   switch (code) {
+    case 'observed_days_not_complete_history':
+      return t('dailyReport.baseline.limit');
     case 'planned_events_not_attendance':
       return t('dailyReport.systemCalendar.sourceLimit');
     case 'calendar_unavailable_or_scoped_out':
