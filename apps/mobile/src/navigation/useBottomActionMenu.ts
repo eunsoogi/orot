@@ -116,7 +116,7 @@ export function useBottomActionMenu({
     const labels = entries.map(({ kind, action }) => {
       const selected = kind === 'navigation' && action.selected;
       const busy = 'busy' in action && action.busy;
-      return `${action.accessibilityLabel}${selected ? ' (선택됨)' : ''}${busy ? ' (진행 중)' : ''}`;
+      return `${action.accessibilityLabel}${selected ? navigationText.menuState.selected : ''}${busy ? navigationText.menuState.busy : ''}`;
     });
     const token = generation.current;
     const menuID = ++sequence.current;

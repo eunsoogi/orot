@@ -1,3 +1,4 @@
+import { navigationText } from '../i18n/navigation';
 import type { NavigationGlassAction } from './NavigationGlassSurface';
 import type { NavigationRouteAction } from './useNavigationPrimaryAction';
 
@@ -31,8 +32,8 @@ export function pageActionDescriptor(
 export function navigationMoreDescriptor(root: boolean): NavigationGlassAction {
   return {
     id: root ? 'navigation-overflow' : 'page:overflow',
-    label: '더 보기',
-    accessibilityLabel: '탐색 및 화면 동작 더 보기',
+    label: navigationText.navigationOverflow.label,
+    accessibilityLabel: navigationText.navigationOverflow.accessibilityLabel,
     testID: 'navigation-page-action-overflow',
     systemImageName: 'ellipsis',
     showsTitleWithSystemImage: true,
