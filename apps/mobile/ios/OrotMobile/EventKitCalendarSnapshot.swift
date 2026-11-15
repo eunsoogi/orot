@@ -2,6 +2,76 @@ import EventKit
 import Foundation
 
 enum EventKitCalendarSnapshot {
+    static func currentAccess() -> String {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        if #available(iOS 17.0, *) {
+            switch status {
+            case .fullAccess: return "fullAccess"
+            case .writeOnly: return "writeOnly"
+            case .authorized: return "fullAccess"
+            case .notDetermined: return "notDetermined"
+            case .denied: return "denied"
+            case .restricted: return "restricted"
+            @unknown default: return "denied"
+            }
+        }
+
+        if status == .authorized {
+            return "fullAccess"
+        }
+        if status == .notDetermined {
+            return "notDetermined"
+        }
+        if status == .denied {
+            return "denied"
+        }
+        if status == .restricted {
+            return "restricted"
+        }
+        return "denied"
+    }
+
+    /// Explicit half-open overlap interval over every readable calendar. No import/write occurs.
+    static func eventsInRange(
+        store: EKEventStore, start: Date, end: Date, access: String,
+    ) -> [String: Any] {
+        rangeSnapshot(start: start, end: end, access: access) {
+            store.events(matching: store.predicateForEvents(withStart: start, end: end, calendars: nil))
+        }
+    }
+
+    /// The injected query makes authorization gating testable without reading a real calendar.
+    static func rangeSnapshot(
+        start: Date, end: Date, access: String, readEvents: () -> [EKEvent],
+    ) -> [String: Any] {
+        let matching = access == "fullAccess" ? readEvents()
+            .filter { $0.startDate < end && ($0.endDate > start || $0.startDate >= start) }
+            .sorted { $0.startDate < $1.startDate } : []
+        let events = matching.compactMap { event -> [String: Any]? in
+            guard var result = serialize(event) else { return nil }
+            result["calendarStatus"] = calendarStatus(event.status)
+            return result
+        }
+        return [
+            "access": access, "events": events,
+            "query": [
+                "fromInclusive": timestamp(start), "toExclusive": timestamp(end),
+                "resultLimit": NSNull(), "complete": access == "fullAccess" && events.count == matching.count,
+                "omittedEventCount": matching.count - events.count,
+            ],
+        ]
+    }
+
+    /// Preserve uncertain/canceled plans without claiming actual attendance.
+    static func calendarStatus(_ status: EKEventStatus) -> String {
+        switch status {
+        case .confirmed: "confirmed"
+        case .tentative: "tentative"
+        case .canceled: "canceled"
+        default: "none"
+        }
+    }
+
     static func serialize(_ event: EKEvent) -> [String: Any]? {
         guard let identifier = event.eventIdentifier, !identifier.isEmpty else { return nil }
         // EventKit returns floating dates in the system zone; keep their civil times
