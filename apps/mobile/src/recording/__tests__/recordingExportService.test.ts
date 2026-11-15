@@ -89,3 +89,29 @@ test('refuses to create an empty transcript export', () => {
     EmptyRecordingTranscriptError,
   );
 });
+
+// The ko-only fallback must not interpolate or rewrite private transcript text.
+test('preserves complete export bytes including literal placeholders in source text', () => {
+  const result = formatTranscriptExport(
+    view([{ ...original, text: '{time} $& 합성 전사' }]),
+  );
+  expect(result).toBe(
+    [
+      'Orot 상담 녹음 전사',
+      '내보낸 버전: 기기 전사 원문',
+      '녹음 시작 시각: 2026-10-05T10:00:00.000Z',
+      '',
+      '[00:00.250–00:01.801] 기기 전사 원문\n{time} $& 합성 전사',
+      '',
+    ].join('\n'),
+  );
+});
+
+test('preserves the existing missing timestamp representation', () => {
+  expect(
+    formatTranscriptExport({
+      ...view([original]),
+      source: { ...source, effectiveAt: undefined },
+    }),
+  ).toContain('녹음 시작 시각: undefined');
+});
