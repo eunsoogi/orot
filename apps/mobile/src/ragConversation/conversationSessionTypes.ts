@@ -16,6 +16,13 @@ export type ConversationSessions = ReturnType<
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly restoreSteering?: (
+    sessionId: string,
+    requestId: string,
+    signal: AbortSignal,
+  ) => Promise<
+    readonly import('../storage/conversationSteeringStorage').StoredSteeringInstruction[]
+  >;
   readonly coldResume?: ReturnType<
     typeof import('../aiFeatures/integration/coldConversationServices').createColdConversationServices
   >;

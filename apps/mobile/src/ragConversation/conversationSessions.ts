@@ -94,6 +94,7 @@ export function createConversationSessions(
   );
   const restoration = createConversationSessionRestoreState({
     read: options.restoreSession,
+    readSteering: options.restoreSteering,
     readTasks: options.restoreTasks,
     update,
   });

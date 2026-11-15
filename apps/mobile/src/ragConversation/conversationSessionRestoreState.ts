@@ -27,6 +27,7 @@ type RestoredTurn = {
 /** Rebuild displayed turns with freshly validated sources, and keep failures retryable. */
 export function createConversationSessionRestoreState(input: {
   read?: (id: string, signal: AbortSignal) => Promise<readonly RestoredTurn[]>;
+  readSteering?: import('./conversationSessionTypes').ConversationSessionOptions['restoreSteering'];
   readTasks?: import('./conversationSessionTypes').ConversationSessionOptions['restoreTasks'];
   update: (id: number, change: Partial<ConversationSession>) => void;
 }) {
@@ -46,6 +47,15 @@ export function createConversationSessionRestoreState(input: {
         input.readTasks?.(entry.durableId, controller.signal) ??
           Promise.resolve([]),
       ]);
+      const latest = turns.at(-1);
+      const steeringInstructions =
+        latest?.toolMessageId && latest.completion === 'complete'
+          ? ((await input.readSteering?.(
+              entry.durableId,
+              latest.toolMessageId,
+              controller.signal,
+            )) ?? [])
+          : [];
       if (
         sessions.get(id) !== entry ||
         entry.controller !== controller ||
@@ -107,6 +117,8 @@ export function createConversationSessionRestoreState(input: {
       input.update(id, {
         messages,
         taskCards,
+        steeringInstructions,
+        steeringAvailable: false,
         dailyReport: reports.at(-1),
         // Only validated retained turns can restore an exploration intent.
         entryIntent: turns.some(turn => turn.entryIntent === 'possibilities')
