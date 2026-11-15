@@ -6,7 +6,7 @@ import type {
 } from './conversationSessionTypes';
 import type { createConversationRequestLifetime } from './conversationRequestLifetime';
 import type { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
-import type { createConversationTurnRetention } from './conversationTurnRetention';
+import type { Turn } from './conversationLifetimeEntry';
 import {
   createConversationActivity,
   activityNotifier,
@@ -22,7 +22,6 @@ import {
 import { ownsOutcome } from './conversationOutcomeOwnership';
 import { getRagConversationFailureCopy } from './copy';
 type Activity = ReturnType<typeof createConversationTurnActivity>;
-type Turn = ReturnType<typeof createConversationTurnRetention>;
 /** An explicit button adopts the existing request. No send, new identity, or automatic retry is allowed. */
 export function createConversationColdRequest(input: {
   steering?: ReturnType<
@@ -194,6 +193,7 @@ export function createConversationColdRequest(input: {
         if (change) input.update(id, change);
         input.lifetime.answered(controller, request.committed);
       } else {
+        input.lifetime.outcome(controller, result.outcome);
         input.update(id, {
           error: coldOutcomeFailure(result.outcome),
           messages: withoutColdRecovery(latest, bubble.id),

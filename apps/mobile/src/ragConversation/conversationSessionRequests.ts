@@ -183,11 +183,11 @@ export function createConversationSessionRequests(
           !ownsOutcome(current(), controllers.get(id) === controller, request)
         )
           return;
+        lifetime.outcome(controller, outcome);
         if (outcome.status === 'failure' || outcome.status === 'unavailable') {
           const kind =
             outcome.status === 'failure' ? outcome.kind : 'unavailable';
-          const failureCopy = getRagConversationFailureCopy(kind);
-          fail(failureCopy);
+          fail(getRagConversationFailureCopy(kind));
           return;
         }
         if (outcome.status === 'answer')

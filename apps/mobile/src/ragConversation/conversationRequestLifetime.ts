@@ -1,31 +1,14 @@
+import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
 import { waitForWorkflowContinue } from './conversationWorkflowContinueWait';
 import { requiresConversationDecisionAbort } from './conversationApprovalBoundary';
-import type {
-  ConversationExecutionAdapter,
-  ConversationInterruptionReason,
-} from './conversationExecutionLease';
+import type { ConversationExecutionAdapter } from './conversationExecutionLease';
 import { beginConversationExecutionLease } from './conversationExecutionLease';
-import type { createConversationTurnRetention } from './conversationTurnRetention';
-
-type Turn = ReturnType<typeof createConversationTurnRetention>;
-type StopStatus = 'cancelled' | 'interrupted';
-export type ConversationLifetimeEntry = {
-  id: number;
-  executionId: string;
-  leaseAttempt: number;
-  leasePrefix?: string;
-  waitingForDecision?: boolean;
-  resumableApproval?: boolean;
-  requestPause?: () => void;
-  controller: AbortController;
-  turn: Turn;
-  status?: StopStatus;
-  interruptionReason?: ConversationInterruptionReason;
-  start?: Promise<void>;
-  fence?: Promise<void>;
-  release?: () => void;
-};
-
+import type {
+  ConversationLifetimeEntry,
+  Turn,
+  StopStatus,
+} from './conversationLifetimeEntry';
+export type { ConversationLifetimeEntry } from './conversationLifetimeEntry';
 /** Binds the checkpoint and bounded OS lease to the same request, including stop races. */
 export function createConversationRequestLifetime(input: {
   execution?: ConversationExecutionAdapter;
@@ -57,6 +40,10 @@ export function createConversationRequestLifetime(input: {
       leaseAttempt: 1,
       executionId: `${prefix}:1`,
       leasePrefix: prefix,
+      diagnose: createExecutionDiagnostics(
+        input.execution?.bridgeAvailable,
+        () => input.execution?.currentPhase?.() ?? 'unknown',
+      ),
     };
     entries.set(id, entry);
     owners.set(controller, entry);
@@ -75,6 +62,7 @@ export function createConversationRequestLifetime(input: {
         },
         () => requiresConversationDecisionAbort(entry, input.execution),
         () => entry.requestPause?.(),
+        entry.diagnose,
       );
       if (
         controller.signal.aborted ||
@@ -183,6 +171,25 @@ export function createConversationRequestLifetime(input: {
         },
       };
     },
+    /** Record only a closed result category for the current request, never error text. */
+    outcome(
+      controller: AbortController,
+      outcome: import('./outcome').RagConversationOutcome,
+    ) {
+      const entry = owners.get(controller);
+      if (
+        entry &&
+        entries.get(entry.id) === entry &&
+        !entry.status &&
+        !controller.signal.aborted &&
+        (outcome.status === 'failure' || outcome.status === 'unavailable')
+      )
+        entry.diagnose(
+          'outcome',
+          undefined,
+          outcome.status === 'failure' ? outcome.kind : 'unavailable',
+        );
+    },
     /** Only observed workflow milestones advance the system UI; never elapsed-time estimates. */
     answered(controller: AbortController, committed: boolean) {
       const entry = owners.get(controller);
@@ -201,6 +208,7 @@ export function createConversationRequestLifetime(input: {
       const entry = entries.get(id);
       if (!entry || entry.status) return;
       entry.status = status;
+      if (status === 'cancelled') entry.diagnose('user-stop', 'user-stopped');
       // Stop ends execution but keeps its submitted input; only destructive abandonment erases it.
       entry.fence = (async () => {
         // A stop during the initial write must fence the row after it exists.
@@ -236,8 +244,7 @@ export function createConversationRequestLifetime(input: {
       } while (observed !== entry.fence);
       entry.release?.();
       if (entries.get(id) === entry) entries.delete(id);
-      // Weak ownership preserves the terminal reason for delayed Stop rendering.
-      // Releasing the controller still allows this entry to be collected.
+      // Weak ownership retains the terminal Stop reason without preventing collection.
     },
   };
 }

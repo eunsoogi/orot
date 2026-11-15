@@ -66,11 +66,14 @@ export async function beginConversationExecutionLease(
   interrupt: (reason: ConversationInterruptionReason) => void,
   needsDecision: () => boolean = () => false,
   requestPause: () => void = () => {},
+  diagnostic?: ReturnType<typeof createExecutionDiagnostics>,
 ) {
-  const diagnose = createExecutionDiagnostics(
-    adapter.bridgeAvailable,
-    () => adapter.currentPhase?.() ?? 'unknown',
-  );
+  const diagnose =
+    diagnostic ??
+    createExecutionDiagnostics(
+      adapter.bridgeAvailable,
+      () => adapter.currentPhase?.() ?? 'unknown',
+    );
   diagnose('begin');
   let closed = false;
   let interrupted = false;
