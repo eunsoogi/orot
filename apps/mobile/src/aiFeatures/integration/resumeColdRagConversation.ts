@@ -83,6 +83,7 @@ export async function resumeColdRagConversation(input: {
       observer,
       registry: factory.registry,
       question: descriptor.request,
+      submittedInput: factory.submittedInput,
       providerId: factory.options.execution.providerId,
       modelId: factory.options.execution.modelId,
       entryContext: completion.entryContext ?? undefined,

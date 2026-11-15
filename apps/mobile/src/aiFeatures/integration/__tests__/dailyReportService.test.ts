@@ -78,6 +78,9 @@ test('uses real SQLite for explicit generation, source validation, save and reus
       ],
     });
     expect(result.report.observations[0]?.text).toContain('72');
+    expect(result.report.followUpQuestions).toEqual([
+      expect.stringContaining('전체 건강의 정상·이상을 판단하지'),
+    ]);
     expect(result.report.supportedContext[0]?.text).toContain('오늘 심박수');
     expect(result.report.supportedContext[0]?.sourceReferences).toEqual(
       result.report.observations[0]?.sourceReferences,

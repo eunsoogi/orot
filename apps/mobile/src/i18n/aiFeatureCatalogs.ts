@@ -1,5 +1,6 @@
 import { conversationSteeringKo } from './conversationSteeringKo';
 import { conversationInterruptionKo } from './conversationInterruptionKo';
+import { dailyReportQuestionsKo } from './dailyReportQuestionsKo';
 import { aiFeaturesKo } from './aiFeatures';
 import { aiActivityKo } from './aiActivity';
 import { diseaseHypothesesKo } from './diseaseHypotheses';
@@ -13,6 +14,7 @@ import { treatmentSafetyKo } from './treatmentSafety';
 export const aiFeatureCatalogsKo = {
   ...conversationInterruptionKo,
   ...conversationSteeringKo,
+  ...dailyReportQuestionsKo,
   ...aiActivityKo,
   ...aiFeaturesKo,
   ...diseaseHypothesesKo,

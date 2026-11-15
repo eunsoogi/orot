@@ -72,6 +72,7 @@ export function createConversationSessionRequests(
     update,
     conversationScope,
     cold,
+    confirmPhotoResume: photo?.consent.confirm,
     retention,
     controllers,
     pendingTurns,
@@ -209,9 +210,8 @@ export function createConversationSessionRequests(
           update,
         });
       } catch {
-        if (current()) {
+        if (current())
           fail(copy.unavailable, getRagConversationFailureCopy('unavailable'));
-        }
       } finally {
         steering.finish(id, current, !request.committed);
         await photoInput?.settleUnsent?.().catch(() => {});

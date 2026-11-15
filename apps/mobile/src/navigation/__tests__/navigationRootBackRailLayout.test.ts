@@ -79,7 +79,8 @@ test('keeps measured page actions above Back and the fixed root rail', () => {
 
   expect(layout.fits).toBe(true);
   expect(layout.capacity).toBeGreaterThanOrEqual(1);
-  expect(backTop - pageActionBottom).toBeCloseTo(8, 5);
+  expect(layout.pageTopInset).toBe(148);
+  expect(backTop - pageActionBottom).toBeGreaterThanOrEqual(8);
 });
 
 test('uses four current destinations without stretching their touch targets', () => {

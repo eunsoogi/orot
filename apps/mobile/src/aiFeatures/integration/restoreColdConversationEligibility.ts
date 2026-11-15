@@ -18,7 +18,6 @@ export async function restoreColdConversationEligibility(
       if (
         !turn.interrupted ||
         !turn.toolMessageId ||
-        turn.submittedInput ||
         !['expired', 'decision-required'].includes(
           turn.interruptionReason ?? '',
         )
