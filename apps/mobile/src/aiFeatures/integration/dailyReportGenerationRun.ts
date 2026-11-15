@@ -1,3 +1,5 @@
+import { hasSevereReportBloodPressure } from './dailyReportGuidance';
+import { reportModelClaims } from './dailyReportModelAnalysis';
 import { prepareDailyReportFacts } from './dailyReportPreparedFacts';
 import type { prepareReportCalendar } from './dailyReportSystemCalendar';
 import { createDailyReportContext } from '../../healthEvidence/healthContext/dailyReportContext';
@@ -112,6 +114,13 @@ export async function generateDailyReportWithCalendar(
     consent: input.consent,
     runId,
     facts: providerFacts,
+    allowAnalysis: !hasSevereReportBloodPressure(snapshot.values),
+    reportContext: {
+      localDate: calendar.context.identity.localDate,
+      timeZone: calendar.context.identity.timeZone,
+      generationCutoff: calendar.context.generationCutoff,
+      coverage: sourceSnapshot.coverage,
+    },
     includesSystemCalendar: Boolean(external?.facts.length),
     signal: request.signal,
     timeoutMs: input.timeoutMs ?? 90_000,
@@ -158,6 +167,7 @@ export async function generateDailyReportWithCalendar(
       selection.indexes.filter(index => index < snapshot.values.length),
       baselineFacts,
       external?.facts ?? [],
+      reportModelClaims(selection.analysis, facts),
     ),
     coverage: context.sourceSnapshot.coverage,
     followUpQuestions: [],

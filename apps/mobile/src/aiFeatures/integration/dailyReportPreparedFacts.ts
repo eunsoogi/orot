@@ -1,3 +1,5 @@
+import { dailyReportGuidance } from './dailyReportGuidance';
+import { dailyReportActions } from './dailyReportActions';
 import { dailyReportBehaviorInsights } from './dailyReportBehaviorInsights';
 import { dailyReportPersonalBaseline } from './dailyReportPersonalBaseline';
 import { fingerprint } from './evidenceUtils';
@@ -93,6 +95,18 @@ export async function prepareDailyReportFacts(
       calendar.context.identity.timeZone,
     ),
   );
+  const sources = snapshot.sourceSnapshot.records.slice(
+    0,
+    snapshot.values.length,
+  );
+  const guidance = [
+    ...dailyReportGuidance(snapshot.values, sources),
+    ...dailyReportActions(snapshot.values, sources),
+  ].map(claim => ({
+    ...claim,
+    modelText: claim.text,
+    role: 'guidance' as const,
+  }));
   const facts = [
     ...dailyReportFacts(
       snapshot.values,
@@ -100,6 +114,7 @@ export async function prepareDailyReportFacts(
     ),
     ...(external?.facts ?? []),
     ...baselineFacts,
+    ...guidance,
   ];
   const providerFacts = await dailyReportProviderFacts(
     input.data,
@@ -111,5 +126,17 @@ export async function prepareDailyReportFacts(
     facts,
     request.signal,
   );
-  return { required, sourceSnapshot, facts, providerFacts, baselineFacts };
+  return {
+    required,
+    sourceSnapshot,
+    facts,
+    baselineFacts,
+    providerFacts: providerFacts.map((fact, index) => ({
+      ...fact,
+      role:
+        index >= facts.length - guidance.length
+          ? ('guidance' as const)
+          : ('evidence' as const),
+    })),
+  };
 }

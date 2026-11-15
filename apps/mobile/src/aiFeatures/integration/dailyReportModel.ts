@@ -1,3 +1,10 @@
+import { dailyReportModelPrompt } from './dailyReportModelPrompt';
+import {
+  parseReportModelResponse,
+  type ReportModelFact,
+  type ReportModelContext,
+  type ReportModelAnalysis,
+} from './dailyReportModelAnalysis';
 import { invokeProductionRequest } from '@orot/agent-runtime';
 import type {
   ConsentDecision,
@@ -36,14 +43,16 @@ export async function selectDailyReportFacts(input: {
   selected: Selected;
   consent: ExecutionConsentPort;
   runId: string;
-  facts: readonly { text: string }[];
+  facts: readonly ReportModelFact[];
+  allowAnalysis?: boolean;
+  reportContext?: ReportModelContext;
   includesSystemCalendar?: boolean;
   signal: AbortSignal;
   timeoutMs: number;
   deadlineContext: DailyReportDeadlineContext;
   revalidate: (signal: AbortSignal) => Promise<boolean>;
 }): Promise<
-  | { status: 'selected'; indexes: number[] }
+  | { status: 'selected'; indexes: number[]; analysis: ReportModelAnalysis[] }
   | { status: 'failed'; code: Failure }
 > {
   if (input.signal.aborted) return { status: 'failed', code: 'cancelled' };
@@ -60,14 +69,18 @@ export async function selectDailyReportFacts(input: {
     messages: [
       {
         role: 'system',
-        content:
-          'Select up to eight representative recorded facts. Return only JSON {"indexes":[0,...]}; use exact zero-based indexes, never create facts or interpretations.',
+        content: dailyReportModelPrompt(input.allowAnalysis !== false),
       },
       {
         role: 'user',
-        content: JSON.stringify(
-          input.facts.map((fact, index) => ({ index, text: fact.text })),
-        ),
+        content: JSON.stringify({
+          context: input.reportContext,
+          facts: input.facts.map((fact, index) => ({
+            index,
+            text: fact.text,
+            role: fact.role ?? 'evidence',
+          })),
+        }),
       },
     ],
   };
@@ -117,8 +130,8 @@ export async function selectDailyReportFacts(input: {
                 ...(input.includesSystemCalendar ? ['calendar_plans'] : []),
               ],
               policyVersion: input.includesSystemCalendar
-                ? 'daily-report-calendar-v1'
-                : 'daily-report-v1',
+                ? 'daily-report-calendar-analysis-v2'
+                : 'daily-report-analysis-v2',
             },
             allowedScope: { sourceKinds: ['personal_record'] },
             payload: request,
@@ -209,30 +222,15 @@ export async function selectDailyReportFacts(input: {
     } catch {
       return invalidOutput();
     }
-    if (
-      !value ||
-      typeof value !== 'object' ||
-      Array.isArray(value) ||
-      Object.keys(value).join() !== 'indexes'
-    )
-      return invalidOutput();
-    const indexes = (value as { indexes: unknown }).indexes;
-    if (
-      !Array.isArray(indexes) ||
-      !indexes.length ||
-      indexes.length > 8 ||
-      indexes.some(
-        index =>
-          !Number.isSafeInteger(index) ||
-          index < 0 ||
-          index >= input.facts.length,
-      ) ||
-      new Set(indexes).size !== indexes.length
-    )
-      return invalidOutput();
+    const parsed = parseReportModelResponse(
+      value,
+      input.facts,
+      input.allowAnalysis !== false,
+    );
+    if (!parsed) return invalidOutput();
     providerDiagnostic('daily_report', 'validation', 'completed');
     input.deadlineContext.stage = 'workflow';
-    return { status: 'selected', indexes };
+    return { status: 'selected', ...parsed };
   } catch (error) {
     if (!controller.signal.aborted) {
       providerDiagnostic('daily_report', 'provider_error', 'failed');

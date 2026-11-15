@@ -32,33 +32,7 @@ export function dailyReportGuidance(
   ]);
   // A cuff reading can span seconds. Unlike interval step totals, that duration
   // does not invalidate its pressure or suppress urgent verification guidance.
-  const bloodPressure = values.flatMap((item, index) => {
-    if (
-      item.kind !== 'health_observation' ||
-      item.record.observationKind !== 'measurement' ||
-      item.record.value.kind !== 'quantity'
-    )
-      return [];
-    const { record } = item;
-    if (
-      record.value.kind !== 'quantity' ||
-      record.value.unit !== 'mmHg' ||
-      !Number.isFinite(record.value.amount) ||
-      record.value.amount <= 0
-    )
-      return [];
-    const systolic = [
-      'blood_pressure_systolic',
-      'blood pressure systolic',
-    ].includes(record.concept);
-    const diastolic = [
-      'blood_pressure_diastolic',
-      'blood pressure diastolic',
-    ].includes(record.concept);
-    return systolic || diastolic
-      ? [{ index, amount: record.value.amount, systolic }]
-      : [];
-  });
+  const bloodPressure = reportBloodPressureReadings(values);
   const result: DailyReportOutput['supportedContext'] = [];
   // Even a conflicting severe reading deserves verification, not suppression or
   // reassurance. Never infer absence of urgent symptoms from missing symptom rows.
@@ -106,4 +80,45 @@ export function dailyReportGuidance(
     );
   }
   return result;
+}
+
+/** Shared numeric safety boundary; measurement intervals do not erase high readings. */
+export function reportBloodPressureReadings(
+  values: readonly LocalHealthEvidenceRecord[],
+) {
+  return values.flatMap((item, index) => {
+    if (
+      item.kind !== 'health_observation' ||
+      item.record.observationKind !== 'measurement' ||
+      item.record.value.kind !== 'quantity'
+    )
+      return [];
+    const { record } = item;
+    if (
+      record.value.kind !== 'quantity' ||
+      record.value.unit !== 'mmHg' ||
+      !Number.isFinite(record.value.amount) ||
+      record.value.amount <= 0
+    )
+      return [];
+    const systolic = [
+      'blood_pressure_systolic',
+      'blood pressure systolic',
+    ].includes(record.concept);
+    const diastolic = [
+      'blood_pressure_diastolic',
+      'blood pressure diastolic',
+    ].includes(record.concept);
+    return systolic || diastolic
+      ? [{ index, amount: record.value.amount, systolic }]
+      : [];
+  });
+}
+
+export function hasSevereReportBloodPressure(
+  values: readonly LocalHealthEvidenceRecord[],
+) {
+  return reportBloodPressureReadings(values).some(
+    item => item.amount >= (item.systolic ? 180 : 120),
+  );
 }
