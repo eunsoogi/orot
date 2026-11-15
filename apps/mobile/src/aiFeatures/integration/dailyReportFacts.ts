@@ -106,11 +106,17 @@ export function dailyReportFacts(
     } else if (item.kind === 'dose_event') {
       detail = `복약 기록: ${item.record.eventKind}${item.record.eventKind === 'observed' ? `, 상태: ${item.record.observationStatus}` : ''}${item.record.dose ? `, 용량: ${item.record.dose.amount ?? ''} ${item.record.dose.unit}` : ''}`;
       displayDetail = t('dailyReport.dose', {
-        kind: item.record.eventKind,
+        kind:
+          visibleValue(item.record.eventKind, 'eventKind') ??
+          item.record.eventKind,
         status:
           item.record.eventKind === 'observed'
             ? t('dailyReport.doseStatus', {
-                status: item.record.observationStatus,
+                status:
+                  visibleValue(
+                    item.record.observationStatus,
+                    'observationStatus',
+                  ) ?? item.record.observationStatus,
               })
             : '',
         dose: item.record.dose
@@ -128,7 +134,7 @@ export function dailyReportFacts(
         item.kind === 'medication_definition'
           ? item.record.displayText
           : item.record.medicationName;
-      detail = `Linked medication identity: ${name}; not evidence of actual ingestion or current use.`;
+      detail = `Linked medication identity: ${name}; dose completion is determined by the linked dose event, not by registration alone.`;
       displayDetail = t('dailyReport.medication.identity', { name });
     } else if (item.kind === 'appointment') {
       detail = `Appointment status: ${item.record.status}`;

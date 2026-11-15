@@ -75,7 +75,10 @@ test('links old medication identity without pretending it occurred today, and pr
     expect(action.text).toContain('Synthetic medicine');
     expect(action.sourceReferences).toHaveLength(2);
     expect(facts[0]?.sourceReferences).toHaveLength(2);
-    expect(facts[1]?.text).toContain('현재 사용을 판단하지');
+    expect(facts[1]?.text).toContain('연결된 약 이름: Synthetic medicine');
+    expect(facts[1]?.text).not.toContain('복용 완료');
+    expect(facts[0]?.text).toContain('복용함');
+    expect(action.text).toContain('복용·투여를 완료했어요');
     const detached = {
       ...context,
       sourceSnapshot: {
