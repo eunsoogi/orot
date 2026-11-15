@@ -9,7 +9,7 @@ import {
   type SelectedAiResolution,
 } from './provider';
 import { dailyReportFacts } from './dailyReportFacts';
-import { dailyReportInsights } from './dailyReportActions';
+import { dailyReportAnalysis } from './dailyReportAnalysis';
 import { selectDailyReportFacts } from './dailyReportModel';
 import { stableJson } from './evidenceUtils';
 import { dailyReportProviderFacts } from './dailyReportProjection';
@@ -152,21 +152,13 @@ export async function generateDailyReportWithCalendar(
         text: facts[index]!.text,
         sourceReferences: facts[index]!.sourceReferences,
       })),
-    supportedContext: [
-      ...dailyReportInsights(
-        snapshot.values,
-        snapshot.sourceSnapshot.records.slice(0, snapshot.values.length),
-        selection.indexes.filter(index => index < snapshot.values.length),
-      ),
-      ...baselineFacts.map(({ text, sourceReferences }) => ({
-        text,
-        sourceReferences,
-      })),
-      ...(external?.facts ?? []).map(fact => ({
-        text: fact.text,
-        sourceReferences: fact.sourceReferences,
-      })),
-    ],
+    supportedContext: dailyReportAnalysis(
+      snapshot.values,
+      snapshot.sourceSnapshot.records.slice(0, snapshot.values.length),
+      selection.indexes.filter(index => index < snapshot.values.length),
+      baselineFacts,
+      external?.facts ?? [],
+    ),
     coverage: context.sourceSnapshot.coverage,
     followUpQuestions: [],
   };
