@@ -120,12 +120,50 @@ export function dailyReportFacts(
             })
           : '',
       });
+    } else if (
+      item.kind === 'medication_definition' ||
+      item.kind === 'medication_assertion'
+    ) {
+      const name =
+        item.kind === 'medication_definition'
+          ? item.record.displayText
+          : item.record.medicationName;
+      detail = `Linked medication identity: ${name}; not evidence of actual ingestion or current use.`;
+      displayDetail = t('dailyReport.medication.identity', { name });
     } else if (item.kind === 'appointment') {
       detail = `Appointment status: ${item.record.status}`;
       displayDetail = t('dailyReport.context.appointmentFact', {
         status: t(`dailyReport.context.appointment.${item.record.status}`),
       });
     } else throw new Error('Unsupported daily report record.');
+    const medicationIndex =
+      item.kind === 'dose_event'
+        ? values.findIndex(candidate =>
+            item.record.eventKind === 'observed'
+              ? candidate.kind === 'medication_definition' &&
+                candidate.record.id === item.record.medicationDefinitionId
+              : candidate.kind === 'medication_assertion' &&
+                candidate.record.id === item.record.medicationAssertionId,
+          )
+        : -1;
+    const medication = values[medicationIndex];
+    if (
+      medication?.kind === 'medication_definition' ||
+      medication?.kind === 'medication_assertion'
+    ) {
+      const name =
+        medication.kind === 'medication_definition'
+          ? medication.record.displayText
+          : medication.record.medicationName;
+      detail = `${name}: ${detail}`;
+      displayDetail = `${name}: ${displayDetail}`;
+    }
+    const references = [{ source: source.source, recordId: source.recordId }];
+    if (medicationIndex >= 0)
+      references.push({
+        source: sources[medicationIndex]!.source,
+        recordId: sources[medicationIndex]!.recordId,
+      });
     const provenance = record.provenance.source;
     const sourceName =
       provenance?.sourceName ?? provenance?.system ?? record.provenance.origin;
@@ -142,7 +180,7 @@ export function dailyReportFacts(
         origin: visibleValue(record.provenance.origin, 'origin')!,
       }),
       modelText: `${detail} · 시각: ${time} · 기록 출처 유형: ${record.provenance.origin}`,
-      sourceReferences: [{ source: source.source, recordId: source.recordId }],
+      sourceReferences: references,
     };
   });
 }
