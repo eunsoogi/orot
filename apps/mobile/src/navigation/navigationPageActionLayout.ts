@@ -54,7 +54,7 @@ export function pageActionRailLayout({
   hasContextualBack?: boolean;
 }) {
   const available = Math.max(0, height - top - bottom);
-  // The fixed root surface stays five tabs tall; shared Back gets its own 48pt target and 4pt gap.
+  // The root surface follows the canonical destination count; shared Back gets its own 48pt target and 4pt gap.
   const navHeight = rootTabs
     ? NAVIGATION_ROOT_RAIL_HEIGHT +
       (hasContextualBack ? NAVIGATION_ROOT_BACK_GROUP_HEIGHT : 0)
@@ -78,17 +78,22 @@ export function pageActionRailLayout({
     top,
     height - bottom - navHeight - actionGroupHeight,
   );
-  const pageTopInset =
-    !rootTabs && navigationCount > 0 ? groupTop + step + groupGap : groupTop;
+  // Duo root navigation remains at the bottom while its separate page dock starts
+  // at the measured safe top. Preserve legacy Back/Home composition unchanged.
+  const pageTopInset = rootTabs
+    ? top
+    : navigationCount > 0
+      ? groupTop + step + groupGap
+      : groupTop;
   const pageBottom = rootTabs
-    ? height - bottom - navHeight - groupGap
+    ? pageTopInset + displayedActionHeight
     : pageTopInset + displayedActionHeight;
   return {
     fits,
     capacity,
     pageTopInset,
     pageBottomInset: Math.max(0, height - pageBottom),
-    navigationTopInset: groupTop,
+    navigationTopInset: rootTabs ? height - bottom - navHeight : groupTop,
   };
 }
 

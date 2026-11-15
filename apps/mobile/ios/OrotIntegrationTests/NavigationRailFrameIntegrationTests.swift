@@ -205,6 +205,7 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         XCTAssertTrue(nextWindow.hitTest(migratedCenter, with: nil) === buttons[0])
         surface.removeFromSuperview()
         XCTAssertNil(portal.superview)
+        try verifyTopAlignedPageDock(in: nextWindow, controller: nextController)
     }
 
     @MainActor
