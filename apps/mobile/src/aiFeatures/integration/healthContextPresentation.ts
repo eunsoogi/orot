@@ -20,21 +20,21 @@ export function presentHealthContextDocument(
 }
 
 const labels: Readonly<Record<string, string>> = {
-  'blood pressure systolic': '수축기 혈압',
-  'blood pressure diastolic': '이완기 혈압',
-  heart_rate: '심박수',
-  body_mass: '체중',
-  step_count: '걸음 수',
-  workout_duration: '기록된 운동 시간',
+  'blood pressure systolic': t('healthContextCopy.systolic'),
+  'blood pressure diastolic': t('healthContextCopy.diastolic'),
+  heart_rate: t('healthContextCopy.heartRate'),
+  body_mass: t('healthContextCopy.bodyMass'),
+  step_count: t('healthContextCopy.steps'),
+  workout_duration: t('healthContextCopy.workoutDuration'),
 };
 const stages: Readonly<Record<string, string>> = {
-  asleepCore: '코어 수면',
-  asleepDeep: '깊은 수면',
-  asleepREM: '렘 수면',
-  asleepUnspecified: '단계 미지정 수면',
-  awake: '깨어 있음',
-  inBed: '침대에 있음',
-  unsupported: '해석할 수 없는 단계',
+  asleepCore: t('healthContextCopy.sleepCore'),
+  asleepDeep: t('healthContextCopy.sleepDeep'),
+  asleepREM: t('healthContextCopy.sleepREM'),
+  asleepUnspecified: t('healthContextCopy.sleepUnspecified'),
+  awake: t('healthContextCopy.awake'),
+  inBed: t('healthContextCopy.inBed'),
+  unsupported: t('healthContextCopy.unsupportedStage'),
 };
 
 /** Show calculated facts and their calendar scope directly; there is no model-written replacement for the original data. */
@@ -46,13 +46,16 @@ export function presentHealthContext(
   const projected = projectHealthContext(report);
   const result: EvidenceSourceDetailSection[] = [
     {
-      title: '집계 기간',
+      title: t('healthContextCopy.aggregatePeriod'),
       rows: [
         {
-          label: '기간',
+          label: t('healthContextCopy.period'),
           value: `${report.days[0]?.date} ~ ${report.days.at(-1)?.date}`,
         },
-        { label: '시간대', value: scope.window.timeZone },
+        {
+          label: t('healthContextCopy.timeZone'),
+          value: scope.window.timeZone,
+        },
         ...(filterRedacted
           ? [
               {
@@ -64,7 +67,7 @@ export function presentHealthContext(
         ...(projected.partialDates.length
           ? [
               {
-                label: '하루 중 일부만 포함',
+                label: t('healthContextCopy.partialDay'),
                 value: projected.partialDates.join(', '),
               },
             ]
@@ -82,24 +85,27 @@ export function presentHealthContext(
       title: `${labels[series.concept] ?? series.concept} · 측정 출처 ${index + 1}`,
       rows: [
         {
-          label: '기록 일수',
+          label: t('healthContextCopy.recordedDays'),
           value: `${series.recordedDays}일 / ${projected.calendarDays}일`,
         },
-        { label: '측정 건수', value: `${series.sampleCount}건` },
+        {
+          label: t('healthContextCopy.sampleCount'),
+          value: `${series.sampleCount}건`,
+        },
         {
           label: step
-            ? '기록된 날짜의 일별 샘플 합 평균'
-            : '기록된 날짜의 일평균 평균',
+            ? t('healthContextCopy.meanDailySampleSum')
+            : t('healthContextCopy.meanDailyMeans'),
           value: `${mean} ${series.unit}`,
         },
         {
-          label: '개별 측정 범위',
+          label: t('healthContextCopy.sampleRange'),
           value: `${series.minimumSample} ~ ${series.maximumSample} ${series.unit}`,
         },
         ...(series.latest
           ? [
               {
-                label: '최근 측정',
+                label: t('healthContextCopy.latestMeasurement'),
                 value: `${series.latest.amount} ${series.unit} · ${new Date(series.latest.occurredAt).toLocaleString('ko-KR', { timeZone: scope.window.timeZone })}`,
               },
             ]
@@ -107,7 +113,7 @@ export function presentHealthContext(
         ...(series.comparison.difference !== null
           ? [
               {
-                label: '앞선 7일 대비 최근 7일',
+                label: t('healthContextCopy.comparisonWeek'),
                 value: `${series.comparison.difference > 0 ? '+' : ''}${series.comparison.difference} ${series.unit} · 기록 ${series.comparison.previousRecordedDays}일 / ${series.comparison.recentRecordedDays}일`,
               },
             ]
@@ -115,9 +121,8 @@ export function presentHealthContext(
         ...(step
           ? [
               {
-                label: '집계 기준',
-                value:
-                  '출처별 샘플 합이에요. 중복될 수 있어 출처끼리 합산하거나 건강 앱의 일일 총합으로 볼 수 없어요.',
+                label: t('healthContextCopy.aggregationBasis'),
+                value: t('healthContextCopy.sampleSumNotice'),
               },
             ]
           : []),
@@ -129,37 +134,42 @@ export function presentHealthContext(
       title: medication.name,
       rows: [
         {
-          label: '정보 구분',
+          label: t('healthContextCopy.informationKind'),
           value:
             medication.source === 'healthkit_registration'
-              ? '건강 앱에 등록된 약'
+              ? t('healthContextCopy.registeredMedication')
               : medication.source === 'current_user_confirmation'
-                ? '직접 확인한 현재 복용약'
-                : '처방 기록',
+                ? t('healthContextCopy.confirmedMedication')
+                : t('healthContextCopy.prescription'),
         },
         ...(medication.dosageInstruction
-          ? [{ label: '복용 지시', value: medication.dosageInstruction }]
+          ? [
+              {
+                label: t('healthContextCopy.dosageInstruction'),
+                value: medication.dosageInstruction,
+              },
+            ]
           : []),
         {
-          label: '기간 내 복용 기록',
+          label: t('healthContextCopy.doseRecords'),
           value: `복용 ${medication.taken}건 · 건너뜀 ${medication.skipped}건 · 기타 ${medication.otherDoseRecords}건`,
         },
         {
-          label: '복용 기록이 있는 날',
+          label: t('healthContextCopy.daysWithDoseRecords'),
           value: `${medication.daysWithDoseRecords}일`,
         },
         {
-          label: '해석',
-          value: '기록이 없는 날의 복용 여부는 추정하지 않아요.',
+          label: t('healthContextCopy.interpretation'),
+          value: t('healthContextCopy.missingDoseNotice'),
         },
       ],
     });
   for (const dose of report.doseHistory?.records ?? [])
     result.push({
-      title: dose.medicationName ?? '약 이름 확인 불가',
+      title: dose.medicationName ?? t('healthContextCopy.unknownMedication'),
       rows: [
         {
-          label: '기록 시각',
+          label: t('healthContextCopy.recordedAt'),
           value: new Date(dose.effectiveAt).toLocaleString('ko-KR', {
             timeZone: scope.window.timeZone,
           }),
@@ -167,18 +177,21 @@ export function presentHealthContext(
         ...(dose.scheduledAt
           ? [
               {
-                label: '예정 시각',
+                label: t('healthContextCopy.scheduledAt'),
                 value: new Date(dose.scheduledAt).toLocaleString('ko-KR', {
                   timeZone: scope.window.timeZone,
                 }),
               },
             ]
           : []),
-        { label: '상태', value: dose.observationStatus ?? dose.eventKind },
+        {
+          label: t('healthContextCopy.status'),
+          value: dose.observationStatus ?? dose.eventKind,
+        },
         ...(dose.dose
           ? [
               {
-                label: '기록된 양',
+                label: t('healthContextCopy.recordedAmount'),
                 value: `${dose.dose.amount ?? ''} ${dose.dose.unit}`.trim(),
               },
             ]
@@ -187,17 +200,17 @@ export function presentHealthContext(
     });
   if (scope.topic === 'sleep')
     result.push({
-      title: '수면 기록',
+      title: t('healthContextCopy.sleepRecords'),
       rows: [
         {
-          label: '기록 일수',
+          label: t('healthContextCopy.recordedDays'),
           value: `${projected.sleep.recordedDays}일 / ${projected.calendarDays}일`,
         },
         {
-          label: '기록된 날짜의 수면 시간 평균',
+          label: t('healthContextCopy.meanSleepMinutes'),
           value:
             projected.sleep.meanRecordedDailyMinutes === null
-              ? '계산할 기록 없음'
+              ? t('healthContextCopy.noCalculation')
               : `${projected.sleep.meanRecordedDailyMinutes}분`,
         },
         ...Object.entries(projected.sleep.stageMinutes).map(
@@ -207,18 +220,17 @@ export function presentHealthContext(
           }),
         ),
         {
-          label: '집계 기준',
-          value:
-            '날짜별로 겹치는 수면 구간을 합쳤어요. 하루 전체나 한밤의 완전한 수면 기록을 뜻하지는 않아요.',
+          label: t('healthContextCopy.aggregationBasis'),
+          value: t('healthContextCopy.sleepOverlapNotice'),
         },
       ],
     });
   if (scope.topic === 'symptoms')
     result.push({
-      title: '증상 기록',
+      title: t('healthContextCopy.symptomRecords'),
       rows: [
         {
-          label: '기간 내 기록',
+          label: t('healthContextCopy.periodRecords'),
           value: `${report.symptoms.entryCount}건 · ${report.symptoms.recordedDays}일`,
         },
         ...report.symptoms.latest.map(entry => ({

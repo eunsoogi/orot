@@ -1,3 +1,4 @@
+import { healthContextCopyKo } from './healthContextCopyKo';
 import { evidenceSourceKo } from './evidenceSourceKo';
 import { evidenceValuesKo } from './evidenceValuesKo';
 import { modelSettingsKo } from './modelSettings';
@@ -6,6 +7,7 @@ import { encounterReviewCopyKo } from './encounterReviewCopyKo';
 
 /** Incremental UI-copy migrations share one catalog entry point. */
 export const localizedCopyKo = {
+  ...healthContextCopyKo,
   ...evidenceSourceKo,
   ...evidenceValuesKo,
   ...modelSettingsKo,
