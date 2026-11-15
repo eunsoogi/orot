@@ -181,9 +181,9 @@ test('does not release a recovered ID after cancellation at transaction resoluti
     await saveConversationHealthHistory(database, input, controller.signal);
     const recovering = {
       execute: database.execute.bind(database),
-      async transaction<T>(
-        work: Parameters<typeof database.transaction<T>>[0],
-      ): Promise<T> {
+      async transaction(
+        work: Parameters<typeof database.transaction>[0],
+      ): Promise<void> {
         const result = await database.transaction(work);
         controller.abort();
         return result;
