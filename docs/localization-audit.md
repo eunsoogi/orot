@@ -10,6 +10,8 @@
 
 두 번째 구현은 `AppointmentPreparationRoute`와 `AppointmentReminderControls`의 19개 문구를 기존 `appointmentActionsKo.ts`에 통합한다. 잠금 화면 개인정보 안내, 알림 권한/실패 상태, 지원하지 않는 AI 생성 안내를 그대로 유지하며 예약과 알림의 실행 흐름은 변경하지 않는다.
 
+세 번째 구현은 `nextVisitQuestions/copy.ts`와 `encounterReview/strings.ts`의 사용자 표시 110개 문구를 공유 카탈로그로 통합한다. 기존 copy 객체 API와 숫자 삽입 함수는 유지하며, 진단/처방으로 확정하지 않는 안내와 동의 및 검색 결과 미보존 경계를 그대로 유지한다. 임상 알고리즘·프롬프트·원본 자료를 변경하지 않는다.
+
 ## 검증과 한계
 
 카탈로그·미지원 locale fallback·보존된 경고·모델 ID interpolation과 조사한 두 디렉터리의 inline 한국어 회귀 검사를 추가했다. 기존 설정/계정/모델 동작 테스트를 함께 검증한다. native UI나 실기기 동작을 검증한 것으로 간주하지 않는다. 아래 나머지 production/native 후보는 후속 작업이며 이 문서나 부분 PR로 전체 현지화가 완료되지 않는다.
@@ -20,7 +22,6 @@
 
 ### Existing catalog or copy module (review catalog integration)
 
-- `apps/mobile/src/encounterReview/strings.ts`: 25
 - `apps/mobile/src/i18n/aiActivity.ts`: 14
 - `apps/mobile/src/i18n/aiFeatures.ts`: 30
 - `apps/mobile/src/i18n/appointmentActionsKo.ts`: 11
@@ -54,7 +55,6 @@
 - `apps/mobile/src/i18n/visitQuestionRestoration.ts`: 14
 - `apps/mobile/src/i18n/visitQuestions.ts`: 101
 - `apps/mobile/src/i18n/voiceConversationKo.ts`: 22
-- `apps/mobile/src/nextVisitQuestions/copy.ts`: 85
 
 ### Native source or system string (manual localization review)
 
