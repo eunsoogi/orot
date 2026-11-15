@@ -49,4 +49,14 @@ export const healthContextCopyKo = {
     '날짜별로 겹치는 수면 구간을 합쳤어요. 하루 전체나 한밤의 완전한 수면 기록을 뜻하지는 않아요.',
   'healthContextCopy.symptomRecords': '증상 기록',
   'healthContextCopy.periodRecords': '기간 내 기록',
+  'healthContextCopy.sourceTitle': '{label} · 측정 출처 {index}',
+  'healthContextCopy.daysRatio': '{recorded}일 / {total}일',
+  'healthContextCopy.countValue': '{count}건',
+  'healthContextCopy.comparisonValue':
+    '{difference} {unit} · 기록 {previous}일 / {recent}일',
+  'healthContextCopy.doseCounts':
+    '복용 {taken}건 · 건너뜀 {skipped}건 · 기타 {other}건',
+  'healthContextCopy.daysValue': '{days}일',
+  'healthContextCopy.minutesValue': '{minutes}분',
+  'healthContextCopy.symptomCounts': '{count}건 · {days}일',
 } as const;
