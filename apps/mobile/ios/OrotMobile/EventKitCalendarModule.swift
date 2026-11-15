@@ -56,8 +56,35 @@ public final class EventKitCalendarModule: RCTEventEmitter {
         rejecter _: @escaping RCTPromiseRejectBlock,
     ) {
         eventQueue.async {
-            let access = self.currentAccess()
+            let access = EventKitCalendarSnapshot.currentAccess()
             resolve(self.upcomingEvents(access: access) as NSDictionary)
+        }
+    }
+
+    /// Read only: requesting OS permission remains an explicit, separate user action.
+    @objc(listEventsInRange:toExclusive:resolver:rejecter:)
+    public func listEventsInRange(
+        _ fromInclusive: String,
+        toExclusive: String,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock,
+    ) {
+        eventQueue.async {
+            guard let start = Self.parseTimestamp(fromInclusive),
+                  let end = Self.parseTimestamp(toExclusive), end > start,
+                  end.timeIntervalSince(start) <= 32 * 86400
+            else {
+                reject("invalid_calendar_window", "Invalid calendar query window.", nil)
+                return
+            }
+            let access = EventKitCalendarSnapshot.currentAccess()
+            let result = EventKitCalendarSnapshot.eventsInRange(
+                store: self.eventStore, start: start, end: end, access: access,
+            )
+            // Permission loss during a read must not return previously accessible titles.
+            resolve(EventKitCalendarSnapshot.currentAccess() == access ? result : [
+                "access": EventKitCalendarSnapshot.currentAccess(), "events": [],
+            ])
         }
     }
 
@@ -82,7 +109,7 @@ public final class EventKitCalendarModule: RCTEventEmitter {
         rejecter _: @escaping RCTPromiseRejectBlock,
     ) {
         eventQueue.async {
-            let access = self.currentAccess()
+            let access = EventKitCalendarSnapshot.currentAccess()
             guard access == "fullAccess" else {
                 resolve(["access": access, "event": NSNull()] as NSDictionary)
                 return
@@ -111,49 +138,20 @@ public final class EventKitCalendarModule: RCTEventEmitter {
     }
 
     private func requestAccessIfNeeded(completion: @escaping (String) -> Void) {
-        guard currentAccess() == "notDetermined" else {
-            completion(currentAccess())
+        guard EventKitCalendarSnapshot.currentAccess() == "notDetermined" else {
+            completion(EventKitCalendarSnapshot.currentAccess())
             return
         }
 
         let accessCompletion: (Bool, Error?) -> Void = { [weak self] _, _ in
             guard let self else { return }
-            eventQueue.async { completion(self.currentAccess()) }
+            eventQueue.async { completion(EventKitCalendarSnapshot.currentAccess()) }
         }
         if #available(iOS 17.0, *) {
             eventStore.requestFullAccessToEvents(completion: accessCompletion)
         } else {
             eventStore.requestAccess(to: .event, completion: accessCompletion)
         }
-    }
-
-    private func currentAccess() -> String {
-        let status = EKEventStore.authorizationStatus(for: .event)
-        if #available(iOS 17.0, *) {
-            switch status {
-            case .fullAccess: return "fullAccess"
-            case .writeOnly: return "writeOnly"
-            case .authorized: return "fullAccess"
-            case .notDetermined: return "notDetermined"
-            case .denied: return "denied"
-            case .restricted: return "restricted"
-            @unknown default: return "denied"
-            }
-        }
-
-        if status == .authorized {
-            return "fullAccess"
-        }
-        if status == .notDetermined {
-            return "notDetermined"
-        }
-        if status == .denied {
-            return "denied"
-        }
-        if status == .restricted {
-            return "restricted"
-        }
-        return "denied"
     }
 
     private func upcomingEvents(access: String) -> [String: Any] {

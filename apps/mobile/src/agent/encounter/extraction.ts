@@ -162,6 +162,8 @@ export async function extractEncounterCandidates(input: {
     // Preserve the fixed workflow outcome before it becomes a generic extraction failure.
     // Reasons and checkpoints can contain private evidence and must never reach this observer.
     const categories = {
+      // This feature has no continuation owner; never treat a paused graph as a result.
+      paused: 'workflow_unavailable',
       unavailable: 'workflow_unavailable',
       invalid_output: 'workflow_invalid_output',
       budget_exceeded: 'workflow_budget_exceeded',

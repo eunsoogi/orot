@@ -8,10 +8,12 @@ import { deleteMedicalDocument } from './medicalDocumentDeletion';
 export function MedicalDocumentDeleteAction({
   sourceId,
   onDeleted,
+  onCommitted,
   onBusyChange,
 }: {
   readonly sourceId: string;
   readonly onDeleted: () => void;
+  readonly onCommitted?: () => void;
   readonly onBusyChange: (busy: boolean) => void;
 }) {
   const claimed = useRef(false);
@@ -32,6 +34,9 @@ export function MedicalDocumentDeleteAction({
     setError(false);
     try {
       const result = await deleteMedicalDocument(sourceId);
+      // A route may redact and unmount this control before file cleanup finishes.
+      // Its owner still needs the committed result; legacy local UI callbacks stay mount-bound.
+      onCommitted?.();
       if (mounted.current) onDeleted();
       if (result.cleanupPending)
         Alert.alert(

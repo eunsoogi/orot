@@ -9,6 +9,15 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  'OrotIntegrationTests/CalendarRangeSnapshotTests/testPermissionGateDoesNotQueryAndReportsUnavailableCoverage',
+  'OrotIntegrationTests/CalendarRangeSnapshotTests/testHalfOpenOverlapAndUnserializableEventsFailClosed',
+  'OrotIntegrationTests/NavigationFadeIntegrationTests/testPushKeepsGlassOpaqueAndRemovesSnapshot',
+  'OrotIntegrationTests/NavigationFadeIntegrationTests/testPopKeepsGlassOpaqueAndRemovesSnapshot',
+  'OrotIntegrationTests/NavigationFadeIntegrationTests/testCancelledPushRestoresSourceAndRemovesSnapshot',
+  'OrotIntegrationTests/NavigationFadeIntegrationTests/testCancelledPopRestoresSourceAndRemovesSnapshot',
+  'OrotIntegrationTests/NavigationFadeIntegrationTests/testBackgroundDropsTransientSnapshotBeforeCompletion',
+  'OrotIntegrationTests/NavigationFadeIntegrationTests/testCaptureChangeDropsTransientSnapshotBeforeCompletion',
+
   'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testMuteReleasesAudioAndResumesSameServerConversation',
   'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testOldCaptureFailureCannotStopNewCall',
   // Injected Realtime ports prove lifecycle boundaries without network or microphone access.
@@ -43,6 +52,7 @@ export const coreTests = [
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testColdStartInboxRetainsTheTargetUntilOneConsumerDrainsIt',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDailyTapUsesDeliveryInstantWithoutReplacingAppointmentTarget',
   'OrotIntegrationTests/AppointmentReminderNotificationTests/testDismissalAndOtherFeatureNotificationsCannotOpenVisitPreparation',
+  'OrotIntegrationTests/ReplyNotificationInboxTests/testInterruptionPurposeSurvivesRestartWithoutBecomingAnAnswer',
   'OrotIntegrationTests/ReplyNotificationInboxTests/testReplyTapSurvivesRestartAndDoesNotReplaceOtherReminderTargets',
   'OrotIntegrationTests/RootURLInboxTests/testValidDeliveriesSurviveReopenAndAcknowledgeOneAtATime',
   'OrotIntegrationTests/RootURLInboxTests/testInvalidInputCannotOverwriteAValidDelivery',

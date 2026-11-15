@@ -16,6 +16,16 @@ export type ConversationSessions = ReturnType<
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly restoreSteering?: (
+    sessionId: string,
+    requestId: string,
+    signal: AbortSignal,
+  ) => Promise<
+    readonly import('../storage/conversationSteeringStorage').StoredSteeringInstruction[]
+  >;
+  readonly coldResume?: ReturnType<
+    typeof import('../aiFeatures/integration/coldConversationServices').createColdConversationServices
+  >;
   readonly photoPreparation?: ReturnType<
     typeof import('../aiFeatures/integration/conversationPhotoPreparation').createConversationPhotoPreparation
   >;
@@ -47,6 +57,8 @@ export interface ConversationSessionOptions {
     | 'saveTaskCard'
     | 'discardUnpublished'
     | 'readCommittedCompletion'
+    | 'adoptTurn'
+    | 'releaseAdoptedTurn'
   > &
     Partial<
       Pick<
@@ -55,6 +67,8 @@ export interface ConversationSessionOptions {
         | 'saveTaskCard'
         | 'discardUnpublished'
         | 'readCommittedCompletion'
+        | 'adoptTurn'
+        | 'releaseAdoptedTurn'
       >
     >;
   readonly restoreSession?: (
@@ -67,6 +81,8 @@ export interface ConversationSessionOptions {
       answer: string;
       preview?: string;
       interrupted?: true;
+      coldResume?: { readonly attempt: number };
+      interruptionReason?: import('./conversationExecutionLease').ConversationRecoveryReason;
       citations: readonly EvidenceReference[];
       healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
       completion?: 'complete' | 'partial';
@@ -103,6 +119,9 @@ export type PendingTurn = {
   committed: boolean;
   summarySaving: boolean;
   summaryCommitted: boolean;
+  readonly coldResponseId?: number;
+  coldStopping?: boolean;
+  readonly stopCold?: () => void;
 };
 
 export type ConversationSender = (
@@ -114,6 +133,12 @@ export type ConversationSender = (
 
 /** Memory-only conversation state keeps drafts and request activity scoped to one session. */
 export interface ConversationSession {
+  readonly steeringAvailable?: boolean;
+  readonly steeringError?: boolean;
+  readonly steeringSubmitting?: boolean;
+  readonly steeringInstructions?: readonly import('../storage/conversationSteeringStorage').StoredSteeringInstruction[];
+  /** Live safe-checkpoint continuation; never reconstructed as a new send after restart. */
+  readonly continueWorkflow?: () => void;
   readonly id: number;
   /** Live request activity is memory-only and is never restored as running. */
   readonly requestActivity?:
@@ -123,6 +148,7 @@ export interface ConversationSession {
   readonly draft: string;
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: {
+    readonly sourceOwner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner;
     initialResponse?: {
       readonly callId: string;
       readonly text: string;

@@ -9,7 +9,8 @@ import {
 /** Preserve the displayed limitations with the validated retained answer. */
 export async function finishRagConversation(input: {
   outcome: RagConversationOutcome;
-  publicSearch: DefaultPublicSearchResult;
+  publicSearch:
+    DefaultPublicSearchResult | Pick<DefaultPublicSearchResult, 'status'>;
   retention: ReturnType<typeof createConversationRetentionBridge>;
   signal: AbortSignal;
   continuation: boolean;

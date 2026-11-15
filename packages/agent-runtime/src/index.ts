@@ -136,4 +136,17 @@ export function createStatefulTwoNodeGraph(options?: StatefulGraphCompileOptions
   return createStatefulGraphBuilder().compile(options);
 }
 
+export {
+  createMultiAgentPauseController,
+  isMultiAgentCheckpointResumable,
+} from './multiAgent/workflowPause';
+export type { MultiAgentPauseController, MultiAgentPausedResult } from './multiAgent/workflowPause';
+export type {
+  WorkflowOperationJournal,
+  WorkflowOperationIdentity,
+  WorkflowOperationRecord,
+} from './multiAgent/workflowOperationJournal';
+
+export type { PreparedEvidenceSearch } from './multiAgent/evidenceContracts';
+export { validateEvidenceBatch } from './multiAgent/evidence';
 export type { LocalActionTool } from './multiAgent/actionContracts';
