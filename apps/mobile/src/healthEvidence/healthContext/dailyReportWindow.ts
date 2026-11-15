@@ -1,6 +1,6 @@
 import { stableJson } from '../../aiFeatures/integration/evidenceUtils';
 import {
-  validDailyReportBaseline,
+  validDailyReportHistoricalContext,
   compareTimestamps,
   dailyReportCalendarInterval,
   createDailyReportIdentity,
@@ -118,7 +118,7 @@ export function dailyReportSourceRecordIsAvailable(
   )
     return false;
   if (record.contextRole)
-    return validDailyReportBaseline(
+    return validDailyReportHistoricalContext(
       record,
       context.identity.localDate,
       context.identity.timeZone,

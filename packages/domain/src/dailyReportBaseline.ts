@@ -11,9 +11,9 @@ export function dailyReportBaselineInterval(localDate: string, timeZone: string)
   return start ? { fromInclusive: start.fromInclusive, toExclusive: day.fromInclusive } : null;
 }
 
-/** Only explicitly marked historical measurements may use this bounded exception.
+/** Only explicitly marked historical measurement, activity or medication context may use this bounded exception.
  * They retain their original timestamps; they are never current-day observations. */
-export function validDailyReportBaseline(
+export function validDailyReportHistoricalContext(
   record: {
     source: string;
     contextRole?: string;
@@ -24,8 +24,11 @@ export function validDailyReportBaseline(
   timeZone: string,
 ) {
   if (
-    record.contextRole !== 'personal_baseline' ||
-    record.source !== 'health_observation' ||
+    (!(
+      (record.contextRole === 'personal_baseline' || record.contextRole === 'activity_history') &&
+      record.source === 'health_observation'
+    ) &&
+      !(record.contextRole === 'medication_history' && record.source === 'dose_event')) ||
     record.supportingRecordFor
   )
     return false;
@@ -38,3 +41,11 @@ export function validDailyReportBaseline(
       compareTimestamps(record.occurrence.endExclusive, range.toExclusive) <= 0),
   );
 }
+
+export const validDailyReportBaseline: typeof validDailyReportHistoricalContext = (
+  record,
+  date,
+  zone,
+) =>
+  record.contextRole === 'personal_baseline' &&
+  validDailyReportHistoricalContext(record, date, zone);

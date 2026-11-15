@@ -1,3 +1,4 @@
+import { dailyReportBehaviorInsights } from './dailyReportBehaviorInsights';
 import { dailyReportPersonalBaseline } from './dailyReportPersonalBaseline';
 import { fingerprint } from './evidenceUtils';
 import {
@@ -84,6 +85,14 @@ export async function prepareDailyReportFacts(
     snapshot.sourceSnapshot.records,
     calendar.context.identity.timeZone,
   );
+  baselineFacts.push(
+    ...dailyReportBehaviorInsights(
+      snapshot.values,
+      snapshot.behaviorValues ?? [],
+      snapshot.sourceSnapshot.records,
+      calendar.context.identity.timeZone,
+    ),
+  );
   const facts = [
     ...dailyReportFacts(
       snapshot.values,
@@ -94,7 +103,11 @@ export async function prepareDailyReportFacts(
   ];
   const providerFacts = await dailyReportProviderFacts(
     input.data,
-    [...snapshot.values, ...(snapshot.baselineValues ?? [])],
+    [
+      ...snapshot.values,
+      ...(snapshot.baselineValues ?? []),
+      ...(snapshot.behaviorValues ?? []),
+    ],
     facts,
     request.signal,
   );

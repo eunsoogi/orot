@@ -185,4 +185,8 @@ export { RecapReferenceOutputSchema, recapReferenceJsonSchema } from './recapRef
 export { DailyReportSystemCalendarSchema } from './dailyReportSystemCalendar';
 export type { DailyReportSystemCalendar } from './dailyReportSystemCalendar';
 
-export { dailyReportBaselineInterval, validDailyReportBaseline } from './dailyReportBaseline';
+export {
+  dailyReportBaselineInterval,
+  validDailyReportBaseline,
+  validDailyReportHistoricalContext,
+} from './dailyReportBaseline';

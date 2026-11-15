@@ -7,7 +7,7 @@ export {
   DailyReportSourceCoverageSchema,
   DailyReportCoverageStatusSchema,
 } from './dailyReportSources';
-import { validDailyReportBaseline } from './dailyReportBaseline';
+import { validDailyReportHistoricalContext } from './dailyReportBaseline';
 import {
   DailyReportSystemCalendarSchema,
   validDailyReportSystemCalendar,
@@ -143,7 +143,7 @@ export const DailyReportContextSchema = z
           path: ['sourceSnapshot', 'records', index, 'supportingRecordFor'],
           message: 'Supporting medication context must reference admitted doses.',
         });
-      const baseline = validDailyReportBaseline(
+      const baseline = validDailyReportHistoricalContext(
         record,
         value.identity.localDate,
         value.identity.timeZone,
@@ -152,7 +152,7 @@ export const DailyReportContextSchema = z
         context.addIssue({
           code: 'custom',
           path: ['sourceSnapshot', 'records', index, 'contextRole'],
-          message: 'Invalid personal baseline time/source boundary.',
+          message: 'Invalid historical context time/source boundary.',
         });
       const overlaps =
         baseline ||
