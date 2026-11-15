@@ -1,3 +1,4 @@
+import { SourceRecordSchema } from '@orot/domain';
 import type { RecordRepository } from '@orot/storage';
 import { prepareSavedDocumentNavigation } from '../savedDocumentNavigationFixture';
 const settings = {
@@ -25,7 +26,9 @@ test('seeds four reserved local source records and is idempotent', async () => {
   await prepareSavedDocumentNavigation(settings, repository);
   expect(put).toHaveBeenCalledTimes(4);
   const records = new Map(put.mock.calls.map(([, value]) => [value.id, value]));
-  get.mockImplementation(async (_, id) => records.get(id));
+  get.mockImplementation(async (_, id) =>
+    SourceRecordSchema.parse(records.get(id)),
+  );
   await prepareSavedDocumentNavigation(settings, repository);
   expect(put).toHaveBeenCalledTimes(4);
 });

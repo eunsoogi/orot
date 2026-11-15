@@ -1,3 +1,4 @@
+import { stableJson } from '../src/aiFeatures/integration/evidenceUtils';
 import type { RecordRepository } from '@orot/storage';
 import type { MedicalDocumentSourceRecord } from '../src/medicalDocuments/medicalDocumentImportService';
 
@@ -25,10 +26,10 @@ export async function prepareSavedDocumentNavigation(
   )
     return;
   const records = await repository();
-  // Never overwrite an unexpected record, even in an opted-in synthetic test container.
+  // Schema decoding may reorder keys; compare canonical content and never overwrite a conflicting row.
   for (const document of documents) {
     const existing = await records.get('source_record', document.id);
-    if (existing && JSON.stringify(existing) !== JSON.stringify(document))
+    if (existing && stableJson(existing) !== stableJson(document))
       throw new Error('Reserved synthetic navigation record already exists');
     if (!existing) await records.put('source_record', document);
   }
