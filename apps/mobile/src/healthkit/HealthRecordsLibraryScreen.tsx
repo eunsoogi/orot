@@ -3,7 +3,6 @@ import { FlatList, StyleSheet, View } from 'react-native';
 import type { HealthObservationPageLoader } from '@orot/storage';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppButton } from '../layout/AppButton';
-import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
@@ -34,7 +33,7 @@ interface HealthRecordsLibraryScreenProps {
   readonly refreshRevision?: number;
 }
 
-/** One virtualized page owns the introduction, import, horizontal filters and category results. */
+/** Reads bounded category previews; scrolling never starts another storage page. */
 export function HealthRecordsLibraryScreen({
   loadObservations,
   onBack,
@@ -81,9 +80,6 @@ export function HealthRecordsLibraryScreen({
         (medication.data.totalDoseEvents ?? medication.data.doseEvents.length)
       : 0);
   const hasMore = states.some(state => state.cursor !== null);
-  const remaining = active.filter(category => read(category).cursor !== null);
-  const loadingMore = states.some(state => state.loadState === 'loading');
-  const failed = states.some(state => state.loadState === 'failed');
   const retryInDock =
     states.some(
       state => state.loadState === 'failed' && state.retryCursor == null,
@@ -95,11 +91,6 @@ export function HealthRecordsLibraryScreen({
         reload(category, read(category).retryCursor ?? null);
     if (includesMedication && medication.status === 'failed')
       medication.reload();
-  };
-  const loadNext = () => {
-    for (const category of remaining)
-      if (read(category).loadState === 'ready')
-        reload(category, read(category).cursor);
   };
   const hasSharedNavigation = useNavigationLeaveStateRegistration({
     canLeave: true,
@@ -156,26 +147,6 @@ export function HealthRecordsLibraryScreen({
             />
           }
           ItemSeparatorComponent={CategoryDivider}
-          ListFooterComponent={
-            remaining.length > 0 && !failed ? (
-              loadingMore ? (
-                <Text testID="health-records-loading-more">
-                  {t('healthRecords.loading')}
-                </Text>
-              ) : (
-                <AppButton
-                  onPress={loadNext}
-                  testID="health-records-load-older"
-                  title={t('healthRecords.loadOlder')}
-                  variant="secondary"
-                />
-              )
-            ) : undefined
-          }
-          onEndReached={() => {
-            if (!loadingMore && !failed) loadNext();
-          }}
-          onEndReachedThreshold={0.5}
           renderItem={({ item: category }) =>
             category === 'medications' ? (
               <HealthRecordsMedicationCategoryCard

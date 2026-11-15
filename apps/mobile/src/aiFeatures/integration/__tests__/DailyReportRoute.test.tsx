@@ -123,6 +123,7 @@ test('hides the saved report when source revalidation finds it stale', async () 
       onOpenSource={jest.fn()}
     />,
   );
+  await fireEvent.press(await screen.findByText('근거 기록 보기'));
   await screen.findByText('합성 기록');
   await fireEvent.press(screen.getByText('기록 출처 확인'));
   await screen.findByText(
@@ -222,6 +223,7 @@ test('opens follow-up with the current report identity only after revalidation',
       onChat={onChat}
     />,
   );
+  await fireEvent.press(await screen.findByText('근거 기록 보기'));
   await screen.findByText('합성 기록');
   await fireEvent.press(screen.getByText('이 보고서에 관해 대화하기'));
   await waitFor(() =>
