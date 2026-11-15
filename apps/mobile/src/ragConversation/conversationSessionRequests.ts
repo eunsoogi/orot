@@ -69,6 +69,7 @@ export function createConversationSessionRequests(
     update,
     conversationScope,
     cold,
+    confirmPhotoResume: photo?.consent.confirm,
     retention,
     controllers,
     pendingTurns,

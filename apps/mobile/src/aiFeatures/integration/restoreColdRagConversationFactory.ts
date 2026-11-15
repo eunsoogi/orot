@@ -1,3 +1,5 @@
+import { readColdPhotoBinding } from './coldPhotoBinding';
+import { restoreColdPhotoExecution } from './restoreColdPhotoExecution';
 import { readColdConversationSearch } from './coldConversationSearch';
 import { budgetAfterPublicSearch } from './defaultPublicSearch';
 import { validateColdRagBatches } from './validateColdRagBatches';
@@ -42,11 +44,7 @@ export async function restoreColdRagConversationFactory(input: {
 }) {
   const { descriptor: d, dependencies: deps, signal } = input;
   const saved = d.reconstruction;
-  if (
-    signal.aborted ||
-    saved.factoryVersion !== COLD_RAG_FACTORY_VERSION ||
-    d.submittedInput !== null
-  )
+  if (signal.aborted || saved.factoryVersion !== COLD_RAG_FACTORY_VERSION)
     throw new Error('Unsupported cold conversation factory.');
   if (
     !saved.external ||
@@ -71,12 +69,12 @@ export async function restoreColdRagConversationFactory(input: {
   if (!original || typeof original !== 'object' || !original.task)
     throw new Error('Cold invocation snapshot missing.');
   if (
-    original.photo !== null ||
     original.task?.taskType !== ragConversationTask.taskType ||
     original.task?.taskVersion !== ragConversationTask.taskVersion ||
     original.request !== d.request
   )
     throw new Error('Unsupported cold task or photo.');
+  const photo = readColdPhotoBinding(d, input.observer?.confirmPhotoResume);
   const selected = await deps.selectedAi();
   const selection = (value: typeof selected) =>
     stableJson({
@@ -91,6 +89,7 @@ export async function restoreColdRagConversationFactory(input: {
   const registry = await restoreColdConversationRegistry({
     snapshot: saved.registry as unknown as EvidenceRegistrySnapshot,
     sources: saved.sources as unknown as readonly ConversationArtifactSource[],
+    ...(photo ? { photo } : {}),
     data,
     signal,
   });
@@ -140,7 +139,7 @@ export async function restoreColdRagConversationFactory(input: {
         }
       : {}),
   });
-  const execution = executionOptions({
+  const base = executionOptions({
     selected,
     operationRunId: d.manifest.operationRunId,
     consent: deps.consent,
@@ -149,6 +148,16 @@ export async function restoreColdRagConversationFactory(input: {
     external,
     consentPurpose: 'record_conversation',
   });
+  const execution = photo
+    ? await restoreColdPhotoExecution({
+        base,
+        selected,
+        data,
+        registry,
+        signal,
+        ...photo,
+      })
+    : base;
   const aliases = registry.snapshot().entries.map(value => value.alias);
   const historyIsCurrent = async () =>
     !signal.aborted &&
@@ -198,6 +207,7 @@ export async function restoreColdRagConversationFactory(input: {
     );
   return {
     options,
+    submittedInput: photo?.submitted,
     publicSearch,
     registry,
     bundle,

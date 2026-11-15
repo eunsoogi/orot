@@ -30,6 +30,7 @@ export function createConversationColdRequest(input: {
   conversationScope(id: number): string;
   cancel(id: number, settled?: boolean): void;
   cold?: ConversationSessionOptions['coldResume'];
+  confirmPhotoResume?: import('./conversationObserver').RagConversationObserver['confirmPhotoResume'];
   retention?: ConversationSessionOptions['retention'];
   controllers: Map<number, AbortController>;
   pendingTurns: Map<number, PendingTurn>;
@@ -159,6 +160,7 @@ export function createConversationColdRequest(input: {
         ...requestIdentityObserver(retention, turn, id),
         ...activity.observer,
         conversationScope: input.conversationScope(id),
+        confirmPhotoResume: input.confirmPhotoResume,
       });
       if (
         !ownsOutcome(

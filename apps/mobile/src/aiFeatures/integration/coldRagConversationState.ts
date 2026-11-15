@@ -25,8 +25,6 @@ export async function captureColdRagConversationState(input: {
   researchPaging?: import('./researchPagingState').ResearchPagingSnapshot;
   signal: AbortSignal;
 }): Promise<JsonObject> {
-  if (input.options.photoInput)
-    throw new Error('Cold photo reconstruction is unsupported.');
   const registry = input.registry.snapshot();
   const captured = await captureConversationSources(
     registry.entries.map(value => value.alias),
@@ -52,7 +50,9 @@ export async function captureColdRagConversationState(input: {
           taskType: input.options.task.taskType,
           taskVersion: input.options.task.taskVersion,
         },
-        photo: null,
+        photo: input.options.photoInput
+          ? { evidenceIds: [...input.options.photoInput.evidenceIds] }
+          : null,
       },
       ...(input.researchPaging ? { researchPaging: input.researchPaging } : {}),
       registry,
