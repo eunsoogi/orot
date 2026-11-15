@@ -1,3 +1,4 @@
+import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import {
   act,
   fireEvent,
@@ -144,7 +145,7 @@ test.each([false, true])(
   },
 );
 
-test('deletion blocks Back until completion then returns to the owning list', async () => {
+test('deletion invalidation clears excerpts while cleanup blocks Back, then returns to the owning list', async () => {
   let finish!: (value: { cleanupPending: boolean }) => void;
   jest.mocked(deleteMedicalDocument).mockReturnValue(
     new Promise(resolve => {
@@ -162,6 +163,10 @@ test('deletion blocks Back until completion then returns to the owning list', as
   await act(async () => {
     confirm?.onPress?.();
   });
+  await act(async () =>
+    notifyLocalSourceDeleted('local', new Set([document.id])),
+  );
+  expect(screen.queryByTestId('medical-document-source-view')).toBeNull();
   expect(screen.getByTestId('navigation-back')).toBeDisabled();
   expect(controller.getSnapshot().currentRoute.name).toBe(
     'medical-document-detail',

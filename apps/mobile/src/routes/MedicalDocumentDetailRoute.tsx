@@ -30,6 +30,13 @@ export function MedicalDocumentDetailRoute({
   const [deleting, setDeleting] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const generation = useRef(0);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const reload = useCallback(async () => {
     const request = ++generation.current;
     setLoading(true);
@@ -84,7 +91,10 @@ export function MedicalDocumentDetailRoute({
           if (!deleting) onBack().catch(() => undefined);
         }}
         onDeletionBusyChange={setDeleting}
-        onDeleted={() => setDeleted(true)}
+        onDeleted={() => undefined}
+        onDeletionCommitted={() => {
+          if (mounted.current) setDeleted(true);
+        }}
       />
     );
   return (
