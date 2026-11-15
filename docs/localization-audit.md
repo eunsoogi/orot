@@ -22,7 +22,22 @@
 
 최근 연구 출처 경고·이벤트 시각·단위 표시 15문구는 카탈로그로 이관했다. 수면 단계·기간 서식·건강 항목 표시명 15문구도 이관했고, 현재 배치는 집계 범위 제한 경고 8문구를 그대로 이관한다. 측정 출처 제한, 수면 분류 제외, 미기록 날짜와 미복용의 구분, 센서 샘플 중복 및 미확인 제한 경고를 보존한다.
 
-후속 분류에서 `manualHistoryEvidence.ts`의 한국어는 저장/모델 근거 직렬화에 해당하므로 단순 표시 이관에서 제외했다. `computedTopicChoices.ts`에는 사용자에게 보이는 계산 결과 문장과 원문 삽입이 함께 있어 별도의 의미 보존 검토가 필요하다. 이들은 미검토 상태를 완료로 처리하지 않는다.
+후속 분류에서 `manualHistoryEvidence.ts`의 한국어는 저장/모델 근거 직렬화에 해당하므로 단순 표시 이관에서 제외했다. `computedTopicChoices.ts`와 계산 수치 표시 템플릿은 이후 원문·단위·결측 의미를 보존해 40문구를 이관했다. 최초 인벤토리의 줄 수는 현재 잔여량이 아니다.
+
+## 후속 분류 경계
+
+2026-11-15 후속 검토에서는 출처 화면, 임상 후보 표시, 일일 보고서, 날짜 접근성, 저장 확인, 탐색 동작 및 native 고정 표시 문구를 추가로 이관했다. 각 변경의 실행 검증 범위와 정확한 head는 해당 PR에 기록한다. 이 진행 기록은 전체 저장소의 모든 문자열 분류가 끝났다는 뜻이 아니다.
+
+다음 문자열은 사용자에게 보일 가능성만으로 카탈로그에 기계적으로 옮기지 않는다.
+
+- `ragConversation/initialResponse.ts`: 기존 한국어 상수는 checkpoint 호환성 테스트용 legacy fixture다. 신규 요청에서 기계적 응답으로 삽입하지 않는 계약과 임상 검증 정규식을 유지한다.
+- `aiFeatures/integration/observeLocalSearchFailures.ts`: 한국어 실패 문장은 `coverage.gaps.includes(...)`의 정확 문자열 매칭에 쓰인다. 표시 계층만의 문구가 아니므로 프로토콜의 생산자와 소비자 검토 없이 이동하지 않는다.
+- `agent/visitQuestions/clarificationQuestions.ts`: 질문·근거 16문구는 `isKnownClarification`의 정확 일치 허용 목록과 연결된다. 모델 결과 검증 및 저장 경계를 포함하므로 단순 UI 이관에서 제외한다.
+- `recording/recordingPersistence.ts`, `recording/recordingScreenSupport.ts`: 기본 녹음 제목은 저장되는 자료 값이다. 기기 언어에 따라 기존 자료의 의미나 제목이 달라지는 변경을 도입하지 않는다.
+- `ios/OrotMobile/MedicalDocumentPhotoPicker.swift`: 사진 확장자를 포함한 이름은 파일명·직렬화 경계다. 화면 label과 동일하게 취급하지 않는다.
+- `encounterReview/NativeReviewProbe.tsx`, native 합성 캘린더 및 기타 testSupport: 검증 도구·합성 fixture는 production 사용자 표시 범위와 구분한다.
+
+앞선 모델 지시, 임상 판별 정규식, 검색어, 원문 및 저장/모델 근거 직렬화 제외 원칙도 유지한다. 위 항목을 남겼다는 사실만으로 모든 잔여 한국어가 제외 대상이라고 판단하지 않는다. 실제 사용자 노출 고정문구는 파일별로 추가 분류한다.
 
 ## 검증과 한계
 
