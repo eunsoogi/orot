@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import type { AgentMemoryHit } from '@orot/agent-memory';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -19,13 +19,13 @@ const kindLabels = {
   task_context: '작업 맥락',
 };
 
-/** Reads only after an explicit open; closing or backgrounding invalidates every late result. */
+/** Loads on Records entry; privacy boundaries invalidate every late result. */
 export function SavedMemoryBrowser({
   load = loadSavedLocalMemories,
 }: {
   readonly load?: () => Promise<SavedMemory[]>;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [rows, setRows] = useState<SavedMemory[]>([]);
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'failed'>(
     'idle',
@@ -39,22 +39,8 @@ export function SavedMemoryBrowser({
     setRows([]);
     setState('idle');
   };
-  useEffect(() => {
-    // Deletion fences invalidate cached text and pending reads, even if later cleanup fails.
-    const unsubscribeClear = subscribeLocalDataClear(close);
-    const unsubscribeSource = subscribeLocalSourceDeletion(close);
-    const subscription = AppState.addEventListener('change', next => {
-      if (next !== 'active') close();
-    });
-    return () => {
-      generation.current += 1;
-      subscription.remove();
-      unsubscribeClear();
-      unsubscribeSource();
-    };
-  }, []);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     const request = ++generation.current;
     setExpanded(true);
     setState('loading');
@@ -68,7 +54,27 @@ export function SavedMemoryBrowser({
     } catch {
       if (generation.current === request) setState('failed');
     }
-  };
+  }, [load]);
+
+  useEffect(() => {
+    // Deletion fences invalidate cached text and pending reads, even if later cleanup fails.
+    const unsubscribeClear = subscribeLocalDataClear(close);
+    const unsubscribeSource = subscribeLocalSourceDeletion(close);
+    const subscription = AppState.addEventListener('change', next => {
+      if (next !== 'active') close();
+      else refresh();
+    });
+    // No model preparation or transmission is needed to browse local memories.
+    if (AppState.currentState === null || AppState.currentState === 'active') {
+      refresh();
+    }
+    return () => {
+      generation.current += 1;
+      subscription.remove();
+      unsubscribeClear();
+      unsubscribeSource();
+    };
+  }, [refresh]);
 
   return (
     <View style={styles.section} testID="saved-memory-browser">
@@ -125,8 +131,7 @@ export function SavedMemoryBrowser({
           {state === 'failed' && (
             <>
               <Text accessibilityRole="alert">
-                기억을 불러오지 못했어요. 기기를 잠금 해제한 뒤 다시 시도해
-                주세요.
+                기억을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
               </Text>
               <AppButton
                 variant="neutral"
