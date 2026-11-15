@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import {
   createChatGPTSelectionOptions,
@@ -124,8 +125,8 @@ function readySelection(
     modelId: selected.modelId,
     recipient:
       selected.privacyBoundary === 'on-device'
-        ? '기기 안의 Apple Intelligence'
-        : '선택한 ChatGPT 계정',
+        ? t('nextVisit.recipient.onDevice')
+        : t('nextVisit.recipient.chatgpt'),
     remoteProcessing: selected.privacyBoundary === 'selected-context-remote',
   };
 }
@@ -135,8 +136,8 @@ export class AiProviderSelectionError extends Error {
   constructor(readonly status: 'selection-required' | 'unavailable') {
     super(
       status === 'selection-required'
-        ? 'AI를 선택해야 기능을 사용할 수 있어요.'
-        : '선택한 AI를 사용할 수 없어요. 제공자와 모델을 다시 확인해 주세요.',
+        ? t('nextVisit.selection.required')
+        : t('nextVisit.selection.unavailable'),
     );
     this.name = 'AiProviderSelectionError';
   }

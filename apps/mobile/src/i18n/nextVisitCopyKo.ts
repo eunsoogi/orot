@@ -111,4 +111,11 @@ export const nextVisitCopyKo = {
     '공개 웹검색에서 결과를 찾지 못했어요.',
   'nextVisit.caveat.public_search_unavailable':
     '공개 웹검색을 사용할 수 없어 검색 결과를 반영하지 않았어요.',
+  'nextVisit.recipient.onDevice': '기기 안의 Apple Intelligence',
+  'nextVisit.recipient.chatgpt': '선택한 ChatGPT 계정',
+  'nextVisit.selection.required': 'AI를 선택해야 기능을 사용할 수 있어요.',
+  'nextVisit.selection.unavailable':
+    '선택한 AI를 사용할 수 없어요. 제공자와 모델을 다시 확인해 주세요.',
+  'nextVisit.save.sourceChanged':
+    '예약이나 원문 근거가 바뀌어 저장하지 못했어요. 최신 내용을 확인해 주세요.',
 } as const;
