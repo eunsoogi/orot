@@ -178,4 +178,5 @@ export const medicalAppointmentsKo = {
   'medicalAppointments.labels.low': '낮음',
   'medicalAppointments.labels.medium': '보통',
   'medicalAppointments.labels.high': '높음',
+  'medicalAppointments.chooseClassifier': '진료 일정 분류에 사용할 AI 선택',
 } as const;
