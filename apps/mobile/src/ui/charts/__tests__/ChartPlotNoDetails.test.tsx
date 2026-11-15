@@ -66,3 +66,45 @@ test('removes the details action without mutating chart data or suppressing acce
     screen.queryByTestId('native-bars', { includeHiddenElements: true }),
   ).toBeNull();
 });
+
+test('chart-only pressure keeps a concise non-color legend without detailed values', async () => {
+  const pressure: ChartData = {
+    metric: 'bloodPressure',
+    coverage: { requested: 'month', displayed: 'today', status: 'partial' },
+    series: [
+      {
+        id: 'systolic',
+        label: '수축기',
+        style: 'primary',
+        unit: 'mmHg',
+        points: [{ x: '2026-01-01', value: 120, source: 'synthetic' }],
+      },
+      {
+        id: 'diastolic',
+        label: '이완기',
+        style: 'secondary',
+        unit: 'mmHg',
+        points: [{ x: '2026-01-01', value: 80, source: 'synthetic' }],
+      },
+    ],
+  };
+  await render(
+    <ChartPlot
+      data={pressure}
+      width={0}
+      height={112}
+      title="혈압"
+      kind="line"
+      compact
+      hideDetails
+      testID="pressure"
+    />,
+  );
+  expect(screen.getByText('수축기 (실선) · mmHg')).toBeTruthy();
+  expect(screen.getByText('이완기 (점선) · mmHg')).toBeTruthy();
+  expect(screen.queryByTestId('pressure-details')).toBeNull();
+  expect(screen.queryByText(/요청 범위:/)).toBeNull();
+  expect(
+    screen.getByTestId('pressure-plot').props.accessibilityLabel,
+  ).toContain('120 mmHg');
+});

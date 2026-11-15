@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
 import type { HealthObservationCategory } from './healthRecordsLibraryModel';
+import { selectHealthRecordPreview } from './healthRecordPreview';
 import { HealthRecordsLineChart } from './HealthRecordsLineChart';
 
 /** Different stored units get independent axes; no conversion or cross-unit line is invented. */
@@ -32,7 +33,8 @@ export function HealthRecordsCategoryCharts({
         <HealthRecordsLineChart
           key={unit}
           category={category}
-          observations={records}
+          observations={selectHealthRecordPreview(records)}
+          preview
           hasMore={hasMore}
           loadState={loadState}
         />

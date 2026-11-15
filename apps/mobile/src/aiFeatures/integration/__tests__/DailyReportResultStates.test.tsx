@@ -121,6 +121,7 @@ test('a failed explicit regeneration keeps the existing saved revision available
   });
   await screen.findByRole('alert');
   expect(screen.getByText('저장된 버전 3')).toBeTruthy();
+  await fireEvent.press(screen.getByText('근거 기록 보기'));
   expect(screen.getByText('이전에 저장된 합성 기록')).toBeTruthy();
   expect(screen.getByText('다시 요약하기')).toBeTruthy();
 });
@@ -189,6 +190,7 @@ test('a source revision change after regeneration hides the prior saved report',
       onChat={jest.fn()}
     />,
   );
+  await fireEvent.press(await screen.findByText('근거 기록 보기'));
   await screen.findByText('이전에 저장된 합성 기록');
   expect(screen.getByText('불러온 원본 기록 1건')).toBeTruthy();
   await fireEvent.press(screen.getByText('다시 요약하기'));
@@ -234,6 +236,7 @@ test('saved content appears during preview loading and survives retrying a faile
       onChat={jest.fn()}
     />,
   );
+  await fireEvent.press(screen.getByText('근거 기록 보기'));
   expect(screen.getByText('저장된 합성 기록')).toBeTruthy();
   await act(async () => rejectPreview(new Error('Synthetic preview failure')));
   await screen.findByRole('alert');

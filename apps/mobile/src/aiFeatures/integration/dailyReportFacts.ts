@@ -3,6 +3,7 @@ import type { DailyReportSourceRecord } from '@orot/domain';
 import { compareTimestamps } from '@orot/domain';
 import { stableJson } from './evidenceUtils';
 import { t } from '../../i18n';
+import { visibleValue } from './evidenceSourceValues';
 
 /** Keep differing same-instant measurements together, without deciding which source is correct. */
 export function conflictingDailyReportIndexes(
@@ -83,7 +84,15 @@ export function dailyReportFacts(
             ? value.text
             : String(value.value);
       detail = `${item.record.concept}: ${rendered}`;
-      displayDetail = detail;
+      const unit =
+        value.kind === 'quantity'
+          ? item.record.concept === 'step_count' && value.unit === 'count'
+            ? '걸음'
+            : value.unit === 'count/min'
+              ? '회/분'
+              : value.unit
+          : '';
+      displayDetail = `${visibleValue(item.record.concept, 'concept')}: ${value.kind === 'quantity' ? `${value.amount.toLocaleString('ko-KR')} ${unit}` : rendered}`;
     } else if (item.kind === 'symptom_entry') {
       detail = `증상: ${item.record.description}${item.record.severity === undefined ? '' : ` (정도 ${item.record.severity}/10)`}, 상태: ${item.record.status}`;
       displayDetail = t('dailyReport.symptom', {
@@ -121,9 +130,11 @@ export function dailyReportFacts(
     return {
       text: t('dailyReport.fact', {
         detail: displayDetail,
-        time,
+        time: source.occurrence.endExclusive
+          ? `${visibleValue(source.occurrence.startInclusive, 'effectiveAt')}–${visibleValue(source.occurrence.endExclusive, 'endedAt')}`
+          : visibleValue(source.occurrence.startInclusive, 'effectiveAt')!,
         source: sourceName,
-        origin: record.provenance.origin,
+        origin: visibleValue(record.provenance.origin, 'origin')!,
       }),
       modelText: `${detail} · 시각: ${time} · 기록 출처 유형: ${record.provenance.origin}`,
       sourceReferences: [{ source: source.source, recordId: source.recordId }],

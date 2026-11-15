@@ -27,10 +27,12 @@ export function HealthRecordsLineChart({
   observations,
   hasMore = false,
   loadState = 'ready',
+  preview = false,
 }: {
   readonly category: HealthObservationCategory;
   readonly observations: readonly HealthObservation[];
   readonly hasMore?: boolean;
+  readonly preview?: boolean;
   readonly loadState?: 'loading' | 'ready' | 'failed';
 }) {
   const [width, setWidth] = useState(0);
@@ -107,6 +109,8 @@ export function HealthRecordsLineChart({
     >
       <ChartPlot
         data={data}
+        compact={preview}
+        hideDetails={preview}
         width={width}
         height={200}
         title={healthRecordCategoryTitle(category)}
@@ -114,7 +118,7 @@ export function HealthRecordsLineChart({
         testID={'health-record-chart-values-' + category}
         selectedPointTestID={'health-record-chart-' + category}
       />
-      <Text>{t('healthRecords.measuredOnly')}</Text>
+      {!preview ? <Text>{t('healthRecords.measuredOnly')}</Text> : null}
     </View>
   );
 }
