@@ -8,6 +8,7 @@ export function getRagConversationCopy() {
     placeholder: t('ragConversation.placeholder'),
     send: t('ragConversation.send'),
     cancel: t('aiActivity.cancel'),
+    cancelling: t('assistantAppearance.cancelling'),
     sessions: t('ragConversation.sessions'),
     newConversation: t('ragConversation.newConversation'),
     transmissionNotice: t('ragConversation.transmissionNotice'),

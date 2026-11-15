@@ -228,6 +228,7 @@ export function ConversationScreen({
               photo={photo}
               value={draft}
               busy={busy}
+              cancelling={session.requestActivity?.stage === 'cancelling'}
               disabled={
                 session.restoring ||
                 session.restoreFailed ||
