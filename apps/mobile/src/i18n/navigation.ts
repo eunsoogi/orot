@@ -12,6 +12,10 @@ export const navigationText = {
     label: '닫기',
     accessibilityLabel: '현재 화면 닫기',
   },
+  menuState: {
+    selected: ' (선택됨)',
+    busy: ' (진행 중)',
+  },
   hostStatus: {
     unfit: '이 화면에 필요한 탐색 동작을 표시할 공간이 부족해요.',
     pending: '탐색 동작을 준비하고 있어요.',
