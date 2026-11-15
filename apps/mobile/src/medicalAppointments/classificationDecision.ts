@@ -1,4 +1,5 @@
 import type { JsonValue } from '@orot/model-runtime';
+import { t } from '../i18n';
 
 export const classificationDecisions = [
   'medical_low',
@@ -12,10 +13,11 @@ export const classificationDecisions = [
   'uncertain_high',
 ] as const;
 
+// These UI explanations do not participate in wire decisions or appointment saves.
 const reasons = {
-  medical: '의료 방문·검사 일정',
-  non_medical: '일반 생활 일정',
-  uncertain: '제목만으로 판단 어려움',
+  medical: t('medicalAppointments.classification.medical'),
+  non_medical: t('medicalAppointments.classification.non_medical'),
+  uncertain: t('medicalAppointments.classification.uncertain'),
 };
 
 /** Expands the bounded wire decision; the model need not regenerate fixed UI explanations. */

@@ -3,6 +3,9 @@
  * The feature adapter resolves it with `t()` so keys and placeholders stay typed.
  */
 export const medicalAppointmentsKo = {
+  'medicalAppointments.classification.medical': '의료 방문·검사 일정',
+  'medicalAppointments.classification.non_medical': '일반 생활 일정',
+  'medicalAppointments.classification.uncertain': '제목만으로 판단 어려움',
   'medicalAppointments.reminder.openTitle': '진료 준비',
   'medicalAppointments.reminder.stale':
     '예약이 바뀌었거나 취소되어 이 알림을 열 수 없어요. 일정에서 최신 예약을 확인해 주세요.',
