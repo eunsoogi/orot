@@ -2,16 +2,16 @@ import { createDailyReportContext } from '../../healthEvidence/healthContext/dai
 import { createDailyReportCalendarWindow } from '../../healthEvidence/healthContext/dailyReportWindow';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import { validateDailyReportCompletion } from '../../storage/dailyReportValidation';
-import { resolveSelectedAiProvider } from './provider';
-import type { SelectedAiResolution } from './provider';
+import {
+  resolveSelectedAiProvider,
+  type SelectedAiResolution,
+} from './provider';
 import {
   conflictingDailyReportIndexes,
   incomparableDailyReportIndexes,
   dailyReportFacts,
 } from './dailyReportFacts';
-import { dailyReportGuidance } from './dailyReportGuidance';
-import { dailyReportQuestions } from './dailyReportQuestions';
-import { dailyReportSynthesis } from './dailyReportSynthesis';
+import { dailyReportInsights } from './dailyReportActions';
 import { selectDailyReportFacts } from './dailyReportModel';
 import { stableJson } from './evidenceUtils';
 import { dailyReportProviderFacts } from './dailyReportProjection';
@@ -180,16 +180,13 @@ export async function generateDailyReport(
         text: facts[index]!.text,
         sourceReferences: facts[index]!.sourceReferences,
       })),
-    supportedContext: [
-      ...dailyReportGuidance(snapshot.values, sourceSnapshot.records),
-      ...dailyReportSynthesis(
-        snapshot.values,
-        sourceSnapshot.records,
-        selection.indexes,
-      ),
-    ],
+    supportedContext: dailyReportInsights(
+      snapshot.values,
+      sourceSnapshot.records,
+      selection.indexes,
+    ),
     coverage: context.sourceSnapshot.coverage,
-    followUpQuestions: dailyReportQuestions(snapshot.values),
+    followUpQuestions: [],
   };
   const result = { status: 'completed' as const, report };
   input.deadlineContext.stage = 'validation';
