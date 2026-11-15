@@ -33,6 +33,7 @@ test('uses circular glass actions and opens a separate history destination', asy
     />,
   );
   const copy = getRagConversationCopy();
+  expect(screen.queryByText(copy.title)).toBeNull();
   const history = screen.getByLabelText(copy.sessions);
   const create = screen.getByLabelText(copy.newConversation);
   for (const action of [history, create]) {
@@ -133,6 +134,8 @@ test('registers history and new-session actions on a Duo rail without interrupti
   await waitFor(() =>
     expect(screen.getByTestId('dock-conversation-history')).toBeTruthy(),
   );
+  expect(screen.queryByText(copy.title)).toBeNull();
+  expect(screen.queryByTestId('conversation-header-actions')).toBeNull();
   expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
   expect(screen.queryByTestId('rag-conversation-new-session')).toBeNull();
   expect(screen.getAllByLabelText(copy.sessions)).toHaveLength(1);

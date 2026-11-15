@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
-import { ConversationHeaderTitle } from '../ConversationHeaderTitle';
+import { ConversationHeaderActions } from '../ConversationHeaderActions';
 import { VoiceConversationControl } from '../../voiceConversation/VoiceConversationControl';
 
 /** Compositing contract: disabled foreground may change, but the native effect's ancestors stay opaque. */
@@ -40,8 +40,7 @@ test('disabled voice keeps its Glass surface opaque and never starts audio', asy
 test('unavailable history keeps Glass opaque while new conversation remains usable', async () => {
   const onNew = jest.fn();
   await render(
-    <ConversationHeaderTitle
-      title="대화"
+    <ConversationHeaderActions
       historyLabel="기록"
       newLabel="새 대화"
       showActions

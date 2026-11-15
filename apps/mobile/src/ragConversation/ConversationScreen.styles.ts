@@ -5,10 +5,8 @@ import { appColors } from '../layout/appColors';
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
   header: { paddingHorizontal: 20, paddingTop: 16, gap: 8 },
-  heading: { flex: 1, fontSize: 25, fontWeight: '700', color: appColors.text },
   provider: { marginTop: 0 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  sessionActions: { flexDirection: 'row', gap: 12 },
+  sessionActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
   sessionAction: {
     width: 44,
     height: 44,
