@@ -69,14 +69,18 @@ test('actual SQLite reconstructed steering reuses a completed call without new c
     );
     expect(generate).toHaveBeenCalledTimes(1);
     expect((await journal.steering!.list())[0].status).toBe('applied');
-    context.options.operationJournal = await createConversationOperationJournal(
+    const restoredJournal = await createConversationOperationJournal(
       fixture.connection.database,
       owner,
       async () => true,
     );
-    context.activeModelOperation = { operationKey: 'model-1', callIndex: 0 };
+    const restoredContext = {
+      ...context,
+      options: { ...context.options, operationJournal: restoredJournal },
+      activeModelOperation: { operationKey: 'model-1', callIndex: 0 },
+    };
     expect(
-      (await callModelWithEvidenceFreshness(context, request))?.status,
+      (await callModelWithEvidenceFreshness(restoredContext, request))?.status,
     ).toBe('response');
     expect(generate).toHaveBeenCalledTimes(1);
     expect(consent.authorize).toHaveBeenCalledTimes(1);

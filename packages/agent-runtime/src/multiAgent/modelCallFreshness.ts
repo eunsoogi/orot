@@ -46,7 +46,7 @@ export async function revalidateCurrentEvidence<TResult>(
 /** Keeps evidence-backed payloads current across consent waits and provider calls. */
 export async function callModelWithEvidenceFreshness<TResult>(
   context: RuntimeContext<TResult>,
-  request: LanguageModelRequest,
+  initialRequest: LanguageModelRequest,
   onTextEvent?: (
     event: Extract<LanguageModelStreamEvent, { type: 'text_delta' | 'text_snapshot' }>,
   ) => void,
@@ -151,7 +151,7 @@ export async function callModelWithEvidenceFreshness<TResult>(
     }
     return 'ready';
   };
-  const outcome = await journaledModelCall(context, request, consent, onTextEvent, prepare);
+  const outcome = await journaledModelCall(context, initialRequest, consent, onTextEvent, prepare);
   if (staleAfterConsent || context.outcome || !outcome) return;
   if (outcome.status !== 'response') return outcome;
   return (await ensureCurrent('underlying_call_unconfirmed')) ? outcome : undefined;

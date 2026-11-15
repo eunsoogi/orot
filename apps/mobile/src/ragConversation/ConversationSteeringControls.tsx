@@ -1,4 +1,4 @@
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View, StyleSheet } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
@@ -40,7 +40,7 @@ export function ConversationSteeringControls({
         </AppText>
       ) : null}
       {rows.length ? (
-        <ScrollView style={{ maxHeight: 120 }}>
+        <ScrollView style={styles.instructions}>
           {rows.map(row => (
             <AppText key={row.id}>
               {row.sequence}. {row.text} ·{' '}
@@ -52,3 +52,5 @@ export function ConversationSteeringControls({
     </View>
   );
 }
+
+const styles = StyleSheet.create({ instructions: { maxHeight: 120 } });

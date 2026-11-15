@@ -24,7 +24,7 @@ export function ConversationSteeringComposer({
         <ConversationSteeringControls
           session={session}
           onSend={() => {
-            void store.steer(session.id);
+            store.steer(session.id).catch(() => {});
           }}
         />
       }

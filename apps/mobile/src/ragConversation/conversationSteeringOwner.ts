@@ -51,7 +51,7 @@ export function createConversationSteeringOwner(
       entry.release = store.subscribe?.(refresh);
       if (current())
         update(id, { steeringAvailable: true, steeringInstructions: [] });
-      void refresh().catch(() => {});
+      refresh().catch(() => {});
     },
     async submit(id: number) {
       const entry = entries.get(id);
