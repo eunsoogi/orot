@@ -18,7 +18,11 @@ export function createConversationTurnActivity(input: {
   id: number;
   responseId: number;
   find: (id: number) => ConversationSession;
-  update: (id: number, change: Partial<ConversationSession>) => void;
+  update: (
+    id: number,
+    change: Partial<ConversationSession>,
+    stream?: boolean,
+  ) => void;
   current: () => boolean;
   retained?: ReturnType<typeof createConversationTurnRetention>;
   activity?: ReturnType<typeof createConversationActivity>;
@@ -158,15 +162,19 @@ export function createConversationTurnActivity(input: {
           pending?.id === input.responseId &&
           !pending.withholdHealthBody
         )
-          input.update(input.id, {
-            pendingMessage: {
-              id: input.responseId,
-              content: applyWorkflowStreamEvent(pending.content, event),
-              initialResponse: pending.initialResponse,
-              activity: pending.activity,
-              ...metadata(),
+          input.update(
+            input.id,
+            {
+              pendingMessage: {
+                id: input.responseId,
+                content: applyWorkflowStreamEvent(pending.content, event),
+                initialResponse: pending.initialResponse,
+                activity: pending.activity,
+                ...metadata(),
+              },
             },
-          });
+            event.type === 'text_delta',
+          );
       },
     },
   };
