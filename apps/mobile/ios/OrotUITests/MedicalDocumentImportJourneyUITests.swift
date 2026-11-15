@@ -142,6 +142,8 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
             "-OROT_TEST_PROFILE", "core",
             "-OROT_E2E_PROBE", "medical-document-import",
             "-OROT_TEST_MEDICAL_DOCUMENT_FIXTURE", fixture,
+            // Opt into the existing encrypted synthetic appearance fixture before the real app mounts.
+            "-OROT_TEST_ASSISTANT_APPEARANCE", "synthetic",
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ] + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
         app.launch()
