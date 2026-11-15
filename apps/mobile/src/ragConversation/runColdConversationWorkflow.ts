@@ -1,3 +1,4 @@
+import { coldConversationActionCapture } from '../storage/coldConversationActionCapture';
 import { interruptColdConversationAttempt } from '../storage/interruptColdConversationAttempt';
 import {
   SqliteCheckpointSaver,
@@ -102,7 +103,19 @@ export async function runColdConversationWorkflow<T>(input: {
     input.onClaim?.();
     if (operationJournal.steering)
       input.onSteeringReady?.(operationJournal.steering);
-    const result = await runMultiAgentWorkflow(durable, {
+    const continued = {
+      ...durable,
+      beforeLocalAction: coldConversationActionCapture({
+        database,
+        descriptor: d,
+        checkpointer,
+        options,
+        attempt: claim.attempt,
+        snapshot: cache.snapshotEvidence,
+        capture: input.capture,
+      }),
+    };
+    const result = await runMultiAgentWorkflow(continued, {
       ...input.invocation,
       signal,
       config,

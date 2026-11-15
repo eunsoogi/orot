@@ -1,3 +1,4 @@
+import { coldConversationActionCapture } from '../storage/coldConversationActionCapture';
 import { interruptColdConversationAttempt } from '../storage/interruptColdConversationAttempt';
 import {
   SqliteCheckpointSaver,
@@ -107,7 +108,21 @@ export async function runCommittedActionConversationWorkflow<T>(input: {
             signal,
           ))),
     );
-    const durable = { ...cache, checkpointer, operationJournal };
+    const durable = {
+      ...cache,
+      checkpointer,
+      operationJournal,
+      beforeLocalAction: coldConversationActionCapture({
+        database,
+        descriptor: d,
+        checkpointer,
+        options,
+        attempt: claim.attempt,
+        snapshot: cache.snapshotEvidence,
+        capture: input.capture,
+        recoveredOperation: state.pendingOperation!.operationKey,
+      }),
+    };
     const recovered = await preparePendingActionRecovery(
       state,
       durable,

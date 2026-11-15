@@ -1,3 +1,4 @@
+import { postRecoveryAction } from './postRecoveryAction';
 import { recoverEarlierActions } from './recoverEarlierActions';
 import { checkpointFromState, type WorkflowState } from './state';
 import type { MultiAgentCheckpointState, MultiAgentWorkflowOptions } from './contracts';
@@ -72,42 +73,57 @@ export async function preparePendingActionRecovery<T>(
   if (!batch || signal.aborted) return undefined;
   const input = JSON.parse(saved.input).researchInput;
   let consumed = false;
+  let restored = false;
   const recovered = {
     ...options,
-    actions: options.actions!.map((action) =>
-      action.id !== state.selectedToolId
-        ? action
-        : {
-            ...action,
-            async authorize(value: Parameters<typeof action.authorize>[0], current: AbortSignal) {
-              return (
-                !consumed &&
-                !signal.aborted &&
-                !current.aborted &&
-                canonicalJson(value) === canonicalJson(input)
-              );
-            },
-            async execute(request: Parameters<typeof action.execute>[0]) {
-              if (
-                consumed ||
-                signal.aborted ||
-                request.signal.aborted ||
-                request.operationRunId !== state.operationRunId ||
-                request.operationKey !== state.pendingOperation!.operationKey ||
-                canonicalJson(request.input) !== canonicalJson(input)
-              )
-                throw new Error('Verified action recovery is no longer current.');
-              consumed = true;
-              if (
-                !(await options.revalidateEvidence(referencesFromBatch(batch), request.signal)) ||
-                signal.aborted ||
-                request.signal.aborted
-              )
-                throw new Error('Verified action result changed.');
-              return retainResult ? retainResult(batch) : batch;
-            },
-          },
-    ),
+    actions: options.actions!.map((action) => {
+      if (action.id !== state.selectedToolId) return action;
+      const later = postRecoveryAction(
+        action,
+        state.operationRunId,
+        state.pendingOperation!.operationKey,
+        input,
+      );
+      return {
+        ...action,
+        async authorize(value: Parameters<typeof action.authorize>[0], current: AbortSignal) {
+          if (restored && !signal.aborted) return later.authorize(value, current);
+          return (
+            !consumed &&
+            !signal.aborted &&
+            !current.aborted &&
+            canonicalJson(value) === canonicalJson(input)
+          );
+        },
+        async execute(request: Parameters<typeof action.execute>[0]) {
+          if (
+            restored &&
+            !signal.aborted &&
+            request.operationKey !== state.pendingOperation!.operationKey
+          )
+            return later.execute(request);
+          if (
+            consumed ||
+            signal.aborted ||
+            request.signal.aborted ||
+            request.operationRunId !== state.operationRunId ||
+            request.operationKey !== state.pendingOperation!.operationKey ||
+            canonicalJson(request.input) !== canonicalJson(input)
+          )
+            throw new Error('Verified action recovery is no longer current.');
+          consumed = true;
+          if (
+            !(await options.revalidateEvidence(referencesFromBatch(batch), request.signal)) ||
+            signal.aborted ||
+            request.signal.aborted
+          )
+            throw new Error('Verified action result changed.');
+          const result = retainResult ? retainResult(batch) : batch;
+          restored = true;
+          return result;
+        },
+      };
+    }),
   };
   verified.set(recovered, stateKey(state));
   return recovered;
