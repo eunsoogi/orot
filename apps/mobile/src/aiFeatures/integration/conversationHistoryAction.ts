@@ -86,7 +86,7 @@ export function conversationHistoryAction(input: {
         approvedSignal = signal;
         return true;
       },
-      async execute({ input: value, signal }) {
+      async execute({ input: value, signal, operationRunId, operationKey }) {
         const selected = selection(value);
         if (
           !approved ||
@@ -105,6 +105,7 @@ export function conversationHistoryAction(input: {
             sessionVersion: session.version,
             question,
             approvedSource: selected,
+            operation: { operationRunId, operationKey },
           },
           signal,
         );
