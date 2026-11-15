@@ -158,7 +158,9 @@ export function dailyReportFacts(
       detail = `${name}: ${detail}`;
       displayDetail = `${name}: ${displayDetail}`;
     }
-    const references = [{ source: source.source, recordId: source.recordId }];
+    const references: Pick<DailyReportSourceRecord, 'source' | 'recordId'>[] = [
+      { source: source.source, recordId: source.recordId },
+    ];
     if (medicationIndex >= 0)
       references.push({
         source: sources[medicationIndex]!.source,
