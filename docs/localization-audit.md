@@ -14,6 +14,8 @@
 
 네 번째 구현은 `evidenceSourceValues.ts`의 표시용 필드/상태 이름과 값 포맷 139개 문구를 카탈로그로 이동한다. 임상 용어의 원래 의미와 미검토/사람 검토/사용자 확인의 구분, 원문값, private identifier 제외, 시간대 포맷을 변경하지 않는다. #946 담당과 파일 범위를 조율했다.
 
+다섯 번째 구현은 `evidenceSourcePresentation.ts`의 46개 고유 표시 문구를 카탈로그로 이동한다. 출처 확인 불가, 이전 AI 생성 답변의 비확정 의료 사실 안내, 사용자가 입력한 병력의 미검토/기준일 불명확 상태를 유지한다. 수동 기록 presentation은 줄 수 제한을 위해 별도 모듈로 분리하며 원문은 바꾸지 않는다. #946 담당과 파일 범위를 조율했다.
+
 ## 검증과 한계
 
 카탈로그·미지원 locale fallback·보존된 경고·모델 ID interpolation과 조사한 두 디렉터리의 inline 한국어 회귀 검사를 추가했다. 기존 설정/계정/모델 동작 테스트를 함께 검증한다. native UI나 실기기 동작을 검증한 것으로 간주하지 않는다. 아래 나머지 production/native 후보는 후속 작업이며 이 문서나 부분 PR로 전체 현지화가 완료되지 않는다.
@@ -135,7 +137,6 @@
 - `apps/mobile/src/aiFeatures/integration/evidenceRecordHero.ts`: 7
 - `apps/mobile/src/aiFeatures/integration/evidenceSearchTool.ts`: 3
 - `apps/mobile/src/aiFeatures/integration/evidenceSnapshot.ts`: 2
-- `apps/mobile/src/aiFeatures/integration/evidenceSourcePresentation.ts`: 51
 - `apps/mobile/src/aiFeatures/integration/externalConversationEvidence.ts`: 4
 - `apps/mobile/src/aiFeatures/integration/featureServices.ts`: 3
 - `apps/mobile/src/aiFeatures/integration/healthContextPresentation.ts`: 57
