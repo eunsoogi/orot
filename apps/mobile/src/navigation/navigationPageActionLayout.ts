@@ -70,8 +70,8 @@ export function pageActionRailLayout({
   const displayed = Math.min(actionCount, capacity);
   const fits = available >= navHeight && (actionCount === 0 || displayed > 0);
   const displayedActionHeight = displayed * step;
-  // Bottom-anchor the whole group; page actions sit immediately before the
-  // navigation group, with contextual Back retaining its preceding target.
+  // Legacy standalone Back/Home keeps the whole group bottom-anchored;
+  // root-tab layouts instead split the page dock and navigation below.
   const actionGroupHeight =
     displayed > 0 ? displayedActionHeight + railGapCount * groupGap : 0;
   const groupTop = Math.max(
@@ -85,9 +85,7 @@ export function pageActionRailLayout({
     : navigationCount > 0
       ? groupTop + step + groupGap
       : groupTop;
-  const pageBottom = rootTabs
-    ? pageTopInset + displayedActionHeight
-    : pageTopInset + displayedActionHeight;
+  const pageBottom = pageTopInset + displayedActionHeight;
   return {
     fits,
     capacity,
