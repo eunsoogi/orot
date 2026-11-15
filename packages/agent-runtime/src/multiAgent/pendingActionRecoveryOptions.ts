@@ -1,3 +1,4 @@
+import { recoverEarlierActions } from './recoverEarlierActions';
 import { checkpointFromState, type WorkflowState } from './state';
 import type { MultiAgentCheckpointState, MultiAgentWorkflowOptions } from './contracts';
 import { canonicalJson } from './protocol';
@@ -18,6 +19,27 @@ export function isVerifiedPendingActionRecovery(
   return verified.get(options) === stateKey(state);
 }
 
+/** Internal evidence-only deferral preserves the same action/journal capability.
+ * Any change outside these three cancellation wrappers invalidates inheritance. */
+export function bindDeferredRecoveryEvidence<T>(
+  original: MultiAgentWorkflowOptions<T>,
+  next: MultiAgentWorkflowOptions<T>,
+) {
+  const wrappers = new Set(['revalidateEvidence', 'restoreEvidence', 'restoreEvidenceBatches']);
+  if (
+    Object.keys(next).every(
+      (key) =>
+        wrappers.has(key) ||
+        next[key as keyof typeof next] === original[key as keyof typeof original],
+    ) &&
+    Object.keys(original).every((key) => key in next)
+  ) {
+    const key = verified.get(original);
+    if (key) verified.set(next, key);
+  }
+  return next;
+}
+
 /** Replace only the interrupted invocation with a one-use read-only result port.
  * New approval and domain proof happen before this capability exists. Even if the
  * graph reruns its execute node, it cannot reach the original mutation adapter.
@@ -30,6 +52,7 @@ export async function preparePendingActionRecovery<T>(
     batch: import('./evidenceContracts').EvidenceBatch,
   ) => import('./evidenceContracts').EvidenceBatch,
 ): Promise<MultiAgentWorkflowOptions<T> | undefined> {
+  if (!(await recoverEarlierActions(state, options, signal)) || signal.aborted) return undefined;
   const operationId = `${state.pendingOperation?.operationKey}:context`;
   const original = await options.operationJournal?.loadPrepared?.(operationId);
   if (!original || signal.aborted) return undefined;

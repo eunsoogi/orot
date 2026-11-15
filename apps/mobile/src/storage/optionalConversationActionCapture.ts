@@ -1,3 +1,4 @@
+import { recoverySource } from './actionRecoverySource';
 import { retireCompletedActionRecovery } from './retireCompletedActionRecovery';
 import type { SqlDatabase } from '@orot/storage';
 import type {
@@ -31,7 +32,6 @@ export function optionalConversationActionCapture(
       return;
     if (input.checkpoint.committedAction) {
       await retireCompletedActionRecovery(database, identity, input);
-      return;
     }
     const signal = input.signal;
     if (!signal || signal.aborted) return;
@@ -65,14 +65,18 @@ export function optionalConversationActionCapture(
           ],
         )
       ).rows[0];
-      if (
-        !row ||
-        typeof row.input !== 'string' ||
-        typeof row.refs !== 'string' ||
-        JSON.parse(row.input).researchInput?.userMessage !==
-          input.options.request
-      )
+      if (!row || typeof row.input !== 'string' || typeof row.refs !== 'string')
         return;
+      const selected = JSON.parse(row.input).researchInput?.userMessage;
+      if (typeof selected !== 'string') return;
+      const sourceRequestId = await recoverySource(
+        database,
+        identity.requestId,
+        identity.sessionId,
+        input.options.request,
+        selected,
+      );
+      if (!sourceRequestId) return;
       const binding = await coldCheckpointBinding(database, manifest);
       if (!binding || binding.checkpointId !== input.checkpointId) return;
       const knownCallIds = await readConversationColdCallIds(
@@ -106,7 +110,7 @@ export function optionalConversationActionCapture(
           claimed: row.claimed as 0 | 1,
           epoch: Number(row.epoch),
           operationKey,
-          sourceRequestId: identity.requestId,
+          sourceRequestId,
           checkpointId: input.checkpointId,
           checkpointBinding: binding.bytes,
           preparedInput: row.input,

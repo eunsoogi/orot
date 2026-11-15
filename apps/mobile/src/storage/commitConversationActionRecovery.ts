@@ -1,3 +1,4 @@
+import { readHistoryOperationReceipt } from './conversationHistoryOperationReceipt';
 import type { SqlTransaction } from '@orot/storage';
 import type { ConversationHistorySave } from './conversationHealthHistory';
 import {
@@ -38,6 +39,7 @@ export async function commitConversationActionRecovery(
     !(await actionRecoveryStageMatches(tx, d))
   )
     throw new Error('Committed action recovery ownership changed.');
+  const additionalId = await readHistoryOperationReceipt(tx, input);
   const receipt = (
     await tx.execute(
       `SELECT h.entry_id, a.identity_json FROM conversation_history_receipts h
@@ -53,8 +55,9 @@ export async function commitConversationActionRecovery(
     d.sourceRequestId,
   ]);
   if (
-    receipt?.entry_id !== entryId ||
-    receipt.identity_json !== identity ||
+    (additionalId
+      ? additionalId !== entryId
+      : receipt?.entry_id !== entryId || receipt.identity_json !== identity) ||
     (row.status === 'committed' && row.entry_id !== entryId)
   )
     throw new Error('Committed action recovery receipt changed.');

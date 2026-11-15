@@ -1,3 +1,4 @@
+import { bindDeferredRecoveryEvidence } from './pendingActionRecoveryOptions';
 import type {
   MultiAgentCheckpointState,
   MultiAgentInvocation,
@@ -98,7 +99,7 @@ export function hasExplicitCheckpointSelector(config: MultiAgentInvocation['conf
 export function withDeferredEvidenceAdapters<TResult>(
   options: MultiAgentWorkflowOptions<TResult>,
 ): MultiAgentWorkflowOptions<TResult> {
-  return {
+  return bindDeferredRecoveryEvidence(options, {
     ...options,
     revalidateEvidence: (references, signal) =>
       deferEvidenceAdapter(signal, () => options.revalidateEvidence(references, signal)),
@@ -110,7 +111,7 @@ export function withDeferredEvidenceAdapters<TResult>(
       ? (references, signal) =>
           deferEvidenceAdapter(signal, () => options.restoreEvidence!(references, signal))
       : undefined,
-  };
+  });
 }
 
 /** Reopens a saved graph only after safe checkpoint shape and current source revisions agree. */
