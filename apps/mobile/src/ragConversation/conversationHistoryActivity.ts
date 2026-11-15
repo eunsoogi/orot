@@ -8,6 +8,7 @@ export function conversationHistoryActivity(
   pending: ConversationSession['pendingMessage'],
   requestSessionId: number | undefined,
   requestActivity: ConversationActivitySnapshot | null | undefined,
+  separatedActivity = false,
 ) {
   // The producer uses the pending response ID as the request ID; reject stale turns.
   const activity =
@@ -33,8 +34,12 @@ export function conversationHistoryActivity(
             streaming: true,
           },
         ];
+  // Expanded Duo hides partial answer text, but must still show request progress.
   const showActivityBubble = Boolean(
-    activity && (activity.stage !== 'streaming' || !pending?.content.trim()),
+    activity &&
+    (separatedActivity ||
+      activity.stage !== 'streaming' ||
+      !pending?.content.trim()),
   );
 
   return { visibleMessages, showActivityBubble };

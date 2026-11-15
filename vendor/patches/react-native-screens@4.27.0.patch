@@ -189,3 +189,119 @@ diff --git a/ios/UIWindow+RNScreens.mm b/ios/UIWindow+RNScreens.mm
 +
 +// Keep this category-only object visible to libtool without exporting a public API symbol.
 +__attribute__((visibility("hidden"))) void RNScreensArchiveAnchor_UIWindowRNScreens(void) {}
+diff --git a/ios/RNSScreenStackAnimator.mm b/ios/RNSScreenStackAnimator.mm
+--- a/ios/RNSScreenStackAnimator.mm
++++ b/ios/RNSScreenStackAnimator.mm
+@@ -30,6 +30,7 @@
+   UINavigationControllerOperation _operation;
+   NSTimeInterval _transitionDuration;
+   UIViewPropertyAnimator *_Nullable _inFlightAnimator;
++  void (^_Nullable _fadeCleanup)(void);
+ }
+ 
+ - (instancetype)initWithOperation:(UINavigationControllerOperation)operation
+@@ -116,6 +117,8 @@
+ 
+ - (void)animationEnded:(BOOL)transitionCompleted
+ {
++  if (_fadeCleanup != nil) _fadeCleanup();
++  _fadeCleanup = nil;
+   _inFlightAnimator = nil;
+ }
+ 
+@@ -297,36 +300,56 @@
+                                     toVC:(UIViewController *)toViewController
+                                   fromVC:(UIViewController *)fromViewController
+ {
++  UIView *container = transitionContext.containerView;
+   toViewController.view.frame = [transitionContext finalFrameForViewController:toViewController];
+-
+-  if (_operation == UINavigationControllerOperationPush) {
+-    [[transitionContext containerView] addSubview:toViewController.view];
+-    toViewController.view.alpha = 0.0;
+-    auto animator = [[UIViewPropertyAnimator alloc] initWithDuration:[self transitionDuration:transitionContext]
+-                                                               curve:UIViewAnimationCurveEaseInOut
+-                                                          animations:^{
+-                                                            toViewController.view.alpha = 1.0;
+-                                                          }];
+-    [animator addCompletion:^(UIViewAnimatingPosition finalPosition) {
+-      toViewController.view.alpha = 1.0;
+-      [transitionContext completeTransition:![transitionContext transitionWasCancelled]];
+-    }];
+-    _inFlightAnimator = animator;
+-    [animator startAnimation];
+-  } else if (_operation == UINavigationControllerOperationPop) {
+-    [[transitionContext containerView] insertSubview:toViewController.view belowSubview:fromViewController.view];
+-    auto animator = [[UIViewPropertyAnimator alloc] initWithDuration:[self transitionDuration:transitionContext]
+-                                                               curve:UIViewAnimationCurveEaseInOut
+-                                                          animations:^{
+-                                                            fromViewController.view.alpha = 0.0;
+-                                                          }];
+-    [animator addCompletion:^(UIViewAnimatingPosition finalPosition) {
+-      fromViewController.view.alpha = 1.0;
+-      [transitionContext completeTransition:![transitionContext transitionWasCancelled]];
+-    }];
+-    _inFlightAnimator = animator;
+-    [animator startAnimation];
+-  }
++  // Only the transient rasterized outgoing surface fades. Live UIKit glass ancestors
++  // remain at alpha 1; the snapshot never leaves memory or survives completion/cancellation.
++  __block UIView *outgoing = [fromViewController.view snapshotViewAfterScreenUpdates:NO];
++  if (outgoing == nil) {
++    outgoing = [[UIView alloc] initWithFrame:fromViewController.view.bounds];
++    outgoing.backgroundColor = fromViewController.view.backgroundColor ?: UIColor.systemBackgroundColor;
++  }
++  outgoing.frame = [container convertRect:fromViewController.view.bounds fromView:fromViewController.view];
++  outgoing.userInteractionEnabled = NO;
++  outgoing.accessibilityElementsHidden = YES;
++  BOOL fromWasHidden = fromViewController.view.hidden;
++  if (_operation == UINavigationControllerOperationPush) {
++    [container addSubview:toViewController.view];
++  } else {
++    [container insertSubview:toViewController.view belowSubview:fromViewController.view];
++  }
++  [container addSubview:outgoing];
++  fromViewController.view.hidden = YES;
++  auto animator = [[UIViewPropertyAnimator alloc] initWithDuration:[self transitionDuration:transitionContext]
++                                                           curve:UIViewAnimationCurveEaseInOut
++                                                      animations:^{ outgoing.alpha = 0.0; }];
++  NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
++  __block id inactiveObserver;
++  __block id captureObserver;
++  __block BOOL cleaned = NO;
++  void (^cleanup)(void) = ^{
++    if (cleaned) return;
++    cleaned = YES;
++    fromViewController.view.hidden = fromWasHidden;
++    [outgoing removeFromSuperview];
++    outgoing = nil;
++    if (inactiveObserver != nil) [center removeObserver:inactiveObserver];
++    if (captureObserver != nil) [center removeObserver:captureObserver];
++    inactiveObserver = nil;
++    captureObserver = nil;
++  };
++  // Never retain a duplicate private screen while inactive or capture state changes.
++  inactiveObserver = [center addObserverForName:UIApplicationWillResignActiveNotification object:nil
++                                          queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { cleanup(); }];
++  captureObserver = [center addObserverForName:UIScreenCapturedDidChangeNotification object:nil
++                                         queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { cleanup(); }];
++  _fadeCleanup = cleanup;
++  [animator addCompletion:^(UIViewAnimatingPosition finalPosition) {
++    cleanup();
++    [transitionContext completeTransition:![transitionContext transitionWasCancelled]];
++  }];
++  _inFlightAnimator = animator;
++  [animator startAnimation];
+ }
+ 
+ - (void)animateSlideFromBottomWithTransitionContext:(id<UIViewControllerContextTransitioning>)transitionContext
+@@ -518,6 +541,9 @@
+ 
+ - (nullable id<UITimingCurveProvider>)timingParamsForAnimationCompletion
+ {
++  if (_fadeCleanup != nil) {
++    return _inFlightAnimator.timingParameters;
++  }
+   return [RNSScreenStackAnimator defaultSpringTimingParametersApprox];
+ }
+ 

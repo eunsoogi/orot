@@ -35,6 +35,9 @@ export function AiFeatureFlowScreen({
   onOpenProviderSelection,
   onOpenConversationHistory,
   onOpenDailyReport,
+  onOpenHealthSummary,
+  onOpenVisitQuestions,
+  onOpenDiseaseHypotheses,
   reportOwnsOperation,
   onOpenSource,
   resolveSelectedAi,
@@ -136,6 +139,11 @@ export function AiFeatureFlowScreen({
       onBack={onBack}
       onOpenHistory={onOpenConversationHistory}
       onOpenDailyReport={onOpenDailyReport}
+      retainedActions={{
+        possibilities: onOpenDiseaseHypotheses,
+        visitQuestions: onOpenVisitQuestions,
+        healthSummary: onOpenHealthSummary,
+      }}
       onSend={services.sendRagMessage}
       onOpenSource={onOpenSource}
       resolveToolSource={services.resolveToolSource}

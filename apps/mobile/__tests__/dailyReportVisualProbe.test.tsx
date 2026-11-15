@@ -36,6 +36,7 @@ jest.mock('../src/navigation/NavigationRouteAdapter', () => {
 
 test('synthetic saved report enters the production conversation with its exact identity', async () => {
   const view = await render(<DailyReportVisualProbe />);
+  await fireEvent.press(await screen.findByText('근거 기록 보기'));
   expect(await screen.findByText('합성 심박수 기록은 72회예요.')).toBeTruthy();
   expect(screen.getByLabelText(/건강 측정\. 일부만 포함/)).toBeTruthy();
   await fireEvent.press(screen.getByText('이 보고서에 관해 대화하기'));
@@ -57,6 +58,7 @@ test('controlled preview rejects and releases only on explicit fixture actions',
   const error = t('dailyReport.lookupError');
   const view = await render(<DailyReportLoadingProbe />);
   expect(screen.getByText(pending)).toBeTruthy();
+  await fireEvent.press(screen.getByText('근거 기록 보기'));
   expect(screen.getByText(saved)).toBeTruthy();
 
   await fireEvent.press(

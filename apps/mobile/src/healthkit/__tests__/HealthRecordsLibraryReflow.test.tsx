@@ -70,7 +70,7 @@ test('keeps the selected type and loaded series when the library panels reflow',
     await reflow(1400, 'column');
     await reflow(500, 'column');
     expect(heartRateFilterSelected()).toBe(true);
-    expect(loadObservations).toHaveBeenCalledTimes(6);
+    expect(loadObservations).toHaveBeenCalledTimes(7);
     expect(screen.getByTestId('health-record-chart-heart_rate')).toBeTruthy();
   } finally {
     measure.mockRestore();

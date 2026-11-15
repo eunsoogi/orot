@@ -1,3 +1,4 @@
+import { ModelSelectionSummary } from '../../layout/ModelSelectionSummary';
 import { View } from 'react-native';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
@@ -80,9 +81,21 @@ export function ProviderSelectionFooter({
           {remoteAvailable ? (
             <Text>{providerSelectionText.remotePrivacy}</Text>
           ) : null}
-          <View style={styles.summary}>
-            <Text testID="provider-selection-current">{message}</Text>
-          </View>
+          <ModelSelectionSummary
+            label={
+              message.startsWith(providerSelectionText.selectedPrefix)
+                ? providerSelectionText.selectedPrefix
+                : undefined
+            }
+            value={
+              message.startsWith(providerSelectionText.selectedPrefix)
+                ? message
+                    .slice(providerSelectionText.selectedPrefix.length)
+                    .trimStart()
+                : message
+            }
+            testID="provider-selection-current"
+          />
           {!hasDock ? <Button disabled title="이 AI 사용" /> : null}
         </>
       )}

@@ -32,6 +32,8 @@ export const healthRecordsKo = {
   'healthRecords.category.medications': '약 및 복용',
   'healthRecords.category.all': '전체',
   'healthRecords.detail': '자세히 보기',
+  'healthRecords.previewNotice':
+    '최근 한 달에서 불러온 일부 기록을 간추렸어요. 전체 추세나 평균은 아니며, 모든 값은 자세히 보기에서 확인할 수 있어요.',
   'healthRecords.moreAvailable': '아직 불러오지 않은 기록이 있어요.',
   'healthRecords.categoryNotLoaded': '불러온 기록에는 {title} 기록이 없어요.',
   'healthRecords.loadedCategoryPeriodSummary':

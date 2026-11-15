@@ -359,6 +359,7 @@
 		9B6FABDF3DF22BD34E800544 /* RealtimeVoiceAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267C792BEF189082393E1837 /* RealtimeVoiceAudio.swift */; };
 		1113A6544E30C3384BCBC06B /* RealtimeVoiceCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E7E1C0677D54DE47D10208 /* RealtimeVoiceCall.swift */; };
 		0755E89CA4DAFDA2A7697E13 /* VoiceRealtimeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 6DE51D3EDD32E9F459E0BC75 /* VoiceRealtimeModule.m */; };
+		F93400000000000000000001 /* NavigationFadeIntegrationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F93400000000000000000002 /* NavigationFadeIntegrationTests.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -737,6 +738,7 @@
 		267C792BEF189082393E1837 /* RealtimeVoiceAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RealtimeVoiceAudio.swift; path = OrotMobile/RealtimeVoiceAudio.swift; sourceTree = "<group>"; };
 		BF536F275C819E8584C568C6 /* RealtimeVoiceLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceLifecycleTests.swift; sourceTree = "<group>"; };
 		AA7479A548CDF9306903EC3C /* RealtimeVoiceSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RealtimeVoiceSocket.swift; path = OrotMobile/RealtimeVoiceSocket.swift; sourceTree = "<group>"; };
+		F93400000000000000000002 /* NavigationFadeIntegrationTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = NavigationFadeIntegrationTests.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1035,6 +1037,7 @@
 				32D281BBD915351B1CE96318 /* AutomaticRecapPersistenceIntegrationTests.swift */,
 				AEF80EF44A90417A6FE731D3 /* StatePersistenceIntegrationTests.swift */,
 				A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */,
+				F93400000000000000000002 /* NavigationFadeIntegrationTests.m */,
 				A7C843720000000000000004 /* SVGFoundationIntegrationTests.mm */,
 				B37000000000000000000005 /* MedicalDocumentImportTests.swift */,
 				B37000000000000000000007 /* MedicalDocumentPhotoPickerCompletionTests.swift */,
@@ -1822,6 +1825,7 @@
 				3C097EC88B5FBB31E551CF58 /* AutomaticRecapPersistenceIntegrationTests.swift in Sources */,
 				864AF795EE7D0C271BE4F28E /* StatePersistenceIntegrationTests.swift in Sources */,
 				A20100000000000000000001 /* KeychainAuthenticationIntegrationTests.m in Sources */,
+				F93400000000000000000001 /* NavigationFadeIntegrationTests.m in Sources */,
 				A7C843720000000000000003 /* SVGFoundationIntegrationTests.mm in Sources */,
 				A37000000000000000000005 /* MedicalDocumentImportTests.swift in Sources */,
 				A37000000000000000000007 /* MedicalDocumentPhotoPickerCompletionTests.swift in Sources */,

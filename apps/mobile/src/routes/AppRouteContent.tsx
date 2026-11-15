@@ -1,3 +1,4 @@
+import { useOverviewReportEntry } from './useOverviewReportEntry';
 import { useIsFocused } from '@react-navigation/native';
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
@@ -52,6 +53,10 @@ export function AppRouteContent({
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
   const active = useIsFocused();
+  const openOverviewReport = useOverviewReportEntry(
+    active && activeTab === 'overview' && actions.route.name === 'root',
+    () => selectTab('conversation'),
+  );
   const reminderRuntime = useAppointmentReminderRuntime();
   function openOverviewPreparation() {
     if (!nextAppointment || !reminderRuntime) return;
@@ -83,7 +88,7 @@ export function AppRouteContent({
             onOpenRecords={() => selectTab('records')}
             loadSavedVisitQuestions={loadSavedVisitQuestions}
             onOpenRecording={openRecording}
-            onOpenDailyReport={() => actions.push('daily-report')}
+            onOpenDailyReport={openOverviewReport}
           />
         );
       case 'records':
@@ -93,6 +98,7 @@ export function AppRouteContent({
             onSelect={onSelectRecordsSection}
           >
             <RecordsRoute
+              onOpenRecentRecords={() => actions.push('recent-records')}
               documentImportService={documentImportService}
               recordings={recordings}
               recordingState={recordingState}
@@ -156,6 +162,21 @@ export function AppRouteContent({
     case 'unified-import':
       return (
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
+      );
+    case 'recent-records':
+      // A native stack destination keeps the overview mounted and owns its own scroll position.
+      return (
+        <RecordsRoute
+          showAllRecent
+          documentImportService={documentImportService}
+          recordings={recordings}
+          recordingState={recordingState}
+          onRetryRecordings={() => refreshRecordings()}
+          onOpenSavedRecordings={() => actions.push('saved-recordings')}
+          onOpenRecording={openRecording}
+          onOpenHealthLibrary={() => actions.push('health-records')}
+          onOpenManualHistory={() => actions.push('manual-history')}
+        />
       );
     case 'saved-recordings':
       return <SavedRecordingsRoute actions={actions} />;

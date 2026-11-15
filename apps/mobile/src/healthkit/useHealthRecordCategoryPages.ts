@@ -19,6 +19,7 @@ export const observationCategories: readonly HealthObservationCategory[] = [
   'heart_rate',
   'steps',
   'body_mass',
+  'workouts',
   'sleep',
   'other',
 ];

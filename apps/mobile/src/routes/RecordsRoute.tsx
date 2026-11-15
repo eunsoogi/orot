@@ -21,6 +21,8 @@ import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
 import { LegacySymptomData } from './LegacySymptomData';
 
 export interface RecordsRouteProps {
+  readonly showAllRecent?: boolean;
+  readonly onOpenRecentRecords?: () => void;
   readonly recordings: readonly RecordingSourceRecord[];
   readonly recordingState: 'loading' | 'ready' | 'failed';
   readonly onRetryRecordings: () => void;
@@ -33,6 +35,8 @@ export interface RecordsRouteProps {
 
 /** Reuses Home's loaded audio snapshot and keeps every Records state in measured usable space. */
 export function RecordsRoute({
+  showAllRecent = false,
+  onOpenRecentRecords,
   recordings,
   recordingState,
   onRetryRecordings,
@@ -132,30 +136,34 @@ export function RecordsRoute({
     >
       <View style={styles.container}>
         <View testID="records-layout" style={styles.page}>
-          <View style={styles.primaryPanel}>
-            <RecordsRouteEntries
-              secondary={<SavedMemoryBrowser />}
-              onOpenSavedRecordings={onOpenSavedRecordings}
-              onOpenRecording={onOpenRecording}
-              onOpenHealthLibrary={onOpenHealthLibrary}
-              onOpenManualHistory={onOpenManualHistory}
-              medicalDocumentOpening={activity === 'selecting'}
-              medicalDocumentDisabled={activity !== null}
-              onImportMedicalDocument={() => selectMedicalDocument('files')}
-              onImportMedicalPhoto={() => selectMedicalDocument('photos')}
-            />
-            {message ? (
-              <Text
-                accessibilityLiveRegion="polite"
-                style={styles.status}
-                testID="medical-document-import-status"
-              >
-                {message}
-              </Text>
-            ) : null}
-          </View>
-          <LegacySymptomData />
+          {!showAllRecent ? (
+            <View style={styles.primaryPanel}>
+              <RecordsRouteEntries
+                secondary={<SavedMemoryBrowser />}
+                onOpenSavedRecordings={onOpenSavedRecordings}
+                onOpenRecording={onOpenRecording}
+                onOpenHealthLibrary={onOpenHealthLibrary}
+                onOpenManualHistory={onOpenManualHistory}
+                medicalDocumentOpening={activity === 'selecting'}
+                medicalDocumentDisabled={activity !== null}
+                onImportMedicalDocument={() => selectMedicalDocument('files')}
+                onImportMedicalPhoto={() => selectMedicalDocument('photos')}
+              />
+              {message ? (
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={styles.status}
+                  testID="medical-document-import-status"
+                >
+                  {message}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+          {!showAllRecent ? <LegacySymptomData /> : null}
           <RecordsRecentSources
+            showAll={showAllRecent}
+            onViewAll={onOpenRecentRecords}
             recordings={recordings}
             recordingState={recordingState}
             documents={savedDocuments}
