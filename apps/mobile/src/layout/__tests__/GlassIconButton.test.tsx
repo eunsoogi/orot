@@ -11,7 +11,13 @@ test('bridges native activation, label, hint and busy state without a passive ma
       accessibilityState={{ busy: true }}
       onPress={onPress}
       testID="native-action"
-      style={{ width: 64, height: 64, borderRadius: 32, overflow: 'hidden' }}
+      style={{
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        borderWidth: 1,
+        overflow: 'hidden',
+      }}
     />,
   );
   let action = screen.getByTestId('native-action');
@@ -26,6 +32,7 @@ test('bridges native activation, label, hint and busy state without a passive ma
     width: 64,
     height: 64,
     borderRadius: 0,
+    borderWidth: 0,
     overflow: 'visible',
   });
   // Direct native event, not the adapter's simulated press, verifies the production bridge callback.
