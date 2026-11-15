@@ -1,3 +1,4 @@
+import { DailyReportAnalysis } from './DailyReportAnalysis';
 import { View, StyleSheet } from 'react-native';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -66,16 +67,7 @@ export function DailyReportSavedSection({
           ),
         })}
       </AppText>
-      {saved.report.supportedContext.length > 0 ? (
-        <>
-          <AppText accessibilityRole="header">
-            {t('dailyReport.supportedContext')}
-          </AppText>
-          {saved.report.supportedContext.map((item, index) => (
-            <AppText key={index}>{item.text}</AppText>
-          ))}
-        </>
-      ) : null}
+      <DailyReportAnalysis claims={saved.report.supportedContext} />
       <AppText accessibilityRole="header">
         {t('dailyReport.observations')}
       </AppText>

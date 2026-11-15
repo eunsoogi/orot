@@ -13,6 +13,8 @@ const DailyReportSourceReferenceSchema = z.strictObject({
 const DailyReportClaimSchema = z.strictObject({
   text: NonEmptyTextSchema,
   sourceReferences: z.array(DailyReportSourceReferenceSchema).min(1),
+  // Optional display grouping preserves legacy claims and never changes evidence.
+  section: z.enum(['priority', 'actions', 'history', 'patterns', 'plans', 'limits']).optional(),
 });
 
 /** Save-ready output keeps factual statements linked to the input snapshot. */
