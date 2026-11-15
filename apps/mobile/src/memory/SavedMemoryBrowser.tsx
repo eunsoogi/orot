@@ -5,7 +5,7 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { formatDateTime } from '../i18n';
+import { formatDateTime, t } from '../i18n';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
@@ -14,9 +14,9 @@ import { loadSavedLocalMemories } from './savedLocalMemories';
 
 type SavedMemory = Omit<AgentMemoryHit, 'score'>;
 const kindLabels = {
-  preference: '선호',
-  reviewed_interaction: '검토한 대화',
-  task_context: '작업 맥락',
+  preference: t('savedMemory.preference'),
+  reviewed_interaction: t('savedMemory.reviewedInteraction'),
+  task_context: t('savedMemory.taskContext'),
 };
 
 /** Loads on Records entry; privacy boundaries invalidate every late result. */
@@ -82,9 +82,13 @@ export function SavedMemoryBrowser({
         <View style={styles.entry}>
           <AppButton
             variant="list"
-            title="기억"
-            summary="이 기기에 저장된 기억을 확인해요"
-            accessibilityLabel={expanded ? '기억 닫기' : '저장된 기억 보기'}
+            title={t('savedMemory.title')}
+            summary={t('savedMemory.summary')}
+            accessibilityLabel={
+              expanded
+                ? t('savedMemory.closeMemory')
+                : t('savedMemory.openMemory')
+            }
             accessibilityState={{ expanded }}
             trailingContent={
               <AppSymbol
@@ -107,35 +111,31 @@ export function SavedMemoryBrowser({
         <View style={styles.panel}>
           <View style={styles.header}>
             <Text accessibilityRole="header" style={styles.title}>
-              기억
+              {t('savedMemory.title')}
             </Text>
             {state === 'ready' && (
               <AppButton
                 variant="neutral"
                 size="compact"
-                title="새로고침"
+                title={t('savedMemory.refresh')}
                 onPress={() => {
                   refresh();
                 }}
               />
             )}
           </View>
-          <Text style={styles.description}>
-            이 기기에서만 불러오며 AI에 전송하지 않아요.
-          </Text>
+          <Text style={styles.description}>{t('savedMemory.privacy')}</Text>
           {state === 'loading' && (
             <Text accessibilityLiveRegion="polite">
-              기억을 불러오는 중이에요.
+              {t('savedMemory.loading')}
             </Text>
           )}
           {state === 'failed' && (
             <>
-              <Text accessibilityRole="alert">
-                기억을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
-              </Text>
+              <Text accessibilityRole="alert">{t('savedMemory.failed')}</Text>
               <AppButton
                 variant="neutral"
-                title="다시 시도"
+                title={t('savedMemory.retry')}
                 onPress={() => {
                   refresh();
                 }}
@@ -146,28 +146,32 @@ export function SavedMemoryBrowser({
             <>
               <Text accessibilityLiveRegion="polite">
                 {rows.length
-                  ? `저장된 기억 ${rows.length}개`
-                  : '아직 저장된 기억이 없어요.'}
+                  ? t('savedMemory.count', { count: rows.length })
+                  : t('savedMemory.empty')}
               </Text>
               {rows.slice(0, visible).map(row => (
                 <View key={row.id} style={styles.row}>
                   <Text style={styles.body}>{row.text}</Text>
                   <Text style={styles.kind}>{kindLabels[row.kind]}</Text>
                   <Text style={styles.description}>
-                    저장: {formatDateTime(new Date(row.createdAt))}
+                    {t('savedMemory.savedAt', {
+                      date: formatDateTime(new Date(row.createdAt)),
+                    })}
                   </Text>
                   <Text style={styles.description}>
                     {row.provenance.reviewState === 'user_confirmed'
-                      ? '사용자 확인'
-                      : '사람이 검토'}{' '}
-                    · 출처 {row.provenance.sourceIds.length}개
+                      ? t('savedMemory.confirmed')
+                      : t('savedMemory.reviewed')}{' '}
+                    {t('savedMemory.sources', {
+                      count: row.provenance.sourceIds.length,
+                    })}
                   </Text>
                 </View>
               ))}
               {visible < rows.length && (
                 <AppButton
                   variant="neutral"
-                  title="더 보기"
+                  title={t('savedMemory.more')}
                   onPress={() => setVisible(value => value + 20)}
                 />
               )}
@@ -175,8 +179,8 @@ export function SavedMemoryBrowser({
           )}
           <AppButton
             variant="neutral"
-            title="닫기"
-            accessibilityLabel="기억 닫기"
+            title={t('savedMemory.close')}
+            accessibilityLabel={t('savedMemory.closeMemory')}
             accessibilityState={{ expanded: true }}
             onPress={close}
           />

@@ -1,0 +1,23 @@
+/** Presentation only; memory content and its privacy lifecycle are not localized. */
+export const savedMemoryKo = {
+  'savedMemory.preference': '선호',
+  'savedMemory.reviewedInteraction': '검토한 대화',
+  'savedMemory.taskContext': '작업 맥락',
+  'savedMemory.title': '기억',
+  'savedMemory.summary': '이 기기에 저장된 기억을 확인해요',
+  'savedMemory.closeMemory': '기억 닫기',
+  'savedMemory.openMemory': '저장된 기억 보기',
+  'savedMemory.refresh': '새로고침',
+  'savedMemory.privacy': '이 기기에서만 불러오며 AI에 전송하지 않아요.',
+  'savedMemory.loading': '기억을 불러오는 중이에요.',
+  'savedMemory.failed': '기억을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+  'savedMemory.retry': '다시 시도',
+  'savedMemory.empty': '아직 저장된 기억이 없어요.',
+  'savedMemory.confirmed': '사용자 확인',
+  'savedMemory.reviewed': '사람이 검토',
+  'savedMemory.more': '더 보기',
+  'savedMemory.close': '닫기',
+  'savedMemory.count': '저장된 기억 {count}개',
+  'savedMemory.savedAt': '저장: {date}',
+  'savedMemory.sources': '· 출처 {count}개',
+} as const;
