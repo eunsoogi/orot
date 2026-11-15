@@ -54,7 +54,7 @@ export function AssistantHeader({
   ) : null;
 }
 
-/** Announce only the live activity owned by the currently displayed session and request. */
+/** Show and announce only the activity owned by the displayed session and request. */
 function ActiveAssistantHeader({
   session,
   appearance,
@@ -114,6 +114,12 @@ function ActiveAssistantHeader({
         <AppText style={styles.name}>
           {appearance.value.name ?? defaultAssistantName}
         </AppText>
+        {/* Reuse the bounded, localized phase; never render tool arguments here. */}
+        {stage ? (
+          <AppText style={styles.activity} testID="assistant-current-activity">
+            {stage}
+          </AppText>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -145,4 +151,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   name: { color: appColors.text, fontWeight: '700', textAlign: 'center' },
+  activity: {
+    color: appColors.secondary,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 4,
+  },
 });

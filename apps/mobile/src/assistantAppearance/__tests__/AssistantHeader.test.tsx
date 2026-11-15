@@ -36,6 +36,7 @@ test('announces a visible current stage once and does not announce a hidden or s
     requestActivity: { sessionId: 1, requestId: 4, stage: 'waiting' },
   } as ConversationSession;
   const view = await render(<AssistantHeader session={session} />);
+  expect(screen.getByText('응답을 기다리고 있어요')).toBeTruthy();
   expect(announce).toHaveBeenCalledTimes(1);
   expect(screen.getByRole('button').props.accessibilityLabel).toContain(
     '응답을 기다리고 있어요',
@@ -53,6 +54,7 @@ test('announces a visible current stage once and does not announce a hidden or s
   mockFocused = true;
   await view.rerender(<AssistantHeader session={{ ...session, id: 2 }} />);
   expect(announce).toHaveBeenCalledTimes(1);
+  expect(screen.queryByTestId('assistant-current-activity')).toBeNull();
   announce.mockRestore();
 });
 
@@ -69,6 +71,7 @@ test('voice phase replaces request activity and clears on exit without a second 
   expect(screen.getByRole('button').props.accessibilityLabel).toContain(
     '듣고 있어요',
   );
+  expect(screen.getByText('듣고 있어요')).toBeTruthy();
   expect(screen.queryByText('응답을 기다리고 있어요')).toBeNull();
   await view.rerender(<AssistantHeader session={session} status={null} />);
   expect(screen.queryByText('듣고 있어요')).toBeNull();
@@ -97,4 +100,36 @@ test('prevents editing while the full-screen voice owner retains the session', a
   expect(screen.getByRole('button')).toBeDisabled();
   await fireEvent.press(screen.getByRole('button'));
   expect(mockEdit).not.toHaveBeenCalled();
+});
+
+// Visible progress follows existing request ownership without exposing tool payloads.
+test('replaces tool phases and removes visible progress after settlement', async () => {
+  const session = {
+    id: 1,
+    pendingMessage: { id: 4 },
+    requestActivity: { sessionId: 1, requestId: 4, stage: 'records' },
+  } as ConversationSession;
+  const view = await render(<AssistantHeader session={session} />);
+  expect(screen.getByText('기록을 살펴보고 있어요')).toBeTruthy();
+  expect(
+    screen.getByTestId('assistant-current-activity').props.numberOfLines,
+  ).toBeUndefined();
+  await view.rerender(
+    <AssistantHeader
+      session={{
+        ...session,
+        requestActivity: {
+          sessionId: 1,
+          requestId: 4,
+          stage: 'cancelling',
+        },
+      }}
+    />,
+  );
+  expect(screen.queryByText('기록을 살펴보고 있어요')).toBeNull();
+  expect(screen.getByTestId('assistant-current-activity')).toBeTruthy();
+  await view.rerender(
+    <AssistantHeader session={{ ...session, requestActivity: null }} />,
+  );
+  expect(screen.queryByTestId('assistant-current-activity')).toBeNull();
 });
