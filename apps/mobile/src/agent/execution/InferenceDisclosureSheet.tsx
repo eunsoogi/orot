@@ -1,5 +1,6 @@
+import { NavigationModal } from '../../navigation/NavigationModal';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
-import { KeyboardAvoidingView, Modal, Platform } from 'react-native';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import InferenceDisclosureModalPanel from './InferenceDisclosureModalPanel';
 import { disclosureStyles as styles } from './InferenceDisclosureStyles';
@@ -58,9 +59,8 @@ export default function InferenceDisclosureSheet({
     isCalendarRequest(request);
 
   return (
-    <Modal
+    <NavigationModal
       testID="inference-disclosure-modal"
-      animationType="slide"
       // UIKit owns the pull-down gesture; dismissal is the same denied decision
       // as Cancel, never implicit approval or a reusable permission receipt.
       presentationStyle="pageSheet"
@@ -85,6 +85,6 @@ export default function InferenceDisclosureSheet({
           />
         </KeyboardAvoidingView>
       </SafeAreaProvider>
-    </Modal>
+    </NavigationModal>
   );
 }

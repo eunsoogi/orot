@@ -1,13 +1,8 @@
+import { NavigationModal } from '../navigation/NavigationModal';
 import { AvatarArtwork as AvatarSymbol } from './AvatarArtwork';
 import { appearanceEditorStyles as styles } from './appearanceEditorStyles';
 import { useEffect, useRef, useState } from 'react';
-import {
-  AccessibilityInfo,
-  Modal,
-  Pressable,
-  TextInput,
-  View,
-} from 'react-native';
+import { AccessibilityInfo, Pressable, TextInput, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -80,9 +75,8 @@ export function AppearanceEditor({
     }
   }
   return (
-    <Modal
+    <NavigationModal
       visible
-      animationType="none"
       onRequestClose={busy ? () => {} : (onCancel ?? (() => {}))}
     >
       <SafeAreaLayout
@@ -174,6 +168,6 @@ export function AppearanceEditor({
           />
         ) : null}
       </SafeAreaLayout>
-    </Modal>
+    </NavigationModal>
   );
 }
