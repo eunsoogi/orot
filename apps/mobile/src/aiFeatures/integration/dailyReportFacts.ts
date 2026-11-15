@@ -120,6 +120,11 @@ export function dailyReportFacts(
             })
           : '',
       });
+    } else if (item.kind === 'appointment') {
+      detail = `Appointment status: ${item.record.status}`;
+      displayDetail = t('dailyReport.context.appointmentFact', {
+        status: t(`dailyReport.context.appointment.${item.record.status}`),
+      });
     } else throw new Error('Unsupported daily report record.');
     const provenance = record.provenance.source;
     const sourceName =

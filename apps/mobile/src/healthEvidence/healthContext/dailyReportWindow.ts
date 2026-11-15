@@ -116,6 +116,12 @@ export function dailyReportSourceRecordIsAvailable(
   )
     return false;
   const { startInclusive, endExclusive } = record.occurrence;
+  // A saved appointment is evidence of a plan known by ingestion, not attendance.
+  if (record.source === 'appointment')
+    return (
+      compareTimestamps(startInclusive, context.interval.fromInclusive) >= 0 &&
+      compareTimestamps(startInclusive, context.interval.toExclusive) < 0
+    );
   if (endExclusive)
     return (
       compareTimestamps(startInclusive, context.effectiveCutoff) < 0 &&

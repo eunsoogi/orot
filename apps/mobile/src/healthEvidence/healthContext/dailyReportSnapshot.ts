@@ -29,7 +29,12 @@ import {
   readHealthContextGeneration,
 } from './generation';
 
-const kinds = ['health_observation', 'symptom_entry', 'dose_event'] as const;
+const kinds = [
+  'health_observation',
+  'symptom_entry',
+  'dose_event',
+  'appointment',
+] as const;
 const rowLimit = 100;
 const snapshotByteLimit = 64 * 1024;
 
@@ -99,7 +104,11 @@ export async function readDailyReportSnapshot(
                 MAX_HEALTH_EVIDENCE_RECORD_BYTES,
                 ...selected.parameters,
                 localQueryTimestampKey(calendar.generationCutoff),
-                localQueryTimestampKey(calendar.effectiveCutoff),
+                localQueryTimestampKey(
+                  kind === 'appointment'
+                    ? calendar.interval.toExclusive
+                    : calendar.effectiveCutoff,
+                ),
                 localQueryTimestampKey(calendar.interval.fromInclusive),
                 localQueryTimestampKey(calendar.interval.fromInclusive),
                 rowLimit + 1,
@@ -172,6 +181,7 @@ export async function readDailyReportSnapshot(
           'source_sync_unknown',
           ...(partial ? ['snapshot_incomplete'] : []),
           ...(kind === 'dose_event' ? ['medication_names_not_resolved'] : []),
+          ...(kind === 'appointment' ? ['confirmed_appointments_only'] : []),
         ],
       });
     }
