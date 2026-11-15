@@ -1,7 +1,5 @@
-import {
-  initialConversationResponse,
-  validateInitialConversationResponse,
-} from '../initialResponse';
+import { validateInitialConversationResponse } from '../initialResponse';
+const initialConversationResponse = '말씀하신 흐름을 살펴보고 이어서 답할게요.';
 import { applyWorkflowStreamEvent } from '../../agent/workflowActivity';
 import { createEmptyConversation } from '../conversationEmptySession';
 import { createConversationTurnActivity } from '../conversationTurnActivity';
@@ -9,13 +7,13 @@ import type { ConversationSession } from '../conversationSessionTypes';
 import { conversationHistoryActivity } from '../conversationHistoryActivity';
 
 /** Initial acknowledgments are never evidence, saved partial answers, or duplicate turns. */
-test('admits exact non-clinical copy and keeps it out of answer projection', () => {
+test('admits bounded contextual candidates and keeps them out of answer projection', () => {
   expect(validateInitialConversationResponse(initialConversationResponse)).toBe(
     initialConversationResponse,
   );
   expect(
     validateInitialConversationResponse(
-      `${initialConversationResponse} 병이 확실해요.`,
+      `${initialConversationResponse} 진단받았어요.`,
     ),
   ).toBeUndefined();
   expect(validateInitialConversationResponse('')).toBeUndefined();
@@ -104,7 +102,7 @@ test('possibility flow admits only the non-clinical initial event, not medical d
   expect(observer.mock.calls).toEqual([[initial]]);
 });
 
-test('request start publishes only a local receipt and rejects a duplicate busy submission', () => {
+test('request start publishes loading without fabricated AI copy and rejects busy submission', () => {
   const { prepareConversationRequest } = require('../conversationRequestStart');
   let id = 0;
   const session = {
@@ -112,7 +110,7 @@ test('request start publishes only a local receipt and rejects a duplicate busy 
     draft: 'synthetic question',
   };
   const started = prepareConversationRequest(session, () => ++id);
-  expect(started.change.pendingMessage.initialResponse.source).toBe('receipt');
+  expect(started.change.pendingMessage.initialResponse).toBeUndefined();
   expect(started.change.pendingMessage.content).toBe('');
   expect(started.change.messages).toHaveLength(1);
   expect(
@@ -120,15 +118,19 @@ test('request start publishes only a local receipt and rejects a duplicate busy 
   ).toBeNull();
 });
 
-test('supplies localized early copy as task data while keeping system instructions English', () => {
+test('keeps contextual preview inactive until model-quality evidence is available', () => {
   const { ragConversationTask } = require('../task');
   const [message] = ragConversationTask.createMessages({
     request: 'synthetic',
     evidence: { items: [], coverage: [], conflicts: [] },
   });
-  expect(JSON.parse(message.content).initialResponseText).toBe(
-    initialConversationResponse,
-  );
+  expect(JSON.parse(message.content).initialResponseText).toBeUndefined();
+  expect(ragConversationTask.initialToolResponse).toBeUndefined();
+  expect(ragConversationTask.reviewInitialToolResponse).toBeUndefined();
+  expect(ragConversationTask.taskVersion).toBe('8');
+  expect(
+    validateInitialConversationResponse('어떤 흐름인지 함께 살펴볼게요.'),
+  ).toBe('어떤 흐름인지 함께 살펴볼게요.');
   expect(ragConversationTask.systemPrompt).not.toMatch(/[\uAC00-\uD7A3]/u);
-  expect(ragConversationTask.systemPrompt).toContain('initialResponseText');
+  expect(ragConversationTask.systemPrompt).toContain('this particular request');
 });

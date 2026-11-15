@@ -70,7 +70,7 @@ async function consumeInitialOutcome<TResult>(
 ): Promise<Partial<WorkflowState>> {
   if (!outcome) return completeState();
   if (outcome.status !== 'response') return finishModelFailure(context, outcome);
-  const toolCall = consumeNativeToolCall(context, state, outcome.response);
+  const toolCall = await consumeNativeToolCall(context, state, outcome.response);
   if (toolCall) return toolCall;
   const result = await consumeResponderResponse(context, state, outcome.response, input, revised);
   const correctionInstruction = context.responseCorrectionInstruction;

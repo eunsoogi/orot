@@ -1,3 +1,4 @@
+import { enableSyntheticInitialPreview } from '../testSupport/syntheticInitialPreview';
 import { isMultiAgentCheckpointResumable } from '@orot/agent-runtime';
 import { initialConversationResponse } from '../../../ragConversation/initialResponse';
 import { providerSuccess } from '@orot/model-runtime';
@@ -13,9 +14,11 @@ import { resumeColdRagConversation } from '../resumeColdRagConversation';
 import { researchPagingWorkflowCatalog } from '../testSupport/researchPagingWorkflowCatalog';
 
 /** SQLite journal + LangGraph + fresh app factory; catalog pages and provider responses are synthetic. */
-test.each(['complete', 'repause', 'populated'] as const)(
+test.each(['complete', 'repause', 'populated', 'disabled'] as const)(
   'cold Continue retains completed pages without replay (%s)',
   async mode => {
+    const cleanupPreview =
+      mode === 'disabled' ? () => {} : enableSyntheticInitialPreview();
     const db = openSqliteTestDatabase(':memory:');
     try {
       await runMigrations(db.database);
@@ -159,7 +162,7 @@ test.each(['complete', 'repause', 'populated'] as const)(
         ).toBe(false);
       expect(
         liveEvents.mock.calls.filter(([e]) => e.type === 'initial_response'),
-      ).toHaveLength(1);
+      ).toHaveLength(mode === 'disabled' ? 0 : 1);
       expect(generate).toHaveBeenCalledTimes(1);
       expect(search).toHaveBeenCalledTimes(1);
       const saved = await createConversationColdResumeStorage(db.database).open(
@@ -179,7 +182,10 @@ test.each(['complete', 'repause', 'populated'] as const)(
       });
       let coldPause = () => {};
       f.authorize.mockImplementation(async () => {
-        if (mode !== 'complete' && generate.mock.calls.length === 2)
+        if (
+          (mode === 'repause' || mode === 'populated') &&
+          generate.mock.calls.length === 2
+        )
           coldPause();
         return 'authorized';
       });
@@ -207,7 +213,7 @@ test.each(['complete', 'repause', 'populated'] as const)(
             onRetentionCandidate: turn.save,
           },
         });
-      if (mode !== 'complete') {
+      if (mode === 'repause' || mode === 'populated') {
         expect((await resume()).status).toBe('paused');
         expect(search).toHaveBeenCalledTimes(2);
         expect(generate).toHaveBeenCalledTimes(2);
@@ -236,6 +242,7 @@ test.each(['complete', 'repause', 'populated'] as const)(
       expect(search).toHaveBeenCalledTimes(2);
       expect(f.search).not.toHaveBeenCalled();
     } finally {
+      cleanupPreview();
       db.close();
     }
   },

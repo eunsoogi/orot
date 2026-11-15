@@ -1,3 +1,4 @@
+import type { InitialToolResponseContract } from './initialToolResponseContract';
 import type { EvidenceRestoration } from './evidenceRestoration';
 import type { MultiAgentPhase } from './actionContracts';
 export type { MultiAgentPhase } from './actionContracts';
@@ -77,7 +78,7 @@ export interface TaskClarificationValue {
   readonly status: 'needs_clarification';
   readonly message: string;
 }
-export interface TaskResponderContract<TResult = JsonValue> {
+export interface TaskResponderContract<TResult = JsonValue> extends InitialToolResponseContract {
   readonly taskType: string;
   readonly taskVersion: string;
   readonly systemPrompt: string;
@@ -116,8 +117,6 @@ export interface TaskResponderContract<TResult = JsonValue> {
     readonly by: 'source_kind';
     mergeValues(values: readonly JsonValue[], input: TaskResponderInput): JsonValue;
   };
-  /** Optional content-free reply on the first validated native tool selection, never final output. */
-  initialToolResponse?(text: string): string | undefined;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;

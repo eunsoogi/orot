@@ -44,8 +44,9 @@ export interface GroundedRagAnswer {
  * Publish prose only after complete-response validation. Tool progress has its own observer. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  taskVersion: '7',
-  initialToolResponse: initialReply.validateInitialConversationResponse,
+  taskVersion: initialReply.initialResponseTaskVersion,
+  // Contextual preview remains unprojected pending model-quality validation.
+  // No preview opt-in means no extra review call or unchecked first-answer exposure.
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
   allowPagedGeneratedArtifacts: true,
@@ -103,7 +104,6 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
             input.context,
             input.evidence.items,
           ),
-          initialResponseText: initialReply.initialConversationResponse,
           answerRequirements:
             'Answer directly in Korean, briefly for a simple fact and in short paragraphs for multiple requested topics. Use available follow-up tools for missing requested topics before treating a partial search as insufficient. For medication questions, report recorded medications and dose facts without unrelated consultation plans. Describe the state at the record time rather than asserting current status.',
           temporalRequirements:
