@@ -190,3 +190,8 @@ export {
   validDailyReportBaseline,
   validDailyReportHistoricalContext,
 } from './dailyReportBaseline';
+
+export {
+  DailyReportModelResponseSchema,
+  type DailyReportModelAnalysis,
+} from './dailyReportModelAnalysis';

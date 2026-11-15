@@ -15,6 +15,7 @@ export function dailyReportAnalysis(
   selected: readonly number[],
   history: readonly Claim[],
   plans: readonly Claim[],
+  generated: readonly Claim[] = [],
 ): Claim[] {
   const section = (
     items: readonly Claim[],
@@ -30,6 +31,7 @@ export function dailyReportAnalysis(
   const actions = dailyReportActions(values, sources);
   return [
     ...section(dailyReportGuidance(values, sources), 'priority'),
+    ...section(generated, 'model'),
     ...section(actions.slice(0, -1), 'actions'),
     ...section(history, 'history'),
     ...section(dailyReportSynthesis(values, sources, selected), 'patterns'),

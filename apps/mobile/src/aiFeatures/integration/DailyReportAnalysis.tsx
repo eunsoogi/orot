@@ -26,6 +26,10 @@ export function DailyReportAnalysis({
               {t(`dailyReport.analysis.${item.section}`)}
             </AppText>
           ) : null}
+          {item.section === 'model' &&
+          claims[index - 1]?.section !== 'model' ? (
+            <AppText>{t('dailyReport.analysis.modelCaution')}</AppText>
+          ) : null}
           <AppText>{item.text}</AppText>
         </Fragment>
       ))}
