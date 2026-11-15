@@ -18,8 +18,12 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
     width: number;
     height: number;
   } | null>(null);
+  const measurementSequence = useRef(0);
   const measure = useCallback(() => {
+    const sequence = ++measurementSequence.current;
     ref.current?.measureInWindow((x, y, measuredWidth, measuredHeight) => {
+      // A later layout owns its measurement even when bridge callbacks complete out of order.
+      if (sequence !== measurementSequence.current) return;
       if (
         !Number.isFinite(x) ||
         !Number.isFinite(measuredWidth) ||
@@ -40,6 +44,13 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
       );
     });
   }, []);
+  useEffect(
+    () => () => {
+      // Ignore an in-flight native callback after this host has unmounted.
+      measurementSequence.current += 1;
+    },
+    [],
+  );
   useEffect(measure, [measure, geometry, shared, width, height, fontScale]);
   const fallback = shared?.availableContentFrame ?? geometry?.safeAreaFrame;
   const plan = conversationHingeLayout(
