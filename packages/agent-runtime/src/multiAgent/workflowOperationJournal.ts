@@ -1,3 +1,4 @@
+import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { EvidenceReference } from './evidenceContracts';
 
 /** Exact private input and results belong only in the caller's protected store, not graph channels. */
@@ -18,7 +19,26 @@ export type WorkflowOperationRecord =
  * identity and source revisions. Pending work is never taken over: its remote outcome is unknown.
  * Authorization decisions are deliberately absent and must not be stored with these records.
  */
+export interface WorkflowSteeringStore {
+  subscribe?(listener: () => Promise<void>): () => void;
+  enqueue(id: string, text: string): Promise<boolean>;
+  list(): Promise<
+    readonly {
+      readonly id: string;
+      readonly text: string;
+      readonly sequence: number;
+      readonly status: 'queued' | 'prepared' | 'applied' | 'not_applied';
+    }[]
+  >;
+  bind(
+    operationId: string,
+    request: LanguageModelRequest,
+  ): Promise<LanguageModelRequest | undefined>;
+  acknowledge(operationId: string): Promise<boolean>;
+}
+
 export interface WorkflowOperationJournal {
+  readonly steering?: WorkflowSteeringStore;
   loadPrepared?(operationId: string): Promise<WorkflowOperationIdentity | undefined>;
   loadOrCreate(identity: WorkflowOperationIdentity): Promise<WorkflowOperationRecord>;
   begin(

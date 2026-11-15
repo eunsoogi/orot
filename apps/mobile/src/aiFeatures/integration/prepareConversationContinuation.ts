@@ -41,15 +41,20 @@ export async function prepareConversationContinuation(
     },
     bindPause: observer.onWorkflowPauseController,
     waitForContinue: observer.onWorkflowPaused,
-    persisted: lazyConversationContinuationStore(() =>
-      observer.openWorkflowContinuation!(
-        {
-          requestId: observer.retentionRequestId!,
-          sessionId: observer.retentionSession!.id,
-          sessionVersion: observer.retentionSession!.version,
-        },
-        reconstruct,
-      ),
+    persisted: lazyConversationContinuationStore(
+      () =>
+        observer.openWorkflowContinuation!(
+          {
+            requestId: observer.retentionRequestId!,
+            sessionId: observer.retentionSession!.id,
+            sessionVersion: observer.retentionSession!.version,
+          },
+          reconstruct,
+        ),
+      store => {
+        if (store.operationJournal?.steering)
+          observer.onSteeringReady?.(store.operationJournal.steering);
+      },
     ),
   };
 }

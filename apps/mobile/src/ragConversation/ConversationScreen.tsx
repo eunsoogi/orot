@@ -4,7 +4,7 @@ import { ConversationBackButton } from './ConversationBackButton';
 import { AppText as Text } from '../layout/AppText';
 import { useMemo } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
-import { ConversationComposer } from './ConversationComposer';
+import { ConversationSteeringComposer } from './ConversationSteeringComposer';
 import { ConversationWorkspace } from './ConversationWorkspace';
 import { ConversationHeaderTitle } from './ConversationHeaderTitle';
 import { styles } from './ConversationScreen.styles';
@@ -65,7 +65,7 @@ export function ConversationScreen({
   const session = snapshot.sessions.find(
     item => item.id === snapshot.activeId,
   )!;
-  const { id, draft, messages, pendingMessage, busy, error } = session;
+  const { id, messages, pendingMessage, busy, error } = session;
   const { photo, focus, ...composer } = useConversationScreenControls(
     store,
     id,
@@ -101,10 +101,8 @@ export function ConversationScreen({
     0,
     onNavigationStateChange,
   );
-  const sendMessage = () => {
-    dispatchConversationMessage(store, id, onSend, prepareVisitQuestions);
-  };
   const coldResumeBusy = busy || session.restoring || session.retryingSave;
+
   const header = (
     <View style={styles.header}>
       {!navigationRouteKey && <ConversationBackButton onBack={onBack} />}
@@ -158,17 +156,24 @@ export function ConversationScreen({
           sourceActions={sourceActions}
           routeKey={navigationRouteKey}
           composer={
-            <ConversationComposer
+            <ConversationSteeringComposer
               {...composer}
               photo={photo}
-              value={draft}
-              busy={busy}
+              session={session}
+              store={store}
               cancelling={session.requestActivity?.stage === 'cancelling'}
               disabled={conversationComposerDisabled(session)}
               compact={composerLayout.compact}
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
-              onSend={sendMessage}
+              onSend={() =>
+                dispatchConversationMessage(
+                  store,
+                  id,
+                  onSend,
+                  prepareVisitQuestions,
+                )
+              }
               onCancel={() => store.cancel(id)}
             />
           }

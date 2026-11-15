@@ -31,17 +31,21 @@ function restoredOutcome(raw: string): ModelCallOutcome | undefined {
 /** Replays only completed exact calls; authorization is fresh and never part of a saved result. */
 export async function journaledModelCall<TResult>(
   context: RuntimeContext<TResult>,
-  request: LanguageModelRequest,
+  initialRequest: LanguageModelRequest,
   consent: ExecutionConsentPort,
   onTextEvent?: (
     event: Extract<LanguageModelStreamEvent, { type: 'text_delta' | 'text_snapshot' }>,
   ) => void,
-  prepare?: (signal: AbortSignal) => Promise<ModelCallOutcome | 'ready' | undefined>,
+  prepare?: (
+    signal: AbortSignal,
+    request: LanguageModelRequest,
+  ) => Promise<ModelCallOutcome | 'ready' | undefined>,
 ): Promise<ModelCallOutcome | undefined> {
   const { options, signal, activeModelOperation: operation } = context;
   const journal = options.operationJournal;
+  let request = initialRequest;
   if (!journal || !operation) {
-    const prepared = prepare ? await prepare(signal) : 'ready';
+    const prepared = prepare ? await prepare(signal, request) : 'ready';
     if (prepared !== 'ready') return prepared;
     return callModel(
       options.provider,
@@ -53,14 +57,21 @@ export async function journaledModelCall<TResult>(
       onTextEvent,
     );
   }
+  const operationId = `${operation.operationKey}:call-${++operation.callIndex}`;
+  if (journal.steering) {
+    const bound = await journal.steering.bind(operationId, request);
+    if (!bound || signal.aborted) return { status: 'unavailable', errorCode: 'invalid_request' };
+    request = bound;
+  }
   const identity = {
-    operationId: `${operation.operationKey}:call-${++operation.callIndex}`,
+    operationId,
     input: canonicalJson({ request, execution: options.execution }),
     evidenceReferences: referencesFromBatch(context.currentEvidence),
   };
   const record = await journal.loadOrCreate(identity);
   if (signal.aborted) return { status: 'cancelled', providerStop: 'not_started' };
   if (record.status === 'completed') {
+    await journal.steering?.acknowledge(operationId);
     // The adapter and caller source fence both revalidate evidence before completed values are used.
     return (
       restoredOutcome(record.result) ?? { status: 'unavailable', errorCode: 'invalid_request' }
@@ -81,7 +92,7 @@ export async function journaledModelCall<TResult>(
   };
   try {
     notify(Boolean(approval));
-    const prepared = prepare ? await prepare(approvalSignal) : 'ready';
+    const prepared = prepare ? await prepare(approvalSignal, request) : 'ready';
     if (approvalSignal.aborted && !signal.aborted && options.checkpointer)
       throw new AuthorizationPaused();
     if (prepared !== 'ready') return prepared;
@@ -115,6 +126,7 @@ export async function journaledModelCall<TResult>(
         result: JSON.stringify(outcome),
       });
       if (!stored) return { status: 'unavailable', errorCode: 'invalid_request' };
+      await journal.steering?.acknowledge(operationId);
     }
     // Any unconfirmed failure leaves the durable intent untouched and cannot be replayed.
     return outcome;

@@ -15,6 +15,11 @@ export type RagConversationObserver = Pick<
   | 'beforeTaskStream'
   | 'beforeTaskInputChange'
 > & {
+  readonly onSteeringReady?: (
+    store: NonNullable<
+      import('@orot/agent-runtime').WorkflowOperationJournal['steering']
+    >,
+  ) => void;
   readonly openWorkflowContinuation?: (
     identity: import('../storage/conversationWorkflowContinuationIdentity').ConversationContinuationIdentity,
     reconstruct?: import('../storage/conversationContinuationCapture').ConversationColdReconstruction,

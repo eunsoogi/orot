@@ -1,3 +1,4 @@
+import { hasUncommittedTurn } from './hasUncommittedTurn';
 import type {
   ConversationSession,
   ConversationSessionOptions,
@@ -20,11 +21,13 @@ import {
 } from './replaceColdConversationAnswer';
 import { ownsOutcome } from './conversationOutcomeOwnership';
 import { getRagConversationFailureCopy } from './copy';
-
 type Activity = ReturnType<typeof createConversationTurnActivity>;
 type Turn = ReturnType<typeof createConversationTurnRetention>;
 /** An explicit button adopts the existing request. No send, new identity, or automatic retry is allowed. */
 export function createConversationColdRequest(input: {
+  steering?: ReturnType<
+    typeof import('./conversationSteeringOwner').createConversationSteeringOwner
+  >;
   find(id: number): ConversationSession;
   update(id: number, change: Partial<ConversationSession>): void;
   conversationScope(id: number): string;
@@ -159,6 +162,7 @@ export function createConversationColdRequest(input: {
         ...input.lifetime.executionObserver(controller),
         ...requestIdentityObserver(retention, turn, id),
         ...activity.observer,
+        onSteeringReady: store => input.steering?.bind(id, store, current),
         conversationScope: input.conversationScope(id),
         confirmPhotoResume: input.confirmPhotoResume,
       });
@@ -211,16 +215,12 @@ export function createConversationColdRequest(input: {
           });
       }
     } finally {
+      input.steering?.finish(id, current, paused || !request.committed);
       activity?.finish(
         paused ? 'interrupted' : input.lifetime.failureStatus(controller),
       );
       await activity?.flush();
-      if (
-        turn &&
-        !request.committed &&
-        !turn.hasPending() &&
-        !controller.signal.aborted
-      )
+      if (hasUncommittedTurn(turn, request, controller.signal))
         input.lifetime.interrupt(id, 'interrupted');
       await stopFence;
       await input.lifetime.settle(id, controller);

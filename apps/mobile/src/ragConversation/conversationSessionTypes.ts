@@ -16,6 +16,13 @@ export type ConversationSessions = ReturnType<
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly restoreSteering?: (
+    sessionId: string,
+    requestId: string,
+    signal: AbortSignal,
+  ) => Promise<
+    readonly import('../storage/conversationSteeringStorage').StoredSteeringInstruction[]
+  >;
   readonly coldResume?: ReturnType<
     typeof import('../aiFeatures/integration/coldConversationServices').createColdConversationServices
   >;
@@ -126,6 +133,10 @@ export type ConversationSender = (
 
 /** Memory-only conversation state keeps drafts and request activity scoped to one session. */
 export interface ConversationSession {
+  readonly steeringAvailable?: boolean;
+  readonly steeringError?: boolean;
+  readonly steeringSubmitting?: boolean;
+  readonly steeringInstructions?: readonly import('../storage/conversationSteeringStorage').StoredSteeringInstruction[];
   /** Live safe-checkpoint continuation; never reconstructed as a new send after restart. */
   readonly continueWorkflow?: () => void;
   readonly id: number;

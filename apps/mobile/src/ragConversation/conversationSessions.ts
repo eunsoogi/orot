@@ -94,6 +94,7 @@ export function createConversationSessions(
   );
   const restoration = createConversationSessionRestoreState({
     read: options.restoreSession,
+    readSteering: options.restoreSteering,
     readTasks: options.restoreTasks,
     update,
   });
@@ -138,6 +139,7 @@ export function createConversationSessions(
   });
   return {
     resumeCold: requests.resumeCold,
+    steer: requests.steer,
     photoDrafts,
     photoConsent,
     photoRetirement: options.photoPreparation?.retirement,

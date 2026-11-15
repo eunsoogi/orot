@@ -1,3 +1,5 @@
+import { hasUncommittedTurn } from './hasUncommittedTurn';
+import { createConversationSteeringOwner } from './conversationSteeringOwner';
 import { createConversationColdRequest } from './conversationColdRequest';
 import { getRagConversationFailureCopy } from './copy';
 import { createConversationTurnActivity } from './conversationTurnActivity';
@@ -49,6 +51,7 @@ export function createConversationSessionRequests(
   photo?: Parameters<typeof startConversationRetainedRequest>[0]['photo'],
   cold?: ConversationSessionOptions['coldResume'],
 ) {
+  const steering = createConversationSteeringOwner(find, update);
   let messageId = 0;
   const saveRecovery = createConversationRequestSaveRecovery(update, find);
   const controllers = new Map<number, AbortController>();
@@ -77,10 +80,13 @@ export function createConversationSessionRequests(
     snapshots,
     lifetime,
     saveRecovery,
+    steering,
   };
   const cancel = createConversationStopHandler({ ...ownership, retainPartial });
   return {
     cancel,
+    steer: steering.submit,
+    clearSteering: steering.clear,
     ...createConversationRequestDisposal(ownership),
     async send(
       id: number,
@@ -160,6 +166,7 @@ export function createConversationSessionRequests(
             ? saveRecovery.observer(id, retained, request, current)
             : {}),
           ...lifetime.executionObserver(controller),
+          onSteeringReady: store => steering.bind(id, store, current),
           conversationScope: conversationScope(id),
           ...(photoInput ? { photoInput } : {}),
           retainedHistory: retainedHistoryTurns(session.messages, question),
@@ -203,22 +210,17 @@ export function createConversationSessionRequests(
           update,
         });
       } catch {
-        if (current()) {
+        if (current())
           fail(copy.unavailable, getRagConversationFailureCopy('unavailable'));
-        }
       } finally {
+        steering.finish(id, current, !request.committed);
         await photoInput?.settleUnsent?.().catch(() => {});
         activity?.finish(lifetime.failureStatus(controller));
         await preview?.flush();
         await activity?.flush();
         if (request.committed && find(id)?.error === copy.previewSaveFailed)
           update(id, { error: '' });
-        if (
-          retained &&
-          !request.committed &&
-          !retained.hasPending() &&
-          !controller.signal.aborted
-        )
+        if (hasUncommittedTurn(retained, request, controller.signal))
           lifetime.interrupt(id, 'interrupted');
         const stopStatus = lifetime.status(id, controller);
         await lifetime.settle(id, controller);

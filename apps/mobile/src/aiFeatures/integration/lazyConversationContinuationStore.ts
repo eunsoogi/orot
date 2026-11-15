@@ -4,6 +4,7 @@ type Store = ConversationWorkflowContinuation['persisted'];
 /** Open the same retained-turn database only when the real graph starts, not when constructing runner options. */
 export function lazyConversationContinuationStore(
   open: () => Promise<Store>,
+  onReady?: (store: Store) => void,
 ): Store {
   let store: Store | undefined;
   const ready = () => {
@@ -25,6 +26,7 @@ export function lazyConversationContinuationStore(
         throw new Error('Continuation storage is already initialized.');
       store = await open();
       await store.initialize(options, signal, snapshotEvidence);
+      onReady?.(store);
     },
     paused: checkpoint => ready().paused(checkpoint),
     claim: signal => ready().claim(signal),

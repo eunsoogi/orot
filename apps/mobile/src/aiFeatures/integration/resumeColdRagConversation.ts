@@ -111,6 +111,7 @@ export async function resumeColdRagConversation(input: {
         pause,
       },
       validateSelection: factory.validateSelection,
+      onSteeringReady: observer.onSteeringReady,
       onClaim: () =>
         input.onRegistry?.(
           { ...identity, operationRunId: descriptor.manifest.operationRunId },

@@ -36,6 +36,7 @@ export async function runColdConversationWorkflow<T>(input: {
   invocation: MultiAgentInvocation;
   validateSelection(signal: AbortSignal): Promise<void>;
   capture(batches: readonly EvidenceBatch[]): Promise<JsonObject>;
+  onSteeringReady?: import('./conversationObserver').RagConversationObserver['onSteeringReady'];
   onClaim?(): void;
 }) {
   const { database, descriptor: d, options } = input;
@@ -99,6 +100,8 @@ export async function runColdConversationWorkflow<T>(input: {
     await input.validateSelection(signal);
     if (signal.aborted) throw new Error('Cold workflow cancelled.');
     input.onClaim?.();
+    if (operationJournal.steering)
+      input.onSteeringReady?.(operationJournal.steering);
     const result = await runMultiAgentWorkflow(durable, {
       ...input.invocation,
       signal,

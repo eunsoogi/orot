@@ -96,6 +96,7 @@ export function showStoppedConversationTurn(input: {
 
 /** Abort one owner while allowing an already-started commit to settle first. */
 export function createConversationStopHandler(input: {
+  steering?: { clear: (id: number) => void; dispose: () => void };
   controllers: Map<number, AbortController>;
   pendingTurns: Map<number, PendingTurn>;
   activities: Map<number, ReturnType<typeof createConversationTurnActivity>>;
@@ -125,6 +126,7 @@ export function createConversationStopHandler(input: {
     if (status === 'cancelled') turn?.stopCold?.();
     input.lifetime.interrupt(id, status);
     controller.abort();
+    input.steering?.clear(id);
     // System interruption is not an explicit user cancellation; persist the true state.
     input.activities.get(id)?.finish(status);
     if (

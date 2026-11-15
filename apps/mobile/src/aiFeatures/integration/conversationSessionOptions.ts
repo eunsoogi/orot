@@ -1,3 +1,4 @@
+import { restoreConversationSteering } from './restoreConversationSteering';
 import { restoreColdConversationPreviews } from './restoreColdConversationEligibility';
 import { createConversationSessionRetention } from '../../ragConversation/conversationSessionRetention';
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
@@ -37,6 +38,7 @@ export function createConversationSessionOptions(input: {
   const photo = conversationPhotoPreparationOption(input);
   return {
     ...photo,
+    restoreSteering: restoreConversationSteering(openStorage),
     coldResume: input.coldResume,
     execution: conversationExecutionNative() ?? undefined,
     listSessions: async cursor => (await openStorage()).listSessions(cursor),

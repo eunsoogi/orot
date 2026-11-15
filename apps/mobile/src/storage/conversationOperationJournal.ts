@@ -1,3 +1,4 @@
+import { createConversationSteeringStorage } from './conversationSteeringStorage';
 import type {
   WorkflowOperationJournal,
   WorkflowOperationIdentity,
@@ -88,7 +89,14 @@ export async function createConversationOperationJournal(
   ) =>
     value.input === identity.input &&
     value.refs === stableJson(identity.evidenceReferences);
+  const steering = await createConversationSteeringStorage({
+    database,
+    requestId: owner.requestId,
+    runId: owner.operationRunId,
+    live,
+  });
   return {
+    steering,
     loadPrepared: preparedConversationOperation({ database, live, row, valid }),
     async loadOrCreate(identity) {
       const epoch = await valid(identity);
