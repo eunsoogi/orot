@@ -1,6 +1,6 @@
 import { ConversationBackButton } from './ConversationBackButton';
 import { AppText as Text } from '../layout/AppText';
-import { useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationComposer } from './ConversationComposer';
 import { ConversationWorkspace } from './ConversationWorkspace';
@@ -52,7 +52,11 @@ export function ConversationScreen({
   const { setContentHeight, composerLayout } = useConversationScreenLayout();
   const store = useConversationSessions();
   useConversationEntryIntent(store, entryContext);
-  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const subscribe = useCallback(
+    (listener: () => void) => store.subscribe(listener, isEntryCurrent),
+    [store, isEntryCurrent],
+  );
+  const snapshot = useSyncExternalStore(subscribe, store.getSnapshot);
   const reportOwner = useMemo(
     () =>
       renderReportTask && navigationRouteKey
