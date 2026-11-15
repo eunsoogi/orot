@@ -1,3 +1,9 @@
+import { expectCommittedHistoryMarker } from '../testSupport/committedHistorySaveSpy';
+import {
+  retainedActionSources,
+  actionRecoveryDecision,
+} from '../testSupport/retainedActionSources';
+import { createConversationArtifactDiscovery } from '../conversationArtifactDiscovery';
 import { NativeModules } from 'react-native';
 import { committedActionCrashSnapshot } from '../testSupport/committedActionCrashSnapshot';
 import { openConversationRecovery } from '../../../storage/openConversationRecovery';
@@ -20,11 +26,17 @@ import { coldRagFactoryFixture } from '../testSupport/coldRagFactoryFixture';
 import { conversationHistoryAction } from '../conversationHistoryAction';
 import { captureColdRagConversationState } from '../coldRagConversationState';
 import { restoreColdRagConversationFactory } from '../restoreColdRagConversationFactory';
-
 // Real protected SQLite and LangGraph; all model output and history are synthetic.
-test.each([true, false, 'later-denied'] as const)(
-  'recovers a later committed action before its graph result checkpoint without another write, decision=%s',
-  async mode => {
+test.each([
+  [2, true],
+  [2, false],
+  [2, 'later-denied'],
+  [3, true],
+  [3, false],
+  [3, 'later-denied'],
+] as const)(
+  'recovers a later committed action before its graph result checkpoint without another write, count=%s decision=%s',
+  async (count, mode) => {
     const allowed = mode === true;
     const originalNative = NativeModules.ConversationExecutionModule;
     NativeModules.ConversationExecutionModule = {
@@ -44,20 +56,7 @@ test.each([true, false, 'later-denied'] as const)(
         sessionVersion: 0,
       };
       const question = '작년에 수술을 받은 것 같아요.';
-      const prior = {
-        id: 'prior',
-        question: '지난달 기침을 한 것 같아요.',
-        answer: '확인했습니다.',
-      };
-      await db.database.execute(
-        'INSERT INTO conversation_artifacts (id, session_id, created_at, result_json) VALUES (?, ?, ?, ?)',
-        [
-          prior.id,
-          'session',
-          '2026-11-14T00:00:00.000Z',
-          JSON.stringify(prior),
-        ],
-      );
+      const [prior, earlier] = await retainedActionSources(db.database);
       await storage.startRequest({
         id: 'request',
         sessionId: 'session',
@@ -65,11 +64,18 @@ test.each([true, false, 'later-denied'] as const)(
         question,
         createdAt: '2026-11-15T00:00:00.000Z',
       });
-      const f = await coldRagFactoryFixture({
-        version: 1,
-        status: 'consent_required',
-        charged: true,
-      });
+      const f = await coldRagFactoryFixture(
+        { version: 1, status: 'consent_required', charged: true },
+        data => {
+          data.conversationArtifactDiscovery = async registry =>
+            createConversationArtifactDiscovery({
+              database: db.database,
+              storage,
+              registry,
+              data,
+            });
+        },
+      );
       const signal = new AbortController().signal;
       f.local.data.openConversationArtifactStorage = async () => storage;
       Object.assign(f.local.data, {
@@ -88,13 +94,13 @@ test.each([true, false, 'later-denied'] as const)(
       const observer = {
         retentionSession: { id: 'session', version: 0 },
         retentionRequestId: 'request',
-        retainedHistory: [prior],
+        retainedHistory: [prior, earlier],
         confirmHistorySave: jest.fn(async () => true),
       };
       let calls = 0;
       const generate = jest.fn(async () => {
         calls++;
-        return calls <= 2
+        return calls <= count
           ? providerSuccess({
               text: '',
               finishReason: 'tool_calls' as const,
@@ -103,7 +109,9 @@ test.each([true, false, 'later-denied'] as const)(
                   id: `action-call-${calls}`,
                   name: 'save-past-health-history',
                   arguments: {
-                    userMessage: calls === 1 ? question : prior.question,
+                    userMessage: [question, prior.question, earlier.question][
+                      calls - 1
+                    ],
                   },
                 },
               ],
@@ -130,13 +138,16 @@ test.each([true, false, 'later-denied'] as const)(
           registry: f.registry,
           observer,
           question,
-          admittedQuestions: [prior.question],
+          admittedQuestions: [prior.question, earlier.question],
         }),
       };
       const completion = {
         version: 1,
         entryContext: null,
-        priorDialogue: [{ question: prior.question, answer: prior.answer }],
+        priorDialogue: [prior, earlier].map(source => ({
+          question: source.question,
+          answer: source.answer,
+        })),
         priorUserReports: [],
         historySources: [],
         reportReferences: [],
@@ -171,14 +182,8 @@ test.each([true, false, 'later-denied'] as const)(
         },
       );
       expect(live.status).toBe('result');
-      expect(save).toHaveBeenCalledTimes(2);
-      expect(
-        (
-          await db.database.execute(
-            'SELECT status FROM conversation_action_recovery',
-          )
-        ).rows[0]?.status,
-      ).toBe('committed');
+      expect(save).toHaveBeenCalledTimes(count);
+      await expectCommittedHistoryMarker(db.database, `tool-${count}`);
       expect(restoreCrashCut).toBeDefined();
       await restoreCrashCut!();
       // The restored graph/journal is exactly the durable pre-write snapshot; the
@@ -197,9 +202,7 @@ test.each([true, false, 'later-denied'] as const)(
       expect(reopened?.actionRecovery).toBeDefined();
       const fresh = {
         ...observer,
-        confirmHistorySave: jest
-          .fn(async () => mode === true)
-          .mockImplementationOnce(async () => mode !== false),
+        confirmHistorySave: actionRecoveryDecision(mode, count),
       };
       const factory = await restoreColdRagConversationFactory({
         descriptor: reopened!.descriptor,
@@ -209,7 +212,7 @@ test.each([true, false, 'later-denied'] as const)(
         readKnownCallIds: async () => [],
       });
       generate.mockClear();
-      calls = 2;
+      calls = count;
       const resume = () =>
         runCommittedActionConversationWorkflow({
           database: db.database,
@@ -226,19 +229,19 @@ test.each([true, false, 'later-denied'] as const)(
       if (allowed) expect((await resume()).status).toBe('result');
       else await expect(resume()).rejects.toThrow('could not be verified');
       expect(fresh.confirmHistorySave).toHaveBeenCalledTimes(
-        mode === false ? 1 : 2,
+        mode === false ? 1 : count,
       );
-      expect(save).toHaveBeenCalledTimes(2);
+      expect(save).toHaveBeenCalledTimes(count);
       expect(generate).toHaveBeenCalledTimes(allowed ? 1 : 0);
       expect(
         (await db.database.execute('SELECT id FROM manual_history_entries'))
           .rows,
-      ).toHaveLength(2);
+      ).toHaveLength(count);
       await expect(resume()).rejects.toThrow();
       expect(
         await openConversationRecovery(db.database, owner, signal),
       ).toBeUndefined();
-      expect(save).toHaveBeenCalledTimes(2);
+      expect(save).toHaveBeenCalledTimes(count);
     } finally {
       NativeModules.ConversationExecutionModule = originalNative;
       db.close();
