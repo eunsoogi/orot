@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
@@ -16,8 +16,12 @@ type Props = {
   testID?: string;
 };
 
-/** A bounded callout wraps at large text sizes instead of clipping inside an SVG plot. */
+/** Overlays a wrapping callout at the native bar anchor without a below-chart row. */
 export function ChartBarTooltip({ data, width, height, title, testID }: Props) {
+  const { fontScale } = useWindowDimensions();
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [calloutHeight, setCalloutHeight] = useState(0);
+  const calloutWidth = Math.min(240 * Math.max(1, fontScale), width);
   const entries = data.series
     .flatMap(series => series.points.map(point => ({ series, point })))
     .sort((a, b) => a.point.x.localeCompare(b.point.x));
@@ -36,6 +40,8 @@ export function ChartBarTooltip({ data, width, height, title, testID }: Props) {
         .join(' · ')
     : undefined;
   const move = (direction: number) => {
+    // Missing values have no bar; VoiceOver still announces their complete description.
+    setAnchor(null);
     // VoiceOver can inspect missing and zero values even where there is no visible bar.
     setSelected(current =>
       Math.max(
@@ -76,6 +82,7 @@ export function ChartBarTooltip({ data, width, height, title, testID }: Props) {
           height={height}
           kind="bar"
           onBarSelect={selection => {
+            setAnchor(selection?.position ?? null);
             if (!selection) return setSelected(null);
             const index = entries.findIndex(
               item =>
@@ -88,7 +95,30 @@ export function ChartBarTooltip({ data, width, height, title, testID }: Props) {
       </View>
       {description ? (
         <View
-          style={styles.callout}
+          pointerEvents="none"
+          accessible={false}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onLayout={event => setCalloutHeight(event.nativeEvent.layout.height)}
+          style={[
+            styles.callout,
+            {
+              width: calloutWidth,
+              // Clamp at the plot boundary for edge bars and tall values. The
+              // overlay never takes touches away from scrolling or deselection.
+              left: Math.max(
+                0,
+                Math.min(
+                  width - calloutWidth,
+                  (anchor?.x ?? width / 2) - calloutWidth / 2,
+                ),
+              ),
+              top: Math.max(
+                0,
+                (anchor?.y ?? calloutHeight + 8) - calloutHeight - 8,
+              ),
+            },
+          ]}
           testID={testID ? `${testID}-tooltip` : undefined}
         >
           <Text style={styles.text}>{description}</Text>
@@ -100,6 +130,7 @@ export function ChartBarTooltip({ data, width, height, title, testID }: Props) {
 
 const styles = StyleSheet.create({
   callout: {
+    position: 'absolute',
     padding: 8,
     borderRadius: 8,
     backgroundColor: appColors.background,

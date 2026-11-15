@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { t } from '../../i18n';
 import { ChartPointSelection } from './ChartPointSelection';
@@ -45,6 +45,7 @@ export function ChartPlot({
   hideDetails = false,
   barTooltip = false,
 }: Props) {
+  const { fontScale } = useWindowDimensions();
   const axis = kind === 'line' ? 'time' : 'day';
   const [pageIndex, setPageIndex] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -145,7 +146,7 @@ export function ChartPlot({
       positions.length > 0 &&
       width > 0 ? (
         <ChartBarTooltip
-          key={JSON.stringify(visible)}
+          key={JSON.stringify([visible, width, height, fontScale])}
           data={visible}
           width={width}
           height={height}

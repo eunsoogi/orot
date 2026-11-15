@@ -40,7 +40,8 @@ const plot = (value = data) => (
   />
 );
 const bars = () => screen.getByTestId('bars', { includeHiddenElements: true });
-const tooltip = () => screen.queryByTestId('chart-plot-tooltip');
+const tooltip = () =>
+  screen.queryByTestId('chart-plot-tooltip', { includeHiddenElements: true });
 
 test('bar callback shows exact dated duration, deselects, and never restores details', async () => {
   const original = JSON.stringify(data);
@@ -50,9 +51,17 @@ test('bar callback shows exact dated duration, deselects, and never restores det
   // Invoke the chart-kit callback contract: it reports stable x and series identity.
   const { act } = require('@testing-library/react-native');
   await act(() =>
-    bars().props.interaction.onSelect({ x: '2026-01-01', seriesKey: 'sleep' }),
+    bars().props.interaction.onSelect({
+      x: '2026-01-01',
+      seriesKey: 'sleep',
+      position: { x: 80, y: 90 },
+    }),
   );
-  expect(screen.getByText('2026-01-01 · 수면 · 1시간 30분')).toBeTruthy();
+  expect(
+    screen.getByText('2026-01-01 · 수면 · 1시간 30분', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
   expect(screen.queryByTestId('chart-details')).toBeNull();
   await act(() =>
     bars().props.interaction.onDeselect({ reason: 'outsidePress' }),
@@ -116,16 +125,26 @@ test('multi-series selection uses the selected series unit and preserves decimal
     renderers[1]!.props.interaction.onSelect({
       x: '2026-01-01',
       seriesKey: 'lb',
+      position: { x: 80, y: 90 },
     }),
   );
-  expect(screen.getByText('2026-01-01 · 다른 단위 · 143.5 lb')).toBeTruthy();
+  expect(
+    screen.getByText('2026-01-01 · 다른 단위 · 143.5 lb', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
   await act(() =>
     renderers[0]!.props.interaction.onSelect({
       x: '2026-01-01',
       seriesKey: 'kg',
+      position: { x: 80, y: 90 },
     }),
   );
-  expect(screen.getByText('2026-01-01 · 체중 · 65.125 kg')).toBeTruthy();
+  expect(
+    screen.getByText('2026-01-01 · 체중 · 65.125 kg', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
 });
 
 test('editing a selected value clears its old callout even when its date survives', async () => {
@@ -149,5 +168,64 @@ test('editing a selected value clears its old callout even when its date survive
   await fireEvent(screen.getByTestId('chart-plot'), 'accessibilityAction', {
     nativeEvent: { actionName: 'increment' },
   });
-  expect(screen.getByText('2026-01-01 · 수면 · 2시간 0분')).toBeTruthy();
+  expect(
+    screen.getByText('2026-01-01 · 수면 · 2시간 0분', {
+      includeHiddenElements: true,
+    }),
+  ).toBeTruthy();
+});
+
+test('floating label tracks the native anchor, clamps edges, and does not intercept touches', async () => {
+  await render(plot());
+  const { act } = require('@testing-library/react-native');
+  await act(() =>
+    bars().props.interaction.onSelect({
+      x: '2026-01-01',
+      seriesKey: 'sleep',
+      position: { x: 10, y: 90 },
+    }),
+  );
+  await fireEvent(tooltip()!, 'layout', {
+    nativeEvent: { layout: { width: 160, height: 40 } },
+  });
+  const { StyleSheet } = require('react-native');
+  expect(StyleSheet.flatten(tooltip()!.props.style)).toMatchObject({
+    position: 'absolute',
+    left: 0,
+    top: 42,
+    width: 160,
+  });
+  expect(tooltip()!.props.pointerEvents).toBe('none');
+  await act(() =>
+    bars().props.interaction.onSelect({
+      x: '2026-01-03',
+      seriesKey: 'sleep',
+      position: { x: 155, y: 20 },
+    }),
+  );
+  expect(StyleSheet.flatten(tooltip()!.props.style).top).toBe(0);
+});
+test('resizing clears coordinates from the old chart layout', async () => {
+  const view = await render(plot());
+  const { act } = require('@testing-library/react-native');
+  await act(() =>
+    bars().props.interaction.onSelect({
+      x: '2026-01-01',
+      seriesKey: 'sleep',
+      position: { x: 80, y: 90 },
+    }),
+  );
+  await view.rerender(
+    <ChartPlot
+      data={data}
+      width={320}
+      height={112}
+      title="수면"
+      kind="bar"
+      hideDetails
+      barTooltip
+      testID="chart"
+    />,
+  );
+  expect(tooltip()).toBeNull();
 });
