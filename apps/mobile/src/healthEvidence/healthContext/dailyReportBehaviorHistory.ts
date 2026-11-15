@@ -1,3 +1,4 @@
+import { doseHistorySqlKey } from './dailyReportHistorySelection';
 import { dailyReportBaselineInterval, compareTimestamps } from '@orot/domain';
 import type { DailyReportSourceRecord } from '@orot/domain';
 import {
@@ -61,18 +62,26 @@ export async function readDailyReportBehaviorHistory(
   for (const kind of ['dose_event', 'health_observation'] as const) {
     if (kind === 'dose_event' && !medicationKeys.size) continue;
     const selected = candidateScopeCondition(kind, scope);
+    const sourceBudget =
+      kind === 'dose_event' && medicationKeys.size
+        ? Math.floor(byteBudget / 2)
+        : byteBudget - bytes;
+    let sourceBytes = 0;
     const at = localQueryTimestampKeyExpression('r.effective_at');
     const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
     const filter =
       kind === 'health_observation'
         ? "AND json_extract(r.payload_json, '$.concept') = 'workout_duration'"
-        : '';
+        : `AND ${doseHistorySqlKey} IN (SELECT value FROM json_each(?))`;
     const rows = (
       await tx.execute(
-        `SELECT r.id, CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table} r WHERE ${selected.sql} ${filter} AND ${at} >= ? AND ${at} < ? AND ${ingestion} <= ? ORDER BY ${at} DESC, r.id LIMIT 51`,
+        `SELECT r.id, CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table} r WHERE ${selected.sql} ${filter} AND ${at} >= ? AND ${at} < ? AND ${ingestion} <= ? ORDER BY ${kind === 'dose_event' ? `row_number() OVER (PARTITION BY ${doseHistorySqlKey} ORDER BY ${at} DESC, r.id),` : ''} ${at} DESC, r.id LIMIT 51`,
         [
           MAX_HEALTH_EVIDENCE_RECORD_BYTES,
           ...selected.parameters,
+          ...(kind === 'dose_event'
+            ? [JSON.stringify([...medicationKeys])]
+            : []),
           localQueryTimestampKey(range.fromInclusive),
           localQueryTimestampKey(range.toExclusive),
           localQueryTimestampKey(calendar.generationCutoff),
@@ -85,7 +94,8 @@ export async function readDailyReportBehaviorHistory(
       if (
         typeof row.payload_json !== 'string' ||
         typeof row.payload_bytes !== 'number' ||
-        bytes + row.payload_bytes > byteBudget
+        bytes + row.payload_bytes > byteBudget ||
+        sourceBytes + row.payload_bytes > sourceBudget
       ) {
         partial = true;
         continue;
@@ -130,6 +140,7 @@ export async function readDailyReportBehaviorHistory(
       });
       values.push(value);
       bytes += row.payload_bytes;
+      sourceBytes += row.payload_bytes;
     }
   }
   return { values, records, lineage, partial };
