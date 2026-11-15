@@ -30,6 +30,8 @@ export function dailyReportGuidance(
     ...conflictingDailyReportIndexes(values),
     ...incomparableDailyReportIndexes(values),
   ]);
+  // A cuff reading can span seconds. Unlike interval step totals, that duration
+  // does not invalidate its pressure or suppress urgent verification guidance.
   const bloodPressure = values.flatMap((item, index) => {
     if (
       item.kind !== 'health_observation' ||
@@ -42,8 +44,7 @@ export function dailyReportGuidance(
       record.value.kind !== 'quantity' ||
       record.value.unit !== 'mmHg' ||
       !Number.isFinite(record.value.amount) ||
-      record.value.amount <= 0 ||
-      (record.endedAt && record.endedAt !== record.effectiveAt)
+      record.value.amount <= 0
     )
       return [];
     const systolic = [
@@ -67,7 +68,7 @@ export function dailyReportGuidance(
   if (severe.length) {
     result.push(
       claim(
-        '우선 확인할 혈압 기록이 있어요. 수축기 180 또는 이완기 120 mmHg 이상인 값이 기록되어 있어요. 지금 흉통·숨참·마비·말하기 어려움·시야 변화가 있으면 재측정을 기다리지 말고 119에 연락하세요. 증상이 없다면 1분 이상 뒤 다시 측정하고 여전히 매우 높으면 즉시 의료진에게 연락하세요. 과거 기록만으로 현재 응급상태를 판정하지는 않아요. (AHA 가정혈압 안내)',
+        '우선 확인할 혈압 기록이 있어요. 수축기 180 또는 이완기 120 mmHg 이상인 값이 기록되어 있어요. 지금 흉통·숨참·등 통증·저림·힘 빠짐·마비·말하기 어려움·시야 변화 같은 새로운 우려 증상이 있으면 재측정을 기다리지 말고 119에 연락하세요. 증상이 없다면 1분 이상 뒤 다시 측정하고 여전히 매우 높으면 즉시 의료진에게 연락하세요. 과거 기록만으로 현재 응급상태를 판정하지는 않아요. (질병관리청·AHA 혈압 안내; 나열한 증상이 전부는 아니에요)',
         severe.map(x => x.index),
       ),
     );
