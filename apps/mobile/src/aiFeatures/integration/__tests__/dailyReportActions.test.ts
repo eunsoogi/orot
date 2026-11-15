@@ -47,7 +47,8 @@ test('explicit missed and taken doses remain separate, not an adherence score or
   expect(claims[0]?.sourceReferences).toEqual([
     { source: 'dose_event', recordId: 'missed' },
   ]);
-  expect(claims[1]?.text).toContain('모든 예정 복용을 지켰거나');
+  expect(claims[1]?.text).toContain('복용·투여를 완료했어요');
+  expect(claims[1]?.text).toContain('다른 예정 회차');
   expect(claims[1]?.sourceReferences).toEqual([
     { source: 'dose_event', recordId: 'taken' },
   ]);
@@ -105,6 +106,28 @@ test.each([
     const claims = summarize([value]);
     expect(claims[0]?.text).toContain('복용 여부가 확정되지 않은');
     expect(claims[0]?.text).not.toContain('누락 또는 건너뜀');
-    expect(claims[0]?.text).not.toContain('복용 또는 투여했다고');
+    expect(claims[0]?.text).not.toContain('복용·투여를 완료했어요');
+  },
+);
+
+test.each(['taken', 'administered', 'observed'] as const)(
+  'explicit %s completion is affirmed rather than questioned',
+  eventKind => {
+    const value: LocalHealthEvidenceRecord = {
+      kind: 'dose_event',
+      record: DoseEventSchema.parse({
+        ...metadata(eventKind),
+        eventKind,
+        ...(eventKind === 'observed'
+          ? {
+              medicationDefinitionId: 'synthetic-definition',
+              observationStatus: 'taken',
+            }
+          : { medicationAssertionId: 'synthetic-rx' }),
+      }),
+    };
+    const claims = summarize([value]);
+    expect(claims[0]?.text).toContain('복용·투여를 완료했어요');
+    expect(claims[0]?.text).not.toContain('복용 여부가 확정되지');
   },
 );

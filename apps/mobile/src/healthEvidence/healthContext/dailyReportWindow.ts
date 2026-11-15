@@ -116,6 +116,13 @@ export function dailyReportSourceRecordIsAvailable(
   )
     return false;
   const { startInclusive, endExclusive } = record.occurrence;
+  // The complete context schema additionally validates the admitted dose links.
+  if (
+    record.supportingRecordFor?.length &&
+    ['medication_definition', 'medication_assertion'].includes(record.source)
+  )
+    return compareTimestamps(startInclusive, context.generationCutoff) <= 0;
+
   // A saved appointment is evidence of a plan known by ingestion, not attendance.
   if (record.source === 'appointment')
     return (

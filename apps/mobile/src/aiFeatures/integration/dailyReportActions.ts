@@ -47,13 +47,30 @@ export function dailyReportActions(
     [taken, 'dailyReport.context.doseTaken'],
     [unknown, 'dailyReport.context.doseUnknown'],
   ] as const) {
-    if (items.length)
+    if (items.length) {
+      const doseIds = new Set(items.map(item => item.record.id));
+      const linked = values.flatMap((item, index) => {
+        if (!sources[index]?.supportingRecordFor?.some(id => doseIds.has(id)))
+          return [];
+        if (item.kind === 'medication_definition')
+          return [{ index, name: item.record.displayText }];
+        if (item.kind === 'medication_assertion')
+          return [{ index, name: item.record.medicationName }];
+        return [];
+      });
+      const text = linked.length
+        ? t('dailyReport.medication.namedAction', {
+            names: [...new Set(linked.map(item => item.name))].join(', '),
+            text: t(key),
+          })
+        : t(key);
       result.push(
-        claim(
-          t(key),
-          items.map(item => item.index),
-        ),
+        claim(text, [
+          ...items.map(item => item.index),
+          ...linked.map(item => item.index),
+        ]),
       );
+    }
   }
   const visits = values.flatMap((item, index) =>
     item.kind === 'appointment' && item.record.status !== 'cancelled'
