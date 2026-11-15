@@ -33,7 +33,7 @@ afterEach(() => Dimensions.set({ window: originalWindow }));
 
 function panelAxis(): string | undefined {
   return StyleSheet.flatten(
-    screen.getByTestId('rag-conversation-columns').props.style,
+    screen.getByTestId('conversation-workspace').props.style,
   )?.flexDirection;
 }
 
@@ -78,7 +78,7 @@ test('uses the feature route lane for Duo regions and preserves an active conver
   expect(screen.getAllByLabelText(copy.sessions)).toHaveLength(1);
   expect(screen.getAllByLabelText(copy.newConversation)).toHaveLength(1);
   expect(screen.getByTestId('rag-conversation-sessions-toggle')).toBeTruthy();
-  // The screen chooses a single native region for its continuous page.
+  // The conversation owns its native region pair rather than nesting in route columns.
   expect(screen.queryByTestId('navigation-route-columns-route-2')).toBeNull();
 
   const sensor = screen.getByTestId('navigation-window-geometry-sensor');
@@ -87,6 +87,7 @@ test('uses the feature route lane for Duo regions and preserves an active conver
     windowBounds: { x: 0, y: 0, width: 1400, height: 900 },
     safeAreaInsets: noInsets,
     reservedRegionsSupported: true,
+    hasHinge: true,
     reservedRegions: [
       {
         id: 'hinge',
@@ -130,18 +131,18 @@ test('uses the feature route lane for Duo regions and preserves an active conver
     '다음 질문 초안',
   );
   await waitFor(() => expect(ragRunner).toHaveBeenCalledTimes(1));
-  await waitFor(() => expect(panelAxis()).toBe('column'));
+  await waitFor(() => expect(panelAxis()).toBe('row'));
 
   const columnsStyle = StyleSheet.flatten(
-    screen.getByTestId('rag-conversation-columns').props.style,
+    screen.getByTestId('conversation-workspace').props.style,
   );
-  expect(columnsStyle?.columnGap).toBe(0);
+  expect(columnsStyle?.flexDirection).toBe('row');
   expect(
     StyleSheet.flatten(
-      screen.getByTestId('rag-conversation-columns-primary').props.style,
+      screen.getByTestId('conversation-transcript-pane').props.style,
     )?.width,
   ).toBeLessThanOrEqual(640);
-  expect(screen.queryByTestId('rag-conversation-columns-secondary')).toBeNull();
+  expect(screen.getByTestId('conversation-activity-pane')).toBeTruthy();
   expect(
     screen.getByTestId('rag-conversation-activity-bubble', {
       includeHiddenElements: true,

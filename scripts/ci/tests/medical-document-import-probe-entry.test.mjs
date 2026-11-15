@@ -24,11 +24,11 @@ test('routes the medical document journey through the production App', () => {
   assert.ok(router.includes("case 'medical-document-import':"));
   assert.ok(router.includes("require('./medicalDocumentImportProbeEntry')"));
   assert.match(probeEntry, /import App from '\.\.\/App';/u);
-  // The real App must wait for its encrypted synthetic prerequisite, not bypass the gate.
+  // The real App must wait for both encrypted synthetic prerequisites; neither failure may bypass the gate.
   assert.match(probeEntry, /useState<'loading' \| 'ready' \| 'error'>\('loading'\)/u);
   assert.match(
     probeEntry,
-    /prepareMedicalDocumentPhotoAppearance\(settings, appearanceStore\)\.then\(\s*\(\) => \{\s*if \(active\) setState\('ready'\);\s*\},\s*\(\) => \{\s*if \(active\) setState\('error'\);/u,
+    /prepareMedicalDocumentPhotoAppearance\(settings, appearanceStore\)\s*\.then\(\(\) => prepareSavedDocumentNavigation\(settings, openLocalStorage\)\)\s*\.then\(\s*\(\) => \{\s*if \(active\) setState\('ready'\);\s*\},\s*\(\) => \{\s*if \(active\) setState\('error'\);/u,
   );
   assert.match(probeEntry, /if \(state === 'error'\)\s*return <Text>/u);
   assert.match(probeEntry, /return state === 'ready' \? <App \/> : null;/u);

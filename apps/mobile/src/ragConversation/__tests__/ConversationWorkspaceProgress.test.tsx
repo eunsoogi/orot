@@ -1,4 +1,4 @@
-import { Dimensions } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import {
   fireEvent,
   render,
@@ -11,7 +11,12 @@ import type { ConversationSession } from '../conversationSessionTypes';
 import { conversationToolEventFixtures } from '../testSupport/conversationToolEventFixtures';
 
 jest.mock('../../navigation/NavigationGeometryProvider', () => ({
-  useNavigationGeometry: () => ({ hasHinge: true }),
+  useNavigationGeometry: () => ({
+    hasHinge: true,
+    reservedRegions: [],
+    usableRegions: [],
+    safeAreaFrame: { x: 0, y: 0, width: 1000, height: 800 },
+  }),
 }));
 jest.mock('../../assistantAppearance/AssistantAppearanceProvider', () => ({
   useAssistantAppearance: () => ({ ready: true }),
@@ -23,11 +28,27 @@ jest.mock('../../assistantAppearance/AssistantHeader', () => ({
 jest.mock('../../assistantAppearance/FloatingProfileGradient', () => ({
   FloatingProfileGradient: () => null,
 }));
+let hostWidth = 390;
+const measurable = View as unknown as {
+  prototype: {
+    measureInWindow: (
+      callback: (x: number, y: number, width: number, height: number) => void,
+    ) => void;
+  };
+};
+let measurement: jest.SpyInstance;
 const originalWindow = Dimensions.get('window');
-beforeEach(() =>
-  Dimensions.set({ window: { ...originalWindow, fontScale: 1 } }),
-);
-afterEach(() => Dimensions.set({ window: originalWindow }));
+beforeEach(() => {
+  hostWidth = 390;
+  Dimensions.set({ window: { ...originalWindow, fontScale: 1 } });
+  measurement = jest
+    .spyOn(measurable.prototype, 'measureInWindow')
+    .mockImplementation(callback => callback(0, 0, hostWidth, 800));
+});
+afterEach(() => {
+  measurement.mockRestore();
+  Dimensions.set({ window: originalWindow });
+});
 const actions = { onOpenSource: jest.fn(), onLinkError: jest.fn() };
 const session: ConversationSession = {
   id: 12,
@@ -68,6 +89,7 @@ const dots = () =>
 test('keeps one progress bubble while reflowing and hides it after cancellation', async () => {
   const view = await render(workspace(session));
   for (const width of [390, 1000, 390, 1000]) {
+    hostWidth = width;
     await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
       nativeEvent: { layout: { width } },
     });
@@ -100,6 +122,7 @@ test('retains progress when expanded streaming text is hidden and clears at comp
   };
   const view = await render(workspace(streaming));
   expect(dots()).toHaveLength(0);
+  hostWidth = 1000;
   await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
     nativeEvent: { layout: { width: 1000 } },
   });

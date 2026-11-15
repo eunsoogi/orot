@@ -89,10 +89,11 @@ test('full integration execution preserves profile observations and every regist
   );
   // Current main includes conversation retention and visit preparation in the full schedule.
   // Nine host regressions run outside iOS; seven picker journeys still repeat across cohorts.
-  // Visit preparation adds one native accessibility fixture to the full schedule.
-  assert.equal(scheduled.length, 236);
+  // Visit preparation adds one native accessibility fixture; fade lifecycle adds six cases.
+  // Two synthetic calendar range gates extend Core without duplicating existing journeys.
+  assert.equal(scheduled.length, 244);
   const identifiers = new Set(scheduled);
-  assert.equal(identifiers.size, 229);
+  assert.equal(identifiers.size, 237);
   const frequencies = new Map();
   for (const identifier of scheduled)
     frequencies.set(identifier, (frequencies.get(identifier) ?? 0) + 1);

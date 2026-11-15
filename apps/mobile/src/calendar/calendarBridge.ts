@@ -5,9 +5,15 @@ import type {
   EventKitCalendarBridge,
   CalendarEventLookup,
   UpcomingCalendarEvents,
+  CalendarRangeBridge,
+  CalendarRangeEvents,
 } from './types';
 
 interface NativeCalendarModule {
+  listEventsInRange?: (
+    fromInclusive: string,
+    toExclusive: string,
+  ) => Promise<CalendarRangeEvents>;
   requestEventAccess(): Promise<CalendarAccessState>;
   listUpcomingEvents(): Promise<UpcomingCalendarEvents>;
   requestAccessAndListUpcomingEvents(): Promise<UpcomingCalendarEvents>;
@@ -28,9 +34,13 @@ function unavailable<T>(): Promise<T> {
 export function createCalendarBridge(
   nativeModule:
     NativeCalendarModule | undefined = NativeModules.EventKitCalendarModule,
-): EventKitCalendarBridge {
+): EventKitCalendarBridge & CalendarRangeBridge {
   const emitter = nativeModule ? new NativeEventEmitter(nativeModule) : null;
   return {
+    listEventsInRange: (fromInclusive, toExclusive) =>
+      nativeModule?.listEventsInRange
+        ? nativeModule.listEventsInRange(fromInclusive, toExclusive)
+        : unavailable(),
     requestEventAccess: () =>
       nativeModule ? nativeModule.requestEventAccess() : unavailable(),
     listUpcomingEvents: () =>
@@ -58,5 +68,5 @@ export function createCalendarBridge(
   };
 }
 
-export const eventKitCalendarBridge: EventKitCalendarBridge =
-  createCalendarBridge();
+export const eventKitCalendarBridge: EventKitCalendarBridge &
+  CalendarRangeBridge = createCalendarBridge();

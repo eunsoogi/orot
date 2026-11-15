@@ -1,5 +1,5 @@
 import { ConversationScreen } from '../ConversationScreen';
-import { Dimensions } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import {
   fireEvent,
   render,
@@ -13,6 +13,15 @@ import { conversationToolEventFixtures } from '../testSupport/conversationToolEv
 import { conversationWorkspaceLayout } from '../conversationWorkspaceLayout';
 
 let mockHinge = true;
+let hostWidth = 390;
+const measurable = View as unknown as {
+  prototype: {
+    measureInWindow: (
+      callback: (x: number, y: number, width: number, height: number) => void,
+    ) => void;
+  };
+};
+let measurement: jest.SpyInstance;
 jest.mock('../../navigation/NavigationGeometryProvider', () => ({
   useNavigationGeometry: () => ({
     hasHinge: mockHinge,
@@ -67,9 +76,16 @@ function Workspace() {
 const originalWindow = Dimensions.get('window');
 beforeEach(() => {
   mockHinge = true;
+  hostWidth = 390;
+  measurement = jest
+    .spyOn(measurable.prototype, 'measureInWindow')
+    .mockImplementation(callback => callback(0, 0, hostWidth, 800));
   Dimensions.set({ window: { ...originalWindow, fontScale: 1 } });
 });
-afterEach(() => Dimensions.set({ window: originalWindow }));
+afterEach(() => {
+  measurement.mockRestore();
+  Dimensions.set({ window: originalWindow });
+});
 test.each([
   [false, 1200, 1, false],
   [true, 390, 1, false],
@@ -94,6 +110,7 @@ test('reflows activity and identity without remounting transcript or losing erro
   expect(
     within(history).queryByTestId('rag-conversation-tool-events'),
   ).toBeNull();
+  hostWidth = 1000;
   await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
     nativeEvent: { layout: { width: 1000 } },
   });
@@ -116,6 +133,7 @@ test('reflows activity and identity without remounting transcript or losing erro
   );
   await fireEvent.press(tool);
   expect(tool.props.accessibilityState.expanded).toBe(true);
+  hostWidth = 390;
   await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
     nativeEvent: { layout: { width: 390 } },
   });
@@ -125,6 +143,7 @@ test('reflows activity and identity without remounting transcript or losing erro
   expect(
     within(history).queryByTestId('rag-conversation-tool-events'),
   ).toBeNull();
+  hostWidth = 1000;
   await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
     nativeEvent: { layout: { width: 1000 } },
   });
@@ -137,6 +156,7 @@ test('reflows activity and identity without remounting transcript or losing erro
 test('does not enable the pane on an ordinary wide phone', async () => {
   mockHinge = false;
   await render(<Workspace />);
+  hostWidth = 1100;
   await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
     nativeEvent: { layout: { width: 1100 } },
   });
@@ -167,6 +187,7 @@ test('keeps the live request and draft when the Duo pane folds and expands', asy
   );
   const input = screen.getByTestId('rag-conversation-input');
   for (const width of [1000, 390, 1000]) {
+    hostWidth = width;
     await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
       nativeEvent: { layout: { width } },
     });
@@ -204,6 +225,7 @@ test('preserves the early reply while hiding tool calls at compact and wide widt
     </ConversationWorkspace>,
   );
   for (const width of [390, 1000, 390]) {
+    hostWidth = width;
     await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
       nativeEvent: { layout: { width } },
     });

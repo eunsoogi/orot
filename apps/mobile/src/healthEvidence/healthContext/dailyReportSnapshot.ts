@@ -1,3 +1,4 @@
+import { readDailyReportMedicationContext } from './dailyReportMedicationContext';
 import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
@@ -29,7 +30,12 @@ import {
   readHealthContextGeneration,
 } from './generation';
 
-const kinds = ['health_observation', 'symptom_entry', 'dose_event'] as const;
+const kinds = [
+  'health_observation',
+  'symptom_entry',
+  'dose_event',
+  'appointment',
+] as const;
 const rowLimit = 100;
 const snapshotByteLimit = 64 * 1024;
 
@@ -99,7 +105,11 @@ export async function readDailyReportSnapshot(
                 MAX_HEALTH_EVIDENCE_RECORD_BYTES,
                 ...selected.parameters,
                 localQueryTimestampKey(calendar.generationCutoff),
-                localQueryTimestampKey(calendar.effectiveCutoff),
+                localQueryTimestampKey(
+                  kind === 'appointment'
+                    ? calendar.interval.toExclusive
+                    : calendar.effectiveCutoff,
+                ),
                 localQueryTimestampKey(calendar.interval.fromInclusive),
                 localQueryTimestampKey(calendar.interval.fromInclusive),
                 rowLimit + 1,
@@ -172,8 +182,50 @@ export async function readDailyReportSnapshot(
           'source_sync_unknown',
           ...(partial ? ['snapshot_incomplete'] : []),
           ...(kind === 'dose_event' ? ['medication_names_not_resolved'] : []),
+          ...(kind === 'appointment' ? ['confirmed_appointments_only'] : []),
         ],
       });
+    }
+    // Supporting identity records retain their original times and own deletion lineage.
+    const medications = await readDailyReportMedicationContext(
+      tx,
+      values,
+      scope,
+      calendar.generationCutoff,
+    );
+    const linkedDoses = new Set<string>();
+    for (const item of medications) {
+      if (bytes + item.bytes > snapshotByteLimit) continue;
+      const revision = fingerprint(item.payload);
+      const recordId = item.value.record.id;
+      records.push({
+        source: item.value.kind,
+        recordId,
+        revision,
+        occurrence: { startInclusive: item.at },
+        ingestedAt: item.value.record.ingestedAt,
+        supportingRecordFor: item.doses,
+      });
+      lineage.push({
+        source: item.value.kind,
+        recordId,
+        kind: item.value.kind,
+        localId: recordId,
+        revision,
+      });
+      values.push(item.value);
+      bytes += item.bytes;
+      item.doses.forEach(id => linkedDoses.add(id));
+    }
+    const unresolved = values.some(
+      item => item.kind === 'dose_event' && !linkedDoses.has(item.record.id),
+    );
+    if (!unresolved) {
+      const doseCoverage = coverage.find(item => item.source === 'dose_event');
+      if (doseCoverage)
+        doseCoverage.limitationCodes = doseCoverage.limitationCodes.filter(
+          code => code !== 'medication_names_not_resolved',
+        );
     }
     output = {
       values,

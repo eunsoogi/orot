@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { AppRegistry, NativeModules, Text } from 'react-native';
 import App from '../App';
 import { name as appName } from '../app.json';
+import { openLocalStorage } from '../src/storage/secureDatabase';
+import { prepareSavedDocumentNavigation } from './savedDocumentNavigationFixture';
 import { appearanceStore } from '../src/assistantAppearance/appearanceStore';
 import { prepareMedicalDocumentPhotoAppearance } from './medicalDocumentPhotoAppearanceFixture';
 
@@ -20,14 +22,16 @@ function MedicalDocumentImportProbeEntry() {
       | undefined;
     const settings = manager?.settings ?? manager?.getConstants?.().settings;
     // A failed prerequisite must not mount normal routes or pretend onboarding was committed.
-    prepareMedicalDocumentPhotoAppearance(settings, appearanceStore).then(
-      () => {
-        if (active) setState('ready');
-      },
-      () => {
-        if (active) setState('error');
-      },
-    );
+    prepareMedicalDocumentPhotoAppearance(settings, appearanceStore)
+      .then(() => prepareSavedDocumentNavigation(settings, openLocalStorage))
+      .then(
+        () => {
+          if (active) setState('ready');
+        },
+        () => {
+          if (active) setState('error');
+        },
+      );
     return () => {
       active = false;
     };
