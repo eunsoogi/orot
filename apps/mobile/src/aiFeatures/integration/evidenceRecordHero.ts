@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceRepository';
 import { fieldLabels, visibleValue } from './evidenceSourceValues';
 import { sleepRecordSemantics } from '../../healthkit/sleep/sleepRecordSemantics';
@@ -49,9 +50,9 @@ export function evidenceRecordHero(
     ) {
       const unit =
         record.concept === 'step_count'
-          ? '걸음'
+          ? t('sourceDisplay.steps')
           : saved.unit === 'count/min'
-            ? '회/분'
+            ? t('sourceDisplay.perMinute')
             : saved.unit;
       value = `${saved.amount} ${unit}`;
     } else if (saved.kind === 'boolean') value = visibleValue(saved.value);
@@ -86,13 +87,13 @@ export function evidenceRecordHero(
         ? record.eventKind === 'taken' ||
           record.eventKind === 'administered' ||
           record.observationStatus === 'taken'
-          ? '복용 발생 시각'
-          : '복약 기록 시각'
+          ? t('sourceDisplay.doseOccurred')
+          : t('sourceDisplay.doseRecorded')
         : entry.kind === 'health_observation'
           ? record.endedAt && record.endedAt !== record.effectiveAt
-            ? '측정 시작 시각'
-            : '측정 시각'
-          : '발생 시각',
+            ? t('sourceDisplay.measurementStart')
+            : t('sourceDisplay.measurementAt')
+          : t('sourceDisplay.occurredAt'),
     consumedLabels: consumed
       .map(key => fieldLabels[key])
       .filter((label): label is string => Boolean(label)),
