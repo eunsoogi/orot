@@ -12,6 +12,8 @@
 
 세 번째 구현은 `nextVisitQuestions/copy.ts`와 `encounterReview/strings.ts`의 사용자 표시 110개 문구를 공유 카탈로그로 통합한다. 기존 copy 객체 API와 숫자 삽입 함수는 유지하며, 진단/처방으로 확정하지 않는 안내와 동의 및 검색 결과 미보존 경계를 그대로 유지한다. 임상 알고리즘·프롬프트·원본 자료를 변경하지 않는다.
 
+네 번째 구현은 `evidenceSourceValues.ts`의 표시용 필드/상태 이름과 값 포맷 139개 문구를 카탈로그로 이동한다. 임상 용어의 원래 의미와 미검토/사람 검토/사용자 확인의 구분, 원문값, private identifier 제외, 시간대 포맷을 변경하지 않는다. #946 담당과 파일 범위를 조율했다.
+
 ## 검증과 한계
 
 카탈로그·미지원 locale fallback·보존된 경고·모델 ID interpolation과 조사한 두 디렉터리의 inline 한국어 회귀 검사를 추가했다. 기존 설정/계정/모델 동작 테스트를 함께 검증한다. native UI나 실기기 동작을 검증한 것으로 간주하지 않는다. 아래 나머지 production/native 후보는 후속 작업이며 이 문서나 부분 PR로 전체 현지화가 완료되지 않는다.
@@ -134,7 +136,6 @@
 - `apps/mobile/src/aiFeatures/integration/evidenceSearchTool.ts`: 3
 - `apps/mobile/src/aiFeatures/integration/evidenceSnapshot.ts`: 2
 - `apps/mobile/src/aiFeatures/integration/evidenceSourcePresentation.ts`: 51
-- `apps/mobile/src/aiFeatures/integration/evidenceSourceValues.ts`: 136
 - `apps/mobile/src/aiFeatures/integration/externalConversationEvidence.ts`: 4
 - `apps/mobile/src/aiFeatures/integration/featureServices.ts`: 3
 - `apps/mobile/src/aiFeatures/integration/healthContextPresentation.ts`: 57

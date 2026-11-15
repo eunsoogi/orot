@@ -1,163 +1,125 @@
-export const fieldLabels: Record<string, string> = {
-  amount: '수치',
-  medicationName: '약 이름',
-  dosageInstruction: '복용 방법',
-  route: '투여 경로',
-  assertionKind: '복용 정보 유형',
-  endsAt: '종료 시각',
-  displayText: '표시 이름',
-  generalForm: '약 형태',
-  nickname: '별칭',
-  isArchived: '보관됨',
-  hasSchedule: '복용 일정 있음',
-  eventKind: '복용 기록 유형',
-  observationStatus: '복용 기록 상태',
-  scheduleType: '복용 일정 유형',
-  dose: '기록된 복용량',
-  clinicLabel: '진료 장소',
-  note: '메모',
-  calendarEventSnapshot: '일정 내용',
-  timeZoneIdentifier: '일정 시간대',
-  isAllDay: '종일 일정',
-  questionText: '진료 질문',
-  rationale: '질문 이유',
-  priority: '중요도',
-  productType: '기기 유형',
-  summary: '내용 요약',
-  name: '이름',
-  notes: '메모',
-  question: '질문',
-  status: '상태',
-  reason: '이유',
-  startedAt: '시작 시각',
-  scheduledAt: '예정 시각',
-  durationMinutes: '시간(분)',
-  recordingDurationMs: '녹음 길이',
-  manufacturer: '제조사',
-  model: '기기',
-  device: '기기 정보',
-  encounterKind: '진료 유형',
-  bodySite: '부위',
-  concept: '항목',
-  createdAt: '저장 시각',
-  description: '내용',
-  effectiveAt: '발생 시각',
-  endedAt: '종료 시각',
-  ingestedAt: '앱 저장 시각',
-  kind: '종류',
-  language: '언어',
-  observationKind: '기록 유형',
-  origin: '기록 경로',
-  pageNumber: '페이지',
-  publicationDate: '발행일',
-  recordedAt: '기록 시각',
-  resolvedAt: '해결 시각',
-  reviewState: '검토 상태',
-  severity: '정도',
-  sourceKind: '출처 유형',
-  sourceName: '출처 이름',
-  sourceRepresentation: '출처에 기록된 값',
-  sourceVersion: '출처 버전',
-  system: '출처 시스템',
-  text: '원문',
-  title: '제목',
-  unit: '단위',
-  value: '값',
-};
+import { t } from '../../i18n';
+
+import { fieldLabels } from './evidenceFieldLabels';
+export { fieldLabels } from './evidenceFieldLabels';
 
 const enumLabels: Record<string, Record<string, string>> = {
   concept: {
-    'blood pressure systolic': '수축기 혈압',
-    'blood pressure diastolic': '이완기 혈압',
-    blood_pressure_systolic: '수축기 혈압',
-    blood_pressure_diastolic: '이완기 혈압',
-    heart_rate: '심박수',
-    step_count: '걸음 수',
-    body_mass: '체중',
-    weight: '체중',
-    HKCategoryTypeIdentifierSleepAnalysis: '수면',
-    sleep: '수면',
+    'blood pressure systolic': t(
+      'evidenceValue.enumLabels.concept.blood pressure systolic',
+    ),
+    'blood pressure diastolic': t(
+      'evidenceValue.enumLabels.concept.blood pressure diastolic',
+    ),
+    blood_pressure_systolic: t(
+      'evidenceValue.enumLabels.concept.blood_pressure_systolic',
+    ),
+    blood_pressure_diastolic: t(
+      'evidenceValue.enumLabels.concept.blood_pressure_diastolic',
+    ),
+    heart_rate: t('evidenceValue.enumLabels.concept.heart_rate'),
+    step_count: t('evidenceValue.enumLabels.concept.step_count'),
+    body_mass: t('evidenceValue.enumLabels.concept.body_mass'),
+    weight: t('evidenceValue.enumLabels.concept.weight'),
+    HKCategoryTypeIdentifierSleepAnalysis: t(
+      'evidenceValue.enumLabels.concept.HKCategoryTypeIdentifierSleepAnalysis',
+    ),
+    sleep: t('evidenceValue.enumLabels.concept.sleep'),
   },
   assertionKind: {
-    prescribed: '처방 기록',
-    current_medication_confirmation: '현재 복용 확인',
+    prescribed: t('evidenceValue.enumLabels.assertionKind.prescribed'),
+    current_medication_confirmation: t(
+      'evidenceValue.enumLabels.assertionKind.current_medication_confirmation',
+    ),
   },
   eventKind: {
-    taken: '복용함',
-    missed: '복용하지 못함',
-    administered: '투여함',
-    observed: '가져온 복용 기록',
+    taken: t('evidenceValue.enumLabels.eventKind.taken'),
+    missed: t('evidenceValue.enumLabels.eventKind.missed'),
+    administered: t('evidenceValue.enumLabels.eventKind.administered'),
+    observed: t('evidenceValue.enumLabels.eventKind.observed'),
   },
   observationStatus: {
-    not_interacted: '응답 없음',
-    notification_not_sent: '알림 미발송',
-    snoozed: '나중에 알림',
-    taken: '복용함',
-    skipped: '건너뜀',
-    not_logged: '기록 없음',
-    unknown: '알 수 없음',
+    not_interacted: t(
+      'evidenceValue.enumLabels.observationStatus.not_interacted',
+    ),
+    notification_not_sent: t(
+      'evidenceValue.enumLabels.observationStatus.notification_not_sent',
+    ),
+    snoozed: t('evidenceValue.enumLabels.observationStatus.snoozed'),
+    taken: t('evidenceValue.enumLabels.observationStatus.taken'),
+    skipped: t('evidenceValue.enumLabels.observationStatus.skipped'),
+    not_logged: t('evidenceValue.enumLabels.observationStatus.not_logged'),
+    unknown: t('evidenceValue.enumLabels.observationStatus.unknown'),
   },
-  scheduleType: { as_needed: '필요할 때', scheduled: '정해진 일정' },
-  priority: { routine: '일반', important: '중요' },
+  scheduleType: {
+    as_needed: t('evidenceValue.enumLabels.scheduleType.as_needed'),
+    scheduled: t('evidenceValue.enumLabels.scheduleType.scheduled'),
+  },
+  priority: {
+    routine: t('evidenceValue.enumLabels.priority.routine'),
+    important: t('evidenceValue.enumLabels.priority.important'),
+  },
   encounterKind: {
-    outpatient: '외래',
-    urgent_care: '긴급 진료',
-    emergency: '응급 진료',
-    inpatient: '입원',
-    telehealth: '비대면 진료',
-    other: '기타',
+    outpatient: t('evidenceValue.enumLabels.encounterKind.outpatient'),
+    urgent_care: t('evidenceValue.enumLabels.encounterKind.urgent_care'),
+    emergency: t('evidenceValue.enumLabels.encounterKind.emergency'),
+    inpatient: t('evidenceValue.enumLabels.encounterKind.inpatient'),
+    telehealth: t('evidenceValue.enumLabels.encounterKind.telehealth'),
+    other: t('evidenceValue.enumLabels.encounterKind.other'),
   },
   kind: {
-    boolean: '참 또는 거짓',
-    preference: '선호',
-    quantity: '수량',
-    reviewed_interaction: '검토된 대화',
-    task_context: '작업 맥락',
-    text: '문자',
+    boolean: t('evidenceValue.enumLabels.kind.boolean'),
+    preference: t('evidenceValue.enumLabels.kind.preference'),
+    quantity: t('evidenceValue.enumLabels.kind.quantity'),
+    reviewed_interaction: t(
+      'evidenceValue.enumLabels.kind.reviewed_interaction',
+    ),
+    task_context: t('evidenceValue.enumLabels.kind.task_context'),
+    text: t('evidenceValue.enumLabels.kind.text'),
   },
   observationKind: {
-    allergy: '알레르기',
-    diagnosis: '진단 기록',
-    measurement: '측정',
-    other: '기타',
-    procedure: '시술 기록',
+    allergy: t('evidenceValue.enumLabels.observationKind.allergy'),
+    diagnosis: t('evidenceValue.enumLabels.observationKind.diagnosis'),
+    measurement: t('evidenceValue.enumLabels.observationKind.measurement'),
+    other: t('evidenceValue.enumLabels.observationKind.other'),
+    procedure: t('evidenceValue.enumLabels.observationKind.procedure'),
   },
   origin: {
-    caregiver_reported: '보호자 입력',
-    clinician_recorded: '의료진 기록',
-    derived: '파생 기록',
-    device_recorded: '기기 기록',
-    imported: '가져온 기록',
-    user_reported: '사용자 입력',
+    caregiver_reported: t('evidenceValue.enumLabels.origin.caregiver_reported'),
+    clinician_recorded: t('evidenceValue.enumLabels.origin.clinician_recorded'),
+    derived: t('evidenceValue.enumLabels.origin.derived'),
+    device_recorded: t('evidenceValue.enumLabels.origin.device_recorded'),
+    imported: t('evidenceValue.enumLabels.origin.imported'),
+    user_reported: t('evidenceValue.enumLabels.origin.user_reported'),
   },
   reviewState: {
-    human_reviewed: '사람이 검토함',
-    user_confirmed: '사용자 확인',
+    human_reviewed: t('evidenceValue.enumLabels.reviewState.human_reviewed'),
+    user_confirmed: t('evidenceValue.enumLabels.reviewState.user_confirmed'),
   },
   sourceKind: {
-    audio_recording: '녹음',
-    caregiver_note: '보호자 메모',
-    clinician_note: '의료진 기록',
-    device_export: '기기 내보내기',
-    imaging_report: '영상 검사 결과',
-    lab_report: '검사 결과',
-    medical_document: '의료 문서',
-    other: '기타',
-    prescription: '처방전',
-    user_note: '사용자 메모',
+    audio_recording: t('evidenceValue.enumLabels.sourceKind.audio_recording'),
+    caregiver_note: t('evidenceValue.enumLabels.sourceKind.caregiver_note'),
+    clinician_note: t('evidenceValue.enumLabels.sourceKind.clinician_note'),
+    device_export: t('evidenceValue.enumLabels.sourceKind.device_export'),
+    imaging_report: t('evidenceValue.enumLabels.sourceKind.imaging_report'),
+    lab_report: t('evidenceValue.enumLabels.sourceKind.lab_report'),
+    medical_document: t('evidenceValue.enumLabels.sourceKind.medical_document'),
+    other: t('evidenceValue.enumLabels.sourceKind.other'),
+    prescription: t('evidenceValue.enumLabels.sourceKind.prescription'),
+    user_note: t('evidenceValue.enumLabels.sourceKind.user_note'),
   },
   status: {
-    available: '확인 가능',
-    unavailable: '확인할 수 없음',
-    scheduled: '예정',
-    completed: '완료',
-    cancelled: '취소',
-    needs_review: '재검토 필요',
-    reviewed: '검토됨',
-    unreviewed: '미검토',
+    available: t('evidenceValue.enumLabels.status.available'),
+    unavailable: t('evidenceValue.enumLabels.status.unavailable'),
+    scheduled: t('evidenceValue.enumLabels.status.scheduled'),
+    completed: t('evidenceValue.enumLabels.status.completed'),
+    cancelled: t('evidenceValue.enumLabels.status.cancelled'),
+    needs_review: t('evidenceValue.enumLabels.status.needs_review'),
+    reviewed: t('evidenceValue.enumLabels.status.reviewed'),
+    unreviewed: t('evidenceValue.enumLabels.status.unreviewed'),
   },
   // Keep the storage/provider identifier internal and show a familiar source name.
-  system: { healthkit: '건강 앱' },
+  system: { healthkit: t('evidenceValue.enumLabels.system.healthkit') },
 };
 
 export function visibleValue(value: unknown, key?: string): string | undefined {
@@ -179,11 +141,15 @@ export function visibleValue(value: unknown, key?: string): string | undefined {
   if (typeof value === 'number') {
     if (key === 'recordingDurationMs') {
       const seconds = Math.floor(value / 1000);
-      return `${Math.floor(seconds / 60)}분 ${seconds % 60}초`;
+      return t('evidenceValue.duration', {
+        minutes: Math.floor(seconds / 60),
+        seconds: seconds % 60,
+      });
     }
     return String(value);
   }
-  if (typeof value === 'boolean') return value ? '예' : '아니요';
+  if (typeof value === 'boolean')
+    return value ? t('evidenceValue.yes') : t('evidenceValue.no');
   if (Array.isArray(value)) {
     const items = value
       .map(item => visibleValue(item))
@@ -203,7 +169,7 @@ export function visibleValue(value: unknown, key?: string): string | undefined {
   if (record.kind === 'boolean') return visibleValue(record.value);
   if (typeof record.amount === 'number' && typeof record.unit === 'string') {
     const original = visibleValue(record.sourceRepresentation);
-    return `${record.amount} ${record.unit}${original ? ` (출처에 기록된 값: ${original})` : ''}`;
+    return `${record.amount} ${record.unit}${original ? t('evidenceValue.sourceRepresentation', { original }) : ''}`;
   }
   // Record IDs support local linkage but do not belong in user-facing summaries.
   const rows = Object.entries(value as Record<string, unknown>)
