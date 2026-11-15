@@ -59,6 +59,9 @@ export function preparedConversationOperation(input: {
       const candidate = await input.row(sql, lookup);
       if (
         candidate?.status !== 'ready' ||
+        (candidate.purpose !== null &&
+          candidate.purpose !== undefined &&
+          candidate.purpose !== 'preview_review') ||
         typeof candidate.input !== 'string' ||
         typeof candidate.refs !== 'string' ||
         !Number.isSafeInteger(candidate.revision) ||
@@ -79,6 +82,9 @@ export function preparedConversationOperation(input: {
       )
         return undefined;
       identity = {
+        ...(snapshot.purpose === 'preview_review'
+          ? { purpose: 'preview_review' as const }
+          : {}),
         operationId,
         input: String(snapshot.input),
         evidenceReferences: refs,
@@ -95,6 +101,7 @@ export function preparedConversationOperation(input: {
       const current = await input.row(sql, identity);
       if (
         current?.status !== 'ready' ||
+        current.purpose !== snapshot!.purpose ||
         current.revision !== snapshot!.revision ||
         current.input !== snapshot!.input ||
         current.refs !== snapshot!.refs ||

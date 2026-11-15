@@ -150,7 +150,7 @@ export async function consumeNativeToolCall<TResult>(
   if (!context.signal.aborted && state.toolCalls === 0 && !context.nativeToolMessages.length) {
     let initial: string | undefined;
     try {
-      initial = context.options.task.initialToolResponse?.(response.text);
+      initial = context.options.task.initialToolResponse?.(response.text, context.options.request);
     } catch {
       /* fail closed */
     }

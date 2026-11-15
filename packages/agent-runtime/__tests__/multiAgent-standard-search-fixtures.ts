@@ -1,5 +1,10 @@
 import { MemorySaver } from '@langchain/langgraph/web';
-import { providerSuccess, type LanguageModelRequest } from '@orot/model-runtime';
+import {
+  providerSuccess,
+  type ProviderResult,
+  type LanguageModelResponse,
+  type LanguageModelRequest,
+} from '@orot/model-runtime';
 import { createEuropePmcEvidenceSearchTool } from '../src';
 import { referencesFromBatch } from '../src/multiAgent/evidence';
 import { fixture as localToolFixture } from './langchain-evidenceTool-fixtures';
@@ -28,32 +33,38 @@ export function standardSearchFixture(native: boolean, delegated = false) {
   const provider = {
     ...makeProvider([]).provider,
     capabilities: { ...makeProvider([]).provider.capabilities, toolCalling: native },
-    generate: jest.fn(async (request: LanguageModelRequest) => {
-      if (
-        request.messages[0]?.role === 'user' &&
-        request.messages[0].content === 'Synthetic public concept'
-      ) {
-        return providerSuccess({ text: 'Public concept', toolCalls: [], finishReason: 'complete' });
-      }
-      requests.push(request);
-      return native && requests.length === 1
-        ? providerSuccess({
-            text: '',
-            toolCalls: [
-              {
-                id: 'standard-search-call',
-                name: adapter.id,
-                arguments: { query: 'synthetic external literature query' },
-              },
-            ],
-            finishReason: 'tool_calls' as const,
-          })
-        : providerSuccess({
-            text: native ? outputs[2]! : outputs[requests.length - 1]!,
+    generate: jest.fn(
+      async (request: LanguageModelRequest): Promise<ProviderResult<LanguageModelResponse>> => {
+        if (
+          request.messages[0]?.role === 'user' &&
+          request.messages[0].content === 'Synthetic public concept'
+        ) {
+          return providerSuccess({
+            text: 'Public concept',
             toolCalls: [],
             finishReason: 'complete' as const,
           });
-    }),
+        }
+        requests.push(request);
+        return native && requests.length === 1
+          ? providerSuccess({
+              text: '',
+              toolCalls: [
+                {
+                  id: 'standard-search-call',
+                  name: adapter.id,
+                  arguments: { query: 'synthetic external literature query' },
+                },
+              ],
+              finishReason: 'tool_calls' as const,
+            })
+          : providerSuccess({
+              text: native ? outputs[2]! : outputs[requests.length - 1]!,
+              toolCalls: [],
+              finishReason: 'complete' as const,
+            });
+      },
+    ),
   };
   const searchDomain = jest.fn(async (request: Parameters<typeof adapter.search>[0]) => {
     if (delegated)
@@ -108,20 +119,24 @@ export function boundedSearchFixture(native: boolean) {
   const provider = {
     ...base,
     capabilities: { ...base.capabilities, toolCalling: native },
-    generate: jest.fn(async (request: LanguageModelRequest) => {
-      requests.push(request);
-      return native && requests.length === 1
-        ? providerSuccess({
-            text: '',
-            toolCalls: [{ id: 'bounded-search', name: tool.id, arguments: { query: 'synthetic' } }],
-            finishReason: 'tool_calls' as const,
-          })
-        : providerSuccess({
-            text: native ? outputs[2]! : outputs[requests.length - 1]!,
-            toolCalls: [],
-            finishReason: 'complete' as const,
-          });
-    }),
+    generate: jest.fn(
+      async (request: LanguageModelRequest): Promise<ProviderResult<LanguageModelResponse>> => {
+        requests.push(request);
+        return native && requests.length === 1
+          ? providerSuccess({
+              text: '',
+              toolCalls: [
+                { id: 'bounded-search', name: tool.id, arguments: { query: 'synthetic' } },
+              ],
+              finishReason: 'tool_calls' as const,
+            })
+          : providerSuccess({
+              text: native ? outputs[2]! : outputs[requests.length - 1]!,
+              toolCalls: [],
+              finishReason: 'complete' as const,
+            });
+      },
+    ),
   };
   const options = workflowOptions(provider, tool);
   return {

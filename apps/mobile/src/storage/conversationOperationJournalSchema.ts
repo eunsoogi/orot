@@ -7,6 +7,14 @@ export async function setupConversationOperationJournal(database: SqlDatabase) {
       request_id TEXT NOT NULL, run_id TEXT NOT NULL, operation_id TEXT NOT NULL,
       input TEXT, refs TEXT, status TEXT NOT NULL, revision INTEGER NOT NULL,
       claim TEXT, result TEXT, PRIMARY KEY(request_id, run_id, operation_id))`);
+    // Existing private journals remain task intents by default. Never infer purpose from prose.
+    const columns = (
+      await sql.execute('PRAGMA table_info(conversation_operation_journal)')
+    ).rows;
+    if (!columns.some(column => column.name === 'purpose'))
+      await sql.execute(
+        'ALTER TABLE conversation_operation_journal ADD COLUMN purpose TEXT',
+      );
     await sql.execute(
       'CREATE TABLE IF NOT EXISTS conversation_journal_epoch (id INTEGER PRIMARY KEY, value INTEGER NOT NULL)',
     );

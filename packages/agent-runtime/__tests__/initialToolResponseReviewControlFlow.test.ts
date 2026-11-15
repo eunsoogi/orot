@@ -56,7 +56,7 @@ test('photo-bound tasks skip optional text review without weakening or invoking 
   expect(run.provider.generate).not.toHaveBeenCalled();
 });
 
-/** Production does not opt in; the runtime must not turn a disabled feature into a review call. */
+/** Tasks can opt out; the runtime must not turn a disabled feature into a review call. */
 test('a task without the preview opt-in never invokes the review helper', async () => {
   jest.mocked(callModelWithEvidenceFreshness).mockClear();
   const run = standardSearchFixture(true);

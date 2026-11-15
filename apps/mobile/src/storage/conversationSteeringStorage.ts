@@ -121,9 +121,11 @@ export async function createConversationSteeringStorage(input: {
           result = request;
           return;
         }
+        // An optional read-only review can remain unconfirmed without consuming task
+        // steering. Its own intent still cannot replay; cold resume remains fail-closed.
         const pending = (
           await sql.execute(
-            "SELECT operation_id FROM conversation_operation_journal WHERE request_id = ? AND run_id = ? AND status = 'pending' LIMIT 1",
+            "SELECT operation_id FROM conversation_operation_journal WHERE request_id = ? AND run_id = ? AND status = 'pending' AND (purpose IS NULL OR purpose <> 'preview_review') LIMIT 1",
             keys,
           )
         ).rows[0];

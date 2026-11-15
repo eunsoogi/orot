@@ -35,7 +35,7 @@ test('prepared input is returned only while ready, never for dispatched or compl
     f.connection.close();
   }
 });
-test.each(['stop', 'source', 'bytes', 'claim'] as const)(
+test.each(['stop', 'source', 'bytes', 'claim', 'purpose'] as const)(
   'validation race %s prevents private input return',
   async change => {
     const f = await conversationWorkflowContinuationFixture();
@@ -68,6 +68,10 @@ test.each(['stop', 'source', 'bytes', 'claim'] as const)(
           if (change === 'bytes')
             await f.connection.database.execute(
               "UPDATE conversation_operation_journal SET input = 'changed'",
+            );
+          if (change === 'purpose')
+            await f.connection.database.execute(
+              "UPDATE conversation_operation_journal SET purpose = 'preview_review'",
             );
           if (change === 'claim')
             await journal.begin({ ...prepared, revision: 0 });

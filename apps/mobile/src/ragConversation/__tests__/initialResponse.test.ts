@@ -118,19 +118,47 @@ test('request start publishes loading without fabricated AI copy and rejects bus
   ).toBeNull();
 });
 
-test('keeps contextual preview inactive until model-quality evidence is available', () => {
+test('opts into reviewed contextual prose without injecting a canned reply', () => {
   const { ragConversationTask } = require('../task');
   const [message] = ragConversationTask.createMessages({
     request: 'synthetic',
     evidence: { items: [], coverage: [], conflicts: [] },
   });
   expect(JSON.parse(message.content).initialResponseText).toBeUndefined();
-  expect(ragConversationTask.initialToolResponse).toBeUndefined();
-  expect(ragConversationTask.reviewInitialToolResponse).toBeUndefined();
-  expect(ragConversationTask.taskVersion).toBe('8');
+  expect(ragConversationTask.initialToolResponse).toBe(
+    validateInitialConversationResponse,
+  );
+  expect(ragConversationTask.reviewInitialToolResponse).toBe(true);
+  expect(ragConversationTask.taskVersion).toBe('9');
   expect(
     validateInitialConversationResponse('어떤 흐름인지 함께 살펴볼게요.'),
   ).toBe('어떤 흐름인지 함께 살펴볼게요.');
   expect(ragConversationTask.systemPrompt).not.toMatch(/[\uAC00-\uD7A3]/u);
   expect(ragConversationTask.systemPrompt).toContain('this particular request');
 });
+
+// These are deterministic contract checks, not real-model semantic-quality evidence.
+test.each([
+  '괜찮으니 기다리세요.',
+  '걱정 마세요.',
+  '안심하고 기다리셔도 돼요.',
+  '문제 없어요.',
+])('suppresses reassurance before any semantic reviewer: %s', text => {
+  expect(validateInitialConversationResponse(text)).toBeUndefined();
+});
+test.each([
+  '가슴 통증이 심해요',
+  '숨 못 쉬겠어',
+  '응급인지 봐줘',
+  'chest pain now',
+])(
+  'does not add preview review latency for recognizable urgent input: %s',
+  request => {
+    expect(
+      validateInitialConversationResponse(
+        '말씀하신 흐름을 살펴볼게요.',
+        request,
+      ),
+    ).toBeUndefined();
+  },
+);
