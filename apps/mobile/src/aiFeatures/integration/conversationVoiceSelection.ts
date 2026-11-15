@@ -1,3 +1,4 @@
+import { conversationBackgroundProvider } from './conversationBackgroundProvider';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { requireSelectedAi } from './provider';
 import { withProviderStage } from '../../providers/diagnostics';
@@ -21,7 +22,19 @@ export async function resolveConversationSelection(
   resolve: () => Promise<ReturnType<typeof requireSelectedAi>>,
 ) {
   const selected = await withProviderStage('rag', 'selection', resolve);
-  return voiceSelectionMatches(observer, selected) ? selected : null;
+  return voiceSelectionMatches(observer, selected)
+    ? {
+        ...selected,
+        provider: conversationBackgroundProvider(
+          selected.provider,
+          selected.remoteProcessing,
+          observer?.onExecutionState
+            ? extend =>
+                observer.onExecutionState?.(extend ? 'working' : 'local')
+            : undefined,
+        ),
+      }
+    : null;
 }
 
 /** The existing text and photo limits apply equally to spoken transcripts. */

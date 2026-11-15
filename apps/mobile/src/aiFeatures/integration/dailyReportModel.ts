@@ -37,6 +37,7 @@ export async function selectDailyReportFacts(input: {
   consent: ExecutionConsentPort;
   runId: string;
   facts: readonly { text: string }[];
+  includesSystemCalendar?: boolean;
   signal: AbortSignal;
   timeoutMs: number;
   deadlineContext: DailyReportDeadlineContext;
@@ -111,8 +112,13 @@ export async function selectDailyReportFacts(input: {
             remoteProcessing: true,
             consentScope: {
               purpose: 'daily_report',
-              dataCategories: ['health_records'],
-              policyVersion: 'daily-report-v1',
+              dataCategories: [
+                'health_records',
+                ...(input.includesSystemCalendar ? ['calendar_plans'] : []),
+              ],
+              policyVersion: input.includesSystemCalendar
+                ? 'daily-report-calendar-v1'
+                : 'daily-report-v1',
             },
             allowedScope: { sourceKinds: ['personal_record'] },
             payload: request,

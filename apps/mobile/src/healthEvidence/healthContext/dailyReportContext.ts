@@ -1,6 +1,7 @@
 import { DailyReportContextSchema } from '@orot/domain';
 import type {
   DailyReportContext,
+  DailyReportSystemCalendar,
   DailyReportProviderMetadata,
   DailyReportSourceCoverage,
   DailyReportSourceRecord,
@@ -21,6 +22,7 @@ export function createDailyReportContext(
   calendar: DailyReportCalendarWindow,
   sourceSnapshot: DailyReportSourceSnapshot,
   provider: DailyReportProviderMetadata,
+  systemCalendar?: DailyReportSystemCalendar,
 ): DailyReportContext {
   return DailyReportContextSchema.parse({
     kind: 'daily_report_context',
@@ -36,6 +38,7 @@ export function createDailyReportContext(
       ),
     },
     provider,
+    ...(systemCalendar ? { systemCalendar } : {}),
   });
 }
 

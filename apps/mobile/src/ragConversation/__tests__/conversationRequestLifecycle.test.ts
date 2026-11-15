@@ -96,7 +96,11 @@ test('execution expiry interrupts only its request without resubmitting', async 
     });
     const pending = sessions.send(1, sender);
     await ready;
+    const leaseId = (execution.begin as jest.Mock).mock.calls[0]![0];
+    expect(leaseId).toBe('identity-2:lease:1:1');
     listener({ kind: 'expired', requestId: 'identity-2' });
+    expect(signal?.aborted).toBe(false);
+    listener({ kind: 'expired', requestId: leaseId });
     expect(signal?.aborted).toBe(true);
     finish();
     await pending;

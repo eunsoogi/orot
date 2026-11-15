@@ -55,13 +55,20 @@ export function ConversationToolEventSources({
   >({});
   const activeControllers = useRef(new Set<AbortController>());
 
+  const sourceIdentity = JSON.stringify(event.sources);
   useEffect(
     () => () => {
       // A hidden row or changed session cannot finish an old source navigation.
       activeControllers.current.forEach(controller => controller.abort());
       activeControllers.current.clear();
     },
-    [sessionId, event.operationRunId, event.callId],
+    [
+      sessionId,
+      event.operationRunId,
+      event.callId,
+      durableMessageId,
+      sourceIdentity,
+    ],
   );
 
   const openSource = async (

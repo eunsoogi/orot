@@ -37,6 +37,10 @@ export type PrivateOutcome<TResult> =
   | { readonly status: 'cancelled'; readonly providerStop: ProviderStopObservation };
 
 export interface RuntimeContext<TResult> {
+  readonly onApprovalWait?: (waiting: boolean) => void;
+  readonly pause?: import('./workflowPause').MultiAgentPauseController;
+  activeModelOperation?: { readonly operationKey: string; callIndex: number };
+  pausedCheckpoint?: import('./contracts').MultiAgentCheckpointState;
   readonly options: MultiAgentWorkflowOptions<TResult>;
   readonly signal: AbortSignal;
   readonly timedOut: () => boolean;

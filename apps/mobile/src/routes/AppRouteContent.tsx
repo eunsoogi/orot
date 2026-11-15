@@ -1,3 +1,5 @@
+import { useRecordSourceNavigation } from './RecordSourceNavigation';
+import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
 import { useOverviewReportEntry } from './useOverviewReportEntry';
 import { useIsFocused } from '@react-navigation/native';
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
@@ -20,9 +22,7 @@ import { HealthRecordsRoute } from './HealthRecordsRoute';
 import { ManualHistoryRoute } from './ManualHistoryRoute';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
 import type { AppRouteContentProps } from './AppProps';
-
 export type { AppNavigationRoute } from './appNavigationRoute';
-
 /** Renders the selected root or guarded detail within the shared navigation shell. */
 export function AppRouteContent({
   documentImportService,
@@ -52,6 +52,7 @@ export function AppRouteContent({
   healthRecordDetailSelection,
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
+  const { sourceId, openDocument } = useRecordSourceNavigation(actions);
   const active = useIsFocused();
   const openOverviewReport = useOverviewReportEntry(
     active && activeTab === 'overview' && actions.route.name === 'root',
@@ -98,6 +99,7 @@ export function AppRouteContent({
             onSelect={onSelectRecordsSection}
           >
             <RecordsRoute
+              onOpenDocumentDetail={openDocument}
               onOpenRecentRecords={() => actions.push('recent-records')}
               documentImportService={documentImportService}
               recordings={recordings}
@@ -147,7 +149,6 @@ export function AppRouteContent({
         );
     }
   }
-
   switch (actions.route.name) {
     case 'appointment-preparation':
       return (
@@ -163,10 +164,19 @@ export function AppRouteContent({
       return (
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
       );
+    case 'medical-document-detail':
+      return (
+        <MedicalDocumentDetailRoute
+          sourceId={sourceId}
+          service={documentImportService}
+          onBack={actions.onBack}
+        />
+      );
     case 'recent-records':
       // A native stack destination keeps the overview mounted and owns its own scroll position.
       return (
         <RecordsRoute
+          onOpenDocumentDetail={openDocument}
           showAllRecent
           documentImportService={documentImportService}
           recordings={recordings}

@@ -1,3 +1,6 @@
+import type { DailyReportSnapshotResult } from './dailyReportSnapshotResult';
+import { readDailyReportHistory } from './dailyReportHistory';
+import { readDailyReportMedicationContext } from './dailyReportMedicationContext';
 import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
@@ -10,10 +13,7 @@ import type {
   DailyReportSourceRecord,
 } from '@orot/domain';
 import { compareTimestamps } from '@orot/domain';
-import {
-  fingerprint,
-  stableJson,
-} from '../../aiFeatures/integration/evidenceUtils';
+import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { candidateScopeCondition } from '../evidenceCandidateScope';
 import type { EvidenceCandidateScope } from '../evidenceCandidateScope';
 import { MAX_HEALTH_EVIDENCE_RECORD_BYTES } from '../localEvidenceQueries';
@@ -21,7 +21,7 @@ import type { LocalHealthEvidenceRecord } from '../localEvidenceQueries';
 import type { DailyReportLineage } from '../../storage/dailyReportStorageTypes';
 import type { DailyReportCalendarWindow } from './dailyReportWindow';
 import {
-  createDailyReportCalendarWindow,
+  validateDailyReportCalendarWindow,
   dailyReportSourceRecordIsAvailable,
 } from './dailyReportWindow';
 import {
@@ -29,7 +29,12 @@ import {
   readHealthContextGeneration,
 } from './generation';
 
-const kinds = ['health_observation', 'symptom_entry', 'dose_event'] as const;
+const kinds = [
+  'health_observation',
+  'symptom_entry',
+  'dose_event',
+  'appointment',
+] as const;
 const rowLimit = 100;
 const snapshotByteLimit = 64 * 1024;
 
@@ -40,33 +45,12 @@ export async function readDailyReportSnapshot(
   scope: EvidenceCandidateScope,
   signal?: AbortSignal,
 ) {
-  const validated = createDailyReportCalendarWindow({
-    localDate: calendar.identity.localDate,
-    timeZone: calendar.identity.timeZone,
-    requestedAt: calendar.generationCutoff,
-  });
-  if (
-    validated.status !== 'ready' ||
-    stableJson(validated.context) !== stableJson(calendar)
-  )
-    throw new Error('Invalid daily report calendar window.');
+  validateDailyReportCalendarWindow(calendar);
   if (scope.timeRange)
     throw new Error('Daily report scope cannot replace its calendar window.');
   // Sorting selected health records must not create plaintext temporary files.
   await database.execute('PRAGMA temp_store = MEMORY');
-  let output:
-    | {
-        values: LocalHealthEvidenceRecord[];
-        lineage: DailyReportLineage[];
-        sourceSnapshot: {
-          revision: string;
-          mutationGeneration: number;
-          deletionGeneration: number;
-          records: DailyReportSourceRecord[];
-          coverage: DailyReportSourceCoverage[];
-        };
-      }
-    | undefined;
+  let output: DailyReportSnapshotResult | undefined;
   await database.transaction(async tx => {
     await ensureHealthContextGeneration(tx);
     const generation = await readHealthContextGeneration(tx);
@@ -99,7 +83,11 @@ export async function readDailyReportSnapshot(
                 MAX_HEALTH_EVIDENCE_RECORD_BYTES,
                 ...selected.parameters,
                 localQueryTimestampKey(calendar.generationCutoff),
-                localQueryTimestampKey(calendar.effectiveCutoff),
+                localQueryTimestampKey(
+                  kind === 'appointment'
+                    ? calendar.interval.toExclusive
+                    : calendar.effectiveCutoff,
+                ),
                 localQueryTimestampKey(calendar.interval.fromInclusive),
                 localQueryTimestampKey(calendar.interval.fromInclusive),
                 rowLimit + 1,
@@ -172,10 +160,65 @@ export async function readDailyReportSnapshot(
           'source_sync_unknown',
           ...(partial ? ['snapshot_incomplete'] : []),
           ...(kind === 'dose_event' ? ['medication_names_not_resolved'] : []),
+          ...(kind === 'appointment' ? ['confirmed_appointments_only'] : []),
         ],
       });
     }
+    // Supporting identity records retain their original times and own deletion lineage.
+    const medications = await readDailyReportMedicationContext(
+      tx,
+      values,
+      scope,
+      calendar.generationCutoff,
+    );
+    const linkedDoses = new Set<string>();
+    for (const item of medications) {
+      if (bytes + item.bytes > snapshotByteLimit) continue;
+      const revision = fingerprint(item.payload);
+      const recordId = item.value.record.id;
+      records.push({
+        source: item.value.kind,
+        recordId,
+        revision,
+        occurrence: { startInclusive: item.at },
+        ingestedAt: item.value.record.ingestedAt,
+        supportingRecordFor: item.doses,
+      });
+      lineage.push({
+        source: item.value.kind,
+        recordId,
+        kind: item.value.kind,
+        localId: recordId,
+        revision,
+      });
+      values.push(item.value);
+      bytes += item.bytes;
+      item.doses.forEach(id => linkedDoses.add(id));
+    }
+    const unresolved = values.some(
+      item => item.kind === 'dose_event' && !linkedDoses.has(item.record.id),
+    );
+    if (!unresolved) {
+      const doseCoverage = coverage.find(item => item.source === 'dose_event');
+      if (doseCoverage)
+        doseCoverage.limitationCodes = doseCoverage.limitationCodes.filter(
+          code => code !== 'medication_names_not_resolved',
+        );
+    }
+    const history = await readDailyReportHistory(
+      tx,
+      calendar,
+      scope,
+      values,
+      snapshotByteLimit - bytes,
+      signal,
+    );
+    records.push(...history.records);
+    lineage.push(...history.lineage);
+    coverage.push(...history.coverage);
     output = {
+      baselineValues: history.baselineValues,
+      behaviorValues: history.behaviorValues,
       values,
       lineage,
       sourceSnapshot: {

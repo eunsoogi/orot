@@ -1,70 +1,24 @@
+import {
+  DailyReportSourceRecordSchema,
+  DailyReportSourceCoverageSchema,
+} from './dailyReportSources';
+export {
+  DailyReportSourceRecordSchema,
+  DailyReportSourceCoverageSchema,
+  DailyReportCoverageStatusSchema,
+} from './dailyReportSources';
+import { validDailyReportHistoricalContext } from './dailyReportBaseline';
+import {
+  DailyReportSystemCalendarSchema,
+  validDailyReportSystemCalendar,
+} from './dailyReportSystemCalendar';
+import { validDailyReportSupportingContext } from './dailyReportSupportingContext';
 import { z } from 'zod';
-import { compareTimestamps, RecordIdSchema, TimestampSchema } from './common';
+import { compareTimestamps, TimestampSchema } from './common';
 import { dailyReportCalendarInterval } from './dailyReportCalendar';
 import { DailyReportIdentitySchema } from './dailyReportIdentity';
 
 const NonEmptyTextSchema = z.string().trim().min(1);
-
-export const DailyReportSourceRecordSchema = z
-  .strictObject({
-    source: NonEmptyTextSchema,
-    recordId: RecordIdSchema,
-    revision: NonEmptyTextSchema,
-    occurrence: z.strictObject({
-      startInclusive: TimestampSchema,
-      endExclusive: TimestampSchema.optional(),
-    }),
-    ingestedAt: TimestampSchema,
-  })
-  .superRefine((record, context) => {
-    if (
-      record.occurrence.endExclusive &&
-      compareTimestamps(record.occurrence.startInclusive, record.occurrence.endExclusive) >= 0
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['occurrence', 'endExclusive'],
-        message: 'An occurrence interval must advance.',
-      });
-    }
-  });
-
-export const DailyReportCoverageStatusSchema = z.enum([
-  'available',
-  'empty',
-  'partial',
-  'stale',
-  'failed',
-  'unknown',
-]);
-
-/** Coverage reports observed retrieval state; unknown does not imply denied access or an empty source. */
-export const DailyReportSourceCoverageSchema = z
-  .strictObject({
-    source: NonEmptyTextSchema,
-    status: DailyReportCoverageStatusSchema,
-    syncStatus: z.enum(['complete', 'retryable', 'not_requested']).optional(),
-    lastAttemptAt: TimestampSchema.optional(),
-    lastSuccessfulAt: TimestampSchema.optional(),
-    availableThrough: TimestampSchema.optional(),
-    limitationCodes: z.array(NonEmptyTextSchema),
-  })
-  .superRefine((coverage, context) => {
-    if (coverage.status === 'empty' && !coverage.lastSuccessfulAt) {
-      context.addIssue({
-        code: 'custom',
-        path: ['lastSuccessfulAt'],
-        message: 'Empty coverage requires a successful source read.',
-      });
-    }
-    if (coverage.status === 'failed' && !coverage.lastAttemptAt) {
-      context.addIssue({
-        code: 'custom',
-        path: ['lastAttemptAt'],
-        message: 'Failed coverage requires an observed attempt.',
-      });
-    }
-  });
 
 export const DailyReportProviderMetadataSchema = z.strictObject({
   providerId: NonEmptyTextSchema,
@@ -100,9 +54,16 @@ export const DailyReportContextSchema = z
       coverage: z.array(DailyReportSourceCoverageSchema),
     }),
     provider: DailyReportProviderMetadataSchema,
+    systemCalendar: DailyReportSystemCalendarSchema.optional(),
   })
   .superRefine((value, context) => {
     const { interval, generationCutoff, effectiveCutoff, sourceSnapshot } = value;
+    if (!validDailyReportSystemCalendar(value.systemCalendar, interval, sourceSnapshot.records))
+      context.addIssue({
+        code: 'custom',
+        path: ['systemCalendar'],
+        message: 'System calendar sources require an exact bounded binding.',
+      });
     const expectedCutoff =
       compareTimestamps(generationCutoff, interval.toExclusive) < 0
         ? generationCutoff
@@ -165,13 +126,44 @@ export const DailyReportContextSchema = z
       const { startInclusive, endExclusive } = record.occurrence;
       // A zero-length available window cannot include a cross-midnight occurrence.
       const hasAvailableWindow = compareTimestamps(effectiveCutoff, interval.fromInclusive) > 0;
-      const overlaps =
+      // Future appointments are known plans, never future measured health facts.
+      const knownPlan =
         hasAvailableWindow &&
-        (endExclusive
-          ? compareTimestamps(startInclusive, effectiveCutoff) < 0 &&
-            compareTimestamps(endExclusive, interval.fromInclusive) > 0
-          : compareTimestamps(startInclusive, interval.fromInclusive) >= 0 &&
-            compareTimestamps(startInclusive, effectiveCutoff) < 0);
+        record.source === 'appointment' &&
+        compareTimestamps(startInclusive, interval.fromInclusive) >= 0 &&
+        compareTimestamps(startInclusive, interval.toExclusive) < 0;
+      const supporting = validDailyReportSupportingContext(
+        record,
+        sourceSnapshot.records,
+        generationCutoff,
+      );
+      if (record.supportingRecordFor && !supporting)
+        context.addIssue({
+          code: 'custom',
+          path: ['sourceSnapshot', 'records', index, 'supportingRecordFor'],
+          message: 'Supporting medication context must reference admitted doses.',
+        });
+      const baseline = validDailyReportHistoricalContext(
+        record,
+        value.identity.localDate,
+        value.identity.timeZone,
+      );
+      if (record.contextRole && !baseline)
+        context.addIssue({
+          code: 'custom',
+          path: ['sourceSnapshot', 'records', index, 'contextRole'],
+          message: 'Invalid historical context time/source boundary.',
+        });
+      const overlaps =
+        baseline ||
+        supporting ||
+        knownPlan ||
+        (hasAvailableWindow &&
+          (endExclusive
+            ? compareTimestamps(startInclusive, effectiveCutoff) < 0 &&
+              compareTimestamps(endExclusive, interval.fromInclusive) > 0
+            : compareTimestamps(startInclusive, interval.fromInclusive) >= 0 &&
+              compareTimestamps(startInclusive, effectiveCutoff) < 0));
       if (!overlaps) {
         context.addIssue({
           code: 'custom',

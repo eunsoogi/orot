@@ -10,8 +10,17 @@ export function conversationStreamObservers(
   selection: { readonly providerId: string; readonly modelId: string },
 ) {
   return {
+    // Retained clinical prose still requires final validation. The runtime admits only
+    // task-allowlisted, non-clinical initial receipts through this separate event.
     onTaskStreamEvent: hasRetainedInputs
-      ? undefined
+      ? (
+          event: Parameters<
+            NonNullable<RagConversationObserver['onTaskStreamEvent']>
+          >[0],
+        ) => {
+          if (event.type === 'initial_response')
+            observer?.onTaskStreamEvent?.(event);
+        }
       : observer?.onTaskStreamEvent,
     beforeTaskStream:
       !observer?.beforeTaskStream &&

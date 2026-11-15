@@ -14,6 +14,7 @@ interface MedicalDocumentSourceViewProps {
   readonly document: SavedMedicalDocument;
   readonly onBack: () => void;
   readonly onDeleted?: () => void;
+  readonly onDeletionCommitted?: () => void;
   readonly onDeletionBusyChange?: (busy: boolean) => void;
 }
 
@@ -22,6 +23,7 @@ export function MedicalDocumentSourceView({
   document,
   onBack,
   onDeleted,
+  onDeletionCommitted,
   onDeletionBusyChange,
 }: MedicalDocumentSourceViewProps) {
   const hasSharedBack = useNavigationBackAction(onBack);
@@ -72,6 +74,7 @@ export function MedicalDocumentSourceView({
               key={document.id}
               sourceId={document.id}
               onDeleted={onDeleted}
+              onCommitted={onDeletionCommitted}
               onBusyChange={onDeletionBusyChange}
             />
           ) : null}

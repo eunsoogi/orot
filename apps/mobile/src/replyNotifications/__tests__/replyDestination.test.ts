@@ -129,3 +129,36 @@ test('a stale cancellation does not acknowledge or suppress the next owner', asy
   expect(open).toHaveBeenCalledTimes(2);
   expect(acknowledge).toHaveBeenCalledTimes(1);
 });
+
+test('preserves the explicit interruption purpose and rejects unrecognized purposes', async () => {
+  const open = jest.fn().mockResolvedValue('opened');
+  const invalid = jest.fn();
+  const destination = createReplyDestination({
+    consume: async () => ({
+      ...target,
+      requestId: 'interruption:message',
+      purpose: 'interruption',
+    }),
+    acknowledge: jest.fn(),
+    open,
+    unavailable: jest.fn(),
+    discardInvalid: invalid,
+  });
+  expect(await destination()).toBe('opened');
+  expect(open).toHaveBeenCalledWith({
+    requestId: 'interruption:message',
+    sessionId: 'session',
+    messageId: 'message',
+    sessionVersion: 2,
+    purpose: 'interruption',
+  });
+  const bad = createReplyDestination({
+    consume: async () => ({ ...target, purpose: 'send-again' }),
+    acknowledge: jest.fn(),
+    open,
+    unavailable: jest.fn(),
+    discardInvalid: invalid,
+  });
+  expect(await bad()).toBe('invalid');
+  expect(open).toHaveBeenCalledTimes(1);
+});

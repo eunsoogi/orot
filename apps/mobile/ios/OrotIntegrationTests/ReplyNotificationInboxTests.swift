@@ -5,6 +5,22 @@ import XCTest
 
 /// Synthetic taps test durable identity handling; this does not prove system delivery.
 final class ReplyNotificationInboxTests: OrotFailFastTestCase {
+    func testInterruptionPurposeSurvivesRestartWithoutBecomingAnAnswer() throws {
+        let suite = "interruption-inbox-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let inbox = AppointmentReminderDelivery(defaults: defaults)
+        let content = UNMutableNotificationContent()
+        content.userInfo = ["requestId": "interruption:turn", "sessionId": "session", "messageId": "turn", "sessionVersion": 0, "purpose": "interruption"]
+        let request = UNNotificationRequest(identifier: ReplyNotificationService.prefix + "interruption:turn", content: content, trigger: nil)
+        inbox.receive(request, actionIdentifier: UNNotificationDefaultActionIdentifier)
+        let restarted = AppointmentReminderDelivery(defaults: defaults)
+        XCTAssertEqual(restarted.consumeReplyTarget()?["purpose"], "interruption")
+        XCTAssertEqual(restarted.consumeReplyTarget()?["messageId"], "turn")
+        restarted.acknowledgeReplyTarget("interruption:turn")
+        XCTAssertNil(restarted.consumeReplyTarget())
+    }
+
     func testReplyTapSurvivesRestartAndDoesNotReplaceOtherReminderTargets() async throws {
         let suite = "reply-inbox-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

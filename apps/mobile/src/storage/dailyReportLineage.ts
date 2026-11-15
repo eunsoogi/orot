@@ -1,3 +1,5 @@
+import { validateDailyReportCompletion } from './dailyReportValidation';
+import type { DailyReportSave } from './dailyReportStorageTypes';
 import { isRecordKind } from '@orot/storage';
 import type { DailyReportContext } from '@orot/domain';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
@@ -39,10 +41,33 @@ export function parseDailyReportLineage(
     });
   }
   const expected = context.sourceSnapshot.records
+    // The context schema binds native calendar evidence separately from local database rows.
+    .filter(row => row.source !== 'system_calendar')
     .map(row => stableJson([row.source, row.recordId, row.revision]))
     .sort();
   const actual = lineage
     .map(row => stableJson([row.source, row.recordId, row.revision]))
     .sort();
   return stableJson(expected) === stableJson(actual) ? lineage : null;
+}
+
+/** Native calendar bindings are separate; these descriptors retain only original local rows. */
+export function retainedDailyReportRecords(
+  lineage: readonly DailyReportLineage[],
+) {
+  return lineage.map(item => ({
+    kind: item.kind,
+    id: item.localId,
+    revision: item.revision,
+  }));
+}
+
+/** Validate the saved output and its complete local/native source binding together. */
+export function validateDailyReportSave(input: DailyReportSave) {
+  const checked = validateDailyReportCompletion(input.context, input.result);
+  return checked &&
+    input.runId.trim() &&
+    parseDailyReportLineage(checked.context, input.lineage)
+    ? checked
+    : null;
 }

@@ -12,6 +12,9 @@ import type {
 type NativeExecution = {
   begin(requestId: string): Promise<boolean>;
   end(requestId: string): void;
+  work?(requestId: string, active: boolean): void;
+  answered?(requestId: string): void;
+  committed?(requestId: string): void;
   isActive(requestId: string): Promise<boolean>;
   protectedDataAvailable(): Promise<boolean>;
   addListener(event: string): void;
@@ -26,8 +29,12 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
   if (!module) return backgroundInterruptFallback();
   const emitter = new NativeEventEmitter(module);
   return {
+    bridgeAvailable: true,
+    currentPhase,
     begin: id => module.begin(id),
     end: id => module.end(id),
+    work: (id, active) => module.work?.(id, active),
+    milestone: (id, stage) => module[stage]?.(id),
     isActive: id => module.isActive(id),
     protectedDataAvailable: () => module.protectedDataAvailable(),
     subscribe(listener) {
@@ -37,7 +44,24 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
           // Native events are untrusted across the bridge; ignore malformed payloads.
           if (!value || typeof value !== 'object') return;
           const event = value as Partial<ConversationExecutionEvent>;
-          if (event.kind === 'foreground') listener({ kind: 'foreground' });
+          if (
+            event.kind === 'continued' &&
+            typeof event.requestId === 'string' &&
+            (event.state === 'continued-granted' ||
+              event.state === 'continued-refused')
+          )
+            listener({
+              kind: 'continued',
+              requestId: event.requestId,
+              state: event.state,
+            });
+          else if (
+            event.kind === 'pause-requested' &&
+            typeof event.requestId === 'string'
+          )
+            listener({ kind: 'pause-requested', requestId: event.requestId });
+          else if (event.kind === 'foreground')
+            listener({ kind: 'foreground' });
           else if (
             event.kind === 'expired' &&
             typeof event.requestId === 'string'
@@ -52,6 +76,7 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
       );
       const state = AppState.addEventListener('change', value => {
         if (value === 'active') listener({ kind: 'foreground' });
+        else listener({ kind: 'phase' });
       });
       return () => {
         subscription.remove();
@@ -65,6 +90,8 @@ function backgroundInterruptFallback(): ConversationExecutionAdapter {
   const active = new Set<string>();
   let background = AppState.currentState === 'background';
   return {
+    bridgeAvailable: false,
+    currentPhase,
     async begin(id) {
       if (background) return false;
       active.add(id);
@@ -79,12 +106,25 @@ function backgroundInterruptFallback(): ConversationExecutionAdapter {
     subscribe(listener) {
       const subscription = AppState.addEventListener('change', state => {
         background = state === 'background';
+        if (state !== 'active') listener({ kind: 'phase' });
         if (background)
           for (const requestId of active)
-            listener({ kind: 'expired', requestId });
+            listener({
+              kind: 'expired',
+              requestId,
+              reason: 'bridge-unavailable',
+            });
         else if (state === 'active') listener({ kind: 'foreground' });
       });
       return () => subscription.remove();
     },
   };
+}
+
+/** Only the bounded lifecycle state enters diagnostics, never native payloads. */
+function currentPhase() {
+  const state = AppState.currentState;
+  return state === 'active' || state === 'background' || state === 'inactive'
+    ? state
+    : 'unknown';
 }

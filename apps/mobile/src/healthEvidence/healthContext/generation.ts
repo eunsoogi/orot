@@ -7,6 +7,8 @@ const tables = [
   'medication_assertions',
   'dose_events',
   'symptom_entries',
+  // Daily reports admit confirmed appointments; their changes must fence saves.
+  'appointments',
 ] as const;
 
 /** A single constant-size generation row fences deletion races and invalidates cached aggregates, without retaining deleted health data. */

@@ -23,6 +23,7 @@ export function refreshConversationSources(input: {
 }) {
   const { snapshot, options, requests, restoration, update } = input;
   const [origin, deletedIds] = input.event ?? [];
+  for (const session of snapshot.sessions) requests.clearSteering(session.id);
   if (origin === 'healthkit') {
     const restrict = (session: ConversationSession) => ({
       messages: filterHealthDerivedMessages(session.messages, deletedIds),
@@ -30,6 +31,10 @@ export function refreshConversationSources(input: {
       taskCards: session.taskCards?.filter(
         card => card.task.kind !== 'treatment',
       ),
+      steeringInstructions: [],
+      steeringAvailable: false,
+      steeringSubmitting: false,
+      steeringError: false,
       artifactContinuation: null,
       ...(session.pendingMessage
         ? {

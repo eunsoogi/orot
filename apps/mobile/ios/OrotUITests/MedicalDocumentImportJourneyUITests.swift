@@ -11,7 +11,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
     func testTextBasedPdfCanBeReviewedSavedAndOpenedWithProvenance() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
-        launch(app, fixture: "text-pdf", largeText: true)
+        MedicalDocumentImportLaunchConditions.launch(app, fixture: "text-pdf", largeText: true)
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         let page = recordsPage(app)
         let fileAction = recordsImportBodyAction(app)
@@ -76,6 +76,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         tap(app, "medical-document-source-0")
         try assertSavedSource(app)
         capture(app, "medical-document-source-with-provenance")
+        try MedicalDocumentSwipeBackConditions.assertSwipeBackAndReopen(app)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         XCTAssertTrue(savedSource.waitForAppearance() && savedSource.isHittable, app.debugDescription)
         tap(app, "medical-document-source-0")
@@ -94,7 +95,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
     func testDuplicateImportKeepsSavedOriginalAndProvenance() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
-        launch(app, fixture: "text-pdf")
+        MedicalDocumentImportLaunchConditions.launch(app, fixture: "text-pdf")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
 
         tapRecordsImportBodyAction(app)
@@ -121,7 +122,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
     func testScannedPdfIsRejectedWithoutSavingSource() throws {
         let app = XCUIApplication()
         defer { app.terminate() }
-        launch(app, fixture: "scanned-pdf")
+        MedicalDocumentImportLaunchConditions.launch(app, fixture: "scanned-pdf")
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         tapRecordsImportBodyAction(app)
         selectPickerFile(app, "MedicalDocumentScannedFixture.pdf")
@@ -133,19 +134,6 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         XCTAssertTrue(node(app, "medical-document-source-empty-list").exists)
         XCTAssertFalse(node(app, "medical-document-source-0").exists)
         capture(app, "medical-document-scanned-pdf-rejected")
-    }
-
-    @MainActor
-    private func launch(_ app: XCUIApplication, fixture: String, largeText: Bool = false) {
-        app.launchArguments = [
-            "-OROT_TEST_PROFILE", "core",
-            "-OROT_E2E_PROBE", "medical-document-import",
-            "-OROT_TEST_MEDICAL_DOCUMENT_FIXTURE", fixture,
-            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-        ] + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
-        app.launch()
-        XCTAssertTrue(node(app, "rag-conversation-screen").waitForAppearance(), app.debugDescription)
-        DebugUITestConditions.dismissWarningToast(app)
     }
 
     @MainActor
