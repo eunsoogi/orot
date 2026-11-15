@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
@@ -26,19 +27,21 @@ export function VoiceCatalogAccount({
         <Pressable
           style={styles.copy}
           accessibilityRole="button"
-          accessibilityLabel="OpenAI API 계정 정보"
+          accessibilityLabel={t('modelSettings.apiAccountInfo')}
           accessibilityState={{ expanded }}
           onPress={() => setExpanded(value => !value)}
           testID="voice-account-details"
         >
           <Text style={styles.title}>OpenAI API</Text>
           <Text style={styles.secondary}>
-            {catalog.connected ? 'API 계정 연결됨' : 'API 계정 연결 필요'}
+            {catalog.connected
+              ? t('modelSettings.apiConnected')
+              : t('modelSettings.apiRequired')}
           </Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="음성 모델 새로고침"
+          accessibilityLabel={t('modelSettings.refreshVoice')}
           accessibilityState={{
             busy: catalog.busy,
             disabled: catalog.busy || !catalog.connected,
@@ -59,7 +62,7 @@ export function VoiceCatalogAccount({
       </View>
       {expanded ? (
         <Button
-          title="OpenAI API 연결 관리"
+          title={t('modelSettings.manageApi')}
           variant="text"
           onPress={onOpenAccounts}
           disabled={!onOpenAccounts}
