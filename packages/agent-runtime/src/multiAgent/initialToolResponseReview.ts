@@ -60,7 +60,10 @@ export async function reviewInitialToolResponse<TResult>(
   let observed;
   try {
     observed = await observeUntilAbort(
-      callModelWithEvidenceFreshness(reviewContext, request),
+      callModelWithEvidenceFreshness(reviewContext, request).then(
+        (value) => ({ value }),
+        (error) => ({ error }),
+      ),
       controller.signal,
     );
   } finally {
@@ -71,10 +74,14 @@ export async function reviewInitialToolResponse<TResult>(
     canceled(context, 'underlying_call_unconfirmed');
     return { accepted: false, modelCalls };
   }
+  // Exceptions can carry graph pause control flow. Never turn an approval pause (or
+  // an unexpected error) into permission to dispatch the selected tool.
+  if (observed.kind === 'value' && 'error' in observed.value) throw observed.value.error;
   // A late ALLOW cannot publish or mutate the parent task after the preview deadline.
   if (expired) return { accepted: false, modelCalls };
   if (reviewContext.outcome) context.outcome = reviewContext.outcome;
-  const result = observed.kind === 'value' ? observed.value : undefined;
+  const result =
+    observed.kind === 'value' && 'value' in observed.value ? observed.value.value : undefined;
   if (!result) return { accepted: false, modelCalls };
   if (result.status === 'cancelled') canceled(context, result.providerStop);
   else if (result.status === 'consent_required')
