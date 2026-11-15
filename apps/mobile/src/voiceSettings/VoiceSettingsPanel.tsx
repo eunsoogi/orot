@@ -1,3 +1,4 @@
+import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
 import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
@@ -104,9 +105,15 @@ export function VoiceSettingsPanel({
       </View>
       <View style={styles.section}>
         {!busy && !failedLoad ? (
-          <View style={styles.account}>
-            <Text testID="voice-current-model">현재 선택: {savedModel}</Text>
-          </View>
+          <ModelSelectionSummary
+            label="현재 선택:"
+            value={
+              voiceModels.find(item => item.id === savedModel)?.title ??
+              savedModel ??
+              ''
+            }
+            testID="voice-current-model"
+          />
         ) : null}
         {mode === 'openai-api' ? (
           <>

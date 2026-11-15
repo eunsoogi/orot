@@ -222,7 +222,7 @@ it('shows the stored model before refresh and keeps it distinct from an unsaved 
   const view = await render(<VoiceSettingsPanel />);
   await waitFor(() =>
     expect(view.getByTestId('voice-current-model')).toHaveTextContent(
-      /apple-system-speech/,
+      /Apple 시스템 음성/,
     ),
   );
   expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
@@ -238,12 +238,12 @@ it('shows the stored model before refresh and keeps it distinct from an unsaved 
   );
   await fireEvent.press(view.getByTestId('voice-model-gpt-realtime-2.1-mini'));
   expect(view.getByTestId('voice-current-model')).toHaveTextContent(
-    /apple-system-speech/,
+    /Apple 시스템 음성/,
   );
   await fireEvent.press(view.getByTestId('voice-settings-save'));
   await waitFor(() =>
     expect(view.getByTestId('voice-current-model')).toHaveTextContent(
-      /gpt-realtime-2.1-mini/,
+      /GPT Realtime 2.1 mini/,
     ),
   );
 });
