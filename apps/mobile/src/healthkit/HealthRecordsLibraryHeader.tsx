@@ -78,7 +78,7 @@ export function HealthRecordsLibraryHeader({
         selected={selectedCategory}
         onSelect={onSelectCategory}
       />
-      {hasMore ? <Text>{t('healthRecords.moreAvailable')}</Text> : null}
+      <Text>{t('healthRecords.previewNotice')}</Text>
       {loadState === 'loading' ? (
         <Text testID="health-records-loading">
           {t('healthRecords.loading')}
