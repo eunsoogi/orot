@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -42,16 +43,18 @@ export function EvidenceLinks({
               );
             const external = reference.sourceKind === 'external_medical';
             const label = external
-              ? 'Europe PMC 의학 문헌'
+              ? t('summaryEvidence.literature')
               : reference.sourceKind === 'reviewed_memory'
-                ? '검토한 메모'
-                : '건강 기록';
+                ? t('summaryEvidence.memory')
+                : t('summaryEvidence.health');
             const date = reference.effectiveTime?.slice(0, 10);
             return (
               <Pressable
                 key={`${reference.sourceId}:${reference.evidenceId}:${index}`}
                 accessibilityRole="button"
-                accessibilityLabel={`원문 근거 열기 · ${label}${date ? ` · ${date}` : ''}`}
+                accessibilityLabel={t('summaryEvidence.open', {
+                  label: `${label}${date ? ` · ${date}` : ''}`,
+                })}
                 style={styles.link}
                 onPress={() => {
                   if (!external) {
@@ -89,7 +92,9 @@ export function EvidenceLinks({
         {!expanded && references.length > 2 ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`근거 ${references.length - 2}개 더 보기`}
+            accessibilityLabel={t('summaryEvidence.more', {
+              count: references.length - 2,
+            })}
             style={styles.link}
             onPress={() => setExpanded(true)}
           >
@@ -99,7 +104,7 @@ export function EvidenceLinks({
       </ScrollView>
       {linkError ? (
         <AppText accessibilityRole="alert">
-          출처를 열지 못했어요. 다시 시도해 주세요.
+          {t('summaryEvidence.openFailed')}
         </AppText>
       ) : null}
     </View>

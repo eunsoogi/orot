@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { View } from 'react-native';
 import { AiResponseText } from '../layout/AiResponseText';
@@ -76,7 +77,7 @@ export function DiseaseHypothesesScreenOutput({
           <Text testID="disease-hypotheses-search-scope">
             {state.value.presentation === 'symptom_summary'
               ? copy.summaryScope
-              : '관련도가 높은 일부 기록을 바탕으로 정리했어요. 전체 병력을 확인한 진단은 아니에요.'}
+              : t('summaryEvidence.scope')}
           </Text>
           {state.value.omittedUnsupportedContent === true ? (
             <Text testID="symptom-summary-omitted-content">
@@ -96,7 +97,7 @@ export function DiseaseHypothesesScreenOutput({
                   ref => ref.sourceKind === 'external_medical',
                 ) ? (
                   <Text style={styles.label}>
-                    의학 자료 참고 · 내 기록의 진단 결과가 아니에요.
+                    {t('summaryEvidence.notDiagnosis')}
                   </Text>
                 ) : null}
                 <Text accessibilityRole="header" style={styles.title}>
