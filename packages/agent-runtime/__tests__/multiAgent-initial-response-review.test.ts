@@ -5,7 +5,7 @@ import { standardSearchFixture } from './multiAgent-standard-search-fixtures';
 import { publication, scriptedOutputs } from './multiAgent-external-evidence-fixtures';
 
 /** Review responses are synthetic: these assertions prove fences and ordering, not classifier quality. */
-test.each(['ALLOW', 'DENY', 'ALLOW.'])(
+test.each(['ALLOW', 'DENY', 'ALLOW.', ''])(
   'reviews contextual prose before tool dispatch without changing the selected provider: %s',
   async (verdict) => {
     const run = standardSearchFixture(true);

@@ -1,3 +1,4 @@
+import { validAuxiliaryReviewIdentity } from './conversationReviewIdentity';
 import { createConversationSteeringStorage } from './conversationSteeringStorage';
 import type {
   WorkflowOperationJournal,
@@ -54,6 +55,7 @@ export async function createConversationOperationJournal(
     // Lazy source tables may have appeared since this request opened.
     await setupConversationOperationJournal(database);
     if (
+      !validAuxiliaryReviewIdentity(identity) ||
       !identity.operationId ||
       identity.operationId.length > 300 ||
       typeof identity.input !== 'string' ||
@@ -87,6 +89,7 @@ export async function createConversationOperationJournal(
     value: NonNullable<Awaited<ReturnType<typeof row>>>,
     identity: WorkflowOperationIdentity,
   ) =>
+    (value.purpose ?? undefined) === identity.purpose &&
     value.input === identity.input &&
     value.refs === stableJson(identity.evidenceReferences);
   const steering = await createConversationSteeringStorage({
@@ -108,12 +111,13 @@ export async function createConversationOperationJournal(
         if (!previous) {
           await sql.execute(
             `INSERT INTO conversation_operation_journal
-            (request_id, run_id, operation_id, input, refs, status, revision)
-            VALUES (?, ?, ?, ?, ?, 'ready', 0)`,
+            (request_id, run_id, operation_id, input, refs, purpose, status, revision)
+            VALUES (?, ?, ?, ?, ?, ?, 'ready', 0)`,
             [
               ...keys(identity),
               identity.input,
               stableJson(identity.evidenceReferences),
+              identity.purpose ?? null,
             ],
           );
           result = { status: 'ready', revision: 0 };

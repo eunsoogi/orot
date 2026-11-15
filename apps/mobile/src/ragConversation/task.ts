@@ -44,9 +44,7 @@ export interface GroundedRagAnswer {
  * Publish prose only after complete-response validation. Tool progress has its own observer. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  taskVersion: initialReply.initialResponseTaskVersion,
-  // Contextual preview remains unprojected pending model-quality validation.
-  // No preview opt-in means no extra review call or unchecked first-answer exposure.
+  ...initialReply.contextualInitialResponsePolicy,
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
   allowPagedGeneratedArtifacts: true,

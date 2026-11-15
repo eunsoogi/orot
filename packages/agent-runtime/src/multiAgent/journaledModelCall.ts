@@ -43,6 +43,9 @@ export async function journaledModelCall<TResult>(
 ): Promise<ModelCallOutcome | undefined> {
   const { options, signal, activeModelOperation: operation } = context;
   const journal = options.operationJournal;
+  // A preview verdict is not execution of a queued user instruction. Preserve the
+  // exact classifier payload and leave steering acknowledgment to the real task call.
+  const steering = context.modelCallPurpose === 'preview_review' ? undefined : journal?.steering;
   let request = initialRequest;
   if (!journal || !operation) {
     const prepared = prepare ? await prepare(signal, request) : 'ready';
@@ -58,12 +61,13 @@ export async function journaledModelCall<TResult>(
     );
   }
   const operationId = `${operation.operationKey}:call-${++operation.callIndex}`;
-  if (journal.steering) {
-    const bound = await journal.steering.bind(operationId, request);
+  if (steering) {
+    const bound = await steering.bind(operationId, request);
     if (!bound || signal.aborted) return { status: 'unavailable', errorCode: 'invalid_request' };
     request = bound;
   }
   const identity = {
+    ...(context.modelCallPurpose ? { purpose: context.modelCallPurpose } : {}),
     operationId,
     input: canonicalJson({ request, execution: options.execution }),
     evidenceReferences: referencesFromBatch(context.currentEvidence),
@@ -71,7 +75,7 @@ export async function journaledModelCall<TResult>(
   const record = await journal.loadOrCreate(identity);
   if (signal.aborted) return { status: 'cancelled', providerStop: 'not_started' };
   if (record.status === 'completed') {
-    await journal.steering?.acknowledge(operationId);
+    await steering?.acknowledge(operationId);
     // The adapter and caller source fence both revalidate evidence before completed values are used.
     return (
       restoredOutcome(record.result) ?? { status: 'unavailable', errorCode: 'invalid_request' }
@@ -126,7 +130,7 @@ export async function journaledModelCall<TResult>(
         result: JSON.stringify(outcome),
       });
       if (!stored) return { status: 'unavailable', errorCode: 'invalid_request' };
-      await journal.steering?.acknowledge(operationId);
+      await steering?.acknowledge(operationId);
     }
     // Any unconfirmed failure leaves the durable intent untouched and cannot be replayed.
     return outcome;

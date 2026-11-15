@@ -3,6 +3,8 @@ import type { EvidenceReference } from './evidenceContracts';
 
 /** Exact private input and results belong only in the caller's protected store, not graph channels. */
 export interface WorkflowOperationIdentity {
+  /** Internal read-only classifier only; never a tool or task execution exemption. */
+  readonly purpose?: 'preview_review';
   readonly operationId: string;
   readonly input: string;
   readonly evidenceReferences: readonly EvidenceReference[];

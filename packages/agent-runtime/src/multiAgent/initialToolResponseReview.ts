@@ -60,7 +60,11 @@ export async function reviewInitialToolResponse<TResult>(
     expired = true;
     controller.abort();
   }, 1500);
-  const reviewContext = { ...context, signal: controller.signal };
+  const reviewContext = {
+    ...context,
+    signal: controller.signal,
+    modelCallPurpose: 'preview_review' as const,
+  };
   let observed;
   try {
     observed = await observeUntilAbort(

@@ -39,6 +39,8 @@ export type PrivateOutcome<TResult> =
 export interface RuntimeContext<TResult> {
   readonly onApprovalWait?: (waiting: boolean) => void;
   readonly pause?: import('./workflowPause').MultiAgentPauseController;
+  /** Auxiliary classification is journaled and consented, but must not consume task steering. */
+  readonly modelCallPurpose?: 'preview_review';
   activeModelOperation?: { readonly operationKey: string; callIndex: number };
   pausedCheckpoint?: import('./contracts').MultiAgentCheckpointState;
   readonly options: MultiAgentWorkflowOptions<TResult>;

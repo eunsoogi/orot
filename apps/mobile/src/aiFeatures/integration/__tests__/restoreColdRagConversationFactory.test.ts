@@ -68,11 +68,11 @@ test.each(['photo', 'version', 'external', 'task', 'policy'])(
 );
 
 // Task prompts are execution identity, not a migration hint for an old request.
-test.each(['6', '7'])(
-  'version 8 factory refuses a version %s descriptor before consent or dispatch',
+test.each(['6', '7', '8'])(
+  'version 9 factory refuses a version %s descriptor before consent or dispatch',
   async version => {
     const f = await fixture();
-    expect(ragConversationTask.taskVersion).toBe('8');
+    expect(ragConversationTask.taskVersion).toBe('9');
     const input = f.descriptor.reconstruction.invocation as {
       task: { taskVersion: string };
     };
