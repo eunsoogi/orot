@@ -2,6 +2,8 @@
 #import <React/RCTEventEmitter.h>
 
 @interface RCT_EXTERN_MODULE (ConversationExecutionModule, RCTEventEmitter)
+RCT_EXTERN_METHOD(processIdentity : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(begin : (NSString *)requestId resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(work : (NSString *)requestId active : (BOOL)active)

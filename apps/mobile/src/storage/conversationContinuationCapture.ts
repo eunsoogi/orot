@@ -7,6 +7,7 @@ import type {
 /** Optional protected snapshot writer. Runs after graph persistence but before request interruption. */
 export type ConversationContinuationCapture = (input: {
   options: MultiAgentWorkflowOptions<unknown>;
+  signal?: AbortSignal;
   checkpoint: MultiAgentCheckpointState;
   checkpointId: string;
   attempt: number;

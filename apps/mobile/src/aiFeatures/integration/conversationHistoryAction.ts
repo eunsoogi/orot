@@ -1,4 +1,4 @@
-import { fingerprint } from './evidenceUtils';
+import { fingerprint, stableJson } from './evidenceUtils';
 import type { LocalActionTool } from '@orot/agent-runtime';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -53,9 +53,14 @@ export function conversationHistoryAction(input: {
   };
   const resultEvidence = async (
     id: string,
+    expected?: import('@orot/domain').ManualHistoryEvidence,
   ): Promise<import('@orot/agent-runtime').EvidenceBatch> => {
     const evidence = await data.manualHistory.getEvidence(id);
-    if (!evidence) throw new Error('Saved history is no longer available.');
+    if (
+      !evidence ||
+      (expected !== undefined && stableJson(evidence) !== stableJson(expected))
+    )
+      throw new Error('Saved history is no longer the approved result.');
     const { items } = buildManualHistoryEvidence({
       candidates: [evidence],
       repository: data.manualHistory,
@@ -153,6 +158,42 @@ export function conversationHistoryAction(input: {
           original.evidenceRevision === revision
           ? evidenceReferences
           : undefined;
+      },
+      async recoverResult({
+        input: value,
+        signal,
+        operationRunId,
+        operationKey,
+      }) {
+        const selected = selection(value);
+        if (
+          !approved ||
+          approvedSignal !== signal ||
+          !selected ||
+          signal.aborted ||
+          approved.requestId !== selected.requestId ||
+          approved.text !== selected.text
+        )
+          return undefined;
+        approved = undefined;
+        // This port cannot create a receipt. The domain checks the exact invocation,
+        // original source and current non-deleted result in one read transaction.
+        const saved = await data.recoverConversationHistoryResult?.(
+          {
+            requestId,
+            sessionId: session.id,
+            sessionVersion: session.version,
+            question,
+            approvedSource: selected,
+            operation: { operationRunId, operationKey },
+          },
+          signal,
+        );
+        if (!saved || signal.aborted) return undefined;
+        // The receipt transaction supplies the exact domain evidence snapshot. Refuse
+        // any change in the later registry read, including title or other metadata.
+        const batch = await resultEvidence(saved.id, saved.evidence);
+        return signal.aborted ? undefined : batch;
       },
       async execute({ input: value, signal, operationRunId, operationKey }) {
         const selected = selection(value);

@@ -75,3 +75,19 @@ test('a pause-shaped exception after dispatch is uncertain, never an approval ch
   expect(f.context.outcome?.status).toBe('unavailable');
   expect(f.execute).toHaveBeenCalledTimes(1);
 });
+
+test('durable preparation runs after consent and before dispatch, and Stop fences dispatch', async () => {
+  const f = fixture();
+  const beforeLocalAction = jest.fn(async (state, signal) => {
+    expect(f.authorize).toHaveBeenCalledTimes(1);
+    expect(f.execute).not.toHaveBeenCalled();
+    expect(state.pendingOperation.operationKey).toBe('tool-1');
+    expect(signal.aborted).toBe(false);
+    f.controller.abort();
+  });
+  f.context.options = { ...f.context.options, beforeLocalAction };
+  await createActionNodes(f.context).executeAction(f.state);
+  expect(beforeLocalAction).toHaveBeenCalledTimes(1);
+  expect(f.execute).not.toHaveBeenCalled();
+  expect(f.context.outcome?.status).toBe('cancelled');
+});

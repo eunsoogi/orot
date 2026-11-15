@@ -11,7 +11,7 @@ import type { ConversationToolEvent } from '@orot/agent-runtime';
 import type { ConversationContinuationIdentity } from '../../storage/conversationWorkflowContinuationIdentity';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
-import { createConversationColdResumeStorage } from '../../storage/conversationColdResumeStorage';
+import { openConversationRecovery } from '../../storage/openConversationRecovery';
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import {
   createColdConversationSourceResolvers,
@@ -88,9 +88,9 @@ export function createColdConversationServices(
       signal: AbortSignal,
     ) {
       if (signal.aborted) return undefined;
-      const saved = await createConversationColdResumeStorage(
-        await openDatabase(),
-      ).open(identity);
+      const saved = (
+        await openConversationRecovery(await openDatabase(), identity, signal)
+      )?.descriptor;
       if (
         signal.aborted ||
         saved?.reconstruction.factoryVersion !== COLD_RAG_FACTORY_VERSION ||

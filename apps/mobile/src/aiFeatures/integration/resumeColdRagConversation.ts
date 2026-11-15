@@ -4,7 +4,8 @@ import type { JsonObject } from '@orot/model-runtime';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { ConversationContinuationIdentity } from '../../storage/conversationWorkflowContinuationIdentity';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
-import { createConversationColdResumeStorage } from '../../storage/conversationColdResumeStorage';
+import { openConversationRecovery } from '../../storage/openConversationRecovery';
+import { runCommittedActionConversationWorkflow } from '../../ragConversation/runCommittedActionConversationWorkflow';
 import { readConversationColdCallIds } from '../../storage/optionalConversationColdCapture';
 import { restoreColdRagConversationFactory } from './restoreColdRagConversationFactory';
 import { readColdRagCompletion } from './coldRagCompletion';
@@ -46,8 +47,8 @@ export async function resumeColdRagConversation(input: {
   const linked = background.scope(input.signal, observer);
   const signal = linked.controller.signal;
   try {
-    const descriptor =
-      await createConversationColdResumeStorage(database).open(identity);
+    const opened = await openConversationRecovery(database, identity, signal);
+    const descriptor = opened?.descriptor;
     if (!descriptor || signal.aborted)
       throw new Error('Cold continuation unavailable.');
     const factory = await restoreColdRagConversationFactory({
@@ -96,7 +97,7 @@ export async function resumeColdRagConversation(input: {
     });
     const pause = createMultiAgentPauseController();
     observer.onWorkflowPauseController(() => pause.requestPause());
-    const result = await runColdConversationWorkflow({
+    const runInput = {
       database,
       descriptor,
       options: factory.options,
@@ -117,7 +118,9 @@ export async function resumeColdRagConversation(input: {
           { ...identity, operationRunId: descriptor.manifest.operationRunId },
           factory.registry,
         ),
-      capture: async batches => {
+      capture: async (
+        batches: readonly import('@orot/agent-runtime').EvidenceBatch[],
+      ) => {
         if (
           factory.bundle.generated.hasUnsupportedPagingState() &&
           !factory.bundle.generated.artifactPagingSnapshot
@@ -133,7 +136,13 @@ export async function resumeColdRagConversation(input: {
           } as unknown as JsonObject,
         };
       },
-    });
+    };
+    const result = opened?.actionRecovery
+      ? await runCommittedActionConversationWorkflow({
+          ...runInput,
+          actionRecovery: opened.actionRecovery,
+        })
+      : await runColdConversationWorkflow(runInput);
     if (result.status === 'paused')
       return {
         status: 'paused' as const,
