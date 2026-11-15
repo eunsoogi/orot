@@ -137,3 +137,109 @@ test('retains plan status and invalidates a confirmed plan when canceled', async
   expect(snapshot.events).toEqual([]);
   snapshot.dispose();
 });
+
+test('already aborted signal creates no listener or native query', async () => {
+  const f = fixture();
+  const controller = new AbortController();
+  controller.abort();
+  const subscribe = jest.spyOn(f.bridge, 'addEventStoreListener');
+  await expect(
+    readCalendarRangeSnapshot(f.bridge, from, to, controller.signal),
+  ).rejects.toThrow('aborted');
+  expect(subscribe).not.toHaveBeenCalled();
+  expect(f.bridge.listEventsInRange).not.toHaveBeenCalled();
+});
+
+test('abort during pending initial read releases listener without waiting for native completion', async () => {
+  const f = fixture();
+  const controller = new AbortController();
+  let finish!: (value: CalendarRangeEvents) => void;
+  f.bridge.listEventsInRange = jest.fn(
+    () =>
+      new Promise(resolve => {
+        finish = resolve;
+      }),
+  );
+  const pending = readCalendarRangeSnapshot(
+    f.bridge,
+    from,
+    to,
+    controller.signal,
+  );
+  await Promise.resolve();
+  controller.abort();
+  expect(f.remove).toHaveBeenCalledTimes(1);
+  await expect(pending).rejects.toThrow('aborted');
+  finish(f.result);
+  await Promise.resolve();
+  expect(f.remove).toHaveBeenCalledTimes(1);
+});
+
+test('abort during pending revalidation clears data and never reactivates after late completion', async () => {
+  const f = fixture();
+  const snapshot = await readCalendarRangeSnapshot(f.bridge, from, to);
+  const controller = new AbortController();
+  let finish!: (value: CalendarRangeEvents) => void;
+  f.bridge.listEventsInRange = jest.fn(
+    () =>
+      new Promise(resolve => {
+        finish = resolve;
+      }),
+  );
+  const pending = snapshot.revalidate(controller.signal);
+  await Promise.resolve();
+  controller.abort();
+  expect(snapshot.events).toEqual([]);
+  expect(snapshot.isCurrent()).toBe(false);
+  expect(f.remove).toHaveBeenCalledTimes(1);
+  expect(await pending).toBe(false);
+  finish(f.result);
+  await Promise.resolve();
+  expect(snapshot.isCurrent()).toBe(false);
+  snapshot.dispose();
+  expect(f.remove).toHaveBeenCalledTimes(1);
+});
+
+test('lease invalidates synchronously for a store change, mutation, lifetime abort and disposal', async () => {
+  for (const action of ['notify', 'mutation', 'abort', 'dispose']) {
+    const f = fixture();
+    const controller = new AbortController();
+    const snapshot = await readCalendarRangeSnapshot(
+      f.bridge,
+      from,
+      to,
+      controller.signal,
+    );
+    expect(snapshot.isCurrent()).toBe(true);
+    expect(await snapshot.revalidate()).toBe(true);
+    if (action === 'notify') f.change();
+    if (action === 'mutation')
+      snapshot.events[0].calendarEventSnapshot.title = 'Mutated';
+    if (action === 'abort') controller.abort();
+    if (action === 'dispose') snapshot.dispose();
+    expect(snapshot.isCurrent()).toBe(false);
+    snapshot.dispose();
+  }
+});
+
+test.each(['dispose', 'lifetime-abort'])(
+  '%s ends a revalidation using another signal',
+  async action => {
+    const f = fixture();
+    const lifetime = new AbortController();
+    const value = await readCalendarRangeSnapshot(
+      f.bridge,
+      from,
+      to,
+      lifetime.signal,
+    );
+    f.bridge.listEventsInRange = jest.fn(() => new Promise(() => {}));
+    const pending = value.revalidate(new AbortController().signal);
+    await Promise.resolve();
+    if (action === 'dispose') value.dispose();
+    else lifetime.abort();
+    expect(await pending).toBe(false);
+    expect(f.remove).toHaveBeenCalledTimes(1);
+    expect(value.events).toEqual([]);
+  },
+);

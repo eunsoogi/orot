@@ -6,7 +6,9 @@ export interface CalendarRangeSnapshot {
   readonly toExclusive: string;
   readonly events: readonly CalendarRangeEvent[];
   /** Local freshness check only. A successful check does not grant provider consent. */
-  revalidate(): Promise<boolean>;
+  revalidate(signal?: AbortSignal): Promise<boolean>;
+  /** Synchronous lease check for the final boundary after asynchronous persistence. */
+  isCurrent(): boolean;
   dispose(): void;
 }
 
@@ -30,6 +32,50 @@ function canonical(value: unknown): string {
   return JSON.stringify(value) ?? 'null';
 }
 
+/** Stop waiting locally; the native read may finish later, but its result is discarded. */
+function readWithAbort<T>(
+  read: () => Promise<T>,
+  signal?: AbortSignal,
+  lifetime?: AbortSignal,
+): Promise<T> {
+  const signals = [
+    ...new Set(
+      [signal, lifetime].filter((value): value is AbortSignal => !!value),
+    ),
+  ];
+  return new Promise<T>((resolve, reject) => {
+    const cleanup = () =>
+      signals.forEach(value => value.removeEventListener('abort', abort));
+    const abort = () => {
+      cleanup();
+      reject(new Error('calendar_read_aborted'));
+    };
+    signals.forEach(value =>
+      value.addEventListener('abort', abort, { once: true }),
+    );
+    if (signals.some(value => value.aborted)) {
+      abort();
+      return;
+    }
+    Promise.resolve()
+      .then(() => {
+        if (signals.some(value => value.aborted))
+          throw new Error('calendar_read_aborted');
+        return read();
+      })
+      .then(
+        value => {
+          cleanup();
+          resolve(value);
+        },
+        error => {
+          cleanup();
+          reject(error);
+        },
+      );
+  });
+}
+
 /**
  * Read every accessible calendar in a bounded interval without importing events or
  * prompting for permission. Titles stay local until a caller obtains exact payload
@@ -39,7 +85,9 @@ export async function readCalendarRangeSnapshot(
   bridge: CalendarRangeBridge,
   fromInclusive: string,
   toExclusive: string,
+  signal?: AbortSignal,
 ): Promise<CalendarRangeSnapshot> {
+  if (signal?.aborted) throw new Error('calendar_read_aborted');
   const start = Date.parse(fromInclusive);
   const end = Date.parse(toExclusive);
   if (
@@ -49,6 +97,7 @@ export async function readCalendarRangeSnapshot(
     end - start > 32 * 86400_000
   )
     throw new Error('invalid_calendar_window');
+  const lifetime = new AbortController();
   let invalidated = false;
   let disposed = false;
   let retainedEvents: CalendarRangeEvent[] = [];
@@ -59,8 +108,23 @@ export async function readCalendarRangeSnapshot(
     return false;
   };
   const subscription = bridge.addEventStoreListener(invalidate);
-  const read = async () => {
-    const result = await bridge.listEventsInRange(fromInclusive, toExclusive);
+  const dispose = () => {
+    lifetime.abort();
+    invalidate();
+    if (!disposed) subscription.remove();
+    disposed = true;
+    signal?.removeEventListener('abort', dispose);
+  };
+  signal?.addEventListener('abort', dispose, { once: true });
+  if (signal?.aborted) dispose();
+  const read = async (readSignal = signal) => {
+    const result = await readWithAbort(
+      () => bridge.listEventsInRange(fromInclusive, toExclusive),
+      readSignal,
+      lifetime.signal,
+    );
+    if (disposed || readSignal?.aborted)
+      throw new Error('calendar_read_aborted');
     if (
       result.access !== 'fullAccess' ||
       !result.query?.complete ||
@@ -112,30 +176,38 @@ export async function readCalendarRangeSnapshot(
     if (invalidated) throw new Error('calendar_changed');
     retainedEvents = events;
     const original = canonical(events);
+    const isCurrent = () => {
+      if (!invalidated && !disposed && canonical(events) === original)
+        return true;
+      return invalidate();
+    };
     return {
       fromInclusive,
       toExclusive,
       events,
-      async revalidate() {
-        if (invalidated || disposed || canonical(events) !== original)
-          return invalidate();
+      isCurrent,
+      async revalidate(revalidationSignal = signal) {
+        if (!isCurrent()) return invalidate();
+        const abortRevalidation = () => dispose();
+        revalidationSignal?.addEventListener('abort', abortRevalidation, {
+          once: true,
+        });
+        if (revalidationSignal?.aborted) dispose();
         try {
-          const current = await read();
+          const current = await read(revalidationSignal);
           if (invalidated || disposed || canonical(current) !== original)
             return invalidate();
           return true;
         } catch {
           return invalidate();
+        } finally {
+          revalidationSignal?.removeEventListener('abort', abortRevalidation);
         }
       },
-      dispose() {
-        if (!disposed) subscription.remove();
-        disposed = true;
-        retainedEvents.length = 0;
-      },
+      dispose,
     };
   } catch (error) {
-    subscription.remove();
+    dispose();
     throw error;
   }
 }
