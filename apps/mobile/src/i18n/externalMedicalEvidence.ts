@@ -66,4 +66,9 @@ export const externalMedicalEvidenceKo = {
     '공개 웹자료를 바탕으로 AI가 정리한 설명을 참고했어요. 함께 표시된 출처에서 원문을 확인할 수 있어요.',
   'externalMedicalEvidence.answer.publicLiteratureDisclaimer':
     '공개 의학 문헌의 일부 검색 결과를 참고했어요. 개인의 진단이나 전체 문헌 검토를 대신하지 않아요.',
+  'publicWeb.unavailable': '웹 출처 확인 불가',
+  'publicWeb.check': '웹 출처 확인',
+  'publicWeb.open': '웹 출처 열기 · {title}',
+  'publicWeb.generatedHint': '웹자료를 바탕으로 AI가 정리한 설명의 출처예요.',
+  'publicWeb.prefix': '웹 · ',
 } as const;

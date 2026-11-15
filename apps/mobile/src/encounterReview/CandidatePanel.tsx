@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { StyleSheet, TextInput, View } from 'react-native';
 import type { EncounterCandidate, EncounterPending } from '@orot/agent-runtime';
 import { AppText } from '../layout/AppText';
@@ -29,9 +30,13 @@ export function CandidatePanel({
     <View style={styles.card} testID={`encounter-${candidate.id}`}>
       <View style={styles.heading}>
         <AppText accessibilityRole="header" style={styles.kind}>
-          {candidate.kind === 'medication' ? '약물 언급' : '계획'}
+          {candidate.kind === 'medication'
+            ? t('candidateDisplay.medication')
+            : t('candidateDisplay.plan')}
         </AppText>
-        <AppText style={styles.speaker}>화자 알 수 없음</AppText>
+        <AppText style={styles.speaker}>
+          {t('candidateDisplay.unknownSpeaker')}
+        </AppText>
       </View>
       <AppButton
         title={selected ? copy.exclude : copy.include}
@@ -76,10 +81,17 @@ export function CandidatePanel({
             >
               <AppText>{evidence.quote}</AppText>
               <AppText style={styles.evidenceDetail}>
-                {`전사 버전 ${segment?.revision}`}
+                {t('candidateDisplay.revision', {
+                  revision: String(segment?.revision),
+                })}
               </AppText>
               <AppText style={styles.evidenceDetail}>
-                {`원문 범위 ${evidence.startOffset}–${evidence.endOffset} · 녹음 ${segment?.audioRange.startMs}–${segment?.audioRange.endMs} ms`}
+                {t('candidateDisplay.range', {
+                  start: evidence.startOffset,
+                  end: evidence.endOffset,
+                  audioStart: String(segment?.audioRange.startMs),
+                  audioEnd: String(segment?.audioRange.endMs),
+                })}
               </AppText>
             </View>
           );
@@ -90,7 +102,9 @@ export function CandidatePanel({
         .map(conflict => (
           <View key={conflict.recordId} style={styles.conflict}>
             <AppText accessibilityRole="alert" style={styles.conflictText}>
-              {`충돌: ${conflict.description}`}
+              {t('candidateDisplay.conflict', {
+                description: conflict.description,
+              })}
             </AppText>
           </View>
         ))}

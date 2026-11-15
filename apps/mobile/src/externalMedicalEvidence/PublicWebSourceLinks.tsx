@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { Linking, Pressable } from 'react-native';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -24,11 +25,11 @@ export function PublicWebSourceLinks({
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="웹 출처 확인 불가"
+        accessibilityLabel={t('publicWeb.unavailable')}
         style={linkStyle}
         onPress={onLinkError}
       >
-        <AppText style={textStyle}>웹 출처 확인</AppText>
+        <AppText style={textStyle}>{t('publicWeb.check')}</AppText>
       </Pressable>
     );
   return (
@@ -37,14 +38,14 @@ export function PublicWebSourceLinks({
         <Pressable
           key={`${source.url}:${index}`}
           accessibilityRole="link"
-          accessibilityLabel={`웹 출처 열기 · ${source.title}`}
-          accessibilityHint="웹자료를 바탕으로 AI가 정리한 설명의 출처예요."
+          accessibilityLabel={t('publicWeb.open', { title: source.title })}
+          accessibilityHint={t('publicWeb.generatedHint')}
           style={linkStyle}
           onPress={() => Linking.openURL(source.url).catch(onLinkError)}
         >
           <AppSymbol name="globe" size={18} color={appColors.primaryText} />
           <AppText numberOfLines={1} style={textStyle}>
-            웹 ·{' '}
+            {t('publicWeb.prefix')}
             {source.title.length > 22
               ? `${source.title.slice(0, 21)}…`
               : source.title}

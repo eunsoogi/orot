@@ -31,4 +31,11 @@ export const encounterReviewCopyKo = {
   'encounterReview.no-transcript': '후보를 찾으려면 이 녹음에 전사가 필요해요.',
   'encounterReview.consent-denied':
     '전송에 동의하지 않아 후보를 찾지 않았어요.',
+  'candidateDisplay.medication': '약물 언급',
+  'candidateDisplay.plan': '계획',
+  'candidateDisplay.unknownSpeaker': '화자 알 수 없음',
+  'candidateDisplay.revision': '전사 버전 {revision}',
+  'candidateDisplay.range':
+    '원문 범위 {start}–{end} · 녹음 {audioStart}–{audioEnd} ms',
+  'candidateDisplay.conflict': '충돌: {description}',
 } as const;
