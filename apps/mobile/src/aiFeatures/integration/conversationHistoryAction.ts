@@ -1,3 +1,4 @@
+import { fingerprint } from './evidenceUtils';
 import type { LocalActionTool } from '@orot/agent-runtime';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -50,6 +51,31 @@ export function conversationHistoryAction(input: {
       text: conversationHistoryIntent(selected.question) ?? selected.question,
     };
   };
+  const resultEvidence = async (
+    id: string,
+  ): Promise<import('@orot/agent-runtime').EvidenceBatch> => {
+    const evidence = await data.manualHistory.getEvidence(id);
+    if (!evidence) throw new Error('Saved history is no longer available.');
+    const { items } = buildManualHistoryEvidence({
+      candidates: [evidence],
+      repository: data.manualHistory,
+      registry,
+    });
+    return {
+      items,
+      coverage: [
+        {
+          sourceKind: 'personal_record',
+          searchedSourceIds: items.map(item => item.sourceId),
+          gaps: [],
+          truncated: false,
+          resultLimit: 1,
+          returnedCount: items.length,
+        },
+      ],
+      conflicts: [],
+    };
+  };
   return [
     {
       id: 'save-past-health-history',
@@ -86,6 +112,48 @@ export function conversationHistoryAction(input: {
         approvedSignal = signal;
         return true;
       },
+      async recover({
+        input: value,
+        signal,
+        operationRunId,
+        operationKey,
+        evidenceReferences,
+      }) {
+        const selected = selection(value);
+        if (
+          !approved ||
+          approvedSignal !== signal ||
+          !selected ||
+          signal.aborted ||
+          approved.requestId !== selected.requestId ||
+          approved.text !== selected.text
+        )
+          return undefined;
+        approved = undefined;
+        const id = await data.recoverConversationHistory?.(
+          {
+            requestId,
+            sessionId: session.id,
+            sessionVersion: session.version,
+            question,
+            approvedSource: selected,
+            operation: { operationRunId, operationKey },
+          },
+          signal,
+        );
+        if (!id || signal.aborted) return undefined;
+        const evidence = await data.manualHistory.getEvidence(id);
+        if (!evidence || signal.aborted || evidenceReferences.length !== 1)
+          return undefined;
+        const original = registry.resolve(evidenceReferences[0]);
+        const revision = fingerprint(evidence);
+        return original?.sourceId === id &&
+          original.evidenceId === id &&
+          original.sourceRevision === revision &&
+          original.evidenceRevision === revision
+          ? evidenceReferences
+          : undefined;
+      },
       async execute({ input: value, signal, operationRunId, operationKey }) {
         const selected = selection(value);
         if (
@@ -109,27 +177,7 @@ export function conversationHistoryAction(input: {
           },
           signal,
         );
-        const evidence = await data.manualHistory.getEvidence(id);
-        if (!evidence) throw new Error('Saved history is no longer available.');
-        const { items } = buildManualHistoryEvidence({
-          candidates: [evidence],
-          repository: data.manualHistory,
-          registry,
-        });
-        return {
-          items,
-          coverage: [
-            {
-              sourceKind: 'personal_record',
-              searchedSourceIds: items.map(item => item.sourceId),
-              gaps: [],
-              truncated: false,
-              resultLimit: 1,
-              returnedCount: items.length,
-            },
-          ],
-          conflicts: [],
-        };
+        return resultEvidence(id);
       },
     },
   ];

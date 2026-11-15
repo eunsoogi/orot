@@ -16,6 +16,7 @@ export type WorkflowRoute =
 export const MultiAgentState = Annotation.Root({
   actionContract: Annotation<string | undefined>(),
   committedAction: Annotation<boolean | undefined>(),
+  committedActionReceipts: Annotation<MultiAgentCheckpointState['committedActionReceipts']>(),
   operationRunId: Annotation<string>(),
   providerId: Annotation<string>(),
   modelId: Annotation<string>(),
@@ -72,6 +73,7 @@ export function checkpointFromState(state: WorkflowState): MultiAgentCheckpointS
   return {
     actionContract: state.actionContract,
     committedAction: state.committedAction,
+    committedActionReceipts: state.committedActionReceipts,
     operationRunId: state.operationRunId,
     providerId: state.providerId,
     modelId: state.modelId,

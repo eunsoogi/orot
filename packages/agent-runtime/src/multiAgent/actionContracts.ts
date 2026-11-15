@@ -11,6 +11,14 @@ export interface LocalActionTool {
   readonly inputSchema: JsonObject;
   parseInput(value: unknown): JsonObject | undefined;
   authorize(input: JsonObject, signal: AbortSignal): Promise<boolean>;
+  /** Read only a proven committed result. Never dispatch or backfill an uncertain mutation. */
+  recover?(request: {
+    readonly evidenceReferences: readonly import('./evidenceContracts').EvidenceReference[];
+    readonly input: JsonObject;
+    readonly operationRunId: string;
+    readonly operationKey: string;
+    readonly signal: AbortSignal;
+  }): Promise<readonly import('./evidenceContracts').EvidenceReference[] | undefined>;
   execute(request: {
     readonly input: JsonObject;
     readonly operationRunId: string;

@@ -51,6 +51,11 @@ export function conversationWorkflowEvidenceCache<T>(
     snapshotEvidence(): readonly EvidenceBatch[] {
       return JSON.parse(JSON.stringify(batches));
     },
+    actions: options.actions?.map(action => ({
+      ...action,
+      execute: async (request: Parameters<typeof action.execute>[0]) =>
+        remember(await action.execute(request)),
+    })),
     tools: options.tools.map(tool =>
       wrapEvidenceSearch(tool, async (_request, _runtime, dispatch) => {
         const result = await dispatch();
