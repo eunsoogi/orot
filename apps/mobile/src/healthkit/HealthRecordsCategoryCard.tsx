@@ -5,15 +5,9 @@ import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
-import { formatRecordedAt } from '../recording/formatRecordedAt';
 import { healthRecordCategoryPresentation } from './healthRecordCategoryPresentation';
 import { HealthRecordsCategoryCharts } from './HealthRecordsCategoryCharts';
 import { HealthRecordsCategoryHeading } from './HealthRecordsCategoryHeading';
-import {
-  displayRecordValue,
-  provenanceLabel,
-  hasUnavailableSourceValue,
-} from './healthRecordsDetailPresentation';
 import type {
   HealthObservationCategory,
   HealthRecordsDetailSelection,
@@ -33,7 +27,7 @@ interface HealthRecordsCategoryCardProps {
   readonly onOpenDetail: (selection: HealthRecordsDetailSelection) => void;
 }
 
-/** Separates measured series from event records while keeping one clear detail action. */
+/** Keeps bounded charts primary and leaves raw values and provenance in the detail route. */
 export function HealthRecordsCategoryCard({
   category,
   hasMore = false,
@@ -53,17 +47,6 @@ export function HealthRecordsCategoryCard({
       ? groupBloodPressureObservations(recentObservations).length
       : recentObservations.length;
   const eventLike = category === 'sleep' || category === 'other';
-  const latest = [...recentObservations].sort((left, right) =>
-    right.effectiveAt.localeCompare(left.effectiveAt),
-  )[0];
-  const latestPressure =
-    category === 'blood_pressure'
-      ? groupBloodPressureObservations(recentObservations)[0]
-      : undefined;
-  const pressureValues = [
-    latestPressure?.systolic,
-    latestPressure?.diastolic,
-  ].filter((item): item is HealthObservation => Boolean(item));
 
   return (
     <View style={styles.card} testID={'health-record-category-' + category}>
@@ -118,13 +101,6 @@ export function HealthRecordsCategoryCard({
                   { title },
                 )}
         </Text>
-      ) : eventLike ? (
-        <Text style={styles.eventSummary}>
-          {t('healthRecords.eventSummary', {
-            count,
-            timestamp: latest ? formatRecordedAt(latest.effectiveAt) : '-',
-          })}
-        </Text>
       ) : null}
       {!eventLike ? (
         <HealthRecordsCategoryCharts
@@ -133,46 +109,6 @@ export function HealthRecordsCategoryCard({
           hasMore={hasMore}
           loadState={loadState}
         />
-      ) : null}
-      {latest && !latestPressure ? (
-        <View style={styles.latestCopy}>
-          <Text style={styles.latestTitle}>{displayRecordValue(latest)}</Text>
-          <Text style={styles.count}>
-            {formatRecordedAt(latest.effectiveAt)}
-          </Text>
-          <Text style={styles.count}>{provenanceLabel(latest)}</Text>
-          {hasUnavailableSourceValue(latest) ? (
-            <Text style={styles.count}>
-              {t('healthRecords.sourceValueUnavailable')}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-      {latestPressure ? (
-        <View style={styles.latest}>
-          <View style={styles.latestIcon}>
-            <AppSymbol name="doc.text" color={appColors.primaryAction} />
-          </View>
-          <View style={styles.latestCopy}>
-            <Text style={styles.latestTitle}>
-              {t('healthRecords.latestBloodPressure')}
-              <Text style={styles.latestValue}>
-                {' ' + pressureValues.map(displayRecordValue).join(' / ')}
-              </Text>
-            </Text>
-            <Text style={styles.count}>
-              {formatRecordedAt(latestPressure.effectiveAt)}
-            </Text>
-            <Text style={styles.count}>
-              {[...new Set(pressureValues.map(provenanceLabel))].join(' · ')}
-            </Text>
-            {pressureValues.some(hasUnavailableSourceValue) ? (
-              <Text style={styles.count}>
-                {t('healthRecords.sourceValueUnavailable')}
-              </Text>
-            ) : null}
-          </View>
-        </View>
       ) : null}
     </View>
   );
@@ -205,23 +141,4 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: 16,
   },
-  latest: {
-    alignItems: 'center',
-    backgroundColor: appColors.primarySoft,
-    borderRadius: 16,
-    flexDirection: 'row',
-    gap: 12,
-    padding: 12,
-  },
-  latestIcon: {
-    alignItems: 'center',
-    backgroundColor: appColors.surface,
-    borderRadius: 22,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
-  },
-  latestCopy: { flexShrink: 1, minWidth: 0, gap: 4 },
-  latestTitle: { color: appColors.text, fontSize: 14, fontWeight: '600' },
-  latestValue: { color: appColors.primaryAction, fontWeight: '700' },
 });
