@@ -18,7 +18,10 @@ export function createDailyReportService(
   sharedDeadlineContext?: DailyReportDeadlineContext,
 ) {
   const data = createLocalEvidenceData(input.database);
-  const storage = createDailyReportStorage(input.database);
+  const storage = createDailyReportStorage(
+    input.database,
+    input.calendarReader,
+  );
   return (request: DailyReportServiceRequest) => {
     // Feature and service bounds share this state so whichever timer fires first keeps the stage.
     const deadlineContext =
