@@ -59,6 +59,7 @@ export interface AiFeatureFlowScreenProps {
   readonly onOpenDiseaseHypotheses: () => void;
   readonly onOpenRagConversation: () => void;
   readonly onOpenDailyReport?: () => void;
+  readonly onOpenHealthSummary?: () => void;
   readonly onOpenDailyReportChat?: (
     target: NonNullable<ConversationEntryContext['dailyReport']>,
   ) => void;

@@ -26,10 +26,7 @@ import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { useConversationScreenControls } from './useConversationScreenControls';
 import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
 import { t } from '../i18n';
-import {
-  ConversationTaskHeader,
-  ConversationStoredTaskCards,
-} from './ConversationTaskPanels';
+import * as ConversationTasks from './ConversationTaskPanels';
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
   isEntryCurrent,
@@ -44,6 +41,7 @@ export function ConversationScreen({
   onBack,
   onOpenHistory,
   onOpenDailyReport,
+  retainedActions,
   onSend,
   onOpenSource,
   resolveToolSource,
@@ -125,7 +123,7 @@ export function ConversationScreen({
         session={session}
         prepareVisitQuestions={prepareVisitQuestions}
       />
-      <ConversationTaskHeader
+      <ConversationTasks.ConversationTaskHeader
         store={store}
         session={session}
         onOpenSource={onOpenSource}
@@ -133,6 +131,7 @@ export function ConversationScreen({
         routeKey={navigationRouteKey}
         reportOwner={reportOwner}
         onOpenDailyReport={onOpenDailyReport}
+        retainedActions={retainedActions}
         renderReportTask={renderReportTask}
         renderSavedReport={renderSavedReport}
       />
@@ -211,7 +210,7 @@ export function ConversationScreen({
                   />
                 }
                 footer={
-                  <ConversationStoredTaskCards
+                  <ConversationTasks.ConversationStoredTaskCards
                     store={store}
                     session={session}
                     onOpenSource={onOpenSource}

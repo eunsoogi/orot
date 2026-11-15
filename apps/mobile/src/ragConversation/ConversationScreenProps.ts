@@ -60,6 +60,7 @@ export interface ConversationScreenProps {
   readonly onBack: () => void;
   readonly onOpenHistory?: () => void;
   readonly onOpenDailyReport?: () => void;
+  readonly retainedActions?: import('./ConversationRetainedActions').RetainedHealthActions;
   readonly onSend: (
     question: string,
     previousMessages: readonly RagConversationMessage[],

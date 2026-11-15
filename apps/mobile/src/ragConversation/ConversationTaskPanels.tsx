@@ -1,4 +1,8 @@
 import { ConversationInterruptionRecovery } from './ConversationInterruptionRecovery';
+import {
+  ConversationRetainedActions,
+  type RetainedHealthActions,
+} from './ConversationRetainedActions';
 import { Fragment } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
@@ -72,6 +76,7 @@ export function ConversationTaskHeader({
   routeKey,
   reportOwner,
   onOpenDailyReport,
+  retainedActions,
   renderReportTask,
   renderSavedReport,
 }: Common & {
@@ -79,6 +84,7 @@ export function ConversationTaskHeader({
   routeKey?: string;
   reportOwner: number | null;
   onOpenDailyReport?: () => void;
+  retainedActions?: RetainedHealthActions;
   renderReportTask?: ConversationScreenProps['renderReportTask'];
   renderSavedReport?: ConversationScreenProps['renderSavedReport'];
 }) {
@@ -111,6 +117,7 @@ export function ConversationTaskHeader({
   );
   return (
     <>
+      <ConversationRetainedActions actions={retainedActions} />
       <DailyReportConversationHeader
         report={selectedReport}
         onRequest={
