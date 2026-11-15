@@ -1,3 +1,6 @@
+/** The review changes call ordering; old cold journals must fail closed, not replay it. */
+export const initialResponseTaskVersion = '8';
+
 /** Legacy fixture copy retained for checkpoint compatibility tests. New requests never
  * insert this text locally or require the model to repeat it. */
 export const initialConversationResponse =

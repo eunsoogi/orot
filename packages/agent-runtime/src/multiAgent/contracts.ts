@@ -1,3 +1,4 @@
+import type { InitialToolResponseContract } from './initialToolResponseContract';
 import type { MultiAgentPhase } from './actionContracts';
 export type { MultiAgentPhase } from './actionContracts';
 import type {
@@ -80,7 +81,7 @@ export interface TaskClarificationValue {
   readonly message: string;
 }
 
-export interface TaskResponderContract<TResult = JsonValue> {
+export interface TaskResponderContract<TResult = JsonValue> extends InitialToolResponseContract {
   readonly taskType: string;
   readonly taskVersion: string;
   readonly systemPrompt: string;
@@ -119,11 +120,6 @@ export interface TaskResponderContract<TResult = JsonValue> {
     readonly by: 'source_kind';
     mergeValues(values: readonly JsonValue[], input: TaskResponderInput): JsonValue;
   };
-  /** Optional content-free reply on the first validated native tool selection, never final output. */
-  initialToolResponse?(text: string): string | undefined;
-  /** Review provisional prose with the selected provider before display, within the existing budget.
-   * This probabilistic guard is not clinical validation; only non-factual replies are eligible. */
-  readonly reviewInitialToolResponse?: boolean;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;

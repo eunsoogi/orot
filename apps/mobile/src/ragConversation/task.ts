@@ -44,7 +44,7 @@ export interface GroundedRagAnswer {
  * Publish prose only after complete-response validation. Tool progress has its own observer. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  taskVersion: '7',
+  taskVersion: initialReply.initialResponseTaskVersion,
   initialToolResponse: initialReply.validateInitialConversationResponse,
   reviewInitialToolResponse: true,
   allowBoundedExternalEvidence: true,

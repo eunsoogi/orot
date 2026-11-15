@@ -126,6 +126,7 @@ test('requests actual contextual prose with semantic review instead of canned co
   });
   expect(JSON.parse(message.content).initialResponseText).toBeUndefined();
   expect(ragConversationTask.reviewInitialToolResponse).toBe(true);
+  expect(ragConversationTask.taskVersion).toBe('8');
   expect(
     validateInitialConversationResponse('어떤 흐름인지 함께 살펴볼게요.'),
   ).toBe('어떤 흐름인지 함께 살펴볼게요.');
