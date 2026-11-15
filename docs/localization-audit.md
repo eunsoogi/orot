@@ -53,7 +53,7 @@
 - `aiFeatures/integration/defaultPublicSearch.ts`: 공개 검색 제한 설명은 검증된 결과의 `missingData`에 추가되어 표시·저장된다. 주제 판별 정규식과 함께 남아 있으므로 파일 전체를 단순 UI 이관 대상으로 분류하지 않는다.
 - `aiFeatures/integration/publicWebEvidence.ts`: recipient와 locator title은 외부 전송 동의·증거 출처 문맥에 연결된다. source identity를 검토하지 않은 기계적 이동은 하지 않는다.
 - `treatmentContext/hypertensionEducation.ts`: 대상 집단 문구는 검토 시각과 함께 공개 근거 locator에 들어가고 전체 reference를 `stableJson`으로 비교한다. 원문·revision의 일부로 보존한다.
-- `diseaseHypotheses/appleSummaryRecordSections.ts`: section title은 task/schema 및 저장 결과와 연결되는지 추가 검토할 항목이다. 기간 표시 이관과 혼동해 함께 변경하지 않는다.
+- `diseaseHypotheses/appleSummaryRecordSections.ts`: 후속 검토에서 schema는 topic/source ID와 statistic selector를 사용하고 한국어 title은 정규화된 section의 출력 값임을 확인했다. topic key·source ID와 과거 저장 자료를 유지한 채 title 값만 동일하게 이관한다. `summaryOverviewSelections.ts`의 출력 title도 같은 경계다.
 - `ios/OrotMobile/Info.plist`의 권한 사용 목적과 앱 이름은 이미 플랫폼 리소스 값이다. 개인정보 관련 동의 내용을 바꾸거나 지원하지 않는 언어를 추가하는 작업과 단순 코드 문자열 정리를 구분한다.
 - `packages/provider-openai/ios-spike` 및 package fixture는 OAuth 검증용 harness·합성 자료로 분류한다. shipping provider의 오류 표시 리소스와 별개다.
 
