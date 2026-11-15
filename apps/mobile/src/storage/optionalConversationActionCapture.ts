@@ -1,3 +1,4 @@
+import { retireCompletedActionRecovery } from './retireCompletedActionRecovery';
 import type { SqlDatabase } from '@orot/storage';
 import type {
   ConversationColdReconstruction,
@@ -25,10 +26,13 @@ export function optionalConversationActionCapture(
   return async input => {
     if (
       input.checkpoint.selectedToolId !== 'save-past-health-history' ||
-      input.checkpoint.committedAction ||
       !input.evidenceBatches
     )
       return;
+    if (input.checkpoint.committedAction) {
+      await retireCompletedActionRecovery(database, identity, input);
+      return;
+    }
     const signal = input.signal;
     if (!signal || signal.aborted) return;
     const process = await readConversationProcessIdentity(signal);

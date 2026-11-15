@@ -1,3 +1,7 @@
+import {
+  additionalHistoryOperation,
+  insertHistoryOperationReceipt,
+} from './conversationHistoryOperationReceipt';
 import { commitConversationActionRecovery } from './commitConversationActionRecovery';
 import { validateConversationHistorySource } from './conversationHistorySource';
 import {
@@ -50,11 +54,14 @@ export async function saveConversationHealthHistory(
     await tx.execute(
       'CREATE TRIGGER IF NOT EXISTS conversation_history_session_removed AFTER DELETE ON conversation_artifact_sessions BEGIN DELETE FROM conversation_history_receipts WHERE session_id = OLD.id; END',
     );
-    const receipt = await tx.execute(
-      'SELECT entry_id FROM conversation_history_receipts WHERE request_id = ? AND session_id = ?',
-      [input.requestId, input.sessionId],
-    );
-    if (input.operation) {
+    const additional = await additionalHistoryOperation(tx, input);
+    const receipt = additional
+      ? { rows: additional.existing ? [{ entry_id: additional.id }] : [] }
+      : await tx.execute(
+          'SELECT entry_id FROM conversation_history_receipts WHERE request_id = ? AND session_id = ?',
+          [input.requestId, input.sessionId],
+        );
+    if (input.operation && !additional) {
       await bindConversationActionReceipt(
         tx,
         {
@@ -82,7 +89,7 @@ export async function saveConversationHealthHistory(
       result = id;
       return;
     }
-    const id = 'conversation-history:' + input.requestId;
+    const id = additional?.id ?? 'conversation-history:' + input.requestId;
     const now = new Date().toISOString();
     const entry = createManualHistoryEntry({
       id,
@@ -94,15 +101,17 @@ export async function saveConversationHealthHistory(
       recordedAt: now,
     });
     await insertManualHistoryEntry(tx, entry);
-    await tx.execute(
-      'INSERT INTO conversation_history_receipts VALUES (?, ?, ?, ?)',
-      [
-        input.requestId,
-        input.sessionId,
-        id,
-        input.approvedSource?.requestId ?? input.requestId,
-      ],
-    );
+    if (additional) await insertHistoryOperationReceipt(tx, input, id);
+    else
+      await tx.execute(
+        'INSERT INTO conversation_history_receipts VALUES (?, ?, ?, ?)',
+        [
+          input.requestId,
+          input.sessionId,
+          id,
+          input.approvedSource?.requestId ?? input.requestId,
+        ],
+      );
     await commitConversationActionRecovery(tx, input, id);
     if (signal.aborted) throw new Error('History save cancelled.');
     result = id;
