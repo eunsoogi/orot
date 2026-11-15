@@ -15,10 +15,7 @@ export function dailyReportCoverageCounts(
 
   const counts = new Map<string, number>();
   for (const record of records) {
-    const source =
-      record.contextRole === 'personal_baseline'
-        ? 'personal_baseline'
-        : record.source;
+    const source = record.contextRole ?? record.source;
     counts.set(source, (counts.get(source) ?? 0) + 1);
   }
   return counts;

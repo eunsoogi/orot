@@ -94,7 +94,8 @@ export async function readDailyReportBaseline(
     calendar.identity.localDate,
     calendar.identity.timeZone,
   );
-  if (!range || !keys.size) return { values, records, lineage, partial: false };
+  if (!range || !keys.size)
+    return { values, records, lineage, partial: false, bytes: 0 };
   const selected = candidateScopeCondition('health_observation', scope);
   const at = localQueryTimestampKeyExpression('r.effective_at');
   const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
@@ -159,5 +160,5 @@ export async function readDailyReportBaseline(
     });
     bytes += row.payload_bytes;
   }
-  return { values, records, lineage, partial };
+  return { values, records, lineage, partial, bytes };
 }

@@ -1,4 +1,8 @@
-import { dailyReportBaselineInterval, validDailyReportBaseline } from '../src';
+import {
+  dailyReportBaselineInterval,
+  validDailyReportBaseline,
+  validDailyReportHistoricalContext,
+} from '../src';
 
 test('baseline spans 28 local civil days including DST rather than fixed elapsed hours', () => {
   expect(dailyReportBaselineInterval('2026-11-10', 'America/New_York')).toEqual({
@@ -20,4 +24,43 @@ test('historical role rejects other sources, support links, future and out-of-ra
     { occurrence: { startInclusive: '2026-10-01T00:00:00Z' } },
   ])
     expect(validDailyReportBaseline({ ...record, ...change }, '2026-11-10', 'UTC')).toBe(false);
+});
+
+test('behavior history roles are limited to their original source kind and prior-day boundary', () => {
+  const record = {
+    source: 'dose_event',
+    contextRole: 'medication_history',
+    occurrence: { startInclusive: '2026-11-09T12:00:00Z' },
+  };
+  expect(validDailyReportHistoricalContext(record, '2026-11-10', 'UTC')).toBe(true);
+  expect(
+    validDailyReportHistoricalContext({ ...record, source: 'appointment' }, '2026-11-10', 'UTC'),
+  ).toBe(false);
+  expect(
+    validDailyReportHistoricalContext(
+      { ...record, contextRole: 'activity_history' },
+      '2026-11-10',
+      'UTC',
+    ),
+  ).toBe(false);
+  expect(
+    validDailyReportHistoricalContext(
+      { ...record, source: 'health_observation', contextRole: 'activity_history' },
+      '2026-11-10',
+      'UTC',
+    ),
+  ).toBe(true);
+  expect(
+    validDailyReportHistoricalContext(
+      {
+        ...record,
+        occurrence: {
+          startInclusive: '2026-11-09T23:00:00Z',
+          endExclusive: '2026-11-10T01:00:00Z',
+        },
+      },
+      '2026-11-10',
+      'UTC',
+    ),
+  ).toBe(false);
 });

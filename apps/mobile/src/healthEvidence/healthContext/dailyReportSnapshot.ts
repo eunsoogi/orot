@@ -1,5 +1,5 @@
 import type { DailyReportSnapshotResult } from './dailyReportSnapshotResult';
-import { readDailyReportBaseline } from './dailyReportBaseline';
+import { readDailyReportHistory } from './dailyReportHistory';
 import { readDailyReportMedicationContext } from './dailyReportMedicationContext';
 import {
   localQueryTimestampKey,
@@ -205,7 +205,7 @@ export async function readDailyReportSnapshot(
           code => code !== 'medication_names_not_resolved',
         );
     }
-    const baseline = await readDailyReportBaseline(
+    const history = await readDailyReportHistory(
       tx,
       calendar,
       scope,
@@ -213,18 +213,12 @@ export async function readDailyReportSnapshot(
       snapshotByteLimit - bytes,
       signal,
     );
-    records.push(...baseline.records);
-    lineage.push(...baseline.lineage);
-    coverage.push({
-      source: 'personal_baseline',
-      status: 'partial',
-      limitationCodes: [
-        'observed_days_not_complete_history',
-        ...(baseline.partial ? ['snapshot_incomplete'] : []),
-      ],
-    });
+    records.push(...history.records);
+    lineage.push(...history.lineage);
+    coverage.push(...history.coverage);
     output = {
-      baselineValues: baseline.values,
+      baselineValues: history.baselineValues,
+      behaviorValues: history.behaviorValues,
       values,
       lineage,
       sourceSnapshot: {

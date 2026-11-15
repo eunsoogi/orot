@@ -24,6 +24,10 @@ export function sourceLabel(value: string) {
       return t('dailyReport.source.dose');
     case 'appointment':
       return t('dailyReport.context.appointmentSource');
+    case 'behavior_history':
+    case 'medication_history':
+    case 'activity_history':
+      return t('dailyReport.history.title');
     case 'personal_baseline':
       return t('dailyReport.baseline.title');
     case 'system_calendar':
@@ -124,6 +128,8 @@ export function syncStatusLabel(item: DailyReportSourceCoverage) {
 
 export function limitationLabel(code: string) {
   switch (code) {
+    case 'recorded_behavior_not_complete_history':
+      return t('dailyReport.history.limit');
     case 'observed_days_not_complete_history':
       return t('dailyReport.baseline.limit');
     case 'planned_events_not_attendance':

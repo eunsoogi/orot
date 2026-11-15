@@ -7,6 +7,7 @@ import type { DailyReportLineage } from '../../storage/dailyReportStorageTypes';
 
 /** Historical values are kept separate so they cannot be presented as today's observations. */
 export interface DailyReportSnapshotResult {
+  behaviorValues?: LocalHealthEvidenceRecord[];
   baselineValues?: LocalHealthEvidenceRecord[];
   values: LocalHealthEvidenceRecord[];
   lineage: DailyReportLineage[];
