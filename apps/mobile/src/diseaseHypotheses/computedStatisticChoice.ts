@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { JsonObject } from '@orot/model-runtime';
 import { healthContextDays } from '../healthEvidence/healthContext/window';
 
@@ -91,7 +92,12 @@ export function statisticSourcePeriod(
     const partial =
       days.some(day => day.partial) ||
       (Array.isArray(source.partialDates) && source.partialDates.length > 0);
-    return `집계 기간 ${days[0]!.date} ~ ${days.at(-1)!.date} (${period.timeZone})${partial ? ' · 일부 날짜는 하루 중 일부만 포함' : ''}.`;
+    return t('computedTopic.sourcePeriod', {
+      first: days[0]!.date,
+      last: days.at(-1)!.date,
+      zone: period.timeZone,
+      partial: partial ? t('computedTopic.partialDaySuffix') : '',
+    });
   } catch {
     return;
   }

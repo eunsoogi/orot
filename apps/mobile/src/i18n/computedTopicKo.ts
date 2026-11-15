@@ -24,4 +24,8 @@ export const computedTopicKo = {
   'computedTopic.meanStages': '{mean} 전체 기간의 단계별 누적 시간: {stages}.',
   'computedTopic.symptomDays': ' · {days}일',
   'computedTopic.symptomEntries': '증상 기록 {count}건{coverage}.{entries}',
+  'computedTopic.partialEvidence':
+    '일부 자료를 확인하지 못해 제공된 기록만 요약했어요.',
+  'computedTopic.sourcePeriod': '집계 기간 {first} ~ {last} ({zone}){partial}.',
+  'computedTopic.partialDaySuffix': ' · 일부 날짜는 하루 중 일부만 포함',
 } as const;

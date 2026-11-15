@@ -1,2 +1,6 @@
-export const INCOMPLETE_SUMMARY_EVIDENCE_NOTE =
-  '일부 자료를 확인하지 못해 제공된 기록만 요약했어요.';
+import { t } from '../i18n';
+
+/** A display-only notice; it never changes evidence coverage or source eligibility. */
+export const INCOMPLETE_SUMMARY_EVIDENCE_NOTE = t(
+  'computedTopic.partialEvidence',
+);
