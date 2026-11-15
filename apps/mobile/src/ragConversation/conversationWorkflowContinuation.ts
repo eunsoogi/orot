@@ -20,6 +20,7 @@ export interface ConversationWorkflowContinuation {
       MultiAgentWorkflowOptions['checkpointer']
     >;
     readonly threadId: string;
+    readonly beforeLocalAction?: MultiAgentWorkflowOptions['beforeLocalAction'];
     readonly operationJournal?: import('@orot/agent-runtime').WorkflowOperationJournal;
     initialize(
       options: MultiAgentWorkflowOptions<unknown>,
@@ -54,6 +55,7 @@ export async function runContinuableConversationWorkflow<T>(
     ...original,
     checkpointer: continuation.persisted.checkpointer,
     operationJournal: continuation.persisted.operationJournal,
+    beforeLocalAction: continuation.persisted.beforeLocalAction,
   };
   while (!signal.aborted) {
     const pause = createMultiAgentPauseController();

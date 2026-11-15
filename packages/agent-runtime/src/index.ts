@@ -150,3 +150,5 @@ export type {
 export type { PreparedEvidenceSearch } from './multiAgent/evidenceContracts';
 export { validateEvidenceBatch } from './multiAgent/evidence';
 export type { LocalActionTool } from './multiAgent/actionContracts';
+
+export { preparePendingActionRecovery } from './multiAgent/pendingActionRecoveryOptions';

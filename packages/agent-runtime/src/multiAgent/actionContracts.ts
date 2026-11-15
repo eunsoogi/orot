@@ -19,6 +19,15 @@ export interface LocalActionTool {
     readonly operationKey: string;
     readonly signal: AbortSignal;
   }): Promise<readonly import('./evidenceContracts').EvidenceReference[] | undefined>;
+  /** Reconstruct a committed result whose graph receipt was never persisted. Read-only;
+   * undefined means unknown, not permission to execute. Requires fresh authorization.
+   */
+  recoverResult?(request: {
+    readonly input: JsonObject;
+    readonly operationRunId: string;
+    readonly operationKey: string;
+    readonly signal: AbortSignal;
+  }): Promise<EvidenceBatch | undefined>;
   execute(request: {
     readonly input: JsonObject;
     readonly operationRunId: string;

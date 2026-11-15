@@ -1,3 +1,4 @@
+import { commitConversationActionRecovery } from './commitConversationActionRecovery';
 import { validateConversationHistorySource } from './conversationHistorySource';
 import {
   bindConversationActionReceipt,
@@ -102,6 +103,7 @@ export async function saveConversationHealthHistory(
         input.approvedSource?.requestId ?? input.requestId,
       ],
     );
+    await commitConversationActionRecovery(tx, input, id);
     if (signal.aborted) throw new Error('History save cancelled.');
     result = id;
   });

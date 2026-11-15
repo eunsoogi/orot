@@ -1,3 +1,4 @@
+import { isVerifiedPendingActionRecovery } from './pendingActionRecoveryOptions';
 import { canRecoverCommittedActions, recoverCommittedAction } from './recoverCommittedAction';
 import { restoreOrderedEvidenceBatches } from './evidenceRestoration';
 import { validInitialEvidenceSearch, validInitialSearchResume } from './initialEvidenceSearch';
@@ -132,7 +133,7 @@ export function resumeState<TResult>(
     ) ||
     saved.terminal ||
     saved.phase === 'complete' ||
-    saved.pendingOperation ||
+    (saved.pendingOperation && !isVerifiedPendingActionRecovery(options, saved)) ||
     (saved.awaitingAuthorization !== undefined &&
       (!options.operationJournal?.loadPrepared ||
         (saved.phase === 'local_action'
@@ -151,7 +152,9 @@ export function resumeState<TResult>(
             : saved.modelCalls < 1 ||
               saved.awaitingAuthorization !== `model-${saved.modelCalls}`))) ||
     (saved.phase === 'evidence_search' && !saved.awaitingAuthorization) ||
-    (saved.phase === 'local_action' && !saved.awaitingAuthorization) ||
+    (saved.phase === 'local_action' &&
+      !saved.awaitingAuthorization &&
+      !isVerifiedPendingActionRecovery(options, saved)) ||
     !isNonNegativeSafeInteger(saved.modelCalls) ||
     !isNonNegativeSafeInteger(saved.toolCalls) ||
     !isNonNegativeSafeInteger(saved.researchCycles) ||
@@ -186,7 +189,9 @@ export function resumeState<TResult>(
     evidenceReferences: saved.evidenceReferences.map(projectEvidenceReference),
     evidenceNeed: saved.evidenceNeed,
     selectedToolId: saved.selectedToolId,
-    pendingOperation: undefined,
+    pendingOperation: isVerifiedPendingActionRecovery(options, saved)
+      ? saved.pendingOperation
+      : undefined,
     terminal: false,
   };
 }

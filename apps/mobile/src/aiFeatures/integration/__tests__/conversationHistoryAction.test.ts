@@ -23,10 +23,16 @@ function fixture(
     provenance: { origin: 'user_reported', sourceRecordIds: [] },
     reviewState: { status: 'unreviewed' },
   };
+  const getEvidence = jest.fn(async () => entry);
   const data = {
     saveConversationHistory,
     recoverConversationHistory,
-    manualHistory: { getEvidence: async () => entry },
+    recoverConversationHistoryResult: async () => {
+      const evidence = JSON.parse(JSON.stringify(entry));
+      const id = await recoverConversationHistory();
+      return id ? { id, evidence } : undefined;
+    },
+    manualHistory: { getEvidence },
   } as unknown as AiFeatureLocalData;
   const observer = {
     retentionSession: { id: 'session', version: 1 },
@@ -45,6 +51,8 @@ function fixture(
     admittedQuestions: prior ?? [source],
   });
   return {
+    entry,
+    getEvidence,
     action,
     source,
     confirmHistorySave,
@@ -171,3 +179,36 @@ test('recovery without original evidence never executes a write', async () => {
   expect(f.recoverConversationHistory).toHaveBeenCalledTimes(1);
   expect(f.saveConversationHistory).not.toHaveBeenCalled();
 });
+
+test('pending result recovery requires fresh consent and cannot dispatch or reuse its grant', async () => {
+  const f = fixture();
+  const input = { userMessage: f.source };
+  expect(await f.action!.recoverResult!(request(input))).toBeUndefined();
+  expect(f.recoverConversationHistory).not.toHaveBeenCalled();
+  expect(await f.action!.authorize(input, signal)).toBe(true);
+  expect((await f.action!.recoverResult!(request(input)))?.items).toHaveLength(
+    1,
+  );
+  expect(f.recoverConversationHistory).toHaveBeenCalledTimes(1);
+  expect(await f.action!.recoverResult!(request(input))).toBeUndefined();
+  expect(f.saveConversationHistory).not.toHaveBeenCalled();
+});
+
+test.each(['changed', 'deleted'] as const)(
+  'pending result recovery refuses evidence %s after receipt validation',
+  async mode => {
+    const f = fixture();
+    const input = { userMessage: f.source };
+    f.recoverConversationHistory.mockImplementation(async () => {
+      if (mode === 'changed') f.entry.text = 'Different synthetic private text';
+      else f.getEvidence.mockResolvedValue(undefined as never);
+      return 'saved';
+    });
+    expect(await f.action!.authorize(input, signal)).toBe(true);
+    await expect(f.action!.recoverResult!(request(input))).rejects.toThrow(
+      'Saved history is no longer the approved result.',
+    );
+    expect(f.saveConversationHistory).not.toHaveBeenCalled();
+    expect(await f.action!.recoverResult!(request(input))).toBeUndefined();
+  },
+);

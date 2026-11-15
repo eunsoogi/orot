@@ -1,3 +1,8 @@
+import {
+  conversationPreparedActionCapture,
+  exclusiveConversationTransition,
+  latestConversationCheckpoint,
+} from './conversationPreparedActionCapture';
 import type { ConversationContinuationCapture } from './conversationContinuationCapture';
 import {
   isSafeConversationResumePhase,
@@ -27,12 +32,12 @@ import {
   continuationManifest,
   type ConversationContinuationIdentity,
 } from './conversationWorkflowContinuationIdentity';
-
 /** Protected storage only; cached invocation/evidence belongs to this live owner, never reconstructed after restart. */
 export async function createConversationWorkflowContinuationStore(
   database: SqlDatabase,
   identity: ConversationContinuationIdentity,
   capture?: ConversationContinuationCapture,
+  actionCapture?: ConversationContinuationCapture,
 ): Promise<ConversationWorkflowContinuation['persisted']> {
   const artifacts = createConversationArtifactStorage(database);
   await artifacts.currentGeneration();
@@ -51,7 +56,7 @@ export async function createConversationWorkflowContinuationStore(
   let checkpointId = '';
   let checkpointBytes = '';
   let attempt = 0;
-  let processing = false;
+  const exclusive = exclusiveConversationTransition();
   let operationJournal:
     import('@orot/agent-runtime').WorkflowOperationJournal | undefined;
   let claimSignal: AbortSignal | undefined;
@@ -96,23 +101,20 @@ export async function createConversationWorkflowContinuationStore(
     async () => {},
     validate,
   );
-  async function latest() {
-    const tuple = await checkpointer.getTuple(config);
-    if (!tuple) throw new Error('Durable workflow checkpoint unavailable.');
-    return tuple;
-  }
-  async function exclusive(operation: () => Promise<void>) {
-    if (processing) throw new Error('Continuation transition already running.');
-    processing = true;
-    try {
-      await operation();
-    } finally {
-      processing = false;
-    }
-  }
   return {
     checkpointer,
     threadId,
+    beforeLocalAction: conversationPreparedActionCapture(
+      checkpointer,
+      threadId,
+      () => ({
+        original,
+        attempt,
+        submittedInput,
+        evidenceBatches: snapshotEvidence?.(),
+      }),
+      actionCapture,
+    ),
     get operationJournal() {
       return operationJournal;
     },
@@ -165,7 +167,7 @@ export async function createConversationWorkflowContinuationStore(
           !isSafeConversationResumePhase(checkpoint)
         )
           throw new Error('Workflow has no safe continuation boundary.');
-        const tuple = await latest();
+        const tuple = await latestConversationCheckpoint(checkpointer, config);
         const state = tuple.checkpoint.channel_values;
         // Compare every returned domain field to the actually persisted graph state.
         if (
@@ -218,7 +220,7 @@ export async function createConversationWorkflowContinuationStore(
           continuationInput(original) !== exactInput
         )
           throw new Error('Original continuation owner unavailable.');
-        const tuple = await latest();
+        const tuple = await latestConversationCheckpoint(checkpointer, config);
         if (
           tuple.checkpoint.id !== checkpointId ||
           stableJson(tuple.checkpoint) !== checkpointBytes
@@ -245,5 +247,4 @@ export async function createConversationWorkflowContinuationStore(
     },
   };
 }
-
 export { openConversationWorkflowContinuationStore } from './openConversationWorkflowContinuationStore';

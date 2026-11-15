@@ -1,3 +1,4 @@
+import type { LocalActionRecoveryLifecycle } from './localActionRecoveryLifecycle';
 import type { InitialToolResponseContract } from './initialToolResponseContract';
 import type { EvidenceRestoration } from './evidenceRestoration';
 import type { MultiAgentPhase } from './actionContracts';
@@ -124,7 +125,8 @@ export interface TaskResponderContract<TResult = JsonValue> extends InitialToolR
   correctionInstructionForInvalidEnvelope?(reason: string): string | undefined;
   validateResult(value: JsonValue, input: TaskResponderInput): TaskResultValidation<TResult>;
 }
-export interface MultiAgentWorkflowOptions<TResult = JsonValue> extends EvidenceRestoration {
+export interface MultiAgentWorkflowOptions<TResult = JsonValue>
+  extends EvidenceRestoration, LocalActionRecoveryLifecycle {
   readonly execution: MultiAgentExecutionIdentity;
   readonly provider: LanguageModelProvider;
   readonly request: string;
@@ -145,7 +147,6 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> extends Evidence
   readonly checkpointer?: BaseCheckpointSaver;
   readonly store?: BaseStore;
 }
-
 // This is the only domain state LangGraph may persist; prompts and record text stay outside it.
 export interface MultiAgentCheckpointState {
   readonly actionContract?: string;
@@ -173,7 +174,6 @@ export interface MultiAgentCheckpointState {
 }
 export type ProviderStopObservation =
   'not_started' | 'iterator_return_requested' | 'underlying_call_unconfirmed';
-
 export type MultiAgentRunResult<TResult> =
   | import('./workflowPause').MultiAgentPausedResult
   | {

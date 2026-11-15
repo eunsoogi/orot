@@ -91,6 +91,11 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
           canceled(context);
           return completeState();
         }
+        await context.options.beforeLocalAction?.(state, approvalSignal);
+        if (context.signal.aborted || approvalSignal.aborted) {
+          canceled(context);
+          return completeState();
+        }
         // Await the transaction even after cancellation; do not race an uncertain write
         // with another attempt. The domain also checks cancellation inside its transaction.
         context.activeToolEvent = {

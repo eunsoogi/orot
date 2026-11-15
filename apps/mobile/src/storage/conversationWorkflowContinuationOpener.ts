@@ -1,3 +1,4 @@
+import { optionalConversationActionCapture } from './optionalConversationActionCapture';
 import type { SqlDatabase } from '@orot/storage';
 import type { ConversationContinuationIdentity } from './conversationWorkflowContinuationIdentity';
 import type { ConversationColdReconstruction } from './conversationContinuationCapture';
@@ -15,6 +16,9 @@ export function conversationWorkflowContinuationOpener(database: SqlDatabase) {
       identity,
       reconstruct
         ? createOptionalConversationColdCapture(database, identity, reconstruct)
+        : undefined,
+      reconstruct
+        ? optionalConversationActionCapture(database, identity, reconstruct)
         : undefined,
     );
 }

@@ -1,3 +1,4 @@
+import { isVerifiedPendingActionRecovery } from './pendingActionRecoveryOptions';
 import { isGraphDrained, RunControl, type Runtime } from '@langchain/langgraph/web';
 import type { MultiAgentCheckpointState, MultiAgentWorkflowOptions } from './contracts';
 import type { RuntimeContext } from './runtimeContext';
@@ -73,7 +74,13 @@ export function pauseBoundaryWrapper<TResult>(context: RuntimeContext<TResult>) 
           : undefined);
       if (
         pending &&
-        !(await preparePrivateOperationContext(context, state, pending.operationKey))
+        !(await preparePrivateOperationContext(
+          context,
+          isVerifiedPendingActionRecovery(context.options, state)
+            ? { ...state, awaitingAuthorization: pending.operationKey }
+            : state,
+          pending.operationKey,
+        ))
       ) {
         stop(context, 'Prepared operation context is no longer current.', 'stale_evidence');
         return completeState();

@@ -6,6 +6,9 @@ import UIKit
 /// Extends an active request only for the time iOS grants; expiration is terminal for the lease.
 @objc(ConversationExecutionModule)
 final class ConversationExecutionModule: RCTEventEmitter {
+    // Process-scoped, not bridge-scoped: a JS reload must never look like owner death.
+    // Random identity only; do not expose a PID, record contents, or credentials.
+    private static let processInstance = UUID().uuidString
     private var requests = Set<String>()
     private var leases: [String: UIBackgroundTaskIdentifier] = [:]
     private var continued: [String: Any] = [:]
@@ -56,6 +59,18 @@ final class ConversationExecutionModule: RCTEventEmitter {
         if listening {
             sendEvent(withName: "ConversationExecutionChanged", body: body)
         }
+    }
+
+    @objc(processIdentity:rejecter:)
+    func processIdentity(_ resolve: RCTPromiseResolveBlock, reject _: RCTPromiseRejectBlock) {
+        // Recovery assumes the single iOS application process, not an extension or
+        // desktop multi-instance host. Unsupported hosts never attest owner death.
+        guard Bundle.main.bundleURL.pathExtension == "app",
+              !ProcessInfo.processInfo.isMacCatalystApp,
+              !ProcessInfo.processInfo.isiOSAppOnMac,
+              UIApplication.shared.isProtectedDataAvailable
+        else { resolve(NSNull()); return }
+        resolve(Self.processInstance)
     }
 
     @objc(begin:resolver:rejecter:)

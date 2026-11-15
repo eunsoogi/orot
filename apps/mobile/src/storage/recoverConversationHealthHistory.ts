@@ -1,3 +1,7 @@
+import {
+  toManualHistoryEvidence,
+  type ManualHistoryEvidence,
+} from '@orot/domain';
 import { readManualHistoryEntry, type SqlDatabase } from '@orot/storage';
 import type { ConversationHistorySave } from './conversationHealthHistory';
 import { validateConversationHistorySource } from './conversationHistorySource';
@@ -7,11 +11,11 @@ import { conversationHistoryIntent } from '../manualHistory/conversationHistoryI
  * The workflow still owns fresh authorization and checkpoint identity. This port
  * proves only current local provenance and cannot make pending actions resumable.
  */
-export async function recoverConversationHealthHistory(
+export async function recoverConversationHealthHistoryResult(
   database: SqlDatabase,
   supplied: ConversationHistorySave,
   signal: AbortSignal,
-): Promise<string | undefined> {
+): Promise<{ id: string; evidence: ManualHistoryEvidence } | undefined> {
   const input = {
     ...supplied,
     operation: supplied.operation && { ...supplied.operation },
@@ -21,7 +25,7 @@ export async function recoverConversationHealthHistory(
   const details =
     input.approvedSource?.text ?? conversationHistoryIntent(input.question);
   if (!details) return undefined;
-  let result: string | undefined;
+  let result: { id: string; evidence: ManualHistoryEvidence } | undefined;
   await database.transaction(async tx => {
     if (signal.aborted) return;
     await validateConversationHistorySource(tx, input, details);
@@ -57,7 +61,18 @@ export async function recoverConversationHealthHistory(
       [id],
     );
     if (corrections.rows.length || signal.aborted) return;
-    result = id;
+    result = { id, evidence: toManualHistoryEvidence(entry) };
   });
   return signal.aborted ? undefined : result;
+}
+
+/** Backward-compatible receipt ID reader used by already-checkpointed result recovery. */
+export async function recoverConversationHealthHistory(
+  database: SqlDatabase,
+  supplied: ConversationHistorySave,
+  signal: AbortSignal,
+): Promise<string | undefined> {
+  return (
+    await recoverConversationHealthHistoryResult(database, supplied, signal)
+  )?.id;
 }

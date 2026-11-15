@@ -51,6 +51,8 @@ export function conversationWorkflowEvidenceCache<T>(
     snapshotEvidence(): readonly EvidenceBatch[] {
       return JSON.parse(JSON.stringify(batches));
     },
+    /** Called only when the verified recovery node commits its read-only graph result. */
+    rememberRecoveredResult: remember,
     actions: options.actions?.map(action => ({
       ...action,
       execute: async (request: Parameters<typeof action.execute>[0]) =>
