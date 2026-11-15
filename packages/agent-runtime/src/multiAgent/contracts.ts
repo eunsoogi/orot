@@ -121,6 +121,9 @@ export interface TaskResponderContract<TResult = JsonValue> {
   };
   /** Optional content-free reply on the first validated native tool selection, never final output. */
   initialToolResponse?(text: string): string | undefined;
+  /** Review provisional prose with the selected provider before display, within the existing budget.
+   * This probabilistic guard is not clinical validation; only non-factual replies are eligible. */
+  readonly reviewInitialToolResponse?: boolean;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;

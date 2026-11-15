@@ -12,6 +12,7 @@ import { completeState, reportTaskStreamEvent, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { missingNativeEvidenceKind } from './nativeEvidenceRequirements';
+import { reviewInitialToolResponse } from './initialToolResponseReview';
 import { canReserveToolModelCall } from './evidenceToolModelBudget';
 
 /** Tool definitions describe capabilities only. No record is read until a model requests it. */
@@ -81,11 +82,11 @@ export function withNativeTools<TResult>(
 }
 
 /** Validates provider calls before entering the existing consent, scope and freshness guarded search node. */
-export function consumeNativeToolCall<TResult>(
+export async function consumeNativeToolCall<TResult>(
   context: RuntimeContext<TResult>,
   state: WorkflowState,
   response: LanguageModelResponse,
-): Partial<WorkflowState> | undefined {
+): Promise<Partial<WorkflowState> | undefined> {
   if (!response.toolCalls.length) return undefined;
   const call = response.toolCalls[0];
   const action = call && context.options.actions?.find((value) => value.id === call.name);
@@ -121,6 +122,7 @@ export function consumeNativeToolCall<TResult>(
     stop(context, 'The model tool call exceeded the run budget.', 'budget_exceeded');
     return completeState();
   }
+  let modelCalls = state.modelCalls;
   context.nativeToolMessages ??= [];
   if (context.nativeToolMessages.some((message) => hasToolCallIdentity(message, call.id))) {
     stop(context, 'The model reused an existing tool call identity.', 'invalid_output');
@@ -148,13 +150,26 @@ export function consumeNativeToolCall<TResult>(
     } catch {
       /* fail closed */
     }
-    if (initial)
+    if (initial && context.options.task.reviewInitialToolResponse) {
+      const canReview =
+        !('sourceKind' in tool) ||
+        canReserveToolModelCall(tool, { ...state, modelCalls: state.modelCalls + 1 });
+      if (!canReview) initial = undefined;
+    }
+    if (initial && context.options.task.reviewInitialToolResponse) {
+      const review = await reviewInitialToolResponse(context, state, initial);
+      modelCalls = review.modelCalls;
+      if (context.outcome) return { ...completeState(), modelCalls };
+      if (!review.accepted) initial = undefined;
+    }
+    if (initial && !context.signal.aborted)
       reportTaskStreamEvent(context, { type: 'initial_response', callId: call.id, text: initial });
   }
   context.nativeToolMessages.push(assistantMessage);
   context.pendingNativeToolCallId = call.id;
   context.researchInput = input;
   return {
+    modelCalls,
     phase: action ? 'local_action' : 'evidence_search',
     selectedToolId: tool.id,
     pendingOperation: undefined,
