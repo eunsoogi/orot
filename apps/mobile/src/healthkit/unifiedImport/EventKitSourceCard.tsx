@@ -42,7 +42,9 @@ export function EventKitSourceCard({
           <AppSymbol name="calendar" color={appColors.primaryText} />
         </View>
         <View style={styles.providerText}>
-          <Text style={styles.sectionTitle}>캘린더</Text>
+          <Text style={styles.sectionTitle}>
+            {t('healthkit.unifiedImport.calendar')}
+          </Text>
           <Text style={styles.caption}>
             {t('healthkit.unifiedImport.calendarLabel')}
           </Text>

@@ -105,7 +105,7 @@ export function HealthRecordsMedicationDetailScreen({
           contentContainerStyle={[styles.container, navigationInset]}
           ListHeaderComponent={
             <HealthRecordsDetailHeader
-              title="약 및 복용 기록 상세"
+              title={t('healthRecords.medicationDetailTitle')}
               hasSharedNavigation={hasSharedNavigation}
               loadState={loadState}
               onBack={onBack}

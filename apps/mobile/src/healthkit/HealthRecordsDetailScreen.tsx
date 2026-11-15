@@ -135,7 +135,9 @@ export function HealthRecordsDetailScreen({
     };
   }, [reload]);
 
-  const title = healthRecordCategoryTitle(selection.category) + ' 기록 상세';
+  const title = t('healthRecords.categoryDetailTitle', {
+    category: healthRecordCategoryTitle(selection.category),
+  });
   const controlsPanel = (
     <HealthRecordsDetailHeader
       title={title}

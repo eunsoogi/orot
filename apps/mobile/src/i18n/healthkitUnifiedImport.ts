@@ -59,4 +59,8 @@ export const healthkitUnifiedImportKo = {
   'healthkit.unifiedImport.phase.cancelled': '가져오기를 취소했어요.',
   'healthkit.unifiedImport.changeSummary':
     '{imported}개 저장 · {deleted}개 삭제',
+  'healthkit.unifiedImport.selectHealthRecords': '건강 앱 기록 선택',
+  'healthkit.unifiedImport.healthApp': '건강 앱',
+  'healthkit.unifiedImport.chooseRecords': '가져올 기록을 선택해 주세요.',
+  'healthkit.unifiedImport.calendar': '캘린더',
 } as const;

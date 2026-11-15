@@ -82,4 +82,6 @@ export const healthRecordsKo = {
   'healthRecords.medicationStatus.skipped': '건너뜀',
   'healthRecords.medicationStatus.not_logged': '미기록',
   'healthRecords.medicationStatus.unknown': '알 수 없음',
+  'healthRecords.medicationDetailTitle': '약 및 복용 기록 상세',
+  'healthRecords.categoryDetailTitle': '{category} 기록 상세',
 } as const;
