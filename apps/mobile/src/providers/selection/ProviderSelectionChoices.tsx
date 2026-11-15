@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { providerSettingsStyles as styles } from '../../layout/providerSettingsPresentation';
@@ -86,10 +87,7 @@ export function ProviderSelectionChoices({
       <Text accessibilityRole="header" style={styles.heading}>
         ChatGPT
       </Text>
-      <Text>
-        이 계정에서 조회한 대화 모델입니다. OpenAI API 연결과 별개이며 구독에
-        API 사용 요금이나 크레딧이 포함되지는 않습니다.
-      </Text>
+      <Text>{t('modelSettings.subscriptionNotice')}</Text>
       <View style={styles.account}>
         {chatGPTSetup ? <ProviderCatalogAccount setup={chatGPTSetup} /> : null}
         {cards(false)}

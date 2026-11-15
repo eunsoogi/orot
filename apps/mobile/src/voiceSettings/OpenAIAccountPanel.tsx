@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { providerSettingsStyles } from '../layout/providerSettingsPresentation';
@@ -28,7 +29,7 @@ export function OpenAIAccountPanel() {
       .catch(() => {
         if (alive.current) {
           setFailed(true);
-          setMessage('API 계정을 읽지 못했습니다. 화면을 다시 열어 주세요.');
+          setMessage(t('modelSettings.apiReadFailed'));
         }
       })
       .finally(() => {
@@ -49,12 +50,11 @@ export function OpenAIAccountPanel() {
       setKey('');
       setMessage(
         remove
-          ? 'API 연결을 해제했습니다. 저장된 음성 모델 선택은 유지됩니다. 로컬 모델로 자동 전환하지 않습니다.'
-          : 'API 키를 저장했습니다. 음성 모델 설정에서 목록을 새로고침해 주세요.',
+          ? t('modelSettings.apiDisconnected')
+          : t('modelSettings.apiSaved'),
       );
     } catch {
-      if (alive.current)
-        setMessage('API 키를 저장하지 못했습니다. 기존 연결은 유지됩니다.');
+      if (alive.current) setMessage(t('modelSettings.apiSaveFailed'));
     } finally {
       locked.current = false;
       if (alive.current) setBusy(false);
@@ -66,13 +66,15 @@ export function OpenAIAccountPanel() {
         OpenAI API
       </Text>
       <View style={styles.panel}>
-        <Text>{connected ? 'API 키 연결됨' : 'API 키 연결 안 됨'}</Text>
         <Text>
-          ChatGPT 구독과 별도이며, API 사용 요금이 발생할 수 있습니다.
+          {connected
+            ? t('modelSettings.keyConnected')
+            : t('modelSettings.keyDisconnected')}
         </Text>
+        <Text>{t('modelSettings.apiBilling')}</Text>
         <APIPlatformLink />
         <TextInput
-          accessibilityLabel="OpenAI API 키"
+          accessibilityLabel={t('modelSettings.apiKey')}
           testID="openai-api-key"
           value={key}
           onChangeText={setKey}
@@ -83,11 +85,15 @@ export function OpenAIAccountPanel() {
           autoComplete="off"
           textContentType="none"
           maxLength={4096}
-          placeholder={connected ? '변경할 API 키 입력' : 'API 키 입력'}
+          placeholder={
+            connected
+              ? t('modelSettings.replaceKey')
+              : t('modelSettings.enterKey')
+          }
           style={styles.input}
         />
         <Button
-          title="API 키 저장"
+          title={t('modelSettings.saveKey')}
           busy={busy}
           testID="openai-api-key-save"
           disabled={busy || failed || !key.trim()}
@@ -97,7 +103,7 @@ export function OpenAIAccountPanel() {
         />
         {connected ? (
           <Button
-            title="OpenAI API 연결 해제"
+            title={t('modelSettings.disconnectApi')}
             variant="destructive"
             testID="openai-api-key-remove"
             disabled={busy || failed}
@@ -106,7 +112,7 @@ export function OpenAIAccountPanel() {
             }}
           />
         ) : null}
-        <Text>저장만으로 API 요청이나 음성 전송은 시작되지 않습니다.</Text>
+        <Text>{t('modelSettings.savingPrivacy')}</Text>
         {message ? <Text accessibilityRole="alert">{message}</Text> : null}
       </View>
     </View>
