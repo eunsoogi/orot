@@ -1,17 +1,11 @@
-import { useState, type ReactNode } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { type ReactNode } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { FloatingAssistantSurface } from '../assistantAppearance/FloatingAssistantSurface';
 import {
   FloatingIdentityInset,
   useFloatingIdentityInset,
 } from '../assistantAppearance/FloatingIdentityInset';
 import { activityLabel } from '../assistantAppearance/AssistantHeader';
-import { useNavigationGeometry } from '../navigation/NavigationGeometryProvider';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
@@ -19,7 +13,7 @@ import type { ConversationSession } from './conversationSessionTypes';
 import type { ConversationHistoryProps } from './ConversationHistoryProps';
 import { ConversationToolEvents } from './ConversationToolEvents';
 import { SeparatedConversationActivity } from './ConversationWorkspaceContext';
-import { conversationWorkspaceLayout } from './conversationWorkspaceLayout';
+import { useConversationWorkspaceBounds } from './useConversationWorkspaceBounds';
 
 type SourceActions = Pick<
   ConversationHistoryProps,
@@ -29,42 +23,64 @@ type Props = {
   sourceActions: SourceActions;
   session: ConversationSession;
   children: ReactNode;
+  composer?: ReactNode;
+  routeKey?: string;
 };
 
 /** Stable presentation wrappers preserve transcript, composer and session across reflow. */
 export function ConversationWorkspace(props: Props) {
-  const [width, setWidth] = useState(0);
-  const { fontScale } = useWindowDimensions();
-  const geometry = useNavigationGeometry();
-  const plan = conversationWorkspaceLayout(
-    geometry?.hasHinge === true,
-    width,
-    fontScale,
-  );
+  const { ref, measure, plan } = useConversationWorkspaceBounds(props.routeKey);
   return (
-    <FloatingAssistantSurface
-      session={props.session}
-      identityWidth={plan.visible ? plan.activityWidth : undefined}
+    <View
+      ref={ref}
+      onLayout={measure}
+      style={styles.host}
+      testID="conversation-workspace-host"
     >
       <View
-        style={styles.row}
-        onLayout={event => setWidth(event.nativeEvent.layout.width)}
-        testID="conversation-workspace"
+        style={[
+          styles.frame,
+          {
+            height: plan.height,
+            marginTop: plan.top,
+            marginLeft: plan.leading,
+            width: plan.activityWidth + plan.gap + plan.transcriptWidth,
+          },
+        ]}
       >
-        <ActivityPane
-          {...props}
-          visible={plan.visible}
-          width={plan.activityWidth}
-        />
-        <View style={styles.transcript}>
-          <SeparatedConversationActivity.Provider value={plan.visible}>
-            <TranscriptInset separated={plan.visible}>
-              {props.children}
-            </TranscriptInset>
-          </SeparatedConversationActivity.Provider>
-        </View>
+        <FloatingAssistantSurface
+          session={props.session}
+          identityWidth={plan.visible ? plan.activityWidth : undefined}
+        >
+          <View
+            style={[styles.row, !plan.visible && styles.single]}
+            onLayout={measure}
+            testID="conversation-workspace"
+          >
+            <ActivityPane
+              {...props}
+              visible={plan.visible}
+              width={plan.activityWidth}
+            />
+            <View
+              testID="conversation-transcript-pane"
+              style={[
+                styles.transcript,
+                !plan.visible && styles.compactTranscript,
+                { marginLeft: plan.gap, width: plan.transcriptWidth },
+              ]}
+            >
+              <SeparatedConversationActivity.Provider value={plan.visible}>
+                <TranscriptInset separated={plan.visible}>
+                  {props.children}
+                  {props.composer}
+                </TranscriptInset>
+              </SeparatedConversationActivity.Provider>
+            </View>
+          </View>
+        </FloatingAssistantSurface>
       </View>
-    </FloatingAssistantSurface>
+    </View>
   );
 }
 
@@ -141,8 +157,12 @@ function ActivityPane({
 }
 
 const styles = StyleSheet.create({
+  frame: { minHeight: 0 },
+  single: { flexDirection: 'column' },
+  host: { flex: 1, minWidth: 0, minHeight: 0 },
   row: { flex: 1, minHeight: 0, flexDirection: 'row' },
-  transcript: { flex: 1, minWidth: 0, minHeight: 0 },
+  compactTranscript: { flex: 1 },
+  transcript: { minWidth: 0, minHeight: 0 },
   pane: {
     minHeight: 0,
     borderRightWidth: StyleSheet.hairlineWidth,
