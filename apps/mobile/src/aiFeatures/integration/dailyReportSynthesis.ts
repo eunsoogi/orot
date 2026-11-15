@@ -62,9 +62,9 @@ export function dailyReportSynthesis(
               })
             : '',
           resolved.length
-            ? `${descriptions(resolved)} 증상은 해소된 것으로 기록되어 있어요.`
+            ? t('dailySynthesis.resolved', { value0: descriptions(resolved) })
             : '',
-          '기록 이후의 현재 상태나 원인은 이 보고서만으로 확인할 수 없어요.',
+          t('dailySynthesis.currentUnknown'),
         ]
           .filter(Boolean)
           .join(' '),
@@ -112,9 +112,9 @@ export function dailyReportSynthesis(
       amount: record.value.amount,
       unit:
         record.concept === 'step_count'
-          ? '걸음'
+          ? t('dailySynthesis.steps')
           : record.value.unit === 'count/min'
-            ? '회/분'
+            ? t('dailySynthesis.perMinute')
             : record.value.unit,
       at: record.effectiveAt,
       concept: visibleValue(record.concept, 'concept') ?? record.concept,
@@ -151,28 +151,22 @@ export function dailyReportSynthesis(
     const indexes = group.map(item => item.index);
     if (indexes.some(index => blocked.has(index))) {
       result.push(
-        claim(
-          `${first.concept} 기록에 같은 시각의 서로 다른 값 또는 단위가 있어 오늘의 변화 방향을 판단하지 않았어요. 원본 기록을 함께 확인해 주세요.`,
-          [
-            ...new Set([
-              ...indexes,
-              ...[...blocked].filter(index => {
-                const item = values[index];
-                return (
-                  item?.kind === 'health_observation' &&
-                  visibleValue(item.record.concept, 'concept') === first.concept
-                );
-              }),
-            ]),
-          ],
-        ),
+        claim(t('dailySynthesis.conflicting', { value0: first.concept }), [
+          ...new Set([
+            ...indexes,
+            ...[...blocked].filter(index => {
+              const item = values[index];
+              return (
+                item?.kind === 'health_observation' &&
+                visibleValue(item.record.concept, 'concept') === first.concept
+              );
+            }),
+          ]),
+        ]),
       );
     } else if (!group.every(item => item.pointMeasurement)) {
       result.push(
-        claim(
-          `오늘 ${first.concept} 기록은 구간 또는 누적 측정일 수 있어 첫 값과 마지막 값을 비교해 증가·감소로 해석하지 않았어요. 측정 구간과 원본 값을 아래 기록에서 함께 확인해 주세요.`,
-          indexes,
-        ),
+        claim(t('dailySynthesis.interval', { value0: first.concept }), indexes),
       );
     } else if (
       first.at !== last.at &&
@@ -180,18 +174,37 @@ export function dailyReportSynthesis(
     ) {
       const valuesText =
         first.amount === last.amount
-          ? `첫 기록과 마지막 기록이 모두 ${first.amount} ${first.unit}였어요. 중간 값까지 일정했다는 뜻은 아니에요.`
-          : `첫 기록 ${first.amount} ${first.unit}에서 마지막 기록 ${last.amount} ${last.unit}로 ${last.amount > first.amount ? '높아졌어요' : '낮아졌어요'}.`;
+          ? t('dailySynthesis.same', {
+              value0: first.amount,
+              value1: first.unit,
+            })
+          : t('dailySynthesis.changed', {
+              value0: first.amount,
+              value1: first.unit,
+              value2: last.amount,
+              value3: last.unit,
+              value4:
+                last.amount > first.amount
+                  ? t('dailySynthesis.increased')
+                  : t('dailySynthesis.decreased'),
+            });
       result.push(
         claim(
-          `오늘 ${first.concept}은 ${valuesText} 측정 조건과 평소 기준이 없어 건강이 좋아지거나 나빠졌다는 의미로 해석하지 않았어요.`,
+          t('dailySynthesis.notClinical', {
+            value0: first.concept,
+            value1: valuesText,
+          }),
           [first.index, last.index],
         ),
       );
     } else {
       result.push(
         claim(
-          `오늘 ${first.concept}은 ${first.amount} ${first.unit}로 기록되어 있어요. 비교할 다른 시점의 값이 없어 하루 동안의 변화는 알 수 없어요.`,
+          t('dailySynthesis.single', {
+            value0: first.concept,
+            value1: first.amount,
+            value2: first.unit,
+          }),
           [first.index],
         ),
       );
@@ -199,10 +212,7 @@ export function dailyReportSynthesis(
   }
   if (!result.length)
     result.push(
-      claim(
-        '오늘 남긴 기록만으로는 몸 상태나 하루 동안의 변화를 판단하기 어려워요. 아래 기록을 참고하되, 기록이 없는 것을 증상이나 문제가 없다는 뜻으로 보지 않았어요.',
-        selected.length ? selected : [0],
-      ),
+      claim(t('dailySynthesis.insufficient'), selected.length ? selected : [0]),
     );
   return result;
 }
