@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>cancel</key>
+	<string>취소</string>
+	<key>done</key>
+	<string>완료</string>
+	<key>title</key>
+	<string>기준일</string>
+	<key>preserveOriginal</key>
+	<string
+    >기존 날짜는 유지돼요. 변경하려면 달력에서 새 날짜를 선택해 주세요.</string>
+	<key>invalidTitle</key>
+	<string>선택할 수 없는 날짜예요</string>
+	<key>invalidMessage</key>
+	<string>다른 날짜를 선택해 주세요.</string>
+	<key>confirm</key>
+	<string>확인</string>
+</dict>
+</plist>

@@ -81,6 +81,11 @@ final class ManualHistoryDateSheetController: UIViewController, UISheetPresentat
         nil
     }
 
+    /// Only fixed display copy is localized; date decisions and bridge values remain unchanged.
+    private static func copy(_ key: String) -> String {
+        NSLocalizedString(key, tableName: "ManualHistoryDateCopy", comment: "Manual history date picker copy")
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
@@ -94,19 +99,19 @@ final class ManualHistoryDateSheetController: UIViewController, UISheetPresentat
         picker.addTarget(self, action: #selector(dateChanged), for: .valueChanged)
         picker.accessibilityIdentifier = "manual-history-native-date-picker"
 
-        let cancel = UIBarButtonItem(title: "취소", style: .plain, target: self, action: #selector(cancelled))
+        let cancel = UIBarButtonItem(title: Self.copy("cancel"), style: .plain, target: self, action: #selector(cancelled))
         cancel.accessibilityIdentifier = "manual-history-date-cancel"
-        let done = UIBarButtonItem(title: "완료", style: .done, target: self, action: #selector(done))
+        let done = UIBarButtonItem(title: Self.copy("done"), style: .done, target: self, action: #selector(done))
         done.accessibilityIdentifier = "manual-history-date-done"
         let navigation = UINavigationBar()
-        let item = UINavigationItem(title: "기준일")
+        let item = UINavigationItem(title: Self.copy("title"))
         item.leftBarButtonItem = cancel
         item.rightBarButtonItem = done
         navigation.items = [item]
         let scroll = UIScrollView()
         scroll.alwaysBounceVertical = true
         let notice = UILabel()
-        notice.text = "기존 날짜는 유지돼요. 변경하려면 달력에서 새 날짜를 선택해 주세요."
+        notice.text = Self.copy("preserveOriginal")
         notice.numberOfLines = 0
         notice.font = .preferredFont(forTextStyle: .footnote)
         notice.adjustsFontForContentSizeCategory = true
@@ -144,8 +149,8 @@ final class ManualHistoryDateSheetController: UIViewController, UISheetPresentat
         case .keep:
             dismissAndFinish(nil)
         case .invalid:
-            let alert = UIAlertController(title: "선택할 수 없는 날짜예요", message: "다른 날짜를 선택해 주세요.", preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "확인", style: .default))
+            let alert = UIAlertController(title: Self.copy("invalidTitle"), message: Self.copy("invalidMessage"), preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: Self.copy("confirm"), style: .default))
             present(alert, animated: true)
         case let .commit(value):
             dismissAndFinish(value)
