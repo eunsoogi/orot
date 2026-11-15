@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>title</key>
+	<string>AI 응답 처리</string>
+	<key>saving</key>
+	<string>응답 저장 중</string>
+	<key>waiting</key>
+	<string>응답 기다리는 중</string>
+</dict>
+</plist>
