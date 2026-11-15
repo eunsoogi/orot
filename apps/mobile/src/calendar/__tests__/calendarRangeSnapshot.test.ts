@@ -126,3 +126,14 @@ test.each(['permission', 'delete', 'edit'] as const)(
     snapshot.dispose();
   },
 );
+
+test('retains plan status and invalidates a confirmed plan when canceled', async () => {
+  const f = fixture();
+  f.result.events[0].calendarStatus = 'confirmed';
+  const snapshot = await readCalendarRangeSnapshot(f.bridge, from, to);
+  expect(snapshot.events[0].calendarStatus).toBe('confirmed');
+  f.result.events[0].calendarStatus = 'canceled';
+  expect(await snapshot.revalidate()).toBe(false);
+  expect(snapshot.events).toEqual([]);
+  snapshot.dispose();
+});

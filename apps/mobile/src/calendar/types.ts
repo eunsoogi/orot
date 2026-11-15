@@ -2,6 +2,11 @@ import type { CalendarAppointmentInput } from '@orot/storage';
 
 export type CalendarEvent = CalendarAppointmentInput;
 
+/** Calendar confirmation is a plan status, never evidence of attendance. */
+export type CalendarRangeEvent = CalendarEvent & {
+  calendarStatus?: 'none' | 'confirmed' | 'tentative' | 'canceled';
+};
+
 export type CalendarAccessState =
   'fullAccess' | 'writeOnly' | 'notDetermined' | 'denied' | 'restricted';
 
@@ -50,7 +55,7 @@ export type EventKitCalendarBridge = CalendarBridge & EventKitImportBridge;
 /** Read-only live-calendar boundary; missing/incomplete coverage never means no events. */
 export interface CalendarRangeEvents {
   access: CalendarAccessState;
-  events: CalendarEvent[];
+  events: CalendarRangeEvent[];
   query?: Omit<CalendarQueryCoverage, 'horizonYears'>;
 }
 

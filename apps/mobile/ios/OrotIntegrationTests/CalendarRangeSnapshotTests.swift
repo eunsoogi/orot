@@ -5,6 +5,10 @@ import XCTest
 /// Synthetic, unsaved EventKit objects only; never query or change a user's store.
 final class CalendarRangeSnapshotTests: XCTestCase {
     func testPermissionGateDoesNotQueryAndReportsUnavailableCoverage() throws {
+        XCTAssertEqual(EventKitCalendarSnapshot.calendarStatus(.canceled), "canceled")
+        XCTAssertEqual(EventKitCalendarSnapshot.calendarStatus(.tentative), "tentative")
+        XCTAssertEqual(EventKitCalendarSnapshot.calendarStatus(.confirmed), "confirmed")
+        XCTAssertEqual(EventKitCalendarSnapshot.calendarStatus(.none), "none")
         let start = Date(timeIntervalSince1970: 0), end = Date(timeIntervalSince1970: 3600)
         for access in ["denied", "restricted", "writeOnly", "notDetermined"] {
             let response = EventKitCalendarSnapshot.rangeSnapshot(start: start, end: end, access: access) {

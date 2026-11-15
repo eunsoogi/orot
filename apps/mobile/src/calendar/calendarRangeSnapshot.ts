@@ -1,16 +1,16 @@
 import { CalendarAppointmentSnapshotSchema } from '@orot/domain';
-import type { CalendarEvent, CalendarRangeBridge } from './types';
+import type { CalendarRangeEvent, CalendarRangeBridge } from './types';
 
 export interface CalendarRangeSnapshot {
   readonly fromInclusive: string;
   readonly toExclusive: string;
-  readonly events: readonly CalendarEvent[];
+  readonly events: readonly CalendarRangeEvent[];
   /** Local freshness check only. A successful check does not grant provider consent. */
   revalidate(): Promise<boolean>;
   dispose(): void;
 }
 
-function identity(event: CalendarEvent): string {
+function identity(event: CalendarRangeEvent): string {
   const value = event.calendarEventSnapshot;
   return JSON.stringify([
     event.calendarEventIdentifier,
@@ -51,7 +51,7 @@ export async function readCalendarRangeSnapshot(
     throw new Error('invalid_calendar_window');
   let invalidated = false;
   let disposed = false;
-  let retainedEvents: CalendarEvent[] = [];
+  let retainedEvents: CalendarRangeEvent[] = [];
   // Freshness loss is terminal: restoration requires a newly read snapshot.
   const invalidate = () => {
     invalidated = true;
@@ -86,7 +86,17 @@ export async function readCalendarRangeSnapshot(
       ) {
         throw new Error('invalid_calendar_event');
       }
+      if (
+        event.calendarStatus !== undefined &&
+        !['none', 'confirmed', 'tentative', 'canceled'].includes(
+          event.calendarStatus,
+        )
+      )
+        throw new Error('invalid_calendar_status');
       return {
+        ...(event.calendarStatus !== undefined
+          ? { calendarStatus: event.calendarStatus }
+          : {}),
         calendarEventIdentifier: event.calendarEventIdentifier,
         effectiveAt: event.effectiveAt,
         endsAt: event.endsAt,

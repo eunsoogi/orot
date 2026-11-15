@@ -47,7 +47,11 @@ enum EventKitCalendarSnapshot {
         let matching = access == "fullAccess" ? readEvents()
             .filter { $0.startDate < end && ($0.endDate > start || $0.startDate >= start) }
             .sorted { $0.startDate < $1.startDate } : []
-        let events = matching.compactMap(serialize)
+        let events = matching.compactMap { event -> [String: Any]? in
+            guard var result = serialize(event) else { return nil }
+            result["calendarStatus"] = calendarStatus(event.status)
+            return result
+        }
         return [
             "access": access, "events": events,
             "query": [
@@ -56,6 +60,16 @@ enum EventKitCalendarSnapshot {
                 "omittedEventCount": matching.count - events.count,
             ],
         ]
+    }
+
+    /// Preserve uncertain/canceled plans without claiming actual attendance.
+    static func calendarStatus(_ status: EKEventStatus) -> String {
+        switch status {
+        case .confirmed: "confirmed"
+        case .tentative: "tentative"
+        case .canceled: "canceled"
+        default: "none"
+        }
     }
 
     static func serialize(_ event: EKEvent) -> [String: Any]? {
