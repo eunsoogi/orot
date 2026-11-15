@@ -11,7 +11,7 @@ export function dailyReportBaselineInterval(localDate: string, timeZone: string)
   return start ? { fromInclusive: start.fromInclusive, toExclusive: day.fromInclusive } : null;
 }
 
-/** Only explicitly marked historical measurement, activity or medication context may use this bounded exception.
+/** Only explicitly marked historical or recorded-active symptom context may use this exception.
  * They retain their original timestamps; they are never current-day observations. */
 export function validDailyReportHistoricalContext(
   record: {
@@ -23,6 +23,18 @@ export function validDailyReportHistoricalContext(
   localDate: string,
   timeZone: string,
 ) {
+  // Ongoing status is admitted from an explicitly active source record, never inferred
+  // from a missing resolution field. Keep onset unchanged, even when much older.
+  if (record.contextRole === 'ongoing_symptom') {
+    const day = dailyReportCalendarInterval(localDate, timeZone);
+    return Boolean(
+      day &&
+      record.source === 'symptom_entry' &&
+      !record.supportingRecordFor &&
+      !record.occurrence.endExclusive &&
+      compareTimestamps(record.occurrence.startInclusive, day.fromInclusive) < 0,
+    );
+  }
   if (
     (!(
       (record.contextRole === 'personal_baseline' || record.contextRole === 'activity_history') &&

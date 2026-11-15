@@ -12,7 +12,9 @@ export const DailyReportSourceRecordSchema = z
       endExclusive: TimestampSchema.optional(),
     }),
     ingestedAt: TimestampSchema,
-    contextRole: z.enum(['personal_baseline', 'medication_history', 'activity_history']).optional(),
+    contextRole: z
+      .enum(['personal_baseline', 'medication_history', 'activity_history', 'ongoing_symptom'])
+      .optional(),
     supportingRecordFor: z.array(RecordIdSchema).min(1).max(100).optional(),
   })
   .superRefine((record, context) => {

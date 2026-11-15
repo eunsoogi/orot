@@ -26,3 +26,11 @@ test('counts only records present in the report snapshot by source', () => {
 test('keeps the count unavailable when the saved context has no source snapshot', () => {
   expect(dailyReportCoverageCounts(undefined)).toBeUndefined();
 });
+
+test('ongoing symptoms count with their queried source, without becoming new daily events', () => {
+  const counts = dailyReportCoverageCounts([
+    record('symptom_entry', 'today'),
+    { ...record('symptom_entry', 'old'), contextRole: 'ongoing_symptom' },
+  ]);
+  expect(counts.get('symptom_entry')).toBe(2);
+});

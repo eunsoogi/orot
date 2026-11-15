@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import type { DailyReportOutput, DailyReportSourceRecord } from '@orot/domain';
 import { compareTimestamps } from '@orot/domain';
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceQueries';
@@ -56,7 +57,9 @@ export function dailyReportSynthesis(
       claim(
         [
           active.length
-            ? `오늘 기록에는 ${descriptions(active)} 증상이 지속 중으로 남아 있어요.`
+            ? t('dailyReport.analysis.activeSymptoms', {
+                symptoms: descriptions(active),
+              })
             : '',
           resolved.length
             ? `${descriptions(resolved)} 증상은 해소된 것으로 기록되어 있어요.`

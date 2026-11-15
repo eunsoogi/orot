@@ -1,3 +1,4 @@
+import { dailyReportOccurrence } from './dailyReportOccurrence';
 import {
   dailyReportCandidateOrder,
   dailyReportSourceBudget,
@@ -16,7 +17,6 @@ import type {
   DailyReportSourceCoverage,
   DailyReportSourceRecord,
 } from '@orot/domain';
-import { compareTimestamps } from '@orot/domain';
 import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { candidateScopeCondition } from '../evidenceCandidateScope';
 import type { EvidenceCandidateScope } from '../evidenceCandidateScope';
@@ -73,7 +73,9 @@ export async function readDailyReportSnapshot(
           : 'r.effective_at',
       );
       const end = localQueryTimestampKeyExpression(
-        "json_extract(r.payload_json, '$.endedAt')",
+        kind === 'symptom_entry'
+          ? "json_extract(r.payload_json, '$.resolvedAt')"
+          : "json_extract(r.payload_json, '$.endedAt')",
       );
       const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
       const family =
@@ -83,7 +85,7 @@ export async function readDailyReportSnapshot(
       const rows = calendar.dataWindow
         ? (
             await tx.execute(
-              `SELECT r.id, CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table} r WHERE ${selected.sql} ${family} AND ${ingestion} <= ? AND ${start} < ? AND (${start} >= ? OR (${end} > ?)) ORDER BY ${dailyReportCandidateOrder(kind, start)} LIMIT ?`,
+              `SELECT r.id, CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table} r WHERE ${selected.sql} ${family} AND ${ingestion} <= ? AND ${start} < ? AND (${start} >= ? OR (${end} > ?) ${kind === 'symptom_entry' ? "OR (json_extract(r.payload_json, '$.status') = 'active' AND json_extract(r.payload_json, '$.resolvedAt') IS NULL)" : ''}) ORDER BY ${dailyReportCandidateOrder(kind, start)} LIMIT ?`,
               [
                 MAX_HEALTH_EVIDENCE_RECORD_BYTES,
                 ...selected.parameters,
@@ -116,36 +118,18 @@ export async function readDailyReportSnapshot(
         if (parsed.id !== row.id)
           throw new Error('Daily report record identity mismatch.');
         const decoded = { kind, record: parsed } as LocalHealthEvidenceRecord;
-        const startAt =
-          kind === 'symptom_entry' && typeof payload.startedAt === 'string'
-            ? payload.startedAt
-            : payload.effectiveAt;
-        if (
-          typeof startAt !== 'string' ||
-          typeof payload.ingestedAt !== 'string'
-        )
-          throw new Error('Daily report record lacks timestamps.');
-        const revision = fingerprint(payload);
-        // A future interval endpoint is not evidence available by the cutoff.
-        if (
-          typeof payload.endedAt === 'string' &&
-          compareTimestamps(payload.endedAt, calendar.effectiveCutoff) > 0
-        ) {
+        const temporal = dailyReportOccurrence(decoded, payload, calendar);
+        if (!temporal) {
           partial = true;
           continue;
         }
+        const revision = fingerprint(payload);
         const record: DailyReportSourceRecord = {
           source: kind,
           recordId: String(payload.id),
           revision,
-          occurrence: {
-            startInclusive: startAt,
-            ...(typeof payload.endedAt === 'string' &&
-            payload.endedAt !== startAt
-              ? { endExclusive: payload.endedAt }
-              : {}),
-          },
-          ingestedAt: payload.ingestedAt,
+          ...temporal,
+          ingestedAt: parsed.ingestedAt,
         };
         if (!dailyReportSourceRecordIsAvailable(record, calendar)) continue;
         bytes += row.payload_bytes;
@@ -165,6 +149,10 @@ export async function readDailyReportSnapshot(
         status: partial ? 'partial' : 'unknown',
         limitationCodes: [
           'source_sync_unknown',
+          ...(kind === 'symptom_entry' &&
+          records.some(r => r.contextRole === 'ongoing_symptom')
+            ? ['ongoing_symptom_context']
+            : []),
           ...(partial
             ? ['snapshot_incomplete', 'bounded_source_sampling']
             : []),
