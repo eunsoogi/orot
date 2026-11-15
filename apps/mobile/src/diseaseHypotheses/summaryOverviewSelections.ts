@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { EvidenceItem, TaskResponderInput } from '@orot/agent-runtime';
 import type { JsonValue } from '@orot/model-runtime';
 import { overviewRow, type OverviewRow } from './summaryOverviewConcepts';
@@ -168,6 +169,7 @@ export function resolveOverviewSelections(
   if (safeSections.length !== otherSections.length) omitted = true;
   omitted ||= conflicts.omitted;
   if (!selected.size && !safeSections.length) return;
+  // Localize display copy only; selected raw rows and conflict evidence remain unchanged.
   const sections: JsonValue[] = [];
   const items = input.evidence.items.map(item => {
     const source = sources.find(
@@ -181,19 +183,25 @@ export function resolveOverviewSelections(
     sections.push({
       title: '측정 기록',
       summary: rows
-        .map(
-          row =>
-            `${row.label}: ${row.amount} ${row.unit}${row.time ? ` · 기록 시각 ${row.time}` : ''}.`,
+        .map(row =>
+          t('computedTopic.overviewRow', {
+            label: row.label,
+            amount: row.amount,
+            unit: row.unit,
+            time: row.time
+              ? t('computedTopic.recordTime', { time: row.time })
+              : '',
+          }),
         )
         .join('\n'),
       supportingEvidence: [item.evidenceId],
       contraryEvidence: [],
       uncertainty: [
         ...(subsetLimit.has(item.evidenceId)
-          ? ['조회한 기록에 한정돼요.']
+          ? [t('computedTopic.queriedOnly')]
           : []),
         ...(conflicts.disclosed.has(item.evidenceId)
-          ? ['같은 시각에 서로 다른 측정값이 기록되어 있어요.']
+          ? [t('computedTopic.conflictingMeasurements')]
           : []),
       ].join('\n'),
       missingData: [],

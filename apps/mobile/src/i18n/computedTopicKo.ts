@@ -1,5 +1,10 @@
 /** Presentation templates only; original symptom/medication text and clinical scope are retained verbatim. */
 export const computedTopicKo = {
+  'computedTopic.overviewRow': '{label}: {amount} {unit}{time}.',
+  'computedTopic.recordTime': ' · 기록 시각 {time}',
+  'computedTopic.queriedOnly': '조회한 기록에 한정돼요.',
+  'computedTopic.conflictingMeasurements':
+    '같은 시각에 서로 다른 측정값이 기록되어 있어요.',
   'computedTopic.coreSleep': '코어 수면',
   'computedTopic.deepSleep': '깊은 수면',
   'computedTopic.remSleep': '렘 수면',
