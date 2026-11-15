@@ -112,8 +112,8 @@ function Controls({
         >
           {t('appointments.reminder.title')}
         </AppText>
-        <AppText>진료 준비 알림 · 한 예약에만 설정할 수 있어요.</AppText>
-        <AppText>잠금 화면에는 예약 내용 없이 준비 안내만 표시해요.</AppText>
+        <AppText>{t('appointments.preparation.oneReminder')}</AppText>
+        <AppText>{t('appointments.preparation.lockScreenPrivacy')}</AppText>
       </View>
       <ActionRow
         style={horizontal && styles.horizontalPanel}
@@ -122,7 +122,10 @@ function Controls({
         {minimumCellWidth => (
           <>
             {([60, 1440] as const).map(minutes => {
-              const label = minutes === 60 ? '1시간 전 알림' : '하루 전 알림';
+              const label =
+                minutes === 60
+                  ? t('appointments.preparation.hourBefore')
+                  : t('appointments.preparation.dayBefore');
               const isSelected =
                 selected && state.selection?.leadMinutes === minutes;
               return (
@@ -153,11 +156,11 @@ function Controls({
         <View style={styles.feedback}>
           <AppText accessibilityLiveRegion="polite">
             {state.status === 'scheduled'
-              ? '알림이 설정되었어요.'
-              : '알림이 예약되지 않았어요. 시간과 알림 권한을 확인해 주세요.'}
+              ? t('appointments.preparation.scheduled')
+              : t('appointments.preparation.unscheduled')}
           </AppText>
           <AppButton
-            title="알림 끄기"
+            title={t('appointments.preparation.disableReminder')}
             disabled={state.busy}
             size="compact"
             onPress={() => select(null)}
@@ -169,8 +172,8 @@ function Controls({
       {state.status === 'error' || state.status === 'denied' ? (
         <AppText accessibilityRole="alert">
           {state.status === 'denied'
-            ? '알림 권한이 없어요. 설정에서 Orot 알림을 허용해 주세요.'
-            : '알림을 갱신하지 못했어요. 다시 설정하거나 꺼 주세요.'}
+            ? t('appointments.preparation.permissionDenied')
+            : t('appointments.preparation.updateFailed')}
         </AppText>
       ) : null}
     </View>
