@@ -144,7 +144,10 @@ test('reflows measured card widths on resize and large text changes', async () =
 });
 
 test.each([
-  [500, 1, 'row', 'wide'],
+  [900, 1, 'row', 'wide'],
+  [600, 1, 'row', 'wide'],
+  [599, 1, 'column', 'header'],
+  [900, 1.3, 'column', 'stacked'],
   [321, 1, 'column', 'header'],
   [260, 1, 'column', 'stacked'],
   [321, 1.25, 'column', 'stacked'],
@@ -187,7 +190,9 @@ test.each([
     const identity = StyleSheet.flatten(
       screen.getByTestId('overview-recent-change-identity-sleep').props.style,
     );
-    expect(identity.maxWidth).toBe(mode === 'wide' ? 140 : '100%');
+    expect(identity.width).toBe(mode === 'wide' ? 200 : '100%');
+    expect(identity.minWidth).toBe(mode === 'wide' ? 200 : 0);
+    expect(identity.maxWidth).toBe(mode === 'wide' ? 200 : '100%');
     expect(
       Boolean(screen.queryByTestId('overview-recent-change-periods-sleep')),
     ).toBe(mode !== 'stacked');

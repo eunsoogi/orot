@@ -44,5 +44,5 @@ export function resolveOverviewRecentChangeLayout(
   if (fontScale > 1.15 || measuredWidth < minimumRecentChangeRowWidth)
     return 'column';
   // Reserve a full heading when the identity and both values cannot share a row.
-  return measuredWidth >= 430 ? 'row' : 'header';
+  return measuredWidth >= 600 ? 'row' : 'header';
 }
