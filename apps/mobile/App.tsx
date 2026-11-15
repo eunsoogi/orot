@@ -121,7 +121,6 @@ function App({
   }
 
   const rootTabs = createNavigationRootTabs(activeTab, selectActiveTab);
-
   return (
     <View style={styles.appShell}>
       <RecordingSelectionProvider>
@@ -130,10 +129,11 @@ function App({
         >
           <NavigationRouteAdapter
             controller={appNavigation}
-            // Root tabs share one scroll host; guarded detail routes own their scrollers.
+            // Recent records and root pages each retain one route-owned scroll host.
             scrollable={route =>
-              route.name === 'root' &&
-              ['overview', 'records', 'settings'].includes(activeTab)
+              route.name === 'recent-records' ||
+              (route.name === 'root' &&
+                ['overview', 'records', 'settings'].includes(activeTab))
             }
             rootTabs={route => (route.name === 'root' ? rootTabs : undefined)}
             contentLayoutOwner={appContentLayoutOwner}
