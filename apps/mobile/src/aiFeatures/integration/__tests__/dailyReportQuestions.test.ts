@@ -1,5 +1,6 @@
 import { HealthObservationSchema, SymptomEntrySchema } from '@orot/domain';
 import type { LocalHealthEvidenceRecord } from '../../../healthEvidence/localEvidenceQueries';
+import * as i18n from '../../../i18n';
 import { dailyReportQuestions } from '../dailyReportQuestions';
 
 const metadata = {
@@ -75,4 +76,26 @@ test('resolved symptoms do not become current symptoms; unknown health is not no
   expect(questions[0]).not.toContain('지금도 있나요');
   expect(questions[0]).toContain('전체 건강의 정상·이상을 판단하지');
   expect(dailyReportQuestions([])).toEqual([]);
+});
+
+test('questions resolve through the shared translation catalog', () => {
+  const translate = jest.spyOn(i18n, 't').mockImplementation(key => key);
+  try {
+    expect(
+      dailyReportQuestions([
+        symptom('active'),
+        measure('blood_pressure_systolic', 140),
+        measure('step_count', 8, 'count'),
+      ]),
+    ).toEqual([
+      'dailyReport.question.activeSymptoms',
+      'dailyReport.question.bloodPressure',
+      'dailyReport.question.missingActivity',
+    ]);
+    expect(dailyReportQuestions([symptom('resolved')])).toEqual([
+      'dailyReport.question.generalContext',
+    ]);
+  } finally {
+    translate.mockRestore();
+  }
 });
