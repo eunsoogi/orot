@@ -122,6 +122,17 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
         return {
           phase: 'revised_response' as const,
           committedAction: true,
+          committedActionReceipts: [
+            ...(state.committedActionReceipts ?? []),
+            {
+              version: 1 as const,
+              operationRunId: state.operationRunId,
+              operationKey: state.pendingOperation.operationKey,
+              toolId: tool.id,
+              toolVersion: tool.version,
+              evidenceReferences: referencesFromBatch(batch),
+            },
+          ],
           evidenceReferences: referencesFromBatch(combined),
           pendingOperation: undefined,
         };

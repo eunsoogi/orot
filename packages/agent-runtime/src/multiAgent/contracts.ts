@@ -150,6 +150,7 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> extends Evidence
 export interface MultiAgentCheckpointState {
   readonly actionContract?: string;
   readonly committedAction?: boolean;
+  readonly committedActionReceipts?: readonly import('./committedActionReceipt').CommittedActionReceipt[];
   readonly operationRunId: string;
   readonly providerId: string;
   readonly modelId: string;

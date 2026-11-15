@@ -7,6 +7,10 @@ function fixture(
   prior?: string[],
 ) {
   const saveConversationHistory = jest.fn(async () => 'saved');
+  const recoverConversationHistory = jest.fn<
+    Promise<string | undefined>,
+    unknown[]
+  >(async () => 'saved');
   const confirmHistorySave = jest.fn(async () => true);
   const source = '몇 년 전 수술을 받았던 것 같아요.';
   const entry = {
@@ -21,6 +25,7 @@ function fixture(
   };
   const data = {
     saveConversationHistory,
+    recoverConversationHistory,
     manualHistory: { getEvidence: async () => entry },
   } as unknown as AiFeatureLocalData;
   const observer = {
@@ -39,7 +44,13 @@ function fixture(
     question,
     admittedQuestions: prior ?? [source],
   });
-  return { action, source, confirmHistorySave, saveConversationHistory };
+  return {
+    action,
+    source,
+    confirmHistorySave,
+    saveConversationHistory,
+    recoverConversationHistory,
+  };
 }
 const signal = new AbortController().signal;
 const request = (input: { userMessage: string }) => ({
@@ -147,4 +158,16 @@ test('ambiguous repeated prior wording and referential commands cannot be stored
     );
     expect(saveConversationHistory).not.toHaveBeenCalled();
   }
+});
+
+test('recovery without original evidence never executes a write', async () => {
+  const f = fixture();
+  const input = { userMessage: f.source };
+  const recovery = { ...request(input), evidenceReferences: [] };
+  expect(await f.action.recover!(recovery)).toBeUndefined();
+  expect(f.recoverConversationHistory).not.toHaveBeenCalled();
+  expect(await f.action.authorize(input, signal)).toBe(true);
+  expect(await f.action.recover!(recovery)).toBeUndefined();
+  expect(f.recoverConversationHistory).toHaveBeenCalledTimes(1);
+  expect(f.saveConversationHistory).not.toHaveBeenCalled();
 });

@@ -1,3 +1,4 @@
+import { canRecoverCommittedActions, recoverCommittedAction } from './recoverCommittedAction';
 import { restoreOrderedEvidenceBatches } from './evidenceRestoration';
 import { validInitialEvidenceSearch, validInitialSearchResume } from './initialEvidenceSearch';
 import { validResumeShape } from './resumeShape';
@@ -90,6 +91,7 @@ export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult
   return {
     actionContract: actionContract(options.actions),
     committedAction: false,
+    committedActionReceipts: undefined,
     operationRunId: source.operationRunId,
     providerId: source.providerId,
     modelId: source.modelId,
@@ -118,7 +120,7 @@ export function resumeState<TResult>(
   if (
     saved.actionContract !== actionContract(options.actions) ||
     // Live-only release: never reconstruct a committed mutation without the protected result journal.
-    (saved.committedAction !== undefined && saved.committedAction !== false) ||
+    !canRecoverCommittedActions(saved, options) ||
     !validResumeShape(saved) ||
     !validInitialSearchResume(saved, options) ||
     !checkpointMatchesRun(saved, options.execution) ||
@@ -176,6 +178,7 @@ export function resumeState<TResult>(
     awaitingAuthorization: saved.awaitingAuthorization,
     actionContract: saved.actionContract,
     committedAction: saved.committedAction,
+    committedActionReceipts: saved.committedActionReceipts,
     evidenceReferences: saved.evidenceReferences.map(projectEvidenceReference),
     evidenceNeed: saved.evidenceNeed,
     selectedToolId: saved.selectedToolId,
@@ -191,6 +194,7 @@ export async function restoreRunEvidence<TResult>(
 ): Promise<MultiAgentWorkflowOptions<TResult>['initialEvidence'] | undefined> {
   // Resume only after current source revisions match; checkpoint references never restore content.
   const refs = state.evidenceReferences;
+  if (!(await recoverCommittedAction(state, options, signal))) return undefined;
   // An empty search still has coverage and gaps. A registered restorer owns that
   // metadata too; never replace its result with a fabricated unsearched batch.
   if (!options.restoreEvidence && !options.restoreEvidenceBatches)
