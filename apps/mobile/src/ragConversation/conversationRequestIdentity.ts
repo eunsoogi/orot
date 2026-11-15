@@ -13,6 +13,7 @@ export function requestIdentityObserver(
     ? {
         retentionSession: session,
         retentionRequestId: turn.toolMessageId,
+        openWorkflowContinuation: turn.openWorkflowContinuation,
         confirmHistorySave,
       }
     : {};

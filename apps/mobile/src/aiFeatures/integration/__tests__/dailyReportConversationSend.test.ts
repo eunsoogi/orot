@@ -111,7 +111,17 @@ test.each([false, true])(
     );
     const onTaskStreamEvent = jest.fn();
     const runner: typeof runRagConversationTurn = (options, invocation) => {
-      expect(invocation?.onTaskStreamEvent).toBeUndefined();
+      // Retained inputs now allow safe initial receipts, but never unvalidated clinical prose.
+      expect(invocation?.onTaskStreamEvent).toEqual(expect.any(Function));
+      invocation?.onTaskStreamEvent?.({
+        type: 'text_delta',
+        text: 'unvalidated retained report text',
+      });
+      invocation?.onTaskStreamEvent?.({
+        type: 'text_snapshot',
+        text: 'unvalidated retained report text',
+      });
+      expect(onTaskStreamEvent).not.toHaveBeenCalled();
       return runRagConversationTurn(options, invocation);
     };
     const send = createRagConversationService({

@@ -3,7 +3,7 @@ import {
   withAppointmentReminderApp,
 } from './src/appointmentReminders/AppointmentReminderContext';
 import { GatedReminderDeliveryHost } from './src/assistantAppearance/GatedReminderDeliveryHost';
-import { RecordingSelectionProvider } from './src/recording/RecordingSelectionContext';
+import { RecordSourceNavigationProvider } from './src/routes/RecordSourceNavigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { useRecapRecovery } from './src/transcription/useRecapRecovery';
@@ -22,7 +22,10 @@ import {
   createNavigationController,
   NavigationRouteAdapter,
 } from './src/navigation';
-import { appContentLayoutOwner } from './src/navigation/appContentLayoutPolicy';
+import {
+  appContentLayoutOwner,
+  appRouteIsScrollable,
+} from './src/navigation/appContentLayoutPolicy';
 import {
   createNavigationRootTabs,
   type AppRootTab,
@@ -123,18 +126,14 @@ function App({
   const rootTabs = createNavigationRootTabs(activeTab, selectActiveTab);
   return (
     <View style={styles.appShell}>
-      <RecordingSelectionProvider>
+      <RecordSourceNavigationProvider>
         <AiFeatureSharedNavigationStateProvider
           conversationSessionOptions={conversationSessionOptions}
         >
           <NavigationRouteAdapter
             controller={appNavigation}
             // Recent records and root pages each retain one route-owned scroll host.
-            scrollable={route =>
-              route.name === 'recent-records' ||
-              (route.name === 'root' &&
-                ['overview', 'records', 'settings'].includes(activeTab))
-            }
+            scrollable={route => appRouteIsScrollable(route, activeTab)}
             rootTabs={route => (route.name === 'root' ? rootTabs : undefined)}
             contentLayoutOwner={appContentLayoutOwner}
           >
@@ -239,7 +238,7 @@ function App({
           />
           {ai.disclosureSheet}
         </AiFeatureSharedNavigationStateProvider>
-      </RecordingSelectionProvider>
+      </RecordSourceNavigationProvider>
     </View>
   );
 }

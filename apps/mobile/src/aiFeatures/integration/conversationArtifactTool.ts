@@ -13,14 +13,7 @@ import {
   compactConversationArtifactExcerpt,
 } from './conversationArtifactExcerpt';
 
-// Continuations are local aliases bound to a registry, operation scope and query.
-const cursors = new WeakMap<
-  LocalEvidenceReferenceRegistry,
-  {
-    next: number;
-    tokens: Map<string, { scope: string; query: string; cursor: string }>;
-  }
->();
+import { artifactCursorState } from './artifactCursorState';
 
 /** Return bounded prior answers as historical AI output, with revalidated parent and source links. */
 export function createConversationArtifactTool(
@@ -36,12 +29,7 @@ export function createConversationArtifactTool(
     ) => void;
   } = {},
 ): EvidenceSearchTool {
-  let state = cursors.get(registry);
-  if (!state) {
-    state = { next: 0, tokens: new Map() };
-    cursors.set(registry, state);
-  }
-  const cursorState = state;
+  const cursorState = artifactCursorState(registry, 'conversation');
   return {
     id: 'local-conversation-artifacts',
     sourceKind: 'generated_artifact',
@@ -209,7 +197,7 @@ export function createConversationArtifactTool(
       for (const register of registrations) register();
       const nextCursor = resumeCursor ?? page.nextCursor;
       const nextToken = nextCursor
-        ? `conversation-page-${++cursorState.next}`
+        ? `conversation-page-${++cursorState.sequence}`
         : undefined;
       if (nextToken && nextCursor) {
         if (cursorState.tokens.size >= 1024)

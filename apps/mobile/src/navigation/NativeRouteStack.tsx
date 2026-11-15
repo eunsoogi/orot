@@ -212,7 +212,10 @@ export function NativeRouteStack<Name extends string>({
             },
           })}
           screenOptions={{
-            animation: reduceMotion ? 'none' : 'default',
+            // The pinned native animator fades a transient snapshot, never live glass.
+            animation: reduceMotion ? 'none' : 'fade',
+            animationDuration: 220,
+            animationMatchesGesture: true,
             contentStyle: styles.content,
             // Retained routes must receive inactive updates so their portal rails unmount.
             freezeOnBlur: false,

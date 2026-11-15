@@ -1,3 +1,4 @@
+import type { EvidenceRestoration } from './evidenceRestoration';
 import type { MultiAgentPhase } from './actionContracts';
 export type { MultiAgentPhase } from './actionContracts';
 import type {
@@ -22,7 +23,6 @@ import type {
   MultiAgentBudget,
   MultiAgentExecutionIdentity,
 } from './evidenceContracts';
-
 export type {
   AllowedEvidenceScope,
   ConsentDecision,
@@ -68,18 +68,15 @@ export interface TaskResponderInput {
     readonly remainingResearchCycles: number;
   };
 }
-
 export type TaskResultValidation<TResult> =
   | { readonly status: 'valid'; readonly value: TResult }
   | { readonly status: 'invalid'; readonly reason: string }
   | { readonly status: 'needs_clarification'; readonly message: string };
-
 /** Task-approved result shape whose display copy may survive an evidence-coverage stop. */
 export interface TaskClarificationValue {
   readonly status: 'needs_clarification';
   readonly message: string;
 }
-
 export interface TaskResponderContract<TResult = JsonValue> {
   readonly taskType: string;
   readonly taskVersion: string;
@@ -128,8 +125,7 @@ export interface TaskResponderContract<TResult = JsonValue> {
   correctionInstructionForInvalidEnvelope?(reason: string): string | undefined;
   validateResult(value: JsonValue, input: TaskResponderInput): TaskResultValidation<TResult>;
 }
-
-export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
+export interface MultiAgentWorkflowOptions<TResult = JsonValue> extends EvidenceRestoration {
   readonly execution: MultiAgentExecutionIdentity;
   readonly provider: LanguageModelProvider;
   readonly request: string;
@@ -137,6 +133,8 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
   readonly context?: JsonValue;
   readonly task: TaskResponderContract<TResult>;
   readonly initialEvidence: EvidenceBatch;
+  /** Host-owned query stays in protected invocation context, never graph channels. */
+  readonly initialSearch?: { readonly toolId: string; readonly input: JsonObject };
   readonly actions?: readonly import('./actionContracts').LocalActionTool[];
   readonly tools: readonly import('./evidenceContracts').EvidenceSearchTool[];
   readonly consent: ExecutionConsentPort;
@@ -144,10 +142,7 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> {
     references: readonly EvidenceReference[],
     signal: AbortSignal,
   ) => Promise<boolean>;
-  readonly restoreEvidence?: (
-    references: readonly EvidenceReference[],
-    signal: AbortSignal,
-  ) => Promise<EvidenceBatch>;
+  readonly operationJournal?: import('./workflowOperationJournal').WorkflowOperationJournal;
   readonly checkpointer?: BaseCheckpointSaver;
   readonly store?: BaseStore;
 }
@@ -172,12 +167,15 @@ export interface MultiAgentCheckpointState {
     readonly kind: 'model' | 'tool';
     readonly operationKey: string;
   };
+  readonly initialSearchStatus?: 'pending' | 'success' | 'empty' | 'consent_required';
+  readonly awaitingAuthorization?: string;
   readonly terminal: boolean;
 }
 export type ProviderStopObservation =
   'not_started' | 'iterator_return_requested' | 'underlying_call_unconfirmed';
 
 export type MultiAgentRunResult<TResult> =
+  | import('./workflowPause').MultiAgentPausedResult
   | {
       readonly status: 'result';
       readonly value: TResult;
@@ -216,6 +214,8 @@ export type MultiAgentRunResult<TResult> =
 export interface MultiAgentInvocation {
   readonly config?: RunnableConfig;
   readonly resumeFrom?: MultiAgentCheckpointState;
+  readonly onApprovalWait?: (waiting: boolean) => void;
+  readonly pause?: import('./workflowPause').MultiAgentPauseController;
   readonly signal?: AbortSignal;
   /** Safe phase and source-kind updates; these events never include prompt, query, or evidence content. */
   readonly onProgress?: (event: MultiAgentProgressEvent) => void;

@@ -9,7 +9,8 @@ export function isDailyReportRecordSource(source: string): boolean {
   return (
     source === 'health_observation' ||
     source === 'symptom_entry' ||
-    source === 'dose_event'
+    source === 'dose_event' ||
+    source === 'appointment'
   );
 }
 
@@ -21,6 +22,12 @@ export function sourceLabel(value: string) {
       return t('dailyReport.source.symptom');
     case 'dose_event':
       return t('dailyReport.source.dose');
+    case 'appointment':
+      return t('dailyReport.context.appointmentSource');
+    case 'personal_baseline':
+      return t('dailyReport.baseline.title');
+    case 'system_calendar':
+      return t('dailyReport.systemCalendar.sourceTitle');
     case 'calendar':
       return t('dailyReport.source.calendar');
     case 'report_selection':
@@ -40,6 +47,9 @@ export function sourceSymbol(value: string) {
       return 'cross.case';
     case 'dose_event':
       return 'pills';
+    case 'appointment':
+    case 'system_calendar':
+    case 'personal_baseline':
     case 'calendar':
       return 'calendar';
     case 'report_selection':
@@ -114,10 +124,18 @@ export function syncStatusLabel(item: DailyReportSourceCoverage) {
 
 export function limitationLabel(code: string) {
   switch (code) {
+    case 'observed_days_not_complete_history':
+      return t('dailyReport.baseline.limit');
+    case 'planned_events_not_attendance':
+      return t('dailyReport.systemCalendar.sourceLimit');
+    case 'calendar_unavailable_or_scoped_out':
+      return t('dailyReport.systemCalendar.unavailable');
     case 'partial_day':
       return t('dailyReport.partial');
     case 'snapshot_incomplete':
       return t('dailyReport.limit.partial');
+    case 'confirmed_appointments_only':
+      return t('dailyReport.context.appointmentCoverage');
     case 'source_sync_unknown':
       return t('dailyReport.status.unknown');
     case 'source_data_stale':

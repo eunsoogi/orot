@@ -85,7 +85,10 @@ export function createReplyOpen(input: {
         !session?.messages.some(
           message =>
             message.role === 'assistant' &&
-            message.retainedTurnId === identity.messageId,
+            (identity.purpose === 'interruption'
+              ? message.incomplete &&
+                message.toolMessageId === identity.messageId
+              : message.retainedTurnId === identity.messageId),
         )
       )
         return 'missing';
@@ -119,7 +122,8 @@ export function createReplyOpen(input: {
       if (!currentOwner() || !input.canEnter()) return 'deferred';
       input.sessions.select(sessionId);
       if (!currentOwner() || !input.canEnter()) return 'deferred';
-      replyFocus.set({ sessionId, messageId: identity.messageId });
+      if (identity.purpose !== 'interruption')
+        replyFocus.set({ sessionId, messageId: identity.messageId });
       if (!currentOwner() || !input.canEnter()) return 'deferred';
       input.onReplyOpened?.();
       return 'opened';

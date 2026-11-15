@@ -48,7 +48,7 @@ function transition(key: string, label: string, reduceMotion = false) {
   );
 }
 
-test('keeps only the latest root tab transition when rapid taps interrupt movement', async () => {
+test('keeps only the latest root tab transition when rapid taps interrupt fading', async () => {
   const view = await render(transition('home', 'Home'));
   expect(screen.getByText('Home')).toBeVisible();
 
@@ -56,8 +56,8 @@ test('keeps only the latest root tab transition when rapid taps interrupt moveme
   await view.rerender(transition('schedule', 'Schedule'));
   expect(pendingAnimations).toHaveLength(2);
   expect(pendingAnimations[0]?.stop).toHaveBeenCalled();
-  expect(pendingAnimations[0]?.toValue).toBe(-12);
-  expect(pendingAnimations[1]?.toValue).toBe(-12);
+  expect(pendingAnimations[0]?.toValue).toBe(1);
+  expect(pendingAnimations[1]?.toValue).toBe(1);
   expect(
     screen.getByText('Home', { includeHiddenElements: true }),
   ).toBeTruthy();
@@ -85,7 +85,7 @@ test('keeps only the latest root tab transition when rapid taps interrupt moveme
   expect(screen.getByText('Schedule')).toBeVisible();
 });
 
-test('moves the latest rendered content when the displayed tab props change', async () => {
+test('fades the latest rendered content when the displayed tab props change', async () => {
   const view = await render(transition('home', 'Home loading'));
   await view.rerender(transition('home', 'Home ready'));
   expect(screen.getByText('Home ready')).toBeVisible();
@@ -114,7 +114,7 @@ test('switches immediately without animation when Reduce Motion is enabled', asy
   expect(Animated.timing).not.toHaveBeenCalled();
 });
 
-test('restores the original position when rapid navigation returns to the still-displayed tab', async () => {
+test('restores the uncovered content when rapid navigation returns to the still-displayed tab', async () => {
   const view = await render(transition('home', 'Home'));
   await view.rerender(transition('records', 'Records'));
   const fadeOut = pendingAnimations[0]!;
@@ -137,7 +137,7 @@ test('restores the original position when rapid navigation returns to the still-
   fadeOut.value.removeListener(listener);
 });
 
-test('settles the latest content if Reduce Motion changes during movement', async () => {
+test('settles the latest content if Reduce Motion changes during fading', async () => {
   const view = await render(transition('home', 'Home'));
   await view.rerender(transition('records', 'Records'));
   await view.rerender(transition('schedule', 'Schedule', true));
@@ -186,4 +186,28 @@ test('an obsolete enter completion cannot unlock a newer destination', async () 
   ).toBe('none');
   await act(async () => pendingAnimations[3]!.complete({ finished: true }));
   expect(screen.getByText('Schedule')).toBeVisible();
+});
+
+test('fades through a sibling veil without translating either screen', async () => {
+  const view = await render(transition('home', 'Home'));
+  await view.rerender(transition('records', 'Records'));
+  const root = screen.getByTestId('navigation-content-transition', {
+    includeHiddenElements: true,
+  });
+  expect(root.props.style).not.toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ transform: expect.anything() }),
+    ]),
+  );
+  const veil = screen.getByTestId('navigation-fade-veil', {
+    includeHiddenElements: true,
+  });
+  expect(veil.props.pointerEvents).toBe('none');
+  expect(veil.props.accessibilityElementsHidden).toBe(true);
+  expect(pendingAnimations[0]).toMatchObject({ toValue: 1, duration: 100 });
+  await act(async () => pendingAnimations[0]!.complete({ finished: true }));
+  expect(pendingAnimations[1]).toMatchObject({ toValue: 0, duration: 200 });
+  expect(
+    screen.queryByText('Home', { includeHiddenElements: true }),
+  ).toBeNull();
 });

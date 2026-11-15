@@ -85,7 +85,12 @@ function makeTask(): TaskResponderContract<{ summary: string }> {
       { role: 'user', content: JSON.stringify({ request, evidence }) },
     ],
     validateResult(value) {
-      if (!value || typeof value !== 'object' || typeof value.summary !== 'string') {
+      if (
+        !value ||
+        typeof value !== 'object' ||
+        !('summary' in value) ||
+        typeof value.summary !== 'string'
+      ) {
         return { status: 'invalid', reason: 'A summary is required.' };
       }
       return { status: 'valid', value: { summary: value.summary } };

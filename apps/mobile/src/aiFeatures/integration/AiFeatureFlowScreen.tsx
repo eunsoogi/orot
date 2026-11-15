@@ -147,6 +147,7 @@ export function AiFeatureFlowScreen({
       onSend={services.sendRagMessage}
       onOpenSource={onOpenSource}
       resolveToolSource={services.resolveToolSource}
+      resolveColdToolSource={services.resolveColdConversationToolSource}
       discoverManualVisits={services.conversationArtifacts}
       prepareVisitQuestions={
         services.prepareVisitQuestionTurn

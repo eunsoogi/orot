@@ -1,3 +1,5 @@
+import { conversationSteeringHistory } from './conversationSteeringHistory';
+import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
 import {
   localQueryTimestampKey,
   type SqlDatabase,
@@ -57,6 +59,8 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   return {
+    readSteeringHistory: conversationSteeringHistory(database, ensure),
+    openWorkflowContinuation: conversationWorkflowContinuationOpener(database),
     ...createConversationPreviewStorage(database, ensure),
     ...createConversationRequestStorage(database, ensure),
     ...createConversationTaskCardStorage(database, ensure),

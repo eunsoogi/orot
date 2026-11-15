@@ -1,3 +1,4 @@
+import { createExternalMedicalAuthorization } from './externalMedicalAuthorization';
 import type { JsonObject } from '@orot/model-runtime';
 import { isSourceAllowed } from './evidence';
 import {
@@ -45,7 +46,6 @@ export interface EuropePmcEvidenceServicePort {
   ): Promise<EuropePmcAdapterSearchResult>;
 }
 
-const EUROPE_PMC_RESULT_LIMIT = 5;
 const MAX_QUERY_LENGTH = 240;
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u;
 const IDENTIFIER = /^[A-Za-z0-9._-]{1,80}$/u;
@@ -201,6 +201,12 @@ export function createEuropePmcEvidenceSearchTool(options: {
   readonly service: EuropePmcEvidenceServicePort;
   readonly consent: ExternalMedicalQueryConsentPort;
 }): EvidenceSearchTool {
+  const prepareAuthorizedSearch = createExternalMedicalAuthorization({
+    ...options,
+    parse: parseQuery,
+    unavailable: unavailableScope,
+    toBatch: toEvidenceBatch,
+  });
   return {
     id: EUROPE_PMC_TOOL_ID,
     sourceKind: 'external_medical',
@@ -209,42 +215,10 @@ export function createEuropePmcEvidenceSearchTool(options: {
       'Search Europe PMC for a short publication query after separate user permission to send medical-search terms to this destination. Results include original links and publication/update provenance.',
     inputSchema: querySchema,
     parseInput: parseQuery,
+    prepareAuthorizedSearch,
     async search(request) {
-      const parsed = parseQuery(request.input);
-      if (!parsed || unavailableScope(request)) {
-        throw new Error('The Europe PMC query or allowed source scope was invalid.');
-      }
-      const resultLimit = Math.min(request.resultLimit, EUROPE_PMC_RESULT_LIMIT);
-      if (!Number.isSafeInteger(resultLimit) || resultLimit < 1) {
-        throw new Error('The Europe PMC result limit was invalid.');
-      }
-      const query = parsed.query as string;
-      let decision: Awaited<ReturnType<ExternalMedicalQueryConsentPort['authorize']>>;
-      try {
-        decision = await options.consent.authorize({
-          operationRunId: request.operationRunId,
-          operationKey: request.operationKey,
-          sourceId: EUROPE_PMC_SOURCE_ID,
-          query,
-          signal: request.signal,
-        });
-      } catch {
-        return { status: 'consent_required' };
-      }
-      if (decision !== 'authorized' || request.signal.aborted) {
-        return { status: 'consent_required' };
-      }
-
-      const result = await options.service.search(query, {
-        externalQueryConsented: true,
-        signal: request.signal,
-        toolCall: { operationRunId: request.operationRunId, callId: request.operationKey },
-      });
-      if (result.status === 'consent_required') return { status: 'consent_required' };
-      if (result.status === 'unavailable') {
-        throw new Error('Europe PMC did not return an available search result.');
-      }
-      return toEvidenceBatch(result.status === 'available' ? result.publications : [], resultLimit);
+      const prepared = await prepareAuthorizedSearch(request);
+      return prepared.status === 'authorized' ? prepared.dispatch() : prepared;
     },
   };
 }

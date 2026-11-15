@@ -23,7 +23,7 @@ test('a missing iOS bridge interrupts on background instead of claiming an exten
     );
     expect(await adapter.protectedDataAvailable()).toBeNull();
     change!('background');
-    expect(interrupt).toHaveBeenCalledWith('expired');
+    expect(interrupt).toHaveBeenCalledWith('bridge-unavailable');
     end();
     expect(remove).toHaveBeenCalled();
   } finally {

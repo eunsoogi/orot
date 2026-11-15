@@ -41,7 +41,7 @@ test('uses nested content identity without changing the selected Records navigat
     await view.rerender(content('schedule'));
     expect(timing).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ toValue: -12 }),
+      expect.objectContaining({ toValue: 1 }),
     );
   } finally {
     timing.mockRestore();

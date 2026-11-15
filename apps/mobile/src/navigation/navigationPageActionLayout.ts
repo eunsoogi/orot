@@ -54,7 +54,7 @@ export function pageActionRailLayout({
   hasContextualBack?: boolean;
 }) {
   const available = Math.max(0, height - top - bottom);
-  // The fixed root surface stays five tabs tall; shared Back gets its own 48pt target and 4pt gap.
+  // The root surface follows the canonical destination count; shared Back gets its own 48pt target and 4pt gap.
   const navHeight = rootTabs
     ? NAVIGATION_ROOT_RAIL_HEIGHT +
       (hasContextualBack ? NAVIGATION_ROOT_BACK_GROUP_HEIGHT : 0)
@@ -70,25 +70,28 @@ export function pageActionRailLayout({
   const displayed = Math.min(actionCount, capacity);
   const fits = available >= navHeight && (actionCount === 0 || displayed > 0);
   const displayedActionHeight = displayed * step;
-  // Bottom-anchor the whole group; page actions sit immediately before the
-  // navigation group, with contextual Back retaining its preceding target.
+  // Legacy standalone Back/Home keeps the whole group bottom-anchored;
+  // root-tab layouts instead split the page dock and navigation below.
   const actionGroupHeight =
     displayed > 0 ? displayedActionHeight + railGapCount * groupGap : 0;
   const groupTop = Math.max(
     top,
     height - bottom - navHeight - actionGroupHeight,
   );
-  const pageTopInset =
-    !rootTabs && navigationCount > 0 ? groupTop + step + groupGap : groupTop;
-  const pageBottom = rootTabs
-    ? height - bottom - navHeight - groupGap
-    : pageTopInset + displayedActionHeight;
+  // Duo root navigation remains at the bottom while its separate page dock starts
+  // at the measured safe top. Preserve legacy Back/Home composition unchanged.
+  const pageTopInset = rootTabs
+    ? top
+    : navigationCount > 0
+      ? groupTop + step + groupGap
+      : groupTop;
+  const pageBottom = pageTopInset + displayedActionHeight;
   return {
     fits,
     capacity,
     pageTopInset,
     pageBottomInset: Math.max(0, height - pageBottom),
-    navigationTopInset: groupTop,
+    navigationTopInset: rootTabs ? height - bottom - navHeight : groupTop,
   };
 }
 

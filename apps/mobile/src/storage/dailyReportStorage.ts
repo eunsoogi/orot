@@ -1,8 +1,9 @@
-import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
+import { dailyReportStorageLookup } from './dailyReportStorageLookup';
 import {
-  DailyReportIdentitySchema,
-  type DailyReportIdentity,
-} from '@orot/domain';
+  acquireReportCalendarGuard,
+  type ReportCalendarReader,
+} from '../aiFeatures/integration/dailyReportSystemCalendar';
+import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import {
   ensureHealthContextGeneration,
@@ -10,18 +11,15 @@ import {
 } from '../healthEvidence/healthContext/generation';
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 import { assertRetainedRecordsCurrent } from './retainedRecordFreshness';
-import { validateDailyReportCompletion } from './dailyReportValidation';
-import { visibleSummary } from './symptomSummaryQuarantine';
-import { parseDailyReportLineage } from './dailyReportLineage';
 import {
-  dailyReportSourcesChanged,
+  retainedDailyReportRecords,
+  validateDailyReportSave,
+} from './dailyReportLineage';
+import {
   invalidateDailyReportRun,
   invalidDailyReportStatus,
 } from './dailyReportInvalidation';
-import type {
-  DailyReportLookup,
-  DailyReportSave,
-} from './dailyReportStorageTypes';
+import type { DailyReportSave } from './dailyReportStorageTypes';
 import {
   checkDailyReportSaveCancellation,
   dailyReportSaveFailure,
@@ -32,7 +30,10 @@ export type {
   DailyReportSave,
 } from './dailyReportStorageTypes';
 /** The same encrypted summary database serializes both entry points and all revision changes. */
-export function createDailyReportStorage(database: SqlDatabase) {
+export function createDailyReportStorage(
+  database: SqlDatabase,
+  calendarReader?: ReportCalendarReader,
+) {
   const summaries = createSymptomSummaryStorage(database);
   const manualHistory = createManualHistoryRepository(database);
   let ready: Promise<void> | undefined;
@@ -46,95 +47,30 @@ export function createDailyReportStorage(database: SqlDatabase) {
       ready = undefined;
       throw error;
     }));
-  async function lookup(identity: DailyReportIdentity) {
-    const parsed = DailyReportIdentitySchema.safeParse(identity);
-    if (!parsed.success) return { status: 'error' as const };
-    try {
-      await ensure();
-      let value: unknown;
-      await database.transaction(async tx => {
-        const head = (
-          await tx.execute(
-            'SELECT active_run_id, revision, deleted FROM daily_report_heads WHERE identity_key = ?',
-            [parsed.data.key],
-          )
-        ).rows[0];
-        if (!head) {
-          value = { status: 'missing' };
-          return;
-        }
-        if (head.deleted === 1 || typeof head.active_run_id !== 'string') {
-          value = { status: 'deleted' };
-          return;
-        }
-        const row = (
-          await tx.execute(
-            `SELECT r.result_json, EXISTS (SELECT 1 FROM conversation_invalid_summaries i WHERE i.id = r.id) AS invalid FROM symptom_summary_runs r WHERE r.id = ? AND ${visibleSummary}`,
-            [head.active_run_id],
-          )
-        ).rows[0];
-        if (!row || typeof row.result_json !== 'string') {
-          value = { status: 'deleted' };
-          return;
-        }
-        const saved = JSON.parse(row.result_json);
-        const checked = validateDailyReportCompletion(saved.context, {
-          status: 'completed',
-          report: saved.report,
-        });
-        const lineage =
-          checked && parseDailyReportLineage(checked.context, saved.lineage);
-        if (
-          !checked ||
-          !lineage ||
-          checked.context.identity.key !== parsed.data.key
-        ) {
-          value = { status: 'error' };
-          return;
-        }
-        const sourceStatus = await dailyReportSourcesChanged(
-          tx,
-          row.invalid === 1,
-          lineage,
-          manualHistory,
-        );
-        if (sourceStatus !== 'current') {
-          value = {
-            status: 'stale',
-            runId: head.active_run_id,
-            revision: head.revision,
-            sourceStatus,
-          };
-          return;
-        }
-        value = {
-          status: 'saved',
-          runId: head.active_run_id,
-          revision: head.revision,
-          lineage,
-          ...checked,
-        };
-      });
-      return value as DailyReportLookup;
-    } catch {
-      return { status: 'error' as const };
-    }
-  }
-
+  const lookup = dailyReportStorageLookup(
+    database,
+    manualHistory,
+    ensure,
+    calendarReader,
+  );
   async function save(
     input: DailyReportSave,
     signal?: AbortSignal,
   ): Promise<{ status: DailyReportSaveStatus }> {
-    const checked = validateDailyReportCompletion(input.context, input.result);
-    if (!checked || !input.runId.trim()) return { status: 'error' as const };
-    if (!parseDailyReportLineage(checked.context, input.lineage))
-      return { status: 'error' as const };
+    const checked = validateDailyReportSave(input);
+    if (!checked) return { status: 'error' as const };
     const stored = JSON.stringify({
       inputLineage: 'complete',
       ...checked,
       lineage: input.lineage,
     });
     if (stored.length > 128_000) return { status: 'error' as const };
+    const guard = await acquireReportCalendarGuard(
+      checked.context,
+      calendarReader,
+      signal,
+    );
+    if (!guard) return { status: 'stale' };
     try {
       await ensure();
       let status: 'saved' | 'reused' | 'stale' | 'deleted' = 'stale';
@@ -149,12 +85,9 @@ export function createDailyReportStorage(database: SqlDatabase) {
           return;
         }
         // Direct source validation runs inside the same write transaction as the active pointer.
-        const records = input.lineage.map(item => ({
-          kind: item.kind,
-          id: item.localId,
-          revision: item.revision,
-        }));
+        const records = retainedDailyReportRecords(input.lineage);
         await assertRetainedRecordsCurrent(tx, records, manualHistory);
+        if (!(await guard.revalidate(signal)) || !guard.isCurrent()) return;
         const existing = (
           await tx.execute(
             'SELECT result_json FROM symptom_summary_runs WHERE id = ?',
@@ -231,9 +164,15 @@ export function createDailyReportStorage(database: SqlDatabase) {
         checkDailyReportSaveCancellation(signal);
         status = 'saved';
       });
+      if (!guard.isCurrent()) {
+        await invalidateDailyReportRun(database, input.runId);
+        return { status: 'stale' };
+      }
       return { status };
     } catch (error) {
       return { status: dailyReportSaveFailure(error) };
+    } finally {
+      guard.dispose();
     }
   }
   return { lookup, save };

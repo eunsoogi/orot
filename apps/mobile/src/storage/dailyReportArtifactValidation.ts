@@ -1,3 +1,5 @@
+import { acquireReportCalendarGuard } from '../aiFeatures/integration/dailyReportSystemCalendar';
+import { invalidateDailyReportRun } from './dailyReportInvalidation';
 import type { ManualHistoryRepository, SqlExecutor } from '@orot/storage';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { assertRetainedRecordsCurrent } from './retainedRecordFreshness';
@@ -34,6 +36,11 @@ export async function validateDailyReportArtifact(
     return null;
   const lineage = parseDailyReportLineage(checked.context, raw.lineage);
   if (!lineage) return null;
+  const guard = await acquireReportCalendarGuard(checked.context);
+  if (!guard) {
+    await invalidateDailyReportRun(tx, id);
+    return null;
+  }
   try {
     await assertRetainedRecordsCurrent(
       tx,
@@ -44,20 +51,26 @@ export async function validateDailyReportArtifact(
       })),
       history,
     );
-  } catch {
-    return null;
-  }
-  return {
-    ...checked,
-    lineage,
-    runId: id,
-    revision: row.revision,
-    fingerprint: fingerprint({
+    if (!(await guard.revalidate()) || !guard.isCurrent()) {
+      await invalidateDailyReportRun(tx, id);
+      return null;
+    }
+    return {
+      ...checked,
+      lineage,
       runId: id,
       revision: row.revision,
-      context: checked.context,
-      report: checked.report,
-      lineage,
-    }),
-  };
+      fingerprint: fingerprint({
+        runId: id,
+        revision: row.revision,
+        context: checked.context,
+        report: checked.report,
+        lineage,
+      }),
+    };
+  } catch {
+    return null;
+  } finally {
+    guard.dispose();
+  }
 }
