@@ -31,7 +31,7 @@ afterEach(() => Dimensions.set({ window: originalWindow }));
 
 function panelAxis(): string | undefined {
   return StyleSheet.flatten(
-    screen.getByTestId('rag-conversation-columns').props.style,
+    screen.getByTestId('conversation-workspace').props.style,
   )?.flexDirection;
 }
 

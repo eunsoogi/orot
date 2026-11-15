@@ -16,7 +16,7 @@ const measurable = View as unknown as {
   };
 };
 
-test('uses the parent safe content width for open Duo and falls back inside an active division', async () => {
+test('uses the parent safe content width for open Duo and splits safely across an active division', async () => {
   const dimensions = jest
     .spyOn(require('react-native'), 'useWindowDimensions')
     .mockReturnValue({ width: 951, height: 669, scale: 3, fontScale: 1 });
@@ -36,12 +36,12 @@ test('uses the parent safe content width for open Duo and falls back inside an a
     const sensor = screen.getByTestId('navigation-window-geometry-sensor');
     const primaryWidth = () =>
       StyleSheet.flatten(
-        screen.getByTestId('rag-conversation-columns-primary').props.style,
+        screen.getByTestId('conversation-transcript-pane').props.style,
       ).width;
     await fireEvent(sensor, 'geometryChange', {
       nativeEvent: { ...openGeometry, hasHinge: true },
     });
-    expect(primaryWidth()).toBe(867);
+    expect(primaryWidth()).toBeCloseTo(867 * 0.68);
     await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
       nativeEvent: { layout: { width: primaryWidth() } },
     });
@@ -51,18 +51,18 @@ test('uses the parent safe content width for open Duo and falls back inside an a
     await fireEvent(sensor, 'geometryChange', {
       nativeEvent: { ...dividedGeometry, hasHinge: true },
     });
-    expect(primaryWidth()).toBeLessThan(760);
+    expect(primaryWidth()).toBeGreaterThanOrEqual(320);
     await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
       nativeEvent: { layout: { width: primaryWidth() } },
     });
-    expect(screen.queryByTestId('conversation-activity-pane')).toBeNull();
+    expect(screen.getByTestId('conversation-activity-pane')).toBeTruthy();
     expect(screen.getByTestId('rag-conversation-input')).toBe(input);
     expect(input.props.value).toBe('보존되는 합성 초안');
     const hidden = screen.getByTestId('conversation-activity-pane', {
       includeHiddenElements: true,
     });
-    expect(hidden.props.accessibilityElementsHidden).toBe(true);
-    expect(hidden.props.importantForAccessibility).toBe('no-hide-descendants');
+    expect(hidden.props.accessibilityElementsHidden).toBe(false);
+    expect(hidden.props.importantForAccessibility).toBe('auto');
   } finally {
     measurement.mockRestore();
     dimensions.mockRestore();
