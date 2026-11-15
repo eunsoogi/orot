@@ -1,5 +1,6 @@
 import { useRecordSourceNavigation } from './RecordSourceNavigation';
 import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
+import { useOverviewReportEntry } from './useOverviewReportEntry';
 import { useIsFocused } from '@react-navigation/native';
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
@@ -21,9 +22,7 @@ import { HealthRecordsRoute } from './HealthRecordsRoute';
 import { ManualHistoryRoute } from './ManualHistoryRoute';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
 import type { AppRouteContentProps } from './AppProps';
-
 export type { AppNavigationRoute } from './appNavigationRoute';
-
 /** Renders the selected root or guarded detail within the shared navigation shell. */
 export function AppRouteContent({
   documentImportService,
@@ -55,6 +54,10 @@ export function AppRouteContent({
 }: AppRouteContentProps) {
   const { sourceId, openDocument } = useRecordSourceNavigation(actions);
   const active = useIsFocused();
+  const openOverviewReport = useOverviewReportEntry(
+    active && activeTab === 'overview' && actions.route.name === 'root',
+    () => selectTab('conversation'),
+  );
   const reminderRuntime = useAppointmentReminderRuntime();
   function openOverviewPreparation() {
     if (!nextAppointment || !reminderRuntime) return;
@@ -86,7 +89,7 @@ export function AppRouteContent({
             onOpenRecords={() => selectTab('records')}
             loadSavedVisitQuestions={loadSavedVisitQuestions}
             onOpenRecording={openRecording}
-            onOpenDailyReport={() => actions.push('daily-report')}
+            onOpenDailyReport={openOverviewReport}
           />
         );
       case 'records':
@@ -146,7 +149,6 @@ export function AppRouteContent({
         );
     }
   }
-
   switch (actions.route.name) {
     case 'appointment-preparation':
       return (

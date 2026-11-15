@@ -1,5 +1,5 @@
 import { View, StyleSheet } from 'react-native';
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
@@ -36,8 +36,10 @@ export function DailyReportSavedSection({
   onStale: () => void;
 }) {
   const generation = useRef(0);
+  const [showEvidence, setShowEvidence] = useState(false);
   useLayoutEffect(() => {
     generation.current += 1;
+    setShowEvidence(false);
     return () => {
       generation.current += 1;
     };
@@ -77,9 +79,19 @@ export function DailyReportSavedSection({
       <AppText accessibilityRole="header">
         {t('dailyReport.observations')}
       </AppText>
-      {saved.report.observations.map((item, index) => (
-        <AppText key={index}>{item.text}</AppText>
-      ))}
+      <AppButton
+        title={showEvidence ? '근거 기록 접기' : '근거 기록 보기'}
+        variant="secondary"
+        accessibilityState={{ expanded: showEvidence }}
+        onPress={() => setShowEvidence(value => !value)}
+      />
+      {/* Retained report wording is immutable: never rewrite an older medical
+          claim with today's formatter or silently regenerate its assessment. */}
+      {showEvidence
+        ? saved.report.observations.map((item, index) => (
+            <AppText key={index}>{item.text}</AppText>
+          ))
+        : null}
       <DailyReportCoverage
         coverage={saved.report.coverage}
         sourceCounts={sourceCounts}
