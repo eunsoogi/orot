@@ -9,6 +9,8 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  'OrotIntegrationTests/CalendarRangeSnapshotTests/testPermissionGateDoesNotQueryAndReportsUnavailableCoverage',
+  'OrotIntegrationTests/CalendarRangeSnapshotTests/testHalfOpenOverlapAndUnserializableEventsFailClosed',
   'OrotIntegrationTests/NavigationFadeIntegrationTests/testPushKeepsGlassOpaqueAndRemovesSnapshot',
   'OrotIntegrationTests/NavigationFadeIntegrationTests/testPopKeepsGlassOpaqueAndRemovesSnapshot',
   'OrotIntegrationTests/NavigationFadeIntegrationTests/testCancelledPushRestoresSourceAndRemovesSnapshot',

@@ -9,7 +9,8 @@ export function isDailyReportRecordSource(source: string): boolean {
   return (
     source === 'health_observation' ||
     source === 'symptom_entry' ||
-    source === 'dose_event'
+    source === 'dose_event' ||
+    source === 'appointment'
   );
 }
 
@@ -21,6 +22,8 @@ export function sourceLabel(value: string) {
       return t('dailyReport.source.symptom');
     case 'dose_event':
       return t('dailyReport.source.dose');
+    case 'appointment':
+      return t('dailyReport.context.appointmentSource');
     case 'calendar':
       return t('dailyReport.source.calendar');
     case 'report_selection':
@@ -40,6 +43,7 @@ export function sourceSymbol(value: string) {
       return 'cross.case';
     case 'dose_event':
       return 'pills';
+    case 'appointment':
     case 'calendar':
       return 'calendar';
     case 'report_selection':
@@ -118,6 +122,8 @@ export function limitationLabel(code: string) {
       return t('dailyReport.partial');
     case 'snapshot_incomplete':
       return t('dailyReport.limit.partial');
+    case 'confirmed_appointments_only':
+      return t('dailyReport.context.appointmentCoverage');
     case 'source_sync_unknown':
       return t('dailyReport.status.unknown');
     case 'source_data_stale':

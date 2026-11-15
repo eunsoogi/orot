@@ -149,6 +149,12 @@ test('retains symptom and dose event values without presenting an unlinked catal
       assertionKind: 'prescribed',
       medicationName: 'Synthetic medicine',
     });
+    await repo.put('medication_assertion', {
+      ...metadata,
+      id: 'unlinked',
+      assertionKind: 'prescribed',
+      medicationName: 'Unlinked synthetic medicine',
+    });
     await repo.put('dose_event', {
       ...metadata,
       id: 'dose',
@@ -179,8 +185,12 @@ test('retains symptom and dose event values without presenting an unlinked catal
         }),
       ]),
     );
-    expect(JSON.stringify(snapshot.values)).not.toContain('Synthetic medicine');
+    expect(JSON.stringify(snapshot.values)).toContain('Synthetic medicine');
+    expect(JSON.stringify(snapshot.values)).not.toContain(
+      'Unlinked synthetic medicine',
+    );
     expect(snapshot.lineage.map(item => item.localId).sort()).toEqual([
+      'catalog',
       'dose',
       'symptom',
     ]);
@@ -188,7 +198,7 @@ test('retains symptom and dose event values without presenting an unlinked catal
       snapshot.sourceSnapshot.coverage.find(
         item => item.source === 'dose_event',
       )?.limitationCodes,
-    ).toContain('medication_names_not_resolved');
+    ).not.toContain('medication_names_not_resolved');
   } finally {
     connection.close();
   }
