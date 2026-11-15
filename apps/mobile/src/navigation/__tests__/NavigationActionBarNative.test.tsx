@@ -99,16 +99,14 @@ describe('native bottom navigation toolbar', () => {
 
     const toolbar = screen.getByTestId('navigation-bar-native-surface');
     const actions = toolbar.props.actions as Array<Record<string, unknown>>;
-    expect(actions).toHaveLength(5);
+    expect(actions).toHaveLength(4);
     expect(actions.map(action => action.id)).toEqual([
       'tab-conversation',
       'tab-overview',
       'tab-records',
-      'tab-schedule',
       'tab-settings',
     ]);
     expect(actions.map(action => action.rootTab)).toEqual([
-      true,
       true,
       true,
       true,

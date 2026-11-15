@@ -144,6 +144,7 @@ test('full integration execution preserves profile observations and every regist
     'ProviderIntegrationTests/testSyntheticToolDefinitionAndLocalResultRoundTripUseProviderBridge',
     'StandardAdapterIntegrationTests/testStandardAdaptersPreserveNativeDispatchSchemasToolsUsageAndCancellation',
     'HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
+    'HealthIntegrationTests/testWorkoutReadScopeAndDurationStayExplicit',
     'HealthIntegrationTests/testSyntheticSleepNormalizationAndAnchorResume',
   ].map((name) => `OrotIntegrationTests/${name}`);
   // Exact identities preserve native bridge and SDK boundaries; a count can hide replacements.

@@ -25,6 +25,7 @@ function projection(
     heartRate: 'count/min',
     bodyMass: 'kg',
     steps: 'count',
+    workouts: 'min',
   }[metric];
   return {
     metric,

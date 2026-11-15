@@ -23,7 +23,10 @@ import {
   NavigationRouteAdapter,
 } from './src/navigation';
 import { appContentLayoutOwner } from './src/navigation/appContentLayoutPolicy';
-import type { NavigationRootTabs, AppRootTab } from './src/navigation/rootTabs';
+import {
+  createNavigationRootTabs,
+  type AppRootTab,
+} from './src/navigation/rootTabs';
 import type { AppNavigationRoute } from './src/routes/AppRouteContent';
 import { AppRouteContent } from './src/routes/AppRouteContent';
 import type { AppProps } from './src/routes/AppEntryProps';
@@ -117,10 +120,7 @@ function App({
     appNavigation.push('recording');
   }
 
-  const rootTabs: NavigationRootTabs = {
-    activeTab,
-    onSelect: selectActiveTab,
-  };
+  const rootTabs = createNavigationRootTabs(activeTab, selectActiveTab);
 
   return (
     <View style={styles.appShell}>
@@ -192,6 +192,10 @@ function App({
                   actions={actions}
                   activeTab={activeTab}
                   selectTab={selectActiveTab}
+                  onSelectRecordsSection={async tab => {
+                    if (await appNavigation.requestTabSwitch())
+                      selectActiveTab(tab);
+                  }}
                   backupPreparationState={backupPreparation.state}
                   retryBackupPreparation={backupPreparation.retry}
                   calendarBridge={calendarBridge}

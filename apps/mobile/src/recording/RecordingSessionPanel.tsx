@@ -1,5 +1,5 @@
 import { Pressable, View, useWindowDimensions } from 'react-native';
-import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
+import { GlassIconButton } from '../layout/GlassIconButton';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import RecordingWaveform from './RecordingWaveform';
@@ -114,7 +114,7 @@ export default function RecordingSessionPanel({
           </View>
         </Pressable>
         {status === 'recording' ? (
-          <Pressable
+          <GlassIconButton
             accessibilityLabel={t('recording.pauseAccessibility')}
             accessibilityRole="button"
             accessibilityState={{ disabled: controlsBusy }}
@@ -125,12 +125,10 @@ export default function RecordingSessionPanel({
               compact && styles.compactSecondaryAction,
             ]}
             testID="recording-pause"
-          >
-            <ComposerGlassBackground />
-            <AppSymbol name="pause.fill" color={appColors.primaryText} />
-          </Pressable>
+            symbolName="pause.fill"
+          />
         ) : status === 'paused' || status === 'interrupted' ? (
-          <Pressable
+          <GlassIconButton
             accessibilityLabel={t('recording.resume')}
             accessibilityRole="button"
             accessibilityState={{ disabled: controlsBusy }}
@@ -141,10 +139,8 @@ export default function RecordingSessionPanel({
               compact && styles.compactSecondaryAction,
             ]}
             testID="recording-resume"
-          >
-            <ComposerGlassBackground />
-            <AppSymbol name="play.fill" color={appColors.primaryText} />
-          </Pressable>
+            symbolName="play.fill"
+          />
         ) : null}
       </View>
     </View>

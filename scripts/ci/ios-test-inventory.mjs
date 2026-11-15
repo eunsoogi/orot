@@ -21,6 +21,7 @@ const providerTests = [
   'OrotIntegrationTests/ProviderIntegrationTests/testSyntheticToolDefinitionAndLocalResultRoundTripUseProviderBridge',
   'OrotIntegrationTests/StandardAdapterIntegrationTests/testStandardAdaptersPreserveNativeDispatchSchemasToolsUsageAndCancellation',
   'OrotIntegrationTests/HealthIntegrationTests/testAuthorizationScopesAndSyntheticSamplesStayExplicit',
+  'OrotIntegrationTests/HealthIntegrationTests/testWorkoutReadScopeAndDurationStayExplicit',
   'OrotIntegrationTests/HealthIntegrationTests/testSyntheticSleepNormalizationAndAnchorResume',
 ];
 // Both protected-item checks require Face ID enrollment; the positive case also opens a match prompt.

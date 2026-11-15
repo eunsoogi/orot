@@ -70,7 +70,8 @@ test('guards a calendar draft and allows navigation after explicit save', async 
     />,
   );
 
-  await fireEvent.press(screen.getByTestId('navigation-tab-schedule'));
+  await fireEvent.press(screen.getByTestId('navigation-tab-records'));
+  await fireEvent.press(screen.getByTestId('records-section-schedule'));
   expect(screen.queryByTestId('calendar-connect')).toBeNull();
   await fireEvent.press(
     await screen.findByTestId('calendar-candidate-selected-visit'),
@@ -84,6 +85,16 @@ test('guards a calendar draft and allows navigation after explicit save', async 
   await pressAlertButton(alert, 0);
   expect(screen.getByTestId('calendar-selection')).toBeTruthy();
 
+  // The new inner tab must honor the same unsaved calendar guard as the root bar.
+  await fireEvent.press(screen.getByTestId('records-section-records'));
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
+  await pressAlertButton(alert, 0);
+  expect(screen.getByTestId('calendar-selection')).toBeTruthy();
+  expect(
+    screen.getByTestId('records-section-schedule').props.accessibilityState
+      .selected,
+  ).toBe(true);
+
   await fireEvent.press(screen.getByTestId('calendar-confirm-selected'));
   expect(await screen.findByText('다음 외래 방문을 저장했어요.')).toBeTruthy();
   expect(screen.getByTestId('schedule-open-appointments')).toBeEnabled();
@@ -91,7 +102,7 @@ test('guards a calendar draft and allows navigation after explicit save', async 
   await waitFor(() =>
     expect(screen.getByTestId('overview-title')).toBeTruthy(),
   );
-  expect(alert).toHaveBeenCalledTimes(1);
+  expect(alert).toHaveBeenCalledTimes(2);
 });
 
 async function pressAlertButton(alert: jest.SpyInstance, index: number) {

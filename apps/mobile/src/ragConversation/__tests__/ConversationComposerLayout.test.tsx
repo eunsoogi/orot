@@ -26,9 +26,13 @@ test('reserves a reading viewport when the keyboard leaves a short content frame
     />,
   );
   const history = screen.getByTestId('rag-conversation-history');
-  await fireEvent(history.parent!, 'layout', {
-    nativeEvent: { layout: { x: 0, y: 0, width: 700, height: 120 } },
-  });
+  await fireEvent(
+    screen.getByTestId('conversation-content-viewport'),
+    'layout',
+    {
+      nativeEvent: { layout: { x: 0, y: 0, width: 700, height: 120 } },
+    },
+  );
   expect(
     within(history).getByText(getRagConversationCopy().disclaimer),
   ).toBeTruthy();
@@ -37,9 +41,13 @@ test('reserves a reading viewport when the keyboard leaves a short content frame
   expect(style.maxHeight).toBeGreaterThanOrEqual(style.minHeight);
   expect(screen.getByTestId('rag-conversation-send')).toBeTruthy();
   await fireEvent.changeText(input, '보존할 초안');
-  await fireEvent(history.parent!, 'layout', {
-    nativeEvent: { layout: { x: 0, y: 0, width: 400, height: 800 } },
-  });
+  await fireEvent(
+    screen.getByTestId('conversation-content-viewport'),
+    'layout',
+    {
+      nativeEvent: { layout: { x: 0, y: 0, width: 400, height: 800 } },
+    },
+  );
   expect(input.props.value).toBe('보존할 초안');
   expect(
     within(history).queryByText(getRagConversationCopy().disclaimer),

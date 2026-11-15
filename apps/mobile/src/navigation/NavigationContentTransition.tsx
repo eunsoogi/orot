@@ -13,7 +13,7 @@ interface DisplayedContent {
   readonly children: ReactNode;
 }
 
-/** Keeps outgoing root content mounted until a short fade makes room for the selected tab. */
+/** Keeps outgoing root content mounted until a short, perceptible translation makes room for the selected tab. */
 export function NavigationContentTransition({
   transitionKey,
   children,
@@ -27,8 +27,10 @@ export function NavigationContentTransition({
     transitionKey,
     children,
   });
-  const [fadeInPending, setFadeInPending] = useState(false);
-  const opacity = useRef(new Animated.Value(1)).current;
+  const [enterPending, setEnterPending] = useState(false);
+  // Glass descendants require alpha 1 at every ancestor, including while mounting.
+  // Moving the content avoids the offscreen alpha composite that drops UIKit material.
+  const offset = useRef(new Animated.Value(0)).current;
   const transitionGeneration = useRef(0);
   const latestContent = useRef({ transitionKey, children });
   latestContent.current = { transitionKey, children };
@@ -42,85 +44,92 @@ export function NavigationContentTransition({
 
   useEffect(() => {
     if (displayed.transitionKey === transitionKey) {
-      // Returning to the still-mounted tab cancels its partial fade instead of leaving it dimmed.
-      if (!fadeInPending) {
-        opacity.stopAnimation();
-        opacity.setValue(1);
+      // Returning to the still-mounted tab cancels its partial movement instead of leaving it displaced.
+      if (!enterPending) {
+        offset.stopAnimation();
+        offset.setValue(0);
       }
       return;
     }
     if (reduceMotion) {
-      opacity.stopAnimation();
-      opacity.setValue(1);
-      setFadeInPending(false);
+      offset.stopAnimation();
+      offset.setValue(0);
+      setEnterPending(false);
       setDisplayed(latestContent.current);
       return;
     }
 
     const generation = ++transitionGeneration.current;
-    const fadeOut = Animated.timing(opacity, {
-      toValue: 0,
-      duration: 90,
+    const exitMotion = Animated.timing(offset, {
+      toValue: -12,
+      duration: 100,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     });
-    fadeOut.start(({ finished }) => {
+    exitMotion.start(({ finished }) => {
       if (!finished || transitionGeneration.current !== generation) return;
+      // Enter from the opposite edge of the small travel range, never by fading glass.
+      offset.setValue(20);
       setDisplayed(latestContent.current);
-      setFadeInPending(true);
+      setEnterPending(true);
     });
 
     return () => {
       // A newer tab target must supersede this completion callback.
       transitionGeneration.current += 1;
-      fadeOut.stop();
+      exitMotion.stop();
     };
   }, [
     displayed.transitionKey,
-    fadeInPending,
-    opacity,
+    enterPending,
+    offset,
     reduceMotion,
     transitionKey,
   ]);
 
   useEffect(() => {
-    if (!fadeInPending) return;
+    if (!enterPending) return;
     if (reduceMotion) {
-      opacity.setValue(1);
-      setFadeInPending(false);
+      offset.setValue(0);
+      setEnterPending(false);
       return;
     }
     if (displayed.transitionKey !== transitionKey) return;
 
-    const fadeIn = Animated.timing(opacity, {
-      toValue: 1,
-      duration: 140,
+    let active = true;
+    const enterMotion = Animated.timing(offset, {
+      toValue: 0,
+      duration: 200,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     });
-    fadeIn.start(({ finished }) => {
-      if (finished) setFadeInPending(false);
+    enterMotion.start(({ finished }) => {
+      if (finished && active) setEnterPending(false);
     });
-    return () => fadeIn.stop();
+    return () => {
+      active = false;
+      enterMotion.stop();
+    };
   }, [
     displayed.transitionKey,
-    fadeInPending,
-    opacity,
+    enterPending,
+    offset,
     reduceMotion,
     transitionKey,
   ]);
 
   const transitionPending =
-    displayed.transitionKey !== transitionKey || fadeInPending;
+    displayed.transitionKey !== transitionKey || enterPending;
 
   return (
     <Animated.View
+      testID="navigation-content-transition"
       accessibilityElementsHidden={transitionPending}
       importantForAccessibility={
         transitionPending ? 'no-hide-descendants' : 'auto'
       }
       pointerEvents={transitionPending ? 'none' : 'auto'}
-      style={[styles.fill, { opacity }]}
+      style={[styles.fill, { transform: [{ translateY: offset }] }]}
     >
       {displayed.transitionKey === transitionKey
         ? children
@@ -129,4 +138,4 @@ export function NavigationContentTransition({
   );
 }
 
-const styles = StyleSheet.create({ fill: { flex: 1 } });
+const styles = StyleSheet.create({ fill: { flex: 1, opacity: 1 } });

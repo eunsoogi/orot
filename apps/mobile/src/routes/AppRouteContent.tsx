@@ -10,6 +10,7 @@ import { UnifiedImportRoute } from '../healthkit/unifiedImport/UnifiedImportRout
 import { RouteLoadError } from './RouteLoadError';
 import OverviewRoute from './OverviewRoute';
 import { SavedRecordingsRoute } from './SavedRecordingsRoute';
+import { RecordsHubSection } from './RecordsHubSection';
 import { RecordsRoute } from './RecordsRoute';
 import { ScheduleRoute } from './ScheduleRoute';
 import { SettingsRoute } from './SettingsRoute';
@@ -28,6 +29,7 @@ export function AppRouteContent({
   actions,
   activeTab,
   selectTab,
+  onSelectRecordsSection,
   appointmentRepository,
   backupPreparationState,
   retryBackupPreparation,
@@ -86,29 +88,39 @@ export function AppRouteContent({
         );
       case 'records':
         return (
-          <RecordsRoute
-            documentImportService={documentImportService}
-            recordings={recordings}
-            recordingState={recordingState}
-            onRetryRecordings={() => refreshRecordings()}
-            onOpenSavedRecordings={() => actions.push('saved-recordings')}
-            onOpenRecording={openRecording}
-            onOpenHealthLibrary={() => actions.push('health-records')}
-            onOpenManualHistory={() => actions.push('manual-history')}
-          />
+          <RecordsHubSection
+            selected="records"
+            onSelect={onSelectRecordsSection}
+          >
+            <RecordsRoute
+              documentImportService={documentImportService}
+              recordings={recordings}
+              recordingState={recordingState}
+              onRetryRecordings={() => refreshRecordings()}
+              onOpenSavedRecordings={() => actions.push('saved-recordings')}
+              onOpenRecording={openRecording}
+              onOpenHealthLibrary={() => actions.push('health-records')}
+              onOpenManualHistory={() => actions.push('manual-history')}
+            />
+          </RecordsHubSection>
         );
       case 'schedule':
         return (
-          <ScheduleRoute
-            appointmentRepository={appointmentRepository}
-            appointmentState={appointmentState}
-            bridge={calendarBridge}
-            calendarSync={calendarSync}
-            onRetry={() => refreshAppointments()}
-            onOpenAppointments={() => actions.push('appointments')}
-            onOpenMedicalAppointments={() => actions.push('medical')}
-            onAppointmentsChanged={() => refreshAppointments()}
-          />
+          <RecordsHubSection
+            selected="schedule"
+            onSelect={onSelectRecordsSection}
+          >
+            <ScheduleRoute
+              appointmentRepository={appointmentRepository}
+              appointmentState={appointmentState}
+              bridge={calendarBridge}
+              calendarSync={calendarSync}
+              onRetry={() => refreshAppointments()}
+              onOpenAppointments={() => actions.push('appointments')}
+              onOpenMedicalAppointments={() => actions.push('medical')}
+              onAppointmentsChanged={() => refreshAppointments()}
+            />
+          </RecordsHubSection>
         );
       case 'conversation':
         // AppConversationScene owns the root AI conversation and its app-lifetime sessions.

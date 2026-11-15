@@ -5,6 +5,7 @@ export const overviewMetrics = [
   'heartRate',
   'bodyMass',
   'steps',
+  'workouts',
 ] as const;
 export type OverviewMetric = (typeof overviewMetrics)[number];
 // Keep the existing storage key so an upgrade preserves each user's selection.

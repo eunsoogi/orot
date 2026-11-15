@@ -5,6 +5,7 @@ export const healthKitFeatures = [
   'heartRate',
   'steps',
   'bodyMass',
+  'workouts',
 ] as const;
 
 export type HealthKitFeature = (typeof healthKitFeatures)[number];
@@ -16,6 +17,7 @@ export const healthKitSampleKinds = [
   'heartRate',
   'steps',
   'bodyMass',
+  'workouts',
 ] as const;
 
 export type HealthKitSampleKind = (typeof healthKitSampleKinds)[number];
@@ -100,6 +102,9 @@ export interface HealthKitSampleSnapshot {
   readonly value?: number;
   readonly unit?: string;
   readonly sourceRepresentation?: HealthKitQuantitySourceRepresentation;
+  /** Actual active workout duration, not elapsed wall-clock time. */
+  readonly workoutActivityType?: number;
+  readonly workoutActivityName?: string;
   readonly categoryValue?: number;
   readonly components?: readonly HealthKitSampleSnapshot[];
   readonly medicationConceptIdentifier?: string;

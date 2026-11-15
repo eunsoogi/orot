@@ -1,4 +1,6 @@
 import type { EvidenceRestoration } from './evidenceRestoration';
+import type { MultiAgentPhase } from './actionContracts';
+export type { MultiAgentPhase } from './actionContracts';
 import type {
   JsonObject,
   JsonValue,
@@ -114,6 +116,8 @@ export interface TaskResponderContract<TResult = JsonValue> {
     readonly by: 'source_kind';
     mergeValues(values: readonly JsonValue[], input: TaskResponderInput): JsonValue;
   };
+  /** Optional content-free reply on the first validated native tool selection, never final output. */
+  initialToolResponse?(text: string): string | undefined;
   createMessages(input: TaskResponderInput): readonly LanguageModelMessage[];
   /** Supplies privacy-safe guidance for one regeneration after a specific local result validation failure. */
   correctionInstructionForInvalidResult?(reason: string): string | undefined;
@@ -131,24 +135,22 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue> extends Evidence
   readonly initialEvidence: EvidenceBatch;
   /** Host-owned query stays in protected invocation context, never graph channels. */
   readonly initialSearch?: { readonly toolId: string; readonly input: JsonObject };
+  readonly actions?: readonly import('./actionContracts').LocalActionTool[];
   readonly tools: readonly import('./evidenceContracts').EvidenceSearchTool[];
   readonly consent: ExecutionConsentPort;
-  /** Return false for any missing or tombstoned reference so resume fails before evidence restoration. */
   readonly revalidateEvidence: (
     references: readonly EvidenceReference[],
     signal: AbortSignal,
   ) => Promise<boolean>;
   readonly operationJournal?: import('./workflowOperationJournal').WorkflowOperationJournal;
   readonly checkpointer?: BaseCheckpointSaver;
-  /** Persistent graph context is injected by LangGraph and stays outside checkpoint state. */
   readonly store?: BaseStore;
 }
 
-export type MultiAgentPhase =
-  'task_response' | 'evidence_research' | 'evidence_search' | 'revised_response' | 'complete';
-
 // This is the only domain state LangGraph may persist; prompts and record text stay outside it.
 export interface MultiAgentCheckpointState {
+  readonly actionContract?: string;
+  readonly committedAction?: boolean;
   readonly operationRunId: string;
   readonly providerId: string;
   readonly modelId: string;
@@ -242,6 +244,7 @@ export type MultiAgentProgressEvent =
     };
 
 export type MultiAgentResponderStreamEvent =
+  | { readonly type: 'initial_response'; readonly callId: string; readonly text: string }
   | { readonly type: 'started' }
   | { readonly type: 'text_delta'; readonly text: string }
   | { readonly type: 'text_snapshot'; readonly text: string };

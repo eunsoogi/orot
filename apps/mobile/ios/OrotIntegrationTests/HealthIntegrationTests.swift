@@ -44,6 +44,24 @@ final class HealthIntegrationTests: OrotFailFastTestCase {
         XCTAssertNotNil(summary.range(of: "availability=(available|unavailable)", options: .regularExpression))
     }
 
+    /// Synthetic conversion covers the shipping mapper without granting HealthKit write access.
+    func testWorkoutReadScopeAndDurationStayExplicit() throws {
+        let plan = try XCTUnwrap(HealthKitBatchAuthorization.plan(for: ["workouts"]))
+        XCTAssertEqual(plan.readTypes, [HKObjectType.workoutType()])
+        XCTAssertTrue(plan.shareTypes.isEmpty)
+        XCTAssertTrue(plan.perObjectReadTypes.isEmpty)
+        XCTAssertEqual(HealthKitBoundary.sampleType(feature: "workouts", kind: "workouts"),
+                       HKObjectType.workoutType())
+        XCTAssertNil(HealthKitBoundary.sampleType(feature: "steps", kind: "workouts"))
+        // HKWorkoutBuilder requires write permission even without saving, so it is not a read-only fixture.
+        // The shipping snapshot passes HKWorkout.duration to this exact mapper; no start/end is accepted.
+        let snapshot = HealthKitBoundary.workoutValues(activity: .running, duration: 4200)
+        XCTAssertEqual(snapshot["value"] as? Double, 70)
+        XCTAssertEqual(snapshot["unit"] as? String, "min")
+        XCTAssertEqual(snapshot["workoutActivityName"] as? String, "running")
+        XCTAssertEqual(snapshot["workoutActivityType"] as? UInt, HKWorkoutActivityType.running.rawValue)
+    }
+
     private func verifyMedicationConsentRouting() throws {
         guard #available(iOS 26.0, *) else { return }
         let medication = HKObjectType.userAnnotatedMedicationType()

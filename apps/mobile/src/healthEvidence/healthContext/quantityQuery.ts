@@ -19,6 +19,7 @@ const concepts = [
   'body_mass',
   'weight',
   'step_count',
+  'workout_duration',
 ] as const;
 
 /** Materialize the bounded period once, applying an optional ingestion cutoff before selecting sensor series.
@@ -48,7 +49,7 @@ export async function readHealthQuantityContext(
   const selectedConcepts = concepts.filter(
     concept =>
       family === 'all' ||
-      (concept === 'step_count'
+      (concept === 'step_count' || concept === 'workout_duration'
         ? family === 'activity'
         : family === 'measurements'),
   );

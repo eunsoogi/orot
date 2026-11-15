@@ -1,6 +1,6 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
-import { appColors } from '../../layout/appColors';
+import { providerSettingsStyles as styles } from '../../layout/providerSettingsPresentation';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { ProviderCatalogAccount } from './ProviderCatalogAccount';
 import ProviderSelectionOptionCard from './ProviderSelectionOptionCard';
@@ -23,7 +23,7 @@ interface ProviderSelectionChoicesProps {
   readonly chatGPTSetup?: ChatGPTAccountSetup;
 }
 
-/** Keeps selection state in the screen while provider panels adapt to measured usable regions. */
+/** Name the local and subscription boundaries without changing screen-owned selection. */
 export function ProviderSelectionChoices({
   options,
   loading,
@@ -65,7 +65,9 @@ export function ProviderSelectionChoices({
           : 'provider-selection-local-panel'
       }
     >
-      <Text style={styles.heading}>이 기기에서</Text>
+      <Text accessibilityRole="header" style={styles.heading}>
+        Apple
+      </Text>
       {cards(true)}
     </View>
   );
@@ -81,7 +83,13 @@ export function ProviderSelectionChoices({
           : 'provider-selection-connected-panel'
       }
     >
-      <Text style={styles.heading}>연결한 계정</Text>
+      <Text accessibilityRole="header" style={styles.heading}>
+        ChatGPT
+      </Text>
+      <Text>
+        이 계정에서 조회한 대화 모델입니다. OpenAI API 연결과 별개이며 구독에
+        API 사용 요금이나 크레딧이 포함되지는 않습니다.
+      </Text>
       <View style={styles.account}>
         {chatGPTSetup ? <ProviderCatalogAccount setup={chatGPTSetup} /> : null}
         {cards(false)}
@@ -115,20 +123,3 @@ export function ProviderSelectionChoices({
     </>
   );
 }
-const styles = StyleSheet.create({
-  section: { gap: 12, marginTop: 22 },
-  heading: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: appColors.text,
-    paddingHorizontal: 4,
-  },
-  account: {
-    gap: 8,
-    padding: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    backgroundColor: appColors.surface,
-  },
-});

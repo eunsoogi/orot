@@ -1,5 +1,6 @@
 import { conversationPublicSearchPlan as planSearch } from './conversationPublicSearchPlan';
 import { prepareLiveRagContinuation as continuationFor } from './liveRagConversationCapture';
+import { conversationMutationExecution } from './conversationMutationExecution';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import { finishConversationWorkflow } from './finishConversationWorkflow';
 import type * as Conversation from '../../ragConversation/service';
@@ -16,15 +17,8 @@ import { createResearchInputTracker } from './researchInputTracker';
 import type { ConversationEntryContext } from './conversationIntent';
 import { conversationEarlyResponse } from './conversationEarlyResponse';
 import { loadConversationHistory } from './conversationHistorySources';
-import {
-  conversationTargetFailure,
-  resolveConversationSelection,
-  validConversationInput,
-} from './conversationVoiceSelection';
-import {
-  bindConversationPhotoExecution as bindPhoto,
-  prepareConversationPhoto as preparePhoto,
-} from './conversationPhotoService';
+import * as voiceSelection from './conversationVoiceSelection';
+import { prepareConversationPhoto as preparePhoto } from './conversationPhotoService';
 import * as targets from './conversationEntryTargets';
 import { conversationExternalEvidence } from './conversationExternalEvidence';
 /** Keeps local availability checks ahead of provider resolution and model dispatch. */
@@ -48,7 +42,7 @@ export function createRagConversationService({
   ): Promise<Conversation.RagConversationOutcome> {
     const request = question.trim();
     const photo = background.photo(observer);
-    if (!validConversationInput(request, photo))
+    if (!voiceSelection.validConversationInput(request, photo))
       return { status: 'failure', kind: 'validation_failed' };
     const linked = background.scope(parentSignal, observer);
     const signal = linked.controller.signal;
@@ -64,7 +58,7 @@ export function createRagConversationService({
         signal,
       });
       if (target.failure)
-        return conversationTargetFailure(signal, target.failure);
+        return voiceSelection.conversationTargetFailure(signal, target.failure);
       const report = target.report;
       stage = 'selection';
       const early =
@@ -83,7 +77,10 @@ export function createRagConversationService({
         }));
       if (early) return early;
       stage = 'selection';
-      const selected = await resolveConversationSelection(observer, selectedAi);
+      const selected = await voiceSelection.resolveConversationSelection(
+        observer,
+        selectedAi,
+      );
       if (!selected) return { status: 'failure', kind: 'consent_required' };
       stage = 'data';
       const data =
@@ -185,14 +182,17 @@ export function createRagConversationService({
         tools,
         external,
       });
-      const execution = photo
-        ? bindPhoto(baseExecution, photo, photoEvidence!, {
-            selected,
-            data,
-            registry,
-            sessionVersion: observer!.retentionSession!.version,
-          })
-        : baseExecution;
+      const execution = conversationMutationExecution({
+        baseExecution,
+        photo,
+        photoEvidence,
+        selected,
+        data,
+        registry,
+        observer,
+        question: request,
+        history,
+      });
       stage = 'workflow';
       if (!(await historyIsCurrent()))
         return { status: 'failure', kind: 'retrieval_failed' };

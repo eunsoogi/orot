@@ -41,7 +41,6 @@ export function AssistantAppearanceProvider({
 }) {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [editing, setEditing] = useState(false);
-  const [clearing, setClearing] = useState(false);
   const readyRef = useRef(false);
   const [lastConfigured, setLastConfigured] =
     useState<AssistantAppearance | null>(null);
@@ -94,7 +93,7 @@ export function AssistantAppearanceProvider({
       </SafeAreaLayout>
     );
   const configured = state.status === 'configured';
-  const ready = configured && !clearing;
+  const ready = configured;
   const visibleValue =
     state.status === 'configured' ? state.value : lastConfigured;
   return (
@@ -128,19 +127,6 @@ export function AssistantAppearanceProvider({
             setLastConfigured(value);
             setState({ status: 'configured', value });
             setEditing(false);
-          }}
-          onClear={() => {
-            setClearing(false);
-            setEditing(false);
-            setState({ status: 'unconfigured' });
-          }}
-          onClearStart={() => {
-            readyRef.current = false;
-            setClearing(true);
-          }}
-          onClearFailed={() => {
-            readyRef.current = true;
-            setClearing(false);
           }}
         />
       ) : null}

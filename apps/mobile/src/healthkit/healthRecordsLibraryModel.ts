@@ -6,6 +6,7 @@ export type HealthRecordCategory =
   | 'heart_rate'
   | 'steps'
   | 'body_mass'
+  | 'workouts'
   | 'sleep'
   | 'medications'
   | 'other';
@@ -23,6 +24,7 @@ const categoryOrder: readonly HealthRecordCategory[] = [
   'heart_rate',
   'steps',
   'body_mass',
+  'workouts',
   'sleep',
   'medications',
   'other',
@@ -69,6 +71,8 @@ export function healthRecordCategoryTitle(
       return t('healthRecords.category.steps');
     case 'body_mass':
       return t('healthRecords.category.body_mass');
+    case 'workouts':
+      return t('healthRecords.category.workouts');
     case 'sleep':
       return t('healthRecords.category.sleep');
     case 'medications':
@@ -106,6 +110,8 @@ export function classifyHealthObservation(
   switch (observation.concept) {
     case 'heart_rate':
       return 'heart_rate';
+    case 'workout_duration':
+      return 'workouts';
     case 'step_count':
       return 'steps';
     case 'body_mass':

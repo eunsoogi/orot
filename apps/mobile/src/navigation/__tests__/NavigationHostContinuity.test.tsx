@@ -14,7 +14,7 @@ test('retains the measured native host when only the selected tab changes', asyn
       <NavigationActionBar
         controller={controller}
         safeAreaHandledByParent
-        rootTabs={{ activeTab: 'schedule', onSelect }}
+        rootTabs={{ activeTab: 'settings', onSelect }}
       />,
     );
     const surface = screen.getByTestId('navigation-bar-native-surface', {
@@ -25,8 +25,8 @@ test('retains the measured native host when only the selected tab changes', asyn
         nativeEvent: {
           revision: surface.props.pageMetricsRequest.revision,
           width: 374,
-          widths: [44, 44, 44, 44, 44, 44],
-          heights: [60, 60, 60, 60, 60, 60],
+          widths: [44, 44, 44, 44, 44],
+          heights: [60, 60, 60, 60, 60],
         },
       }),
     );

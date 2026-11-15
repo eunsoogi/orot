@@ -68,6 +68,11 @@ async function renderApp(props: ComponentProps<typeof App> = {}) {
 }
 
 async function selectTab(tab: string) {
+  if (tab === 'schedule') {
+    await selectTab('records');
+    await fireEvent.press(screen.getByTestId('records-section-schedule'));
+    return;
+  }
   await fireEvent.press(screen.getByTestId(`navigation-tab-${tab}`));
   await waitFor(() =>
     expect(screen.getByTestId(`navigation-tab-${tab}`)).toBeVisible(),
@@ -78,7 +83,7 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test('keeps Home compact and groups calendar and appointment management under Schedule', async () => {
+test('keeps Home compact and groups calendar and appointment management under Records schedule subtab', async () => {
   const store = createAppointmentStore();
   const bridge = createCalendarBridge();
   const loadAppointments = jest.fn(async () => store.repository);
@@ -161,7 +166,7 @@ test('keeps consent-gated recording reachable from Records', async () => {
   await waitFor(() => expect(screen.getByTestId('records-title')).toBeTruthy());
 });
 
-test('recovers the Schedule root after appointment storage needs a retry', async () => {
+test('recovers the Schedule subtab after appointment storage needs a retry', async () => {
   const store = createAppointmentStore();
   const loadAppointments = jest
     .fn<Promise<AppointmentRepository>, []>()

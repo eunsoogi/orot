@@ -38,6 +38,7 @@ export function createConversationRequestPreview(input: {
       admitted = await input.turn.preparePreview(expected, template);
     },
     onStream(event: MultiAgentResponderStreamEvent) {
+      if (event.type === 'initial_response') return;
       if (!input.current() || !admitted || boundary === undefined) return;
       text = applyWorkflowStreamEvent(text, event);
       if (!text) return;

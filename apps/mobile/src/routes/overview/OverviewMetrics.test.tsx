@@ -102,17 +102,16 @@ test('shows accessible gaps and keeps a failed selection save open for retry', a
   expect(
     screen.queryByTestId('overview-metric-chart-heartRate-selected-point'),
   ).toBeNull();
-  await fireEvent.press(
-    screen.getByTestId('overview-metric-chart-heartRate-details'),
-  );
-  const selected = screen.getByTestId(
-    'overview-metric-chart-heartRate-selected-point',
-  );
-  expect(selected.props.accessibilityLabel).toContain('2026-10-15');
-  expect(selected.props.accessibilityLabel).toContain('측정되지 않음');
-  expect(selected.props.accessibilityLabel).toContain('일부 기록');
-  expect(selected.props.accessibilityLabel).toContain('출처: 건강 기록');
-  expect(selected.props.accessibilityLabel).not.toContain('2026-10-14');
+  expect(
+    screen.queryByTestId('overview-metric-chart-heartRate-details'),
+  ).toBeNull();
+  const label = screen.getByTestId('overview-metric-chart-heartRate-plot').props
+    .accessibilityLabel;
+  expect(label).toContain('2026-10-15');
+  expect(label).toContain('측정되지 않음');
+  expect(label).toContain('일부 기록');
+  expect(label).toContain('출처: 건강 기록');
+  expect(label).toContain('2026-10-14');
   expect(screen.getByLabelText(/해당 날짜 측정 평균/)).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
   await fireEvent.press(screen.getByRole('checkbox', { name: /체중/ }));

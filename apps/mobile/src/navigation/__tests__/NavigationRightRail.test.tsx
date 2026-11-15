@@ -147,7 +147,7 @@ test('moves root actions into the right lane without losing route state or botto
       screen.getByTestId('navigation-content-region').props.style,
     ),
   ).toEqual(
-    expect.objectContaining({ bottom: 30, right: 72, top: 40, left: 14 }),
+    expect.objectContaining({ bottom: 0, right: 72, top: 40, left: 14 }),
   );
   expect(
     screen.getByTestId('navigation-safe-area-content').props.accessibilityHint,
@@ -194,7 +194,7 @@ test('moves root actions into the right lane without losing route state or botto
     nativeEvent: { layout: { height: 0, width: 1000, x: 0, y: 0 } },
   });
   expect(screen.getByTestId('route-bottom-inset').props.children).toBe(
-    NAVIGATION_CONTENT_GAP,
+    30 + NAVIGATION_CONTENT_GAP,
   );
   expect(screen.getByTestId('route-draft').props.children).toBe('edited');
   expect(lifecycle).toEqual({ mounted: 2, unmounted: 1 });
@@ -223,9 +223,9 @@ test('moves root actions into the right lane without losing route state or botto
     top: 40,
     left: 14,
     right: 22,
-    bottom: 30,
+    bottom: 0,
   });
-  // Bottom placement keeps the same safe frame; the removed system edge is not scroll padding.
+  // Bottom placement shares the extended viewport; measured actions still own end clearance.
   await fireEvent(screen.getByTestId('navigation-content-region'), 'layout', {
     nativeEvent: { layout: { height: 830, width: 964, x: 14, y: 40 } },
   });

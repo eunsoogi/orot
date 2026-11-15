@@ -21,7 +21,7 @@ test('keeps the backdrop touch-transparent and reacts to transparency preference
   expect(backdrop.props.pointerEvents).toBe('none');
   expect(backdrop.props.accessibilityElementsHidden).toBe(true);
   expect(
-    screen.queryByTestId('assistant-opaque-backdrop', {
+    screen.queryByTestId('assistant-floating-gradient-opaque', {
       includeHiddenElements: true,
     }),
   ).toBeNull();
@@ -29,7 +29,7 @@ test('keeps the backdrop touch-transparent and reacts to transparency preference
     change(true);
   });
   expect(
-    screen.getByTestId('assistant-opaque-backdrop', {
+    screen.getByTestId('assistant-floating-gradient-opaque', {
       includeHiddenElements: true,
     }),
   ).toBeTruthy();

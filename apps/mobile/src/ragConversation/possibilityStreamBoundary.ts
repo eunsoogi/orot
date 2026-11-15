@@ -7,6 +7,13 @@ export function bufferPossibilityStream(
   invocation: MultiAgentInvocation,
 ): MultiAgentInvocation {
   return intent === 'possibilities'
-    ? { ...invocation, onTaskStreamEvent: undefined }
+    ? {
+        ...invocation,
+        onTaskStreamEvent: event => {
+          // Only the separately admitted non-clinical reply can precede final validation.
+          if (event.type === 'initial_response')
+            invocation.onTaskStreamEvent?.(event);
+        },
+      }
     : invocation;
 }

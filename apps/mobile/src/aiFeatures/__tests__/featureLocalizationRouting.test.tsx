@@ -110,6 +110,9 @@ const featureScreens = [
     ),
     expectedKeys: [
       'ragConversation.title',
+      'ragConversation.workspace.activity',
+      'ragConversation.workspace.empty',
+      'assistantAppearance.cancelling',
       'aiActivity.cancel',
       'ragConversation.placeholder',
       'ragConversation.photo.select',
@@ -135,7 +138,6 @@ const featureScreens = [
       'ragConversation.insufficient',
       'ragConversation.unavailable',
       'ragConversation.speakerUser',
-      'treatmentSafety.open',
     ],
   },
   {

@@ -166,6 +166,8 @@ final class NavigationGlassSurfaceView: UIView {
         let contextualBack = renderedActions.filter { $0.id == "back" }
         let rootActions = renderedActions.filter { $0.id != "back" }
         rootBar.render(rootActions, animated: animated, onAction: actionDispatcher)
+        // Action composition determines the rail height before its parent resolves frames.
+        updatePresentation()
         renderInnerActions(contextualBack, onAction: actionDispatcher)
     }
 
@@ -198,6 +200,8 @@ final class NavigationGlassSurfaceView: UIView {
         railPlacementConstraints.forEach { $0.isActive = usesRightRail }
         // Mirror the measured lane for left-side multitasking; the legacy inset property is edge-relative.
         railPlacementConstraints[0].constant = layoutMode == "left" ? -max(0, host.bounds.width - NavigationRootGlassBar.exteriorWidth - railRightInset) : -railRightInset
+        // Recompute height after composition changes; retain each target and bottom clearance.
+        railPlacementConstraints[2].constant = rootBar.railHeight
         // Anchor the root surface to the usable lane bottom, not the screen edge.
         railPlacementConstraints[3].constant = -railBottomInset
         railPlacementConstraints[4].constant = layoutMode == "left" ? railRightInset : 0
@@ -207,7 +211,7 @@ final class NavigationGlassSurfaceView: UIView {
            renderedActions.contains(where: { $0.id == "back" })
         {
             // Anchor Back 4pt above the uncompressed root bar, including any page-action offset.
-            let rootTopY = host.bounds.height - railBottomInset - NavigationRootGlassBar.railHeight
+            let rootTopY = host.bounds.height - railBottomInset - rootBar.railHeight
             railPlacementConstraints[6].constant =
                 rootTopY -
                 NavigationRootGlassBar.contextualBackGroupHeight

@@ -138,6 +138,11 @@ export interface ConversationSession {
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: {
     readonly sourceOwner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner;
+    initialResponse?: {
+      readonly callId: string;
+      readonly text: string;
+      readonly source?: 'receipt';
+    };
     id: number;
     content: string;
     activity: string;

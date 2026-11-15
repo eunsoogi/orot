@@ -26,6 +26,8 @@ function seriesLabel(category: HealthRecordCategory, concept: string): string {
   switch (category) {
     case 'heart_rate':
       return t('healthkit.commonObservations.heartRate');
+    case 'workouts':
+      return t('healthRecords.category.workouts');
     case 'steps':
       return t('healthkit.commonObservations.steps');
     case 'body_mass':

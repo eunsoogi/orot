@@ -200,6 +200,13 @@ export const HealthObservationSchema = ImportedRecordMetadataSchema.safeExtend({
   observationKind: z.enum(['measurement', 'diagnosis', 'allergy', 'procedure', 'other']),
   concept: NonEmptyTextSchema,
   value: ObservationValueSchema,
+  // Preserve the source activity code without inferring intensity or requesting location routes.
+  workout: z
+    .strictObject({
+      activityType: z.number().int().nonnegative(),
+      activityName: NonEmptyTextSchema,
+    })
+    .optional(),
 }).superRefine((observation, context) => {
   if (!observation.recordedAt && observation.provenance.origin !== 'imported') {
     context.addIssue({

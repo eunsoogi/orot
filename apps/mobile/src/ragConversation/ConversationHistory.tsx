@@ -1,3 +1,6 @@
+import { followConversationLatest } from './followConversationLatest';
+import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
+import { transcriptMessageVisible } from './conversationWorkspaceLayout';
 import { useFloatingIdentityInset } from '../assistantAppearance/FloatingIdentityInset';
 import { useRef } from 'react';
 import type { ComponentRef } from 'react';
@@ -41,6 +44,7 @@ export function ConversationHistory({
   requestActivity,
 }: ConversationHistoryProps) {
   const identityInset = useFloatingIdentityInset();
+  const separatedActivity = useSeparatedConversationActivity();
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
   const userScrolling = useRef(false);
@@ -70,27 +74,18 @@ export function ConversationHistory({
     followsBottom,
     expectedOffset,
   );
-  const followLatest = () => {
-    if (!visibleMessages.length || !followsBottom.current || replyFocus) return;
-    if (compact) {
-      if (messageEnd.current !== null && viewportHeight.current > 0) {
-        expectedOffset.current = Math.max(
-          0,
-          messageEnd.current - viewportHeight.current,
-        );
-        historyView.current?.scrollTo({
-          y: expectedOffset.current,
-          animated: false,
-        });
-      }
-    } else {
-      const geometry = scrollGeometry.current;
-      expectedOffset.current = geometry
-        ? Math.max(0, geometry.contentHeight - geometry.height)
-        : null;
-      historyView.current?.scrollToEnd({ animated: false });
-    }
-  };
+  const followLatest = () =>
+    followConversationLatest({
+      hasMessages: visibleMessages.length > 0,
+      compact,
+      focused: Boolean(replyFocus),
+      followsBottom,
+      messageEnd,
+      viewportHeight,
+      expectedOffset,
+      historyView,
+      scrollGeometry,
+    });
 
   return (
     <ScrollView
@@ -196,29 +191,36 @@ export function ConversationHistory({
         testID="conversation-message-container"
         onLayout={event => replyScroll.container(event.nativeEvent.layout.y)}
       >
-        {visibleMessages.map(message => (
-          <ReplyMessageContainer
-            key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
-            focused={Boolean(
-              replyFocus && message.retainedTurnId === replyFocus.messageId,
-            )}
-            onLayout={replyScroll.message}
-          >
-            <ConversationMessage
-              message={message}
-              onContinueCold={onContinueCold}
-              coldResumeBusy={coldResumeBusy}
-              onOpenSource={onOpenSource}
-              onLinkError={onLinkError}
-              compact={compact}
-              toolSourceSessionId={toolSourceSessionId}
-              resolveToolSource={resolveToolSource}
-              resolveColdToolSource={resolveColdToolSource}
-              renderVisitQuestions={renderVisitQuestions}
-            />
-          </ReplyMessageContainer>
-        ))}
-        {showActivityBubble ? <ConversationActivityBubble /> : null}
+        {visibleMessages
+          .filter(message =>
+            transcriptMessageVisible(message, separatedActivity),
+          )
+          .map(message => (
+            <ReplyMessageContainer
+              key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
+              focused={Boolean(
+                replyFocus && message.retainedTurnId === replyFocus.messageId,
+              )}
+              onLayout={replyScroll.message}
+            >
+              <ConversationMessage
+                message={message}
+                onContinueCold={onContinueCold}
+                coldResumeBusy={coldResumeBusy}
+                resolveColdToolSource={resolveColdToolSource}
+                showToolActivity={false}
+                onOpenSource={onOpenSource}
+                onLinkError={onLinkError}
+                compact={compact}
+                toolSourceSessionId={toolSourceSessionId}
+                resolveToolSource={resolveToolSource}
+                renderVisitQuestions={renderVisitQuestions}
+              />
+            </ReplyMessageContainer>
+          ))}
+        {showActivityBubble && !separatedActivity ? (
+          <ConversationActivityBubble />
+        ) : null}
         <ConversationHistoryStatus
           {...{
             error,

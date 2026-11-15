@@ -9,6 +9,10 @@ import {
   syncedCalendar,
 } from '../calendarLinkingTestFixtures';
 import { calendarDateKey } from '../calendarMonth';
+// Event-card assertions use ordinary text; large-text rows have separate coverage.
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  default: () => ({ width: 393, height: 852, scale: 3, fontScale: 1 }),
+}));
 
 describe('Calendar linking screen', () => {
   it('uses the schedule-first hierarchy and keeps permission detail out of the calendar view', async () => {

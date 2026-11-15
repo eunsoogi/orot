@@ -18,6 +18,7 @@ type Props = {
   width: number;
   height: number;
   kind: 'line' | 'bar';
+  onBarSelect?: (selection: { x: string; seriesId: string } | null) => void;
 };
 
 const token: Record<
@@ -28,11 +29,18 @@ const token: Record<
   heartRate: 'pink',
   bodyMass: 'primaryText',
   steps: 'green',
+  workouts: 'green',
   bloodPressure: 'danger',
 };
 
 /** Keeps unlike units on independent native plot scales instead of implying an unrequested conversion. */
-export function ChartRenderer({ data, width, height, kind }: Props) {
+export function ChartRenderer({
+  data,
+  width,
+  height,
+  kind,
+  onBarSelect,
+}: Props) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const { fontScale } = useWindowDimensions();
   const palette = appColorPalettes[scheme];
@@ -120,7 +128,20 @@ export function ChartRenderer({ data, width, height, kind }: Props) {
                 width={width}
                 height={chartHeight}
                 theme={scheme}
-                interaction="none"
+                interaction={
+                  onBarSelect
+                    ? {
+                        mode: 'tap',
+                        onSelect: event =>
+                          onBarSelect({
+                            x: String(event.x),
+                            seriesId: event.seriesKey,
+                          }),
+                        onDeselect: () => onBarSelect(null),
+                      }
+                    : 'none'
+                }
+                tooltip={false}
                 selectionAnimation={false}
                 formatXLabel={xLabel}
                 formatYLabel={formatValue}

@@ -1,7 +1,5 @@
-import { Pressable, View } from 'react-native';
-import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
-import { AppSymbol } from '../layout/AppSymbol';
-import { appColors } from '../layout/appColors';
+import { View } from 'react-native';
+import { GlassIconButton } from '../layout/GlassIconButton';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { AppProgress } from '../layout/AppProgress';
@@ -58,17 +56,15 @@ export default function RecordingLibraryList({
           {t('recording.library.title')}
         </Text>
         {onNewRecording && !hasDock ? (
-          <Pressable
+          <GlassIconButton
             accessibilityRole="button"
             accessibilityLabel={t('recording.start')}
             disabled={disabled}
             onPress={onNewRecording}
             style={styles.listPlaybackButton}
             testID="saved-recordings-new"
-          >
-            <ComposerGlassBackground />
-            <AppSymbol name="mic.fill" color={appColors.primaryText} />
-          </Pressable>
+            symbolName="mic.fill"
+          />
         ) : null}
       </View>
       {onNewRecording ? (

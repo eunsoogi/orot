@@ -86,7 +86,7 @@ describe('encrypted local storage', () => {
         'visit_questions',
       ]),
     );
-    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(16);
+    expect((await database.execute('PRAGMA user_version')).rows[0].user_version).toBe(17);
     expect(
       (await database.execute("SELECT name FROM sqlite_master WHERE name = 'records'")).rows,
     ).toHaveLength(0);

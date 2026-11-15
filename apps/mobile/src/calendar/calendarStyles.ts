@@ -10,6 +10,8 @@ export const calendarStyles = StyleSheet.create({
     padding: 20,
     backgroundColor: appColors.background,
   },
+  // The injected hub header owns its gutters; cancel only this scroll container padding.
+  scrollHeader: { marginHorizontal: -20, marginTop: -20 },
   heading: { gap: 6 },
   pageSections: { gap: 16 },
   title: { color: appColors.text, fontSize: 36, fontWeight: '700' },
@@ -130,9 +132,9 @@ export const calendarStyles = StyleSheet.create({
     maxWidth: 44,
     width: '100%',
   },
-  calendarSelectedDay: { backgroundColor: appColors.primaryAction },
+  calendarSelectedDay: { backgroundColor: appColors.border },
   calendarTodayDay: { backgroundColor: appColors.primarySoft },
-  calendarSelectedDayNumber: { color: appColors.onPrimary },
+  calendarSelectedDayNumber: { color: appColors.text },
   calendarTodayDayNumber: { color: appColors.primaryText },
   calendarTodayLabel: {
     color: appColors.primaryText,
@@ -163,7 +165,7 @@ export const calendarStyles = StyleSheet.create({
     height: 3,
     width: 3,
   },
-  calendarSelectedEventMarker: { backgroundColor: appColors.onPrimary },
+  calendarSelectedEventMarker: { backgroundColor: appColors.text },
   calendarSelectedDateEvents: {
     borderColor: appColors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -181,17 +183,18 @@ export const calendarStyles = StyleSheet.create({
     borderColor: appColors.border,
     borderRadius: 12,
     borderWidth: 1,
-    borderLeftWidth: 3,
-    borderLeftColor: appColors.primary,
+    borderLeftWidth: 1,
+    borderLeftColor: appColors.border,
     gap: 8,
     minWidth: 0,
     padding: 14,
   },
+  // The visit badge carries meaning; the full event surface stays neutral.
   calendarNextVisitEvent: {
-    backgroundColor: appColors.primarySoft,
-    borderLeftWidth: 0,
+    backgroundColor: appColors.background,
+    borderLeftWidth: 1,
     borderRadius: 12,
-    borderWidth: 0,
+    borderWidth: 1,
   },
   calendarEventHeading: {
     alignItems: 'flex-start',
@@ -203,7 +206,7 @@ export const calendarStyles = StyleSheet.create({
   calendarNextVisitBadge: {
     backgroundColor: appColors.surface,
     borderRadius: 8,
-    color: appColors.primaryText,
+    color: appColors.text,
     flexShrink: 1,
     fontSize: 12,
     fontWeight: '600',

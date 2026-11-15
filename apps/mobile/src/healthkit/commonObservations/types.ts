@@ -5,14 +5,15 @@ export const commonObservationFeatures = [
   'heartRate',
   'steps',
   'bodyMass',
+  'workouts',
 ] as const;
 
 export type CommonObservationFeature =
   (typeof commonObservationFeatures)[number];
 
-export type CommonObservationUnit = 'count/min' | 'count' | 'kg';
+export type CommonObservationUnit = 'count/min' | 'count' | 'kg' | 'min';
 export type CommonObservationConcept =
-  'heart_rate' | 'step_count' | 'body_mass';
+  'heart_rate' | 'step_count' | 'body_mass' | 'workout_duration';
 export type CommonObservationQuantityValue = Extract<
   RecordMap['health_observation']['value'],
   { readonly kind: 'quantity' }
@@ -33,6 +34,8 @@ export interface MappedCommonObservation {
   readonly sourceName: string;
   readonly sourceVersion?: string;
   readonly sourceProductType?: string;
+  readonly workoutActivityType?: number;
+  readonly workoutActivityName?: string;
   readonly device?: HealthKitSampleSnapshot['device'];
 }
 

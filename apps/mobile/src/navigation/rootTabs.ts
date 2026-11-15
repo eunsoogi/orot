@@ -30,15 +30,6 @@ export const rootTabItems = [
     fallbackSymbol: '▤',
   },
   {
-    id: 'schedule',
-    label: t('navigation.tabs.schedule'),
-    accessibilityLabel: t('navigation.tabs.scheduleAccessibility'),
-    testID: 'navigation-tab-schedule',
-    systemImageName: 'calendar',
-    selectedSystemImageName: 'calendar',
-    fallbackSymbol: '▦',
-  },
-  {
     id: 'settings',
     label: t('navigation.tabs.settings'),
     accessibilityLabel: t('navigation.tabs.settingsAccessibility'),
@@ -49,9 +40,24 @@ export const rootTabItems = [
   },
 ] as const;
 
-export type AppRootTab = (typeof rootTabItems)[number]['id'];
+// Schedule remains a compatible deep-link destination inside the Records hub.
+export type AppRootTab = (typeof rootTabItems)[number]['id'] | 'schedule';
 
 export interface NavigationRootTabs {
   readonly activeTab: AppRootTab;
+  /** Distinguishes nested content while retaining its parent navigation selection. */
+  readonly contentKey?: AppRootTab;
   readonly onSelect: (tab: AppRootTab) => void | Promise<unknown>;
+}
+
+/** Keeps nested content distinct while its parent tab remains selected. */
+export function createNavigationRootTabs(
+  contentKey: AppRootTab,
+  onSelect: NavigationRootTabs['onSelect'],
+): NavigationRootTabs {
+  return {
+    activeTab: contentKey === 'schedule' ? 'records' : contentKey,
+    contentKey,
+    onSelect,
+  };
 }

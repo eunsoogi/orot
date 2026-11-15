@@ -1,3 +1,4 @@
+import { workoutActivityLabel } from './workoutPresentation';
 import { useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
@@ -98,7 +99,9 @@ export function HealthRecordsDetailRecordRow({
         style={styles.concept}
         testID={'health-record-row-' + index + '-concept'}
       >
-        {healthRecordCategoryTitle(category)}
+        {category === 'workouts'
+          ? workoutActivityLabel(row.observation)
+          : healthRecordCategoryTitle(category)}
       </Text>
       <Text
         style={styles.detailValue}

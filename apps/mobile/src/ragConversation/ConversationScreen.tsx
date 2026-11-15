@@ -1,9 +1,10 @@
-import { AppButton as Button } from '../layout/AppButton';
+import { conversationComposerDisabled } from './conversationComposerDisabled';
+import { ConversationBackButton } from './ConversationBackButton';
 import { AppText as Text } from '../layout/AppText';
 import { useMemo, useSyncExternalStore } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationComposer } from './ConversationComposer';
-import { FloatingAssistantSurface } from '../assistantAppearance/FloatingAssistantSurface';
+import { ConversationWorkspace } from './ConversationWorkspace';
 import { ConversationHeaderTitle } from './ConversationHeaderTitle';
 import { styles } from './ConversationScreen.styles';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
@@ -11,7 +12,6 @@ import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { ConversationHistory } from './ConversationHistory';
 import { ConversationEntryAction } from './ConversationEntryAction';
 import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
-import { navigationText } from '../i18n/navigation';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useConversationSessionActions } from './useConversationSessionActions';
@@ -21,7 +21,7 @@ import {
   conversationEntryForSession,
 } from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
-import { sendConversationMessage } from './conversationVisitDispatch';
+import { dispatchConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { useConversationScreenControls } from './useConversationScreenControls';
 import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
@@ -87,6 +87,12 @@ export function ConversationScreen({
   );
   const onLinkError = () =>
     store.setError(id, t('ragConversation.conversation.sourceOpenFailed'));
+  const sourceActions = {
+    onOpenSource,
+    onLinkError,
+    toolSourceSessionId,
+    resolveToolSource,
+  };
   useAiFeatureScreenNavigationState(
     navigationRouteKey,
     {
@@ -98,15 +104,10 @@ export function ConversationScreen({
     onNavigationStateChange,
   );
   const coldResumeBusy = busy || session.restoring || session.retryingSave;
+
   const header = (
     <View style={styles.header}>
-      {!navigationRouteKey && (
-        <Button
-          accessibilityLabel={navigationText.back.accessibilityLabel}
-          onPress={onBack}
-          title={navigationText.back.label}
-        />
-      )}
+      {!navigationRouteKey && <ConversationBackButton onBack={onBack} />}
       <ConversationHeaderTitle
         title={copy.title}
         historyLabel={copy.sessions}
@@ -152,11 +153,15 @@ export function ConversationScreen({
         primary={
           <View
             style={styles.content}
+            testID="conversation-content-viewport"
             onLayout={event =>
               setContentHeight(event.nativeEvent.layout.height)
             }
           >
-            <FloatingAssistantSurface session={session}>
+            <ConversationWorkspace
+              session={session}
+              sourceActions={sourceActions}
+            >
               <ConversationHistory
                 replyFocus={focus}
                 coldResumeBusy={coldResumeBusy}
@@ -216,30 +221,25 @@ export function ConversationScreen({
                   />
                 }
               />
-            </FloatingAssistantSurface>
+            </ConversationWorkspace>
             <ConversationComposer
               {...composer}
               photo={photo}
               value={draft}
               busy={busy}
-              disabled={
-                session.restoring ||
-                session.restoreFailed ||
-                session.quarantined ||
-                session.retryingSave ||
-                (session.restoreAfterRetry && Boolean(session.unsavedCount))
-              }
+              cancelling={session.requestActivity?.stage === 'cancelling'}
+              disabled={conversationComposerDisabled(session)}
               compact={composerLayout.compact}
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}
-              onSend={() => {
-                sendConversationMessage(
+              onSend={() =>
+                dispatchConversationMessage(
                   store,
                   id,
                   onSend,
                   prepareVisitQuestions,
-                ).catch(() => {});
-              }}
+                )
+              }
               onCancel={() => store.cancel(id)}
             />
           </View>

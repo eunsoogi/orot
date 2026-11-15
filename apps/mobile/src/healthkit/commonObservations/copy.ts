@@ -8,6 +8,7 @@ export const commonObservationsCopy: CommonObservationsImportCopy = {
   localOnly: t('healthkit.commonObservations.localOnly'),
   importButton: t('healthkit.commonObservations.import'),
   featureNames: {
+    workouts: t('healthkit.commonObservations.workouts'),
     heartRate: t('healthkit.commonObservations.heartRate'),
     steps: t('healthkit.commonObservations.steps'),
     bodyMass: t('healthkit.commonObservations.bodyMass'),

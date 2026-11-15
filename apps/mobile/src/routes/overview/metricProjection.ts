@@ -35,12 +35,14 @@ export function projectOverviewMetric(
     heartRate: 'heart_rate',
     bodyMass: 'body_mass',
     steps: 'step_count',
+    workouts: 'workout_duration',
   } as const;
   const unit = {
     sleep: 'min',
     heartRate: 'count/min',
     bodyMass: 'kg',
     steps: 'count',
+    workouts: 'min',
   } as const;
   const series =
     metric === 'sleep'
@@ -62,13 +64,16 @@ export function projectOverviewMetric(
     for (const day of series!.days) {
       values.set(
         day.date,
-        metric === 'steps'
+        metric === 'steps' || metric === 'workouts'
           ? day.sum
           : metric === 'bodyMass'
             ? day.latest
             : day.mean,
       );
-      comparisonValues.set(day.date, metric === 'steps' ? day.sum : day.mean);
+      comparisonValues.set(
+        day.date,
+        metric === 'steps' || metric === 'workouts' ? day.sum : day.mean,
+      );
     }
   }
   if (!values.size) return null;

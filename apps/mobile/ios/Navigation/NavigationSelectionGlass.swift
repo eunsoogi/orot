@@ -37,7 +37,8 @@ final class NavigationSelectionGlass: UIView {
             backgroundColor = .systemGray4
         } else if #available(iOS 26.0, *) {
             let glass = UIGlassEffect(style: .regular)
-            glass.tintColor = .systemBlue.withAlphaComponent(0.18)
+            // Keep the system material neutral; selected icons and labels provide the accent.
+            glass.tintColor = nil
             glass.isInteractive = false
             material.effect = glass
             backgroundColor = .clear

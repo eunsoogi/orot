@@ -1,3 +1,4 @@
+import { MedicalDocumentDeleteAction } from './MedicalDocumentDeleteAction';
 import type { EvidenceSpan } from '@orot/domain';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { formatDateTime, t } from '../i18n';
@@ -12,12 +13,16 @@ import { isSavedMedicalDocumentPhoto } from './medicalDocumentOriginalPhotoUtils
 interface MedicalDocumentSourceViewProps {
   readonly document: SavedMedicalDocument;
   readonly onBack: () => void;
+  readonly onDeleted?: () => void;
+  readonly onDeletionBusyChange?: (busy: boolean) => void;
 }
 
 /** Keeps saved metadata, original photos, and OCR spans in the Records scene's measured scroll. */
 export function MedicalDocumentSourceView({
   document,
   onBack,
+  onDeleted,
+  onDeletionBusyChange,
 }: MedicalDocumentSourceViewProps) {
   const hasSharedBack = useNavigationBackAction(onBack);
   return (
@@ -62,6 +67,14 @@ export function MedicalDocumentSourceView({
               })}
             </Text>
           </View>
+          {onDeleted && onDeletionBusyChange ? (
+            <MedicalDocumentDeleteAction
+              key={document.id}
+              sourceId={document.id}
+              onDeleted={onDeleted}
+              onBusyChange={onDeletionBusyChange}
+            />
+          ) : null}
           {isSavedMedicalDocumentPhoto(document.title) ? (
             <MedicalDocumentOriginalPhoto
               expectedContentHash={document.contentHash ?? null}

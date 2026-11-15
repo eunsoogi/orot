@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import { OverviewMetrics } from './OverviewMetrics';
 import { useOverviewMetrics } from './useOverviewMetrics';
 import type { OverviewMetric } from './metricSelection';
@@ -13,7 +13,7 @@ jest.mock('react-native-chart-kit/v2', () => ({
 const mocked = jest.mocked(useOverviewMetrics);
 
 test.each([
-  ['sleep', '해당 날짜 기록 합계', 'min', 70.4, '70분', 'min'],
+  ['sleep', '해당 날짜 기록 합계', 'min', 70.4, '1시간 10분', 'min'],
   [
     'heartRate',
     '해당 날짜 측정 평균',
@@ -67,14 +67,22 @@ test.each([
     expect(screen.getByText(formattedValue)).toBeTruthy();
     expect(screen.queryByText('최근 날짜별 기록')).toBeNull();
     expect(screen.queryByText(`일별 집계 · ${unit}`)).toBeNull();
-    await fireEvent.press(
-      screen.getByTestId(`overview-metric-chart-${metric}-details`),
-    );
-    expect(screen.getByText(`일별 집계 · ${unit}`)).toBeTruthy();
     expect(
-      screen.getByTestId(`overview-metric-chart-${metric}-selected-point`).props
+      screen.queryByTestId(`overview-metric-chart-${metric}-details`),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId(`overview-metric-chart-${metric}-selected-point`),
+    ).toBeNull();
+    expect(
+      screen.getByTestId(`overview-metric-chart-${metric}-plot`).props
         .accessibilityLabel,
     ).toContain('출처: 건강 기록');
+    expect(
+      screen.getByTestId(`overview-metric-chart-${metric}-plot`).props
+        .accessibilityLabel,
+    ).toContain(formattedValue);
+    expect(projection.latest?.value).toBe(measuredValue);
+    expect(projection.unit).toBe(unit);
     expect(screen.queryByText(/Synthetic Watch App|Asia\/Seoul/u)).toBeNull();
     expect(projection).toMatchObject({
       unit,

@@ -11,7 +11,12 @@ const copy: CommonObservationsImportCopy = {
   description: '가져올 기록을 선택해 주세요.',
   localOnly: '선택한 기록은 이 기기에 저장돼요.',
   importButton: '선택한 기록 가져오기',
-  featureNames: { heartRate: '심박수', steps: '걸음 수', bodyMass: '체중' },
+  featureNames: {
+    workouts: '운동 기록',
+    heartRate: '심박수',
+    steps: '걸음 수',
+    bodyMass: '체중',
+  },
   statuses: {
     idle: '기록 유형을 선택해 주세요.',
     importing: '가져오는 중이에요.',

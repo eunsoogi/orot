@@ -36,6 +36,7 @@ const expectedReadTypes: Record<
   sleep: ['HKCategoryTypeIdentifierSleepAnalysis'],
   heartRate: ['HKQuantityTypeIdentifierHeartRate'],
   steps: ['HKQuantityTypeIdentifierStepCount'],
+  workouts: ['HKWorkoutTypeIdentifier'],
   bodyMass: ['HKQuantityTypeIdentifierBodyMass'],
 };
 

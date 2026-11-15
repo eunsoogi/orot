@@ -3,9 +3,13 @@ import UIKit
 /// Preserves one joined Glass surface and moving selection while switching between bottom and side layouts.
 final class NavigationRootGlassBar: UIVisualEffectView {
     static let exteriorWidth: CGFloat = 48
-    /// Five 52pt targets plus four 4pt gaps keep rail buttons the same size as bottom targets.
-    static let railHeight: CGFloat = 276
-    /// The common Back target plus its clear gap sit above the fixed five-tab surface.
+    /// Size the icon-only rail for its rendered destinations, never an obsolete tab count.
+    static let railSpacing: CGFloat = 2
+    var railHeight: CGFloat {
+        CGFloat(buttons.count) * 52 + CGFloat(max(0, buttons.count - 1)) * Self.railSpacing
+    }
+
+    /// The common Back target plus its clear gap sit above the current root-tab surface.
     static let contextualBackGroupHeight: CGFloat = 52
 
     private let stack = UIStackView()
@@ -113,6 +117,7 @@ final class NavigationRootGlassBar: UIVisualEffectView {
         guard usesVerticalLayout != isVertical else { return }
         usesVerticalLayout = isVertical
         stack.axis = isVertical ? .vertical : .horizontal
+        stack.spacing = isVertical ? Self.railSpacing : 4
         layer.cornerRadius = isVertical ? Self.exteriorWidth / 2 : 30
         for (button, action) in zip(buttons, descriptors) where action.rootTab {
             for content in button.subviews.compactMap({ $0 as? UIStackView }) {

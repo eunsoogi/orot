@@ -19,7 +19,11 @@ export function createConversationTurnActivity(input: {
   responseId: number;
   initialToolEvents?: readonly ConversationToolEvent[];
   find: (id: number) => ConversationSession;
-  update: (id: number, change: Partial<ConversationSession>) => void;
+  update: (
+    id: number,
+    change: Partial<ConversationSession>,
+    stream?: boolean,
+  ) => void;
   current: () => boolean;
   retained?: ReturnType<typeof createConversationTurnRetention>;
   activity?: ReturnType<typeof createConversationActivity>;
@@ -113,6 +117,23 @@ export function createConversationTurnActivity(input: {
       },
       onTaskStreamEvent(event: Parameters<typeof applyWorkflowStreamEvent>[1]) {
         const pending = input.find(input.id)?.pendingMessage;
+        if (event.type === 'initial_response') {
+          // The pending bubble is already scoped by this live request/attempt. Never save
+          // the receipt as answer text or accept a late callback after Stop/newer work.
+          if (
+            input.current() &&
+            pending?.id === input.responseId &&
+            (!pending.initialResponse ||
+              pending.initialResponse.source === 'receipt')
+          )
+            input.update(input.id, {
+              pendingMessage: {
+                ...pending,
+                initialResponse: { callId: event.callId, text: event.text },
+              },
+            });
+          return;
+        }
         if (
           input.current() &&
           pending?.id === input.responseId &&
@@ -142,14 +163,19 @@ export function createConversationTurnActivity(input: {
           pending?.id === input.responseId &&
           !pending.withholdHealthBody
         )
-          input.update(input.id, {
-            pendingMessage: {
-              id: input.responseId,
-              content: applyWorkflowStreamEvent(pending.content, event),
-              activity: pending.activity,
-              ...metadata(),
+          input.update(
+            input.id,
+            {
+              pendingMessage: {
+                id: input.responseId,
+                content: applyWorkflowStreamEvent(pending.content, event),
+                initialResponse: pending.initialResponse,
+                activity: pending.activity,
+                ...metadata(),
+              },
             },
-          });
+            event.type === 'text_delta',
+          );
       },
     },
   };

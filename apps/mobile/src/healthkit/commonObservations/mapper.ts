@@ -28,6 +28,11 @@ const sampleDefinitions: Record<
     concept: 'step_count',
     unit: 'count',
   },
+  workouts: {
+    typeIdentifier: 'HKWorkoutTypeIdentifier',
+    concept: 'workout_duration',
+    unit: 'min',
+  },
   bodyMass: {
     typeIdentifier: 'HKQuantityTypeIdentifierBodyMass',
     concept: 'body_mass',
@@ -85,6 +90,33 @@ export function mapCommonObservationSample(
   if (sample.unit !== definition.unit) {
     return { status: 'skipped', reason: 'unsupportedUnit' };
   }
+  // Unknown future integer activity codes are retained; malformed values cannot advance the cursor.
+  if (
+    feature === 'workouts' &&
+    (!Number.isSafeInteger(sample.workoutActivityType) ||
+      sample.workoutActivityType! < 0)
+  ) {
+    return { status: 'skipped', reason: 'invalidValue' };
+  }
+  if (
+    feature === 'workouts' &&
+    sample.workoutActivityName !== undefined &&
+    ![
+      'walking',
+      'running',
+      'cycling',
+      'swimming',
+      'hiking',
+      'yoga',
+      'strength',
+      'functionalStrength',
+      'cardio',
+      'interval',
+      'other',
+    ].includes(sample.workoutActivityName)
+  ) {
+    return { status: 'skipped', reason: 'invalidValue' };
+  }
   const device = deviceMetadata(sample.device);
 
   return {
@@ -104,6 +136,12 @@ export function mapCommonObservationSample(
           reason: 'healthkit_does_not_expose_original_display_unit',
         },
       },
+      ...(feature === 'workouts'
+        ? {
+            workoutActivityType: sample.workoutActivityType,
+            workoutActivityName: sample.workoutActivityName,
+          }
+        : {}),
       sourceSampleId: sample.id,
       typeIdentifier: sample.typeIdentifier,
       startDate: sample.startDate,
@@ -157,6 +195,14 @@ export function toCommonObservationRecord(
     observationKind: observation.observationKind,
     concept: observation.concept,
     value: observation.value,
+    ...(observation.workoutActivityType !== undefined
+      ? {
+          workout: {
+            activityType: observation.workoutActivityType,
+            activityName: observation.workoutActivityName ?? 'other',
+          },
+        }
+      : {}),
   });
 }
 

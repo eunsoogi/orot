@@ -59,6 +59,7 @@ export function OverviewRecentHealthChange({
     heartRate: 'heart',
     bodyMass: 'scalemass',
     steps: 'figure.walk',
+    workouts: 'figure.run',
   }[metric.metric];
   const accessibilityLabel = [
     title,

@@ -27,6 +27,11 @@ export type RagConversationObserver = Pick<
     reason?: 'expired' | 'decision-required',
   ) => Promise<boolean>;
   readonly onExecutionState?: (state: 'working' | 'local' | 'decision') => void;
+  /** Confirm an ambiguous model-selected user statement locally; never authorizes provider transfer. */
+  readonly confirmHistorySave?: (
+    text: string,
+    signal: AbortSignal,
+  ) => Promise<boolean>;
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
   /** The checkpoint and explicit photo consent are owned by this specific turn. */

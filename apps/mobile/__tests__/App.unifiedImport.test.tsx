@@ -148,7 +148,7 @@ test('keeps imported records in Records and reclassifies a saved appointment onl
     expect(view.queryByTestId('records-open-blood-pressure')).toBeNull();
     expect(view.queryByTestId('unified-import-start')).toBeNull();
 
-    await fireEvent.press(view.getByTestId('navigation-tab-schedule'));
+    await fireEvent.press(view.getByTestId('records-section-schedule'));
     await fireEvent.press(view.getByTestId('open-medical-appointments'));
     expect(
       await view.findByText(medicalAppointmentCopy.localNotice),

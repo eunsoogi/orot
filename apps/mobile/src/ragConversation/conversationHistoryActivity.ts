@@ -17,7 +17,9 @@ export function conversationHistoryActivity(
       ? requestActivity
       : null;
   const hasPendingContent = Boolean(
-    pending?.content.trim() || pending?.toolEvents?.length,
+    pending?.initialResponse ||
+    pending?.content.trim() ||
+    pending?.toolEvents?.length,
   );
   // Cold Continue replaces its interrupted bubble visually, not in retained data.
   const settled = pending

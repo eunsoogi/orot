@@ -52,8 +52,8 @@ describe('measured bottom navigation', () => {
           nativeEvent: {
             revision: surface.props.pageMetricsRequest.revision,
             width: 390,
-            widths: [60, 60, 60, 60, 60, 44],
-            heights: [110, 110, 110, 110, 110, 60],
+            widths: [60, 60, 60, 60, 44],
+            heights: [110, 110, 110, 110, 60],
           },
         }),
       );

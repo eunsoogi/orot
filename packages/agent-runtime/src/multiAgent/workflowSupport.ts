@@ -1,5 +1,7 @@
 import { restoreOrderedEvidenceBatches } from './evidenceRestoration';
 import { validInitialEvidenceSearch, validInitialSearchResume } from './initialEvidenceSearch';
+import { validResumeShape } from './resumeShape';
+import { actionContract, validLocalActions } from './actionContracts';
 import type {
   MultiAgentCheckpointState,
   AllowedEvidenceScope,
@@ -65,6 +67,12 @@ export function validIdentity<TResult>(options: MultiAgentWorkflowOptions<TResul
     provider.capabilities.inputTypes.includes('text') &&
     new Set(options.tools.map((tool) => tool.id)).size === options.tools.length &&
     options.tools.every((tool) => validEvidenceTool(tool, execution.allowedScope)) &&
+    validLocalActions(options.actions, execution.allowedScope) &&
+    new Set([
+      ...options.tools.map((tool) => tool.id),
+      ...(options.actions ?? []).map((action) => action.id),
+    ]).size ===
+      options.tools.length + (options.actions?.length ?? 0) &&
     (!execution.allowedScope.timeRange ||
       isOrderedTimestampRange(
         execution.allowedScope.timeRange.fromInclusive,
@@ -80,6 +88,8 @@ function isNonNegativeSafeInteger(value: number): boolean {
 export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult>): WorkflowState {
   const source = options.execution;
   return {
+    actionContract: actionContract(options.actions),
+    committedAction: false,
     operationRunId: source.operationRunId,
     providerId: source.providerId,
     modelId: source.modelId,
@@ -99,23 +109,6 @@ export function initialState<TResult>(options: MultiAgentWorkflowOptions<TResult
   };
 }
 
-function validResumeShape(saved: MultiAgentCheckpointState): boolean {
-  // Durable phase and evidence-need values must match a state the graph knows how to route.
-  return (
-    [
-      'task_response',
-      'evidence_research',
-      'evidence_search',
-      'revised_response',
-      'complete',
-    ].includes(saved.phase) &&
-    (saved.evidenceNeed === undefined ||
-      ['missing_coverage', 'verify_conflict', 'confirm_value', 'other'].includes(
-        saved.evidenceNeed,
-      ))
-  );
-}
-
 export function resumeState<TResult>(
   saved: NonNullable<MultiAgentInvocation['resumeFrom']>,
   options: MultiAgentWorkflowOptions<TResult>,
@@ -123,6 +116,9 @@ export function resumeState<TResult>(
   // A checkpoint taken during a side effect cannot prove whether that operation already completed.
   // Reject out-of-scope references before any revalidation or restoration callback can resolve them.
   if (
+    saved.actionContract !== actionContract(options.actions) ||
+    // Live-only release: never reconstruct a committed mutation without the protected result journal.
+    (saved.committedAction !== undefined && saved.committedAction !== false) ||
     !validResumeShape(saved) ||
     !validInitialSearchResume(saved, options) ||
     !checkpointMatchesRun(saved, options.execution) ||
@@ -149,6 +145,7 @@ export function resumeState<TResult>(
           : saved.modelCalls < 1 ||
             saved.awaitingAuthorization !== `model-${saved.modelCalls}`))) ||
     (saved.phase === 'evidence_search' && !saved.awaitingAuthorization) ||
+    saved.phase === 'local_action' ||
     !isNonNegativeSafeInteger(saved.modelCalls) ||
     !isNonNegativeSafeInteger(saved.toolCalls) ||
     !isNonNegativeSafeInteger(saved.researchCycles) ||
@@ -167,7 +164,9 @@ export function resumeState<TResult>(
       (saved.toolCalls === 0 ||
         (saved.evidenceReferences.length === 0 && !saved.awaitingAuthorization))) ||
     (saved.selectedToolId !== undefined &&
-      !options.tools.some((tool) => tool.id === saved.selectedToolId))
+      ![...options.tools, ...(options.actions ?? [])].some(
+        (tool) => tool.id === saved.selectedToolId,
+      ))
   ) {
     return undefined;
   }
@@ -175,6 +174,8 @@ export function resumeState<TResult>(
     ...saved,
     initialSearchStatus: saved.initialSearchStatus,
     awaitingAuthorization: saved.awaitingAuthorization,
+    actionContract: saved.actionContract,
+    committedAction: saved.committedAction,
     evidenceReferences: saved.evidenceReferences.map(projectEvidenceReference),
     evidenceNeed: saved.evidenceNeed,
     selectedToolId: saved.selectedToolId,

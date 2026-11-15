@@ -14,7 +14,7 @@ import { createDailyReportTables } from './dailyReportMigration';
 import { createRecapBindingTables } from './recapBinding';
 import { readUserVersion } from './schemaVersion';
 
-export const CURRENT_SCHEMA_VERSION = 16;
+export const CURRENT_SCHEMA_VERSION = 17;
 
 async function createInitialTables(transaction: SqlExecutor): Promise<void> {
   for (const definition of Object.values(STORAGE_TABLES)) {
@@ -225,6 +225,6 @@ export async function runMigrations(database: SqlDatabase): Promise<void> {
     }
     if (currentVersion < 15) await migrateSourceTimes(transaction);
     if (currentVersion < 16) await createRecapBindingTables(transaction);
-    await transaction.execute('PRAGMA user_version = 16');
+    await transaction.execute('PRAGMA user_version = 17');
   });
 }

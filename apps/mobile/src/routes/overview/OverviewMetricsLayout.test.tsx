@@ -87,21 +87,13 @@ test.each([2, 3, 4])(
       );
       const selectedPointID = `overview-metric-chart-${metric}-selected-point`;
       expect(chart.queryByTestId(selectedPointID)).toBeNull();
-      await fireEvent.press(
-        chart.getByTestId(`overview-metric-chart-${metric}-details`),
-      );
-      const selectedPoint = chart.getByTestId(selectedPointID);
-      expect(selectedPoint.props.accessibilityLabel).toContain('2026-10-14');
-      expect(selectedPoint.props.accessibilityLabel).toContain(
-        '출처: 건강 기록',
-      );
-      expect(selectedPoint.props.accessibilityLabel).not.toContain(
-        '2026-10-13',
-      );
-      await fireEvent.press(chart.getByTestId(`${selectedPointID}-previous`));
       expect(
-        chart.getByTestId(selectedPointID).props.accessibilityLabel,
-      ).toContain('2026-10-13');
+        chart.queryByTestId(`overview-metric-chart-${metric}-details`),
+      ).toBeNull();
+      const plot = chart.getByTestId(`overview-metric-chart-${metric}-plot`);
+      expect(plot.props.accessibilityLabel).toContain('2026-10-14');
+      expect(plot.props.accessibilityLabel).toContain('2026-10-13');
+      expect(plot.props.accessibilityLabel).toContain('출처: 건강 기록');
     }
   },
 );
@@ -186,8 +178,10 @@ test.each([
     expect(StyleSheet.flatten(comparison.props.style)?.flexDirection).toBe(
       direction,
     );
-    expect(comparison).toHaveTextContent(/420분/u);
-    expect(comparison).toHaveTextContent(/450분/u);
+    expect(comparison).toHaveTextContent(/7시간 0분/u);
+    expect(comparison).toHaveTextContent(/7시간 30분/u);
+    expect(comparison.props.accessibilityLabel).toContain('7시간 0분');
+    expect(comparison.props.accessibilityLabel).toContain('7시간 30분');
     expect(comparison.props.accessibilityLabel).toContain('기록된 날: 3일/7일');
     expect(comparison.props.accessibilityLabel).toContain('기록된 날: 4일/7일');
     const identity = StyleSheet.flatten(

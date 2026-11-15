@@ -4,44 +4,16 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
+import { ConversationInitialResponse } from './ConversationInitialResponse';
 import { ConversationSources } from './ConversationSources';
 import { ConversationToolEvents } from './ConversationToolEvents';
 import { HealthSummaryCard } from './HealthSummaryCard';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
-import type { RagConversationMessage } from './task';
 
-export interface DisplayMessage extends RagConversationMessage {
-  readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
-  readonly photoAttached?: boolean;
-  readonly id: number;
-  readonly dailyReport?: NonNullable<
-    import('../aiFeatures/integration/conversationIntent').ConversationEntryContext['dailyReport']
-  >;
-  /** Run-local source readers must never fall back to another request's aliases. */
-  readonly sourceOwner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner;
-  readonly citations?: readonly EvidenceReference[];
-  readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
-  readonly activity?: string;
-  readonly streaming?: boolean;
-  readonly incomplete?: boolean;
-  readonly coldResume?: { readonly attempt: number };
-  readonly interruptionReason?: import('./conversationExecutionLease').ConversationRecoveryReason;
-  readonly completion?: 'complete' | 'partial';
-  readonly toolMessageId?: string;
-  /** Only committed turns may be used as durable conversation history. */
-  readonly retainedTurnId?: string;
-  readonly toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
-  readonly healthSummary?: import('./healthSummary').HealthSummaryResult | null;
-  readonly retryHealthSummary?: () => Promise<
-    import('./healthSummary').HealthSummaryResult | null
-  >;
-  readonly visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
-  readonly visitQuestionsUnavailable?: boolean;
-  /** Failed prompts stay visible when the user has already drafted a different question. */
-  readonly failed?: boolean;
-}
+import type { DisplayMessage } from './conversationDisplayMessage';
+export type { DisplayMessage } from './conversationDisplayMessage';
 
 /** Keeps transcript citations beside their answer; compact session previews may omit source links. */
 export function ConversationMessage({
@@ -51,6 +23,7 @@ export function ConversationMessage({
   onOpenSource,
   onLinkError,
   showCitations = true,
+  showToolActivity = true,
   compact = false,
   toolSourceSessionId,
   resolveToolSource,
@@ -66,6 +39,7 @@ export function ConversationMessage({
   ) => void;
   readonly onLinkError: () => void;
   readonly showCitations?: boolean;
+  readonly showToolActivity?: boolean;
   readonly compact?: boolean;
   readonly toolSourceSessionId?: string | null;
   readonly resolveColdToolSource?: import('../aiFeatures/integration/coldConversationSourceResolvers').ResolveColdConversationToolSource;
@@ -154,33 +128,47 @@ export function ConversationMessage({
         ) : null}
         {activityBeforeText ? activity : null}
         {!user && message.toolEvents?.length ? (
-          <ConversationToolEvents
-            key={JSON.stringify(message.sourceOwner ?? null)}
-            allowSourceActions={showCitations}
-            durableMessageId={message.toolMessageId}
-            events={message.toolEvents}
-            messageId={message.toolMessageId ?? String(message.id)}
-            onLinkError={onLinkError}
-            onOpenSource={openSource}
-            resolveToolSource={
-              message.sourceOwner
-                ? resolveColdToolSource &&
-                  ((reference, signal, scope) =>
-                    resolveColdToolSource(
-                      message.sourceOwner!,
-                      reference,
-                      signal,
-                      scope,
-                    ))
-                : resolveToolSource
+          <View
+            style={!showToolActivity && styles.toolEventsHidden}
+            accessibilityElementsHidden={!showToolActivity}
+            importantForAccessibility={
+              showToolActivity ? 'auto' : 'no-hide-descendants'
             }
-            sessionId={toolSourceSessionId}
-          />
+          >
+            <ConversationToolEvents
+              key={JSON.stringify(message.sourceOwner ?? null)}
+              allowSourceActions={showCitations}
+              durableMessageId={message.toolMessageId}
+              events={message.toolEvents}
+              messageId={message.toolMessageId ?? String(message.id)}
+              onLinkError={onLinkError}
+              onOpenSource={openSource}
+              resolveToolSource={
+                message.sourceOwner
+                  ? resolveColdToolSource &&
+                    ((reference, signal, scope) =>
+                      resolveColdToolSource(
+                        message.sourceOwner!,
+                        reference,
+                        signal,
+                        scope,
+                      ))
+                  : resolveToolSource
+              }
+              sessionId={toolSourceSessionId}
+            />
+          </View>
         ) : null}
         {user && (message.photoAttached || message.submittedInput?.ocr) ? (
           <Text style={[styles.messageText, styles.userText]}>
             {t('ragConversation.photo.message')}
           </Text>
+        ) : null}
+        {!user && message.streaming && message.initialResponse ? (
+          <ConversationInitialResponse
+            key={message.initialResponse.callId}
+            response={message.initialResponse}
+          />
         ) : null}
         {message.content ? (
           <MessageText

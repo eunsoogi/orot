@@ -7,6 +7,7 @@ import {
   type ViewProps,
 } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
+import { ConversationEdgeGradient } from '../layout/ConversationEdgeGradient';
 import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
@@ -30,9 +31,12 @@ export function ConversationComposer({
   photo,
   trailingAction,
   status = '',
+  cancelling = false,
 }: {
   readonly value: string;
   readonly busy: boolean;
+  /** Acknowledgment only: the request owner retains commit/settlement ownership. */
+  readonly cancelling?: boolean;
   readonly onChangeText: (value: string) => void;
   readonly onSend: () => void;
   readonly onCancel: () => void;
@@ -58,9 +62,12 @@ export function ConversationComposer({
     readonly onRemove: () => void;
   };
 }) {
-  const navigationInset = useNavigationContentInset(compact ? 0 : undefined);
+  // Fixed controls need a small visual gap, not the larger scroll-content gutter.
+  // The hook still preserves every authoritative navigation and system reservation.
+  const navigationInset = useNavigationContentInset(compact ? 0 : 4);
   const copy = getRagConversationCopy();
   const { fontScale, height } = useWindowDimensions();
+  const stopping = busy && cancelling;
   const textScale = Math.max(1, fontScale);
   // Native text scales its line but not its insets; reserve a full scaled line.
   const minimumHeight = Math.max(44, Math.ceil(22 * textScale + 22));
@@ -116,24 +123,28 @@ export function ConversationComposer({
       />
       <ConversationGlassAction
         busy={busy}
-        label={busy ? copy.cancel : copy.send}
+        label={stopping ? copy.cancelling : busy ? copy.cancel : copy.send}
         // A pending or failed attachment must not turn an intended photo send into text-only delivery.
         disabled={
-          !busy &&
-          (disabled ||
-            (!value.trim() &&
-              !(
-                photo?.status === 'ready' &&
-                photo.deliveryReady &&
-                photo.deliveryMode === 'ocr'
-              )) ||
-            photo?.status === 'preparing' ||
-            photo?.status === 'transferring' ||
-            photo?.status === 'error' ||
-            (photo?.status === 'ready' &&
-              (!photo.deliveryReady || photo.deliveryMode !== 'ocr')))
+          stopping ||
+          (!busy &&
+            (disabled ||
+              (!value.trim() &&
+                !(
+                  photo?.status === 'ready' &&
+                  photo.deliveryReady &&
+                  photo.deliveryMode === 'ocr'
+                )) ||
+              photo?.status === 'preparing' ||
+              photo?.status === 'transferring' ||
+              photo?.status === 'error' ||
+              (photo?.status === 'ready' &&
+                (!photo.deliveryReady || photo.deliveryMode !== 'ocr'))))
         }
-        onPress={busy ? onCancel : onSend}
+        onPress={() => {
+          // Guard the current callback as well as the native disabled state.
+          if (!stopping) (busy ? onCancel : onSend)();
+        }}
       />
     </View>
   );
@@ -147,7 +158,18 @@ export function ConversationComposer({
       testID="rag-conversation-composer"
       onLayout={onLayout}
     >
+      {/* Extend only the passive fade into history; keep keyboard and safe-area measurements unchanged. */}
+      <ConversationEdgeGradient
+        edge="bottom"
+        testID="conversation-composer-gradient"
+        fadeOverlap={compact ? 0 : 16}
+      />
       {/* Long voice and attachment warnings need the full row; inline status can consume the editor's width. */}
+      {stopping ? (
+        <Text accessibilityLiveRegion="polite" style={styles.composerStatus}>
+          {copy.cancelling}
+        </Text>
+      ) : null}
       {status ? (
         <Text accessibilityLiveRegion="polite" style={styles.composerStatus}>
           {status}

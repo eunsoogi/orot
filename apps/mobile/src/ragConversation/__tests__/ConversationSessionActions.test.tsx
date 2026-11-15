@@ -39,17 +39,13 @@ test('uses circular glass actions and opens a separate history destination', asy
     expect(StyleSheet.flatten(action.props.style)).toMatchObject({
       width: 44,
       height: 44,
-      borderRadius: 22,
+      borderRadius: 0,
       backgroundColor: 'transparent',
-      overflow: 'hidden',
+      overflow: 'visible',
     });
   }
-  expect(
-    screen.getByTestId('rag-conversation-history-glass').props.pointerEvents,
-  ).toBe('none');
-  expect(
-    screen.getByTestId('rag-conversation-new-glass').props.pointerEvents,
-  ).toBe('none');
+  expect(history.props.onAction).toEqual(expect.any(Function));
+  expect(create.props.onAction).toEqual(expect.any(Function));
   expect(screen.queryByText(copy.sessions)).toBeNull();
   expect(screen.queryByText(copy.newConversation)).toBeNull();
   await fireEvent.press(create);

@@ -50,7 +50,7 @@ test('retains the rail identity without obscured controls when the keyboard leav
         actions={[rootTab]}
         bottomActions={<View testID="bottom-navigation-actions" />}
         isDarkAppearance={false}
-        keyboardHeight={200}
+        keyboardHeight={270}
         keyboardVisible
         onAction={jest.fn()}
         reclaimRootTabInset={false}
@@ -127,7 +127,7 @@ test('restores actions after repeated keyboard frames while genuine window chang
     </NavigationRootLayoutContext.Provider>
   );
   const rendered = await render(view(0));
-  for (const height of [200, 300, 0, 250, 0]) {
+  for (const height of [270, 300, 0, 280, 0]) {
     await rendered.rerender(view(height));
     expect(
       screen.getByTestId('navigation-right-rail').props.accessibilityHint,
@@ -137,7 +137,7 @@ test('restores actions after repeated keyboard frames while genuine window chang
       screen.getByTestId('navigation-right-rail-actions').props.children,
     ).toBe(height ? 'navigation-overflow' : 'tab-home');
   }
-  await rendered.rerender(view(0, { ...rightLayout, windowHeight: 300 }));
+  await rendered.rerender(view(0, { ...rightLayout, windowHeight: 238 }));
   expect(screen.queryByTestId('navigation-right-rail')).toBeNull();
   expect(
     screen.getByTestId('navigation-bar-fallback').props.accessibilityHint,

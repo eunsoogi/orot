@@ -1,5 +1,16 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { AccessibilityInfo, ScrollView, View } from 'react-native';
+import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
+import { deleteMedicalDocument } from '../../medicalDocuments/medicalDocumentDeletion';
+jest.mock('../../medicalDocuments/medicalDocumentDeletion', () => ({
+  deleteMedicalDocument: jest.fn(),
+}));
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
+import { AccessibilityInfo, Alert, ScrollView, View } from 'react-native';
 import type { ReactNode } from 'react';
 import type { NavigationSurfaceProps } from '../../navigation/NavigationActionBar';
 import { createNavigationController } from '../../navigation/navigationController';
@@ -146,8 +157,47 @@ test('saved medical source returns through the shared Back action without losing
   expect(service.getDocument).toHaveBeenCalledWith(source.id);
   expect(scrollTo).toHaveBeenCalledWith({ x: 0, y: 340, animated: false });
 
+  await fireEvent.press(screen.getByTestId('navigation-tab-overview'));
+  await waitFor(() => expect(onSelectTab).toHaveBeenCalledWith('overview'));
+  onSelectTab.mockClear();
   await fireEvent.press(screen.getByTestId('medical-document-source-0'));
+  const alert = jest.spyOn(Alert, 'alert');
+  let finish!: (value: { cleanupPending: boolean }) => void;
+  jest.mocked(deleteMedicalDocument).mockImplementation(
+    () =>
+      new Promise(resolve => {
+        finish = resolve;
+      }),
+  );
+  await fireEvent.press(screen.getByTestId('medical-document-delete'));
+  await act(async () => {
+    alert.mock.calls[0]![2]![1]!.onPress?.();
+  });
   expect(
-    await screen.findByTestId('medical-document-source-title'),
-  ).toHaveTextContent(source.title);
+    screen.getByTestId('navigation-tab-overview').props.accessibilityState
+      .disabled,
+  ).toBe(true);
+  service.listDocuments.mockResolvedValue([source]);
+  scrollTo.mockClear();
+  await act(async () => {
+    notifyLocalSourceDeleted();
+  });
+  await act(async () => {
+    restoreFrames.forEach(frame => frame(0));
+  });
+  expect(scrollTo).toHaveBeenCalledWith({ x: 0, y: 340, animated: false });
+  expect(screen.queryByTestId('medical-document-source-title')).toBeNull();
+  expect(
+    screen.getByTestId('navigation-tab-overview').props.accessibilityState
+      .disabled,
+  ).toBe(true);
+  const opened = service.getDocument.mock.calls.length;
+  await fireEvent.press(screen.getByTestId('medical-document-source-0'));
+  expect(service.getDocument).toHaveBeenCalledTimes(opened);
+  await act(async () => {
+    finish({ cleanupPending: false });
+  });
+  expect(screen.queryByTestId('medical-document-source-title')).toBeNull();
+  await fireEvent.press(screen.getByTestId('navigation-tab-overview'));
+  await waitFor(() => expect(onSelectTab).toHaveBeenCalledWith('overview'));
 });

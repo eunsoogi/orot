@@ -12,6 +12,7 @@ const availableFeatures: readonly HealthKitAutoSyncFeature[] = [
   'heartRate',
   'steps',
   'bodyMass',
+  'workouts',
 ];
 
 /** Renders compact category choices while leaving saved state with the settings route. */

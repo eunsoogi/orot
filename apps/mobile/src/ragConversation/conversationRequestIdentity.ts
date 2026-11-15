@@ -1,3 +1,4 @@
+import { confirmHistorySave } from './confirmHistorySave';
 import type { ConversationSessionOptions } from './conversationSessionTypes';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 
@@ -13,6 +14,7 @@ export function requestIdentityObserver(
         retentionSession: session,
         retentionRequestId: turn.toolMessageId,
         openWorkflowContinuation: turn.openWorkflowContinuation,
+        confirmHistorySave,
       }
     : {};
 }

@@ -55,7 +55,7 @@ test('shares the visible keyboard frame and observed fallback without latching c
     x: 0,
     y: 0,
     width: 867,
-    height: 635,
+    height: 669,
   });
 
   await fireEvent(viewport, 'layout', {
@@ -82,7 +82,7 @@ test('shares the visible keyboard frame and observed fallback without latching c
   await fireEvent(sensor, 'geometryChange', { nativeEvent: payload });
   expect(read()).toMatchObject({
     side: 'right',
-    availableContentFrame: { width: 867, height: 635 },
+    availableContentFrame: { width: 867, height: 669 },
   });
   expect(screen.getByText('edited')).toBeTruthy();
 });
@@ -92,10 +92,10 @@ function EndClearance() {
   return <Text testID="end-clearance">{inset.paddingBottom}</Text>;
 }
 
-test('scrolling scenes draw through the home area with safe end padding, then release it for the keyboard', async () => {
+test('all scenes draw through the home area with safe end padding, then release it for the keyboard', async () => {
   await render(
     <NavigationGeometryProvider>
-      <NavigationViewport scrollable childHandlesSafeArea actionBar={<View />}>
+      <NavigationViewport childHandlesSafeArea actionBar={<View />}>
         <EndClearance />
       </NavigationViewport>
     </NavigationGeometryProvider>,

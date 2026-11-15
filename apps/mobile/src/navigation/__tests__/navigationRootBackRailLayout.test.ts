@@ -12,7 +12,7 @@ test('keeps Back separate from root tabs and falls back below the complete group
     placement: 'right' as const,
     reservedRightWidth: 72,
     contentWidth: 400,
-    windowHeight: 367,
+    windowHeight: 305,
     railTopInset: 20,
     railBottomInset: 20,
     railRightInset: 12,
@@ -21,14 +21,14 @@ test('keeps Back separate from root tabs and falls back below the complete group
   expect(
     navigationRailPresentation(layout, 0, true, 0, 0).rightLayout,
   ).toBeDefined();
-  expect(fitsNavigationRootRail(367, 20, 20)).toBe(true);
-  expect(fitsNavigationRootRail(367, 20, 20, true)).toBe(false);
+  expect(fitsNavigationRootRail(305, 20, 20)).toBe(true);
+  expect(fitsNavigationRootRail(305, 20, 20, true)).toBe(false);
   expect(
     navigationRailPresentation(layout, 0, true, 1, 0, true).rightLayout,
   ).toBeUndefined();
   expect(
     navigationRailPresentation(
-      { ...layout, windowHeight: 368 },
+      { ...layout, windowHeight: 306 },
       0,
       true,
       1,
@@ -80,4 +80,10 @@ test('keeps measured page actions above Back and the fixed root rail', () => {
   expect(layout.fits).toBe(true);
   expect(layout.capacity).toBeGreaterThanOrEqual(1);
   expect(backTop - pageActionBottom).toBeCloseTo(8, 5);
+});
+
+test('uses four current destinations without stretching their touch targets', () => {
+  expect(NAVIGATION_ROOT_RAIL_HEIGHT).toBe(4 * 52 + 3 * 2);
+  expect(fitsNavigationRootRail(254, 20, 20)).toBe(true);
+  expect(fitsNavigationRootRail(253, 20, 20)).toBe(false);
 });

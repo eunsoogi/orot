@@ -57,8 +57,8 @@ export function resolveNavigationContentFrame(
       (side === 'right' ? lane : 0),
   );
   const y = Math.max(viewport.y, safe.y);
-  // A scroller can draw through the home area; its end clearance remains scroll padding.
-  // Fixed controls keep the safe frame, and a keyboard-contracted host stays authoritative.
+  // Routed surfaces draw through the home area; final content and fixed controls
+  // consume shared end clearance. A keyboard-contracted host stays authoritative.
   const bottom = scrollsUnderBottomSafeArea
     ? viewport.y + viewport.height
     : Math.min(viewport.y + viewport.height, safe.y + safe.height);

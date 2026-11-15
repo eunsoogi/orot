@@ -46,12 +46,14 @@ export const commonObservationProbeSampleIds = {
   heartRate: 'synthetic-heart-rate',
   steps: 'synthetic-steps',
   bodyMass: 'synthetic-body-mass',
+  workouts: 'synthetic-workout',
 };
 
 const sampleTypes: Readonly<Record<CommonObservationFeature, string>> = {
   heartRate: 'HKQuantityTypeIdentifierHeartRate',
   steps: 'HKQuantityTypeIdentifierStepCount',
   bodyMass: 'HKQuantityTypeIdentifierBodyMass',
+  workouts: 'HKWorkoutTypeIdentifier',
 };
 
 export async function verifyCommonObservationReadPlans(

@@ -88,8 +88,8 @@ test('selecting a report attaches its revision without sending', async () => {
   );
   expect(send).not.toHaveBeenCalled();
   expect(
-    screen.getByRole('button', { name: t('treatmentSafety.open') }),
-  ).toBeTruthy();
+    screen.queryByRole('button', { name: t('treatmentSafety.open') }),
+  ).toBeNull();
   expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),

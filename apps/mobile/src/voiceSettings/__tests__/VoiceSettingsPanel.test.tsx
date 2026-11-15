@@ -1,5 +1,11 @@
 import { hasRealtimeVoiceRuntime } from '../voiceRuntimeCapability';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { voiceSettingsStore } from '../voiceSettingsStore';
 
@@ -43,12 +49,20 @@ it('does not present a static catalog or credentials and refreshes only explicit
   expect(view.queryByTestId('voice-api-key')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-realtime-2.1-mini')).toBeNull();
   expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
+  expect(view.queryByTestId('voice-open-accounts')).toBeNull();
+  await fireEvent.press(view.getByTestId('voice-account-details'));
   await fireEvent.press(view.getByTestId('voice-open-accounts'));
   expect(accounts).toHaveBeenCalledTimes(1);
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await waitFor(() =>
     expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy(),
   );
+  const local = within(view.getByTestId('voice-model-group-local'));
+  const api = within(view.getByTestId('voice-model-group-openai-api'));
+  expect(local.getByTestId('voice-model-apple-system-speech')).toBeTruthy();
+  expect(local.queryByTestId('voice-model-gpt-realtime-2.1-mini')).toBeNull();
+  expect(api.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy();
+  expect(api.queryByTestId('voice-model-apple-system-speech')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-text')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-realtime-2.1')).toBeNull();
   await fireEvent.press(view.getByTestId('voice-model-gpt-realtime-2.1-mini'));
@@ -202,4 +216,34 @@ it('reports failed persistence without claiming the selected model was saved', a
     expect(view.getByText(/저장하지 못했습니다/)).toBeTruthy(),
   );
   expect(view.queryByText(/음성 설정을 저장했습니다/)).toBeNull();
+});
+
+it('shows the stored model before refresh and keeps it distinct from an unsaved choice', async () => {
+  const view = await render(<VoiceSettingsPanel />);
+  await waitFor(() =>
+    expect(view.getByTestId('voice-current-model')).toHaveTextContent(
+      /apple-system-speech/,
+    ),
+  );
+  expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
+  expect(
+    view.getByTestId('voice-model-refresh').props.accessibilityState,
+  ).toMatchObject({
+    disabled: false,
+    busy: false,
+  });
+  await fireEvent.press(view.getByTestId('voice-model-refresh'));
+  await waitFor(() =>
+    expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy(),
+  );
+  await fireEvent.press(view.getByTestId('voice-model-gpt-realtime-2.1-mini'));
+  expect(view.getByTestId('voice-current-model')).toHaveTextContent(
+    /apple-system-speech/,
+  );
+  await fireEvent.press(view.getByTestId('voice-settings-save'));
+  await waitFor(() =>
+    expect(view.getByTestId('voice-current-model')).toHaveTextContent(
+      /gpt-realtime-2.1-mini/,
+    ),
+  );
 });

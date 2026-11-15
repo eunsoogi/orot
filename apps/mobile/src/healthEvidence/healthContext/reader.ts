@@ -83,7 +83,7 @@ export async function readHealthContextReport(
     window,
     days,
     quantities: quantities.series.filter(series =>
-      series.concept === 'step_count'
+      series.concept === 'step_count' || series.concept === 'workout_duration'
         ? selected.has('activity')
         : selected.has('measurements'),
     ),

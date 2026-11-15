@@ -53,7 +53,8 @@ test('uses one guarded toolbar for manual entry and blocks exit during save', as
       }}
     />,
   );
-  await fireEvent.press(screen.getByTestId('navigation-tab-schedule'));
+  await fireEvent.press(screen.getByTestId('navigation-tab-records'));
+  await fireEvent.press(screen.getByTestId('records-section-schedule'));
   await fireEvent.press(await screen.findByTestId('open-medical-appointments'));
   await fireEvent.press(
     await screen.findByTestId('medical-appointment-manual'),

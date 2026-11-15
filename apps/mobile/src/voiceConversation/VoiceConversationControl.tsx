@@ -1,15 +1,8 @@
 import { useEffect } from 'react';
-import {
-  AccessibilityInfo,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { AppSymbol } from '../layout/AppSymbol';
+import { AccessibilityInfo, Platform, StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { ComposerGlassBackground } from '../ragConversation/ComposerGlassBackground';
+import { GlassIconButton } from '../layout/GlassIconButton';
 import type { VoicePhase } from './voiceTurn';
 
 const styles = StyleSheet.create({
@@ -23,7 +16,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   status: { color: appColors.secondary },
-  disabled: { opacity: 0.5 },
 });
 
 /** Displays only the owner-reported voice state; pressing never starts audio by itself. */
@@ -77,17 +69,15 @@ export function VoiceConversationControl({
         </AppText>
       ) : null}
       {phase === 'listening' ? (
-        <Pressable
+        <GlassIconButton
           accessibilityRole="button"
           accessibilityLabel={finishLabel}
           onPress={onFinish}
           style={styles.button}
-        >
-          <ComposerGlassBackground />
-          <AppSymbol name="checkmark" color={appColors.text} />
-        </Pressable>
+          symbolName="checkmark"
+        />
       ) : null}
-      <Pressable
+      <GlassIconButton
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityState={{
@@ -96,21 +86,16 @@ export function VoiceConversationControl({
         }}
         disabled={unavailable}
         onPress={phase === 'error' ? onRecover : active ? onStop : onStart}
-        style={[styles.button, unavailable && styles.disabled]}
+        style={styles.button}
         testID="conversation-voice-control"
-      >
-        <ComposerGlassBackground testID="voice-control-glass" />
-        <AppSymbol
-          name={
-            phase === 'error'
-              ? 'arrow.clockwise'
-              : active
-                ? 'stop.fill'
-                : 'waveform'
-          }
-          color={appColors.text}
-        />
-      </Pressable>
+        symbolName={
+          phase === 'error'
+            ? 'arrow.clockwise'
+            : active
+              ? 'stop.fill'
+              : 'waveform'
+        }
+      />
     </View>
   );
 }

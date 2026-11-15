@@ -1,4 +1,5 @@
 import { createContext } from 'react';
+import { rootTabItems } from './rootTabs';
 import {
   createNavigationGeometrySnapshot,
   type NavigationGeometrySnapshot,
@@ -12,8 +13,9 @@ import {
 export const NAVIGATION_ROOT_RAIL_WIDTH = 48;
 export const NAVIGATION_ROOT_RAIL_GUTTER = 12;
 export const NAVIGATION_MINIMUM_COLUMN_WIDTH = 320;
-// Keep aligned with NavigationRootGlassBar.railHeight: five 52pt controls and four 4pt gaps.
-export const NAVIGATION_ROOT_RAIL_HEIGHT = 5 * 52 + 4 * 4;
+// Match native 52pt targets and compact 2pt gaps using the canonical destination count.
+export const NAVIGATION_ROOT_RAIL_HEIGHT =
+  rootTabItems.length * 52 + Math.max(0, rootTabItems.length - 1) * 2;
 // Mirror fixed control heights and stack spacing from NavigationGlassButton and NavigationGlassView.
 export const NAVIGATION_CONTEXTUAL_RAIL_CONTROL_HEIGHT = 48;
 export const NAVIGATION_CONTEXTUAL_RAIL_STACK_SPACING = 12;

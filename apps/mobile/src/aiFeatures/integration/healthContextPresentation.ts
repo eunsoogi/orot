@@ -25,6 +25,7 @@ const labels: Readonly<Record<string, string>> = {
   heart_rate: '심박수',
   body_mass: '체중',
   step_count: '걸음 수',
+  workout_duration: '기록된 운동 시간',
 };
 const stages: Readonly<Record<string, string>> = {
   asleepCore: '코어 수면',
@@ -72,7 +73,8 @@ export function presentHealthContext(
     },
   ];
   for (const [index, series] of projected.quantities.entries()) {
-    const step = series.concept === 'step_count';
+    const step =
+      series.concept === 'step_count' || series.concept === 'workout_duration';
     const mean = step
       ? series.meanRecordedDailySampleSum
       : series.meanOfRecordedDailyMeans;

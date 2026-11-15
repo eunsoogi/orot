@@ -18,6 +18,7 @@ test('every health category reads its own bounded history without consuming unre
       'heart_rate',
       'step_count',
       'body_mass',
+      'workout_duration',
       'HKCategoryTypeIdentifierSleepAnalysis',
       'respiratory_rate',
     ];
@@ -105,7 +106,7 @@ test('reads a month of daily pressure directly despite twenty thousand newer Wat
     expect(page.records.every((record) => record.concept.startsWith('blood pressure '))).toBe(true);
     const plan = await database.execute('EXPLAIN QUERY PLAN ' + statement, parameters);
     expect(plan.rows.map((row) => row.detail).join(' ')).toContain(
-      'health_observations_library_idx',
+      'health_observations_library_workouts_idx',
     );
     expect(plan.rows.map((row) => row.detail).join(' ')).not.toContain('USE TEMP B-TREE');
     console.info('synthetic-scoped-health-page', {
@@ -156,7 +157,7 @@ test('upgrades version nine while preserving saved rows and avoiding destructive
       'health_observation',
       observed('saved-pressure', 'blood pressure systolic', '2026-10-20T00:00:00Z'),
     );
-    await database.execute('DROP INDEX health_observations_library_idx');
+    await database.execute('DROP INDEX health_observations_library_workouts_idx');
     await database.execute('PRAGMA user_version = 9');
     const statements: string[] = [];
     await runMigrations({
@@ -177,7 +178,7 @@ test('upgrades version nine while preserving saved rows and avoiding destructive
       'DROP TRIGGER IF EXISTS source_records_delete_evidence_spans',
     ]);
     expect(statements.some((sql) => /^\s*(UPDATE|ALTER)\b/i.test(sql))).toBe(false);
-    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(16);
+    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(17);
     const page = await repository.listHealthObservationPage(null, 100, {
       category: 'blood_pressure',
       toInclusive: '2026-10-21T00:00:00Z',

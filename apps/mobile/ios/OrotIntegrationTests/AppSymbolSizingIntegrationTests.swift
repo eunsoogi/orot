@@ -26,6 +26,7 @@ final class AppSymbolSizingIntegrationTests: OrotFailFastTestCase {
             controller.view.backgroundColor = .systemBackground
             window.rootViewController = controller
             window.makeKeyAndVisible()
+            GlassIconButtonTestAssertions.assertNativeControls(in: controller.view)
             defer {
                 window.isHidden = true
                 previousKeyWindow?.makeKey()

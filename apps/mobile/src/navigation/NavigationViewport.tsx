@@ -36,13 +36,11 @@ export function NavigationViewport({
   actionBar,
   childHandlesSafeArea,
   active = true,
-  scrollable = false,
 }: {
   readonly children: ReactNode;
   readonly actionBar: ReactNode;
   readonly childHandlesSafeArea: boolean;
   readonly active?: boolean;
-  readonly scrollable?: boolean;
 }) {
   const [contentFrame, setContentFrame] =
     useState<NavigationLayoutFrame | null>(null);
@@ -72,9 +70,9 @@ export function NavigationViewport({
                 (geometry?.viewportBounds?.y ?? geometry?.windowBounds.y ?? 0),
             }
           : null,
-        scrollable,
+        true,
       ),
-    [geometry, layout, viewportBounds, scrollable],
+    [geometry, layout, viewportBounds],
   );
   useEffect(() => {
     if (active && sharedFrame)
@@ -128,10 +126,10 @@ export function NavigationViewport({
     ...occlusionInput,
     measuredBottomActionOcclusion,
   });
-  // Extend only scrolling scenes. Keep the last item above the system edge without
+  // Every route shares one bottom edge. Keep fixed controls and final items clear without
   // clipping every intermediate item at that edge or reserving it above a keyboard.
   const scrollSafeBottom =
-    scrollable && viewport && geometry
+    viewport && geometry
       ? Math.max(
           0,
           viewport.y +

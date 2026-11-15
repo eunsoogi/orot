@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { t } from '../../i18n';
 import { ChartPointSelection } from './ChartPointSelection';
+import { chartAccessibilitySummary } from './chartAccessibilitySummary';
+import { ChartBarTooltip } from './ChartBarTooltip';
 import { ChartRenderer } from './ChartRenderer';
 import { formatChartTick } from './format';
 import { chartWindows } from './window';
@@ -16,8 +18,12 @@ type Props = {
   testID?: string;
   selectedPointTestID?: string;
   kind: 'line' | 'bar';
-  /** Overview cards reveal metadata on demand; all other chart consumers retain their full presentation. */
+  /** Compact charts hide metadata by default; existing consumers retain their presentation. */
   compact?: boolean;
+  /** Overview removes detail UI entirely while retaining an accessible chart description. */
+  hideDetails?: boolean;
+  /** Opt-in selection without restoring the removed details disclosure. */
+  barTooltip?: boolean;
 };
 
 function comparePositions(left: number | string, right: number | string) {
@@ -36,11 +42,13 @@ export function ChartPlot({
   selectedPointTestID,
   kind,
   compact = false,
+  hideDetails = false,
+  barTooltip = false,
 }: Props) {
   const axis = kind === 'line' ? 'time' : 'day';
   const [pageIndex, setPageIndex] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const showDetails = !compact || detailsOpen;
+  const showDetails = !hideDetails && (!compact || detailsOpen);
   const canShow =
     data.coverage.status !== 'permission' && data.coverage.status !== 'empty';
   const pages = canShow ? chartWindows(data, axis) : [];
@@ -126,17 +134,43 @@ export function ChartPlot({
             ))}
         </View>
       )}
-      {visible && positions.length > 0 && width > 0 ? (
-        <ChartRenderer
+      {barTooltip &&
+      kind === 'bar' &&
+      visible &&
+      positions.length > 0 &&
+      width > 0 ? (
+        <ChartBarTooltip
+          key={JSON.stringify(visible)}
           data={visible}
           width={width}
           height={height}
-          kind={kind}
+          title={title}
+          testID={testID ? `${testID}-plot` : undefined}
         />
       ) : (
-        <View style={{ height }} />
+        <View
+          accessible={hideDetails}
+          accessibilityRole={hideDetails ? 'image' : undefined}
+          accessibilityLabel={
+            hideDetails
+              ? chartAccessibilitySummary(visible, axis, title)
+              : undefined
+          }
+          testID={testID ? `${testID}-plot` : undefined}
+        >
+          {visible && positions.length > 0 && width > 0 ? (
+            <ChartRenderer
+              data={visible}
+              width={width}
+              height={height}
+              kind={kind}
+            />
+          ) : (
+            <View style={{ height }} />
+          )}
+        </View>
       )}
-      {compact ? (
+      {compact && !hideDetails ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t(
