@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { ActionButton } from './QuestionCardActionButton';
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
@@ -78,7 +79,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
         {editable ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`질문 ${number} 세부 수정`}
+            accessibilityLabel={t('visitCard.editDetails', { number })}
             accessibilityState={{ expanded: detailsOpen, disabled }}
             disabled={disabled}
             onPress={() => setDetailsOpen(open => !open)}
@@ -127,7 +128,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             onPress={() => onMove(-1)}
             theme={theme}
             testID={`next-visit-question-up-${index}`}
-            title="위로"
+            title={t('visitCard.up')}
           />
           <ActionButton
             accessibilityLabel={copy.review.moveDown(number)}
@@ -135,7 +136,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             onPress={() => onMove(1)}
             theme={theme}
             testID={`next-visit-question-down-${index}`}
-            title="아래로"
+            title={t('visitCard.down')}
           />
           <ActionButton
             accessibilityLabel={copy.review.remove(number)}
@@ -143,7 +144,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             onPress={onRemove}
             theme={theme}
             testID={`next-visit-question-remove-${index}`}
-            title="삭제"
+            title={t('visitCard.remove')}
           />
         </View>
       ) : null}
@@ -167,10 +168,10 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
       ) : null}
       <Text style={styles.openSource}>
         {question.kind === 'clarification'
-          ? '의료진에게 확인할 질문'
+          ? t('visitCard.clarification')
           : question.legacySource
-            ? '원문 위치를 복원하지 못한 저장 질문'
-            : '기록에 근거한 질문'}
+            ? t('visitCard.legacy')
+            : t('visitCard.grounded')}
       </Text>
       {question.citations.map((reference, citationIndex) => (
         <Pressable
@@ -184,7 +185,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           <AppSymbol name="doc.text" color={theme.colors.textMuted} />
           <Text style={styles.openSource}>
             {question.citations.length === 1
-              ? '근거 1개 보기'
+              ? t('visitCard.singleSource')
               : `${copy.evidence.open} ${citationIndex + 1}`}
           </Text>
           <AppSymbol
@@ -214,7 +215,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           >
             <AppSymbol name="doc.text" color={theme.colors.textMuted} />
             <Text style={styles.openSource}>
-              생성에 사용한 이전 AI 결과 보기
+              {t('visitCard.generatedSource')}
             </Text>
             <AppSymbol
               name="chevron.right"
