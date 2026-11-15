@@ -52,10 +52,13 @@ export async function readCalendarRangeSnapshot(
   let invalidated = false;
   let disposed = false;
   let retainedEvents: CalendarEvent[] = [];
-  const subscription = bridge.addEventStoreListener(() => {
+  // Freshness loss is terminal: restoration requires a newly read snapshot.
+  const invalidate = () => {
     invalidated = true;
     retainedEvents.length = 0;
-  });
+    return false;
+  };
+  const subscription = bridge.addEventStoreListener(invalidate);
   const read = async () => {
     const result = await bridge.listEventsInRange(fromInclusive, toExclusive);
     if (
@@ -105,12 +108,14 @@ export async function readCalendarRangeSnapshot(
       events,
       async revalidate() {
         if (invalidated || disposed || canonical(events) !== original)
-          return false;
+          return invalidate();
         try {
           const current = await read();
-          return !invalidated && !disposed && canonical(current) === original;
+          if (invalidated || disposed || canonical(current) !== original)
+            return invalidate();
+          return true;
         } catch {
-          return false;
+          return invalidate();
         }
       },
       dispose() {

@@ -106,3 +106,23 @@ test('rejects changes during query and ambiguous recurring occurrences', async (
     'ambiguous',
   );
 });
+
+// Permission restoration or source restoration must not resurrect a stale snapshot.
+test.each(['permission', 'delete', 'edit'] as const)(
+  'clears retained data and permanently rejects restoration after %s',
+  async action => {
+    const f = fixture();
+    const original = JSON.parse(JSON.stringify(f.result));
+    const snapshot = await readCalendarRangeSnapshot(f.bridge, from, to);
+    if (action === 'permission') f.result.access = 'denied';
+    if (action === 'delete') f.result.events = [];
+    if (action === 'edit')
+      f.result.events[0].calendarEventSnapshot.title = 'Changed';
+    expect(await snapshot.revalidate()).toBe(false);
+    expect(snapshot.events).toEqual([]);
+    Object.assign(f.result, original);
+    expect(await snapshot.revalidate()).toBe(false);
+    expect(snapshot.events).toEqual([]);
+    snapshot.dispose();
+  },
+);

@@ -35,8 +35,16 @@ enum EventKitCalendarSnapshot {
     static func eventsInRange(
         store: EKEventStore, start: Date, end: Date, access: String,
     ) -> [String: Any] {
-        let matching = access == "fullAccess" ? store.events(matching:
-            store.predicateForEvents(withStart: start, end: end, calendars: nil))
+        rangeSnapshot(start: start, end: end, access: access) {
+            store.events(matching: store.predicateForEvents(withStart: start, end: end, calendars: nil))
+        }
+    }
+
+    /// The injected query makes authorization gating testable without reading a real calendar.
+    static func rangeSnapshot(
+        start: Date, end: Date, access: String, readEvents: () -> [EKEvent],
+    ) -> [String: Any] {
+        let matching = access == "fullAccess" ? readEvents()
             .filter { $0.startDate < end && ($0.endDate > start || $0.startDate >= start) }
             .sorted { $0.startDate < $1.startDate } : []
         let events = matching.compactMap(serialize)

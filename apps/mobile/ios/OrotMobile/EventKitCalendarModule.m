@@ -12,5 +12,7 @@ RCT_EXTERN_METHOD(findEvent : (NSString *)calendarEventIdentifier occurrenceDate
     NSString *_Nullable)occurrenceDate floatingOccurrenceAt : (NSString *_Nullable)
                       floatingOccurrenceAt resolver : (RCTPromiseResolveBlock)
                           resolve rejecter : (RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(listEventsInRange : (NSString *)fromInclusive toExclusive : (NSString *)toExclusive resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(listEventsInRange : (NSString *)fromInclusive toExclusive : (NSString *)
+                      toExclusive resolver : (RCTPromiseResolveBlock)
+                          resolve rejecter : (RCTPromiseRejectBlock)reject)
 @end
