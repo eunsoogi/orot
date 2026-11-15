@@ -112,7 +112,9 @@ export function HealthRecordsDetailHeader({
         </View>
         <View style={styles.summaryCopy}>
           <Text style={styles.summaryTitle}>
-            {healthRecordCategoryTitle(selection.category) + ' 기록'}
+            {t('legacySymptom.categoryRecords', {
+              category: healthRecordCategoryTitle(selection.category),
+            })}
           </Text>
           {loadState === 'ready' || observationCount > 0 || hasMore ? (
             <Text style={styles.count}>
