@@ -5,7 +5,16 @@ import { readDailyReportBehaviorHistory } from './dailyReportBehaviorHistory';
 export async function readDailyReportHistory(
   ...args: Parameters<typeof readDailyReportBaseline>
 ) {
-  const baseline = await readDailyReportBaseline(...args);
+  // Reserve half for behavior before baseline reads. Unused baseline capacity
+  // returns to behavior, but neither abundant measurements nor doses may starve workouts.
+  const baseline = await readDailyReportBaseline(
+    args[0],
+    args[1],
+    args[2],
+    args[3],
+    Math.floor(args[4] / 2),
+    args[5],
+  );
   const behavior = await readDailyReportBehaviorHistory(
     args[0],
     args[1],

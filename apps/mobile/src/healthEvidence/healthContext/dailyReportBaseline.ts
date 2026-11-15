@@ -1,3 +1,7 @@
+import {
+  baselineCandidateFilter,
+  baselineCandidateOrder,
+} from './dailyReportHistorySelection';
 import { dailyReportBaselineInterval, compareTimestamps } from '@orot/domain';
 import type { DailyReportSourceRecord } from '@orot/domain';
 import {
@@ -97,14 +101,18 @@ export async function readDailyReportBaseline(
   if (!range || !keys.size)
     return { values, records, lineage, partial: false, bytes: 0 };
   const selected = candidateScopeCondition('health_observation', scope);
+  const relevant = baselineCandidateFilter(
+    today.filter(item => Boolean(baselineMeasurement(item))),
+  );
   const at = localQueryTimestampKeyExpression('r.effective_at');
   const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
   const rows = (
     await tx.execute(
-      `SELECT r.id, CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES.health_observation.table} r WHERE ${selected.sql} AND ${at} >= ? AND ${at} < ? AND ${ingestion} <= ? AND json_extract(r.payload_json, '$.observationKind') = 'measurement' ORDER BY ${at} DESC, r.id LIMIT 101`,
+      `SELECT r.id, CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES.health_observation.table} r WHERE ${selected.sql} AND ${relevant.sql} AND ${at} >= ? AND ${at} < ? AND ${ingestion} <= ? AND json_extract(r.payload_json, '$.observationKind') = 'measurement' ORDER BY ${baselineCandidateOrder(at)} LIMIT 101`,
       [
         MAX_HEALTH_EVIDENCE_RECORD_BYTES,
         ...selected.parameters,
+        relevant.parameter,
         localQueryTimestampKey(range.fromInclusive),
         localQueryTimestampKey(range.toExclusive),
         localQueryTimestampKey(calendar.generationCutoff),
