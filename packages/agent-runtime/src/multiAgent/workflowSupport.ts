@@ -120,8 +120,8 @@ export function resumeState<TResult>(
   // Reject out-of-scope references before any revalidation or restoration callback can resolve them.
   if (
     saved.actionContract !== actionContract(options.actions) ||
-    // Live-only release: never reconstruct a committed mutation without the protected result journal.
-    !canRecoverCommittedActions(saved, options) ||
+    (!canRecoverCommittedActions(saved, options) &&
+      !isVerifiedPendingActionRecovery(options, saved)) ||
     !validResumeShape(saved) ||
     !validInitialSearchResume(saved, options) ||
     !checkpointMatchesRun(saved, options.execution) ||
@@ -203,7 +203,8 @@ export async function restoreRunEvidence<TResult>(
 ): Promise<MultiAgentWorkflowOptions<TResult>['initialEvidence'] | undefined> {
   // Resume only after current source revisions match; checkpoint references never restore content.
   const refs = state.evidenceReferences;
-  if (!(await recoverCommittedAction(state, options, signal))) return undefined;
+  const verified = isVerifiedPendingActionRecovery(options, state);
+  if (!verified && !(await recoverCommittedAction(state, options, signal))) return undefined;
   // An empty search still has coverage and gaps. A registered restorer owns that
   // metadata too; never replace its result with a fabricated unsearched batch.
   if (!options.restoreEvidence && !options.restoreEvidenceBatches)

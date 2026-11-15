@@ -1,4 +1,6 @@
+import { withDeferredEvidenceAdapters } from '../src/multiAgent/workflowCheckpoint';
 import {
+  bindDeferredRecoveryEvidence,
   preparePendingActionRecovery,
   isVerifiedPendingActionRecovery,
 } from '../src/multiAgent/pendingActionRecoveryOptions';
@@ -117,4 +119,49 @@ test('verified capability is exact-state bound, unforgeable by spread, and singl
   await expect(action.execute(request)).rejects.toThrow('no longer current');
   expect(f.execute).not.toHaveBeenCalled();
   expect(f.authorize).toHaveBeenCalledTimes(1);
+});
+
+test('only internal evidence deferral preserves the exact read-only recovery capability', async () => {
+  const f = fixture();
+  const options = (await preparePendingActionRecovery(
+    f.state,
+    f.options,
+    new AbortController().signal,
+  ))!;
+  expect(isVerifiedPendingActionRecovery(withDeferredEvidenceAdapters(options), f.state)).toBe(
+    true,
+  );
+  for (const changed of [
+    { ...options, actions: [...options.actions!] },
+    { ...options, operationJournal: { ...options.operationJournal! } },
+    { ...options, execution: { ...options.execution } },
+  ]) {
+    expect(
+      isVerifiedPendingActionRecovery(bindDeferredRecoveryEvidence(options, changed), f.state),
+    ).toBe(false);
+  }
+});
+
+test('an unproven earlier receipt cannot obtain a pending-result capability or approval', async () => {
+  const f = fixture();
+  const state = {
+    ...f.state,
+    committedAction: true,
+    committedActionReceipts: [
+      {
+        version: 1 as const,
+        operationRunId: 'run',
+        operationKey: 'tool-1',
+        toolId: 'save',
+        toolVersion: '1',
+        evidenceReferences: [reference],
+      },
+    ],
+  };
+  expect(
+    await preparePendingActionRecovery(state, f.options, new AbortController().signal),
+  ).toBeUndefined();
+  expect(f.authorize).not.toHaveBeenCalled();
+  expect(f.recover).not.toHaveBeenCalled();
+  expect(f.execute).not.toHaveBeenCalled();
 });

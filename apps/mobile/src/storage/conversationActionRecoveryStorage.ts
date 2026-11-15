@@ -1,3 +1,8 @@
+import {
+  actionRecoverySourceMatches,
+  recoverySaveInput,
+} from './actionRecoverySource';
+import { additionalHistoryOperation } from './conversationHistoryOperationReceipt';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { coldCheckpointBinding } from './conversationColdResumeBinding';
@@ -56,13 +61,7 @@ export async function actionRecoveryStageMatches(
     (owner.input_json ?? null) !== d.submittedInput
   )
     return false;
-  // Initial support is limited to the exact current user message. Prior-message
-  // selection belongs to the action's private consent grant and must not be guessed.
-  const original = JSON.parse(d.preparedInput);
-  if (
-    d.sourceRequestId !== m.requestId ||
-    original.researchInput?.userMessage !== owner.question
-  )
+  if (!(await actionRecoverySourceMatches(sql, d, String(owner.question))))
     return false;
   const uncertain = await sql.execute(
     "SELECT operation_id FROM conversation_operation_journal WHERE request_id = ? AND run_id = ? AND status IN ('pending', 'invalidated') LIMIT 1",
@@ -141,8 +140,20 @@ export async function stageConversationActionRecovery(
           [d.manifest.requestId],
         )
       ).rows.length
-    )
-      throw new Error('Cannot stage recovery after an existing write.');
+    ) {
+      const request = (
+        await sql.execute(
+          'SELECT question FROM conversation_requests WHERE id=?',
+          [d.manifest.requestId],
+        )
+      ).rows[0];
+      const additional = await additionalHistoryOperation(
+        sql,
+        recoverySaveInput(d, String(request?.question)),
+      );
+      if (!additional || additional.existing)
+        throw new Error('Cannot stage recovery after an existing write.');
+    }
     const old = (
       await sql.execute(
         'SELECT payload FROM conversation_action_recovery WHERE request_id = ?',

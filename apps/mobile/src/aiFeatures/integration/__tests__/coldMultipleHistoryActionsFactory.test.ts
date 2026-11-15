@@ -8,7 +8,10 @@ import { providerSuccess } from '@orot/model-runtime';
 import { runMigrations, createRecordRepository } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
-import { committedHistorySaveSpy } from '../testSupport/committedHistorySaveSpy';
+import {
+  committedHistorySaveSpy,
+  expectCommittedHistoryMarker,
+} from '../testSupport/committedHistorySaveSpy';
 import { createConversationColdResumeStorage } from '../../../storage/conversationColdResumeStorage';
 import { runContinuableConversationWorkflow } from '../../../ragConversation/conversationWorkflowContinuation';
 import { runColdConversationWorkflow } from '../../../ragConversation/runColdConversationWorkflow';
@@ -173,13 +176,7 @@ test.each([true, false] as const)(
         },
       );
       expect(paused.status).toBe('paused');
-      expect(
-        (
-          await db.database.execute(
-            'SELECT * FROM conversation_action_recovery',
-          )
-        ).rows,
-      ).toHaveLength(0);
+      await expectCommittedHistoryMarker(db.database, 'tool-2');
       expect(generate).toHaveBeenCalledTimes(2);
       expect(save).toHaveBeenCalledTimes(2);
       const saved = await createConversationColdResumeStorage(db.database).open(

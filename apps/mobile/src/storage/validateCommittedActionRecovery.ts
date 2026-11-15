@@ -1,3 +1,5 @@
+import { readHistoryOperationReceipt } from './conversationHistoryOperationReceipt';
+import { recoverySaveInput } from './actionRecoverySource';
 import { readManualHistoryEntry, type SqlExecutor } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { conversationHistoryIntent } from '../manualHistory/conversationHistoryIntent';
@@ -52,6 +54,15 @@ export async function readCommittedActionRecovery(
     ).rows.length
   )
     return undefined;
+  const owner = (
+    await sql.execute('SELECT question FROM conversation_requests WHERE id=?', [
+      requestId,
+    ])
+  ).rows[0];
+  const additionalId = await readHistoryOperationReceipt(
+    sql,
+    recoverySaveInput(d, String(owner?.question)),
+  );
   const receipt = (
     await sql.execute(
       `SELECT h.entry_id, h.source_request_id, a.identity_json FROM conversation_history_receipts h
@@ -61,15 +72,17 @@ export async function readCommittedActionRecovery(
     )
   ).rows[0];
   if (
-    receipt?.entry_id !== row.entry_id ||
-    receipt.source_request_id !== d.sourceRequestId ||
-    receipt.identity_json !==
-      JSON.stringify([
-        d.manifest.operationRunId,
-        d.operationKey,
-        d.manifest.sessionVersion,
-        d.sourceRequestId,
-      ])
+    additionalId
+      ? additionalId !== row.entry_id
+      : receipt?.entry_id !== row.entry_id ||
+        receipt.source_request_id !== d.sourceRequestId ||
+        receipt.identity_json !==
+          JSON.stringify([
+            d.manifest.operationRunId,
+            d.operationKey,
+            d.manifest.sessionVersion,
+            d.sourceRequestId,
+          ])
   )
     return undefined;
   const original = JSON.parse(d.preparedInput);
