@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+import { navigationText } from '../i18n/navigation';
 import { Alert } from 'react-native';
 
 /** A stale/cancelled dialog cannot grant authority to a later request. */
@@ -17,11 +19,11 @@ export function confirmHistorySave(
     const cancel = () => finish(false);
     signal.addEventListener('abort', cancel, { once: true });
     Alert.alert(
-      '과거 건강 기록에 저장',
+      t('historyDisplay.saveTitle'),
       text,
       [
-        { text: '취소', style: 'cancel', onPress: cancel },
-        { text: '저장', onPress: () => finish(true) },
+        { text: navigationText.cancel.label, style: 'cancel', onPress: cancel },
+        { text: navigationText.save, onPress: () => finish(true) },
       ],
       { cancelable: true, onDismiss: cancel },
     );

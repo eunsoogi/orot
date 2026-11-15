@@ -1,3 +1,4 @@
+import { historyDisplayKo } from './historyDisplayKo';
 import { dailySynthesisKo } from './dailySynthesisKo';
 import { computedQuantityKo } from './computedQuantityKo';
 import { computedTopicKo } from './computedTopicKo';
@@ -21,6 +22,7 @@ import { encounterReviewCopyKo } from './encounterReviewCopyKo';
 
 /** Incremental UI-copy migrations share one catalog entry point. */
 export const localizedCopyKo = {
+  ...historyDisplayKo,
   ...dailySynthesisKo,
   ...computedQuantityKo,
   ...computedTopicKo,
