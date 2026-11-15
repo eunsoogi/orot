@@ -1,5 +1,11 @@
 /** Presentation templates only; original symptom/medication text and clinical scope are retained verbatim. */
 export const computedTopicKo = {
+  'computedTopic.title.medications': '복용약',
+  'computedTopic.title.measurements': '건강 측정',
+  'computedTopic.title.activity': '활동 기록',
+  'computedTopic.title.sleep': '수면 기록',
+  'computedTopic.title.symptoms': '증상 기록',
+  'computedTopic.title.overview': '측정 기록',
   'computedTopic.overviewRow': '{label}: {amount} {unit}{time}.',
   'computedTopic.recordTime': ' · 기록 시각 {time}',
   'computedTopic.queriedOnly': '조회한 기록에 한정돼요.',

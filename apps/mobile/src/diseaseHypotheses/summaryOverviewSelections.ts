@@ -181,7 +181,7 @@ export function resolveOverviewSelections(
     if (!indices.length) return item;
     const rows = indices.map(index => source.rows[index]!);
     sections.push({
-      title: '측정 기록',
+      title: t('computedTopic.title.overview'),
       summary: rows
         .map(row =>
           t('computedTopic.overviewRow', {
