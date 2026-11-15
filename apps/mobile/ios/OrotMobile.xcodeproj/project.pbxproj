@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4B38B93A2CC33C401A30EB38 /* SavedDocumentNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC5BB83930A9566F6A5CAB1 /* SavedDocumentNavigationUITests.swift */; };
 		EBAE3A6E40FC4104951D98F5 /* GlassIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 572A3A3D79AD451BAD30D047 /* GlassIconButton.swift */; };
 		BCAC2A2B2A95E636B5C9C15E /* RealtimeVoiceCallLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41E6911C62CADEA6C14E15AF /* RealtimeVoiceCallLifecycle.swift */; };
 		765B8D5B2F4B561748A82885 /* RealtimeVoiceCallEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C5E2B537DA5D2494BD14FF /* RealtimeVoiceCallEvents.swift */; };
@@ -379,6 +380,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		AFC5BB83930A9566F6A5CAB1 /* SavedDocumentNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SavedDocumentNavigationUITests.swift; sourceTree = "<group>"; };
 		572A3A3D79AD451BAD30D047 /* GlassIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassIconButton.swift; sourceTree = "<group>"; };
 		41E6911C62CADEA6C14E15AF /* RealtimeVoiceCallLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCallLifecycle.swift; sourceTree = "<group>"; };
 		F0C5E2B537DA5D2494BD14FF /* RealtimeVoiceCallEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCallEvents.swift; sourceTree = "<group>"; };
@@ -1131,6 +1133,7 @@
 				B3D8E7F491204AB5812C0404 /* ManualHistoryDateSheetUITestSupport.swift */,
 				B18E52C6342445A2AE89D337 /* ManualHistoryDuoUITests.swift */,
 				9C3AB3D75A20472F9E2F315A /* MedicalDocumentImportJourneyUITests.swift */,
+				AFC5BB83930A9566F6A5CAB1 /* SavedDocumentNavigationUITests.swift */,
 				A87EAF0329384AAAB987CA12 /* MedicalDocumentPhotoJourneyUITests.swift */,
 				A87EAF0329384AAAB987CC12 /* NavigationBottomGapUITestConditions.swift */,
 				A87EAF0329384AAAB987CB12 /* MedicalDocumentPhotoSelectionUITestConditions.swift */,
@@ -1754,6 +1757,7 @@
 				A3D8E7F491204AB5812C0404 /* ManualHistoryDateSheetUITestSupport.swift in Sources */,
 				E3C71A4D0BDB468A9C3F6217 /* ManualHistoryDuoUITests.swift in Sources */,
 				4B5890F6C08D4E85AB0CA6C2 /* MedicalDocumentImportJourneyUITests.swift in Sources */,
+				4B38B93A2CC33C401A30EB38 /* SavedDocumentNavigationUITests.swift in Sources */,
 				A87EAF0329384AAAB987CA11 /* MedicalDocumentPhotoJourneyUITests.swift in Sources */,
 				A87EAF0329384AAAB987CC11 /* NavigationBottomGapUITestConditions.swift in Sources */,
 				A87EAF0329384AAAB987CB11 /* MedicalDocumentPhotoSelectionUITestConditions.swift in Sources */,
