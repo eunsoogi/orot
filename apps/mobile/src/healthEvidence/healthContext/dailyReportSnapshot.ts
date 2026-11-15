@@ -1,3 +1,4 @@
+import { readDailyReportMedicationContext } from './dailyReportMedicationContext';
 import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
@@ -184,6 +185,47 @@ export async function readDailyReportSnapshot(
           ...(kind === 'appointment' ? ['confirmed_appointments_only'] : []),
         ],
       });
+    }
+    // Supporting identity records retain their original times and own deletion lineage.
+    const medications = await readDailyReportMedicationContext(
+      tx,
+      values,
+      scope,
+      calendar.generationCutoff,
+    );
+    const linkedDoses = new Set<string>();
+    for (const item of medications) {
+      if (bytes + item.bytes > snapshotByteLimit) continue;
+      const revision = fingerprint(item.payload);
+      const recordId = item.value.record.id;
+      records.push({
+        source: item.value.kind,
+        recordId,
+        revision,
+        occurrence: { startInclusive: item.at },
+        ingestedAt: item.value.record.ingestedAt,
+        supportingRecordFor: item.doses,
+      });
+      lineage.push({
+        source: item.value.kind,
+        recordId,
+        kind: item.value.kind,
+        localId: recordId,
+        revision,
+      });
+      values.push(item.value);
+      bytes += item.bytes;
+      item.doses.forEach(id => linkedDoses.add(id));
+    }
+    const unresolved = values.some(
+      item => item.kind === 'dose_event' && !linkedDoses.has(item.record.id),
+    );
+    if (!unresolved) {
+      const doseCoverage = coverage.find(item => item.source === 'dose_event');
+      if (doseCoverage)
+        doseCoverage.limitationCodes = doseCoverage.limitationCodes.filter(
+          code => code !== 'medication_names_not_resolved',
+        );
     }
     output = {
       values,

@@ -1,3 +1,4 @@
+import { validDailyReportSupportingContext } from './dailyReportSupportingContext';
 import { z } from 'zod';
 import { compareTimestamps, RecordIdSchema, TimestampSchema } from './common';
 import { dailyReportCalendarInterval } from './dailyReportCalendar';
@@ -15,6 +16,7 @@ export const DailyReportSourceRecordSchema = z
       endExclusive: TimestampSchema.optional(),
     }),
     ingestedAt: TimestampSchema,
+    supportingRecordFor: z.array(RecordIdSchema).min(1).max(100).optional(),
   })
   .superRefine((record, context) => {
     if (
@@ -171,7 +173,19 @@ export const DailyReportContextSchema = z
         record.source === 'appointment' &&
         compareTimestamps(startInclusive, interval.fromInclusive) >= 0 &&
         compareTimestamps(startInclusive, interval.toExclusive) < 0;
+      const supporting = validDailyReportSupportingContext(
+        record,
+        sourceSnapshot.records,
+        generationCutoff,
+      );
+      if (record.supportingRecordFor && !supporting)
+        context.addIssue({
+          code: 'custom',
+          path: ['sourceSnapshot', 'records', index, 'supportingRecordFor'],
+          message: 'Supporting medication context must reference admitted doses.',
+        });
       const overlaps =
+        supporting ||
         knownPlan ||
         (hasAvailableWindow &&
           (endExclusive
