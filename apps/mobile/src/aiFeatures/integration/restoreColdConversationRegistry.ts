@@ -1,6 +1,7 @@
 import { createColdResearchSourceReader } from './coldResearchSourceReader';
 import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
-import { requireNonPhotoSources } from '../../ragConversation/conversationArtifactSources';
+import { isConversationPhotoSource } from '../../ragConversation/conversationArtifactSources';
+import { restoreColdPhotoEvidence } from './restoreColdPhotoEvidence';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { EvidenceRegistrySnapshot } from './evidenceRegistrySnapshot';
 import type { AiFeatureLocalData } from './localData';
@@ -9,12 +10,17 @@ import { stableJson } from './evidenceUtils';
 
 /** Rebind protected aliases to fresh local readers, not to a new search or regenerated answer.
  * The caller must validate the protected descriptor and fence its source epoch again at claim.
- * External batches, photo ownership, graph invocation and consent are deliberately not restored here. */
+ * Photo readers require an explicit protected owner. External batches, graph invocation and
+ * consent are not restored here; local reader reconstruction is not a transmission grant. */
 export async function restoreColdConversationRegistry(input: {
   snapshot: EvidenceRegistrySnapshot;
   sources: readonly ConversationArtifactSource[];
   data: AiFeatureLocalData;
   signal: AbortSignal;
+  photo?: Pick<
+    Parameters<typeof restoreColdPhotoEvidence>[0],
+    'submitted' | 'owner'
+  >;
 }): Promise<LocalEvidenceReferenceRegistry> {
   const check = () => {
     if (input.signal.aborted)
@@ -25,9 +31,12 @@ export async function restoreColdConversationRegistry(input: {
   const snapshot: EvidenceRegistrySnapshot = JSON.parse(
     JSON.stringify(input.snapshot),
   );
-  const sources = requireNonPhotoSources(
-    JSON.parse(JSON.stringify(input.sources)),
+  const sources: readonly ConversationArtifactSource[] = JSON.parse(
+    JSON.stringify(input.sources),
   );
+  const photos = sources.filter(isConversationPhotoSource);
+  if (photos.length && !input.photo)
+    throw new Error('Cold photo owner is required.');
   const originals = new Set(
     snapshot.entries.map(entry => stableJson(entry.original)),
   );
@@ -57,18 +66,28 @@ export async function restoreColdConversationRegistry(input: {
           'generated_summary',
           'generated_conversation',
           'generated_research',
+          'conversation_photo',
         ].includes(kind))
     )
       throw new Error('Unsupported cold source descriptor.');
   }
   const fresh = new LocalEvidenceReferenceRegistry();
+  if (photos.length)
+    await restoreColdPhotoEvidence({
+      ...input.photo!,
+      sources: photos,
+      data: input.data,
+      registry: fresh,
+      signal: input.signal,
+    });
   const research = createColdResearchSourceReader({
     snapshot,
-    sources,
+    sources: sources.filter(source => !isConversationPhotoSource(source)),
     data: input.data,
   });
   for (const source of sources) {
     check();
+    if (isConversationPhotoSource(source)) continue;
     if (
       'kind' in source &&
       (source.kind === 'generated_research' ||
