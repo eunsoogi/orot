@@ -76,6 +76,7 @@ final class MedicalDocumentImportJourneyUITests: OrotFailFastTestCase {
         tap(app, "medical-document-source-0")
         try assertSavedSource(app)
         capture(app, "medical-document-source-with-provenance")
+        try MedicalDocumentSwipeBackConditions.assertSwipeBackAndReopen(app)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         XCTAssertTrue(savedSource.waitForAppearance() && savedSource.isHittable, app.debugDescription)
         tap(app, "medical-document-source-0")

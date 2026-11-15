@@ -1,3 +1,5 @@
+import { useRecordSourceNavigation } from './RecordSourceNavigation';
+import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
 import { useIsFocused } from '@react-navigation/native';
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
@@ -51,6 +53,7 @@ export function AppRouteContent({
   healthRecordDetailSelection,
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
+  const { sourceId, openDocument } = useRecordSourceNavigation(actions);
   const active = useIsFocused();
   const reminderRuntime = useAppointmentReminderRuntime();
   function openOverviewPreparation() {
@@ -93,6 +96,7 @@ export function AppRouteContent({
             onSelect={onSelectRecordsSection}
           >
             <RecordsRoute
+              onOpenDocumentDetail={openDocument}
               onOpenRecentRecords={() => actions.push('recent-records')}
               documentImportService={documentImportService}
               recordings={recordings}
@@ -158,10 +162,19 @@ export function AppRouteContent({
       return (
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
       );
+    case 'medical-document-detail':
+      return (
+        <MedicalDocumentDetailRoute
+          sourceId={sourceId}
+          service={documentImportService}
+          onBack={actions.onBack}
+        />
+      );
     case 'recent-records':
       // A native stack destination keeps the overview mounted and owns its own scroll position.
       return (
         <RecordsRoute
+          onOpenDocumentDetail={openDocument}
           showAllRecent
           documentImportService={documentImportService}
           recordings={recordings}

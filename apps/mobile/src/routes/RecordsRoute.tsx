@@ -21,6 +21,7 @@ import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
 import { LegacySymptomData } from './LegacySymptomData';
 
 export interface RecordsRouteProps {
+  readonly onOpenDocumentDetail?: (sourceId: string) => void;
   readonly showAllRecent?: boolean;
   readonly onOpenRecentRecords?: () => void;
   readonly recordings: readonly RecordingSourceRecord[];
@@ -35,6 +36,7 @@ export interface RecordsRouteProps {
 
 /** Reuses Home's loaded audio snapshot and keeps every Records state in measured usable space. */
 export function RecordsRoute({
+  onOpenDocumentDetail,
   showAllRecent = false,
   onOpenRecentRecords,
   recordings,
@@ -72,6 +74,10 @@ export function RecordsRoute({
   }, [activity, sourceDetail, routeScrollPosition]);
 
   function openSavedDocumentAtListPosition(sourceId: string) {
+    if (onOpenDocumentDetail) {
+      onOpenDocumentDetail(sourceId);
+      return;
+    }
     // The root-tab ScrollView stays mounted while detail replaces the long Records list.
     routeScrollPosition?.preserve();
     openSavedDocument(sourceId);

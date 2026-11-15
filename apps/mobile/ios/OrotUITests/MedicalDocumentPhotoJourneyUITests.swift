@@ -226,3 +226,19 @@ final class MedicalDocumentPhotoJourneyUITests: OrotFailFastTestCase {
         return true
     }
 }
+
+/// Uses UIKit's edge gesture on the real saved-source destination, not the content Back callback.
+@MainActor
+enum MedicalDocumentSwipeBackConditions {
+    static func assertSwipeBackAndReopen(_ app: XCUIApplication) throws {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.005, dy: 0.5))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: end)
+        let source = UITestConditions.element(app, "medical-document-source-0")
+        XCTAssertTrue(source.waitForAppearance() && source.isHittable, app.debugDescription)
+        XCTAssertFalse(UITestConditions.element(app, "medical-document-source-view").exists, app.debugDescription)
+        source.tap()
+        XCTAssertTrue(UITestConditions.element(app, "medical-document-source-view").waitForAppearance(), app.debugDescription)
+        try MedicalDocumentNavigationUITestConditions.assertSharedSavedSourceBack(app)
+    }
+}
