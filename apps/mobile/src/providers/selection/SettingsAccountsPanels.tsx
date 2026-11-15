@@ -9,7 +9,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { providerSelectionText } from './text';
 import type { ChatGPTAccountSetup } from './types';
 
-/** Separate credential cards retain flow-owned account selection and action targets. */
+/** Each card contains sibling selection and auth targets, never nested pressables. */
 export default function SettingsAccountsPanels({
   setup,
 }: {
@@ -26,12 +26,8 @@ export default function SettingsAccountsPanels({
             >
               ChatGPT
             </Text>
-            <View
-              style={styles.connectionCard}
-              testID="subscription-account-section"
-            >
+            <View style={styles.panel} testID="subscription-account-section">
               <View style={styles.content}>
-                <Text>구독 계정 로그인</Text>
                 <View style={styles.panel} testID="settings-accounts-list">
                   {setup.statusMessage ? (
                     <Text
@@ -54,36 +50,59 @@ export default function SettingsAccountsPanels({
                         : providerSelectionText.chatGPTAccountMissingScope;
 
                     return (
-                      <Pressable
+                      <View
                         key={account.issuedClientID}
-                        accessibilityRole="radio"
-                        accessibilityState={{ disabled: setup.busy, selected }}
-                        disabled={setup.busy}
-                        onPress={() =>
-                          setup.onAccountSelected(account.issuedClientID)
-                        }
-                        style={styles.account}
-                        testID={`chatgpt-account-${index}`}
+                        style={providerSettingsStyles.option}
+                        testID={`chatgpt-account-card-${index}`}
                       >
-                        <AppSymbol
-                          name={selected ? 'checkmark.circle.fill' : 'circle'}
-                          size={18}
-                          color={appColors.text}
-                        />
-                        <View style={styles.accountCopy}>
-                          <Text style={styles.accountTitle}>
-                            {providerSelectionText.chatGPTAccountName(
-                              index + 1,
-                            )}
-                          </Text>
-                          <Text>{status}</Text>
-                        </View>
-                      </Pressable>
+                        <Pressable
+                          accessibilityRole="radio"
+                          accessibilityState={{
+                            disabled: setup.busy,
+                            selected,
+                          }}
+                          disabled={setup.busy}
+                          onPress={() =>
+                            setup.onAccountSelected(account.issuedClientID)
+                          }
+                          style={styles.account}
+                          testID={`chatgpt-account-${index}`}
+                        >
+                          <AppSymbol
+                            name={selected ? 'checkmark.circle.fill' : 'circle'}
+                            size={18}
+                            color={appColors.text}
+                          />
+                          <View style={styles.accountCopy}>
+                            <Text style={styles.accountTitle}>
+                              {providerSelectionText.chatGPTAccountName(
+                                index + 1,
+                              )}
+                            </Text>
+                            <Text>{status}</Text>
+                          </View>
+                        </Pressable>
+                        {selected ? (
+                          <AccountConnectionActions setup={setup} />
+                        ) : null}
+                      </View>
                     );
                   })}
                 </View>
               </View>
-              <AccountConnectionActions setup={setup} />
+              {setup.accounts.length === 0 ||
+              (setup.signingIn &&
+                !setup.accounts.some(
+                  account => account.issuedClientID === setup.selectedAccountID,
+                )) ? (
+                <View
+                  style={providerSettingsStyles.option}
+                  testID="chatgpt-empty-account-card"
+                >
+                  <Text style={styles.accountCopy}>{setup.actionTitle}</Text>
+                  <AccountConnectionActions setup={setup} />
+                </View>
+              ) : null}
             </View>
             <OpenAIAccountPanel />
           </View>
@@ -101,15 +120,6 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1, minWidth: 0, gap: 12 },
   accountCopy: { flex: 1, minWidth: 0, gap: 4 },
-  connectionCard: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    backgroundColor: appColors.surface,
-  },
   panel: { gap: 10, minWidth: 0 },
   pageSections: { gap: 16 },
   error: { color: appColors.danger },
@@ -117,10 +127,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    borderRadius: 16,
+    flex: 1,
+    minWidth: 0,
+    minHeight: 44,
   },
   accountTitle: { color: appColors.text, fontWeight: '600' },
 });
