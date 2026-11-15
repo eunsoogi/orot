@@ -1,4 +1,6 @@
 import type { SqlDatabase } from '@orot/storage';
+import { readHistoryOperationReceipt } from './conversationHistoryOperationReceipt';
+import { recoverySaveInput } from './actionRecoverySource';
 import type { ConversationContinuationCapture } from './conversationContinuationCapture';
 import type { ConversationContinuationIdentity } from './conversationWorkflowContinuationIdentity';
 import { continuationManifest } from './conversationWorkflowContinuationIdentity';
@@ -8,9 +10,9 @@ import {
 } from './conversationColdResumeBinding';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 
-/** A newer durable checkpoint already contains the first result. Retire only its
+/** A newer durable checkpoint already contains this exact result. Retire only its
  * obsolete crash marker before a later action; this grants no recovery or write.
- * Later pending actions remain unsupported rather than borrowing an old receipt.
+ * A later marker uses its own operation receipt, never the first action receipt.
  */
 export async function retireCompletedActionRecovery(
   database: SqlDatabase,
@@ -63,13 +65,37 @@ export async function retireCompletedActionRecovery(
       throw new Error(
         'Completed action marker is not owned by this checkpoint.',
       );
+    const request = (
+      await tx.execute(
+        'SELECT question FROM conversation_requests WHERE id=?',
+        [identity.requestId],
+      )
+    ).rows[0];
+    const operationEntry = await readHistoryOperationReceipt(
+      tx,
+      recoverySaveInput(stage, String(request?.question)),
+    );
     const saved = (
       await tx.execute(
-        'SELECT entry_id FROM conversation_history_receipts WHERE request_id=? AND session_id=?',
+        `SELECT h.entry_id, h.source_request_id, a.identity_json FROM conversation_history_receipts h
+          JOIN conversation_action_receipts a ON a.request_id=h.request_id AND a.session_id=h.session_id
+          WHERE h.request_id=? AND h.session_id=?`,
         [identity.requestId, identity.sessionId],
       )
     ).rows[0];
-    if (saved?.entry_id !== row.entry_id)
+    if (
+      operationEntry
+        ? operationEntry !== row.entry_id
+        : saved?.entry_id !== row.entry_id ||
+          saved.source_request_id !== stage.sourceRequestId ||
+          saved.identity_json !==
+            JSON.stringify([
+              manifest.operationRunId,
+              stage.operationKey,
+              manifest.sessionVersion,
+              stage.sourceRequestId,
+            ])
+    )
       throw new Error('Completed action receipt changed.');
     await tx.execute(
       'DELETE FROM conversation_action_recovery WHERE request_id=? AND payload=?',
