@@ -93,6 +93,7 @@ export function AppRouteContent({
             onSelect={onSelectRecordsSection}
           >
             <RecordsRoute
+              onOpenRecentRecords={() => actions.push('recent-records')}
               documentImportService={documentImportService}
               recordings={recordings}
               recordingState={recordingState}
@@ -156,6 +157,21 @@ export function AppRouteContent({
     case 'unified-import':
       return (
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
+      );
+    case 'recent-records':
+      // A native stack destination keeps the overview mounted and owns its own scroll position.
+      return (
+        <RecordsRoute
+          showAllRecent
+          documentImportService={documentImportService}
+          recordings={recordings}
+          recordingState={recordingState}
+          onRetryRecordings={() => refreshRecordings()}
+          onOpenSavedRecordings={() => actions.push('saved-recordings')}
+          onOpenRecording={openRecording}
+          onOpenHealthLibrary={() => actions.push('health-records')}
+          onOpenManualHistory={() => actions.push('manual-history')}
+        />
       );
     case 'saved-recordings':
       return <SavedRecordingsRoute actions={actions} />;

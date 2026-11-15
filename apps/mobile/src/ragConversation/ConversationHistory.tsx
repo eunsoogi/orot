@@ -63,6 +63,7 @@ export function ConversationHistory({
     pendingMessage,
     requestSessionId,
     requestActivity,
+    separatedActivity,
   );
   useConversationHistoryUserTurnFollow(
     sessionId ?? null,
@@ -220,9 +221,7 @@ export function ConversationHistory({
               />
             </ReplyMessageContainer>
           ))}
-        {showActivityBubble && !separatedActivity ? (
-          <ConversationActivityBubble />
-        ) : null}
+        {showActivityBubble ? <ConversationActivityBubble /> : null}
         <ConversationHistoryStatus
           {...{
             error,
