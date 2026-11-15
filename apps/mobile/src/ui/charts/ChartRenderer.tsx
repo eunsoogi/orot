@@ -18,7 +18,13 @@ type Props = {
   width: number;
   height: number;
   kind: 'line' | 'bar';
-  onBarSelect?: (selection: { x: string; seriesId: string } | null) => void;
+  onBarSelect?: (
+    selection: {
+      x: string;
+      seriesId: string;
+      position: { x: number; y: number };
+    } | null,
+  ) => void;
 };
 
 const token: Record<
@@ -45,7 +51,11 @@ export function ChartRenderer({
   const { fontScale } = useWindowDimensions();
   const palette = appColorPalettes[scheme];
   const chartHeight = Math.ceil(height * Math.max(1, fontScale));
-  const units = [...new Set(data.series.map(item => item.unit))];
+  const units = [
+    ...new Set(
+      data.series.filter(item => item.points.length > 0).map(item => item.unit),
+    ),
+  ];
 
   if (width <= 0) return <View style={{ height: chartHeight }} />;
 
@@ -136,6 +146,11 @@ export function ChartRenderer({
                           onBarSelect({
                             x: String(event.x),
                             seriesId: event.seriesKey,
+                            // Each unit owns a vertically stacked plot.
+                            position: {
+                              x: event.position.x,
+                              y: event.position.y + index * chartHeight,
+                            },
                           }),
                         onDeselect: () => onBarSelect(null),
                       }
