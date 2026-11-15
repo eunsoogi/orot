@@ -49,7 +49,11 @@ export function makeGraph<TResult>(
       .addEdge(START, 'checkpointStart')
       .addConditionalEdges('checkpointStart', route, workflowNodeRoutes)
       .addConditionalEdges('prepareAction', (state) => (state.terminal ? END : 'executeAction'))
-      .addConditionalEdges('executeAction', route, workflowNodeRoutes)
+      .addConditionalEdges(
+        'executeAction',
+        (s) => (s.awaitingAuthorization ? 'executeAction' : route(s)),
+        { ...workflowNodeRoutes, executeAction: 'executeAction' },
+      )
       .addConditionalEdges('prepareResponder', (state) =>
         state.terminal ? END : 'invokeResponder',
       )

@@ -65,7 +65,9 @@ export function pauseBoundaryWrapper<TResult>(context: RuntimeContext<TResult>) 
         state.pendingOperation ??
         (state.awaitingAuthorization
           ? {
-              kind: state.phase === 'evidence_search' ? ('tool' as const) : ('model' as const),
+              kind: ['evidence_search', 'local_action'].includes(state.phase)
+                ? ('tool' as const)
+                : ('model' as const),
               operationKey: state.awaitingAuthorization,
             }
           : undefined);
@@ -87,7 +89,14 @@ export function pauseBoundaryWrapper<TResult>(context: RuntimeContext<TResult>) 
           ...(await node({ ...state, pendingOperation: pending }, runtime)),
         };
       } catch (error) {
-        if (!isAuthorizationPaused(error) || context.signal.aborted || pending?.kind !== 'model')
+        if (
+          !isAuthorizationPaused(error) ||
+          context.signal.aborted ||
+          !(
+            pending?.kind === 'model' ||
+            (pending?.kind === 'tool' && state.phase === 'local_action')
+          )
+        )
           throw error;
         // The journal proved all previous calls completed and the current call has no dispatch intent.
         context.outcome = undefined;

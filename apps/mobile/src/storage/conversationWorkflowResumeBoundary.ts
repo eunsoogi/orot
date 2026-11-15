@@ -4,7 +4,8 @@ export interface ConversationResumeBoundary {
     | 'task_response'
     | 'evidence_research'
     | 'revised_response'
-    | 'evidence_search';
+    | 'evidence_search'
+    | 'local_action';
   pendingOperation: boolean;
   terminal: boolean;
   awaitingAuthorization?: string;
@@ -18,7 +19,7 @@ export function isSafeConversationResumePhase(value: {
     ['task_response', 'evidence_research', 'revised_response'].includes(
       value.phase,
     ) ||
-    (value.phase === 'evidence_search' &&
+    (['evidence_search', 'local_action'].includes(value.phase) &&
       /^tool-[1-9]\d*$/u.test(value.awaitingAuthorization ?? ''))
   );
 }
