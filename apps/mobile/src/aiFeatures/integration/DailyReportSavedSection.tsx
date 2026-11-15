@@ -72,7 +72,11 @@ export function DailyReportSavedSection({
         {t('dailyReport.observations')}
       </AppText>
       <AppButton
-        title={showEvidence ? '근거 기록 접기' : '근거 기록 보기'}
+        title={
+          showEvidence
+            ? t('dailySynthesis.collapse')
+            : t('dailySynthesis.expand')
+        }
         variant="secondary"
         accessibilityState={{ expanded: showEvidence }}
         onPress={() => setShowEvidence(value => !value)}
