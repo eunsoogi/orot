@@ -12,6 +12,14 @@ export const navigationText = {
     label: '닫기',
     accessibilityLabel: '현재 화면 닫기',
   },
+  hostStatus: {
+    unfit: '이 화면에 필요한 탐색 동작을 표시할 공간이 부족해요.',
+    pending: '탐색 동작을 준비하고 있어요.',
+  },
+  navigationOverflow: {
+    label: '더 보기',
+    accessibilityLabel: '탐색 및 화면 동작 더 보기',
+  },
   closeActionMenu: '동작 메뉴 닫기',
   pageOverflow: {
     label: '더 보기',
