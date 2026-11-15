@@ -131,11 +131,8 @@ export function AiFeatureFlow({
               renderVisitQuestions={renderVisitQuestions}
               onRouteStateChange={reportVisitQuestionsRouteState}
               onBack={requestBack}
-              onOpenVisitQuestions={
-                renderVisitQuestions
-                  ? () => pushFeatureRoute('visit-questions')
-                  : undefined
-              }
+              onOpenHealthSummary={() => pushFeatureRoute('health-summary')}
+              onOpenVisitQuestions={() => pushFeatureRoute('visit-questions')}
               onOpenDiseaseHypotheses={() =>
                 pushFeatureRoute('disease-hypotheses')
               }
