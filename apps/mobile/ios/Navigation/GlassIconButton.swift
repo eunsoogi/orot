@@ -24,7 +24,7 @@ final class GlassIconButton: UIButton {
     }
 
     @objc var busy = false {
-        didSet { accessibilityValue = busy ? "진행 중" : nil }
+        didSet { accessibilityValue = busy ? NSLocalizedString("action.busy", tableName: "NativeInterfaceCopy", comment: "Accessible busy state") : nil }
     }
 
     @objc var onAction: RCTDirectEventBlock?

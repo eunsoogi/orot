@@ -128,7 +128,7 @@ enum NavigationGlassButton {
     /// Reapplies descriptor-driven configuration without replacing the mounted UIButton.
     private static func configure(_ button: UIButton, for action: NavigationActionDescriptor) {
         // UIKit has no busy trait; VoiceOver receives the operation state as its value.
-        button.accessibilityValue = action.busy ? "진행 중" : nil
+        button.accessibilityValue = action.busy ? NSLocalizedString("action.busy", tableName: "NativeInterfaceCopy", comment: "Accessible busy state") : nil
         let selectedRootTab = action.rootTab && action.selected
         var configuration: UIButton.Configuration = if action.rootTab {
             .plain()

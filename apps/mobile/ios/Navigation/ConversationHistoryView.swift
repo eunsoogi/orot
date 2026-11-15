@@ -118,7 +118,7 @@ final class ConversationHistorySurfaceView: UIView, UITableViewDataSource, UITab
 
     func tableView(_: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         guard let id = sections[indexPath.section].rows[indexPath.row]["id"] else { return nil }
-        let action = UIContextualAction(style: .destructive, title: "삭제") { [weak self] _, _, complete in
+        let action = UIContextualAction(style: .destructive, title: NSLocalizedString("action.delete", tableName: "NativeInterfaceCopy", comment: "Conversation swipe delete action")) { [weak self] _, _, complete in
             self?.onDeleteSession?(["id": id])
             complete(true)
         }
