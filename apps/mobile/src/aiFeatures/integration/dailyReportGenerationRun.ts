@@ -71,6 +71,7 @@ export async function generateDailyReportWithCalendar(
   let sourceSnapshot: Snapshot['sourceSnapshot'];
   let required: number[];
   let baselineFacts: ReturnType<typeof dailyReportFacts> = [];
+  let sleepFacts: ReturnType<typeof dailyReportFacts> = [];
   input.deadlineContext.stage = 'source_read';
   providerDiagnostic('daily_report', 'data', 'started');
   try {
@@ -84,14 +85,20 @@ export async function generateDailyReportWithCalendar(
       providerDiagnostic('daily_report', 'data', 'unavailable');
       return fail('source_unavailable');
     }
-    ({ required, sourceSnapshot, facts, providerFacts, baselineFacts } =
-      await prepareDailyReportFacts(
-        input,
-        request,
-        calendar,
-        snapshot,
-        external,
-      ));
+    ({
+      required,
+      sourceSnapshot,
+      facts,
+      providerFacts,
+      baselineFacts,
+      sleepFacts,
+    } = await prepareDailyReportFacts(
+      input,
+      request,
+      calendar,
+      snapshot,
+      external,
+    ));
   } catch {
     if (request.signal.aborted) return fail('cancelled');
     providerDiagnostic('daily_report', 'data', 'failed');
@@ -168,6 +175,7 @@ export async function generateDailyReportWithCalendar(
       baselineFacts,
       external?.facts ?? [],
       reportModelClaims(selection.analysis, facts),
+      sleepFacts,
     ),
     coverage: context.sourceSnapshot.coverage,
     followUpQuestions: [],
