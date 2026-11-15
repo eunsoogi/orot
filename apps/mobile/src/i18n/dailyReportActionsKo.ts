@@ -1,8 +1,7 @@
 /** Evidence-led actions never infer attendance, adherence, or a cause from proximity. */
 export const dailyReportActionsKo = {
   'dailyReport.medication.namedAction': '{names} 관련 기록: {text}',
-  'dailyReport.medication.identity':
-    '복약 기록에 연결된 약 이름: {name}.',
+  'dailyReport.medication.identity': '복약 기록에 연결된 약 이름: {name}.',
   'dailyReport.context.appointmentCoverage':
     '앱에 확정해 저장한 진료 일정만 포함해요. 전체 캘린더의 일정과 참석 여부는 확인하지 않았어요.',
   'dailyReport.context.appointmentSource': '저장한 진료 일정',
