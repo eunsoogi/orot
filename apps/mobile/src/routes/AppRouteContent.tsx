@@ -1,7 +1,4 @@
-import { Alert } from 'react-native';
-import { useRef, useEffect } from 'react';
-import { useConversationSessions } from '../ragConversation/ConversationSessionsContext';
-import { requestConversationReport } from '../ragConversation/requestConversationReport';
+import { useOverviewReportEntry } from './useOverviewReportEntry';
 import { useIsFocused } from '@react-navigation/native';
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
@@ -56,15 +53,9 @@ export function AppRouteContent({
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
   const active = useIsFocused();
-  const conversationStore = useConversationSessions();
-  const reportEntryCurrent = useRef(false);
-  reportEntryCurrent.current =
-    active && activeTab === 'overview' && actions.route.name === 'root';
-  useEffect(
-    () => () => {
-      reportEntryCurrent.current = false;
-    },
-    [],
+  const openOverviewReport = useOverviewReportEntry(
+    active && activeTab === 'overview' && actions.route.name === 'root',
+    () => selectTab('conversation'),
   );
   const reminderRuntime = useAppointmentReminderRuntime();
   function openOverviewPreparation() {
@@ -97,20 +88,7 @@ export function AppRouteContent({
             onOpenRecords={() => selectTab('records')}
             loadSavedVisitQuestions={loadSavedVisitQuestions}
             onOpenRecording={openRecording}
-            onOpenDailyReport={() => {
-              requestConversationReport(
-                conversationStore,
-                () => reportEntryCurrent.current,
-                () => selectTab('conversation'),
-              ).then(result => {
-                // A failed save must be visible without interrupting a newer destination.
-                if (result === 'failed' && reportEntryCurrent.current)
-                  Alert.alert(
-                    t('dailyReport.title'),
-                    t('dailyReport.entryError'),
-                  );
-              });
-            }}
+            onOpenDailyReport={openOverviewReport}
           />
         );
       case 'records':
@@ -120,6 +98,7 @@ export function AppRouteContent({
             onSelect={onSelectRecordsSection}
           >
             <RecordsRoute
+              onOpenRecentRecords={() => actions.push('recent-records')}
               documentImportService={documentImportService}
               recordings={recordings}
               recordingState={recordingState}
@@ -183,6 +162,21 @@ export function AppRouteContent({
     case 'unified-import':
       return (
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
+      );
+    case 'recent-records':
+      // A native stack destination keeps the overview mounted and owns its own scroll position.
+      return (
+        <RecordsRoute
+          showAllRecent
+          documentImportService={documentImportService}
+          recordings={recordings}
+          recordingState={recordingState}
+          onRetryRecordings={() => refreshRecordings()}
+          onOpenSavedRecordings={() => actions.push('saved-recordings')}
+          onOpenRecording={openRecording}
+          onOpenHealthLibrary={() => actions.push('health-records')}
+          onOpenManualHistory={() => actions.push('manual-history')}
+        />
       );
     case 'saved-recordings':
       return <SavedRecordingsRoute actions={actions} />;

@@ -7,6 +7,7 @@ import { AppState } from 'react-native';
 import { SavedMemoryBrowser } from '../SavedMemoryBrowser';
 
 beforeEach(() => {
+  AppState.currentState = 'active';
   jest.mocked(AppState.addEventListener).mockReturnValue({ remove: jest.fn() });
 });
 
@@ -23,17 +24,10 @@ const memory = {
   },
 };
 
-it('waits for an explicit open, displays persisted text and supports close/reopen', async () => {
+it('loads on entry, displays persisted text and supports close/reopen', async () => {
   const load = jest.fn().mockResolvedValue([memory]);
   await render(<SavedMemoryBrowser load={load} />);
-  expect(load).not.toHaveBeenCalled();
-  expect(
-    screen.getByRole('button', { name: '저장된 기억 보기' }).props
-      .accessibilityState.expanded,
-  ).toBe(false);
-  await fireEvent.press(
-    screen.getByRole('button', { name: '저장된 기억 보기' }),
-  );
+  expect(load).toHaveBeenCalledTimes(1);
   expect(
     screen.getByRole('button', { name: '기억 닫기' }).props.accessibilityState
       .expanded,
@@ -54,9 +48,6 @@ it('retries failure and renders a genuine empty state', async () => {
     .mockRejectedValueOnce(new Error('locked'))
     .mockResolvedValue([]);
   await render(<SavedMemoryBrowser load={load} />);
-  await fireEvent.press(
-    screen.getByRole('button', { name: '저장된 기억 보기' }),
-  );
   expect(screen.queryByText('아직 저장된 기억이 없어요.')).toBeNull();
   await fireEvent.press(screen.getByText('다시 시도'));
   expect(screen.getByText('아직 저장된 기억이 없어요.')).toBeTruthy();
@@ -69,9 +60,6 @@ it('discards results from a request closed before completion', async () => {
       resolve = done;
     });
   await render(<SavedMemoryBrowser load={load} />);
-  await fireEvent.press(
-    screen.getByRole('button', { name: '저장된 기억 보기' }),
-  );
   await fireEvent.press(screen.getByRole('button', { name: '기억 닫기' }));
   await act(async () => resolve([memory]));
   expect(screen.queryByText(memory.text)).toBeNull();
@@ -80,9 +68,6 @@ it('discards results from a request closed before completion', async () => {
 it('clears private content on app backgrounding', async () => {
   const listener = jest.mocked(AppState.addEventListener);
   await render(<SavedMemoryBrowser load={async () => [memory]} />);
-  await fireEvent.press(
-    screen.getByRole('button', { name: '저장된 기억 보기' }),
-  );
   await act(async () =>
     listener.mock.calls[listener.mock.calls.length - 1][1]('background'),
   );
@@ -97,9 +82,6 @@ it('bounds displayed rows and resets the page on refresh', async () => {
     text: `합성 ${index}`,
   }));
   await render(<SavedMemoryBrowser load={async () => rows} />);
-  await fireEvent.press(
-    screen.getByRole('button', { name: '저장된 기억 보기' }),
-  );
   expect(screen.queryByText('합성 20')).toBeNull();
   await fireEvent.press(screen.getByText('더 보기'));
   expect(screen.getByText('합성 20')).toBeTruthy();
@@ -117,9 +99,6 @@ it.each(deletionEvents)(
   'clears cached memory after %s deletion',
   async (_name, notify) => {
     await render(<SavedMemoryBrowser load={async () => [memory]} />);
-    await fireEvent.press(
-      screen.getByRole('button', { name: '저장된 기억 보기' }),
-    );
     expect(screen.getByText(memory.text)).toBeTruthy();
     await act(async () => notify());
     expect(screen.queryByText(memory.text)).toBeNull();
@@ -143,9 +122,6 @@ it.each(deletionEvents)(
       )
       .mockResolvedValue([]);
     await render(<SavedMemoryBrowser load={load} />);
-    await fireEvent.press(
-      screen.getByRole('button', { name: '저장된 기억 보기' }),
-    );
     await act(async () => notify());
     await fireEvent.press(
       screen.getByRole('button', { name: '저장된 기억 보기' }),
@@ -153,5 +129,43 @@ it.each(deletionEvents)(
     await act(async () => resolve([memory]));
     expect(screen.queryByText(memory.text)).toBeNull();
     expect(screen.getByText('아직 저장된 기억이 없어요.')).toBeTruthy();
+  },
+);
+
+it('reloads automatically after returning active and rejects the interrupted read', async () => {
+  let resolve!: (value: (typeof memory)[]) => void;
+  const load = jest
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise(done => {
+          resolve = done;
+        }),
+    )
+    .mockResolvedValue([]);
+  await render(<SavedMemoryBrowser load={load} />);
+  const listener = jest.mocked(AppState.addEventListener).mock.calls.at(-1)![1];
+  await act(async () => listener('background'));
+  await act(async () => listener('active'));
+  await act(async () => resolve([memory]));
+  expect(load).toHaveBeenCalledTimes(2);
+  expect(screen.queryByText(memory.text)).toBeNull();
+  expect(screen.getByText('아직 저장된 기억이 없어요.')).toBeTruthy();
+});
+
+it.each(['background', 'inactive', null] as const)(
+  'waits for active state before reading when initially %s',
+  async initialState => {
+    AppState.currentState = initialState;
+    const load = jest.fn().mockResolvedValue([memory]);
+    await render(<SavedMemoryBrowser load={load} />);
+    expect(load).not.toHaveBeenCalled();
+    expect(screen.queryByText(memory.text)).toBeNull();
+    const listener = jest
+      .mocked(AppState.addEventListener)
+      .mock.calls.at(-1)![1];
+    await act(async () => listener('active'));
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(memory.text)).toBeTruthy();
   },
 );

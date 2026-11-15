@@ -49,7 +49,7 @@ test('loads each category directly and shows pressure while a Watch category rem
       toInclusive: expect.any(String),
     }),
   );
-  expect(loader).toHaveBeenCalledTimes(6);
+  expect(loader).toHaveBeenCalledTimes(7);
   expect(
     await screen.findByTestId('health-record-chart-blood_pressure'),
   ).toBeTruthy();
@@ -64,7 +64,7 @@ test('loads each category directly and shows pressure while a Watch category rem
   ).toBeNull();
   expect(screen.getByText('기록을 불러오는 중이에요.')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('health-record-filter-sleep'));
-  expect(loader).toHaveBeenCalledTimes(6);
+  expect(loader).toHaveBeenCalledTimes(7);
   await act(async () => finishHeart({ records: [], nextCursor: null }));
 });
 
@@ -129,7 +129,7 @@ test('retries only the failed category while retaining the ready pressure card',
   await fireEvent.press(screen.getByTestId('health-record-filter-heart_rate'));
   failHeart = false;
   await fireEvent.press(screen.getByTestId('health-records-retry'));
-  expect(loader).toHaveBeenCalledTimes(7);
+  expect(loader).toHaveBeenCalledTimes(8);
   expect(loader).toHaveBeenLastCalledWith(
     null,
     expect.objectContaining({ category: 'heart_rate' }),
@@ -139,5 +139,5 @@ test('retries only the failed category while retaining the ready pressure card',
     screen.getByTestId('health-record-filter-blood_pressure'),
   );
   expect(screen.getByTestId('health-record-chart-blood_pressure')).toBeTruthy();
-  expect(loader).toHaveBeenCalledTimes(7);
+  expect(loader).toHaveBeenCalledTimes(8);
 });
