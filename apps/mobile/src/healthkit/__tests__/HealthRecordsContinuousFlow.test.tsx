@@ -184,9 +184,7 @@ test('different stored units are shown on independent chart axes with saved valu
     />,
   );
   await fireEvent.press(screen.getByTestId('health-record-filter-body_mass'));
-  const charts = screen.getAllByTestId(
-    'health-record-chart-values-body_mass-plot',
-  );
+  const charts = screen.getAllByTestId('health-record-chart-body_mass');
   expect(charts).toHaveLength(2);
   expect(charts[0].props.accessibilityLabel).toContain('72 kg');
   expect(charts[0].props.accessibilityLabel).not.toContain('160 lb');

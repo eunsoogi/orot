@@ -105,11 +105,7 @@ export function HealthRecordsLineChart({
   return (
     <View
       onLayout={event => setWidth(event.nativeEvent.layout.width)}
-      testID={
-        preview
-          ? 'health-record-chart-' + category
-          : 'health-record-chart-plot-row'
-      }
+      testID="health-record-chart-plot-row"
     >
       <ChartPlot
         data={data}

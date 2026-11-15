@@ -156,7 +156,13 @@ export function ChartPlot({
               ? chartAccessibilitySummary(visible, axis, title)
               : undefined
           }
-          testID={testID ? `${testID}-plot` : undefined}
+          testID={
+            hideDetails && selectedPointTestID
+              ? selectedPointTestID
+              : testID
+                ? `${testID}-plot`
+                : undefined
+          }
         >
           {visible && positions.length > 0 && width > 0 ? (
             <ChartRenderer
