@@ -60,7 +60,7 @@ export function GlassIconButton({
       onAction={invoke}
       // Let UIKit shape and render its effect without a second React mask.
       style={[style, styles.native]}
-      testID={testID}
+      // actionTestID belongs to UIButton; a React testID also labels its Fabric wrapper.
     />
   ) : (
     <Pressable
@@ -82,5 +82,6 @@ export function GlassIconButton({
 }
 
 const styles = StyleSheet.create({
-  native: { borderRadius: 0, overflow: 'visible' },
+  // UIKit owns the border. A React border shrinks the bridged control inside its layout box.
+  native: { borderRadius: 0, borderWidth: 0, overflow: 'visible' },
 });
