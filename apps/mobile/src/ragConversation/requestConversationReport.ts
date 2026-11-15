@@ -10,12 +10,12 @@ export async function requestConversationReport(
   isCurrent: () => boolean,
   onReady?: () => void,
 ) {
-  if (!isCurrent() || pending.has(store)) return;
+  if (!isCurrent() || pending.has(store)) return 'ignored' as const;
   const { activeId } = store.getSnapshot();
   const identity = todayIdentity();
   if (!identity) {
     store.setError(activeId, t('dailyReport.entryError'));
-    return;
+    return 'failed' as const;
   }
   pending.add(store);
   try {
@@ -28,8 +28,10 @@ export async function requestConversationReport(
     // Saving can outlive navigation or a session change. Keep the saved task but
     // never pull the user away from their newer destination.
     if (isCurrent() && store.getSnapshot().activeId === activeId) onReady?.();
+    return 'saved' as const;
   } catch {
     store.setError(activeId, t('ragConversation.conversation.restoreFailed'));
+    return 'failed' as const;
   } finally {
     pending.delete(store);
   }

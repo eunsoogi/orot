@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { useRef, useEffect } from 'react';
 import { useConversationSessions } from '../ragConversation/ConversationSessionsContext';
 import { requestConversationReport } from '../ragConversation/requestConversationReport';
@@ -101,7 +102,14 @@ export function AppRouteContent({
                 conversationStore,
                 () => reportEntryCurrent.current,
                 () => selectTab('conversation'),
-              );
+              ).then(result => {
+                // A failed save must be visible without interrupting a newer destination.
+                if (result === 'failed' && reportEntryCurrent.current)
+                  Alert.alert(
+                    t('dailyReport.title'),
+                    t('dailyReport.entryError'),
+                  );
+              });
             }}
           />
         );
