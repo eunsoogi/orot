@@ -1,3 +1,7 @@
+import {
+  DailyReportSystemCalendarSchema,
+  validDailyReportSystemCalendar,
+} from './dailyReportSystemCalendar';
 import { validDailyReportSupportingContext } from './dailyReportSupportingContext';
 import { z } from 'zod';
 import { compareTimestamps, RecordIdSchema, TimestampSchema } from './common';
@@ -102,9 +106,16 @@ export const DailyReportContextSchema = z
       coverage: z.array(DailyReportSourceCoverageSchema),
     }),
     provider: DailyReportProviderMetadataSchema,
+    systemCalendar: DailyReportSystemCalendarSchema.optional(),
   })
   .superRefine((value, context) => {
     const { interval, generationCutoff, effectiveCutoff, sourceSnapshot } = value;
+    if (!validDailyReportSystemCalendar(value.systemCalendar, interval, sourceSnapshot.records))
+      context.addIssue({
+        code: 'custom',
+        path: ['systemCalendar'],
+        message: 'System calendar sources require an exact bounded binding.',
+      });
     const expectedCutoff =
       compareTimestamps(generationCutoff, interval.toExclusive) < 0
         ? generationCutoff

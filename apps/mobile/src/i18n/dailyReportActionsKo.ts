@@ -1,9 +1,20 @@
 /** Evidence-led actions never infer attendance, adherence, or a cause from proximity. */
 export const dailyReportActionsKo = {
+  'dailyReport.systemCalendar.unavailable':
+    '시스템 캘린더 접근 또는 이번 보고서 범위를 확인하지 못했어요. 일정이 없다는 뜻은 아니에요.',
+  'dailyReport.systemCalendar.sourceTitle':
+    '시스템 캘린더 계획을 반영한 보고서',
+  'dailyReport.systemCalendar.sourceLimit':
+    '일정은 계획이며 실제 참석·운동 완료·진료 사실을 증명하지 않아요.',
+  'dailyReport.systemCalendar.medical':
+    '오늘 시스템 캘린더에서 진료·건강 관련 단어가 있는 일정 제목 {count}건을 찾았어요. 업무 등 다른 목적일 수 있어 개인 진료 계획으로 단정하지 않아요. 미확정 일정이 포함될 수 있으며 실제 진료 여부는 확인되지 않았어요. 진료가 예정되어 있다면 오늘의 증상·측정·복약 기록을 함께 준비해 보세요.',
+  'dailyReport.systemCalendar.activity':
+    '오늘 시스템 캘린더에서 운동 관련 단어가 있는 일정 제목 {count}건을 찾았어요. 업무 등 다른 목적일 수 있어 본인의 운동 계획으로 단정하지 않아요. 미확정 일정이 포함될 수 있으며 실제 운동을 완료했다는 뜻은 아니에요.',
+
   'dailyReport.medication.namedAction': '{names} 관련 기록: {text}',
   'dailyReport.medication.identity': '복약 기록에 연결된 약 이름: {name}.',
   'dailyReport.context.appointmentCoverage':
-    '앱에 확정해 저장한 진료 일정만 포함해요. 전체 캘린더의 일정과 참석 여부는 확인하지 않았어요.',
+    '이 항목은 앱에 확정해 저장한 진료 일정의 범위예요. 시스템 캘린더 계획은 별도 출처로 표시하며 일정만으로 참석 여부를 추정하지 않아요.',
   'dailyReport.context.appointmentSource': '저장한 진료 일정',
   'dailyReport.context.appointmentFact': '진료 일정: {status}',
   'dailyReport.context.appointment.scheduled': '예정',
@@ -25,5 +36,5 @@ export const dailyReportActionsKo = {
   'dailyReport.context.visitCompleted':
     '오늘 완료로 저장한 진료 일정이 있어요. 진료 후 안내받은 관리 계획을 따르되, 이 일정 자체에는 진단이나 새 처방 내용이 확인되지 않아 임의로 추가하지 않았어요.',
   'dailyReport.context.coverage':
-    '이 보고서는 현재 접근 가능한 당일 기록을 먼저 종합했어요. 전체 건강을 정상 또는 이상으로 단정하지 않으며, 미측정·동기화 미확인·누락된 자료는 정상으로 채우지 않았어요. 전체 캘린더가 아니라 앱에 확정해 저장한 일정만 포함하며, 예정 일정은 실제 방문과 구분하며 개인별 과거 기준은 이 입력 범위에 포함되지 않아요.',
+    '이 보고서는 현재 접근 가능한 당일 기록을 먼저 종합했어요. 전체 건강을 정상 또는 이상으로 단정하지 않으며, 미측정·동기화 미확인·누락된 자료는 정상으로 채우지 않았어요. 캘린더 계획은 실제 방문과 구분하고 출처별 접근·확인 범위를 표시해요. 개인별 과거 기준은 이 입력 범위에 포함되지 않아요.',
 } as const;

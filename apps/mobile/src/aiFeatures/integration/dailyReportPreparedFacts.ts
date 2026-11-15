@@ -1,0 +1,91 @@
+import { fingerprint } from './evidenceUtils';
+import {
+  conflictingDailyReportIndexes,
+  incomparableDailyReportIndexes,
+  dailyReportFacts,
+} from './dailyReportFacts';
+import { dailyReportProviderFacts } from './dailyReportProjection';
+import type { prepareReportCalendar } from './dailyReportSystemCalendar';
+import type {
+  DailyReportRunInput,
+  DailyReportServiceRequest,
+} from './dailyReportTypes';
+import type { DailyReportCalendarWindow } from '../../healthEvidence/healthContext/dailyReportWindow';
+
+/** Combine local facts and minimal plan facts while retaining separate source coverage. */
+export async function prepareDailyReportFacts(
+  input: DailyReportRunInput,
+  request: DailyReportServiceRequest,
+  calendar: { context: DailyReportCalendarWindow },
+  snapshot: Awaited<
+    ReturnType<
+      NonNullable<DailyReportRunInput['data']['readDailyReportSnapshot']>
+    >
+  >,
+  external?: Awaited<ReturnType<typeof prepareReportCalendar>>,
+) {
+  const conflicts = conflictingDailyReportIndexes(snapshot.values);
+  const incomparable = incomparableDailyReportIndexes(snapshot.values);
+  const required = [...new Set([...conflicts, ...incomparable])];
+  const sourceSnapshot = {
+    ...snapshot.sourceSnapshot,
+    revision: external
+      ? fingerprint({
+          local: snapshot.sourceSnapshot.revision,
+          systemCalendar: external.binding,
+        })
+      : snapshot.sourceSnapshot.revision,
+    records: [
+      ...snapshot.sourceSnapshot.records,
+      ...(external ? [external.source] : []),
+    ],
+    coverage: [
+      ...snapshot.sourceSnapshot.coverage,
+      {
+        source: 'system_calendar',
+        status: external ? ('partial' as const) : ('unknown' as const),
+        limitationCodes: [
+          external
+            ? 'planned_events_not_attendance'
+            : 'calendar_unavailable_or_scoped_out',
+        ],
+      },
+      {
+        source: 'calendar',
+        status: calendar.context.partial
+          ? ('partial' as const)
+          : ('available' as const),
+        limitationCodes: calendar.context.partial ? ['partial_day'] : [],
+      },
+      {
+        source: 'report_selection',
+        status: 'partial' as const,
+        limitationCodes: ['selected_facts_only'],
+      },
+      ...(required.length
+        ? [
+            {
+              source: 'record_conflicts',
+              status: 'partial' as const,
+              limitationCodes: [
+                ...(conflicts.length ? ['conflicting_measurements'] : []),
+                ...(incomparable.length ? ['incomparable_units'] : []),
+                ...(required.length > 8 ? ['conflicting_records_omitted'] : []),
+              ],
+            },
+          ]
+        : []),
+    ],
+  };
+  const facts = [
+    ...dailyReportFacts(snapshot.values, snapshot.sourceSnapshot.records),
+    ...(external?.facts ?? []),
+  ];
+  const providerFacts = await dailyReportProviderFacts(
+    input.data,
+    snapshot.values,
+    facts,
+    request.signal,
+  );
+  return { required, sourceSnapshot, facts, providerFacts };
+}
