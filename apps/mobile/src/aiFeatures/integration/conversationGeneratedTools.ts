@@ -1,3 +1,7 @@
+import {
+  captureArtifactPagingSnapshot,
+  restoreArtifactPagingSnapshot,
+} from './artifactPagingSnapshot';
 import { createResearchPagingState } from './researchPagingState';
 import { hasArtifactCursorState } from './artifactCursorState';
 import type { EvidenceItem, EvidenceSearchTool } from '@orot/agent-runtime';
@@ -17,14 +21,26 @@ export function conversationGeneratedTools(
   registry: LocalEvidenceReferenceRegistry,
   observer: RagConversationObserver | undefined,
   restoredResearchPaging?: { snapshot: unknown; operationRunId: string },
+  restoredArtifactPaging?: unknown,
 ) {
   const tools: EvidenceSearchTool[] = [];
   let researchPaging = false;
   const paging = createResearchPagingState(restoredResearchPaging);
   if (restoredResearchPaging && !data.researchArtifactDiscovery)
     throw new Error('Research paging catalog unavailable.');
-  const pages = new Map<'summary' | 'conversation', ArtifactContinuation>();
-  const citedPages = new Map<string, ArtifactContinuation | null>();
+  const restored =
+    restoredArtifactPaging === undefined
+      ? undefined
+      : restoreArtifactPagingSnapshot(
+          registry,
+          restoredArtifactPaging,
+          observer?.conversationScope ?? '',
+        );
+  const pages =
+    restored?.pages ??
+    new Map<'summary' | 'conversation', ArtifactContinuation>();
+  const citedPages =
+    restored?.citations ?? new Map<string, ArtifactContinuation | null>();
   const onPage =
     (catalog: 'summary' | 'conversation') =>
     (query: string, cursor: string | null, items: readonly EvidenceItem[]) => {
@@ -79,7 +95,17 @@ export function conversationGeneratedTools(
   const researchPagingSnapshot = data.researchArtifactDiscovery
     ? paging.snapshot
     : undefined;
+  const artifactPagingSnapshot = observer?.conversationScope
+    ? () =>
+        captureArtifactPagingSnapshot(
+          registry,
+          observer.conversationScope!,
+          pages,
+          citedPages,
+        )
+    : undefined;
   return {
+    artifactPagingSnapshot,
     tools,
     researchPagingSnapshot,
     hasUnsupportedPagingState,
@@ -87,6 +113,7 @@ export function conversationGeneratedTools(
     coldPaging: () => ({
       hasPagingState: hasUnsupportedPagingState(),
       researchPaging: researchPagingSnapshot,
+      artifactPaging: artifactPagingSnapshot,
     }),
     /** All live paging state, including research cursors now supported by protected reconstruction. */
     hasPagingState: () =>

@@ -19,6 +19,7 @@ import { runRagConversationTurn } from '../../../ragConversation/service';
 export async function coldRagFactoryFixture(
   eager?: ColdConversationSearch,
   prepareData?: (data: import('../localData').AiFeatureLocalData) => void,
+  conversationScope?: string,
 ) {
   const f = publicEvidenceFixture();
   const local = localData([]);
@@ -46,6 +47,7 @@ export async function coldRagFactoryFixture(
   });
   const bundle = createConversationToolBundle({
     data: local.data,
+    observer: conversationScope ? { conversationScope } : undefined,
     registry,
     researchInputs: tracker,
     external,
