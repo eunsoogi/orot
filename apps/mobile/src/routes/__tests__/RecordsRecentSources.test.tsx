@@ -113,8 +113,10 @@ test('groups recordings and imported documents and preserves their destinations'
       discardDocument: jest.fn().mockResolvedValue(undefined),
     };
     const onOpenSavedRecordings = jest.fn();
+    const onOpenRecentRecords = jest.fn();
     await render(
       <RecordsRoute
+        onOpenRecentRecords={onOpenRecentRecords}
         recordings={[
           recording,
           recordingSource(
@@ -144,9 +146,10 @@ test('groups recordings and imported documents and preserves their destinations'
     ).toBeNull();
 
     await fireEvent.press(screen.getByTestId('records-recent-view-all'));
+    expect(onOpenRecentRecords).toHaveBeenCalledTimes(1);
     expect(
-      screen.getByTestId('records-recent-source-recording-recent-older'),
-    ).toBeTruthy();
+      screen.queryByTestId('records-recent-source-recording-recent-older'),
+    ).toBeNull();
     await fireEvent.press(
       screen.getByTestId('records-recent-source-recording-recent-1'),
     );

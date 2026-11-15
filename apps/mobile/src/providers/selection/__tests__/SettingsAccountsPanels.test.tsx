@@ -207,3 +207,41 @@ test('keeps sign-in cancellation available during account progress', async () =>
   expect(onCancelSignIn).toHaveBeenCalledTimes(1);
   expect(screen.queryByTestId('chatgpt-account-action')).toBeNull();
 });
+
+test('contains selected account actions in one card without nesting touch targets', async () => {
+  const view = await render(
+    <SettingsAccountsPanels
+      setup={makeSetup({
+        accounts: [connectedAccount, signedOutAccount],
+        selectedAccountID: connectedAccount.issuedClientID,
+      })}
+    />,
+  );
+  const first = within(view.getByTestId('chatgpt-account-card-0'));
+  expect(first.getByTestId('chatgpt-account-sign-out')).toBeTruthy();
+  expect(
+    within(view.getByTestId('chatgpt-account-0')).queryByTestId(
+      'chatgpt-account-sign-out',
+    ),
+  ).toBeNull();
+  expect(
+    within(view.getByTestId('chatgpt-account-card-1')).queryByTestId(
+      'settings-accounts-actions',
+    ),
+  ).toBeNull();
+  expect(view.queryByText('구독 계정 로그인')).toBeNull();
+  await view.rerender(
+    <SettingsAccountsPanels
+      setup={makeSetup({
+        accounts: [connectedAccount, signedOutAccount],
+        selectedAccountID: signedOutAccount.issuedClientID,
+      })}
+    />,
+  );
+  expect(
+    within(view.getByTestId('chatgpt-account-card-1')).getByTestId(
+      'chatgpt-account-action',
+    ),
+  ).toBeTruthy();
+  expect(first.queryByTestId('settings-accounts-actions')).toBeNull();
+});
