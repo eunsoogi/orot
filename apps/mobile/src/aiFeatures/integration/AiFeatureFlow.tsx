@@ -1,8 +1,7 @@
 import { useCallback, useContext } from 'react';
 import type { ReactElement } from 'react';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
-import { Alert, View } from 'react-native';
-import { t } from '../../i18n';
+import { View } from 'react-native';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import { ProviderSelectionFlow } from '../../providers/selection';
 import type {
@@ -24,7 +23,8 @@ import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
 import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
 import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
-import { requestDailyReportFromConversation } from './dailyReportConversationEntry';
+import { requestConversationReport } from '../../ragConversation/requestConversationReport';
+import { useConversationSessions } from '../../ragConversation/ConversationSessionsContext';
 import { useConversationVisibility } from './useConversationVisibility';
 
 export interface AiFeatureFlowProps {
@@ -57,6 +57,7 @@ export function AiFeatureFlow({
   services,
   isEntryCurrent,
 }: AiFeatureFlowProps) {
+  const conversationStore = useConversationSessions();
   const primaryActionHost = useContext(NavigationPrimaryActionContext);
   const reminderRuntime = useAppointmentReminderRuntime();
   const { state: shared, setState: setShared } =
@@ -144,20 +145,11 @@ export function AiFeatureFlow({
                   reminderRuntime.dailyReportFollowUps.set(route.key, target);
               }}
               onOpenDailyReport={() => {
-                requestDailyReportFromConversation({
-                  feature: services.dailyReport,
-                  runtime: reminderRuntime,
-                  navigate: () => pushFeatureRoute('daily-report'),
-                  now: new Date().toISOString(),
-                  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                  isCurrent: isEntryCurrent ?? (() => false),
-                }).then(result => {
-                  if (result === 'unavailable')
-                    Alert.alert(
-                      t('dailyReport.title'),
-                      t('dailyReport.entryError'),
-                    );
-                });
+                if (services.dailyReport)
+                  requestConversationReport(
+                    conversationStore,
+                    isEntryCurrent ?? (() => false),
+                  );
               }}
               onOpenConversationHistory={() =>
                 pushFeatureRoute('conversation-history')

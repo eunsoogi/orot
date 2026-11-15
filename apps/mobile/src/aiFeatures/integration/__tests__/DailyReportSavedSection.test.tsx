@@ -12,7 +12,7 @@ test('a delayed lookup for an old revision cannot open follow-up after the revis
     context: { identity, generationCutoff: '2026-11-09T03:00:00Z' },
     report: {
       generatedAt: '2026-11-09T03:01:00Z',
-      observations: [],
+      observations: [{ text: '보존된 합성 원본 기록' }],
       supportedContext: [{ text: '합성 근거로 확인한 맥락' }],
       followUpQuestions: ['합성 질문을 더 확인할까요?'],
       coverage: [],
@@ -40,6 +40,9 @@ test('a delayed lookup for an old revision cannot open follow-up after the revis
     />,
   );
   expect(screen.getByText('저장된 버전 1')).toBeTruthy();
+  expect(screen.queryByText('보존된 합성 원본 기록')).toBeNull();
+  await fireEvent.press(screen.getByText('근거 기록 보기'));
+  expect(screen.getByText('보존된 합성 원본 기록')).toBeTruthy();
   expect(screen.getByRole('header', { name: '오늘 건강 요약' })).toBeTruthy();
   expect(screen.getByText('합성 근거로 확인한 맥락')).toBeTruthy();
   const headers = screen
@@ -60,6 +63,7 @@ test('a delayed lookup for an old revision cannot open follow-up after the revis
     />,
   );
   expect(screen.getByText('저장된 버전 2')).toBeTruthy();
+  expect(screen.queryByText('보존된 합성 원본 기록')).toBeNull();
   resolve(saved);
   await Promise.resolve();
   expect(onChat).not.toHaveBeenCalled();
