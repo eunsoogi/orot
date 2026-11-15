@@ -10,7 +10,7 @@ import { useNavigationRouteActions } from '../navigation/useNavigationRouteActio
 import { appColors } from '../layout/appColors';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import { useNavigationLeaveStateRegistration } from '../navigation';
-import { formatDateTime } from '../i18n';
+import { formatDateTime, t } from '../i18n';
 import { appointmentStartTime } from '../calendar/appointmentTime';
 import { useAppointmentReminderRuntime } from './AppointmentReminderContext';
 import { resolveAppointmentReminderTarget } from './reminderPlan';
@@ -94,8 +94,8 @@ export function AppointmentPreparationRoute({
       ? [
           {
             id: 'retry-appointment-preparation',
-            label: '다시 확인',
-            accessibilityLabel: '다시 확인',
+            label: t('appointments.preparation.retry'),
+            accessibilityLabel: t('appointments.preparation.retry'),
             testID: 'appointment-preparation-retry',
             systemImageName: 'arrow.clockwise',
             onPress: retry,
@@ -107,22 +107,26 @@ export function AppointmentPreparationRoute({
     <NavigationRouteScrollView>
       <View style={styles.container} testID="appointment-preparation">
         <AppText accessibilityRole="header" style={styles.title}>
-          진료 준비
+          {t('appointments.preparation.preparationTitle')}
         </AppText>
         {error ? (
           <>
             <AppText accessibilityRole="alert">
-              예약을 확인하지 못했거나 예약이 바뀌었어요. 일정에서 최신 내용을
-              확인해 주세요.
+              {t('appointments.preparation.changed')}
             </AppText>
-            {!hasDock ? <AppButton title="다시 확인" onPress={retry} /> : null}
+            {!hasDock ? (
+              <AppButton
+                title={t('appointments.preparation.retry')}
+                onPress={retry}
+              />
+            ) : null}
           </>
         ) : state ? (
           <>
             <AppText>
               {state.appointment.clinicLabel ??
                 state.appointment.reason ??
-                '예약'}
+                t('appointments.preparation.untitled')}
             </AppText>
             <AppText>
               {formatDateTime(
@@ -132,16 +136,15 @@ export function AppointmentPreparationRoute({
             {state.appointment.note ? (
               <AppText>{state.appointment.note}</AppText>
             ) : null}
-            <AppText accessibilityRole="header">이 예약에 저장한 질문</AppText>
+            <AppText accessibilityRole="header">
+              {t('appointments.preparation.savedQuestions')}
+            </AppText>
             {state.saved.status === 'error' ? (
               <AppText accessibilityRole="alert">{state.saved.message}</AppText>
             ) : (
               <>
                 {state.saved.questions.length === 0 ? (
-                  <AppText>
-                    저장한 질문이 없어요. 진료 전에 확인할 질문과 필요한 기록을
-                    정리해 주세요.
-                  </AppText>
+                  <AppText>{t('appointments.preparation.noQuestions')}</AppText>
                 ) : (
                   state.saved.questions.map((question, index) => (
                     <View key={index}>
@@ -155,19 +158,15 @@ export function AppointmentPreparationRoute({
                 ) : null}
               </>
             )}
-            <AppText>
-              최근 증상 변화, 복용 정보와 확인할 기록을 준비해 주세요.
-            </AppText>
+            <AppText>{t('appointments.preparation.prepareRecords')}</AppText>
             {runtime?.overviewPreparationTargets.has(routeKey) ? (
               <>
                 <AppText testID="overview-preparation-unsupported">
-                  이 예약의 AI 질문 생성은 지원하지 않아요. AI 질문은 시작 전인
-                  Calendar 연결 예약에서 준비할 수 있어요. 일정에서 예약을
-                  확인하고 기록한 증상과 저장 질문을 진료에 활용해 주세요.
+                  {t('appointments.preparation.unsupportedGeneration')}
                 </AppText>
                 {onOpenSchedule ? (
                   <AppButton
-                    title="일정에서 예약 확인"
+                    title={t('appointments.preparation.openSchedule')}
                     onPress={onOpenSchedule}
                     testID="overview-preparation-open-schedule"
                   />
@@ -176,7 +175,7 @@ export function AppointmentPreparationRoute({
             ) : null}
           </>
         ) : (
-          <AppText>예약을 확인하고 있어요.</AppText>
+          <AppText>{t('appointments.preparation.loading')}</AppText>
         )}
       </View>
     </NavigationRouteScrollView>

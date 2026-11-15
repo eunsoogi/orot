@@ -8,6 +8,8 @@
 
 첫 구현은 `apps/mobile/src/providers/selection`과 `apps/mobile/src/voiceSettings`의 사용자 표시 문구 전체를 `i18n/modelSettings.ts`에 모았다. 동의·요금·계정 분리·기기 내 처리/외부 전송 경계와 fallback 금지 문구의 의미를 그대로 유지한다. 버튼, 접근성 이름/힌트, 오류/상태, 모델 설명과 모델 ID 삽입을 포함한다. 실제 동의 절차·키 저장·네트워크 요청·모델 선택은 변경하지 않는다. 제품명과 API 식별자는 번역하지 않는다.
 
+두 번째 구현은 `AppointmentPreparationRoute`와 `AppointmentReminderControls`의 19개 문구를 기존 `appointmentActionsKo.ts`에 통합한다. 잠금 화면 개인정보 안내, 알림 권한/실패 상태, 지원하지 않는 AI 생성 안내를 그대로 유지하며 예약과 알림의 실행 흐름은 변경하지 않는다.
+
 ## 검증과 한계
 
 카탈로그·미지원 locale fallback·보존된 경고·모델 ID interpolation과 조사한 두 디렉터리의 inline 한국어 회귀 검사를 추가했다. 기존 설정/계정/모델 동작 테스트를 함께 검증한다. native UI나 실기기 동작을 검증한 것으로 간주하지 않는다. 아래 나머지 production/native 후보는 후속 작업이며 이 문서나 부분 PR로 전체 현지화가 완료되지 않는다.
@@ -145,8 +147,6 @@
 - `apps/mobile/src/aiFeatures/integration/savedVisitQuestionGeneratedSources.ts`: 1
 - `apps/mobile/src/aiFeatures/integration/savedVisitQuestionNotice.ts`: 10
 - `apps/mobile/src/aiFeatures/integration/useNextVisitQuestionsRoute.ts`: 1
-- `apps/mobile/src/appointmentReminders/AppointmentPreparationRoute.tsx`: 16
-- `apps/mobile/src/appointmentReminders/AppointmentReminderControls.tsx`: 8
 - `apps/mobile/src/calendar/CalendarAccessibleDates.tsx`: 1
 - `apps/mobile/src/diseaseHypotheses/ConversationSummaryHistory.tsx`: 7
 - `apps/mobile/src/diseaseHypotheses/DiseaseEvidenceLinks.tsx`: 6
