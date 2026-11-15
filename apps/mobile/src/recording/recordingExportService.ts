@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { TranscriptEvidenceSegment } from '@orot/domain';
 import type { TranscriptRecordingView } from '../transcription/transcriptEvidenceService';
 import {
@@ -54,8 +55,8 @@ function timestamp(milliseconds: number): string {
 
 function versionLabel(segment: TranscriptEvidenceSegment): string {
   return segment.provenance.origin === 'user_reported'
-    ? '사용자 수정 최신본'
-    : '기기 전사 원문';
+    ? t('recordingExport.corrected')
+    : t('recordingExport.original');
 }
 
 /** Builds a plain-text export from the latest saved revision without rewriting source evidence. */
@@ -77,9 +78,13 @@ export function formatTranscriptExport(view: TranscriptRecordingView): string {
       `[${timestamp(segment.audioRange.startMs)}–${timestamp(segment.audioRange.endMs)}] ${versionLabel(segment)}\n${segment.text}`,
   );
   return [
-    'Orot 상담 녹음 전사',
-    `내보낸 버전: ${hasCorrection ? '최신 사용자 수정본 포함' : '기기 전사 원문'}`,
-    `녹음 시작 시각: ${view.source.effectiveAt}`,
+    t('recordingExport.title'),
+    t('recordingExport.version', {
+      version: hasCorrection
+        ? t('recordingExport.includesCorrection')
+        : t('recordingExport.original'),
+    }),
+    t('recordingExport.startedAt', { time: String(view.source.effectiveAt) }),
     '',
     ...rows,
     '',
