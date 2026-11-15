@@ -1,5 +1,7 @@
 /** These cases require a disposable install, explicit process boundaries, or a scheduled system event. */
 export const iosAcceptanceDiagnosticTests = [
+  // Direct synthetic saved sources isolate UIKit edge navigation from system-picker availability.
+  'OrotUITests/SavedDocumentNavigationUITests/testSavedSourceSupportsEdgeSwipeAndSharedBackFromRecentRecords',
   // Synthetic UI and pure queue policy: no microphone or provider calls.
   'OrotUITests/VoiceConversationCallUITests/testSyntheticFullScreenCallMuteResumeAndEndWithLargeText',
   'OrotIntegrationTests/VoiceConversationLifecycleTests/testDuplexOutputQueueHasFiniteBudget',
