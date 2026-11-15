@@ -1,6 +1,8 @@
 import { type RecordRepository, type SqlExecutor } from '@orot/storage';
 import type { LocalE5RagService } from '../rag/localE5RagService';
 
+import { notifyLocalSourceDeleted } from '../storage/localDataClearEvents';
+
 const pendingTable = 'legacy_symptom_deletion_pending';
 const deletedTable = 'legacy_symptom_deleted';
 
@@ -49,6 +51,9 @@ export async function removeLegacySymptom(
     return true;
   });
   if (!exists) return false;
+  // The quarantine fence is committed now; invalidate visible evidence before fallible cleanup.
+  // Do not send an untyped raw ID that could identify an unrelated record family.
+  notifyLocalSourceDeleted();
   return records.transaction(async (writer, sql) => {
     if (!sql) throw new Error('A deletion transaction is required.');
     const record = await writer.get('symptom_entry', id);

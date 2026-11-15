@@ -16,6 +16,8 @@ import {
   removeLegacySymptom,
 } from '../legacySymptomDeletion';
 
+import { subscribeLocalSourceDeletion } from '../../storage/localDataClearEvents';
+
 jest.mock('../../storage/secureDatabase', () => ({}));
 
 const symptom = {
@@ -35,6 +37,8 @@ const embedder = {
 
 test('a source-side failure leaves durable recovery and a later retry finishes deletion', async () => {
   const { database, close } = createHealthEvidenceTestDatabase();
+  const invalidated = jest.fn();
+  const unsubscribe = subscribeLocalSourceDeletion(invalidated);
   let memory: Awaited<ReturnType<typeof createAgentMemory>> | undefined;
   try {
     await runMigrations(database);
@@ -56,7 +60,12 @@ test('a source-side failure leaves durable recovery and a later retry finishes d
       removeLegacySymptom(
         records,
         {
-          deleteSymptom: async () => {
+          deleteSymptom: async (_record, sql) => {
+            expect(invalidated).toHaveBeenCalledTimes(1);
+            expect(
+              (await sql!.execute('SELECT id FROM legacy_symptom_deleted'))
+                .rows,
+            ).toEqual([{ id: symptom.id }]);
             throw new Error('index failure');
           },
         },
@@ -65,6 +74,7 @@ test('a source-side failure leaves durable recovery and a later retry finishes d
     ).rejects.toThrow('index failure');
     expect(await records.get('symptom_entry', symptom.id)).not.toBeNull();
     expect(await pendingSymptomDeletions(records)).toEqual([symptom.id]);
+    expect(invalidated).toHaveBeenCalledTimes(1);
     expect(await memory.getByKey('synthetic-key')).toBeNull();
     await expect(removeLegacySymptom(records, rag, symptom.id)).resolves.toBe(
       true,
@@ -72,6 +82,7 @@ test('a source-side failure leaves durable recovery and a later retry finishes d
     expect(await records.get('symptom_entry', symptom.id)).toBeNull();
     expect(await pendingSymptomDeletions(records)).toEqual([]);
   } finally {
+    unsubscribe();
     await memory?.close();
     close();
   }

@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import type { RecordingSourceRecord } from '../../recording/recordingTypes';
 import type { RecordsRouteProps } from '../RecordsRoute';
@@ -67,6 +72,10 @@ test('keeps one primary recording action and every existing Records destination'
   await render(<RecordsRoute {...routeProps} />);
 
   expect(screen.getAllByTestId('records-new-recording')).toHaveLength(1);
+  // Assert real route composition; the shared measured-columns tests own geometry.
+  const materials = within(screen.getByTestId('records-material-columns'));
+  expect(materials.getByTestId('records-materials')).toBeTruthy();
+  expect(materials.getByTestId('saved-memory-browser')).toBeTruthy();
   expect(screen.getByTestId('records-recent-sources-empty')).toHaveTextContent(
     '아직 최근 기록이 없어요.',
   );
