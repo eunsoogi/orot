@@ -93,6 +93,13 @@ test('keeps a horizontal fold fallback inside one vertical region', () => {
   expect(plan.visible).toBe(false);
   expect(plan.top).toBe(0);
   expect(plan.height).toBe(400);
+  const lower = conversationHingeLayout(
+    geometry,
+    { x: 14, y: 500, width: 964, height: 300 },
+    1,
+  );
+  expect(lower.top).toBe(0);
+  expect(lower.height).toBe(300);
 });
 
 test('clips the top indicator and keyboard-contracted host without changing horizontal ownership', () => {

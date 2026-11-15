@@ -60,6 +60,9 @@ test('keeps the request, draft, and exact citations through adaptive reflow', as
   );
 
   expect(panelAxis()).toBe('column');
+  expect(screen.getByTestId('conversation-transcript-pane')).toHaveStyle({
+    flex: 1,
+  });
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     '첫 질문',

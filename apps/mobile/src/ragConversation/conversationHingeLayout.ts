@@ -38,7 +38,11 @@ export function conversationHingeLayout(
   // Use a common safe vertical overlap; a top corner occlusion must not cover chat controls.
   const intersecting =
     geometry?.usableRegions.filter(
-      region => region.x < right && region.x + region.width > left,
+      region =>
+        region.x < right &&
+        region.x + region.width > left &&
+        region.y < y + height &&
+        region.y + region.height > y,
     ) ?? [];
   const tall = intersecting.filter(
     region => region.height >= (geometry?.safeAreaFrame.height ?? 0) * 0.6,

@@ -66,6 +66,7 @@ export function ConversationWorkspace(props: Props) {
               testID="conversation-transcript-pane"
               style={[
                 styles.transcript,
+                !plan.visible && styles.compactTranscript,
                 { marginLeft: plan.gap, width: plan.transcriptWidth },
               ]}
             >
@@ -160,6 +161,7 @@ const styles = StyleSheet.create({
   single: { flexDirection: 'column' },
   host: { flex: 1, minWidth: 0, minHeight: 0 },
   row: { flex: 1, minHeight: 0, flexDirection: 'row' },
+  compactTranscript: { flex: 1 },
   transcript: { minWidth: 0, minHeight: 0 },
   pane: {
     minHeight: 0,
