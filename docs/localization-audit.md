@@ -59,6 +59,14 @@
 
 정규식의 한국어 날짜·단위·임상 판정 표현, 모델 지시, 원문 및 근거 직렬화는 유지한다. 최초 아래 인벤토리는 역사적 조사 목록이며 현재 미완료 파일 수가 아니다. 이 후속 구분도 모든 경로의 전수 완료 선언은 아니다.
 
+## 최신 재점검 범위
+
+2026-11-15, main `64922a11`에 요약 section title 이관 배치를 더한 tree를 재점검했다. 테스트·fixture·리소스를 제외한 `apps/mobile/src` TSX의 한국어 포함 파일은 합성 검증용 `NativeReviewProbe.tsx`뿐이었다. shipping Swift/Objective-C 소스의 잔여 한국어는 사진 `displayName` 직렬화 값이었다. 추가로 Git 추적 JavaScript/JSX/MJS/CJS를 조사했으며 한국어는 `scripts/evaluation`의 합성 provider와 평가 정규식에서 확인했다. 이미지·외부 생성 자료까지 모든 표시를 검증했다는 뜻은 아니다.
+
+`evidenceSearchTool.ts`의 제한·실패 문구는 `EvidenceBatch.coverage.gaps`를 생성하고 요청 byte 제한 계산에도 포함된다. `evidenceSnapshot.ts`의 문구 역시 모델 근거 coverage/gaps이며 표시 전용이 아니다. `dailyReportFacts.ts`의 단위·설명은 `modelText` 직렬화, `savedVisitQuestionGeneratedSources.ts`의 문구는 근거 content, `conversationHealthHistory.ts`의 제목은 저장되는 기록 값이다. 이들을 단순 UI 누락으로 분류해 변경하지 않았다.
+
+이 재점검은 명확한 화면 고정문구의 누락 후보를 좁힌 결과다. 저장·모델·검증 경계의 한국어까지 제거하거나, 지원 언어를 늘리거나, 실제 사용자 자료·기기 화면을 검증한 결과가 아니다. 과거 인벤토리는 계속 역사적 기록으로 유지한다.
+
 ## 남아 있는 한국어 포함 소스 인벤토리
 
 테스트/fixture와 기존 리소스는 의도적으로 유지한다. 아래 분류는 경로/역할에 따른 1차 분류이며 실제 사용자 노출 여부와 임상 의미는 후속 파일별 검토가 필요하다. 숫자는 한국어가 있는 물리적 줄 수로 문자열 수가 아니다.
