@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { AppText as Text } from '../../layout/AppText';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppSymbol } from '../../layout/AppSymbol';
@@ -53,7 +54,7 @@ export default function ProviderSelectionOptionCard({
         <Text style={shared.title}>{option.displayName}</Text>
         <Text style={shared.detail}>
           {option.privacyBoundary === 'on-device'
-            ? '기기 안에서 처리'
+            ? t('modelSettings.localProcessing')
             : option.modelId}
         </Text>
         {showCapabilities ? (

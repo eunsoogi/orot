@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { ModelSelectionTabs } from './ModelSelectionTabs';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../../layout/AppButton';
@@ -186,12 +187,12 @@ export default function ProviderSelectionScreen({
         ) : null}
         <Text accessibilityRole="header" style={styles.title}>
           {presentation === 'feature'
-            ? 'AI 선택'
+            ? t('modelSettings.languageTitle')
             : (screenTitle ?? providerSelectionText.title)}
         </Text>
         <Text style={styles.introduction}>
           {presentation === 'feature'
-            ? '질문에 답할 AI를 선택해 주세요.'
+            ? t('modelSettings.languagePrompt')
             : (screenIntroduction ?? providerSelectionText.introduction)}
         </Text>
         {chatGPTSetup && presentation === 'settings-accounts' ? (

@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
@@ -36,7 +37,7 @@ export function ProviderCatalogAccount({
   const actionLabel = setup.signingIn
     ? copy.chatGPTCancelLogin
     : ready && setup.statusMessage === copy.chatGPTModelsLoaded
-      ? '모델 새로고침'
+      ? t('modelSettings.refreshModels')
       : setup.actionTitle;
   return (
     <View style={styles.container} testID="chatgpt-account-setup">
@@ -53,7 +54,7 @@ export function ProviderCatalogAccount({
           <Pressable
             style={shared.copy}
             accessibilityRole="button"
-            accessibilityLabel="ChatGPT 계정 관리"
+            accessibilityLabel={t('modelSettings.chatgptAccount')}
             accessibilityState={{ expanded }}
             onPress={() => setExpanded(value => !value)}
             testID="chatgpt-account-details"
@@ -115,7 +116,7 @@ export function ProviderCatalogAccount({
             testID="settings-provider-manage-accounts"
             style={styles.action}
           >
-            <Text style={styles.link}>계정 관리</Text>
+            <Text style={styles.link}>{t('modelSettings.manageAccount')}</Text>
           </Pressable>
         ) : null}
         {(expanded || setup.accounts.length > 1) &&

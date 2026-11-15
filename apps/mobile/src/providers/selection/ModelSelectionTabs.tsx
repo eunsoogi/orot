@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
@@ -36,7 +37,9 @@ export function ModelSelectionTabs({
             }}
           >
             <Text style={[tabs.label, active === tab && tabs.selectedLabel]}>
-              {tab === 'language' ? '언어 모델 선택' : '보이스 모델 선택'}
+              {tab === 'language'
+                ? t('modelSettings.languageTab')
+                : t('modelSettings.voiceTab')}
             </Text>
           </Pressable>
         ))}

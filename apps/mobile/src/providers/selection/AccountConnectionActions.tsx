@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { useEffect, useRef } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppSymbol } from '../../layout/AppSymbol';
@@ -52,10 +53,18 @@ export function AccountConnectionActions({
     };
     Alert.alert(
       copy.chatGPTSignOutAccount(index + 1),
-      '이 계정에서 로그아웃할까요? 저장된 기록은 유지됩니다.',
+      t('modelSettings.logoutConfirmation'),
       [
-        { text: '취소', style: 'cancel', onPress: () => finish(false) },
-        { text: '로그아웃', style: 'destructive', onPress: () => finish(true) },
+        {
+          text: t('modelSettings.cancel'),
+          style: 'cancel',
+          onPress: () => finish(false),
+        },
+        {
+          text: t('modelSettings.logout'),
+          style: 'destructive',
+          onPress: () => finish(true),
+        },
       ],
       { cancelable: true, onDismiss: () => finish(false) },
     );
