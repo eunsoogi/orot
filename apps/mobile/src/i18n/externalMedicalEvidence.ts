@@ -1,5 +1,10 @@
 /** Korean catalog entries for user-consented external literature search. */
 export const externalMedicalEvidenceKo = {
+  'externalMedicalEvidence.queryConsentCancel': '취소',
+  'externalMedicalEvidence.queryConsentTitle': '공개 의학 문헌을 찾아볼까요?',
+  'externalMedicalEvidence.queryConsentBody':
+    '아래 검색어를 Europe PMC로 전송해요. 개인 정보가 포함되어 있는지 확인해 주세요.\n\n{query}',
+  'externalMedicalEvidence.queryConsentConfirm': '이 검색어로 찾기',
   'externalMedicalEvidence.title': '외부 의료 자료',
   'externalMedicalEvidence.description':
     '검색을 누르면 입력한 검색어만 Europe PMC로 전송돼요. 앱의 건강 기록은 보내지 않아요. 문헌은 개인 기록과 별개의 참고 자료예요.',

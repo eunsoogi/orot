@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import {
   protectedExternalReferences,
   type ProtectedExternalReferences,
@@ -42,11 +43,18 @@ export const externalConversationConsent: ExternalMedicalQueryConsentPort = {
       const abort = () => finish(false);
       request.signal.addEventListener('abort', abort, { once: true });
       Alert.alert(
-        '공개 의학 문헌을 찾아볼까요?',
-        `아래 검색어를 Europe PMC로 전송해요. 개인 정보가 포함되어 있는지 확인해 주세요.\n\n${request.query}`,
+        t('externalMedicalEvidence.queryConsentTitle'),
+        t('externalMedicalEvidence.queryConsentBody', { query: request.query }),
         [
-          { text: '취소', style: 'cancel', onPress: () => finish(false) },
-          { text: '이 검색어로 찾기', onPress: () => finish(true) },
+          {
+            text: t('externalMedicalEvidence.queryConsentCancel'),
+            style: 'cancel',
+            onPress: () => finish(false),
+          },
+          {
+            text: t('externalMedicalEvidence.queryConsentConfirm'),
+            onPress: () => finish(true),
+          },
         ],
         { cancelable: true, onDismiss: () => finish(false) },
       );
