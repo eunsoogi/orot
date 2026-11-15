@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
@@ -151,7 +152,7 @@ export async function loadOverviewMetrics(
       if (
         matching.some(row => typeof row.name !== 'string' || !row.name.trim())
       )
-        sourceNames.push('출처 정보 없음');
+        sourceNames.push(t('overview.sourceUnknown'));
       const sleepTime =
         matching
           .map(row => row.measured_at)
@@ -161,7 +162,7 @@ export async function loadOverviewMetrics(
       const result = projectOverviewMetric(
         report,
         metric,
-        sourceNames.join(', ') || '출처 정보 없음',
+        sourceNames.join(', ') || t('overview.sourceUnknown'),
         sleepTime,
       );
       const incompatibleQuantity =

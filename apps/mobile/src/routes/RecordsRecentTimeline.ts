@@ -110,7 +110,10 @@ function formatGroupLabel(
   const visibleDate =
     date.getFullYear() === currentYear
       ? monthAndDay
-      : `${date.getFullYear()}년 ${monthAndDay}`;
+      : t('historyDisplay.yearDate', {
+          year: date.getFullYear(),
+          date: monthAndDay,
+        });
 
   if (localDayKey(date) === todayKey) {
     return t('records.recent.today', { date: visibleDate });

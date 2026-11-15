@@ -1,3 +1,4 @@
+import { navigationText } from '../i18n/navigation';
 import type { ReactNode } from 'react';
 import {
   Text,
@@ -86,8 +87,8 @@ export function NavigationBarHost({
           style={[styles.statusText, isDark && styles.statusTextDark]}
         >
           {status === 'unfit'
-            ? '이 화면에 필요한 탐색 동작을 표시할 공간이 부족해요.'
-            : '탐색 동작을 준비하고 있어요.'}
+            ? navigationText.hostStatus.unfit
+            : navigationText.hostStatus.pending}
         </Text>
       ) : null}
     </View>
