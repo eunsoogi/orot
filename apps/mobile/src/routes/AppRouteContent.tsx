@@ -1,3 +1,4 @@
+import { useOverviewReportEntry } from './useOverviewReportEntry';
 import { useIsFocused } from '@react-navigation/native';
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
 import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
@@ -52,6 +53,10 @@ export function AppRouteContent({
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
   const active = useIsFocused();
+  const openOverviewReport = useOverviewReportEntry(
+    active && activeTab === 'overview' && actions.route.name === 'root',
+    () => selectTab('conversation'),
+  );
   const reminderRuntime = useAppointmentReminderRuntime();
   function openOverviewPreparation() {
     if (!nextAppointment || !reminderRuntime) return;
@@ -83,7 +88,7 @@ export function AppRouteContent({
             onOpenRecords={() => selectTab('records')}
             loadSavedVisitQuestions={loadSavedVisitQuestions}
             onOpenRecording={openRecording}
-            onOpenDailyReport={() => actions.push('daily-report')}
+            onOpenDailyReport={openOverviewReport}
           />
         );
       case 'records':
