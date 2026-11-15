@@ -35,6 +35,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'settings-health-data' ||
     route.name === 'saved-recordings' ||
     route.name === 'recent-records' ||
+    route.name === 'medical-document-detail' ||
     // Backup status and iCloud recovery guidance use the screen's measured regions as one layout.
     route.name === 'settings-backup' ||
     route.name === 'unified-import' ||
@@ -64,3 +65,15 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     ? 'screen'
     : 'scene';
 };
+
+/** Root pages and document activity use exactly one route-scoped scroll owner. */
+export function appRouteIsScrollable(
+  route: NavigationRoute<string>,
+  activeTab: string,
+): boolean {
+  return (
+    ['recent-records', 'medical-document-detail'].includes(route.name) ||
+    (route.name === 'root' &&
+      ['overview', 'records', 'settings'].includes(activeTab))
+  );
+}

@@ -10,6 +10,7 @@ import {
   dailyReportFacts,
 } from './dailyReportFacts';
 import { dailyReportGuidance } from './dailyReportGuidance';
+import { dailyReportQuestions } from './dailyReportQuestions';
 import { dailyReportSynthesis } from './dailyReportSynthesis';
 import { selectDailyReportFacts } from './dailyReportModel';
 import { stableJson } from './evidenceUtils';
@@ -188,7 +189,7 @@ export async function generateDailyReport(
       ),
     ],
     coverage: context.sourceSnapshot.coverage,
-    followUpQuestions: [],
+    followUpQuestions: dailyReportQuestions(snapshot.values),
   };
   const result = { status: 'completed' as const, report };
   input.deadlineContext.stage = 'validation';
