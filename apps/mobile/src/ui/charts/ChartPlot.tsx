@@ -119,21 +119,26 @@ export function ChartPlot({
           </Pressable>
         </View>
       )}
-      {visible && showDetails && (
-        <View style={styles.legend}>
-          {visible.series
-            .filter(series => series.points.length > 0)
-            .map(series => (
-              <Text key={series.id}>
-                {series.label}
-                {kind === 'line' && data.series.length > 1
-                  ? ` (${t(series.style === 'primary' ? 'chart.solidLine' : 'chart.dashedLine')})`
-                  : ''}
-                {series.unit ? ` · ${series.unit}` : ''}
-              </Text>
-            ))}
-        </View>
-      )}
+      {/* Multiple measured lines still need labels when detailed prose is hidden. */}
+      {visible &&
+        (showDetails ||
+          (hideDetails &&
+            visible.series.filter(series => series.points.length > 0).length >
+              1)) && (
+          <View style={styles.legend}>
+            {visible.series
+              .filter(series => series.points.length > 0)
+              .map(series => (
+                <Text key={series.id}>
+                  {series.label}
+                  {kind === 'line' && data.series.length > 1
+                    ? ` (${t(series.style === 'primary' ? 'chart.solidLine' : 'chart.dashedLine')})`
+                    : ''}
+                  {series.unit ? ` · ${series.unit}` : ''}
+                </Text>
+              ))}
+          </View>
+        )}
       {barTooltip &&
       kind === 'bar' &&
       visible &&
