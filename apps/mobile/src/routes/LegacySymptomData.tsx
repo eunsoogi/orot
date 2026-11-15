@@ -8,7 +8,7 @@ import {
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { formatDateTime } from '../i18n';
+import { formatDateTime, t } from '../i18n';
 
 export interface LegacySymptomStore {
   list(): Promise<SymptomEntry[]>;
@@ -101,12 +101,12 @@ export function LegacySymptomData({
   };
   const confirm = (id: string) =>
     Alert.alert(
-      '이전 증상 데이터 삭제',
-      '이 데이터를 사용한 저장된 AI 결과가 삭제될 수 있어요. 출처를 구분할 수 없는 AI 메모리는 보관하되 사용을 제한해요. 삭제할까요?',
+      t('legacySymptom.deleteTitle'),
+      t('legacySymptom.deleteNotice'),
       [
-        { text: '취소', style: 'cancel' },
+        { text: t('legacySymptom.cancel'), style: 'cancel' },
         {
-          text: '삭제',
+          text: t('legacySymptom.delete'),
           style: 'destructive',
           onPress: () => remove(id),
         },
@@ -117,18 +117,18 @@ export function LegacySymptomData({
   return (
     <View style={styles.section} testID="legacy-symptom-data">
       <Text accessibilityRole="header" style={styles.title}>
-        이전 증상 데이터
+        {t('legacySymptom.title')}
       </Text>
-      <Text>이전에 저장한 데이터를 확인하거나 삭제할 수 있어요.</Text>
+      <Text>{t('legacySymptom.description')}</Text>
       {error && (
-        <Text accessibilityRole="alert">
-          데이터를 불러오거나 삭제하지 못했어요.
-        </Text>
+        <Text accessibilityRole="alert">{t('legacySymptom.error')}</Text>
       )}
-      {error && <AppButton title="다시 시도" onPress={reload} />}
+      {error && <AppButton title={t('legacySymptom.retry')} onPress={reload} />}
       {entries && entries.length > 0 && (
         <AppButton
-          title={expanded ? '접기' : '데이터 보기'}
+          title={
+            expanded ? t('legacySymptom.collapse') : t('legacySymptom.show')
+          }
           onPress={() => setExpanded(value => !value)}
           testID="legacy-symptom-toggle"
         />
@@ -143,25 +143,49 @@ export function LegacySymptomData({
             <Text>{entry.description}</Text>
             {pending.includes(entry.id) && (
               <Text accessibilityRole="alert">
-                삭제가 완료되지 않았어요. 아래 버튼으로 삭제를 다시 시도해
-                주세요.
+                {t('legacySymptom.pending')}
               </Text>
             )}
-            {entry.bodySite && <Text>부위: {entry.bodySite}</Text>}
-            <Text>시작: {formatDateTime(new Date(entry.effectiveAt))}</Text>
-            <Text>기록: {formatDateTime(new Date(entry.recordedAt))}</Text>
+            {entry.bodySite && (
+              <Text>
+                {t('legacySymptom.bodySite', { value: entry.bodySite })}
+              </Text>
+            )}
             <Text>
-              상태: {entry.status === 'active' ? '진행 중' : '해소됨'}
+              {t('legacySymptom.started', {
+                value: formatDateTime(new Date(entry.effectiveAt)),
+              })}
+            </Text>
+            <Text>
+              {t('legacySymptom.recorded', {
+                value: formatDateTime(new Date(entry.recordedAt)),
+              })}
+            </Text>
+            <Text>
+              {t('legacySymptom.status', {
+                value:
+                  entry.status === 'active'
+                    ? t('legacySymptom.active')
+                    : t('legacySymptom.resolved'),
+              })}
             </Text>
             {entry.resolvedAt && (
-              <Text>해소: {formatDateTime(new Date(entry.resolvedAt))}</Text>
+              <Text>
+                {t('legacySymptom.resolvedAt', {
+                  value: formatDateTime(new Date(entry.resolvedAt)),
+                })}
+              </Text>
             )}
             {entry.severity !== undefined && (
-              <Text>강도: {entry.severity}/10</Text>
+              <Text>
+                {t('legacySymptom.severity', { value: entry.severity })}
+              </Text>
             )}
             <AppButton
-              title="삭제"
-              accessibilityLabel={`이전 증상 데이터 삭제: ${entry.description}`}
+              title={t('legacySymptom.delete')}
+              accessibilityLabel={t('legacySymptom.deleteLabel', {
+                description: entry.description,
+              })}
               disabled={busy}
               onPress={() => confirm(entry.id)}
             />

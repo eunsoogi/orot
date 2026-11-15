@@ -62,7 +62,7 @@ export function HealthRecordsMedicationCategoryCard({
         }
       >
         <Text accessibilityRole="header" style={styles.title}>
-          {title + ' 기록'}
+          {t('legacySymptom.categoryRecords', { category: title })}
         </Text>
         {status === 'ready' || medicationCount > 0 || doseCount > 0 ? (
           <Text style={styles.summary} testID="health-record-medications-count">
