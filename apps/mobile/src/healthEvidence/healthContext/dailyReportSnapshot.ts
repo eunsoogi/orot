@@ -1,3 +1,7 @@
+import {
+  dailyReportCandidateOrder,
+  dailyReportSourceBudget,
+} from './dailyReportCandidateOrder';
 import type { DailyReportSnapshotResult } from './dailyReportSnapshotResult';
 import { readDailyReportHistory } from './dailyReportHistory';
 import { readDailyReportMedicationContext } from './dailyReportMedicationContext';
@@ -62,6 +66,7 @@ export async function readDailyReportSnapshot(
     for (const kind of kinds) {
       if (signal?.aborted) throw new Error('Daily report snapshot cancelled.');
       const selected = candidateScopeCondition(kind, scope);
+      let sourceBytes = 0;
       const start = localQueryTimestampKeyExpression(
         kind === 'symptom_entry'
           ? "coalesce(json_extract(r.payload_json, '$.startedAt'), r.effective_at)"
@@ -78,7 +83,7 @@ export async function readDailyReportSnapshot(
       const rows = calendar.dataWindow
         ? (
             await tx.execute(
-              `SELECT r.id, CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table} r WHERE ${selected.sql} ${family} AND ${ingestion} <= ? AND ${start} < ? AND (${start} >= ? OR (${end} > ?)) ORDER BY ${start}, r.id LIMIT ?`,
+              `SELECT r.id, CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table} r WHERE ${selected.sql} ${family} AND ${ingestion} <= ? AND ${start} < ? AND (${start} >= ? OR (${end} > ?)) ORDER BY ${dailyReportCandidateOrder(kind, start)} LIMIT ?`,
               [
                 MAX_HEALTH_EVIDENCE_RECORD_BYTES,
                 ...selected.parameters,
@@ -100,7 +105,8 @@ export async function readDailyReportSnapshot(
         if (
           typeof row.payload_json !== 'string' ||
           typeof row.payload_bytes !== 'number' ||
-          bytes + row.payload_bytes > snapshotByteLimit
+          bytes + row.payload_bytes > snapshotByteLimit ||
+          sourceBytes + row.payload_bytes > dailyReportSourceBudget(kind)
         ) {
           partial = true;
           continue;
@@ -143,6 +149,7 @@ export async function readDailyReportSnapshot(
         };
         if (!dailyReportSourceRecordIsAvailable(record, calendar)) continue;
         bytes += row.payload_bytes;
+        sourceBytes += row.payload_bytes;
         records.push(record);
         lineage.push({
           source: kind,
@@ -158,7 +165,9 @@ export async function readDailyReportSnapshot(
         status: partial ? 'partial' : 'unknown',
         limitationCodes: [
           'source_sync_unknown',
-          ...(partial ? ['snapshot_incomplete'] : []),
+          ...(partial
+            ? ['snapshot_incomplete', 'bounded_source_sampling']
+            : []),
           ...(kind === 'dose_event' ? ['medication_names_not_resolved'] : []),
           ...(kind === 'appointment' ? ['confirmed_appointments_only'] : []),
         ],
@@ -172,8 +181,13 @@ export async function readDailyReportSnapshot(
       calendar.generationCutoff,
     );
     const linkedDoses = new Set<string>();
+    let medicationBytes = 0;
     for (const item of medications) {
-      if (bytes + item.bytes > snapshotByteLimit) continue;
+      if (
+        bytes + item.bytes > snapshotByteLimit ||
+        medicationBytes + item.bytes > 8 * 1024
+      )
+        continue;
       const revision = fingerprint(item.payload);
       const recordId = item.value.record.id;
       records.push({
@@ -193,6 +207,7 @@ export async function readDailyReportSnapshot(
       });
       values.push(item.value);
       bytes += item.bytes;
+      medicationBytes += item.bytes;
       item.doses.forEach(id => linkedDoses.add(id));
     }
     const unresolved = values.some(

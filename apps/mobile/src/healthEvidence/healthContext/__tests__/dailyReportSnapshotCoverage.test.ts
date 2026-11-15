@@ -1,3 +1,4 @@
+import { utf8ByteLength } from '../../../aiFeatures/integration/evidenceUtils';
 import { HealthObservationSchema } from '@orot/domain';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
@@ -111,7 +112,12 @@ test('applies source authorization, day overlap, ingestion cutoff, and bounded c
       status: 'partial',
       limitationCodes: expect.arrayContaining(['snapshot_incomplete']),
     });
-    expect(bounded.sourceSnapshot.records.length).toBe(100);
+    // The 100-row cap still applies, with a stricter reserved health byte budget.
+    expect(bounded.sourceSnapshot.records.length).toBeGreaterThan(0);
+    expect(bounded.sourceSnapshot.records.length).toBeLessThanOrEqual(100);
+    expect(utf8ByteLength(JSON.stringify(bounded.values))).toBeLessThan(
+      26 * 1024,
+    );
   } finally {
     connection.close();
   }
