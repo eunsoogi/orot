@@ -62,7 +62,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
             emitRequestFailure(
                 requestId,
                 kind: "authentication",
-                message: "ChatGPT 계정 로그아웃이 진행 중입니다.",
+                message: OpenAIProviderAuthCopy.text("logoutInProgress"),
             )
             return
         }
@@ -155,7 +155,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
             emitRequestFailure(
                 slot.id,
                 kind: "authentication",
-                message: "로그아웃을 시작해 진행 중인 ChatGPT 응답을 중단했어요.",
+                message: OpenAIProviderAuthCopy.text("logoutInterrupted"),
             )
         }
         return true

@@ -153,9 +153,9 @@ private enum AuthSessionError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .browserUnavailable: "시스템 인증 창에서 ChatGPT 로그인을 완료하지 못했어요."
-        case .presentationUnavailable: "ChatGPT 로그인 창을 표시할 앱 화면을 찾지 못했어요."
-        case .invalidReturn: "ChatGPT 로그인 복귀 응답을 확인하지 못했어요."
+        case .browserUnavailable: OpenAIProviderAuthCopy.text("browserUnavailable")
+        case .presentationUnavailable: OpenAIProviderAuthCopy.text("presentationUnavailable")
+        case .invalidReturn: OpenAIProviderAuthCopy.text("invalidReturn")
         }
     }
 }
@@ -181,4 +181,11 @@ private enum AuthDiagnosticOutcome: String {
     case error
     case validAppReturn = "valid-app-return"
     case invalidAppReturn = "invalid-app-return"
+}
+
+/// Fixed user-facing authentication notices only; provider errors and security decisions stay unchanged.
+enum OpenAIProviderAuthCopy {
+    static func text(_ key: String) -> String {
+        NSLocalizedString(key, tableName: "OpenAIProviderAuthCopy", comment: "ChatGPT authentication status notice")
+    }
 }
