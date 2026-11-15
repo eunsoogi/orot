@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Appointment } from '@orot/domain';
 import type { AiWorkflowObserver } from '../../agent/workflowActivity';
@@ -225,9 +226,7 @@ export function useNextVisitQuestionsRoute(
         };
       } catch (error) {
         // Leave the draft visible when its appointment or source citation fails save-time validation.
-        setSaveNotice(
-          '예약이나 원문 근거가 바뀌어 저장하지 못했어요. 최신 내용을 확인해 주세요.',
-        );
+        setSaveNotice(t('nextVisit.save.sourceChanged'));
         throw error;
       }
     },
