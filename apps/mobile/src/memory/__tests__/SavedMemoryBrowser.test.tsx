@@ -153,14 +153,19 @@ it('reloads automatically after returning active and rejects the interrupted rea
   expect(screen.getByText('아직 저장된 기억이 없어요.')).toBeTruthy();
 });
 
-it('does not read protected memories while initially backgrounded', async () => {
-  AppState.currentState = 'background';
-  const load = jest.fn().mockResolvedValue([memory]);
-  await render(<SavedMemoryBrowser load={load} />);
-  expect(load).not.toHaveBeenCalled();
-  expect(screen.queryByText(memory.text)).toBeNull();
-  const listener = jest.mocked(AppState.addEventListener).mock.calls.at(-1)![1];
-  await act(async () => listener('active'));
-  expect(load).toHaveBeenCalledTimes(1);
-  expect(screen.getByText(memory.text)).toBeTruthy();
-});
+it.each(['background', 'inactive', null] as const)(
+  'waits for active state before reading when initially %s',
+  async initialState => {
+    AppState.currentState = initialState;
+    const load = jest.fn().mockResolvedValue([memory]);
+    await render(<SavedMemoryBrowser load={load} />);
+    expect(load).not.toHaveBeenCalled();
+    expect(screen.queryByText(memory.text)).toBeNull();
+    const listener = jest
+      .mocked(AppState.addEventListener)
+      .mock.calls.at(-1)![1];
+    await act(async () => listener('active'));
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(memory.text)).toBeTruthy();
+  },
+);

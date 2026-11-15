@@ -64,8 +64,8 @@ export function SavedMemoryBrowser({
       if (next !== 'active') close();
       else refresh();
     });
-    // No model preparation or transmission is needed to browse local memories.
-    if (AppState.currentState === null || AppState.currentState === 'active') {
+    // Wait for confirmed foreground state; an unknown initial state is not permission to expose local text.
+    if (AppState.currentState === 'active') {
       refresh();
     }
     return () => {
