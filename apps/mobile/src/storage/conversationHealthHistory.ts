@@ -1,3 +1,8 @@
+import { validateConversationHistorySource } from './conversationHistorySource';
+import {
+  bindConversationActionReceipt,
+  type ConversationActionIdentity,
+} from './conversationActionReceipt';
 import { createManualHistoryEntry } from '@orot/domain';
 import {
   insertManualHistoryEntry,
@@ -11,6 +16,7 @@ export interface ConversationHistorySave {
   readonly sessionId: string;
   readonly sessionVersion: number;
   readonly question: string;
+  readonly operation?: ConversationActionIdentity;
   /** Host-validated user selection; never copied directly from a model grant. */
   readonly approvedSource?: {
     readonly requestId: string;
@@ -33,36 +39,7 @@ export async function saveConversationHealthHistory(
   let result = '';
   await database.transaction(async tx => {
     if (signal.aborted) throw new Error('History save cancelled.');
-    const source = await tx.execute(
-      'SELECT r.question, r.status FROM conversation_requests r ' +
-        'JOIN conversation_artifact_sessions s ON s.id = r.session_id ' +
-        'WHERE r.id = ? AND r.session_id = ? AND r.session_version = ? ' +
-        'AND s.version = r.session_version AND s.hidden = 0',
-      [input.requestId, input.sessionId, input.sessionVersion],
-    );
-    const row = source.rows[0];
-    if (!row || row.question !== input.question || row.status !== 'active')
-      throw new Error('History source request is no longer active.');
-    if (input.approvedSource) {
-      const sourceId = input.approvedSource.requestId;
-      let sourceQuestion = input.question;
-      if (sourceId !== input.requestId) {
-        const prior = await tx.execute(
-          'SELECT result_json FROM conversation_artifacts WHERE id = ? AND session_id = ?',
-          [sourceId, input.sessionId],
-        );
-        if (typeof prior.rows[0]?.result_json !== 'string')
-          throw new Error('The selected source was removed.');
-        const artifact = JSON.parse(prior.rows[0].result_json);
-        sourceQuestion = artifact.question;
-      }
-      if (
-        typeof sourceQuestion !== 'string' ||
-        (sourceQuestion !== details &&
-          conversationHistoryIntent(sourceQuestion) !== details)
-      )
-        throw new Error('The selected user source changed.');
-    }
+    await validateConversationHistorySource(tx, input, details);
     await tx.execute(
       'CREATE TABLE IF NOT EXISTS conversation_history_receipts ' +
         '(request_id TEXT PRIMARY KEY NOT NULL, session_id TEXT NOT NULL, entry_id TEXT NOT NULL, source_request_id TEXT NOT NULL)',
@@ -76,6 +53,19 @@ export async function saveConversationHealthHistory(
       'SELECT entry_id FROM conversation_history_receipts WHERE request_id = ? AND session_id = ?',
       [input.requestId, input.sessionId],
     );
+    if (input.operation) {
+      await bindConversationActionReceipt(
+        tx,
+        {
+          ...input.operation,
+          requestId: input.requestId,
+          sessionId: input.sessionId,
+          sessionVersion: input.sessionVersion,
+          sourceRequestId: input.approvedSource?.requestId ?? input.requestId,
+        },
+        receipt.rows.length > 0,
+      );
+    }
     if (receipt.rows.length) {
       const id = String(receipt.rows[0].entry_id);
       const entry = await readManualHistoryEntry(tx, id);

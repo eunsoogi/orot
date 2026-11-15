@@ -22,6 +22,11 @@ export interface AiFeatureLocalData extends LocalEvidenceData {
     input: import('../../storage/conversationHealthHistory').ConversationHistorySave,
     signal: AbortSignal,
   ): Promise<string>;
+  /** Read a committed action receipt only; never authorize or replay a write. */
+  recoverConversationHistory?(
+    input: import('../../storage/conversationHealthHistory').ConversationHistorySave,
+    signal: AbortSignal,
+  ): Promise<string | undefined>;
   /** Checks the protected original and source generation; this does not authorize a new transmission. */
   validateConversationPhotoInput?(
     input: import('../../ragConversation/conversationSubmittedInput').ConversationSubmittedInput,
@@ -75,6 +80,11 @@ async function openDefault(): Promise<AiFeatureLocalData> {
       const { saveConversationHealthHistory } =
         await import('../../storage/conversationHealthHistory');
       return saveConversationHealthHistory(database, input, signal);
+    },
+    async recoverConversationHistory(input, signal) {
+      const { recoverConversationHealthHistory } =
+        await import('../../storage/recoverConversationHealthHistory');
+      return recoverConversationHealthHistory(database, input, signal);
     },
     rag,
     memoryStorage,
