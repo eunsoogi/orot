@@ -76,8 +76,21 @@ actor ReplyNotificationService {
             return "suppressed"
         }
         let content = UNMutableNotificationContent()
-        content.title = "오롯"
-        content.body = interrupted ? "AI 작업이 중단됐어요. 앱에서 남은 내용을 확인하고 이어서 진행해 주세요." : (read()["preview"] == true ? preview : "새 답변이 도착했어요.")
+        content.title = ReminderNotificationCopy.title
+        // Localize fixed copy only; interruption priority and explicit private previews stay unchanged.
+        if interrupted {
+            content.body = NSLocalizedString(
+                "replyNotification.interrupted",
+                tableName: "ReminderCopy",
+                comment: "Generic interruption notice without private reply content",
+            )
+        } else {
+            content.body = read()["preview"] == true ? preview : NSLocalizedString(
+                "replyNotification.body",
+                tableName: "ReminderCopy",
+                comment: "Generic reply notification body when previews are disabled",
+            )
+        }
         content.userInfo = ["requestId": requestId, "sessionId": sessionId, "messageId": messageId, "sessionVersion": version]
         if interrupted {
             content.userInfo["purpose"] = "interruption"
