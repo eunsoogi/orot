@@ -24,6 +24,8 @@ export function sourceLabel(value: string) {
       return t('dailyReport.source.dose');
     case 'appointment':
       return t('dailyReport.context.appointmentSource');
+    case 'system_calendar':
+      return t('dailyReport.systemCalendar.sourceTitle');
     case 'calendar':
       return t('dailyReport.source.calendar');
     case 'report_selection':
@@ -44,6 +46,7 @@ export function sourceSymbol(value: string) {
     case 'dose_event':
       return 'pills';
     case 'appointment':
+    case 'system_calendar':
     case 'calendar':
       return 'calendar';
     case 'report_selection':
@@ -118,6 +121,10 @@ export function syncStatusLabel(item: DailyReportSourceCoverage) {
 
 export function limitationLabel(code: string) {
   switch (code) {
+    case 'planned_events_not_attendance':
+      return t('dailyReport.systemCalendar.sourceLimit');
+    case 'calendar_unavailable_or_scoped_out':
+      return t('dailyReport.systemCalendar.unavailable');
     case 'partial_day':
       return t('dailyReport.partial');
     case 'snapshot_incomplete':

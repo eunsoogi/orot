@@ -1,3 +1,4 @@
+import type { ReportCalendarReader } from './dailyReportSystemCalendar';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import type { SqlDatabase } from '@orot/storage';
 import type { EvidenceCandidateScope } from '../../healthEvidence/evidenceCandidateScope';
@@ -43,6 +44,7 @@ export interface DailyReportDeadlineContext {
 
 export interface DailyReportServiceInput {
   readonly database: SqlDatabase;
+  readonly calendarReader?: ReportCalendarReader;
   readonly consent: ExecutionConsentPort;
   readonly now: () => string;
   readonly createRunId: () => string;
