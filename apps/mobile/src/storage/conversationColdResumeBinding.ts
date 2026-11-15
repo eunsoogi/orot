@@ -1,3 +1,4 @@
+import { mayContinuePastOptionalReview } from './coldOptionalReviewBoundary';
 import type { SqlExecutor } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import type { ConversationResumeManifest } from './conversationWorkflowResumeStorage';
@@ -36,7 +37,7 @@ export async function coldResumeOwner(
   sql: SqlExecutor,
   m: ConversationResumeManifest,
 ) {
-  return (
+  const owner = (
     await sql.execute(
       `SELECT r.status, r.question, r.input_json,
     w.manifest, w.attempt, w.claimed, w.checkpoint_id, w.boundary,
@@ -47,10 +48,18 @@ export async function coldResumeOwner(
     JOIN conversation_journal_epoch e ON e.id = 1
     WHERE r.id = ? AND r.session_id = ? AND r.session_version = ?
     AND s.version = r.session_version AND s.hidden = 0 AND s.generation = g.generation
-    AND r.status IN ('active', 'interrupted')
-    AND NOT EXISTS (SELECT 1 FROM conversation_operation_journal j
-      WHERE j.request_id = r.id AND j.run_id = ? AND j.status IN ('pending', 'invalidated'))`,
-      [m.requestId, m.sessionId, m.sessionVersion, m.operationRunId],
+    AND r.status IN ('active', 'interrupted')`,
+      [m.requestId, m.sessionId, m.sessionVersion],
     )
   ).rows[0];
+  if (!owner) return undefined;
+  const uncertain = (
+    await sql.execute(
+      "SELECT operation_id, purpose, status FROM conversation_operation_journal WHERE request_id = ? AND run_id = ? AND status IN ('pending', 'invalidated')",
+      [m.requestId, m.operationRunId],
+    )
+  ).rows;
+  return mayContinuePastOptionalReview(owner.boundary, uncertain)
+    ? owner
+    : undefined;
 }
