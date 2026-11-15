@@ -1,3 +1,4 @@
+import { coldArtifactPaging } from './artifactPagingSnapshot';
 import { restoreColdConversationActions } from './restoreColdConversationActions';
 import { readColdPhotoBinding } from './coldPhotoBinding';
 import { restoreColdPhotoExecution } from './restoreColdPhotoExecution';
@@ -57,7 +58,6 @@ export async function restoreColdRagConversationFactory(input: {
     !Array.isArray(saved.evidenceBatches)
   )
     throw new Error('Incomplete protected cold factory state.');
-  // exactInput is an equality marker (including function slots), not a JSON serialization.
   const original = saved.invocation as unknown as {
     request: string;
     context: JsonObject;
@@ -129,15 +129,15 @@ export async function restoreColdRagConversationFactory(input: {
     observer: input.observer,
     researchInputs: tracker,
     external,
+    artifactPaging: coldArtifactPaging(d, input.observer),
     publicSearchSucceeded: !publicSearch || publicSearch.status === 'success',
-    ...('researchPaging' in saved
-      ? {
-          researchPaging: {
+    researchPaging:
+      'researchPaging' in saved
+        ? {
             snapshot: saved.researchPaging,
             operationRunId: scope.operationRunId,
-          },
-        }
-      : {}),
+          }
+        : undefined,
   });
   const base = executionOptions({
     selected,
@@ -204,7 +204,6 @@ export async function restoreColdRagConversationFactory(input: {
     external,
     signal,
   );
-  // This equality also binds the current selected provider, scope, budget and task/tool contracts.
   if (
     continuationInput(options) !== d.exactInput ||
     !(await historyIsCurrent())
@@ -241,6 +240,7 @@ export async function restoreColdRagConversationFactory(input: {
         researchPaging: bundle.generated.researchPagingSnapshot?.(
           scope.operationRunId,
         ),
+        artifactPaging: bundle.generated.artifactPagingSnapshot?.(),
         options,
         signal,
       })),

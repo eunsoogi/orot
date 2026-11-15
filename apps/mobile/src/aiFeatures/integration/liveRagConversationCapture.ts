@@ -18,6 +18,7 @@ export function liveRagConversationCapture(
     reportReferences: readonly EvidenceReference[];
     localRetrievalFailed: boolean;
     hasPagingState: boolean;
+    artifactPaging?: () => import('./artifactPagingSnapshot').ArtifactPagingSnapshot;
     researchPaging?: (
       operationRunId: string,
     ) => import('./researchPagingState').ResearchPagingSnapshot;
@@ -26,13 +27,16 @@ export function liveRagConversationCapture(
 ): ConversationColdReconstruction {
   return async input => {
     const saved = completion();
-    // Summary/conversation paging still needs chooser and subsequent-turn ownership reconstruction.
-    // Optional capture clears recovery instead of losing pagination or reissuing its search.
-    if (saved.hasPagingState || !input.evidenceBatches)
+    // Preserve all token and chooser state together; otherwise refuse recovery.
+    if (
+      (saved.hasPagingState && !saved.artifactPaging) ||
+      !input.evidenceBatches
+    )
       throw new Error('Cold paging or evidence reconstruction unavailable.');
     const reconstruction = await captureColdRagConversationState({
       ...state,
       options: input.options,
+      artifactPaging: saved.artifactPaging?.(),
       researchPaging: saved.researchPaging?.(
         input.options.execution.operationRunId,
       ),

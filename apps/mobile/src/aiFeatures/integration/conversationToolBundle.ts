@@ -15,6 +15,7 @@ export function createConversationToolBundle(input: {
   readonly researchInputs: ReturnType<typeof createResearchInputTracker>;
   readonly external: ReturnType<typeof conversationExternalEvidence>;
   readonly publicSearchSucceeded: boolean;
+  readonly artifactPaging?: unknown;
   readonly researchPaging?: { snapshot: unknown; operationRunId: string };
 }) {
   let failed = false;
@@ -23,6 +24,7 @@ export function createConversationToolBundle(input: {
     input.registry,
     input.observer,
     input.researchPaging,
+    input.artifactPaging,
   );
   const tools = [
     ...observeLocalSearchFailures(
