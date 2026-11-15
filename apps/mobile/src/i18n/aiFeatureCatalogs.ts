@@ -1,3 +1,4 @@
+import { dailyReportSleepKo } from './dailyReportSleepKo';
 import { dailyReportAnalysisKo } from './dailyReportAnalysisKo';
 import { dailyReportHistoryKo } from './dailyReportHistoryKo';
 import { conversationSteeringKo } from './conversationSteeringKo';
@@ -14,6 +15,7 @@ import { treatmentSafetyKo } from './treatmentSafety';
 
 /** Keep feature strings modular while composing them once for the shared lookup table. */
 export const aiFeatureCatalogsKo = {
+  ...dailyReportSleepKo,
   ...dailyReportAnalysisKo,
   ...conversationInterruptionKo,
   ...conversationSteeringKo,

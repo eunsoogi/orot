@@ -1,3 +1,4 @@
+import { dailyReportSleepContext } from './dailyReportSleepContext';
 import { dailyReportGuidance } from './dailyReportGuidance';
 import { dailyReportActions } from './dailyReportActions';
 import { dailyReportBehaviorInsights } from './dailyReportBehaviorInsights';
@@ -99,6 +100,11 @@ export async function prepareDailyReportFacts(
     0,
     snapshot.values.length,
   );
+  const sleepFacts = dailyReportSleepContext(
+    snapshot.values,
+    sources,
+    calendar.context,
+  );
   const guidance = [
     ...dailyReportGuidance(snapshot.values, sources),
     ...dailyReportActions(snapshot.values, sources),
@@ -114,6 +120,7 @@ export async function prepareDailyReportFacts(
     ),
     ...(external?.facts ?? []),
     ...baselineFacts,
+    ...sleepFacts,
     ...guidance,
   ];
   const providerFacts = await dailyReportProviderFacts(
@@ -131,6 +138,7 @@ export async function prepareDailyReportFacts(
     sourceSnapshot,
     facts,
     baselineFacts,
+    sleepFacts,
     providerFacts: providerFacts.map((fact, index) => ({
       ...fact,
       role:
