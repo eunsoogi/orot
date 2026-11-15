@@ -1,6 +1,7 @@
+import { useConversationPresentationSnapshot } from './useConversationPresentationSnapshot';
 import { ConversationBackButton } from './ConversationBackButton';
 import { AppText as Text } from '../layout/AppText';
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useMemo } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationComposer } from './ConversationComposer';
 import { ConversationWorkspace } from './ConversationWorkspace';
@@ -52,11 +53,7 @@ export function ConversationScreen({
   const { setContentHeight, composerLayout } = useConversationScreenLayout();
   const store = useConversationSessions();
   useConversationEntryIntent(store, entryContext);
-  const subscribe = useCallback(
-    (listener: () => void) => store.subscribe(listener, isEntryCurrent),
-    [store, isEntryCurrent],
-  );
-  const snapshot = useSyncExternalStore(subscribe, store.getSnapshot);
+  const snapshot = useConversationPresentationSnapshot(store, isEntryCurrent);
   const reportOwner = useMemo(
     () =>
       renderReportTask && navigationRouteKey

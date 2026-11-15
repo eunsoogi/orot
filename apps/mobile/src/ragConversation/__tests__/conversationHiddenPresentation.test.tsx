@@ -1,5 +1,5 @@
-import { useCallback, useSyncExternalStore } from 'react';
-import { Text } from 'react-native';
+import { useConversationPresentationSnapshot } from '../useConversationPresentationSnapshot';
+import { AppState, Text } from 'react-native';
 import { act, render, screen } from '@testing-library/react-native';
 import { createConversationSessions } from '../conversationSessions';
 import type {
@@ -14,11 +14,7 @@ test('returning to a retained route reads all hidden text while cancellation sti
   const isVisible = () => visible;
   let renders = 0;
   function Fixture() {
-    const subscribe = useCallback(
-      (listener: () => void) => store.subscribe(listener, isVisible),
-      [],
-    );
-    const snapshot = useSyncExternalStore(subscribe, store.getSnapshot);
+    const snapshot = useConversationPresentationSnapshot(store, isVisible);
     renders++;
     return (
       <Text testID="preview">
@@ -28,6 +24,14 @@ test('returning to a retained route reads all hidden text while cancellation sti
   }
   let observer: RagConversationObserver | undefined;
   let finish!: (value: RagConversationOutcome) => void;
+  const foregroundListeners: ((state: string) => void)[] = [];
+  const remove = jest.fn();
+  const spy = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_event, listener) => {
+      foregroundListeners.push(listener);
+      return { remove };
+    });
   await render(<Fixture />);
   let sending!: Promise<unknown>;
   await act(async () => {
@@ -64,6 +68,18 @@ test('returning to a retained route reads all hidden text while cancellation sti
   );
   visible = false;
   await act(async () => {
+    observer!.onTaskStreamEvent?.({ type: 'text_delta', text: 'background' });
+    jest.advanceTimersByTime(16);
+  });
+  expect(screen.getByTestId('preview')).not.toHaveTextContent(/background$/);
+  // No parent rerender or new token: the actual AppState subscription catches up.
+  visible = true;
+  await act(async () => {
+    foregroundListeners.forEach(listener => listener('active'));
+  });
+  expect(screen.getByTestId('preview')).toHaveTextContent(/background$/);
+  visible = false;
+  await act(async () => {
     store.cancel(store.getSnapshot().activeId);
   });
   expect(screen.getByTestId('preview')).toHaveTextContent('settled');
@@ -71,6 +87,9 @@ test('returning to a retained route reads all hidden text while cancellation sti
     finish({ status: 'failure', kind: 'cancelled' });
     await sending;
   });
+  await screen.unmount();
+  expect(remove).toHaveBeenCalled();
+  spy.mockRestore();
   store.dispose();
   jest.useRealTimers();
 });
