@@ -49,6 +49,7 @@ function source(
 
 function props(overrides: Partial<RecordsRouteProps> = {}): RecordsRouteProps {
   return {
+    onOpenRecentRecords: jest.fn(),
     recordings: [],
     recordingState: 'ready',
     onRetryRecordings: jest.fn(),
@@ -138,7 +139,7 @@ test('shows the newest loaded sources and opens their existing saved-recordings 
   expect(routeProps.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
 });
 
-test('groups actual recent recordings by local day and expands the complete timeline', async () => {
+test('groups actual recent recordings by local day and navigates from the complete timeline', async () => {
   jest.useFakeTimers().setSystemTime(new Date(2026, 10, 2, 12));
   try {
     const recordings = [
@@ -175,10 +176,11 @@ test('groups actual recent recordings by local day and expands the complete time
 
     await fireEvent.press(screen.getByTestId('records-recent-view-all'));
     expect(
-      screen.getByTestId(
+      screen.queryByTestId(
         'records-recent-source-123e4567-e89b-12d3-a456-426614174104',
       ),
-    ).toBeTruthy();
+    ).toBeNull();
+    expect(routeProps.onOpenRecentRecords).toHaveBeenCalledTimes(1);
     expect(routeProps.onOpenSavedRecordings).not.toHaveBeenCalled();
   } finally {
     jest.useRealTimers();

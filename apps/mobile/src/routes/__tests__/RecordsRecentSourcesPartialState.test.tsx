@@ -38,6 +38,7 @@ function routeProps(
   overrides: Partial<RecordsRouteProps> = {},
 ): RecordsRouteProps {
   return {
+    onOpenRecentRecords: jest.fn(),
     recordings: [],
     recordingState: 'ready',
     onRetryRecordings: jest.fn(),
