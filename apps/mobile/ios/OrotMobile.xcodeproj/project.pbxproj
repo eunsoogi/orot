@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AA6951880050E87283AFD1C0 /* NavigationPageDockGeometryAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6951880050E87283AFD1C1 /* NavigationPageDockGeometryAssertions.swift */; };
 		4B38B93A2CC33C401A30EB38 /* SavedDocumentNavigationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC5BB83930A9566F6A5CAB1 /* SavedDocumentNavigationUITests.swift */; };
 		EBAE3A6E40FC4104951D98F5 /* GlassIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 572A3A3D79AD451BAD30D047 /* GlassIconButton.swift */; };
 		BCAC2A2B2A95E636B5C9C15E /* RealtimeVoiceCallLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41E6911C62CADEA6C14E15AF /* RealtimeVoiceCallLifecycle.swift */; };
@@ -380,6 +381,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		AA6951880050E87283AFD1C1 /* NavigationPageDockGeometryAssertions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationPageDockGeometryAssertions.swift; sourceTree = "<group>"; };
 		AFC5BB83930A9566F6A5CAB1 /* SavedDocumentNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SavedDocumentNavigationUITests.swift; sourceTree = "<group>"; };
 		572A3A3D79AD451BAD30D047 /* GlassIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassIconButton.swift; sourceTree = "<group>"; };
 		41E6911C62CADEA6C14E15AF /* RealtimeVoiceCallLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrotMobile/RealtimeVoiceCallLifecycle.swift; sourceTree = "<group>"; };
@@ -1007,6 +1009,7 @@
 				A84C19E6D37B4A5098E3F202 /* AppSymbolSizingIntegrationTests.swift */,
 				6D87333E1E424782A10615CC /* AppSymbolSizingTestAssertions.swift */,
 				CFA85052B52B46F3A951B8B9 /* ComposerGlassSurfaceTestAssertions.swift */,
+				AA6951880050E87283AFD1C1 /* NavigationPageDockGeometryAssertions.swift */,
 				D0CFA67204BB1059B01C0647 /* NavigationRailFrameIntegrationTests.swift */,
 				BD3400000000000000000002 /* NavigationSelectionGlassTests.swift */,
 				624BCD81A97449138708ACDB /* NavigationFocusObservationTests.swift */,
@@ -1796,6 +1799,7 @@
 				A84C19E6D37B4A5098E3F201 /* AppSymbolSizingIntegrationTests.swift in Sources */,
 				3764758C59E941778E562901 /* AppSymbolSizingTestAssertions.swift in Sources */,
 				41902629670B426388A081DB /* ComposerGlassSurfaceTestAssertions.swift in Sources */,
+				AA6951880050E87283AFD1C0 /* NavigationPageDockGeometryAssertions.swift in Sources */,
 				CE7A8B9120FA49BB3E6E2930 /* NavigationRailFrameIntegrationTests.swift in Sources */,
 				AD3400000000000000000002 /* NavigationSelectionGlassTests.swift in Sources */,
 				026FA02E3DF24624A885119D /* NavigationFocusObservationTests.swift in Sources */,
