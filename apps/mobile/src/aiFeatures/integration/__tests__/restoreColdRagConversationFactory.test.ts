@@ -66,3 +66,23 @@ test.each(['photo', 'version', 'external', 'task', 'policy'])(
     expect(f.local.searchedChunks).toEqual([]);
   },
 );
+
+// Task prompts are execution identity, not a migration hint for an old request.
+test('version 7 factory refuses a version 6 descriptor before consent or dispatch', async () => {
+  const f = await fixture();
+  expect(ragConversationTask.taskVersion).toBe('7');
+  const input = f.descriptor.reconstruction.invocation as {
+    task: { taskVersion: string };
+  };
+  input.task.taskVersion = '6';
+  await expect(
+    restoreColdRagConversationFactory({
+      descriptor: f.descriptor,
+      dependencies: f.dependencies,
+      signal: f.controller.signal,
+      readKnownCallIds: async () => [],
+    }),
+  ).rejects.toThrow();
+  expect(f.authorize).not.toHaveBeenCalled();
+  expect(f.search).not.toHaveBeenCalled();
+});

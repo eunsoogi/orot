@@ -1,4 +1,5 @@
 import { isMultiAgentCheckpointResumable } from '@orot/agent-runtime';
+import { initialConversationResponse } from '../../../ragConversation/initialResponse';
 import { providerSuccess } from '@orot/model-runtime';
 import { runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
@@ -31,11 +32,13 @@ test.each(['complete', 'repause', 'populated'] as const)(
         },
       );
       let calls = 0;
+      const liveEvents = jest.fn();
+      const coldEvents = jest.fn();
       const generate = jest.fn(async () => {
         calls += 1;
         return calls <= 2
           ? providerSuccess({
-              text: '',
+              text: initialConversationResponse,
               finishReason: 'tool_calls' as const,
               toolCalls: [
                 {
@@ -124,7 +127,7 @@ test.each(['complete', 'repause', 'populated'] as const)(
       );
       const initial = await runContinuableConversationWorkflow(
         f.options,
-        {},
+        { onTaskStreamEvent: liveEvents },
         {
           persisted,
           bindPause: value => {
@@ -154,6 +157,9 @@ test.each(['complete', 'repause', 'populated'] as const)(
             resumable,
           ),
         ).toBe(false);
+      expect(
+        liveEvents.mock.calls.filter(([e]) => e.type === 'initial_response'),
+      ).toHaveLength(1);
       expect(generate).toHaveBeenCalledTimes(1);
       expect(search).toHaveBeenCalledTimes(1);
       const saved = await createConversationColdResumeStorage(db.database).open(
@@ -192,6 +198,7 @@ test.each(['complete', 'repause', 'populated'] as const)(
           dependencies: f.dependencies,
           signal: f.controller.signal,
           observer: {
+            onTaskStreamEvent: coldEvents,
             retentionRequestId: 'request',
             retentionSession: { id: 'session', version: 0 },
             onWorkflowPauseController: value => {
@@ -215,6 +222,10 @@ test.each(['complete', 'repause', 'populated'] as const)(
       }
       const result = await resume();
       expect(result.status).toBe('completed');
+      // Completed tool protocol restores without re-emitting the first tool acknowledgment.
+      expect(
+        coldEvents.mock.calls.filter(([e]) => e.type === 'initial_response'),
+      ).toHaveLength(0);
       expect(generate).toHaveBeenCalledTimes(3);
       expect(search).toHaveBeenCalledTimes(2);
       expect(search.mock.calls.map(call => call[0].cursor)).toEqual([
