@@ -80,3 +80,31 @@ test('the last unsubscribe drops its pending timer before a new subscriber joins
   expect(current).toHaveBeenCalledTimes(1);
   listeners.dispose();
 });
+
+test('hidden presentation skips stream work without suppressing privacy or terminal updates', () => {
+  const listeners = createConversationListeners();
+  let visible = false;
+  const presentation = jest.fn();
+  const other = jest.fn();
+  listeners.subscribe(presentation, () => visible);
+  listeners.subscribe(other);
+  for (let i = 0; i < 100; i++) {
+    listeners.emitStream();
+    jest.advanceTimersByTime(16);
+  }
+  expect(presentation).not.toHaveBeenCalled();
+  expect(other).toHaveBeenCalledTimes(100);
+  // Deletion/cancellation/terminal notifications must invalidate even hidden UI.
+  listeners.emit();
+  expect(presentation).toHaveBeenCalledTimes(1);
+  visible = true;
+  listeners.emitStream();
+  jest.advanceTimersByTime(16);
+  expect(presentation).toHaveBeenCalledTimes(2);
+  // Visibility is checked when the queued callback executes, not when scheduled.
+  listeners.emitStream();
+  visible = false;
+  jest.advanceTimersByTime(16);
+  expect(presentation).toHaveBeenCalledTimes(2);
+  listeners.dispose();
+});
