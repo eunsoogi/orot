@@ -1,3 +1,4 @@
+import { navigationText } from '../i18n/navigation';
 import { StyleSheet, View } from 'react-native';
 import { NavigationActionButton } from './NavigationActionButton';
 import type { NavigationSurface } from './NavigationActionBar';
@@ -72,10 +73,12 @@ export function NavigationBottomPageActions({
         ))}
         {includeMore ? (
           <NavigationActionButton
-            accessibilityLabel="탐색 및 화면 동작 더 보기"
+            accessibilityLabel={
+              navigationText.navigationOverflow.accessibilityLabel
+            }
             disabled={disabled}
             isDarkAppearance={isDarkAppearance}
-            label="더 보기"
+            label={navigationText.navigationOverflow.label}
             onPress={onMore}
             primary
             testID="navigation-page-action-overflow"
