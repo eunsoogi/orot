@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { MedicalDocumentSourceRecord } from '../medicalDocuments/medicalDocumentImportService';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
@@ -15,6 +14,8 @@ import { RecordsRecentSourceState } from './RecordsRecentSourceState';
 import { hubSpacing } from '../layout/hubSpacing';
 
 interface RecordsRecentSourcesProps {
+  readonly showAll?: boolean;
+  readonly onViewAll?: () => void;
   readonly recordings: readonly RecordingSourceRecord[];
   readonly recordingState: 'loading' | 'ready' | 'failed';
   readonly documents: readonly MedicalDocumentSourceRecord[];
@@ -29,6 +30,8 @@ interface RecordsRecentSourcesProps {
 
 /** Renders actual local activity in one grouped timeline while preserving each existing destination. */
 export function RecordsRecentSources({
+  showAll = false,
+  onViewAll,
   recordings,
   recordingState,
   documents,
@@ -40,10 +43,8 @@ export function RecordsRecentSources({
   onOpenMedicalDocument,
   onOpenSavedRecordings,
 }: RecordsRecentSourcesProps) {
-  const [expanded, setExpanded] = useState(false);
-
   const records = buildRecentRecordEntries(recordings, documents);
-  const groups = groupRecentRecords(records, new Date(), expanded ? null : 3);
+  const groups = groupRecentRecords(records, new Date(), showAll ? null : 3);
   const isLoading =
     recordingState === 'loading' || documentsState === 'loading';
   // Independent source statuses must not replace records that loaded successfully.
@@ -66,19 +67,13 @@ export function RecordsRecentSources({
         <Text accessibilityRole="header" style={styles.heading}>
           {t('overview.recentRecord')}
         </Text>
-        {records.length > 0 ? (
+        {!showAll && records.length > 0 && onViewAll ? (
           <AppButton
-            accessibilityLabel={t(
-              expanded ? 'records.recent.collapse' : 'records.recent.viewAll',
-            )}
-            onPress={() => setExpanded(value => !value)}
+            accessibilityLabel={t('records.recent.viewAll')}
+            onPress={onViewAll}
             size="compact"
             testID="records-recent-view-all"
-            title={
-              t(
-                expanded ? 'records.recent.collapse' : 'records.recent.viewAll',
-              ) + (expanded ? '  ⌃' : '  ›')
-            }
+            title={t('records.recent.viewAll') + '  ›'}
             variant="text"
           />
         ) : null}
