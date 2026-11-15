@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { Pressable, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
@@ -32,7 +33,7 @@ export function HealthKitProviderCard({
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked, disabled }}
-        accessibilityLabel="건강 앱 기록 선택"
+        accessibilityLabel={t('healthkit.unifiedImport.selectHealthRecords')}
         disabled={disabled}
         onPress={onToggle}
         style={styles.provider}
@@ -42,8 +43,12 @@ export function HealthKitProviderCard({
           <AppSymbol name="heart.fill" color={appColors.danger} />
         </View>
         <View style={styles.providerText}>
-          <Text style={styles.sectionTitle}>건강 앱</Text>
-          <Text style={styles.caption}>가져올 기록을 선택해 주세요.</Text>
+          <Text style={styles.sectionTitle}>
+            {t('healthkit.unifiedImport.healthApp')}
+          </Text>
+          <Text style={styles.caption}>
+            {t('healthkit.unifiedImport.chooseRecords')}
+          </Text>
         </View>
         <CheckboxIndicator
           checked={checked}
