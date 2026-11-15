@@ -27,10 +27,10 @@ test('keeps the expanded header and messages in one scroll owner with reachable 
   // A fixed scaled header can consume the entire reading viewport; its content
   // and actions must be reachable through the conversation's own scroll owner.
   expect(
-    within(history).getByRole('header', {
+    within(history).queryByRole('header', {
       name: getRagConversationCopy().title,
     }),
-  ).toBeTruthy();
+  ).toBeNull();
   expect(within(history).getByText('합성 제공자')).toBeTruthy();
   expect(history.props.keyboardShouldPersistTaps).toBe('handled');
   await fireEvent.press(

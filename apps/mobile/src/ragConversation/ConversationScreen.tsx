@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationSteeringComposer } from './ConversationSteeringComposer';
 import { ConversationWorkspace } from './ConversationWorkspace';
-import { ConversationHeaderTitle } from './ConversationHeaderTitle';
+import { ConversationHeaderActions } from './ConversationHeaderActions';
 import { styles } from './ConversationScreen.styles';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
 import { ConversationHistory } from './ConversationHistory';
@@ -106,8 +106,7 @@ export function ConversationScreen({
   const header = (
     <View style={styles.header}>
       {!navigationRouteKey && <ConversationBackButton onBack={onBack} />}
-      <ConversationHeaderTitle
-        title={copy.title}
+      <ConversationHeaderActions
         historyLabel={copy.sessions}
         newLabel={copy.newConversation}
         showActions={showSessionActionsInHeader}
