@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import type { DailyReportOutput, DailyReportSourceRecord } from '@orot/domain';
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceQueries';
 import {
@@ -42,7 +43,7 @@ export function dailyReportGuidance(
   if (severe.length) {
     result.push(
       claim(
-        '우선 확인할 혈압 기록이 있어요. 수축기 180 또는 이완기 120 mmHg 이상인 값이 기록되어 있어요. 지금 흉통·숨참·등 통증·저림·힘 빠짐·마비·말하기 어려움·시야 변화 같은 새로운 우려 증상이 있으면 재측정을 기다리지 말고 119에 연락하세요. 증상이 없다면 1분 이상 뒤 다시 측정하고 여전히 매우 높으면 즉시 의료진에게 연락하세요. 과거 기록만으로 현재 응급상태를 판정하지는 않아요. (질병관리청·AHA 혈압 안내; 나열한 증상이 전부는 아니에요)',
+        t('dailyGuidance.severePressure'),
         severe.map(x => x.index),
       ),
     );
@@ -53,7 +54,7 @@ export function dailyReportGuidance(
     if (elevated.length)
       result.push(
         claim(
-          '혈압은 재확인과 상담이 필요해요. 성인 가정혈압의 참고 기준인 수축기 135 또는 이완기 85 mmHg 이상인 기록이 있어요. 이는 반복 측정한 가정혈압을 평가하는 기준이지 한 번의 수치로 고혈압을 진단하는 기준이 아니에요. 5분간 쉬고 올바른 자세로 측정한 값을 기록해, 반복해서 높으면 의사와 상담하세요. 짠 음식을 줄이고 금연·절주를 실천하되 약은 임의로 변경하지 마세요. 연령·임신·질환·측정 장소에 따라 판단이 달라져요. (질병관리청 고혈압 안내)',
+          t('dailyGuidance.elevatedPressure'),
           elevated.map(x => x.index),
         ),
       );
@@ -73,8 +74,8 @@ export function dailyReportGuidance(
     result.push(
       claim(
         hasWorkout
-          ? '운동 기록이 있어요. 기록된 활동은 건강 관리에 도움이 되는 실천이지만, 일부 기록만으로 오늘 운동량이 충분한지 판단하지 않았어요. 몸 상태와 의료진의 제한에 맞춰 무리하지 않고 이어가세요. (WHO 신체활동 안내)'
-          : '걸음 기록은 있지만 이 보고서에서 확인한 운동 기록은 없어요. 실제로 운동을 하지 않았다는 뜻은 아니며 권한·동기화·기록 범위에 따라 빠질 수 있어요. 오늘 아직 활동하지 않았고 불편한 증상이나 운동 제한이 없다면, 가능한 범위에서 가벼운 움직임부터 시작해 보세요. (WHO 신체활동 안내)',
+          ? t('dailyGuidance.recordedWorkout')
+          : t('dailyGuidance.stepsWithoutWorkout'),
         activity,
       ),
     );

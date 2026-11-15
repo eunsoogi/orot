@@ -1,3 +1,4 @@
+import { dailyGuidanceKo } from './dailyGuidanceKo';
 import { savedMemoryKo } from './savedMemoryKo';
 import { healthContextCopyKo } from './healthContextCopyKo';
 import { evidenceSourceKo } from './evidenceSourceKo';
@@ -8,6 +9,7 @@ import { encounterReviewCopyKo } from './encounterReviewCopyKo';
 
 /** Incremental UI-copy migrations share one catalog entry point. */
 export const localizedCopyKo = {
+  ...dailyGuidanceKo,
   ...savedMemoryKo,
   ...healthContextCopyKo,
   ...evidenceSourceKo,
