@@ -1,3 +1,4 @@
+import { coldActionContracts } from './restoreColdConversationActions';
 import type {
   EvidenceBatch,
   MultiAgentWorkflowOptions,
@@ -43,6 +44,7 @@ export async function captureColdRagConversationState(input: {
       factoryVersion: COLD_RAG_FACTORY_VERSION,
       invocation: {
         request: input.options.request,
+        actions: coldActionContracts(input.options.actions),
         context: input.options.context ?? null,
         initialEvidence: input.options.initialEvidence,
         initialSearch: input.options.initialSearch ?? null,
