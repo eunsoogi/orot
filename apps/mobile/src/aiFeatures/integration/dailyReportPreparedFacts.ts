@@ -1,3 +1,4 @@
+import { dailyReportPersonalBaseline } from './dailyReportPersonalBaseline';
 import { fingerprint } from './evidenceUtils';
 import {
   conflictingDailyReportIndexes,
@@ -77,15 +78,25 @@ export async function prepareDailyReportFacts(
         : []),
     ],
   };
+  const baselineFacts = dailyReportPersonalBaseline(
+    snapshot.values,
+    snapshot.baselineValues ?? [],
+    snapshot.sourceSnapshot.records,
+    calendar.context.identity.timeZone,
+  );
   const facts = [
-    ...dailyReportFacts(snapshot.values, snapshot.sourceSnapshot.records),
+    ...dailyReportFacts(
+      snapshot.values,
+      snapshot.sourceSnapshot.records.slice(0, snapshot.values.length),
+    ),
     ...(external?.facts ?? []),
+    ...baselineFacts,
   ];
   const providerFacts = await dailyReportProviderFacts(
     input.data,
-    snapshot.values,
+    [...snapshot.values, ...(snapshot.baselineValues ?? [])],
     facts,
     request.signal,
   );
-  return { required, sourceSnapshot, facts, providerFacts };
+  return { required, sourceSnapshot, facts, providerFacts, baselineFacts };
 }

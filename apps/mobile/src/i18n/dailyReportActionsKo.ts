@@ -1,5 +1,14 @@
 /** Evidence-led actions never infer attendance, adherence, or a cause from proximity. */
 export const dailyReportActionsKo = {
+  'dailyReport.baseline.title': '최근 28일 개인 비교',
+  'dailyReport.baseline.perMinute': '회/분',
+  'dailyReport.baseline.higher': '높아요',
+  'dailyReport.baseline.lower': '낮아요',
+  'dailyReport.baseline.equal': '같아요',
+  'dailyReport.baseline.limit':
+    '최근 28일 중 접근 가능한 관측일만 비교했어요. 미측정일·다른 기기·단위·누적량은 채워 넣지 않았어요.',
+  'dailyReport.baseline.comparison':
+    '{concept}: 오늘 측정값의 중앙값 {today} {unit}은 최근 28일 중 관측된 {days}일의 일별 중앙값을 다시 요약한 {baseline} {unit}과 비교해 {direction}. 같은 지표·단위·출처만 비교했으며 개인 정상 범위나 질병 진단 기준은 아니에요. 측정 조건을 확인하고 변화가 이어지거나 불편한 증상이 있으면 기록을 의료진과 함께 검토하세요. 현재의 주의 수치·응급 안내가 이 비교보다 우선해요.',
   'dailyReport.systemCalendar.unavailable':
     '시스템 캘린더 접근 또는 이번 보고서 범위를 확인하지 못했어요. 일정이 없다는 뜻은 아니에요.',
   'dailyReport.systemCalendar.sourceTitle':
@@ -36,5 +45,5 @@ export const dailyReportActionsKo = {
   'dailyReport.context.visitCompleted':
     '오늘 완료로 저장한 진료 일정이 있어요. 진료 후 안내받은 관리 계획을 따르되, 이 일정 자체에는 진단이나 새 처방 내용이 확인되지 않아 임의로 추가하지 않았어요.',
   'dailyReport.context.coverage':
-    '이 보고서는 현재 접근 가능한 당일 기록을 먼저 종합했어요. 전체 건강을 정상 또는 이상으로 단정하지 않으며, 미측정·동기화 미확인·누락된 자료는 정상으로 채우지 않았어요. 캘린더 계획은 실제 방문과 구분하고 출처별 접근·확인 범위를 표시해요. 개인별 과거 기준은 이 입력 범위에 포함되지 않아요.',
+    '이 보고서는 현재 접근 가능한 당일 기록을 먼저 종합했어요. 전체 건강을 정상 또는 이상으로 단정하지 않으며, 미측정·동기화 미확인·누락된 자료는 정상으로 채우지 않았어요. 캘린더 계획은 실제 방문과 구분하고 출처별 접근·확인 범위를 표시해요. 개인 비교가 표시된 경우에만 최근 관측값을 함께 살폈으며, 비교할 자료가 없다고 정상으로 판단하지 않아요.',
 } as const;

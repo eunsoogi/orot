@@ -1,4 +1,6 @@
+import { stableJson } from '../../aiFeatures/integration/evidenceUtils';
 import {
+  validDailyReportBaseline,
   compareTimestamps,
   dailyReportCalendarInterval,
   createDailyReportIdentity,
@@ -115,6 +117,12 @@ export function dailyReportSourceRecordIsAvailable(
     compareTimestamps(record.ingestedAt, context.generationCutoff) > 0
   )
     return false;
+  if (record.contextRole)
+    return validDailyReportBaseline(
+      record,
+      context.identity.localDate,
+      context.identity.timeZone,
+    );
   const { startInclusive, endExclusive } = record.occurrence;
   // The complete context schema additionally validates the admitted dose links.
   if (
@@ -138,4 +146,20 @@ export function dailyReportSourceRecordIsAvailable(
     compareTimestamps(startInclusive, context.interval.fromInclusive) >= 0 &&
     compareTimestamps(startInclusive, context.effectiveCutoff) < 0
   );
+}
+
+/** Reject caller-built windows that differ from the canonical civil-day calculation. */
+export function validateDailyReportCalendarWindow(
+  calendar: DailyReportCalendarWindow,
+) {
+  const validated = createDailyReportCalendarWindow({
+    localDate: calendar.identity.localDate,
+    timeZone: calendar.identity.timeZone,
+    requestedAt: calendar.generationCutoff,
+  });
+  if (
+    validated.status !== 'ready' ||
+    stableJson(validated.context) !== stableJson(calendar)
+  )
+    throw new Error('Invalid daily report calendar window.');
 }
