@@ -382,3 +382,37 @@ its own matching build, environment and exact 20-case result are recorded.
 Physical-device encryption/locked-state behavior remains unverified. Hosted Full
 receipt completeness now refers to the maintained application E2E inventory only;
 it is not a separate security attestation or a release approval.
+
+## Gentle navigation fade candidate (2026-11-15)
+
+Issue #934 / PR #937 extends the root and inline no-displacement transitions to
+native push/pop with an outgoing snapshot. The live Glass-containing view remains
+opaque and untransformed. Source base: `de925d7916`; native patch SHA-256:
+`c7aaa7d2b5547eb12c8c9886e7e05fdcf6bf4566a594e7bc9439ce644900df25`.
+
+On the owned iPhone 18 Pro Simulator (iOS 27.0, Xcode SDK 27.2), canonical core
+build succeeded with zero warning-gate occurrences. `run-ios-tests.mjs core`
+executed all six `NavigationFadeIntegrationTests` cases: push, pop, cancelled
+push/pop, inactive notification and capture-state notification cleanup. All six
+passed in `NativeFadeLifecycle.xcresult`. The fixture verifies a real UIKit
+snapshot was obtained, live alpha/transform and material preservation, snapshot
+accessibility exclusion, removal, and idempotent cleanup. Synthetic notification
+posting is not an actual OS backgrounding or screen-recording test, and this
+change does not prevent screen capture.
+
+The separate canonical UI run passed
+`RootNavigationUITests/testBackRemainsReachableWithoutHomeButton` in
+`FadeRoutesRunner.xcresult`. A synthetic recording of that run was inspected at
+exact timestamps: records-to-recording push and recording-to-records pop blend
+in place without a vertical displacement. It is not evidence for every route,
+VoiceOver operation, a physical device, or the Full/release suite. Reduce Motion
+continues to select no native animation; component checks cover the root policy.
+
+Earlier attempts remain failures, not substituted passes: native compile issues
+were repaired; a direct UI invocation was rejected by the fresh-invocation guard
+and was replaced with the canonical runner; fixture teardown initially waited for
+an appearance callback that UIWindow hiding does not supply. Explicit balanced
+fixture appearance lifecycle fixed that test-only failure without weakening the
+fade assertions. Raw logs/results remain in the local fade verification artifacts.
+The owned Simulator was deleted after verification; the user's Simulator was
+preserved. Required PR checks still must pass on the final published revision.

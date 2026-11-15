@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Animated, Easing, StyleSheet } from 'react-native';
+import { NavigationFadeVeil } from './NavigationFadeVeil';
 import { NavigationMotionContext } from './NavigationMotionContext';
 
 interface NavigationContentTransitionProps {
@@ -13,7 +14,7 @@ interface DisplayedContent {
   readonly children: ReactNode;
 }
 
-/** Keeps outgoing root content mounted until a short, perceptible translation makes room for the selected tab. */
+/** Keeps outgoing root content mounted until a short fade to the background makes room for the selected tab. */
 export function NavigationContentTransition({
   transitionKey,
   children,
@@ -29,8 +30,8 @@ export function NavigationContentTransition({
   });
   const [enterPending, setEnterPending] = useState(false);
   // Glass descendants require alpha 1 at every ancestor, including while mounting.
-  // Moving the content avoids the offscreen alpha composite that drops UIKit material.
-  const offset = useRef(new Animated.Value(0)).current;
+  // A sibling veil fades the content without alpha-compositing its UIKit material.
+  const veilOpacity = useRef(new Animated.Value(0)).current;
   const transitionGeneration = useRef(0);
   const latestContent = useRef({ transitionKey, children });
   latestContent.current = { transitionKey, children };
@@ -44,32 +45,32 @@ export function NavigationContentTransition({
 
   useEffect(() => {
     if (displayed.transitionKey === transitionKey) {
-      // Returning to the still-mounted tab cancels its partial movement instead of leaving it displaced.
+      // Returning to the still-mounted tab cancels its partial fade instead of leaving it covered.
       if (!enterPending) {
-        offset.stopAnimation();
-        offset.setValue(0);
+        veilOpacity.stopAnimation();
+        veilOpacity.setValue(0);
       }
       return;
     }
     if (reduceMotion) {
-      offset.stopAnimation();
-      offset.setValue(0);
+      veilOpacity.stopAnimation();
+      veilOpacity.setValue(0);
       setEnterPending(false);
       setDisplayed(latestContent.current);
       return;
     }
 
     const generation = ++transitionGeneration.current;
-    const exitMotion = Animated.timing(offset, {
-      toValue: -12,
+    const exitMotion = Animated.timing(veilOpacity, {
+      toValue: 1,
       duration: 100,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     });
     exitMotion.start(({ finished }) => {
       if (!finished || transitionGeneration.current !== generation) return;
-      // Enter from the opposite edge of the small travel range, never by fading glass.
-      offset.setValue(20);
+      // Swap only when covered, then reveal the incoming content without moving it.
+      veilOpacity.setValue(1);
       setDisplayed(latestContent.current);
       setEnterPending(true);
     });
@@ -82,7 +83,7 @@ export function NavigationContentTransition({
   }, [
     displayed.transitionKey,
     enterPending,
-    offset,
+    veilOpacity,
     reduceMotion,
     transitionKey,
   ]);
@@ -90,14 +91,14 @@ export function NavigationContentTransition({
   useEffect(() => {
     if (!enterPending) return;
     if (reduceMotion) {
-      offset.setValue(0);
+      veilOpacity.setValue(0);
       setEnterPending(false);
       return;
     }
     if (displayed.transitionKey !== transitionKey) return;
 
     let active = true;
-    const enterMotion = Animated.timing(offset, {
+    const enterMotion = Animated.timing(veilOpacity, {
       toValue: 0,
       duration: 200,
       easing: Easing.out(Easing.cubic),
@@ -113,7 +114,7 @@ export function NavigationContentTransition({
   }, [
     displayed.transitionKey,
     enterPending,
-    offset,
+    veilOpacity,
     reduceMotion,
     transitionKey,
   ]);
@@ -129,11 +130,12 @@ export function NavigationContentTransition({
         transitionPending ? 'no-hide-descendants' : 'auto'
       }
       pointerEvents={transitionPending ? 'none' : 'auto'}
-      style={[styles.fill, { transform: [{ translateY: offset }] }]}
+      style={styles.fill}
     >
       {displayed.transitionKey === transitionKey
         ? children
         : displayedContent.current.children}
+      <NavigationFadeVeil opacity={veilOpacity} />
     </Animated.View>
   );
 }

@@ -22,7 +22,7 @@ four-profile baseline, every classified group, and the current evidence limits.
 | `react-native` | 0.87.1 | Repair the legacy root-view compatibility declaration, classify prebuilt textual headers, complete required nullability declarations, expose the feature flags used by VirtualizedLists, declare runtime globals actually supplied by React Native or Hermes, and retain existing configuration-switch behavior. Development bundle evaluation uses global scope consistently. |
 | `react-native-keychain` | 10.0.0 | Use modern Biometry flags and fresh `LAContext` instances on supported iOS and macOS targets. Retain Security query keys only as a runtime fallback for deployment targets below iOS 11 or macOS 10.13, and for tvOS, whose `LAContext` API lacks those controls. Preserve the legacy accessibility and shared-web-credential contracts. Remove the unused Codegen registration because this version has no `Native*` spec in `src`. |
 | `react-native-safe-area-context` | 5.10.1 | Match the generated inset field declaration order. |
-| `react-native-screens` | 4.27.0 | Read window state from its scene, match integer formatting, cover the existing None fallback, and compile a debug helper only with its debug caller. |
+| `react-native-screens` | 4.27.0 | Read window state from its scene, match integer formatting, cover the existing None fallback, and compile a debug helper only with its debug caller. Fade navigation using a transient outgoing snapshot instead of changing live glass ancestry alpha; release it on completion, cancellation, interruption, inactivity and capture changes. |
 
 ## Prebuilt React Native artifacts
 
