@@ -262,6 +262,7 @@
 		AC4141C2EF262416222551D8 /* AppleModelIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAD8EE5F392245D4B564111 /* AppleModelIntegrationTests.swift */; };
 		AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		A11200000000000000000005 /* ReminderCopy.strings in Resources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000005 /* ReminderCopy.strings */; };
+		A11200000000000000000008 /* ConversationProcessingCopy.strings in Resources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000008 /* ConversationProcessingCopy.strings */; };
 		A11200000000000000000007 /* OpenAIProviderAuthCopy.strings in Resources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000007 /* OpenAIProviderAuthCopy.strings */; };
 		A11200000000000000000006 /* ManualHistoryDateCopy.strings in Resources */ = {isa = PBXBuildFile; fileRef = B11200000000000000000006 /* ManualHistoryDateCopy.strings */; };
 		B0F97BFD4EE41B662A08312E /* HermesDomainIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C6C9C343F99A62D3CF29F5 /* HermesDomainIntegrationTests.swift */; };
@@ -430,6 +431,7 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = OrotMobile/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = OrotMobile/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		B11200000000000000000005 /* ReminderCopy.strings */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = ReminderCopy.strings; path = OrotMobile/ReminderCopy.strings; sourceTree = "<group>"; };
+		B11200000000000000000008 /* ConversationProcessingCopy.strings */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = ConversationProcessingCopy.strings; path = OrotMobile/ConversationProcessingCopy.strings; sourceTree = "<group>"; };
 		B11200000000000000000007 /* OpenAIProviderAuthCopy.strings */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = OpenAIProviderAuthCopy.strings; path = OrotMobile/OpenAIProviderAuthCopy.strings; sourceTree = "<group>"; };
 		B11200000000000000000006 /* ManualHistoryDateCopy.strings */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = ManualHistoryDateCopy.strings; path = OrotMobile/ManualHistoryDateCopy.strings; sourceTree = "<group>"; };
 		17C06E28A09D80D57AFD9F39 /* RecordingFixtureUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecordingFixtureUITestConditions.swift; sourceTree = "<group>"; };
@@ -923,6 +925,7 @@
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 				B11200000000000000000005 /* ReminderCopy.strings */,
+				B11200000000000000000008 /* ConversationProcessingCopy.strings */,
 				B11200000000000000000007 /* OpenAIProviderAuthCopy.strings */,
 				B11200000000000000000006 /* ManualHistoryDateCopy.strings */,
 				722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */,
@@ -1369,6 +1372,7 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				AC57D81E3E94B4B94BC86613 /* PrivacyInfo.xcprivacy in Resources */,
 				A11200000000000000000005 /* ReminderCopy.strings in Resources */,
+				A11200000000000000000008 /* ConversationProcessingCopy.strings in Resources */,
 				A11200000000000000000007 /* OpenAIProviderAuthCopy.strings in Resources */,
 				A11200000000000000000006 /* ManualHistoryDateCopy.strings in Resources */,
 			);

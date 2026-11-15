@@ -42,9 +42,9 @@ final class ConversationContinuedProcessing {
             // This is not a duration estimate; there are no timer-based progress heartbeats.
             continued.progress.totalUnitCount = 3
             continued.progress.completedUnitCount = answered ? 2 : 1
-            continued.updateTitle("AI 응답 처리", subtitle: answered ? "응답 저장 중" : "응답 기다리는 중")
+            continued.updateTitle(Self.copy("title"), subtitle: answered ? Self.copy("saving") : Self.copy("waiting"))
         }) else { status("continued-refused", nil); return }
-        let request = BGContinuedProcessingTaskRequest(identifier: identifier, title: "AI 응답 처리", subtitle: "응답 기다리는 중")
+        let request = BGContinuedProcessingTaskRequest(identifier: identifier, title: Self.copy("title"), subtitle: Self.copy("waiting"))
         request.strategy = .fail
         // Default resources are CPU and network. No entitlement or GPU permission is requested.
         do { try BGTaskScheduler.shared.submit(request) }
@@ -55,11 +55,16 @@ final class ConversationContinuedProcessing {
         } // Keep the existing short lease when admission is denied.
     }
 
+    /// Fixed system progress copy only; no private question or answer is shown here.
+    private static func copy(_ key: String) -> String {
+        NSLocalizedString(key, tableName: "ConversationProcessingCopy", comment: "Background answer progress")
+    }
+
     func receivedAnswer() {
         guard !finished else { return }
         answered = true
         task?.progress.completedUnitCount = 2
-        task?.updateTitle("AI 응답 처리", subtitle: "응답 저장 중")
+        task?.updateTitle(Self.copy("title"), subtitle: Self.copy("saving"))
     }
 
     func finish(success: Bool) {
