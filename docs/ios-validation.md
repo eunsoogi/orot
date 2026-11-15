@@ -416,3 +416,9 @@ fixture appearance lifecycle fixed that test-only failure without weakening the
 fade assertions. Raw logs/results remain in the local fade verification artifacts.
 The owned Simulator was deleted after verification; the user's Simulator was
 preserved. Required PR checks still must pass on the final published revision.
+
+The first published native candidate Policy Check failed because twelve assertions
+still expected the inventory before the six new lifecycle tests. Exact totals were
+increased by six, preserving all existing inventory and security checks. A new
+identity-level regression requires all six fade cases exactly once; the affected
+policy selection passed 50 tests. Product/native source was unchanged by this fix.
