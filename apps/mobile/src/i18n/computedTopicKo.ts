@@ -1,0 +1,27 @@
+/** Presentation templates only; original symptom/medication text and clinical scope are retained verbatim. */
+export const computedTopicKo = {
+  'computedTopic.coreSleep': '코어 수면',
+  'computedTopic.deepSleep': '깊은 수면',
+  'computedTopic.remSleep': '렘 수면',
+  'computedTopic.unspecifiedSleep': '단계 미지정 수면',
+  'computedTopic.awake': '깨어 있음',
+  'computedTopic.inBed': '침대에 있음',
+  'computedTopic.confirmedMedication': '직접 확인한 현재 복용약',
+  'computedTopic.prescription': '처방 기록',
+  'computedTopic.registeredMedication': '건강 앱에 등록된 약',
+  'computedTopic.noDoseRecords': '개별 복약 기록 미제공',
+  'computedTopic.noTime': '시각 미제공',
+  'computedTopic.taken': '복용 완료 {count}건',
+  'computedTopic.skipped': '건너뜀 {count}건',
+  'computedTopic.otherDoses': '기타 복약 기록 {count}건',
+  'computedTopic.doseDays': '복약 기록 {days}일',
+  'computedTopic.instruction': ' · 기록된 복용 지시: {instruction}',
+  'computedTopic.calendarDays': ' / {days}일',
+  'computedTopic.coverage': ' · 기록 {days}일{calendar}',
+  'computedTopic.sleepMean':
+    '기록된 날짜의 수면 시간 평균 {minutes}분{coverage}. 날짜별로 겹치는 수면 구간을 합친 값이며 완전한 하룻밤 수면 총량을 뜻하지는 않아요. 기록하지 않은 날짜의 수면은 알 수 없어요.',
+  'computedTopic.stageMinutes': '{stage} {minutes}분',
+  'computedTopic.meanStages': '{mean} 전체 기간의 단계별 누적 시간: {stages}.',
+  'computedTopic.symptomDays': ' · {days}일',
+  'computedTopic.symptomEntries': '증상 기록 {count}건{coverage}.{entries}',
+} as const;

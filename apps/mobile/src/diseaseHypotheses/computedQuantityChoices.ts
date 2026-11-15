@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import {
   factObject,
   finiteFact,
@@ -7,14 +8,14 @@ import {
 } from './computedStatisticChoice';
 
 const labels: Readonly<Record<string, string>> = {
-  blood_pressure_systolic: '수축기 혈압',
-  'blood pressure systolic': '수축기 혈압',
-  blood_pressure_diastolic: '이완기 혈압',
-  'blood pressure diastolic': '이완기 혈압',
-  heart_rate: '심박수',
-  body_mass: '체중',
-  weight: '체중',
-  step_count: '걸음 수',
+  blood_pressure_systolic: t('computedQuantity.systolic'),
+  'blood pressure systolic': t('computedQuantity.systolic'),
+  blood_pressure_diastolic: t('computedQuantity.diastolic'),
+  'blood pressure diastolic': t('computedQuantity.diastolic'),
+  heart_rate: t('computedQuantity.heartRate'),
+  body_mass: t('computedQuantity.weight'),
+  weight: t('computedQuantity.weight'),
+  step_count: t('computedQuantity.steps'),
 };
 
 /** Every supplied measured series is required independently, including overlapping sensors.
@@ -31,20 +32,26 @@ export function computedQuantityChoices(
     )
       return [];
     const step = series.concept === 'step_count';
-    const unit = step ? '걸음' : series.unit;
+    const unit = step ? t('computedQuantity.stepUnit') : series.unit;
     const amount = (value: number) => `${value} ${unit}`;
     const mean = step
       ? series.meanRecordedDailySampleSum
       : series.meanOfRecordedDailyMeans;
     const views: Record<string, string> = {};
     if (finiteFact(mean))
-      views.mean = `${step ? '기록일별 센서 샘플 합 평균' : '기록일 평균'} ${amount(mean)}`;
+      views.mean = `${step ? t('computedQuantity.sampleMean') : t('computedQuantity.recordedMean')} ${amount(mean)}`;
     if (factObject(series.latest) && finiteFact(series.latest.amount)) {
       const time = statisticSourceTime(series.latest.occurredAt, source);
-      views.latest = `최근 측정 ${amount(series.latest.amount)}${time ? ` · ${time}` : ''}`;
+      views.latest = t('computedQuantity.latest', {
+        amount: amount(series.latest.amount),
+        time: time ? ` · ${time}` : '',
+      });
     }
     if (finiteFact(series.minimumSample) && finiteFact(series.maximumSample))
-      views.range = `개별 측정 범위 ${amount(series.minimumSample)} ~ ${amount(series.maximumSample)}`;
+      views.range = t('computedQuantity.range', {
+        minimum: amount(series.minimumSample),
+        maximum: amount(series.maximumSample),
+      });
     const comparison = series.comparison;
     if (
       factObject(comparison) &&
@@ -52,23 +59,45 @@ export function computedQuantityChoices(
       finiteFact(comparison.recentMean) &&
       finiteFact(comparison.difference)
     )
-      views.comparison = `앞선 7일 평균 ${amount(comparison.previousMean)} → 최근 7일 평균 ${amount(comparison.recentMean)} · 차이 ${amount(comparison.difference)}${finiteFact(comparison.previousRecordedDays) && finiteFact(comparison.recentRecordedDays) ? ` · 각 기록 ${comparison.previousRecordedDays}일 / ${comparison.recentRecordedDays}일` : ''}`;
+      views.comparison = t('computedQuantity.comparison', {
+        previous: amount(comparison.previousMean),
+        recent: amount(comparison.recentMean),
+        difference: amount(comparison.difference),
+        coverage:
+          finiteFact(comparison.previousRecordedDays) &&
+          finiteFact(comparison.recentRecordedDays)
+            ? t('computedQuantity.comparisonCoverage', {
+                previous: comparison.previousRecordedDays,
+                recent: comparison.recentRecordedDays,
+              })
+            : '',
+      });
     if (!Object.keys(views).length) return [];
     const coverage = [
       finiteFact(series.recordedDays)
-        ? `기록 ${series.recordedDays}일${finiteFact(source.calendarDays) ? ` / ${source.calendarDays}일` : ''}`
+        ? t('computedQuantity.coverage', {
+            days: series.recordedDays,
+            calendar: finiteFact(source.calendarDays)
+              ? t('computedQuantity.calendarDays', {
+                  days: source.calendarDays,
+                })
+              : '',
+          })
         : '',
-      finiteFact(series.sampleCount) ? `측정 ${series.sampleCount}건` : '',
+      finiteFact(series.sampleCount)
+        ? t('computedQuantity.samples', { count: series.sampleCount })
+        : '',
     ]
       .filter(Boolean)
       .join(' · ');
     const sensor = finiteFact(series.sensorSeries)
       ? series.sensorSeries
       : index + 1;
-    const title = `${labels[series.concept] ?? series.concept} · 측정 출처 ${sensor}`;
-    const limitation = step
-      ? ' 출처별 샘플은 중복될 수 있어 합산하거나 전체 일일 걸음수로 해석할 수 없어요.'
-      : '';
+    const title = t('computedQuantity.title', {
+      concept: labels[series.concept] ?? series.concept,
+      sensor,
+    });
+    const limitation = step ? t('computedQuantity.overlap') : '';
     return [
       {
         key: `q${index}`,
