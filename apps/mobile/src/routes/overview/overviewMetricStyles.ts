@@ -57,14 +57,16 @@ export const overviewMetricStyles = StyleSheet.create({
   comparisonIdentity: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexBasis: 140,
+    // Reserve actual inline geometry, not only a flex basis that can collapse
+    // toward the old 48pt minimum when the value columns consume the row.
+    width: 200,
     flexShrink: 0,
-    minWidth: 48,
-    maxWidth: 140,
+    minWidth: 200,
+    maxWidth: 200,
     gap: 6,
   },
   // A separate heading must not inherit the narrow inline identity width.
-  comparisonIdentityFull: { flexBasis: 'auto', maxWidth: '100%', minWidth: 0 },
+  comparisonIdentityFull: { width: '100%', maxWidth: '100%', minWidth: 0 },
   comparisonDivider: {
     alignSelf: 'stretch',
     width: StyleSheet.hairlineWidth,
