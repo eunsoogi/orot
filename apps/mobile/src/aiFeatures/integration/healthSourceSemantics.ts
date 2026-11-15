@@ -1,15 +1,16 @@
+import { t } from '../../i18n';
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceRepository';
 import { sleepRecordSemantics } from '../../healthkit/sleep/sleepRecordSemantics';
 
 const quantityLabels: Readonly<Record<string, string>> = {
-  'blood pressure systolic': '수축기 혈압',
-  blood_pressure_systolic: '수축기 혈압',
-  'blood pressure diastolic': '이완기 혈압',
-  blood_pressure_diastolic: '이완기 혈압',
-  heart_rate: '심박수',
-  body_mass: '체중',
-  weight: '체중',
-  step_count: '걸음 수',
+  'blood pressure systolic': t('healthSemantic.systolic'),
+  blood_pressure_systolic: t('healthSemantic.systolic'),
+  'blood pressure diastolic': t('healthSemantic.diastolic'),
+  blood_pressure_diastolic: t('healthSemantic.diastolic'),
+  heart_rate: t('healthSemantic.heartRate'),
+  body_mass: t('healthSemantic.weight'),
+  weight: t('healthSemantic.weight'),
+  step_count: t('healthSemantic.steps'),
 };
 
 /** Shared source meanings accompany every retrieval route; they do not change stored facts or revisions. */

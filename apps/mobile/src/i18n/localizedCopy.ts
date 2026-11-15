@@ -1,3 +1,4 @@
+import { healthSemanticKo } from './healthSemanticKo';
 import { sourceDisplayKo } from './sourceDisplayKo';
 import { legacySymptomKo } from './legacySymptomKo';
 import { realtimeDisplayKo } from './realtimeDisplayKo';
@@ -16,6 +17,7 @@ import { encounterReviewCopyKo } from './encounterReviewCopyKo';
 
 /** Incremental UI-copy migrations share one catalog entry point. */
 export const localizedCopyKo = {
+  ...healthSemanticKo,
   ...sourceDisplayKo,
   ...legacySymptomKo,
   ...realtimeDisplayKo,

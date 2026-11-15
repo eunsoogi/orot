@@ -1,14 +1,19 @@
+import { t } from '../../i18n';
+
 /** Format a source-derived interval once; models need not perform minute/second arithmetic. */
 function displayDuration(seconds: number) {
   const rounded = Math.round(seconds);
   const hours = Math.floor(rounded / 3600);
   const minutes = Math.floor((rounded % 3600) / 60);
   const parts = [
-    ...(hours ? [`${hours}시간`] : []),
-    ...(minutes || hours ? [`${minutes}분`] : []),
-    `${rounded % 60}초`,
+    ...(hours ? [t('healthSemantic.hours', { hours })] : []),
+    ...(minutes || hours ? [t('healthSemantic.minutes', { minutes })] : []),
+    t('healthSemantic.seconds', { seconds: rounded % 60 }),
   ];
-  return (seconds === rounded ? '' : '약 ') + parts.join(' ');
+  return (
+    (seconds === rounded ? '' : t('healthSemantic.approximately')) +
+    parts.join(' ')
+  );
 }
 
 /** HealthKit sleep values are categorical stages, never hours or a nightly total. */
@@ -24,12 +29,12 @@ export function sleepRecordSemantics(record: Record<string, unknown>) {
     return undefined;
   // Values follow the installed SDK's HKCategoryValueSleepAnalysis, including legacy unspecified sleep.
   const stages: Record<string, string> = {
-    '0': '침대에 있음',
-    '1': '수면(단계 미지정)',
-    '2': '깨어 있음',
-    '3': '코어 수면',
-    '4': '깊은 수면',
-    '5': '렘 수면',
+    '0': t('healthSemantic.inBed'),
+    '1': t('healthSemantic.unspecifiedSleep'),
+    '2': t('healthSemantic.awake'),
+    '3': t('healthSemantic.coreSleep'),
+    '4': t('healthSemantic.deepSleep'),
+    '5': t('healthSemantic.remSleep'),
   };
   const sleepStage = value.text === undefined ? undefined : stages[value.text];
   if (!sleepStage) return undefined;
