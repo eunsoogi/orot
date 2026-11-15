@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { useState } from 'react';
 import {
   Pressable,
@@ -34,7 +35,7 @@ export function EvidenceSourceSections({
   // Stable panel children keep the selected source mounted while measured regions reflow.
   const sourceSelection = (
     <ScrollView
-      accessibilityLabel="저장된 근거 선택"
+      accessibilityLabel={t('sourceDisplay.selectSaved')}
       contentContainerStyle={styles.tabs}
       horizontal
       showsHorizontalScrollIndicator={false}

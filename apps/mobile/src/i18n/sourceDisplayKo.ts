@@ -18,4 +18,11 @@ export const sourceDisplayKo = {
   'sourceDisplay.measurementStart': '측정 시작 시각',
   'sourceDisplay.measurementAt': '측정 시각',
   'sourceDisplay.occurredAt': '발생 시각',
+  'sourceDisplay.supporting': '사용한 출처',
+  'sourceDisplay.contrary': '반대 근거',
+  'sourceDisplay.openFailed': '출처를 열 수 없어요.',
+  'sourceDisplay.selectSaved': '저장된 근거 선택',
+  'sourceDisplay.previousSource': '이전 출처로 돌아가기',
+  'sourceDisplay.inspect': '근거 살펴보기',
+  'sourceDisplay.citedRecords': '답변에 인용된 저장 기록',
 } as const;
