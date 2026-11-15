@@ -9,6 +9,7 @@ import {
   incomparableDailyReportIndexes,
   dailyReportFacts,
 } from './dailyReportFacts';
+import { dailyReportGuidance } from './dailyReportGuidance';
 import { dailyReportSynthesis } from './dailyReportSynthesis';
 import { selectDailyReportFacts } from './dailyReportModel';
 import { stableJson } from './evidenceUtils';
@@ -59,7 +60,6 @@ export async function generateDailyReport(
     return fail('provider_unavailable');
   }
   providerDiagnostic('daily_report', 'selection', 'completed');
-
   type Snapshot = Awaited<
     ReturnType<NonNullable<typeof input.data.readDailyReportSnapshot>>
   >;
@@ -131,7 +131,6 @@ export async function generateDailyReport(
   }
   providerDiagnostic('daily_report', 'data', 'completed');
   input.deadlineContext.stage = 'workflow';
-
   const context = createDailyReportContext(calendar.context, sourceSnapshot, {
     providerId: selected.provider.id,
     modelId: selected.modelId,
@@ -170,7 +169,6 @@ export async function generateDailyReport(
   });
   input.deadlineContext.stage = 'workflow';
   if (selection.status === 'failed') return fail(selection.code);
-
   const report = {
     schemaVersion: 1 as const,
     identity: context.identity,
@@ -181,11 +179,14 @@ export async function generateDailyReport(
         text: facts[index]!.text,
         sourceReferences: facts[index]!.sourceReferences,
       })),
-    supportedContext: dailyReportSynthesis(
-      snapshot.values,
-      sourceSnapshot.records,
-      selection.indexes,
-    ),
+    supportedContext: [
+      ...dailyReportGuidance(snapshot.values, sourceSnapshot.records),
+      ...dailyReportSynthesis(
+        snapshot.values,
+        sourceSnapshot.records,
+        selection.indexes,
+      ),
+    ],
     coverage: context.sourceSnapshot.coverage,
     followUpQuestions: [],
   };

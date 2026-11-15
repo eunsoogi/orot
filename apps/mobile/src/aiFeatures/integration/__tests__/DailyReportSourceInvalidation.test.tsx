@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { createDailyReportIdentity } from '@orot/domain';
 import { notifyLocalSourceDeleted } from '../../../storage/localDataClearEvents';
 import { DailyReportRoute } from '../DailyReportRoute';
@@ -66,6 +66,7 @@ test('hides a saved report immediately after a cited source is deleted', async (
       onChat={jest.fn()}
     />,
   );
+  await fireEvent.press(await screen.findByText('근거 기록 보기'));
   await screen.findByText('합성 기록');
   expect(screen.getByText('불러온 원본 기록 1건')).toBeTruthy();
   await act(async () => {

@@ -22,7 +22,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-test('shows the first page before requesting more current-period records', async () => {
+test('shows a bounded preview without requesting older records', async () => {
   const now = Date.now();
   const recentHeartRates = Array.from({ length: 50 }, (_, index) => {
     const timestamp = new Date(now - (index + 1) * 60_000).toISOString();
@@ -91,21 +91,16 @@ test('shows the first page before requesting more current-period records', async
   );
 
   // A dense current month must not delay first paint until every page arrives.
-  expect(loader).toHaveBeenCalledTimes(6);
+  expect(loader).toHaveBeenCalledTimes(7);
   expect(screen.getByTestId('health-record-chart-blood_pressure')).toBeTruthy();
   expect(screen.queryByText('아직 불러오지 않은 기록이 있어요.')).toBeNull();
   await fireEvent.press(screen.getByTestId('health-record-filter-heart_rate'));
-  await fireEvent.press(screen.getByTestId('health-records-load-older'));
-  expect(
-    await screen.findByTestId('health-record-chart-heart_rate'),
-  ).toBeTruthy();
-  expect(loader).toHaveBeenCalledTimes(7);
+  expect(screen.queryByTestId('health-records-load-older')).toBeNull();
+  expect(screen.getByTestId('health-record-chart-heart_rate')).toBeTruthy();
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
-  expect(loader).toHaveBeenCalledTimes(8);
-  expect(loader).toHaveBeenLastCalledWith(
-    olderCursor,
-    expect.objectContaining({ category: 'heart_rate' }),
-  );
+  await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
+  expect(loader).toHaveBeenCalledTimes(7);
+  expect(loader.mock.calls.every(([cursor]) => cursor === null)).toBe(true);
 });
 
 test('a pending library read registers safe leave state', async () => {
@@ -167,7 +162,7 @@ test('late loader responses cannot overwrite a new library request', async () =>
   expect(screen.queryByTestId('health-records-loading')).toBeNull();
 });
 
-test('coalesces repeated end events while the next page is pending', async () => {
+test('ignores repeated end events while initial category reads are pending', async () => {
   const next = deferred();
   const cursor = { id: 'cursor', effectiveAt: '2026-10-01T00:00:00Z' };
   const loader = jest
@@ -185,9 +180,6 @@ test('coalesces repeated end events while the next page is pending', async () =>
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
   await fireEvent(screen.getByTestId('health-records-scroll'), 'endReached');
   expect(loader).toHaveBeenCalledTimes(7);
-  expect(loader).toHaveBeenLastCalledWith(
-    cursor,
-    expect.objectContaining({ category: 'blood_pressure' }),
-  );
+  expect(loader.mock.calls.every(([after]) => after === null)).toBe(true);
   await act(async () => next.resolve({ records: [], nextCursor: null }));
 });

@@ -139,7 +139,7 @@ test('import return refreshes stored results without remounting the library or c
   expect(
     await screen.findByTestId('health-record-chart-heart_rate'),
   ).toBeTruthy();
-  expect(loadObservations).toHaveBeenCalledTimes(12);
+  expect(loadObservations).toHaveBeenCalledTimes(14);
   await act(async () => onFocus());
-  expect(loadObservations).toHaveBeenCalledTimes(12);
+  expect(loadObservations).toHaveBeenCalledTimes(14);
 });
