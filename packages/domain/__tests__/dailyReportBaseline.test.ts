@@ -64,3 +64,23 @@ test('behavior history roles are limited to their original source kind and prior
     ),
   ).toBe(false);
 });
+
+test('ongoing symptoms retain older onset but cannot borrow another source or a resolved interval', () => {
+  const record = {
+    source: 'symptom_entry',
+    contextRole: 'ongoing_symptom',
+    occurrence: { startInclusive: '2026-01-01T12:00:00Z' },
+  };
+  expect(validDailyReportHistoricalContext(record, '2026-11-10', 'UTC')).toBe(true);
+  for (const change of [
+    { source: 'health_observation' },
+    { supportingRecordFor: ['x'] },
+    { occurrence: { startInclusive: '2026-11-10T00:00:00Z' } },
+    {
+      occurrence: { startInclusive: '2026-01-01T12:00:00Z', endExclusive: '2026-11-09T12:00:00Z' },
+    },
+  ])
+    expect(validDailyReportHistoricalContext({ ...record, ...change }, '2026-11-10', 'UTC')).toBe(
+      false,
+    );
+});

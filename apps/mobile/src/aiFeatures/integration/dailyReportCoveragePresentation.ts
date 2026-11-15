@@ -138,6 +138,8 @@ export function limitationLabel(code: string) {
       return t('dailyReport.systemCalendar.unavailable');
     case 'partial_day':
       return t('dailyReport.partial');
+    case 'ongoing_symptom_context':
+      return t('dailyReport.analysis.ongoingCoverage');
     case 'bounded_source_sampling':
       return t('dailyReport.analysis.sampling');
     case 'snapshot_incomplete':

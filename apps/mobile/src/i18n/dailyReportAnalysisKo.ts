@@ -1,5 +1,11 @@
 /** Section titles describe evidence roles, never an overall normal/abnormal verdict. */
 export const dailyReportAnalysisKo = {
+  'dailyReport.analysis.ongoingCoverage':
+    '증상 자료에는 이전에 시작되어 지속 중으로 기록된 항목도 포함돼요. 오늘 새로 발생한 증상 수나 현재 상태 확인을 뜻하지 않아요.',
+
+  'dailyReport.analysis.activeSymptoms':
+    '확인한 기록에는 {symptoms} 증상이 지속 중 상태로 남아 있어요. 이전에 시작된 기록도 포함하며 오늘 새로 발생했다는 뜻은 아니에요.',
+
   'dailyReport.analysis.sampling':
     '자료 종류별 용량 한도 안에서 최근 기록과 지표·출처별 표본을 골랐고, 매우 높은 혈압은 먼저 포함했어요. 빠진 기록이 있으며 하루 전체의 분포나 정상 여부를 뜻하지 않아요.',
 
