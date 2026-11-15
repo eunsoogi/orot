@@ -1,3 +1,4 @@
+import { restoreColdConversationActions } from './restoreColdConversationActions';
 import { readColdPhotoBinding } from './coldPhotoBinding';
 import { restoreColdPhotoExecution } from './restoreColdPhotoExecution';
 import { readColdConversationSearch } from './coldConversationSearch';
@@ -33,7 +34,6 @@ import {
   COLD_RAG_FACTORY_VERSION,
   captureColdRagConversationState,
 } from './coldRagConversationState';
-
 /** Reconstruct only the app-owned RAG task with fresh adapters. Never call send or initial retrieval. */
 export async function restoreColdRagConversationFactory(input: {
   descriptor: ConversationColdResumeDescriptor;
@@ -176,6 +176,13 @@ export async function restoreColdRagConversationFactory(input: {
           },
         }
       : {}),
+    actions: await restoreColdConversationActions({
+      descriptor: d,
+      observer: input.observer,
+      data,
+      registry,
+      signal,
+    }),
     request: original.request,
     context: original.context as JsonObject,
     initialEvidence: original.initialEvidence as EvidenceBatch,

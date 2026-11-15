@@ -69,6 +69,22 @@ export function withLocalDeletionAwareRevalidation(
         const deletedIds =
           await repository.listDeletedSourceReferenceIds(uniqueIds);
         if (signal.aborted || deletedIds.length > 0) return false;
+        // Manual history is a first-class local record, not an imported source_record.
+        // Require exact identity and a live, non-superseded entry; the caller still
+        // validates the saved revision below, so edits/deletion never restore stale prose.
+        const locator = reference.locator as
+          Record<string, unknown> | undefined;
+        if (locator?.kind === 'manual_history') {
+          if (
+            typeof locator.entryId !== 'string' ||
+            locator.entryId !== reference.sourceId ||
+            locator.entryId !== reference.evidenceId ||
+            !(await repository.manualHistory.getEvidence(locator.entryId)) ||
+            signal.aborted
+          )
+            return false;
+          continue;
+        }
         const sourceId = uniqueIds[0]!;
         const source = await repository.get('source_record', sourceId);
         if (signal.aborted) return false;
