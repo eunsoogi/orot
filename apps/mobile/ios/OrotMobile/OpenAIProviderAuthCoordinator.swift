@@ -127,8 +127,8 @@ private enum OpenAIProviderAuthError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .alreadyInProgress: "ChatGPT 로그인 창이 이미 열려 있어요."
-        case .callbackMismatch: "ChatGPT 로그인 복귀 검사를 완료하지 못했어요."
+        case .alreadyInProgress: OpenAIProviderAuthCopy.text("alreadyInProgress")
+        case .callbackMismatch: OpenAIProviderAuthCopy.text("callbackMismatch")
         }
     }
 }
@@ -213,7 +213,7 @@ public extension OpenAIProviderModule {
 
     private static func rejectAccountList(_ reject: RCTPromiseRejectBlock, error: Error) {
         let message = (error as? ChatGPTOAuthError)?.errorDescription
-            ?? "ChatGPT 로그인 상태를 확인하지 못했어요."
+            ?? OpenAIProviderAuthCopy.text("statusUnavailable")
         let safeError = NSError(
             domain: "OpenAIProviderAuth",
             code: 1,
@@ -227,10 +227,10 @@ public extension OpenAIProviderModule {
         let message: String
         if error is CancellationError {
             code = "CHATGPT_AUTH_CANCELLED"
-            message = "ChatGPT 로그인을 취소했어요."
+            message = OpenAIProviderAuthCopy.text("cancelled")
         } else if let oauthError = error as? ChatGPTOAuthError {
             code = "CHATGPT_AUTH_FAILED"
-            message = oauthError.errorDescription ?? "ChatGPT 로그인을 완료하지 못했어요."
+            message = oauthError.errorDescription ?? OpenAIProviderAuthCopy.text("failed")
         } else if let safeError = error as? LocalizedError,
                   let description = safeError.errorDescription
         {
@@ -238,7 +238,7 @@ public extension OpenAIProviderModule {
             message = description
         } else {
             code = "CHATGPT_AUTH_FAILED"
-            message = "ChatGPT 로그인을 완료하지 못했어요."
+            message = OpenAIProviderAuthCopy.text("failed")
         }
         let bridgedError = NSError(
             domain: "OpenAIProviderAuth",

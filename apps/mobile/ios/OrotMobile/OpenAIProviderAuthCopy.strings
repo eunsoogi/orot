@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>logoutInProgress</key>
+	<string>ChatGPT 계정 로그아웃이 진행 중입니다.</string>
+	<key>logoutInterrupted</key>
+	<string>로그아웃을 시작해 진행 중인 ChatGPT 응답을 중단했어요.</string>
+	<key>browserUnavailable</key>
+	<string>시스템 인증 창에서 ChatGPT 로그인을 완료하지 못했어요.</string>
+	<key>presentationUnavailable</key>
+	<string>ChatGPT 로그인 창을 표시할 앱 화면을 찾지 못했어요.</string>
+	<key>invalidReturn</key>
+	<string>ChatGPT 로그인 복귀 응답을 확인하지 못했어요.</string>
+	<key>alreadyInProgress</key>
+	<string>ChatGPT 로그인 창이 이미 열려 있어요.</string>
+	<key>callbackMismatch</key>
+	<string>ChatGPT 로그인 복귀 검사를 완료하지 못했어요.</string>
+	<key>statusUnavailable</key>
+	<string>ChatGPT 로그인 상태를 확인하지 못했어요.</string>
+	<key>cancelled</key>
+	<string>ChatGPT 로그인을 취소했어요.</string>
+	<key>failed</key>
+	<string>ChatGPT 로그인을 완료하지 못했어요.</string>
+</dict>
+</plist>
