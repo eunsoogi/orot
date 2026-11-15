@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { SelectedModelControl } from '../layout/SelectedModelControl';
@@ -89,7 +90,7 @@ export function MedicalAppointmentReviewView(props: Props) {
               name={props.provider?.displayName ?? copy.chooseProvider}
               local={props.provider?.privacyBoundary === 'on-device'}
               onPress={props.onOpenProviderSelection}
-              label="진료 일정 분류에 사용할 AI 선택"
+              label={t('medicalAppointments.chooseClassifier')}
               testID="medical-appointment-select-provider"
             />
             <Text style={styles.secondary}>

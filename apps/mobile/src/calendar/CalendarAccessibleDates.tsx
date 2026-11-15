@@ -35,7 +35,10 @@ export function CalendarAccessibleDates({
         const today = day.dateKey === todayDate;
         const nextVisit = events.some(item => item.isNextVisit);
         // Parse civil dates in UTC so weekday labels cannot drift across local zones.
-        const label = `${day.dayNumber}일 ${weekday.format(new Date(`${day.dateKey}T12:00:00Z`))}`;
+        const label = t('calendar.accessibleDay', {
+          day: day.dayNumber,
+          weekday: weekday.format(new Date(`${day.dateKey}T12:00:00Z`)),
+        });
         return (
           <Pressable
             key={day.dateKey}

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { ReactNode } from 'react';
 import type { DiseaseHypothesisAnalysis } from './types';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
@@ -112,8 +113,8 @@ export function DiseaseHypothesesScreen({
       ? [
           {
             id: 'summary-history',
-            label: '저장된 요약 보기',
-            accessibilityLabel: '저장된 요약 보기',
+            label: t('diseaseHypotheses.savedSummary'),
+            accessibilityLabel: t('diseaseHypotheses.savedSummary'),
             testID: 'symptom-summary-history-open',
             systemImageName: 'clock.arrow.circlepath',
             disabled: busy,

@@ -38,4 +38,5 @@ export const diseaseHypothesesKo = {
   'diseaseHypotheses.source': '원문 근거 열기 · {sourceId}',
   'diseaseHypotheses.retry': '다시 시도하기',
   'diseaseHypotheses.noAdditionalInfo': '확인된 추가 정보가 없어요.',
+  'diseaseHypotheses.savedSummary': '저장된 요약 보기',
 } as const;
