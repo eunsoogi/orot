@@ -128,15 +128,15 @@ export function EvidenceSourceDetailScreen({
       )}
       {sourceStack.length ? (
         <AppButton
-          title="이전 출처로 돌아가기"
+          title={t('sourceDisplay.previousSource')}
           onPress={() => setSourceStack(current => current.slice(0, -1))}
           testID="ai-feature-source-previous"
         />
       ) : null}
       <Text accessibilityRole="header" style={styles.heading}>
-        근거 살펴보기
+        {t('sourceDisplay.inspect')}
       </Text>
-      <Text style={styles.subtitle}>답변에 인용된 저장 기록</Text>
+      <Text style={styles.subtitle}>{t('sourceDisplay.citedRecords')}</Text>
       {state.status === 'loading' ? (
         <Text testID="ai-feature-source-loading">
           {t('aiFeatures.source.loading')}

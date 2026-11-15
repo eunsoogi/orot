@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { NavigationModal } from '../navigation/NavigationModal';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { nextVisitQuestionsCopy as copy } from './copy';
@@ -118,7 +119,7 @@ function sourceLabel(kind: NextVisitEvidenceReference['sourceKind']): string {
     case 'reviewed_memory':
       return copy.evidence.reviewedMemory;
     case 'generated_artifact':
-      return '이전 AI 결과';
+      return t('ragConversation.sourceKind.previousAiOutput');
     case 'external_medical':
       return copy.evidence.externalMedical;
   }

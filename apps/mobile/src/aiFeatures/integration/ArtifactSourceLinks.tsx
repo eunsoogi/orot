@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { Alert, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
@@ -17,21 +18,21 @@ export function ArtifactSourceLinks({
       <Text>{section.title}</Text>
       {section.supportingEvidence.length ? (
         <>
-          <Text>사용한 출처</Text>
+          <Text>{t('sourceDisplay.supporting')}</Text>
           <ConversationSources
             references={section.supportingEvidence}
             onOpenSource={onOpen}
-            onLinkError={() => Alert.alert('출처를 열 수 없어요.')}
+            onLinkError={() => Alert.alert(t('sourceDisplay.openFailed'))}
           />
         </>
       ) : null}
       {section.contraryEvidence.length ? (
         <>
-          <Text>반대 근거</Text>
+          <Text>{t('sourceDisplay.contrary')}</Text>
           <ConversationSources
             references={section.contraryEvidence}
             onOpenSource={onOpen}
-            onLinkError={() => Alert.alert('출처를 열 수 없어요.')}
+            onLinkError={() => Alert.alert(t('sourceDisplay.openFailed'))}
           />
         </>
       ) : null}
@@ -51,7 +52,7 @@ export function ConversationArtifactSourceLinks({
     <ConversationSources
       references={sources}
       onOpenSource={onOpen}
-      onLinkError={() => Alert.alert('출처를 열 수 없어요.')}
+      onLinkError={() => Alert.alert(t('sourceDisplay.openFailed'))}
     />
   );
 }
