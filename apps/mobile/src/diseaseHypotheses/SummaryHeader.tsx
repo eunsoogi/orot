@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { GlassIconButton } from '../layout/GlassIconButton';
@@ -20,7 +21,7 @@ export function SummaryHeader({
       {onOpenHistory ? (
         <GlassIconButton
           accessibilityRole="button"
-          accessibilityLabel="저장된 요약 보기"
+          accessibilityLabel={t('summaryHistory.open')}
           accessibilityState={{ disabled }}
           disabled={disabled}
           onPress={onOpenHistory}

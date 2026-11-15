@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { ScrollView, StyleSheet } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppText } from '../layout/AppText';
@@ -27,7 +28,7 @@ export function SummaryHistoryScreen({
           contentContainerStyle={[styles.content, inset]}
         >
           <AppText accessibilityRole="header" style={styles.heading}>
-            저장된 요약
+            {t('summaryHistory.title')}
           </AppText>
           <SavedSummaryHistory
             history={history}

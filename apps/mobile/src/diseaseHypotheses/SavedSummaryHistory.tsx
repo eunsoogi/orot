@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
@@ -96,8 +97,8 @@ export function SavedSummaryHistory({
       ? [
           {
             id: 'retry-summary-save',
-            label: '다시 저장',
-            accessibilityLabel: '다시 저장',
+            label: t('summaryHistory.retrySave'),
+            accessibilityLabel: t('summaryHistory.retrySave'),
             testID: 'symptom-summary-save-retry',
             systemImageName: 'arrow.clockwise',
             disabled: disabled || busy,
@@ -110,8 +111,8 @@ export function SavedSummaryHistory({
       ? [
           {
             id: 'reload-summary-history',
-            label: '다시 불러오기',
-            accessibilityLabel: '다시 불러오기',
+            label: t('summaryHistory.reload'),
+            accessibilityLabel: t('summaryHistory.reload'),
             testID: 'symptom-summary-reload',
             systemImageName: 'arrow.clockwise',
             disabled: disabled || busy,
@@ -126,13 +127,15 @@ export function SavedSummaryHistory({
     <View style={styles.container} testID="symptom-summary-history">
       {current?.status === 'saved' ? (
         <AppText testID="symptom-summary-saved">
-          저장됨 · {new Date(current.createdAt).toLocaleString('ko-KR')} ·{' '}
-          {current.modelName}
+          {t('summaryHistory.saved', {
+            date: new Date(current.createdAt).toLocaleString('ko-KR'),
+            model: current.modelName,
+          })}
         </AppText>
       ) : null}
       {current?.status === 'saved' && current.sourceChanged ? (
         <AppText accessibilityRole="alert">
-          생성 당시의 요약이에요. 일부 원본이 바뀌어 근거를 다시 확인해야 해요.
+          {t('summaryHistory.sourceChanged')}
         </AppText>
       ) : null}
       {current?.status === 'saved'
@@ -143,12 +146,12 @@ export function SavedSummaryHistory({
               testID={`summary-content-review-${issue}`}
             >
               {issue === 'prescription'
-                ? '이 요약의 처방 여부 표현은 다시 확인이 필요해요. 약의 일정 등록만으로 처방 여부를 알 수는 없어요.'
+                ? t('summaryHistory.reviewPrescription')
                 : issue === 'sleep_count'
-                  ? '이 요약의 수면 횟수 표현은 다시 확인이 필요해요. 수면 단계 값은 횟수가 아니에요.'
+                  ? t('summaryHistory.reviewSleepCount')
                   : issue === 'sleep_duration'
-                    ? '이 요약의 수면 구간 길이는 원문과 맞지 않을 수 있어요. 원문의 시작·종료 시각을 확인해 주세요.'
-                    : '이 요약의 걸음 수 단위는 다시 확인이 필요해요. 걸음 수를 횟수로 읽지 않도록 원문을 확인해 주세요.'}
+                    ? t('summaryHistory.reviewSleepDuration')
+                    : t('summaryHistory.reviewSteps')}
             </AppText>
           ))
         : null}
@@ -157,12 +160,12 @@ export function SavedSummaryHistory({
         <>
           <AppText accessibilityRole="alert">
             {current.status === 'source_unavailable'
-              ? '근거를 다시 확인하지 못해 요약을 저장하지 못했어요.'
-              : '요약을 기기에 저장하지 못했어요. 다시 저장해 주세요.'}
+              ? t('summaryHistory.sourceUnavailable')
+              : t('summaryHistory.saveFailed')}
           </AppText>
           {!hasDock ? (
             <AppButton
-              title="다시 저장"
+              title={t('summaryHistory.retrySave')}
               variant="secondary"
               disabled={disabled || busy}
               onPress={retrySave}
@@ -173,11 +176,11 @@ export function SavedSummaryHistory({
       {error ? (
         <>
           <AppText accessibilityRole="alert">
-            저장된 요약을 불러오지 못했어요.
+            {t('summaryHistory.loadFailed')}
           </AppText>
           {!hasDock ? (
             <AppButton
-              title="다시 불러오기"
+              title={t('summaryHistory.reload')}
               variant="secondary"
               disabled={disabled || busy}
               onPress={() => setReload(value => value + 1)}
@@ -187,9 +190,9 @@ export function SavedSummaryHistory({
       ) : null}
       {expanded ? (
         <>
-          {loading ? <AppText>저장된 요약을 불러오고 있어요.</AppText> : null}
+          {loading ? <AppText>{t('summaryHistory.loading')}</AppText> : null}
           {rows.length === 0 && !error && !loading ? (
-            <AppText>저장된 요약이 없어요.</AppText>
+            <AppText>{t('summaryHistory.empty')}</AppText>
           ) : null}
           {rows.map(row => (
             <View key={row.id}>
@@ -203,16 +206,13 @@ export function SavedSummaryHistory({
                 }}
               />
               {row.inputLineage === 'unknown' ? (
-                <AppText>
-                  원본은 보관되어 있어요. 생성에 사용된 자료를 확인할 수 없어
-                  내용을 표시하지 않아요.
-                </AppText>
+                <AppText>{t('summaryHistory.unknownLineage')}</AppText>
               ) : null}
             </View>
           ))}
           {hasMore ? (
             <AppButton
-              title="이전 요약 더 보기"
+              title={t('summaryHistory.more')}
               variant="secondary"
               disabled={busy || disabled}
               onPress={async () => {
