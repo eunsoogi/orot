@@ -1,0 +1,21 @@
+import type { createConversationTurnRetention } from './conversationTurnRetention';
+import type { ConversationInterruptionReason } from './conversationExecutionLease';
+export type Turn = ReturnType<typeof createConversationTurnRetention>;
+export type StopStatus = 'cancelled' | 'interrupted';
+export type ConversationLifetimeEntry = {
+  id: number;
+  executionId: string;
+  leaseAttempt: number;
+  leasePrefix?: string;
+  waitingForDecision?: boolean;
+  resumableApproval?: boolean;
+  requestPause?: () => void;
+  controller: AbortController;
+  turn: Turn;
+  status?: StopStatus;
+  interruptionReason?: ConversationInterruptionReason;
+  start?: Promise<void>;
+  fence?: Promise<void>;
+  release?: () => void;
+  diagnose: import('./conversationExecutionDiagnostics').ExecutionDiagnostic;
+};

@@ -53,6 +53,7 @@ export async function waitForWorkflowContinue(
             },
             () => requiresConversationDecisionAbort(entry, input.execution),
             () => entry.requestPause?.(),
+            entry.diagnose,
           );
           if (
             entries.get(entry.id) !== entry ||

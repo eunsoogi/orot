@@ -38,3 +38,19 @@ test('separates request ownership without including request identifiers or paylo
     'sequence',
   ]);
 });
+
+test('rejects unrecognized content at the runtime diagnostic boundary', () => {
+  const record = createExecutionDiagnostics(
+    true,
+    () => 'private phase' as never,
+  );
+  const before = conversationExecutionDiagnostics().length;
+  record('private event' as never);
+  record('outcome', undefined, 'private provider text' as never);
+  expect(conversationExecutionDiagnostics()).toHaveLength(before);
+  record('interrupt', 'private reason' as never);
+  const last = conversationExecutionDiagnostics().at(-1)!;
+  expect(last.phase).toBe('unknown');
+  expect(last.reason).toBeUndefined();
+  expect(JSON.stringify(last)).not.toContain('private');
+});
