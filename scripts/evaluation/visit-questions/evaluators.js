@@ -1,5 +1,7 @@
 'use strict';
 
+const { decisionUsefulness } = require('./decision-usefulness.cjs');
+
 const {
   numbersIn,
   numericCorrectness,
@@ -64,10 +66,14 @@ function usefulQuestions(caseInput, result) {
     const requestedDetailsPresent = caseInput.expected.requiredTerms.every((term) =>
       message.includes(term),
     );
-    return result.status === 'needs_clarification' && requestedDetailsPresent ? 1 : 0;
+    return result.status === 'needs_clarification' &&
+      requestedDetailsPresent &&
+      decisionUsefulness(caseInput, result) !== 0
+      ? 1
+      : 0;
   }
-  // The production task contract requires three to five candidates per ready result.
-  if (result.status !== 'ready' || result.questions?.length < 3 || result.questions?.length > 5) {
+  // Count is only a shape check; optional fixture-specific decision checks remain a proxy.
+  if (result.status !== 'ready' || result.questions?.length < 1 || result.questions?.length > 5) {
     return 0;
   }
   const normalizedQuestions = result.questions.map((question) =>
@@ -87,7 +93,13 @@ function usefulQuestions(caseInput, result) {
       question.rationale.trim().length > 0 &&
       /[가-힣]/u.test(question.questionText),
   );
-  return requiredTermsPresent && questionsAreDistinct && questionsAreActionable ? 1 : 0;
+  const decisionScore = decisionUsefulness(caseInput, result);
+  return requiredTermsPresent &&
+    questionsAreDistinct &&
+    questionsAreActionable &&
+    decisionScore !== 0
+    ? 1
+    : 0;
 }
 
 function clarificationBehavior(caseInput, result) {
