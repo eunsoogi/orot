@@ -240,3 +240,17 @@ test('denied public-query permission preserves the local answer without switchin
   expect(run.literature.search).not.toHaveBeenCalled();
   expect(run.generate).toHaveBeenCalledTimes(2);
 });
+
+test('a failed public lookup does not alone interrupt the local conversation turn', async () => {
+  const run = workflowFixture();
+  run.search.mockRejectedValueOnce(
+    new Error('Synthetic public lookup failure'),
+  );
+  const result = await run.services.sendRagMessage(
+    'Compare my record with public sources.',
+    [],
+  );
+  expect(result.status).toBe('answer');
+  expect(run.search).toHaveBeenCalledTimes(1);
+  expect(run.generate).toHaveBeenCalledTimes(2);
+});
