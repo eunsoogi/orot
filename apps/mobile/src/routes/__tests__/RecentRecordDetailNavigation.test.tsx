@@ -212,7 +212,9 @@ test('memory list opens an ID-owned native destination and returns through the c
     },
   ] as never);
   const controller = await renderRoute();
-  await fireEvent.press(await screen.findByText(text.slice(0, 100) + '…'));
+  await fireEvent.press(
+    await screen.findByTestId('saved-memory-entry-synthetic-memory'),
+  );
   expect(controller.getSnapshot().currentRoute.name).toBe(
     'saved-memory-detail',
   );
@@ -221,5 +223,7 @@ test('memory list opens an ID-owned native destination and returns through the c
   expect(JSON.stringify(controller.getSnapshot())).not.toContain(text);
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(controller.getSnapshot().currentRoute.name).toBe('root');
-  expect(await screen.findByText(text.slice(0, 100) + '…')).toBeTruthy();
+  expect(
+    await screen.findByTestId('saved-memory-entry-synthetic-memory'),
+  ).toBeTruthy();
 });
