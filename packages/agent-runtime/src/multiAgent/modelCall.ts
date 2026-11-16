@@ -1,3 +1,4 @@
+import { observeModelStage, type ModelStageObserver } from './modelStageDiagnostics';
 import { invokeProductionRequest } from '../langchain/production';
 import { NativeChatModelError } from '../langchain/chatModel';
 import type {
@@ -119,6 +120,7 @@ export async function callModel(
   signal: AbortSignal,
   telemetry?: TelemetrySink,
   onTextEvent?: (event: LanguageModelTextEvent) => void,
+  onModelStage?: ModelStageObserver,
 ): Promise<ModelCallOutcome> {
   const authorization = await authorizeModelCall(request, execution, consent, signal);
   if (authorization.status !== 'authorized') return authorization;
@@ -130,6 +132,7 @@ export async function callModel(
     signal,
     telemetry,
     onTextEvent,
+    onModelStage,
   );
 }
 
@@ -142,6 +145,7 @@ export async function dispatchAuthorizedModelCall(
   signal: AbortSignal,
   telemetry?: TelemetrySink,
   onTextEvent?: (event: LanguageModelTextEvent) => void,
+  onModelStage?: ModelStageObserver,
 ): Promise<ModelCallOutcome> {
   // The grant is invocation-local, single use, and bound to the unchanged exact payload.
   if (!authorization.consume(request, execution, signal)) {
@@ -149,28 +153,34 @@ export async function dispatchAuthorizedModelCall(
       ? { status: 'cancelled', providerStop: 'not_started' }
       : { status: 'consent_required' };
   }
-  const guided = request.responseFormat !== undefined || Boolean(request.tools?.length);
-  const canStreamGuidedResponse =
-    provider.capabilities.structuredOutputStreaming !== false &&
-    (provider.capabilities.structuredOutputStreaming !== true || onTextEvent !== undefined);
-  if (provider.capabilities.streaming && provider.stream && (!guided || canStreamGuidedResponse)) {
+  return observeModelStage(onModelStage, 'provider_wait', async () => {
+    const guided = request.responseFormat !== undefined || Boolean(request.tools?.length);
+    const canStreamGuidedResponse =
+      provider.capabilities.structuredOutputStreaming !== false &&
+      (provider.capabilities.structuredOutputStreaming !== true || onTextEvent !== undefined);
+    if (
+      provider.capabilities.streaming &&
+      provider.stream &&
+      (!guided || canStreamGuidedResponse)
+    ) {
+      const startedAt = Date.now();
+      let result: ProviderCallOutcome;
+      try {
+        result = await collectStream(provider, request, signal, onTextEvent);
+      } catch {
+        result = { status: 'unavailable', errorCode: 'internal_error' };
+      }
+      recordTelemetry(telemetry, 'language-model.stream', startedAt, result);
+      return result;
+    }
     const startedAt = Date.now();
     let result: ProviderCallOutcome;
     try {
-      result = await collectStream(provider, request, signal, onTextEvent);
+      result = await observeAdapter(invokeProductionRequest(provider, request, signal), signal);
     } catch {
       result = { status: 'unavailable', errorCode: 'internal_error' };
     }
-    recordTelemetry(telemetry, 'language-model.stream', startedAt, result);
+    recordTelemetry(telemetry, 'language-model.generate', startedAt, result);
     return result;
-  }
-  const startedAt = Date.now();
-  let result: ProviderCallOutcome;
-  try {
-    result = await observeAdapter(invokeProductionRequest(provider, request, signal), signal);
-  } catch {
-    result = { status: 'unavailable', errorCode: 'internal_error' };
-  }
-  recordTelemetry(telemetry, 'language-model.generate', startedAt, result);
-  return result;
+  });
 }

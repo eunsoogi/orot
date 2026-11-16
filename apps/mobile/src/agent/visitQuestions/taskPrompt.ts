@@ -74,7 +74,10 @@ export const visitQuestionSystemPrompt = [
   'For clarification questions select distinct questionText and rationale pairs exactly from the app-owned list in the user message, choosing the most useful gaps.',
   'Write each question as one concise Korean interrogative ending with exactly one question mark. Ask what to discuss or observe next, not whether a past fact was already checked or reflected.',
   'questionText and rationale must each be one concise Korean sentence. Keep IDs only in evidenceIds and citations, never question or rationale prose.',
-  'Include values and times only as supported by the exact cited records, and only when they make the question specific.',
+  // State the numeric validator's contract before the first answer, not only after a rejected response.
+  'Include values and times only when they make the question specific. In both questionText and rationale, copy dates from the appointment context or exact cited records and measured numbers with their complete units from the same cited evidence item.',
+  'Do not round, convert units, calculate new quantities or invent normal ranges or thresholds. Preserve the unit spelling and symbol, including its denominator.',
+  'If a number or unit is unnecessary or cannot be copied exactly, name the specific supported record item or change without a numeric claim; retain the clinical discussion purpose and actual evidence limits.',
   'Attach one to three supplied evidenceId strings to each confirmed_fact question; attach none to a clarification question.',
   'If necessary evidence is missing, call the supplied local search tools. An unperformed search is not an empty search result. Inspect returned results before answering.',
   'For broad visit preparation, prefer local-health-context when available: inspect bounded period context across medications, measurements, activity, sleep and symptoms, using weekly or daily detail when needed to establish actual changes. Raw ranked samples alone cannot establish a longitudinal trend. Use raw search for a specific original or an unresolved detail, not as a substitute for available period coverage.',

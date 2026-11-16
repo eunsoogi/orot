@@ -6,7 +6,10 @@ export type Stage =
   | 'workflow'
   | 'provider_error'
   | 'validation'
-  | 'persistence';
+  | 'persistence'
+  | 'consent_wait'
+  | 'provider_wait'
+  | 'evidence_check';
 export type Outcome =
   | 'started'
   | 'completed'
