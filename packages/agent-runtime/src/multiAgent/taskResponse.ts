@@ -160,7 +160,7 @@ async function consumeInitialOutcome<TResult>(
   };
 }
 
-/** Maps provider failures without exposing request or evidence content. */
+/** Maps local budget and provider failures without exposing request or evidence content. */
 export function finishModelFailure<TResult>(
   context: RuntimeContext<TResult>,
   outcome: ModelCallOutcome,
@@ -172,6 +172,9 @@ export function finishModelFailure<TResult>(
       'User approval is required before this payload can be processed.',
       'consent_required',
     );
+  } else if (outcome.status === 'budget_exceeded') {
+    // Keep the local payload ceiling distinct from provider-side invalid requests and settings errors.
+    stop(context, 'The model request exceeded the payload limit.', 'budget_exceeded');
   } else if (outcome.status === 'unavailable') {
     context.outcome = {
       status: 'unavailable',

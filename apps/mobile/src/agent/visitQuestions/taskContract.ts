@@ -108,6 +108,8 @@ export function createVisitQuestionTaskResponder() {
   return {
     taskType: 'visit-question-recommendation',
     taskVersion: '1',
+    // Full current evidence already appears in createMessages; avoid replaying it in tool results.
+    nativeToolResultMode: 'evidence_references' as const,
     allowRankedLocalEvidence: true,
     allowIncompleteEvidenceResearch: true,
     // Only this task opts in; its validator still binds every cited fact to the current batch.

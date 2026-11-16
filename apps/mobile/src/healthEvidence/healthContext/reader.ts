@@ -124,12 +124,17 @@ export function createHealthContextReader(
     trace?.('preparation', 'completed');
     if (signal?.aborted) throw new Error('Health context was cancelled.');
     const key = JSON.stringify([window, [...new Set(topics)].sort()]);
-    const current = await readHealthContextGeneration(database);
+    const current = await traceHealthContext(trace, 'generation', () =>
+      readHealthContextGeneration(database),
+    );
     const cached = cache.get(key);
     if (cached?.mutationGeneration === current.mutationGeneration)
       return cached;
     let report: HealthContextReport | undefined;
+    // The native adapter queues transactions; distinguish that wait from the report queries.
+    trace?.('transaction_wait', 'started');
     await database.transaction(async tx => {
+      trace?.('transaction_wait', 'completed');
       report = await readHealthContextReport(tx, window, topics, signal, trace);
     });
     if (!report) throw new Error('Health context could not be read.');

@@ -24,9 +24,14 @@ export type ModelCallOutcome =
   | { readonly status: 'response'; readonly response: LanguageModelResponse }
   | { readonly status: 'cancelled'; readonly providerStop: ProviderStopObservation }
   | { readonly status: 'consent_required' }
+  | { readonly status: 'budget_exceeded' }
   | { readonly status: 'unavailable'; readonly errorCode: ProviderErrorCode };
 
-type ProviderCallOutcome = Exclude<ModelCallOutcome, { readonly status: 'consent_required' }>;
+// Consent and payload-budget failures happen before the provider is invoked.
+type ProviderCallOutcome = Exclude<
+  ModelCallOutcome,
+  { readonly status: 'consent_required' | 'budget_exceeded' }
+>;
 type LanguageModelTextEvent = Extract<
   LanguageModelStreamEvent,
   { readonly type: 'text_delta' | 'text_snapshot' }

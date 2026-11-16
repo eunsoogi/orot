@@ -1,5 +1,7 @@
 export type HealthContextPhase =
   | 'preparation'
+  | 'generation'
+  | 'transaction_wait'
   | 'calendar'
   | 'quantities'
   | 'medications'
