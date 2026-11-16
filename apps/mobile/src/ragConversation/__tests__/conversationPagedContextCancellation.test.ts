@@ -1,5 +1,5 @@
 import { createConversationSessions } from '../conversationSessions';
-import { setup } from './continuousSessionFixture';
+import { setup } from '../testSupport/continuousSessionFixture';
 
 test.each(['Stop', 'model change'])(
   '%s during an additional protected context page prevents a late model call',

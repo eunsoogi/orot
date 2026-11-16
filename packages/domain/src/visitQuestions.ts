@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { VisitQuestionGenerationSchema } from './visitQuestionGeneration';
 import { RecordIdSchema, RecordMetadataSchema } from './common';
 import { VisitQuestionHealthContextSourceSchema } from './visitQuestionHealthContext';
 
@@ -41,6 +42,8 @@ const GeneratedArtifactSourcesSchema = z
   );
 
 export const VisitQuestionSchema = RecordMetadataSchema.safeExtend({
+  // Optional for legacy records; absence must never be presented as a recovered generation.
+  generation: VisitQuestionGenerationSchema.optional(),
   questionText: NonEmptyTextSchema,
   priority: z.enum(['routine', 'important']),
   // Missing kind denotes a legacy, source-backed question, never a new clarification.

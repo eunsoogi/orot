@@ -14,12 +14,14 @@ import type { ManualVisitDrafts } from './useManualVisitDraft';
 
 /** Restores only exact visits from source-validated turns of the currently active durable session. */
 export function RetainedManualVisitTargets({
+  content = 'all',
   sessionId,
   discover,
   drafts,
   excluded,
   loadRecapDatabase,
 }: {
+  readonly content?: 'all' | 'recaps' | 'questions';
   readonly sessionId: string;
   readonly discover: AiFeatureServices['conversationArtifacts'];
   readonly drafts?: ManualVisitDrafts;
@@ -106,11 +108,15 @@ export function RetainedManualVisitTargets({
     <>
       {targets.map(id => (
         <Fragment key={id}>
-          <ConversationSavedRecaps
-            appointmentId={id}
-            loadDatabase={loadRecapDatabase}
-          />
-          <ManualVisitRecords appointmentId={id} drafts={drafts} />
+          {content !== 'questions' && (
+            <ConversationSavedRecaps
+              appointmentId={id}
+              loadDatabase={loadRecapDatabase}
+            />
+          )}
+          {content !== 'recaps' && (
+            <ManualVisitRecords appointmentId={id} drafts={drafts} />
+          )}
         </Fragment>
       ))}
       {error ? (

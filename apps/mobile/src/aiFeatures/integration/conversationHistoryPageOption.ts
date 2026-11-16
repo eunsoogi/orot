@@ -17,20 +17,25 @@ export function conversationHistoryPageOption(
     const version = await storage.activeSessionVersion(sessionId);
     if (version === null) throw new Error('Conversation is unavailable.');
     const page = await storage.listTimeline(sessionId, version, cursor);
-    const [turns, taskCards] = await Promise.all([
-      restoreConversationSessionTurns(input, openStorage, sessionId, signal, {
+    // Keep transactions serialized even for adapters without an implicit connection queue.
+    const turns = await restoreConversationSessionTurns(
+      input,
+      openStorage,
+      sessionId,
+      signal,
+      {
         version,
         ids: page.items
           .filter(item => item.kind === 'turn')
           .map(item => item.id),
-      }),
-      restoreConversationTaskCards(
-        storage,
-        sessionId,
-        signal,
-        page.items.filter(item => item.kind === 'task').map(item => item.id),
-      ),
-    ]);
+      },
+    );
+    const taskCards = await restoreConversationTaskCards(
+      storage,
+      sessionId,
+      signal,
+      page.items.filter(item => item.kind === 'task').map(item => item.id),
+    );
     if (
       signal.aborted ||
       (await storage.activeSessionVersion(sessionId)) !== version ||

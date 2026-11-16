@@ -195,3 +195,6 @@ export {
   DailyReportModelResponseSchema,
   type DailyReportModelAnalysis,
 } from './dailyReportModelAnalysis';
+
+export { VisitQuestionGenerationSchema } from './visitQuestionGeneration';
+export type { VisitQuestionGeneration, VisitQuestionCaveat } from './visitQuestionGeneration';

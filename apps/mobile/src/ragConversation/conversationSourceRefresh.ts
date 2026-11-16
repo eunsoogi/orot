@@ -30,6 +30,8 @@ export function refreshConversationSources(input: {
       requests.discardOpenings(session.id);
     }
     const restrict = (session: ConversationSession) => ({
+      historyLoading: false,
+      historyLoadFailed: session.historyLoading || session.historyLoadFailed,
       messages: filterHealthDerivedMessages(session.messages, deletedIds).map(
         message => ({ ...message, steeringInstructions: undefined }),
       ),

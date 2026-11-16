@@ -1,3 +1,4 @@
+import { SettingsNotificationDivider } from './SettingsNotificationDivider';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
@@ -96,6 +97,7 @@ export function SettingsDailyReminderSection() {
         >
           {t('settings.dailyReminder.description')}
         </Text>
+        <SettingsNotificationDivider inset={16} />
         <View
           style={styles.toggleRow}
           testID="settings-daily-reminder-toggle-row"
@@ -136,7 +138,7 @@ export function SettingsDailyReminderSection() {
             />
           </Pressable>
         </View>
-        <View style={styles.divider} />
+        <SettingsNotificationDivider inset={16} />
         <Pressable
           accessibilityHint={t('settings.dailyReminder.timeHint')}
           accessibilityLabel={
@@ -227,11 +229,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: MINIMUM_SWITCH_TOUCH_TARGET,
     minWidth: MINIMUM_SWITCH_TOUCH_TARGET,
-  },
-  divider: {
-    backgroundColor: appColors.border,
-    height: StyleSheet.hairlineWidth,
-    marginHorizontal: 16,
   },
   timeRow: {
     alignItems: 'center',

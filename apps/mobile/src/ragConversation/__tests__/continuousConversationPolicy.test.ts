@@ -1,4 +1,4 @@
-import { setup } from './continuousSessionFixture';
+import { setup } from '../testSupport/continuousSessionFixture';
 test('same model stays in the same session; only changed model switches and preserves the old transcript', async () => {
   const f = await setup();
   try {
