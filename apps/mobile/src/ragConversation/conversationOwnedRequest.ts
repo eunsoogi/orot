@@ -29,6 +29,10 @@ export type OwnedRequestIdentity = Omit<
   'messageId'
 >;
 
+function copyCompletionIdentity(value: ConversationCompletionIdentity) {
+  return { ...value };
+}
+
 /**
  * A handle owns one controller; its durable identity is distinct from UI message numbers.
  * Completion waits for the existing sender and any in-flight commit to settle after cancellation.
@@ -48,6 +52,7 @@ export function startOwnedConversationRequest(input: {
     kind: 'not_started',
   };
   let cancelled = false;
+  let completedIdentity: ConversationCompletionIdentity | null = null;
   let resolveIdentity!: (value: OwnedRequestIdentity | null) => void;
   const requestIdentity = new Promise<OwnedRequestIdentity | null>(resolve => {
     resolveIdentity = resolve;
@@ -99,7 +104,11 @@ export function startOwnedConversationRequest(input: {
       });
       if (identity) {
         const answer = await input.retention.readCommittedCompletion(identity);
-        if (answer !== null) return { status: 'completed', identity, answer };
+        if (answer !== null) {
+          // Keep a private identity copy; consumers may hold the public result indefinitely.
+          completedIdentity = copyCompletionIdentity(identity);
+          return { status: 'completed', identity, answer };
+        }
       }
       return cancelled ? { status: 'failure', kind: 'cancelled' } : failure;
     } catch {
@@ -115,6 +124,19 @@ export function startOwnedConversationRequest(input: {
   return {
     requestIdentity,
     completion,
+    async readCurrentCompletion(): Promise<string | null> {
+      // A long-lived consent must revalidate through the protected reader, not reuse
+      // its old answer. This never starts work or changes durable cancellation semantics.
+      if (!completedIdentity || !input.retention?.readCommittedCompletion)
+        return null;
+      try {
+        return await input.retention.readCommittedCompletion({
+          ...completedIdentity,
+        });
+      } catch {
+        return null;
+      }
+    },
     cancel() {
       const accepted = cancelOwner?.() ?? false;
       if (accepted) cancelled = true;

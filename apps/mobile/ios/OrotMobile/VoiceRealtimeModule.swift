@@ -14,22 +14,45 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     }
 
     override func supportedEvents() -> [String]! {
-        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall"]
+        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall", "VoiceRealtimeToolCall", "VoiceRealtimeToolCancelled"]
     }
 
-    @objc(openRealtimeCall:model:apiKey:language:resolver:rejecter:)
-    func openRealtimeCall(_ identifier: String, model: String, apiKey: String, language: String,
+    @objc(openRealtimeCall:model:apiKey:language:enableTools:resolver:rejecter:)
+    func openRealtimeCall(_ identifier: String, model: String, apiKey: String, language: String, enableTools: Bool,
                           resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock)
     {
         DispatchQueue.main.async {
             guard self.active == nil else { reject("VOICE_BUSY", "Voice is already active.", nil); return }
             self.active = identifier
-            self.call.open(identifier, model: model, key: apiKey, language: language) { result in
+            self.call.open(identifier, model: model, key: apiKey, language: language, enableTools: enableTools) { result in
                 switch result {
                 case .success: resolve(nil)
                 case .failure: reject("VOICE_REALTIME_FAILED", "Realtime voice is unavailable.", nil)
                 }
             }
+        }
+    }
+
+    /// JavaScript owns per-payload approval; this boundary only accepts the still-owned pending request.
+    @objc(resolveRealtimeToolCall:toolCallId:responseId:output:resolver:rejecter:)
+    func resolveRealtimeToolCall(_ identifier: String, toolCallId: String, responseId: String, output: String,
+                                 resolver resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock)
+    {
+        DispatchQueue.main.async {
+            resolve(self.call.resolveTool(identifier, toolCallID: toolCallId, responseID: responseId, output: output))
+        }
+    }
+
+    /// Revocation cancels delegation without interrupting an otherwise valid voice conversation.
+    @objc(cancelRealtimeTools:resolver:rejecter:)
+    func cancelRealtimeTools(_ identifier: String, resolver resolve: @escaping RCTPromiseResolveBlock,
+                             rejecter _: @escaping RCTPromiseRejectBlock)
+    {
+        DispatchQueue.main.async {
+            if self.active == identifier {
+                self.call.cancelTools()
+            }
+            resolve(nil)
         }
     }
 

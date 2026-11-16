@@ -1,3 +1,4 @@
+import { realtimeToolConsentKo } from './realtimeToolConsentKo';
 import { calendarDisplayKo } from './calendarDisplayKo';
 import { historyDisplayKo } from './historyDisplayKo';
 import { dailySynthesisKo } from './dailySynthesisKo';
@@ -23,6 +24,7 @@ import { encounterReviewCopyKo } from './encounterReviewCopyKo';
 
 /** Incremental UI-copy migrations share one catalog entry point. */
 export const localizedCopyKo = {
+  ...realtimeToolConsentKo,
   ...calendarDisplayKo,
   ...historyDisplayKo,
   ...dailySynthesisKo,

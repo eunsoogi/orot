@@ -18,6 +18,9 @@ export interface ConversationScreenProps {
   readonly entryContext?: ConversationEntryContext;
   readonly providerSelection?: ReactNode;
   readonly voiceSelection?: {
+    readonly confirmRealtimeResult?: (
+      request: import('@orot/agent-runtime').OutboundProcessingRequest,
+    ) => Promise<boolean>;
     readonly revision: number;
     readonly resolve: () => Promise<
       import('../aiFeatures/integration/provider').SelectedAiResolution

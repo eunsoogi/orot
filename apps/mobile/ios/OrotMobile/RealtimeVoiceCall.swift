@@ -9,6 +9,7 @@ final class RealtimeVoiceCall {
     let audio: RealtimeAudioPort
     let socket: RealtimeSocketPort
     let ownership: AudioSessionOwnership
+    let tools = RealtimeVoiceToolLease()
     let systemCall: VoiceSystemCallPort?
     var systemCallOwner: UUID?
     var systemCallPending = false
@@ -136,6 +137,7 @@ final class RealtimeVoiceCall {
     func stop(_ identifier: String) throws {
         guard id == identifier else { return }
         ready = false; paused = false; awaitingClear = false; captureEpoch = UUID(); lifecycleEpoch = UUID(); pending = nil; timer?.invalidate(); timer = nil
+        cancelTools(); tools.enabled = false
         socket.close(); audio.stop(); endSystemCall()
         let callback = opening; opening = nil; callback?(.failure(Failure.stopped))
         if let token {
@@ -177,7 +179,11 @@ final class RealtimeVoiceCall {
         observers.forEach(NotificationCenter.default.removeObserver)
         timer?.invalidate()
         let audio = audio, socket = socket, owned = token, ownership = ownership, systemCall = systemCall, systemCallOwner = systemCallOwner
+        let tool = tools.invalidate(), callID = id, emit = emit
         DispatchQueue.main.async {
+            if let tool, let callID {
+                emit("VoiceRealtimeToolCancelled", ["callId": callID, "toolCallId": tool])
+            }
             socket.close(); audio.stop()
             if let systemCallOwner {
                 systemCall?.end(owner: systemCallOwner)

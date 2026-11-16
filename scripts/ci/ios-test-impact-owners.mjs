@@ -1,5 +1,9 @@
 // Maintained native tests can span non-obvious cohorts, so explicit inventory ownership takes precedence over filename heuristics.
 export const maintainedNativeTestOwners = new Map([
+  [
+    'apps/mobile/ios/orotintegrationtests/realtimevoicetoollifecycletests.swift',
+    ['core-integration'],
+  ],
   ['apps/mobile/ios/orotintegrationtests/realtimevoicelifecycletests.swift', ['core-integration']],
   [
     'apps/mobile/ios/orotintegrationtests/realtimevoicesystemlifecycletests.swift',

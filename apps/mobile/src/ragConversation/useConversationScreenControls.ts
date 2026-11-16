@@ -55,6 +55,7 @@ export function useConversationScreenControls(
             isEntryCurrent,
             selectionRevision: voiceSelection.revision,
             resolveSelectedAi: voiceSelection.resolve,
+            confirmRealtimeResult: voiceSelection.confirmRealtimeResult,
             onSend,
             onStatusChange: onVoiceStatusChange,
           })

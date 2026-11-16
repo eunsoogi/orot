@@ -31,7 +31,11 @@ export default function InferenceDisclosureModalPanel({
   canRemember,
   calendar,
 }: InferenceDisclosureModalPanelProps) {
-  const [expanded, setExpanded] = useState(false);
+  const realtimeResult =
+    request.providerId === 'openai-realtime' && !request.consentScope;
+  const [expanded, setExpanded] = useState(realtimeResult);
+  // Exact Realtime results are one-shot disclosures, never remembered permissions.
+  const remember = canRemember && !realtimeResult;
   const [modalBounds, setModalBounds] = useState({ width: 0, height: 0 });
   const compact = isCompactDisclosureWindow(
     modalBounds.width,
@@ -42,9 +46,11 @@ export default function InferenceDisclosureModalPanel({
   useEffect(
     () =>
       setExpanded(
-        request?.consentScope?.purpose === 'public_web_search' && !canRemember,
+        realtimeResult ||
+          (request?.consentScope?.purpose === 'public_web_search' &&
+            !canRemember),
       ),
-    [request, canRemember],
+    [request, canRemember, realtimeResult],
   );
   const complete = request.payload.messages.every(
     message => previewMessage(message).complete,
@@ -142,7 +148,7 @@ export default function InferenceDisclosureModalPanel({
               {copy.information}
             </Text>
             <Text style={styles.noticeBody}>
-              {calendar
+              {calendar && !realtimeResult
                 ? t('medicalAppointments.inferenceDisclosure.calendarPurpose')
                 : t('medicalAppointments.inferenceDisclosure.reviewHint')}
             </Text>
@@ -167,18 +173,20 @@ export default function InferenceDisclosureModalPanel({
         {expanded ? <InferenceDisclosurePreview request={request} /> : null}
         <View style={styles.notice}>
           <Text style={styles.noticeTitle}>
-            {canRemember
+            {remember
               ? t('medicalAppointments.inferenceDisclosure.remember')
               : t('medicalAppointments.inferenceDisclosure.oneTime')}
           </Text>
           <Text style={styles.noticeBody}>
-            {canRemember
+            {remember
               ? t('medicalAppointments.inferenceDisclosure.changes')
               : t('medicalAppointments.inferenceDisclosure.unavailable')}
           </Text>
-          <Text style={styles.footerNote}>
-            {t('medicalAppointments.inferenceDisclosure.settingsHint')}
-          </Text>
+          {!realtimeResult ? (
+            <Text style={styles.footerNote}>
+              {t('medicalAppointments.inferenceDisclosure.settingsHint')}
+            </Text>
+          ) : null}
         </View>
         {!complete ? (
           <Text accessibilityRole="alert" style={styles.error}>

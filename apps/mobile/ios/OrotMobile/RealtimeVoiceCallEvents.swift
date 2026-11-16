@@ -17,13 +17,17 @@ extension RealtimeVoiceCall {
             }
         case "input_audio_buffer.cleared": awaitingClear = false
         case "input_audio_buffer.committed": if !paused, !awaitingClear {
+                cancelTools(); tools.commit(event["item_id"] as? String)
                 awaitingInputCommit = false
             }
         case "response.created":
+            cancelTools(keepInput: true)
             response = (event["response"] as? [String: Any])?["id"] as? String
+            tools.bind(response)
             if awaitingInputCommit || paused {
                 interrupt()
             }
+        case "response.function_call_arguments.done": receiveTool(event)
         case "response.output_audio.delta":
             guard !paused, let responseId = event["response_id"] as? String, responseId == response, !ignoredResponses.contains(responseId),
                   let next = event["item_id"] as? String, let encoded = event["delta"] as? String,
@@ -40,6 +44,7 @@ extension RealtimeVoiceCall {
             }
         case "response.done":
             let result = event["response"] as? [String: Any]
+            completeTools(result)
             if result?["status"] as? String == "failed" {
                 fail(); return
             }
@@ -60,6 +65,7 @@ extension RealtimeVoiceCall {
 
     func interrupt(cancel: Bool = true) {
         guard id != nil else { return }
+        cancelTools()
         awaitingInputCommit = true
         if let response {
             ignoredResponses.insert(response)

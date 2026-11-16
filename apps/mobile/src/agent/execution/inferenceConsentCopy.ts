@@ -29,6 +29,13 @@ const categories = {
 
 /** Explain the durable permission boundary, while the expandable preview still shows this exact request. */
 export function inferenceConsentCopy(request: OutboundProcessingRequest) {
+  if (request.providerId === 'openai-realtime' && !request.consentScope) {
+    return {
+      subtitle: t('realtimeToolConsent.resultPurpose'),
+      information: t('realtimeToolConsent.resultInformation'),
+      publicSearch: false,
+    };
+  }
   const purpose = request.consentScope?.purpose;
   const key =
     purpose && Object.hasOwn(purposes, purpose)

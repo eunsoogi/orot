@@ -73,6 +73,7 @@ export function AiFeatureFlowScreen({
       }}
       providerSelection={providerSelection}
       voiceSelection={{
+        confirmRealtimeResult: confirmConsent,
         revision: selectedAiRevision,
         resolve: resolveSelectedAi,
       }}

@@ -50,6 +50,7 @@ test('a rejected busy handle cannot cancel the already running request', async (
       status: 'failure',
       kind: 'not_started',
     });
+    expect(await rejected.readCurrentCompletion()).toBeNull();
     expect(await rejected.requestIdentity).toBeNull();
     expect(rejected.cancel()).toBe(false);
     expect(signal?.aborted).toBe(false);
@@ -111,6 +112,7 @@ test('a completed protected commit wins when cancellation arrives afterward', as
       },
     );
     await ready;
+    expect(await handle.readCurrentCompletion()).toBeNull();
     expect(handle.cancel()).toBe(true);
     release();
     expect(await handle.completion).toMatchObject({
@@ -118,6 +120,7 @@ test('a completed protected commit wins when cancellation arrives afterward', as
       answer: 'committed',
       identity: { requestId: 'id-2' },
     });
+    expect(await handle.readCurrentCompletion()).toBe('committed');
   } finally {
     sessions.dispose();
     connection.close();
@@ -171,6 +174,7 @@ test('cancellation during commit acknowledgement still returns the committed ans
       },
     );
     await ready;
+    expect(await handle.readCurrentCompletion()).toBeNull();
     expect(handle.cancel()).toBe(true);
     release();
     expect(await handle.completion).toMatchObject({
@@ -178,6 +182,7 @@ test('cancellation during commit acknowledgement still returns the committed ans
       answer: 'committed',
       identity: { requestId: 'id-2' },
     });
+    expect(await handle.readCurrentCompletion()).toBe('committed');
     sessions.dispose();
   } finally {
     connection.close();

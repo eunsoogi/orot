@@ -46,6 +46,9 @@ test('owned completion returns only the durable answer for its actual request', 
       },
       answer: 'Saved answer',
     });
+    expect(await handle.readCurrentCompletion()).toBe('Saved answer');
+    await storage.hideSession('identity-1', 0);
+    expect(await handle.readCurrentCompletion()).toBeNull();
     expect(sender).toHaveBeenCalledTimes(1);
     expect(handle.cancel()).toBe(false);
     sessions.dispose();
@@ -73,6 +76,7 @@ test('a stale handle cannot cancel a later request in the same session', async (
     status: 'failure',
     kind: 'provider_refused',
   });
+  expect(await first.readCurrentCompletion()).toBeNull();
   expect(await first.requestIdentity).toMatchObject({
     requestId: 'identity-2',
   });
@@ -111,6 +115,7 @@ test('a request without protected retention never reports a committed answer', a
     citations: [],
   }));
   expect(await handle.completion).toMatchObject({ status: 'failure' });
+  expect(await handle.readCurrentCompletion()).toBeNull();
   sessions.dispose();
 });
 
