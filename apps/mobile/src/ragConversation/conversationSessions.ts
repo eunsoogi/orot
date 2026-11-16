@@ -155,6 +155,7 @@ export function createConversationSessions(
     setDraft: (id: number, draft: string) => update(id, { draft }),
     setEntryPrompt: (id: number, entryPrompt?: string) =>
       update(id, { entryPrompt }),
+    prepareEntry: taskState.prepareEntry,
     saveTaskCard: taskState.save,
     forgetTaskCard: taskState.forgetTaskCard,
     setError: (id: number, error: string) => update(id, { error }),

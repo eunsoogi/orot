@@ -121,7 +121,10 @@ export function sendConversationMessage(
       return sendEntry(question, history, signal, observer);
     }
     const pending = pendingVisits.get(store);
-    const context = pending?.get(id) ?? conversationEntryForSession(store, id);
+    const selected = conversationEntryForSession(store, id);
+    // A newer in-place choice must not inherit a failed visit operation's retry sender.
+    if (pending?.get(id) && pending.get(id) !== selected) pending.delete(id);
+    const context = pending?.get(id) ?? selected;
     if (prepare && context && pending?.has(id))
       return visitPreparationSender(store, id, prepare, context)(
         question,

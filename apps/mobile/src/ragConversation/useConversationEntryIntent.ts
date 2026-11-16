@@ -45,6 +45,20 @@ export function consumeConversationEntryForSession(
   return context;
 }
 
+/** An explicit in-place choice replaces only pending intent metadata, never transcript ownership. */
+export function setConversationEntryForSession(
+  store: ConversationSessions,
+  id: number,
+  context: ConversationEntryContext,
+) {
+  let entries = sessionEntries.get(store);
+  if (!entries) {
+    entries = new Map();
+    sessionEntries.set(store, entries);
+  }
+  entries.set(id, context);
+}
+
 /** Applies an entry once without replacing drafts or restarting work after overlay return. */
 export function useConversationEntryIntent(
   store: ConversationSessions,
