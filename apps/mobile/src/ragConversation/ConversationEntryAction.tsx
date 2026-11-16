@@ -1,3 +1,4 @@
+import { canSelectConversationChoice } from './selectConversationChoice';
 import { AppButton as Button } from '../layout/AppButton';
 import { t } from '../i18n';
 import type { ConversationSession } from './conversationSessionTypes';
@@ -9,7 +10,7 @@ import {
   startExplicitVisitPreparation,
 } from './conversationVisitDispatch';
 
-/** Keeps visit generation behind a session-bound tap while retaining suggestion behavior for other entries. */
+/** Keeps contextual visit preparation in the same choice slot without exposing prompt-copy buttons. */
 export function ConversationEntryAction({
   store,
   session,
@@ -28,6 +29,7 @@ export function ConversationEntryAction({
         testID="conversation-visit-prepare"
         variant="secondary"
         disabled={
+          !canSelectConversationChoice(store, session) ||
           !canStartExplicitVisitPreparation(
             session,
             entry,
@@ -35,6 +37,15 @@ export function ConversationEntryAction({
           )
         }
         onPress={() => {
+          // A retained callback cannot dispatch after navigation or input changes.
+          const current = store.getSnapshot();
+          const active = current.sessions.find(item => item.id === session.id);
+          if (
+            current.activeId !== session.id ||
+            !active ||
+            !canSelectConversationChoice(store, active)
+          )
+            return;
           startExplicitVisitPreparation(
             store,
             session.id,
@@ -43,15 +54,5 @@ export function ConversationEntryAction({
         }}
       />
     );
-  return (
-    <Button
-      title={t('conversationIntent.useSuggestion', {
-        question: session.entryPrompt,
-      })}
-      testID="conversation-intent-use-suggestion"
-      disabled={Boolean(session.draft) || session.busy}
-      variant="secondary"
-      onPress={() => store.setDraft(session.id, session.entryPrompt!)}
-    />
-  );
+  return null;
 }

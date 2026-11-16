@@ -129,16 +129,10 @@ test.each([
         }),
       );
       expect(send).not.toHaveBeenCalled();
-    } else if (intent !== 'conversation') {
-      await fireEvent.press(
-        screen.getByTestId('conversation-intent-use-suggestion'),
-      );
-      expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
-        'value',
-        conversationIntentRequests[intent],
-      );
-      expect(send).not.toHaveBeenCalled();
     }
+    expect(
+      screen.queryByTestId('conversation-intent-use-suggestion'),
+    ).toBeNull();
     await fireEvent.changeText(
       screen.getByTestId('rag-conversation-input'),
       '수정한 요청',

@@ -91,32 +91,68 @@ test.each(['6', '7', '8'])(
   },
 );
 
-test('restores an existing v9 invocation without changing its exact prompt or starting a new opening', async () => {
+test.each([false, true])(
+  'restores existing v9 invocation without changing its exact prompt (fallback=%s)',
+  async fallback => {
+    const f = await fixture();
+    const legacy = restoreConversationTask({
+      taskType: ragConversationTask.taskType,
+      taskVersion: '9',
+    })!;
+    const task = fallback
+      ? restoreConversationTask(
+          { taskType: ragConversationTask.taskType, taskVersion: '9' },
+          continuationInput(f.options),
+        )!
+      : legacy;
+    expect(Boolean(task.acceptsIncompleteEvidence)).toBe(fallback);
+    const options = { ...f.options, task };
+    const invocation = f.descriptor.reconstruction.invocation as Record<
+      string,
+      unknown
+    >;
+    invocation.task = JSON.parse(JSON.stringify(task));
+    f.descriptor.exactInput = continuationInput(options);
+    const restored = await restoreColdRagConversationFactory({
+      descriptor: f.descriptor,
+      dependencies: f.dependencies,
+      signal: f.controller.signal,
+      readKnownCallIds: async () => [],
+    });
+    expect(continuationInput(restored.options)).toBe(f.descriptor.exactInput);
+    expect(restored.options.task.taskVersion).toBe('9');
+    expect(restored.options.task.reviewInitialToolResponse).toBe(true);
+    expect(restored.options.task.initialToolResponse).toBeDefined();
+    expect(restored.options.task.systemPrompt).toContain(
+      'tool-call assistant message text',
+    );
+    expect(f.search).not.toHaveBeenCalled();
+    expect(f.authorize).not.toHaveBeenCalled();
+  },
+);
+
+test('rejects an altered protected task prompt rather than guessing a legacy policy', async () => {
   const f = await fixture();
   const legacy = restoreConversationTask({
     taskType: ragConversationTask.taskType,
     taskVersion: '9',
   })!;
-  const options = { ...f.options, task: legacy };
-  const invocation = f.descriptor.reconstruction.invocation as Record<
-    string,
-    unknown
-  >;
-  invocation.task = JSON.parse(JSON.stringify(legacy));
-  f.descriptor.exactInput = continuationInput(options);
-  const restored = await restoreColdRagConversationFactory({
-    descriptor: f.descriptor,
-    dependencies: f.dependencies,
-    signal: f.controller.signal,
-    readKnownCallIds: async () => [],
-  });
-  expect(continuationInput(restored.options)).toBe(f.descriptor.exactInput);
-  expect(restored.options.task.taskVersion).toBe('9');
-  expect(restored.options.task.reviewInitialToolResponse).toBe(true);
-  expect(restored.options.task.initialToolResponse).toBeDefined();
-  expect(restored.options.task.systemPrompt).toContain(
-    'tool-call assistant message text',
-  );
-  expect(f.search).not.toHaveBeenCalled();
+  const invocation = f.descriptor.reconstruction.invocation as {
+    task: { taskType: string; taskVersion: string };
+  };
+  invocation.task = { taskType: legacy.taskType, taskVersion: '9' };
+  f.descriptor.exactInput = continuationInput({
+    ...f.options,
+    task: legacy,
+  }).replace('Choose answerKind=conversation', 'Unknown task policy');
+  await expect(
+    restoreColdRagConversationFactory({
+      descriptor: f.descriptor,
+      dependencies: f.dependencies,
+      signal: f.controller.signal,
+      readKnownCallIds: async () => [],
+    }),
+  ).rejects.toThrow();
   expect(f.authorize).not.toHaveBeenCalled();
+  expect(f.search).not.toHaveBeenCalled();
 });

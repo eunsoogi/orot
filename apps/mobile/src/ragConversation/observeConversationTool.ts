@@ -39,7 +39,9 @@ export function observeConversationTool(
           ...event,
           status: request.signal.aborted
             ? 'cancelled'
-            : 'status' in result
+            : 'status' in result ||
+                (!result.items.length &&
+                  result.coverage.some(coverage => coverage.gaps.length > 0))
               ? 'failed'
               : 'completed',
           ...('status' in result

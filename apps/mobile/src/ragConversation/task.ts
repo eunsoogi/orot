@@ -1,3 +1,4 @@
+import { acceptsLocalPublicSearchFallback } from './publicSearchFallback';
 import type {
   JsonObject,
   JsonValue,
@@ -47,6 +48,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   // The live send boundary owns the reviewed opening; never spend another preview call during tools.
   taskVersion: initialReply.initialResponseTaskVersion,
   allowBoundedExternalEvidence: true,
+  acceptsIncompleteEvidence: acceptsLocalPublicSearchFallback,
   allowRankedLocalEvidence: true,
   allowPagedGeneratedArtifacts: true,
   // Only the observed envelope-shape error permits one budgeted correction; normal citation validation still applies.
@@ -62,7 +64,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Choose answerKind=conversation for greetings, acknowledgements, emotional support without factual or clinical claims, and questions that clarify what the user means. Reply naturally without citations or an evidence disclaimer. Do not require a search merely to continue a conversation. ' +
     'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
     'Choose answerKind=prior_output only to show a previously generated result; cite generated artifact IDs. The application will display the retained text itself. ' +
-    'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. ' +
+    'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. If optional public web research failed, answer a supported local-record question with completion=partial using only its supplied local evidence, and state that public research was unavailable. Never invent external findings. ' +
     'When entryContext identifies a selected visit by evidence ID, use that visit as the requested target and do not replace it with another appointment. ' +
     'A generated_artifact is a historical AI output, not an independent medical fact or corroboration. When asked about a prior output, identify its origin, generation date, uncertainty and source status. For clinical claims retrieve and cite the underlying current sources separately. A paged result is not an exhaustive search; use its nextCursor for more results. When asked to continue on a later turn, reuse the earlier search query so the local tool continues its saved page. ' +
     possibilityPrompt +

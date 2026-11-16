@@ -172,7 +172,8 @@ export interface MultiAgentCheckpointState {
     readonly kind: 'model' | 'tool';
     readonly operationKey: string;
   };
-  readonly initialSearchStatus?: 'pending' | 'success' | 'empty' | 'consent_required';
+  readonly initialSearchStatus?:
+    'pending' | 'success' | 'empty' | 'unavailable' | 'consent_required';
   readonly awaitingAuthorization?: string;
   readonly terminal: boolean;
 }

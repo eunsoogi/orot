@@ -1,4 +1,4 @@
-/** The review changes call ordering; old cold journals must fail closed, not replay it. */
+/** Changed call ordering restores only through an exact matching legacy contract. */
 export const initialResponseTaskVersion = '10';
 
 /** Legacy fixture copy retained for checkpoint compatibility tests. New requests never

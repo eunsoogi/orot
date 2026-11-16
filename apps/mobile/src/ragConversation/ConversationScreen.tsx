@@ -118,11 +118,6 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
-      <ConversationEntryAction
-        store={store}
-        session={session}
-        prepareVisitQuestions={prepareVisitQuestions}
-      />
       <ConversationTasks.ConversationTaskHeader
         store={store}
         session={session}
@@ -132,6 +127,11 @@ export function ConversationScreen({
         reportOwner={reportOwner}
         onOpenDailyReport={onOpenDailyReport}
         retainedActions={quickChoices}
+        visitAction={
+          <ConversationEntryAction
+            {...{ store, session, prepareVisitQuestions }}
+          />
+        }
         renderReportTask={renderReportTask}
         renderSavedReport={renderSavedReport}
       />

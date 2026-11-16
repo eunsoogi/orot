@@ -66,7 +66,7 @@ export async function restoreColdRagConversationFactory(input: {
   };
   if (!original || typeof original !== 'object' || !original.task)
     throw new Error('Cold invocation snapshot missing.');
-  const task = restoreConversationTask(original.task);
+  const task = restoreConversationTask(original.task, d.exactInput);
   if (!task || original.request !== d.request)
     throw new Error('Unsupported cold task or photo.');
   const photo = readColdPhotoBinding(d, input.observer?.confirmPhotoResume);

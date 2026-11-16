@@ -1,3 +1,5 @@
+import { continuationInput } from '../../../storage/conversationWorkflowContinuationIdentity';
+import { restoreConversationTask } from '../../../ragConversation/conversationTaskVersions';
 import { providerSuccess } from '@orot/model-runtime';
 import type {
   LanguageModelResponse,
@@ -12,11 +14,12 @@ import { captureColdRagConversationState } from '../coldRagConversationState';
 import { resumeColdRagConversation } from '../resumeColdRagConversation';
 import { researchPagingWorkflowCatalog } from './researchPagingWorkflowCatalog';
 
-/** Synthetic provider + real SQLite continuation. The actual production task is never patched. */
+/** Synthetic provider + real SQLite continuation. The preserved v9 production contract is used without patching its review policy. */
 export async function coldReviewedWorkflowFixture(
   populated = false,
   review: () => Promise<ProviderResult<LanguageModelResponse>> = async () =>
     providerSuccess({ text: 'ALLOW', finishReason: 'complete', toolCalls: [] }),
+  fallbackPolicy = false,
 ) {
   const db = openSqliteTestDatabase(':memory:');
   try {
@@ -30,6 +33,11 @@ export async function coldReviewedWorkflowFixture(
         data.researchArtifactDiscovery = async () => catalog;
       },
     );
+    // These existing journal assertions specifically protect the legacy review-call ordering.
+    f.options.task = restoreConversationTask(
+      { taskType: f.options.task.taskType, taskVersion: '9' },
+      fallbackPolicy ? continuationInput(f.options) : undefined,
+    )!;
     let calls = 0;
     const liveEvents = jest.fn();
     const coldEvents = jest.fn();

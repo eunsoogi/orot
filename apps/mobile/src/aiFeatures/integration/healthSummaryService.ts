@@ -1,3 +1,4 @@
+import { startContextualConversationOpening } from './contextualConversationOpening';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
@@ -104,6 +105,21 @@ export function createHealthSummaryService(input: {
       tools: [bound.tool],
       consentPurpose: 'symptom_summary',
     });
+    const opening = startContextualConversationOpening({
+      selected,
+      request: request.question,
+      observer,
+      signal,
+      consent: input.consent,
+      consentScope: execution.execution.consentScope,
+    });
+    try {
+      await opening.done;
+    } finally {
+      opening.dispose();
+    }
+    if (signal.aborted)
+      return { failure: { status: 'failure', kind: 'cancelled' } };
     const original = symptomSummaryTaskForProvider(selected.provider.id);
     const task = {
       ...original,
