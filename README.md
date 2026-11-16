@@ -30,21 +30,11 @@
 
 ### 대화가 중심입니다
 
-| 일반 iPhone · Simulator · 세로 화면 | iPhone Duo · 실기기 · 접힌 외부 화면 |
-| --- | --- |
-| 내 기록에 질문하고 답변과 근거에 집중합니다. | 대화와 출처를 확인합니다. 아래 캡처는 접힌 상태입니다. |
-| ![일반 iPhone의 합성 기록 기반 대화 화면](docs/assets/showcase/iphone-conversation.png) | ![iPhone Duo 접힌 외부 화면의 합성 기록 기반 대화 화면](docs/assets/showcase/duo-conversation.png) |
+![일반 iPhone 세로 화면과 펼친 iPhone Duo 가로 화면의 대화](docs/assets/showcase/conversation-gallery.png)
 
 ### 한눈에에서 맥락을 확인하세요
 
-Duo의 펼친 내부 화면은 아래 한눈에 갤러리에서 볼 수 있습니다.
-
-| 일반 iPhone | iPhone Duo |
-| --- | --- |
-| 진료 일정과 건강 기록을 한 화면씩 확인합니다. | 펼친 화면에서 건강 기록을 넓은 카드로 확인합니다. |
-| ![일반 iPhone의 합성 데이터 한눈에 화면](docs/assets/showcase/iphone-overview.png) | ![iPhone Duo의 합성 데이터 한눈에 화면](docs/assets/showcase/duo-overview.png) |
-
-
+![일반 iPhone과 펼친 iPhone Duo에서 보는 진료 일정과 건강 기록](docs/assets/showcase/overview-gallery.png)
 
 ## 기록에서 대화까지
 

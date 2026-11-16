@@ -29,12 +29,20 @@
 
 - 한눈에 원본은 위 촬영 시점 그대로 보존한 보조 소개 화면입니다. 대화 원본과 소스·촬영 시점이 다릅니다.
 
+## 펼친 Duo 대화와 통합 갤러리: 2026-11-16
+
+- [duo-conversation-wide.png](showcase/duo-conversation-wide.png): 사용자가 펼친 iPhone Duo 실기기, iOS 27.3, 가로 2853 × 2007. 2026-11-16T01:40:43Z (10:40:43 KST) 촬영.
+- SHA-256: `c9ee697dc77fc182d6fa61e07edf0c6c85d0cb17aae1ed72b283c9f51f09abf1`.
+- 앱 소스 `0593f968b60173d6912587c2bffbde5258a3b285`. `deviceReadmeValidationEntry.js`와 `deviceReadmeVisualProbe.tsx`의 실제 대화 컴포넌트, 메모리 전용 합성 질문·답변·출처를 사용했습니다. production 앱 루트와 저장소에 접근하지 않고 JS/native 네트워크를 차단했습니다.
+- 원본에는 합성 기록과 기본 시계·배터리만 있으며 실제 건강 기록·계정·알림은 없습니다. 촬영 직후 기존 서명된 production 앱을 복원했습니다.
+- 이전 접힌 Duo 원본은 위 이력에 보존하지만 현재 대문과 갤러리에는 사용하지 않습니다.
+
 ### 최종 소개 이미지
 
-- [orot-showcase.png](orot-showcase.png): 1800 × 1200. 코드 기반 벡터 레이아웃의 타이포·배경·프레임 안에 실제 PNG를 종횡비를 유지해 배치했습니다. 화면 내부를 생성형 AI로 다시 그리거나 내용을 합성하지 않았습니다.
-- 원본 앱 아이콘, 일반 iPhone 대화와 Duo 접힌 외부 대화 화면을 사용합니다. 원본 전체는 위 링크로 확인할 수 있습니다.
-- 이것은 README의 최종 소개 자산이며 제품 UI 목업이 아닙니다.
-- 각 대화 화면의 촬영 환경과 안전 경계는 위에 명시했습니다. 보조 한눈에 갤러리는 이전 시뮬레이터 원본을 유지합니다.
+- [orot-showcase.png](orot-showcase.png): 2200 × 1550. 일반 iPhone 대화와 펼친 Duo 대화를 함께 소개합니다.
+- [conversation-gallery.png](showcase/conversation-gallery.png): 2200 × 1280. 대화 스크린샷 테이블을 대체하는 통합 이미지입니다.
+- [overview-gallery.png](showcase/overview-gallery.png): 2200 × 1280. 한눈에 스크린샷 테이블을 대체하는 별도 통합 이미지입니다. 한눈에 원본의 소스·촬영 시점은 위 2026-11-15 기록을 따릅니다.
+- 코드 기반 벡터 배경·타이포·프레임에 실제 PNG 전체를 종횡비 그대로 배치했습니다. 화면 내부를 다시 그리거나 생성하지 않았습니다. 이것은 README 소개 자산이며 제품 UI 목업이 아닙니다.
 
 ## 이전 소개 이미지 이력 (현재 대문에서 미사용)
 
