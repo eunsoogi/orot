@@ -68,6 +68,9 @@ export function conversationCompletedAnswer(input: {
         id: messageId,
         role: 'assistant',
         content,
+        initialResponse: session.pendingMessage?.withholdHealthBody
+          ? undefined
+          : session.pendingMessage?.initialResponse,
         previousOutputs: session.pendingMessage?.withholdHealthBody
           ? undefined
           : session.pendingMessage?.previousOutputs,

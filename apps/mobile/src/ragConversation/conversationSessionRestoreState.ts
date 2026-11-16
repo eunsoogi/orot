@@ -8,6 +8,7 @@ type RestoredTurn = {
   readonly question: string;
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly answer: string;
+  readonly initialResponse?: import('../storage/conversationArtifactTypes').ConversationArtifact['initialResponse'];
   readonly preview?: string;
   readonly interrupted?: true;
   readonly coldResume?: { readonly attempt: number };
@@ -89,6 +90,7 @@ export function createConversationSessionRestoreState(input: {
           role: 'assistant' as const,
           steeringInstructions: receipts[index],
           content: turn.preview ?? turn.answer,
+          initialResponse: turn.initialResponse,
           citations: turn.citations,
           healthSources: turn.healthSources,
           toolMessageId: turn.toolMessageId,

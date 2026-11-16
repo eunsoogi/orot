@@ -136,27 +136,33 @@ export function createConversationTurnActivity(input: {
                   ? [...(pending.previousOutputs ?? []), pending.content]
                   : pending.previousOutputs,
                 content: '',
-                initialResponse: undefined,
+                initialResponse: pending.initialResponse,
               },
             });
           }
           return;
         }
         if (event.type === 'initial_response') {
-          // The pending bubble is already scoped by this live request/attempt. Never save
-          // the receipt as answer text or accept a late callback after Stop/newer work.
+          // Preserve the reviewed reply separately from answer text and provider history.
+          // Only the current attempt may capture it; replay and late callbacks cannot replace it.
           if (
             input.current() &&
             pending?.id === input.responseId &&
+            !pending.withholdHealthBody &&
             (!pending.initialResponse ||
               pending.initialResponse.source === 'receipt')
-          )
+          ) {
+            input.retained?.retainOpening({
+              callId: event.callId,
+              text: event.text,
+            });
             input.update(input.id, {
               pendingMessage: {
                 ...pending,
                 initialResponse: { callId: event.callId, text: event.text },
               },
             });
+          }
           return;
         }
         if (

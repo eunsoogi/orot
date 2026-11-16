@@ -1,5 +1,6 @@
+import { createConversationOpeningRetention } from './conversationOpeningRetention';
 import { notifyConversationInterruption } from '../replyNotifications/notifyConversationInterruption';
-import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
+import type { ConversationTurnRetentionInput } from './conversationTurnRetentionInput';
 import {
   decodeConversationArtifact,
   type ConversationArtifact,
@@ -10,44 +11,11 @@ import type {
 } from './conversationRetention';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { createConversationRetainedPreview } from './conversationRetainedPreview';
-
 /** One turn keeps the same payload and identity across write retries, without another model call. */
-export function createConversationTurnRetention(input: {
-  readonly storage: Pick<
-    ReturnType<typeof createConversationArtifactStorage>,
-    'append'
-  > &
-    Partial<
-      Pick<
-        ReturnType<typeof createConversationArtifactStorage>,
-        | 'openWorkflowContinuation'
-        | 'appendToolEvent'
-        | 'discardToolEvent'
-        | 'startRequest'
-        | 'interruptRequest'
-        | 'listInterruptedRequests'
-        | 'invalidatePreview'
-        | 'preparePreview'
-        | 'writePreview'
-      >
-    >;
-  readonly sessionId: string;
-  readonly turnId: string;
-  readonly createdAt: string;
-  readonly restored?: true;
-  readonly sessionVersion?: number;
-  readonly captureToolSources?: (
-    event: import('@orot/agent-runtime').ConversationToolEvent,
-    sessionId: string,
-  ) => Promise<{
-    event: import('@orot/agent-runtime').ConversationToolEvent;
-    dependencies: import('../storage/conversationToolLineage').ToolLineage;
-  }>;
-  readonly onToolEventStored?: (
-    event: import('@orot/agent-runtime').ConversationToolEvent,
-    sessionId: string,
-  ) => Promise<void>;
-}) {
+export function createConversationTurnRetention(
+  input: ConversationTurnRetentionInput,
+) {
+  const opening = createConversationOpeningRetention();
   let pending: ConversationArtifact | undefined;
   let preparation: PrepareConversationRetention | undefined;
   let preparing = false;
@@ -57,6 +25,10 @@ export function createConversationTurnRetention(input: {
   const write = async (value: ConversationArtifact, signal?: AbortSignal) => {
     if (writing)
       throw new Error('The conversation output is already being saved.');
+    // A settled failed write may drop revoked display metadata; never mutate an in-flight commit.
+    const sanitized = opening.withoutRevokedOpening(value);
+    if (pending === value) pending = sanitized;
+    value = sanitized;
     writing = true;
     try {
       await input.storage.append(value, signal, input.sessionVersion ?? 0);
@@ -79,6 +51,7 @@ export function createConversationTurnRetention(input: {
     const value = decodeConversationArtifact(
       JSON.stringify({
         ...candidate,
+        ...opening.openingMetadata(),
         id: input.turnId,
         sessionId: input.sessionId,
         createdAt: input.createdAt,
@@ -90,6 +63,8 @@ export function createConversationTurnRetention(input: {
   };
   return {
     ...createConversationRetainedPreview(input),
+    retainOpening: opening.retainOpening,
+    discardOpening: opening.discardOpening,
     toolMessageId: input.turnId,
     ...(input.storage.openWorkflowContinuation
       ? { openWorkflowContinuation: input.storage.openWorkflowContinuation }
