@@ -78,20 +78,20 @@ public final class OpenAIProviderModule: RCTEventEmitter {
                             throw ChatGPTResponsesError.unsupportedCapability("live steering in an HTTP-only fixture")
                         }
                     #endif
-                    let socket = try await activeClient.steerableResponse(request, forIssuedClientID: issuedClientID)
-                    guard responseRequests.attachSteering(socket, to: slot) else { return }
-                    handle = socket
-                    stream = await socket.events()
-                } else {
-                    let source = try await activeClient.streamResponse(request, forIssuedClientID: issuedClientID)
-                    stream = AsyncThrowingStream { continuation in
-                        let task = Task {
-                            do { for try await event in source {
-                                continuation.yield(.response(event))
-                            }; continuation.finish() } catch { continuation.finish(throwing: error) }
-                        }
-                        continuation.onTermination = { @Sendable _ in task.cancel() }
+                    do {
+                        let socket = try await activeClient.steerableResponse(request, forIssuedClientID: issuedClientID)
+                        guard responseRequests.attachSteering(socket, to: slot) else { return }
+                        handle = socket
+                        stream = await socket.events()
+                    } catch ResponsesWebSocketUpgradeError.rejectedBeforeRequest {
+                        // Only a definitive HTTP upgrade refusal reaches this branch.
+                        // No response.create, tool call or steering input was sent; never replay send failures.
+                        try Task.checkCancellation()
+                        guard responseRequests.isActive(slot) else { return }
+                        stream = try await ordinaryResponseStream(request, issuedClientID: issuedClientID)
                     }
+                } else {
+                    stream = try await ordinaryResponseStream(request, issuedClientID: issuedClientID)
                 }
                 defer {
                     if let handle {
@@ -155,6 +155,19 @@ public final class OpenAIProviderModule: RCTEventEmitter {
             }
         }
         responseRequests.attach(task, to: slot)
+    }
+
+    /// Ordinary SSE retains the same request, account checks and cancellation path, without advertising live steering.
+    private func ordinaryResponseStream(_ request: ChatGPTResponsesRequest, issuedClientID: String) async throws -> AsyncThrowingStream<ChatGPTSteerableEvent, Error> {
+        let source = try await activeClient.streamResponse(request, forIssuedClientID: issuedClientID)
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do { for try await event in source {
+                    continuation.yield(.response(event))
+                }; continuation.finish() } catch { continuation.finish(throwing: error) }
+            }
+            continuation.onTermination = { @Sendable _ in task.cancel() }
+        }
     }
 
     @objc(cancelResponse:)
