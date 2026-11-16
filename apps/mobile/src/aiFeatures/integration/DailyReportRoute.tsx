@@ -20,6 +20,7 @@ import { useReportTaskPersistence } from './useReportTaskPersistence';
 
 export function DailyReportRoute({
   feature,
+  claimRequestedStart,
   initialIdentity,
   initialOperation,
   reminder,
@@ -91,6 +92,16 @@ export function DailyReportRoute({
     resultPersistence.status === 'ready' &&
     !state.resultSaveFailed,
   );
+  useEffect(() => {
+    // Repeated taps during a run are consumed, never queued as a later retry.
+    if (!claimRequestedStart || (!canGenerate && !state.busy)) return;
+    if (
+      claimRequestedStart() &&
+      !state.busy &&
+      state.lookup?.status !== 'saved'
+    )
+      state.generate();
+  }, [claimRequestedStart, canGenerate, state]);
   // A restored conversation points to one exact revision; a replacement is not that result.
   const revisionChanged = Boolean(
     expectedReport &&

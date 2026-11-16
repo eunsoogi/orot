@@ -1,3 +1,5 @@
+import { useConversationSessions } from '../../ragConversation/ConversationSessionsContext';
+import { useRequestedReportStart } from '../../ragConversation/conversationReportStart';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { DailyReportIdentity } from '@orot/domain';
 import type { RetainedConversationTask } from '../../ragConversation/conversationTaskState';
@@ -8,6 +10,7 @@ import { DailyReportRoute } from './DailyReportRoute';
 /** Restored cards re-read the existing report; opening them never starts generation. */
 export function ConversationReportTask({
   card,
+  sessionId,
   services,
   onChat,
   onTaskIdentity,
@@ -17,6 +20,7 @@ export function ConversationReportTask({
   ownsOperation,
 }: {
   card: RetainedConversationTask;
+  sessionId: number;
   services: AiFeatureServices;
   onChat: (
     target: NonNullable<ConversationEntryContext['dailyReport']>,
@@ -29,10 +33,17 @@ export function ConversationReportTask({
   onOpenSource: (source: EvidenceReference) => void;
   ownsOperation?: boolean;
 }) {
+  const store = useConversationSessions();
+  const claimRequestedStart = useRequestedReportStart(
+    store,
+    sessionId,
+    card.id,
+  );
   if (card.task.kind !== 'daily_report' || !services.dailyReport) return null;
   return (
     <DailyReportRoute
       feature={services.dailyReport}
+      claimRequestedStart={claimRequestedStart}
       initialIdentity={card.task.identity}
       expectedReport={card.task.report}
       taskRevision={card.revision}

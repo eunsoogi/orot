@@ -66,17 +66,19 @@ export function ConversationScreen({
     item => item.id === snapshot.activeId,
   )!;
   const { id, messages, pendingMessage, busy, error } = session;
-  const { photo, focus, ...composer } = useConversationScreenControls(
-    store,
-    id,
-    isEntryCurrent,
-    voiceSelection,
-    busy,
-    onSend,
-  );
+  const { photo, focus, quickChoices, ...composer } =
+    useConversationScreenControls(
+      store,
+      id,
+      isEntryCurrent,
+      voiceSelection,
+      busy,
+      onSend,
+      retainedActions,
+      prepareVisitQuestions,
+    );
   const selectedReport =
     session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
-  // Source validation uses the retained identity, not the session's view-only numeric ID.
   const toolSourceSessionId = store.toolSourceSessionId(id);
   const showSessionActionsInHeader = useConversationSessionActions(
     store,
@@ -102,7 +104,6 @@ export function ConversationScreen({
     onNavigationStateChange,
   );
   const coldResumeBusy = busy || session.restoring || session.retryingSave;
-
   const header = (
     <View style={styles.header}>
       {!navigationRouteKey && <ConversationBackButton onBack={onBack} />}
@@ -130,7 +131,7 @@ export function ConversationScreen({
         routeKey={navigationRouteKey}
         reportOwner={reportOwner}
         onOpenDailyReport={onOpenDailyReport}
-        retainedActions={retainedActions}
+        retainedActions={quickChoices}
         renderReportTask={renderReportTask}
         renderSavedReport={renderSavedReport}
       />
