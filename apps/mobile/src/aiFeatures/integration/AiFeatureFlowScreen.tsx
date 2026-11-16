@@ -7,7 +7,6 @@ import { AiProviderSelectorRow } from './AiProviderSelectorRow';
 import { SummaryHistoryScreen } from '../../diseaseHypotheses/SummaryHistoryScreen';
 import { ConversationSummaryHistory } from '../../diseaseHypotheses/ConversationSummaryHistory';
 import { ConversationScreen } from '../../ragConversation/ConversationScreen';
-import { ConversationHistoryScreen } from '../../ragConversation/ConversationHistoryScreen';
 import { useColorScheme } from 'react-native';
 import { createNextVisitQuestionsTheme } from './nextVisitQuestionsRoutePresentation';
 import { ConversationVisitQuestionCard } from './ConversationVisitQuestionCard';
@@ -23,8 +22,6 @@ import type { AiFeatureFlowScreenProps } from './AiFeatureFlowScreenTypes';
 /** Renders one stack destination while the parent keeps source/provider overlays mounted above it. */
 export function AiFeatureFlowScreen({
   isEntryCurrent,
-  onOpenSavedAnalysis,
-  onOpenSavedVisitQuestions,
   onRestoreSummary,
   route,
   navigationRouteKey,
@@ -209,13 +206,7 @@ export function AiFeatureFlowScreen({
         />
       );
     case 'conversation-history':
-      return (
-        <ConversationHistoryScreen
-          onBack={onBack}
-          onOpenSavedAnalysis={onOpenSavedAnalysis}
-          onOpenSavedVisitQuestions={onOpenSavedVisitQuestions}
-        />
-      );
+      return conversation;
     case 'summary-history':
       return services.summaryHistory && onRestoreSummary ? (
         <SummaryHistoryScreen

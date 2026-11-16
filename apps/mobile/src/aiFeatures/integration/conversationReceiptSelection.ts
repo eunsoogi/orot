@@ -6,8 +6,19 @@ import { conversationReceiptProvider } from './conversationReceiptProvider';
  * Resolving a selection never emits a receipt or grants consent; only provider evidence does. */
 export function conversationReceiptSelection<T extends SelectedAiResolution>(
   selected: T,
-  observer?: Pick<RagConversationObserver, 'onProviderReceipt'>,
+  observer?: Pick<
+    RagConversationObserver,
+    'onProviderReceipt' | 'expectedConversationModel'
+  >,
 ): T {
+  const expected = observer?.expectedConversationModel;
+  if (
+    selected.status === 'ready' &&
+    expected &&
+    (selected.provider.id !== expected.providerId ||
+      selected.modelId !== expected.modelId)
+  )
+    throw new Error('The conversation model changed before dispatch.');
   if (selected.status !== 'ready' || !observer?.onProviderReceipt)
     return selected;
   const provider = conversationReceiptProvider(

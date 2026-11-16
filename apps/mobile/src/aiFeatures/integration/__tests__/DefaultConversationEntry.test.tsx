@@ -162,7 +162,7 @@ test.each([
   },
 );
 
-test('retains drafts through provider/history and leaves a new session empty', async () => {
+test('retains one draft through provider navigation without manual session controls', async () => {
   const onBack = jest.fn();
   await render(
     <AiFeatureRoute onBack={onBack} initialRoute="external-evidence" />,
@@ -178,21 +178,14 @@ test('retains drafts through provider/history and leaves a new session empty', a
     'value',
     '보존할 초안',
   );
-  await fireEvent.press(screen.getByTestId('rag-conversation-new-session'));
-  expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
-  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
-  const history = screen.getByTestId('conversation-history-list');
-  await fireEvent(history, 'selectSession', { nativeEvent: { id: 1 } });
-  expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
-    'value',
-    '보존할 초안',
-  );
+  expect(screen.queryByTestId('rag-conversation-new-session')).toBeNull();
+  expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(screen.queryByTestId('rag-conversation-screen')).toBeNull();
   // Native closing-transition delivery is covered separately by AiFeatureRouteExit.
 });
 
-test('does not apply a prior entry intent to a new conversation', async () => {
+test('retains the selected entry intent without a manual new-conversation action', async () => {
   const services = createAiFeatureServices({ authorize: jest.fn() });
   const send = jest.fn(async () => ({ status: 'no_evidence' as const }));
   await render(
@@ -215,7 +208,7 @@ test('does not apply a prior entry intent to a new conversation', async () => {
       />
     </AiFeatureSharedNavigationStateProvider>,
   );
-  await fireEvent.press(screen.getByTestId('rag-conversation-new-session'));
+  expect(screen.queryByTestId('rag-conversation-new-session')).toBeNull();
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     '새 질문',
@@ -226,5 +219,10 @@ test('does not apply a prior entry intent to a new conversation', async () => {
     [],
     expect.any(AbortSignal),
     expect.any(Object),
+    {
+      intent: 'visit-questions',
+      entryKey: 'visit-entry',
+      appointmentId: undefined,
+    },
   );
 });

@@ -1,3 +1,7 @@
+// These route/consent fixtures omit native protected storage; continuity is exercised with real SQLite separately.
+jest.mock('../continuousSessionOption', () => ({
+  continuousSessionOption: () => ({}),
+}));
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { AiFeatureRoute } from '../AiFeatureRoute';
 import { t } from '../../../i18n';

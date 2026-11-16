@@ -9,7 +9,7 @@ import { ConversationScreen } from '../ConversationScreen';
 import { ConversationSessionsProvider } from '../ConversationSessionsContext';
 import { getRagConversationCopy } from '../copy';
 
-test('keeps the expanded header and messages in one scroll owner with reachable session actions', async () => {
+test('keeps the expanded header and messages in one scroll owner without history or manual new-chat actions', async () => {
   const onOpenHistory = jest.fn();
   await render(
     <ConversationSessionsProvider>
@@ -33,16 +33,18 @@ test('keeps the expanded header and messages in one scroll owner with reachable 
   ).toBeNull();
   expect(within(history).getByText('합성 제공자')).toBeTruthy();
   expect(history.props.keyboardShouldPersistTaps).toBe('handled');
-  await fireEvent.press(
-    within(history).getByTestId('rag-conversation-sessions-toggle'),
-  );
-  expect(onOpenHistory).toHaveBeenCalledTimes(1);
+  expect(
+    within(history).queryByTestId('rag-conversation-sessions-toggle'),
+  ).toBeNull();
+  expect(onOpenHistory).not.toHaveBeenCalled();
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     '합성 초안',
   );
-  await fireEvent.press(
-    within(history).getByTestId('rag-conversation-new-session'),
+  expect(
+    within(history).queryByTestId('rag-conversation-new-session'),
+  ).toBeNull();
+  expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
+    '합성 초안',
   );
-  expect(screen.getByTestId('rag-conversation-input').props.value).toBe('');
 });

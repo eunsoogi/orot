@@ -73,6 +73,7 @@ test('preserves saved-question source, draft and provider state through retained
   const testSelectionStore = mutableSelectionStore();
   await render(
     <AiFeatureRoute
+      initialRoute="saved-visit-questions"
       onBack={jest.fn()}
       renderVisitQuestions={renderVisitQuestions}
       onOpenArticle={jest.fn()}
@@ -86,10 +87,6 @@ test('preserves saved-question source, draft and provider state through retained
   expect(StyleSheet.flatten(screenContent.props.style)).toMatchObject({
     flex: 1,
   });
-  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
-  await fireEvent.press(
-    screen.getByTestId('conversation-saved-visit-questions'),
-  );
   expect(screen.getByTestId('visit-question-route')).toBeTruthy();
   expect(renderVisitQuestions).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -165,10 +162,8 @@ test('preserves saved-question source, draft and provider state through retained
   await fireEvent.press(screen.getByTestId('visit-question-back'));
   expect(alert).not.toHaveBeenCalled();
   await waitFor(() =>
-    expect(screen.getByTestId('conversation-history-screen')).toBeTruthy(),
+    expect(screen.queryByTestId('visit-question-route')).toBeNull(),
   );
-  await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
   expect(screen.queryByTestId('external-evidence-search')).toBeNull();
 });
 

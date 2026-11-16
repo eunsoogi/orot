@@ -66,10 +66,38 @@ export function setConversationEntryForSession(
 export function useConversationEntryIntent(
   store: ConversationSessions,
   context?: ConversationEntryContext,
+  activeId?: number,
+  preparing = false,
 ) {
   const previousEntryKey = useRef<string | null>(null);
   useEffect(() => {
     if (!context) return;
+    if (store.continuous) {
+      const session = store
+        .getSnapshot()
+        .sessions.find(item => item.id === store.getSnapshot().activeId)!;
+      if (
+        session.restoring ||
+        session.restoreFailed ||
+        session.modelSelectionPending ||
+        session.modelSelectionFailed
+      )
+        return;
+      const key = `${conversationEntryContextKey(context)}:${session.id}`;
+      let applied = appliedEntries.get(store);
+      if (!applied) {
+        applied = new Set();
+        appliedEntries.set(store, applied);
+      }
+      if (applied.has(key)) return;
+      applied.add(key);
+      setConversationEntryForSession(store, session.id, context);
+      if (context.dailyReport)
+        store.selectDailyReport(session.id, context.dailyReport);
+      const request = conversationIntentRequests[context.intent];
+      if (request) store.setEntryPrompt(session.id, request);
+      return;
+    }
     // Reusing a route key for another appointment must create a fresh target session.
     const key = conversationEntryContextKey(context);
     const previousKey = previousEntryKey.current;
@@ -148,5 +176,5 @@ export function useConversationEntryIntent(
     }
     if (context.dailyReport) store.selectDailyReport(id, context.dailyReport);
     if (request) store.setEntryPrompt(id, request);
-  }, [context, store]);
+  }, [context, store, activeId, preparing]);
 }

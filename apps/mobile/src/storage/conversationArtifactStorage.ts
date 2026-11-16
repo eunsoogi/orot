@@ -1,4 +1,5 @@
 import { enqueueStatementMemory } from './userStatementMemoryJobs';
+import { continuousConversationStorage } from './continuousConversationStorage';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
 import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
 import {
@@ -60,6 +61,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   return {
+    continuousSession: continuousConversationStorage(database, ensure),
     readSteeringHistory: conversationSteeringHistory(database, ensure),
     openWorkflowContinuation: conversationWorkflowContinuationOpener(database),
     ...createConversationPreviewStorage(database, ensure),

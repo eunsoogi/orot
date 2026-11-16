@@ -38,15 +38,10 @@ test.each(phases)(
       .mockImplementation(() => undefined);
     const route = await render(
       <AiFeatureRoute
+        initialRoute="saved-visit-questions"
         onBack={jest.fn()}
         renderVisitQuestions={input => <Probe {...input} state={state} />}
       />,
-    );
-    await fireEvent.press(
-      route.getByTestId('rag-conversation-sessions-toggle'),
-    );
-    await fireEvent.press(
-      route.getByTestId('conversation-saved-visit-questions'),
     );
     await waitFor(() =>
       expect(route.getByTestId('visit-question-route')).toBeTruthy(),
