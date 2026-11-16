@@ -1,3 +1,5 @@
+import { stopSettlement } from './conversationStopSettlement';
+import { conversationBoundary } from './conversationFinalizationDiagnostics';
 import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
 import { coldPreviewPatch } from './replaceColdConversationAnswer';
 import { t } from '../i18n';
@@ -142,6 +144,7 @@ export function createConversationStopHandler(input: {
     input.lifetime.interrupt(id, status);
     controller.abort();
     diagnose?.('abort-dispatched');
+    if (diagnose) conversationBoundary('stop_abort', 'completed');
     input.steering?.clear(id);
     // System interruption is not an explicit user cancellation; persist the true state.
     input.activities.get(id)?.finish(status);
@@ -153,6 +156,7 @@ export function createConversationStopHandler(input: {
       !settled
     ) {
       diagnose?.('stop-awaiting-commit');
+      if (diagnose) stopSettlement.start(controller);
       return;
     }
     input.controllers.delete(id);
@@ -168,5 +172,6 @@ export function createConversationStopHandler(input: {
       interruptionReason: input.lifetime.interruptionReason(controller),
     });
     diagnose?.('stop-presented');
+    stopSettlement.finish(controller);
   };
 }

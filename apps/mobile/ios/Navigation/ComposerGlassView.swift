@@ -116,7 +116,14 @@ final class ComposerGlassActionView: UIView {
             icon.centerXAnchor.constraint(equalTo: button.centerXAnchor),
             icon.centerYAnchor.constraint(equalTo: button.centerYAnchor),
         ])
-        button.addAction(UIAction { [weak self] _ in self?.onComposerPress?([:]) }, for: .touchUpInside)
+        button.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            // Record only a fixed native delivery boundary; no prompt, label or view identifier.
+            if busy, !disabled {
+                OrotProviderDiagnostics().report("rag", stage: "stop_native", outcome: "started")
+            }
+            onComposerPress?([:])
+        }, for: .touchUpInside)
         update()
     }
 

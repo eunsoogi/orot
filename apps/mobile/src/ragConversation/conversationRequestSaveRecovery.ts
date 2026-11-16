@@ -1,3 +1,4 @@
+import { observeConversationFinalization as finalize } from './conversationFinalizationDiagnostics';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 import type { ConversationSession } from './conversationSessionTypes';
 import type { PendingTurn } from './conversationSessionTypes';
@@ -47,7 +48,9 @@ export function createConversationRequestSaveRecovery(
         async onRetentionCandidate(candidate, signal) {
           request.saving = true;
           try {
-            await turn.save(candidate, signal);
+            await finalize('conversation_save', () =>
+              turn.save(candidate, signal),
+            );
             request.committed = true;
           } finally {
             request.saving = false;
