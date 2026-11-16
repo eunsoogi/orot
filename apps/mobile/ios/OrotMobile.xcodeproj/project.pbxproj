@@ -391,9 +391,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		B10940000000000000000003 /* CalendarDecisionsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CalendarDecisionsTransport.m; sourceTree = "<group>"; };
-		B10940000000000000000002 /* CalendarDecisionsTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDecisionsTransport.swift; sourceTree = "<group>"; };
-		B10940000000000000000001 /* CalendarDecisionsRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDecisionsRequest.swift; sourceTree = "<group>"; };
+		B10940000000000000000003 /* CalendarDecisionsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = CalendarDecisionsTransport.m; path = OrotMobile/CalendarDecisionsTransport.m; sourceTree = "<group>"; };
+		B10940000000000000000002 /* CalendarDecisionsTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalendarDecisionsTransport.swift; path = OrotMobile/CalendarDecisionsTransport.swift; sourceTree = "<group>"; };
+		B10940000000000000000001 /* CalendarDecisionsRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalendarDecisionsRequest.swift; path = OrotMobile/CalendarDecisionsRequest.swift; sourceTree = "<group>"; };
 		BF39B211764F40D99FEAC2C1 /* OpenAIProviderModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OpenAIProviderModelCatalog.swift; path = OrotMobile/OpenAIProviderModelCatalog.swift; sourceTree = "<group>"; };
 		AA6951880050E87283AFD1C1 /* NavigationPageDockGeometryAssertions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationPageDockGeometryAssertions.swift; sourceTree = "<group>"; };
 		AFC5BB83930A9566F6A5CAB1 /* SavedDocumentNavigationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SavedDocumentNavigationUITests.swift; sourceTree = "<group>"; };
