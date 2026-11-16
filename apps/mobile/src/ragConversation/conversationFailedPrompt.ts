@@ -87,7 +87,9 @@ export function restoreFailedPrompt(
       ? { draft: hasDifferentDraft ? session.draft : question }
       : {}),
     messages: session.messages.map(message =>
-      message.id === userMessageId ? { ...message, failed: true } : message,
+      message.id === userMessageId
+        ? { ...message, failed: true, deliveryPending: false }
+        : message,
     ),
     ...(error === undefined ? {} : { error }),
     ...(idle ? { busy: false } : {}),

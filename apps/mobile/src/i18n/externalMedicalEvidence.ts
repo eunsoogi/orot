@@ -1,5 +1,7 @@
 /** Korean catalog entries for user-consented literature and public web search. */
 export const externalMedicalEvidenceKo = {
+  'externalMedicalEvidence.publicSearchRecipient': '{recipient} · 공개 웹검색',
+  'externalMedicalEvidence.publicSearchSourceTitle': '공개 웹검색',
   'externalMedicalEvidence.publicSearchEmptyNotice':
     '공개 웹검색에서 결과를 찾지 못했어요.',
   'externalMedicalEvidence.publicSearchConsentNotice':

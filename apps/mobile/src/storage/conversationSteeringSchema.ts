@@ -15,6 +15,15 @@ export async function setupConversationSteering(database: SqlDatabase) {
       request_id TEXT NOT NULL, run_id TEXT NOT NULL, id TEXT NOT NULL,
       operation_id TEXT NOT NULL, status TEXT NOT NULL,
       PRIMARY KEY(request_id, run_id, id))`);
+    // Additive receipt metadata leaves old rows and positional legacy inserts intact.
+    // Old receipts have no known observation time and must never be backfilled with now.
+    await sql.execute(`CREATE TABLE IF NOT EXISTS conversation_steering_receipt_times (
+      request_id TEXT NOT NULL, run_id TEXT NOT NULL, id TEXT NOT NULL,
+      submitted_at TEXT, sent_at TEXT, read_at TEXT, PRIMARY KEY(request_id, run_id, id))`);
+    await sql.execute(`CREATE TRIGGER IF NOT EXISTS steering_receipt_times_removed
+      AFTER DELETE ON conversation_steering BEGIN
+      DELETE FROM conversation_steering_receipt_times
+      WHERE request_id=OLD.request_id AND run_id=OLD.run_id AND id=OLD.id; END`);
     await sql.execute(`CREATE TRIGGER IF NOT EXISTS live_steering_removed
       AFTER DELETE ON conversation_steering BEGIN
       DELETE FROM conversation_live_steering WHERE request_id=OLD.request_id AND run_id=OLD.run_id AND id=OLD.id; END`);

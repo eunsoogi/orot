@@ -21,6 +21,29 @@ export function ConversationSteeringMessages({
               : row.serverAccepted
                 ? t('conversationSteering.sent')
                 : null;
+        const observedAt =
+          row.status === 'applied'
+            ? row.readAt
+            : row.status !== 'not_applied' && row.serverAccepted
+              ? row.sentAt
+              : undefined;
+        const formatTime = (value?: string) =>
+          value && Number.isFinite(Date.parse(value))
+            ? new Intl.DateTimeFormat('ko-KR', {
+                hour: 'numeric',
+                minute: '2-digit',
+              }).format(new Date(value))
+            : undefined;
+        const submittedTime = formatTime(row.submittedAt);
+        const receiptTime = formatTime(observedAt);
+        const receiptText = [
+          submittedTime,
+          receipt
+            ? `${receipt}${receiptTime ? ` ${receiptTime}` : ''}`
+            : undefined,
+        ]
+          .filter(Boolean)
+          .join(' · ');
         return (
           <View
             key={row.id}
@@ -32,12 +55,17 @@ export function ConversationSteeringMessages({
                 {row.text}
               </AppText>
             </View>
-            {receipt ? (
+            {receiptText ? (
               <AppText
                 accessibilityLiveRegion="polite"
+                accessibilityHint={
+                  row.status === 'applied'
+                    ? t('conversationSteering.readHint')
+                    : undefined
+                }
                 style={receiptStyles.receipt}
               >
-                {receipt}
+                {receiptText}
               </AppText>
             ) : null}
           </View>

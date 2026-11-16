@@ -1,3 +1,4 @@
+import { conversationReceiptProvider } from './conversationReceiptProvider';
 import { conversationBackgroundProvider } from './conversationBackgroundProvider';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { requireSelectedAi } from './provider';
@@ -26,7 +27,10 @@ export async function resolveConversationSelection(
     ? {
         ...selected,
         provider: conversationBackgroundProvider(
-          selected.provider,
+          conversationReceiptProvider(
+            selected.provider,
+            observer?.onProviderReceipt,
+          ),
           selected.remoteProcessing,
           observer?.onExecutionState
             ? extend =>

@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react-native';
+import { ConversationTranscriptMessages } from '../ConversationTranscriptMessages';
 import { ConversationMessage } from '../ConversationMessage';
 import type { DisplayMessage } from '../conversationDisplayMessage';
 
@@ -72,4 +73,54 @@ test('does not fabricate opening bubbles for legacy turns or user messages', asy
   expect(screen.getByTestId('conversation-user-message')).toHaveTextContent(
     '질문',
   );
+});
+
+test('separate AI bubbles preserve one user receipt and the shared reply focus', async () => {
+  const onLayout = jest.fn();
+  await render(
+    <ConversationTranscriptMessages
+      messages={[
+        {
+          id: 1,
+          role: 'user',
+          content: '합성 질문',
+          delivery: {
+            submittedAt: '2026-10-01T10:00:00Z',
+            acceptedAt: '2026-10-01T10:01:00Z',
+            readAt: '2026-10-01T10:02:00Z',
+          },
+        },
+        {
+          id: 2,
+          role: 'assistant',
+          content: '합성 최종 답변',
+          initialResponse: opening,
+          retainedTurnId: 'turn',
+        },
+      ]}
+      instructions={[]}
+      replyFocus={{
+        messageId: 'turn',
+        generation: 1,
+        canReveal: () => true,
+        complete: jest.fn(),
+      }}
+      onLayout={onLayout}
+      messageProps={props}
+    />,
+  );
+  expect(screen.getAllByTestId('conversation-message-receipt')).toHaveLength(1);
+  expect(
+    screen.getByTestId('conversation-message-receipt').props.accessibilityLabel,
+  ).toContain('2026');
+  const focus = screen.getByTestId('conversation-reply-focus');
+  expect(
+    within(focus).getByTestId('conversation-assistant-opening-message'),
+  ).toBeTruthy();
+  expect(
+    within(focus).getByTestId('conversation-assistant-message'),
+  ).toBeTruthy();
+  expect(
+    within(focus).queryByTestId('conversation-message-receipt'),
+  ).toBeNull();
 });

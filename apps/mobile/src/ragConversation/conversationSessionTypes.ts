@@ -78,6 +78,7 @@ export interface ConversationSessionOptions {
     readonly {
       question: string;
       submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
+      delivery?: import('./conversationMessageDelivery').ConversationMessageDelivery;
       answer: string;
       preview?: string;
       interrupted?: true;
