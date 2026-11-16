@@ -71,7 +71,7 @@ export const medicationHistoryStyles = StyleSheet.create({
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 0,
     gap: 6,
     padding: 14,
   },

@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     minWidth: 150,
     maxWidth: '100%',
     gap: 8,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: appColors.border,
     borderRadius: 16,
     backgroundColor: appColors.surface,
