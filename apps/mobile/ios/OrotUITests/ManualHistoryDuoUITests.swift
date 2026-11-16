@@ -188,7 +188,8 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
 
     @MainActor
     private func visible(_ app: XCUIApplication, _ label: String) {
-        let text = app.staticTexts.matching(NSPredicate(format: "label == %@", label)).firstMatch
+        // Match the unchanged visible label and a stable text identity; keep window and viewport guards.
+        let text = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label == %@", "manual-history-", label)).firstMatch
         XCTAssertTrue(UITestConditions.exists(text), app.debugDescription)
         FormUITestConditions.reveal(text, in: app, scrollID: "navigation-route-scroll", towardTop: true)
         XCTAssertTrue(text.isHittable, app.debugDescription)

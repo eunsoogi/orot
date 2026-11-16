@@ -122,7 +122,9 @@ export function HistoryMemoryDetail({
           />
         ) : (
           <>
-            <Text selectable>{record.title}</Text>
+            <Text selectable testID="manual-history-current-title">
+              {record.title}
+            </Text>
             <ManualHistoryEntryDetails
               entry={record}
               history={history}
