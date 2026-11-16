@@ -66,9 +66,9 @@ export function createConversationSessionOptions(input: {
     }),
     restoreSession: async (sessionId, signal) => {
       const data = await input.loadLocalData();
-      const discovery = data.conversationArtifactDiscovery
-        ? await data.conversationArtifactDiscovery(input.registry)
-        : null;
+      const discovery = await data.conversationArtifactDiscovery?.(
+        input.registry,
+      );
       if (!discovery)
         throw new Error('Conversation restoration is unavailable.');
       const version = await discovery.activeSessionVersion(sessionId);
@@ -76,8 +76,7 @@ export function createConversationSessionOptions(input: {
       const turns: Awaited<
         ReturnType<typeof discovery.readSession>
       >['items'][number][] = [];
-      let cursor:
-        { readonly createdAt: string; readonly id: string } | undefined;
+      let cursor: Parameters<typeof discovery.readSession>[0]['cursor'];
       do {
         const page = await discovery.readSession({
           sessionId,
@@ -140,6 +139,7 @@ export function createConversationSessionOptions(input: {
               : undefined;
           return {
             question: turn.question,
+            ...(turn.delivery ? { delivery: turn.delivery } : {}),
             ...(turn.submittedInput
               ? { submittedInput: turn.submittedInput }
               : {}),

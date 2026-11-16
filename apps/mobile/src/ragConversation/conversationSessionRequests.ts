@@ -152,6 +152,7 @@ export function createConversationSessionRequests(
         });
         activity = createConversationTurnActivity({
           id,
+          userMessageId,
           responseId,
           find,
           update,

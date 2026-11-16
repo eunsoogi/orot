@@ -158,6 +158,7 @@ export async function restoreConversationArtifact(input: {
     ...(saved.dailyReport ? { dailyReport: saved.dailyReport } : {}),
     status: saved.status,
     question: saved.question,
+    ...(saved.delivery ? { delivery: saved.delivery } : {}),
     ...(saved.submittedInput ? { submittedInput: saved.submittedInput } : {}),
     answer: saved.answer,
     ...(saved.initialResponse

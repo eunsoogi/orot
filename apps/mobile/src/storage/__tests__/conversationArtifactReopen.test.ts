@@ -27,6 +27,11 @@ test('reopen preserves completed output and an empty-corpus wipe fences late ses
       status: 'complete' as const,
       question: 'question',
       answer: 'answer',
+      delivery: {
+        submittedAt: '2026-10-05T00:00:00.000Z',
+        acceptedAt: '2026-10-05T00:00:01.000Z',
+        readAt: '2026-10-05T00:00:02.000Z',
+      },
       initialResponse: { callId: 'opening', text: '질문에 맞춰 살펴볼게요.' },
       entryIntent: 'possibilities' as const,
       priorDialogue: [

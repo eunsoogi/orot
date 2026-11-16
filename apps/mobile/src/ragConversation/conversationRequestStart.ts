@@ -54,6 +54,8 @@ export function prepareConversationRequest(
         id: request.userMessageId,
         role: 'user',
         content: question,
+        delivery: { submittedAt: new Date().toISOString() },
+        deliveryPending: true,
         ...(hasPhoto ? { photoAttached: true } : {}),
       },
     ],
