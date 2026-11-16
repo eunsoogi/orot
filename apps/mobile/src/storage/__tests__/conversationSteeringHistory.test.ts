@@ -32,6 +32,14 @@ test('history exposes only completed receipts for the exact active session, neve
         status: 'not_applied',
       },
     ]);
+    await f.connection.database.execute('DROP TRIGGER live_steering_removed');
+    await f.connection.database.execute(
+      'DROP TABLE conversation_live_steering',
+    );
+    expect((await read())[0]).toMatchObject({
+      id: 's1',
+      status: 'not_applied',
+    });
     expect(
       await storage.readSteeringHistory('other', 0, 'request', signal),
     ).toEqual([]);

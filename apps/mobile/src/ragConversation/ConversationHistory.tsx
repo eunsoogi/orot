@@ -7,11 +7,9 @@ import { useFloatingIdentityInset } from '../assistantAppearance/FloatingIdentit
 import { useRef, type ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
 import { styles } from './ConversationScreen.styles';
-import { ConversationSteeringMessages } from './ConversationSteeringMessages';
-import { ConversationMessage } from './ConversationMessage';
+import { ConversationTranscriptMessages } from './ConversationTranscriptMessages';
 import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
-import { ReplyMessageContainer } from './ReplyMessageContainer';
 import { ConversationActivityBubble } from './ConversationActivityBubble';
 import { conversationHistoryActivity } from './conversationHistoryActivity';
 import type { ConversationHistoryProps } from './ConversationHistoryProps';
@@ -195,34 +193,27 @@ export function ConversationHistory({
         testID="conversation-message-container"
         onLayout={event => replyScroll.container(event.nativeEvent.layout.y)}
       >
-        {visibleMessages
-          .filter(message =>
+        <ConversationTranscriptMessages
+          messages={visibleMessages.filter(message =>
             transcriptMessageVisible(message, separatedActivity),
-          )
-          .map(message => (
-            <ReplyMessageContainer
-              key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
-              focused={Boolean(
-                replyFocus && message.retainedTurnId === replyFocus.messageId,
-              )}
-              onLayout={replyScroll.message}
-            >
-              <ConversationMessage
-                message={message}
-                onContinueCold={onContinueCold}
-                coldResumeBusy={coldResumeBusy}
-                resolveColdToolSource={resolveColdToolSource}
-                showToolActivity={false}
-                onOpenSource={onOpenSource}
-                onLinkError={onLinkError}
-                compact={compact}
-                toolSourceSessionId={toolSourceSessionId}
-                resolveToolSource={resolveToolSource}
-                renderVisitQuestions={renderVisitQuestions}
-              />
-            </ReplyMessageContainer>
-          ))}
-        <ConversationSteeringMessages instructions={steeringInstructions} />
+          )}
+          pendingId={pendingMessage?.id}
+          instructions={steeringInstructions}
+          replyFocus={replyFocus}
+          onLayout={replyScroll.message}
+          messageProps={{
+            onContinueCold,
+            coldResumeBusy,
+            resolveColdToolSource,
+            showToolActivity: false,
+            onOpenSource,
+            onLinkError,
+            compact,
+            toolSourceSessionId,
+            resolveToolSource,
+            renderVisitQuestions,
+          }}
+        />
         {showActivityBubble ? <ConversationActivityBubble /> : null}
         <ConversationHistoryStatus
           {...{

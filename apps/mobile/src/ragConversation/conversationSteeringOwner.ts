@@ -14,6 +14,7 @@ export function createConversationSteeringOwner(
       current: () => boolean;
       release?: () => void;
       submitting: boolean;
+      responseId?: number;
     }
   >();
   let sequence = 0;
@@ -22,6 +23,10 @@ export function createConversationSteeringOwner(
     entries.get(id)?.release?.();
     entries.delete(id);
     update(id, {
+      messages: find(id)?.messages.map(message => ({
+        ...message,
+        steeringInstructions: undefined,
+      })),
       steeringInstructions: [],
       steeringDeliveryMode: undefined,
       steeringAvailable: false,
@@ -42,6 +47,7 @@ export function createConversationSteeringOwner(
         current,
         release: undefined as (() => void) | undefined,
         submitting: false,
+        responseId: find(id)?.pendingMessage?.id,
       };
       entries.set(id, entry);
       const refresh = async () => {
@@ -89,18 +95,29 @@ export function createConversationSteeringOwner(
       entry.release?.();
       entries.delete(id);
       const session = find(id);
-      if (session)
+      if (session) {
+        const instructions = resumable
+          ? session.steeringInstructions
+          : session.steeringInstructions?.map(row =>
+              row.status === 'applied' || row.status === 'delivery_pending'
+                ? row
+                : { ...row, status: 'not_applied' as const },
+            );
+        const target = session.messages.find(
+          message =>
+            message.role === 'assistant' && message.id === entry.responseId,
+        );
         update(id, {
           steeringAvailable: false,
           steeringSubmitting: false,
-          steeringInstructions: resumable
-            ? session.steeringInstructions
-            : session.steeringInstructions?.map(row =>
-                row.status === 'applied' || row.status === 'delivery_pending'
-                  ? row
-                  : { ...row, status: 'not_applied' },
-              ),
+          steeringInstructions: target ? [] : instructions,
+          messages: session.messages.map(message =>
+            message === target
+              ? { ...message, steeringInstructions: instructions }
+              : message,
+          ),
         });
+      }
     },
   };
 }

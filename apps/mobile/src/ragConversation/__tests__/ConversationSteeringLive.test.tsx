@@ -33,6 +33,7 @@ test('real composer queues live text through the current request owner without s
     observer,
   ) => {
     signal = current;
+    rows = [];
     observer?.onSteeringReady?.(journal);
     return new Promise(resolve => {
       finish = resolve;
@@ -76,6 +77,22 @@ test('real composer queues live text through the current request owner without s
   expect(screen.queryByTestId('conversation-steering-send')).toBeNull();
   expect(screen.getByText('읽음')).toBeTruthy();
   expect(signal?.aborted).toBe(false);
+  await fireEvent.changeText(
+    screen.getByTestId('rag-conversation-input'),
+    'Next synthetic question',
+  );
+  await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+  expect(screen.getAllByText('Keep the synthetic answer brief')).toHaveLength(
+    1,
+  );
+  expect(screen.getAllByText('읽음')).toHaveLength(1);
+  await act(async () => {
+    finish({
+      status: 'answer',
+      answer: 'Next synthetic response',
+      citations: [],
+    });
+  });
 });
 
 test('an unready steering owner cannot turn a typed Send into cancellation', async () => {

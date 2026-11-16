@@ -17,12 +17,15 @@ export function conversationSteeringHistory(
     await database.transaction(async sql => {
       if (signal.aborted) return;
       const table = await sql.execute(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'conversation_steering'",
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('conversation_steering', 'conversation_live_steering')",
       );
-      if (!table.rows.length) return;
+      if (!table.rows.some(row => row.name === 'conversation_steering')) return;
+      const hasLive = table.rows.some(
+        row => row.name === 'conversation_live_steering',
+      );
       const result = await sql.execute(
-        `SELECT q.id, q.text, q.sequence, q.status, l.status AS live_status FROM conversation_steering q
-        LEFT JOIN conversation_live_steering l ON l.request_id=q.request_id AND l.run_id=q.run_id AND l.id=q.id
+        `SELECT q.id, q.text, q.sequence, q.status, ${hasLive ? 'l.status' : 'NULL'} AS live_status FROM conversation_steering q
+        ${hasLive ? 'LEFT JOIN conversation_live_steering l ON l.request_id=q.request_id AND l.run_id=q.run_id AND l.id=q.id' : ''}
         JOIN conversation_requests r ON r.id = q.request_id
         JOIN conversation_artifact_sessions s ON s.id = r.session_id
         JOIN conversation_artifact_generation g ON g.singleton = 1

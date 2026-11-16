@@ -6,9 +6,11 @@ const receipt = {
   sequence: 1,
   status: 'applied' as const,
 };
-test('restores only the latest completed turn receipts without enabling submission', async () => {
+test('restores completed receipts on their own response without enabling submission', async () => {
   const update = jest.fn();
-  const readSteering = jest.fn(async () => [receipt]);
+  const readSteering = jest.fn(async (_session, request) => [
+    { ...receipt, id: request },
+  ]);
   const state = createConversationSessionRestoreState({
     update,
     readSteering,
@@ -20,6 +22,13 @@ test('restores only the latest completed turn receipts without enabling submissi
         completion: 'complete',
         toolMessageId: 'turn',
       },
+      {
+        question: 'Next',
+        answer: 'Next answer',
+        citations: [],
+        completion: 'complete',
+        toolMessageId: 'turn2',
+      },
     ],
   });
   await state.start(1, 'session');
@@ -28,10 +37,21 @@ test('restores only the latest completed turn receipts without enabling submissi
     'turn',
     expect.anything(),
   );
+  expect(readSteering).toHaveBeenCalledWith(
+    'session',
+    'turn2',
+    expect.anything(),
+  );
   expect(update).toHaveBeenCalledWith(
     1,
     expect.objectContaining({
-      steeringInstructions: [receipt],
+      steeringInstructions: [],
+      messages: expect.arrayContaining([
+        expect.objectContaining({
+          role: 'assistant',
+          steeringInstructions: [{ ...receipt, id: 'turn' }],
+        }),
+      ]),
       steeringAvailable: false,
     }),
   );
@@ -62,6 +82,11 @@ test('deletion during receipt restoration prevents private late publication', as
   finish([receipt]);
   await pending;
   expect(
-    update.mock.calls.some(([, change]) => change.steeringInstructions?.length),
+    update.mock.calls.some(([, change]) =>
+      change.messages?.some(
+        (m: { steeringInstructions?: unknown[] }) =>
+          m.steeringInstructions?.length,
+      ),
+    ),
   ).toBe(false);
 });

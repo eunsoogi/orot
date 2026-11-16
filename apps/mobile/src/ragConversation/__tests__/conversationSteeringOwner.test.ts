@@ -4,6 +4,7 @@ import type { WorkflowOperationJournal } from '@orot/agent-runtime';
 function fixture() {
   let session = {
     id: 1,
+    messages: [],
     draft: 'Synthetic instruction',
   } as ConversationSession;
   const owner = createConversationSteeringOwner(

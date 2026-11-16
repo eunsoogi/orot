@@ -1,7 +1,10 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { providerSelectionText } from './text';
-import type { ProviderSelectionResolution } from './types';
+import type {
+  ProviderSelectionPresentation,
+  ProviderSelectionResolution,
+} from './types';
 
 /** Keeps copy mapping and layout tokens separate from provider-selection state transitions. */
 export function resolutionMessage(
@@ -17,6 +20,27 @@ export function resolutionMessage(
     case 'selection-unavailable':
       return providerSelectionText.unavailableSelection;
   }
+}
+
+/** Settings retains saved identity without treating an unloaded catalog as an availability claim. */
+export function selectionSummaryMessage(input: {
+  loading: boolean;
+  loadError: boolean;
+  available: boolean;
+  displayName?: string;
+  savedModelId?: string;
+  presentation: ProviderSelectionPresentation;
+}): string {
+  if (input.loading) return '';
+  if (input.loadError) return providerSelectionText.storageLoadError;
+  if (input.available)
+    return `${providerSelectionText.selectedPrefix} ${input.displayName ?? ''}`;
+  if (!input.savedModelId) return providerSelectionText.selectPrompt;
+  const identity = `${providerSelectionText.selectedPrefix} ${input.savedModelId}`;
+  // Feature entry still needs its unavailable-selection recovery feedback.
+  return input.presentation === 'settings-provider'
+    ? identity
+    : `${identity}\n${providerSelectionText.unavailableSelection}`;
 }
 
 export const providerSelectionScreenStyles = StyleSheet.create({
