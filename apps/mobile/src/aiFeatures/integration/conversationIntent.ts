@@ -5,6 +5,7 @@ import { t } from '../../i18n';
 
 /** Entry intent stays separate from editable text for downstream conversation tools. */
 export type ConversationIntent =
+  | 'daily-report'
   | 'conversation'
   | 'health-summary'
   | 'possibilities'
@@ -16,6 +17,7 @@ export interface ConversationEntryContext {
   readonly intent: ConversationIntent;
   readonly entryKey: string;
   readonly appointmentId?: string;
+  readonly reportRequest?: DailyReportIdentity;
   /** A route-local artifact identity; it does not authorize report content transfer. */
   readonly dailyReport?: {
     readonly identity: DailyReportIdentity;
@@ -33,6 +35,7 @@ export interface DailyReportConversationIntent {
 
 export const conversationIntentRequests: Record<ConversationIntent, string> = {
   conversation: '',
+  'daily-report': t('dailyReport.title'),
   'health-summary': t('conversationIntent.healthSummary'),
   possibilities: t('conversationIntent.possibilities'),
   'visit-questions': t('conversationIntent.visitQuestions'),

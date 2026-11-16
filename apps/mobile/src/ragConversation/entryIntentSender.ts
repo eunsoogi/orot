@@ -18,16 +18,24 @@ export function entryIntentSender(
   return async (question, history, signal, observer) => {
     // Restored targets are revalidated by the same guard used for the original entry.
     // Restored possibility sessions retain their safety and grounding boundary on follow-up.
-    const context = restored?.dailyReport
-      ? {
-          intent: restored.entryIntent ?? ('conversation' as const),
-          entryKey: 'restored',
-          dailyReport: restored.dailyReport,
-        }
-      : restored?.entryIntent === 'possibilities' &&
-          (!selected || selected.intent === 'conversation')
-        ? { intent: 'possibilities' as const, entryKey: 'restored' }
-        : selected;
+    const context =
+      selected && selected.intent !== 'conversation'
+        ? {
+            ...selected,
+            ...(restored?.dailyReport
+              ? { dailyReport: restored.dailyReport }
+              : {}),
+          }
+        : restored?.dailyReport
+          ? {
+              intent: restored.entryIntent ?? ('conversation' as const),
+              entryKey: 'restored',
+              dailyReport: restored.dailyReport,
+            }
+          : restored?.entryIntent === 'possibilities' &&
+              (!selected || selected.intent === 'conversation')
+            ? { intent: 'possibilities' as const, entryKey: 'restored' }
+            : selected;
     let committed = false;
     const scopedObserver = {
       ...observer,
