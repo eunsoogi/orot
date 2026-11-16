@@ -1,3 +1,4 @@
+// Preserve the legacy explicit-session restore/parent lineage contract independently of app continuity.
 import { runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
@@ -91,7 +92,10 @@ test('a new conversation can retain a prior generated answer and follows its del
       ragRunner: runner,
     });
     const sessionOptions = services.conversationSessionOptions();
-    const sessions = createConversationSessions(sessionOptions);
+    const sessions = createConversationSessions({
+      ...sessionOptions,
+      continuousSession: undefined,
+    });
     sessions.setDraft(1, 'Find previous answer');
     await sessions.send(1, services.sendRagMessage);
     const firstSessionId = sessionOptions.retention!.activeIdentity(1)!;
