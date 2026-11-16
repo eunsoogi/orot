@@ -9,30 +9,48 @@ import { styles } from './ConversationScreen.styles';
 export function ConversationMessageBubbles({
   message,
   children,
+  presentation,
 }: {
   readonly message: DisplayMessage;
   readonly children: ReactNode;
+  readonly presentation: {
+    readonly showCitations: boolean;
+    readonly showToolActivity: boolean;
+    readonly visitQuestions: ReactNode;
+    readonly canResume: boolean;
+  };
 }) {
   const opening =
     message.role === 'assistant' &&
     message.initialResponse?.source !== 'receipt'
       ? message.initialResponse
       : undefined;
-  if (!opening) return children;
   // Do not paint an empty answer box while only the reviewed opening is available.
   const hasAnswer = Boolean(
     message.content ||
     message.activity ||
-    message.incomplete ||
+    (message.incomplete &&
+      message.coldResume &&
+      message.toolMessageId &&
+      presentation.canResume) ||
     message.previousOutputs?.length ||
-    message.toolEvents?.length ||
+    (presentation.showToolActivity && message.toolEvents?.length) ||
     message.healthSummary !== undefined ||
-    message.visitQuestions ||
+    (presentation.visitQuestions != null &&
+      presentation.visitQuestions !== false) ||
     message.visitQuestionsUnavailable ||
     message.dailyReport ||
-    message.citations?.length ||
+    (presentation.showCitations && message.citations?.length) ||
     message.completion === 'partial',
   );
+  // Hidden tool activity and unavailable renderers must not create a painted surface.
+  // Keep user messages and the existing delayed receipt lifecycle outside this predicate.
+  if (!opening)
+    return message.role === 'user' ||
+      hasAnswer ||
+      (message.streaming && message.initialResponse?.source === 'receipt')
+      ? children
+      : null;
   return (
     <View style={styles.assistantBubbleSequence}>
       <View
