@@ -83,7 +83,7 @@ export function createHealthContextTool(
     sourceKind: 'personal_record',
     execution: 'local_read_only',
     description:
-      'Read longitudinal health context from the last 7, 30 (default), or 90 local calendar days. For broad summaries choose topics and summary, weekly, or daily detail. Step sensor sums are separate, not merged totals.' +
+      'Read longitudinal health context from the last 7, 30 (default), or 90 local calendar days. For broad summaries choose topics and summary, weekly, or daily detail. Step sensor sums are separate, not merged totals. Measurements include heart-rate sample ranges grouped by time overlap with already imported workout intervals, not proof of exercise, rest or causation. No new HealthKit reads are performed.' +
       (feature === 'rag'
         ? ' For any topics, choose window with explicit ISO instants and IANA timeZone for a specific period. The range covers at most 90 local days and is [fromInclusive, toExclusive); convert local calendar boundaries using the requested time zone. For medication history only, optionally add doseHistory with an exact medicationName, zero-based page (0-1000) and pageSize (1-20). Follow hasMore with the next page up to page 1000; narrow the period beyond that. Data changes can shift pages. Registration and scheduled times are not intake; an absent event is unknown.'
         : ''),

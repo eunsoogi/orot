@@ -1,4 +1,8 @@
-import type { HealthContextReport, HealthQuantityDay } from './types';
+import type {
+  HealthContextReport,
+  HealthQuantityDay,
+  HeartRateActivityGroup,
+} from './types';
 import { projectHealthMedication } from './medicationProjection';
 
 export type HealthContextDetail = 'summary' | 'weekly' | 'daily';
@@ -8,9 +12,39 @@ const average = (values: readonly number[]) =>
     ? round(values.reduce((a, b) => a + b, 0) / values.length)
     : null;
 
+/** Keep activity strata descriptive; never discard an elevated sample or relabel unmatched samples as resting. */
+function activityGroups(
+  days: readonly HealthQuantityDay[],
+): HeartRateActivityGroup[] {
+  const groups = new Map<
+    HeartRateActivityGroup['context'],
+    HeartRateActivityGroup
+  >();
+  for (const group of days.flatMap(day => day.activityContext ?? [])) {
+    const previous = groups.get(group.context);
+    groups.set(
+      group.context,
+      previous
+        ? {
+            context: group.context,
+            samples: previous.samples + group.samples,
+            minimum: Math.min(previous.minimum, group.minimum),
+            maximum: Math.max(previous.maximum, group.maximum),
+          }
+        : group,
+    );
+  }
+  return [...groups.values()].sort((a, b) =>
+    a.context.localeCompare(b.context),
+  );
+}
+
 function quantities(days: readonly HealthQuantityDay[], step: boolean) {
   const last = days.at(-1);
   return {
+    ...(days.some(day => day.activityContext)
+      ? { activityContext: activityGroups(days) }
+      : {}),
     recordedDays: days.length,
     sampleCount: days.reduce((sum, day) => sum + day.samples, 0),
     minimumSample: days.length
@@ -150,6 +184,14 @@ export function projectHealthContext(
     limitations: [
       ...report.limitations,
       'unrecorded_days_are_unknown_not_zero_or_missed_doses',
+      ...(report.quantities.some(series => series.concept === 'heart_rate')
+        ? [
+            'heart_rate_workout_overlap_is_temporal_only_not_exercise_causation_or_abnormality',
+            'workout_intervals_can_include_pauses_partial_overlap_does_not_attribute_the_whole_heart_rate_sample',
+            'no_recorded_workout_overlap_is_not_resting_heart_rate_or_proof_of_inactivity_recovery_may_follow_workouts',
+            'unknown_activity_includes_missing_intervals_no_available_workouts_or_samples_extending_beyond_period_no_permission_inference',
+          ]
+        : []),
       'medication_registration_and_current_confirmation_are_distinct_from_individual_dose_completion',
       ...(report.quantities.some(
         series =>

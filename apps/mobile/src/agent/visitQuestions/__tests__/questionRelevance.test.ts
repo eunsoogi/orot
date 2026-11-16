@@ -141,3 +141,22 @@ test('useful-question options do not admit fabricated clinical facts or medicati
     expect(result.status).toBe('invalid');
   }
 });
+
+// This proves delivered task instructions, not actual model adherence or clinical quality.
+test('contextualizes heart-rate questions without asserting exercise causation or rest', () => {
+  expect(responder.systemPrompt).toContain(
+    'use the returned activityContext groups alongside the full range',
+  );
+  expect(responder.systemPrompt).toContain(
+    'not that exercise caused the value or that it is normal',
+  );
+  expect(responder.systemPrompt).toContain(
+    'no_recorded_workout_overlap is not resting heart rate',
+  );
+  expect(responder.systemPrompt).toContain(
+    'never inactivity or denied permission',
+  );
+  expect(responder.systemPrompt).toContain(
+    'discard samples or invent thresholds',
+  );
+});
