@@ -1,3 +1,4 @@
+import { NavigationOcclusionContext } from '../navigation/useNavigationContentInset';
 import { type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { FloatingAssistantSurface } from '../assistantAppearance/FloatingAssistantSurface';
@@ -29,7 +30,8 @@ type Props = {
 
 /** Stable presentation wrappers preserve transcript, composer and session across reflow. */
 export function ConversationWorkspace(props: Props) {
-  const { ref, measure, plan } = useConversationWorkspaceBounds(props.routeKey);
+  const { ref, measure, plan, workspaceOcclusion } =
+    useConversationWorkspaceBounds(props.routeKey);
   return (
     <View
       ref={ref}
@@ -73,7 +75,11 @@ export function ConversationWorkspace(props: Props) {
               <SeparatedConversationActivity.Provider value={plan.visible}>
                 <TranscriptInset separated={plan.visible}>
                   {props.children}
-                  {props.composer}
+                  <NavigationOcclusionContext.Provider
+                    value={workspaceOcclusion}
+                  >
+                    {props.composer}
+                  </NavigationOcclusionContext.Provider>
                 </TranscriptInset>
               </SeparatedConversationActivity.Provider>
             </View>

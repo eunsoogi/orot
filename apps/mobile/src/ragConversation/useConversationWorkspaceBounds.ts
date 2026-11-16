@@ -4,11 +4,14 @@ import { useWindowDimensions } from 'react-native';
 import { useNavigationGeometry } from '../navigation/NavigationGeometryProvider';
 import { useNavigationContentFrame } from '../navigation/navigationContentFrame';
 import { observeNavigationTest } from '../navigation/navigationTestObservation';
+import { useNavigationOcclusion } from '../navigation/useNavigationContentInset';
+import { conversationWorkspaceOcclusion } from './conversationWorkspaceOcclusion';
 import { conversationHingeLayout } from './conversationHingeLayout';
 
 /** Measure in window coordinates: onLayout.x belongs to a different coordinate space. */
 export function useConversationWorkspaceBounds(routeKey?: string) {
   const geometry = useNavigationGeometry();
+  const occlusion = useNavigationOcclusion();
   const shared = useNavigationContentFrame();
   const { fontScale, width, height } = useWindowDimensions();
   const ref = useRef<HostInstance | null>(null);
@@ -53,15 +56,17 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
   );
   useEffect(measure, [measure, geometry, shared, width, height, fontScale]);
   const fallback = shared?.availableContentFrame ?? geometry?.safeAreaFrame;
-  const plan = conversationHingeLayout(
-    geometry,
-    bounds ?? {
-      x: fallback?.x ?? 0,
-      y: fallback?.y ?? 0,
-      width: fallback?.width ?? width,
-      height: fallback?.height ?? height,
-    },
-    fontScale,
+  const hostBounds = bounds ?? {
+    x: fallback?.x ?? 0,
+    y: fallback?.y ?? 0,
+    width: fallback?.width ?? width,
+    height: fallback?.height ?? height,
+  };
+  const plan = conversationHingeLayout(geometry, hostBounds, fontScale);
+  const workspaceOcclusion = conversationWorkspaceOcclusion(
+    occlusion,
+    hostBounds.height,
+    plan,
   );
   useEffect(() => {
     if (routeKey)
@@ -80,5 +85,5 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
     plan.visible,
     fontScale,
   ]);
-  return { ref, measure, plan };
+  return { ref, measure, plan, workspaceOcclusion };
 }
