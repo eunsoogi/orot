@@ -25,11 +25,7 @@ export function AutoGrowingQuestionInput({ style, ...props }: TextInputProps) {
             setTextHeight(Math.ceil(height));
           }
         }}
-        style={[
-          style,
-          typography,
-          { position: 'absolute', left: 0, right: 0, opacity: 0 },
-        ]}
+        style={[style, typography, styles.measurement]}
         testID={props.testID ? `${props.testID}-measurement` : undefined}
       >
         {props.value || props.placeholder || ' '}
@@ -47,3 +43,7 @@ export function AutoGrowingQuestionInput({ style, ...props }: TextInputProps) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  measurement: { position: 'absolute', left: 0, right: 0, opacity: 0 },
+});
