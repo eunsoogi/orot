@@ -12,6 +12,7 @@ interface AppButtonListContentProps {
   readonly leadingContent?: ReactNode;
   readonly summary?: string;
   readonly title: string;
+  readonly titleNumberOfLines?: number;
   readonly titleStyle: StyleProp<TextStyle>;
   readonly trailingContent?: ReactNode;
 }
@@ -21,6 +22,7 @@ export function AppButtonListContent({
   leadingContent,
   summary,
   title,
+  titleNumberOfLines,
   titleStyle,
   trailingContent,
 }: AppButtonListContentProps) {
@@ -36,7 +38,12 @@ export function AppButtonListContent({
         </View>
       ) : null}
       <View style={styles.copy}>
-        <Text allowFontScaling style={titleStyle}>
+        <Text
+          allowFontScaling
+          numberOfLines={titleNumberOfLines}
+          ellipsizeMode="tail"
+          style={titleStyle}
+        >
           {title}
         </Text>
         {summary ? (
