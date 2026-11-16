@@ -150,17 +150,23 @@ export function ConversationTaskHeader({
 /** Reopened task cards reference the existing encrypted outputs, never copied health text. */
 export function ConversationStoredTaskCards({
   store,
+  onRestart,
   session,
   routeKey,
   renderStoredReportTask,
 }: Common & {
   routeKey?: string;
+  onRestart?: (question: string) => void;
   durableSessionId: string | null;
   renderStoredReportTask?: ConversationScreenProps['renderStoredReportTask'];
 }) {
   return (
     <>
-      <ConversationInterruptionRecovery store={store} session={session} />
+      <ConversationInterruptionRecovery
+        store={store}
+        session={session}
+        onRestart={onRestart}
+      />
       {session.taskCards
         ?.filter(card => card.id !== routeKey)
         .map(card => {

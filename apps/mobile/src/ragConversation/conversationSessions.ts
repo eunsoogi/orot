@@ -1,3 +1,4 @@
+import { recoveryFor } from './conversationRecoveryRefresh';
 import { createConversationSessionRequests } from './conversationSessionRequests';
 import { conversationDispatch } from './conversationDispatch';
 import type {
@@ -138,6 +139,7 @@ export function createConversationSessions(
     },
   });
   return {
+    refreshRecovery: recoveryFor(options, find, update, () => disposed),
     resumeCold: requests.resumeCold,
     steer: requests.steer,
     photoDrafts,
