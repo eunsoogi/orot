@@ -1,13 +1,14 @@
 import Foundation
 
-// The production work method is compiled unchanged with these platform doubles.
-// This proves admission bookkeeping, not Apple's scheduling or background runtime.
+/// The production work method is compiled unchanged with these platform doubles.
+/// This proves admission bookkeeping, not Apple's scheduling or background runtime.
 final class UIApplication {
     enum State { case active, inactive, background }
     static let shared = UIApplication()
     var applicationState = State.active
     var isProtectedDataAvailable = true
 }
+
 final class ConversationContinuedProcessing {
     static var starts = 0
     var finishes = 0
@@ -15,19 +16,30 @@ final class ConversationContinuedProcessing {
     init(status _: @escaping (String, Int?) -> Void, expired: @escaping () -> Void) {
         self.expired = expired
     }
-    func begin() { Self.starts += 1 }
-    func finish(success _: Bool) { finishes += 1 }
+
+    func begin() {
+        Self.starts += 1
+    }
+
+    func finish(success _: Bool) {
+        finishes += 1
+    }
 }
+
 final class ConversationExecutionModule {
     var requests: Set<String> = ["current"]
     var continued: [String: Any] = [:]
     var events: [[String: Any]] = []
-    func publish(_ event: [String: Any]) { events.append(event) }
+    func publish(_ event: [String: Any]) {
+        events.append(event)
+    }
+
     func endLease(_ id: String) {
         requests.remove(id)
         continued.removeValue(forKey: id)
     }
 }
+
 @main
 enum ConversationContinuedReadmissionHostRegression {
     static func main() {
