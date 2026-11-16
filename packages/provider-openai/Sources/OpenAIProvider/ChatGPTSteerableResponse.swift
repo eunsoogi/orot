@@ -37,7 +37,7 @@ public actor ChatGPTSteerableResponse {
         return AsyncThrowingStream { continuation in
             let task = Task {
                 let deadline = Task {
-                    try await Task.sleep(for: .seconds(180))
+                    try await Task.sleep(nanoseconds: 180_000_000_000)
                     self.close()
                 }
                 defer { deadline.cancel(); self.close() }
