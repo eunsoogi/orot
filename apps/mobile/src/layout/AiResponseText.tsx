@@ -72,24 +72,26 @@ export function AiResponseText({ children: text, ...props }: Props) {
   return (
     <AppText {...props}>
       {state.prefix}
-      {state.segments.map(segment => (
-        <Text
-          key={segment.id}
-          testID="ai-response-fragment"
-          style={{
-            opacity: reduceMotion
-              ? 1
-              : fadeEasing(
-                  Math.min(
-                    1,
-                    Math.max(0, (state.now - segment.startedAt) / fadeDuration),
-                  ),
-                ),
-          }}
-        >
-          {segment.text}
-        </Text>
-      ))}
+      {state.segments.map(segment => {
+        // Opacity is frame-derived data, not a static stylesheet constant.
+        const opacity = reduceMotion
+          ? 1
+          : fadeEasing(
+              Math.min(
+                1,
+                Math.max(0, (state.now - segment.startedAt) / fadeDuration),
+              ),
+            );
+        return (
+          <Text
+            key={segment.id}
+            testID="ai-response-fragment"
+            style={{ opacity }}
+          >
+            {segment.text}
+          </Text>
+        );
+      })}
     </AppText>
   );
 }

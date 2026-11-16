@@ -1,17 +1,10 @@
 import { act, render } from '@testing-library/react-native';
-import { Animated } from 'react-native';
 import { ConversationHistory } from '../ConversationHistory';
 import { createConversationSessions } from '../conversationSessions';
 
 test('keeps the same answer mounted when the streamed draft becomes the validated result', async () => {
-  let complete: ((result: { finished: boolean }) => void) | undefined;
-  const timing = jest.spyOn(Animated, 'timing').mockImplementation(() => ({
-    start: callback => {
-      complete = callback;
-    },
-    stop: jest.fn(),
-    reset: jest.fn(),
-  }));
+  jest.useFakeTimers();
+  const frameClock = jest.spyOn(globalThis, 'setInterval');
   const props = { error: '', onOpenSource: jest.fn(), onLinkError: jest.fn() };
   const view = await render(
     <ConversationHistory
@@ -24,7 +17,8 @@ test('keeps the same answer mounted when the streamed draft becomes the validate
       }}
     />,
   );
-  await act(() => complete?.({ finished: true }));
+  await act(() => jest.advanceTimersByTime(320));
+  expect(view.queryByTestId('ai-response-fragment')).toBeNull();
   await view.rerender(
     <ConversationHistory
       {...props}
@@ -37,7 +31,8 @@ test('keeps the same answer mounted when the streamed draft becomes the validate
       }}
     />,
   );
-  expect(timing).toHaveBeenCalledTimes(1);
+  expect(frameClock).toHaveBeenCalledTimes(1);
+  expect(view.queryByTestId('ai-response-fragment')).toBeNull();
   await view.rerender(
     <ConversationHistory
       {...props}
@@ -53,8 +48,11 @@ test('keeps the same answer mounted when the streamed draft becomes the validate
       pendingMessage={null}
     />,
   );
-  expect(timing).toHaveBeenCalledTimes(1);
-  timing.mockRestore();
+  expect(frameClock).toHaveBeenCalledTimes(1);
+  expect(view.queryByTestId('ai-response-fragment')).toBeNull();
+  await view.unmount();
+  frameClock.mockRestore();
+  jest.useRealTimers();
 });
 
 test.each(['answer', 'cancel'] as const)(
