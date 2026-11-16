@@ -59,12 +59,46 @@ test('OpenAI simulator fixtures preserve Debug support and opt in to Duo Release
   assert.ok(buildScript.includes("'GCC_PREPROCESSOR_DEFINITIONS=' + spec.preprocessorFlags"));
 });
 
-// HTTP URLProtocol fixtures cannot intercept URLSession WebSocket traffic. Refuse
-// their synthetic account before opening a live socket, even in test builds.
-test('live steering cannot send HTTP-only fixture credentials to a WebSocket', () => {
+// HTTP URLProtocol fixtures cannot intercept WebSocket traffic. The fixture
+// rejection must execute before the socket attempt, outside its fallback catch.
+// Permit the transport's do wrapper, not arbitrary statements or moved guards.
+const fixtureBeforeSocket =
+  /if steerable \{\s*#if \(DEBUG \|\| OROT_TESTS\) && targetEnvironment\(simulator\)\s*guard activeSimulatorFixtureClient == nil else \{\s*throw ChatGPTResponsesError\.unsupportedCapability\("live steering in an HTTP-only fixture"\)\s*\}\s*#endif\s*(?:do \{\s*)?let socket = try await activeClient\.steerableResponse/;
+
+test('live steering rejects HTTP-only fixture credentials before its socket and fallback', () => {
   const module = readSource('apps/mobile/ios/OrotMobile/OpenAIProviderModule.swift');
-  assert.match(
-    module,
-    /if steerable \{\s*#if \(DEBUG \|\| OROT_TESTS\) && targetEnvironment\(simulator\)\s*guard activeSimulatorFixtureClient == nil else \{\s*throw ChatGPTResponsesError\.unsupportedCapability\("live steering in an HTTP-only fixture"\)\s*\}\s*#endif\s*let socket = try await activeClient\.steerableResponse/,
-  );
+  assert.match(module, fixtureBeforeSocket);
+});
+
+test('fixture socket contract rejects missing, inverted, moved or disabled guards', () => {
+  const module = readSource('apps/mobile/ios/OrotMobile/OpenAIProviderModule.swift');
+  const guard =
+    /#if \(DEBUG \|\| OROT_TESTS\) && targetEnvironment\(simulator\)\s*guard activeSimulatorFixtureClient == nil else \{\s*throw ChatGPTResponsesError\.unsupportedCapability\("live steering in an HTTP-only fixture"\)\s*\}\s*#endif/;
+  assert.match(module, guard);
+  const guardText = module.match(guard)[0];
+  const missing = module.replace(guardText, '');
+  const mutations = [
+    missing,
+    module.replace(
+      'guard activeSimulatorFixtureClient == nil',
+      'guard activeSimulatorFixtureClient != nil',
+    ),
+    module.replace(
+      guardText,
+      guardText.replace('#if (DEBUG || OROT_TESTS) && targetEnvironment(simulator)', '#if false'),
+    ),
+    module.replace(guardText, 'do {\n' + guardText),
+    missing.replace(
+      'guard responseRequests.attachSteering',
+      guardText + '\nguard responseRequests.attachSteering',
+    ),
+    module.replace(
+      guardText,
+      guardText.replace('throw ChatGPTResponsesError', 'print("ignored") // ChatGPTResponsesError'),
+    ),
+  ];
+  for (const mutated of mutations) {
+    assert.notEqual(mutated, module);
+    assert.doesNotMatch(mutated, fixtureBeforeSocket);
+  }
 });
