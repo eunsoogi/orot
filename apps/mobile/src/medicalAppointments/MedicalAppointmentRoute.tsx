@@ -7,7 +7,7 @@ import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import type { AppointmentRepository } from '@orot/storage';
-import { resolveSelectedAiProvider } from '../aiFeatures/integration/provider';
+import { resolveCalendarModel } from '../calendarModelSettings/resolveCalendarModel';
 import type {
   SelectedAiResolution,
   SelectedAiResolverOptions,
@@ -98,7 +98,7 @@ export default function MedicalAppointmentRoute({
     setSelectedAi(null);
     // Provider and account lookups are independent from the local manual repository.
     Promise.resolve()
-      .then(() => resolveSelectedAiProvider(selectedAiResolverOptions))
+      .then(() => resolveCalendarModel(selectedAiResolverOptions))
       .then(value => {
         if (active) setSelectedAi(value);
       })

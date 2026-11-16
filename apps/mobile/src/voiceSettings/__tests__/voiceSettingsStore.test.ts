@@ -154,3 +154,23 @@ it('observes a pending selection write before exposing credentials', async () =>
   await selection;
   await expect(credentials).rejects.toThrow('selection changed');
 });
+it('shares the API account with calendar classification independently from voice selection', async () => {
+  await voiceSettingsStore.setAccountKey('synthetic-calendar-key');
+  const account = await voiceSettingsStore.accountStatus();
+  expect((await voiceSettingsStore.load()).mode).toBe('local');
+  expect(
+    await voiceSettingsStore.classificationCredentials(account.revision),
+  ).toBe('synthetic-calendar-key');
+  await voiceSettingsStore.setAccountKey('synthetic-new-key');
+  await expect(
+    voiceSettingsStore.classificationCredentials(account.revision),
+  ).rejects.toThrow('account changed');
+  const controller = new AbortController();
+  controller.abort();
+  await expect(
+    voiceSettingsStore.classificationCredentials(
+      (await voiceSettingsStore.accountStatus()).revision,
+      controller.signal,
+    ),
+  ).rejects.toThrow('credentials unavailable');
+});

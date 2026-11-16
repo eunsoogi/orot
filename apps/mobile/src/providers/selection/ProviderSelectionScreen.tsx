@@ -15,34 +15,9 @@ import {
 } from './providerSelectionScreenPresentation';
 import { resolveProviderSelection } from './providerSelection';
 import { providerSelectionText } from './text';
-import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
+import type { ProviderSelectionScreenProps } from './ProviderSelectionScreenProps';
 import { useProviderSelectionNavigationState } from './providerSelectionNavigationState';
-import type {
-  ChatGPTAccountSetup,
-  ProviderSelection,
-  ProviderSelectionOption,
-  ProviderSelectionPresentation,
-  ProviderSelectionRequirements,
-  ProviderSelectionStore,
-} from './types';
-interface ProviderSelectionScreenProps {
-  readonly presentation?: ProviderSelectionPresentation;
-  readonly screenTitle?: string;
-  readonly screenIntroduction?: string;
-  readonly navigationRouteKey?: string;
-  readonly options: readonly ProviderSelectionOption[];
-  readonly requirements: ProviderSelectionRequirements;
-  readonly selectionStore: ProviderSelectionStore;
-  readonly chatGPTSetup?: ChatGPTAccountSetup;
-  readonly onBack?: () => void;
-  readonly onSelectionCommitted?: (
-    selection: ProviderSelection,
-    provider: ProviderSelectionOption['provider'],
-  ) => void;
-  readonly onNavigationStateChange?: (
-    state: ProviderSelectionScreenNavigationState,
-  ) => void;
-}
+import type { ProviderSelection, ProviderSelectionOption } from './types';
 export default function ProviderSelectionScreen({
   presentation = 'feature',
   screenTitle,
@@ -110,7 +85,6 @@ export default function ProviderSelectionScreen({
       )
     : undefined;
   const confirmationOption = currentPendingOption ?? pendingOption;
-
   async function confirmSelection() {
     if (!pendingOption || saving) return;
     const selection = {
@@ -199,6 +173,9 @@ export default function ProviderSelectionScreen({
           <ChatGPTAccountSetupCard setup={chatGPTSetup} />
         ) : null}
         <ModelSelectionTabs
+          onCalendarStateChange={publishNavigationState}
+          calendarOptions={options}
+          chatGPTSetup={chatGPTSetup}
           enabled={presentation === 'settings-provider'}
           locked={saving || pendingOption !== null}
           onOpenAccounts={chatGPTSetup?.onOpenAccounts}

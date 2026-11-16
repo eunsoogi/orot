@@ -50,8 +50,10 @@ function requireSelection(value: ProviderSelection): ProviderSelection {
 }
 
 export class KeychainProviderSelectionStore implements ProviderSelectionStore {
+  /** Each feature owns its selection; credentials are never stored in this item. */
+  constructor(private readonly service = KEYCHAIN_SERVICE) {}
   async load(): Promise<ProviderSelection | null> {
-    const credentials = await getGenericPassword({ service: KEYCHAIN_SERVICE });
+    const credentials = await getGenericPassword({ service: this.service });
     return credentials === false ? null : parseSelection(credentials.password);
   }
 
@@ -61,7 +63,7 @@ export class KeychainProviderSelectionStore implements ProviderSelectionStore {
       KEYCHAIN_ACCOUNT,
       JSON.stringify(selection),
       {
-        service: KEYCHAIN_SERVICE,
+        service: this.service,
         accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
       },
     );
@@ -71,7 +73,7 @@ export class KeychainProviderSelectionStore implements ProviderSelectionStore {
   }
 
   async clear(): Promise<void> {
-    await resetGenericPassword({ service: KEYCHAIN_SERVICE });
+    await resetGenericPassword({ service: this.service });
   }
 }
 

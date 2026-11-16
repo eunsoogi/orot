@@ -1,7 +1,18 @@
 /** App-owned model settings copy; privacy and billing notices retain their original meaning. */
 export const modelSettingsKo = {
+  'modelSettings.decisionsUnavailable':
+    '이 앱에서 OpenAI API 분류 모델을 사용할 수 없어요.',
+  'modelSettings.calendarTab': '캘린더 분류 모델',
+  'modelSettings.calendarPurpose':
+    '캘린더 일정의 진료 관련성을 분류할 모델이에요. 대화 모델은 바뀌지 않아요.',
+  'modelSettings.calendarUnselected': '캘린더 분류 모델을 선택해 주세요.',
+  'modelSettings.decisionsNotice':
+    'OpenAI API의 Decisions 모델만 표시해요. API 사용료는 별도로 청구돼요.',
+  'modelSettings.noDecisionModels':
+    '이 계정에서 확인된 지원 Decisions 모델이 없어요.',
+
   'modelSettings.confirmLanguage': '이 AI 사용',
-  'modelSettings.languageTab': '언어 모델 선택',
+  'modelSettings.languageTab': '대화 모델',
   'modelSettings.voiceTab': '보이스 모델 선택',
   'modelSettings.languageTitle': 'AI 선택',
   'modelSettings.languagePrompt': '질문에 답할 AI를 선택해 주세요.',
