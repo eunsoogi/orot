@@ -1,3 +1,4 @@
+import { reportOpening } from '../aiFeatures/integration/openingObservation';
 import { createConversationDeliveryObserver } from './conversationDeliveryObserver';
 import {
   mergeConversationToolEvents,
@@ -177,6 +178,10 @@ export function createConversationTurnActivity(input: {
                 initialResponse: { callId: event.callId, text: event.text },
               },
             });
+            reportOpening('opening_display', 'completed');
+          } else {
+            // Rejected display ownership is not proof of stale health evidence.
+            reportOpening('opening_display', 'unavailable');
           }
           return;
         }

@@ -60,6 +60,8 @@ export type DailyReportRunInput = Omit<DailyReportServiceInput, 'database'> & {
 };
 
 export interface DailyReportServiceRequest {
+  /** Live conversation owner only; never persisted or reused by restored report lookups. */
+  readonly observer?: import('../../ragConversation/service').RagConversationObserver;
   readonly timeZone: string;
   readonly scope: EvidenceCandidateScope;
   readonly mode:

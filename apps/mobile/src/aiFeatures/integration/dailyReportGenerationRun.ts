@@ -1,3 +1,4 @@
+import { withDailyReportOpening as openingFor } from './dailyReportOpening';
 import { hasSevereReportBloodPressure } from './dailyReportGuidance';
 import { reportModelClaims } from './dailyReportModelAnalysis';
 import { prepareDailyReportFacts } from './dailyReportPreparedFacts';
@@ -44,7 +45,6 @@ export async function generateDailyReportWithCalendar(
       );
     return { status: 'failed' as const, code };
   };
-
   input.deadlineContext.stage = 'provider_selection';
   providerDiagnostic('daily_report', 'selection', 'started');
   let selected: SelectedAiResolution;
@@ -116,46 +116,53 @@ export async function generateDailyReportWithCalendar(
     external?.binding,
   );
   const runId = input.createRunId();
-  const selection = await selectDailyReportFacts({
+  const selection = await openingFor(
+    input,
+    request,
     selected,
-    consent: input.consent,
-    runId,
-    facts: providerFacts,
-    allowAnalysis: !hasSevereReportBloodPressure(snapshot.values),
-    reportContext: {
-      localDate: calendar.context.identity.localDate,
-      timeZone: calendar.context.identity.timeZone,
-      generationCutoff: calendar.context.generationCutoff,
-      coverage: sourceSnapshot.coverage,
-    },
-    includesSystemCalendar: Boolean(external?.facts.length),
-    signal: request.signal,
-    timeoutMs: input.timeoutMs ?? 90_000,
-    deadlineContext: input.deadlineContext,
-    revalidate: async signal => {
-      input.deadlineContext.stage = 'source_read';
-      providerDiagnostic('daily_report', 'data', 'started');
-      let current: Snapshot;
-      try {
-        current = await input.data.readDailyReportSnapshot!(
-          calendar.context,
-          request.scope,
-          signal,
-        );
-      } catch (error) {
-        if (!signal.aborted)
-          providerDiagnostic('daily_report', 'data', 'failed');
-        throw error;
-      }
-      providerDiagnostic('daily_report', 'data', 'completed');
-      input.deadlineContext.stage = 'workflow';
-      return (
-        (external ? await external.snapshot.revalidate() : true) &&
-        stableJson(current.sourceSnapshot) ===
-          stableJson(snapshot.sourceSnapshot)
-      );
-    },
-  });
+    !!external?.facts.length,
+    consent =>
+      selectDailyReportFacts({
+        selected,
+        consent,
+        runId,
+        facts: providerFacts,
+        allowAnalysis: !hasSevereReportBloodPressure(snapshot.values),
+        reportContext: {
+          localDate: calendar.context.identity.localDate,
+          timeZone: calendar.context.identity.timeZone,
+          generationCutoff: calendar.context.generationCutoff,
+          coverage: sourceSnapshot.coverage,
+        },
+        includesSystemCalendar: !!external?.facts.length,
+        signal: request.signal,
+        timeoutMs: input.timeoutMs ?? 90_000,
+        deadlineContext: input.deadlineContext,
+        revalidate: async signal => {
+          input.deadlineContext.stage = 'source_read';
+          providerDiagnostic('daily_report', 'data', 'started');
+          let current: Snapshot;
+          try {
+            current = await input.data.readDailyReportSnapshot!(
+              calendar.context,
+              request.scope,
+              signal,
+            );
+          } catch (error) {
+            if (!signal.aborted)
+              providerDiagnostic('daily_report', 'data', 'failed');
+            throw error;
+          }
+          providerDiagnostic('daily_report', 'data', 'completed');
+          input.deadlineContext.stage = 'workflow';
+          return (
+            (external ? await external.snapshot.revalidate() : true) &&
+            stableJson(current.sourceSnapshot) ===
+              stableJson(snapshot.sourceSnapshot)
+          );
+        },
+      }),
+  );
   input.deadlineContext.stage = 'workflow';
   if (selection.status === 'failed') return fail(selection.code);
   const report = {
@@ -189,7 +196,6 @@ export async function generateDailyReportWithCalendar(
   }
   providerDiagnostic('daily_report', 'validation', 'completed');
   if (request.signal.aborted) return fail('cancelled');
-
   input.deadlineContext.stage = 'save';
   providerDiagnostic('daily_report', 'persistence', 'started');
   let saved: Awaited<ReturnType<typeof input.storage.save>>;
