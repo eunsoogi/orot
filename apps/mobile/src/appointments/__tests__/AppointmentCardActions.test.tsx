@@ -56,9 +56,8 @@ test('balances reminder and cancellation actions while keeping edit in the heade
   expect(edit.props.accessibilityRole).toBe('button');
   expect(StyleSheet.flatten(edit.props.style)).toMatchObject({
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 0,
     minHeight: 44,
     minWidth: 44,
   });

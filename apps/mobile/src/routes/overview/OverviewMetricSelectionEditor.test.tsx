@@ -53,7 +53,7 @@ test('presents choices as full-row checkboxes with selected and unselected statu
     StyleSheet.flatten(
       screen.getByTestId('overview-metric-selection-cancel').props.style,
     ),
-  ).toMatchObject({ minHeight: 48, borderWidth: 1 });
+  ).toMatchObject({ minHeight: 48, borderWidth: 0 });
   expect(
     StyleSheet.flatten(
       screen.getByTestId('overview-metric-selection-save').props.style,

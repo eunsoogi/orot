@@ -50,11 +50,11 @@ export const providerSelectionScreenStyles = StyleSheet.create({
     paddingTop: 10,
     backgroundColor: appColors.background,
   },
+  // The same filled summary treatment is used in settings and feature entry.
   summary: {
     padding: 16,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: appColors.border,
+    borderWidth: 0,
     backgroundColor: appColors.surface,
   },
   scrollView: { flex: 1 },

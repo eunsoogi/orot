@@ -166,11 +166,10 @@ const styles = StyleSheet.create({
   },
   primaryLabel: { color: appColors.onPrimary },
   disabled: { opacity: 0.45 },
-  // Surface variants share a quiet border; their labels retain distinct emphasis.
+  // Filled surfaces and labels define ordinary actions without decorative outlines.
   surface: {
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderWidth: 1,
+    borderWidth: 0,
   },
   secondaryLabel: { color: appColors.primaryText },
   neutralLabel: { color: appColors.text },

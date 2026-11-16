@@ -23,8 +23,7 @@ test('presents both independently selectable operations with equal neutral empha
   expect(summary).toEqual(assessment);
   expect(summary).toMatchObject({
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderWidth: 1,
+    borderWidth: 0,
     minHeight: 48,
     borderRadius: 14,
   });

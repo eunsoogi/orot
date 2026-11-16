@@ -108,8 +108,7 @@ it('reflows the reminder preview within its measured width and system text scale
       expect(button.props.accessibilityRole).toBe('button');
       expect(StyleSheet.flatten(button.props.style)).toMatchObject({
         backgroundColor: appColors.surface,
-        borderColor: appColors.border,
-        borderWidth: 1,
+        borderWidth: 0,
         borderRadius: 12,
         minHeight: 44,
         minWidth: 44,

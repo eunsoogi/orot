@@ -23,13 +23,12 @@ export function ModelSelectionSummary({
 }
 
 const styles = StyleSheet.create({
-  // Unlike account shells, this card has no padded child row: own the full inset.
+  // Fill and inset group informational identity without implying another selectable outlined row.
   card: {
     padding: 16,
     borderRadius: 20,
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderWidth: 1,
+    borderWidth: 0,
   },
   label: { fontSize: 13, lineHeight: 22, color: appColors.secondary },
   value: {

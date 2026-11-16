@@ -1,14 +1,13 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from './appColors';
 
-/** Records and settings share the same segmented control geometry and contrast. */
+/** Filled selected segments preserve contrast and geometry without an extra container outline. */
 export const sectionTabStyles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     padding: 3,
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: appColors.border,
+    borderWidth: 0,
     backgroundColor: appColors.background,
   },
   tab: {
