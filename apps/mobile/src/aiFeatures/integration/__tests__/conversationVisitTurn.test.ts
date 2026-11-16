@@ -130,3 +130,44 @@ test.each([
     expect(JSON.stringify(result)).not.toContain('PRIVATE_PROVIDER_TEXT');
   },
 );
+
+test('forwards reviewed initial responses through the explicit visit turn observer', async () => {
+  const onTaskStreamEvent = jest.fn();
+  const event = {
+    type: 'initial_response' as const,
+    callId: 'synthetic-preview',
+    text: '질문을 함께 준비해 볼게요.',
+  };
+  jest
+    .mocked(defaultVisitQuestionRouteOperations.generate)
+    .mockImplementation(async input => {
+      input.observer?.onTaskStreamEvent?.(event);
+      return {
+        status: 'needs_clarification',
+        message: 'synthetic missing context',
+      };
+    });
+  const turn = createConversationVisitTurn({
+    loadLocalData: jest.fn(),
+    registry: new LocalEvidenceReferenceRegistry(),
+    registerSource: jest.fn() as never,
+    loadSaved: async () => ({
+      status: 'ready',
+      appointmentId: 'appointment-1',
+      questions: [],
+      caveats: [],
+      restorationNotice: '',
+    }),
+  });
+  const result = await turn({
+    question: 'synthetic question',
+    signal: new AbortController().signal,
+    resolveSelectedAi: async () =>
+      ({ status: 'ready' }) as SelectedAiResolution,
+    confirmConsent: async () => false,
+    observer: { onTaskStreamEvent },
+  });
+  expect(result).toEqual({ status: 'insufficient' });
+  expect(onTaskStreamEvent).toHaveBeenCalledTimes(1);
+  expect(onTaskStreamEvent).toHaveBeenCalledWith(event);
+});

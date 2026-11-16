@@ -44,7 +44,8 @@ export interface GroundedRagAnswer {
  * Publish prose only after complete-response validation. Tool progress has its own observer. */
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
-  ...initialReply.contextualInitialResponsePolicy,
+  // The live send boundary owns the reviewed opening; never spend another preview call during tools.
+  taskVersion: initialReply.initialResponseTaskVersion,
   allowBoundedExternalEvidence: true,
   allowRankedLocalEvidence: true,
   allowPagedGeneratedArtifacts: true,
@@ -58,7 +59,6 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   },
   isEvidenceIndependentResult: isEvidenceIndependentConversation,
   systemPrompt:
-    initialReply.initialResponseInstruction +
     'Choose answerKind=conversation for greetings, acknowledgements, emotional support without factual or clinical claims, and questions that clarify what the user means. Reply naturally without citations or an evidence disclaimer. Do not require a search merely to continue a conversation. ' +
     'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
     'Choose answerKind=prior_output only to show a previously generated result; cite generated artifact IDs. The application will display the retained text itself. ' +

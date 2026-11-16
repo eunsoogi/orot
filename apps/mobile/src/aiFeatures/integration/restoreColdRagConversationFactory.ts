@@ -12,10 +12,8 @@ import type {
 import type { JsonObject } from '@orot/model-runtime';
 import type { ConversationColdResumeDescriptor } from '../../storage/conversationColdResumeDescriptor';
 import { continuationInput } from '../../storage/conversationWorkflowContinuationIdentity';
-import {
-  ragConversationTask,
-  type GroundedRagAnswer,
-} from '../../ragConversation/task';
+import type { GroundedRagAnswer } from '../../ragConversation/task';
+import { restoreConversationTask } from '../../ragConversation/conversationTaskVersions';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import { restoreColdConversationRegistry } from './restoreColdConversationRegistry';
@@ -68,11 +66,8 @@ export async function restoreColdRagConversationFactory(input: {
   };
   if (!original || typeof original !== 'object' || !original.task)
     throw new Error('Cold invocation snapshot missing.');
-  if (
-    original.task?.taskType !== ragConversationTask.taskType ||
-    original.task?.taskVersion !== ragConversationTask.taskVersion ||
-    original.request !== d.request
-  )
+  const task = restoreConversationTask(original.task);
+  if (!task || original.request !== d.request)
     throw new Error('Unsupported cold task or photo.');
   const photo = readColdPhotoBinding(d, input.observer?.confirmPhotoResume);
   const selected = await deps.selectedAi();
@@ -189,7 +184,7 @@ export async function restoreColdRagConversationFactory(input: {
     ...(original.initialSearch
       ? { initialSearch: original.initialSearch }
       : {}),
-    task: ragConversationTask,
+    task,
     revalidateEvidence: (references, current) =>
       revalidateWithLocalDeletionGuard(
         references,

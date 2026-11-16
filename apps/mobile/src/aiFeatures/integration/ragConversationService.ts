@@ -1,3 +1,4 @@
+import { startRagConversationOpening as startOpening } from './contextualConversationOpening';
 import { conversationPublicSearchPlan as planSearch } from './conversationPublicSearchPlan';
 import { prepareLiveRagContinuation as continuationFor } from './liveRagConversationCapture';
 import { conversationMutationExecution } from './conversationMutationExecution';
@@ -13,10 +14,9 @@ import { withProviderStage } from '../../providers/diagnostics';
 import { ragConversationFailure } from './ragConversationFailure';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
 import * as run from './conversationRunOptions';
-import { createResearchInputTracker } from './researchInputTracker';
 import type { ConversationEntryContext } from './conversationIntent';
 import { conversationEarlyResponse } from './conversationEarlyResponse';
-import { loadConversationHistory } from './conversationHistorySources';
+import { prepareConversationHistory } from './prepareConversationHistory';
 import * as voiceSelection from './conversationVoiceSelection';
 import { prepareConversationPhoto as preparePhoto } from './conversationPhotoService';
 import * as targets from './conversationEntryTargets';
@@ -48,6 +48,7 @@ export function createRagConversationService({
     const signal = linked.controller.signal;
     const consent = background.consent(consentPort, observer);
     const queryConsent = background.consent(queryConsentPort, observer);
+    let opening: ReturnType<typeof startOpening> | undefined;
     let stage: 'selection' | 'data' | 'workflow' = 'data';
     try {
       const target = await targets.resolveConversationTargets({
@@ -82,6 +83,7 @@ export function createRagConversationService({
         selectedAi,
       );
       if (!selected) return { status: 'failure', kind: 'consent_required' };
+      opening = startOpening(selected, request, observer, consent, signal);
       stage = 'data';
       const data =
         target.data ?? (await withProviderStage('rag', 'data', loadLocalData));
@@ -94,26 +96,18 @@ export function createRagConversationService({
         registry,
         signal,
       });
-      // User follow-ups may influence an answer, so retain their validated turn lineage.
-      const history = await loadConversationHistory({
-        messages: previousMessages,
-        session: observer?.retentionSession,
-        retainedHistory: observer?.retainedHistory,
-        data,
-        registry,
-        signal,
-      });
-      const historyIsCurrent = targets.conversationInputsAreCurrent(
-        registry,
-        history.references,
-        signal,
-        report,
-      );
-      const researchInputs = createResearchInputTracker(
-        registry,
-        data,
-        observer?.retentionSession?.id,
-      );
+      const { history, historyIsCurrent, researchInputs } =
+        await prepareConversationHistory(
+          {
+            messages: previousMessages,
+            session: observer?.retentionSession,
+            retainedHistory: observer?.retainedHistory,
+            data,
+            registry,
+            signal,
+          },
+          report,
+        );
       const external = conversationExternalEvidence({
         selected,
         consent,
@@ -123,6 +117,8 @@ export function createRagConversationService({
         observer,
         researchInputs,
       });
+      // Overlap local preparation, but finish the opening before any external tool dispatch.
+      await opening?.done;
       const { eager: publicSearch, ...searchPlan } = await planSearch({
         external,
         observer,
@@ -244,6 +240,7 @@ export function createRagConversationService({
     } catch (error) {
       return ragConversationFailure(error, signal, stage);
     } finally {
+      opening?.dispose();
       linked.dispose();
     }
   };

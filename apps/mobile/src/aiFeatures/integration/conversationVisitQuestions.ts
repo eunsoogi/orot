@@ -1,3 +1,5 @@
+import { startContextualConversationOpening } from './contextualConversationOpening';
+import { visitConsentScope } from '../../agent/execution/inferenceConsentScopes';
 import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
 import { generateInlineVisitReview } from '../../nextVisitQuestions/inlineVisitGeneration';
 import type { Appointment } from '@orot/domain';
@@ -47,25 +49,49 @@ export async function generateConversationVisitQuestions(input: {
   if (!current()) return { status: 'cancelled' as const };
   if (selectedAi.status !== 'ready')
     return { status: 'provider_unavailable' as const };
-  const outcome = await generateInlineVisitReview({
-    ownerKey: input.ownerKey,
-    appointmentId: appointment.id,
-    loadSaved: input.loadSaved,
-    isCurrentOwner: input.isCurrentOwner,
-    signal: input.signal,
-    generate: () =>
-      input.operations.generate({
-        appointment,
-        request: input.request,
-        selectedAi,
-        signal: input.signal,
-        confirmConsent: input.confirmConsent,
-        generatedArtifactTools: input.generatedArtifactTools,
-        observer: input.observer,
-        registerToolSource: input.registerToolSource,
-      }),
-  });
-  return outcome.status === 'ready'
-    ? { ...outcome, appointment, selectedAi }
-    : outcome;
+  let opening:
+    ReturnType<typeof startContextualConversationOpening> | undefined;
+  try {
+    const outcome = await generateInlineVisitReview({
+      ownerKey: input.ownerKey,
+      appointmentId: appointment.id,
+      loadSaved: input.loadSaved,
+      isCurrentOwner: input.isCurrentOwner,
+      signal: input.signal,
+      generate: async () => {
+        opening = startContextualConversationOpening({
+          selected: selectedAi,
+          request: input.request,
+          observer: input.observer,
+          signal: input.signal,
+          consentScope: visitConsentScope,
+          isCurrent: current,
+          consent: {
+            authorize: async request =>
+              (await input.confirmConsent(request))
+                ? 'authorized'
+                : 'renewal_required',
+          },
+        });
+        // Only new generation needs an opening; tools start after its bounded attempt.
+        await opening?.done;
+        if (!current()) return { status: 'cancelled' as const };
+        return input.operations.generate({
+          appointment,
+          request: input.request,
+          selectedAi,
+          signal: input.signal,
+          confirmConsent: input.confirmConsent,
+          generatedArtifactTools: input.generatedArtifactTools,
+          observer: input.observer,
+          registerToolSource: input.registerToolSource,
+        });
+      },
+    });
+    return outcome.status === 'ready'
+      ? { ...outcome, appointment, selectedAi }
+      : outcome;
+  } finally {
+    opening?.dispose();
+  }
 }
