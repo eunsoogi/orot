@@ -1,3 +1,5 @@
+import { useRealtimeToolConfirmation } from './useRealtimeToolConfirmation';
+import { createRealtimeConversationTool } from './realtimeConversationTool';
 import { resumeVoice } from './voiceSession';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
@@ -15,7 +17,7 @@ import { initialVoiceState } from './voiceTurn';
 import { voiceStatus } from './voiceStatus';
 import { t } from '../i18n';
 
-/** Remote speech bypasses text-model dispatch, not its data-consent boundary: no records/history are uploaded. */
+/** Plain speech uploads no stored records; opted-in delegation has separate execution and result-transfer approvals. */
 export function RealtimeConversationVoiceEntry(
   props: ConversationVoiceProps & {
     model: string;
@@ -23,6 +25,9 @@ export function RealtimeConversationVoiceEntry(
   },
 ) {
   const consentRevision = useRef(0);
+  const ownedToolRequest = useRef<number | null>(null);
+  const { confirm: confirmTool, node: toolConfirmation } =
+    useRealtimeToolConfirmation();
   const latest = useRef(props);
   latest.current = props;
   const [state, setState] = useState(initialVoiceState);
@@ -41,7 +46,9 @@ export function RealtimeConversationVoiceEntry(
         AppState.currentState === 'active' ||
         (AppState.currentState === 'inactive' &&
           owner.current?.getState().phase === 'authorizing')) &&
-      !live.busy &&
+      (!(live.busy || session?.busy) ||
+        (ownedToolRequest.current !== null &&
+          session?.requestActivity?.requestId === ownedToolRequest.current)) &&
       !live.photoPending &&
       snapshot.activeId === live.sessionId &&
       session &&
@@ -70,6 +77,19 @@ export function RealtimeConversationVoiceEntry(
       sessionId: props.sessionId,
       credentials: () => voiceSettingsStore.realtimeCredentials(props.model),
       isCurrent: current,
+      toolsCurrent: () => AppState.currentState === 'active',
+      executeTool: latest.current.confirmRealtimeResult
+        ? createRealtimeConversationTool({
+            latest,
+            model: props.model,
+            current,
+            ownsRequest: (id, expected) => {
+              if (id !== null || ownedToolRequest.current === expected)
+                ownedToolRequest.current = id;
+            },
+            confirm: confirmTool,
+          })
+        : undefined,
       changed: value => {
         if (mounted) setState(value);
       },
@@ -95,6 +115,7 @@ export function RealtimeConversationVoiceEntry(
       voice.stop();
     });
     const app = AppState.addEventListener('change', value => {
+      if (value !== 'active') voice.cancelTools();
       // Permission prompts temporarily deactivate iOS; native open still waits for foreground.
       if (
         !voice.isSystemCallActive() &&
@@ -110,7 +131,10 @@ export function RealtimeConversationVoiceEntry(
       settings();
       app.remove();
     };
-  }, [props.model, props.sessionId]);
+  }, [props.model, props.sessionId, confirmTool]);
+  useEffect(() => {
+    owner.current?.cancelTools();
+  }, [props.selectionRevision]);
   useEffect(() => {
     owner.current?.revalidate();
   });
@@ -131,32 +155,46 @@ export function RealtimeConversationVoiceEntry(
     const sessionId = props.sessionId;
     const consentingOwner = owner.current;
     const revision = consentRevision.current;
+    const canUseTools =
+      props.confirmRealtimeResult && consentingOwner.supportsTools();
+    const accept = (tools = false) => {
+      if (
+        !current() ||
+        latest.current.model !== model ||
+        latest.current.sessionId !== sessionId ||
+        owner.current !== consentingOwner ||
+        consentRevision.current !== revision ||
+        AppState.currentState !== 'active'
+      )
+        return;
+      setTranscripts([]);
+      setVisible(true);
+      consentingOwner.start(tools);
+    };
     Alert.alert(
       t('realtimeDisplay.consentTitle'),
-      t('realtimeDisplay.consentBody', { model }),
+      t('realtimeDisplay.consentBody', { model }) +
+        (canUseTools ? '\n\n' + t('realtimeToolConsent.explanation') : ''),
       [
         { text: t('realtimeDisplay.cancel'), style: 'cancel' },
         {
           text: t('realtimeDisplay.agree'),
-          onPress: () => {
-            if (
-              !current() ||
-              latest.current.model !== model ||
-              latest.current.sessionId !== sessionId ||
-              owner.current !== consentingOwner ||
-              consentRevision.current !== revision
-            )
-              return;
-            setTranscripts([]);
-            setVisible(true);
-            consentingOwner.start();
-          },
+          onPress: () => accept(),
         },
+        ...(canUseTools
+          ? [
+              {
+                text: t('realtimeToolConsent.enable'),
+                onPress: () => accept(true),
+              },
+            ]
+          : []),
       ],
     );
   };
   return (
     <>
+      {toolConfirmation}
       <VoiceConversationScreen
         manualFinish={false}
         visible={visible}

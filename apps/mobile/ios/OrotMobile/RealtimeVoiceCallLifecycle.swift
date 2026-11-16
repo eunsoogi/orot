@@ -12,10 +12,12 @@ extension RealtimeVoiceCall {
         }
     }
 
-    func open(_ identifier: String, model: String, key: String, language: String, completion: @escaping (Result<Void, Error>) -> Void) {
+    func open(_ identifier: String, model: String, key: String, language: String, enableTools: Bool = false, completion: @escaping (Result<Void, Error>) -> Void) {
         guard id == nil, !identifier.isEmpty, ["gpt-realtime-2.1", "gpt-realtime-2.1-mini"].contains(model),
               !key.isEmpty, !key.contains("\n"), !key.contains("\r") else { completion(.failure(Failure.unavailable)); return }
+        guard !enableTools || RealtimeVoiceToolLease.validID(identifier) else { completion(.failure(Failure.unavailable)); return }
         do { token = try ownership.reserve() } catch { completion(.failure(error)); return }
+        tools.reset(enabled: enableTools)
         id = identifier; paused = false; opening = completion
         let epoch = UUID(); lifecycleEpoch = epoch
         // The key is retained only while permission/open is pending and by the authenticated socket request.
@@ -28,7 +30,7 @@ extension RealtimeVoiceCall {
                     guard let self else { return }
                     guard id == identifier, lifecycleEpoch == epoch else { return }
                     socket.open(model: model, key: key)
-                    socket.send(Self.configuration(model: model, language: language))
+                    socket.send(Self.configuration(model: model, language: language, enableTools: enableTools))
                 }
                 if self.foreground() {
                     begin()
@@ -44,13 +46,21 @@ extension RealtimeVoiceCall {
         }
     }
 
-    static func configuration(model: String, language: String) -> [String: Any] {
+    static func configuration(model: String, language: String, enableTools: Bool = false) -> [String: Any] {
         let pcm: [String: Any] = ["type": "audio/pcm", "rate": 24000]
-        return ["type": "session.update", "session": ["type": "realtime", "model": model, "output_modalities": ["audio"],
-                                                      "instructions": "You are Orot, a helpful voice assistant. Speak concisely. Do not claim to access records or perform actions. Respond in the user's language.",
-                                                      "audio": ["input": ["format": pcm, "transcription": ["model": "gpt-4o-mini-transcribe", "language": String(language.prefix(2))],
-                                                                          "turn_detection": ["type": "server_vad", "create_response": true, "interrupt_response": true]],
-                                                                "output": ["format": pcm, "voice": "marin"]]]]
+        var result: [String: Any] = ["type": "session.update", "session": ["type": "realtime", "model": model, "output_modalities": ["audio"],
+                                                                           "instructions": "You are Orot, a helpful voice assistant. Speak concisely. Do not claim to access records or perform actions. Respond in the user's language.",
+                                                                           "audio": ["input": ["format": pcm, "transcription": ["model": "gpt-4o-mini-transcribe", "language": String(language.prefix(2))],
+                                                                                               "turn_detection": ["type": "server_vad", "create_response": true, "interrupt_response": true]],
+                                                                                     "output": ["format": pcm, "voice": "marin"]]]]
+        if enableTools, var session = result["session"] as? [String: Any] {
+            session["tools"] = [["type": "function", "name": "orot_conversation",
+                                 "description": "Ask Orot to help with the latest user request. Any data access or action requires separate user approval.",
+                                 "parameters": ["type": "object", "properties": [:], "additionalProperties": false]]] as [[String: Any]]
+            session["tool_choice"] = "auto"
+            result["session"] = session
+        }
+        return result
     }
 
     func pause(_ identifier: String) throws {

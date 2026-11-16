@@ -9,6 +9,13 @@ import {
 } from './encounter-review-test-inventory.mjs';
 
 export const coreTests = [
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testDelegationIsOptInAndWaitsForCompletedResponse',
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testDelegationRejectsArgumentsIDsAndNonCompletedResponses',
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testDelegationReplyIsOwnedBoundedAndOneShot',
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testDelegationNewSpeechMuteStopAndResponseCancelLateReplies',
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testDelegationRejectsReplaysAndAmbiguousInputEpochs',
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testDelegationBudgetDoesNotEvictTombstones',
+
   'OrotIntegrationTests/CalendarRangeSnapshotTests/testPermissionGateDoesNotQueryAndReportsUnavailableCoverage',
   'OrotIntegrationTests/CalendarRangeSnapshotTests/testHalfOpenOverlapAndUnserializableEventsFailClosed',
   'OrotIntegrationTests/NavigationFadeIntegrationTests/testPushKeepsGlassOpaqueAndRemovesSnapshot',

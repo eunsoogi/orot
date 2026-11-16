@@ -1,3 +1,7 @@
+import type {
+  RealtimeToolNative,
+  RealtimeToolRequest,
+} from './realtimeToolRequests';
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import type { VoicePhase } from './voiceTurn';
 import { hasRealtimeVoiceRuntime } from '../voiceSettings/voiceRuntimeCapability';
@@ -13,7 +17,14 @@ export interface RealtimeTranscript {
   text: string;
 }
 export interface NativeRealtimeVoice {
-  open(id: string, model: string, key: string, language: string): Promise<void>;
+  open(
+    id: string,
+    model: string,
+    key: string,
+    language: string,
+    enableTools?: boolean,
+  ): Promise<void>;
+  tools?: RealtimeToolNative;
   stop(id: string): Promise<void>;
   pause(id: string): Promise<void>;
   resume(id: string): Promise<void>;
@@ -50,17 +61,51 @@ export function nativeRealtimeVoice(): NativeRealtimeVoice | null {
     pendingCleanup.delete(id);
   };
   return {
-    open: async (id, model, key, language) => {
+    open: async (id, model, key, language, enableTools = false) => {
       const opening = { cancelled: false };
       openingCalls.set(id, opening);
       try {
         for (const previous of pendingCleanup) await stop(previous);
         if (opening.cancelled) throw new Error('Voice call cancelled');
-        await module.openRealtimeCall(id, model, key, language);
+        await module.openRealtimeCall(id, model, key, language, enableTools);
       } finally {
         if (openingCalls.get(id) === opening) openingCalls.delete(id);
       }
     },
+    ...(typeof module.resolveRealtimeToolCall === 'function' &&
+    typeof module.cancelRealtimeTools === 'function'
+      ? {
+          tools: {
+            cancel: (id: string) => module.cancelRealtimeTools(id),
+            onToolCall: (listener: (request: RealtimeToolRequest) => void) =>
+              subscribe('VoiceRealtimeToolCall', event => {
+                if (
+                  ['callId', 'responseId', 'toolCallId', 'inputItemId'].every(
+                    key =>
+                      typeof event[key] === 'string' &&
+                      /^[A-Za-z0-9_-]{1,128}$/.test(event[key] as string),
+                  )
+                )
+                  listener(event as unknown as RealtimeToolRequest);
+              }),
+            onToolCancelled: (listener: (id: string, tool: string) => void) =>
+              subscribe('VoiceRealtimeToolCancelled', event => {
+                if (
+                  typeof event.callId === 'string' &&
+                  typeof event.toolCallId === 'string'
+                )
+                  listener(event.callId, event.toolCallId);
+              }),
+            resolveToolCall: (request: RealtimeToolRequest, output: string) =>
+              module.resolveRealtimeToolCall(
+                request.callId,
+                request.toolCallId,
+                request.responseId,
+                output,
+              ),
+          },
+        }
+      : {}),
     stop,
     pause: id => module.pauseRealtimeCall(id),
     resume: id => module.resumeRealtimeCall(id),

@@ -1,3 +1,4 @@
+import { createRealtimeToolRequests } from './realtimeToolRequests';
 import type {
   NativeRealtimeVoice,
   RealtimeTranscript,
@@ -9,6 +10,8 @@ let nextCall = 0;
 /** A consent grant is scoped to one model and visible conversation, never to saved settings alone. */
 export function createRealtimeVoiceSession(input: {
   native: NativeRealtimeVoice;
+  toolsCurrent?: () => boolean;
+  executeTool?: Parameters<typeof createRealtimeToolRequests>[0]['execute'];
   model: string;
   sessionId: number;
   credentials: () => Promise<{ model: string; apiKey: string }>;
@@ -16,6 +19,7 @@ export function createRealtimeVoiceSession(input: {
   changed: (state: VoiceState) => void;
   transcript: (event: RealtimeTranscript) => void;
 }) {
+  let toolsEnabled = false;
   let state = initialVoiceState;
   let call: string | null = null;
   let epoch = 0;
@@ -30,6 +34,7 @@ export function createRealtimeVoiceSession(input: {
   const stop = (error?: VoiceState['error']) => {
     if (!call || cleanup) return;
     systemCallActive = false;
+    toolRequests?.cancel();
     ++epoch;
     const id = call;
     publish('cleaning');
@@ -47,6 +52,20 @@ export function createRealtimeVoiceSession(input: {
       });
   };
   const valid = () => !disposed && input.isCurrent();
+  const toolRequests =
+    input.native.tools && input.executeTool
+      ? createRealtimeToolRequests({
+          native: input.native.tools,
+          current: id =>
+            toolsEnabled &&
+            id === call &&
+            !cleanup &&
+            !paused &&
+            valid() &&
+            Boolean(input.toolsCurrent?.()),
+          execute: input.executeTool,
+        })
+      : undefined;
   const subscriptions = [
     input.native.onSystemCall?.((id, active) => {
       // Native activation is an owned lease, not a general background exemption.
@@ -65,17 +84,20 @@ export function createRealtimeVoiceSession(input: {
       publish(phase);
     }),
     input.native.onTranscript(event => {
-      if (event.callId === call && !cleanup && !paused && valid())
+      if (event.callId === call && !cleanup && !paused && valid()) {
+        toolRequests?.observe(event);
         input.transcript(event);
+      }
     }),
     input.native.onInterrupted(id => {
       if (id === call) stop('provider');
     }),
   ];
-  const start = () => {
+  const start = (enableTools = false) => {
     if (!valid() || call || cleanup) return;
     const id = `realtime-${Date.now()}-${++nextCall}`;
     call = id;
+    toolsEnabled = enableTools && Boolean(toolRequests);
     paused = false;
     const current = ++epoch;
     state = {
@@ -104,6 +126,7 @@ export function createRealtimeVoiceSession(input: {
           credential.model,
           credential.apiKey,
           'ko-KR',
+          ...(toolsEnabled ? ([true] as const) : []),
         );
         // A late permission/network completion must not revive an ended call.
         if (call !== id || current !== epoch || !valid())
@@ -125,6 +148,7 @@ export function createRealtimeVoiceSession(input: {
       const id = call;
       const current = ++epoch;
       systemCallActive = false;
+      toolRequests?.cancel();
       paused = true;
       publish('cleaning');
       input.native.pause(id).then(
@@ -167,10 +191,17 @@ export function createRealtimeVoiceSession(input: {
     dispose() {
       disposed = true;
       stop();
+      toolRequests?.dispose();
       subscriptions.forEach(unsubscribe => unsubscribe());
     },
     isSystemCallActive: () =>
       systemCallActive && !!call && !cleanup && !disposed,
+    cancelTools: () => {
+      toolRequests?.cancel();
+      if (toolsEnabled && call)
+        input.native.tools?.cancel(call).catch(() => stop('cleanup'));
+    },
+    supportsTools: () => Boolean(toolRequests),
     getState: () => state,
   };
 }
