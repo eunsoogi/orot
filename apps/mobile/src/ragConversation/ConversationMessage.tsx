@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
-import { AiResponseText } from '../layout/AiResponseText';
+import { ConversationMessageText } from './ConversationMessageText';
 import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
 import { ConversationMessageBubbles } from './ConversationMessageBubbles';
@@ -55,7 +55,6 @@ export function ConversationMessage({
   const user = message.role === 'user';
   const visitQuestions =
     !user && message.visitQuestions ? renderVisitQuestions?.(message) : null;
-  const MessageText = user ? Text : AiResponseText;
   const activity = message.activity ? (
     <Text
       accessibilityLiveRegion={message.streaming ? 'none' : 'polite'}
@@ -192,13 +191,11 @@ export function ConversationMessage({
             />
           ) : null}
           {message.content ? (
-            <MessageText
-              selectable
-              style={[styles.messageText, user && styles.userText]}
+            <ConversationMessageText
+              content={message.content}
+              user={user}
               testID={conversationMessageBodyTestID(message)}
-            >
-              {message.content}
-            </MessageText>
+            />
           ) : null}
           {message.healthSummary ? (
             <HealthSummaryCard

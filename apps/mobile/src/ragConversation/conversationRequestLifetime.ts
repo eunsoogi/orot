@@ -1,3 +1,4 @@
+import { interruptConversationLifetime } from './conversationLifetimeInterruption';
 import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
 import { waitForWorkflowContinue } from './conversationWorkflowContinueWait';
 import { requiresConversationDecisionAbort } from './conversationApprovalBoundary';
@@ -154,6 +155,7 @@ export function createConversationRequestLifetime(input: {
           const entry = owners.get(controller);
           if (
             !entry ||
+            entry.status ||
             entries.get(entry.id) !== entry ||
             controller.signal.aborted
           )
@@ -207,20 +209,15 @@ export function createConversationRequestLifetime(input: {
     interrupt(id: number, status: StopStatus, erase = false) {
       const entry = entries.get(id);
       if (!entry || entry.status) return;
-      entry.status = status;
-      if (status === 'cancelled') entry.diagnose('user-stop', 'user-stopped');
-      // Stop ends execution but keeps its submitted input; only destructive abandonment erases it.
-      entry.fence = (async () => {
-        // A stop during the initial write must fence the row after it exists.
-        await entry.start?.catch(() => {});
-        await entry.turn.interruptRequest(
-          erase ? 'cancelled' : 'interrupted',
-          entry.interruptionReason ??
-            (status === 'cancelled' ? 'user-stopped' : 'provider-failed'),
-        );
-      })().catch(() => {
-        if (entries.get(id) === entry) input.reportFenceFailure(id);
-      });
+      interruptConversationLifetime(
+        entry,
+        status,
+        erase,
+        input.execution,
+        () => {
+          if (entries.get(id) === entry) input.reportFenceFailure(id);
+        },
+      );
     },
     status(id: number, controller: AbortController) {
       return owners.get(controller)?.status;
