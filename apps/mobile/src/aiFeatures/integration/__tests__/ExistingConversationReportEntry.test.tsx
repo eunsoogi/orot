@@ -22,7 +22,7 @@ jest.mock('../../../providers/selection/options', () => {
   };
 });
 
-test('report request stays in the existing conversation with its draft and one inline task', async () => {
+test('report choice preserves a blocked draft and starts one inline task after it is cleared', async () => {
   const push = jest.fn();
   const consent = { authorize: jest.fn(async () => 'authorized' as const) };
   await render(
@@ -47,22 +47,25 @@ test('report request stays in the existing conversation with its draft and one i
     screen.getByTestId('rag-conversation-input'),
     'keep my synthetic draft',
   );
+  // Report choices follow the same draft ownership guard as the other quick actions.
+  expect(screen.getByTestId('daily-report-request')).toBeDisabled();
   await fireEvent.press(screen.getByTestId('daily-report-request'));
-  expect(await screen.findByTestId('inline-daily-report-task')).toBeTruthy();
+  expect(screen.queryByTestId('inline-daily-report-task')).toBeNull();
   expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
     'value',
     'keep my synthetic draft',
   );
+  await fireEvent.changeText(screen.getByTestId('rag-conversation-input'), '');
+  await fireEvent.press(screen.getByTestId('daily-report-request'));
+  expect(await screen.findByTestId('inline-daily-report-task')).toBeTruthy();
+  expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
   expect(screen.queryByTestId('daily-report-screen')).toBeNull();
   expect(screen.queryByTestId('rag-conversation-progress')).toBeNull();
   await fireEvent.press(screen.getByTestId('daily-report-request'));
   expect(screen.getAllByTestId('inline-daily-report-task')).toHaveLength(1);
   expect(push).not.toHaveBeenCalled();
   expect(consent.authorize).not.toHaveBeenCalled();
-  expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
-    'value',
-    'keep my synthetic draft',
-  );
+  expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
 });
 
 test('a single report-choice tap starts the same consent-aware inline workflow without a second generate tap', async () => {
