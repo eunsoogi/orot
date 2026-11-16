@@ -22,7 +22,9 @@ export function createQuestionCardStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: compact ? tokens.spacing.xs : tokens.spacing.sm,
+      // Remove the visual gap, not the controls' 44pt bounds. Avoid negative
+      // margins because native hit testing cannot extend beyond the parent.
+      gap: compact ? 0 : tokens.spacing.sm,
     },
     heading: {
       color: colors.text,

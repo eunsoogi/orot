@@ -37,8 +37,8 @@ test('uses relative opposite message lanes without fixed-width text', async () =
   );
 });
 
-// Structured questions use the available width without changing ordinary chat lanes.
-test('gives final visit questions a full reading lane and compact outer padding', async () => {
+// Questions are assistant replies too; only their inner spacing is compact.
+test('keeps final questions in the assistant lane with compact inner padding', async () => {
   await render(
     <ConversationMessage
       message={{
@@ -62,11 +62,13 @@ test('gives final visit questions a full reading lane and compact outer padding'
     />,
   );
   expect(screen.getByTestId('conversation-assistant-message')).toHaveStyle({
-    alignSelf: 'stretch',
-    maxWidth: '100%',
+    alignSelf: 'flex-start',
+    maxWidth: '85%',
+    width: '85%',
   });
   expect(screen.getByTestId('conversation-message-body')).toHaveStyle({
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     gap: 8,
   });
   expect(screen.getByTestId('synthetic-question-list')).toBeTruthy();
