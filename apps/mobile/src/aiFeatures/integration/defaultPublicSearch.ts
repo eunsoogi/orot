@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import type {
   EvidenceBatch,
   EvidenceSearchTool,
@@ -26,14 +27,15 @@ export function budgetAfterPublicSearch(
   return { ...budget, maxModelCalls: budget.maxModelCalls - (spent ? 1 : 0) };
 }
 
+/** Display and persisted-answer copy only; status codes and query selection stay language-independent. */
 export function publicSearchNotice(
   status: 'empty' | 'unavailable' | 'consent_required' | 'cancelled',
 ): string {
   return status === 'empty'
-    ? '공개 웹검색에서 결과를 찾지 못했어요.'
+    ? t('externalMedicalEvidence.publicSearchEmptyNotice')
     : status === 'consent_required'
-      ? '공개 웹검색 동의가 없어 검색 결과를 반영하지 못했어요.'
-      : '공개 웹검색을 사용할 수 없어 검색 결과를 반영하지 못했어요.';
+      ? t('externalMedicalEvidence.publicSearchConsentNotice')
+      : t('externalMedicalEvidence.publicSearchUnavailableNotice');
 }
 
 /** Preserve the local result while making a missing public lookup visible and durable. */

@@ -276,3 +276,9 @@
 ### Test, fixture or development surface (retain)
 
 797개 파일은 synthetic fixture, 테스트 assertion 또는 개발 전용 화면으로 분류해 유지했다. 사용자 표시 현지화 완료 개수에 포함하지 않는다.
+
+## 공개 검색 제한 안내 후속 이관
+
+2026-11-16, main `78f03ce8`에서 기존 연결 PR과 잔여 TSX/TS 인벤토리를 다시 확인했다. `defaultPublicSearch.ts`의 세 고정 안내는 `status`로 선택되며 문자열 자체를 동의 판단, 검색어, source identity 또는 분기 키로 비교하지 않는다. `annotatePublicSearchLimit`의 `missingData`와 `finishRagConversation`의 최종 답변에 들어가 표시·저장될 수 있으므로 비저장 UI라고 분류하지 않는다. 이번 좁은 배치는 세 안내의 원문을 기존 한국어 카탈로그로 이동하며, 비슷한 진료 질문 안내의 “않았어요”로 바꾸지 않고 기존 “못했어요”를 유지한다.
+
+공개 topic 정규식, 검색어 제한, 동의와 취소, 호출 예산, 기존 불확실성 및 원본 자료는 변경하지 않는다. 한국어 외 locale의 fallback과 기존 저장 문자열도 유지한다. 모델 지시, 정확 일치 허용 목록, 프로토콜·저장 값 및 합성 fixture의 잔여 한국어는 기존 분류 경계를 따른다. 이 후속 검토는 전체 저장소·이미지·실기기의 현지화 완료를 뜻하지 않는다.
