@@ -50,7 +50,10 @@ test.each(['ALLOW', 'DENY'])(
       return 'final';
     });
     const result = await withDailyReportOpening(
-      { consent: { authorize } } as unknown as DailyReportRunInput,
+      {
+        consent: { authorize },
+        deadlineContext: { stage: 'workflow', timedOut: false },
+      } as unknown as DailyReportRunInput,
       request,
       selected,
       false,

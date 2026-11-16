@@ -89,7 +89,7 @@ test('optional failure cannot fail the final task', async () => {
   ).resolves.toBe('final');
 });
 
-test('bounded gate cancels only the preview, including stalled consent', async () => {
+test('bounded processing gate cancels only a stalled preview', async () => {
   jest.useFakeTimers();
   const owner = new AbortController();
   let preview!: AbortSignal;

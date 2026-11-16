@@ -1,3 +1,4 @@
+import { reportConsent } from './dailyReportAuthorizationWait';
 import { reportOpening } from './openingObservation';
 import { withConcurrentConversationOpening } from './concurrentConversationOpening';
 import { startContextualConversationOpening } from './contextualConversationOpening';
@@ -9,7 +10,8 @@ import type { SelectedAiResolution } from './provider';
 
 /** Only a live conversation receives a model-authored opening. Source preparation has
  * succeeded; reuse/lookup never calls this. No health facts or report text enter its payload.
- * The existing outer report deadline and Stop still bound this optional two-call preview. */
+ * The existing outer report deadline and Stop remain; preview processing is bounded
+ * separately from explicit authorization waits. */
 export async function generateDailyReportOpening(
   input: DailyReportRunInput,
   request: DailyReportServiceRequest,
@@ -21,7 +23,7 @@ export async function generateDailyReportOpening(
     selected,
     request: '오늘의 일일 보고서를 만들어 주세요.',
     observer: request.observer,
-    consent: input.consent,
+    consent: reportConsent(input.consent, input.deadlineContext),
     signal: request.signal,
     diagnosticFeature: 'daily_report',
     allowedScope: { sourceKinds: ['personal_record'] },

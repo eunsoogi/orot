@@ -1,24 +1,35 @@
+import { createInitialReplyDeadline } from '@orot/agent-runtime';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
 
 /** Serialize exact authorization requests, not model work. A single disclosure surface
  * cannot accept concurrent prompts; no decision or payload is reused by this adapter. */
-function queuedConsent(consent: ExecutionConsentPort): ExecutionConsentPort {
+function queuedConsent(
+  consent: ExecutionConsentPort,
+  deadline: ReturnType<typeof createInitialReplyDeadline>,
+): ExecutionConsentPort {
   let tail: Promise<unknown> = Promise.resolve();
+  let waiting = 0;
   return {
     authorize(request) {
+      waiting++;
+      deadline.pause();
       const result = tail.then(() =>
         request.signal.aborted
           ? ('renewal_required' as const)
           : consent.authorize(request),
       );
       tail = result.catch(() => undefined);
-      return result;
+      return result.finally(() => {
+        waiting--;
+        if (!waiting) deadline.resume();
+      });
     },
   };
 }
 
 /** Overlap an optional reviewed opening with the final task after local preparation.
- * Final result delivery waits for the opening; its wall-clock cap includes consent waiting.
+ * Final delivery waits for opening settlement; only processing spends the time cap.
+ * Queued and visible authorization waits pause it, never dismissing a user decision.
  * Stop cancels both through the caller's signal. The cap cancels only the opening,
  * never authorizes or cancels the independently protected final task. */
 export async function withConcurrentConversationOpening<T>(input: {
@@ -29,7 +40,6 @@ export async function withConcurrentConversationOpening<T>(input: {
   openingTimeoutMs?: number;
   onTimeout?: () => void;
 }): Promise<T> {
-  const consent = queuedConsent(input.consent);
   const controller = new AbortController();
   const stop = () => controller.abort();
   input.signal.addEventListener('abort', stop, { once: true });
@@ -41,7 +51,7 @@ export async function withConcurrentConversationOpening<T>(input: {
         once: true,
       });
   });
-  const timer = setTimeout(() => {
+  const deadline = createInitialReplyDeadline(() => {
     stop();
     try {
       input.onTimeout?.();
@@ -49,17 +59,18 @@ export async function withConcurrentConversationOpening<T>(input: {
       /* Optional diagnostics cannot affect settlement. */
     }
   }, input.openingTimeoutMs ?? 10_000);
+  const consent = queuedConsent(input.consent, deadline);
   // Opening failure is optional; the final task still propagates its original failure.
   const opening = Promise.resolve()
     .then(() => input.open(consent, controller.signal))
     .catch(() => undefined)
-    .finally(() => clearTimeout(timer));
+    .finally(() => deadline.dispose());
   try {
     const result = await input.run(consent);
     await Promise.race([opening, stopped]);
     return result;
   } finally {
-    clearTimeout(timer);
+    deadline.dispose();
     stop();
     input.signal.removeEventListener('abort', stop);
   }
