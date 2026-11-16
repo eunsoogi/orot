@@ -1,3 +1,4 @@
+import { observeCapturedToolSource } from './toolSourceCaptureDiagnostic';
 import type {
   ConversationToolEvent,
   ToolSourceReference,
@@ -31,10 +32,12 @@ export async function captureConversationToolSources(
         references.push(source);
         continue;
       }
-      const captured = await captureConversationSources(
-        [alias],
-        registry,
-        new AbortController().signal,
+      const captured = await observeCapturedToolSource(source.sourceKind, () =>
+        captureConversationSources(
+          [alias],
+          registry,
+          new AbortController().signal,
+        ),
       );
       const research = captured.sources[0];
       if (
@@ -53,10 +56,12 @@ export async function captureConversationToolSources(
     }
     const alias = registry.resolveToolReference(source);
     if (!alias) throw new Error('Tool source is unavailable.');
-    const captured = await captureConversationSources(
-      [alias],
-      registry,
-      new AbortController().signal,
+    const captured = await observeCapturedToolSource(source.sourceKind, () =>
+      captureConversationSources(
+        [alias],
+        registry,
+        new AbortController().signal,
+      ),
     );
     const dependency = captured.sources[0];
     if (!dependency) throw new Error('Tool source is unavailable.');
