@@ -79,7 +79,12 @@ export function ConversationMessage({
   // Keep the last streamed line at the end of a short reading viewport.
   const activityBeforeText = compact && message.streaming;
   return (
-    <View style={user ? styles.userMessage : styles.assistantMessage}>
+    <View
+      testID={
+        user ? 'conversation-user-message' : 'conversation-assistant-message'
+      }
+      style={user ? styles.userMessage : styles.assistantMessage}
+    >
       {!user && message.dailyReport ? (
         <Text>
           {t('dailyReport.followUpIdentity', {
