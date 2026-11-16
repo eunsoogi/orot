@@ -1,6 +1,12 @@
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
 export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report' | 'storage';
 export type Stage =
+  | 'tool_capture_personal'
+  | 'tool_capture_memory'
+  | 'tool_capture_generated'
+  | 'tool_capture_external'
+  | 'tool_event_adapter'
+  | 'tool_event_discard'
   | 'tool_event_capture'
   | 'tool_event_write'
   | 'tool_event_bind'
@@ -217,4 +223,13 @@ export type Outcome =
   | 'task_coverage_reader_limit'
   | 'task_coverage_payload'
   | 'task_coverage_topic_limit'
+  | 'tool_cited_changed'
+  | 'tool_photo_owner'
+  | 'tool_filter_rejected'
+  | 'tool_generated_changed'
+  | 'tool_generated_identity'
+  | 'tool_generated_lineage'
+  | 'tool_photo_changed'
+  | 'tool_parent_changed'
+  | 'tool_parent_invalid'
   | 'other';
