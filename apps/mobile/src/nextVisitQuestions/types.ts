@@ -177,7 +177,9 @@ export type GenerationOutcome<TReference extends NextVisitEvidenceReference> =
         | 'provider_unavailable'
         | 'rejected_output'
         | 'consent_required'
-        | 'unavailable';
+        | 'unavailable'
+        | 'budget_exceeded';
+      readonly providerErrorCode?: import('@orot/model-runtime').ProviderErrorCode;
       readonly message: string;
       readonly caveats?: readonly EvidenceCaveat[];
     }

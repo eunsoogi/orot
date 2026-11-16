@@ -15,6 +15,7 @@ import { createConversationVisitToolSource } from './conversationVisitToolSource
 import { prepareConversationVisitRetention } from './prepareConversationVisitRetention';
 import { RetainedSourceInvalidError } from './retainedSourceError';
 import { t } from '../../i18n';
+import { providerFailureKind } from '../../ragConversation/outcome';
 
 /** Retain visit references while exposing reason-coded saved-question recovery to conversation surfaces. */
 export function createConversationVisitTurn(deps: {
@@ -61,8 +62,17 @@ export function createConversationVisitTurn(deps: {
       },
     });
     if (result.status !== 'ready') {
+      // Valid clarification is not rejected output. Keep provider prose out of UI:
+      // the standard insufficient-evidence response remains app-owned and safe.
+      if (result.status === 'needs_clarification')
+        return { status: 'insufficient' };
+      const providerKind =
+        'providerErrorCode' in result
+          ? providerFailureKind(result.providerErrorCode)
+          : undefined;
       const kind =
-        result.status === 'cancelled'
+        providerKind ??
+        (result.status === 'cancelled'
           ? 'cancelled'
           : result.status === 'no_appointment'
             ? 'visit_no_appointment'
@@ -75,7 +85,11 @@ export function createConversationVisitTurn(deps: {
                   : result.status === 'appointment_changed' ||
                       result.status === 'refresh_required'
                     ? 'stale_evidence'
-                    : 'validation_failed';
+                    : result.status === 'budget_exceeded'
+                      ? 'budget_exceeded'
+                      : result.status === 'rejected_output'
+                        ? 'validation_failed'
+                        : 'unavailable');
       return {
         status: 'failure',
         kind,

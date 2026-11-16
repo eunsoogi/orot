@@ -27,7 +27,9 @@ export type VisitQuestionWorkflowResult =
         | 'needs_clarification'
         | 'refresh_required'
         | 'rejected_output'
-        | 'unavailable';
+        | 'unavailable'
+        | 'budget_exceeded';
+      readonly providerErrorCode?: import('@orot/model-runtime').ProviderErrorCode;
       readonly message: string;
       readonly memoryStatus: ReadyContext['evidence']['memoryStatus'];
     }
@@ -95,8 +97,13 @@ export async function mapVisitQuestionWorkflowResult(input: {
             ? 'rejected_output'
             : result.status === 'stale_evidence'
               ? 'refresh_required'
-              : 'unavailable',
+              : result.status === 'budget_exceeded'
+                ? 'budget_exceeded'
+                : 'unavailable',
       message,
+      ...('providerErrorCode' in result && result.providerErrorCode
+        ? { providerErrorCode: result.providerErrorCode }
+        : {}),
       memoryStatus: prepared.evidence.memoryStatus,
     };
   }
