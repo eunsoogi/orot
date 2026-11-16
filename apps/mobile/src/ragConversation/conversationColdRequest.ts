@@ -1,11 +1,6 @@
 import { hasUncommittedTurn } from './hasUncommittedTurn';
-import type {
-  ConversationSession,
-  ConversationSessionOptions,
-  PendingTurn,
-} from './conversationSessionTypes';
-import type { createConversationRequestLifetime } from './conversationRequestLifetime';
-import type { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
+import type { PendingTurn } from './conversationSessionTypes';
+import type { ConversationColdRequestInput } from './conversationColdRequestInput';
 import type { Turn } from './conversationLifetimeEntry';
 import {
   createConversationActivity,
@@ -23,24 +18,9 @@ import { ownsOutcome } from './conversationOutcomeOwnership';
 import { getRagConversationFailureCopy } from './copy';
 type Activity = ReturnType<typeof createConversationTurnActivity>;
 /** An explicit button adopts the existing request. No send, new identity, or automatic retry is allowed. */
-export function createConversationColdRequest(input: {
-  steering?: ReturnType<
-    typeof import('./conversationSteeringOwner').createConversationSteeringOwner
-  >;
-  find(id: number): ConversationSession;
-  update(id: number, change: Partial<ConversationSession>): void;
-  conversationScope(id: number): string;
-  cancel(id: number, settled?: boolean): void;
-  cold?: ConversationSessionOptions['coldResume'];
-  confirmPhotoResume?: import('./conversationObserver').RagConversationObserver['confirmPhotoResume'];
-  retention?: ConversationSessionOptions['retention'];
-  controllers: Map<number, AbortController>;
-  pendingTurns: Map<number, PendingTurn>;
-  activities: Map<number, Activity>;
-  snapshots: Map<number, ReturnType<typeof createConversationActivity>>;
-  lifetime: ReturnType<typeof createConversationRequestLifetime>;
-  saveRecovery: ReturnType<typeof createConversationRequestSaveRecovery>;
-}) {
+export function createConversationColdRequest(
+  input: ConversationColdRequestInput,
+) {
   return async (id: number, requestId: string) => {
     const { cold, retention } = input;
     const session = input.find(id);
@@ -102,11 +82,14 @@ export function createConversationColdRequest(input: {
       input.controllers.get(id) === controller &&
       !controller.signal.aborted &&
       !!input.find(id);
-    input.update(id, { busy: true, error: '' });
     let turn: Turn | undefined;
     let activity: Activity | undefined;
     let paused = false;
     const snapshot = createConversationActivity(id, bubble.id);
+    // A protected-storage wait must acknowledge Stop before its durable fence settles.
+    input.snapshots.set(id, snapshot);
+    const requestActivity = snapshot.getSnapshot();
+    input.update(id, { busy: true, error: '', requestActivity });
     try {
       const recovery = await cold.inspect(identity, controller.signal);
       if (!recovery || !current()) throw new Error('Cold owner changed.');
@@ -124,7 +107,6 @@ export function createConversationColdRequest(input: {
         operationRunId: recovery.operationRunId,
       };
       snapshot.waiting();
-      input.snapshots.set(id, snapshot);
       input.update(id, {
         requestActivity: snapshot.getSnapshot(),
         // Replace globally reissued tool aliases before this owner can expose source actions.
