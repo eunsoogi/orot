@@ -33,7 +33,16 @@ function comparedDailyReportIndexes(
       item.record.observationKind !== 'measurement'
     )
       return;
-    const key = item.record.concept.toLowerCase();
+    const concept = item.record.concept.toLowerCase();
+    // These exact aliases already identify the same axis in the pressure reader
+    // and HealthKit importer. Normalize comparison only, never stored values,
+    // source identity, units, timestamps or systolic versus diastolic axes.
+    const key =
+      concept === 'blood pressure systolic'
+        ? 'blood_pressure_systolic'
+        : concept === 'blood pressure diastolic'
+          ? 'blood_pressure_diastolic'
+          : concept;
     const group = groups.get(key) ?? [];
     group.push({
       index,

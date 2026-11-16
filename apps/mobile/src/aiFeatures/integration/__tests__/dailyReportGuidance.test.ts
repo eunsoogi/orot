@@ -2,7 +2,11 @@ import { HealthObservationSchema } from '@orot/domain';
 import type { DailyReportSourceRecord } from '@orot/domain';
 import type { LocalHealthEvidenceRecord } from '../../../healthEvidence/localEvidenceQueries';
 import { dailyReportGuidance } from '../dailyReportGuidance';
-import { dailyReportFacts } from '../dailyReportFacts';
+import {
+  dailyReportFacts,
+  conflictingDailyReportIndexes,
+  incomparableDailyReportIndexes,
+} from '../dailyReportFacts';
 
 const sample = (
   concept: string,
@@ -139,4 +143,56 @@ test('different times, units and identical duplicates do not invent a conflict a
   expect(
     guidance(first, sample('blood_pressure_systolic', 15, 'kPa', 'other-unit')),
   ).toEqual([]);
+});
+
+test.each([
+  ['blood_pressure_systolic', 'blood pressure systolic', 145, 110],
+  ['blood_pressure_diastolic', 'blood pressure diastolic', 90, 70],
+])(
+  'known alias pair %s and %s preserves same-instant conflict evidence',
+  (underscored, spaced, high, low) => {
+    const values = [
+      sample(underscored, high),
+      sample(spaced, low, 'mmHg', 'other'),
+    ];
+    const original = JSON.stringify(values);
+    expect(conflictingDailyReportIndexes(values)).toEqual([0, 1]);
+    const claims = guidance(...values);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]?.text).toContain('어느 기록이 정확한지');
+    expect(claims[0]?.sourceReferences).toHaveLength(2);
+    expect(JSON.stringify(values)).toBe(original);
+  },
+);
+
+test('alias normalization never combines axes or converts units and leaves unknown concepts alone', () => {
+  expect(
+    conflictingDailyReportIndexes([
+      sample('blood_pressure_systolic', 120),
+      sample('blood pressure diastolic', 80, 'mmHg', 'diastolic'),
+    ]),
+  ).toEqual([]);
+  const units = [
+    sample('blood_pressure_systolic', 140),
+    sample('blood pressure systolic', 18, 'kPa', 'kpa'),
+  ];
+  expect(conflictingDailyReportIndexes(units)).toEqual([]);
+  expect(incomparableDailyReportIndexes(units)).toEqual([0, 1]);
+  expect(guidance(...units)).toEqual([]);
+  expect(
+    conflictingDailyReportIndexes([
+      sample('blood_pressure_systolic', 140),
+      sample('blood-pressure-systolic', 110, 'mmHg', 'unknown'),
+    ]),
+  ).toEqual([]);
+});
+
+test('a severe supported alias remains urgent despite a lower conflicting record', () => {
+  const claims = guidance(
+    sample('blood pressure systolic', 180),
+    sample('blood_pressure_systolic', 110, 'mmHg', 'other'),
+  );
+  expect(claims).toHaveLength(1);
+  expect(claims[0]?.text).toContain('재측정을 기다리지 말고 119');
+  expect(claims[0]?.text).not.toContain('어느 기록이 정확한지');
 });
