@@ -173,6 +173,10 @@ export function ConversationScreen({
             onContinueCold={requestId =>
               store.resumeCold(id, requestId).catch(() => {})
             }
+            historyHasMore={session.historyHasMore}
+            historyLoading={session.historyLoading}
+            historyLoadFailed={session.historyLoadFailed}
+            onLoadOlderHistory={() => store.loadOlderHistory(id)}
             sessionId={id}
             requestSessionId={id}
             requestActivity={session.requestActivity}

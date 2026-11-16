@@ -1,5 +1,7 @@
+import { useConversationTranscriptWindow } from './useConversationTranscriptWindow';
 import { conversationHistoryError } from './conversationHistoryError';
-import { conversationIsNearLatest } from './conversationVisibleOffset';
+import { useConversationJumpToLatest } from './useConversationJumpToLatest';
+import { ConversationJumpToLatest } from './ConversationJumpToLatest';
 import { useFloatingComposerInset } from './FloatingComposerSurface';
 import { followConversationLatest } from './followConversationLatest';
 import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
@@ -37,6 +39,10 @@ export function ConversationHistory({
   restoreFailed = false,
   onRetryRestore,
   sessionId,
+  historyHasMore,
+  historyLoading,
+  historyLoadFailed,
+  onLoadOlderHistory,
   toolSourceSessionId,
   resolveToolSource,
   resolveColdToolSource,
@@ -59,6 +65,17 @@ export function ConversationHistory({
     offset: number;
   } | null>(null);
   const expectedOffset = useRef<number | null>(null);
+  const jumpControl = useConversationJumpToLatest({
+    sessionId,
+    compact,
+    composerInset,
+    messageEnd,
+    followsBottom,
+    userScrolling,
+    expectedOffset,
+    scrollGeometry,
+    historyView,
+  });
   const replyScroll = useReplyScroll({
     history: historyView,
     focus: replyFocus,
@@ -78,6 +95,21 @@ export function ConversationHistory({
     followsBottom,
     expectedOffset,
   );
+  const window = useConversationTranscriptWindow({
+    hasMore: historyHasMore,
+    loading: historyLoading,
+    failed: historyLoadFailed,
+    loadOlder: onLoadOlderHistory,
+    messages: visibleMessages.filter(message =>
+      transcriptMessageVisible(message, separatedActivity),
+    ),
+    sessionId,
+    focusId: replyFocus?.canReveal() ? replyFocus.messageId : undefined,
+    history: historyView,
+    followsBottom,
+    expectedOffset,
+    geometry: scrollGeometry,
+  });
   const followLatest = () =>
     followConversationLatest({
       hasMessages: visibleMessages.length > 0,
@@ -92,155 +124,123 @@ export function ConversationHistory({
       scrollGeometry,
     });
   return (
-    <ScrollView
-      ref={historyView}
-      style={styles.history}
-      contentContainerStyle={{
-        paddingTop: identityInset,
-        paddingBottom: bottomInset + composerInset + (compact ? 0 : 20),
-      }}
-      keyboardShouldPersistTaps="handled"
-      onLayout={({ nativeEvent }) => {
-        viewportHeight.current = nativeEvent.layout.height;
-        followLatest();
-      }}
-      onScrollBeginDrag={() => {
-        userScrolling.current = true;
-        expectedOffset.current = null;
-      }}
-      onScrollEndDrag={() => {
-        userScrolling.current = false;
-      }}
-      onMomentumScrollBegin={() => {
-        userScrolling.current = true;
-      }}
-      onMomentumScrollEnd={() => {
-        userScrolling.current = false;
-      }}
-      onScroll={({ nativeEvent }) => {
-        const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
-        const previous = scrollGeometry.current;
-        const changed =
-          previous !== null &&
-          (previous.height !== layoutMeasurement.height ||
-            previous.contentHeight !== contentSize.height);
-        scrollGeometry.current = {
-          height: layoutMeasurement.height,
-          contentHeight: contentSize.height,
-          offset: contentOffset.y,
-        };
-        if (previous && Math.abs(contentOffset.y - previous.offset) < 1) return;
-        // Geometry changes and our own offset corrections do not imply reader intent.
-        if (changed && !userScrolling.current) {
-          expectedOffset.current = null;
-          const maximum = Math.max(
-            0,
-            contentSize.height - layoutMeasurement.height,
-          );
-          const clampedPrevious = Math.min(
-            Math.max(0, previous.offset),
-            maximum,
-          );
-          if (
-            Math.abs(contentOffset.y - clampedPrevious) < 1 ||
-            (followsBottom.current &&
-              previous.height !== layoutMeasurement.height &&
-              Math.abs(
-                previous.offset -
-                  Math.max(0, previous.contentHeight - previous.height),
-              ) < 1 &&
-              Math.abs(contentOffset.y - maximum) < 1)
-          )
-            return;
-        }
-        const expected = expectedOffset.current;
-        expectedOffset.current = null;
-        if (
-          !userScrolling.current &&
-          expected !== null &&
-          Math.abs(
-            Math.min(
-              expected,
-              Math.max(0, contentSize.height - layoutMeasurement.height),
-            ) - contentOffset.y,
-          ) < 1
-        )
-          return;
-        // Only follow streamed content while the reader remains near the bottom.
-        followsBottom.current = conversationIsNearLatest(
-          compact ? messageEnd.current : null,
-          layoutMeasurement.height,
-          composerInset,
-          contentSize.height,
-          contentOffset.y,
-        );
-      }}
-      onScrollToTop={() => {
-        expectedOffset.current = null;
-        followsBottom.current = false;
-      }}
-      scrollEventThrottle={16}
-      onContentSizeChange={() => {
-        // Keep the compact header available before a conversation has a message.
-        // After an answer arrives, following its end keeps the reading viewport useful.
-        followLatest();
-      }}
-      testID="rag-conversation-history"
-    >
-      {header}
-      {beforeMessages}
-      <View
-        style={styles.container}
-        testID="conversation-message-container"
-        onLayout={event => replyScroll.container(event.nativeEvent.layout.y)}
-      >
-        <ConversationTranscriptMessages
-          messages={visibleMessages.filter(message =>
-            transcriptMessageVisible(message, separatedActivity),
-          )}
-          pendingId={pendingMessage?.id}
-          instructions={steeringInstructions}
-          replyFocus={replyFocus}
-          onLayout={replyScroll.message}
-          messageProps={{
-            onContinueCold,
-            coldResumeBusy,
-            resolveColdToolSource,
-            showToolActivity: false,
-            onOpenSource,
-            onLinkError,
-            compact,
-            toolSourceSessionId,
-            resolveToolSource,
-            renderVisitQuestions,
-          }}
-        />
-        {showActivityBubble ? <ConversationActivityBubble /> : null}
-        <ConversationHistoryStatus
-          error={conversationHistoryError(
-            error,
-            visibleMessages,
-            separatedActivity,
-          )}
-          {...{
-            unsavedCount,
-            retryingSave,
-            onRetrySave,
-            restoreFailed,
-            onRetryRestore,
-          }}
-        />
-      </View>
-      {/* The footer stays in place while compact follow targets the end of messages. */}
-      <View
-        collapsable={false}
-        onLayout={event => {
-          messageEnd.current = event.nativeEvent.layout.y;
-          if (compact) followLatest();
+    <View style={styles.history}>
+      <ScrollView
+        ref={historyView}
+        style={styles.history}
+        contentContainerStyle={{
+          paddingTop: identityInset,
+          paddingBottom: bottomInset + composerInset + (compact ? 0 : 20),
         }}
-        testID="rag-conversation-message-end"
-      />
-      {footer}
-    </ScrollView>
+        keyboardShouldPersistTaps="handled"
+        onLayout={({ nativeEvent }) => {
+          viewportHeight.current = nativeEvent.layout.height;
+          jumpControl.refresh({ height: nativeEvent.layout.height });
+          followLatest();
+        }}
+        onScrollBeginDrag={() => {
+          window.cancelAnchor();
+          userScrolling.current = true;
+          expectedOffset.current = null;
+        }}
+        onScrollEndDrag={() => {
+          userScrolling.current = false;
+        }}
+        onMomentumScrollBegin={() => {
+          userScrolling.current = true;
+        }}
+        onMomentumScrollEnd={() => {
+          userScrolling.current = false;
+        }}
+        onScroll={event => {
+          jumpControl.onScroll(event);
+          window.onTopEdge(
+            event.nativeEvent.contentOffset.y,
+            userScrolling.current,
+          );
+        }}
+        onScrollToTop={() => {
+          expectedOffset.current = null;
+          followsBottom.current = false;
+        }}
+        scrollEventThrottle={16}
+        onContentSizeChange={(_width, height) => {
+          jumpControl.refresh({
+            height: viewportHeight.current,
+            contentHeight: height,
+          });
+          // Keep the compact header available before a conversation has a message.
+          // After an answer arrives, following its end keeps the reading viewport useful.
+          followLatest();
+        }}
+        testID="rag-conversation-history"
+      >
+        {header}
+        {beforeMessages}
+        {window.control}
+        <View
+          style={styles.container}
+          testID="conversation-message-container"
+          onLayout={event => replyScroll.container(event.nativeEvent.layout.y)}
+        >
+          <ConversationTranscriptMessages
+            messages={window.messages}
+            anchorId={window.anchorId}
+            onAnchorLayout={window.onAnchorLayout}
+            pendingId={pendingMessage?.id}
+            instructions={steeringInstructions}
+            replyFocus={replyFocus}
+            onLayout={replyScroll.message}
+            messageProps={{
+              onContinueCold,
+              coldResumeBusy,
+              resolveColdToolSource,
+              showToolActivity: false,
+              onOpenSource,
+              onLinkError,
+              compact,
+              toolSourceSessionId,
+              resolveToolSource,
+              renderVisitQuestions,
+            }}
+          />
+          {showActivityBubble ? <ConversationActivityBubble /> : null}
+          <ConversationHistoryStatus
+            error={conversationHistoryError(
+              error,
+              visibleMessages,
+              separatedActivity,
+            )}
+            {...{
+              unsavedCount,
+              retryingSave,
+              onRetrySave,
+              restoreFailed,
+              onRetryRestore,
+            }}
+          />
+        </View>
+        {/* The footer stays in place while compact follow targets the end of messages. */}
+        <View
+          collapsable={false}
+          onLayout={event => {
+            messageEnd.current = event.nativeEvent.layout.y;
+            jumpControl.refresh();
+            if (compact) followLatest();
+          }}
+          testID="rag-conversation-message-end"
+        />
+        {footer}
+      </ScrollView>
+      {jumpControl.away ? (
+        <ConversationJumpToLatest
+          bottom={composerInset}
+          onPress={() => {
+            window.cancelAnchor();
+            jumpControl.jump();
+          }}
+        />
+      ) : null}
+    </View>
   );
 }

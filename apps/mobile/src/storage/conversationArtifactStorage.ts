@@ -1,3 +1,4 @@
+import { conversationTimelinePages } from './conversationTimelinePages';
 import { continuousConversationStorage } from './continuousConversationStorage';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
 import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
@@ -60,6 +61,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   return {
+    listTimeline: conversationTimelinePages(database, ensure),
     continuousSession: continuousConversationStorage(database, ensure),
     readSteeringHistory: conversationSteeringHistory(database, ensure),
     openWorkflowContinuation: conversationWorkflowContinuationOpener(database),
@@ -232,6 +234,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       cursor?: { readonly createdAt: string; readonly id: string },
       limit = 50,
       kind: 'conversation' | 'treatment' = 'conversation',
+      ids?: readonly string[],
     ) {
       await ensure();
       return listConversationArtifactPage(
@@ -240,6 +243,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         cursor,
         limit,
         kind,
+        ids,
       );
     },
   };

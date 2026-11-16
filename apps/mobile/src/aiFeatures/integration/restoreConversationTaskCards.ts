@@ -7,18 +7,27 @@ export async function restoreConversationTaskCards(
   storage: ReturnType<typeof createConversationArtifactStorage>,
   sessionId: string,
   signal: AbortSignal,
+  selectedIds?: readonly string[],
 ) {
   const version = await storage.activeSessionVersion(sessionId);
   if (version === null || signal.aborted)
     throw new Error('Conversation is unavailable.');
-  const retained = await storage.readTaskCards(sessionId, version);
+  const retained = await storage.readTaskCards(sessionId, version, selectedIds);
   const cards: RetainedConversationTask[] = [...retained];
   const known = new Set(cards.map(card => card.id));
   const listTreatment = async () => {
     const items: { readonly id: string; readonly createdAt: string }[] = [];
     let cursor: { readonly createdAt: string; readonly id: string } | undefined;
     do {
-      const page = await storage.list(sessionId, cursor, 50, 'treatment');
+      const page = await storage.list(
+        sessionId,
+        cursor,
+        50,
+        'treatment',
+        selectedIds
+          ?.filter(id => id.startsWith('treatment:'))
+          .map(id => id.slice(10)),
+      );
       items.push(...page.items);
       cursor = page.nextCursor ?? undefined;
     } while (cursor && !signal.aborted);
@@ -49,8 +58,9 @@ export async function restoreConversationTaskCards(
   if (
     signal.aborted ||
     (await storage.activeSessionVersion(sessionId)) !== version ||
-    JSON.stringify(await storage.readTaskCards(sessionId, version)) !==
-      JSON.stringify(retained) ||
+    JSON.stringify(
+      await storage.readTaskCards(sessionId, version, selectedIds),
+    ) !== JSON.stringify(retained) ||
     JSON.stringify(await listTreatment()) !== JSON.stringify(treatment) ||
     signal.aborted ||
     (await storage.activeSessionVersion(sessionId)) !== version
