@@ -44,7 +44,7 @@ export type RagConversationOutcome =
   | { readonly status: 'unavailable' };
 
 /** Maps closed provider error codes without copying request or provider text into UI state. */
-function providerFailureKind(
+export function providerFailureKind(
   code: ProviderErrorCode | undefined,
 ): RagConversationFailureKind | undefined {
   switch (code) {

@@ -51,3 +51,82 @@ test('passes typed saved-question recovery to the conversation result', async ()
   expect(defaultVisitQuestionRouteOperations.generate).not.toHaveBeenCalled();
   expect(confirmConsent).not.toHaveBeenCalled();
 });
+
+/** A completed tool is not proof that the model produced an invalid answer. */
+test.each([
+  ['needs_clarification', undefined, { status: 'insufficient' }],
+  ['unavailable', undefined, { status: 'failure', kind: 'unavailable' }],
+  [
+    'budget_exceeded',
+    undefined,
+    { status: 'failure', kind: 'budget_exceeded' },
+  ],
+  [
+    'rejected_output',
+    undefined,
+    { status: 'failure', kind: 'validation_failed' },
+  ],
+  [
+    'refresh_required',
+    undefined,
+    { status: 'failure', kind: 'stale_evidence' },
+  ],
+  [
+    'consent_required',
+    undefined,
+    { status: 'failure', kind: 'consent_required' },
+  ],
+  ['cancelled', undefined, { status: 'failure', kind: 'cancelled' }],
+  [
+    'unavailable',
+    'rate_limited',
+    { status: 'failure', kind: 'provider_rate_limited' },
+  ],
+  [
+    'unavailable',
+    'authentication_required',
+    { status: 'failure', kind: 'provider_authentication' },
+  ],
+  [
+    'unavailable',
+    'unsupported_capability',
+    { status: 'failure', kind: 'provider_configuration' },
+  ],
+  [
+    'unavailable',
+    'safety_refusal',
+    { status: 'failure', kind: 'provider_refused' },
+  ],
+] as const)(
+  'preserves %s / %s without exposing raw failure text',
+  async (status, providerErrorCode, expected) => {
+    jest
+      .mocked(defaultVisitQuestionRouteOperations.generate)
+      .mockResolvedValue({
+        status,
+        message: 'PRIVATE_PROVIDER_TEXT',
+        providerErrorCode,
+      } as never);
+    const turn = createConversationVisitTurn({
+      loadLocalData: jest.fn(),
+      registry: new LocalEvidenceReferenceRegistry(),
+      loadSaved: async () => ({
+        status: 'ready',
+        appointmentId: 'appointment-1',
+        questions: [],
+        caveats: [],
+        restorationNotice: '',
+      }),
+      registerSource: jest.fn() as never,
+    });
+    const result = await turn({
+      question: 'synthetic question',
+      signal: new AbortController().signal,
+      resolveSelectedAi: async () =>
+        ({ status: 'ready' }) as SelectedAiResolution,
+      confirmConsent: async () => false,
+    });
+    expect(result).toEqual(expected);
+    expect(JSON.stringify(result)).not.toContain('PRIVATE_PROVIDER_TEXT');
+  },
+);

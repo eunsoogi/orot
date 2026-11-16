@@ -223,7 +223,14 @@ async function generate(
     return { status: 'consent_required', message: result.message, caveats };
   }
   if (result.status === 'cancelled') return { status: 'cancelled' };
-  return { status: result.status, message: result.message, caveats };
+  return {
+    status: result.status,
+    message: result.message,
+    caveats,
+    ...('providerErrorCode' in result && result.providerErrorCode
+      ? { providerErrorCode: result.providerErrorCode }
+      : {}),
+  };
 }
 
 export const defaultVisitQuestionRouteOperations: VisitQuestionRouteOperations =
