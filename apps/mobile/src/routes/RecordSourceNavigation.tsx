@@ -44,6 +44,12 @@ export function useRecordSourceNavigation(
   const sources = useContext(Context);
   return {
     sourceId: sources?.sources.get(actions.route.key),
+    openMemory: sources
+      ? (memoryId: string) => {
+          const route = actions.push('saved-memory-detail');
+          if (route) sources.select(route.key, memoryId);
+        }
+      : undefined,
     openDocument: sources
       ? (sourceId: string) => {
           const route = actions.push('medical-document-detail');

@@ -1,3 +1,8 @@
+import { AppState } from 'react-native';
+import { loadSavedLocalMemories } from '../../memory/savedLocalMemories';
+jest.mock('../../memory/savedLocalMemories', () => ({
+  loadSavedLocalMemories: jest.fn(async () => []),
+}));
 import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import {
   act,
@@ -192,4 +197,29 @@ test('deletion invalidation clears excerpts while cleanup blocks Back, then retu
     expect(controller.getSnapshot().currentRoute.name).toBe('root'),
   );
   alert.mockRestore();
+});
+
+test('memory list opens an ID-owned native destination and returns through the controller', async () => {
+  AppState.currentState = 'active';
+  const text = 'Synthetic memory ' + 'long detail '.repeat(15);
+  jest.mocked(loadSavedLocalMemories).mockResolvedValue([
+    {
+      id: 'synthetic-memory',
+      text,
+      kind: 'preference',
+      createdAt: 1000,
+      provenance: { sourceIds: [], reviewState: 'user_confirmed' },
+    },
+  ] as never);
+  const controller = await renderRoute();
+  await fireEvent.press(await screen.findByText(text.slice(0, 100) + '…'));
+  expect(controller.getSnapshot().currentRoute.name).toBe(
+    'saved-memory-detail',
+  );
+  expect(controller.getSnapshot().canGoBack).toBe(true);
+  expect(await screen.findByText(text)).toBeTruthy();
+  expect(JSON.stringify(controller.getSnapshot())).not.toContain(text);
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
+  expect(await screen.findByText(text.slice(0, 100) + '…')).toBeTruthy();
 });

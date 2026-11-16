@@ -1,3 +1,4 @@
+import { SavedMemoryDetail } from '../memory/SavedMemoryDetail';
 import { useRecordSourceNavigation } from './RecordSourceNavigation';
 import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
 import { useOverviewReportEntry } from './useOverviewReportEntry';
@@ -50,7 +51,8 @@ export function AppRouteContent({
   healthRecordDetailSelection,
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
-  const { sourceId, openDocument } = useRecordSourceNavigation(actions);
+  const { sourceId, openDocument, openMemory } =
+    useRecordSourceNavigation(actions);
   const active = useIsFocused();
   const openOverviewReport = useOverviewReportEntry(
     active && activeTab === 'overview' && actions.route.name === 'root',
@@ -87,6 +89,7 @@ export function AppRouteContent({
           >
             <RecordsRoute
               onOpenDocumentDetail={openDocument}
+              onOpenMemory={openMemory}
               onOpenRecentRecords={() => actions.push('recent-records')}
               documentImportService={documentImportService}
               recordings={recordings}
@@ -151,6 +154,8 @@ export function AppRouteContent({
       return (
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
       );
+    case 'saved-memory-detail':
+      return <SavedMemoryDetail memoryId={sourceId} />;
     case 'medical-document-detail':
       return (
         <MedicalDocumentDetailRoute
@@ -164,6 +169,7 @@ export function AppRouteContent({
       return (
         <RecordsRoute
           onOpenDocumentDetail={openDocument}
+          onOpenMemory={openMemory}
           showAllRecent
           documentImportService={documentImportService}
           recordings={recordings}

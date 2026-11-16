@@ -22,6 +22,7 @@ import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
 import { LegacySymptomData } from './LegacySymptomData';
 
 export interface RecordsRouteProps {
+  readonly onOpenMemory?: (memoryId: string) => void;
   readonly onOpenDocumentDetail?: (sourceId: string) => void;
   readonly showAllRecent?: boolean;
   readonly onOpenRecentRecords?: () => void;
@@ -38,6 +39,7 @@ export interface RecordsRouteProps {
 /** Reuses Home's loaded audio snapshot and keeps every Records state in measured usable space. */
 export function RecordsRoute({
   onOpenDocumentDetail,
+  onOpenMemory,
   showAllRecent = false,
   onOpenRecentRecords,
   recordings,
@@ -147,7 +149,7 @@ export function RecordsRoute({
           {!showAllRecent ? (
             <View style={styles.primaryPanel}>
               <RecordsRouteEntries
-                secondary={<SavedMemoryBrowser />}
+                secondary={<SavedMemoryBrowser onOpenMemory={onOpenMemory} />}
                 onOpenSavedRecordings={onOpenSavedRecordings}
                 onOpenRecording={onOpenRecording}
                 onOpenHealthLibrary={onOpenHealthLibrary}
