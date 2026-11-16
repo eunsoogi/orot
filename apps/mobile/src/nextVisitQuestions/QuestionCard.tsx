@@ -1,9 +1,10 @@
 import { t } from '../i18n';
 import { ActionButton } from './QuestionCardActionButton';
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
-import { CheckboxIndicator } from '../layout/CheckboxIndicator';
+import { QuestionPriorityControl } from './QuestionPriorityControl';
 import { nextVisitQuestionsCopy as copy } from './copy';
 import type {
   NextVisitEvidenceReference,
@@ -14,6 +15,8 @@ import { createQuestionCardStyles } from './questionCardStyles';
 
 interface QuestionCardProps<TReference extends NextVisitEvidenceReference> {
   readonly question: NextVisitQuestion<TReference>;
+  readonly selectionHeader?: ReactNode;
+  readonly priorityInDetails?: boolean;
   readonly index: number;
   readonly count: number;
   readonly editable: boolean;
@@ -35,6 +38,8 @@ interface QuestionCardProps<TReference extends NextVisitEvidenceReference> {
 /** Keeps evidence read-only while the person edits the question and its wording. */
 export function QuestionCard<TReference extends NextVisitEvidenceReference>({
   question,
+  selectionHeader,
+  priorityInDetails = false,
   index,
   count,
   editable,
@@ -51,10 +56,13 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
 
   return (
     <View style={styles.card} testID={`next-visit-question-${index}`}>
+      {selectionHeader}
       <View style={styles.headingRow}>
-        <View style={styles.numberBadge}>
-          <Text style={styles.heading}>{number}</Text>
-        </View>
+        {!selectionHeader ? (
+          <View style={styles.numberBadge}>
+            <Text style={styles.heading}>{number}</Text>
+          </View>
+        ) : null}
         {editable ? (
           <TextInput
             // UIKit can retain attributed text colors across appearance changes; draft state stays in the controller.
@@ -89,39 +97,28 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             <AppSymbol name="pencil" size={18} color={theme.colors.textMuted} />
           </Pressable>
         ) : null}
-        {editable ? (
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityLabel={
-              question.priority === 'important'
-                ? copy.review.markRoutine
-                : copy.review.markImportant
-            }
-            accessibilityState={{
-              checked: question.priority === 'important',
-              disabled,
-            }}
+        {editable && !priorityInDetails ? (
+          <QuestionPriorityControl
+            question={question}
+            index={index}
             disabled={disabled}
-            testID={`next-visit-question-priority-${index}`}
-            onPress={() =>
-              onUpdate({
-                priority:
-                  question.priority === 'important' ? 'routine' : 'important',
-              })
-            }
-            style={styles.priority}
-          >
-            <CheckboxIndicator
-              checked={question.priority === 'important'}
-              color={theme.colors.accentText}
-              disabled={disabled}
-              testID={`next-visit-question-priority-indicator-${index}`}
-            />
-          </Pressable>
+            theme={theme}
+            onUpdate={onUpdate}
+          />
         ) : null}
       </View>
       {editable && detailsOpen ? (
         <View style={styles.actions}>
+          {priorityInDetails ? (
+            <QuestionPriorityControl
+              question={question}
+              index={index}
+              disabled={disabled}
+              theme={theme}
+              onUpdate={onUpdate}
+              compact
+            />
+          ) : null}
           <ActionButton
             accessibilityLabel={copy.review.moveUp(number)}
             disabled={disabled || index === 0}

@@ -57,12 +57,14 @@ export const visitQuestionsKo = {
   'visitQuestions.validation.unusableClarification':
     '질문을 준비하기 전에 관련 건강 기록과 진료에서 확인할 내용을 살펴봐 주세요.',
   'visitQuestions.inline.title': '진료에서 물어볼 질문',
-  'visitQuestions.inline.question.select': '질문 {number} 선택',
+  'visitQuestions.inline.question.label': '질문 {number}',
+  'visitQuestions.inline.question.select': '질문 {number} 저장 선택',
   'visitQuestions.inline.question.origin.saved': '저장된 질문',
   'visitQuestions.inline.question.origin.new': '새 질문',
   'visitQuestions.inline.emptySelection': '저장할 질문을 선택해 주세요.',
   'visitQuestions.inline.actions.saving': '저장 중',
   'visitQuestions.inline.actions.save': '선택한 질문 저장',
+  'visitQuestions.inline.actions.saveCount': '질문 {count}개 저장',
   'visitQuestions.saved.count': '{count}개',
   'visitQuestions.saved.emptyForVisit': '이 진료에 저장된 질문이 없어요.',
   'visitQuestions.conversation.restorationNotice':
