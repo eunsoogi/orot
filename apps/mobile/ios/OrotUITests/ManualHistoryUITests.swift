@@ -17,6 +17,9 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
 
         guard replace(app, "manual-history-title-input", with: "Synthetic history before correction") else { return }
         guard replace(app, "manual-history-details-input", with: "Synthetic details recorded by the user.", multiline: true) else { return }
+        // The preserved original has an unknown date; enter a known date through the real control.
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-date-unknown-selected")), app.debugDescription)
+        tap(app, "manual-history-date-unknown", in: "navigation-route-scroll")
         ManualHistoryDateSheetUITestSupport.exerciseDismissalsAndSelect(app, day: 9)
         let details = FormUITestConditions.multilineInput(app, identifier: "manual-history-details-input")
         FormUITestConditions.reveal(details, in: app, scrollID: "navigation-route-scroll")
