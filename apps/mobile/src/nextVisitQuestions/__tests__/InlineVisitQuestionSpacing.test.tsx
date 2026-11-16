@@ -29,6 +29,9 @@ test('removes nested inline padding while preserving full wording, touch targets
   expect(createQuestionCardStyles(theme, true).headingRow).toMatchObject({
     gap: 0,
   });
+  expect(createQuestionCardStyles(theme, true).headingRow).not.toHaveProperty(
+    'marginHorizontal',
+  );
   expect(createQuestionCardStyles(theme).headingRow).toMatchObject({
     gap: 8,
   });
@@ -54,7 +57,12 @@ test('removes nested inline padding while preserving full wording, touch targets
     questions[0]!.questionText,
   );
   await fireEvent.press(screen.getByTestId('next-visit-question-details-0'));
-  expect(screen.getByTestId('next-visit-question-rationale-0')).toBeTruthy();
+  expect(
+    screen.getByTestId('next-visit-question-rationale-0').props.scrollEnabled,
+  ).toBe(false);
+  expect(
+    screen.getByTestId('next-visit-question-text-0').props.scrollEnabled,
+  ).toBe(false);
 });
 
 test('keeps the standalone question card padding unchanged', async () => {
@@ -76,4 +84,33 @@ test('keeps the standalone question card padding unchanged', async () => {
     paddingHorizontal: 12,
     paddingVertical: 12,
   });
+});
+
+test('keeps long editable questions untruncated without a nested scroll owner', async () => {
+  const wording = '합성 긴 질문의 전체 문장을 화면에서 확인해요. '.repeat(50);
+  await render(
+    <QuestionCard
+      question={{ ...questions[0]!, questionText: wording }}
+      index={0}
+      count={1}
+      editable
+      disabled={false}
+      theme={theme}
+      onUpdate={jest.fn()}
+      onMove={jest.fn()}
+      onRemove={jest.fn()}
+      onOpenSource={jest.fn()}
+    />,
+  );
+  const input = screen.getByTestId('next-visit-question-text-0');
+  expect(input.props.value).toBe(wording);
+  expect(input.props.multiline).toBe(true);
+  expect(input.props.scrollEnabled).toBe(false);
+  expect(input.props.numberOfLines).toBeUndefined();
+  expect(createQuestionCardStyles(theme).questionInput).not.toHaveProperty(
+    'height',
+  );
+  expect(createQuestionCardStyles(theme).questionInput).not.toHaveProperty(
+    'maxHeight',
+  );
 });

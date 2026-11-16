@@ -72,6 +72,8 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             accessibilityLabel={copy.review.questionLabel(number)}
             editable={!disabled}
             multiline
+            // Let the conversation/screen scroll owner display the entire field.
+            scrollEnabled={false}
             onChangeText={questionText => onUpdate({ questionText })}
             style={styles.questionInput}
             testID={`next-visit-question-text-${index}`}
@@ -158,6 +160,8 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
             accessibilityLabel={copy.review.rationaleLabel(number)}
             editable={!disabled}
             multiline
+            // Let the conversation/screen scroll owner display the entire field.
+            scrollEnabled={false}
             onChangeText={rationale => onUpdate({ rationale })}
             style={styles.rationaleInput}
             testID={`next-visit-question-rationale-${index}`}
