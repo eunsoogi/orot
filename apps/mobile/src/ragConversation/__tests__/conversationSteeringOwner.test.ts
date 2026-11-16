@@ -1,12 +1,11 @@
 import { createConversationSteeringOwner } from '../conversationSteeringOwner';
-import type { ConversationSession } from '../conversationSessionTypes';
+import { createEmptyConversation } from '../conversationEmptySession';
 import type { WorkflowOperationJournal } from '@orot/agent-runtime';
 function fixture() {
   let session = {
-    id: 1,
-    messages: [],
+    ...createEmptyConversation(1),
     draft: 'Synthetic instruction',
-  } as ConversationSession;
+  };
   const owner = createConversationSteeringOwner(
     () => session,
     (_id, change) => {
