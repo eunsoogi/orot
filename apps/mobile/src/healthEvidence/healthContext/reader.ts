@@ -4,6 +4,7 @@ import {
   ensureHealthContextGeneration,
 } from './generation';
 import { readHealthQuantityContext } from './quantityQuery';
+import { addHeartRateActivityContext } from './heartRateActivity';
 import { readHealthMedicationContext } from './medicationQuery';
 import { readDoseHistory } from './doseHistoryQuery';
 import { readHealthSleepContext } from './sleepQuery';
@@ -48,8 +49,8 @@ export async function readHealthContextReport(
   const selected = new Set(topics);
   const quantities =
     selected.has('measurements') || selected.has('activity')
-      ? await traceHealthContext(trace, 'quantities', () =>
-          readHealthQuantityContext(
+      ? await traceHealthContext(trace, 'quantities', async () => {
+          const result = await readHealthQuantityContext(
             executor,
             days,
             signal,
@@ -59,8 +60,18 @@ export async function readHealthContextReport(
                 ? 'activity'
                 : 'measurements',
             window.dataAvailableThrough,
-          ),
-        )
+          );
+          return {
+            ...result,
+            series: await addHeartRateActivityContext(
+              executor,
+              days,
+              result.series,
+              signal,
+              window.dataAvailableThrough,
+            ),
+          };
+        })
       : { series: [], truncated: false };
   const medications = selected.has('medications')
     ? await traceHealthContext(trace, 'medications', () =>

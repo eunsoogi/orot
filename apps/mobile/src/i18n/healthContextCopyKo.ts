@@ -3,6 +3,11 @@ export const healthContextCopyKo = {
   'healthContextCopy.systolic': '수축기 혈압',
   'healthContextCopy.diastolic': '이완기 혈압',
   'healthContextCopy.heartRate': '심박수',
+  'healthContextCopy.workoutOverlap': '운동 기록과 시간이 겹치는 심박',
+  'healthContextCopy.noWorkoutOverlap': '운동 기록과 시간이 겹치지 않는 심박',
+  'healthContextCopy.activityUnknown': '활동 맥락 미확인 심박',
+  'healthContextCopy.heartActivityNotice':
+    '저장된 운동 시간과 비교한 결과예요. 일부만 겹치거나 운동 중 일시 정지가 포함될 수 있어 원인이나 정상 여부를 뜻하지 않아요. 겹치지 않아도 휴식 상태라고 볼 수 없고, 운동 후 회복이나 미기록 운동이 있을 수 있어요. 운동 기록이 없거나 시각 범위를 확인할 수 없으면 활동 맥락은 미확인이에요.',
   'healthContextCopy.bodyMass': '체중',
   'healthContextCopy.steps': '걸음 수',
   'healthContextCopy.workoutDuration': '기록된 운동 시간',

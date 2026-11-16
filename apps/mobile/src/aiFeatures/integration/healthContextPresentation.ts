@@ -1,4 +1,5 @@
-import { labels, stages, comparisonText } from './healthContextDisplay';
+import { stages } from './healthContextDisplay';
+import { presentHealthQuantities } from './healthQuantityPresentation';
 import type { HealthContextReport } from '../../healthEvidence/healthContext/types';
 import { projectHealthContext } from '../../healthEvidence/healthContext/projection';
 import type { HealthContextScope } from '../../healthEvidence/healthContext/scope';
@@ -58,68 +59,7 @@ export function presentHealthContext(
       ],
     },
   ];
-  for (const [index, series] of projected.quantities.entries()) {
-    const step =
-      series.concept === 'step_count' || series.concept === 'workout_duration';
-    const mean = step
-      ? series.meanRecordedDailySampleSum
-      : series.meanOfRecordedDailyMeans;
-    result.push({
-      title: t('healthContextCopy.sourceTitle', {
-        label: labels[series.concept] ?? series.concept,
-        index: index + 1,
-      }),
-      rows: [
-        {
-          label: t('healthContextCopy.recordedDays'),
-          value: t('healthContextCopy.daysRatio', {
-            recorded: series.recordedDays,
-            total: projected.calendarDays,
-          }),
-        },
-        {
-          label: t('healthContextCopy.sampleCount'),
-          value: t('healthContextCopy.countValue', {
-            count: series.sampleCount,
-          }),
-        },
-        {
-          label: step
-            ? t('healthContextCopy.meanDailySampleSum')
-            : t('healthContextCopy.meanDailyMeans'),
-          value: `${mean} ${series.unit}`,
-        },
-        {
-          label: t('healthContextCopy.sampleRange'),
-          value: `${series.minimumSample} ~ ${series.maximumSample} ${series.unit}`,
-        },
-        ...(series.latest
-          ? [
-              {
-                label: t('healthContextCopy.latestMeasurement'),
-                value: `${series.latest.amount} ${series.unit} · ${new Date(series.latest.occurredAt).toLocaleString('ko-KR', { timeZone: scope.window.timeZone })}`,
-              },
-            ]
-          : []),
-        ...(series.comparison.difference !== null
-          ? [
-              {
-                label: t('healthContextCopy.comparisonWeek'),
-                value: comparisonText(series),
-              },
-            ]
-          : []),
-        ...(step
-          ? [
-              {
-                label: t('healthContextCopy.aggregationBasis'),
-                value: t('healthContextCopy.sampleSumNotice'),
-              },
-            ]
-          : []),
-      ],
-    });
-  }
+  result.push(...presentHealthQuantities(projected, scope));
   for (const medication of report.doseHistory ? [] : report.medications)
     result.push({
       title: medication.name,
