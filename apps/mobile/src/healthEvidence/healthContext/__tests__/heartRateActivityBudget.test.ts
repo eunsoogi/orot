@@ -3,6 +3,7 @@ import { LocalEvidenceReferenceRegistry } from '../../../aiFeatures/integration/
 import { jsonByteLength } from '../../../aiFeatures/integration/evidenceUtils';
 import { healthContextDays } from '../window';
 import type { HealthContextReader } from '../reader';
+import type { projectHealthContext } from '../projection';
 
 const window = {
   fromInclusive: '2026-01-01T00:00:00Z',
@@ -104,12 +105,28 @@ test.each(['summary', 'weekly', 'daily'] as const)(
       );
     } else {
       expect(result.items).toHaveLength(1);
-      for (const context of [
-        'workout_overlap',
-        'no_recorded_workout_overlap',
-        'unknown',
-      ])
-        expect(result.items[0]?.content).toContain(context);
+      const content = JSON.parse(
+        result.items[0]!.content.slice('health_context: '.length),
+      ) as ReturnType<typeof projectHealthContext>;
+      const expected = (samples: number) => [
+        {
+          context: 'no_recorded_workout_overlap',
+          samples,
+          minimum: 110,
+          maximum: 110,
+        },
+        { context: 'unknown', samples, minimum: 70, maximum: 70 },
+        { context: 'workout_overlap', samples, minimum: 150, maximum: 150 },
+      ];
+      expect(content.quantities[0]?.activityContext).toEqual(expected(90));
+      if (detail === 'weekly')
+        expect(
+          content.quantities[0]?.weeks?.map(week => week.activityContext),
+        ).toEqual(
+          Array.from({ length: 13 }, (_, index) =>
+            expected(index === 12 ? 6 : 7),
+          ),
+        );
     }
   },
 );
