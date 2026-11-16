@@ -41,6 +41,19 @@ export function SavedMemoryBrowser({
       {state === 'loading' && (
         <Text accessibilityLiveRegion="polite">{t('savedMemory.loading')}</Text>
       )}
+      {state === 'invalidated' && (
+        <>
+          <Text accessibilityLiveRegion="polite">
+            {t('savedMemory.invalidated')}
+          </Text>
+          <AppButton
+            title={t('savedMemory.reload')}
+            onPress={() => {
+              refresh();
+            }}
+          />
+        </>
+      )}
       {state === 'failed' && (
         <>
           <Text accessibilityRole="alert">{t('savedMemory.failed')}</Text>

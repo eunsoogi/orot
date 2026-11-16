@@ -14,6 +14,8 @@ export const savedMemoryKo = {
   'savedMemory.privacy': '이 기기에서만 불러오며 AI에 전송하지 않아요.',
   'savedMemory.loading': '기억을 불러오는 중이에요.',
   'savedMemory.failed': '기억을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+  'savedMemory.invalidated': '기록이 변경되어 기억을 다시 불러와야 해요.',
+  'savedMemory.reload': '다시 불러오기',
   'savedMemory.retry': '다시 시도',
   'savedMemory.empty': '아직 저장된 기억이 없어요.',
   'savedMemory.confirmed': '사용자 확인',
