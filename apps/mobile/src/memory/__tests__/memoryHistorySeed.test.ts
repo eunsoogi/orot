@@ -5,7 +5,9 @@ import {
   openLocalStorage,
 } from '../../storage/secureDatabase';
 import { seedMemoryHistory } from '../../../e2e/memoryHistorySeed';
+import { createAppearanceStore } from '../../assistantAppearance/appearanceStore';
 import { selectTestRoute } from '../../../e2e/testRoute';
+jest.unmock('../../assistantAppearance/appearanceStore');
 jest.mock('../../storage/secureDatabase', () => ({
   openLocalAgentMemoryDatabase: jest.fn(),
   openLocalStorage: jest.fn(),
@@ -26,7 +28,14 @@ it('seeds once, preserves corrections and does not resurrect deleted originals a
   jest.mocked(openLocalStorage).mockResolvedValue(storage);
   try {
     await seedMemoryHistory('known');
+    const appearance = createAppearanceStore(async () => database);
+    expect(await appearance.load()).toEqual({ avatar: 'neutral', name: null });
+    await appearance.save({ avatar: 'leaf', name: 'Synthetic assistant' });
     await seedMemoryHistory('known');
+    expect(await appearance.load()).toEqual({
+      avatar: 'leaf',
+      name: 'Synthetic assistant',
+    });
     const original = (await storage.manualHistory.list())[0];
     expect(await storage.manualHistory.list()).toHaveLength(1);
     expect(original.effectiveDate).toEqual({ status: 'unknown' });
