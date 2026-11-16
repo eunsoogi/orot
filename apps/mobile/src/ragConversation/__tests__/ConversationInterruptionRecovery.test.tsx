@@ -42,7 +42,7 @@ test('an uncertain interrupted request has no resend disguised as continuation',
   await render(
     <ConversationInterruptionRecovery store={f.store} session={f.get()} />,
   );
-  expect(screen.getByText(/안전하게 이어갈 수 있는 실행 상태/)).toBeTruthy();
+  expect(screen.getByText(/저장된 진행 상황을 확인/)).toBeTruthy();
   expect(screen.queryByText('질문 검토 후 이어하기')).toBeNull();
   expect(screen.queryByText('작업 이어하기')).toBeNull();
   expect(f.store.setDraft).not.toHaveBeenCalled();
@@ -85,4 +85,26 @@ test('interruption guidance never presents resending as workflow continuation', 
   expect(
     conversationInterruptionKo['conversationInterruption.process-interrupted'],
   ).toContain('자동으로 다시 실행하지 않아요');
+});
+
+test('recovery keeps horizontal space and inspects only after an explicit tap', async () => {
+  const f = fixture();
+  const refreshRecovery = jest.fn(async () => false);
+  await render(
+    <ConversationInterruptionRecovery
+      store={{ ...f.store, refreshRecovery }}
+      session={f.get()}
+    />,
+  );
+  expect(screen.getByTestId('conversation-interruption-recovery')).toHaveStyle({
+    marginHorizontal: 24,
+    padding: 16,
+  });
+  expect(refreshRecovery).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByText('저장된 진행 확인'));
+  expect(refreshRecovery).toHaveBeenCalledWith(1, expect.any(AbortSignal));
+  expect(
+    screen.getByText(/지금 이어갈 수 있는 저장 지점이 없어요/),
+  ).toBeTruthy();
+  expect(f.store.setDraft).not.toHaveBeenCalled();
 });
