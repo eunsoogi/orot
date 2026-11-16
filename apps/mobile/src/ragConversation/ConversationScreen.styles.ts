@@ -58,9 +58,11 @@ export const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: appColors.surface,
   },
-  // Structured question rows need reading width, not the narrower chat-bubble lane.
-  visitQuestionsMessage: { alignSelf: 'stretch', maxWidth: '100%' },
-  visitQuestionsBody: { padding: 12, gap: 8 },
+  // Fix structured content width without removing the opposite speaker lane.
+  visitQuestionsMessage: { width: '85%' },
+  // Reclaim only 10pt of the body's 18pt padding for structured questions.
+  // The region and its controls remain 8pt inside the bubble's actual bounds.
+  visitQuestionsRegion: { marginHorizontal: -10 },
   compactStreamingBody: { paddingBottom: 0 },
   messageText: { fontSize: 16, lineHeight: 24 },
   activity: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },

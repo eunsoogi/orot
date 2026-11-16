@@ -2,7 +2,7 @@ import { t } from '../i18n';
 import { ActionButton } from './QuestionCardActionButton';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
 import { QuestionPriorityControl } from './QuestionPriorityControl';
 import { nextVisitQuestionsCopy as copy } from './copy';
@@ -11,6 +11,7 @@ import type {
   NextVisitQuestion,
   NextVisitQuestionsTheme,
 } from './types';
+import { AutoGrowingQuestionInput } from './AutoGrowingQuestionInput';
 import { createQuestionCardStyles } from './questionCardStyles';
 
 interface QuestionCardProps<TReference extends NextVisitEvidenceReference> {
@@ -66,7 +67,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           </View>
         ) : null}
         {editable ? (
-          <TextInput
+          <AutoGrowingQuestionInput
             // UIKit can retain attributed text colors across appearance changes; draft state stays in the controller.
             key={`question-${theme.colors.text}`}
             accessibilityLabel={copy.review.questionLabel(number)}
@@ -153,7 +154,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           <Text style={styles.inputLabel}>
             {copy.review.rationaleLabel(number)}
           </Text>
-          <TextInput
+          <AutoGrowingQuestionInput
             key={`rationale-${theme.colors.text}`}
             accessibilityLabel={copy.review.rationaleLabel(number)}
             editable={!disabled}

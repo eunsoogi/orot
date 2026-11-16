@@ -86,15 +86,95 @@ test('deadline releases the final task even when the provider ignores abort', as
   }
 });
 
-test('pending consent expires without provider dispatch or blocking the caller', async () => {
+test.each(['authorized', 'renewal_required'] as const)(
+  'pending consent has no deadline and late %s retains its exact decision',
+  async (decision) => {
+    jest.useFakeTimers();
+    try {
+      const f = fixture();
+      let resolve!: (value: ConsentDecision) => void;
+      f.authorize.mockImplementationOnce(
+        () =>
+          new Promise((done) => {
+            resolve = done;
+          }),
+      );
+      const pending = generateContextualInitialReply(f.input);
+      await jest.advanceTimersByTimeAsync(60_000);
+      expect(f.authorize).toHaveBeenCalledTimes(1);
+      expect(f.authorize.mock.calls[0]![0].signal.aborted).toBe(false);
+      expect(f.run.provider.generate).not.toHaveBeenCalled();
+      resolve(decision);
+      expect(await pending).toBe(
+        decision === 'authorized' ? '요청하신 흐름을 살펴볼게요.' : undefined,
+      );
+      expect(f.run.provider.generate).toHaveBeenCalledTimes(decision === 'authorized' ? 2 : 0);
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  },
+);
+
+test('Stop during consent rejects late approval and does not revive the processing timer', async () => {
   jest.useFakeTimers();
   try {
     const f = fixture();
-    f.authorize.mockImplementation(() => new Promise(() => {}));
+    let resolve!: (value: ConsentDecision) => void;
+    f.authorize.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
     const pending = generateContextualInitialReply(f.input);
-    await jest.advanceTimersByTimeAsync(10_000);
+    await jest.advanceTimersByTimeAsync(60_000);
+    f.controller.abort();
     expect(await pending).toBeUndefined();
+    resolve('authorized');
+    await jest.advanceTimersByTimeAsync(20_000);
     expect(f.run.provider.generate).not.toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(0);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('a slow reviewer still has only the processing budget left after consent', async () => {
+  jest.useFakeTimers();
+  try {
+    const f = fixture();
+    f.run.provider.generate
+      .mockReset()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve(
+                  providerSuccess({
+                    text: '처리할 요청을 살펴볼게요.',
+                    toolCalls: [],
+                    finishReason: 'complete',
+                  }),
+                ),
+              6_000,
+            ),
+          ),
+      )
+      .mockImplementationOnce(() => new Promise(() => {}));
+    f.authorize
+      .mockImplementationOnce(async () => 'authorized')
+      .mockImplementationOnce(
+        () => new Promise((resolve) => setTimeout(() => resolve('authorized'), 60_000)),
+      );
+    const pending = generateContextualInitialReply(f.input);
+    await jest.advanceTimersByTimeAsync(69_999);
+    expect(f.run.provider.generate).toHaveBeenCalledTimes(2);
+    expect(f.authorize.mock.calls[1]![0].signal.aborted).toBe(false);
+    await jest.advanceTimersByTimeAsync(1);
+    expect(await pending).toBeUndefined();
+    expect(jest.getTimerCount()).toBe(0);
   } finally {
     jest.useRealTimers();
   }

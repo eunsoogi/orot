@@ -41,6 +41,14 @@ export interface HealthContextDay {
   readonly partial: boolean;
 }
 
+export interface HeartRateActivityGroup {
+  readonly context:
+    'workout_overlap' | 'no_recorded_workout_overlap' | 'unknown';
+  readonly samples: number;
+  readonly minimum: number;
+  readonly maximum: number;
+}
+
 export interface HealthQuantityDay {
   readonly date: string;
   readonly samples: number;
@@ -51,6 +59,7 @@ export interface HealthQuantityDay {
   readonly latest: number;
   readonly firstAt: string;
   readonly lastAt: string;
+  readonly activityContext?: readonly HeartRateActivityGroup[];
 }
 
 export interface HealthQuantitySeries {

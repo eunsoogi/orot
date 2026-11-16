@@ -1,3 +1,4 @@
+import { createInitialReplyDeadline } from './initialReplyDeadline';
 import type { LanguageModelProvider, LanguageModelRequest } from '@orot/model-runtime';
 import type { ExecutionConsentPort, MultiAgentExecutionIdentity } from './contracts';
 import { callModel, observeUntilAbort } from './modelCall';
@@ -18,7 +19,7 @@ export async function generateContextualInitialReply(input: {
   const abort = () => controller.abort();
   input.signal.addEventListener('abort', abort, { once: true });
   if (input.signal.aborted) abort();
-  const timer = setTimeout(abort, 10_000);
+  const deadline = createInitialReplyDeadline(abort, 10_000);
   const execution = {
     ...input.execution,
     budget: {
@@ -37,9 +38,16 @@ export async function generateContextualInitialReply(input: {
   };
   const consent: ExecutionConsentPort = {
     authorize: async (request) => {
-      const decision = await input.consent.authorize(request);
-      // A target can change while a person is approving even this request-only preview.
-      return decision === 'authorized' && !(await current()) ? 'renewal_required' : decision;
+      deadline.pause();
+      try {
+        const decision = await input.consent.authorize(request);
+        // Resume before currentness checks; authorization waiting includes any local preflight gate.
+        deadline.resume();
+        return decision === 'authorized' && !(await current()) ? 'renewal_required' : decision;
+      } finally {
+        // A late decision after Stop cannot resurrect a disposed processing timer.
+        deadline.resume();
+      }
     },
   };
   const invoke = async (system: string, content: string, tokens: number) => {
@@ -87,7 +95,7 @@ export async function generateContextualInitialReply(input: {
     // Optional preview errors must never prevent the independently authorized final task.
     return undefined;
   } finally {
-    clearTimeout(timer);
+    deadline.dispose();
     input.signal.removeEventListener('abort', abort);
   }
 }
