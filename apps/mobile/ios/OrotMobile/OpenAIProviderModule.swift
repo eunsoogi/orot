@@ -5,6 +5,8 @@ import React
 @objc(OpenAIProviderModule)
 public final class OpenAIProviderModule: RCTEventEmitter {
     private let responseRequests = OpenAIProviderRequestRegistry()
+    private let steeringLock = NSLock()
+    private var steeringResponses: [String: ChatGPTSteerableResponse] = [:]
     private let defaultClient = ChatGPTOAuthClient()
     // Device and ordinary Release builds exclude fixtures; OROT_TESTS opts in only on Simulators.
     #if (DEBUG || OROT_TESTS) && targetEnvironment(simulator)
@@ -27,7 +29,9 @@ public final class OpenAIProviderModule: RCTEventEmitter {
         Task {
             do {
                 let models = try await activeClient.listModels(forIssuedClientID: issuedClientID)
-                resolve(models.map { ["slug": $0.slug, "displayName": $0.displayName] as NSDictionary })
+                // Local protocol eligibility after direct-plan authorization; not a server capability claim.
+                resolve(models.map { ["slug": $0.slug, "displayName": $0.displayName,
+                                      "supportsMidTurnSteering": ChatGPTSteerableResponse.supportsModel($0.slug)] as NSDictionary })
             } catch {
                 let details = OpenAIProviderErrorDetails.make(error)
                 let message = details["message"] as? String ?? "ChatGPT model discovery failed."
@@ -45,6 +49,28 @@ public final class OpenAIProviderModule: RCTEventEmitter {
 
     @objc(startResponse:requestId:issuedClientID:)
     public func startResponse(_ payload: NSDictionary, requestId: String, issuedClientID: String) {
+        startNativeResponse(payload, requestId: requestId, issuedClientID: issuedClientID, steerable: false)
+    }
+
+    @objc(startSteerableResponse:requestId:issuedClientID:)
+    public func startSteerableResponse(_ payload: NSDictionary, requestId: String, issuedClientID: String) {
+        startNativeResponse(payload, requestId: requestId, issuedClientID: issuedClientID, steerable: true)
+    }
+
+    @objc(steerResponse:submissionId:text:resolver:rejecter:)
+    public func steerResponse(_ requestId: String, submissionId: String, text: String,
+                              resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        let handle = steeringLock.withLock { steeringResponses[requestId] }
+        Task {
+            do {
+                guard let handle else { throw ChatGPTResponsesError.interrupted }
+                try await handle.steer(submissionID: submissionId, text: text)
+                resolve(nil)
+            } catch { reject("STEERING_UNAVAILABLE", "Live steering could not be submitted.", nil) }
+        }
+    }
+
+    private func startNativeResponse(_ payload: NSDictionary, requestId: String, issuedClientID: String, steerable: Bool) {
         let registration = responseRequests.register(requestId, issuedClientID: issuedClientID) {
             [weak self] requestID, packet in
             self?.sendEvent(
@@ -70,11 +96,45 @@ public final class OpenAIProviderModule: RCTEventEmitter {
             guard let self, responseRequests.isActive(slot) else { return }
             do {
                 let request = try ChatGPTResponsesRequestDecoder.decode(payload)
-                let stream = try await activeClient.streamResponse(request, forIssuedClientID: issuedClientID)
+                var handle: ChatGPTSteerableResponse?
+                let stream: AsyncThrowingStream<ChatGPTSteerableEvent, Error>
+                if steerable {
+                    let socket = try await activeClient.steerableResponse(request, forIssuedClientID: issuedClientID)
+                    guard responseRequests.isActive(slot) else { await socket.close(); return }
+                    handle = socket
+                    steeringLock.withLock { steeringResponses[requestId] = socket }
+                    stream = await socket.events()
+                } else {
+                    let source = try await activeClient.streamResponse(request, forIssuedClientID: issuedClientID)
+                    stream = AsyncThrowingStream { continuation in
+                        let task = Task {
+                            do { for try await event in source { continuation.yield(.response(event)) }; continuation.finish() }
+                            catch { continuation.finish(throwing: error) }
+                        }
+                        continuation.onTermination = { @Sendable _ in task.cancel() }
+                    }
+                }
+                defer {
+                    if let handle {
+                        steeringLock.withLock { if steeringResponses[requestId] === handle { steeringResponses.removeValue(forKey: requestId) } }
+                        Task { await handle.close() }
+                    }
+                }
                 var emittedToolCallIDs = Set<String>()
                 for try await packet in stream {
                     guard responseRequests.isActive(slot) else { return }
                     switch packet {
+                    case .ready: slot.event(["type": "steering_ready"] as NSDictionary); continue
+                    case let .textSnapshot(text): slot.event(["type": "text_snapshot", "text": text] as NSDictionary); continue
+                    case let .steering(id, status, steerID):
+                        var value: [String: Any] = ["type": "steering", "submissionId": id, "status": status]
+                        if let steerID { value["steerId"] = steerID }
+                        slot.event(value as NSDictionary)
+                        continue
+                    case .response: break
+                    }
+                    guard case let .response(responsePacket) = packet else { continue }
+                    switch responsePacket {
                     case let .textDelta(text): slot.event(["type": "text_delta", "text": text] as NSDictionary)
                     case let .toolCall(toolCall):
                         emittedToolCallIDs.insert(toolCall.id)

@@ -14,6 +14,10 @@ RCT_EXTERN_METHOD(signOut : (NSString *)issuedClientID resolver : (RCTPromiseRes
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(startResponse : (NSDictionary *)request requestId : (NSString *)
                       requestId issuedClientID : (NSString *)issuedClientID)
+RCT_EXTERN_METHOD(startSteerableResponse : (NSDictionary *)request requestId : (NSString *)
+                      requestId issuedClientID : (NSString *)issuedClientID)
+RCT_EXTERN_METHOD(steerResponse : (NSString *)requestId submissionId : (NSString *)submissionId
+                      text : (NSString *)text resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(cancelResponse : (NSString *)requestId)
 // Keep fixture bridge methods out of devices and ordinary Release apps; simulator test builds opt
 // in with OROT_TESTS.
