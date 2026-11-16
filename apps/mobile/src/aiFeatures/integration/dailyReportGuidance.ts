@@ -27,8 +27,9 @@ export function dailyReportGuidance(
       return { source: source.source, recordId: source.recordId };
     }),
   });
+  const conflicts = new Set(conflictingDailyReportIndexes(values));
   const blocked = new Set([
-    ...conflictingDailyReportIndexes(values),
+    ...conflicts,
     ...incomparableDailyReportIndexes(values),
   ]);
   // A cuff reading can span seconds. Unlike interval step totals, that duration
@@ -48,6 +49,19 @@ export function dailyReportGuidance(
       ),
     );
   } else {
+    // Conflicting same-instant values are a data-quality finding, not a reason to
+    // average away a high reading or diagnose it. Keep both originals cited.
+    const conflictingPressure = bloodPressure.filter(x =>
+      conflicts.has(x.index),
+    );
+    if (conflictingPressure.length) {
+      result.push(
+        claim(
+          t('dailyGuidance.conflictingPressure'),
+          conflictingPressure.map(x => x.index),
+        ),
+      );
+    }
     const elevated = bloodPressure.filter(
       x => !blocked.has(x.index) && x.amount >= (x.systolic ? 135 : 85),
     );

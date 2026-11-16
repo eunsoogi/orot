@@ -63,23 +63,18 @@ test.each([
   expect(text).toContain('반복해서 높으면 의사와 상담');
   expect(text).toContain('약은 임의로 변경하지');
 });
-test('low, unsupported units and conflicting nonsevere readings never become reassurance or category', () => {
+test('low and unsupported units never become reassurance or category', () => {
   expect(guidance(sample('blood_pressure_systolic', 134))).toEqual([]);
   expect(guidance(sample('blood_pressure_systolic', 190, 'kPa'))).toEqual([]);
-  expect(
-    guidance(
-      sample('blood_pressure_systolic', 145),
-      sample('blood_pressure_systolic', 110, 'mmHg', 'other'),
-    ),
-  ).toEqual([]);
 });
 test('a conflicting severe reading is not silently ignored', () => {
-  expect(
-    guidance(
-      sample('blood_pressure_systolic', 180),
-      sample('blood_pressure_systolic', 110, 'mmHg', 'other'),
-    )[0]?.text,
-  ).toContain('우선 확인');
+  const result = guidance(
+    sample('blood_pressure_systolic', 180),
+    sample('blood_pressure_systolic', 110, 'mmHg', 'other'),
+  );
+  expect(result).toHaveLength(1);
+  expect(result[0]?.text).toContain('우선 확인');
+  expect(result[0]?.text).not.toContain('어느 기록이 정확한지');
 });
 test('missing workout is not inactivity; partial step sample is never a daily total', () => {
   const text = guidance(sample('step_count', 8, 'count'))[0]!.text;
@@ -101,4 +96,47 @@ test('source identity mismatch fails closed', () => {
   expect(() => dailyReportGuidance(values, [])).toThrow(
     'Snapshot source mismatch',
   );
+});
+
+test.each([
+  ['blood_pressure_systolic', 145, 110],
+  ['blood_pressure_diastolic', 90, 70],
+  ['blood_pressure_systolic', 120, 110],
+])(
+  'conflicting %s readings retain uncertainty and both original sources',
+  (concept, high, low) => {
+    const values = [
+      sample(concept, high),
+      sample(concept, low, 'mmHg', 'other'),
+    ];
+    const original = JSON.stringify(values);
+    const result = guidance(...values);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('어느 기록이 정확한지 판단하지 않았어요');
+    expect(result[0]?.text).toContain('혈압 재확인을 기다리지 말고 119');
+    expect(result[0]?.text).toContain('1분 간격으로 두 번');
+    expect(result[0]?.text).toContain('약은 임의로 변경하지');
+    expect(result[0]?.sourceReferences).toEqual([
+      { source: 'health_observation', recordId: 'synthetic' },
+      { source: 'health_observation', recordId: 'other' },
+    ]);
+    expect(JSON.stringify(values)).toBe(original);
+  },
+);
+
+test('different times, units and identical duplicates do not invent a conflict action', () => {
+  const first = sample('blood_pressure_systolic', 120);
+  const later = sample('blood_pressure_systolic', 110, 'mmHg', 'later');
+  if (later.kind === 'health_observation')
+    later.record.effectiveAt = '2035-01-01T02:00:00Z';
+  expect(guidance(first, later)).toEqual([]);
+  expect(
+    guidance(
+      first,
+      sample('blood_pressure_systolic', 120, 'mmHg', 'duplicate'),
+    ),
+  ).toEqual([]);
+  expect(
+    guidance(first, sample('blood_pressure_systolic', 15, 'kPa', 'other-unit')),
+  ).toEqual([]);
 });
