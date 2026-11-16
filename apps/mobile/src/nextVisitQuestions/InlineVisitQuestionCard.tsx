@@ -54,57 +54,77 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
     }
   };
   return (
-    <View testID="inline-visit-review">
-      <Text accessibilityRole="header" style={{ color: theme.colors.text }}>
+    <View testID="inline-visit-review" style={{ gap: theme.tokens.spacing.lg }}>
+      <Text
+        accessibilityRole="header"
+        style={{
+          color: theme.colors.text,
+          fontSize: theme.tokens.typography.sizes.heading,
+          fontWeight: theme.tokens.typography.weights.bold,
+        }}
+      >
         {t('visitQuestions.inline.title')}
       </Text>
       {state.items.map((item, index) => {
         const id = item.question.identity!.id;
         return (
-          <View key={id}>
-            <Pressable
-              accessibilityRole="checkbox"
-              accessibilityLabel={t('visitQuestions.inline.question.select', {
-                number: index + 1,
-              })}
-              accessibilityState={{
-                checked: item.selected,
-                disabled: isSaving,
-              }}
-              disabled={isSaving}
-              onPress={() => onChange(inlineReviewToggle(state, id))}
-              style={[
-                styles.selectionRow,
-                { minHeight: theme.tokens.minTouchTarget },
-              ]}
-              testID={`inline-visit-select-${index}`}
-            >
-              <CheckboxIndicator
-                checked={item.selected}
-                color={theme.colors.accentText}
+          <QuestionCard
+            key={id}
+            priorityInDetails
+            selectionHeader={
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityLabel={t('visitQuestions.inline.question.select', {
+                  number: index + 1,
+                })}
+                accessibilityState={{
+                  checked: item.selected,
+                  disabled: isSaving,
+                }}
                 disabled={isSaving}
-              />
-              <Text style={{ color: theme.colors.text }}>
-                {item.origin === 'saved'
-                  ? t('visitQuestions.inline.question.origin.saved')
-                  : t('visitQuestions.inline.question.origin.new')}
-              </Text>
-            </Pressable>
-            <QuestionCard
-              question={item.question}
-              index={index}
-              count={state.items.length}
-              editable
-              disabled={isSaving}
-              theme={theme}
-              onUpdate={update =>
-                onChange(inlineReviewUpdate(state, id, update))
-              }
-              onMove={offset => onChange(inlineReviewMove(state, id, offset))}
-              onRemove={() => onChange(inlineReviewRemove(state, id))}
-              onOpenSource={onOpenSource}
-            />
-          </View>
+                onPress={() => onChange(inlineReviewToggle(state, id))}
+                style={[
+                  styles.selectionRow,
+                  { gap: theme.tokens.spacing.sm },
+                  { minHeight: theme.tokens.minTouchTarget },
+                ]}
+                testID={`inline-visit-select-${index}`}
+              >
+                <CheckboxIndicator
+                  checked={item.selected}
+                  color={theme.colors.accentText}
+                  disabled={isSaving}
+                />
+                <Text
+                  style={[styles.selectionLabel, { color: theme.colors.text }]}
+                >
+                  {t('visitQuestions.inline.question.select', {
+                    number: index + 1,
+                  })}
+                </Text>
+                <Text
+                  style={{
+                    color: theme.colors.textMuted,
+                    fontSize: theme.tokens.typography.sizes.caption,
+                  }}
+                >
+                  {item.origin === 'saved'
+                    ? t('visitQuestions.inline.question.origin.saved')
+                    : t('visitQuestions.inline.question.origin.new')}
+                </Text>
+              </Pressable>
+            }
+            question={item.question}
+            index={index}
+            count={state.items.length}
+            editable
+            disabled={isSaving}
+            theme={theme}
+            onUpdate={update => onChange(inlineReviewUpdate(state, id, update))}
+            onMove={offset => onChange(inlineReviewMove(state, id, offset))}
+            onRemove={() => onChange(inlineReviewRemove(state, id))}
+            onOpenSource={onOpenSource}
+          />
         );
       })}
       <EvidenceCaveats caveats={state.caveats} theme={theme} />
@@ -122,7 +142,9 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
         label={
           isSaving
             ? t('visitQuestions.inline.actions.saving')
-            : t('visitQuestions.inline.actions.save')
+            : t('visitQuestions.inline.actions.saveCount', {
+                count: state.items.filter(item => item.selected).length,
+              })
         }
         disabled={!selection || isSaving}
         onPress={submit}
@@ -135,4 +157,5 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
 
 const styles = StyleSheet.create({
   selectionRow: { flexDirection: 'row', alignItems: 'center' },
+  selectionLabel: { flex: 1 },
 });

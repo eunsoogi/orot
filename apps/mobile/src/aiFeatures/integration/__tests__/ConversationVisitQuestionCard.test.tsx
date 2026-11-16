@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native';
 import {
   fireEvent,
   render,
@@ -69,6 +70,16 @@ test('saving a selected question updates only its owning conversation message', 
   }
   // A real screen subscribes to the store; the save callback itself writes to the owner.
   const rendered = await render(<View />);
+  // Only saving is a filled primary action; regeneration stays a separate quiet action.
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('inline-visit-regenerate').props.style,
+    ).backgroundColor,
+  ).toBe('transparent');
+  expect(
+    StyleSheet.flatten(screen.getByTestId('inline-visit-save').props.style)
+      .backgroundColor,
+  ).toBe(theme.colors.accent);
   await fireEvent.press(screen.getByTestId('inline-visit-select-0'));
   await rendered.rerender(<View />);
   await fireEvent.press(screen.getByTestId('inline-visit-save'));

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { VisitQuestionEvidenceItem } from '../../agent/visitQuestions/taskContract';
 import { InlineVisitQuestionCard } from '../../nextVisitQuestions/InlineVisitQuestionCard';
-import { ActionButton } from '../../nextVisitQuestions/NextVisitComponents';
+import { AppButton } from '../../layout/AppButton';
 import { View } from 'react-native';
 import { inlineReviewCommitted } from '../../nextVisitQuestions/inlineVisitReview';
 import { createInlineVisitSave } from '../../nextVisitQuestions/inlineVisitSave';
@@ -61,7 +61,7 @@ export function ConversationVisitQuestionCard({
     () => current()?.review.ownerKey === visit.review.ownerKey,
   );
   return (
-    <View>
+    <View style={{ gap: theme.tokens.spacing.md }}>
       <InlineVisitQuestionCard
         state={visit.review}
         theme={theme}
@@ -135,11 +135,12 @@ export function ConversationVisitQuestionCard({
           }
         }}
       />
-      <ActionButton
-        label={t('visitQuestions.conversation.actions.regenerate')}
+      <AppButton
+        title={t('visitQuestions.conversation.actions.regenerate')}
         disabled={saving}
+        variant="text"
+        size="compact"
         onPress={onRegenerate}
-        theme={theme}
         testID="inline-visit-regenerate"
       />
     </View>
