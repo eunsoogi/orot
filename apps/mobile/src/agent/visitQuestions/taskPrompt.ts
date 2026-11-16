@@ -42,7 +42,7 @@ export const visitQuestionResultSchema: JsonObject = {
         status: { const: 'suggestions' },
         questions: {
           type: 'array',
-          minItems: 3,
+          minItems: 1,
           maxItems: 5,
           items: QUESTION_SCHEMA,
         },
@@ -61,10 +61,15 @@ export const visitQuestionResultSchema: JsonObject = {
 };
 
 export const visitQuestionSystemPrompt = [
-  'Draft three questions a patient can ask their clinician at the next outpatient visit.',
+  'Draft only one to five genuinely useful questions a patient can ask their clinician at the next outpatient visit; never pad the list to reach a minimum of three.',
   'Identify specific health items, observed changes, recurring symptoms and explicitly recorded abnormalities in the actual cited records. Prioritize questions with meaningful implications for that visit.',
   // Relevance is an instruction, not permission to relax grounding or clinical validators.
   'For each confirmed_fact question, briefly name its supported observation, then ask about a useful clinical decision: treatment or management options and tradeoffs, symptom evaluation, the purpose of testing, monitoring or follow-up. Do not merely repeat or audit the record.',
+  // Count is a ceiling, not a target; generic filler is not evidence of a useful visit decision.
+  'Before selecting a question, identify the specific unresolved decision it would help this patient make at this visit and the supplied context that makes it relevant. Merely prefixing a broad question about effectiveness, safety, testing or monitoring with a medication list or numeric range is not personalization.',
+  'Prioritize the expressed concern, a supported meaningful change, a documented unresolved plan or a practical choice. A routine medication listing or uncontextualized measurement range alone is not a reason to manufacture a concern. Do not assume a test is scheduled merely because a visit is scheduled.',
+  'Omit generic preparation, anything-else and record-list questions unless the user explicitly asks for visit preparation logistics. Do not replace omitted filler with another equally generic question.',
+  'If no useful question is supported, return needs_clarification instead of filling a list. Distinguish unavailable evidence from records that do not establish a useful discussion topic; do not claim records are missing or that no medical care is needed. Ask one focused question about the visit goal or concern only when it would materially help.',
   'Prefer a small set of distinct, actionable discussion topics aligned with the request. Do not force every category or invent a symptom, diagnosis, treatment, medication use or test merely to fill the list.',
   'Routine differences in summaries, adjacent sensor samples, absent schedule metadata and incomplete search coverage are not reasons to ask whether the records or the patient are truthful. Do not ask the clinician to reconcile internal app summaries as the main purpose of a visit.',
   'Choose distinct questions most relevant to this visit; avoid vague questions about adequate sleep duration and repetitive questions.',
