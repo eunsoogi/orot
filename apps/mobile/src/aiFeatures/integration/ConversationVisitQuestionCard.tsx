@@ -1,3 +1,4 @@
+import { restorationQuestionIds } from '../../ragConversation/conversationVisitQuestions';
 import { useState } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { VisitQuestionEvidenceItem } from '../../agent/visitQuestions/taskContract';
@@ -41,6 +42,11 @@ export function ConversationVisitQuestionCard({
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const visit = message.visitQuestions!;
+  const restoredIds = restorationQuestionIds(visit);
+  const hasRestoredQuestions = visit.review.items.some(
+    item =>
+      item.question.identity && restoredIds.includes(item.question.identity.id),
+  );
   const current = () =>
     store
       .getSnapshot()
@@ -69,8 +75,7 @@ export function ConversationVisitQuestionCard({
         saveMessage={notice}
         restorationNotice={
           [
-            visit.review.items.some(item => item.origin === 'saved') &&
-            visit.restorationNotice
+            hasRestoredQuestions && visit.restorationNotice
               ? t('visitRestore.savedScope', {
                   notice: visit.restorationNotice,
                 })
@@ -83,7 +88,7 @@ export function ConversationVisitQuestionCard({
             .join(' ') || undefined
         }
         restorationWarning={
-          visit.review.items.some(item => item.origin === 'saved') &&
+          hasRestoredQuestions &&
           Boolean(visit.restorationNotice) &&
           visit.restorationWarning !== false
         }

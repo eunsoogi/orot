@@ -14,4 +14,20 @@ export interface ConversationVisitQuestions {
   readonly restoredFromSnapshot?: boolean;
   readonly restorationNotice?: string;
   readonly restorationWarning?: boolean;
+  /** Frozen IDs of the restored list; newly committed candidates cannot inherit its notice. */
+  readonly restorationQuestionIds?: readonly string[];
+}
+
+/** Capture legacy in-memory owners before the first edit changes item origins. */
+export function restorationQuestionIds(
+  visit: ConversationVisitQuestions,
+): readonly string[] {
+  return (
+    visit.restorationQuestionIds ??
+    visit.review.items.flatMap(item =>
+      item.origin === 'saved' && item.question.identity
+        ? [item.question.identity.id]
+        : [],
+    )
+  );
 }

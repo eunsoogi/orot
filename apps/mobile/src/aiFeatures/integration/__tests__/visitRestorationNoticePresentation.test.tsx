@@ -1,3 +1,6 @@
+import { useSyncExternalStore } from 'react';
+import { act } from '@testing-library/react-native';
+import { inlineReviewToggle } from '../../../nextVisitQuestions/inlineVisitReview';
 import { StyleSheet } from 'react-native';
 import {
   fireEvent,
@@ -16,7 +19,12 @@ import { ConversationVisitQuestionCard } from '../ConversationVisitQuestionCard'
 import type { VisitQuestionRouteOperations } from '../visitQuestionsRouteOperations';
 import { t } from '../../../i18n';
 
-async function show(saved: boolean, warning = false, restored = false) {
+async function show(
+  saved: boolean,
+  warning = false,
+  restored = false,
+  succeeds = false,
+) {
   const store = createConversationSessions();
   const sessionId = store.getSnapshot().activeId;
   const review = createInlineVisitReview(
@@ -48,25 +56,43 @@ async function show(saved: boolean, warning = false, restored = false) {
     },
   }));
   const message = store.getSnapshot().sessions[0]!.messages[1]!;
-  const save = jest.fn(async () => {
-    throw new Error('synthetic write failure');
-  });
-  await render(
-    <ConversationVisitQuestionCard
-      message={message}
-      sessionId={sessionId}
-      store={store}
-      operations={{ save } as unknown as VisitQuestionRouteOperations}
-      services={{
-        resolveSource: () => undefined,
-        registerVisitQuestionSource: ref => ref,
-      }}
-      onOpenSource={() => undefined}
-      onRegenerate={() => undefined}
-      theme={theme}
-    />,
+  const save = jest.fn(
+    async (input: Parameters<VisitQuestionRouteOperations['save']>[0]) => {
+      if (!succeeds) throw new Error('synthetic write failure');
+      return {
+        questions: input.questions.map(question => ({
+          ...question,
+          identity: {
+            ...question.identity!,
+            expectedRevision: 'saved-revision',
+          },
+        })),
+        caveats: [],
+        memoryStatus: 'saved' as const,
+        validateSource: async () => true,
+      };
+    },
   );
-  return { store, save };
+  function CurrentCard() {
+    useSyncExternalStore(store.subscribe, store.getSnapshot);
+    return (
+      <ConversationVisitQuestionCard
+        message={store.getSnapshot().sessions[0]!.messages[1]!}
+        sessionId={sessionId}
+        store={store}
+        operations={{ save } as unknown as VisitQuestionRouteOperations}
+        services={{
+          resolveSource: () => undefined,
+          registerVisitQuestionSource: ref => ref,
+        }}
+        onOpenSource={() => undefined}
+        onRegenerate={() => undefined}
+        theme={theme}
+      />
+    );
+  }
+  await render(<CurrentCard />);
+  return { store, save, sessionId, message };
 }
 
 test('missing historical metadata is informational and explicitly scoped to saved questions', async () => {
@@ -117,5 +143,31 @@ test('a real save failure remains a separate error while historical information 
     theme.colors.danger,
   );
   expect(screen.getByTestId('inline-visit-restoration-notice')).toBeTruthy();
+  store.dispose();
+});
+
+test('saving only new candidates cannot reattach the removed saved-list warning', async () => {
+  const { store, save, sessionId, message } = await show(
+    true,
+    true,
+    false,
+    true,
+  );
+  await act(async () => {
+    const review = inlineReviewToggle(
+      inlineReviewToggle(message.visitQuestions!.review, 'saved'),
+      'candidate',
+    );
+    store.updateVisitQuestionReview(sessionId, message.id, review);
+  });
+  await fireEvent.press(screen.getByTestId('inline-visit-save'));
+  await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(screen.queryByText(/합성 과거 메타데이터 안내/)).toBeNull(),
+  );
+  const latest = store.getSnapshot().sessions[0]!.messages[1]!.visitQuestions!;
+  expect(latest.review.items[0]?.origin).toBe('saved');
+  expect(latest.restorationQuestionIds).toEqual(['saved']);
+  expect(latest.review.items[0]?.question.identity?.id).toBe('candidate');
   store.dispose();
 });
