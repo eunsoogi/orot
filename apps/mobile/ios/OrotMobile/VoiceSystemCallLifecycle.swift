@@ -69,8 +69,8 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         action.isVideo = false
         controller.request(CXTransaction(action: action)) { [weak self] error in
             DispatchQueue.main.async {
-                guard let self, uuid == id, error != nil else { return }
-                finish(notify: true)
+                guard let self, self.uuid == id, error != nil else { return }
+                self.finish(notify: true)
             }
         }
         // A transaction acknowledgment is not activation. Never keep a silent pending call indefinitely.
