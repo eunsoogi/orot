@@ -15,6 +15,10 @@ export type RagConversationObserver = Pick<
   | 'beforeTaskStream'
   | 'beforeTaskInputChange'
 > & {
+  /** Only actual request-scoped provider results; local dispatch/progress is not acknowledgement. */
+  readonly onProviderReceipt?: (
+    receipt: import('../aiFeatures/integration/conversationReceiptProvider').ConversationProviderReceipt,
+  ) => void;
   readonly onSteeringReady?: (
     store: NonNullable<
       import('@orot/agent-runtime').WorkflowOperationJournal['steering']

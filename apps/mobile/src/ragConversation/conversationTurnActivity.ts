@@ -1,3 +1,4 @@
+import { createConversationDeliveryObserver } from './conversationDeliveryObserver';
 import {
   mergeConversationToolEvents,
   type ConversationToolEvent,
@@ -17,6 +18,7 @@ export type ConversationTurnActivity = ReturnType<
 export function createConversationTurnActivity(input: {
   id: number;
   responseId: number;
+  userMessageId?: number;
   initialToolEvents?: readonly ConversationToolEvent[];
   find: (id: number) => ConversationSession;
   update: (
@@ -29,6 +31,17 @@ export function createConversationTurnActivity(input: {
   activity?: ReturnType<typeof createConversationActivity>;
   activityChanged?: () => void;
 }) {
+  const delivery =
+    input.userMessageId === undefined
+      ? undefined
+      : createConversationDeliveryObserver({
+          sessionId: input.id,
+          messageId: input.userMessageId,
+          current: input.current,
+          find: input.find,
+          update: input.update,
+          retain: input.retained?.retainDelivery,
+        });
   let events: readonly ConversationToolEvent[] = input.initialToolEvents ?? [];
   let writing = Promise.resolve();
   let failed = false;
@@ -86,6 +99,7 @@ export function createConversationTurnActivity(input: {
   return {
     metadata,
     finish(status: 'failed' | 'cancelled' | 'interrupted') {
+      delivery?.settle();
       for (const event of events)
         if (event.status === 'started') observe({ ...event, status });
     },
@@ -97,6 +111,7 @@ export function createConversationTurnActivity(input: {
         });
     },
     observer: {
+      onProviderReceipt: delivery?.onProviderReceipt,
       // A provider may deliver a callback after cancellation or a newer retry.
       // Only the request that still owns this activity may record that callback.
       onToolEvent(event: ConversationToolEvent) {
