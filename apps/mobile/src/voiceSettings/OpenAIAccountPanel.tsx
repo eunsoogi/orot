@@ -1,8 +1,10 @@
 import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { providerSettingsStyles } from '../layout/providerSettingsPresentation';
 import { appColors } from '../layout/appColors';
+import { OpenAIProviderMark } from '../providers/selection/OpenAIProviderMark';
+import { apiKeyPanelStyles as styles } from './apiKeyPanelStyles';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton as Button } from '../layout/AppButton';
 import { APIPlatformLink } from './APIPlatformLink';
@@ -62,36 +64,48 @@ export function OpenAIAccountPanel() {
   };
   return (
     <View testID="openai-api-account" style={styles.section}>
-      <Text accessibilityRole="header" style={providerSettingsStyles.heading}>
-        OpenAI API
-      </Text>
       <View style={styles.panel}>
-        <Text>
-          {connected
-            ? t('modelSettings.keyConnected')
-            : t('modelSettings.keyDisconnected')}
-        </Text>
-        <Text>{t('modelSettings.apiBilling')}</Text>
-        <APIPlatformLink />
-        <TextInput
-          accessibilityLabel={t('modelSettings.apiKey')}
-          testID="openai-api-key"
-          value={key}
-          onChangeText={setKey}
-          editable={!busy && !failed}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete="off"
-          textContentType="none"
-          maxLength={4096}
-          placeholder={
-            connected
-              ? t('modelSettings.replaceKey')
-              : t('modelSettings.enterKey')
-          }
-          style={styles.input}
-        />
+        <View style={providerSettingsStyles.header}>
+          <View style={providerSettingsStyles.icon}>
+            <OpenAIProviderMark />
+          </View>
+          <View style={providerSettingsStyles.copy}>
+            <Text
+              accessibilityRole="header"
+              style={providerSettingsStyles.title}
+            >
+              OpenAI API
+            </Text>
+            <Text style={providerSettingsStyles.secondary}>
+              {connected
+                ? t('modelSettings.keyConnected')
+                : t('modelSettings.keyDisconnected')}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.label}>{t('modelSettings.apiKey')}</Text>
+          <TextInput
+            accessibilityLabel={t('modelSettings.apiKey')}
+            testID="openai-api-key"
+            value={key}
+            onChangeText={setKey}
+            editable={!busy && !failed}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            textContentType="none"
+            maxLength={4096}
+            placeholder={
+              connected
+                ? t('modelSettings.replaceKey')
+                : t('modelSettings.enterKey')
+            }
+            placeholderTextColor={appColors.secondary}
+            style={styles.input}
+          />
+        </View>
         <Button
           title={t('modelSettings.saveKey')}
           busy={busy}
@@ -112,29 +126,18 @@ export function OpenAIAccountPanel() {
             }}
           />
         ) : null}
-        <Text>{t('modelSettings.savingPrivacy')}</Text>
+
         {message ? <Text accessibilityRole="alert">{message}</Text> : null}
+      </View>
+      <View style={styles.guidance}>
+        <Text style={providerSettingsStyles.detail}>
+          {t('modelSettings.savingPrivacy')}
+        </Text>
+        <Text style={providerSettingsStyles.detail}>
+          {t('modelSettings.apiBilling')}
+        </Text>
+        <APIPlatformLink />
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  section: { gap: 12 },
-  panel: {
-    gap: 12,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    backgroundColor: appColors.surface,
-  },
-  input: {
-    minHeight: 44,
-    padding: 12,
-    color: appColors.text,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    borderRadius: 12,
-  },
-});
