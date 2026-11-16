@@ -7,6 +7,10 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import type { VoicePhase } from './voiceTurn';
+import {
+  VoiceTranscriptViewport,
+  type VoiceTranscriptLine,
+} from './VoiceTranscriptViewport';
 
 /** A consented voice session owns this surface; rendering alone never activates audio. */
 export function VoiceConversationScreen({
@@ -19,8 +23,9 @@ export function VoiceConversationScreen({
   onEnd,
   onMute,
   onResume,
-  onInterrupt,
   onFinish,
+  onInterrupt,
+  manualInterrupt = false,
   manualFinish = true,
 }: {
   visible: boolean;
@@ -28,16 +33,17 @@ export function VoiceConversationScreen({
   status: string;
   identity?: ReactNode;
   pipeline?: string;
-  transcript?: ReactNode;
+  transcript?: readonly VoiceTranscriptLine[];
   onEnd: () => void;
   onMute: () => void;
   onResume: () => void;
-  onInterrupt: () => void;
   onFinish: () => void;
+  /** Only older bridges without automatic spoken interruption need this fallback. */
+  manualInterrupt?: boolean;
+  onInterrupt?: () => void;
   manualFinish?: boolean;
 }) {
   const muted = phase === 'stopped' || phase === 'ended';
-  const interruptible = phase === 'processing' || phase === 'speaking';
   const action = (
     label: string,
     press: () => void,
@@ -100,8 +106,8 @@ export function VoiceConversationScreen({
           <AppText maxFontSizeMultiplier={2} style={styles.note}>
             {pipeline ?? t('ragConversation.voice.localPipeline')}
           </AppText>
+          <VoiceTranscriptViewport lines={transcript ?? []} />
         </View>
-        {transcript}
         <View style={styles.actions}>
           {manualFinish &&
             phase === 'listening' &&
@@ -110,7 +116,9 @@ export function VoiceConversationScreen({
               onFinish,
               'voice-call-finish',
             )}
-          {interruptible &&
+          {manualInterrupt &&
+            onInterrupt &&
+            (phase === 'processing' || phase === 'speaking') &&
             action(
               t('ragConversation.voice.interrupt'),
               onInterrupt,

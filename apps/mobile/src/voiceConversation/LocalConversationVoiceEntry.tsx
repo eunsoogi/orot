@@ -1,3 +1,4 @@
+import { useVoiceTranscript } from './useVoiceTranscript';
 import { voiceStatus } from './voiceStatus';
 import { canActivateVoiceModel } from '../voiceSettings/voiceActivation';
 import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
@@ -23,6 +24,8 @@ export function LocalConversationVoiceEntry(
     readonly onStatusChange?: (status: string) => void;
   },
 ) {
+  const { lines, append, clear } = useVoiceTranscript();
+  const [manualInterrupt, setManualInterrupt] = useState(false);
   const latest = useRef(props);
   latest.current = props;
   const [state, setState] = useState<VoiceState>(initialVoiceState);
@@ -48,8 +51,15 @@ export function LocalConversationVoiceEntry(
         mounted.current = false;
       };
     setAvailable(true);
+    setManualInterrupt(!native.duplex);
     const voice = createVoiceSession(
-      conversationVoiceDependencies({ native, latest, selected, owned }),
+      conversationVoiceDependencies({
+        native,
+        latest,
+        selected,
+        owned,
+        transcript: append,
+      }),
       value => {
         if (mounted.current) setState(value);
       },
@@ -57,6 +67,7 @@ export function LocalConversationVoiceEntry(
     session.current = voice;
     const unsubscribeSettings = voiceSettingsStore.subscribe(() => {
       attemptRef.current++;
+      clear();
       voice.stop();
     });
     const subscription = AppState.addEventListener('change', value => {
@@ -70,15 +81,17 @@ export function LocalConversationVoiceEntry(
       subscription.remove();
       unsubscribeSettings();
     };
-  }, []);
+  }, [append, clear]);
   useEffect(() => {
     attempt.current++;
+    clear();
     session.current?.revalidate();
   }, [
     props.sessionId,
     props.selectionRevision,
     props.photoPending,
     props.isEntryCurrent,
+    clear,
   ]);
   useEffect(() => {
     session.current?.revalidate();
@@ -155,6 +168,7 @@ export function LocalConversationVoiceEntry(
                 revision: live.selectionRevision,
                 sessionId: live.sessionId,
               };
+              clear();
               setVisible(true);
               session.current?.start({
                 sessionId: live.sessionId,
@@ -196,13 +210,16 @@ export function LocalConversationVoiceEntry(
         phase={state.phase}
         status={displayStatus}
         identity={<VoiceCallIdentity />}
+        transcript={lines}
+        manualInterrupt={manualInterrupt}
+        onInterrupt={() => session.current?.interrupt()}
         onEnd={() => {
           session.current?.stop();
           setVisible(false);
+          clear();
         }}
         onMute={() => session.current?.stop()}
         onResume={() => session.current?.resume()}
-        onInterrupt={() => session.current?.interrupt()}
         onFinish={() => session.current?.finish()}
       />
       {!visible && (

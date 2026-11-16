@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { Alert, AppState } from 'react-native';
+import type { RealtimeTranscript } from '../nativeRealtimeVoice';
 import { RealtimeConversationVoiceEntry } from '../RealtimeConversationVoiceEntry';
 import type { ConversationSessions } from '../../ragConversation/conversationSessionTypes';
 
@@ -26,14 +27,18 @@ jest.mock('../../voiceSettings/voiceSettingsStore', () => ({
     subscribe: () => () => {},
   },
 }));
+let mockTranscript: (event: RealtimeTranscript) => void = () => {};
 const mockNative = {
-  open: jest.fn(async () => {}),
+  open: jest.fn(async (_id: string) => {}),
   stop: jest.fn(async () => {}),
   pause: jest.fn(async () => {}),
   resume: jest.fn(async () => {}),
   interrupt: jest.fn(async () => {}),
   onState: jest.fn(() => () => {}),
-  onTranscript: jest.fn(() => () => {}),
+  onTranscript: jest.fn((listener: (event: RealtimeTranscript) => void) => {
+    mockTranscript = listener;
+    return () => {};
+  }),
   onInterrupted: jest.fn(() => () => {}),
 };
 jest.mock('../nativeRealtimeVoice', () => ({
@@ -152,3 +157,71 @@ it('does not reuse pending consent for a different conversation with the same mo
   alert.mockRestore();
   appSubscription.mockRestore();
 });
+
+it.each(['session', 'model'] as const)(
+  'clears transcript and rejects late callbacks when %s ownership changes',
+  async change => {
+    jest.clearAllMocks();
+    Object.defineProperty(AppState, 'currentState', {
+      configurable: true,
+      value: 'active',
+    });
+    const appSubscription = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation(() => ({ remove: jest.fn() }));
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const snapshot = { activeId: 1, sessions: [{ id: 1 }, { id: 2 }] };
+    const store = {
+      getSnapshot: () => snapshot,
+      photoDrafts: { get: () => ({ status: 'empty' }) },
+    } as unknown as ConversationSessions;
+    const props = {
+      model: 'gpt-realtime-2.1',
+      store,
+      sessionId: 1,
+      busy: false,
+      photoPending: false,
+      selectionRevision: 0,
+      resolveSelectedAi: jest.fn(),
+      onSend: jest.fn(),
+    };
+    const view = await render(<RealtimeConversationVoiceEntry {...props} />);
+    await fireEvent.press(
+      screen.getByRole('button', { name: '음성 대화 시작' }),
+    );
+    await act(() => alert.mock.calls[0][2]![1].onPress?.());
+    await waitFor(() => expect(mockNative.open).toHaveBeenCalledTimes(1));
+    const old = mockTranscript;
+    const callId = mockNative.open.mock.calls[0][0];
+    await act(() =>
+      old({
+        callId,
+        itemId: 'old',
+        role: 'user',
+        text: 'synthetic old transcript',
+      }),
+    );
+    expect(screen.getByText(/synthetic old transcript/)).toBeTruthy();
+    if (change === 'session') snapshot.activeId = 2;
+    await view.rerender(
+      <RealtimeConversationVoiceEntry
+        {...props}
+        sessionId={change === 'session' ? 2 : 1}
+        model={change === 'model' ? 'gpt-realtime-2.1-mini' : props.model}
+      />,
+    );
+    await act(() =>
+      old({
+        callId,
+        itemId: 'late',
+        role: 'assistant',
+        text: 'synthetic late transcript',
+      }),
+    );
+    expect(screen.queryByText(/synthetic old transcript/)).toBeNull();
+    expect(screen.queryByText(/synthetic late transcript/)).toBeNull();
+    expect(screen.getByRole('button', { name: '음성 대화 시작' })).toBeTruthy();
+    alert.mockRestore();
+    appSubscription.mockRestore();
+  },
+);
