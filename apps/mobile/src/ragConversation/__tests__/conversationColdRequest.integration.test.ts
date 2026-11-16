@@ -120,7 +120,12 @@ test.each(['inspect', 'adopt'])(
     try {
       const running = f.requests.resumeCold(1, 'request');
       await started;
+      expect(f.session().requestActivity?.stage).toBe('preparing');
       f.requests.cancel(1);
+      // A blocked protected read still owes immediate Stop acknowledgement.
+      expect(f.session().requestActivity?.stage).toBe('cancelling');
+      expect(f.session().busy).toBe(true);
+      expect(f.generate).not.toHaveBeenCalled();
       release();
       await running;
       expect(f.session().messages).toHaveLength(2);
