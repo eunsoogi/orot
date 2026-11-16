@@ -11,6 +11,8 @@ beforeEach(() => {
   jest.mocked(AppState.addEventListener).mockReturnValue({ remove: jest.fn() });
 });
 
+afterEach(() => jest.useRealTimers());
+
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
 
 const memory = {
@@ -169,3 +171,67 @@ it.each(['background', 'inactive', null] as const)(
     expect(screen.getByText(memory.text)).toBeTruthy();
   },
 );
+
+it('bounds an interrupted read and ignores its late result after retry', async () => {
+  jest.useFakeTimers();
+  let resolve!: (value: (typeof memory)[]) => void;
+  const load = jest
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise(done => {
+          resolve = done;
+        }),
+    )
+    .mockResolvedValue([]);
+  const view = await render(<SavedMemoryBrowser load={load} />);
+  await act(async () => jest.advanceTimersByTime(10_000));
+  expect(screen.getByText('다시 시도')).toBeTruthy();
+  expect(screen.queryByText('아직 저장된 기억이 없어요.')).toBeNull();
+  await fireEvent.press(screen.getByText('다시 시도'));
+  await act(async () => resolve([memory]));
+  expect(screen.getByText('아직 저장된 기억이 없어요.')).toBeTruthy();
+  expect(screen.queryByText(memory.text)).toBeNull();
+  await view.unmount();
+  jest.useRealTimers();
+});
+
+it('does not read from a queued open action while backgrounded', async () => {
+  const load = jest.fn().mockResolvedValue([memory]);
+  await render(<SavedMemoryBrowser load={load} />);
+  const listener = jest.mocked(AppState.addEventListener).mock.calls.at(-1)![1];
+  await act(async () => listener('background'));
+  await fireEvent.press(
+    screen.getByRole('button', { name: '저장된 기억 보기' }),
+  );
+  expect(load).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText(memory.text)).toBeNull();
+  await act(async () => listener('active'));
+  expect(load).toHaveBeenCalledTimes(2);
+  expect(screen.getByText(memory.text)).toBeTruthy();
+});
+
+it('clears the read timer when unmounted without accepting late content', async () => {
+  jest.useFakeTimers();
+  const scheduled = jest.spyOn(globalThis, 'setTimeout');
+  const cleared = jest.spyOn(globalThis, 'clearTimeout');
+  let resolve!: (value: (typeof memory)[]) => void;
+  const view = await render(
+    <SavedMemoryBrowser
+      load={() =>
+        new Promise(done => {
+          resolve = done;
+        })
+      }
+    />,
+  );
+  const index = scheduled.mock.calls.findIndex(([, delay]) => delay === 10_000);
+  expect(index).toBeGreaterThanOrEqual(0);
+  const handle = scheduled.mock.results[index].value;
+  await view.unmount();
+  expect(cleared).toHaveBeenCalledWith(handle);
+  await act(async () => resolve([memory]));
+  scheduled.mockRestore();
+  cleared.mockRestore();
+  jest.useRealTimers();
+});

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, StyleSheet, View } from 'react-native';
+import { AppState, View } from 'react-native';
 import type { AgentMemoryHit } from '@orot/agent-memory';
 import { AppSymbol } from '../layout/AppSymbol';
 import { AppButton } from '../layout/AppButton';
@@ -11,6 +11,10 @@ import {
   subscribeLocalSourceDeletion,
 } from '../storage/localDataClearEvents';
 import { loadSavedLocalMemories } from './savedLocalMemories';
+
+import { savedMemoryStyles as styles } from './savedMemoryStyles';
+
+const READ_WAIT_MS = 10_000;
 
 type SavedMemory = Omit<AgentMemoryHit, 'score'>;
 const kindLabels = {
@@ -32,20 +36,38 @@ export function SavedMemoryBrowser({
   );
   const [visible, setVisible] = useState(20);
   const generation = useRef(0);
+  const active = useRef(AppState.currentState === 'active');
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearReadTimer = useCallback(() => {
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = null;
+  }, []);
 
-  const close = () => {
+  const close = useCallback(() => {
+    clearReadTimer();
     generation.current += 1;
     setExpanded(false);
     setRows([]);
     setState('idle');
-  };
+  }, [clearReadTimer]);
 
   const refresh = useCallback(async () => {
+    // A queued press after backgrounding must not start a protected read.
+    if (!active.current) return;
+    clearReadTimer();
     const request = ++generation.current;
     setExpanded(true);
     setState('loading');
     setRows([]);
     setVisible(20);
+    // Bound the UI wait, not the database transaction. Never close a shared connection
+    // or treat a timeout as empty storage; discard its late result and offer a fresh read.
+    timer.current = setTimeout(() => {
+      if (generation.current !== request) return;
+      generation.current += 1;
+      timer.current = null;
+      setState('failed');
+    }, READ_WAIT_MS);
     try {
       const result = await load();
       if (generation.current !== request) return;
@@ -53,15 +75,18 @@ export function SavedMemoryBrowser({
       setState('ready');
     } catch {
       if (generation.current === request) setState('failed');
+    } finally {
+      if (generation.current === request) clearReadTimer();
     }
-  }, [load]);
+  }, [load, clearReadTimer]);
 
   useEffect(() => {
     // Deletion fences invalidate cached text and pending reads, even if later cleanup fails.
     const unsubscribeClear = subscribeLocalDataClear(close);
     const unsubscribeSource = subscribeLocalSourceDeletion(close);
     const subscription = AppState.addEventListener('change', next => {
-      if (next !== 'active') close();
+      active.current = next === 'active';
+      if (!active.current) close();
       else refresh();
     });
     // Wait for confirmed foreground state; an unknown initial state is not permission to expose local text.
@@ -69,12 +94,13 @@ export function SavedMemoryBrowser({
       refresh();
     }
     return () => {
+      clearReadTimer();
       generation.current += 1;
       subscription.remove();
       unsubscribeClear();
       unsubscribeSource();
     };
-  }, [refresh]);
+  }, [refresh, close, clearReadTimer]);
 
   return (
     <View style={styles.section} testID="saved-memory-browser">
@@ -189,38 +215,3 @@ export function SavedMemoryBrowser({
     </View>
   );
 }
-const styles = StyleSheet.create({
-  section: { gap: 12, minWidth: 0 },
-  entry: {
-    borderRadius: 18,
-    backgroundColor: appColors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: appColors.border,
-  },
-  panel: {
-    gap: 12,
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: appColors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: appColors.border,
-  },
-  // Wrapping keeps shared 44pt controls and large text inside narrow layouts.
-  header: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  title: { fontSize: 18, fontWeight: '700', color: appColors.text },
-  description: { fontSize: 14, lineHeight: 20, color: appColors.secondary },
-  row: {
-    gap: 8,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: appColors.border,
-  },
-  kind: { fontSize: 14, fontWeight: '600', color: appColors.secondary },
-  body: { fontSize: 16, lineHeight: 24, color: appColors.text },
-});
