@@ -1,6 +1,14 @@
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
 export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report' | 'storage';
 export type Stage =
+  | 'conversation_dispatch'
+  | 'conversation_run'
+  | 'tool_capture_personal'
+  | 'tool_capture_memory'
+  | 'tool_capture_generated'
+  | 'tool_capture_external'
+  | 'tool_event_adapter'
+  | 'tool_event_discard'
   | 'tool_event_capture'
   | 'tool_event_write'
   | 'tool_event_bind'
@@ -60,6 +68,11 @@ export type Stage =
   | 'evidence_memory'
   | 'evidence_presentation';
 export type Outcome =
+  | 'workflow_search_failed'
+  | 'workflow_search_unavailable'
+  | 'workflow_exception'
+  | 'workflow_action_unknown'
+  | 'workflow_unavailable_other'
   | 'history_discovery_unavailable'
   | 'history_page_unavailable'
   | 'history_turn_unavailable'
@@ -224,4 +237,13 @@ export type Outcome =
   | 'task_coverage_reader_limit'
   | 'task_coverage_payload'
   | 'task_coverage_topic_limit'
+  | 'tool_cited_changed'
+  | 'tool_photo_owner'
+  | 'tool_filter_rejected'
+  | 'tool_generated_changed'
+  | 'tool_generated_identity'
+  | 'tool_generated_lineage'
+  | 'tool_photo_changed'
+  | 'tool_parent_changed'
+  | 'tool_parent_invalid'
   | 'other';

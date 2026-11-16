@@ -1,3 +1,7 @@
+// These route/consent fixtures omit native protected storage; continuity is exercised with real SQLite separately.
+jest.mock('../continuousSessionOption', () => ({
+  continuousSessionOption: () => ({}),
+}));
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import * as inferenceConsent from '../../../agent/execution/useInferenceConsent';
@@ -38,7 +42,7 @@ test('visit-question links show an explicit preparation action without running i
   expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
   expect(screen.queryByTestId('rag-conversation-progress')).toBeNull();
   expect(screen.queryByTestId('visit-questions-unavailable')).toBeNull();
-  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
+  expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
   expect(screen.queryByTestId('conversation-saved-visit-questions')).toBeNull();
 });
 
@@ -72,11 +76,11 @@ test('opens the saved-question reader with an explicit read-only contract', asyn
     <Text testID="saved-question-reader">저장된 질문</Text>
   ));
   await render(
-    <AiFeatureRoute onBack={jest.fn()} renderVisitQuestions={renderSaved} />,
-  );
-  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
-  await fireEvent.press(
-    screen.getByTestId('conversation-saved-visit-questions'),
+    <AiFeatureRoute
+      initialRoute="saved-visit-questions"
+      onBack={jest.fn()}
+      renderVisitQuestions={renderSaved}
+    />,
   );
   expect(screen.getByTestId('saved-question-reader')).toBeTruthy();
   expect(renderSaved).toHaveBeenCalledWith(
@@ -87,5 +91,5 @@ test('opens the saved-question reader with an explicit read-only contract', asyn
     }),
   );
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(screen.getByTestId('conversation-history-screen')).toBeTruthy();
+  expect(screen.queryByTestId('saved-question-reader')).toBeNull();
 });

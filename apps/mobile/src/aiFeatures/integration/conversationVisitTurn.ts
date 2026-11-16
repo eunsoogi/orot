@@ -52,6 +52,24 @@ export function createConversationVisitTurn(deps: {
         deps.registerSource,
       ),
       observer: {
+        expectedConversationModel: input.observer?.expectedConversationModel,
+        // Do not manufacture a lifecycle observer for non-conversation callers.
+        ...(input.observer?.onExecutionState
+          ? {
+              onExecutionState: (state: 'working' | 'local' | 'decision') => {
+                if (!input.signal.aborted)
+                  input.observer?.onExecutionState?.(state);
+              },
+            }
+          : {}),
+        ...(input.observer?.onProviderReceipt
+          ? {
+              onProviderReceipt: (receipt: 'accepted' | 'response_started') => {
+                if (!input.signal.aborted)
+                  input.observer?.onProviderReceipt?.(receipt);
+              },
+            }
+          : {}),
         onTaskStreamEvent: event => {
           if (!input.signal.aborted) input.observer?.onTaskStreamEvent?.(event);
         },
@@ -133,6 +151,7 @@ export function createConversationVisitTurn(deps: {
         review: result.review,
         validateSource: result.generation.validateSource,
         restorationNotice: result.restorationNotice,
+        restorationWarning: result.restorationWarning,
       },
     };
   };

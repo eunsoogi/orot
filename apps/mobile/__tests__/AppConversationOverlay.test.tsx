@@ -18,9 +18,11 @@ jest.mock('../src/ragConversation/ConversationScreen', () => {
   return {
     ...actual,
     ConversationScreen: (props: Record<string, unknown>) => {
+      const instance = React.useRef(Symbol('conversation-instance'));
       React.useEffect(() => {
-        mockConversationMount();
-        return () => mockConversationUnmount();
+        const identity = instance.current;
+        mockConversationMount(identity);
+        return () => mockConversationUnmount(identity);
       }, []);
       return React.createElement(actual.ConversationScreen, props);
     },
@@ -48,7 +50,7 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-test('keeps the conversation mounted underneath history and restores its draft', async () => {
+test('keeps the conversation mounted underneath provider selection and restores its draft', async () => {
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
     .mockResolvedValue(true);
@@ -56,13 +58,12 @@ test('keeps the conversation mounted underneath history and restores its draft',
   await fireEvent.press(screen.getByTestId('navigation-tab-conversation'));
   await waitFor(() => expect(mockConversationMount).toHaveBeenCalledTimes(1));
 
-  await fireEvent.changeText(
-    screen.getByTestId('rag-conversation-input'),
-    '보존할 초안',
-  );
-  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
-  expect(await screen.findByTestId('conversation-history-screen')).toBeTruthy();
-  // History must push over the retained conversation in the same native stack.
+  const originalInstance = mockConversationMount.mock.calls[0]?.[0];
+  const originalInput = screen.getByTestId('rag-conversation-input');
+  await fireEvent.changeText(originalInput, '보존할 초안');
+  await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
+  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
+  // Provider selection must push over the retained conversation in the same native stack.
   expect(screen.queryByTestId('ai-feature-overlay')).toBeNull();
   expect(mockConversationUnmount).not.toHaveBeenCalled();
 
@@ -73,6 +74,6 @@ test('keeps the conversation mounted underneath history and restores its draft',
       '보존할 초안',
     ),
   );
-  expect(mockConversationMount).toHaveBeenCalledTimes(1);
-  expect(mockConversationUnmount).not.toHaveBeenCalled();
+  expect(screen.getByTestId('rag-conversation-input')).toBe(originalInput);
+  expect(mockConversationUnmount).not.toHaveBeenCalledWith(originalInstance);
 });

@@ -6,6 +6,7 @@ import {
 import type { VisitQuestionEvidenceItem } from '../../agent/visitQuestions/taskContract';
 import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceRepository';
 import type { AiFeatureLocalData } from './localData';
+import { readImportedVisitSource } from './visitImportedSourceReader';
 import type {
   EvidenceSourceReadResult,
   LocalEvidenceReferenceRegistry,
@@ -142,7 +143,11 @@ export function createVisitQuestionSourceService(
               { signal },
             );
             if (result.status === 'source_missing')
-              return { status: 'missing' };
+              return readImportedVisitSource(
+                data.repository,
+                reference,
+                signal,
+              );
             if (!result.complete) return { status: 'unavailable' };
             return {
               status: 'available',

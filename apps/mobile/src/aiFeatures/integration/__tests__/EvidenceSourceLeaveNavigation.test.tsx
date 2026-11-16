@@ -1,3 +1,7 @@
+// These route/consent fixtures omit native protected storage; continuity is exercised with real SQLite separately.
+jest.mock('../continuousSessionOption', () => ({
+  continuousSessionOption: () => ({}),
+}));
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import type { PersistedMemoryRecord } from '@orot/agent-memory';

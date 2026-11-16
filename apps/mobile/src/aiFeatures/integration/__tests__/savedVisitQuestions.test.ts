@@ -42,7 +42,7 @@ test('restores only the active appointment in saved order and registers readable
     'question-1',
     'question-2',
   ]);
-  expect(restored.caveats).toEqual([]);
+  expect(restored).toMatchObject({ caveats: [], restorationWarning: false });
   expect(restored.restorationNotice).toContain('원본 버전');
   expect(restored.restorationNotice).toContain(
     '공개 웹검색 결과와 출처는 저장되지 않았어요.',

@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { Button, StyleSheet, View } from 'react-native';
+import { Button, View } from 'react-native';
 import { ConversationScreen } from '../ConversationScreen';
 import {
   ConversationSessionsProvider,
@@ -21,8 +21,8 @@ import {
   useNavigationPrimaryActionHost,
 } from '../../navigation/useNavigationPrimaryAction';
 
-/** Header actions follow the chosen mockup without losing accessible session controls. */
-test('uses circular glass actions and opens a separate history destination', async () => {
+/** Session navigation is removed without changing transcript typography or input. */
+test('does not expose history or manual new chat in the header', async () => {
   const onOpenHistory = jest.fn();
   await render(
     <ConversationScreen
@@ -34,28 +34,12 @@ test('uses circular glass actions and opens a separate history destination', asy
   );
   const copy = getRagConversationCopy();
   expect(screen.queryByText(copy.title)).toBeNull();
-  const history = screen.getByLabelText(copy.sessions);
-  const create = screen.getByLabelText(copy.newConversation);
-  for (const action of [history, create]) {
-    expect(StyleSheet.flatten(action.props.style)).toMatchObject({
-      width: 44,
-      height: 44,
-      borderRadius: 0,
-      backgroundColor: 'transparent',
-      overflow: 'visible',
-    });
-  }
-  expect(history.props.onAction).toEqual(expect.any(Function));
-  expect(create.props.onAction).toEqual(expect.any(Function));
-  expect(screen.queryByText(copy.sessions)).toBeNull();
-  expect(screen.queryByText(copy.newConversation)).toBeNull();
-  await fireEvent.press(create);
-  await fireEvent.press(history);
-  expect(onOpenHistory).toHaveBeenCalledTimes(1);
-  expect(screen.queryByTestId('rag-conversation-sessions')).toBeNull();
+  expect(screen.queryByLabelText(copy.sessions)).toBeNull();
+  expect(screen.queryByLabelText(copy.newConversation)).toBeNull();
+  expect(onOpenHistory).not.toHaveBeenCalled();
 });
 
-test('registers history and new-session actions on a Duo rail without interrupting generation', async () => {
+test('omits session actions on a Duo rail without interrupting generation', async () => {
   let store: ConversationSessions | null = null;
   let requestSignal: AbortSignal | undefined;
   let finish!: (outcome: RagConversationOutcome) => void;
@@ -131,23 +115,11 @@ test('registers history and new-session actions on a Duo rail without interrupti
       },
     },
   );
-  await waitFor(() =>
-    expect(screen.getByTestId('dock-conversation-history')).toBeTruthy(),
-  );
+  expect(screen.queryByTestId('dock-conversation-history')).toBeNull();
+  expect(screen.queryByTestId('dock-conversation-new-session')).toBeNull();
   expect(screen.queryByText(copy.title)).toBeNull();
-  expect(screen.queryByTestId('conversation-header-actions')).toBeNull();
-  expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
-  expect(screen.queryByTestId('rag-conversation-new-session')).toBeNull();
-  expect(screen.getAllByLabelText(copy.sessions)).toHaveLength(1);
-  expect(screen.getAllByLabelText(copy.newConversation)).toHaveLength(1);
-  expect(
-    screen.getByTestId('dock-conversation-history').props.accessibilityLabel,
-  ).toBe(copy.sessions);
-  expect(
-    screen.getByTestId('dock-conversation-new-session').props
-      .accessibilityLabel,
-  ).toBe(copy.newConversation);
-
+  expect(screen.queryByLabelText(copy.sessions)).toBeNull();
+  expect(screen.queryByLabelText(copy.newConversation)).toBeNull();
   const conversationId = store!.getSnapshot().activeId;
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
@@ -164,16 +136,8 @@ test('registers history and new-session actions on a Duo rail without interrupti
       ?.busy,
   ).toBe(true);
 
-  await fireEvent.press(screen.getByTestId('dock-conversation-history'));
-  expect(onOpenHistory).toHaveBeenCalledTimes(1);
-  expect(requestSignal?.aborted).toBe(false);
-
-  await fireEvent.press(screen.getByTestId('dock-conversation-new-session'));
-  expect(store!.getSnapshot().activeId).not.toBe(conversationId);
-  expect(
-    store!.getSnapshot().sessions.find(session => session.id === conversationId)
-      ?.busy,
-  ).toBe(true);
+  expect(onOpenHistory).not.toHaveBeenCalled();
+  expect(store!.getSnapshot().activeId).toBe(conversationId);
   expect(requestSignal?.aborted).toBe(false);
   expect(send).toHaveBeenCalledTimes(1);
 

@@ -46,6 +46,13 @@ test('shows the public-source limitation and carries it through review and save'
     ),
     ['public_search_not_retained'],
     [],
+    {
+      // The limitation belongs to these newly generated, reviewed candidates.
+      questionIds: onSaveReviewedQuestions.mock.calls[0]![1].map(
+        question => question.identity!.id,
+      ),
+      caveats: ['public_search_not_retained'],
+    },
   );
 });
 

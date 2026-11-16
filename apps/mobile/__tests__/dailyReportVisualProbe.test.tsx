@@ -40,7 +40,9 @@ test('synthetic saved report enters the production conversation with its exact i
   expect(await screen.findByText('합성 심박수 기록은 72회예요.')).toBeTruthy();
   expect(screen.getByLabelText(/건강 측정\. 일부만 포함/)).toBeTruthy();
   await fireEvent.press(screen.getByText('이 보고서에 관해 대화하기'));
-  expect(await screen.findByText(/선택한 보고서: 2035-01-01/)).toBeTruthy();
+  expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(screen.queryByText(/선택한 보고서: 2035-01-01/)).toBeNull();
+  // The fixture answer below requires the exact date/run/revision in the real send context.
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     'Synthetic question',

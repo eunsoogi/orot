@@ -46,7 +46,7 @@ test('the actual App passes live route and overlay visibility to reply focus', a
   await waitFor(() => expect(visible?.()).toBe(true));
 });
 
-test('opens conversation immediately and returns from provider and history without losing its draft', async () => {
+test('opens conversation immediately and returns from provider overlays without losing its draft', async () => {
   // Jest's native-stack does not emit UIKit transitionEnd; XCUITest covers animated completion.
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
@@ -72,18 +72,19 @@ test('opens conversation immediately and returns from provider and history witho
   expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
     '계속할 대화 초안',
   );
-  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
-  expect(await screen.findByTestId('conversation-history-screen')).toBeTruthy();
-  expect(screen.getByTestId('conversation-saved-analysis')).toBeTruthy();
-  expect(screen.getByTestId('conversation-saved-visit-questions')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
+  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
+  expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() =>
     expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
       '계속할 대화 초안',
     ),
   );
-  await fireEvent.press(screen.getByTestId('rag-conversation-new-session'));
-  expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue('');
+  expect(screen.queryByTestId('rag-conversation-new-session')).toBeNull();
+  expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
+    '계속할 대화 초안',
+  );
 }, 30_000);
 
 test('keeps recording under Records when leaving an conversation route', async () => {
@@ -95,8 +96,8 @@ test('keeps recording under Records when leaving an conversation route', async (
 
   await fireEvent.press(screen.getByTestId('navigation-tab-conversation'));
   expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
-  expect(await screen.findByTestId('conversation-history-screen')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
+  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
 
   expect(screen.queryByTestId('navigation-recording')).toBeNull();
   expect(screen.queryByTestId('navigation-home')).toBeNull();

@@ -1,3 +1,4 @@
+import { conversationReceiptSelection as observeSelection } from './conversationReceiptSelection';
 import { withDailyReportOpening as openingFor } from './dailyReportOpening';
 import { hasSevereReportBloodPressure } from './dailyReportGuidance';
 import { reportModelClaims } from './dailyReportModelAnalysis';
@@ -8,7 +9,7 @@ import { createDailyReportCalendarWindow } from '../../healthEvidence/healthCont
 import { providerDiagnostic } from '../../providers/diagnostics';
 import { validateDailyReportCompletion } from '../../storage/dailyReportValidation';
 import {
-  resolveSelectedAiProvider,
+  resolveSelectedAiProvider as resolveAi,
   type SelectedAiResolution,
 } from './provider';
 import { dailyReportFacts } from './dailyReportFacts';
@@ -16,18 +17,16 @@ import { dailyReportAnalysis } from './dailyReportAnalysis';
 import { selectDailyReportFacts } from './dailyReportModel';
 import { stableJson } from './evidenceUtils';
 import { dailyReportProviderFacts } from './dailyReportProjection';
-import { reportFailureOutcome } from './dailyReportFailureDiagnostics';
+import { reportFailureOutcome as failureOutcome } from './dailyReportFailureDiagnostics';
 import type {
   DailyReportFailureCode,
   DailyReportRunInput,
   DailyReportServiceRequest,
 } from './dailyReportTypes';
-
 type ReadyCalendar = Extract<
   ReturnType<typeof createDailyReportCalendarWindow>,
   { status: 'ready' }
 >;
-
 /** Reads the day's evidence, validates the selected model result, and saves one report revision. */
 export async function generateDailyReportWithCalendar(
   input: DailyReportRunInput,
@@ -38,18 +37,17 @@ export async function generateDailyReportWithCalendar(
   const fail = (code: DailyReportFailureCode) => {
     // The deadline already reports the active stage; do not add a second cause for its abort.
     if (!input.deadlineContext.timedOut)
-      providerDiagnostic(
-        'daily_report',
-        'workflow',
-        reportFailureOutcome(code),
-      );
+      providerDiagnostic('daily_report', 'workflow', failureOutcome(code));
     return { status: 'failed' as const, code };
   };
   input.deadlineContext.stage = 'provider_selection';
   providerDiagnostic('daily_report', 'selection', 'started');
   let selected: SelectedAiResolution;
   try {
-    selected = await (input.resolveSelected ?? resolveSelectedAiProvider)();
+    selected = observeSelection(
+      await (input.resolveSelected ?? resolveAi)(),
+      request.observer,
+    );
   } catch {
     if (request.signal.aborted) return fail('cancelled');
     providerDiagnostic('daily_report', 'selection', 'unavailable');

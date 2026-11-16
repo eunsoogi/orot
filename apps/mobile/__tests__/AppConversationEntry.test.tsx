@@ -36,8 +36,8 @@ test('opens conversation directly on the Conversation tab with the app-owned ses
   expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
   expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue('');
   expect(screen.getByTestId('ai-feature-select-provider')).toBeTruthy();
-  expect(screen.getByTestId('rag-conversation-sessions-toggle')).toBeTruthy();
-  expect(screen.getByTestId('rag-conversation-new-session')).toBeTruthy();
+  expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
+  expect(screen.queryByTestId('rag-conversation-new-session')).toBeNull();
   expect(screen.queryByTestId('ai-features-screen')).toBeNull();
   expect(screen.queryByTestId('ai-feature-visit-questions')).toBeNull();
   expect(screen.queryByTestId('external-evidence-search')).toBeNull();

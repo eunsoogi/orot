@@ -47,6 +47,7 @@ describe('decision-specific synthetic usefulness proxy', () => {
     '합성 기록이 있는데 효과와 안전성을 어떻게 평가하나요?',
     '계단 불편감이 있는데 더 준비할 내용이 있을까요?',
     '계단 불편감에 대해 어떤 이야기를 할까요?',
+    '계단 불편감의 실제 변화인지 확인하려면 어떤 평가로 구분하나요?',
   ])('rejects source-prefixed generic wording: %s', (text) => {
     expect(score(cases[0], answer(cases[0], text))).toBe(0);
   });

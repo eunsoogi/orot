@@ -1,3 +1,4 @@
+import { continuousConversationPolicy } from './continuousConversationPolicy';
 import { recoveryFor } from './conversationRecoveryRefresh';
 import { createConversationSessionRequests } from './conversationSessionRequests';
 import { conversationDispatch } from './conversationDispatch';
@@ -15,38 +16,37 @@ import type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 import { createConversationListeners } from './conversationListeners';
 import { createConversationVisitReviewUpdater } from './conversationVisitReviewUpdate';
 import {
-  createEmptyConversation,
+  createConversationSessionSeed,
   initialConversationSnapshot,
 } from './conversationEmptySession';
 import { createConversationNavigation } from './conversationSessionTransitions';
 import { conversationTreatmentOwnership } from './conversationTreatmentOwnership';
-import { createConversationTaskState } from './conversationTaskState';
 import { createConversationHistoryLoader } from './conversationHistoryLoader';
 import { createConversationSessionRemoval } from './conversationSessionRemoval';
-import { createConversationTaskRefresh } from './conversationTaskRefresh';
+import { createConversationTasks } from './createConversationTasks';
 import { createConversationPhotoImport } from './conversationPhotoImport';
 import { createConversationPhotoConsentController } from './conversationPhotoConsentController';
 export type { ConversationSender, ConversationSession };
 export type { ConversationSessions } from './conversationSessionTypes';
-let nextSessionOwner = 0;
+
 /** The app owns session state across routes and may provide durable retention. */
 export function createConversationSessions(
   options: ConversationSessionOptions = {},
 ) {
-  const owner = ++nextSessionOwner;
-  let nextId = 0;
-  const empty = () => createEmptyConversation(++nextId);
+  const { owner, empty } = createConversationSessionSeed();
+  let bindSender: (sender: ConversationSender) => ConversationSender = sender =>
+    sender;
+  let beforeSend: ((id: number) => Promise<boolean>) | undefined;
   let snapshot = initialConversationSnapshot(empty());
   const listeners = createConversationListeners();
   let disposed = false;
   let lifecycle = 0;
   const photoDrafts = createConversationPhotoImport();
   const photoConsent = createConversationPhotoConsentController();
-  const emit = listeners.emit;
   const apply = (next: ConversationSnapshot | null) => {
     if (next) {
       snapshot = next;
-      emit();
+      listeners.emit();
     }
   };
   const update = (
@@ -62,18 +62,11 @@ export function createConversationSessions(
       ),
     };
     if (stream) listeners.emitStream();
-    else emit();
+    else listeners.emit();
   };
-  const find = (id: number) =>
-    snapshot.sessions.find(session => session.id === id)!;
-  const taskRefresh = createConversationTaskRefresh({
+  const find = (id: number) => snapshot.sessions.find(item => item.id === id)!;
+  const { taskState, taskRefresh } = createConversationTasks({
     options,
-    find: id => snapshot.sessions.find(session => session.id === id),
-    update,
-    valid: () => !disposed,
-  });
-  const taskState = createConversationTaskState({
-    retention: options.retention,
     find: id => snapshot.sessions.find(session => session.id === id),
     update,
     valid: () => !disposed,
@@ -138,7 +131,15 @@ export function createConversationSessions(
       photoDrafts.retireSession(id).catch(() => {});
     },
   });
-  return {
+  const dispatch = conversationDispatch({
+    bindSender: sender => bindSender(sender),
+    beforeSend: options.continuousSession ? id => beforeSend!(id) : undefined,
+    requests,
+    photoDrafts,
+    retention: options.retention,
+    disposed: () => disposed,
+  });
+  const store = {
     refreshRecovery: recoveryFor(options, find, update, () => disposed),
     resumeCold: requests.resumeCold,
     steer: requests.steer,
@@ -175,6 +176,7 @@ export function createConversationSessions(
     remove: removal.remove,
     undoRemove: removal.undo,
     cancel: (id: number) => {
+      dispatch.cancelBeforeSend(id);
       if (!disposed) requests.cancel(id);
     },
     retrySave,
@@ -218,9 +220,8 @@ export function createConversationSessions(
       removal.invalidate();
       const session = empty();
       snapshot = { activeId: session.id, sessions: [session], deleted: null };
-      emit();
+      listeners.emit();
     },
-    // View subscribers never cancel on exit; only the app owner disposes requests.
     dispose() {
       photoConsent.dispose();
       photoDrafts.clear().catch(() => {});
@@ -236,15 +237,14 @@ export function createConversationSessions(
       if (snapshot.deleted?.handle !== undefined)
         options.retention?.finalize(snapshot.deleted.handle).catch(() => {});
     },
-    ...conversationDispatch({
-      requests,
-      photoDrafts,
-      retention: options.retention,
-      disposed: () => disposed,
-    }),
+    ...dispatch,
     treatment: conversationTreatmentOwnership(options, () =>
       disposed ? undefined : snapshot,
     ),
     toolSourceSessionId: options.retention?.activeIdentity ?? (() => null),
   };
+  const policy = continuousConversationPolicy(store, options, update);
+  beforeSend = policy.prepareSend;
+  bindSender = policy.bindSender;
+  return policy;
 }

@@ -45,7 +45,7 @@ async function enterHomeConversation() {
   );
 }
 
-test('provider and history detours preserve the existing conversation after Overview appointment changes', async () => {
+test('provider and provider selection detours preserve the existing conversation after Overview appointment changes', async () => {
   const send = captureConversationSends();
   const a = futureOverviewVisit('Home A');
   const b = futureOverviewVisit('Home B');
@@ -61,8 +61,8 @@ test('provider and history detours preserve the existing conversation after Over
   expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
     'A만의 준비 초안',
   );
-  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
-  expect(await screen.findByTestId('conversation-history-screen')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
+  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(send).toHaveBeenCalledTimes(1));
@@ -125,14 +125,10 @@ test('an in-flight reply remains in the same conversation after Overview reentry
   );
   expect(screen.getByText('A에게만 속한 늦은 답변')).toBeTruthy();
   expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue('');
-  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
-  await fireEvent(
-    screen.getByTestId('conversation-history-list'),
-    'selectSession',
-    { nativeEvent: { id: 1 } },
-  );
+  await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
+  await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(await screen.findByText('A에게만 속한 늦은 답변')).toBeTruthy();
-  // History return must not attach the Overview appointment to an ordinary conversation.
+  // Provider selection return must not attach the Overview appointment to an ordinary conversation.
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     'A에 관해 다시 질문',

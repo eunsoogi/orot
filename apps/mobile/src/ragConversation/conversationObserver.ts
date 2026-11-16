@@ -65,6 +65,11 @@ export type RagConversationObserver = Pick<
   };
   /** Durable request identity, distinct from a transient UI response number. */
   readonly retentionRequestId?: string;
+  /** The continuous session binds dispatch to its already selected model, without granting consent. */
+  readonly expectedConversationModel?: {
+    readonly providerId: string;
+    readonly modelId: string;
+  };
   /** Voice binds its transcript to the exact selection approved before capture. */
   readonly expectedVoiceSelection?: {
     readonly providerId: string;

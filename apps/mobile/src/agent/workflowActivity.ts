@@ -8,7 +8,11 @@ import { t } from '../i18n';
 export type AiWorkflowObserver = Pick<
   MultiAgentInvocation,
   'onProgress' | 'onTaskStreamEvent' | 'onToolEvent'
->;
+> &
+  Pick<
+    import('../ragConversation/conversationObserver').RagConversationObserver,
+    'onProviderReceipt' | 'expectedConversationModel' | 'onExecutionState'
+  >;
 
 /** Converts typed runtime phases to safe copy without showing search terms or evidence text. */
 export function workflowProgressLabel(event: MultiAgentProgressEvent): string {

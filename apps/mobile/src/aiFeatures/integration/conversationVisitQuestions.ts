@@ -1,5 +1,7 @@
 import { createPreparedOpeningConsent } from './preparedOpeningConsent';
 import { observeVisitPreflight } from './visitPreflightDiagnostics';
+import { conversationConsentScope } from './conversationBackgroundProvider';
+import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { startContextualConversationOpening } from './contextualConversationOpening';
 import { visitConsentScope } from '../../agent/execution/inferenceConsentScopes';
 import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
@@ -29,6 +31,10 @@ export async function generateConversationVisitQuestions(input: {
   readonly observer?: AiWorkflowObserver;
   readonly registerToolSource?: AiFeatureServices['registerVisitQuestionSource'];
 }) {
+  const confirmConsent = conversationConsentScope(
+    { authorize: input.confirmConsent },
+    input.observer,
+  ).authorize;
   const current = () => !input.signal.aborted && input.isCurrentOwner();
   if (!current()) return { status: 'cancelled' as const };
   // The generic next-visit action resolves the upcoming confirmed appointment.
@@ -49,9 +55,9 @@ export async function generateConversationVisitQuestions(input: {
       localEvidenceFingerprint(appointment)
   )
     return { status: 'appointment_changed' as const };
-  const selectedAi = await observeVisitPreflight(
-    'preflight_selection',
-    input.resolveSelectedAi,
+  const selectedAi = conversationReceiptSelection(
+    await observeVisitPreflight('preflight_selection', input.resolveSelectedAi),
+    input.observer,
   );
   if (!current()) return { status: 'cancelled' as const };
   if (selectedAi.status !== 'ready')
@@ -61,9 +67,7 @@ export async function generateConversationVisitQuestions(input: {
   const gate = createPreparedOpeningConsent(
     {
       authorize: async request =>
-        (await input.confirmConsent(request))
-          ? 'authorized'
-          : 'renewal_required',
+        (await confirmConsent(request)) ? 'authorized' : 'renewal_required',
     },
     'visit',
   );
@@ -103,7 +107,7 @@ export async function generateConversationVisitQuestions(input: {
           request: input.request,
           selectedAi,
           signal: input.signal,
-          confirmConsent: input.confirmConsent,
+          confirmConsent,
           generatedArtifactTools: input.generatedArtifactTools,
           observer: input.observer,
           registerToolSource: input.registerToolSource,

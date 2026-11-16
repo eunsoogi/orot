@@ -1,3 +1,5 @@
+import { conversationConsentScope } from './conversationBackgroundProvider';
+import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { startContextualConversationOpening } from './contextualConversationOpening';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
@@ -47,6 +49,7 @@ export function createHealthSummaryService(input: {
       }
     | { failure: RagConversationOutcome }
   > => {
+    const consent = conversationConsentScope(input.consent, observer);
     const createdAt = input.now?.() ?? new Date().toISOString();
     const timeZone =
       input.timeZone?.() ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -60,7 +63,10 @@ export function createHealthSummaryService(input: {
       request.question.length > 1000
     )
       throw new Error('Invalid health summary request.');
-    const selected = await input.selectedAi();
+    const selected = conversationReceiptSelection(
+      await input.selectedAi(),
+      observer,
+    );
     let data: AiFeatureLocalData;
     try {
       data = await input.loadData();
@@ -100,7 +106,7 @@ export function createHealthSummaryService(input: {
     const execution = executionOptions({
       selected,
       operationRunId: runId,
-      consent: input.consent,
+      consent,
       registry: input.registry,
       tools: [bound.tool],
       consentPurpose: 'symptom_summary',
@@ -111,7 +117,7 @@ export function createHealthSummaryService(input: {
       request: request.question,
       observer,
       signal,
-      consent: input.consent,
+      consent,
       consentScope: execution.execution.consentScope,
     });
     try {

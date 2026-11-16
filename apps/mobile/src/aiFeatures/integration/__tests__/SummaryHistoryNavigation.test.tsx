@@ -125,13 +125,12 @@ test('keeps history in a measured region and restores saved content and provenan
     summarizeSymptoms: generate,
   } as unknown as AiFeatureServices);
   const onBack = jest.fn();
-  await render(
-    <AiFeatureRoute initialRoute="conversation-history" onBack={onBack} />,
+  const view = await render(
+    <AiFeatureRoute initialRoute="saved-analysis" onBack={onBack} />,
   );
   const sensor = screen.getByTestId('navigation-window-geometry-sensor');
   const duoGeometry = geometry(1400, 900, true);
   await fireEvent(sensor, 'geometryChange', { nativeEvent: duoGeometry });
-  await fireEvent.press(screen.getByTestId('conversation-saved-analysis'));
   expect(await screen.findByTestId('summary-history-screen')).toBeTruthy();
   expect(screen.queryByTestId('symptom-summary-generate')).toBeNull();
   await screen.findByRole('button', { name: /Synthetic/ });
@@ -161,8 +160,11 @@ test('keeps history in a measured region and restores saved content and provenan
   expect(generate).not.toHaveBeenCalled();
   expect(await screen.findByTestId('summary-history-screen')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(await screen.findByTestId('conversation-saved-analysis')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('conversation-saved-analysis'));
+  expect(screen.queryByTestId('summary-history-screen')).toBeNull();
+  await view.unmount();
+  await render(
+    <AiFeatureRoute initialRoute="saved-analysis" onBack={onBack} />,
+  );
   expect(await screen.findByRole('button', { name: /Synthetic/ })).toBeTruthy();
   expect(history.list).toHaveBeenCalled();
   expect(generate).not.toHaveBeenCalled();

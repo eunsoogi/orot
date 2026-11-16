@@ -23,6 +23,7 @@ export interface VisitQuestionRouteSaveInput {
   readonly appointment: Appointment;
   readonly questions: readonly NextVisitQuestion<VisitQuestionEvidenceItem>[];
   readonly caveats: readonly EvidenceCaveat[];
+  readonly generationMetadata?: import('../../nextVisitQuestions/types').VisitQuestionGenerationMetadata;
   readonly expectedSavedQuestions: readonly {
     readonly id: string;
     readonly revision: string;
@@ -192,6 +193,8 @@ export async function saveVisitQuestionRoute(
   const saved = await context.saveReviewedQuestions(
     reviewed,
     input.expectedSavedQuestions,
+    input.generationMetadata?.caveats,
+    input.generationMetadata?.questionIds,
   );
   return {
     questions: reviewed.map((question, index) => ({

@@ -1,8 +1,12 @@
+import {
+  QUESTION_DECISION_RELEVANCE_REASON,
+  clarificationQuestionsForContext,
+  validateQuestionDecisionRelevance,
+} from './questionDecisionRelevance';
 import type { JsonValue, LanguageModelMessage } from '@orot/model-runtime';
 import { hasUnsupportedDateOrValue } from './questionFacts';
 import { reportVisitQuestionValidation } from './validationDiagnostics';
 import { asQuestionObject } from './questionShape';
-import { clarificationQuestionsForEvidence } from './clarificationQuestions';
 import {
   appointmentDateFromContext,
   hasUnsafeClinicalAdvice,
@@ -178,7 +182,7 @@ export function createVisitQuestionTaskResponder() {
             `Available evidence: ${JSON.stringify(evidence)}`,
             `Record conflicts: ${JSON.stringify(input.evidence.conflicts)}`,
             `Search coverage and limits: ${JSON.stringify(input.evidence.coverage)}`,
-            `App-owned clarification questions: ${JSON.stringify(clarificationQuestionsForEvidence(input.evidence.conflicts.length > 0))}`,
+            `App-owned clarification questions: ${JSON.stringify(clarificationQuestionsForContext(input))}`,
           ].join('\n'),
         },
       ];
@@ -194,6 +198,8 @@ export function createVisitQuestionTaskResponder() {
       return 'Return the complete result envelope with citations as an array of exact current evidenceId strings used by the questions. Include their unique union without unused or invented IDs. Use only supplied evidence and preserve all safety and Korean question constraints.';
     },
     correctionInstructionForInvalidResult(reason: string): string | undefined {
+      if (reason === QUESTION_DECISION_RELEVANCE_REASON)
+        return 'Rewrite only supported, useful clinician decisions about management, symptom impact, evaluation choices or follow-up. Do not turn ordinary variation or missing comparability into a demand to verify the record. Preserve explicitly documented measurement errors or actual conflicts and the user’s explicit reliability question. Omit unrelated generic testing questions. Never invent a concern or pad a count; if no useful topic remains, return needs_clarification with one focused visit-goal question. Preserve all clinical, citation, consent and uncertainty constraints.';
       // All corrections share one retry and the original budget, consent and freshness checks.
       // Keep each measurement and unit from the same cited item; validation never converts units.
       // Unsafe copy and invalid citation bindings remain terminal; incomplete evidence may request safe wording.
@@ -208,7 +214,7 @@ export function createVisitQuestionTaskResponder() {
         reason ===
         'Conflicting or absent evidence requires clarification-only questions.'
       )
-        return 'Rewrite the response with three distinct clarification questions copied exactly from the app-owned list. Do not assert or cite either side of a conflict; return an empty citations array.';
+        return 'Rewrite with only useful clarification questions copied exactly from the app-owned list, without a minimum count; if none is useful, return needs_clarification. Do not assert or cite either side of a conflict; return an empty citations array.';
       if (reason === UNSUPPORTED_QUESTION_FACTS_REASON)
         return [
           'The previous questions failed exact date, value or unit validation against their cited evidence.',
@@ -229,7 +235,10 @@ export function createVisitQuestionTaskResponder() {
       ].join('\n');
     },
     validateResult(value: JsonValue, input: VisitQuestionResponderInput) {
-      const result = validateVisitQuestionTaskResult(value, input);
+      const result = validateQuestionDecisionRelevance(
+        validateVisitQuestionTaskResult(value, input),
+        input,
+      );
       reportVisitQuestionValidation(result, input.evidence);
       return result;
     },
