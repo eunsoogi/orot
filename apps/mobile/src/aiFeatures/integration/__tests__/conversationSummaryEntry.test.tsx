@@ -111,8 +111,9 @@ test('renders a validated summary in the existing conversation', async () => {
       />
     </AiFeatureSharedNavigationStateProvider>,
   );
-  await fireEvent.press(
-    screen.getByTestId('conversation-intent-use-suggestion'),
+  await fireEvent.changeText(
+    screen.getByTestId('rag-conversation-input'),
+    'Synthetic explicit question',
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   expect(await screen.findByTestId('health-summary-card')).toBeTruthy();
@@ -155,8 +156,9 @@ test.each([
         />
       </AiFeatureSharedNavigationStateProvider>,
     );
-    await fireEvent.press(
-      screen.getByTestId('conversation-intent-use-suggestion'),
+    await fireEvent.changeText(
+      screen.getByTestId('rag-conversation-input'),
+      'Synthetic explicit question',
     );
     await fireEvent.press(screen.getByTestId('rag-conversation-send'));
     await waitFor(() =>

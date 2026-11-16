@@ -5,7 +5,7 @@ import {
   ConversationRetainedActions,
   type RetainedHealthActions,
 } from './ConversationRetainedActions';
-import { Fragment } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
 import { todayIdentity } from '../aiFeatures/integration/dailyReportTodayIdentity';
@@ -79,6 +79,7 @@ export function ConversationTaskHeader({
   reportOwner,
   onOpenDailyReport,
   retainedActions,
+  visitAction,
   renderReportTask,
   renderSavedReport,
 }: Common & {
@@ -87,6 +88,7 @@ export function ConversationTaskHeader({
   reportOwner: number | null;
   onOpenDailyReport?: () => void;
   retainedActions?: RetainedHealthActions;
+  visitAction?: ReactNode;
   renderReportTask?: ConversationScreenProps['renderReportTask'];
   renderSavedReport?: ConversationScreenProps['renderSavedReport'];
 }) {
@@ -141,7 +143,7 @@ export function ConversationTaskHeader({
       <ConversationRetainedActions
         actions={retainedActions}
         disabled={!eligible}
-        hideVisitQuestions={entryOwnsVisit}
+        visitAction={entryOwnsVisit ? visitAction : undefined}
       />
       <DailyReportConversationHeader
         report={selectedReport}

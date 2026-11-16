@@ -10,7 +10,7 @@ const actions = {
   healthSummary: jest.fn(),
 };
 
-test('entry-specific visit preparation replaces the duplicate generic action without dropping context', async () => {
+test('entry-specific visit preparation stays in the canonical slot without dropping context', async () => {
   const store = createConversationSessions();
   setConversationEntryForSession(store, 1, {
     intent: 'visit-questions',
@@ -20,24 +20,33 @@ test('entry-specific visit preparation replaces the duplicate generic action wit
   store.prepareEntry(1, 'Synthetic visit question');
   const session = store.getSnapshot().sessions[0]!;
   await render(
-    <>
-      <ConversationEntryAction
-        store={store}
-        session={session}
-        prepareVisitQuestions={jest.fn()}
-      />
-      <ConversationTaskHeader
-        store={store}
-        session={session}
-        onOpenSource={jest.fn()}
-        reportOwner={null}
-        retainedActions={actions}
-      />
-    </>,
+    <ConversationTaskHeader
+      store={store}
+      session={session}
+      onOpenSource={jest.fn()}
+      reportOwner={null}
+      retainedActions={actions}
+      visitAction={
+        <ConversationEntryAction
+          store={store}
+          session={session}
+          prepareVisitQuestions={jest.fn()}
+        />
+      }
+    />,
   );
   expect(screen.getAllByText('진료 질문 준비하기')).toHaveLength(1);
   expect(screen.getByTestId('conversation-visit-prepare')).toBeTruthy();
   expect(screen.queryByTestId('conversation-open-visit-questions')).toBeNull();
+  expect(
+    screen
+      .getAllByRole('button')
+      .map(button => button.props.accessibilityLabel),
+  ).toEqual([
+    '질병 가능성 보고서 요청하기',
+    '진료 질문 준비하기',
+    '내 건강 정보 요약하기',
+  ]);
   expect(store.getSnapshot().sessions).toHaveLength(1);
 });
 

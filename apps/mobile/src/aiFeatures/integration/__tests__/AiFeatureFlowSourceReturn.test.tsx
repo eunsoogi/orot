@@ -108,8 +108,9 @@ test('preserves a possibilities conversation after opening and returning from it
     />,
   );
   expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue('');
-  await fireEvent.press(
-    screen.getByTestId('conversation-intent-use-suggestion'),
+  await fireEvent.changeText(
+    screen.getByTestId('rag-conversation-input'),
+    'Synthetic explicit question',
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   expect(await screen.findByText(/검토할 가능성이 있지만/)).toBeTruthy();
