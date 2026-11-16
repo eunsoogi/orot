@@ -1,3 +1,4 @@
+import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
 import { coldPreviewPatch } from './replaceColdConversationAnswer';
 import { t } from '../i18n';
 import type { ConversationInterruptionReason } from './conversationExecutionLease';
@@ -111,6 +112,12 @@ export function createConversationStopHandler(input: {
   update: (id: number, change: Partial<ConversationSession>) => void;
   retainPartial: (id: number, activity: string, retainEmpty?: boolean) => void;
 }) {
+  // Stop timing uses a separate bounded sequence per controller, not private request identifiers.
+  // Unknown phase is intentional: a tap is not evidence of the OS lifecycle state.
+  const stopDiagnostics = new WeakMap<
+    AbortController,
+    ReturnType<typeof createExecutionDiagnostics>
+  >();
   return (
     id: number,
     settled = false,
@@ -118,6 +125,12 @@ export function createConversationStopHandler(input: {
   ) => {
     const controller = input.controllers.get(id);
     if (!controller) return;
+    let diagnose = stopDiagnostics.get(controller);
+    if (!diagnose) {
+      diagnose = createExecutionDiagnostics(undefined, () => 'unknown');
+      stopDiagnostics.set(controller, diagnose);
+      diagnose('stop-received');
+    }
     const turn = input.pendingTurns.get(id);
     const snapshot = input.snapshots.get(id);
     snapshot?.cancel();
@@ -126,6 +139,7 @@ export function createConversationStopHandler(input: {
     if (status === 'cancelled') turn?.stopCold?.();
     input.lifetime.interrupt(id, status);
     controller.abort();
+    diagnose('abort-dispatched');
     input.steering?.clear(id);
     // System interruption is not an explicit user cancellation; persist the true state.
     input.activities.get(id)?.finish(status);
@@ -135,8 +149,10 @@ export function createConversationStopHandler(input: {
         turn?.summarySaving ||
         turn?.summaryCommitted) &&
       !settled
-    )
+    ) {
+      diagnose('stop-awaiting-commit');
       return;
+    }
     input.controllers.delete(id);
     input.pendingTurns.delete(id);
     snapshot?.settle();
@@ -149,5 +165,6 @@ export function createConversationStopHandler(input: {
       turn,
       interruptionReason: input.lifetime.interruptionReason(controller),
     });
+    diagnose('stop-presented');
   };
 }

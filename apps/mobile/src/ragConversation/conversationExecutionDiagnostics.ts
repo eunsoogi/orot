@@ -3,6 +3,10 @@ import type { ConversationRecoveryReason } from './conversationExecutionLease';
 
 type Phase = 'active' | 'background' | 'inactive' | 'unknown';
 type Event =
+  | 'stop-received'
+  | 'abort-dispatched'
+  | 'stop-awaiting-commit'
+  | 'stop-presented'
   | 'user-stop'
   | 'outcome'
   | 'continued-granted'
@@ -25,6 +29,10 @@ type Observation = {
 };
 // Runtime allowlists prevent an incorrectly typed adapter from recording content.
 const events = new Set<Event>([
+  'stop-received',
+  'abort-dispatched',
+  'stop-awaiting-commit',
+  'stop-presented',
   'user-stop',
   'outcome',
   'continued-granted',
