@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -25,6 +26,11 @@ export function SavedMemoryBrowser({
 }) {
   const { rows, state, refresh } = useSavedMemories(load, active);
   const [visible, setVisible] = useState(20);
+  const position = useNavigationRouteScrollPosition();
+  // Restore only after the fresh protected list has committed, not while its rows are empty.
+  useEffect(() => {
+    if (active && state === 'ready') position?.restore();
+  }, [active, state, position]);
   // Retain the page bound while a native detail owns focus, so Back restores the same list position.
   return (
     <View style={styles.section} testID="saved-memory-browser">
@@ -63,7 +69,10 @@ export function SavedMemoryBrowser({
                 date: formatDateTime(new Date(row.createdAt)),
               })}
               accessibilityHint={t('savedMemory.openDetail')}
-              onPress={() => onOpenMemory?.(row.id)}
+              onPress={() => {
+                position?.preserve();
+                onOpenMemory?.(row.id);
+              }}
             />
           ))}
           {visible < rows.length && (
