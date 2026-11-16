@@ -6,6 +6,7 @@ import { AppText as Text } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
 import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
+import { ConversationMessageBubbles } from './ConversationMessageBubbles';
 import { ConversationSources } from './ConversationSources';
 import { ConversationToolEvents } from './ConversationToolEvents';
 import { HealthSummaryCard } from './HealthSummaryCard';
@@ -82,169 +83,168 @@ export function ConversationMessage({
   // Keep the last streamed line at the end of a short reading viewport.
   const activityBeforeText = compact && message.streaming;
   return (
-    <View
-      testID={
-        user ? 'conversation-user-message' : 'conversation-assistant-message'
-      }
-      style={
-        user
-          ? styles.userMessage
-          : [
-              styles.assistantMessage,
-              message.visitQuestions && styles.visitQuestionsMessage,
-            ]
-      }
-    >
-      {!user && message.dailyReport ? (
-        <Text>
-          {t('dailyReport.followUpIdentity', {
-            date: message.dailyReport.identity.localDate,
-            zone: message.dailyReport.identity.timeZone,
-          })}{' '}
-          ·{' '}
-          {t('dailyReport.savedRevision', {
-            revision: message.dailyReport.revision,
-          })}
-        </Text>
-      ) : null}
+    <ConversationMessageBubbles message={message}>
       <View
-        testID="conversation-message-body"
+        testID={
+          user ? 'conversation-user-message' : 'conversation-assistant-message'
+        }
         style={
-          !user && [
-            styles.assistantBody,
-            activityBeforeText && styles.compactStreamingBody,
-          ]
+          user
+            ? styles.userMessage
+            : [
+                styles.assistantMessage,
+                message.visitQuestions && styles.visitQuestionsMessage,
+              ]
         }
       >
-        <ConversationPreviousOutputs outputs={message.previousOutputs} />
-        {message.incomplete && message.content ? (
-          <>
-            <Text style={styles.activity}>
-              {t('aiActivity.draft.incompleteHeading')}
-            </Text>
-            <Text style={styles.activity}>
-              {t('aiActivity.draft.incompleteNote')}
-            </Text>
-          </>
-        ) : null}
-        {message.incomplete &&
-        message.coldResume &&
-        message.toolMessageId &&
-        onContinueCold ? (
-          <AppButton
-            title={t('conversationInterruption.resumeAction')}
-            testID={`rag-conversation-cold-resume-${message.id}`}
-            disabled={coldResumeBusy}
-            onPress={() => onContinueCold(message.toolMessageId!)}
-          />
-        ) : null}
-        {message.completion === 'partial' ? (
-          <Text style={styles.activity}>
-            {t('ragConversation.savedPartial')}
-          </Text>
-        ) : null}
-        {activityBeforeText ? activity : null}
-        {!user && message.toolEvents?.length ? (
-          <View
-            style={!showToolActivity && styles.toolEventsHidden}
-            accessibilityElementsHidden={!showToolActivity}
-            importantForAccessibility={
-              showToolActivity ? 'auto' : 'no-hide-descendants'
-            }
-          >
-            <ConversationToolEvents
-              key={JSON.stringify(message.sourceOwner ?? null)}
-              allowSourceActions={showCitations}
-              durableMessageId={message.toolMessageId}
-              events={message.toolEvents}
-              messageId={message.toolMessageId ?? String(message.id)}
-              onLinkError={onLinkError}
-              onOpenSource={openSource}
-              resolveToolSource={
-                message.sourceOwner
-                  ? resolveColdToolSource &&
-                    ((reference, signal, scope) =>
-                      resolveColdToolSource(
-                        message.sourceOwner!,
-                        reference,
-                        signal,
-                        scope,
-                      ))
-                  : resolveToolSource
-              }
-              sessionId={toolSourceSessionId}
-            />
-          </View>
-        ) : null}
-        {user && (message.photoAttached || message.submittedInput?.ocr) ? (
-          <Text style={[styles.messageText, styles.userText]}>
-            {t('ragConversation.photo.message')}
-          </Text>
-        ) : null}
-        {!user &&
-        message.initialResponse &&
-        (message.streaming || message.initialResponse.source !== 'receipt') ? (
-          <ConversationInitialResponse
-            key={message.initialResponse.callId}
-            response={message.initialResponse}
-          />
-        ) : null}
-        {/* Keep the opening in place; an exact repeated final sentence need not be painted twice. */}
-        {message.content &&
-        (user ||
-          message.initialResponse?.source === 'receipt' ||
-          message.content.trim() !== message.initialResponse?.text.trim()) ? (
-          <MessageText
-            selectable
-            style={[styles.messageText, user && styles.userText]}
-            testID={messageTextTestID}
-          >
-            {message.content}
-          </MessageText>
-        ) : null}
-        {message.healthSummary ? (
-          <HealthSummaryCard
-            testIDPrefix={`rag-conversation-message-${message.id}-summary`}
-            result={message.healthSummary}
-            showCitations={showCitations}
-            onOpenSource={openSource}
-            onLinkError={onLinkError}
-            onRetry={
-              message.retryHealthSummary
-                ? () => {
-                    message.retryHealthSummary?.().catch(onLinkError);
-                  }
-                : undefined
-            }
-          />
-        ) : message.healthSummary === null ? (
+        {!user && message.dailyReport ? (
           <Text>
-            {t('ragConversation.conversation.savedSummaryUnavailable')}
+            {t('dailyReport.followUpIdentity', {
+              date: message.dailyReport.identity.localDate,
+              zone: message.dailyReport.identity.timeZone,
+            })}{' '}
+            ·{' '}
+            {t('dailyReport.savedRevision', {
+              revision: message.dailyReport.revision,
+            })}
           </Text>
         ) : null}
-        {!activityBeforeText ? activity : null}
-        {message.visitQuestionsUnavailable ? (
-          <Text accessibilityRole="alert" style={styles.activity}>
-            {t('ragConversation.conversation.savedVisitQuestionsUnavailable')}
-          </Text>
-        ) : null}
-        {visitQuestions != null && visitQuestions !== false ? (
-          <View
-            style={styles.visitQuestionsRegion}
-            testID="conversation-question-region"
-          >
-            {visitQuestions}
-          </View>
-        ) : null}
-        {showCitations ? (
-          <ConversationSources
-            testIDPrefix={`rag-conversation-message-${message.id}`}
-            references={message.citations ?? []}
-            onOpenSource={openSource}
-            onLinkError={onLinkError}
-          />
-        ) : null}
+        <View
+          testID="conversation-message-body"
+          style={
+            !user && [
+              styles.assistantBody,
+              activityBeforeText && styles.compactStreamingBody,
+            ]
+          }
+        >
+          <ConversationPreviousOutputs outputs={message.previousOutputs} />
+          {message.incomplete && message.content ? (
+            <>
+              <Text style={styles.activity}>
+                {t('aiActivity.draft.incompleteHeading')}
+              </Text>
+              <Text style={styles.activity}>
+                {t('aiActivity.draft.incompleteNote')}
+              </Text>
+            </>
+          ) : null}
+          {message.incomplete &&
+          message.coldResume &&
+          message.toolMessageId &&
+          onContinueCold ? (
+            <AppButton
+              title={t('conversationInterruption.resumeAction')}
+              testID={`rag-conversation-cold-resume-${message.id}`}
+              disabled={coldResumeBusy}
+              onPress={() => onContinueCold(message.toolMessageId!)}
+            />
+          ) : null}
+          {message.completion === 'partial' ? (
+            <Text style={styles.activity}>
+              {t('ragConversation.savedPartial')}
+            </Text>
+          ) : null}
+          {activityBeforeText ? activity : null}
+          {!user && message.toolEvents?.length ? (
+            <View
+              style={!showToolActivity && styles.toolEventsHidden}
+              accessibilityElementsHidden={!showToolActivity}
+              importantForAccessibility={
+                showToolActivity ? 'auto' : 'no-hide-descendants'
+              }
+            >
+              <ConversationToolEvents
+                key={JSON.stringify(message.sourceOwner ?? null)}
+                allowSourceActions={showCitations}
+                durableMessageId={message.toolMessageId}
+                events={message.toolEvents}
+                messageId={message.toolMessageId ?? String(message.id)}
+                onLinkError={onLinkError}
+                onOpenSource={openSource}
+                resolveToolSource={
+                  message.sourceOwner
+                    ? resolveColdToolSource &&
+                      ((reference, signal, scope) =>
+                        resolveColdToolSource(
+                          message.sourceOwner!,
+                          reference,
+                          signal,
+                          scope,
+                        ))
+                    : resolveToolSource
+                }
+                sessionId={toolSourceSessionId}
+              />
+            </View>
+          ) : null}
+          {user && (message.photoAttached || message.submittedInput?.ocr) ? (
+            <Text style={[styles.messageText, styles.userText]}>
+              {t('ragConversation.photo.message')}
+            </Text>
+          ) : null}
+          {!user &&
+          message.initialResponse &&
+          message.streaming &&
+          message.initialResponse.source === 'receipt' ? (
+            <ConversationInitialResponse
+              key={message.initialResponse.callId}
+              response={message.initialResponse}
+            />
+          ) : null}
+          {message.content ? (
+            <MessageText
+              selectable
+              style={[styles.messageText, user && styles.userText]}
+              testID={messageTextTestID}
+            >
+              {message.content}
+            </MessageText>
+          ) : null}
+          {message.healthSummary ? (
+            <HealthSummaryCard
+              testIDPrefix={`rag-conversation-message-${message.id}-summary`}
+              result={message.healthSummary}
+              showCitations={showCitations}
+              onOpenSource={openSource}
+              onLinkError={onLinkError}
+              onRetry={
+                message.retryHealthSummary
+                  ? () => {
+                      message.retryHealthSummary?.().catch(onLinkError);
+                    }
+                  : undefined
+              }
+            />
+          ) : message.healthSummary === null ? (
+            <Text>
+              {t('ragConversation.conversation.savedSummaryUnavailable')}
+            </Text>
+          ) : null}
+          {!activityBeforeText ? activity : null}
+          {message.visitQuestionsUnavailable ? (
+            <Text accessibilityRole="alert" style={styles.activity}>
+              {t('ragConversation.conversation.savedVisitQuestionsUnavailable')}
+            </Text>
+          ) : null}
+          {visitQuestions != null && visitQuestions !== false ? (
+            <View
+              style={styles.visitQuestionsRegion}
+              testID="conversation-question-region"
+            >
+              {visitQuestions}
+            </View>
+          ) : null}
+          {showCitations ? (
+            <ConversationSources
+              testIDPrefix={`rag-conversation-message-${message.id}`}
+              references={message.citations ?? []}
+              onOpenSource={openSource}
+              onLinkError={onLinkError}
+            />
+          ) : null}
+        </View>
       </View>
-    </View>
+    </ConversationMessageBubbles>
   );
 }

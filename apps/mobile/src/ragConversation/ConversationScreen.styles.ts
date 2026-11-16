@@ -41,6 +41,7 @@ export const styles = StyleSheet.create({
     padding: 14,
   },
   // Reserve the opposite lane proportionally, including on narrow content panels.
+  assistantBubbleSequence: { gap: 12 },
   assistantMessage: { alignSelf: 'flex-start', maxWidth: '85%', gap: 8 },
   speaker: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: {
