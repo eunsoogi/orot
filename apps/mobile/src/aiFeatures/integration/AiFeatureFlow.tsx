@@ -24,7 +24,7 @@ import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
 import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
 import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
-import { requestConversationReport } from '../../ragConversation/requestConversationReport';
+import { startConversationReportTurn } from '../../ragConversation/startConversationReportTurn';
 import { useConversationSessions } from '../../ragConversation/ConversationSessionsContext';
 import { useConversationVisibility } from './useConversationVisibility';
 export interface AiFeatureFlowProps {
@@ -145,11 +145,10 @@ export function AiFeatureFlow({
               }}
               onOpenDailyReport={() => {
                 if (services.dailyReport)
-                  requestConversationReport(
+                  startConversationReportTurn(
                     conversationStore,
                     isConversationVisible,
-                    undefined,
-                    true,
+                    services.sendRagMessage,
                   );
               }}
               onOpenConversationHistory={() =>

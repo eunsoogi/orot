@@ -24,6 +24,7 @@ export type RagConversationOutcome =
   | {
       readonly status: 'answer';
       readonly answer: string;
+      readonly dailyReport?: import('./conversationDisplayMessage').DisplayMessage['dailyReport'];
       readonly completion?: 'partial';
       readonly citations: readonly import('@orot/agent-runtime').EvidenceReference[];
       /** Local input lineage may include sources omitted from visible citations. */

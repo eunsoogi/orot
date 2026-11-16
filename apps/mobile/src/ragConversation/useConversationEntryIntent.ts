@@ -40,7 +40,10 @@ export function consumeConversationEntryForSession(
 ) {
   const entries = sessionEntries.get(store);
   const context = entries?.get(id);
-  if (context?.intent === 'health-summary')
+  if (
+    context?.intent === 'health-summary' ||
+    context?.intent === 'daily-report'
+  )
     entries?.set(id, { ...context, intent: 'conversation' });
   return context;
 }

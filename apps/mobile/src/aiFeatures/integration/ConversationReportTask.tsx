@@ -1,61 +1,54 @@
+import { todayIdentity } from './dailyReportTodayIdentity';
 import { useConversationSessions } from '../../ragConversation/ConversationSessionsContext';
-import { useRequestedReportStart } from '../../ragConversation/conversationReportStart';
+import { startConversationReportTurn } from '../../ragConversation/startConversationReportTurn';
+import { AppButton } from '../../layout/AppButton';
+import { t } from '../../i18n';
 import type { EvidenceReference } from '@orot/agent-runtime';
-import type { DailyReportIdentity } from '@orot/domain';
 import type { RetainedConversationTask } from '../../ragConversation/conversationTaskState';
-import type { ConversationEntryContext } from './conversationIntent';
 import type { AiFeatureServices } from './featureServices';
+import { ConversationSavedReportMessage } from './ConversationSavedReportMessage';
+import type { ComponentProps } from 'react';
 import { DailyReportRoute } from './DailyReportRoute';
 
-/** Restored cards re-read the existing report; opening them never starts generation. */
+/** Restored cards expose only the committed report as an assistant message; they never restart work. */
 export function ConversationReportTask({
   card,
   sessionId,
   services,
-  onChat,
-  onTaskIdentity,
-  onTaskResult,
-  onBack,
   onOpenSource,
-  ownsOperation,
 }: {
   card: RetainedConversationTask;
   sessionId: number;
   services: AiFeatureServices;
-  onChat: (
-    target: NonNullable<ConversationEntryContext['dailyReport']>,
-  ) => void;
-  onTaskIdentity: (identity: DailyReportIdentity) => Promise<void>;
-  onTaskResult: (
-    target: NonNullable<ConversationEntryContext['dailyReport']>,
-  ) => Promise<void>;
-  onBack: () => void;
   onOpenSource: (source: EvidenceReference) => void;
-  ownsOperation?: boolean;
-}) {
+} & Pick<
+  ComponentProps<typeof DailyReportRoute>,
+  'onChat' | 'onTaskIdentity' | 'onTaskResult' | 'onBack' | 'ownsOperation'
+>) {
   const store = useConversationSessions();
-  const claimRequestedStart = useRequestedReportStart(
-    store,
-    sessionId,
-    card.id,
-  );
-  if (card.task.kind !== 'daily_report' || !services.dailyReport) return null;
+  if (card.task.kind !== 'daily_report') return null;
+  if (!card.task.report)
+    return (
+      <AppButton
+        title={t(
+          card.task.identity.key === todayIdentity()?.key
+            ? 'dailyReport.generate'
+            : 'dailyReport.selectToday',
+        )}
+        onPress={() => {
+          startConversationReportTurn(
+            store,
+            () => store.getSnapshot().activeId === sessionId,
+            services.sendRagMessage,
+          );
+        }}
+      />
+    );
   return (
-    <DailyReportRoute
-      feature={services.dailyReport}
-      claimRequestedStart={claimRequestedStart}
-      initialIdentity={card.task.identity}
-      expectedReport={card.task.report}
-      taskRevision={card.revision}
-      onTaskIdentity={onTaskIdentity}
-      onTaskResult={onTaskResult}
-      providerSelection={null}
-      onBack={onBack}
-      onChat={onChat}
-      resolveSources={services.dailyReportSources}
+    <ConversationSavedReportMessage
+      target={card.task.report}
+      services={services}
       onOpenSource={onOpenSource}
-      ownsOperation={ownsOperation}
-      inline
     />
   );
 }

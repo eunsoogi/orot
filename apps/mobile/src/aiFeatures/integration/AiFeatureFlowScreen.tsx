@@ -1,6 +1,6 @@
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
 import { DailyReportFlowScreen } from './DailyReportFlowScreen';
-import { DailyReportRoute } from './DailyReportRoute';
+import { ConversationSavedReportMessage } from './ConversationSavedReportMessage';
 import { ConversationReportTask } from './ConversationReportTask';
 import { conversationIntentForRoute } from './conversationIntent';
 import { AiProviderSelectorRow } from './AiProviderSelectorRow';
@@ -98,19 +98,11 @@ export function AiFeatureFlowScreen({
       )}
       renderSavedReport={
         services.dailyReport
-          ? (report, onChat) => (
-              <DailyReportRoute
-                key={report.identity.key}
-                feature={services.dailyReport!}
-                initialIdentity={report.identity}
-                expectedReport={report}
-                providerSelection={null}
-                onBack={onBack}
-                onChat={onChat}
-                resolveSources={services.dailyReportSources}
+          ? report => (
+              <ConversationSavedReportMessage
+                target={report}
+                services={services}
                 onOpenSource={onOpenSource}
-                ownsOperation={reportOwnsOperation}
-                inline
               />
             )
           : undefined

@@ -2,7 +2,7 @@ import type { DailyReportSourceCoverage } from '@orot/domain';
 import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
 
-type CoverageStatus = DailyReportSourceCoverage['status'];
+type CoverageStatus = DailyReportSourceCoverage['status'] | 'recorded_scope';
 
 /** Maps verified input metadata to labels and non-color cues without inferring report success. */
 export function isDailyReportRecordSource(source: string): boolean {
@@ -67,6 +67,8 @@ export function sourceSymbol(value: string) {
 
 export function statusLabel(value: CoverageStatus) {
   switch (value) {
+    case 'recorded_scope':
+      return t('dailyReport.coverage.recordedScope');
     case 'available':
       return t('dailyReport.status.available');
     case 'empty':
@@ -96,9 +98,15 @@ export function statusVisual(value: CoverageStatus) {
         surface: appColors.background,
         symbol: 'minus.circle',
       };
+    case 'unknown':
+    case 'recorded_scope':
+      return {
+        color: appColors.secondary,
+        surface: appColors.background,
+        symbol: 'info.circle',
+      };
     case 'partial':
     case 'stale':
-    case 'unknown':
       return {
         color: appColors.warning,
         surface: appColors.warningSurface,
@@ -122,7 +130,7 @@ export function syncStatusLabel(item: DailyReportSourceCoverage) {
     case 'not_requested':
       return t('dailyReport.coverage.syncNotRequested');
     default:
-      return t('dailyReport.status.unknown');
+      return undefined;
   }
 }
 
