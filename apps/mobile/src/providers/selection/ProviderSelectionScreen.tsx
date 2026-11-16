@@ -9,37 +9,15 @@ import { navigationText } from '../../i18n/navigation';
 import ChatGPTAccountSetupCard from './ChatGPTAccountSetupCard';
 import { ProviderSelectionChoices } from './ProviderSelectionChoices';
 import { ProviderSelectionFooter } from './ProviderSelectionFooter';
-import { providerSelectionScreenStyles as styles } from './providerSelectionScreenPresentation';
+import {
+  providerSelectionScreenStyles as styles,
+  selectionSummaryMessage,
+} from './providerSelectionScreenPresentation';
 import { resolveProviderSelection } from './providerSelection';
 import { providerSelectionText } from './text';
-import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
+import type { ProviderSelectionScreenProps } from './ProviderSelectionScreenProps';
 import { useProviderSelectionNavigationState } from './providerSelectionNavigationState';
-import type {
-  ChatGPTAccountSetup,
-  ProviderSelection,
-  ProviderSelectionOption,
-  ProviderSelectionPresentation,
-  ProviderSelectionRequirements,
-  ProviderSelectionStore,
-} from './types';
-interface ProviderSelectionScreenProps {
-  readonly presentation?: ProviderSelectionPresentation;
-  readonly screenTitle?: string;
-  readonly screenIntroduction?: string;
-  readonly navigationRouteKey?: string;
-  readonly options: readonly ProviderSelectionOption[];
-  readonly requirements: ProviderSelectionRequirements;
-  readonly selectionStore: ProviderSelectionStore;
-  readonly chatGPTSetup?: ChatGPTAccountSetup;
-  readonly onBack?: () => void;
-  readonly onSelectionCommitted?: (
-    selection: ProviderSelection,
-    provider: ProviderSelectionOption['provider'],
-  ) => void;
-  readonly onNavigationStateChange?: (
-    state: ProviderSelectionScreenNavigationState,
-  ) => void;
-}
+import type { ProviderSelection, ProviderSelectionOption } from './types';
 export default function ProviderSelectionScreen({
   presentation = 'feature',
   screenTitle,
@@ -151,15 +129,14 @@ export default function ProviderSelectionScreen({
       setSaving(false);
     }
   }
-  const selectionMessage = loading
-    ? ''
-    : loadError
-      ? providerSelectionText.storageLoadError
-      : resolution.ok
-        ? `${providerSelectionText.selectedPrefix} ${selectedOption?.displayName ?? ''}`
-        : savedSelection
-          ? `${providerSelectionText.selectedPrefix} ${savedSelection.modelId}\n${providerSelectionText.unavailableSelection}`
-          : providerSelectionText.selectPrompt;
+  const selectionMessage = selectionSummaryMessage({
+    loading,
+    loadError,
+    available: resolution.ok,
+    displayName: selectedOption?.displayName,
+    savedModelId: savedSelection?.modelId,
+    presentation,
+  });
   return (
     <View style={styles.root}>
       <ScrollView
