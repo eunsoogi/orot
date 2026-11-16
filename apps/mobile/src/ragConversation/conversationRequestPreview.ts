@@ -1,3 +1,4 @@
+import { MAX_CONVERSATION_PREVIEW_LENGTH } from '../storage/conversationPreviewLimits';
 import { applyWorkflowStreamEvent } from '../agent/workflowActivity';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 import type { ConversationArtifactSource } from './conversationArtifactSources';
@@ -15,6 +16,7 @@ export function createConversationRequestPreview(input: {
   let admitted = false;
   let text = '';
   let writes: Promise<void> = Promise.resolve();
+  let pending: { boundary: number; text: string } | undefined;
   return {
     async invalidate() {
       await writes;
@@ -40,14 +42,27 @@ export function createConversationRequestPreview(input: {
     onStream(event: MultiAgentResponderStreamEvent) {
       if (event.type === 'initial_response') return;
       if (!input.current() || !admitted || boundary === undefined) return;
+      // Only cumulative deltas may replace an unstarted snapshot. Resets/replacements
+      // keep their ordering, and an active atomic storage write is never modified.
+      if (event.type !== 'text_delta') pending = undefined;
       text = applyWorkflowStreamEvent(text, event);
       if (!text) return;
       const currentBoundary = boundary;
-      const currentText = text;
+      if (
+        pending?.boundary === currentBoundary &&
+        text.length <= MAX_CONVERSATION_PREVIEW_LENGTH &&
+        text.startsWith(pending.text)
+      ) {
+        pending.text = text;
+        return;
+      }
+      const snapshot = { boundary: currentBoundary, text };
+      pending = snapshot;
       writes = writes
         .then(async () => {
+          if (pending === snapshot) pending = undefined;
           if (
-            !(await input.turn.writePreview(currentBoundary, currentText)) &&
+            !(await input.turn.writePreview(currentBoundary, snapshot.text)) &&
             boundary === currentBoundary
           ) {
             admitted = false;
