@@ -1,3 +1,5 @@
+import type { OutboundProcessingRequest } from '@orot/agent-runtime';
+import { executionNeedsDecision } from '../../../agent/execution/executionDecisionObserver';
 import type { LanguageModelExecutionOptions } from '@orot/model-runtime';
 import { providerSuccess } from '@orot/model-runtime';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
@@ -65,6 +67,7 @@ function processingProvider() {
 test('visit turn forwards the original receipt through its selected option before output', async () => {
   const f = processingProvider();
   const onProviderReceipt = jest.fn();
+  const onExecutionState = jest.fn();
   jest
     .mocked(defaultVisitQuestionRouteOperations.generate)
     .mockImplementation(async input => {
@@ -90,11 +93,18 @@ test('visit turn forwards the original receipt through its selected option befor
   const work = turn({
     question: 'Synthetic visit request',
     signal: new AbortController().signal,
-    resolveSelectedAi: async () => selectedReportProvider(f.provider),
-    confirmConsent: async () => true,
-    observer: { onProviderReceipt },
+    resolveSelectedAi: async () => selectedReportProvider(f.provider, true),
+    confirmConsent: async request => {
+      executionNeedsDecision(request.signal);
+      return true;
+    },
+    observer: { onProviderReceipt, onExecutionState },
   });
   await f.ready;
+  expect(onExecutionState.mock.calls.slice(0, 2)).toEqual([
+    ['decision'],
+    ['working'],
+  ]);
   expect(onProviderReceipt).not.toHaveBeenCalled();
   f.acknowledge();
   expect(onProviderReceipt).toHaveBeenCalledWith('response_started');
@@ -106,16 +116,26 @@ test('visit turn forwards the original receipt through its selected option befor
 test('summary service preserves processing callback before its final model result', async () => {
   const f = processingProvider();
   const onProviderReceipt = jest.fn();
+  const onExecutionState = jest.fn();
   const service = createHealthSummaryService({
-    selectedAi: async () => selectedReportProvider(f.provider) as never,
+    selectedAi: async () => selectedReportProvider(f.provider, true) as never,
     loadData: async () => ({
       ...localData([]).data,
       readHealthContext: jest.fn(),
     }),
     registry: new LocalEvidenceReferenceRegistry(),
-    consent: { authorize: async () => 'authorized' },
+    consent: {
+      authorize: async request => {
+        executionNeedsDecision(request.signal);
+        return 'authorized';
+      },
+    },
     createRunId: () => 'synthetic-summary',
     runner: (async options => {
+      // The synthetic runner exercises the same consent port before dispatch.
+      await options.consent.authorize({
+        signal: new AbortController().signal,
+      } as never);
       await options.provider.generate({ messages: [] } as never);
       return { status: 'failure' } as never;
     }) as typeof runDiseaseHypothesisAnalysis,
@@ -123,9 +143,13 @@ test('summary service preserves processing callback before its final model resul
   const work = service(
     { question: 'Synthetic summary request' },
     new AbortController().signal,
-    { onProviderReceipt },
+    { onProviderReceipt, onExecutionState },
   );
   await f.ready;
+  expect(onExecutionState.mock.calls.slice(0, 2)).toEqual([
+    ['decision'],
+    ['working'],
+  ]);
   expect(onProviderReceipt).not.toHaveBeenCalled();
   f.acknowledge();
   expect(onProviderReceipt).toHaveBeenCalledWith('response_started');
@@ -139,12 +163,25 @@ test('real report service observes processing after consent and before output', 
     await prepareReportDatabase(db.database);
     const f = processingProvider();
     const onProviderReceipt = jest.fn();
-    const authorize = jest.fn(async () => 'authorized' as const);
+    const onExecutionState = jest.fn();
+    const authorize = jest.fn(async (request?: OutboundProcessingRequest) => {
+      expect(onExecutionState).not.toHaveBeenCalled();
+      expect(request).toBeDefined();
+      if (request) executionNeedsDecision(request.signal);
+      return 'authorized' as const;
+    });
     const work = reportService(db.database, f.provider, {
       remoteProcessing: true,
       authorize,
-    })({ ...reportRequest(), observer: { onProviderReceipt } });
+    })({
+      ...reportRequest(),
+      observer: { onProviderReceipt, onExecutionState },
+    });
     await f.ready;
+    expect(onExecutionState.mock.calls.slice(0, 2)).toEqual([
+      ['decision'],
+      ['working'],
+    ]);
     expect(authorize).toHaveBeenCalled();
     expect(onProviderReceipt).not.toHaveBeenCalled();
     f.acknowledge();
@@ -163,11 +200,16 @@ test('refused report consent never invokes provider or records read', async () =
     await prepareReportDatabase(db.database);
     const f = processingProvider();
     const onProviderReceipt = jest.fn();
+    const onExecutionState = jest.fn();
     await reportService(db.database, f.provider, {
       remoteProcessing: true,
       authorize: async () => 'renewal_required',
-    })({ ...reportRequest(), observer: { onProviderReceipt } });
+    })({
+      ...reportRequest(),
+      observer: { onProviderReceipt, onExecutionState },
+    });
     expect(f.provider.generate).not.toHaveBeenCalled();
+    expect(onExecutionState).not.toHaveBeenCalled();
     expect(onProviderReceipt).not.toHaveBeenCalled();
   } finally {
     db.close();
