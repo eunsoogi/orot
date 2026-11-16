@@ -90,7 +90,7 @@ export const ragConversationKo = {
   'ragConversation.failureStaleEvidence':
     '기록이 변경되어 답변을 확인하지 못했어요. 다시 시도해 주세요.',
   'ragConversation.failureVisitNoAppointment':
-    '진료 예약을 확인할 수 없어요. 홈에서 예약을 선택하고 다시 시작해 주세요.',
+    '진료 예약을 확인할 수 없어요. 일정에서 예정된 진료를 확인하고 다시 시도해 주세요.',
   'ragConversation.failureVisitSavedUnavailable':
     '저장된 진료 질문을 확인하지 못했어요. 다시 불러온 뒤 시도해 주세요.',
   'ragConversation.failureBudget':

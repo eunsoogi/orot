@@ -78,7 +78,7 @@ test('does not invoke the provider when the selected visit is absent', async () 
   expect(generate).not.toHaveBeenCalled();
 });
 
-test('does not silently select the next visit when no target was chosen', async () => {
+test('resolves the next confirmed visit for the generic conversation action', async () => {
   const loadAppointment = jest.fn(async () => appointment);
   const resolveSelectedAi = jest.fn(async () => selected);
   const result = await generateConversationVisitQuestions({
@@ -105,9 +105,9 @@ test('does not silently select the next visit when no target was chosen', async 
     isCurrentOwner: () => true,
     signal: new AbortController().signal,
   });
-  expect(result.status).toBe('no_appointment');
-  expect(loadAppointment).not.toHaveBeenCalled();
-  expect(resolveSelectedAi).not.toHaveBeenCalled();
+  expect(result.status).toBe('ready');
+  expect(loadAppointment).toHaveBeenCalledWith(expect.any(String), undefined);
+  expect(resolveSelectedAi).toHaveBeenCalledTimes(1);
 });
 
 test('rejects regeneration after the appointment changes without replacing the draft', async () => {
@@ -137,4 +137,56 @@ test('rejects regeneration after the appointment changes without replacing the d
   expect(result.status).toBe('appointment_changed');
   expect(generate).not.toHaveBeenCalled();
   expect(review.items[0]?.question.identity?.id).toBe('draft');
+});
+
+test.each([undefined, 'deleted', ''])(
+  'does not generate for an unavailable target %s',
+  async appointmentId => {
+    const loadAppointment = jest.fn(async () => null);
+    const generate = jest.fn();
+    const resolveSelectedAi = jest.fn(async () => selected);
+    const result = await generateConversationVisitQuestions({
+      ownerKey: 'session:missing',
+      appointmentId,
+      request: '요청',
+      operations: {
+        loadAppointment,
+        generate,
+      } as unknown as VisitQuestionRouteOperations,
+      loadSaved: jest.fn(),
+      resolveSelectedAi,
+      confirmConsent: jest.fn(),
+      isCurrentOwner: () => true,
+      signal: new AbortController().signal,
+    });
+    expect(result.status).toBe('no_appointment');
+    expect(loadAppointment).toHaveBeenCalledTimes(appointmentId === '' ? 0 : 1);
+    expect(resolveSelectedAi).not.toHaveBeenCalled();
+    expect(generate).not.toHaveBeenCalled();
+  },
+);
+
+test('rejects a late automatic appointment lookup after cancellation', async () => {
+  const controller = new AbortController();
+  const resolveSelectedAi = jest.fn(async () => selected);
+  const generate = jest.fn();
+  const result = await generateConversationVisitQuestions({
+    ownerKey: 'session:cancel',
+    request: '요청',
+    operations: {
+      loadAppointment: async () => {
+        controller.abort();
+        return appointment;
+      },
+      generate,
+    } as unknown as VisitQuestionRouteOperations,
+    loadSaved: jest.fn(),
+    resolveSelectedAi,
+    confirmConsent: jest.fn(),
+    isCurrentOwner: () => true,
+    signal: controller.signal,
+  });
+  expect(result.status).toBe('cancelled');
+  expect(resolveSelectedAi).not.toHaveBeenCalled();
+  expect(generate).not.toHaveBeenCalled();
 });
