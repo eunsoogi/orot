@@ -6,28 +6,27 @@ import type {
   ConversationSessions,
 } from './conversationSessionTypes';
 
-/** Binds the optional durable steering affordance without replacing the existing Stop action. */
+/** Routes typed in-flight messages through the current durable owner; empty input keeps Stop. */
 export function ConversationSteeringComposer({
   session,
   store,
   ...props
 }: Omit<
   ComponentProps<typeof ConversationComposer>,
-  'value' | 'busy' | 'steeringControls'
+  'value' | 'busy' | 'steeringControls' | 'onSteer' | 'steeringDisabled'
 > & { session: ConversationSession; store: ConversationSessions }) {
   return (
     <ConversationComposer
       {...props}
       value={session.draft}
       busy={session.busy}
-      steeringControls={
-        <ConversationSteeringControls
-          session={session}
-          onSend={() => {
-            store.steer(session.id).catch(() => {});
-          }}
-        />
+      onSteer={() => {
+        store.steer(session.id).catch(() => {});
+      }}
+      steeringDisabled={
+        !session.steeringAvailable || session.steeringSubmitting
       }
+      steeringControls={<ConversationSteeringControls session={session} />}
     />
   );
 }

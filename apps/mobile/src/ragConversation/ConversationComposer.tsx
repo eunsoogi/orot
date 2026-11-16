@@ -33,8 +33,12 @@ export function ConversationComposer({
   status = '',
   cancelling = false,
   steeringControls,
+  onSteer,
+  steeringDisabled = false,
 }: {
   readonly steeringControls?: ReactNode;
+  readonly onSteer?: () => void;
+  readonly steeringDisabled?: boolean;
   readonly value: string;
   readonly busy: boolean;
   /** Acknowledgment only: the request owner retains commit/settlement ownership. */
@@ -70,6 +74,10 @@ export function ConversationComposer({
   const copy = getRagConversationCopy();
   const { fontScale, height } = useWindowDimensions();
   const stopping = busy && cancelling;
+  // A draft changes the primary intent to steering, never an implicit cancellation.
+  // An unready durable owner disables Send rather than falling back to Stop.
+  const steering = busy && Boolean(value.trim()) && Boolean(onSteer);
+  const stopAction = busy && !steering;
   const textScale = Math.max(1, fontScale);
   // Native text scales its line but not its insets; reserve a full scaled line.
   const minimumHeight = Math.max(44, Math.ceil(22 * textScale + 22));
@@ -124,11 +132,14 @@ export function ConversationComposer({
         value={value}
       />
       <ConversationGlassAction
-        busy={busy}
-        label={stopping ? copy.cancelling : busy ? copy.cancel : copy.send}
+        busy={stopAction}
+        label={
+          stopping ? copy.cancelling : stopAction ? copy.cancel : copy.send
+        }
         // A pending or failed attachment must not turn an intended photo send into text-only delivery.
         disabled={
           stopping ||
+          (steering && steeringDisabled) ||
           (!busy &&
             (disabled ||
               (!value.trim() &&
@@ -145,7 +156,9 @@ export function ConversationComposer({
         }
         onPress={() => {
           // Guard the current callback as well as the native disabled state.
-          if (!stopping) (busy ? onCancel : onSend)();
+          if (stopping || (steering && steeringDisabled)) return;
+          if (steering) onSteer?.();
+          else (busy ? onCancel : onSend)();
         }}
       />
     </View>
