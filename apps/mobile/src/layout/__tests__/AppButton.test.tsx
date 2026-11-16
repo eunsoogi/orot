@@ -39,7 +39,7 @@ it('keeps compact neutral and text actions at or above the 44pt target', async (
 
   expect(StyleSheet.flatten(neutralButton.props.style)).toMatchObject({
     backgroundColor: appColors.surface,
-    borderWidth: 1,
+    borderWidth: 0,
     minHeight: 44,
     minWidth: 44,
   });
@@ -53,8 +53,7 @@ it('keeps compact neutral and text actions at or above the 44pt target', async (
   const secondaryButton = screen.getByRole('button', { name: 'Previous' });
   expect(StyleSheet.flatten(secondaryButton.props.style)).toMatchObject({
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderWidth: 1,
+    borderWidth: 0,
     minHeight: 44,
     minWidth: 44,
   });

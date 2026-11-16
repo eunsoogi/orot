@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from './appColors';
 
-/** Shared visual contract for provider headings, account headers and model choices. */
+/** Filled grouping replaces decorative borders; option symbols still convey selection without color. */
 export const providerSettingsStyles = StyleSheet.create({
   section: { gap: 12, marginTop: 22 },
   heading: {
@@ -14,8 +14,7 @@ export const providerSettingsStyles = StyleSheet.create({
     gap: 8,
     padding: 6,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: appColors.border,
+    borderWidth: 0,
     backgroundColor: appColors.surface,
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -42,8 +41,7 @@ export const providerSettingsStyles = StyleSheet.create({
     gap: 14,
     minHeight: 82,
     padding: 16,
-    borderColor: appColors.border,
-    borderWidth: 1,
+    borderWidth: 0,
     borderRadius: 20,
     backgroundColor: appColors.surface,
   },

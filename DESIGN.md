@@ -99,7 +99,7 @@ Keep actual touch targets at least 44pt. The visible glyph size does not establi
 The known oversized caller is the 108pt recording action in [`RecordsRouteEntries`](apps/mobile/src/routes/RecordsRouteEntries.tsx). Its Records layout belongs to the screen redesign lane, which should consume these shared styles while keeping recording as the clear primary action.
 
 - `primary` is the filled action for the clearest next step.
-- `secondary` is a bordered surface action with primary text; `neutral` uses the same surface with neutral text.
+- `secondary` is a borderless filled surface action with primary text; `neutral` uses the same surface with neutral text.
 - `list` fills the caller's row with a transparent, left-aligned action. It accepts non-interactive `leadingContent` and `trailingContent` plus a `summary`; unless the caller supplies an explicit accessible label, the button announces its title and summary together. Keep accessory content decorative, and leave group layout, dividers, icon meaning and the action callback with the caller.
 - `text` is an unfilled, centered action for inline or low-emphasis use.
 - `destructive` uses the danger surface and text. Keep deletion and other confirmation flows with the caller.
@@ -108,6 +108,14 @@ The known oversized caller is the 108pt recording action in [`RecordsRouteEntrie
 - `busy` shows progress, exposes the button's busy accessibility state, and disables repeated activation while preserving the action label. The caller owns the operation and when to start or stop progress.
 
 Keep actual touch targets at least 44pt in every appearance and size. Text should use Dynamic Type scaling, and surface, text, and danger colors should use the dynamic shared tokens. Variants change presentation only; callers retain ownership of callbacks, data, routing, consent and save semantics.
+
+### Borderless-first surfaces
+
+Ordinary shared action surfaces, provider account cards, model choices, saved-model summaries and segmented-control containers use fill, spacing and rounded grouping rather than decorative outlines. Keep selected symbols, accessible selection state and filled selected segments; removing an outline must not remove a state cue. The shared button retains its minimum target and Dynamic Type geometry.
+
+Borders are not prohibited everywhere. Preserve functional text-input boundaries, keyboard focus indicators, selected-state outlines when no equivalent non-color cue exists, clinical warning/destructive emphasis and separators needed to distinguish dense data. UIKit owns native Glass edges; never cover them with a custom outline or imitate them with transparency. A screen-local border is an exception to review by function, not permission to add decorative frames around ordinary content.
+
+This shared-surface migration does not change consent, provider availability, selection, cancellation, routing or data handling. Feature-specific medical record, appointment and editing surfaces remain subject to the functional exceptions above and should be evaluated separately before removal. Verify light and dark appearances with readable labels and identifiable selected states; native focus and increased-contrast behavior cannot be inferred from a style-only test.
 
 ## Navigation, safe areas, and keyboards
 
@@ -119,12 +127,12 @@ iOS navigation uses native UIKit controls in [`NavigationGlassView.swift`](apps/
 
 The five root tabs and their accessible names are defined in [`rootTabs.ts`](apps/mobile/src/navigation/rootTabs.ts). Native tab composition lives in [`NavigationGlassComponents.swift`](apps/mobile/ios/Navigation/NavigationGlassComponents.swift) and [`NavigationGlassView.swift`](apps/mobile/ios/Navigation/NavigationGlassView.swift); the JavaScript fallback is [`RootTabActions.tsx`](apps/mobile/src/navigation/RootTabActions.tsx); height constants are in [`navigationLayout.ts`](apps/mobile/src/navigation/navigationLayout.ts). Root tabs and contextual actions have distinct sizing and selection behavior. Use the following root-tab dimensions and platform treatments:
 
-| Property | Native iOS | JavaScript fallback |
-| --- | --- | --- |
-| Root-tab surface | 60pt surface with 52pt root controls | Minimum item height 52pt plus 4pt vertical surface padding on each side; may grow with large text |
-| Icon and label | SF Symbol 18pt regular, `UILabel` 12pt medium, 4pt gap | 18pt icon on a 20pt line, 12pt label on a 16pt line, 2pt gap |
-| Selected state | Capsule around icon and label; `secondarySystemFill` with appearance-aware foreground, brighter in dark high contrast | Radius 26pt capsule with `primaryAction` background and `onPrimary` foreground |
-| Touch target | Button height 52pt, minimum width 44pt | Minimum item height 52pt and width 44pt |
+| Property              | Native iOS                                                                                                                                                                                       | JavaScript fallback                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| Root-tab surface      | 60pt surface with 52pt root controls                                                                                                                                                             | Minimum item height 52pt plus 4pt vertical surface padding on each side; may grow with large text |
+| Icon and label        | SF Symbol 18pt regular, `UILabel` 12pt medium, 4pt gap                                                                                                                                           | 18pt icon on a 20pt line, 12pt label on a 16pt line, 2pt gap                                      |
+| Selected state        | Capsule around icon and label; `secondarySystemFill` with appearance-aware foreground, brighter in dark high contrast                                                                            | Radius 26pt capsule with `primaryAction` background and `onPrimary` foreground                    |
+| Touch target          | Button height 52pt, minimum width 44pt                                                                                                                                                           | Minimum item height 52pt and width 44pt                                                           |
 | Material and emphasis | Root tabs share `UIGlassEffect` on iOS 26+ and system material on earlier iOS; primary task actions use `.prominentGlass()` or `.filled()`. Back and Home each use regular `.glass()` on iOS 26+ | React Native `View`; no native Liquid Glass material                                              |
 
 The default detail surface is `NAVIGATION_SURFACE_HEIGHT` 48pt; the root-tab surface is 60pt. Do not interchange them. When the keyboard is hidden and the bar handles its own safe area, move the root-tab surface 10pt into the bottom inset to reduce excess screen-edge space. Keep the full available inset while the keyboard is visible. Native selected tabs use system fill colors while JavaScript uses the app's primary action color. Preserve the same recognizable selection hierarchy on both platforms.

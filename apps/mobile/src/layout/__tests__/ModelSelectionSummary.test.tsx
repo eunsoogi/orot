@@ -11,6 +11,7 @@ it('gives both model types the same readable inset without truncating long ident
     StyleSheet.flatten(view.getByTestId('summary-card').props.style),
   ).toMatchObject({
     padding: 16,
+    borderWidth: 0,
     borderRadius: 20,
   });
   expect(view.getByTestId('summary')).toHaveTextContent(new RegExp(value));

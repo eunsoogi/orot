@@ -86,11 +86,11 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   privacyCopy: { flex: 1, color: appColors.secondary, fontSize: 14 },
+  // Fill groups identity; privacy copy and explicit confirmation remain outside this decoration.
   summary: {
     padding: 16,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: appColors.border,
+    borderWidth: 0,
     backgroundColor: appColors.surface,
   },
   summaryText: { fontSize: 16, fontWeight: '600', color: appColors.text },
