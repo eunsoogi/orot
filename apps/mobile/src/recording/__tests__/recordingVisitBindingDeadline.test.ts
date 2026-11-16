@@ -15,7 +15,7 @@ test('a late database open cannot insert an association after its deadline', asy
   let open!: (value: never) => void;
   const load = jest.fn(
     () =>
-      new Promise(resolve => {
+      new Promise<never>(resolve => {
         open = resolve;
       }),
   );
