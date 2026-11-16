@@ -117,6 +117,13 @@ final class ConversationExecutionModule: RCTEventEmitter {
             return
         }
         guard continued[requestId] == nil, UIApplication.shared.isProtectedDataAvailable else { return }
+        // A dispatch outside the foreground cannot submit a continued task. Do not
+        // cache that non-attempt: a later authorized foreground dispatch may try.
+        // Actual scheduler refusals remain cached, so they are never retried here.
+        guard UIApplication.shared.applicationState == .active else {
+            publish(["kind": "continued", "state": "continued-refused", "requestId": requestId])
+            return
+        }
         if #available(iOS 26.0, *) {
             let work = ConversationContinuedProcessing(status: { [weak self] state, failureCode in
                 var event: [String: Any] = ["kind": "continued", "state": state, "requestId": requestId]
