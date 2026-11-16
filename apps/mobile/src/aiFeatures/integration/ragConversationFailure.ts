@@ -9,8 +9,9 @@ export function ragConversationFailure(
   signal: AbortSignal,
   stage: 'selection' | 'data' | 'workflow',
 ): RagConversationOutcome {
-  reportConversationException('conversation_dispatch', error);
   if (stage === 'data') reportConversationPreparationFailure(error);
+  // Data preparation already emits its more specific closed history category.
+  else reportConversationException('conversation_dispatch', error);
   if (signal.aborted || (error instanceof Error && error.name === 'AbortError'))
     return { status: 'failure', kind: 'cancelled' };
   if (error instanceof AiProviderSelectionError)
