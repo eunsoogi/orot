@@ -64,9 +64,11 @@ test('keeps final questions in the assistant lane with compact inner padding', a
   expect(screen.getByTestId('conversation-assistant-message')).toHaveStyle({
     alignSelf: 'flex-start',
     maxWidth: '85%',
+    width: '85%',
   });
   expect(screen.getByTestId('conversation-message-body')).toHaveStyle({
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     gap: 8,
   });
   expect(screen.getByTestId('synthetic-question-list')).toBeTruthy();

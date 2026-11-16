@@ -84,7 +84,14 @@ export function ConversationMessage({
       testID={
         user ? 'conversation-user-message' : 'conversation-assistant-message'
       }
-      style={user ? styles.userMessage : styles.assistantMessage}
+      style={
+        user
+          ? styles.userMessage
+          : [
+              styles.assistantMessage,
+              message.visitQuestions && styles.visitQuestionsMessage,
+            ]
+      }
     >
       {!user && message.dailyReport ? (
         <Text>

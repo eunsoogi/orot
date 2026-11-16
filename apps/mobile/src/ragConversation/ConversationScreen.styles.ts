@@ -58,8 +58,9 @@ export const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: appColors.surface,
   },
-  // Compact inner spacing must not change the assistant message lane.
-  visitQuestionsBody: { padding: 12, gap: 8 },
+  // Fix structured content width without removing the opposite speaker lane.
+  visitQuestionsMessage: { width: '85%' },
+  visitQuestionsBody: { paddingVertical: 12, paddingHorizontal: 8, gap: 8 },
   compactStreamingBody: { paddingBottom: 0 },
   messageText: { fontSize: 16, lineHeight: 24 },
   activity: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
