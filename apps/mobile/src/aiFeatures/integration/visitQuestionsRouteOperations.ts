@@ -1,8 +1,12 @@
-import { DEFAULT_MULTI_AGENT_BUDGET } from '@orot/agent-runtime';
+import { observeVisitPreflight } from './visitPreflightDiagnostics';
+import {
+  prepareVisitRouteContext,
+  samePreparedVisit,
+  finishVisitPreparation,
+} from './visitRoutePreparation';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import type { AiWorkflowObserver } from '../../agent/workflowActivity';
 import type { Appointment } from '@orot/domain';
-import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
 import { runVisitQuestionWorkflow } from '../../agent/visitQuestions/workflow';
 import type { VisitQuestionEvidenceItem } from '../../agent/visitQuestions/taskContract';
 import type { ProviderSelection } from '../../providers/selection/types';
@@ -10,7 +14,6 @@ import type { SelectedAiResolution } from './provider';
 import { nextVisitQuestionsCopy as copy } from '../../nextVisitQuestions/copy';
 import type { GenerationOutcome } from '../../nextVisitQuestions/types';
 import { saveVisitQuestionRoute } from './visitQuestionsRouteSave';
-import { loadVisitQuestionsContext } from './visitQuestionsContextLoader';
 import { visitQuestionPublicSearch } from './visitQuestionPublicSearch';
 import { loadVisitQuestionAppointment } from './visitQuestionAppointment';
 import {
@@ -46,6 +49,9 @@ export type VisitQuestionRouteGeneration =
 export interface VisitQuestionRouteGenerationInput {
   readonly generatedArtifactTools?: AiFeatureServices['generatedArtifactTools'];
   readonly appointment: Appointment;
+  /** Gate external research after optional local-only preparation overlap. */
+  readonly beforeResearch?: () => Promise<boolean>;
+  readonly isCurrentOwner?: () => boolean;
   readonly request?: string;
   readonly selectedAi: ReadySelection;
   readonly confirmConsent: (
@@ -74,28 +80,13 @@ function revalidateSource(context: ReadyContext) {
     !signal.aborted && (await context.revalidateEvidence([reference]));
 }
 
-function sameAppointment(context: ReadyContext, appointment: Appointment) {
-  return (
-    context.appointment.id === appointment.id &&
-    localEvidenceFingerprint(context.appointment) ===
-      localEvidenceFingerprint(appointment)
-  );
-}
-
 async function generate(
   input: VisitQuestionRouteGenerationInput,
 ): Promise<VisitQuestionRouteGeneration> {
   if (input.signal.aborted) return { status: 'cancelled' };
-  const { prepareUpcomingVisitQuestionContext } =
-    await loadVisitQuestionsContext();
-  if (input.signal.aborted) return { status: 'cancelled' };
-  const now = new Date().toISOString();
-  const context = await prepareUpcomingVisitQuestionContext({
-    now,
-    appointmentId: input.appointment.id,
-    signal: input.signal,
-    maxEvidenceItems: DEFAULT_MULTI_AGENT_BUDGET.maxEvidenceItems - 3,
-  });
+  const context = await observeVisitPreflight('preflight_context', () =>
+    prepareVisitRouteContext(input.appointment.id, input.signal),
+  );
   if (input.signal.aborted || context.status === 'cancelled')
     return { status: 'cancelled' };
   if (context.status !== 'ready') {
@@ -104,25 +95,38 @@ async function generate(
       message: copy.appointment.none,
     };
   }
-  if (!sameAppointment(context, input.appointment)) {
+  if (!samePreparedVisit(context.appointment, input.appointment)) {
     return {
       status: 'refresh_required',
       message: copy.generation.refreshRequired,
     };
   }
 
-  const publicSearch = await visitQuestionPublicSearch({
-    selected: input.selectedAi,
-    confirm: input.confirmConsent,
-    query: context.query,
-    signal: input.signal,
-  });
-  if (publicSearch.result.status === 'cancelled')
+  const preparation = await finishVisitPreparation(context, input);
+  if (preparation === 'cancelled') return { status: preparation };
+  if (preparation === 'refresh_required')
+    return { status: preparation, message: copy.generation.refreshRequired };
+  const publicSearch = await observeVisitPreflight('preflight_public', () =>
+    visitQuestionPublicSearch({
+      selected: input.selectedAi,
+      confirm: input.confirmConsent,
+      query: context.query,
+      signal: input.signal,
+    }),
+  );
+  if (
+    publicSearch.result.status === 'cancelled' ||
+    input.isCurrentOwner?.() === false
+  )
     return { status: 'cancelled' };
 
   const collections: EvidenceCoverageState[] = [context.evidence];
-  const generated = await input.generatedArtifactTools?.();
-  if (input.signal.aborted) return { status: 'cancelled' };
+  const generated = await observeVisitPreflight(
+    'preflight_artifacts',
+    async () => input.generatedArtifactTools?.(),
+  );
+  if (input.signal.aborted || input.isCurrentOwner?.() === false)
+    return { status: 'cancelled' };
   const periodTool = context.healthContextTool;
   const workflowContext: ReadyContext = {
     ...context,
