@@ -1,3 +1,4 @@
+import { conversationChoiceActions } from '../../ragConversation/selectConversationChoice';
 import { useCallback, useContext } from 'react';
 import type { ReactElement } from 'react';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
@@ -131,11 +132,10 @@ export function AiFeatureFlow({
               renderVisitQuestions={renderVisitQuestions}
               onRouteStateChange={reportVisitQuestionsRouteState}
               onBack={requestBack}
-              onOpenHealthSummary={() => pushFeatureRoute('health-summary')}
-              onOpenVisitQuestions={() => pushFeatureRoute('visit-questions')}
-              onOpenDiseaseHypotheses={() =>
-                pushFeatureRoute('disease-hypotheses')
-              }
+              {...conversationChoiceActions(
+                conversationStore,
+                isConversationVisible,
+              )}
               onOpenRagConversation={() => pushFeatureRoute('rag-conversation')}
               onOpenDailyReportChat={target => {
                 if (!isEntryCurrent?.() || !reminderRuntime) return;

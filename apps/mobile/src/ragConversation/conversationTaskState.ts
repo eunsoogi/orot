@@ -43,6 +43,15 @@ export function createConversationTaskState(input: {
       routeOwners.set(routeKey, owner);
       return owner;
     },
+    // New intent changes pending context, not retained messages or saved report cards.
+    prepareEntry(id: number, entryPrompt: string) {
+      if (input.activeId() !== id || input.find(id)?.quarantined) return;
+      input.update(id, {
+        entryPrompt,
+        entryIntent: undefined,
+        dailyReport: undefined,
+      });
+    },
     selectDailyReport(
       id: number,
       dailyReport: NonNullable<ConversationSession['dailyReport']>,

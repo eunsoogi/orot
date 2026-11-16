@@ -1,3 +1,4 @@
+import { canSelectConversationChoice } from './selectConversationChoice';
 import { ConversationInterruptionRecovery } from './ConversationInterruptionRecovery';
 import {
   ConversationRetainedActions,
@@ -117,7 +118,10 @@ export function ConversationTaskHeader({
   );
   return (
     <>
-      <ConversationRetainedActions actions={retainedActions} />
+      <ConversationRetainedActions
+        actions={retainedActions}
+        disabled={!canSelectConversationChoice(store, session)}
+      />
       <DailyReportConversationHeader
         report={selectedReport}
         onRequest={

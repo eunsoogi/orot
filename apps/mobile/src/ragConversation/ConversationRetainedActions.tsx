@@ -7,11 +7,13 @@ export interface RetainedHealthActions {
   readonly healthSummary?: () => void;
 }
 
-/** Open the existing intent routes, preserving draft ownership and explicit-send consent. */
+/** Select an in-place purpose without replacing a draft or automatically sending it. */
 export function ConversationRetainedActions({
   actions,
+  disabled = false,
 }: {
   readonly actions?: RetainedHealthActions;
+  readonly disabled?: boolean;
 }) {
   if (!actions) return null;
   return (
@@ -20,21 +22,21 @@ export function ConversationRetainedActions({
         title={t('conversationActions.possibilities')}
         testID="conversation-open-possibilities"
         variant="secondary"
-        disabled={!actions.possibilities}
+        disabled={disabled || !actions.possibilities}
         onPress={actions.possibilities ?? (() => {})}
       />
       <AppButton
         title={t('visitQuestions.conversation.actions.prepare')}
         testID="conversation-open-visit-questions"
         variant="secondary"
-        disabled={!actions.visitQuestions}
+        disabled={disabled || !actions.visitQuestions}
         onPress={actions.visitQuestions ?? (() => {})}
       />
       <AppButton
         title={t('conversationActions.healthSummary')}
         testID="conversation-open-health-summary"
         variant="secondary"
-        disabled={!actions.healthSummary}
+        disabled={disabled || !actions.healthSummary}
         onPress={actions.healthSummary ?? (() => {})}
       />
     </>
