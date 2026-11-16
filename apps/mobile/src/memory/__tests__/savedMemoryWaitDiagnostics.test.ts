@@ -106,10 +106,12 @@ test('failed protected read is not genuine empty and disabled state starts no re
   const load = jest
     .fn()
     .mockRejectedValue(new Error('synthetic private failure'));
-  const view = await renderHook(
-    ({ enabled }) => useSavedMemories(load, enabled),
-    { initialProps: { enabled: false } },
-  );
+  const view = await renderHook<
+    ReturnType<typeof useSavedMemories>,
+    { enabled: boolean }
+  >(({ enabled }) => useSavedMemories(load, enabled), {
+    initialProps: { enabled: false },
+  });
   expect(load).not.toHaveBeenCalled();
   expect(report).not.toHaveBeenCalled();
   await view.rerender({ enabled: true });

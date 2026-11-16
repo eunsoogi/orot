@@ -17,9 +17,9 @@ const transformed = transformSync(readFileSync(filename, 'utf8'), {
       paths: [require.resolve('@babel/preset-env')],
     }),
   ],
-})!;
-const loaded = { exports: {} as typeof import('../savedLocalMemories') };
-const dependencies: Record<string, () => unknown> = {
+});
+const loaded = { exports: {} };
+const dependencies = {
   './savedMemoryReadDiagnostics': () =>
     require('../savedMemoryReadDiagnostics'),
   '@orot/agent-memory': () => require('@orot/agent-memory'),
@@ -27,10 +27,10 @@ const dependencies: Record<string, () => unknown> = {
     require('../../storage/agentMemoryStorage'),
   '../storage/secureDatabase': () => require('../../storage/secureDatabase'),
 };
-runInNewContext(transformed.code!, {
+runInNewContext(transformed.code, {
   module: loaded,
   exports: loaded.exports,
-  require: (name: string) => dependencies[name]?.() ?? require(name),
+  require: name => dependencies[name]?.() ?? require(name),
 });
 const { loadSavedLocalMemories } = loaded.exports;
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
@@ -53,11 +53,7 @@ const secretError = new Error(
   'synthetic private payload must not enter diagnostics',
 );
 
-test.each([
-  'saved_memory_modules',
-  'saved_memory_open',
-  'saved_memory_read',
-] as const)(
+test.each(['saved_memory_modules', 'saved_memory_open', 'saved_memory_read'])(
   'reports only fixed %s failure tokens and preserves the exact error',
   async stage => {
     await expect(
@@ -104,7 +100,7 @@ test('an open failure is not turned into empty records or an inferred locked sta
 });
 
 test('enumeration failure stays distinct from successful empty records', async () => {
-  jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue({} as never);
+  jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue({});
   jest
     .mocked(listSavedMemories)
     .mockRejectedValueOnce(secretError)
