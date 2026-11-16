@@ -52,13 +52,17 @@ test('keeps the composer outside the conversation scroll and bounds long drafts'
   const overlay = screen.getByTestId('conversation-floating-composer-overlay');
   expect(composer.parent).toBe(overlay);
   expect(StyleSheet.flatten(overlay.props.style)).toMatchObject({
-    position: 'absolute', bottom: 0, left: 0, right: 0,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   });
   await fireEvent(overlay, 'layout', {
     nativeEvent: { layout: { height: 96, width: 390, x: 0, y: 500 } },
   });
-  expect(StyleSheet.flatten(history.props.contentContainerStyle).paddingBottom)
-    .toBe(116);
+  expect(
+    StyleSheet.flatten(history.props.contentContainerStyle).paddingBottom,
+  ).toBe(116);
   const input = screen.getByTestId('rag-conversation-input');
   await fireEvent.changeText(input, '합성 질문\n'.repeat(80));
   expect(StyleSheet.flatten(input.props.style).maxHeight).toBeGreaterThan(44);
