@@ -1,3 +1,4 @@
+import { visitHealthFixture } from '../testing/healthContextFixture';
 import { providerDiagnostic } from '../../../providers/diagnostics';
 import { observeVisitEvidencePhase } from '../evidencePhaseDiagnostics';
 import { createVisitQuestionEvidenceRevalidator } from '../evidenceRevalidation';
@@ -137,4 +138,32 @@ test('period validation stays fail-closed while its wait is observed', async () 
     ['visit', 'evidence_period', 'started'],
     ['visit', 'evidence_period', 'completed'],
   ]);
+});
+
+test('period revalidation exposes fixed reader boundaries without changing validity', async () => {
+  const fixture = await visitHealthFixture();
+  try {
+    jest.mocked(providerDiagnostic).mockClear();
+    expect(await fixture.prepared.revalidateEvidence([fixture.item])).toBe(
+      true,
+    );
+    expect(providerDiagnostic).toHaveBeenCalledWith(
+      'visit',
+      'data',
+      'context_generation_started',
+    );
+    expect(providerDiagnostic).toHaveBeenCalledWith(
+      'visit',
+      'data',
+      'context_generation_completed',
+    );
+    jest.mocked(providerDiagnostic).mockImplementation(() => {
+      throw new Error('bridge unavailable');
+    });
+    expect(await fixture.prepared.revalidateEvidence([fixture.item])).toBe(
+      true,
+    );
+  } finally {
+    fixture.close();
+  }
 });

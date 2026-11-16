@@ -1,6 +1,8 @@
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
-export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report';
+export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report' | 'storage';
 export type Stage =
+  | 'transaction_healthkit'
+  | 'transaction_memory'
   | 'selection'
   | 'data'
   | 'workflow'
@@ -132,6 +134,8 @@ export type Outcome =
   | 'context_preparation_completed'
   | 'context_generation_started'
   | 'context_generation_completed'
+  | 'context_scheduler_started'
+  | 'context_scheduler_completed'
   | 'context_transaction_wait_started'
   | 'context_transaction_wait_completed'
   | 'context_calendar_started'

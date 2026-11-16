@@ -59,13 +59,18 @@ test('an unrelated transaction can delay calendar entry after reader preparation
     const trace = jest.fn();
     const pending = read(window, ['symptoms'], undefined, trace);
     await tick();
-    expect(trace.mock.calls).toEqual([
-      ['preparation', 'started'],
-      ['preparation', 'completed'],
-      ['generation', 'started'],
-      ['generation', 'completed'],
-      ['transaction_wait', 'started'],
-    ]);
+    expect(trace.mock.calls.filter(([phase]) => phase !== 'scheduler')).toEqual(
+      [
+        ['preparation', 'started'],
+        ['preparation', 'completed'],
+        ['generation', 'started'],
+        ['generation', 'completed'],
+        ['transaction_wait', 'started'],
+      ],
+    );
+    await new Promise<void>(done => setImmediate(done));
+    expect(trace).toHaveBeenCalledWith('scheduler', 'completed');
+    expect(trace).not.toHaveBeenCalledWith('transaction_wait', 'completed');
     release.resolve();
     await owner;
     await pending;
