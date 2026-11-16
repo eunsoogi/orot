@@ -30,6 +30,8 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
   theme,
   isSaving,
   saveMessage,
+  restorationNotice,
+  restorationWarning,
 }: {
   readonly state: InlineVisitReview<T>;
   readonly onChange: (state: InlineVisitReview<T>) => void;
@@ -38,6 +40,8 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
   readonly theme: NextVisitQuestionsTheme;
   readonly isSaving: boolean;
   readonly saveMessage?: string | null;
+  readonly restorationNotice?: string;
+  readonly restorationWarning?: boolean;
 }) {
   const pending = useRef<string | null>(null);
   const selection = inlineReviewSelection(state);
@@ -112,6 +116,19 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
         );
       })}
       <EvidenceCaveats caveats={state.caveats} theme={theme} collapsed />
+      {restorationNotice ? (
+        <Text
+          testID="inline-visit-restoration-notice"
+          accessibilityRole={restorationWarning ? 'alert' : undefined}
+          style={{
+            color: restorationWarning
+              ? theme.colors.danger
+              : theme.colors.textMuted,
+          }}
+        >
+          {restorationNotice}
+        </Text>
+      ) : null}
       {saveMessage ? (
         <Text accessibilityRole="alert" style={{ color: theme.colors.danger }}>
           {saveMessage}

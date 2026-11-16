@@ -3,6 +3,8 @@ import { t } from '../../i18n';
 /** Describe which saved-question dependencies remain available after restoration. */
 export function savedVisitQuestionNotice(input: {
   empty: boolean;
+  allGenerationMetadataRestored?: boolean;
+  hasChangedOriginal?: boolean;
   hasChangedPeriod: boolean;
   hasUnknownGeneratedSource: boolean;
   hasGeneratedOnly: boolean;
@@ -13,23 +15,31 @@ export function savedVisitQuestionNotice(input: {
 }): string {
   const notice = input.empty
     ? ''
-    : input.hasChangedPeriod && input.hasUnknownGeneratedSource
-      ? t('visitRestore.changedAndUnknown')
-      : input.hasChangedPeriod
-        ? t('visitRestore.changed')
-        : input.hasUnknownGeneratedSource
-          ? input.hasGeneratedOnly
-            ? t('visitRestore.unknownGeneratedOnly')
-            : t('visitRestore.unknownGenerated')
-          : input.hasGeneratedOnly
-            ? t('visitRestore.generatedOnly')
-            : input.onlyClarifications
-              ? t('visitRestore.clarificationsOnly')
-              : input.hasQuestionWithoutSourceSpan
-                ? t('visitRestore.missingSpan')
-                : input.hasPeriod
-                  ? t('visitRestore.periodRestored')
-                  : t('visitRestore.missingVersions');
+    : input.hasChangedOriginal
+      ? t('visitRestore.changedOriginal')
+      : input.hasChangedPeriod && input.hasUnknownGeneratedSource
+        ? t('visitRestore.changedAndUnknown')
+        : input.hasChangedPeriod
+          ? t('visitRestore.changed')
+          : input.hasUnknownGeneratedSource
+            ? input.hasGeneratedOnly
+              ? t('visitRestore.unknownGeneratedOnly')
+              : t('visitRestore.unknownGenerated')
+            : input.hasGeneratedOnly
+              ? t('visitRestore.generatedOnly')
+              : input.allGenerationMetadataRestored
+                ? t(
+                    input.onlyClarifications
+                      ? 'visitRestore.generationClarificationRestored'
+                      : 'visitRestore.generationRestored',
+                  )
+                : input.onlyClarifications
+                  ? t('visitRestore.clarificationsOnly')
+                  : input.hasQuestionWithoutSourceSpan
+                    ? t('visitRestore.missingSpan')
+                    : input.hasPeriod
+                      ? t('visitRestore.periodRestored')
+                      : t('visitRestore.missingVersions');
   // Direct public-web citations are not saved on questions; generated parents can retain separate research.
   return input.empty || input.hasGeneratedSources
     ? notice

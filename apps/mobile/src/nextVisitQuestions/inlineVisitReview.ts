@@ -19,12 +19,16 @@ export interface InlineVisitReview<T extends NextVisitEvidenceReference> {
     readonly revision: string;
   }[];
   readonly caveats: readonly EvidenceCaveat[];
+  /** Only a live generation supplies this provenance; cold candidates must not borrow saved-list caveats. */
+  readonly generationMetadata?: import('./types').VisitQuestionGenerationMetadata;
 }
 
 export interface InlineVisitSelection<T extends NextVisitEvidenceReference> {
   readonly questions: readonly NextVisitQuestion<T>[];
   readonly expectedSavedQuestions: InlineVisitReview<T>['expectedSavedQuestions'];
   readonly caveats: readonly EvidenceCaveat[];
+  /** Only a live generation supplies this provenance; cold candidates must not borrow saved-list caveats. */
+  readonly generationMetadata?: import('./types').VisitQuestionGenerationMetadata;
 }
 
 /** Create one operation-owned review; saved rows remain selected until explicitly changed. */
@@ -34,6 +38,7 @@ export function createInlineVisitReview<T extends NextVisitEvidenceReference>(
   candidates: readonly NextVisitQuestion<T>[],
   caveats: readonly EvidenceCaveat[],
   createId: () => string = createQuestionIdentity,
+  generationCaveats?: readonly EvidenceCaveat[],
 ): InlineVisitReview<T> {
   if (!ownerKey) throw new Error('A conversation review owner is required.');
   const expectedSavedQuestions = saved.map(question => {
@@ -64,7 +69,22 @@ export function createInlineVisitReview<T extends NextVisitEvidenceReference>(
     new Set(ids).size !== ids.length
   )
     throw new Error('Question identities must be unique.');
-  return { ownerKey, items, expectedSavedQuestions, caveats: [...caveats] };
+  return {
+    ownerKey,
+    items,
+    expectedSavedQuestions,
+    caveats: [...caveats],
+    ...(generationCaveats === undefined
+      ? {}
+      : {
+          generationMetadata: {
+            questionIds: items
+              .filter(item => item.origin === 'candidate')
+              .map(item => item.question.identity!.id),
+            caveats: [...generationCaveats],
+          },
+        }),
+  };
 }
 
 export function inlineReviewToggle<T extends NextVisitEvidenceReference>(
@@ -149,6 +169,9 @@ export function inlineReviewSelection<T extends NextVisitEvidenceReference>(
         questions: copyQuestions(questions),
         expectedSavedQuestions: state.expectedSavedQuestions,
         caveats: state.caveats,
+        ...(state.generationMetadata
+          ? { generationMetadata: state.generationMetadata }
+          : {}),
       }
     : null;
 }

@@ -1,3 +1,4 @@
+import { restorationQuestionIds } from './conversationVisitQuestions';
 import type { VisitQuestionEvidenceItem } from '../agent/visitQuestions/taskContract';
 import type { InlineVisitReview } from '../nextVisitQuestions/inlineVisitReview';
 import type { ConversationVisitQuestions } from './conversationVisitQuestions';
@@ -33,6 +34,9 @@ export function createConversationVisitReviewUpdater(
               ...item,
               visitQuestions: {
                 ...message.visitQuestions!,
+                restorationQuestionIds: restorationQuestionIds(
+                  message.visitQuestions!,
+                ),
                 review,
                 ...(validateSource ? { validateSource } : {}),
               },

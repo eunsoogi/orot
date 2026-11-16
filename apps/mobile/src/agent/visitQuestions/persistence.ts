@@ -1,3 +1,5 @@
+import { captureQuestionGeneration } from './generationMetadata';
+import type { VisitQuestionCaveat } from '@orot/domain';
 import type { AgentMemoryService } from '@orot/agent-memory';
 import { localEvidenceFingerprint, visitQuestionCitationKey } from './evidence';
 import type { VisitQuestionCreate } from '@orot/domain';
@@ -35,6 +37,9 @@ export interface SaveReviewedVisitQuestionsInput {
   readonly repository: RecordRepository;
   readonly memory?: Pick<AgentMemoryService, 'remember'>;
   readonly now: string;
+  /** Supplied only when the generating review retained its actual caveats. */
+  readonly generationCaveats?: readonly VisitQuestionCaveat[];
+  readonly generationQuestionIds?: readonly string[];
   /** Rechecks the cited RAG and Rememori references immediately before the write. */
   readonly revalidateEvidence: (
     citations: readonly VisitQuestionEvidenceItem[],
@@ -66,6 +71,22 @@ export async function saveReviewedVisitQuestions(
       'Cited evidence is no longer current. Refresh the suggestions before saving.',
     );
   }
+
+  // Native hashing stays outside the SQL lock. Transactional source/identity checks below remain authoritative.
+  const preparedGenerations = await Promise.all(
+    input.questions.map(question => {
+      if (
+        input.generationCaveats === undefined ||
+        input.expectedSavedQuestions.some(
+          row => row.id === question.identity?.id,
+        ) ||
+        (input.generationQuestionIds &&
+          !input.generationQuestionIds.includes(question.identity!.id))
+      )
+        return undefined;
+      return captureQuestionGeneration(question, input.generationCaveats);
+    }),
+  );
 
   const saved = await input.repository.transaction(async (writer, sql) => {
     const appointment = await writer.get('appointment', input.appointmentId);
@@ -151,6 +172,15 @@ export async function saveReviewedVisitQuestions(
       // Preserve historical provenance; a legacy reference never certifies its source as current.
       legacyRecords.set(reference.id, original);
     }
+    // Existing questions retain their original metadata, never the newest candidate batch's caveats.
+    const generations = input.questions.map((question, index) => {
+      const previousQuestion = previous.find(
+        row => row.id === question.identity?.id,
+      );
+      return previousQuestion
+        ? previousQuestion.generation
+        : preparedGenerations[index];
+    });
     const reviewed = input.questions.map((question, index) =>
       createReviewedVisitQuestionRecord({
         appointment,
@@ -159,6 +189,7 @@ export async function saveReviewedVisitQuestions(
         position: index + 1,
         now: input.now,
         metadataByCitation: input.evidence.metadataByCitation,
+        generation: generations[index],
         ...(question.legacySource
           ? { legacyRecord: legacyRecords.get(question.legacySource.id)! }
           : {}),
