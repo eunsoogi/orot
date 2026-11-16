@@ -6,33 +6,59 @@ import type {
   ConversationSessionOptions,
 } from './conversationSessionTypes';
 
-/** Dispatch through the same session request owner for composer, explicit and owned turns. */
+/** Preflight belongs to the same cancellable request as model dispatch, including voice-owned turns. */
 export function conversationDispatch(input: {
   requests: ReturnType<typeof createConversationSessionRequests>;
   photoDrafts: ReturnType<typeof createConversationPhotoImport>;
   retention: ConversationSessionOptions['retention'];
   disposed: () => boolean;
+  bindSender?: (sender: ConversationSender) => ConversationSender;
+  beforeSend?: (id: number) => Promise<boolean>;
 }) {
+  const preparing = new Map<number, Set<{ cancelled: boolean }>>();
+  const send = async (
+    id: number,
+    sender: ConversationSender,
+    prompt?: string,
+    registerOwner?: (cancel: () => boolean) => void,
+  ) => {
+    if (input.disposed()) return;
+    const token = { cancelled: false };
+    const owners = preparing.get(id) ?? new Set();
+    owners.add(token);
+    preparing.set(id, owners);
+    registerOwner?.(() => {
+      token.cancelled = true;
+      return true;
+    });
+    try {
+      if (input.beforeSend && !(await input.beforeSend(id))) return;
+      if (token.cancelled || input.disposed()) return;
+      await input.requests.send(
+        id,
+        input.bindSender?.(sender) ?? sender,
+        prompt,
+        prompt === undefined && input.photoDrafts.get(id).status !== 'empty',
+        registerOwner,
+      );
+    } finally {
+      owners.delete(token);
+      if (!owners.size) preparing.delete(id);
+    }
+  };
   return {
-    send: (id: number, sender: ConversationSender) =>
-      input.disposed()
-        ? Promise.resolve()
-        : input.requests.send(
-            id,
-            sender,
-            undefined,
-            input.photoDrafts.get(id).status !== 'empty',
-          ),
+    cancelBeforeSend(id: number) {
+      for (const owner of preparing.get(id) ?? []) owner.cancelled = true;
+    },
+    send: (id: number, sender: ConversationSender) => send(id, sender),
     sendPrompt: (id: number, prompt: string, sender: ConversationSender) =>
-      input.disposed()
-        ? Promise.resolve()
-        : input.requests.send(id, sender, prompt),
+      send(id, sender, prompt),
     sendOwnedPrompt: (id: number, prompt: string, sender: ConversationSender) =>
       startOwnedConversationRequest({
         retention: input.disposed() ? undefined : input.retention,
         sender,
         start: (ownedSender, registerOwner) =>
-          input.requests.send(id, ownedSender, prompt, false, registerOwner),
+          send(id, ownedSender, prompt, registerOwner),
       }),
   };
 }

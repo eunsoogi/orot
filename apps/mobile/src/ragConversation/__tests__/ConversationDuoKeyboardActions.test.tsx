@@ -4,7 +4,6 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from '@testing-library/react-native';
 import { Dimensions, Keyboard } from 'react-native';
 import type { KeyboardEvent } from 'react-native';
@@ -64,24 +63,16 @@ test('keeps Duo actions contextual when its small window requires bottom navigat
     { nativeEvent: geometry },
   );
   expect(screen.queryByTestId('navigation-right-rail-host')).toBeNull();
-  const dock = screen.getByTestId('navigation-page-action-surface');
-  expect(
-    within(dock).getByTestId('rag-conversation-sessions-toggle'),
-  ).toBeTruthy();
-  expect(within(dock).getByTestId('rag-conversation-new-session')).toBeTruthy();
-  expect(
-    screen.getAllByTestId('rag-conversation-sessions-toggle'),
-  ).toHaveLength(1);
-  expect(screen.getAllByTestId('rag-conversation-new-session')).toHaveLength(1);
+  expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
+  expect(screen.queryByTestId('rag-conversation-new-session')).toBeNull();
   expect(screen.queryByTestId('rag-conversation-history-glass')).toBeNull();
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     'draft',
   );
-  await fireEvent.press(
-    within(dock).getByTestId('rag-conversation-new-session'),
+  expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
+    'draft',
   );
-  expect(screen.getByTestId('rag-conversation-input').props.value).toBe('');
 });
 
 test('keeps the Duo side placement under full keyboard occlusion and restores page actions', async () => {
@@ -160,24 +151,16 @@ test('keeps the Duo side placement under full keyboard occlusion and restores pa
     await act(async () =>
       hideKeyboard?.({ endCoordinates: { height: 0 } } as KeyboardEvent),
     );
-    await waitFor(() =>
-      expect(screen.getByTestId('navigation-page-action-surface')).toBeTruthy(),
-    );
-    const dock = screen.getByTestId('navigation-page-action-surface');
-    expect(
-      within(dock).getByTestId('rag-conversation-sessions-toggle'),
-    ).toBeTruthy();
-    expect(
-      within(dock).getByTestId('rag-conversation-new-session'),
-    ).toBeTruthy();
-    expect(
-      screen.getAllByTestId('rag-conversation-sessions-toggle'),
-    ).toHaveLength(1);
-    expect(screen.getAllByTestId('rag-conversation-new-session')).toHaveLength(
-      1,
-    );
+    expect(screen.getByTestId('navigation-right-rail-host')).toBeTruthy();
+    expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
+    expect(screen.queryByTestId('rag-conversation-new-session')).toBeNull();
     expect(screen.queryByTestId('rag-conversation-history-glass')).toBeNull();
   } finally {
     listener.mockRestore();
   }
 });
+
+// This fixture isolates native geometry; protected continuity is covered by real SQLite tests.
+jest.mock('../../aiFeatures/integration/continuousSessionOption', () => ({
+  continuousSessionOption: () => ({}),
+}));

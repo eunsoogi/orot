@@ -81,6 +81,8 @@ test('retains follow-up lineage and restores the exploration intent from SQLite'
     });
     const options = services.conversationSessionOptions();
     const sessions = createConversationSessions(options);
+    await sessions.synchronizeModel();
+    const activeId = sessions.getSnapshot().activeId;
     const context = { intent: 'possibilities' as const, entryKey: 'entry' };
     const send = (
       question: string,
@@ -88,17 +90,17 @@ test('retains follow-up lineage and restores the exploration intent from SQLite'
       signal?: AbortSignal,
       observer?: Parameters<typeof services.sendRagMessage>[3],
     ) => services.sendRagMessage(question, history, signal, observer, context);
-    sessions.setDraft(1, '피로의 가능성을 살펴봐 주세요');
-    await sessions.send(1, send);
-    sessions.setDraft(1, '지난주부터 시작됐어요');
-    await sessions.send(1, send);
+    sessions.setDraft(activeId, '피로의 가능성을 살펴봐 주세요');
+    await sessions.send(activeId, send);
+    sessions.setDraft(activeId, '지난주부터 시작됐어요');
+    await sessions.send(activeId, send);
     expect(requests[1]?.validatedPriorTurns).toEqual([
       {
         question: '피로의 가능성을 살펴봐 주세요',
         answer: expect.stringContaining('언제부터 시작됐나요?'),
       },
     ]);
-    const sessionId = options.retention!.activeIdentity(1)!;
+    const sessionId = options.retention!.activeIdentity(activeId)!;
     const saved = await storage.list(sessionId);
     expect(saved.items).toHaveLength(2);
     const turns = await Promise.all(
@@ -127,11 +129,11 @@ test('retains follow-up lineage and restores the exploration intent from SQLite'
       true,
     );
     for (let index = 0; index < 2; index++) {
-      sessions.setDraft(1, '네');
-      await sessions.send(1, send);
+      sessions.setDraft(activeId, '네');
+      await sessions.send(activeId, send);
     }
-    sessions.setDraft(1, '아니요');
-    await sessions.send(1, send);
+    sessions.setDraft(activeId, '아니요');
+    await sessions.send(activeId, send);
     expect(
       requests
         .at(-1)
@@ -139,17 +141,18 @@ test('retains follow-up lineage and restores the exploration intent from SQLite'
     ).toHaveLength(2);
     // A long chat must not accumulate an unbounded recursive parent chain.
     for (let index = 0; index < 16; index++) {
-      sessions.setDraft(1, `추가 답변 ${index}`);
-      await sessions.send(1, send);
+      sessions.setDraft(activeId, `추가 답변 ${index}`);
+      await sessions.send(activeId, send);
     }
     expect((await storage.list(sessionId)).items).toHaveLength(21);
     invalidateSession = sessionId;
-    sessions.setDraft(1, '다른 기록과 비교해 주세요');
-    await sessions.send(1, send);
+    sessions.setDraft(activeId, '다른 기록과 비교해 주세요');
+    await sessions.send(activeId, send);
     expect(
       sessions
         .getSnapshot()
-        .sessions[0]?.messages.filter(message => message.role === 'assistant'),
+        .sessions.find(session => session.id === activeId)
+        ?.messages.filter(message => message.role === 'assistant'),
     ).toHaveLength(21);
     expect(await storage.read(followup!.id)).toBeNull();
     sessions.dispose();

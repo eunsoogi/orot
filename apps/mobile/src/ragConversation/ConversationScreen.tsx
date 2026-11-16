@@ -3,10 +3,10 @@ import { useConversationPresentationSnapshot } from './useConversationPresentati
 import { ConversationBackButton } from './ConversationBackButton';
 import { AppText as Text } from '../layout/AppText';
 import { useMemo } from 'react';
+import { useContinuousConversationEntry } from './useContinuousConversationEntry';
 import { useConversationSessions } from './ConversationSessionsContext';
 import { ConversationSteeringComposer } from './ConversationSteeringComposer';
 import { ConversationWorkspace } from './ConversationWorkspace';
-import { ConversationHeaderActions } from './ConversationHeaderActions';
 import { styles } from './ConversationScreen.styles';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
 import { ConversationHistory } from './ConversationHistory';
@@ -14,12 +14,8 @@ import { ConversationEntryAction } from './ConversationEntryAction';
 import { ManualVisitTargetPanels } from './ManualVisitTargetPanels';
 import { getRagConversationCopy } from './copy';
 import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/useAiFeatureNavigationState';
-import { useConversationSessionActions } from './useConversationSessionActions';
 import { useConversationScreenLayout } from './useConversationScreenLayout';
-import {
-  useConversationEntryIntent,
-  conversationEntryForSession,
-} from './useConversationEntryIntent';
+import { conversationEntryForSession } from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { dispatchConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
@@ -39,7 +35,6 @@ export function ConversationScreen({
   renderStoredReportTask,
   onNavigationStateChange,
   onBack,
-  onOpenHistory,
   onOpenDailyReport,
   retainedActions,
   onSend,
@@ -53,7 +48,6 @@ export function ConversationScreen({
   const copy = getRagConversationCopy();
   const { setContentHeight, composerLayout } = useConversationScreenLayout();
   const store = useConversationSessions();
-  useConversationEntryIntent(store, entryContext);
   const snapshot = useConversationPresentationSnapshot(store, isEntryCurrent);
   const reportOwner = useMemo(
     () =>
@@ -65,6 +59,13 @@ export function ConversationScreen({
   const session = snapshot.sessions.find(
     item => item.id === snapshot.activeId,
   )!;
+  useContinuousConversationEntry(
+    store,
+    entryContext,
+    session,
+    voiceSelection?.revision,
+    !isEntryCurrent || isEntryCurrent(),
+  );
   const { id, messages, pendingMessage, busy, error } = session;
   const { photo, focus, quickChoices, ...composer } =
     useConversationScreenControls(
@@ -80,11 +81,6 @@ export function ConversationScreen({
   const selectedReport =
     session.dailyReport ?? conversationEntryForSession(store, id)?.dailyReport;
   const toolSourceSessionId = store.toolSourceSessionId(id);
-  const showSessionActionsInHeader = useConversationSessionActions(
-    store,
-    copy,
-    onOpenHistory,
-  );
   const onLinkError = () =>
     store.setError(id, t('ragConversation.conversation.sourceOpenFailed'));
   const sourceActions = {
@@ -107,13 +103,6 @@ export function ConversationScreen({
   const header = (
     <View style={styles.header}>
       {!navigationRouteKey && <ConversationBackButton onBack={onBack} />}
-      <ConversationHeaderActions
-        historyLabel={copy.sessions}
-        newLabel={copy.newConversation}
-        showActions={showSessionActionsInHeader}
-        onHistory={onOpenHistory}
-        onNew={store.create}
-      />
       {providerSelection ? (
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
@@ -198,9 +187,13 @@ export function ConversationScreen({
             onRetrySave={() => {
               store.retrySave(id);
             }}
-            restoreFailed={session.restoreFailed}
+            restoreFailed={
+              session.restoreFailed || session.modelSelectionFailed
+            }
             onRetryRestore={() => {
-              store.retryRestore(id);
+              if (session.modelSelectionFailed)
+                store.synchronizeModel(true).catch(() => {});
+              else store.retryRestore(id);
             }}
             onOpenSource={onOpenSource}
             {...{ resolveToolSource, resolveColdToolSource }}

@@ -8,7 +8,7 @@ import {
   useNavigationPrimaryActionHost,
 } from '../../navigation/useNavigationPrimaryAction';
 
-test('keeps session controls in the accessible header on ordinary iPhone navigation', async () => {
+test('keeps retired session controls absent during iPhone geometry and input focus changes', async () => {
   const onOpenHistory = jest.fn();
   function Fixture() {
     const { host, actions } = useNavigationPrimaryActionHost('conversation');
@@ -41,8 +41,8 @@ test('keeps session controls in the accessible header on ordinary iPhone navigat
   const copy = getRagConversationCopy();
   expect(screen.queryByTestId('dock-conversation-history')).toBeNull();
   expect(screen.queryByTestId('dock-new-conversation')).toBeNull();
-  expect(screen.getByLabelText(copy.sessions)).toBeTruthy();
-  expect(screen.getByLabelText(copy.newConversation)).toBeTruthy();
+  expect(screen.queryByLabelText(copy.sessions)).toBeNull();
+  expect(screen.queryByLabelText(copy.newConversation)).toBeNull();
 
   await fireEvent(
     screen.getByTestId('navigation-window-geometry-sensor'),
@@ -58,12 +58,12 @@ test('keeps session controls in the accessible header on ordinary iPhone navigat
     },
   );
   expect(screen.queryByTestId('dock-conversation-history')).toBeNull();
-  expect(screen.getByLabelText(copy.sessions)).toBeTruthy();
-  expect(screen.getByLabelText(copy.newConversation)).toBeTruthy();
+  expect(screen.queryByLabelText(copy.sessions)).toBeNull();
+  expect(screen.queryByLabelText(copy.newConversation)).toBeNull();
 
   await fireEvent(screen.getByTestId('rag-conversation-input'), 'focus');
-  await fireEvent.press(screen.getByLabelText(copy.sessions));
-  await fireEvent.press(screen.getByLabelText(copy.newConversation));
-  expect(onOpenHistory).toHaveBeenCalledTimes(1);
+  expect(screen.queryByLabelText(copy.sessions)).toBeNull();
+  expect(screen.queryByLabelText(copy.newConversation)).toBeNull();
+  expect(onOpenHistory).not.toHaveBeenCalled();
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe('');
 });

@@ -1,3 +1,7 @@
+// Native persistence is covered by the SQLite continuity tests, separately from route ownership.
+jest.mock('../continuousSessionOption', () => ({
+  continuousSessionOption: () => ({}),
+}));
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import type { RagConversationOutcome } from '../../../ragConversation/service';
@@ -17,7 +21,7 @@ jest.mock(
 
 afterEach(() => jest.restoreAllMocks());
 
-test('retains a RAG draft through history and Back without confirmation', async () => {
+test('retains a RAG draft through provider selection and Back without confirmation', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const view = await render(<AiFeatureRoute onBack={jest.fn()} />);
 
@@ -26,10 +30,10 @@ test('retains a RAG draft through history and Back without confirmation', async 
     input,
     '다음 진료에서 확인할 내용을 정리하고 싶어요.',
   );
-  await fireEvent.press(view.getByTestId('rag-conversation-sessions-toggle'));
+  await fireEvent.press(view.getByTestId('ai-feature-select-provider'));
 
   await waitFor(() =>
-    expect(view.getByTestId('conversation-history-screen')).toBeTruthy(),
+    expect(view.getByTestId('provider-selection-screen')).toBeTruthy(),
   );
   expect(alert).not.toHaveBeenCalled();
   await fireEvent.press(view.getByTestId('navigation-back'));
@@ -40,7 +44,7 @@ test('retains a RAG draft through history and Back without confirmation', async 
   expect(view.getByTestId('rag-conversation-screen')).toBeTruthy();
 });
 
-test('finishes a RAG turn while history is active and shows it once on Back', async () => {
+test('finishes a RAG turn while provider selection is active and shows it once on Back', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const source = localData([memoryRecord(1)]);
   let finish!: (outcome: RagConversationOutcome) => void;
@@ -85,14 +89,14 @@ test('finishes a RAG turn while history is active and shows it once on Back', as
     }),
   ).toBeTruthy();
 
-  await fireEvent.press(view.getByTestId('rag-conversation-sessions-toggle'));
+  await fireEvent.press(view.getByTestId('ai-feature-select-provider'));
   await waitFor(() =>
-    expect(view.getByTestId('conversation-history-screen')).toBeTruthy(),
+    expect(view.getByTestId('provider-selection-screen')).toBeTruthy(),
   );
   expect(alert).not.toHaveBeenCalled();
   expect(runnerSignal?.aborted).toBe(false);
 
-  // Completion belongs to the app-owned session while the history destination is active.
+  // Completion belongs to the app-owned session while the provider selection destination is active.
   await act(async () => {
     finish({
       status: 'answer',

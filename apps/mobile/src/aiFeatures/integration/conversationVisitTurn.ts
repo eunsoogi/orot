@@ -52,6 +52,7 @@ export function createConversationVisitTurn(deps: {
         deps.registerSource,
       ),
       observer: {
+        expectedConversationModel: input.observer?.expectedConversationModel,
         ...(input.observer?.onProviderReceipt
           ? {
               onProviderReceipt: (receipt: 'accepted' | 'response_started') => {

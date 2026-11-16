@@ -12,6 +12,7 @@ import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
 import { createNavigationController } from '../../navigation/navigationController';
 import type { AppNavigationRoute } from '../../routes/appNavigationRoute';
 import { AppConversationScene } from '../../routes/AppConversationScene';
+import { ConversationHistoryScreen } from '../ConversationHistoryScreen';
 import { createConversationSessions } from '../conversationSessions';
 
 export const originalWindow = Dimensions.get('window');
@@ -103,7 +104,7 @@ export async function saveAnswer(
   await store.send(id, async () => ({ status: 'answer', answer, citations }));
 }
 
-/** Exercises the app route adapter and its screen-owned content-layout policy. */
+/** Retained legacy recovery component geometry, independent of the removed app history entry. */
 export function ProductionHistoryRoute({
   controller,
 }: {
@@ -123,14 +124,31 @@ export function ProductionHistoryRoute({
       <NavigationRouteAdapter
         contentLayoutOwner={appContentLayoutOwner}
         controller={controller}
+        leaveState={{
+          readState: () => ({
+            revision: 0,
+            inputRevision: 0,
+            hasUnsavedChanges: false,
+            isRecording: false,
+            hasOngoingOperation: false,
+          }),
+        }}
       >
-        {actions => (
-          <AppConversationScene
-            actions={actions}
-            consent={consent}
-            services={services}
-          />
-        )}
+        {actions =>
+          actions.route.name === 'conversation-history' ? (
+            <ConversationHistoryScreen
+              onBack={() => {
+                actions.onBack();
+              }}
+            />
+          ) : (
+            <AppConversationScene
+              actions={actions}
+              consent={consent}
+              services={services}
+            />
+          )
+        }
       </NavigationRouteAdapter>
     </AiFeatureSharedNavigationStateProvider>
   );

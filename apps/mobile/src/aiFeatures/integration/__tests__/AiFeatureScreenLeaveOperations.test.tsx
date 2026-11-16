@@ -1,3 +1,7 @@
+// These route/consent fixtures omit native protected storage; continuity is exercised with real SQLite separately.
+jest.mock('../continuousSessionOption', () => ({
+  continuousSessionOption: () => ({}),
+}));
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { runRagConversationTurn } from '../../../ragConversation/service';
@@ -49,9 +53,9 @@ test('retains a running RAG turn on leave and aborts only through its stop contr
   );
   await fireEvent.press(route.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
-  await fireEvent.press(route.getByTestId('rag-conversation-sessions-toggle'));
+  await fireEvent.press(route.getByTestId('ai-feature-select-provider'));
   await waitFor(() =>
-    expect(route.getByTestId('conversation-history-screen')).toBeTruthy(),
+    expect(route.getByTestId('provider-selection-screen')).toBeTruthy(),
   );
   expect(alert).not.toHaveBeenCalled();
   expect(signal?.aborted).toBe(false);
@@ -94,8 +98,8 @@ test('retains a possibilities request on leave and ignores its late result after
   );
   await fireEvent.press(route.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
-  await fireEvent.press(route.getByTestId('rag-conversation-sessions-toggle'));
-  expect(route.getByTestId('conversation-history-screen')).toBeTruthy();
+  await fireEvent.press(route.getByTestId('ai-feature-select-provider'));
+  expect(route.getByTestId('provider-selection-screen')).toBeTruthy();
   expect(alert).not.toHaveBeenCalled();
   expect(signal?.aborted).toBe(false);
   await fireEvent.press(route.getByTestId('navigation-back'));
@@ -157,9 +161,9 @@ test('retains a RAG external search on leave and ignores results after explicit 
   );
   await fireEvent.press(route.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));
-  await fireEvent.press(route.getByTestId('rag-conversation-sessions-toggle'));
+  await fireEvent.press(route.getByTestId('ai-feature-select-provider'));
   await waitFor(() =>
-    expect(route.getByTestId('conversation-history-screen')).toBeTruthy(),
+    expect(route.getByTestId('provider-selection-screen')).toBeTruthy(),
   );
   expect(alert).not.toHaveBeenCalled();
   expect(signal?.aborted).toBe(false);
