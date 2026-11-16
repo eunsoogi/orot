@@ -23,11 +23,15 @@ const setup: ChatGPTAccountSetup = {
 };
 test('account sections and actions share the model settings presentation contract', async () => {
   const view = await render(<SettingsAccountsPanels setup={setup} />);
-  const heading = StyleSheet.flatten(providerSettingsStyles.heading);
-  for (const title of ['ChatGPT', 'OpenAI API']) {
+  // The API credential editor now embeds the shared account title beside its provider mark.
+  // The ChatGPT group retains the shared outer section heading.
+  for (const [title, style] of [
+    ['ChatGPT', providerSettingsStyles.heading],
+    ['OpenAI API', providerSettingsStyles.title],
+  ] as const) {
     expect(
       StyleSheet.flatten(view.getByRole('header', { name: title }).props.style),
-    ).toEqual(expect.objectContaining(heading));
+    ).toEqual(expect.objectContaining(StyleSheet.flatten(style)));
   }
   expect(
     StyleSheet.flatten(view.getByTestId('chatgpt-account-action').props.style),
