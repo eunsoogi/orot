@@ -40,7 +40,8 @@ export const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 14,
   },
-  assistantMessage: { gap: 8 },
+  // Reserve the opposite lane proportionally, including on narrow content panels.
+  assistantMessage: { alignSelf: 'flex-start', maxWidth: '85%', gap: 8 },
   speaker: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: {
     width: 32,
