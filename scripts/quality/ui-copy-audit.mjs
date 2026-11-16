@@ -93,6 +93,11 @@ export function findDirectKoreanCopy(source, file = 'screen.tsx') {
       ts.isCallExpression(node) ||
       ts.isNewExpression(node) ||
       ts.isTaggedTemplateExpression(node) ||
+      ts.isPrefixUnaryExpression(node) ||
+      ts.isPostfixUnaryExpression(node) ||
+      ts.isTypeOfExpression(node) ||
+      ts.isVoidExpression(node) ||
+      ts.isDeleteExpression(node) ||
       ts.isFunctionExpression(node) ||
       ts.isArrowFunction(node) ||
       ts.isObjectLiteralExpression(node) ||

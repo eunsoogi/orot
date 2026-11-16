@@ -85,6 +85,11 @@ test('direct JSX keeps call arguments and control predicates outside alias expan
     'const condition="내부키"; const view=<Text>{condition === "internal"}</Text>;',
   ])
     assert.deepEqual(findDirectKoreanCopy(source), []);
+  for (const expression of ['!value', '+value', 'typeof value', 'void value'])
+    assert.deepEqual(
+      findDirectKoreanCopy(`const value="내부키"; const view=<Text>{${expression}}</Text>;`),
+      [],
+    );
   // Original direct-literal detection remains intact even inside calls.
   assert.equal(findDirectKoreanCopy('<Text>{format("직접 원문")}</Text>').length, 1);
 });
