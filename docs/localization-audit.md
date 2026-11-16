@@ -310,3 +310,13 @@
 2026-11-16 main `158bbbb5`에서 일반 production TSX의 잔여 한국어는 확인되지 않았으며, TS의 모델 지시·정규식·정확 비교·합성 fixture와 진행 중인 보고서 경계는 유지했다. 별도 native 잔여인 `MedicalDocumentPhotoPicker.swift`의 신규 사진 첨부 표시 이름만 기존 `NativeInterfaceCopy` 기본 문자열 테이블로 옮긴다. `사진.%@`에 기존 jpg/heic/png 확장자를 보간하므로 기존 결과 바이트를 유지한다. 한국어 단일 기본 테이블이며 다른 언어 리소스는 추가하지 않는다.
 
 이 이름은 검토 화면에 표시되고 저장 시 source title이 될 수 있다. 실제 보호 파일명은 기존 UUID와 확장자이며 변경하지 않는다. 문서 선택기의 원본 파일명, 이미 저장된 제목, OCR 원문·hash·preview·동의·삭제·중복 재시도는 바꾸지 않는다. 클라우드 리소스/소스 동등성 및 합성 저장 회귀와 실제 UIKit/Bundle 런타임 증거를 구분하며, 이 배치로 전체 동적·모델 생성 문자열 현지화 완료를 주장하지 않는다.
+
+## 공개 검색 수신자·출처 이름 후속 점검
+
+2026-11-16, main `4ce63bf4`의 Git 추적 TS/TSX, Swift, Objective-C/C++, JS/JSX/MJS/CJS, plist, strings 4,726개 파일을 한국어 출현 기준으로 재검색했다. 1,062개 파일에 한국어가 있었으며 이는 미번역 UI 개수가 아니다. 카탈로그·플랫폼 리소스, 합성 fixture·assertion, 모델 지시, 임상/의도 정규식, 저장·직렬화 계약을 구분했다. shipping TSX의 카탈로그 밖 잔여 출현은 합성 검증 화면과 테스트이며, native 고정 UI 문구는 기존 `.strings` 및 권한 목적 `Info.plist`에 있었다. 이미지나 외부 생성 콘텐츠, 실제 사용자 기록은 이 코드 조사에 포함하지 않았다.
+
+`publicWebEvidence.ts`의 두 표시 문자열은 이전 예외 목록에 남아 있었다. 이번에는 호출 경계를 검토하고 기존 카탈로그에 새 `publicSearchRecipient`와 `publicSearchSourceTitle` 키를 추가해 옮겼다. 전자는 실제 동의 수신자 문자열이고 후자는 저장될 수 있는 locator title이므로 장식용 UI라고 취급하지 않는다. 현재 단일 한국어 카탈로그에서 직렬화 결과를 정확히 유지하며 provider/model ID, source ID, 조회 시각·revision, 질의와 동의 payload, 취소·기한·검색 호출은 바꾸지 않는다. 기존 저장 출처를 다시 쓰거나 새 언어를 도입하지 않는다.
+
+합성 회귀는 한국어와 미지원 `en-US`, `ja-JP`, `fr-FR`에서 동일 수신자/locator title, 중괄호가 포함된 계정 이름의 그대로 삽입, provider/model identity와 한 번의 검색 호출을 검사한다. 기존 동의 거절·취소·요청 범위 회귀는 별도로 유지한다. 번역 결과를 assertion의 expected 값으로 재사용하지 않고 기존 한국어 원문을 고정 기대값으로 둔다.
+
+그 밖의 출현은 자동 제거하지 않는다. `initialResponse.ts`는 versioned checkpoint 호환 문구이고, `periodQuestionFacts`·summary 사실/언어 검사는 단위와 임상 검증 계약이다. evidence payload/snapshot/search의 gap 문구는 모델 직렬화·byte budget에 영향을 주며, 사진/병력/진료 질문 evidence 문구와 건강기록 제목은 저장 또는 모델 근거다. `dailyReportFacts` 단위 표현은 별도 #946 표시 개선의 소유 범위로 남긴다. 이 배치는 그런 계약을 무검증으로 바꾸지 않으며 모든 화면·자료의 현지화 완료를 주장하지 않는다.
