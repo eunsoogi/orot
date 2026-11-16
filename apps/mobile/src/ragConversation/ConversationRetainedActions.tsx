@@ -11,9 +11,11 @@ export interface RetainedHealthActions {
 export function ConversationRetainedActions({
   actions,
   disabled = false,
+  hideVisitQuestions = false,
 }: {
   readonly actions?: RetainedHealthActions;
   readonly disabled?: boolean;
+  readonly hideVisitQuestions?: boolean;
 }) {
   if (!actions) return null;
   return (
@@ -25,13 +27,15 @@ export function ConversationRetainedActions({
         disabled={disabled || !actions.possibilities}
         onPress={actions.possibilities ?? (() => {})}
       />
-      <AppButton
-        title={t('visitQuestions.conversation.actions.prepare')}
-        testID="conversation-open-visit-questions"
-        variant="secondary"
-        disabled={disabled || !actions.visitQuestions}
-        onPress={actions.visitQuestions ?? (() => {})}
-      />
+      {!hideVisitQuestions && (
+        <AppButton
+          title={t('visitQuestions.conversation.actions.prepare')}
+          testID="conversation-open-visit-questions"
+          variant="secondary"
+          disabled={disabled || !actions.visitQuestions}
+          onPress={actions.visitQuestions ?? (() => {})}
+        />
+      )}
       <AppButton
         title={t('conversationActions.healthSummary')}
         testID="conversation-open-health-summary"
