@@ -6,30 +6,34 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { NavigationFadeVeil } from './NavigationFadeVeil';
 import { NavigationMotionContext } from './NavigationMotionContext';
 
 /** Reveals only current content: never retains revoked data or remounts a form to animate navigation. */
 export function NavigationInlineTransition({
   transitionKey,
+  depth = 0,
   children,
   style,
 }: {
   readonly transitionKey: string;
+  readonly depth?: number;
   readonly children: ReactNode;
   readonly style?: StyleProp<ViewStyle>;
 }) {
   const reduceMotion = useContext(NavigationMotionContext);
-  const previous = useRef(transitionKey);
-  const veilOpacity = useRef(new Animated.Value(0)).current;
+  const previous = useRef({ key: transitionKey, depth });
+  const width = useRef(0);
+  const translation = useRef(new Animated.Value(0)).current;
   useLayoutEffect(() => {
-    veilOpacity.stopAnimation();
-    veilOpacity.setValue(0);
-    const changed = previous.current !== transitionKey;
-    previous.current = transitionKey;
+    translation.stopAnimation();
+    translation.setValue(0);
+    const changed = previous.current.key !== transitionKey;
+    const direction = depth < previous.current.depth ? -1 : 1;
+    previous.current = { key: transitionKey, depth };
     if (reduceMotion || !changed) return;
-    veilOpacity.setValue(1);
-    const movement = Animated.timing(veilOpacity, {
+    // Only current content moves. Never retain a revoked outgoing record for an exit animation.
+    translation.setValue(direction * width.current);
+    const movement = Animated.timing(translation, {
       toValue: 0,
       duration: 200,
       easing: Easing.out(Easing.cubic),
@@ -37,14 +41,20 @@ export function NavigationInlineTransition({
     });
     movement.start();
     return () => movement.stop();
-  }, [veilOpacity, reduceMotion, transitionKey]);
+  }, [translation, reduceMotion, transitionKey, depth]);
   return (
     <Animated.View
       testID="navigation-inline-transition"
-      style={[style, styles.surface]}
+      onLayout={event => {
+        width.current = event.nativeEvent.layout.width;
+      }}
+      style={[
+        style,
+        styles.surface,
+        { transform: [{ translateX: translation }] },
+      ]}
     >
       {children}
-      <NavigationFadeVeil opacity={veilOpacity} />
     </Animated.View>
   );
 }
