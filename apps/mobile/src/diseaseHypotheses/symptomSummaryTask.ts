@@ -1,3 +1,8 @@
+import {
+  hasInternalSummaryTerminology,
+  summaryCommunicationGuidance,
+  summaryCommunicationIssue,
+} from './summaryCommunication';
 import { hasMixedSummarySources } from './summarySourceSeparation';
 import { createSymptomSummarySchema } from './symptomSummarySchema';
 import { summaryResponseGuidance } from './summaryEnvelopeCorrection';
@@ -40,7 +45,7 @@ import { summaryCorrection } from './summaryCorrection';
 export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis> =
   {
     taskType: 'symptom_record_summary',
-    taskVersion: '5',
+    taskVersion: '6',
     requiredToolEvidenceKinds: ['personal_record', 'external_medical'],
     // Every revised request below already includes all current facts; keep tool history as receipts.
     nativeToolResultMode: 'evidence_references',
@@ -50,6 +55,7 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
     // Incomplete coverage is disclosed after citation validation; unattributed conflicts still stop the runtime.
     allowPartialEvidence: true,
     systemPrompt:
+      summaryCommunicationGuidance +
       'Summarize explicit facts in saved medication, dose, activity, step-count, health-measurement and symptom records. This is a factual record summary, not a disease assessment. ' +
       'For this broad summary prefer local-health-context with days=30 and detail=summary across all available topics. It aggregates the whole period, not a few recent samples. If unavailable, use the personal-record tool with view=health_overview. Preserve dates, units and recorded-day coverage; describe only supplied comparisons. ' +
       'Use a separate concise section for each available record topic, plus separate medical-context sections, up to eight total. Each cited topic must state concrete supplied facts: medication names, measurement values with units, activity counts, and sleep stages or individual intervals. Never substitute an empty heading or a promise that records follow. A missing source display does not make a normalized amount or unit unavailable. ' +
@@ -102,7 +108,9 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
           ]),
       ).filter(
         (text): text is string =>
-          typeof text === 'string' && canPreviewDiseaseHypothesisSummary(text),
+          typeof text === 'string' &&
+          canPreviewDiseaseHypothesisSummary(text) &&
+          !hasInternalSummaryTerminology(text),
       );
       return summaries.length ? summaries.join('\n\n') : undefined;
     },
@@ -215,6 +223,9 @@ export const symptomSummaryTask: TaskResponderContract<DiseaseHypothesisAnalysis
         };
       }
       if (validated.status !== 'valid') return validated;
+      const communicationIssue = summaryCommunicationIssue(validated.value);
+      if (communicationIssue)
+        return { status: 'invalid', reason: communicationIssue };
       const covered = applySummaryCoverageNotes(
         validated.value,
         (value as Record<string, JsonValue>).coverageNotes,
