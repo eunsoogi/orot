@@ -1,3 +1,4 @@
+import { SavedMemoryContent } from './SavedMemoryContent';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useState } from 'react';
 import { HistoryMemoryDetail } from './HistoryMemoryDetail';
@@ -5,14 +6,9 @@ import { isHistoryMemory } from './unifiedSavedMemories';
 import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
-import { formatDateTime, t } from '../i18n';
+import { t } from '../i18n';
 import { useSavedMemories, type SavedMemory } from './useSavedMemories';
 import { savedMemoryStyles as styles } from './savedMemoryStyles';
-const kindLabels = {
-  preference: t('savedMemory.preference'),
-  reviewed_interaction: t('savedMemory.reviewedInteraction'),
-  task_context: t('savedMemory.taskContext'),
-};
 /** The native destination reloads its ID through the same foreground/deletion fences as the list. */
 export function SavedMemoryDetail({
   memoryId,
@@ -35,7 +31,14 @@ export function SavedMemoryDetail({
   const { rows, state, refresh } = useSavedMemories(load, active);
   const row = rows.find(value => value.id === selectedId);
   return (
-    <View style={[styles.section, styles.detail]} testID="saved-memory-detail">
+    <View
+      style={[
+        styles.section,
+        styles.detail,
+        row && !isHistoryMemory(row) ? styles.readingDetail : undefined,
+      ]}
+      testID="saved-memory-detail"
+    >
       {(!row || !isHistoryMemory(row)) && <ReadOnlyMemoryNavigation />}
       <Text accessibilityRole="header" style={styles.title}>
         {t('savedMemory.detailTitle')}
@@ -78,29 +81,7 @@ export function SavedMemoryDetail({
           }}
         />
       )}
-      {row && !isHistoryMemory(row) && (
-        <>
-          <Text style={styles.body} selectable>
-            {row.text}
-          </Text>
-          <Text style={styles.kind}>{kindLabels[row.kind]}</Text>
-          <Text style={styles.description}>
-            {t('savedMemory.savedAt', {
-              date: formatDateTime(new Date(row.createdAt)),
-            })}
-          </Text>
-          <Text style={styles.description}>
-            {String(row.provenance.reviewState) === 'user_stated'
-              ? t('savedMemory.userStated')
-              : row.provenance.reviewState === 'user_confirmed'
-                ? t('savedMemory.confirmed')
-                : t('savedMemory.reviewed')}{' '}
-            {t('savedMemory.sources', {
-              count: row.provenance.sourceIds.length,
-            })}
-          </Text>
-        </>
-      )}
+      {row && !isHistoryMemory(row) && <SavedMemoryContent memory={row} />}
     </View>
   );
 }

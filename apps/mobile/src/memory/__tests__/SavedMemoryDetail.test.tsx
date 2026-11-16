@@ -30,7 +30,8 @@ test('renders only the selected ID and full provenance', async () => {
     />,
   );
   expect(screen.getByText(memory.text)).toBeTruthy();
-  expect(screen.getByText('사용자 확인 · 출처 1개')).toBeTruthy();
+  expect(screen.getByText('사용자 확인')).toBeTruthy();
+  expect(screen.getByText('연결된 출처 1개')).toBeTruthy();
   expect(screen.queryByText('Other private text')).toBeNull();
 });
 test.each(['background', 'all data', 'source'])(
