@@ -1,3 +1,5 @@
+import { reportOpening } from '../aiFeatures/integration/openingObservation';
+import { createConversationDeliveryObserver } from './conversationDeliveryObserver';
 import {
   mergeConversationToolEvents,
   type ConversationToolEvent,
@@ -17,6 +19,7 @@ export type ConversationTurnActivity = ReturnType<
 export function createConversationTurnActivity(input: {
   id: number;
   responseId: number;
+  userMessageId?: number;
   initialToolEvents?: readonly ConversationToolEvent[];
   find: (id: number) => ConversationSession;
   update: (
@@ -29,6 +32,17 @@ export function createConversationTurnActivity(input: {
   activity?: ReturnType<typeof createConversationActivity>;
   activityChanged?: () => void;
 }) {
+  const delivery =
+    input.userMessageId === undefined
+      ? undefined
+      : createConversationDeliveryObserver({
+          sessionId: input.id,
+          messageId: input.userMessageId,
+          current: input.current,
+          find: input.find,
+          update: input.update,
+          retain: input.retained?.retainDelivery,
+        });
   let events: readonly ConversationToolEvent[] = input.initialToolEvents ?? [];
   let writing = Promise.resolve();
   let failed = false;
@@ -83,9 +97,18 @@ export function createConversationTurnActivity(input: {
       if (before !== input.activity.getSnapshot()) input.activityChanged?.();
     }
   };
+  const onProviderReceipt = (receipt: 'accepted' | 'response_started') => {
+    if (!input.current()) return;
+    delivery?.onProviderReceipt(receipt);
+    if (receipt === 'response_started') {
+      input.activity?.responseStarted();
+      input.activityChanged?.();
+    }
+  };
   return {
     metadata,
     finish(status: 'failed' | 'cancelled' | 'interrupted') {
+      delivery?.settle();
       for (const event of events)
         if (event.status === 'started') observe({ ...event, status });
     },
@@ -97,6 +120,7 @@ export function createConversationTurnActivity(input: {
         });
     },
     observer: {
+      onProviderReceipt,
       // A provider may deliver a callback after cancellation or a newer retry.
       // Only the request that still owns this activity may record that callback.
       onToolEvent(event: ConversationToolEvent) {
@@ -149,9 +173,12 @@ export function createConversationTurnActivity(input: {
             input.current() &&
             pending?.id === input.responseId &&
             !pending.withholdHealthBody &&
+            Boolean(event.text.trim()) &&
             (!pending.initialResponse ||
               pending.initialResponse.source === 'receipt')
           ) {
+            // Accepted generated output is evidence even when its provider is separate from the main call.
+            onProviderReceipt('response_started');
             input.retained?.retainOpening({
               callId: event.callId,
               text: event.text,
@@ -162,6 +189,10 @@ export function createConversationTurnActivity(input: {
                 initialResponse: { callId: event.callId, text: event.text },
               },
             });
+            reportOpening('opening_display', 'completed');
+          } else {
+            // Rejected display ownership is not proof of stale health evidence.
+            reportOpening('opening_display', 'unavailable');
           }
           return;
         }

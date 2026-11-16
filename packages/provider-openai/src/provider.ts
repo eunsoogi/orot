@@ -94,6 +94,7 @@ export function createChatGPTPlanProvider(
           request,
           continuationsByCallID,
           execution?.midTurnSteering,
+          execution?.onResponseStarted,
         ),
         execution?.signal,
       );

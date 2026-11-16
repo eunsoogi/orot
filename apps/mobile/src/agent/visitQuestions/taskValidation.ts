@@ -51,12 +51,12 @@ export function validateVisitQuestionTaskResult(
   }
   if (
     !Array.isArray(result.questions) ||
-    result.questions.length < 3 ||
+    result.questions.length < 1 ||
     result.questions.length > 5
   ) {
     return {
       status: 'invalid',
-      reason: 'A visit requires three to five question candidates.',
+      reason: 'A visit requires one to five question candidates.',
     };
   }
   // A batch-wide conflict does not identify which observation is safe to assert.

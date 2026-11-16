@@ -1,3 +1,4 @@
+import { ConversationMessageReceipt } from './ConversationMessageReceipt';
 import type { ComponentProps } from 'react';
 import {
   ConversationMessage,
@@ -46,6 +47,12 @@ export function ConversationTranscriptMessages({
             }
           />
           <ConversationMessage message={message} {...messageProps} />
+          {message.role === 'user' ? (
+            <ConversationMessageReceipt
+              delivery={message.delivery}
+              pending={message.deliveryPending}
+            />
+          ) : null}
         </ReplyMessageContainer>
       ))}
       {!target ? (

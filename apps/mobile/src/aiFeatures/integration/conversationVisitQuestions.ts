@@ -1,3 +1,4 @@
+import { createPreparedOpeningConsent } from './preparedOpeningConsent';
 import { observeVisitPreflight } from './visitPreflightDiagnostics';
 import { startContextualConversationOpening } from './contextualConversationOpening';
 import { visitConsentScope } from '../../agent/execution/inferenceConsentScopes';
@@ -57,6 +58,15 @@ export async function generateConversationVisitQuestions(input: {
     return { status: 'provider_unavailable' as const };
   let opening:
     ReturnType<typeof startContextualConversationOpening> | undefined;
+  const gate = createPreparedOpeningConsent(
+    {
+      authorize: async request =>
+        (await input.confirmConsent(request))
+          ? 'authorized'
+          : 'renewal_required',
+    },
+    'visit',
+  );
   try {
     const outcome = await generateInlineVisitReview({
       ownerKey: input.ownerKey,
@@ -67,21 +77,17 @@ export async function generateConversationVisitQuestions(input: {
       signal: input.signal,
       generate: async () => {
         opening = startContextualConversationOpening({
+          diagnosticFeature: 'visit',
           selected: selectedAi,
           request: input.request,
           observer: input.observer,
           signal: input.signal,
           consentScope: visitConsentScope,
           isCurrent: current,
-          consent: {
-            authorize: async request =>
-              (await input.confirmConsent(request))
-                ? 'authorized'
-                : 'renewal_required',
-          },
+          consent: gate.port,
         });
-        // Local appointment-only preparation may overlap the opening, but research
-        // and its consent prompts still wait for the reviewed opening to settle.
+        // Start local preparation immediately, but reveal opening consent only after
+        // preparation succeeds. A local failure must not dismiss a visible prompt.
         const openingDone = observeVisitPreflight(
           'preflight_opening',
           () => opening!.done,
@@ -90,6 +96,7 @@ export async function generateConversationVisitQuestions(input: {
           appointment,
           isCurrentOwner: current,
           beforeResearch: async () => {
+            gate.release(current());
             await openingDone;
             return current();
           },
@@ -107,6 +114,7 @@ export async function generateConversationVisitQuestions(input: {
       ? { ...outcome, appointment, selectedAi }
       : outcome;
   } finally {
+    gate.release(false);
     opening?.dispose();
   }
 }

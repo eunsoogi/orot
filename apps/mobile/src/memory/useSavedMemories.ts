@@ -1,3 +1,4 @@
+import { reportSavedMemoryRead } from './savedMemoryReadDiagnostics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type { AgentMemoryHit } from '@orot/agent-memory';
@@ -26,6 +27,8 @@ export function useSavedMemories(
   }, []);
 
   const close = useCallback(() => {
+    if (timer.current !== null)
+      reportSavedMemoryRead('saved_memory_wait', 'cancelled');
     clearReadTimer();
     generation.current += 1;
     setRows([]);
@@ -35,7 +38,10 @@ export function useSavedMemories(
   const refresh = useCallback(async () => {
     // A queued press after backgrounding must not start a protected read.
     if (!enabled || !active.current) return;
+    if (timer.current !== null)
+      reportSavedMemoryRead('saved_memory_wait', 'cancelled');
     clearReadTimer();
+    reportSavedMemoryRead('saved_memory_wait', 'started');
     const request = ++generation.current;
     setState('loading');
     setRows([]);
@@ -45,15 +51,20 @@ export function useSavedMemories(
       if (generation.current !== request) return;
       generation.current += 1;
       timer.current = null;
+      reportSavedMemoryRead('saved_memory_wait', 'timeout');
       setState('failed');
     }, READ_WAIT_MS);
     try {
       const result = await load();
       if (generation.current !== request) return;
+      reportSavedMemoryRead('saved_memory_wait', 'completed');
       setRows(result);
       setState('ready');
     } catch {
-      if (generation.current === request) setState('failed');
+      if (generation.current === request) {
+        reportSavedMemoryRead('saved_memory_wait', 'failed');
+        setState('failed');
+      }
     } finally {
       if (generation.current === request) clearReadTimer();
     }
@@ -80,6 +91,8 @@ export function useSavedMemories(
       refresh();
     } else close();
     return () => {
+      if (timer.current !== null)
+        reportSavedMemoryRead('saved_memory_wait', 'cancelled');
       clearReadTimer();
       generation.current += 1;
       subscription.remove();

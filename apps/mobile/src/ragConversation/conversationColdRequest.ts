@@ -1,3 +1,5 @@
+import { stopSettlement } from './conversationStopSettlement';
+import { observeConversationFinalization as finalize } from './conversationFinalizationDiagnostics';
 import { hasUncommittedTurn } from './hasUncommittedTurn';
 import type { PendingTurn } from './conversationSessionTypes';
 import type { ConversationColdRequestInput } from './conversationColdRequestInput';
@@ -201,11 +203,13 @@ export function createConversationColdRequest(
       activity?.finish(
         paused ? 'interrupted' : input.lifetime.failureStatus(controller),
       );
-      await activity?.flush();
+      await finalize('conversation_activity_flush', () => activity?.flush());
       if (hasUncommittedTurn(turn, request, controller.signal))
         input.lifetime.interrupt(id, 'interrupted');
-      await stopFence;
-      await input.lifetime.settle(id, controller);
+      await finalize('conversation_stop_fence', () => stopFence);
+      await finalize('conversation_lifetime_settle', () =>
+        input.lifetime.settle(id, controller),
+      );
       if (
         controller.signal.aborted &&
         !request.committed &&
@@ -226,6 +230,7 @@ export function createConversationColdRequest(
           requestActivity: null,
           continueWorkflow: undefined,
         });
+        stopSettlement.finish(controller);
       }
     }
   };

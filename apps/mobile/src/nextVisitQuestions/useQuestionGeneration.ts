@@ -124,7 +124,7 @@ export function useQuestionGeneration<
       }
       setCaveats(outcome.status === 'cancelled' ? [] : (outcome.caveats ?? []));
       if (outcome.status === 'ready') {
-        if (outcome.questions.length < 3 || outcome.questions.length > 5) {
+        if (outcome.questions.length < 1 || outcome.questions.length > 5) {
           setPhase('error');
           setMessage(copy.generation.invalidResult);
           return;

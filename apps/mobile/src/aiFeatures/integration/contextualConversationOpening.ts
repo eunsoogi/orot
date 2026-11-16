@@ -1,3 +1,5 @@
+import { reportOpening } from './openingObservation';
+import type { Feature } from '../../providers/diagnosticTypes';
 import { evidenceConsentScope } from './evidenceConsentScope';
 import {
   DEFAULT_MULTI_AGENT_BUDGET,
@@ -20,9 +22,11 @@ export function startContextualConversationOpening(input: {
   observer?: RagConversationObserver;
   consent: ExecutionConsentPort;
   consentScope: MultiAgentExecutionIdentity['consentScope'];
+  allowedScope?: MultiAgentExecutionIdentity['allowedScope'];
   signal: AbortSignal;
   isCurrent?: () => boolean;
   isEvidenceCurrent?: () => Promise<boolean>;
+  diagnosticFeature?: Feature;
 }) {
   const controller = new AbortController();
   const stop = () => controller.abort();
@@ -35,9 +39,13 @@ export function startContextualConversationOpening(input: {
       !input.observer?.onTaskStreamEvent ||
       input.observer.photoInput ||
       !validateInitialConversationResponse('살펴볼게요.', input.request)
-    )
+    ) {
+      reportOpening('opening_delivery', 'unavailable', input.diagnosticFeature);
       return;
+    }
     const text = await generateContextualInitialReply({
+      onObservation: (stage, outcome) =>
+        reportOpening(stage, outcome, input.diagnosticFeature),
       provider: input.selected.provider,
       execution: {
         operationRunId: id,
@@ -46,7 +54,9 @@ export function startContextualConversationOpening(input: {
         recipient: input.selected.recipient,
         remoteProcessing: input.selected.remoteProcessing,
         consentScope: input.consentScope,
-        allowedScope: { sourceKinds: ['personal_record', 'reviewed_memory'] },
+        allowedScope: input.allowedScope ?? {
+          sourceKinds: ['personal_record', 'reviewed_memory'],
+        },
         budget: DEFAULT_MULTI_AGENT_BUDGET,
       },
       consent: input.consent,
@@ -55,13 +65,23 @@ export function startContextualConversationOpening(input: {
       validate: validateInitialConversationResponse,
       isCurrent: input.isEvidenceCurrent,
     });
-    if (text && !controller.signal.aborted && (input.isCurrent?.() ?? true))
+    if (text && !controller.signal.aborted && (input.isCurrent?.() ?? true)) {
       input.observer.onTaskStreamEvent({
         type: 'initial_response',
         callId: id,
         text,
       });
-  })().catch(() => {});
+      reportOpening('opening_delivery', 'completed', input.diagnosticFeature);
+    } else if (text) {
+      reportOpening(
+        'opening_delivery',
+        controller.signal.aborted ? 'cancelled' : 'stale_evidence',
+        input.diagnosticFeature,
+      );
+    }
+  })().catch(() =>
+    reportOpening('opening_delivery', 'failed', input.diagnosticFeature),
+  );
   return {
     done,
     dispose() {

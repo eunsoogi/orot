@@ -72,6 +72,7 @@ const visualSessionRetention: NonNullable<
     return {
       toolMessageId: 'conversation-visual-tool-message',
       retainOpening() {},
+      retainDelivery() {},
       discardOpening() {},
       async startRequest() {},
       async interruptRequest() {},

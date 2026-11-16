@@ -40,7 +40,7 @@ function history(props: Partial<ComponentProps<typeof ConversationHistory>>) {
   );
 }
 
-test('shows one activity bubble before the first token without an empty assistant message', async () => {
+test('shows preparation without processing dots before provider acknowledgement', async () => {
   await render(
     history({
       requestSessionId: 12,
@@ -55,10 +55,11 @@ test('shows one activity bubble before the first token without an empty assistan
     }),
   ).toBeTruthy();
   expect(
-    screen.getAllByTestId('rag-conversation-activity-dot', {
+    screen.queryAllByTestId('rag-conversation-activity-dot', {
       includeHiddenElements: true,
     }),
   ).toHaveLength(3);
+  expect(screen.queryByTestId('conversation-response-waiting')).toBeNull();
   expect(screen.queryByTestId('rag-conversation-stream')).toBeNull();
   expect(screen.queryByTestId('rag-conversation-progress')).toBeNull();
 });

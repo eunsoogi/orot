@@ -25,7 +25,7 @@ final class PublicWebSearchClientTests: XCTestCase {
     }
 
     func testBoundsTotalPublicStreamEvenWhenIndividualEventsAndDisplayedTextAreSmall() async throws {
-        let heartbeat = Data("event: response.created\ndata: {\"type\":\"response.created\"}\n\n".utf8)
+        let heartbeat = Data("event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"synthetic\",\"status\":\"queued\"}}\n\n".utf8)
         let chunks = Array(repeating: heartbeat, count: 20000)
         let client = try responsesClient(StubChatGPTResponsesHTTPTransport(chunks: chunks))
         do {

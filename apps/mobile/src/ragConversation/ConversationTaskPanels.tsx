@@ -130,13 +130,19 @@ export function ConversationTaskHeader({
   };
   const hasStoredReport = Boolean(
     selectedReport &&
-    session.taskCards?.some(
-      card =>
-        card.task.kind === 'daily_report' &&
-        card.task.report?.identity.key === selectedReport.identity.key &&
-        card.task.report?.runId === selectedReport.runId &&
-        card.task.report?.revision === selectedReport.revision,
-    ),
+    (session.messages.some(
+      message =>
+        message.dailyReport?.identity.key === selectedReport.identity.key &&
+        message.dailyReport.runId === selectedReport.runId &&
+        message.dailyReport.revision === selectedReport.revision,
+    ) ||
+      session.taskCards?.some(
+        card =>
+          card.task.kind === 'daily_report' &&
+          card.task.report?.identity.key === selectedReport.identity.key &&
+          card.task.report?.runId === selectedReport.runId &&
+          card.task.report?.revision === selectedReport.revision,
+      )),
   );
   return (
     <>
@@ -196,7 +202,23 @@ export function ConversationStoredTaskCards({
         onRestart={onRestart}
       />
       {session.taskCards
-        ?.filter(card => card.id !== routeKey)
+        ?.filter(
+          card =>
+            card.id !== routeKey &&
+            !(
+              card.task.kind === 'daily_report' &&
+              session.messages.some(message => {
+                const task = card.task;
+                return (
+                  task.kind === 'daily_report' &&
+                  message.dailyReport?.identity.key === task.identity.key &&
+                  (!task.report ||
+                    (message.dailyReport.runId === task.report.runId &&
+                      message.dailyReport.revision === task.report.revision))
+                );
+              })
+            ),
+        )
         .map(card => {
           if (card.task.kind === 'daily_report') {
             const actions = reportActions(store, session, card.id);

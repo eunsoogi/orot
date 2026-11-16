@@ -1,3 +1,4 @@
+import { parseConversationMessageDelivery } from '../ragConversation/conversationMessageDelivery';
 import { validConversationReportTarget } from './conversationReportTarget';
 import { validConversationPhotoArtifactSource } from './conversationPhotoArtifactValidation';
 import { isRecordKind } from '@orot/storage';
@@ -233,6 +234,10 @@ export function decodeConversationArtifact(
         ))
     )
       return null;
+    // Bad optional receipts must not make a valid answer impossible to save.
+    const delivery = parseConversationMessageDelivery(value.delivery);
+    delete value.delivery;
+    if (delivery) value.delivery = delivery;
     return value as unknown as ConversationArtifact;
   } catch {
     return null;

@@ -1,3 +1,4 @@
+import { createConversationDailyReport } from './conversationDailyReport';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
 import type { AiFeatureServiceDependencies } from './featureServiceDependencies';
@@ -14,6 +15,10 @@ import { operationRunId } from './featureRunIdentity';
 
 /** Wire only an explicit summary turn to its own generation, storage and retry operation. */
 export function createConversationSummaryIntegration(input: {
+  dailyReport?: Parameters<typeof createConversationDailyReport>[0]['feature'];
+  dailyReportSources?: Parameters<
+    typeof createConversationDailyReport
+  >[0]['sources'];
   coldResume?: import('../../ragConversation/conversationSessionTypes').ConversationSessionOptions['coldResume'];
   consent: MultiAgentWorkflowOptions['consent'];
   dependencies: AiFeatureServiceDependencies;
@@ -24,6 +29,14 @@ export function createConversationSummaryIntegration(input: {
   sendRagMessage: ReturnType<typeof createRagConversationService>;
   loadSavedVisitQuestions: import('./featureServices').AiFeatureServices['loadSavedVisitQuestions'];
 }) {
+  const report =
+    input.dailyReport && input.dailyReportSources
+      ? createConversationDailyReport({
+          feature: input.dailyReport,
+          sources: input.dailyReportSources,
+          registry: input.registry,
+        })
+      : undefined;
   const summarize = createConversationHealthSummary(
     createHealthSummaryService({
       selectedAi: input.selectedAi,
@@ -57,6 +70,18 @@ export function createConversationSummaryIntegration(input: {
       ...args: Parameters<ReturnType<typeof createRagConversationService>>
     ) => {
       const [question, , signal, observer, context] = args;
+      if (
+        context?.intent === 'daily-report' &&
+        context.reportRequest &&
+        report &&
+        !observer?.photoInput
+      )
+        return report(
+          question,
+          context.reportRequest,
+          signal ?? new AbortController().signal,
+          observer,
+        );
       return context?.intent === 'health-summary' && !observer?.photoInput
         ? summarize(
             { question },

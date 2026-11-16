@@ -47,6 +47,7 @@ test('shows safe answer text and separate evidence activity while generating', a
     includeHiddenElements: true,
   });
   expect(bubble.props.accessibilityElementsHidden).toBe(true);
+  expect(screen.queryByText('준비 중')).toBeNull();
 
   await act(async () => {
     observer?.onProgress?.({

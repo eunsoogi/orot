@@ -220,7 +220,8 @@ async function generate(
     return {
       status: 'needs_clarification',
       message: result.message,
-      caveats: [...caveats, 'insufficient_evidence'],
+      // No useful discussion topic does not imply missing records; retain actual coverage warnings.
+      caveats,
     };
   }
   if (result.status === 'consent_required') {

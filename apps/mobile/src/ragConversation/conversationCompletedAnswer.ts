@@ -59,6 +59,9 @@ export function conversationCompletedAnswer(input: {
         : input.copy.insufficient;
   update(id, {
     pendingMessage: null,
+    ...(outcome.status === 'answer' && outcome.dailyReport
+      ? { dailyReport: outcome.dailyReport }
+      : {}),
     ...(input.retentionUnavailable && !session.error
       ? { error: t('ragConversation.conversation.answerSaveSourceUnavailable') }
       : {}),
@@ -81,6 +84,9 @@ export function conversationCompletedAnswer(input: {
           : {}),
         ...(outcome.status === 'answer'
           ? {
+              ...(outcome.dailyReport
+                ? { dailyReport: outcome.dailyReport }
+                : {}),
               citations: outcome.citations,
               healthSources: outcome.healthSources,
               completion: outcome.completion,

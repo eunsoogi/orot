@@ -1,3 +1,5 @@
+import type { LanguageModelExecutionOptions } from './execution-options';
+export type { LanguageModelExecutionOptions } from './execution-options';
 import type { PublicWebSearch } from './publicWebSearch';
 
 export type ProviderId = string;
@@ -133,18 +135,6 @@ export type LanguageModelStreamEvent =
   | { readonly type: 'text_snapshot'; readonly text: string }
   | { readonly type: 'tool_call'; readonly toolCall: ToolCall }
   | { readonly type: 'completed'; readonly response: LanguageModelResponse };
-
-/** Invocation-local steering; acceptance is not proof the successor applied the input. */
-export interface LanguageModelExecutionOptions {
-  readonly signal?: AbortSignal;
-  readonly midTurnSteering?: {
-    onReady(control: { submit(id: string, text: string): Promise<void> }): void;
-    onEvent(event: {
-      readonly id: string;
-      readonly status: 'accepted' | 'applied' | 'pending' | 'failed';
-    }): Promise<void>;
-  };
-}
 
 export interface LanguageModelProvider {
   readonly kind: 'language-model';

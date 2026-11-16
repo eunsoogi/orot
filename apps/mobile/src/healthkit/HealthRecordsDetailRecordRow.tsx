@@ -184,9 +184,9 @@ function ValueLine({
 const styles = StyleSheet.create({
   record: {
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
     borderRadius: 14,
-    borderWidth: 1,
+    // Filled surfaces group saved records; controls and state boundaries stay separate.
+    borderWidth: 0,
     gap: 8,
     padding: 14,
   },

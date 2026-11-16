@@ -1,3 +1,4 @@
+import { MAX_CONVERSATION_PREVIEW_LENGTH } from './conversationPreviewLimits';
 import { createConversationPreviewReader } from './conversationPreviewRead';
 import { eligibleConversationPreviewSources } from './conversationPreviewSources';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
@@ -148,7 +149,7 @@ export function createConversationPreviewStorage(
           schema !== preview.schema_snapshot ||
           typeof preview.template_json !== 'string' ||
           !body ||
-          body.length > 64_000
+          body.length > MAX_CONVERSATION_PREVIEW_LENGTH
         ) {
           await tx.execute(
             'DELETE FROM conversation_request_previews WHERE request_id = ?',

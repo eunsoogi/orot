@@ -80,6 +80,7 @@ export function ConversationActivityBubble() {
     return () => animation.stop();
   }, [phase, reduceMotion]);
 
+  // Waiting dots are presentation only; they do not infer provider receipt or reading.
   return (
     <View
       accessible={false}

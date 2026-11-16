@@ -70,3 +70,36 @@ test('keeps the report selected when the turn was dispatched', async () => {
   expect(send.mock.calls[0][4]).toMatchObject({ dailyReport: first });
   store.dispose();
 });
+
+test('an explicit possibility choice is not overwritten by a previous daily report', async () => {
+  const { conversationEntryForSession } = jest.requireMock(
+    '../useConversationEntryIntent',
+  );
+  conversationEntryForSession.mockReturnValueOnce({
+    intent: 'possibilities',
+    entryKey: 'explicit-choice',
+  });
+  const store = createConversationSessions();
+  const report = {
+    identity: {
+      kind: 'daily_report' as const,
+      key: 'synthetic',
+      localDate: '2035-01-01',
+      timeZone: 'UTC',
+    },
+    runId: 'synthetic',
+    revision: 1,
+  };
+  store.selectDailyReport(1, report);
+  const sender = jest.fn().mockResolvedValue({
+    status: 'answer',
+    answer: 'Synthetic possibilities',
+    citations: [],
+  });
+  await entryIntentSender(store, 1, sender)('Synthetic choice', []);
+  expect(sender.mock.calls[0][4]).toMatchObject({
+    intent: 'possibilities',
+    dailyReport: report,
+  });
+  store.dispose();
+});

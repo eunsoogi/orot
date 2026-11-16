@@ -1,3 +1,5 @@
+import { observeToolRetention } from './conversationToolRetentionDiagnostic';
+import { createConversationDeliveryRetention } from './conversationDeliveryRetention';
 import { createConversationOpeningRetention } from './conversationOpeningRetention';
 import { notifyConversationInterruption } from '../replyNotifications/notifyConversationInterruption';
 import type { ConversationTurnRetentionInput } from './conversationTurnRetentionInput';
@@ -16,6 +18,7 @@ export function createConversationTurnRetention(
   input: ConversationTurnRetentionInput,
 ) {
   const opening = createConversationOpeningRetention();
+  const delivery = createConversationDeliveryRetention();
   let pending: ConversationArtifact | undefined;
   let preparation: PrepareConversationRetention | undefined;
   let preparing = false;
@@ -26,7 +29,9 @@ export function createConversationTurnRetention(
     if (writing)
       throw new Error('The conversation output is already being saved.');
     // A settled failed write may drop revoked display metadata; never mutate an in-flight commit.
-    const sanitized = opening.withoutRevokedOpening(value);
+    const sanitized = delivery.withoutRevokedDelivery(
+      opening.withoutRevokedOpening(value),
+    );
     if (pending === value) pending = sanitized;
     value = sanitized;
     writing = true;
@@ -52,6 +57,7 @@ export function createConversationTurnRetention(
       JSON.stringify({
         ...candidate,
         ...opening.openingMetadata(),
+        ...delivery.deliveryMetadata(),
         id: input.turnId,
         sessionId: input.sessionId,
         createdAt: input.createdAt,
@@ -64,7 +70,11 @@ export function createConversationTurnRetention(
   return {
     ...createConversationRetainedPreview(input),
     retainOpening: opening.retainOpening,
-    discardOpening: opening.discardOpening,
+    retainDelivery: delivery.retainDelivery,
+    discardOpening() {
+      opening.discardOpening();
+      delivery.discardDelivery();
+    },
     toolMessageId: input.turnId,
     ...(input.storage.openWorkflowContinuation
       ? { openWorkflowContinuation: input.storage.openWorkflowContinuation }
@@ -138,24 +148,30 @@ export function createConversationTurnRetention(
           callId: event.callId,
         });
       try {
-        captured = input.captureToolSources
-          ? await input.captureToolSources(event, input.sessionId)
-          : { event, dependencies: [] };
+        captured = await observeToolRetention('tool_event_capture', async () =>
+          input.captureToolSources
+            ? input.captureToolSources(event, input.sessionId)
+            : { event, dependencies: [] },
+        );
       } catch (error) {
         // Drop the incomplete record rather than misreporting the real tool outcome.
         await discard();
         throw error;
       }
       try {
-        await input.storage.appendToolEvent({
-          sessionId: input.sessionId,
-          messageId: input.turnId,
-          createdAt: input.createdAt,
-          sessionVersion: input.sessionVersion ?? 0,
-          ...captured,
-        });
+        await observeToolRetention('tool_event_write', () =>
+          input.storage.appendToolEvent!({
+            sessionId: input.sessionId,
+            messageId: input.turnId,
+            createdAt: input.createdAt,
+            sessionVersion: input.sessionVersion ?? 0,
+            ...captured,
+          }),
+        );
         if (input.onToolEventStored)
-          await input.onToolEventStored(captured.event, input.sessionId);
+          await observeToolRetention('tool_event_bind', () =>
+            input.onToolEventStored!(captured.event, input.sessionId),
+          );
       } catch (error) {
         if (error instanceof RetainedSourceInvalidError) await discard();
         throw error;

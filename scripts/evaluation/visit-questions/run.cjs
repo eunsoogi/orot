@@ -35,7 +35,9 @@ if (!require('node:fs').existsSync(workflowSource)) {
     });
     const integrationTest = path.join(
       repositoryRoot,
-      'packages/eval/__tests__/visitQuestionWorkflow.integration.test.ts',
+      process.env.OROT_VISIT_QUESTION_CORPUS === 'decisions'
+        ? 'packages/eval/__tests__/visitQuestionDecisionWorkflow.test.ts'
+        : 'packages/eval/__tests__/visitQuestionWorkflow.integration.test.ts',
     );
     const jestConfig = path.join(repositoryRoot, 'packages/eval/jest.config.js');
     const result = spawnSync(

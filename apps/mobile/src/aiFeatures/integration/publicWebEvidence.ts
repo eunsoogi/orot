@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import {
   protectedExternalReferences,
   type ProtectedExternalReferences,
@@ -105,7 +106,10 @@ export function createPublicWebEvidence(input: {
         operationRunId: request.operationRunId,
         providerId: selected.provider.id,
         modelId: selected.modelId,
-        recipient: `${selected.recipient} · 공개 웹검색`,
+        // Preserve the exact recipient identity and serialized Korean suffix.
+        recipient: t('externalMedicalEvidence.publicSearchRecipient', {
+          recipient: selected.recipient,
+        }),
         remoteProcessing: true,
         consentScope: publicWebSearchConsentScope,
         allowedScope: {
@@ -200,7 +204,7 @@ export function createPublicWebEvidence(input: {
             locator: {
               kind: 'public_web_search',
               provider: 'ChatGPT web search',
-              title: '공개 웹검색',
+              title: t('externalMedicalEvidence.publicSearchSourceTitle'),
               retrievedAt: at,
               revisionBasis: 'retrieval_snapshot',
               sources: response.citations.map(source => ({

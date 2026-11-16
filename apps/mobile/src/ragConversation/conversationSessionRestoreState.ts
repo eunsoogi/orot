@@ -7,6 +7,7 @@ import { t } from '../i18n';
 type RestoredTurn = {
   readonly question: string;
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
+  readonly delivery?: import('./conversationMessageDelivery').ConversationMessageDelivery;
   readonly answer: string;
   readonly initialResponse?: import('../storage/conversationArtifactTypes').ConversationArtifact['initialResponse'];
   readonly preview?: string;
@@ -76,6 +77,7 @@ export function createConversationSessionRestoreState(input: {
                 id: -(2 * index + 1),
                 role: 'user' as const,
                 content: turn.question,
+                delivery: turn.delivery,
                 ...(turn.submittedInput
                   ? { submittedInput: turn.submittedInput }
                   : {}),

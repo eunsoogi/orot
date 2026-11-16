@@ -121,9 +121,9 @@ export function HealthRecordsMedicationCategoryCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
     borderRadius: 18,
-    borderWidth: 1,
+    // Filled surfaces group saved records; controls and state boundaries stay separate.
+    borderWidth: 0,
     gap: 14,
     padding: 16,
   },

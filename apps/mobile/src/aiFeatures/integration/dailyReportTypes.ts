@@ -60,6 +60,8 @@ export type DailyReportRunInput = Omit<DailyReportServiceInput, 'database'> & {
 };
 
 export interface DailyReportServiceRequest {
+  /** Live conversation owner only; never persisted or reused by restored report lookups. */
+  readonly observer?: import('../../ragConversation/service').RagConversationObserver;
   readonly timeZone: string;
   readonly scope: EvidenceCandidateScope;
   readonly mode:
@@ -67,3 +69,16 @@ export interface DailyReportServiceRequest {
     | { readonly kind: 'revise'; readonly expectedRunId: string | null };
   readonly signal: AbortSignal;
 }
+
+/** Failure subset emitted by report authorization, model dispatch and validation. */
+export type DailyReportModelFailureCode = Extract<
+  DailyReportFailureCode,
+  | 'cancelled'
+  | 'timeout'
+  | 'consent_required'
+  | 'provider_unavailable'
+  | 'source_revision_changed'
+  | 'source_read_failed'
+  | 'partial_stream'
+  | 'malformed_output'
+>;

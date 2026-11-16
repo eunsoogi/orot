@@ -23,6 +23,7 @@ export function createChatGPTPlanStream(
   request: LanguageModelRequest,
   continuationsByCallID: Map<string, readonly string[]>,
   steering?: LanguageModelExecutionOptions['midTurnSteering'],
+  onResponseStarted?: () => void,
 ): AsyncIterable<ProviderResult<LanguageModelStreamEvent>> {
   return {
     [Symbol.asyncIterator]() {
@@ -32,6 +33,7 @@ export function createChatGPTPlanStream(
         request,
         continuationsByCallID,
         steering,
+        onResponseStarted,
       );
     },
   };
@@ -45,6 +47,7 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
   private startTask: Promise<void> | undefined;
   private closed = false;
   private terminal = false;
+  private responseStarted = false;
   private nativeCancellationSent = false;
   private streamedText = '';
   private readonly streamedToolCalls = new Map<string, ToolCall>();
@@ -59,6 +62,7 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
     request: LanguageModelRequest,
     private readonly continuationsByCallID: Map<string, readonly string[]>,
     steering?: LanguageModelExecutionOptions['midTurnSteering'],
+    private readonly onResponseStarted?: () => void,
   ) {
     this.steering = new MidTurnSteering(options, requestID, steering);
     this.prepared = prepareRequest(options.model.slug, request, continuationsByCallID);
@@ -100,6 +104,19 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
           }),
           true,
         );
+      }
+      if (event.type === 'response_started') {
+        if (!event.responseId?.trim() || event.responseId.length > 200)
+          return this.finish(malformedResponse());
+        if (!this.responseStarted) {
+          this.responseStarted = true;
+          try {
+            this.onResponseStarted?.();
+          } catch {
+            /* Optional observation cannot fail the stream. */
+          }
+        }
+        return this.next();
       }
       if (event.type === 'steering_ready' || event.type === 'steering') {
         await this.steering.handle(event);

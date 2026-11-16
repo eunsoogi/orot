@@ -9,7 +9,7 @@ test('reports fixed question-validation categories without retaining rejected co
   const report = NativeModules.OrotProviderDiagnostics.report;
   reportVisitQuestionValidation({
     status: 'invalid',
-    reason: 'A visit requires three to five question candidates.',
+    reason: 'A visit requires one to five question candidates.',
   });
   expect(report).toHaveBeenLastCalledWith(
     'visit',

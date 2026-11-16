@@ -16,7 +16,11 @@ async function runSyntheticCase(testCase, testOverrides = {}) {
   const workflowSourceRoot = getWorkflowSourceRoot(repositoryRoot);
   const workflowRoot = path.join(workflowSourceRoot, 'apps/mobile/src/agent/visitQuestions');
   const { runVisitQuestionWorkflow } = require(path.join(workflowRoot, 'workflow'));
-  const context = await makePreparedContext(testCase, testOverrides.fixture);
+  // Internal synthetic fixture adapter injection does not bypass production workflow validators.
+  const context = await (testOverrides.prepareContext ?? makePreparedContext)(
+    testCase,
+    testOverrides.fixture,
+  );
   // Injected environment and fetch keep provider-boundary integration tests local while exercising the real graph.
   const providerConfig = getVisitQuestionProviderConfig(testOverrides.environment ?? process.env);
   let selectedProvider;

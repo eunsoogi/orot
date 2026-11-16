@@ -3,6 +3,7 @@ import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { setupConversationSteering } from './conversationSteeringSchema';
+import { steeringReceiptTimes } from './conversationSteeringReceiptTimes';
 
 export interface StoredSteeringInstruction {
   readonly id: string;
@@ -10,6 +11,11 @@ export interface StoredSteeringInstruction {
   readonly sequence: number;
   /** True only after the live provider acknowledges this instruction. */
   readonly serverAccepted?: boolean;
+  /** Local user submission time, never a transmission receipt. */
+  readonly submittedAt?: string;
+  /** Local observation times of real provider receipts, not provider clock or user comprehension. */
+  readonly sentAt?: string;
+  readonly readAt?: string;
   readonly status:
     'queued' | 'prepared' | 'applied' | 'not_applied' | 'delivery_pending';
 }
@@ -40,9 +46,11 @@ export async function createConversationSteeringStorage(input: {
   async function read(sql: SqlExecutor): Promise<StoredSteeringInstruction[]> {
     const rows = (
       await sql.execute(
-        `SELECT q.id, q.text, q.sequence, q.status, l.status AS live_status
+        `SELECT q.id, q.text, q.sequence, q.status, l.status AS live_status, t.submitted_at, t.sent_at, t.read_at
          FROM conversation_steering q LEFT JOIN conversation_live_steering l
          ON l.request_id=q.request_id AND l.run_id=q.run_id AND l.id=q.id
+         LEFT JOIN conversation_steering_receipt_times t
+         ON t.request_id=q.request_id AND t.run_id=q.run_id AND t.id=q.id
          WHERE q.request_id = ? AND q.run_id = ? ORDER BY q.sequence`,
         keys,
       )
@@ -52,6 +60,7 @@ export async function createConversationSteeringStorage(input: {
       text: String(row.text),
       sequence: Number(row.sequence),
       status: row.status as StoredSteeringInstruction['status'],
+      ...steeringReceiptTimes(row),
       ...(row.live_status === 'accepted' || row.live_status === 'pending'
         ? { serverAccepted: true }
         : {}),
@@ -66,6 +75,7 @@ export async function createConversationSteeringStorage(input: {
       };
     },
     async enqueue(id: string, text: string): Promise<boolean> {
+      const submittedAt = new Date().toISOString();
       if (!id.trim() || id.length > 128 || !text.trim() || text.length > 1000)
         return false;
       let accepted = false;
@@ -86,6 +96,10 @@ export async function createConversationSteeringStorage(input: {
         await sql.execute(
           'INSERT INTO conversation_steering VALUES (?, ?, ?, ?, ?, ?)',
           [...keys, id, rows.length + 1, text, 'queued'],
+        );
+        await sql.execute(
+          'INSERT INTO conversation_steering_receipt_times (request_id, run_id, id, submitted_at) VALUES (?, ?, ?, ?)',
+          [...keys, id, submittedAt],
         );
         accepted = true;
       });
@@ -178,6 +192,7 @@ export async function createConversationSteeringStorage(input: {
       return result;
     },
     async acknowledge(operationId: string): Promise<boolean> {
+      const observedAt = new Date().toISOString();
       let accepted = false;
       await database.transaction(async sql => {
         if (!(await live(sql))) return;
@@ -190,6 +205,14 @@ export async function createConversationSteeringStorage(input: {
           )
         ).rows[0];
         if (!row) return;
+        // Only newly prepared input acknowledged by a completed journal call gets a read time.
+        await sql.execute(
+          `INSERT INTO conversation_steering_receipt_times (request_id, run_id, id, read_at)
+           SELECT request_id, run_id, id, ? FROM conversation_steering
+           WHERE request_id=? AND run_id=? AND sequence<=? AND status='prepared'
+           ON CONFLICT(request_id, run_id, id) DO UPDATE SET read_at=COALESCE(read_at, excluded.read_at)`,
+          [observedAt, ...keys, row.through_sequence],
+        );
         await sql.execute(
           "UPDATE conversation_steering SET status='applied' WHERE request_id=? AND run_id=? AND sequence<=? AND status='prepared'",
           [...keys, row.through_sequence],

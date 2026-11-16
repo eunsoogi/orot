@@ -190,3 +190,50 @@ test('canceling the search stops before visit generation', async () => {
   await expect(pending).resolves.toEqual({ status: 'cancelled' });
   expect(jest.mocked(runVisitQuestionWorkflow)).not.toHaveBeenCalled();
 });
+
+test('does not turn an unneeded question list into a claim that records are missing', async () => {
+  const run = setup();
+  const message = '이번 진료에서 상의하고 싶은 구체적인 목표가 있나요?';
+  jest.mocked(runVisitQuestionWorkflow).mockResolvedValue({
+    status: 'needs_clarification',
+    message,
+    memoryStatus: 'available',
+  });
+  const result = await run.generate();
+  expect(result).toMatchObject({ status: 'needs_clarification', message });
+  if (result.status === 'cancelled') throw new Error('Unexpected cancellation');
+  expect(result.caveats).not.toContain('insufficient_evidence');
+});
+
+test('keeps actual zero-coverage warnings and the validated insufficient-evidence explanation', async () => {
+  const run = setup();
+  const batch = run.context.evidence.batch;
+  Object.assign(batch, {
+    items: [],
+    coverage: [
+      {
+        sourceKind: 'personal_record',
+        searchedSourceIds: [],
+        gaps: ['synthetic_missing_period'],
+        truncated: true,
+        resultLimit: 1,
+        returnedCount: 0,
+      },
+    ],
+  });
+  const message =
+    '확인할 수 있는 합성 자료가 부족해 진료 질문을 정하기 어려워요?';
+  jest.mocked(runVisitQuestionWorkflow).mockResolvedValue({
+    status: 'needs_clarification',
+    message,
+    memoryStatus: 'available',
+  });
+  expect(await run.generate()).toMatchObject({
+    status: 'needs_clarification',
+    message,
+    caveats: expect.arrayContaining([
+      'incomplete_coverage',
+      'truncated_results',
+    ]),
+  });
+});

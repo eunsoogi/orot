@@ -186,7 +186,6 @@ export function createAiFeatureServices(
       operationSignal,
     );
   }
-
   const dailyReport = createDailyReportFeature(consent, dependencies);
   const dailyReportSources = createDailyReportSourceResolver({
     data: privateLocalData,
@@ -206,7 +205,6 @@ export function createAiFeatureServices(
   };
   const sendRagMessage = createRagConversationService(conversationDependencies);
   const coldResume = createColdConversationServices(conversationDependencies);
-
   const visitQuestions = createVisitQuestionFeatureServices({
     loadLocalData,
     privateLocalData,
@@ -226,6 +224,8 @@ export function createAiFeatureServices(
       registry,
       diseaseRunner,
       sendRagMessage,
+      dailyReport,
+      dailyReportSources,
       coldResume,
       loadSavedVisitQuestions: visitQuestions.loadSavedVisitQuestions,
     }),

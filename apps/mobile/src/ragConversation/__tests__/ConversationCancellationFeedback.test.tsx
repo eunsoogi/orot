@@ -1,6 +1,11 @@
+import { providerDiagnostic } from '../../providers/diagnostics';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ConversationComposer } from '../ConversationComposer';
 import { createConversationSessions } from '../conversationSessions';
+
+jest.mock('../../providers/diagnostics', () => ({
+  providerDiagnostic: jest.fn(),
+}));
 
 // Synthetic presentation evidence, not native tap delivery or provider latency proof.
 test('acknowledges pending cancellation without allowing another send or Stop', async () => {
@@ -45,6 +50,7 @@ test('acknowledges pending cancellation without allowing another send or Stop', 
 });
 
 test('publishes cancelling immediately while preserving the summary commit fence', async () => {
+  jest.mocked(providerDiagnostic).mockClear();
   const sessions = createConversationSessions();
   let release!: () => void;
   let signal!: AbortSignal;
@@ -71,8 +77,18 @@ test('publishes cancelling immediately while preserving the summary commit fence
     busy: true,
     requestActivity: { stage: 'cancelling' },
   });
+  expect(providerDiagnostic).toHaveBeenCalledWith(
+    'rag',
+    'stop_settlement',
+    'started',
+  );
   release();
   await pending;
+  expect(providerDiagnostic).toHaveBeenCalledWith(
+    'rag',
+    'stop_settlement',
+    'completed',
+  );
   expect(sessions.getSnapshot().sessions[0]).toMatchObject({
     busy: false,
     requestActivity: null,

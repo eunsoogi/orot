@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, within } from '@testing-library/react-native';
 import { ConversationMessage } from '../ConversationMessage';
 import { ConversationInitialResponse } from '../ConversationInitialResponse';
 import { initialConversationResponse } from '../initialResponse';
@@ -20,6 +20,7 @@ test('keeps the generated opening before the final answer after streaming ends',
     screen.getByTestId('rag-conversation-initial-response'),
   ).toHaveTextContent(initialConversationResponse);
   expect(screen.queryByTestId('rag-conversation-answer-body')).toBeNull();
+  expect(screen.queryByTestId('conversation-assistant-message')).toBeNull();
   await view.rerender(
     <ConversationMessage
       {...props}
@@ -32,6 +33,20 @@ test('keeps the generated opening before the final answer after streaming ends',
   expect(screen.getByTestId('rag-conversation-answer-body')).toHaveTextContent(
     '검증된 최종 답변',
   );
+  expect(
+    within(screen.getByTestId('conversation-opening-body')).queryByText(
+      '검증된 최종 답변',
+    ),
+  ).toBeNull();
+  expect(
+    within(screen.getByTestId('conversation-message-body')).queryByTestId(
+      'rag-conversation-initial-response',
+    ),
+  ).toBeNull();
+  expect(
+    screen.getByTestId('rag-conversation-initial-response').props
+      .accessibilityLiveRegion,
+  ).toBe('polite');
 });
 
 test('does not flash a receipt for fast answers and clears its timer when cancelled', async () => {
@@ -78,7 +93,7 @@ test('does not flash a receipt for fast answers and clears its timer when cancel
   }
 });
 
-test('renders identical generated opening and final prose once without removing the opening', async () => {
+test('keeps two real responses separate even when their text happens to match', async () => {
   await render(
     <ConversationMessage
       onOpenSource={jest.fn()}
@@ -91,7 +106,17 @@ test('renders identical generated opening and final prose once without removing 
       }}
     />,
   );
-  expect(screen.getAllByText('같은 문장')).toHaveLength(1);
+  expect(screen.getAllByText('같은 문장')).toHaveLength(2);
+  expect(
+    within(screen.getByTestId('conversation-opening-body')).getByText(
+      '같은 문장',
+    ),
+  ).toBeTruthy();
+  expect(
+    within(screen.getByTestId('conversation-message-body')).getByText(
+      '같은 문장',
+    ),
+  ).toBeTruthy();
   expect(
     screen.getByTestId('rag-conversation-initial-response'),
   ).toHaveTextContent('같은 문장');

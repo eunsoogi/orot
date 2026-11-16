@@ -24,17 +24,24 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function setup() {
+function setup(openingConsent = false) {
   jest.clearAllMocks();
   const run = publicEvidenceFixture();
   const context = preparedContext();
   const opening = deferred<void>();
   const prepared = deferred<void>();
   const dispose = jest.fn();
+  let authorizeOpening: Promise<unknown> | undefined;
+  const request = { signal: run.controller.signal } as Parameters<
+    Parameters<
+      typeof startContextualConversationOpening
+    >[0]['consent']['authorize']
+  >[0];
   let current = true;
-  jest
-    .mocked(startContextualConversationOpening)
-    .mockReturnValue({ done: opening.promise, dispose });
+  jest.mocked(startContextualConversationOpening).mockImplementation(input => {
+    if (openingConsent) authorizeOpening = input.consent.authorize(request);
+    return { done: opening.promise, dispose };
+  });
   const prepare = jest.fn(async () => {
     prepared.resolve();
     return { ...context, saveReviewedQuestions: jest.fn() };
@@ -74,6 +81,8 @@ function setup() {
     dispose,
     consent,
     result,
+    request,
+    openingAuthorization: () => authorizeOpening,
     supersede: () => {
       current = false;
     },
@@ -150,4 +159,29 @@ test('an owner change during appointment revalidation cannot dispatch research',
   expect(f.consent).not.toHaveBeenCalled();
   expect(f.search).not.toHaveBeenCalled();
   expect(runVisitQuestionWorkflow).not.toHaveBeenCalled();
+});
+
+// Exercise the actual per-request gate, rather than only a mocked opening wait.
+test('a failed local preparation never exposes opening consent and releases its waiter', async () => {
+  const f = setup(true);
+  const error = new Error('synthetic local failure');
+  f.prepare.mockRejectedValueOnce(error);
+  await expect(f.result).rejects.toBe(error);
+  await expect(f.openingAuthorization()).resolves.toBe('renewal_required');
+  expect(f.consent).not.toHaveBeenCalled();
+  expect(f.search).not.toHaveBeenCalled();
+  expect(runVisitQuestionWorkflow).not.toHaveBeenCalled();
+  expect(f.dispose).toHaveBeenCalledTimes(1);
+});
+
+test('prepared opening forwards its exact consent request without starting research early', async () => {
+  const f = setup(true);
+  await f.prepared.promise;
+  await expect(f.openingAuthorization()).resolves.toBe('authorized');
+  expect(f.consent).toHaveBeenCalledTimes(1);
+  expect(f.consent).toHaveBeenCalledWith(f.request);
+  expect(f.search).not.toHaveBeenCalled();
+  f.opening.resolve();
+  await f.result;
+  expect(f.search).toHaveBeenCalledTimes(1);
 });

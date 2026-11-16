@@ -169,3 +169,34 @@ test('reports a closed provider error code without forwarding unknown strings', 
     ['rag', 'workflow', 'other'],
   ]);
 });
+
+test('stale workflow reports only a fixed origin code and preserves the terminal status', () => {
+  reportWorkflowOutcome(
+    'rag',
+    'stale_evidence',
+    undefined,
+    'The allowlisted evidence search did not produce valid current evidence.',
+  );
+  expect(NativeModules.OrotProviderDiagnostics.report.mock.calls).toEqual([
+    ['rag', 'validation', 'stale_search_result'],
+    ['rag', 'workflow', 'stale_evidence'],
+  ]);
+});
+
+test('unknown stale text and diagnostic failure cannot escape the optional origin probe', () => {
+  NativeModules.OrotProviderDiagnostics.report.mockImplementationOnce(() => {
+    throw new Error('synthetic diagnostic failure');
+  });
+  expect(() =>
+    reportWorkflowOutcome(
+      'rag',
+      'stale_evidence',
+      undefined,
+      'synthetic private text',
+    ),
+  ).not.toThrow();
+  expect(NativeModules.OrotProviderDiagnostics.report.mock.calls).toEqual([
+    ['rag', 'validation', 'other'],
+    ['rag', 'workflow', 'stale_evidence'],
+  ]);
+});

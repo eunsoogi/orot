@@ -73,6 +73,8 @@ function citationAvailability(testCase, evidenceItems) {
 
 /** Cites only opaque references returned by the runtime's actual evidence-search tool messages. */
 function responseFor(testCase, evidenceItems) {
+  const decision = require('./decision-reference.cjs').decisionReference(testCase, evidenceItems);
+  if (decision) return decision;
   const clarification = buildSyntheticClarificationResponse(testCase);
   if (clarification) return clarification;
 
