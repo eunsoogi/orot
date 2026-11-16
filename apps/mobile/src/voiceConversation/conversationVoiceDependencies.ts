@@ -1,5 +1,6 @@
 import { requireLocalVoiceProcessing } from '../voiceSettings/voiceSettingsStore';
 import { AppState } from 'react-native';
+import type { VoiceTranscriptLine } from './VoiceTranscriptViewport';
 import type { RefObject } from 'react';
 import type { SelectedAiResolution } from '../aiFeatures/integration/provider';
 import type { ConversationScreenProps } from '../ragConversation/ConversationScreenProps';
@@ -34,8 +35,16 @@ export function conversationVoiceDependencies(input: {
   latest: RefObject<ConversationVoiceProps>;
   selected: RefObject<SelectionBinding | null>;
   owned: RefObject<Owned | null>;
+  transcript?: (line: VoiceTranscriptLine) => void;
 }): VoiceConversationDependencies {
   const { latest, selected, owned } = input;
+  const transcript = (line: VoiceTranscriptLine) => {
+    try {
+      input.transcript?.(line);
+    } catch {
+      // Ephemeral display cannot cancel a request or change a committed answer.
+    }
+  };
   const current: VoiceConversationDependencies['isCurrent'] = identity => {
     const value = selected.current;
     const live = latest.current;
@@ -91,6 +100,7 @@ export function conversationVoiceDependencies(input: {
       const approved = selected.current?.value;
       if (!approved || signal.aborted || !current(identity))
         throw new Error('Voice selection changed');
+      transcript({ id: `${identity.turnId}:user`, role: 'user', text });
       const send = entryIntentSender(
         live.store,
         identity.sessionId,
@@ -114,6 +124,11 @@ export function conversationVoiceDependencies(input: {
       if (owned.current?.handle === handle) owned.current = null;
       if (result.status !== 'completed' || signal.aborted || !current(identity))
         throw new Error('Voice answer unavailable');
+      transcript({
+        id: `${identity.turnId}:assistant`,
+        role: 'assistant',
+        text: result.answer,
+      });
       return result.answer;
     },
     async cancel(identity) {

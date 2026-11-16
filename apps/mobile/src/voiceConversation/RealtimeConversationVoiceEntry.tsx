@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import { VoiceCallIdentity } from './VoiceCallIdentity';
-import { AppText } from '../layout/AppText';
 import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
 import type { ConversationVoiceProps } from './conversationVoiceDependencies';
 import {
@@ -54,6 +53,11 @@ export function RealtimeConversationVoiceEntry(
     );
   };
   useEffect(() => {
+    // Transcript display belongs to one consented model/session, never its replacement.
+    setTranscripts([]);
+    setVisible(false);
+    setState(initialVoiceState);
+    setAvailable(false);
     const native = nativeRealtimeVoice();
     if (!native) return;
     let mounted = true;
@@ -84,6 +88,8 @@ export function RealtimeConversationVoiceEntry(
     owner.current = voice;
     const settings = voiceSettingsStore.subscribe(() => {
       ++consentRevision.current;
+      setTranscripts([]);
+      setVisible(false);
       voice.stop();
     });
     const app = AppState.addEventListener('change', value => {
@@ -154,16 +160,11 @@ export function RealtimeConversationVoiceEntry(
         phase={state.phase}
         status={status}
         pipeline={t('realtimeDisplay.pipeline', { model: props.model })}
-        transcript={
-          <>
-            {transcripts.map(item => (
-              <AppText key={`${item.role}:${item.itemId}`}>
-                {item.role === 'user' ? t('realtimeDisplay.user') : 'AI'}:{' '}
-                {item.text}
-              </AppText>
-            ))}
-          </>
-        }
+        transcript={transcripts.map(item => ({
+          id: `${item.role}:${item.itemId}`,
+          role: item.role,
+          text: item.text,
+        }))}
         identity={<VoiceCallIdentity />}
         onEnd={() => {
           owner.current?.stop();
@@ -172,7 +173,6 @@ export function RealtimeConversationVoiceEntry(
         }}
         onMute={() => owner.current?.mute()}
         onResume={() => owner.current?.resume()}
-        onInterrupt={() => owner.current?.interrupt()}
         onFinish={() => {}}
       />
       {!visible && (

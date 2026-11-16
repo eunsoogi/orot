@@ -62,3 +62,40 @@ test('local mode stays distinct and stopped state offers resume without listenin
   await fireEvent.press(screen.getByTestId('voice-call-resume'));
   expect(actions.onResume).toHaveBeenCalledTimes(1);
 });
+
+test.each(['processing', 'speaking'] as const)(
+  'does not expose a manual interrupt control while %s',
+  async phase => {
+    const actions = callbacks();
+    await render(
+      <VoiceConversationScreen
+        visible
+        phase={phase}
+        status="진행 중"
+        transcript={[{ id: 'synthetic', role: 'assistant', text: '합성 대화' }]}
+        {...actions}
+      />,
+    );
+    expect(screen.queryByTestId('voice-call-interrupt')).toBeNull();
+    expect(screen.getByTestId('voice-transcript-scroll')).toBeTruthy();
+    expect(screen.getByText('AI: 합성 대화')).toBeTruthy();
+    expect(actions.onInterrupt).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByTestId('voice-call-end'));
+    expect(actions.onEnd).toHaveBeenCalledTimes(1);
+  },
+);
+
+test('older local bridges retain an explicit interruption fallback', async () => {
+  const actions = callbacks();
+  await render(
+    <VoiceConversationScreen
+      visible
+      phase="speaking"
+      status="합성"
+      manualInterrupt
+      {...actions}
+    />,
+  );
+  await fireEvent.press(screen.getByTestId('voice-call-interrupt'));
+  expect(actions.onInterrupt).toHaveBeenCalledTimes(1);
+});
