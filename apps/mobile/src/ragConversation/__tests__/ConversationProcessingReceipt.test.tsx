@@ -5,7 +5,7 @@ import { createConversationSessions } from '../conversationSessions';
 import type { RagConversationObserver } from '../service';
 
 /** The same owning request drives receipts and dots; a local wait cannot fabricate AI processing. */
-test('waiting dots do not imply read, observed processing shows read before text, Stop fences late signals', async () => {
+test('waiting dots do not imply read, a generated opening shows read before final text, Stop fences late signals', async () => {
   const sessions = createConversationSessions();
   const Harness = () => {
     const state = useSyncExternalStore(
@@ -49,11 +49,16 @@ test('waiting dots do not imply read, observed processing shows read before text
     }),
   ).toHaveLength(3);
   await act(async () => {
-    observer.onProviderReceipt!('response_started');
+    observer.onTaskStreamEvent!({
+      type: 'initial_response',
+      callId: 'synthetic-opening',
+      text: 'Synthetic opening',
+    });
   });
   expect(screen.getByTestId('conversation-message-receipt')).toHaveTextContent(
     /읽음/,
   );
+  expect(screen.getByText('Synthetic opening')).toBeTruthy();
   expect(screen.queryByTestId('conversation-response-waiting')).toBeNull();
   expect(
     screen.getAllByTestId('rag-conversation-activity-dot', {
