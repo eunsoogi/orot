@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react-native';
-import { AccessibilityInfo, Animated } from 'react-native';
+import { AccessibilityInfo, Animated, StyleSheet } from 'react-native';
 import { ConversationActivityBubble } from '../ConversationActivityBubble';
 
 afterEach(() => jest.restoreAllMocks());
@@ -16,6 +16,11 @@ test('shows three decorative static dots when Reduce Motion is enabled', async (
     includeHiddenElements: true,
   });
   expect(screen.queryByTestId('rag-conversation-activity-bubble')).toBeNull();
+  expect(StyleSheet.flatten(bubble.props.style)).toMatchObject({
+    borderWidth: 0,
+    minWidth: 56,
+    height: 36,
+  });
   expect(bubble.props.accessible).toBe(false);
   expect(bubble.props.accessibilityElementsHidden).toBe(true);
   expect(bubble.props.importantForAccessibility).toBe('no-hide-descendants');

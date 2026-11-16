@@ -134,11 +134,11 @@ export const overviewMetricStyles = StyleSheet.create({
   },
   comparisonCoverage: { color: appColors.secondary, flexShrink: 1 },
   comparisonMetadata: { color: appColors.secondary, flexShrink: 1 },
+  // The panel groups checkbox rows; each row owns its explicit checked state and selection cue.
   selectionPanel: {
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
     borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },

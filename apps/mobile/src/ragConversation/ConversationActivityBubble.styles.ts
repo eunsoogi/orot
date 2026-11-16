@@ -1,15 +1,14 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 
-/** A compact transcript surface uses semantic colors in both system appearances. */
+/** Filled grouping separates decorative activity dots without implying an outlined control. */
 export const styles = StyleSheet.create({
   bubble: {
     alignSelf: 'flex-start',
     minWidth: 56,
     height: 36,
     paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: appColors.border,
+    borderWidth: 0,
     borderRadius: 18,
     backgroundColor: appColors.surface,
     flexDirection: 'row',

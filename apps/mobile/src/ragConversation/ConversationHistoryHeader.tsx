@@ -130,13 +130,13 @@ const styles = StyleSheet.create({
   },
   savedOutputs: { marginTop: 8, gap: 8 },
   savedOutputsTitle: { fontSize: 17, fontWeight: '600' },
+  // Filled saved-result rows retain their labels, chevrons and pressed feedback without a decorative frame.
   savedOutput: {
     minHeight: 64,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: appColors.border,
+    borderWidth: 0,
     backgroundColor: appColors.surface,
     flexDirection: 'row',
     alignItems: 'center',
