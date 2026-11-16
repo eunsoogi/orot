@@ -1,4 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react-native';
+import {
+  notifyLocalDataCleared,
+  notifyLocalSourceDeleted,
+} from '../../../storage/localDataClearEvents';
+import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { createDailyReportIdentity } from '@orot/domain';
 import { ConversationSavedReportMessage } from '../ConversationSavedReportMessage';
 import type { AiFeatureServices } from '../featureServices';
@@ -77,3 +81,56 @@ test.each(['deleted', 'stale', 'error'])(
     expect(fixture.start).not.toHaveBeenCalled();
   },
 );
+
+test.each([notifyLocalDataCleared, notifyLocalSourceDeleted])(
+  'committed deletion clears an already visible body before reread finishes',
+  async notify => {
+    const fixture = services();
+    await render(
+      <ConversationSavedReportMessage
+        target={target}
+        services={fixture.value}
+        onOpenSource={jest.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/Synthetic saved analysis/)).toBeTruthy(),
+    );
+    let finish!: (value: unknown) => void;
+    fixture.lookup.mockReturnValue(
+      new Promise(resolve => {
+        finish = resolve;
+      }),
+    );
+    await act(() => notify());
+    expect(screen.queryByText(/Synthetic saved analysis/)).toBeNull();
+    await act(() => finish({ status: 'deleted' }));
+    expect(screen.queryByText(/Synthetic saved analysis/)).toBeNull();
+    expect(fixture.start).not.toHaveBeenCalled();
+  },
+);
+
+test('deletion fences an old source resolver so late completion cannot resurrect the report', async () => {
+  const fixture = services();
+  let finish!: (value: unknown) => void;
+  fixture.sources.mockReturnValue(
+    new Promise(resolve => {
+      finish = resolve;
+    }),
+  );
+  await render(
+    <ConversationSavedReportMessage
+      target={target}
+      services={fixture.value}
+      onOpenSource={jest.fn()}
+    />,
+  );
+  await waitFor(() => expect(fixture.sources).toHaveBeenCalledTimes(1));
+  const oldSignal = fixture.sources.mock.calls[0][3] as AbortSignal;
+  fixture.lookup.mockResolvedValue({ status: 'deleted' });
+  await act(() => notifyLocalSourceDeleted());
+  expect(oldSignal.aborted).toBe(true);
+  await act(() => finish({ status: 'current', sources: [] }));
+  expect(screen.queryByText(/Synthetic saved analysis/)).toBeNull();
+  expect(fixture.start).not.toHaveBeenCalled();
+});

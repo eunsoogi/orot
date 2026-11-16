@@ -1,3 +1,7 @@
+import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../../storage/localDataClearEvents';
 import { useEffect, useState } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { AiFeatureServices } from './featureServices';
@@ -16,21 +20,26 @@ export function ConversationSavedReportMessage({
   services: AiFeatureServices;
   onOpenSource: (source: EvidenceReference) => void;
 }) {
+  const targetKey = JSON.stringify([
+    target.identity.key,
+    target.runId,
+    target.revision,
+  ]);
+  const [displayKey, setDisplayKey] = useState<string>();
   const [content, setContent] = useState('');
   const [citations, setCitations] = useState<readonly EvidenceReference[]>([]);
   useEffect(() => {
-    const controller = new AbortController();
-    setContent('');
-    setCitations([]);
-    async function restore() {
+    let controller: AbortController | undefined;
+    async function restore(read: AbortController) {
       const saved = await services.dailyReport?.lookup(target.identity);
-      if (controller.signal.aborted) return;
+      if (read.signal.aborted) return;
       if (
         !saved ||
         saved.status !== 'saved' ||
         saved.runId !== target.runId ||
         saved.revision !== target.revision
       ) {
+        setDisplayKey(targetKey);
         setContent(t('dailyReport.sourceError'));
         return;
       }
@@ -38,22 +47,43 @@ export function ConversationSavedReportMessage({
         target.identity,
         target.runId,
         target.revision,
-        controller.signal,
+        read.signal,
       );
-      if (controller.signal.aborted) return;
+      if (read.signal.aborted) return;
       if (sources?.status !== 'current') {
+        setDisplayKey(targetKey);
         setContent(t('dailyReport.sourceError'));
         return;
       }
+      setDisplayKey(targetKey);
       setContent(conversationDailyReportText(saved));
       setCitations(sources.sources);
     }
-    restore().catch(() => {
-      if (!controller.signal.aborted) setContent(t('dailyReport.lookupError'));
-    });
-    return () => controller.abort();
-  }, [target, services]);
-  if (!content) return null;
+    const refresh = () => {
+      // Fence the old read before clearing: a late lookup/source result must not resurrect deleted prose.
+      controller?.abort();
+      setDisplayKey(undefined);
+      setContent('');
+      setCitations([]);
+      const read = new AbortController();
+      controller = read;
+      restore(read).catch(() => {
+        if (!read.signal.aborted) {
+          setDisplayKey(targetKey);
+          setContent(t('dailyReport.lookupError'));
+        }
+      });
+    };
+    const unsubscribeClear = subscribeLocalDataClear(refresh);
+    const unsubscribeSource = subscribeLocalSourceDeletion(refresh);
+    refresh();
+    return () => {
+      controller?.abort();
+      unsubscribeClear();
+      unsubscribeSource();
+    };
+  }, [target, targetKey, services]);
+  if (!content || displayKey !== targetKey) return null;
   return (
     <ConversationMessage
       message={{
@@ -64,7 +94,10 @@ export function ConversationSavedReportMessage({
         citations,
       }}
       onOpenSource={onOpenSource}
-      onLinkError={() => setContent(t('dailyReport.sourceError'))}
+      onLinkError={() => {
+        setCitations([]);
+        setContent(t('dailyReport.sourceError'));
+      }}
     />
   );
 }
