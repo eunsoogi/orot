@@ -13,3 +13,14 @@ export type {
   ChatGPTPlanPublicWebRequest,
   ChatGPTPlanWebSearchResult,
 } from './native-contract';
+export {
+  calendarDecisionsModel,
+  calendarDecisionValues,
+  classifyCalendarDecisions,
+  validateCalendarDecisionCandidates,
+} from './calendarDecisions';
+export type {
+  CalendarDecisionCandidate,
+  CalendarDecision,
+  CalendarDecisionsTransport,
+} from './calendarDecisions';

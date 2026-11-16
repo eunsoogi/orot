@@ -107,7 +107,6 @@ export default function ProviderSelectionScreen({
       )
     : undefined;
   const confirmationOption = currentPendingOption ?? pendingOption;
-
   async function confirmSelection() {
     if (!pendingOption || saving) return;
     const selection = {
@@ -152,7 +151,6 @@ export default function ProviderSelectionScreen({
       setSaving(false);
     }
   }
-
   const selectionMessage = loading
     ? ''
     : loadError
@@ -162,7 +160,6 @@ export default function ProviderSelectionScreen({
         : savedSelection
           ? `${providerSelectionText.selectedPrefix} ${savedSelection.modelId}\n${providerSelectionText.unavailableSelection}`
           : providerSelectionText.selectPrompt;
-
   return (
     <View style={styles.root}>
       <ScrollView
@@ -199,6 +196,9 @@ export default function ProviderSelectionScreen({
           <ChatGPTAccountSetupCard setup={chatGPTSetup} />
         ) : null}
         <ModelSelectionTabs
+          onCalendarStateChange={publishNavigationState}
+          calendarOptions={options}
+          chatGPTSetup={chatGPTSetup}
           enabled={presentation === 'settings-provider'}
           locked={saving || pendingOption !== null}
           onOpenAccounts={chatGPTSetup?.onOpenAccounts}

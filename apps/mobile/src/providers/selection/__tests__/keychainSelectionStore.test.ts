@@ -81,3 +81,35 @@ describe('KeychainProviderSelectionStore', () => {
     });
   });
 });
+
+it('isolates calendar selection from the conversation keychain entry', async () => {
+  jest.clearAllMocks();
+  getGenericPasswordMock.mockResolvedValue(false);
+  setGenericPasswordMock.mockResolvedValue({
+    service: 'calendar',
+    storage: STORAGE_TYPE.AES_GCM_NO_AUTH,
+  });
+  const calendar = new KeychainProviderSelectionStore(
+    'com.orot.mobile.calendar-classification-selection.v1',
+  );
+  await expect(calendar.load()).resolves.toBeNull();
+  await calendar.save({
+    providerId: 'openai-api-decisions',
+    modelId: 'gpt-6-luna',
+  });
+  expect(getGenericPasswordMock).toHaveBeenCalledWith({
+    service: 'com.orot.mobile.calendar-classification-selection.v1',
+  });
+  expect(setGenericPasswordMock).toHaveBeenCalledWith(
+    'provider-selection',
+    JSON.stringify({
+      providerId: 'openai-api-decisions',
+      modelId: 'gpt-6-luna',
+    }),
+    {
+      service: 'com.orot.mobile.calendar-classification-selection.v1',
+      accessible: 'device-only',
+    },
+  );
+  expect(resetGenericPasswordMock).not.toHaveBeenCalled();
+});
