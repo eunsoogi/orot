@@ -14,9 +14,9 @@ export function useSavedMemories(
   enabled = true,
 ) {
   const [rows, setRows] = useState<SavedMemory[]>([]);
-  const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'failed'>(
-    'idle',
-  );
+  const [state, setState] = useState<
+    'idle' | 'loading' | 'ready' | 'failed' | 'invalidated'
+  >('idle');
   const generation = useRef(0);
   const active = useRef(AppState.currentState === 'active');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,8 +61,14 @@ export function useSavedMemories(
 
   useEffect(() => {
     // Deletion fences invalidate cached text and pending reads, even if later cleanup fails.
-    const unsubscribeClear = subscribeLocalDataClear(close);
-    const unsubscribeSource = subscribeLocalSourceDeletion(close);
+    // Deletion notifications do not start reads: cleanup may have failed after invalidation.
+    // Clear immediately; allow explicit recovery or the existing foreground/focus reload.
+    const invalidate = () => {
+      close();
+      if (active.current && enabled) setState('invalidated');
+    };
+    const unsubscribeClear = subscribeLocalDataClear(invalidate);
+    const unsubscribeSource = subscribeLocalSourceDeletion(invalidate);
     const subscription = AppState.addEventListener('change', next => {
       active.current = enabled && next === 'active';
       if (!active.current) close();
