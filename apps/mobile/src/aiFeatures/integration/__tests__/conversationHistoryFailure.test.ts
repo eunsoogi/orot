@@ -84,3 +84,23 @@ test('unknown errors stay unknown and a failed diagnostic sink cannot hide the o
     kind: 'retrieval_failed',
   });
 });
+
+// Dispatch errors outside local history retain their new closed boundary token.
+test.each(['selection', 'workflow'] as const)(
+  'observes the %s catch without changing its recovery category',
+  stage => {
+    jest.clearAllMocks();
+    const result = ragConversationFailure(
+      new ReferenceError('private fixture'),
+      new AbortController().signal,
+      stage,
+    );
+    expect(jest.mocked(providerDiagnostic).mock.calls).toEqual([
+      ['rag', 'conversation_dispatch', 'reference_error'],
+    ]);
+    expect(result).toEqual({
+      status: 'failure',
+      kind: stage === 'selection' ? 'provider_unavailable' : 'unavailable',
+    });
+  },
+);

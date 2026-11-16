@@ -1,3 +1,4 @@
+import { reportConversationException } from '../providers/conversationFailureDiagnostic';
 import { conversationInitialEvidence } from './conversationInitialEvidence';
 import { runContinuableConversationWorkflow } from './conversationWorkflowContinuation';
 import type { ConversationWorkflowContinuation } from './conversationWorkflowContinuation';
@@ -120,6 +121,7 @@ export async function runRagConversationTurn(
     );
     return conversationWorkflowOutcome(result, options, invocation.signal);
   } catch (error) {
+    reportConversationException('conversation_run', error);
     if (
       invocation.signal?.aborted ||
       (error instanceof Error && error.name === 'AbortError')

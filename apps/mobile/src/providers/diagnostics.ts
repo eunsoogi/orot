@@ -1,3 +1,4 @@
+import { workflowUnavailableDiagnostic } from './workflowUnavailableDiagnostic';
 import { staleEvidenceDiagnostic } from './staleEvidenceDiagnostic';
 import { NativeModules } from 'react-native';
 
@@ -51,6 +52,17 @@ export function reportWorkflowOutcome(
   providerErrorCode?: string,
   validationReason?: string,
 ) {
+  if (status === 'unavailable') {
+    try {
+      providerDiagnostic(
+        feature,
+        'workflow',
+        workflowUnavailableDiagnostic(validationReason),
+      );
+    } catch {
+      // Optional native observation must not change the original failure.
+    }
+  }
   if (status === 'stale_evidence') {
     // Diagnosis must not change cancellation, source validation or the UI result.
     try {

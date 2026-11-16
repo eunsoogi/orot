@@ -1,3 +1,4 @@
+import { reportConversationException } from '../../providers/conversationFailureDiagnostic';
 import { reportConversationPreparationFailure } from './conversationHistoryFailure';
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import { AiProviderSelectionError } from './provider';
@@ -9,6 +10,8 @@ export function ragConversationFailure(
   stage: 'selection' | 'data' | 'workflow',
 ): RagConversationOutcome {
   if (stage === 'data') reportConversationPreparationFailure(error);
+  // Data preparation already emits its more specific closed history category.
+  else reportConversationException('conversation_dispatch', error);
   if (signal.aborted || (error instanceof Error && error.name === 'AbortError'))
     return { status: 'failure', kind: 'cancelled' };
   if (error instanceof AiProviderSelectionError)

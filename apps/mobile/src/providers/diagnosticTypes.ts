@@ -1,6 +1,8 @@
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
 export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report' | 'storage';
 export type Stage =
+  | 'conversation_dispatch'
+  | 'conversation_run'
   | 'tool_capture_personal'
   | 'tool_capture_memory'
   | 'tool_capture_generated'
@@ -59,6 +61,11 @@ export type Stage =
   | 'evidence_memory'
   | 'evidence_presentation';
 export type Outcome =
+  | 'workflow_search_failed'
+  | 'workflow_search_unavailable'
+  | 'workflow_exception'
+  | 'workflow_action_unknown'
+  | 'workflow_unavailable_other'
   | 'history_discovery_unavailable'
   | 'history_page_unavailable'
   | 'history_turn_unavailable'
