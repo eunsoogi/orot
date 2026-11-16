@@ -26,6 +26,7 @@ export type { AppNavigationRoute } from './appNavigationRoute';
 export function AppRouteContent({
   documentImportService,
   loadSavedVisitQuestions,
+  discoverManualVisits,
   actions,
   activeTab,
   selectTab,
@@ -77,6 +78,7 @@ export function AppRouteContent({
             onOpenSchedule={() => selectTab('schedule')}
             onOpenRecords={() => selectTab('records')}
             loadSavedVisitQuestions={loadSavedVisitQuestions}
+            discoverManualVisits={discoverManualVisits}
             onOpenRecording={openRecording}
             onOpenDailyReport={openOverviewReport}
           />
