@@ -1,3 +1,4 @@
+import { conversationHistoryError } from './conversationHistoryError';
 import { conversationIsNearLatest } from './conversationVisibleOffset';
 import { useFloatingComposerInset } from './FloatingComposerSurface';
 import { followConversationLatest } from './followConversationLatest';
@@ -216,8 +217,12 @@ export function ConversationHistory({
         />
         {showActivityBubble ? <ConversationActivityBubble /> : null}
         <ConversationHistoryStatus
-          {...{
+          error={conversationHistoryError(
             error,
+            visibleMessages,
+            separatedActivity,
+          )}
+          {...{
             unsavedCount,
             retryingSave,
             onRetrySave,
