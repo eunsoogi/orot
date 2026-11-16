@@ -95,23 +95,24 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
                   color={theme.colors.accentText}
                   disabled={isSaving}
                 />
-                <Text
-                  style={[styles.selectionLabel, { color: theme.colors.text }]}
-                >
-                  {t('visitQuestions.inline.question.select', {
-                    number: index + 1,
-                  })}
-                </Text>
-                <Text
-                  style={{
-                    color: theme.colors.textMuted,
-                    fontSize: theme.tokens.typography.sizes.caption,
-                  }}
-                >
-                  {item.origin === 'saved'
-                    ? t('visitQuestions.inline.question.origin.saved')
-                    : t('visitQuestions.inline.question.origin.new')}
-                </Text>
+                {/* Keep origin below the label so large text cannot collide in a narrow card. */}
+                <View style={styles.selectionLabel}>
+                  <Text style={{ color: theme.colors.text }}>
+                    {t('visitQuestions.inline.question.label', {
+                      number: index + 1,
+                    })}
+                  </Text>
+                  <Text
+                    style={{
+                      color: theme.colors.textMuted,
+                      fontSize: theme.tokens.typography.sizes.caption,
+                    }}
+                  >
+                    {item.origin === 'saved'
+                      ? t('visitQuestions.inline.question.origin.saved')
+                      : t('visitQuestions.inline.question.origin.new')}
+                  </Text>
+                </View>
               </Pressable>
             }
             question={item.question}

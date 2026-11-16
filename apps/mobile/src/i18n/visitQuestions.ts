@@ -57,6 +57,7 @@ export const visitQuestionsKo = {
   'visitQuestions.validation.unusableClarification':
     '질문을 준비하기 전에 관련 건강 기록과 진료에서 확인할 내용을 살펴봐 주세요.',
   'visitQuestions.inline.title': '진료에서 물어볼 질문',
+  'visitQuestions.inline.question.label': '질문 {number}',
   'visitQuestions.inline.question.select': '질문 {number} 저장 선택',
   'visitQuestions.inline.question.origin.saved': '저장된 질문',
   'visitQuestions.inline.question.origin.new': '새 질문',
