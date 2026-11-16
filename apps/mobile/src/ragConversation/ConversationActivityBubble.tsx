@@ -1,18 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, View } from 'react-native';
-import { AppText } from '../layout/AppText';
-import { t } from '../i18n';
 import { styles } from './ConversationActivityBubble.styles';
 
 const DOT_OFFSETS = [0, 1, 2] as const;
 const DOT_CYCLE_MS = 1_560;
 
 /** One native-driven timeline animates decorative dots without rerendering the transcript. */
-export function ConversationActivityBubble({
-  processing = true,
-}: {
-  readonly processing?: boolean;
-}) {
+export function ConversationActivityBubble() {
   const [reduceMotion, setReduceMotion] = useState(true);
   const reduceMotionRef = useRef(true);
   const phase = useRef(new Animated.Value(0)).current;
@@ -72,7 +66,7 @@ export function ConversationActivityBubble({
   useEffect(() => {
     phase.stopAnimation();
     phase.setValue(0);
-    if (reduceMotion || !processing) return;
+    if (reduceMotion) return;
 
     const animation = Animated.loop(
       Animated.timing(phase, {
@@ -84,20 +78,9 @@ export function ConversationActivityBubble({
     );
     animation.start();
     return () => animation.stop();
-  }, [phase, reduceMotion, processing]);
+  }, [phase, reduceMotion]);
 
-  // Dots imply active AI processing. Local preparation/consent/dispatch alone cannot show them.
-  if (!processing)
-    return (
-      <View style={styles.bubble} testID="rag-conversation-activity-bubble">
-        <AppText
-          accessibilityLiveRegion="polite"
-          testID="conversation-response-waiting"
-        >
-          {t('conversationDelivery.waiting')}
-        </AppText>
-      </View>
-    );
+  // Waiting dots are presentation only; they do not infer provider receipt or reading.
   return (
     <View
       accessible={false}
