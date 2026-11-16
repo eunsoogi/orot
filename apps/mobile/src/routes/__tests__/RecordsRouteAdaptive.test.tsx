@@ -84,7 +84,6 @@ test('keeps one primary recording action and every existing Records destination'
   for (const id of [
     'records-new-recording',
     'records-open-saved-recordings',
-    'records-open-manual-history',
     'records-open-health-library',
   ]) {
     await fireEvent.press(screen.getByTestId(id));
@@ -92,7 +91,8 @@ test('keeps one primary recording action and every existing Records destination'
 
   expect(routeProps.onOpenRecording).toHaveBeenCalledTimes(1);
   expect(routeProps.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
-  expect(routeProps.onOpenManualHistory).toHaveBeenCalledTimes(1);
+  expect(routeProps.onOpenManualHistory).not.toHaveBeenCalled();
+  expect(screen.queryByTestId('records-open-manual-history')).toBeNull();
   expect(routeProps.onOpenHealthLibrary).toHaveBeenCalledTimes(1);
 });
 

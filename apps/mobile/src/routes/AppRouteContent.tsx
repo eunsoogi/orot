@@ -1,3 +1,4 @@
+import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
 import { SavedMemoryDetail } from '../memory/SavedMemoryDetail';
 import { useRecordSourceNavigation } from './RecordSourceNavigation';
 import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
@@ -18,7 +19,6 @@ import { ScheduleRoute } from './ScheduleRoute';
 import { SettingsRoute } from './SettingsRoute';
 import { SettingsDetailsRoute } from './SettingsDetailsRoute';
 import { HealthRecordsRoute } from './HealthRecordsRoute';
-import { ManualHistoryRoute } from './ManualHistoryRoute';
 import AppointmentsScreen from '../appointments/AppointmentsScreen';
 import type { AppRouteContentProps } from './AppProps';
 export type { AppNavigationRoute } from './appNavigationRoute';
@@ -209,7 +209,8 @@ export function AppRouteContent({
         />
       );
     case 'manual-history':
-      return <ManualHistoryRoute onBack={actions.onBack} />;
+      // Old in-memory routes no longer expose manual creation; originals live in Memory.
+      return <SavedMemoryBrowser active={active} onOpenMemory={openMemory} />;
     case 'appointments':
       return appointmentRepository ? (
         <AppointmentsScreen

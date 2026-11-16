@@ -1,3 +1,4 @@
+import { isAgentMemoryProvenance } from '@orot/agent-memory';
 import type { LocalMemoryHit } from '@orot/agent-runtime';
 import { HealthObservationSchema } from '@orot/domain';
 import type { RecordRepository, RecordKind } from '@orot/storage';
@@ -209,8 +210,7 @@ export function mapMemoryHitToVisitQuestionEvidence(hit: LocalMemoryHit): {
     !hit.id.trim() ||
     !hit.text.trim() ||
     hit.provenance.sourceIds.length === 0 ||
-    (hit.provenance.reviewState !== 'user_confirmed' &&
-      hit.provenance.reviewState !== 'human_reviewed')
+    !isAgentMemoryProvenance(hit.provenance)
   ) {
     return null;
   }
@@ -230,10 +230,16 @@ export function mapMemoryHitToVisitQuestionEvidence(hit: LocalMemoryHit): {
       evidenceId: hit.id,
       evidenceRevision: revision,
       locator: { kind: 'structured_record', recordId: hit.id },
-      effectiveTime: Number.isFinite(hit.createdAt)
-        ? new Date(hit.createdAt).toISOString()
-        : null,
-      reviewState: 'reviewed',
+      effectiveTime:
+        hit.provenance.reviewState === 'user_stated'
+          ? (hit.provenance.sourceDates?.[0]?.date ?? null)
+          : Number.isFinite(hit.createdAt)
+            ? new Date(hit.createdAt).toISOString()
+            : null,
+      reviewState:
+        hit.provenance.reviewState === 'user_stated'
+          ? 'unreviewed'
+          : 'reviewed',
       content: hit.text,
     },
     metadata: { sourceRecordIds, sourceRecordRevisions: [], sourceDates },

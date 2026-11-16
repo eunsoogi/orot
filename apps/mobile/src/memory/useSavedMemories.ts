@@ -1,17 +1,20 @@
+import { resumeStatementMemoryAfterRead } from './resumeStatementMemoryAfterRead';
 import { reportSavedMemoryRead } from './savedMemoryReadDiagnostics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import type { AgentMemoryHit } from '@orot/agent-memory';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
 } from '../storage/localDataClearEvents';
-import { loadSavedLocalMemories } from './savedLocalMemories';
-export type SavedMemory = Omit<AgentMemoryHit, 'score'>;
+import {
+  loadUnifiedLocalMemories,
+  type SavedMemory,
+} from './unifiedSavedMemories';
+export type { SavedMemory } from './unifiedSavedMemories';
 const READ_WAIT_MS = 10_000;
 /** Shared protected read lifecycle for list and detail. Invalidations erase text before cleanup settles. */
 export function useSavedMemories(
-  load: () => Promise<SavedMemory[]> = loadSavedLocalMemories,
+  load: () => Promise<SavedMemory[]> = loadUnifiedLocalMemories,
   enabled = true,
 ) {
   const [rows, setRows] = useState<SavedMemory[]>([]);
@@ -60,6 +63,10 @@ export function useSavedMemories(
       reportSavedMemoryRead('saved_memory_wait', 'completed');
       setRows(result);
       setState('ready');
+      if (load === loadUnifiedLocalMemories)
+        resumeStatementMemoryAfterRead(
+          () => generation.current === request && enabled && active.current,
+        );
     } catch {
       if (generation.current === request) {
         reportSavedMemoryRead('saved_memory_wait', 'failed');

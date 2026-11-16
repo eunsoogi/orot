@@ -1,3 +1,7 @@
+import {
+  assertUserStatementMemoryCurrent,
+  UserStatementSourceUnavailableError,
+} from './userStatementMemoryGuards';
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { SqlTransaction } from '@orot/storage';
 import {
@@ -29,8 +33,22 @@ export async function compactAgentMemory(
       removedIds,
       'Memory cannot reference a source being or already removed.',
     );
-  const current = records.filter(
-    record => !referencesAnySource(record, invalidated),
-  );
+  const current: PersistedMemoryRecord[] = [];
+  for (const record of records) {
+    if (
+      referencesAnySource(record, invalidated) ||
+      ((record.meta.provenance as { reviewState?: string } | undefined)
+        ?.reviewState === 'user_stated' &&
+        removedIds.has(record.id))
+    )
+      continue;
+    try {
+      await assertUserStatementMemoryCurrent(transaction, record);
+      current.push(record);
+    } catch (error) {
+      // Closing a cached Rememori engine must not compact a deleted original back in.
+      if (!(error instanceof UserStatementSourceUnavailableError)) throw error;
+    }
+  }
   await reconcileAgentMemoryRecords(transaction, current);
 }

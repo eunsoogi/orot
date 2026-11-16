@@ -1,3 +1,4 @@
+import { enqueueStatementMemory } from './userStatementMemoryJobs';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
 import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
 import {
@@ -223,6 +224,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         // After this check, commit wins; the caller must report the saved result even if cancellation arrives later.
         assertConversationNotCancelled(signal);
         await commitConversationRequest(tx, decoded, expectedSessionVersion);
+        await enqueueStatementMemory(tx, decoded);
       });
     },
     async list(

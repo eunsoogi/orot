@@ -1,3 +1,4 @@
+import { isAgentMemoryProvenance } from '@orot/agent-memory';
 import type {
   AgentMemoryKind,
   AgentMemoryProvenance,
@@ -26,38 +27,7 @@ function validMetadata(value: unknown): ValidMemoryMetadata | undefined {
   ) {
     return undefined;
   }
-  if (!provenance || typeof provenance !== 'object') return undefined;
-  const valueProvenance = provenance as Record<string, unknown>;
-  const sourceIds = valueProvenance.sourceIds;
-  const reviewState = valueProvenance.reviewState;
-  if (
-    !Array.isArray(sourceIds) ||
-    sourceIds.some(id => typeof id !== 'string' || id.trim().length === 0) ||
-    (reviewState !== 'user_confirmed' && reviewState !== 'human_reviewed')
-  ) {
-    return undefined;
-  }
-  const sourceDates = valueProvenance.sourceDates;
-  if (
-    sourceDates !== undefined &&
-    (!Array.isArray(sourceDates) ||
-      sourceDates.some(date => {
-        if (!date || typeof date !== 'object') return true;
-        const item = date as Record<string, unknown>;
-        return (
-          typeof item.sourceId !== 'string' ||
-          typeof item.date !== 'string' ||
-          !sourceIds.includes(item.sourceId) ||
-          !item.date.trim()
-        );
-      }))
-  ) {
-    return undefined;
-  }
-  return {
-    kind,
-    provenance: valueProvenance as unknown as AgentMemoryProvenance,
-  };
+  return isAgentMemoryProvenance(provenance) ? { kind, provenance } : undefined;
 }
 
 /** Registers memory and linked-record IDs before any local text can reach a model payload. */
@@ -99,7 +69,7 @@ function effectiveTime(createdAt: number): string | null {
   return new Date(createdAt).toISOString();
 }
 
-/** Builds local-search chunks from every valid reviewed memory; malformed metadata remains a coverage gap. */
+/** Builds local-search chunks while preserving user-stated versus reviewed trust; malformed metadata remains a coverage gap. */
 export async function buildMemoryEvidence(input: {
   readonly records: readonly PersistedMemoryRecord[];
   readonly storage: Pick<AgentMemoryStorageAdapter, 'listRecords'>;
@@ -118,7 +88,10 @@ export async function buildMemoryEvidence(input: {
       excludedCount += 1;
       continue;
     }
-    const createdAt = effectiveTime(record.createdAt);
+    const createdAt =
+      metadata.provenance.reviewState === 'user_stated'
+        ? (metadata.provenance.sourceDates?.[0]?.date ?? null)
+        : effectiveTime(record.createdAt);
     const revision = fingerprint(persistedSnapshot(record));
     const reference: EvidenceReference = {
       sourceKind: 'reviewed_memory',
@@ -137,7 +110,10 @@ export async function buildMemoryEvidence(input: {
         sourceIds: [...metadata.provenance.sourceIds],
       },
       effectiveTime: createdAt,
-      reviewState: 'reviewed',
+      reviewState:
+        metadata.provenance.reviewState === 'user_stated'
+          ? 'unreviewed'
+          : 'reviewed',
     };
     const item = input.registry.add({
       reference,

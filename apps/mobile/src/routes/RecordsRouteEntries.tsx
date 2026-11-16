@@ -7,7 +7,6 @@ import { AppSymbol } from '../layout/AppSymbol';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { MedicalDocumentImportAction } from '../medicalDocuments/MedicalDocumentImportAction';
-import { ManualHistoryAction } from '../manualHistory/ManualHistoryAction';
 import { styles } from './recordsRouteEntryStyles';
 
 interface RecordsRouteEntriesProps {
@@ -29,7 +28,6 @@ export function RecordsRouteEntries({
   onOpenSavedRecordings,
   onOpenRecording,
   onOpenHealthLibrary,
-  onOpenManualHistory,
   medicalDocumentOpening,
   medicalDocumentDisabled,
   onImportMedicalDocument,
@@ -106,7 +104,6 @@ export function RecordsRouteEntries({
                 testID="records-open-saved-recordings"
                 showDivider
               />
-              <ManualHistoryAction onPress={onOpenManualHistory} showDivider />
               <RecordsLibraryAction
                 icon="folder"
                 title={t('records.healthRecords')}

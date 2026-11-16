@@ -7,7 +7,7 @@ import { fingerprint } from './evidenceUtils';
 
 const indexedChunkFingerprints = new WeakMap<object, Map<string, string>>();
 
-/** A memory tool reads only reviewed memory; unrelated clinical records are never selected or embedded. */
+/** A memory tool reads only stored memory with its original trust state; unrelated clinical records are never selected or embedded. */
 export async function loadFeatureMemorySnapshot(
   data: AiFeatureLocalData,
   registry: LocalEvidenceReferenceRegistry,
@@ -82,7 +82,7 @@ export async function loadFeatureEvidenceSnapshot(
       .map(entry => ({ kind: entry.kind, id: entry.record.id })),
   ];
   const staleArtifacts = await data.loadStaleArtifacts(staleIdentities, signal);
-  // A personal health overview neither queries nor embeds unrelated reviewed memory.
+  // A personal health overview neither queries nor embeds unrelated stored memory.
   const memoryRecords =
     scope?.selection === 'health_overview'
       ? []

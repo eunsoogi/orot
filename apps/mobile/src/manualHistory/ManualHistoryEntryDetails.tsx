@@ -10,7 +10,7 @@ interface ManualHistoryEntryDetailsProps {
   entry: ManualHistoryScreenRecord;
   history: readonly ManualHistoryScreenRecord[];
   onCorrect: () => void;
-  onClose: () => void;
+  onClose?: () => void;
   onDelete: () => void | Promise<void>;
   deleting: boolean;
 }
@@ -141,13 +141,15 @@ export default function ManualHistoryEntryDetails({
           />
         </View>
       )}
-      <Button
-        variant="secondary"
-        disabled={deleting}
-        onPress={onClose}
-        testID="manual-history-close-details"
-        title={t('manualHistory.detail.close')}
-      />
+      {onClose ? (
+        <Button
+          variant="secondary"
+          disabled={deleting}
+          onPress={onClose}
+          testID="manual-history-close-details"
+          title={t('manualHistory.detail.close')}
+        />
+      ) : null}
     </View>
   );
 }

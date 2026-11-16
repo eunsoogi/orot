@@ -6,8 +6,8 @@ import {
   openLocalAgentMemory,
   openLocalAgentMemoryStore,
 } from '../../memory/localAgentMemory';
-import { LocalE5EmbeddingProvider } from '../../rag/localE5EmbeddingProvider';
-import { localE5NativeBackend } from '../../rag/localE5NativeBackend';
+import type { LocalE5EmbeddingProvider } from '../../rag/localE5EmbeddingProvider';
+import { localMemoryProvider } from '../../memory/localMemoryProvider';
 import { openLocalE5RagService } from '../../rag/localE5RagService';
 import { openLocalRecordQueryService } from '../localRecordQuery';
 import { prepareVisitQuestionContext } from './evidenceService';
@@ -58,7 +58,7 @@ export async function prepareUpcomingVisitQuestionContext(input: {
   let memory: AgentMemoryService | undefined;
   let memoryStore: AgentMemoryStoreView | undefined;
   try {
-    localMemoryEmbedder ??= new LocalE5EmbeddingProvider(localE5NativeBackend);
+    localMemoryEmbedder ??= localMemoryProvider();
     memory = await openLocalAgentMemory(localMemoryEmbedder);
   } catch {
     // The query layer reports unavailable memory while retaining usable local RAG evidence.
