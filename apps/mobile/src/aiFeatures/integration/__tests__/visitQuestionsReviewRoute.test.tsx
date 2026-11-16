@@ -85,6 +85,9 @@ test('saves the reviewed draft through the session and route, then discards a la
       ),
     ],
     [],
+    [],
+    // Preserve exact route-to-persistence provenance, including edited text.
+    receive.mock.calls[0]![0].map(question => question.identity!.id),
   );
   await fireEvent.press(route.getByTestId('next-visit-saved-edit'));
   await fireEvent.changeText(
