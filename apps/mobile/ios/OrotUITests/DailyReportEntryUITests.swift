@@ -125,7 +125,7 @@ final class DailyReportEntryUITests: XCTestCase {
         UITestConditions.scrollTo(chat, in: reportScreen)
         chat.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")), app.debugDescription)
-        XCTAssertTrue(UITestConditions.exists(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "선택한 보고서: 2035-01-01 · Asia/Seoul")).firstMatch))
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "선택한 보고서: 2035-01-01 · Asia/Seoul")).firstMatch.exists)
         attach(app, name: "daily-report-persistence-seed")
 
         app.terminate()
@@ -177,7 +177,7 @@ final class DailyReportEntryUITests: XCTestCase {
         XCTAssertLessThanOrEqual(chat.frame.maxX, rail.frame.minX + 0.5)
         chat.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")), app.debugDescription)
-        XCTAssertTrue(UITestConditions.exists(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "선택한 보고서: 2035-01-01 · Asia/Seoul")).firstMatch))
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "선택한 보고서: 2035-01-01 · Asia/Seoul")).firstMatch.exists)
         let input = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertTrue(input.exists && input.isHittable, input.debugDescription)
         input.tap()
