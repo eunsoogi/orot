@@ -54,7 +54,7 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
     }
   };
   return (
-    <View testID="inline-visit-review" style={{ gap: theme.tokens.spacing.lg }}>
+    <View testID="inline-visit-review" style={{ gap: theme.tokens.spacing.sm }}>
       <Text
         accessibilityRole="header"
         style={{
@@ -70,6 +70,7 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
         return (
           <QuestionCard
             key={id}
+            compact
             priorityInDetails
             selectionHeader={
               <Pressable

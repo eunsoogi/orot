@@ -1,3 +1,4 @@
+import { appointment } from '../../agent/visitQuestions/testing/persistenceFixtures';
 import { render, screen } from '@testing-library/react-native';
 import { View } from 'react-native';
 import { ConversationMessage } from '../ConversationMessage';
@@ -34,4 +35,39 @@ test('uses relative opposite message lanes without fixed-width text', async () =
   expect(screen.getByTestId('rag-conversation-stream')).toHaveTextContent(
     /합성 답변/,
   );
+});
+
+// Structured questions use the available width without changing ordinary chat lanes.
+test('gives final visit questions a full reading lane and compact outer padding', async () => {
+  await render(
+    <ConversationMessage
+      message={{
+        id: 3,
+        role: 'assistant',
+        content: '',
+        visitQuestions: {
+          appointment,
+          review: {
+            ownerKey: 'synthetic',
+            items: [],
+            caveats: [],
+            expectedSavedQuestions: [],
+          },
+          validateSource: async () => true,
+        },
+      }}
+      onOpenSource={jest.fn()}
+      onLinkError={jest.fn()}
+      renderVisitQuestions={() => <View testID="synthetic-question-list" />}
+    />,
+  );
+  expect(screen.getByTestId('conversation-assistant-message')).toHaveStyle({
+    alignSelf: 'stretch',
+    maxWidth: '100%',
+  });
+  expect(screen.getByTestId('conversation-message-body')).toHaveStyle({
+    padding: 12,
+    gap: 8,
+  });
+  expect(screen.getByTestId('synthetic-question-list')).toBeTruthy();
 });

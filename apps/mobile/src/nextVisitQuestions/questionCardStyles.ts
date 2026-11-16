@@ -2,12 +2,17 @@ import { StyleSheet } from 'react-native';
 import type { NextVisitQuestionsTheme } from './types';
 
 /** A question card uses only app-supplied design tokens and preserves a large touch target. */
-export function createQuestionCardStyles(theme: NextVisitQuestionsTheme) {
+export function createQuestionCardStyles(
+  theme: NextVisitQuestionsTheme,
+  compact = false,
+) {
   const { colors, tokens } = theme;
   return StyleSheet.create({
     card: {
       gap: tokens.spacing.md,
-      padding: tokens.spacing.md,
+      // Inline lists already live inside a padded conversation container.
+      paddingHorizontal: compact ? 0 : tokens.spacing.md,
+      paddingVertical: compact ? tokens.spacing.xs : tokens.spacing.md,
       borderRadius: tokens.radii.card,
       borderWidth: 0,
       borderColor: colors.border,
@@ -17,7 +22,7 @@ export function createQuestionCardStyles(theme: NextVisitQuestionsTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: tokens.spacing.sm,
+      gap: compact ? tokens.spacing.xs : tokens.spacing.sm,
     },
     heading: {
       color: colors.text,
