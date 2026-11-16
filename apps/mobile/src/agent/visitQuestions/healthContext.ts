@@ -1,3 +1,4 @@
+import { providerDiagnostic } from '../../providers/diagnostics';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { VisitQuestionHealthContextSource } from '@orot/domain';
 import { createHealthContextTool } from '../../aiFeatures/integration/healthContextTool';
@@ -117,9 +118,19 @@ export function createVisitHealthContext(
       )?.item;
     },
     async validate(sourceValue: VisitQuestionHealthContextSource) {
-      const report = await read(sourceValue.scope.window, [
-        sourceValue.scope.topic,
-      ]);
+      const report = await read(
+        sourceValue.scope.window,
+        [sourceValue.scope.topic],
+        undefined,
+        (phase, status) => {
+          try {
+            // Revalidation needs the same fixed boundaries as retrieval; no period values leave this callback.
+            providerDiagnostic('visit', 'data', `context_${phase}_${status}`);
+          } catch {
+            // An unavailable optional bridge cannot change source validity.
+          }
+        },
+      );
       return (
         report.deletionGeneration === sourceValue.deletionGeneration &&
         healthContextRevision(sourceValue.scope, report) ===
