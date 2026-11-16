@@ -28,6 +28,7 @@ export function createDuplexVoiceSession(
   let barrier = Promise.resolve();
   let cleanup: Promise<void> | null = null;
   let disposed = false;
+  let systemCallActive = false;
   const publish = (phase: VoiceState['phase'], error?: VoiceError) => {
     state = {
       phase,
@@ -44,6 +45,7 @@ export function createDuplexVoiceSession(
     if (cleanup || !call) return;
     const closing = call;
     const identity = state.identity;
+    systemCallActive = false;
     ++epoch;
     operation.abort();
     publish('cleaning');
@@ -151,6 +153,14 @@ export function createDuplexVoiceSession(
     })();
   };
   const subscriptions = [
+    native.onSystemCall?.((id, active) => {
+      // Native activation is an owned lease, not a general background exemption.
+      if (id !== call || cleanup || disposed) return;
+      if (active && ['cleaning', 'stopped', 'error'].includes(state.phase))
+        return;
+      systemCallActive = active;
+      if (!valid()) stop('consent');
+    }) ?? (() => {}),
     native.onSpeechStarted(speechStarted),
     native.onTranscript(transcript),
     native.onInterrupted(id => {
@@ -190,6 +200,8 @@ export function createDuplexVoiceSession(
     })();
   };
   return {
+    isSystemCallActive: () =>
+      systemCallActive && !!call && !cleanup && !disposed,
     getState: () => state,
     start,
     stop: () => stop(),

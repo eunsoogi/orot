@@ -30,6 +30,10 @@ export const coreTests = [
   'OrotIntegrationTests/AudioSessionOwnershipTests/testFailedDeactivationRetainsReservationUntilRetry',
   'OrotIntegrationTests/AudioSessionOwnershipTests/testFailedActivationRequiresSuccessfulCleanupBeforeNextOwner',
   'OrotIntegrationTests/AudioSessionOwnershipTests/testConcurrentReservationsHaveExactlyOneWinner',
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testSystemCallPreparationDoesNotActivateBeforeTheSystemCallback',
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testSystemCallLeaseRejectsDelayedCleanupFromPriorCall',
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testSystemActivationGatesCaptureAndLateActivationCannotRestartStoppedCall',
+  'OrotIntegrationTests/RealtimeVoiceLifecycleTests/testBackgroundRequiresSystemActivationAndProtectedDataLossAlwaysStops',
   // Verify the appointment wrapper, page scroll, and section ownership on UIKit.
   'OrotIntegrationTests/AppointmentPageScrollOwnershipTests/testWrapperOwnerAndSectionsRejectNestedOrDetachedScrolls',
   // The test-only scene observer must reject duplicate and unrelated geometry phases.

@@ -7,7 +7,7 @@ import UIKit
 /// Bridges one explicitly started ephemeral turn; it never sends or stores captured audio.
 @objc(VoiceConversationModule)
 final class VoiceConversationModule: RCTEventEmitter {
-    private lazy var duplex = VoiceDuplexCallCoordinator { [weak self] name, body in
+    private lazy var duplex = VoiceDuplexCallCoordinator(systemCall: VoiceSystemCallLifecycle.shared) { [weak self] name, body in
         self?.sendEvent(withName: name, body: body)
     }
 
@@ -24,7 +24,7 @@ final class VoiceConversationModule: RCTEventEmitter {
     }
 
     override func supportedEvents() -> [String]! {
-        ["VoiceConversationInterrupted", "VoiceConversationListening", "VoiceCallSpeechStarted", "VoiceCallTranscript", "VoiceCallInterrupted"]
+        ["VoiceConversationInterrupted", "VoiceConversationListening", "VoiceCallSpeechStarted", "VoiceCallTranscript", "VoiceCallInterrupted", "VoiceCallSystemCall"]
     }
 
     override init() {
@@ -36,7 +36,7 @@ final class VoiceConversationModule: RCTEventEmitter {
             pendingActivation = nil
             pending(true)
         })
-        for name in [UIApplication.didEnterBackgroundNotification, AVAudioSession.interruptionNotification, AVAudioSession.routeChangeNotification] {
+        for name in [UIApplication.didEnterBackgroundNotification, UIApplication.protectedDataWillBecomeUnavailableNotification, AVAudioSession.interruptionNotification, AVAudioSession.routeChangeNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
                 guard let self else { return }
                 if name == AVAudioSession.routeChangeNotification {
@@ -44,7 +44,8 @@ final class VoiceConversationModule: RCTEventEmitter {
                     let raw = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
                     guard raw == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue else { return }
                 }
-                if name != AVAudioSession.routeChangeNotification {
+                if name != AVAudioSession.routeChangeNotification,
+                   !(name == UIApplication.didEnterBackgroundNotification && duplex.systemCallActive) {
                     duplex.systemInterrupted()
                 }
                 guard turn != nil else { return }

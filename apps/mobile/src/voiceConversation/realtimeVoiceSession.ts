@@ -20,6 +20,7 @@ export function createRealtimeVoiceSession(input: {
   let call: string | null = null;
   let epoch = 0;
   let disposed = false;
+  let systemCallActive = false;
   let paused = false;
   let cleanup: Promise<void> | null = null;
   const publish = (phase: VoiceState['phase'], error?: VoiceState['error']) => {
@@ -28,6 +29,7 @@ export function createRealtimeVoiceSession(input: {
   };
   const stop = (error?: VoiceState['error']) => {
     if (!call || cleanup) return;
+    systemCallActive = false;
     ++epoch;
     const id = call;
     publish('cleaning');
@@ -46,6 +48,14 @@ export function createRealtimeVoiceSession(input: {
   };
   const valid = () => !disposed && input.isCurrent();
   const subscriptions = [
+    input.native.onSystemCall?.((id, active) => {
+      // Native activation is an owned lease, not a general background exemption.
+      if (id !== call || cleanup || disposed || paused) return;
+      if (active && ['cleaning', 'stopped', 'error'].includes(state.phase))
+        return;
+      systemCallActive = active;
+      if (!valid()) stop('consent');
+    }) ?? (() => {}),
     input.native.onState((id, phase) => {
       if (call !== id || cleanup || paused) return;
       if (!valid()) {
@@ -114,6 +124,7 @@ export function createRealtimeVoiceSession(input: {
       }
       const id = call;
       const current = ++epoch;
+      systemCallActive = false;
       paused = true;
       publish('cleaning');
       input.native.pause(id).then(
@@ -158,6 +169,8 @@ export function createRealtimeVoiceSession(input: {
       stop();
       subscriptions.forEach(unsubscribe => unsubscribe());
     },
+    isSystemCallActive: () =>
+      systemCallActive && !!call && !cleanup && !disposed,
     getState: () => state,
   };
 }

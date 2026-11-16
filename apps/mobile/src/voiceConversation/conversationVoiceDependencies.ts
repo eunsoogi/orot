@@ -35,6 +35,7 @@ export function conversationVoiceDependencies(input: {
   latest: RefObject<ConversationVoiceProps>;
   selected: RefObject<SelectionBinding | null>;
   owned: RefObject<Owned | null>;
+  isSystemCallActive?: () => boolean;
   transcript?: (line: VoiceTranscriptLine) => void;
 }): VoiceConversationDependencies {
   const { latest, selected, owned } = input;
@@ -66,7 +67,7 @@ export function conversationVoiceDependencies(input: {
       !session.retryingSave &&
       !(session.restoreAfterRetry && session.unsavedCount) &&
       (live.isEntryCurrent?.() ?? true) &&
-      AppState.currentState !== 'background',
+      (AppState.currentState !== 'background' || input.isSystemCallActive?.()),
     );
   };
   return {

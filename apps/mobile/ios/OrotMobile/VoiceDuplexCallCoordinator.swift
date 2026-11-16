@@ -3,11 +3,14 @@ import Foundation
 import Speech
 import UIKit
 
-/// One foreground call owns both input and output. Only text and generations reach JavaScript.
+/// One explicitly activated call owns both input and output. Only text and generations reach JavaScript.
 final class VoiceDuplexCallCoordinator {
     private let audio = VoiceDuplexAudioEngine()
     private let recognition = VoiceDuplexRecognition()
     private let emit: (String, [String: Any]) -> Void
+    private let systemCall: VoiceSystemCallPort?
+    private var systemCallOwner: UUID?
+    private(set) var systemCallActive = false
     private var token: AudioSessionOwnership.Token?
     private var identifier: String?
     private var pending: (() -> Void)?
@@ -20,7 +23,8 @@ final class VoiceDuplexCallCoordinator {
         identifier != nil
     }
 
-    init(emit: @escaping (String, [String: Any]) -> Void) {
+    init(systemCall: VoiceSystemCallPort? = nil, emit: @escaping (String, [String: Any]) -> Void) {
+        self.systemCall = systemCall
         self.emit = emit
         observer = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
                                                           object: nil, queue: .main)
@@ -39,10 +43,11 @@ final class VoiceDuplexCallCoordinator {
         // Capture resources, never self, so bridge disposal also releases the native graph.
         let audio = audio
         let recognition = recognition
-        let ownedToken = token
+        let ownedToken = token, systemCall = systemCall, systemCallOwner = systemCallOwner
         DispatchQueue.main.async {
             audio.stop()
             recognition.stop()
+            if let systemCallOwner { systemCall?.end(owner: systemCallOwner) }
             if let ownedToken {
                 try? AudioSessionOwnership.shared.release(ownedToken)
             }
@@ -83,10 +88,36 @@ final class VoiceDuplexCallCoordinator {
 
     private func begin(_ id: String, language: String) {
         guard identifier == id, let token else { return }
+        if let systemCall, !systemCallActive {
+            guard systemCallOwner == nil, UIApplication.shared.applicationState == .active else { return }
+            let owner = UUID()
+            systemCallOwner = owner
+            do {
+                try systemCall.start(owner: owner, prepare: { [weak self] in
+                    guard let self, identifier == id, systemCallOwner == owner else { throw AudioSessionOwnership.Failure.stale }
+                    try AudioSessionOwnership.shared.prepareSystemCall(token)
+                }, activated: { [weak self] in
+                    guard let self, identifier == id, systemCallOwner == owner else { return }
+                    systemCallActive = true
+                    emit("VoiceCallSystemCall", ["callId": id, "active": true])
+                    begin(id, language: language)
+                }, ended: { [weak self] in
+                    guard let self, identifier == id, systemCallOwner == owner else { return }
+                    systemInterrupted()
+                }, muted: { [weak self] in
+                    guard let self, identifier == id, systemCallOwner == owner else { return }
+                    systemInterrupted()
+                })
+            } catch { failOpen(error) }
+            return
+        }
         do {
             // Voice processing remains inside this owner's engine, not a global mixing exemption.
-            try AudioSessionOwnership.shared.activate(token, category: .playAndRecord, mode: .voiceChat,
-                                                      options: [.defaultToSpeaker, .allowBluetoothHFP])
+            if systemCallActive { try AudioSessionOwnership.shared.systemCallActivated(token) }
+            else {
+                try AudioSessionOwnership.shared.activate(token, category: .playAndRecord, mode: .voiceChat,
+                                                          options: [.defaultToSpeaker, .allowBluetoothHFP])
+            }
             try recognition.start(locale: Locale(identifier: language), onSpeechStarted: { [weak self] sequence in
                 guard let self, identifier == id, sequence > generation else { return }
                 generation = sequence
@@ -160,6 +191,10 @@ final class VoiceDuplexCallCoordinator {
         playbackGeneration = 0
         audio.stop()
         recognition.stop()
+        systemCallActive = false
+        emit("VoiceCallSystemCall", ["callId": id, "active": false])
+        if let owner = systemCallOwner { systemCall?.end(owner: owner) }
+        systemCallOwner = nil
         callback?(.failure(failure("Voice call stopped")))
         if let token {
             try AudioSessionOwnership.shared.release(token); self.token = nil

@@ -22,6 +22,9 @@ export interface NativeDuplexVoice {
   finishCapture(callId: string): void;
   onTranscript(listener: (event: DuplexTranscript) => void): () => void;
   onSpeechStarted(listener: (event: DuplexSpeechStart) => void): () => void;
+  onSystemCall?(
+    listener: (callId: string, active: boolean) => void,
+  ): () => void;
   onInterrupted(listener: (callId: string) => void): () => void;
 }
 export interface DuplexNativeModule {
@@ -71,6 +74,14 @@ export function nativeDuplexVoice(
     onSpeechStarted: listener =>
       subscribe('VoiceCallSpeechStarted', event => {
         if (valid(event)) listener(event as unknown as DuplexSpeechStart);
+      }),
+    onSystemCall: listener =>
+      subscribe('VoiceCallSystemCall', event => {
+        if (
+          typeof event.callId === 'string' &&
+          typeof event.active === 'boolean'
+        )
+          listener(event.callId, event.active);
       }),
     onInterrupted: listener =>
       subscribe('VoiceCallInterrupted', event => {

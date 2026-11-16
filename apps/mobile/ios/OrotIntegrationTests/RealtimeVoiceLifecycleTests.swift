@@ -5,7 +5,7 @@ import XCTest
 /// All audio, permission, ownership and transport ports are injected. No microphone or network is used.
 @MainActor
 final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
-    private func opening(_ call: RealtimeVoiceCall, socket: Socket, key: String = "synthetic-key", id: String = "call") async {
+    func opening(_ call: RealtimeVoiceCall, socket: Socket, key: String = "synthetic-key", id: String = "call") async {
         let opened = expectation(description: "socket requested after synthetic permission")
         socket.opened = { opened.fulfill() }
         call.open(id, model: "gpt-realtime-2.1", key: key, language: "ko-KR") { _ in }
@@ -168,7 +168,7 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
     }
 
     private enum Failure: Error { case synthetic }
-    private final class Audio: RealtimeAudioPort {
+    final class Audio: RealtimeAudioPort {
         var isDrained = true
         var drained: (() -> Void)?
         var failure: (() -> Void)?
@@ -191,7 +191,7 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
         }
     }
 
-    private final class Socket: RealtimeSocketPort {
+    final class Socket: RealtimeSocketPort {
         var received: (([String: Any]) -> Void)?
         var failed: (() -> Void)?
         var opened: (() -> Void)?

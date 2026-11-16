@@ -34,8 +34,10 @@ test('a quarantined or removed session cannot retain voice ownership', () => {
       value: { provider: { id: 'p' } },
     } as SelectionBinding | null,
   };
+  let systemCallActive = false;
   const deps = conversationVoiceDependencies({
     latest,
+    isSystemCallActive: () => systemCallActive,
     selected,
     owned: { current: null },
     native: {} as never,
@@ -51,6 +53,16 @@ test('a quarantined or removed session cannot retain voice ownership', () => {
     configurable: true,
     value: 'active',
   });
+  Object.defineProperty(AppState, 'currentState', {
+    configurable: true,
+    value: 'background',
+  });
+  expect(deps.isCurrent(identity)).toBe(false);
+  systemCallActive = true;
+  expect(deps.isCurrent(identity)).toBe(true);
+  selected.current!.revision = 1;
+  expect(deps.isCurrent(identity)).toBe(false);
+  selected.current!.revision = 0;
   sessions = [{ id: 1, quarantined: true }];
   expect(deps.isCurrent(identity)).toBe(false);
   sessions = [];

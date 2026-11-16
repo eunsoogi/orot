@@ -14,6 +14,7 @@ function setup() {
   let transcript = (_: DuplexTranscript) => {};
   let started = (_: DuplexSpeechStart) => {};
   let interrupted = (_: string) => {};
+  let systemCall = (_id: string, _active: boolean) => {};
   const native: NativeDuplexVoice = {
     open: jest.fn(async () => {}),
     stop: jest.fn(async () => {}),
@@ -26,6 +27,10 @@ function setup() {
     },
     onSpeechStarted: listener => {
       started = listener;
+      return jest.fn();
+    },
+    onSystemCall: listener => {
+      systemCall = listener;
       return jest.fn();
     },
     onInterrupted: listener => {
@@ -46,6 +51,7 @@ function setup() {
   const callId = 'start-call-1';
   return {
     session,
+    systemCall: (id: string, active: boolean) => systemCall(id, active),
     native,
     deps,
     callId,
@@ -218,4 +224,22 @@ test('consent revoked during a provider result closes audio before any speech', 
   await flush();
   expect(x.native.speak).not.toHaveBeenCalled();
   expect(x.native.stop).toHaveBeenCalledWith(x.callId);
+});
+
+test('only the current activated call permits continuation and stop revokes late grants', async () => {
+  const f = setup();
+  f.session.start(identity);
+  await flush();
+  const id = (f.native.open as jest.Mock).mock.calls[0][0];
+  expect(f.session.isSystemCallActive()).toBe(false);
+  f.systemCall('foreign', true);
+  expect(f.session.isSystemCallActive()).toBe(false);
+  f.systemCall(id, true);
+  expect(f.session.isSystemCallActive()).toBe(true);
+  f.session.stop();
+  expect(f.session.isSystemCallActive()).toBe(false);
+  f.systemCall(id, true);
+  await flush();
+  f.systemCall(id, true);
+  expect(f.session.isSystemCallActive()).toBe(false);
 });

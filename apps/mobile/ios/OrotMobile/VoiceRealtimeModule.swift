@@ -4,7 +4,7 @@ import React
 /// Native-only audio and network ownership. JavaScript receives status and transcripts, never PCM.
 @objc(VoiceRealtimeModule)
 final class VoiceRealtimeModule: RCTEventEmitter {
-    private lazy var call = RealtimeVoiceCall { [weak self] event, body in
+    private lazy var call = RealtimeVoiceCall(systemCall: VoiceSystemCallLifecycle.shared) { [weak self] event, body in
         self?.sendEvent(withName: event, body: body)
     }
 
@@ -14,7 +14,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     }
 
     override func supportedEvents() -> [String]! {
-        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted"]
+        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall"]
     }
 
     @objc(openRealtimeCall:model:apiKey:language:resolver:rejecter:)

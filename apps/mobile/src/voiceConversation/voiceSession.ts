@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import { createDuplexVoiceSession } from './duplexVoiceSession';
 import { createVoiceController } from './voiceController';
 import {
@@ -63,6 +64,7 @@ export function createVoiceSession(
     if (identity?.turnId === turnId) stop();
   });
   return {
+    isSystemCallActive: () => false,
     getState: controller.getState,
     start(identity: VoiceIdentity) {
       origin = identity;
@@ -112,4 +114,9 @@ export function createVoiceSession(
       unsubscribe();
     },
   };
+}
+
+/** Continuation grants never authorize a new capture or resume from the background. */
+export function resumeVoice(session: { resume(): void } | null) {
+  if (AppState.currentState === 'active') session?.resume();
 }

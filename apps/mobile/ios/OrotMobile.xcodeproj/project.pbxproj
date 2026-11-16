@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CE1131000000000000000003 /* RealtimeVoiceSystemLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */; };
+		CE1131000000000000000001 /* VoiceSystemCallLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1131000000000000000002 /* VoiceSystemCallLifecycle.swift */; };
 		A10940000000000000000003 /* CalendarDecisionsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = B10940000000000000000003 /* CalendarDecisionsTransport.m */; };
 		A10940000000000000000002 /* CalendarDecisionsTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10940000000000000000002 /* CalendarDecisionsTransport.swift */; };
 		A10940000000000000000001 /* CalendarDecisionsRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10940000000000000000001 /* CalendarDecisionsRequest.swift */; };
@@ -391,6 +393,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceSystemLifecycleTests.swift; sourceTree = "<group>"; };
+		CE1131000000000000000002 /* VoiceSystemCallLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceSystemCallLifecycle.swift; path = OrotMobile/VoiceSystemCallLifecycle.swift; sourceTree = "<group>"; };
 		B10940000000000000000003 /* CalendarDecisionsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = CalendarDecisionsTransport.m; path = OrotMobile/CalendarDecisionsTransport.m; sourceTree = "<group>"; };
 		B10940000000000000000002 /* CalendarDecisionsTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalendarDecisionsTransport.swift; path = OrotMobile/CalendarDecisionsTransport.swift; sourceTree = "<group>"; };
 		B10940000000000000000001 /* CalendarDecisionsRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalendarDecisionsRequest.swift; path = OrotMobile/CalendarDecisionsRequest.swift; sourceTree = "<group>"; };
@@ -801,6 +805,7 @@
 			children = (
 				6DE51D3EDD32E9F459E0BC75 /* VoiceRealtimeModule.m */,
 				91CE52EE3566B42004FC3685 /* VoiceRealtimeModule.swift */,
+				CE1131000000000000000002 /* VoiceSystemCallLifecycle.swift */,
 				E1E7E1C0677D54DE47D10208 /* RealtimeVoiceCall.swift */,
 				41E6911C62CADEA6C14E15AF /* RealtimeVoiceCallLifecycle.swift */,
 				F0C5E2B537DA5D2494BD14FF /* RealtimeVoiceCallEvents.swift */,
@@ -1019,6 +1024,7 @@
 		ABFF46896F35DA79FC1B1F87 /* OrotIntegrationTests */ = {
 			isa = PBXGroup;
 			children = (
+				CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */,
 				BF536F275C819E8584C568C6 /* RealtimeVoiceLifecycleTests.swift */,
 				BB9FD1211C32C178478155AE /* SpeechCancellationTests.swift */,
 				86F2D38CB24D4D1A797D3D33 /* SpeechFixture.swift */,
@@ -1516,6 +1522,7 @@
 			files = (
 				0755E89CA4DAFDA2A7697E13 /* VoiceRealtimeModule.m in Sources */,
 				4C2AF5E490C970D7280570DC /* VoiceRealtimeModule.swift in Sources */,
+				CE1131000000000000000001 /* VoiceSystemCallLifecycle.swift in Sources */,
 				1113A6544E30C3384BCBC06B /* RealtimeVoiceCall.swift in Sources */,
 				BCAC2A2B2A95E636B5C9C15E /* RealtimeVoiceCallLifecycle.swift in Sources */,
 				765B8D5B2F4B561748A82885 /* RealtimeVoiceCallEvents.swift in Sources */,
@@ -1818,6 +1825,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CE1131000000000000000003 /* RealtimeVoiceSystemLifecycleTests.swift in Sources */,
 				5B7E3E3D246EBD004E71D1D5 /* RealtimeVoiceLifecycleTests.swift in Sources */,
 				91F6C9596417D23704B50D29 /* OrotFailFastTestCase.swift in Sources */,
 				761BB559E6B44B51D6F155FF /* SpeechCancellationTests.swift in Sources */,
