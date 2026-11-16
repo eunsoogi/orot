@@ -22,6 +22,7 @@ import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { useConversationScreenControls } from './useConversationScreenControls';
 import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
 import { t } from '../i18n';
+import { ConversationQuickChoices } from './ConversationQuickChoices';
 import * as ConversationTasks from './ConversationTaskPanels';
 /** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
@@ -107,23 +108,6 @@ export function ConversationScreen({
         <View style={styles.provider}>{providerSelection}</View>
       ) : null}
       <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
-      <ConversationTasks.ConversationTaskHeader
-        store={store}
-        session={session}
-        onOpenSource={onOpenSource}
-        selectedReport={selectedReport}
-        routeKey={navigationRouteKey}
-        reportOwner={reportOwner}
-        onOpenDailyReport={onOpenDailyReport}
-        retainedActions={quickChoices}
-        visitAction={
-          <ConversationEntryAction
-            {...{ store, session, prepareVisitQuestions }}
-          />
-        }
-        renderReportTask={renderReportTask}
-        renderSavedReport={renderSavedReport}
-      />
     </View>
   );
   return (
@@ -225,15 +209,36 @@ export function ConversationScreen({
               />
             }
             footer={
-              <ConversationTasks.ConversationStoredTaskCards
-                onRestart={question => store.sendPrompt(id, question, onSend)}
-                store={store}
-                session={session}
-                onOpenSource={onOpenSource}
-                routeKey={navigationRouteKey}
-                durableSessionId={toolSourceSessionId}
-                renderStoredReportTask={renderStoredReportTask}
-              />
+              <>
+                <ConversationTasks.ConversationStoredTaskCards
+                  onRestart={question => store.sendPrompt(id, question, onSend)}
+                  store={store}
+                  session={session}
+                  onOpenSource={onOpenSource}
+                  routeKey={navigationRouteKey}
+                  durableSessionId={toolSourceSessionId}
+                  renderStoredReportTask={renderStoredReportTask}
+                />
+                <ConversationQuickChoices>
+                  <ConversationTasks.ConversationTaskHeader
+                    store={store}
+                    session={session}
+                    onOpenSource={onOpenSource}
+                    selectedReport={selectedReport}
+                    routeKey={navigationRouteKey}
+                    reportOwner={reportOwner}
+                    onOpenDailyReport={onOpenDailyReport}
+                    retainedActions={quickChoices}
+                    visitAction={
+                      <ConversationEntryAction
+                        {...{ store, session, prepareVisitQuestions }}
+                      />
+                    }
+                    renderReportTask={renderReportTask}
+                    renderSavedReport={renderSavedReport}
+                  />
+                </ConversationQuickChoices>
+              </>
             }
           />
         </ConversationWorkspace>
