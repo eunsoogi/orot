@@ -4,7 +4,6 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { AiFeatureRoute } from '../../aiFeatures/integration/AiFeatureRoute';
@@ -75,9 +74,9 @@ test('uses the feature route lane for Duo regions and preserves an active conver
 
   expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
   const copy = getRagConversationCopy();
-  expect(screen.getAllByLabelText(copy.sessions)).toHaveLength(1);
-  expect(screen.getAllByLabelText(copy.newConversation)).toHaveLength(1);
-  expect(screen.getByTestId('rag-conversation-sessions-toggle')).toBeTruthy();
+  expect(screen.queryByLabelText(copy.sessions)).toBeNull();
+  expect(screen.queryByLabelText(copy.newConversation)).toBeNull();
+  expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
   // The conversation owns its native region pair rather than nesting in route columns.
   expect(screen.queryByTestId('navigation-route-columns-route-2')).toBeNull();
 
@@ -104,21 +103,10 @@ test('uses the feature route lane for Duo regions and preserves an active conver
   await waitFor(() =>
     expect(screen.getByTestId('navigation-right-rail-host')).toBeTruthy(),
   );
-  const rail = screen.getByTestId('navigation-right-rail-host');
-  expect(
-    within(rail).getByTestId('rag-conversation-sessions-toggle'),
-  ).toBeTruthy();
-  expect(within(rail).getByTestId('rag-conversation-new-session')).toBeTruthy();
-  expect(
-    within(screen.getByTestId('navigation-page-action-surface'))
-      .getAllByRole('button')
-      .map(button => button.props.testID),
-  ).toEqual([
-    'rag-conversation-sessions-toggle',
-    'rag-conversation-new-session',
-  ]);
-  expect(screen.getAllByLabelText(copy.sessions)).toHaveLength(1);
-  expect(screen.getAllByLabelText(copy.newConversation)).toHaveLength(1);
+  expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
+  expect(screen.queryByTestId('rag-conversation-new-session')).toBeNull();
+  expect(screen.queryByLabelText(copy.sessions)).toBeNull();
+  expect(screen.queryByLabelText(copy.newConversation)).toBeNull();
   expect(screen.queryByTestId('rag-conversation-history-glass')).toBeNull();
 
   await fireEvent.changeText(
@@ -170,9 +158,9 @@ test('uses the feature route lane for Duo regions and preserves an active conver
     expect(panelAxis()).toBe('column');
     expect(screen.queryByTestId('navigation-right-rail-host')).toBeNull();
   });
-  expect(screen.getAllByLabelText(copy.sessions)).toHaveLength(1);
-  expect(screen.getAllByLabelText(copy.newConversation)).toHaveLength(1);
-  expect(screen.getByTestId('rag-conversation-sessions-toggle')).toBeTruthy();
+  expect(screen.queryByLabelText(copy.sessions)).toBeNull();
+  expect(screen.queryByLabelText(copy.newConversation)).toBeNull();
+  expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
   expect(
     screen.getByTestId('rag-conversation-activity-bubble', {
       includeHiddenElements: true,
@@ -184,6 +172,11 @@ test('uses the feature route lane for Duo regions and preserves an active conver
   expect(requestSignal?.aborted).toBe(false);
   expect(ragRunner).toHaveBeenCalledTimes(1);
 
-  await fireEvent.press(screen.getByTestId('rag-conversation-sessions-toggle'));
-  expect(screen.getByTestId('conversation-history-screen')).toBeTruthy();
+  expect(screen.queryByTestId('conversation-history-screen')).toBeNull();
+  expect(screen.getByTestId('rag-conversation-screen')).toBeTruthy();
 });
+
+// This fixture isolates native geometry; protected continuity is covered by real SQLite tests.
+jest.mock('../../aiFeatures/integration/continuousSessionOption', () => ({
+  continuousSessionOption: () => ({}),
+}));

@@ -1,16 +1,15 @@
+import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
+import { continuousSessionOption } from './continuousSessionOption';
 import { restoreConversationSteering } from './restoreConversationSteering';
 import { restoreColdConversationPreviews } from './restoreColdConversationEligibility';
 import { createConversationSessionRetention } from '../../ragConversation/conversationSessionRetention';
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
 import { createConversationDurableIdentity } from '../../ragConversation/conversationDurableIdentity';
-import type { AiFeatureLocalData } from './localData';
-import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { captureConversationToolSources } from './captureConversationToolSources';
 import { restoreConversationToolTurns } from './restoreConversationToolTurns';
 import { fingerprint } from './evidenceUtils';
 import { conversationStoredToolObserver } from './conversationStoredToolObserver';
 import { restoreConversationVisitQuestions } from './restoreConversationVisitQuestions';
-import type { AiFeatureServices } from './featureServices';
 import { healthSourceDependencies } from '../../ragConversation/conversationHealthDeletion';
 import { createTreatmentSourceResolver } from './resolveTreatmentSource';
 import { restoreConversationTaskCards } from './restoreConversationTaskCards';
@@ -19,24 +18,15 @@ import { orderRestoredConversationTurns } from './conversationRestoredTurnOrder'
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { createConversationSessionStorage } from './conversationSessionStorage';
 import { conversationPhotoPreparationOption } from './conversationPhotoPreparation';
-import type { requireSelectedAi } from './provider';
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
-export function createConversationSessionOptions(input: {
-  readonly coldResume?: ConversationSessionOptions['coldResume'];
-  readonly loadLocalData: () => Promise<AiFeatureLocalData>;
-  readonly registry: LocalEvidenceReferenceRegistry;
-  readonly selectedAi?: () => Promise<ReturnType<typeof requireSelectedAi>>;
-  readonly restoreHealthSummary?: (
-    reference: import('../../ragConversation/healthSummary').HealthSummaryReference,
-  ) => Promise<
-    import('../../ragConversation/healthSummary').HealthSummaryResult | null
-  >;
-  readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
-}): ConversationSessionOptions {
+export function createConversationSessionOptions(
+  input: ConversationSessionOptionInput,
+): ConversationSessionOptions {
   const openStorage = createConversationSessionStorage(input.loadLocalData);
   const photo = conversationPhotoPreparationOption(input);
   return {
     ...photo,
+    ...continuousSessionOption(input.selectedAi, openStorage),
     restoreSteering: restoreConversationSteering(openStorage),
     coldResume: input.coldResume,
     execution: conversationExecutionNative() ?? undefined,

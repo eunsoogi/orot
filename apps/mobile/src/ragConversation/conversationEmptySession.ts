@@ -38,3 +38,13 @@ export function quarantineConversation(): Partial<ConversationSession> {
     unsavedCount: 0,
   };
 }
+
+let sessionOwner = 0;
+/** UI-local ids and process-local request owners are independent from durable model epochs. */
+export function createConversationSessionSeed() {
+  let nextId = 0;
+  return {
+    owner: ++sessionOwner,
+    empty: () => createEmptyConversation(++nextId),
+  };
+}

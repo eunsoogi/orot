@@ -16,6 +16,13 @@ export type ConversationSessions = ReturnType<
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  /** Resolve the saved model and its protected conversation lease without inference. */
+  readonly continuousSession?: (signal: AbortSignal) => Promise<{
+    id: string;
+    version: number;
+    updatedAt: string;
+    model: { providerId: string; modelId: string };
+  }>;
   readonly restoreSteering?: (
     sessionId: string,
     requestId: string,
@@ -171,6 +178,8 @@ export interface ConversationSession {
   readonly retryingSave?: boolean;
   readonly restoreFailed?: boolean;
   readonly restoring?: boolean;
+  readonly modelSelectionPending?: boolean;
+  readonly modelSelectionFailed?: boolean;
   readonly deletionError?: string;
   readonly quarantined?: boolean;
   readonly restoreAfterRetry?: boolean;
