@@ -1,8 +1,10 @@
+import { MidTurnSteering } from './mid-turn-steering';
+import { normalizeToolCall, normalizeToolCalls, sameToolCall } from './stream-tool-calls';
 import {
   providerFailure,
   providerSuccess,
-  type JsonObject,
   type LanguageModelRequest,
+  type LanguageModelExecutionOptions,
   type LanguageModelResponse,
   type LanguageModelStreamEvent,
   type ProviderResult,
@@ -11,7 +13,7 @@ import {
 import { EventQueue } from './event-queue';
 import { toProviderError } from './errors';
 import type { ChatGPTPlanProviderOptions } from './provider';
-import type { ChatGPTPlanNativeEvent, ChatGPTPlanNativeToolCall } from './native-contract';
+import type { ChatGPTPlanNativeEvent } from './native-contract';
 import { prepareRequest } from './request-mapper';
 import { nativeResponse } from './usage';
 
@@ -20,6 +22,7 @@ export function createChatGPTPlanStream(
   nextRequestID: () => string,
   request: LanguageModelRequest,
   continuationsByCallID: Map<string, readonly string[]>,
+  steering?: LanguageModelExecutionOptions['midTurnSteering'],
 ): AsyncIterable<ProviderResult<LanguageModelStreamEvent>> {
   return {
     [Symbol.asyncIterator]() {
@@ -28,12 +31,14 @@ export function createChatGPTPlanStream(
         nextRequestID(),
         request,
         continuationsByCallID,
+        steering,
       );
     },
   };
 }
 
 class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<LanguageModelStreamEvent>> {
+  private readonly steering: MidTurnSteering;
   private readonly prepared: ReturnType<typeof prepareRequest>;
   private readonly queue = new EventQueue<ChatGPTPlanNativeEvent>();
   private unsubscribe = () => {};
@@ -53,7 +58,9 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
     private readonly requestID: string,
     request: LanguageModelRequest,
     private readonly continuationsByCallID: Map<string, readonly string[]>,
+    steering?: LanguageModelExecutionOptions['midTurnSteering'],
   ) {
+    this.steering = new MidTurnSteering(options, requestID, steering);
     this.prepared = prepareRequest(options.model.slug, request, continuationsByCallID);
     this.cancelled = new Promise((resolve) => {
       this.resolveCancellation = resolve;
@@ -93,6 +100,16 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
           }),
           true,
         );
+      }
+      if (event.type === 'steering_ready' || event.type === 'steering') {
+        await this.steering.handle(event);
+        return this.next();
+      }
+      if (event.type === 'text_snapshot') {
+        if (!this.steering.permitsSnapshot() || this.streamedToolCalls.size)
+          return this.finish(malformedResponse());
+        this.streamedText = event.text;
+        return { done: false, value: providerSuccess({ type: 'text_snapshot', text: event.text }) };
       }
       if (event.type === 'text_delta') {
         this.streamedText += event.text;
@@ -152,12 +169,16 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
 
   private start(): Promise<void> {
     if (!this.startTask) {
+      this.steering.assertSupported();
       this.unsubscribe = this.options.bridge.subscribe((event) => {
         if (event.requestId === this.requestID) this.queue.push(event);
       });
       if (!this.prepared.ok) throw new Error('Invalid provider request state.');
-      this.startTask = this.options.bridge
-        .startResponse(this.requestID, this.options.issuedClientID, this.prepared.value)
+      const start = this.steering.enabled
+        ? this.options.bridge.startSteerableResponse!
+        : this.options.bridge.startResponse;
+      this.startTask = start
+        .call(this.options.bridge, this.requestID, this.options.issuedClientID, this.prepared.value)
         .then(() => {
           if (this.closed) this.cancelNativeRequest();
         });
@@ -184,6 +205,7 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
   private close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.steering.close();
     this.resolveCancellation();
     this.queue.close();
     this.unsubscribe();
@@ -203,44 +225,6 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
       return final !== undefined && sameToolCall(streamed, final);
     });
   }
-}
-
-function normalizeToolCalls(
-  nativeCalls: readonly ChatGPTPlanNativeToolCall[],
-): ToolCall[] | undefined {
-  const normalized: ToolCall[] = [];
-  const seen = new Set<string>();
-  for (const nativeCall of nativeCalls) {
-    const toolCall = normalizeToolCall(nativeCall);
-    if (!toolCall || seen.has(toolCall.id)) return undefined;
-    seen.add(toolCall.id);
-    normalized.push(toolCall);
-  }
-  return normalized;
-}
-
-function normalizeToolCall(nativeCall: ChatGPTPlanNativeToolCall): ToolCall | undefined {
-  if (!nativeCall.id.trim() || !nativeCall.name.trim()) return undefined;
-  try {
-    const argumentsValue: unknown = JSON.parse(nativeCall.arguments);
-    if (
-      typeof argumentsValue !== 'object' ||
-      argumentsValue === null ||
-      Array.isArray(argumentsValue)
-    )
-      return undefined;
-    return { id: nativeCall.id, name: nativeCall.name, arguments: argumentsValue as JsonObject };
-  } catch {
-    return undefined;
-  }
-}
-
-function sameToolCall(left: ToolCall, right: ToolCall): boolean {
-  return (
-    left.id === right.id &&
-    left.name === right.name &&
-    JSON.stringify(left.arguments) === JSON.stringify(right.arguments)
-  );
 }
 
 const malformedResponse = (message = 'ChatGPT returned malformed function-call data.') =>
