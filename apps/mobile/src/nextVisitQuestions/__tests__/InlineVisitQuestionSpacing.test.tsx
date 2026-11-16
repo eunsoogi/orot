@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { InlineVisitQuestionCard } from '../InlineVisitQuestionCard';
 import { QuestionCard } from '../QuestionCard';
+import { createQuestionCardStyles } from '../questionCardStyles';
 import { createInlineVisitReview } from '../inlineVisitReview';
 import { questions, theme } from '../testSupport/fixtures';
 
@@ -25,6 +26,14 @@ test('removes nested inline padding while preserving full wording, touch targets
     />,
   );
   expect(screen.getByTestId('inline-visit-review')).toHaveStyle({ gap: 8 });
+  expect(createQuestionCardStyles(theme, true).headingRow).toMatchObject({
+    marginHorizontal: -8,
+    gap: 0,
+  });
+  expect(createQuestionCardStyles(theme).headingRow).toMatchObject({
+    marginHorizontal: 0,
+    gap: 8,
+  });
   expect(screen.getByTestId('next-visit-question-0')).toHaveStyle({
     paddingHorizontal: 0,
     paddingVertical: 4,

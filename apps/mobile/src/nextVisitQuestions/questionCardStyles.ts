@@ -22,7 +22,10 @@ export function createQuestionCardStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: compact ? tokens.spacing.xs : tokens.spacing.sm,
+      // Reclaim inner bubble inset, not the opposite speaker lane. The 44pt
+      // controls stay disjoint from the text input and within the outer bubble.
+      marginHorizontal: compact ? -tokens.spacing.sm : 0,
+      gap: compact ? 0 : tokens.spacing.sm,
     },
     heading: {
       color: colors.text,
