@@ -1,5 +1,6 @@
 /** One-shot voice delegation and cross-recipient result disclosure. */
 export const realtimeToolConsentKo = {
+  'realtimeToolConsent.returnToCall': '통화 화면으로 돌아가기',
   'realtimeToolConsent.enable': '도구도 확인하며 사용',
   'realtimeToolConsent.explanation':
     '도구를 사용하면 인식한 문장과 처리 서비스를 먼저 확인해요. 기존 대화의 저장·추가 비용·기록 및 작업 승인이 적용되며, 결과를 OpenAI Realtime으로 보내기 전 다시 확인해요.',

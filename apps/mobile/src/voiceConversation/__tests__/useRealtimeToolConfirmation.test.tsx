@@ -47,7 +47,13 @@ it('shows exact text, recipient, cost/storage and separate-result boundaries bef
   expect(screen.getByText(/추가 사용료/)).toBeTruthy();
   expect(screen.getByText(/자동으로 고치지 않아요/)).toBeTruthy();
   expect(screen.getByText(/다시 승인해야 해요/)).toBeTruthy();
+  const resolved = jest.fn();
+  decision.then(resolved);
   await fireEvent.press(screen.getByTestId('realtime-tool-confirmation-allow'));
+  expect(resolved).not.toHaveBeenCalled();
+  await act(() => {
+    controller.node?.props.onDismiss();
+  });
   expect(await decision).toBe(true);
   expect(screen.queryByTestId('realtime-tool-confirmation-modal')).toBeNull();
 });

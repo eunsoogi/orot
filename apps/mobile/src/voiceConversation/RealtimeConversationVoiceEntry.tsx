@@ -1,9 +1,10 @@
+import { RealtimeVoiceSurface } from './RealtimeVoiceSurface';
+import { useVoiceApprovalHandoff } from './useVoiceApprovalHandoff';
 import { useRealtimeToolConfirmation } from './useRealtimeToolConfirmation';
 import { createRealtimeConversationTool } from './realtimeConversationTool';
 import { resumeVoice } from './voiceSession';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
-import { VoiceCallIdentity } from './VoiceCallIdentity';
 import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
 import type { ConversationVoiceProps } from './conversationVoiceDependencies';
 import {
@@ -11,8 +12,6 @@ import {
   type RealtimeTranscript,
 } from './nativeRealtimeVoice';
 import { createRealtimeVoiceSession } from './realtimeVoiceSession';
-import { VoiceConversationControl } from './VoiceConversationControl';
-import { VoiceConversationScreen } from './VoiceConversationScreen';
 import { initialVoiceState } from './voiceTurn';
 import { voiceStatus } from './voiceStatus';
 import { t } from '../i18n';
@@ -37,6 +36,11 @@ export function RealtimeConversationVoiceEntry(
   const owner = useRef<ReturnType<typeof createRealtimeVoiceSession> | null>(
     null,
   );
+  const handoff = useVoiceApprovalHandoff({
+    callId: state.identity?.turnId ?? null,
+    visible,
+  });
+  const runTool = handoff.run;
   const current = () => {
     const live = latest.current;
     const snapshot = live.store.getSnapshot();
@@ -79,16 +83,19 @@ export function RealtimeConversationVoiceEntry(
       isCurrent: current,
       toolsCurrent: () => AppState.currentState === 'active',
       executeTool: latest.current.confirmRealtimeResult
-        ? createRealtimeConversationTool({
-            latest,
-            model: props.model,
-            current,
-            ownsRequest: (id, expected) => {
-              if (id !== null || ownedToolRequest.current === expected)
-                ownedToolRequest.current = id;
-            },
-            confirm: confirmTool,
-          })
+        ? async (text, request, signal) =>
+            (await runTool(signal, ownedSignal =>
+              createRealtimeConversationTool({
+                latest,
+                model: props.model,
+                current,
+                ownsRequest: (id, expected) => {
+                  if (id !== null || ownedToolRequest.current === expected)
+                    ownedToolRequest.current = id;
+                },
+                confirm: confirmTool,
+              })(text, request, ownedSignal),
+            )) ?? undefined
         : undefined,
       changed: value => {
         if (mounted) setState(value);
@@ -131,7 +138,7 @@ export function RealtimeConversationVoiceEntry(
       settings();
       app.remove();
     };
-  }, [props.model, props.sessionId, confirmTool]);
+  }, [props.model, props.sessionId, confirmTool, runTool]);
   useEffect(() => {
     owner.current?.cancelTools();
   }, [props.selectionRevision]);
@@ -192,46 +199,32 @@ export function RealtimeConversationVoiceEntry(
       ],
     );
   };
+  const stop = () => {
+    owner.current?.stop();
+    setVisible(false);
+    setTranscripts([]);
+  };
   return (
-    <>
-      {toolConfirmation}
-      <VoiceConversationScreen
-        manualFinish={false}
-        visible={visible}
-        phase={state.phase}
-        status={status}
-        pipeline={t('realtimeDisplay.pipeline', { model: props.model })}
-        transcript={transcripts.map(item => ({
-          id: `${item.role}:${item.itemId}`,
-          role: item.role,
-          text: item.text,
-        }))}
-        identity={<VoiceCallIdentity />}
-        onEnd={() => {
-          owner.current?.stop();
-          setVisible(false);
-          setTranscripts([]);
-        }}
-        onMute={() => owner.current?.mute()}
-        onResume={() => resumeVoice(owner.current)}
-        onFinish={() => {}}
-      />
-      {!visible && (
-        <VoiceConversationControl
-          phase={state.phase}
-          disabled={!available || props.busy || props.photoPending}
-          startLabel={t('ragConversation.voice.start')}
-          stopLabel={t('ragConversation.voice.stop')}
-          finishLabel={t('ragConversation.voice.finish')}
-          recoverLabel={t('ragConversation.voice.retry')}
-          status={status}
-          statusExternallyRendered={Boolean(props.onStatusChange)}
-          onStart={start}
-          onStop={() => owner.current?.stop()}
-          onFinish={() => {}}
-          onRecover={start}
-        />
-      )}
-    </>
+    <RealtimeVoiceSurface
+      visible={visible}
+      voiceVisible={handoff.voiceVisible}
+      suspended={handoff.suspended}
+      handoffBusy={handoff.busy}
+      state={state}
+      status={status}
+      model={props.model}
+      transcripts={transcripts}
+      toolConfirmation={toolConfirmation}
+      disabled={!available || props.busy || props.photoPending}
+      statusExternallyRendered={Boolean(props.onStatusChange)}
+      start={start}
+      stop={stop}
+      mute={() => owner.current?.mute()}
+      resume={() => resumeVoice(owner.current)}
+      returnToCall={() => {
+        handoff.resume();
+      }}
+      onDismiss={handoff.onVoiceDismiss}
+    />
   );
 }

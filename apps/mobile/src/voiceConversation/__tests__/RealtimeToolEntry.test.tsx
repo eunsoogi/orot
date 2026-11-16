@@ -10,6 +10,24 @@ import { RealtimeConversationVoiceEntry } from '../RealtimeConversationVoiceEntr
 import type { ConversationVoiceProps } from '../conversationVoiceDependencies';
 import type { RealtimeTranscript } from '../nativeRealtimeVoice';
 import type { RealtimeToolRequest } from '../realtimeToolRequests';
+jest.mock('../../navigation/NavigationModal', () => ({
+  NavigationModal: (props: object) => {
+    const React = require('react');
+    const { View } = require('react-native');
+    return React.createElement(View, props);
+  },
+}));
+// UIKit dismissal is verified separately; this fixture explicitly delivers its completion event.
+jest.mock('../VoiceConversationScreen', () => ({
+  VoiceConversationScreen: (props: object) => {
+    const React = require('react');
+    const { View } = require('react-native');
+    return React.createElement(View, {
+      ...props,
+      testID: 'synthetic-voice-modal',
+    });
+  },
+}));
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
@@ -128,8 +146,21 @@ test.each([true, false])(
       });
     });
     expect(send).not.toHaveBeenCalled();
+    expect(screen.queryByText('이 요청 실행')).toBeNull();
+    expect(screen.getByTestId('synthetic-voice-modal').props.visible).toBe(
+      false,
+    );
+    expect(mockNative.stop).not.toHaveBeenCalled();
+    await act(async () => {
+      screen.getByTestId('synthetic-voice-modal').props.onDismiss();
+    });
+    await waitFor(() => expect(screen.getByText('이 요청 실행')).toBeTruthy());
     expect(screen.getAllByText('합성 인식 원문').length).toBeGreaterThan(0);
     await fireEvent.press(screen.getByRole('button', { name: '이 요청 실행' }));
+    expect(send).not.toHaveBeenCalled();
+    await act(() =>
+      screen.getByTestId('realtime-tool-confirmation-modal').props.onDismiss(),
+    );
     await waitFor(() => expect(confirmResult).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(mockNative.tools.resolveToolCall).toHaveBeenCalledTimes(1),
@@ -143,6 +174,14 @@ test.each([true, false])(
         : '{"status":"not_authorized"}',
     );
     expect(send).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('synthetic-voice-modal').props.visible).toBe(
+      false,
+    );
+    expect(mockNative.stop).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByTestId('realtime-return-to-call'));
+    expect(screen.getByTestId('synthetic-voice-modal').props.visible).toBe(
+      true,
+    );
     alert.mockRestore();
     events.mockRestore();
   },

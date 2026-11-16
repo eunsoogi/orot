@@ -25,6 +25,8 @@ export function useRealtimeToolConfirmation() {
   const mounted = useRef(false);
   const [request, setRequest] =
     useState<RealtimeToolConfirmationRequest | null>(null);
+  const [closing, setClosing] =
+    useState<RealtimeToolConfirmationRequest | null>(null);
   const finish = useCallback(
     (approved: boolean, expected?: RealtimeToolConfirmationRequest) => {
       const current = pending.current;
@@ -32,7 +34,10 @@ export function useRealtimeToolConfirmation() {
       if (!current || (expected && current.request !== expected)) return;
       pending.current = null;
       current.request.signal.removeEventListener('abort', current.onAbort);
-      if (mounted.current) setRequest(null);
+      if (mounted.current) {
+        setRequest(null);
+        setClosing(null);
+      }
       current.resolve(
         approved &&
           mounted.current &&
@@ -78,7 +83,8 @@ export function useRealtimeToolConfirmation() {
   }, [finish]);
   const node = request ? (
     <NavigationModal
-      visible
+      visible={closing !== request}
+      onDismiss={() => finish(closing === request, request)}
       presentationStyle="pageSheet"
       allowSwipeDismissal
       testID="realtime-tool-confirmation-modal"
@@ -115,7 +121,15 @@ export function useRealtimeToolConfirmation() {
               <AppButton
                 title={t('realtimeToolConsent.allow')}
                 testID="realtime-tool-confirmation-allow"
-                onPress={() => finish(true, request)}
+                onPress={() => {
+                  // Do not open a subsequent approval while UIKit is still dismissing this sheet.
+                  if (
+                    AppState.currentState !== 'active' ||
+                    request.signal.aborted
+                  )
+                    finish(false, request);
+                  else setClosing(request);
+                }}
               />
               <AppButton
                 variant="neutral"

@@ -21,6 +21,7 @@ export function VoiceConversationScreen({
   pipeline,
   transcript,
   onEnd,
+  onDismiss,
   onMute,
   onResume,
   onFinish,
@@ -35,6 +36,7 @@ export function VoiceConversationScreen({
   pipeline?: string;
   transcript?: readonly VoiceTranscriptLine[];
   onEnd: () => void;
+  onDismiss?: () => void;
   onMute: () => void;
   onResume: () => void;
   onFinish: () => void;
@@ -75,6 +77,7 @@ export function VoiceConversationScreen({
       visible={visible}
       presentationStyle="fullScreen"
       onRequestClose={onEnd}
+      onDismiss={onDismiss}
     >
       <SafeAreaLayout
         scrollable
