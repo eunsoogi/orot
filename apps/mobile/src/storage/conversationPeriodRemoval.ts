@@ -36,8 +36,10 @@ export async function assertPeriodNotRemoved(
       'source_deletion_tombstones',
       'agent_memory_removed_sources',
     ]) {
+      // Keep the singleton bounds outermost: SQLite can then use both concept and
+      // time keys, instead of scanning all historical records before applying p.
       const result = await tx.execute(
-        `SELECT h.id FROM ${table} h CROSS JOIN (SELECT ? AS topic, ? AS from_key, ? AS to_key) p WHERE (${guard.replaceAll('OLD.', 'h.')}) AND EXISTS (SELECT 1 FROM ${marker} m WHERE ${periodRowReferences('m.source_id', marker, ({ health_observations: 'health_observation', medication_definitions: 'medication_definition', medication_assertions: 'medication_assertion', dose_events: 'dose_event', symptom_entries: 'symptom_entry' } as Record<string, string>)[table])}) LIMIT 1`,
+        `SELECT h.id FROM (SELECT ? AS topic, ? AS from_key, ? AS to_key) p CROSS JOIN ${table} h WHERE (${guard.replaceAll('OLD.', 'h.')}) AND EXISTS (SELECT 1 FROM ${marker} m WHERE ${periodRowReferences('m.source_id', marker, ({ health_observations: 'health_observation', medication_definitions: 'medication_definition', medication_assertions: 'medication_assertion', dose_events: 'dose_event', symptom_entries: 'symptom_entry' } as Record<string, string>)[table])}) LIMIT 1`,
         bindings,
       );
       if (result.rows.length)
