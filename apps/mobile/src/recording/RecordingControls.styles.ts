@@ -3,6 +3,8 @@ import { appColors } from '../layout/appColors';
 
 export const recordingControlStyles = StyleSheet.create({
   review: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerTitle: { flex: 1, minWidth: 0 },
   container: {
     flex: 1,
     minHeight: 0,

@@ -1,5 +1,6 @@
 /** Korean copy for local recording, transcript review, and their error states. */
 export const recordingKo = {
+  'recording.newTake': '새 녹음',
   'recording.guidanceDetails': '녹음 및 동의 안내',
   'recording.title': '상담 녹음',
   'recording.export.description': '파일을 내보낼 방법을 선택해요.',

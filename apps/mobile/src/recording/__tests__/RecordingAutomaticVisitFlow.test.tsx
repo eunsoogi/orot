@@ -43,6 +43,16 @@ test('keeps consent, removes visit choice, and binds the start snapshot only aft
   expect(bindAutomaticRecordingVisit).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('recording-microphone-control'));
   expect(bindAutomaticRecordingVisit).toHaveBeenCalledWith(completed.id, visit);
+  expect(screen.getByTestId('recording-result')).toBeTruthy();
+  expect(screen.getByTestId('recording-saved-duration')).toHaveTextContent(
+    '녹음 시간: 00:12',
+  );
+  expect(screen.queryByTestId('recording-microphone-control')).toBeNull();
+  await fireEvent.press(screen.getByTestId('recording-new-take'));
+  expect(screen.queryByTestId('recording-result')).toBeNull();
+  expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
+  expect(service.start).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId('recording-consent')).toBeTruthy();
   expect(
     jest.mocked(service.saveSource).mock.invocationCallOrder[0],
   ).toBeLessThan(

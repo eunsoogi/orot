@@ -212,5 +212,6 @@ test('keeps the recording route when protected-source save fails', async () => {
   await expect(leaveRequest).resolves.toBe(false);
 
   expect(controller.getSnapshot().currentRoute.name).toBe('recording');
-  expect(rendered.getByText('녹음 저장됨')).toBeVisible();
+  expect(rendered.getByTestId('recording-retry-save')).toBeVisible();
+  expect(rendered.queryByTestId('recording-new-take')).toBeNull();
 });

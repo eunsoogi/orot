@@ -32,7 +32,8 @@ test('keeps a backup-eligible recording retryable after metadata storage fails',
 
   expect(await screen.findByTestId('recording-retry-save')).toBeTruthy();
   expect(screen.queryByTestId('recording-back')).toBeNull();
-  expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
+  expect(screen.queryByTestId('recording-microphone-control')).toBeNull();
+  expect(screen.queryByTestId('recording-new-take')).toBeNull();
 
   await view.unmount();
   await render(<RecordingScreen onBack={jest.fn()} service={service} />);

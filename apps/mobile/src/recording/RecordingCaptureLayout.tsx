@@ -18,13 +18,14 @@ export function RecordingCaptureLayout({
       style={[styles.frame, wide ? styles.wide : styles.narrow]}
       testID={testID}
     >
-      <View style={styles.panel}>{primary}</View>
-      <View style={styles.panel}>{secondary}</View>
+      <View style={[styles.panel, wide && styles.widePanel]}>{primary}</View>
+      <View style={[styles.panel, wide && styles.widePanel]}>{secondary}</View>
     </View>
   );
 }
 const styles = StyleSheet.create({
   wide: { flexDirection: 'row' },
+  widePanel: { flex: 1, flexBasis: 0 },
   narrow: { flexDirection: 'column' },
   frame: {
     flex: 1,
