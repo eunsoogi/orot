@@ -1,3 +1,4 @@
+import { conversationMessageBodyTestID } from './conversationMessageBodyTestID';
 import { View } from 'react-native';
 import type { ReactNode } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -13,10 +14,8 @@ import { HealthSummaryCard } from './HealthSummaryCard';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
-
 import type { DisplayMessage } from './conversationDisplayMessage';
 export type { DisplayMessage } from './conversationDisplayMessage';
-
 /** Keeps transcript citations beside their answer; compact session previews may omit source links. */
 export function ConversationMessage({
   message,
@@ -57,14 +56,6 @@ export function ConversationMessage({
   const visitQuestions =
     !user && message.visitQuestions ? renderVisitQuestions?.(message) : null;
   const MessageText = user ? Text : AiResponseText;
-  // Native production verification needs a stable target for completed text, apart from citation controls.
-  const messageTextTestID = message.streaming
-    ? 'rag-conversation-stream'
-    : user
-      ? undefined
-      : message.incomplete
-        ? 'rag-conversation-incomplete-body'
-        : 'rag-conversation-answer-body';
   const activity = message.activity ? (
     <Text
       accessibilityLiveRegion={message.streaming ? 'none' : 'polite'}
@@ -83,7 +74,15 @@ export function ConversationMessage({
   // Keep the last streamed line at the end of a short reading viewport.
   const activityBeforeText = compact && message.streaming;
   return (
-    <ConversationMessageBubbles message={message}>
+    <ConversationMessageBubbles
+      message={message}
+      presentation={{
+        showCitations,
+        showToolActivity,
+        visitQuestions,
+        canResume: Boolean(onContinueCold),
+      }}
+    >
       <View
         testID={
           user ? 'conversation-user-message' : 'conversation-assistant-message'
@@ -196,7 +195,7 @@ export function ConversationMessage({
             <MessageText
               selectable
               style={[styles.messageText, user && styles.userText]}
-              testID={messageTextTestID}
+              testID={conversationMessageBodyTestID(message)}
             >
               {message.content}
             </MessageText>
