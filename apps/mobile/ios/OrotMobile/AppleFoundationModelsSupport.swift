@@ -139,7 +139,7 @@ final class OrotProviderDiagnostics: NSObject {
     @objc func report(_ feature: String, stage: String, outcome: String) {
         guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
               ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
-              ["tool_event_capture", "tool_event_write", "tool_event_bind",
+              ["tool_event_adapter", "tool_event_discard", "tool_event_capture", "tool_event_write", "tool_event_bind",
                "opening_generate", "opening_validate", "opening_review", "opening_consent",
                "opening_delivery", "opening_preflight", "opening_display", "stop_native", "stop_js", "stop_abort", "stop_settlement", "conversation_photo_flush", "conversation_preview_flush", "conversation_activity_flush", "conversation_stop_fence", "conversation_lifetime_settle", "conversation_save",
                "saved_memory_modules", "saved_memory_open", "saved_memory_read", "saved_memory_wait",

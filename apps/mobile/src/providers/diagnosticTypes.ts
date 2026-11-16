@@ -1,6 +1,8 @@
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
 export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report' | 'storage';
 export type Stage =
+  | 'tool_event_adapter'
+  | 'tool_event_discard'
   | 'tool_event_capture'
   | 'tool_event_write'
   | 'tool_event_bind'

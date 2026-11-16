@@ -137,15 +137,19 @@ export function createConversationTurnRetention(
       event: import('@orot/agent-runtime').ConversationToolEvent,
     ) {
       if (!input.storage.appendToolEvent)
-        return Promise.reject(new Error('Tool event storage is unavailable.'));
+        return observeToolRetention('tool_event_adapter', async () => {
+          throw new Error('Tool event storage is unavailable.');
+        });
       let captured;
       const discard = () =>
-        input.storage.discardToolEvent?.({
-          sessionId: input.sessionId,
-          messageId: input.turnId,
-          sessionVersion: input.sessionVersion ?? 0,
-          operationRunId: event.operationRunId,
-          callId: event.callId,
+        observeToolRetention('tool_event_discard', async () => {
+          await input.storage.discardToolEvent?.({
+            sessionId: input.sessionId,
+            messageId: input.turnId,
+            sessionVersion: input.sessionVersion ?? 0,
+            operationRunId: event.operationRunId,
+            callId: event.callId,
+          });
         });
       try {
         captured = await observeToolRetention('tool_event_capture', async () =>
