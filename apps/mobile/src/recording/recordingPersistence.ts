@@ -1,4 +1,5 @@
 import type { RecordRepository } from '@orot/storage';
+import { t } from '../i18n';
 import type {
   CompletedRecording,
   RecordingSourceRecord,
@@ -61,7 +62,8 @@ export async function saveRecordingSource(
     provenance: { origin: 'user_reported', sourceRecordIds: [] },
     reviewState: { status: 'unreviewed' },
     sourceKind: 'audio_recording',
-    title: '상담 녹음',
+    // Only new records get the display default; retries preserve stored or edited titles.
+    title: t('recording.title'),
     recordingDurationMs: recording.durationMs,
   };
   await repository.put('source_record', source);

@@ -290,3 +290,17 @@
 기존 순서와 전체 문자열의 정확한 동등성, 다른 이유와의 교차 조합 및 공백 변경 거부, 미지원 locale의 동일 한국어 fallback을 회귀 검사한다. 미완·상충 근거의 질문 검증, 동의·workflow, 저장·복원 및 사람이 검토한 기존 질문 동작도 관련 기존 검증으로 확인한다. 과거 저장 내용의 migration이나 새 언어를 도입하지 않으며, 나머지 모델 지시·프로토콜·임상 정규식·원문 자료를 표시 카탈로그로 기계 이동하지 않는다. 전수 audit 완료는 여전히 주장하지 않는다.
 
 현재 목록의 `t()`는 모듈 초기화 시 평가되고 앱은 한국어만 지원한다. 기존 저장 질문·이유의 원문 쌍은 고정 회귀 fixture로 검증한다. 향후 새 언어나 실행 중 locale 전환을 도입할 경우 현재 번역 목록으로 과거 저장값의 허용 여부를 다시 정하지 않도록, 버전이 있는 허용 목록과 저장 호환성 정책을 별도로 설계·검증해야 한다. 이번 변경은 그런 전환을 구현하거나 승인하지 않는다.
+
+## 새 녹음 원본 제목과 잔여 경계 재검토
+
+2026-11-16 main `4e3d074f`에서 mobile `src`의 TS/TSX와 iOS 및 shared packages의 TS/TSX/Swift/Objective-C 한국어 출현 파일을 재검색했다. `recordingPersistence.ts`의 새 원본 제목은 기존 `recording.title`과 정확히 같으며 신규 저장 때만 같은 카탈로그 값을 사용하도록 이관한다. 기존 저장·사용자 편집 제목은 재시도나 누락된 녹음 길이 보완에서도 덮어쓰지 않는다. 한국어 외 locale도 기존 한국어 제목으로 fallback한다. 저장 제목을 향후 언어 변경 시 일괄 재작성하는 정책은 도입하지 않는다.
+
+잔여 출현은 다음처럼 분리해 유지한다.
+
+- `recordingScreenSupport.ts`는 이름과 달리 `jest.fn`을 쓰는 합성 테스트 지원 코드다. fixture 원문을 카탈로그 참조로 바꿔 회귀 검증을 약화하지 않는다.
+- `observeLocalSearchFailures.ts`의 로컬 검색 실패 문구는 `coverage.gaps.includes`의 정확 비교 값이다. 표시 문자열로 기계 이관하지 않는다.
+- `featureServices`, `conversationEntryContext`, 사진 OCR의 신규·복원 경로, 진료 질문 workflow와 저장 질문의 모델 문맥은 모델 요청·근거 payload다. 프롬프트와 저장 재개 호환성을 따로 검토해야 한다.
+- 임상 주장·수치·기간·복약·의도 정규식과 evidence 검색어는 입력 인식 및 검증 경계다. 임상 의미나 허용 입력을 변경하지 않는다.
+- native `MedicalDocumentPhotoPicker.swift`의 `사진.<확장자>`는 첨부 파일 metadata 기본값이다. JS 카탈로그만 바꾸어 해결되는 화면 문구가 아니므로 별도 native 저장·복원 경계 검토가 남는다. provider iOS spike와 synthetic calendar/probe는 개발·합성 표면이다.
+
+이 검색은 원문 포함 파일을 찾는 source audit이며 전체 이미지·native UI·실모델 및 동적 생성 문자열의 현지화 완료 증거가 아니다. 부모 이슈는 열린 상태로 유지한다.

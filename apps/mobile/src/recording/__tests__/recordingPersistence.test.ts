@@ -129,3 +129,45 @@ test('propagates repository failures so the screen can retry metadata linking', 
     saveRecordingSource(recording, async () => store),
   ).rejects.toThrow('local database unavailable');
 });
+
+// A new unsupported locale must not alter the shipped Korean source-record title.
+test('uses the Korean default title under an unsupported device locale', async () => {
+  const options = jest.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions');
+  const original = new Intl.DateTimeFormat().resolvedOptions();
+  options.mockReturnValue({ ...original, locale: 'en-US' });
+  try {
+    const store = repository();
+    const source = await saveRecordingSource(recording, async () => store);
+    expect(source.title).toBe('상담 녹음');
+    expect(store.put).toHaveBeenCalledWith('source_record', source);
+  } finally {
+    options.mockRestore();
+  }
+});
+
+test.each([undefined, recording.durationMs])(
+  'preserves a stored custom title when retrying duration %s',
+  async recordingDurationMs => {
+    const existing = {
+      id: recording.id,
+      sourceKind: 'audio_recording',
+      effectiveAt: recording.startedAt,
+      recordedAt: recording.completedAt,
+      title: 'Existing reviewed recording title',
+      recordingDurationMs,
+    };
+    const store = repository(existing);
+    const result = await saveRecordingSource(recording, async () => store);
+    expect(result.title).toBe(existing.title);
+    expect(result.recordingDurationMs).toBe(recording.durationMs);
+    if (recordingDurationMs === undefined) {
+      expect(store.put).toHaveBeenCalledWith('source_record', {
+        ...existing,
+        recordingDurationMs: recording.durationMs,
+      });
+    } else {
+      expect(result).toBe(existing);
+      expect(store.put).not.toHaveBeenCalled();
+    }
+  },
+);
