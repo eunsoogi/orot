@@ -118,23 +118,21 @@ test('request start publishes loading without fabricated AI copy and rejects bus
   ).toBeNull();
 });
 
-test('opts into reviewed contextual prose without injecting a canned reply', () => {
+test('keeps opening prose in the live boundary instead of repeating it during tools', () => {
   const { ragConversationTask } = require('../task');
   const [message] = ragConversationTask.createMessages({
     request: 'synthetic',
     evidence: { items: [], coverage: [], conflicts: [] },
   });
   expect(JSON.parse(message.content).initialResponseText).toBeUndefined();
-  expect(ragConversationTask.initialToolResponse).toBe(
-    validateInitialConversationResponse,
-  );
-  expect(ragConversationTask.reviewInitialToolResponse).toBe(true);
-  expect(ragConversationTask.taskVersion).toBe('9');
+  expect(ragConversationTask.initialToolResponse).toBeUndefined();
+  expect(ragConversationTask.reviewInitialToolResponse).toBeUndefined();
+  expect(ragConversationTask.taskVersion).toBe('10');
   expect(
     validateInitialConversationResponse('어떤 흐름인지 함께 살펴볼게요.'),
   ).toBe('어떤 흐름인지 함께 살펴볼게요.');
   expect(ragConversationTask.systemPrompt).not.toMatch(/[\uAC00-\uD7A3]/u);
-  expect(ragConversationTask.systemPrompt).toContain('this particular request');
+  expect(ragConversationTask.systemPrompt).not.toContain('first reply');
 });
 
 // These are deterministic contract checks, not real-model semantic-quality evidence.

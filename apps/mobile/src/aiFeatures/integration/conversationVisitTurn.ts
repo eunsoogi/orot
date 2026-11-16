@@ -52,6 +52,9 @@ export function createConversationVisitTurn(deps: {
         deps.registerSource,
       ),
       observer: {
+        onTaskStreamEvent: event => {
+          if (!input.signal.aborted) input.observer?.onTaskStreamEvent?.(event);
+        },
         onProgress: event => {
           if (!input.signal.aborted) input.observer?.onProgress?.(event);
         },

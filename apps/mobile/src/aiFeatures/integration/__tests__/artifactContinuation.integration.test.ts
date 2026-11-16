@@ -1,4 +1,5 @@
 import { createManualHistoryRepository, runMigrations } from '@orot/storage';
+import type { LanguageModelRequest } from '@orot/model-runtime';
 import { providerSuccess } from '@orot/model-runtime';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { reference } from '../../../diseaseHypotheses/taskTestSupport';
@@ -106,12 +107,28 @@ test('continues empty pages in the same conversation without sharing its handle 
           finishReason: 'complete',
         }),
       );
+    // The optional preview has its own outcome, never consumes a scripted task response.
+    const dispatch = jest.fn((request: LanguageModelRequest) =>
+      request.messages[0]?.role === 'system' &&
+      typeof request.messages[0].content === 'string' &&
+      request.messages[0].content.startsWith(
+        'Write one brief natural Korean opening',
+      )
+        ? Promise.resolve(
+            providerSuccess({
+              text: '',
+              toolCalls: [],
+              finishReason: 'complete' as const,
+            }),
+          )
+        : generate(request),
+    );
     const option = {
       ...apple,
       provider: {
         ...apple.provider,
         capabilities: { ...apple.provider.capabilities, toolCalling: true },
-        generate,
+        generate: dispatch,
       },
     };
     const service = createAiFeatureServices(consent, {
@@ -139,6 +156,7 @@ test('continues empty pages in the same conversation without sharing its handle 
       sessions.getSnapshot().sessions[0]?.artifactContinuation,
     ).toBeTruthy();
     const providerCalls = generate.mock.calls.length;
+    const allProviderCalls = dispatch.mock.calls.length;
     sessions.create();
     const second = sessions.getSnapshot().activeId;
     expect(
@@ -180,6 +198,7 @@ test('continues empty pages in the same conversation without sharing its handle 
       'Needle retained output',
     );
     expect(generate).toHaveBeenCalledTimes(providerCalls);
+    expect(dispatch).toHaveBeenCalledTimes(allProviderCalls);
     await history.delete(entry.id);
     expect(
       (await service.readSource(citation!, new AbortController().signal))
@@ -199,6 +218,7 @@ test('continues empty pages in the same conversation without sharing its handle 
     sessions.setDraft(first, '안녕하세요');
     await sessions.send(first, service.sendRagMessage);
     expect(generate).toHaveBeenCalledTimes(providerCalls + 1);
+    expect(dispatch).toHaveBeenCalledTimes(allProviderCalls + 2);
     const providerRequest = generate.mock.calls.at(-1)?.[0];
     expect(JSON.stringify(providerRequest)).not.toContain(
       'Needle retained output',
