@@ -134,6 +134,7 @@ function ActivityPane({
       testID="conversation-activity-pane"
     >
       <ScrollView
+        testID="conversation-activity-lines"
         contentContainerStyle={[styles.activity, { paddingTop: inset + 16 }]}
         keyboardShouldPersistTaps="handled"
       >
@@ -183,7 +184,8 @@ const styles = StyleSheet.create({
     borderRightColor: appColors.border,
   },
   hidden: { display: 'none' },
-  activity: { paddingHorizontal: 20, paddingBottom: 20, gap: 12 },
+  // Avoid stacking extra blank lines between already accessible 44pt disclosures.
+  activity: { paddingHorizontal: 20, paddingBottom: 20, gap: 4 },
   heading: { fontSize: 17, fontWeight: '600' },
   secondary: { fontSize: 14, color: appColors.secondary },
 });
