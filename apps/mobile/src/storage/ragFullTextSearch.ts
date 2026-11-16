@@ -7,6 +7,8 @@ import { LocalEmbeddingJobError } from '@orot/rag';
 import type { SqlDatabase } from '@orot/storage';
 
 let nextTemporaryTableId = 0;
+// Bound each bridge payload to 64 parameters, with cancellation checked between batches.
+const INSERT_BATCH_SIZE = 32;
 
 function abortIfNeeded(signal?: AbortSignal): void {
   if (signal?.aborted) {
@@ -71,11 +73,18 @@ export class SqlCipherRagFullTextSearchStore implements LocalFullTextSearchStore
         `CREATE VIRTUAL TABLE temp.${table} USING fts5(chunk_id UNINDEXED, body, tokenize = 'unicode61')`,
       );
       try {
-        for (const chunk of chunks) {
+        // Multi-row insertion preserves corpus/order while avoiding one native round trip
+        // per chunk. The temporary index still belongs to this transaction and query only.
+        for (
+          let offset = 0;
+          offset < chunks.length;
+          offset += INSERT_BATCH_SIZE
+        ) {
           abortIfNeeded(signal);
+          const batch = chunks.slice(offset, offset + INSERT_BATCH_SIZE);
           await transaction.execute(
-            `INSERT INTO temp.${table} (chunk_id, body) VALUES (?, ?)`,
-            [chunk.id, chunk.text],
+            `INSERT INTO temp.${table} (chunk_id, body) VALUES ${batch.map(() => '(?, ?)').join(', ')}`,
+            batch.flatMap(chunk => [chunk.id, chunk.text]),
           );
         }
         abortIfNeeded(signal);
