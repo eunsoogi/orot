@@ -34,6 +34,7 @@ export function useConversationTranscriptWindow(input: {
   sessionId?: number;
   focusId?: string;
   focusGeneration?: number;
+  firstRowInset?: number;
   hasMore?: boolean;
   loading?: boolean;
   failed?: boolean;
@@ -142,9 +143,12 @@ export function useConversationTranscriptWindow(input: {
     onAnchorLayout(y: number) {
       if (state.current !== current || !anchor || current.pending !== anchor)
         return;
-      // Ignore an old zero-position event before the prepended rows have actually laid out.
-      if (!Number.isFinite(y) || y <= 0) return;
-      const offset = Math.max(0, current.pending.offset + y);
+      // The original first row has a positive padding inset too. Its initial layout
+      // is not a prepend; wait until older rows actually precede this same identity.
+      if (messages[start]?.id === anchor.id || !Number.isFinite(y)) return;
+      const addedHeight = y - (input.firstRowInset ?? 0);
+      if (addedHeight <= 0) return;
+      const offset = Math.max(0, current.pending.offset + addedHeight);
       current.pending = undefined;
       input.followsBottom.current = false;
       input.expectedOffset.current = offset;

@@ -9,12 +9,12 @@ jest.mock('../../layout/AiResponseText', () => ({
 const turns = (count = 30): DisplayMessage[] =>
   Array.from({ length: count }, (_, index) => [
     {
-      id: 2 * index + 1,
+      id: -(2 * index + 1),
       role: 'user' as const,
       content: `Synthetic question ${index}`,
     },
     {
-      id: 2 * index + 2,
+      id: -(2 * index + 2),
       role: 'assistant' as const,
       content: `Synthetic answer ${index}`,
       retainedTurnId: `turn-${index}`,
@@ -64,6 +64,14 @@ test('only a user top-edge scroll fetches a database page and prepends preserve 
   await fireEvent.scroll(history, scroll);
   await fireEvent.scroll(history, scroll);
   expect(loadOlder).toHaveBeenCalledTimes(1);
+  // Native initial row layout includes container padding before the fetch completes.
+  scrollTo.mockClear();
+  await fireEvent(
+    screen.getByTestId('conversation-earlier-anchor'),
+    'layout',
+    layout(24),
+  );
+  expect(scrollTo).not.toHaveBeenCalled();
   await view.rerender(
     <ConversationHistory
       {...base}
@@ -77,7 +85,7 @@ test('only a user top-edge scroll fetches a database page and prepends preserve 
   await fireEvent(
     screen.getByTestId('conversation-earlier-anchor'),
     'layout',
-    layout(700),
+    layout(724),
   );
   expect(scrollTo).toHaveBeenLastCalledWith({ y: 720, animated: false });
   expect(screen.getByText('Synthetic question 0')).toBeTruthy();

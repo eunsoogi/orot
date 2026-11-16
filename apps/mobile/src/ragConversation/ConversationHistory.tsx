@@ -106,6 +106,7 @@ export function ConversationHistory({
     sessionId,
     focusId: replyFocus?.canReveal() ? replyFocus.messageId : undefined,
     focusGeneration: replyFocus?.generation,
+    firstRowInset: styles.container.paddingTop,
     history: historyView,
     followsBottom,
     expectedOffset,

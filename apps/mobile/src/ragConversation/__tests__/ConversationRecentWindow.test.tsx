@@ -103,7 +103,7 @@ test('anchors prepends to the old first row, not simultaneous streamed content g
   await fireEvent(
     screen.getByTestId('conversation-earlier-anchor'),
     'layout',
-    layout(600),
+    layout(624),
   );
   expect(scrollTo).toHaveBeenLastCalledWith({ y: 720, animated: false });
   expect(screen.getByText('Synthetic question 10')).toBeTruthy();
