@@ -14,6 +14,8 @@ export function acceptsLocalPublicSearchFallback(
     !value ||
     typeof value !== 'object' ||
     Array.isArray(value) ||
+    !('answerKind' in value) ||
+    !('completion' in value) ||
     value.answerKind !== 'grounded' ||
     value.completion !== 'partial' ||
     requestsLiteratureExplanation(input.request) ||

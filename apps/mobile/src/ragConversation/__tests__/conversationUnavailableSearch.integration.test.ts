@@ -179,6 +179,10 @@ test.each([false, true])(
       expect(publicSearchNotice('unavailable')).not.toBe(
         publicSearchNotice('empty'),
       );
+      if (result.status !== 'result')
+        throw new Error(
+          'The synthetic local fallback did not produce a result.',
+        );
       const finish = jest.fn(async outcome => ({ retained: true, outcome }));
       const final = await finishRagConversation({
         outcome: {
