@@ -1,6 +1,7 @@
 import { resumeStatementMemoryAfterRead } from './resumeStatementMemoryAfterRead';
 import { reportSavedMemoryRead } from './savedMemoryReadDiagnostics';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { SavedMemoryLoaderContext } from './SavedMemoryLoaderContext';
 import { AppState } from 'react-native';
 import {
   subscribeLocalDataClear,
@@ -14,9 +15,11 @@ export type { SavedMemory } from './unifiedSavedMemories';
 const READ_WAIT_MS = 10_000;
 /** Shared protected read lifecycle for list and detail. Invalidations erase text before cleanup settles. */
 export function useSavedMemories(
-  load: () => Promise<SavedMemory[]> = loadUnifiedLocalMemories,
+  suppliedLoad?: () => Promise<SavedMemory[]>,
   enabled = true,
 ) {
+  const contextLoad = useContext(SavedMemoryLoaderContext);
+  const load = suppliedLoad ?? contextLoad;
   const [rows, setRows] = useState<SavedMemory[]>([]);
   const [state, setState] = useState<
     'idle' | 'loading' | 'ready' | 'failed' | 'invalidated'

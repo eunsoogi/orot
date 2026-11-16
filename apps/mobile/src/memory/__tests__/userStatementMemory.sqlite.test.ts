@@ -220,3 +220,30 @@ test('statement-time SQL guard rejects a cached record after source removal even
     f.close();
   }
 });
+test('bounded failed batches rotate without starving a later queued source', async () => {
+  const f = await fixture();
+  try {
+    for (let i = 0; i < 11; i += 1)
+      await f.artifact.append({ ...turn, id: `queued-${i}` });
+    const remember = jest.fn<
+      ReturnType<typeof f.memory.remember>,
+      Parameters<typeof f.memory.remember>
+    >(async () => {
+      throw new Error('Synthetic embedding unavailable');
+    });
+    expect(await processStatementMemoryJobs(f.database, { remember })).toEqual({
+      failed: 10,
+    });
+    expect(remember).toHaveBeenCalledTimes(10);
+    await processStatementMemoryJobs(f.database, { remember });
+    expect(remember.mock.calls[10]?.[0]).toMatchObject({
+      memoryKey: 'conversation-statement:queued-10',
+    });
+    expect(
+      (await f.database.execute('SELECT * FROM user_statement_memory_jobs'))
+        .rows,
+    ).toHaveLength(11);
+  } finally {
+    f.close();
+  }
+});

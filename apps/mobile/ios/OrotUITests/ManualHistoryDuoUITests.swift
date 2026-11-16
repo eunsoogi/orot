@@ -1,6 +1,6 @@
 import XCTest
 
-/// Verifies manual-history selection and user-entered provenance through Duo reflow.
+/// Verifies existing Memory originals and user-stated provenance through Duo reflow.
 final class ManualHistoryDuoUITests: OrotFailFastTestCase {
     override func setUp() {
         super.setUp()
@@ -12,7 +12,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
     func testOpenDuoPageActionsPreserveDraftAndSave() throws {
         let app = XCUIApplication()
         var originalAppearance: AppearanceUITestConditions.Snapshot?
-        launch(app)
+        launch(app, seed: "Duo-actions")
         defer {
             if let originalAppearance {
                 try? AppearanceUITestConditions.restore(originalAppearance, returningTo: app, testCase: self)
@@ -20,20 +20,19 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
             app.terminate()
         }
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
-        try openManualHistory(app)
+        try openManualHistory(app, title: "Synthetic Duo-actions original")
         let formOpenedAt = Date().timeIntervalSince1970 * 1000
-        tap(app, "manual-history-add")
+        tap(app, "manual-history-correct")
         guard replace(app, "manual-history-title-input", with: "Synthetic Duo history") else { return }
         let title = UITestConditions.element(app, "manual-history-title-input")
         try NavigationPageActionUITestConditions.assertBackBeforePageActions(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: formOpenedAt, testCase: self)
         tap(app, "manual-history-form-close")
         let reopenedFormAt = Date().timeIntervalSince1970 * 1000
-        tap(app, "manual-history-add")
+        tap(app, "manual-history-correct")
         XCTAssertEqual(title.value as? String, "Synthetic Duo history", app.debugDescription)
         guard replace(app, "manual-history-details-input", with: "Synthetic user-entered details without a known date.", multiline: true) else { return }
         XCTAssertTrue(app.keyboards.firstMatch.exists && UITestConditions.element(app, "manual-history-details-input").isHittable, app.debugDescription)
         try NavigationPageActionUITestConditions.assertBackBeforePageActions(app, pageIDs: ["manual-history-save", "manual-history-form-close", "navigation-page-action-overflow"], sampledAfter: reopenedFormAt, testCase: self)
-        tap(app, "manual-history-date-unknown")
         tap(app, "manual-history-save")
         visible(app, "Synthetic Duo history")
         visible(app, "기준일을 모름")
@@ -57,7 +56,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
 
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { originalAppearance = $0 })
         try openManualHistory(app)
-        tap(app, "manual-history-add")
+        tap(app, "manual-history-correct")
         let formOpenedAt = Date().timeIntervalSince1970 * 1000
         guard replace(app, "manual-history-title-input", with: "Synthetic Duo history") else { return }
 
@@ -79,17 +78,15 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         XCTAssertTrue(title.isHittable, app.debugDescription)
 
         tap(app, "manual-history-form-close")
-        tap(app, "manual-history-add")
+        tap(app, "manual-history-correct")
         XCTAssertEqual(title.value as? String, "Synthetic Duo history", app.debugDescription)
         guard replace(app, "manual-history-details-input", with: "Synthetic user-entered details without a known date.", multiline: true) else { return }
-        tap(app, "manual-history-date-unknown")
         tap(app, "manual-history-save")
         visible(app, "Synthetic Duo history")
         visible(app, "기준일을 모름")
         visible(app, "직접 입력 · 미확인")
 
         _ = try AppearanceUITestConditions.select(true, returningTo: app, testCase: self)
-        tapDetails(app)
         NavigationGeometryUITestConditions.captureScreen(app, name: "manual-history-inline-dark-details", testCase: self)
         tap(app, "manual-history-correct")
         guard replace(app, "manual-history-title-input", with: "Synthetic corrected Duo history") else { return }
@@ -102,7 +99,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         visible(app, "Synthetic corrected Duo history")
         visible(app, "기준일을 모름")
         visible(app, "직접 입력 · 미확인")
-        let selectedHistory = UITestConditions.element(app, "manual-history-selected-panel")
+        let selectedHistory = UITestConditions.element(app, "history-memory-detail")
         XCTAssertTrue(UITestConditions.exists(selectedHistory), app.debugDescription)
         let portraitSize = app.frame.size
 
@@ -113,7 +110,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         assertDetailsStayInsideList(app)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-correct")), app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-delete")), app.debugDescription)
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-close-details")), app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "navigation-back")), app.debugDescription)
 
         let landscapeSize = app.frame.size
         XCUIDevice.shared.orientation = .portrait
@@ -125,8 +122,7 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
         app.terminate()
         XCUIDevice.shared.orientation = .portrait
         launch(app, largeText: true)
-        try openManualHistory(app)
-        tapDetails(app)
+        try openManualHistory(app, title: "Synthetic corrected Duo history")
         visible(app, "Synthetic corrected Duo history")
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-correction-history")), app.debugDescription)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-delete")), app.debugDescription)
@@ -138,28 +134,31 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication, largeText: Bool = false) {
+    private func launch(_ app: XCUIApplication, largeText: Bool = false, seed: String = "Duo") {
         // The Duo is the destination; the application fixture itself uses the supported core profile.
         app.launchArguments = [
-            "-OROT_TEST_PROFILE", "core", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+            "-OROT_TEST_SCENARIO", "memory-history", "-OROT_TEST_MEMORY_SEED", seed, "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ] + AppearanceUITestConditions.observationArguments + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
         app.launch()
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
     }
 
     @MainActor
-    private func openManualHistory(_ app: XCUIApplication) throws {
+    private func openManualHistory(_ app: XCUIApplication, title: String = "Synthetic Duo original") throws {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        let entry = UITestConditions.element(app, "records-open-manual-history")
+        XCTAssertFalse(UITestConditions.element(app, "records-open-manual-history").exists)
+        let entry = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
         XCTAssertTrue(UITestConditions.exists(entry), app.debugDescription)
         FormUITestConditions.reveal(entry, in: app, scrollID: "navigation-route-scroll")
         XCTAssertTrue(entry.isHittable, app.debugDescription)
         entry.tap()
-        NavigationUITestConditions.route(app, markers: ["manual-history-title"])
-        let page = UITestConditions.element(app, "manual-history-scroll")
+        NavigationUITestConditions.route(app, markers: ["history-memory-detail"])
+        XCTAssertFalse(UITestConditions.element(app, "manual-history-add").exists)
+        let page = UITestConditions.element(app, "navigation-route-scroll")
         XCTAssertTrue(UITestConditions.exists(page), app.debugDescription)
-        // React Native exposes its tagged wrapper around one native scroll view on this runtime.
-        XCTAssertEqual(page.scrollViews.count, 1, app.debugDescription)
+        // The tagged route may expose the UIScrollView itself or its single wrapper.
+        XCTAssertTrue(page.elementType == .scrollView || page.scrollViews.count == 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(page.scrollViews.count, 1, app.debugDescription)
         XCTAssertEqual(page.scrollViews.firstMatch.scrollViews.count, 0, app.debugDescription)
     }
 
@@ -169,37 +168,28 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
             ? FormUITestConditions.multilineInput(app, identifier: identifier)
             : app.textFields.matching(identifier: identifier).firstMatch
         XCTAssertTrue(UITestConditions.exists(input), app.debugDescription)
-        return FormUITestConditions.replace(input, with: text, in: app, scrollID: "manual-history-scroll")
+        return FormUITestConditions.replace(input, with: text, in: app, scrollID: "navigation-route-scroll")
     }
 
     @MainActor
     private func tap(_ app: XCUIApplication, _ identifier: String, label: String? = nil) {
-        let pageLabels = ["manual-history-add": "건강 기록 추가", "manual-history-form-close": "취소", "manual-history-save": "저장"]
+        let pageLabels = ["manual-history-form-close": "취소", "manual-history-save": "수정 내용 저장"]
         if let actionLabel = label ?? pageLabels[identifier] {
             NavigationPageActionUITestConditions.tap(app, id: identifier, label: actionLabel)
             return
         }
         let target = UITestConditions.element(app, identifier)
         XCTAssertTrue(UITestConditions.exists(target), app.debugDescription)
-        FormUITestConditions.reveal(target, in: app, scrollID: "manual-history-scroll")
+        FormUITestConditions.reveal(target, in: app, scrollID: "navigation-route-scroll")
         XCTAssertTrue(target.isHittable, app.debugDescription)
         target.tap()
-    }
-
-    @MainActor
-    private func tapDetails(_ app: XCUIApplication) {
-        let details = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "manual-history-details-")).firstMatch
-        XCTAssertTrue(UITestConditions.exists(details), app.debugDescription)
-        FormUITestConditions.reveal(details, in: app, scrollID: "manual-history-scroll")
-        XCTAssertTrue(details.isHittable, app.debugDescription)
-        details.tap()
     }
 
     @MainActor
     private func visible(_ app: XCUIApplication, _ label: String) {
         let text = app.staticTexts.matching(NSPredicate(format: "label == %@", label)).firstMatch
         XCTAssertTrue(UITestConditions.exists(text), app.debugDescription)
-        FormUITestConditions.reveal(text, in: app, scrollID: "manual-history-scroll", towardTop: true)
+        FormUITestConditions.reveal(text, in: app, scrollID: "navigation-route-scroll", towardTop: true)
         XCTAssertTrue(text.isHittable, app.debugDescription)
     }
 
@@ -215,11 +205,11 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
 
     @MainActor
     private func assertDetailsStayInsideList(_ app: XCUIApplication) {
-        let list = UITestConditions.element(app, "manual-history-list-panel")
-        let selected = UITestConditions.element(app, "manual-history-selected-panel")
+        let list = UITestConditions.element(app, "saved-memory-detail")
+        let selected = UITestConditions.element(app, "history-memory-detail")
         XCTAssertTrue(UITestConditions.exists(list) && UITestConditions.exists(selected), app.debugDescription)
 
-        // Expanded details remain inside the selected list card, including after window reflow.
+        // The original editor remains inside its ID-owned Memory destination after window reflow.
         XCTAssertGreaterThanOrEqual(selected.frame.minY, list.frame.minY - 1, app.debugDescription)
         XCTAssertLessThanOrEqual(selected.frame.maxY, list.frame.maxY + 1, app.debugDescription)
         XCTAssertGreaterThanOrEqual(selected.frame.minX, list.frame.minX - 1, app.debugDescription)
@@ -232,7 +222,7 @@ enum ManualHistoryBackUITestSupport {
     @MainActor
     static func swipeBack(_ app: XCUIApplication) {
         XCTAssertFalse(UITestConditions.element(app, "manual-history-back").exists, app.debugDescription)
-        let scroll = UITestConditions.element(app, "manual-history-scroll")
+        let scroll = UITestConditions.element(app, "navigation-route-scroll")
         let frame = scroll.frame
         let window = app.frame
         XCTAssertTrue(!frame.isEmpty && !window.isEmpty, app.debugDescription)
