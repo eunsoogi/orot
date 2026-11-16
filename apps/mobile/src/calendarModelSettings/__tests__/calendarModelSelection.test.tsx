@@ -208,3 +208,38 @@ it('keeps the compact refresh disabled until its explicit discovery finishes', a
   expect(screen.getByTestId('calendar-model-refresh')).not.toBeDisabled();
   expect(screen.getByText('Synthetic Decisions')).toBeTruthy();
 });
+
+it('groups unset and saved identity in the shared summary without the removed introduction', async () => {
+  await render(
+    <CalendarModelSettingsPanel options={[apple]} onBusyChange={jest.fn()} />,
+  );
+  expect(screen.getByTestId('calendar-current-model-card')).toHaveStyle({
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 0,
+  });
+  expect(screen.getByTestId('calendar-current-model')).toHaveTextContent(
+    '캘린더 분류 모델을 선택해 주세요.',
+  );
+  expect(
+    screen.queryByText(
+      '캘린더 일정의 진료 관련성을 분류할 모델이에요. 대화 모델은 바뀌지 않아요.',
+    ),
+  ).toBeNull();
+  expect(
+    screen.getByText(
+      'OpenAI API의 Decisions 모델만 표시해요. API 사용료는 별도로 청구돼요.',
+    ),
+  ).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('provider-option-0'));
+  expect(screen.queryByTestId('calendar-current-model-card')).toBeNull();
+  expect(store.save).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
+  expect(screen.getByTestId('calendar-current-model-card')).toBeTruthy();
+  expect(screen.getByTestId('calendar-current-model')).toHaveTextContent(
+    /현재 선택:/,
+  );
+  expect(screen.getByTestId('calendar-current-model')).toHaveTextContent(
+    new RegExp(apple.modelId),
+  );
+});
