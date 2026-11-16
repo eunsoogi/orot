@@ -16,7 +16,11 @@ import {
   publicWebSources,
 } from '../../externalMedicalEvidence/publicWebSources';
 import { publicWebSearchConsentScope } from '../../agent/execution/inferenceConsentScopes';
-import { boundedPublicWebRequest } from './boundedPublicWebRequest';
+import {
+  boundedPublicWebRequest,
+  PublicWebSearchTimeoutError,
+} from './boundedPublicWebRequest';
+import { publicWebUnavailableEvidence } from './publicWebUnavailableEvidence';
 import { PublicSearchOfflineError } from './publicSearchFailure';
 
 import {
@@ -40,6 +44,8 @@ export function createPublicWebEvidence(input: {
   readonly consent: ExecutionConsentPort;
   readonly now?: () => string;
   readonly restoredReferences?: ProtectedExternalReferences;
+  /** Optional conversation research may proceed with an explicit retrieval gap. */
+  readonly recoverUnavailable?: boolean;
   readonly beforeDispatch?: (
     query: string,
     signal: AbortSignal,
@@ -134,13 +140,35 @@ export function createPublicWebEvidence(input: {
             throw new Error('Public web search was cancelled.');
           // Reserve before external dispatch so an exhausted restored counter cannot repeat an identity.
           const sequence = references.nextSequence();
-          const result = await boundedPublicWebRequest(
-            search.bind(selected.provider),
-            query,
-            request.signal,
-          );
+          let result;
+          try {
+            result = await boundedPublicWebRequest(
+              search.bind(selected.provider),
+              query,
+              request.signal,
+            );
+          } catch (error) {
+            // Never recover cancellation, unexpected adapter errors, or provenance/storage failures.
+            if (
+              !request.signal.aborted &&
+              input.recoverUnavailable &&
+              error instanceof PublicWebSearchTimeoutError
+            )
+              return publicWebUnavailableEvidence('timeout');
+            throw error;
+          }
           if (request.signal.aborted)
             throw new Error('Public web search was cancelled.');
+          if (
+            !result.ok &&
+            result.error.code === 'provider_unavailable' &&
+            input.recoverUnavailable
+          )
+            return publicWebUnavailableEvidence(
+              result.error.connectivity === 'offline'
+                ? 'offline'
+                : 'unavailable',
+            );
           if (
             !result.ok &&
             result.error.code === 'provider_unavailable' &&

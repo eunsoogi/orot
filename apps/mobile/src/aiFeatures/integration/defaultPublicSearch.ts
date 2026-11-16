@@ -127,6 +127,11 @@ export async function runDefaultPublicSearch(input: {
     });
     if (input.signal.aborted) return { status: 'cancelled' };
     if ('status' in result) return { status: 'consent_required' };
+    if (
+      !result.items.length &&
+      result.coverage.some(coverage => coverage.gaps.length > 0)
+    )
+      return { status: 'unavailable' };
     return result.items.length
       ? { status: 'success', batch: result }
       : { status: 'empty' };

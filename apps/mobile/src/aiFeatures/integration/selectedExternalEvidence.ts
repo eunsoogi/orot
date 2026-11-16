@@ -27,6 +27,7 @@ export function createSelectedExternalEvidence(input: {
   readonly literature: EuropePmcMedicalEvidenceService;
   readonly literatureConsent: ExternalMedicalQueryConsentPort;
   readonly requireAbstract?: boolean;
+  readonly recoverUnavailable?: boolean;
   readonly restored?: SelectedExternalEvidenceSnapshot;
   readonly loadData?: () => Promise<AiFeatureLocalData>;
   readonly originFeature?: string;
