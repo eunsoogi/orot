@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import type { RecordingScreenProps } from './recordingScreenProps';
+import { useEffect, useRef, useState } from 'react';
 import RecordingControls from './RecordingControls';
 import {
   clearPendingRecordingRetry,
@@ -6,35 +7,18 @@ import {
   setPendingRecordingRetry,
 } from './recordingRetryState';
 import { recordingService } from './recordingService';
-import type {
-  CompletedRecording,
-  RecordingPlaybackService,
-  RecordingService,
-  RecordingSnapshot,
-} from './recordingTypes';
-import type { TranscriptEvidenceService } from '../transcription/transcriptEvidenceService';
-import type { RecordingLibraryService } from './recordingLibraryService';
+import type { CompletedRecording, RecordingSnapshot } from './recordingTypes';
 import { recordingLibraryService as defaultRecordingLibraryService } from './recordingLibraryService';
 import { errorMessage, sourceSaveErrorMessage } from './recordingErrors';
 import { useAutomaticRecordingTranscription } from './useAutomaticRecordingTranscription';
 import { useRecordingScreenProbeActions } from './useRecordingScreenProbeActions';
-import type { RecordingDeletionTimingProbe } from './recordingDeletionTiming';
 import { RecordingDeletionTimingContext } from './recordingDeletionTiming';
-import { bindSelectedVisit } from './bindSelectedVisit';
-import { useRecordingVisitSelection } from './useRecordingVisitSelection';
+import { type AutomaticRecordingVisit } from './automaticRecordingVisit';
+import {
+  bindAutomaticRecordingVisit,
+  selectRecordingVisitWithinDeadline,
+} from './bindAutomaticRecordingVisit';
 import { initialRecordingSnapshot } from './initialRecordingSnapshot';
-
-interface RecordingScreenProps {
-  onBack: () => void;
-  onOpenSavedRecordings?: () => void;
-  service?: RecordingService;
-  playbackService?: RecordingPlaybackService;
-  /** Lets the Simulator probe exercise the production screen with synthetic playback evidence. */
-  transcriptService?: TranscriptEvidenceService;
-  recordingLibraryService?: RecordingLibraryService;
-  /** Supplied only by the Simulator measurement harness; reports contain timing stages, not recording data. */
-  recordingDeletionTimingProbe?: RecordingDeletionTimingProbe;
-}
 
 export default function RecordingScreen({
   onBack,
@@ -58,17 +42,13 @@ export default function RecordingScreen({
   );
   const automaticTranscription =
     useAutomaticRecordingTranscription(transcriptService);
-  const { selectedVisit, selectVisit } = useRecordingVisitSelection({
-    recordingId: lastRecording?.id ?? null,
-    sourceSaved,
-    setBusy,
-    setError,
-    start: automaticTranscription.start,
-    cancel: automaticTranscription.cancel,
-  });
+  const visit = useRef<AutomaticRecordingVisit | null>(null);
+  const generation = useRef(0);
   const probeActions = useRecordingScreenProbeActions();
 
   useEffect(() => {
+    generation.current += 1;
+    visit.current = null;
     let mounted = true;
     let unsubscribe: () => void = () => {};
     const pendingRetry = getPendingRecordingRetry(service);
@@ -104,15 +84,20 @@ export default function RecordingScreen({
 
     return () => {
       mounted = false;
+      generation.current += 1;
+      visit.current = null;
       unsubscribe();
     };
   }, [service]);
 
-  async function runAction(action: () => Promise<RecordingSnapshot>) {
+  async function runAction(
+    action: () => Promise<RecordingSnapshot | undefined>,
+  ) {
     setBusy(true);
     setError('');
     try {
       const next = await action();
+      if (!next) return;
       setSnapshot(next);
       setConsentAcknowledged(next.consentAcknowledged);
     } catch (reason) {
@@ -124,7 +109,14 @@ export default function RecordingScreen({
 
   async function start() {
     await runAction(async () => {
+      const owner = generation.current;
+      // Capture one start-time candidate; a later appointment never silently replaces this take's visit.
+      const candidate = await selectRecordingVisitWithinDeadline(
+        new Date().toISOString(),
+      );
+      if (owner !== generation.current) return;
       const next = await service.start(consentAcknowledged);
+      visit.current = candidate;
       clearPendingRecordingRetry(service);
       setLastRecording(null);
       setSourceSaved(false);
@@ -155,7 +147,7 @@ export default function RecordingScreen({
       setConsentAcknowledged(false);
       try {
         await service.saveSource(result);
-        if (selectedVisit) await bindSelectedVisit(result.id, selectedVisit);
+        await bindAutomaticRecordingVisit(result.id, visit.current);
         clearPendingRecordingRetry(service);
         setSourceSaved(true);
         automaticTranscription.start(result.id);
@@ -177,8 +169,7 @@ export default function RecordingScreen({
     setError('');
     try {
       await service.saveSource(lastRecording);
-      if (selectedVisit)
-        await bindSelectedVisit(lastRecording.id, selectedVisit);
+      await bindAutomaticRecordingVisit(lastRecording.id, visit.current);
       clearPendingRecordingRetry(service);
       setSourceSaved(true);
       automaticTranscription.start(lastRecording.id);
@@ -210,8 +201,6 @@ export default function RecordingScreen({
       value={recordingDeletionTimingProbe ?? null}
     >
       <RecordingControls
-        selectedVisit={selectedVisit}
-        onSelectVisit={selectVisit}
         onOpenSavedRecordings={onOpenSavedRecordings}
         onBack={onBack}
         stateReady={stateReady}

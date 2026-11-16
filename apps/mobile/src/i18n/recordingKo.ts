@@ -1,5 +1,6 @@
 /** Korean copy for local recording, transcript review, and their error states. */
 export const recordingKo = {
+  'recording.guidanceDetails': '녹음 및 동의 안내',
   'recording.title': '상담 녹음',
   'recording.export.description': '파일을 내보낼 방법을 선택해요.',
   'recording.subtitle': '진료 내용을 녹음하고 기기에 안전하게 보관해요.',

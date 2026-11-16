@@ -12,9 +12,13 @@ jest.mock('../nativeRecordingBridge', () => ({
 
 const originalWindow = Dimensions.get('window');
 
-async function setWindow(width: number, fontScale: number) {
+async function setWindow(
+  width: number,
+  fontScale: number,
+  height = originalWindow.height,
+) {
   await act(() =>
-    Dimensions.set({ window: { ...originalWindow, width, fontScale } }),
+    Dimensions.set({ window: { ...originalWindow, width, height, fontScale } }),
   );
 }
 
@@ -72,4 +76,29 @@ test('keeps consent and active recording state through width and text-scale refl
   expect(screen.getByTestId('recording-consent-status')).toHaveTextContent(
     '동의 확인됨',
   );
+});
+
+test('uses side-by-side capture controls in short landscape without remounting the session', async () => {
+  await setWindow(844, 1.3, 390);
+  const { service } = createService();
+  await render(
+    <RecordingScreen
+      onBack={jest.fn()}
+      service={service}
+      onOpenSavedRecordings={jest.fn()}
+    />,
+  );
+  expect(await screen.findByTestId('recording-status')).toBeTruthy();
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('recording-content-columns').props.style,
+    ),
+  ).toMatchObject({ flexDirection: 'row' });
+  expect(screen.queryByTestId('recording-controls-scroll')).toBeNull();
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await setWindow(390, 2, 844);
+  expectVerticalContentFlow();
+  expect(screen.getByTestId('recording-microphone-control')).toBeEnabled();
+  expect(screen.getByTestId('recording-status')).toHaveTextContent('녹음 중');
 });

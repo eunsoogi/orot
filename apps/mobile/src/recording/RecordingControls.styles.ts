@@ -2,13 +2,14 @@ import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 
 export const recordingControlStyles = StyleSheet.create({
-  scroll: { flex: 1 },
+  review: { flex: 1 },
   container: {
-    flexGrow: 1,
+    flex: 1,
+    minHeight: 0,
     // Route content starts below the safe area; only individual controls center their contents.
     justifyContent: 'flex-start',
-    gap: 16,
-    padding: 24,
+    gap: 8,
+    padding: 12,
     backgroundColor: appColors.background,
   },
   back: { alignSelf: 'flex-start' },

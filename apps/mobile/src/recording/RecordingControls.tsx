@@ -1,5 +1,5 @@
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
+import { RecordingCaptureLayout } from './RecordingCaptureLayout';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { useState } from 'react';
@@ -24,7 +24,6 @@ import RecordingGuidancePanel from './RecordingGuidancePanel';
 import RecordingScreenHeader from './RecordingScreenHeader';
 import RecordingTranscriptionFeedback from './RecordingTranscriptionFeedback';
 import type { AutomaticTranscriptionSnapshot } from './useAutomaticRecordingTranscription';
-import { OptionalRecordingVisitPicker } from './RecordingVisitPicker';
 
 interface RecordingControlsProps {
   selectedVisit?: string | null;
@@ -63,8 +62,6 @@ interface RecordingControlsProps {
 }
 
 export default function RecordingControls({
-  selectedVisit,
-  onSelectVisit,
   onBack,
   onOpenSavedRecordings,
   stateReady,
@@ -118,18 +115,10 @@ export default function RecordingControls({
     (status === 'idle' || status === 'completed') &&
     !hasSharedNavigation;
   return (
-    // The transcript panel follows the recording controls and must remain reachable on shorter screens.
-    <ScrollView
-      automaticallyAdjustKeyboardInsets
-      contentContainerStyle={[
-        recordingControlStyles.container,
-        navigationInset,
-      ]}
-      // Dragging dismisses the transcript keyboard so row actions remain reachable.
-      keyboardDismissMode="on-drag"
-      keyboardShouldPersistTaps="handled"
-      style={recordingControlStyles.scroll}
-      testID="recording-controls-scroll"
+    // Capture owns the usable route frame; start and stop never depend on page scrolling.
+    <View
+      style={[recordingControlStyles.container, navigationInset]}
+      testID="recording-controls-fullscreen"
     >
       {showLocalBack ? (
         <View style={recordingControlStyles.back}>
@@ -148,14 +137,8 @@ export default function RecordingControls({
         stateReady={stateReady}
         status={status}
       />
-      <OptionalRecordingVisitPicker
-        selected={selectedVisit ?? null}
-        onSelect={onSelectVisit}
-        busy={controlsBusy}
-        status={status}
-      />
       {/* Keep capture and consent together in the page without restarting their state. */}
-      <AdaptiveColumns
+      <RecordingCaptureLayout
         primary={
           <RecordingSessionPanel
             status={status}
@@ -180,7 +163,6 @@ export default function RecordingControls({
             onToggleConsent={onToggleConsent}
           />
         }
-        routeKey="recording"
         testID="recording-content-columns"
       />
       {lastRecording ? (
@@ -215,18 +197,26 @@ export default function RecordingControls({
         onRetry={onRetryTranscription}
       />
       {showRecordingLibrary && !onOpenSavedRecordings ? (
-        <RecordingLibraryPanel
-          actionsDisabled={busy}
-          fallbackExportSourceId={
-            lastRecording && sourceSaved ? lastRecording.id : null
-          }
-          onBusyChange={setDeletingRecording}
-          onSourceDeleted={onRecordingSourceDeleted}
-          service={recordingLibraryService}
-          transcriptService={transcriptService}
-          playbackService={playbackService}
-          automaticTranscription={automaticTranscription}
-        />
+        // Standalone review retains its own keyboard dismissal; the capture page itself never scrolls.
+        <ScrollView
+          style={recordingControlStyles.review}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          testID="recording-review-scroll"
+        >
+          <RecordingLibraryPanel
+            actionsDisabled={busy}
+            fallbackExportSourceId={
+              lastRecording && sourceSaved ? lastRecording.id : null
+            }
+            onBusyChange={setDeletingRecording}
+            onSourceDeleted={onRecordingSourceDeleted}
+            service={recordingLibraryService}
+            transcriptService={transcriptService}
+            playbackService={playbackService}
+            automaticTranscription={automaticTranscription}
+          />
+        </ScrollView>
       ) : null}
       {error ? (
         <Text accessibilityRole="alert" style={recordingControlStyles.error}>
@@ -244,6 +234,6 @@ export default function RecordingControls({
           probeError={probeError}
         />
       ) : null}
-    </ScrollView>
+    </View>
   );
 }
