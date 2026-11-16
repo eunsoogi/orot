@@ -45,9 +45,13 @@ final class CalendarDecisionsRequest: NSObject, URLSessionDataDelegate, @uncheck
         self.task = task
         let shouldCancel = cancelled
         // Registration and resume share the cancel lock, so cancellation cannot miss an unregistered task.
-        if !shouldCancel { task.resume() }
+        if !shouldCancel {
+            task.resume()
+        }
         lock.unlock()
-        if shouldCancel { task.cancel(); finish(.failure(Failure.cancelled)) }
+        if shouldCancel {
+            task.cancel(); finish(.failure(Failure.cancelled))
+        }
     }
 
     func cancel() {
@@ -69,7 +73,7 @@ final class CalendarDecisionsRequest: NSObject, URLSessionDataDelegate, @uncheck
                     completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void)
     {
         guard let http = response as? HTTPURLResponse, http.url == Self.endpoint,
-              (200 ... 299).contains(http.statusCode), response.expectedContentLength <= 262144
+              (200 ... 299).contains(http.statusCode), response.expectedContentLength <= 262_144
         else {
             completionHandler(.cancel)
             finish(.failure(Failure.rejectedResponse))
@@ -79,7 +83,7 @@ final class CalendarDecisionsRequest: NSObject, URLSessionDataDelegate, @uncheck
     }
 
     func urlSession(_: URLSession, dataTask _: URLSessionDataTask, didReceive data: Data) {
-        guard received.count + data.count <= 262144 else {
+        guard received.count + data.count <= 262_144 else {
             cancel()
             finish(.failure(Failure.oversized))
             return

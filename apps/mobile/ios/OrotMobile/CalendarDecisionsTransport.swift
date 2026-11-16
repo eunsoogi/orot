@@ -10,7 +10,9 @@ final class CalendarDecisionsTransport: NSObject {
     private var cancelled: Set<String> = []
     private var closed = false
 
-    @objc static func requiresMainQueueSetup() -> Bool { false }
+    @objc static func requiresMainQueueSetup() -> Bool {
+        false
+    }
 
     @objc(post:apiKey:requestId:resolver:rejecter:)
     func post(_ body: String, apiKey: String, requestId: String,
@@ -49,7 +51,11 @@ final class CalendarDecisionsTransport: NSObject {
         let request = requests[requestId]
         // Never evict pre-registration cancellations and accidentally permit a delayed sensitive POST.
         // Fail closed at a bounded tombstone limit until this bridge is recreated.
-        if cancelled.count >= 1024 { closed = true } else { cancelled.insert(requestId) }
+        if cancelled.count >= 1024 {
+            closed = true
+        } else {
+            cancelled.insert(requestId)
+        }
         lock.unlock()
         request?.cancel()
     }
