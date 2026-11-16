@@ -1,3 +1,4 @@
+import { observeSharedDatabase } from './sharedDatabaseDiagnostics';
 import { IOS_LIBRARY_PATH, isSQLCipher, open } from '@op-engineering/op-sqlite';
 import {
   ACCESSIBLE,
@@ -119,12 +120,14 @@ export function openLocalStorage(): Promise<RecordRepository> {
         databaseFileState: () =>
           getDatabaseFileState(DATABASE_NAME, IOS_LIBRARY_PATH),
         openDatabase(name, encryptionKey, allowCreate = true) {
-          database = open({
-            name,
-            location: IOS_LIBRARY_PATH,
-            encryptionKey,
-            failOnCreate: !allowCreate,
-          });
+          database = observeSharedDatabase(
+            open({
+              name,
+              location: IOS_LIBRARY_PATH,
+              encryptionKey,
+              failOnCreate: !allowCreate,
+            }),
+          );
           return database;
         },
       });
