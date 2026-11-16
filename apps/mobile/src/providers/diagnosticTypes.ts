@@ -12,6 +12,7 @@ export type Stage =
   | 'sql_other'
   | 'transaction_healthkit'
   | 'transaction_memory'
+  | 'history_preparation'
   | 'selection'
   | 'data'
   | 'workflow'
@@ -28,6 +29,13 @@ export type Stage =
   | 'evidence_memory'
   | 'evidence_presentation';
 export type Outcome =
+  | 'history_discovery_unavailable'
+  | 'history_page_unavailable'
+  | 'history_turn_unavailable'
+  | 'history_session_changed'
+  | 'history_sources_stale'
+  | 'history_cancelled'
+  | 'preparation_other'
   | 'started'
   | 'completed'
   | 'failed'

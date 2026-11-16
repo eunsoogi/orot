@@ -1,3 +1,4 @@
+import { ConversationHistoryFailure } from './conversationHistoryFailure';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
@@ -117,7 +118,8 @@ export async function conversationHistorySources(input: {
     input.registry,
   );
   // An identified retained turn must be revalidated before its text is sent.
-  if (!discovery) throw new Error('Conversation history is unavailable.');
+  if (!discovery)
+    throw new ConversationHistoryFailure('history_discovery_unavailable');
   const turns: Awaited<
     ReturnType<typeof discovery.readSession>
   >['items'][number][] = [];
@@ -129,7 +131,7 @@ export async function conversationHistorySources(input: {
       signal: input.signal,
     });
     if (page.unavailableCount)
-      throw new Error('Conversation history is unavailable.');
+      throw new ConversationHistoryFailure('history_page_unavailable');
     turns.push(...page.items);
     cursor = page.nextCursor ?? undefined;
   } while (
@@ -144,10 +146,13 @@ export async function conversationHistorySources(input: {
     );
     return turn ? [turn] : [];
   });
+  if (input.signal.aborted)
+    throw new ConversationHistoryFailure('history_cancelled');
+  if (selected.length !== expected.length)
+    throw new ConversationHistoryFailure('history_turn_unavailable');
+  if ((await discovery.activeSessionVersion(session.id)) !== session.version)
+    throw new ConversationHistoryFailure('history_session_changed');
   if (
-    input.signal.aborted ||
-    selected.length !== expected.length ||
-    (await discovery.activeSessionVersion(session.id)) !== session.version ||
     !(await discovery.revalidateSession(
       session.id,
       session.version,
@@ -155,7 +160,7 @@ export async function conversationHistorySources(input: {
       input.signal,
     ))
   )
-    throw new Error('Conversation history changed or was not saved.');
+    throw new ConversationHistoryFailure('history_sources_stale');
 
   const references = selected.map(turn => {
     const readSource = async (signal: AbortSignal) => {
