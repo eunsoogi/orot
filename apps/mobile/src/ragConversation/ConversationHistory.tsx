@@ -1,3 +1,5 @@
+import { conversationIsNearLatest } from './conversationVisibleOffset';
+import { useFloatingComposerInset } from './FloatingComposerSurface';
 import { followConversationLatest } from './followConversationLatest';
 import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
 import { transcriptMessageVisible } from './conversationWorkspaceLayout';
@@ -44,6 +46,7 @@ export function ConversationHistory({
   requestActivity,
 }: ConversationHistoryProps) {
   const identityInset = useFloatingIdentityInset();
+  const composerInset = useFloatingComposerInset();
   const separatedActivity = useSeparatedConversationActivity();
   const historyView = useRef<ComponentRef<typeof ScrollView>>(null);
   const followsBottom = useRef(true);
@@ -83,6 +86,7 @@ export function ConversationHistory({
       followsBottom,
       messageEnd,
       viewportHeight,
+      bottomInset: composerInset,
       expectedOffset,
       historyView,
       scrollGeometry,
@@ -94,7 +98,7 @@ export function ConversationHistory({
       style={styles.history}
       contentContainerStyle={{
         paddingTop: identityInset,
-        paddingBottom: bottomInset + (compact ? 0 : 20),
+        paddingBottom: bottomInset + composerInset + (compact ? 0 : 20),
       }}
       keyboardShouldPersistTaps="handled"
       onLayout={({ nativeEvent }) => {
@@ -164,14 +168,13 @@ export function ConversationHistory({
         )
           return;
         // Only follow streamed content while the reader remains near the bottom.
-        followsBottom.current =
-          compact && messageEnd.current !== null
-            ? Math.abs(
-                Math.max(0, messageEnd.current - layoutMeasurement.height) -
-                  contentOffset.y,
-              ) < 48
-            : contentSize.height - contentOffset.y - layoutMeasurement.height <
-              48;
+        followsBottom.current = conversationIsNearLatest(
+          compact ? messageEnd.current : null,
+          layoutMeasurement.height,
+          composerInset,
+          contentSize.height,
+          contentOffset.y,
+        );
       }}
       onScrollToTop={() => {
         expectedOffset.current = null;

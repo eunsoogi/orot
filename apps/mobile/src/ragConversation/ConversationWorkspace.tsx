@@ -1,3 +1,4 @@
+import { FloatingComposerSurface } from './FloatingComposerSurface';
 import { NavigationOcclusionContext } from '../navigation/useNavigationContentInset';
 import { type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -76,12 +77,17 @@ export function ConversationWorkspace(props: Props) {
             >
               <SeparatedConversationActivity.Provider value={plan.visible}>
                 <TranscriptInset separated={plan.visible}>
-                  {props.children}
-                  <NavigationOcclusionContext.Provider
-                    value={workspaceOcclusion}
+                  <FloatingComposerSurface
+                    composer={
+                      <NavigationOcclusionContext.Provider
+                        value={workspaceOcclusion}
+                      >
+                        {props.composer}
+                      </NavigationOcclusionContext.Provider>
+                    }
                   >
-                    {props.composer}
-                  </NavigationOcclusionContext.Provider>
+                    {props.children}
+                  </FloatingComposerSurface>
                 </TranscriptInset>
               </SeparatedConversationActivity.Provider>
             </View>
