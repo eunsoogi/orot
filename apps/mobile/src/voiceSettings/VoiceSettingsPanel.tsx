@@ -68,7 +68,6 @@ export function VoiceSettingsPanel({
           Apple
         </Text>
         {choices('local')}
-        <Text style={styles.detail}>{t('modelSettings.localVoiceNotice')}</Text>
       </View>
       <View style={styles.section} testID="voice-model-group-openai-api">
         <Text accessibilityRole="header" style={styles.heading}>
@@ -81,13 +80,15 @@ export function VoiceSettingsPanel({
           />
           {choices('openai-api')}
         </View>
-        <Text accessibilityRole="status" style={styles.secondary}>
-          {catalog.message}
-        </Text>
+        {catalog.message &&
+        catalog.message !== t('modelSettings.refreshAccountModels') ? (
+          <Text accessibilityRole="status" style={styles.secondary}>
+            {catalog.message}
+          </Text>
+        ) : null}
         {!catalog.fresh && catalog.ids.length > 0 ? (
           <Text style={styles.detail}>{t('modelSettings.staleModels')}</Text>
         ) : null}
-        <Text style={styles.detail}>{t('modelSettings.listPrivacy')}</Text>
         {mode === 'openai-api' && !catalog.ids.includes(model) ? (
           <Text accessibilityRole="alert">
             {t('modelSettings.savedModelUnavailable', { model })}
@@ -106,15 +107,10 @@ export function VoiceSettingsPanel({
             testID="voice-current-model"
           />
         ) : null}
-        {mode === 'openai-api' ? (
-          <>
-            <Text>{t('modelSettings.apiPrivacy')}</Text>
-            <Text accessibilityRole="alert">
-              {realtimeAvailable
-                ? t('modelSettings.voiceConsent')
-                : t('modelSettings.voiceUnavailable')}
-            </Text>
-          </>
+        {mode === 'openai-api' && !realtimeAvailable ? (
+          <Text accessibilityRole="alert">
+            {t('modelSettings.voiceUnavailable')}
+          </Text>
         ) : null}
         {!hasDock && active ? (
           <Button

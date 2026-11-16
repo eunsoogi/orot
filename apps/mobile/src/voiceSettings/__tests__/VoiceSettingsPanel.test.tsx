@@ -8,7 +8,6 @@ import {
 } from '@testing-library/react-native';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { voiceSettingsStore } from '../voiceSettingsStore';
-
 jest.mock('../voiceSettingsStore', () => ({
   voiceSettingsStore: {
     load: jest.fn(),
@@ -185,7 +184,7 @@ it('ignores a late catalog response after disconnection', async () => {
   ).toBe(true);
 });
 
-it('retains audio consent and billing disclosure when the runtime exists', async () => {
+it('keeps settings quiet without starting a call or granting runtime consent', async () => {
   jest.mocked(hasRealtimeVoiceRuntime).mockReturnValue(true);
   const view = await render(<VoiceSettingsPanel />);
   await waitFor(() =>
@@ -198,8 +197,10 @@ it('retains audio consent and billing disclosure when the runtime exists', async
     expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy(),
   );
   await fireEvent.press(view.getByTestId('voice-model-gpt-realtime-2.1-mini'));
-  expect(view.getByText(/별도로 동의해야 합니다/)).toBeTruthy();
-  expect(view.getByText(/API 사용 요금/)).toBeTruthy();
+  expect(view.queryByText(/별도로 동의해야 합니다/)).toBeNull();
+  expect(view.queryByText(/API 사용 요금/)).toBeNull();
+  expect(view.queryByText(/이 API 계정의 모델 목록을 새로고침/)).toBeNull();
+  expect(view.queryByText(/기기 내 처리:/)).toBeNull();
   expect(voiceSettingsStore.save).not.toHaveBeenCalled();
   expect(JSON.stringify(view.toJSON())).not.toContain('·');
 });
