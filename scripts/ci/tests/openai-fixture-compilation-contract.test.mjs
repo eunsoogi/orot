@@ -31,7 +31,7 @@ test('OpenAI simulator fixtures preserve Debug support and opt in to Duo Release
     appSwiftGuard,
     1,
   );
-  assertGuardCount('apps/mobile/ios/OrotMobile/OpenAIProviderModule.swift', appSwiftGuard, 3);
+  assertGuardCount('apps/mobile/ios/OrotMobile/OpenAIProviderModule.swift', appSwiftGuard, 4);
   assertGuardCount(
     'apps/mobile/ios/OrotMobile/OpenAIProviderAuthCoordinator.swift',
     appSwiftGuard,
@@ -57,4 +57,14 @@ test('OpenAI simulator fixtures preserve Debug support and opt in to Duo Release
   const buildScript = readSource('scripts/ci/build-ios-tests.mjs');
   assert.ok(buildScript.includes("'OTHER_SWIFT_FLAGS=' + spec.compilerFlags"));
   assert.ok(buildScript.includes("'GCC_PREPROCESSOR_DEFINITIONS=' + spec.preprocessorFlags"));
+});
+
+// HTTP URLProtocol fixtures cannot intercept URLSession WebSocket traffic. Refuse
+// their synthetic account before opening a live socket, even in test builds.
+test('live steering cannot send HTTP-only fixture credentials to a WebSocket', () => {
+  const module = readSource('apps/mobile/ios/OrotMobile/OpenAIProviderModule.swift');
+  assert.match(
+    module,
+    /if steerable \{\s*#if \(DEBUG \|\| OROT_TESTS\) && targetEnvironment\(simulator\)\s*guard activeSimulatorFixtureClient == nil else \{\s*throw ChatGPTResponsesError\.unsupportedCapability\("live steering in an HTTP-only fixture"\)\s*\}\s*#endif\s*let socket = try await activeClient\.steerableResponse/,
+  );
 });
