@@ -9,7 +9,6 @@ final class RealtimeVoiceCall {
     let audio: RealtimeAudioPort
     let socket: RealtimeSocketPort
     let ownership: AudioSessionOwnership
-    let toolCalls = RealtimeVoiceToolCalls()
     let systemCall: VoiceSystemCallPort?
     var systemCallOwner: UUID?
     var systemCallPending = false
@@ -56,7 +55,9 @@ final class RealtimeVoiceCall {
         })
         for name in [UIApplication.didEnterBackgroundNotification, UIApplication.protectedDataWillBecomeUnavailableNotification, AVAudioSession.interruptionNotification, AVAudioSession.routeChangeNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                if name == UIApplication.didEnterBackgroundNotification, self?.systemCallActive == true { return }
+                if name == UIApplication.didEnterBackgroundNotification, self?.systemCallActive == true {
+                    return
+                }
                 if name == AVAudioSession.routeChangeNotification {
                     guard let self, ready, routeSignature != currentRoute() else { return }
                 }
@@ -96,8 +97,11 @@ final class RealtimeVoiceCall {
         captureEpoch = epoch
         let inputBudget = RealtimeInputBudget()
         do {
-            if systemCallActive { try ownership.systemCallActivated(token) }
-            else { try ownership.activate(token, category: .playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP]) }
+            if systemCallActive {
+                try ownership.systemCallActivated(token)
+            } else {
+                try ownership.activate(token, category: .playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
+            }
             try audio.start(input: { [weak self] data in
                 guard let self else { return }
                 switch inputBudget.reserve(data.count) {
@@ -132,7 +136,6 @@ final class RealtimeVoiceCall {
     func stop(_ identifier: String) throws {
         guard id == identifier else { return }
         ready = false; paused = false; awaitingClear = false; captureEpoch = UUID(); lifecycleEpoch = UUID(); pending = nil; timer?.invalidate(); timer = nil
-        toolCalls.invalidate()
         socket.close(); audio.stop(); endSystemCall()
         let callback = opening; opening = nil; callback?(.failure(Failure.stopped))
         if let token {
@@ -144,8 +147,12 @@ final class RealtimeVoiceCall {
     /// Clear the background allowance before tearing down the system call or releasing audio.
     func endSystemCall() {
         systemCallActive = false; systemCallPending = false
-        if let id { emit("VoiceRealtimeSystemCall", ["callId": id, "active": false]) }
-        if let owner = systemCallOwner { systemCall?.end(owner: owner) }
+        if let id {
+            emit("VoiceRealtimeSystemCall", ["callId": id, "active": false])
+        }
+        if let owner = systemCallOwner {
+            systemCall?.end(owner: owner)
+        }
         systemCallOwner = nil
     }
 
@@ -169,11 +176,12 @@ final class RealtimeVoiceCall {
     deinit {
         observers.forEach(NotificationCenter.default.removeObserver)
         timer?.invalidate()
-        let audio = audio, socket = socket, owned = token, ownership = ownership, systemCall = systemCall, systemCallOwner = systemCallOwner, toolCalls = toolCalls
+        let audio = audio, socket = socket, owned = token, ownership = ownership, systemCall = systemCall, systemCallOwner = systemCallOwner
         DispatchQueue.main.async {
-            toolCalls.invalidate()
             socket.close(); audio.stop()
-            if let systemCallOwner { systemCall?.end(owner: systemCallOwner) }
+            if let systemCallOwner {
+                systemCall?.end(owner: systemCallOwner)
+            }
             if let owned {
                 try? ownership.release(owned)
             }

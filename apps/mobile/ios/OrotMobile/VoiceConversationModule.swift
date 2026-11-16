@@ -44,9 +44,8 @@ final class VoiceConversationModule: RCTEventEmitter {
                     let raw = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
                     guard raw == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue else { return }
                 }
-                if name != AVAudioSession.routeChangeNotification,
-                   !(name == UIApplication.didEnterBackgroundNotification && duplex.systemCallActive) {
-                    duplex.systemInterrupted()
+                if name != AVAudioSession.routeChangeNotification {
+                    duplex.applicationLifecycleChanged(name)
                 }
                 guard turn != nil else { return }
                 sendEvent(withName: "VoiceConversationInterrupted", body: ["turnId": turn ?? ""])

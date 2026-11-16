@@ -59,10 +59,13 @@ extension RealtimeVoiceLifecycleTests {
         var prepare: (() throws -> Void)?
         var activated: (() -> Void)?
         func start(owner _: UUID, prepare: @escaping () throws -> Void, activated: @escaping () -> Void,
-                   ended _: @escaping () -> Void, muted _: @escaping () -> Void) throws {
+                   ended _: @escaping () -> Void, muted _: @escaping () -> Void) throws
+        {
             starts += 1; self.prepare = prepare; self.activated = activated
         }
-        func end(owner _: UUID) { ends += 1 }
-    }
 
+        func end(owner _: UUID) {
+            ends += 1
+        }
+    }
 }

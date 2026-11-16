@@ -61,7 +61,6 @@ extension RealtimeVoiceCall {
         callback?(.failure(Failure.stopped))
         socket.discardInput()
         interrupt()
-        toolCalls.invalidate()
         audio.stop(); endSystemCall()
         socket.send(["type": "input_audio_buffer.clear"])
         if let token {

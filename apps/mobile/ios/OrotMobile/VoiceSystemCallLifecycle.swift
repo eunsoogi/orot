@@ -17,6 +17,7 @@ struct VoiceSystemCallLease {
         owner = next
         return true
     }
+
     mutating func release(_ expected: UUID) -> Bool {
         guard owner == expected else { return false }
         owner = nil
@@ -97,10 +98,15 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
     }
 
     func provider(_ provider: CXProvider, didDeactivate _: AVAudioSession) {
-        if provider === self.provider { finish(notify: true) }
+        if provider === self.provider {
+            finish(notify: true)
+        }
     }
+
     func providerDidReset(_ provider: CXProvider) {
-        if provider === self.provider { finish(notify: true) }
+        if provider === self.provider {
+            finish(notify: true)
+        }
     }
 
     func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
@@ -128,11 +134,15 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
     private func finish(notify: Bool) {
         guard let id = uuid else { return }
         let callback = ended
-        if let owner = lease.owner { _ = lease.release(owner) }
+        if let owner = lease.owner {
+            _ = lease.release(owner)
+        }
         uuid = nil; prepare = nil; activated = nil; ended = nil; muted = nil
         timeout?.invalidate(); timeout = nil
         provider.reportCall(with: id, endedAt: Date(), reason: .remoteEnded)
         provider.invalidate()
-        if notify { callback?() }
+        if notify {
+            callback?()
+        }
     }
 }
