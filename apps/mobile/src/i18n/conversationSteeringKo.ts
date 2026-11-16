@@ -6,7 +6,7 @@ export const conversationSteeringKo = {
   'conversationSteering.queued': '다음 처리 단계 대기 중',
   'conversationSteering.prepared': '다음 응답 요청 준비됨',
   'conversationSteering.applied': '응답 요청에 전달됨',
-  'conversationSteering.not_applied': '반영되지 않음',
+  'conversationSteering.not_applied': '전달되지 않음 · 다시 보내주세요',
   'conversationSteering.notice':
-    '진행 중인 요청은 바뀌지 않아요. 다음 처리 단계에서 반영하며, 답변이 먼저 끝나면 반영되지 않을 수 있어요.',
+    '입력 후 전송하면 진행 중인 대화에 추가해요. 다음 응답 처리에 전달하며, 처리 한도나 이미 완료된 작업 때문에 전달하지 못하면 따로 표시해요.',
 } as const;

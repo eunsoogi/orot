@@ -1,3 +1,4 @@
+import { steeringFinalBoundary } from './steeringFinalBoundary';
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { TaskResponderInput } from './contracts';
 import type { ModelCallOutcome } from './modelCall';
@@ -54,10 +55,10 @@ export async function consumeTaskModelResponse<TResult>(
     input,
     revised,
   );
-  return {
+  return steeringFinalBoundary(context, response.state, {
     ...result,
     modelCalls: Math.max(response.state.modelCalls, result.modelCalls ?? 0),
-  };
+  });
 }
 
 /** Common final validation and one-shot task correction, after any mandatory lookup handoff. */

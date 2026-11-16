@@ -1,4 +1,4 @@
-import { render, fireEvent } from '@testing-library/react-native';
+import { render } from '@testing-library/react-native';
 import { ConversationSteeringControls } from '../ConversationSteeringControls';
 import type { ConversationSession } from '../conversationSessionTypes';
 import { t } from '../../i18n';
@@ -13,8 +13,7 @@ const session: ConversationSession = {
   error: '',
   steeringAvailable: true,
 };
-test('offers a separate steering action and distinguishes queued from applied', async () => {
-  const send = jest.fn();
+test('shows delivery states without a second send action', async () => {
   const view = await render(
     <ConversationSteeringControls
       session={{
@@ -24,31 +23,20 @@ test('offers a separate steering action and distinguishes queued from applied', 
           { id: 'b', text: 'Second', sequence: 2, status: 'applied' },
         ],
       }}
-      onSend={send}
     />,
   );
-  await fireEvent.press(view.getByTestId('conversation-steering-send'));
-  expect(send).toHaveBeenCalledTimes(1);
+  expect(view.queryByTestId('conversation-steering-send')).toBeNull();
   expect(
     view.getByText(`1. First · ${t('conversationSteering.queued')}`),
   ).toBeTruthy();
   expect(
     view.getByText(`2. Second · ${t('conversationSteering.applied')}`),
   ).toBeTruthy();
-  await view.rerender(
-    <ConversationSteeringControls
-      session={{ ...session, draft: '' }}
-      onSend={send}
-    />,
-  );
-  await fireEvent.press(view.getByTestId('conversation-steering-send'));
-  expect(send).toHaveBeenCalledTimes(1);
 });
 test('does not expose steering before a durable owner exists', async () => {
   const view = await render(
     <ConversationSteeringControls
       session={{ ...session, steeringAvailable: false }}
-      onSend={jest.fn()}
     />,
   );
   expect(view.queryByTestId('conversation-steering-send')).toBeNull();
