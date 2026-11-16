@@ -56,6 +56,7 @@ export const visitQuestionsKo = {
     '질문에 기록에서 확인되지 않는 날짜나 수치가 들어 있어 근거를 다시 확인해야 해요.',
   'visitQuestions.validation.unusableClarification':
     '질문을 준비하기 전에 관련 건강 기록과 진료에서 확인할 내용을 살펴봐 주세요.',
+  'visitQuestions.inline.generationDetails': '질문 생성 정보',
   'visitQuestions.inline.title': '진료에서 물어볼 질문',
   'visitQuestions.inline.question.label': '질문 {number}',
   'visitQuestions.inline.question.select': '질문 {number} 저장 선택',

@@ -95,24 +95,6 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
                   color={theme.colors.accentText}
                   disabled={isSaving}
                 />
-                {/* Keep origin below the label so large text cannot collide in a narrow card. */}
-                <View style={styles.selectionLabel}>
-                  <Text style={{ color: theme.colors.text }}>
-                    {t('visitQuestions.inline.question.label', {
-                      number: index + 1,
-                    })}
-                  </Text>
-                  <Text
-                    style={{
-                      color: theme.colors.textMuted,
-                      fontSize: theme.tokens.typography.sizes.caption,
-                    }}
-                  >
-                    {item.origin === 'saved'
-                      ? t('visitQuestions.inline.question.origin.saved')
-                      : t('visitQuestions.inline.question.origin.new')}
-                  </Text>
-                </View>
               </Pressable>
             }
             question={item.question}
@@ -128,12 +110,7 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
           />
         );
       })}
-      <EvidenceCaveats caveats={state.caveats} theme={theme} />
-      {!state.items.some(item => item.selected) ? (
-        <Text style={{ color: theme.colors.textMuted }}>
-          {t('visitQuestions.inline.emptySelection')}
-        </Text>
-      ) : null}
+      <EvidenceCaveats caveats={state.caveats} theme={theme} collapsed />
       {saveMessage ? (
         <Text accessibilityRole="alert" style={{ color: theme.colors.danger }}>
           {saveMessage}
@@ -143,9 +120,11 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
         label={
           isSaving
             ? t('visitQuestions.inline.actions.saving')
-            : t('visitQuestions.inline.actions.saveCount', {
-                count: state.items.filter(item => item.selected).length,
-              })
+            : !selection
+              ? t('visitQuestions.inline.actions.save')
+              : t('visitQuestions.inline.actions.saveCount', {
+                  count: state.items.filter(item => item.selected).length,
+                })
         }
         disabled={!selection || isSaving}
         onPress={submit}
@@ -158,5 +137,4 @@ export function InlineVisitQuestionCard<T extends NextVisitEvidenceReference>({
 
 const styles = StyleSheet.create({
   selectionRow: { flexDirection: 'row', alignItems: 'center' },
-  selectionLabel: { flex: 1 },
 });
