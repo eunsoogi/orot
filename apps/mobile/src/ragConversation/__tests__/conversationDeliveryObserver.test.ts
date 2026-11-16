@@ -1,6 +1,9 @@
 import { createConversationSessions } from '../conversationSessions';
 import { createConversationDeliveryObserver } from '../conversationDeliveryObserver';
-import { parseConversationMessageDelivery } from '../conversationMessageDelivery';
+import {
+  parseConversationMessageDelivery,
+  observeConversationDelivery,
+} from '../conversationMessageDelivery';
 
 /** The isolated observer proves identity and monotonic state, not provider comprehension. */
 test('retains only actual first receipts for the owning prompt and ignores callbacks after ownership ends', () => {
@@ -86,4 +89,22 @@ test('optional corrupt or unsupported historical receipts remain unavailable ins
     { submittedAt: '2026-10-01T10:00:00Z', privateText: 'Synthetic' },
   ])
     expect(parseConversationMessageDelivery(value)).toBeUndefined();
+});
+
+test('backward device-clock movement never fabricates adjusted times or regresses a read phase', () => {
+  const submittedAt = '2026-11-16T10:00:00.000Z';
+  const readAt = '2026-11-16T09:00:00.000Z';
+  const read = observeConversationDelivery(
+    { submittedAt },
+    'response_started',
+    readAt,
+  );
+  expect(parseConversationMessageDelivery(read)).toEqual({
+    submittedAt,
+    acceptedAt: readAt,
+    readAt,
+  });
+  expect(
+    observeConversationDelivery(read, 'accepted', '2026-11-16T08:00:00.000Z'),
+  ).toEqual(read);
 });

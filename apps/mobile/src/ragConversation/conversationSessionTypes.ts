@@ -78,6 +78,7 @@ export interface ConversationSessionOptions {
     readonly {
       question: string;
       submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
+      delivery?: import('./conversationMessageDelivery').ConversationMessageDelivery;
       answer: string;
       preview?: string;
       interrupted?: true;
@@ -150,7 +151,6 @@ export interface ConversationSession {
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: {
     readonly sourceOwner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner;
-    delivery?: import('./conversationMessageDelivery').ConversationMessageDelivery;
     initialResponse?: {
       readonly callId: string;
       readonly text: string;
