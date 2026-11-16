@@ -3,8 +3,6 @@ import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
 import { useOverviewReportEntry } from './useOverviewReportEntry';
 import { useIsFocused } from '@react-navigation/native';
 import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
-import { useAppointmentReminderRuntime } from '../appointmentReminders/AppointmentReminderContext';
-import { canGenerateOverviewVisit } from './OverviewVisitQuestionsRoute';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
 import RecordingScreen from '../recording/RecordingScreen';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
@@ -58,20 +56,9 @@ export function AppRouteContent({
     active && activeTab === 'overview' && actions.route.name === 'root',
     () => selectTab('conversation'),
   );
-  const reminderRuntime = useAppointmentReminderRuntime();
   function openOverviewPreparation() {
-    if (!nextAppointment || !reminderRuntime) return;
-    // Eligible visits retain the existing generator. Other visits keep exact-ID saved preparation and an explicit next action.
-    const route = actions.push(
-      canGenerateOverviewVisit(nextAppointment)
-        ? 'visit-questions'
-        : 'appointment-preparation',
-    );
-    if (route)
-      reminderRuntime.overviewPreparationTargets.set(
-        route.key,
-        nextAppointment.id,
-      );
+    // Reuse the retained tab session; a preparation shortcut must not create a detail conversation.
+    selectTab('conversation');
   }
   if (actions.route.name === 'root') {
     switch (activeTab) {

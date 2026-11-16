@@ -42,9 +42,13 @@ test('a visit canceled after Home loads never falls back to another future Calen
   await store.repository.cancel(shown.id);
   mockLoadQuestions.mockClear();
   await fireEvent.press(screen.getByTestId('overview-prepare-visit'));
-  const destination = await screen.findByTestId('appointment-preparation');
-  expect(await within(destination).findByRole('alert')).toBeTruthy();
-  expect(within(destination).queryByText(other.clinicLabel!)).toBeNull();
+  expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
+  expect(screen.getByTestId('navigation-tab-conversation')).toHaveProp(
+    'accessibilityState',
+    expect.objectContaining({ selected: true }),
+  );
+  expect(screen.queryByTestId('appointment-preparation')).toBeNull();
+  expect(screen.queryByText(other.clinicLabel!)).toBeNull();
   expect(mockLoadQuestions).not.toHaveBeenCalled();
 });
 jest.mock('../src/backup/backupSupport', () => ({
@@ -92,7 +96,7 @@ function appointment(
 
 /** Use the production App controller and destination, rather than only observing a button callback. */
 test.each(['manual', 'ongoing-calendar'] as const)(
-  'opens preparation for the displayed %s visit even when another future Calendar visit exists',
+  'opens the existing tab for a displayed %s visit without selecting another appointment',
   async kind => {
     const shown =
       kind === 'manual'
@@ -114,40 +118,29 @@ test.each(['manual', 'ongoing-calendar'] as const)(
       ),
     ).toBeTruthy();
     await fireEvent.press(screen.getByTestId('overview-prepare-visit'));
-    const destination = await screen.findByTestId('appointment-preparation');
-    expect(
-      await within(destination).findByText(shown.clinicLabel!),
-    ).toBeTruthy();
-    expect(
-      within(destination).getByText('예약별 합성 질문: ' + shown.id),
-    ).toBeTruthy();
-    expect(within(destination).queryByText(other.clinicLabel!)).toBeNull();
+    expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
+    expect(screen.getByTestId('navigation-tab-conversation')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ selected: true }),
+    );
+    expect(screen.queryByTestId('appointment-preparation')).toBeNull();
+    expect(screen.queryByTestId('conversation-visit-prepare')).toBeNull();
     expect(mockLoadQuestions).not.toHaveBeenCalledWith(other.id);
-    expect(
-      within(destination).getByTestId('overview-preparation-unsupported'),
-    ).toHaveTextContent(/AI 질문 생성은 지원하지/);
-    await fireEvent.press(screen.getByTestId('navigation-back'));
+    await fireEvent.press(screen.getByTestId('navigation-tab-overview'));
     expect(
       within(await screen.findByTestId('overview-next-appointment')).getByText(
         shown.clinicLabel!,
       ),
     ).toBeTruthy();
     await fireEvent.press(screen.getByTestId('overview-prepare-visit'));
-    await fireEvent.press(
-      await screen.findByTestId('overview-preparation-open-schedule'),
+    expect(screen.getByTestId('navigation-tab-conversation')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ selected: true }),
     );
-    expect(await screen.findByTestId('calendar-screen')).toBeTruthy();
-    expect(
-      screen.getByTestId('records-section-schedule').props.accessibilityState
-        .selected,
-    ).toBe(true);
-    expect(
-      screen.getByTestId('navigation-tab-records').props.accessibilityState,
-    ).toEqual(expect.objectContaining({ selected: true }));
   },
 );
 
-test('a valid future Calendar visit opens an explicit conversation action without generation', async () => {
+test('a future Calendar visit selects the existing conversation without generation', async () => {
   const shown = appointment('생성할 Calendar 예약', 3_600_000, true);
   const store = createAppointmentStore([shown]);
   const option = createAppleSelectionOption('available');
@@ -181,7 +174,11 @@ test('a valid future Calendar visit opens an explicit conversation action withou
       'value',
       '',
     );
-    expect(screen.getByTestId('conversation-visit-prepare')).toBeTruthy();
+    expect(screen.queryByTestId('conversation-visit-prepare')).toBeNull();
+    expect(screen.getByTestId('navigation-tab-conversation')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ selected: true }),
+    );
     expect(screen.queryByTestId('next-visit-generate')).toBeNull();
     expect(query).not.toHaveBeenCalled();
   } finally {
