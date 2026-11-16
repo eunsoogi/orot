@@ -142,6 +142,7 @@ export function createConversationVisitTurn(deps: {
         review: result.review,
         validateSource: result.generation.validateSource,
         restorationNotice: result.restorationNotice,
+        restorationWarning: result.restorationWarning,
       },
     };
   };

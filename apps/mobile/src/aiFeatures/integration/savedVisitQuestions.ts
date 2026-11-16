@@ -174,6 +174,11 @@ export async function restoreSavedVisitQuestions(input: {
     appointmentId,
     questions,
     caveats: [],
+    restorationWarning:
+      hasChangedPeriod ||
+      hasUnknownGeneratedSource ||
+      hasGeneratedOnly ||
+      hasQuestionWithoutSourceSpan,
     // An empty appointment list has no legacy metadata to restore or warn about.
     restorationNotice: savedVisitQuestionNotice({
       empty: questions.length === 0,
