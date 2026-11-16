@@ -21,7 +21,8 @@ export function conversationSteeringHistory(
       );
       if (!table.rows.length) return;
       const result = await sql.execute(
-        `SELECT q.id, q.text, q.sequence, q.status FROM conversation_steering q
+        `SELECT q.id, q.text, q.sequence, q.status, l.status AS live_status FROM conversation_steering q
+        LEFT JOIN conversation_live_steering l ON l.request_id=q.request_id AND l.run_id=q.run_id AND l.id=q.id
         JOIN conversation_requests r ON r.id = q.request_id
         JOIN conversation_artifact_sessions s ON s.id = r.session_id
         JOIN conversation_artifact_generation g ON g.singleton = 1
@@ -50,6 +51,9 @@ export function conversationSteeringHistory(
           text: row.text,
           sequence: row.sequence,
           status: row.status,
+          ...(row.live_status === 'accepted' || row.live_status === 'pending'
+            ? { serverAccepted: true }
+            : {}),
         });
       }
       restored = rows;

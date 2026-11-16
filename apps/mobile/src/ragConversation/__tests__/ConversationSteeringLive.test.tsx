@@ -64,13 +64,17 @@ test('real composer queues live text through the current request owner without s
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe('');
   expect(signal?.aborted).toBe(false);
   expect(screen.getByTestId('rag-conversation-cancel')).toBeTruthy();
-  expect(screen.getByTestId('conversation-steering-controls')).toBeTruthy();
+  expect(screen.queryByTestId('conversation-steering-controls')).toBeNull();
+  expect(screen.getByTestId('conversation-steering-message')).toBeTruthy();
+  expect(screen.queryByText('보냄')).toBeNull();
+  expect(screen.queryByText('읽음')).toBeNull();
   await act(async () => {
     rows = rows.map(row => ({ ...row, status: 'applied' }));
     await refresh?.();
     finish({ status: 'answer', answer: 'Synthetic response', citations: [] });
   });
   expect(screen.queryByTestId('conversation-steering-send')).toBeNull();
+  expect(screen.getByText('읽음')).toBeTruthy();
   expect(signal?.aborted).toBe(false);
 });
 

@@ -4,10 +4,10 @@ import { followConversationLatest } from './followConversationLatest';
 import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
 import { transcriptMessageVisible } from './conversationWorkspaceLayout';
 import { useFloatingIdentityInset } from '../assistantAppearance/FloatingIdentityInset';
-import { useRef } from 'react';
-import type { ComponentRef } from 'react';
+import { useRef, type ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
 import { styles } from './ConversationScreen.styles';
+import { ConversationSteeringMessages } from './ConversationSteeringMessages';
 import { ConversationMessage } from './ConversationMessage';
 import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
@@ -20,6 +20,7 @@ import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserT
 /** Owns the scrollable transcript and keeps visit targets before messages in visual and source order. */
 export function ConversationHistory({
   messages,
+  steeringInstructions,
   pendingMessage,
   error,
   onOpenSource,
@@ -91,7 +92,6 @@ export function ConversationHistory({
       historyView,
       scrollGeometry,
     });
-
   return (
     <ScrollView
       ref={historyView}
@@ -222,6 +222,7 @@ export function ConversationHistory({
               />
             </ReplyMessageContainer>
           ))}
+        <ConversationSteeringMessages instructions={steeringInstructions} />
         {showActivityBubble ? <ConversationActivityBubble /> : null}
         <ConversationHistoryStatus
           {...{

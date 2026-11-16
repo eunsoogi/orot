@@ -33,7 +33,15 @@ test.each(['accepted', 'pending'] as const)(
       expect(
         await journal.steering!.beginLive!(identity.operationId, 'live'),
       ).toBe(false);
+      expect((await journal.steering!.list())[0]).not.toHaveProperty(
+        'serverAccepted',
+        true,
+      );
       await journal.steering!.settleLive!(identity.operationId, 'live', status);
+      expect((await journal.steering!.list())[0]).toHaveProperty(
+        'serverAccepted',
+        true,
+      );
       await journal.complete({
         ...identity,
         claim: claim.claim,
