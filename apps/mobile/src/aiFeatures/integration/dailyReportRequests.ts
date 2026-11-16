@@ -5,6 +5,7 @@ import type { createDailyReportStorage } from '../../storage/dailyReportStorage'
 type Runner = ReturnType<typeof createDailyReportService>;
 type Lookup = ReturnType<typeof createDailyReportStorage>['lookup'];
 type Mode = Parameters<Runner>[0]['mode'];
+type Observer = Parameters<Runner>[0]['observer'];
 
 /** Coordinates explicit requests across screens without starting work during lookup. */
 export function createDailyReportRequests(input: {
@@ -13,6 +14,7 @@ export function createDailyReportRequests(input: {
     identity: DailyReportIdentity,
     mode: Mode,
     signal: AbortSignal,
+    observer?: Observer,
   ) => ReturnType<Runner>;
   currentIdentity: (timeZone: string) => DailyReportIdentity | null;
 }) {
@@ -49,7 +51,7 @@ export function createDailyReportRequests(input: {
         ? { result: running.result, cancel: () => running.controller.abort() }
         : null;
     },
-    start(identity: DailyReportIdentity, mode: Mode) {
+    start(identity: DailyReportIdentity, mode: Mode, observer?: Observer) {
       const modeKey =
         mode.kind === 'revise'
           ? `${mode.kind}:${mode.expectedRunId}`
@@ -68,7 +70,7 @@ export function createDailyReportRequests(input: {
       }
       const controller = new AbortController();
       const result = Promise.resolve()
-        .then(() => input.run(identity, mode, controller.signal))
+        .then(() => input.run(identity, mode, controller.signal, observer))
         .finally(() => {
           if (active.get(identity.key)?.controller === controller)
             active.delete(identity.key);

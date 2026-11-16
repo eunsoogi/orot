@@ -1,3 +1,4 @@
+import * as reportAuth from './dailyReportAuthorizationWait';
 import { dailyReportModelPrompt } from './dailyReportModelPrompt';
 import {
   parseReportModelResponse,
@@ -22,22 +23,9 @@ import {
 } from '../../providers/diagnostics';
 import type {
   DailyReportDeadlineContext,
-  DailyReportFailureCode,
+  DailyReportModelFailureCode as Failure,
 } from './dailyReportTypes';
-
 type Selected = Extract<SelectedAiResolution, { status: 'ready' }>;
-type Failure = Extract<
-  DailyReportFailureCode,
-  | 'cancelled'
-  | 'timeout'
-  | 'consent_required'
-  | 'provider_unavailable'
-  | 'source_revision_changed'
-  | 'source_read_failed'
-  | 'partial_stream'
-  | 'malformed_output'
->;
-
 /** The exact approved payload is dispatched once; late provider results never become a completion. */
 export async function selectDailyReportFacts(input: {
   selected: Selected;
@@ -61,10 +49,14 @@ export async function selectDailyReportFacts(input: {
   let timeout = false;
   const stop = () => controller.abort();
   input.signal.addEventListener('abort', stop, { once: true });
-  const timer = setTimeout(() => {
-    timeout = true;
-    stop();
-  }, input.timeoutMs);
+  const timer = reportAuth.reportProcessingDeadline(
+    input.deadlineContext,
+    () => {
+      timeout = true;
+      stop();
+    },
+    input.timeoutMs,
+  );
   const request: LanguageModelRequest = {
     messages: [
       {
@@ -117,26 +109,28 @@ export async function selectDailyReportFacts(input: {
       let decision: ConsentDecision;
       try {
         decision = await wait(
-          input.consent.authorize({
-            operationRunId: input.runId,
-            providerId: input.selected.provider.id,
-            modelId: input.selected.modelId,
-            recipient: input.selected.recipient,
-            remoteProcessing: true,
-            consentScope: {
-              purpose: 'daily_report',
-              dataCategories: [
-                'health_records',
-                ...(input.includesSystemCalendar ? ['calendar_plans'] : []),
-              ],
-              policyVersion: input.includesSystemCalendar
-                ? 'daily-report-calendar-analysis-v2'
-                : 'daily-report-analysis-v2',
-            },
-            allowedScope: { sourceKinds: ['personal_record'] },
-            payload: request,
-            signal: controller.signal,
-          }),
+          reportAuth
+            .reportConsent(input.consent, input.deadlineContext)
+            .authorize({
+              operationRunId: input.runId,
+              providerId: input.selected.provider.id,
+              modelId: input.selected.modelId,
+              recipient: input.selected.recipient,
+              remoteProcessing: true,
+              consentScope: {
+                purpose: 'daily_report',
+                dataCategories: [
+                  'health_records',
+                  ...(input.includesSystemCalendar ? ['calendar_plans'] : []),
+                ],
+                policyVersion: input.includesSystemCalendar
+                  ? 'daily-report-calendar-analysis-v2'
+                  : 'daily-report-analysis-v2',
+              },
+              allowedScope: { sourceKinds: ['personal_record'] },
+              payload: request,
+              signal: controller.signal,
+            }),
         );
       } catch {
         if (controller.signal.aborted) return cancelled();
@@ -240,7 +234,7 @@ export async function selectDailyReportFacts(input: {
       ? cancelled()
       : { status: 'failed', code: 'provider_unavailable' };
   } finally {
-    clearTimeout(timer);
+    timer.dispose();
     input.signal.removeEventListener('abort', stop);
     controller.abort();
   }

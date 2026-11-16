@@ -53,7 +53,7 @@ export function createDailyReportFeature(
         return { status: 'error' as const };
       }
     },
-    run: (identity, mode, signal) => {
+    run: (identity, mode, signal, observer) => {
       // The feature deadline begins before storage opens, so share its stage with the service bound.
       const deadlineContext = createDailyReportDeadlineContext('report_read');
       return boundedDailyReport(
@@ -115,6 +115,7 @@ export function createDailyReportFeature(
               scope: {},
               mode,
               signal: operationSignal,
+              observer,
             });
           } catch {
             if (operationSignal.aborted)
@@ -130,6 +131,7 @@ export function createDailyReportFeature(
           }
         },
         () => dailyReportDeadlineFailure(deadlineContext),
+        deadlineContext,
       );
     },
   });

@@ -1,3 +1,4 @@
+import { reportProcessingDeadline } from './dailyReportAuthorizationWait';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import type {
   DailyReportDeadlineContext,
@@ -53,6 +54,7 @@ export async function boundedDailyReport<T>(
   timeoutMs: number,
   work: (signal: AbortSignal) => Promise<T>,
   onTimeout?: () => DeadlineFailure,
+  context?: DailyReportDeadlineContext,
 ): Promise<T | DeadlineFailure | { status: 'failed'; code: 'cancelled' }> {
   if (signal.aborted) return { status: 'failed', code: 'cancelled' };
   const controller = new AbortController();
@@ -70,11 +72,15 @@ export async function boundedDailyReport<T>(
     stop();
   };
   signal.addEventListener('abort', abort, { once: true });
-  const timer = setTimeout(() => {
-    timedOut = true;
-    timeoutFailure = classifyTimeout();
-    abort();
-  }, timeoutMs);
+  const timer = reportProcessingDeadline(
+    context,
+    () => {
+      timedOut = true;
+      timeoutFailure = classifyTimeout();
+      abort();
+    },
+    timeoutMs,
+  );
   try {
     const result = await Promise.race([
       work(controller.signal),
@@ -101,7 +107,7 @@ export async function boundedDailyReport<T>(
       code: 'error',
     };
   } finally {
-    clearTimeout(timer);
+    timer.dispose();
     signal.removeEventListener('abort', abort);
     controller.abort();
   }

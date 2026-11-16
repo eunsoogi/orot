@@ -60,6 +60,7 @@ export async function generateConversationVisitQuestions(input: {
       signal: input.signal,
       generate: async () => {
         opening = startContextualConversationOpening({
+          diagnosticFeature: 'visit',
           selected: selectedAi,
           request: input.request,
           observer: input.observer,

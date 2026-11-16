@@ -1,6 +1,13 @@
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
 export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report' | 'storage';
 export type Stage =
+  | 'opening_generate'
+  | 'opening_validate'
+  | 'opening_review'
+  | 'opening_consent'
+  | 'opening_delivery'
+  | 'opening_display'
+  | 'opening_preflight'
   | 'stop_native'
   | 'stop_js'
   | 'stop_abort'

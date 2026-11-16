@@ -106,6 +106,7 @@ export function createHealthSummaryService(input: {
       consentPurpose: 'symptom_summary',
     });
     const opening = startContextualConversationOpening({
+      diagnosticFeature: 'disease',
       selected,
       request: request.question,
       observer,
