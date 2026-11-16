@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
-import { AppButton as Button } from '../layout/AppButton';
+import { ApiCatalogAccount } from '../providers/selection/ApiCatalogAccount';
+import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
 import { t } from '../i18n';
 import type {
   ChatGPTAccountSetup,
@@ -32,6 +33,7 @@ export function CalendarModelSettingsPanel({
   ) => void;
   readonly onBusyChange: (busy: boolean) => void;
 }) {
+  const [connected, setConnected] = useState(false);
   const [saved, setSaved] = useState<ProviderSelection | null>(null);
   const [pending, setPending] = useState<ProviderSelectionOption | null>(null);
   const [apiOptions, setApiOptions] = useState<ProviderSelectionOption[]>([]);
@@ -59,10 +61,24 @@ export function CalendarModelSettingsPanel({
       .finally(() => {
         if (active) setLoading(false);
       });
+    // Read only connection status, never credential contents; late account reads cannot revive old state.
+    const loadAccount = async () => {
+      const version = generation.current;
+      try {
+        const status = await voiceSettingsStore.accountStatus();
+        if (active && version === generation.current)
+          setConnected(status.connected);
+      } catch {
+        if (active && version === generation.current) setConnected(false);
+      }
+    };
+    loadAccount();
     const unsubscribe = voiceSettingsStore.subscribe(() => {
       generation.current += 1;
       controller.current?.abort();
       accountRevision.current = null;
+      setConnected(false);
+      loadAccount();
       setRefreshing(false);
       setApiOptions([]);
       setPending(value =>
@@ -97,7 +113,7 @@ export function CalendarModelSettingsPanel({
       )
     : null;
   async function refresh() {
-    if (refreshing) return;
+    if (refreshing || !connected) return;
     const request = ++generation.current;
     controller.current?.abort();
     setRefreshing(true);
@@ -164,36 +180,40 @@ export function CalendarModelSettingsPanel({
         )}
         onChoose={setPending}
       />
-      <Text accessibilityRole="header">OpenAI API</Text>
-      <Text>{t('modelSettings.decisionsNotice')}</Text>
-      {chatGPTSetup?.onOpenAccounts ? (
-        <Button
-          title={t('modelSettings.registerApiKey')}
-          onPress={chatGPTSetup.onOpenAccounts}
-          disabled={saving}
-        />
-      ) : null}
-      <Button
-        title={t('modelSettings.refreshAccountModels')}
-        onPress={refresh}
-        disabled={refreshing || saving}
-        testID="calendar-model-refresh"
-      />
-      {apiOptions.map((option, index) => (
-        <ProviderSelectionOptionCard
-          key={option.modelId}
-          option={option}
-          index={options.length + index}
-          disabled={saving || loading || loadError}
-          requirements={requirements}
-          showCapabilities={false}
-          selected={
-            (pending?.modelId ?? saved?.modelId) === option.modelId &&
-            (pending?.provider.id ?? saved?.providerId) === option.provider.id
-          }
-          onPress={() => setPending(option)}
-        />
-      ))}
+      <View style={styles.section} testID="calendar-model-group-openai-api">
+        <Text accessibilityRole="header" style={styles.heading}>
+          OpenAI API
+        </Text>
+        <View style={styles.account}>
+          <ApiCatalogAccount
+            connected={connected}
+            busy={refreshing || saving}
+            refresh={() => {
+              refresh();
+            }}
+            refreshLabel={t('modelSettings.refreshModels')}
+            testIDPrefix="calendar"
+            onOpenAccounts={saving ? undefined : chatGPTSetup?.onOpenAccounts}
+          />
+          {apiOptions.map((option, index) => (
+            <ProviderSelectionOptionCard
+              key={option.modelId}
+              option={option}
+              index={options.length + index}
+              disabled={saving || loading || loadError}
+              requirements={requirements}
+              showCapabilities={false}
+              selected={
+                (pending?.modelId ?? saved?.modelId) === option.modelId &&
+                (pending?.provider.id ?? saved?.providerId) ===
+                  option.provider.id
+              }
+              onPress={() => setPending(option)}
+            />
+          ))}
+        </View>
+        <Text style={styles.detail}>{t('modelSettings.decisionsNotice')}</Text>
+      </View>
       {message ? <Text accessibilityRole="alert">{message}</Text> : null}
       {pending ? (
         <ProviderSelectionConfirmation

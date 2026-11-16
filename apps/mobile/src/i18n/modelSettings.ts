@@ -13,7 +13,7 @@ export const modelSettingsKo = {
 
   'modelSettings.confirmLanguage': '이 AI 사용',
   'modelSettings.languageTab': '대화 모델',
-  'modelSettings.voiceTab': '보이스 모델 선택',
+  'modelSettings.voiceTab': '보이스 모델',
   'modelSettings.languageTitle': 'AI 선택',
   'modelSettings.languagePrompt': '질문에 답할 AI를 선택해 주세요.',
   'modelSettings.localProcessing': '기기 안에서 처리',

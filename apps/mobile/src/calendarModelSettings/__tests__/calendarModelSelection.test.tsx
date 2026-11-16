@@ -150,3 +150,61 @@ it('does not publish a late catalog after account replacement', async () => {
   });
   expect(screen.queryByText('Synthetic Decisions')).toBeNull();
 });
+
+it('uses the shared compact API account card and keeps disconnected management reachable', async () => {
+  account.accountStatus.mockResolvedValue({ connected: false, revision: 3 });
+  const onOpenAccounts = jest.fn();
+  await render(
+    <CalendarModelSettingsPanel
+      options={[]}
+      onBusyChange={jest.fn()}
+      chatGPTSetup={{
+        presentation: 'settings-provider',
+        accounts: [],
+        selectedAccountID: null,
+        statusMessage: '',
+        statusIsError: false,
+        actionTitle: '',
+        busy: false,
+        signingIn: false,
+        signingOut: false,
+        actionDisabled: false,
+        onAccountSelected: jest.fn(),
+        onAction: jest.fn(),
+        onSignOut: jest.fn(),
+        onCancelSignIn: jest.fn(),
+        onOpenAccounts,
+      }}
+    />,
+  );
+  expect(screen.getByTestId('calendar-model-refresh')).toBeDisabled();
+  expect(screen.queryByTestId('calendar-open-accounts')).toBeNull();
+  expect(
+    screen.queryByText('연결된 계정에서 OpenAI API 키를 등록해 주세요.'),
+  ).toBeNull();
+  await fireEvent.press(screen.getByTestId('calendar-account-details'));
+  await fireEvent.press(screen.getByTestId('calendar-open-accounts'));
+  expect(onOpenAccounts).toHaveBeenCalledTimes(1);
+  expect(account.discoverModels).not.toHaveBeenCalled();
+  expect(store.save).not.toHaveBeenCalled();
+});
+
+it('keeps the compact refresh disabled until its explicit discovery finishes', async () => {
+  let complete!: (value: { revision: number; ids: string[] }) => void;
+  account.discoverModels.mockImplementation(
+    () =>
+      new Promise(resolve => {
+        complete = resolve;
+      }),
+  );
+  await render(
+    <CalendarModelSettingsPanel options={[]} onBusyChange={jest.fn()} />,
+  );
+  await fireEvent.press(screen.getByTestId('calendar-model-refresh'));
+  expect(screen.getByTestId('calendar-model-refresh')).toBeDisabled();
+  await fireEvent.press(screen.getByTestId('calendar-model-refresh'));
+  expect(account.discoverModels).toHaveBeenCalledTimes(1);
+  await act(async () => complete({ revision: 3, ids: ['gpt-6-luna'] }));
+  expect(screen.getByTestId('calendar-model-refresh')).not.toBeDisabled();
+  expect(screen.getByText('Synthetic Decisions')).toBeTruthy();
+});
