@@ -15,16 +15,22 @@ final class ResponsesWebSocketUpgradeGate: @unchecked Sendable {
     func wait() async throws {
         try await withCheckedThrowingContinuation { continuation in
             let completed = lock.withLock { () -> Result<Void, Error>? in
-                if let result { return result }
+                if let result {
+                    return result
+                }
                 guard waiter == nil else { return .failure(ChatGPTResponsesError.invalidRequest) }
                 waiter = continuation
                 return nil
             }
-            if let completed { continuation.resume(with: completed) }
+            if let completed {
+                continuation.resume(with: completed)
+            }
         }
     }
 
-    func opened() { finish(.success(())) }
+    func opened() {
+        finish(.success(()))
+    }
 
     func failed(httpStatus: Int?) {
         // Unsupported upgrade is definitive; authentication, throttling, server
@@ -33,7 +39,9 @@ final class ResponsesWebSocketUpgradeGate: @unchecked Sendable {
         finish(.failure(rejected ? ResponsesWebSocketUpgradeError.rejectedBeforeRequest : ChatGPTResponsesError.transportUnavailable))
     }
 
-    func cancelled() { finish(.failure(CancellationError())) }
+    func cancelled() {
+        finish(.failure(CancellationError()))
+    }
 
     private func finish(_ value: Result<Void, Error>) {
         let pending = lock.withLock { () -> CheckedContinuation<Void, Error>? in
