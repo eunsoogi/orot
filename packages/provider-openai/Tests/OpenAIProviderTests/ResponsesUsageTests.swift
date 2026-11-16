@@ -53,7 +53,7 @@ final class ResponsesUsageTests: XCTestCase {
 
     func testEarlierUsageDoesNotInventTerminalCounts() throws {
         var normalizer = ResponsesEventNormalizer(requestID: "synthetic-terminal-only")
-        let earlier = #"{"type":"response.created","response":{"usage":{"input_tokens":4,"output_tokens":2,"total_tokens":6}}}"#
+        let earlier = #"{"type":"response.created","response":{"id":"synthetic","status":"queued","usage":{"input_tokens":4,"output_tokens":2,"total_tokens":6}}}"#
         XCTAssertNil(try normalizer.consume(ResponsesSSEFrame(event: "response.created", data: earlier)))
         guard case let .completed(result) = try normalizer.consume(completion(nil)) else {
             return XCTFail("Expected terminal result.")

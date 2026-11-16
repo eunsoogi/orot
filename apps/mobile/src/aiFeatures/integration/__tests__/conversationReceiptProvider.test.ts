@@ -117,3 +117,48 @@ test('an actual provider tool-call response proves response started without clai
   }
   expect(observe.mock.calls).toEqual([['response_started']]);
 });
+
+test('verified response-start acknowledgement advances read before text, never at local dispatch', async () => {
+  const observe = jest.fn();
+  let started!: () => void;
+  let finish!: () => void;
+  const native = provider();
+  native.generate = jest.fn(async (_request, options) => {
+    started = options!.onResponseStarted!;
+    await new Promise<void>(resolve => {
+      finish = resolve;
+    });
+    return { ok: true as const, value: response() };
+  });
+  const wrapped = conversationReceiptProvider(native, observe);
+  const original = jest.fn();
+  const work = wrapped.generate(
+    { messages: [] },
+    { onResponseStarted: original },
+  );
+  expect(observe).not.toHaveBeenCalled();
+  started();
+  expect(observe.mock.calls).toEqual([['response_started']]);
+  expect(original).toHaveBeenCalledTimes(1);
+  finish();
+  await work;
+  started();
+  expect(observe).toHaveBeenCalledTimes(1);
+  expect(original).toHaveBeenCalledTimes(1);
+});
+
+test('cancelled processing acknowledgement cannot produce a receipt', async () => {
+  const observe = jest.fn();
+  const controller = new AbortController();
+  const native = provider();
+  native.generate = jest.fn(async (_request, options) => {
+    controller.abort();
+    options!.onResponseStarted!();
+    return { ok: true as const, value: response('late') };
+  });
+  await conversationReceiptProvider(native, observe).generate(
+    { messages: [] },
+    { signal: controller.signal },
+  );
+  expect(observe).not.toHaveBeenCalled();
+});

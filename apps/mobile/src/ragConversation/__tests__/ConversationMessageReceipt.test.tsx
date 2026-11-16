@@ -2,7 +2,7 @@ import { render } from '@testing-library/react-native';
 import { ConversationMessageReceipt } from '../ConversationMessageReceipt';
 const submittedAt = '2026-10-01T10:00:00Z';
 
-test('shows time and honest pending status, not a sent/read receipt before provider output', async () => {
+test('shows time and honest pending status, not a sent/read receipt before provider processing is observed', async () => {
   const screen = await render(
     <ConversationMessageReceipt delivery={{ submittedAt }} pending />,
   );
@@ -32,5 +32,8 @@ test('displays observed receipt time with accessible full dates and never backfi
   expect(screen.getByText(/읽음/)).toBeTruthy();
   expect(
     screen.getByTestId('conversation-message-receipt').props.accessibilityHint,
-  ).toContain('이 요청에 대한 AI 응답이 시작된');
+  ).toContain('AI가 응답 처리를 시작한 것을 확인');
+  expect(
+    screen.getByTestId('conversation-message-receipt').props.accessibilityHint,
+  ).toContain('내용을 이해했거나 답변이 완료됐다는 뜻은 아니에요');
 });

@@ -4,6 +4,7 @@ export const conversationDeliveryKo = {
   'conversationDelivery.sending': '전송 중',
   'conversationDelivery.sent': '보냄',
   'conversationDelivery.read': '읽음',
+  'conversationDelivery.waiting': '준비 중',
   'conversationDelivery.readMeaning':
-    '이 요청에 대한 AI 응답이 시작된 것을 확인했어요. 내용을 이해했거나 답변이 완료됐다는 뜻은 아니에요.',
+    '이 요청에 대한 AI가 응답 처리를 시작한 것을 확인했어요. 내용을 이해했거나 답변이 완료됐다는 뜻은 아니에요.',
 };

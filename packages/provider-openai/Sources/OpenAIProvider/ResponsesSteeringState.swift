@@ -47,7 +47,9 @@ struct ResponsesSteeringState {
             guard let response = object["response"] as? [String: Any],
                   let id = response["id"] as? String, !id.isEmpty else { throw ChatGPTResponsesError.malformedEvent }
             if activeID == nil {
-                activeID = id; return [.ready]
+                let started = try normalizer.consume(ResponsesSSEFrame(event: nil, data: text))
+                activeID = id
+                return [.ready] + (started.map { [.response($0)] } ?? [])
             }
             guard accepted, predecessorEnded, !successor, id != activeID else { throw ChatGPTResponsesError.malformedEvent }
             if let previous = response["previous_response_id"] as? String, previous != targetID {
@@ -56,6 +58,7 @@ struct ResponsesSteeringState {
             successor = true
             activeID = id
             normalizer = ResponsesEventNormalizer(requestID: nil)
+            _ = try normalizer.consume(ResponsesSSEFrame(event: nil, data: text))
             return [.steering(submissionID: submissionID!, status: "applied", steerID: steerID), .textSnapshot("")]
         }
         if type.hasPrefix("response.steer.") {

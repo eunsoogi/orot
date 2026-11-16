@@ -46,7 +46,10 @@ test('shows safe answer text and separate evidence activity while generating', a
   const bubble = await screen.findByTestId('rag-conversation-activity-bubble', {
     includeHiddenElements: true,
   });
-  expect(bubble.props.accessibilityElementsHidden).toBe(true);
+  expect(bubble.props.accessibilityElementsHidden).not.toBe(true);
+  expect(screen.getByTestId('conversation-response-waiting')).toHaveTextContent(
+    '준비 중',
+  );
 
   await act(async () => {
     observer?.onProgress?.({

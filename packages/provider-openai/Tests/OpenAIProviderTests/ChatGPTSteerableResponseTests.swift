@@ -15,7 +15,7 @@ final class ChatGPTSteerableResponseTests: XCTestCase {
         }
         XCTAssertEqual(connection.sentTypes, ["response.create", "response.steer"])
         XCTAssertTrue(connection.isClosed)
-        XCTAssertEqual(Array(observed.prefix(4)), [.ready,
+        XCTAssertEqual(Array(observed.prefix(5)), [.ready, .response(.responseStarted("original")),
                                                    .steering(submissionID: "local", status: "accepted", steerID: "server"),
                                                    .steering(submissionID: "local", status: "applied", steerID: "server"), .textSnapshot("")])
         guard case .response(.completed) = observed.last else { return XCTFail("Expected successor completion") }
@@ -62,12 +62,12 @@ private final class ScriptedSteeringSocket: ResponsesWebSocketConnection, @unche
             guard !closed else { throw CancellationError() }
             sent.append(type)
             if type == "response.create" {
-                frames.append(Data(#"{"type":"response.created","response":{"id":"original"}}"#.utf8))
+                frames.append(Data(#"{"type":"response.created","response":{"id":"original","status":"in_progress"}}"#.utf8))
             } else {
                 frames += [
                     #"{"type":"response.steer.accepted","steer":{"id":"server","previous_response_id":"original"}}"#,
                     #"{"type":"response.incomplete","response":{"id":"original","incomplete_details":{"reason":"steered"}}}"#,
-                    #"{"type":"response.created","response":{"id":"successor","previous_response_id":"original"}}"#,
+                    #"{"type":"response.created","response":{"id":"successor","status":"in_progress","previous_response_id":"original"}}"#,
                     #"{"type":"response.completed","response":{"id":"successor","status":"completed","output":[]}}"#,
                 ].map { Data($0.utf8) }
             }
