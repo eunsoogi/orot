@@ -47,15 +47,17 @@ export function createConversationSessionRestoreState(input: {
         input.readTasks?.(entry.durableId, controller.signal) ??
           Promise.resolve([]),
       ]);
-      const latest = turns.at(-1);
-      const steeringInstructions =
-        latest?.toolMessageId && latest.completion === 'complete'
-          ? ((await input.readSteering?.(
-              entry.durableId,
-              latest.toolMessageId,
-              controller.signal,
-            )) ?? [])
-          : [];
+      const receipts = await Promise.all(
+        turns.map(turn =>
+          turn.toolMessageId && turn.completion === 'complete'
+            ? (input.readSteering?.(
+                entry.durableId,
+                turn.toolMessageId,
+                controller.signal,
+              ) ?? [])
+            : [],
+        ),
+      );
       if (
         sessions.get(id) !== entry ||
         entry.controller !== controller ||
@@ -85,6 +87,7 @@ export function createConversationSessionRestoreState(input: {
         {
           id: -(2 * index + 2),
           role: 'assistant' as const,
+          steeringInstructions: receipts[index],
           content: turn.preview ?? turn.answer,
           citations: turn.citations,
           healthSources: turn.healthSources,
@@ -117,7 +120,7 @@ export function createConversationSessionRestoreState(input: {
       input.update(id, {
         messages,
         taskCards,
-        steeringInstructions,
+        steeringInstructions: [],
         steeringAvailable: false,
         dailyReport: reports.at(-1),
         // Only validated retained turns can restore an exploration intent.

@@ -8,6 +8,8 @@ export interface StoredSteeringInstruction {
   readonly id: string;
   readonly text: string;
   readonly sequence: number;
+  /** True only after the live provider acknowledges this instruction. */
+  readonly serverAccepted?: boolean;
   readonly status:
     'queued' | 'prepared' | 'applied' | 'not_applied' | 'delivery_pending';
 }
@@ -38,7 +40,10 @@ export async function createConversationSteeringStorage(input: {
   async function read(sql: SqlExecutor): Promise<StoredSteeringInstruction[]> {
     const rows = (
       await sql.execute(
-        'SELECT id, text, sequence, status FROM conversation_steering WHERE request_id = ? AND run_id = ? ORDER BY sequence',
+        `SELECT q.id, q.text, q.sequence, q.status, l.status AS live_status
+         FROM conversation_steering q LEFT JOIN conversation_live_steering l
+         ON l.request_id=q.request_id AND l.run_id=q.run_id AND l.id=q.id
+         WHERE q.request_id = ? AND q.run_id = ? ORDER BY q.sequence`,
         keys,
       )
     ).rows;
@@ -47,6 +52,9 @@ export async function createConversationSteeringStorage(input: {
       text: String(row.text),
       sequence: Number(row.sequence),
       status: row.status as StoredSteeringInstruction['status'],
+      ...(row.live_status === 'accepted' || row.live_status === 'pending'
+        ? { serverAccepted: true }
+        : {}),
     }));
   }
   return {

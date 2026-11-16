@@ -10,6 +10,7 @@ import type { ReplyFocusHandle } from '../replyNotifications/replyFocus';
 export interface ConversationHistoryProps {
   readonly onContinueCold?: (requestId: string) => void;
   readonly coldResumeBusy?: boolean;
+  readonly steeringInstructions?: readonly import('../storage/conversationSteeringStorage').StoredSteeringInstruction[];
   readonly messages: readonly DisplayMessage[];
   readonly pendingMessage: ConversationSession['pendingMessage'];
   readonly error: string;

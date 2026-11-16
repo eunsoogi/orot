@@ -188,6 +188,7 @@ export function ConversationScreen({
             requestActivity={session.requestActivity}
             compact={composerLayout.compact}
             header={header}
+            steeringInstructions={session.steeringInstructions}
             messages={messages}
             pendingMessage={pendingMessage}
             error={error}

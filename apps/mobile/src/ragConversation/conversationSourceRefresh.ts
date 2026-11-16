@@ -26,7 +26,9 @@ export function refreshConversationSources(input: {
   for (const session of snapshot.sessions) requests.clearSteering(session.id);
   if (origin === 'healthkit') {
     const restrict = (session: ConversationSession) => ({
-      messages: filterHealthDerivedMessages(session.messages, deletedIds),
+      messages: filterHealthDerivedMessages(session.messages, deletedIds).map(
+        message => ({ ...message, steeringInstructions: undefined }),
+      ),
       // A treatment card may depend on a deleted health source; its result must be reopened and revalidated.
       taskCards: session.taskCards?.filter(
         card => card.task.kind !== 'treatment',

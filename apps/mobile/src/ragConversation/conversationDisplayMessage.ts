@@ -3,6 +3,7 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 
 /** Display-only view of a turn; retained identity controls all durable source actions. */
 export interface DisplayMessage extends RagConversationMessage {
+  readonly steeringInstructions?: readonly import('../storage/conversationSteeringStorage').StoredSteeringInstruction[];
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly photoAttached?: boolean;
   readonly id: number;
