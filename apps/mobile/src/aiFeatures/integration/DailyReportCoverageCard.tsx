@@ -1,3 +1,4 @@
+import { dailyReportCoverageMeaning } from './dailyReportCoverageMeaning';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { DailyReportSourceCoverage } from '@orot/domain';
@@ -37,8 +38,9 @@ export function DailyReportCoverageCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const name = sourceLabel(item.source);
-  const state = statusLabel(item.status);
-  const visual = statusVisual(item.status);
+  const meaning = dailyReportCoverageMeaning(item);
+  const state = statusLabel(meaning);
+  const visual = statusVisual(meaning);
   const hasRecordSource =
     isDailyReportRecordSource(item.source) ||
     sourceCounts?.has(item.source) === true;

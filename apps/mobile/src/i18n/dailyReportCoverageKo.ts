@@ -1,8 +1,9 @@
 export const dailyReportCoverageKo = {
+  'dailyReport.coverage.recordedScope': '기록된 기간 기준',
   'dailyReport.coverage.count': '불러온 원본 기록 {count}건',
   'dailyReport.coverage.countUnknown': '입력 기록 수 미확인',
   'dailyReport.coverage.none': '입력 자료 범위 미확인',
-  'dailyReport.coverage.stateUnknown': '자료 확인 상태 미확인',
+  'dailyReport.coverage.stateUnknown': '저장된 기록 기준',
   'dailyReport.coverage.syncComplete': '동기화 완료',
   'dailyReport.coverage.syncRetryable': '동기화 재시도 필요',
   'dailyReport.coverage.syncNotRequested': '동기화 확인 안 함',
