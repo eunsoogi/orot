@@ -98,7 +98,7 @@ export const recordingLibraryStyles = StyleSheet.create({
     flexGrow: 1,
     gap: 10,
     borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
     borderColor: appColors.border,
     padding: 16,
     backgroundColor: appColors.surface,
@@ -111,7 +111,7 @@ export const recordingLibraryStyles = StyleSheet.create({
   },
   playbackCard: {
     gap: 10,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
     borderColor: appColors.border,
     borderRadius: 14,
     padding: 12,

@@ -209,3 +209,11 @@ the containing profile edit action remains separate from the name material. The 
 a Liquid Glass implementation. The adaptive root rail is custom UIKit navigation
 with native material and a custom selection transition, not a system UITabBar;
 these distinctions must remain explicit in design validation.
+
+### Surface audit coverage
+
+The shared borderless rule applies to root Settings groups and their privacy, backup, notification, reminder, calendar-sync and integration information cards; Records capture/material headers and recording playback/selection-summary groups; Overview summary and metric-selection panels; Conversation activity and saved-output cards; and Calendar month, quick-action and event shells. These containers already have semantic surface fills, spacing, labels or symbols, so an enclosing line does not carry an additional state.
+
+Calendar event stripes and the explicit next-visit badge remain; internal row dividers distinguish dense lists without framing every group. Neither checkboxes nor their checked state are removed from Overview. Recording controls, consent/recovery messages, disabled states, input boundaries and destructive confirmation continue to own their original behavior. Conversation activity dots remain decorative and honor Reduce Motion.
+
+This inventory does not close the screen audit: medical document/review forms, Health Records category/detail cards, appointment editors, assistant-appearance selection, saved-memory detail work and inference-disclosure surfaces still need individual review. Do not treat a borderless root page as proof that every destination or accessibility mode has been validated.

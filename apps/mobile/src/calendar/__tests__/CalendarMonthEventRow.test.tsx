@@ -40,7 +40,7 @@ it('uses a neutral next-visit card and a scalable compact selection action', asy
   expect(StyleSheet.flatten(card.props.style)).toMatchObject({
     backgroundColor: appColors.background,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 0,
     borderLeftWidth: 1,
     minWidth: 0,
     padding: 14,

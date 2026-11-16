@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
     padding: 16,
   },
   description: { color: appColors.secondary, fontSize: 15 },

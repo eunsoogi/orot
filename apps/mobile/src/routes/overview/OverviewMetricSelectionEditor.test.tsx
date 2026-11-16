@@ -19,6 +19,15 @@ test('presents choices as full-row checkboxes with selected and unselected statu
   await render(<OverviewMetrics />);
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
 
+  expect(
+    StyleSheet.flatten(
+      screen.getByTestId('overview-metric-selection-editor').props.style,
+    ),
+  ).toMatchObject({
+    borderWidth: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  });
   const selected = screen.getByRole('checkbox', { name: /기록된 수면/ });
   const unselected = screen.getByRole('checkbox', { name: /체중/ });
   expect(selected.props.accessibilityState.checked).toBe(true);

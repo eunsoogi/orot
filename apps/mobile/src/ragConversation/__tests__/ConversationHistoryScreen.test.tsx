@@ -113,6 +113,12 @@ test('places the title and count before available saved outputs and the session 
       accessibilityHint: expect.stringContaining('새 AI 요청'),
     });
     expect(savedVisitQuestions.props.accessibilityRole).toBe('button');
+    for (const action of [savedAnalysis, savedVisitQuestions]) {
+      expect(StyleSheet.flatten(action.props.style)).toMatchObject({
+        borderWidth: 0,
+        minHeight: 64,
+      });
+    }
 
     const list = within(pane).getByTestId('conversation-history-list');
     const listSection = directChildOf(
