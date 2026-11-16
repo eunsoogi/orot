@@ -39,10 +39,11 @@ export default function RecordingSessionPanel({
   onResume,
   onStop,
 }: RecordingSessionPanelProps) {
-  const compact = useWindowDimensions().width < 375;
+  const { width, height, fontScale } = useWindowDimensions();
+  const compact = width < 375 || height < 700 || fontScale > 1.2;
   return (
     <View style={styles.panel} testID="recording-session-panel">
-      <View style={styles.session}>
+      <View style={[styles.session, compact && styles.compactSession]}>
         <View style={recordingControlStyles.recordingStatus}>
           {status === 'recording' ? (
             <View style={recordingControlStyles.liveDot} />
@@ -64,16 +65,18 @@ export default function RecordingSessionPanel({
           })}
           adjustsFontSizeToFit
           numberOfLines={1}
-          style={styles.duration}
+          style={[styles.duration, compact && styles.compactDuration]}
           testID="recording-duration"
         >
           {formatRecordingDuration(durationMs)}
         </Text>
-        <RecordingWaveform
-          amplitude={amplitude}
-          durationMs={durationMs}
-          status={status}
-        />
+        {!compact && (
+          <RecordingWaveform
+            amplitude={amplitude}
+            durationMs={durationMs}
+            status={status}
+          />
+        )}
       </View>
       {/* One large microphone starts or finishes a take; the small icon changes only pause/resume state. */}
       <View style={styles.actions}>

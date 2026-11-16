@@ -1,7 +1,5 @@
-import { View } from 'react-native';
-import { AppSymbol } from '../layout/AppSymbol';
-import { appColors } from '../layout/appColors';
-import { AppText as Text } from '../layout/AppText';
+import { Alert, View } from 'react-native';
+import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
 import { RecordingConsentControl } from './RecordingConsentControl';
 import { recordingControlStyles as styles } from './RecordingControls.styles';
@@ -29,7 +27,6 @@ export default function RecordingGuidancePanel({
 }) {
   return (
     <View style={styles.guidancePanel} testID="recording-guidance-panel">
-      <Text style={styles.copy}>{t('recording.subtitle')}</Text>
       <RecordingConsentControl
         checked={consentAcknowledged}
         onPress={onToggleConsent}
@@ -40,16 +37,22 @@ export default function RecordingGuidancePanel({
           status === 'interrupted'
         }
       />
-      <Text style={styles.copy} testID="recording-consent-description">
-        {t('recording.consent.description')}
-      </Text>
-      <Text style={styles.copy} testID="recording-guidance">
-        {t(guidanceKey(status))}
-      </Text>
-      <View style={styles.localNotice}>
-        <AppSymbol name="lock.fill" color={appColors.secondary} />
-        <Text style={styles.localNoticeText}>{t('recording.localOnly')}</Text>
-      </View>
+      <AppButton
+        variant="text"
+        title={t('recording.guidanceDetails')}
+        testID="recording-guidance-details"
+        onPress={() =>
+          Alert.alert(
+            t('recording.title'),
+            [
+              t('recording.subtitle'),
+              t('recording.consent.description'),
+              t(guidanceKey(status)),
+              t('recording.localOnly'),
+            ].join('\n\n'),
+          )
+        }
+      />
     </View>
   );
 }

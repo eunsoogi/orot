@@ -60,7 +60,9 @@ test('exposes transcript review and keeps source export available', async () => 
   expect(
     await screen.findByText('이 녹음에는 저장된 전사 내용이 없어요.'),
   ).toBeTruthy();
-  const controlsScroll = screen.getByTestId('recording-controls-scroll');
+  // Review keeps keyboard dismissal without making the capture page scrollable.
+  expect(screen.queryByTestId('recording-controls-scroll')).toBeNull();
+  const controlsScroll = screen.getByTestId('recording-review-scroll');
   expect(controlsScroll.props.keyboardDismissMode).toBe('on-drag');
   expect(transcripts.load).toHaveBeenCalledWith(completed.id);
 });

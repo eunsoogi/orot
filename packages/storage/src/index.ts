@@ -1,3 +1,5 @@
+export { bindRecordingToUnchangedVisit } from './automaticRecapBinding';
+export type { AutomaticVisitSnapshot } from './automaticRecapBinding';
 export { STORAGE_TABLES, isRecordKind, parseRecord } from './contracts';
 export { bindRecordingToVisit, readRecapBinding, unbindRecordingFromVisit } from './recapBinding';
 export { loadCurrentRecapInput } from './recapInput';

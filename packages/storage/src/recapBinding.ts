@@ -57,9 +57,15 @@ export async function readRecapBinding(sql: SqlExecutor, recordingId: string) {
 
 /** Explicit unlink invalidates the association without reusing its version. */
 export async function unbindRecordingFromVisit(database: SqlDatabase, recordingId: string) {
-  // Increment the fence so a late analysis cannot revive the removed association.
+  // A source-backed tombstone also fences delayed automatic selection before any binding exists.
+  // Do not create orphan fences for missing or non-audio sources; repeated unlinks are idempotent.
   await database.execute(
-    "UPDATE recap_bindings SET appointment_id = NULL, version = version + 1, work_status = 'not_linked' WHERE recording_id = ? AND appointment_id IS NOT NULL",
+    `INSERT INTO recap_bindings (recording_id, appointment_id, version, work_status)
+     SELECT id, NULL, 1, 'not_linked' FROM source_records
+     WHERE id = ? AND json_extract(payload_json, '$.sourceKind') = 'audio_recording'
+     ON CONFLICT(recording_id) DO UPDATE SET appointment_id = NULL,
+       version = recap_bindings.version + 1, work_status = 'not_linked'
+     WHERE recap_bindings.appointment_id IS NOT NULL`,
     [RecordIdSchema.parse(recordingId)],
   );
 }

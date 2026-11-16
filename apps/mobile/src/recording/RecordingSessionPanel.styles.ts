@@ -4,8 +4,10 @@ import { appColors } from '../layout/appColors';
 /** Session status stays separate from consent guidance while preserving the current microphone and Glass controls. */
 export const recordingSessionStyles = StyleSheet.create({
   panel: { gap: 16 },
-  compactMicrophone: { width: 128, height: 128 },
-  compactMicrophoneInner: { width: 112, height: 112 },
+  compactSession: { gap: 4, paddingTop: 0, paddingBottom: 0 },
+  compactDuration: { fontSize: 32, lineHeight: 40 },
+  compactMicrophone: { width: 88, height: 88 },
+  compactMicrophoneInner: { width: 76, height: 76 },
   compactSecondaryAction: { width: 48, height: 48 },
   session: { alignItems: 'center', gap: 16, paddingTop: 24, paddingBottom: 12 },
   microphone: {

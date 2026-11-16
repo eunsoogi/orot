@@ -121,16 +121,20 @@ test('keeps a protected recording retryable after remount until metadata linking
 
   expect(await screen.findByTestId('recording-retry-save')).toBeTruthy();
   expect(screen.queryByTestId('recording-back')).toBeNull();
-  await fireEvent.press(screen.getByTestId('recording-consent'));
-  expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
+  // Pending protected-source recovery has no entry into another capture.
+  expect(screen.queryByTestId('recording-consent')).toBeNull();
+  expect(screen.queryByTestId('recording-microphone-control')).toBeNull();
+  expect(screen.queryByTestId('recording-new-take')).toBeNull();
 
   await view.unmount();
   await render(<RecordingScreen onBack={jest.fn()} service={service} />);
   expect(await screen.findByTestId('recording-retry-save')).toBeTruthy();
   expect(screen.queryByTestId('recording-source-id')).toBeNull();
   expect(screen.queryByTestId('recording-back')).toBeNull();
-  await fireEvent.press(screen.getByTestId('recording-consent'));
-  expect(screen.getByTestId('recording-microphone-control')).toBeDisabled();
+  // Pending protected-source recovery has no entry into another capture.
+  expect(screen.queryByTestId('recording-consent')).toBeNull();
+  expect(screen.queryByTestId('recording-microphone-control')).toBeNull();
+  expect(screen.queryByTestId('recording-new-take')).toBeNull();
 
   await fireEvent.press(screen.getByTestId('recording-retry-save'));
   expect(await screen.findByText('녹음을 이 기기에 저장했어요.')).toBeTruthy();
@@ -150,6 +154,7 @@ test('preserves the previous completion when a later start fails', async () => {
   (service.start as jest.Mock).mockRejectedValueOnce(
     new Error('new start failed'),
   );
+  await fireEvent.press(screen.getByTestId('recording-new-take'));
   await fireEvent.press(screen.getByTestId('recording-consent'));
   await fireEvent.press(screen.getByTestId('recording-microphone-control'));
 
