@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
 
@@ -11,13 +12,14 @@ export interface RetainedHealthActions {
 export function ConversationRetainedActions({
   actions,
   disabled = false,
-  hideVisitQuestions = false,
+  visitAction,
 }: {
   readonly actions?: RetainedHealthActions;
   readonly disabled?: boolean;
-  readonly hideVisitQuestions?: boolean;
+  readonly visitAction?: ReactNode;
 }) {
-  if (!actions) return null;
+  // Standalone visit routes still retain their explicit action when no general choices are supplied.
+  if (!actions) return visitAction ?? null;
   return (
     <>
       <AppButton
@@ -27,7 +29,7 @@ export function ConversationRetainedActions({
         disabled={disabled || !actions.possibilities}
         onPress={actions.possibilities ?? (() => {})}
       />
-      {!hideVisitQuestions && (
+      {visitAction ?? (
         <AppButton
           title={t('visitQuestions.conversation.actions.prepare')}
           testID="conversation-open-visit-questions"

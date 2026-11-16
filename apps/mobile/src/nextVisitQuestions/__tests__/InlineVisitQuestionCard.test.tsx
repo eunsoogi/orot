@@ -108,7 +108,7 @@ test('uses one save checkbox per question and keeps importance a separate edit a
     screen.getByRole('checkbox', { name: '질문 1 저장 선택' }),
   ).not.toBeChecked();
   expect(screen.getByTestId('inline-visit-save')).toBeDisabled();
-  expect(screen.getByText('질문 0개 저장')).toBeTruthy();
+  expect(screen.getByText('선택한 질문 저장')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('next-visit-question-details-0'));
   expect(screen.getAllByRole('checkbox')).toHaveLength(1);
   expect(
@@ -151,6 +151,45 @@ test('locks selection and edits during save while keeping source controls availa
   expect(onChange).not.toHaveBeenCalled();
   await view.rerender(<InlineVisitQuestionCard {...props} isSaving={false} />);
   expect(screen.getByTestId('inline-visit-select-0')).toBeChecked();
+  expect(screen.queryByTestId('next-visit-source-0-0')).toBeNull();
+  await fireEvent.press(screen.getByTestId('next-visit-question-details-0'));
   await fireEvent.press(screen.getByTestId('next-visit-source-0-0'));
   expect(onOpenSource).toHaveBeenCalledWith(questions[0]!.citations[0]);
+});
+
+test('keeps completed-result limits in quiet details but leaves save failures visible', async () => {
+  const state = createInlineVisitReview(
+    'details-owner',
+    [],
+    [questions[0]!],
+    ['public_search_not_retained'],
+    () => 'candidate',
+  );
+  await render(
+    <InlineVisitQuestionCard
+      state={state}
+      onChange={jest.fn()}
+      onSave={jest.fn()}
+      onOpenSource={jest.fn()}
+      theme={theme}
+      isSaving={false}
+      saveMessage="저장 실패"
+    />,
+  );
+  expect(screen.queryByText('새 질문')).toBeNull();
+  expect(screen.queryByText('질문 1')).toBeNull();
+  expect(screen.getByDisplayValue(questions[0]!.questionText)).toBeTruthy();
+  expect(screen.queryByTestId('next-visit-caveats')).toBeNull();
+  expect(
+    screen.queryByTestId('next-visit-caveat-public_search_not_retained'),
+  ).toBeNull();
+  expect(screen.getByRole('alert')).toHaveTextContent('저장 실패');
+  await fireEvent.press(screen.getByTestId('inline-visit-generation-details'));
+  expect(
+    screen.getByTestId('next-visit-caveat-public_search_not_retained'),
+  ).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('inline-visit-generation-details'));
+  expect(
+    screen.queryByTestId('next-visit-caveat-public_search_not_retained'),
+  ).toBeNull();
 });

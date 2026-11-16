@@ -1,3 +1,4 @@
+import { observeVisitEvidencePhase } from './evidencePhaseDiagnostics';
 import type { MultiAgentRunResult } from '@orot/agent-runtime';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import {
@@ -178,9 +179,13 @@ export async function mapVisitQuestionWorkflowResult(input: {
         : {}),
     });
   }
-  const presentation = await validateVisitQuestionPresentation(
-    { status: 'suggestions', questions },
-    prepared.revalidateEvidence,
+  const presentation = await observeVisitEvidencePhase(
+    'evidence_presentation',
+    () =>
+      validateVisitQuestionPresentation(
+        { status: 'suggestions', questions },
+        prepared.revalidateEvidence,
+      ),
   );
   if (presentation.status !== 'ready') {
     if (presentation.status === 'refresh_required') {

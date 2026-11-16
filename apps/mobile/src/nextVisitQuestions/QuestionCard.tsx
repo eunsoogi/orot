@@ -56,8 +56,8 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
 
   return (
     <View style={styles.card} testID={`next-visit-question-${index}`}>
-      {selectionHeader}
       <View style={styles.headingRow}>
+        {selectionHeader}
         {!selectionHeader ? (
           <View style={styles.numberBadge}>
             <Text style={styles.heading}>{number}</Text>
@@ -163,64 +163,69 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           />
         </View>
       ) : null}
-      <Text style={styles.openSource}>
-        {question.kind === 'clarification'
-          ? t('visitCard.clarification')
-          : question.legacySource
-            ? t('visitCard.legacy')
-            : t('visitCard.grounded')}
-      </Text>
-      {question.citations.map((reference, citationIndex) => (
-        <Pressable
-          accessibilityRole="button"
-          disabled={disabled}
-          key={`${reference.sourceKind}:${reference.sourceId}:${reference.effectiveTime ?? citationIndex}`}
-          onPress={() => onOpenSource(reference)}
-          style={[styles.sourceButton, disabled && styles.disabled]}
-          testID={`next-visit-source-${index}-${citationIndex}`}
-        >
-          <AppSymbol name="doc.text" color={theme.colors.textMuted} />
+      {/* Inline review leads with wording; provenance remains available in details. */}
+      {!priorityInDetails || detailsOpen ? (
+        <>
           <Text style={styles.openSource}>
-            {question.citations.length === 1
-              ? t('visitCard.singleSource')
-              : `${copy.evidence.open} ${citationIndex + 1}`}
+            {question.kind === 'clarification'
+              ? t('visitCard.clarification')
+              : question.legacySource
+                ? t('visitCard.legacy')
+                : t('visitCard.grounded')}
           </Text>
-          <AppSymbol
-            name="chevron.right"
-            size={14}
-            color={theme.colors.textMuted}
-          />
-        </Pressable>
-      ))}
-      {(question.generatedArtifactContext ?? [])
-        .filter(
-          reference =>
-            !question.citations.some(
-              citation =>
-                citation.sourceKind === reference.sourceKind &&
-                citation.sourceId === reference.sourceId,
-            ),
-        )
-        .map((reference, sourceIndex) => (
-          <Pressable
-            accessibilityRole="button"
-            disabled={disabled}
-            key={`generated:${reference.sourceId}`}
-            onPress={() => onOpenSource(reference)}
-            style={[styles.sourceButton, disabled && styles.disabled]}
-            testID={`next-visit-generated-source-${index}-${sourceIndex}`}
-          >
-            <AppSymbol name="doc.text" color={theme.colors.textMuted} />
-            <Text style={styles.openSource}>
-              {t('visitCard.generatedSource')}
-            </Text>
-            <AppSymbol
-              name="chevron.right"
-              size={14}
-              color={theme.colors.textMuted}
-            />
-          </Pressable>
-        ))}
+          {question.citations.map((reference, citationIndex) => (
+            <Pressable
+              accessibilityRole="button"
+              disabled={disabled}
+              key={`${reference.sourceKind}:${reference.sourceId}:${reference.effectiveTime ?? citationIndex}`}
+              onPress={() => onOpenSource(reference)}
+              style={[styles.sourceButton, disabled && styles.disabled]}
+              testID={`next-visit-source-${index}-${citationIndex}`}
+            >
+              <AppSymbol name="doc.text" color={theme.colors.textMuted} />
+              <Text style={styles.openSource}>
+                {question.citations.length === 1
+                  ? t('visitCard.singleSource')
+                  : `${copy.evidence.open} ${citationIndex + 1}`}
+              </Text>
+              <AppSymbol
+                name="chevron.right"
+                size={14}
+                color={theme.colors.textMuted}
+              />
+            </Pressable>
+          ))}
+          {(question.generatedArtifactContext ?? [])
+            .filter(
+              reference =>
+                !question.citations.some(
+                  citation =>
+                    citation.sourceKind === reference.sourceKind &&
+                    citation.sourceId === reference.sourceId,
+                ),
+            )
+            .map((reference, sourceIndex) => (
+              <Pressable
+                accessibilityRole="button"
+                disabled={disabled}
+                key={`generated:${reference.sourceId}`}
+                onPress={() => onOpenSource(reference)}
+                style={[styles.sourceButton, disabled && styles.disabled]}
+                testID={`next-visit-generated-source-${index}-${sourceIndex}`}
+              >
+                <AppSymbol name="doc.text" color={theme.colors.textMuted} />
+                <Text style={styles.openSource}>
+                  {t('visitCard.generatedSource')}
+                </Text>
+                <AppSymbol
+                  name="chevron.right"
+                  size={14}
+                  color={theme.colors.textMuted}
+                />
+              </Pressable>
+            ))}
+        </>
+      ) : null}
     </View>
   );
 }

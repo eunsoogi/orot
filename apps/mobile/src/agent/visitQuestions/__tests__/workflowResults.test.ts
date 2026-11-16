@@ -61,7 +61,10 @@ describe('visit-question workflow result mapping', () => {
           'task_envelope_citations',
         );
       } else {
-        expect(providerDiagnostic).not.toHaveBeenCalled();
+        expect(jest.mocked(providerDiagnostic).mock.calls).toEqual([
+          ['visit', 'evidence_presentation', 'started'],
+          ['visit', 'evidence_presentation', 'completed'],
+        ]);
       }
     },
   );

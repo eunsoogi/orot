@@ -10,7 +10,12 @@ export type Stage =
   | 'consent_wait'
   | 'provider_wait'
   | 'public_search'
-  | 'evidence_check';
+  | 'evidence_check'
+  | 'evidence_appointment'
+  | 'evidence_period'
+  | 'evidence_records'
+  | 'evidence_memory'
+  | 'evidence_presentation';
 export type Outcome =
   | 'started'
   | 'completed'
