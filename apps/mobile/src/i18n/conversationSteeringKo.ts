@@ -2,7 +2,7 @@
 export const conversationSteeringKo = {
   'conversationSteering.failed':
     '추가 지시를 저장하지 못했어요. 입력한 내용은 그대로 두었어요.',
-  'conversationSteering.delivery_pending': '전달 확인 중',
+  'conversationSteering.delivery_pending': '전달 미확인',
   'conversationSteering.send': '추가 지시 보내기',
   'conversationSteering.queued': '전달 대기 중',
   'conversationSteering.prepared': '다음 응답 요청 준비됨',
