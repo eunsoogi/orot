@@ -133,8 +133,8 @@ final class OrotProviderDiagnostics: NSObject {
 
     @objc func report(_ feature: String, stage: String, outcome: String) {
         guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
-              ["rag", "disease", "visit", "daily_report"].contains(feature),
-              ["selection", "data", "workflow", "provider_error", "validation", "persistence",
+              ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
+              ["transaction_healthkit", "transaction_memory", "selection", "data", "workflow", "provider_error", "validation", "persistence",
                "consent_wait", "provider_wait", "evidence_check",
                "evidence_appointment", "evidence_period", "evidence_records",
                "evidence_memory", "evidence_presentation"].contains(stage),
@@ -174,6 +174,7 @@ final class OrotProviderDiagnostics: NSObject {
                "overview_selected", "context_started", "context_selected",
                "context_preparation_started", "context_preparation_completed", "context_calendar_started", "context_calendar_completed",
                "context_generation_started", "context_generation_completed",
+               "context_scheduler_started", "context_scheduler_completed",
                "context_transaction_wait_started", "context_transaction_wait_completed",
                "context_quantities_started", "context_quantities_completed", "context_medications_started", "context_medications_completed",
                "context_sleep_started", "context_sleep_completed", "context_symptoms_started", "context_symptoms_completed",

@@ -15,7 +15,11 @@ import type {
   HealthContextWindow,
 } from './types';
 import { HEALTH_CONTEXT_TOPICS } from './types';
-import { traceHealthContext, type HealthContextTrace } from './trace';
+import {
+  traceHealthContext,
+  traceHealthContextScheduler,
+  type HealthContextTrace,
+} from './trace';
 
 export type HealthContextReader = (
   window: HealthContextWindow,
@@ -133,6 +137,7 @@ export function createHealthContextReader(
     let report: HealthContextReport | undefined;
     // The native adapter queues transactions; distinguish that wait from the report queries.
     trace?.('transaction_wait', 'started');
+    traceHealthContextScheduler(trace);
     await database.transaction(async tx => {
       trace?.('transaction_wait', 'completed');
       report = await readHealthContextReport(tx, window, topics, signal, trace);

@@ -1,6 +1,7 @@
 export type HealthContextPhase =
   | 'preparation'
   | 'generation'
+  | 'scheduler'
   | 'transaction_wait'
   | 'calendar'
   | 'quantities'
@@ -22,4 +23,19 @@ export async function traceHealthContext<T>(
   const result = await operation();
   trace?.(phase, 'completed');
   return result;
+}
+
+/** A same-turn probe distinguishes event-loop scheduling from transaction callback entry. */
+export function traceHealthContextScheduler(trace?: HealthContextTrace): void {
+  if (!trace) return;
+  const report = (status: 'started' | 'completed') => {
+    try {
+      trace('scheduler', status);
+    } catch {
+      /* Optional diagnostics cannot affect a read. */
+    }
+  };
+  report('started');
+  // Do not await or gate the database: this measures scheduling without changing ordering.
+  setImmediate(() => report('completed'));
 }

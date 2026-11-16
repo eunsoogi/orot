@@ -1,3 +1,4 @@
+import { observeDatabaseOwner } from './databaseOwnerDiagnostics';
 import { commitAgentMemoryWrites } from './agentMemoryStorageWrites';
 import type { SqlDatabase } from '@orot/storage';
 import { listInvalidatedHealthPeriods } from './healthPeriodDependencies';
@@ -35,35 +36,37 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
   async load(): Promise<PersistedMemoryRecord[]> {
     await this.ensureTable();
     const retained: PersistedMemoryRecord[] = [];
-    await this.database.transaction(async transaction => {
-      const removedResult = await transaction.execute(
-        'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
-      );
-      const removedSourceIds = new Set(
-        removedResult.rows.flatMap(row =>
-          typeof row.source_id === 'string' ? [row.source_id] : [],
-        ),
-      );
-      const invalidatedSourceIds =
-        await listSupersededTranscriptRevisionIds(transaction);
-      const removedSymptoms = await deletedSymptomIds(transaction);
-      const result = await transaction.execute(
-        'SELECT id, record_json FROM agent_memory_records ORDER BY id',
-      );
-      for (const row of result.rows) {
-        const record = decodeAgentMemoryRecord(row.record_json);
-        if (referencesDeletedSymptom(record, removedSymptoms)) continue;
-        if (
-          referencesAnySource(record, removedSourceIds) ||
-          referencesAnySource(record, invalidatedSourceIds)
-        ) {
-          await transaction.execute(
-            'DELETE FROM agent_memory_records WHERE id = ?',
-            [record.id],
-          );
-        } else retained.push(record);
-      }
-    });
+    await this.database.transaction(transaction =>
+      observeDatabaseOwner('memory', async () => {
+        const removedResult = await transaction.execute(
+          'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
+        );
+        const removedSourceIds = new Set(
+          removedResult.rows.flatMap(row =>
+            typeof row.source_id === 'string' ? [row.source_id] : [],
+          ),
+        );
+        const invalidatedSourceIds =
+          await listSupersededTranscriptRevisionIds(transaction);
+        const removedSymptoms = await deletedSymptomIds(transaction);
+        const result = await transaction.execute(
+          'SELECT id, record_json FROM agent_memory_records ORDER BY id',
+        );
+        for (const row of result.rows) {
+          const record = decodeAgentMemoryRecord(row.record_json);
+          if (referencesDeletedSymptom(record, removedSymptoms)) continue;
+          if (
+            referencesAnySource(record, removedSourceIds) ||
+            referencesAnySource(record, invalidatedSourceIds)
+          ) {
+            await transaction.execute(
+              'DELETE FROM agent_memory_records WHERE id = ?',
+              [record.id],
+            );
+          } else retained.push(record);
+        }
+      }),
+    );
     return retained;
   }
 
