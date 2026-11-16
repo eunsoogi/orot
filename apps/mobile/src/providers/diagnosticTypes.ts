@@ -1,6 +1,10 @@
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
 export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report' | 'storage';
 export type Stage =
+  | 'saved_memory_modules'
+  | 'saved_memory_open'
+  | 'saved_memory_read'
+  | 'saved_memory_wait'
   | 'database_transaction'
   | 'database_transaction_wait'
   | 'sql_schema'

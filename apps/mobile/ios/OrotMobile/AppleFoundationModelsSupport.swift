@@ -139,7 +139,8 @@ final class OrotProviderDiagnostics: NSObject {
     @objc func report(_ feature: String, stage: String, outcome: String) {
         guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
               ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
-              ["database_transaction", "database_transaction_wait", "sql_schema", "sql_generation",
+              ["saved_memory_modules", "saved_memory_open", "saved_memory_read", "saved_memory_wait",
+               "database_transaction", "database_transaction_wait", "sql_schema", "sql_generation",
                "sql_aggregate", "sql_vector", "sql_health_records", "sql_artifact", "sql_other",
                "transaction_healthkit", "transaction_memory", "selection", "data", "workflow", "provider_error", "validation", "persistence",
                "consent_wait", "provider_wait", "evidence_check", "public_search", "history_preparation",
