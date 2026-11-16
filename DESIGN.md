@@ -217,3 +217,7 @@ The shared borderless rule applies to root Settings groups and their privacy, ba
 Calendar event stripes and the explicit next-visit badge remain; internal row dividers distinguish dense lists without framing every group. Neither checkboxes nor their checked state are removed from Overview. Recording controls, consent/recovery messages, disabled states, input boundaries and destructive confirmation continue to own their original behavior. Conversation activity dots remain decorative and honor Reduce Motion.
 
 This inventory does not close the screen audit: medical document/review forms, Health Records category/detail cards, appointment editors, assistant-appearance selection, saved-memory detail work and inference-disclosure surfaces still need individual review. Do not treat a borderless root page as proof that every destination or accessibility mode has been validated.
+
+### Filled review surfaces
+
+Border cleanup preserves every existing card and section background. Review cards for AI feature entries, daily coverage, disease summaries, transcripts, saved medical documents, visit questions and medication summaries use their existing filled surfaces without decorative enclosing outlines. Selection rings, editable input boundaries, photo controls, consent disclosures and internal dividers remain unchanged. The memory list keeps its filled section independently of list/detail navigation.

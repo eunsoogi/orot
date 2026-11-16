@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
     gap: 10,
     padding: 16,
   },

@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
   },
   previewContent: { gap: 16, padding: 16 },
   originalPhoto: { width: '100%', height: 320 },

@@ -7,12 +7,12 @@ export const styles = StyleSheet.create({
   panel: { gap: 12 },
   heading: { fontSize: 22, fontWeight: '700' },
   results: { gap: 12 },
-  // Filled surfaces preserve the card/canvas hierarchy in both system appearances.
+  // Filled surfaces, not decorative outlines, preserve the card/canvas hierarchy.
   card: {
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 0,
     gap: 8,
     padding: 16,
   },
@@ -20,7 +20,7 @@ export const styles = StyleSheet.create({
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 0,
     gap: 8,
     padding: 14,
   },

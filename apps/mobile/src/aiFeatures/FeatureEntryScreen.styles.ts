@@ -38,7 +38,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
     borderRadius: 12,
     flexDirection: 'row',
     gap: 12,

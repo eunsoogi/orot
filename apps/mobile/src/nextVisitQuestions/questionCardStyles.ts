@@ -9,7 +9,7 @@ export function createQuestionCardStyles(theme: NextVisitQuestionsTheme) {
       gap: tokens.spacing.md,
       padding: tokens.spacing.md,
       borderRadius: tokens.radii.card,
-      borderWidth: 1,
+      borderWidth: 0,
       borderColor: colors.border,
       backgroundColor: colors.surface,
     },
