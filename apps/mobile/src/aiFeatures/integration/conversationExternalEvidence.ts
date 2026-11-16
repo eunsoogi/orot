@@ -34,6 +34,7 @@ export function conversationExternalEvidence(input: {
   return createSelectedExternalEvidence({
     selected,
     consent,
+    recoverUnavailable: true,
     restored: input.restored,
     literature: retainLiteratureResults(
       externalEvidence,

@@ -1,5 +1,8 @@
 import type { PublicWebSearch } from '@orot/model-runtime';
 
+/** Only this local deadline, not caller cancellation, permits a known lookup limitation. */
+export class PublicWebSearchTimeoutError extends Error {}
+
 /** Bound network work after disclosure; waiting for a person's consent has no deadline. */
 export async function boundedPublicWebRequest(
   search: PublicWebSearch,
@@ -12,21 +15,27 @@ export async function boundedPublicWebRequest(
   const stop = new Promise<never>((_, reject) => {
     rejectStop = reject;
   });
-  const abort = () => {
+  const abort = (error = new Error('Public web search stopped.')) => {
+    // Settle the deadline first: abort-responsive providers may reject synchronously.
+    rejectStop?.(error);
     controller.abort();
-    rejectStop?.(new Error('Public web search stopped.'));
   };
-  if (parentSignal.aborted) abort();
-  else parentSignal.addEventListener('abort', abort, { once: true });
+  const cancel = () => abort();
+  if (parentSignal.aborted) cancel();
+  else parentSignal.addEventListener('abort', cancel, { once: true });
   try {
     if (parentSignal.aborted) return await stop;
-    timeout = setTimeout(abort, 30_000);
+    timeout = setTimeout(
+      () =>
+        abort(new PublicWebSearchTimeoutError('Public web search timed out.')),
+      30_000,
+    );
     return await Promise.race([
       search({ query }, { signal: controller.signal }),
       stop,
     ]);
   } finally {
     if (timeout !== undefined) clearTimeout(timeout);
-    parentSignal.removeEventListener('abort', abort);
+    parentSignal.removeEventListener('abort', cancel);
   }
 }

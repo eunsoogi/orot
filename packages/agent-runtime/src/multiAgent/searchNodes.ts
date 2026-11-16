@@ -1,4 +1,5 @@
 import { availableEvidenceTools, requiresCompleteResearch } from './initialEvidenceSearch';
+import { unavailableSearchBatch } from './initialEvidenceSearch';
 import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coveragePolicy';
 import type { EvidenceBatch, EvidenceReference } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
@@ -103,6 +104,8 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       stop(context, 'The evidence result exceeded the payload limit.', 'budget_exceeded');
       return completeState();
     }
+    // A completed lookup can persist a known retrieval failure without claiming success.
+    const toolStatus = unavailableSearchBatch(batch) ? 'failed' : 'completed';
     const prior = referencesFromBatch(context.currentEvidence);
     const next = referencesFromBatch(batch);
     // The standard transport sorts object keys. Compare projected references canonically
@@ -159,7 +162,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       }
       // The full batch is already checked and remains in currentEvidence; the ToolMessage carries only its call identity and result.
       context.pendingNativeToolCallId = undefined;
-      finishToolEvent(context, 'completed', next);
+      finishToolEvent(context, toolStatus, next);
       context.currentEvidence = combined;
       return {
         phase: 'revised_response' as const,
@@ -168,7 +171,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       };
     }
     if (hasDuplicate || (next.length === 0 && requiresCompleteResearch(options, state))) {
-      finishToolEvent(context, 'completed', next);
+      finishToolEvent(context, toolStatus, next);
       context.outcome = {
         status: 'needs_clarification',
         reason: 'The search did not add new evidence at a newer source revision.',
@@ -183,7 +186,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     };
     if (!(await evidenceIsFresh(context, combined))) return completeState();
     context.currentEvidence = combined;
-    finishToolEvent(context, 'completed', next);
+    finishToolEvent(context, toolStatus, next);
     if (
       requiresCompleteResearch(options, state) &&
       hasBlockingCoverage(
