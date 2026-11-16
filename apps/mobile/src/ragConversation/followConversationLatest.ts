@@ -1,9 +1,11 @@
+import { conversationVisibleOffset } from './conversationVisibleOffset';
 import type React from 'react';
 import type { ScrollView } from 'react-native';
 
 /** Follow new transcript content only while the user has not taken scroll or reply-focus ownership. */
 export function followConversationLatest(input: {
   hasMessages: boolean;
+  bottomInset?: number;
   compact: boolean;
   focused: boolean;
   followsBottom: React.RefObject<boolean>;
@@ -19,6 +21,7 @@ export function followConversationLatest(input: {
 }) {
   const {
     hasMessages,
+    bottomInset = 0,
     compact,
     focused,
     followsBottom,
@@ -31,9 +34,10 @@ export function followConversationLatest(input: {
   if (!hasMessages || !followsBottom.current || focused) return;
   if (compact) {
     if (messageEnd.current !== null && viewportHeight.current > 0) {
-      expectedOffset.current = Math.max(
-        0,
-        messageEnd.current - viewportHeight.current,
+      expectedOffset.current = conversationVisibleOffset(
+        messageEnd.current,
+        viewportHeight.current,
+        bottomInset,
       );
       historyView.current?.scrollTo({
         y: expectedOffset.current,
