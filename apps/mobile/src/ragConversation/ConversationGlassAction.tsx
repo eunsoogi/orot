@@ -1,3 +1,4 @@
+import { conversationBoundary } from './conversationFinalizationDiagnostics';
 import {
   Platform,
   Pressable,
@@ -38,6 +39,10 @@ export function ConversationGlassAction({
   onPress: () => void;
 }) {
   const testID = busy ? 'rag-conversation-cancel' : 'rag-conversation-send';
+  const press = () => {
+    if (busy && !disabled) conversationBoundary('stop_js', 'started');
+    onPress();
+  };
   return NativeGlassAction ? (
     <NativeGlassAction
       busy={busy}
@@ -46,7 +51,7 @@ export function ConversationGlassAction({
       actionTestID={testID}
       // Only UIKit's 44pt UIButton is an accessibility action; this host spans the input material too.
       accessible={false}
-      onComposerPress={onPress}
+      onComposerPress={press}
       style={StyleSheet.absoluteFill}
       testID={testID}
     />
@@ -57,7 +62,7 @@ export function ConversationGlassAction({
         accessibilityLabel={label}
         accessibilityState={{ busy, disabled }}
         disabled={disabled}
-        onPress={onPress}
+        onPress={press}
         style={[
           styles.send,
           webStyles.sendPosition,

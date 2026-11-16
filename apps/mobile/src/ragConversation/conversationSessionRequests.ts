@@ -1,3 +1,5 @@
+import { stopSettlement } from './conversationStopSettlement';
+import { conversationFinalization as finalize } from './conversationFinalizationDiagnostics';
 import { hasUncommittedTurn } from './hasUncommittedTurn';
 import { createConversationSteeringOwner } from './conversationSteeringOwner';
 import { createConversationColdRequest } from './conversationColdRequest';
@@ -23,7 +25,7 @@ import { ownsOutcome } from './conversationOutcomeOwnership';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import { createConversationRequestLifetime } from './conversationRequestLifetime';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
-import { startConversationRetainedRequest } from './conversationPhotoRequestStart';
+import { startConversationRetainedRequest as startRetainedRequest } from './conversationPhotoRequestStart';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
 import {
   createConversationRequestPreview,
@@ -48,7 +50,7 @@ export function createConversationSessionRequests(
   conversationScope: (id: number) => string,
   retention?: ConversationSessionOptions['retention'],
   execution?: ConversationExecutionAdapter,
-  photo?: Parameters<typeof startConversationRetainedRequest>[0]['photo'],
+  photo?: Parameters<typeof startRetainedRequest>[0]['photo'],
   cold?: ConversationSessionOptions['coldResume'],
 ) {
   const steering = createConversationSteeringOwner(find, update);
@@ -121,16 +123,14 @@ export function createConversationSessionRequests(
         ReturnType<typeof createConversationTurnRetention> | undefined;
       let preview:
         ReturnType<typeof createConversationRequestPreview> | undefined;
-      let photoInput: Awaited<
-        ReturnType<typeof startConversationRetainedRequest>
-      >;
+      let photoInput: Awaited<ReturnType<typeof startRetainedRequest>>;
       try {
         retained = retention
           ? await retention.beginTurn(id, controller.signal)
           : undefined;
         if (!current()) return;
         if (retained || hasPhoto)
-          photoInput = await startConversationRetainedRequest({
+          photoInput = await startRetainedRequest({
             id,
             question,
             controller,
@@ -214,16 +214,15 @@ export function createConversationSessionRequests(
           fail(copy.unavailable, getRagConversationFailureCopy('unavailable'));
       } finally {
         steering.finish(id, current, !request.committed);
-        await photoInput?.settleUnsent?.().catch(() => {});
-        activity?.finish(lifetime.failureStatus(controller));
-        await preview?.flush();
-        await activity?.flush();
+        await finalize.presentation({ photoInput, preview, activity }, () =>
+          lifetime.failureStatus(controller),
+        );
         if (request.committed && find(id)?.error === copy.previewSaveFailed)
           update(id, { error: '' });
         if (hasUncommittedTurn(retained, request, controller.signal))
           lifetime.interrupt(id, 'interrupted');
         const stopStatus = lifetime.status(id, controller);
-        await lifetime.settle(id, controller);
+        await finalize.lifetime(lifetime, id, controller);
         if (activities.get(id) === activity) activities.delete(id);
         if (controllers.get(id) === controller) {
           if (
@@ -239,6 +238,7 @@ export function createConversationSessionRequests(
           snapshot.settle();
           if (snapshots.get(id) === snapshot) snapshots.delete(id);
           update(id, { busy: false, requestActivity: null });
+          stopSettlement.finish(controller);
         }
       }
     },

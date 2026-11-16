@@ -1,6 +1,16 @@
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
 export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report' | 'storage';
 export type Stage =
+  | 'stop_native'
+  | 'stop_js'
+  | 'stop_abort'
+  | 'stop_settlement'
+  | 'conversation_photo_flush'
+  | 'conversation_preview_flush'
+  | 'conversation_activity_flush'
+  | 'conversation_stop_fence'
+  | 'conversation_lifetime_settle'
+  | 'conversation_save'
   | 'database_transaction'
   | 'database_transaction_wait'
   | 'sql_schema'
