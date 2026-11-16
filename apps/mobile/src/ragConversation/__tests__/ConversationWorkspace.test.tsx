@@ -137,6 +137,11 @@ test('reflows activity and identity without remounting transcript or losing erro
   await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
     nativeEvent: { layout: { width: 390 } },
   });
+  expect(screen.getByTestId('assistant-floating-overlay')).toHaveStyle({
+    width: 390,
+    left: 0,
+    alignItems: 'center',
+  });
   expect(screen.getByTestId('rag-conversation-history')).toBe(history);
   expect(screen.queryByTestId('conversation-activity-pane')).toBeNull();
   expect(within(history).getByText('작성 중 텍스트')).toBeTruthy();
