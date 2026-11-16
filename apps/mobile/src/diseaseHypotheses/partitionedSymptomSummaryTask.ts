@@ -22,7 +22,7 @@ export const partitionedSymptomSummaryTask: TaskResponderContract<DiseaseHypothe
   {
     ...symptomSummaryTask,
     // Version the Apple selection contract separately from cloud-provider prose.
-    taskVersion: '6',
+    taskVersion: '7',
     createMessages(input) {
       const messages = symptomSummaryTask.createMessages(input);
       // Research turns need a tool decision, not duplicated facts for final prose generation.

@@ -1,3 +1,4 @@
+import { summaryCommunicationCorrection } from './summaryCommunication';
 import { SUMMARY_UNCERTAINTY_REASON } from './summaryUncertainty';
 import { summaryPresentationCorrection } from './summaryPresentation';
 import { summaryLanguageCorrection } from './summaryLanguage';
@@ -8,6 +9,8 @@ import { summaryFactCorrection } from './summaryFactValidation';
 export function summaryCorrection(reason: string): string | undefined {
   if (reason === SUMMARY_UNCERTAINTY_REASON)
     return 'Return uncertaintyNotes as an array of actual limitations written in Korean, or an empty array when none applies. Do not return the old scalar uncertainty field or untranslated placeholders. Keep valid facts and citation IDs unchanged. Do not request new sources.';
+  const communicationCorrection = summaryCommunicationCorrection(reason);
+  if (communicationCorrection) return communicationCorrection;
   const presentationCorrection = summaryPresentationCorrection(reason);
   if (presentationCorrection) return presentationCorrection;
   const languageCorrection = summaryLanguageCorrection(reason);
