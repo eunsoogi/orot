@@ -16,8 +16,8 @@ function layout(payload: NavigationGeometryPayload) {
 }
 
 test.each([
-  [openGeometry, 84, 867, 136, 143 / 6],
-  [rotatedGeometry, 72, 597, 94, 12],
+  [openGeometry, 84, 867, 128, 143 / 6],
+  [rotatedGeometry, 72, 597, 86, 12],
 ] as const)(
   'allocates content and a rail inside continuous measured Open space',
   (payload, reservedRightWidth, contentWidth, railTopInset, railRightInset) => {
@@ -29,7 +29,7 @@ test.each([
       contentWidth,
       windowHeight: payload.windowBounds.height,
       railTopInset,
-      railBottomInset: 46,
+      railBottomInset: 38,
       railRightInset,
       systemBottomInset: 34,
     });
@@ -83,7 +83,7 @@ test('keeps the rail below actual active occlusion in a continuous region', () =
         },
       ],
     }),
-  ).toEqual(expect.objectContaining({ placement: 'right', railTopInset: 192 }));
+  ).toEqual(expect.objectContaining({ placement: 'right', railTopInset: 184 }));
 });
 
 test.each([
@@ -114,7 +114,7 @@ test('places the rail outside the right content safe edge with a real indicator 
   expect(railRight).toBeCloseTo(927 + 1 / 6);
   expect(railRight - 48).toBeCloseTo(879 + 1 / 6);
   expect(result.contentWidth).toBe(867);
-  expect(result.railTopInset).toBe(124 + 12);
+  expect(result.railTopInset).toBe(124 + 4);
 });
 
 test('redistributes only the observed lane spacing while preserving the 48pt rail', () => {
@@ -164,7 +164,7 @@ test('uses expanded reserved frames without applying their included margins agai
   ).toEqual(
     expect.objectContaining({
       placement: 'right',
-      railTopInset: 192,
+      railTopInset: 184,
       railRightInset: 143 / 6,
       contentWidth: 867,
     }),
@@ -200,7 +200,7 @@ test('does not reserve the rail again inside an already contracted content viewp
       reservedRightWidth: 0,
       systemBottomInset: 0,
       railRightInset: 18,
-      railTopInset: 136,
+      railTopInset: 128,
     }),
   );
 });

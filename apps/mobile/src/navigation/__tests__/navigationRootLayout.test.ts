@@ -45,8 +45,8 @@ test('uses the right rail only when live panels can support content and controls
     reservedRightWidth: 72,
     contentWidth: 928,
     windowHeight: 900,
-    railTopInset: 92,
-    railBottomInset: 42,
+    railTopInset: 84,
+    railBottomInset: 34,
     railRightInset: 12,
     systemBottomInset: 30,
   });
@@ -111,7 +111,7 @@ test('moves the upper action below the current usable-region boundary', () => {
     ],
   });
   const layout: NavigationRootLayout = resolveNavigationRootLayout(expanded);
-  expect(layout).toEqual(expect.objectContaining({ railTopInset: 132 }));
+  expect(layout).toEqual(expect.objectContaining({ railTopInset: 124 }));
 });
 
 test('keeps bottom navigation when the full rail cannot fit below reserved regions', () => {

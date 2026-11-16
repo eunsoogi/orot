@@ -32,7 +32,7 @@ test('keeps the folded Duo rail below the actual system indicator without a divi
     expect.objectContaining({
       placement: 'right',
       contentWidth: 382,
-      railTopInset: 186,
+      railTopInset: 178,
       railRightInset: 143 / 6,
     }),
   );
