@@ -1,6 +1,15 @@
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
 export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report' | 'storage';
 export type Stage =
+  | 'database_transaction'
+  | 'database_transaction_wait'
+  | 'sql_schema'
+  | 'sql_generation'
+  | 'sql_aggregate'
+  | 'sql_vector'
+  | 'sql_health_records'
+  | 'sql_artifact'
+  | 'sql_other'
   | 'transaction_healthkit'
   | 'transaction_memory'
   | 'selection'

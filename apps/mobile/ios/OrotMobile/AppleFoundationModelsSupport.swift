@@ -131,10 +131,17 @@ final class OrotProviderDiagnostics: NSObject {
         false
     }
 
+    /// Export only opt-in state so normal launches do not wrap database operations.
+    @objc func constantsToExport() -> [AnyHashable: Any] {
+        ["enabled": ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")]
+    }
+
     @objc func report(_ feature: String, stage: String, outcome: String) {
         guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
               ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
-              ["transaction_healthkit", "transaction_memory", "selection", "data", "workflow", "provider_error", "validation", "persistence",
+              ["database_transaction", "database_transaction_wait", "sql_schema", "sql_generation",
+               "sql_aggregate", "sql_vector", "sql_health_records", "sql_artifact", "sql_other",
+               "transaction_healthkit", "transaction_memory", "selection", "data", "workflow", "provider_error", "validation", "persistence",
                "consent_wait", "provider_wait", "evidence_check", "public_search",
                "evidence_appointment", "evidence_period", "evidence_records",
                "evidence_memory", "evidence_presentation"].contains(stage),
