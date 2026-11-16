@@ -91,9 +91,14 @@ it('resolves Apple or ChatGPT against only the independent saved selection', asy
   await expect(resolveCalendarModel()).resolves.toEqual({
     status: 'unavailable',
   });
-  expect(resolveSelectedAiProvider).toHaveBeenCalledWith({
-    selectionStore: calendarModelStore,
+  expect(store.load).toHaveBeenCalledTimes(1);
+  const snapshot = jest.mocked(resolveSelectedAiProvider).mock.calls[0][0]
+    ?.selectionStore;
+  await expect(snapshot?.load()).resolves.toEqual({
+    providerId: apple.provider.id,
+    modelId: apple.modelId,
   });
+  expect(store.load).toHaveBeenCalledTimes(1);
 });
 it('requires confirmation and writes only the calendar selection', async () => {
   await render(

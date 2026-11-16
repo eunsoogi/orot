@@ -16,7 +16,15 @@ export async function resolveCalendarModel(
     const selection = await store.load();
     if (!selection) return { status: 'selection-required' };
     if (selection.providerId !== 'openai-api-decisions') {
-      return resolveSelectedAiProvider({ ...options, selectionStore: store });
+      // Resolve the exact inspected choice once; a second Keychain read could mix destinations.
+      return resolveSelectedAiProvider({
+        ...options,
+        selectionStore: {
+          load: async () => selection,
+          save: value => store.save(value),
+          clear: () => store.clear(),
+        },
+      });
     }
     const account = await voiceSettingsStore.accountStatus();
     if (!account.connected || selection.modelId !== 'gpt-6-luna') {
