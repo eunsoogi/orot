@@ -45,7 +45,6 @@ Duo의 펼친 내부 화면은 아래 한눈에 갤러리에서 볼 수 있습�
 | ![일반 iPhone의 합성 데이터 한눈에 화면](docs/assets/showcase/iphone-overview.png) | ![iPhone Duo의 합성 데이터 한눈에 화면](docs/assets/showcase/duo-overview.png) |
 
 
-이미지는 2026-11-15 소스의 시뮬레이터에서 촬영한 **공개용 합성 데이터** 화면입니다. 개인 건강정보를 사용하지 않습니다. [촬영 기준과 원본](docs/assets/screenshot-provenance.md)
 
 ## 기록에서 대화까지
 
@@ -100,9 +99,9 @@ flowchart LR
   records["건강 · 복약 · 운동 · 상담 · 일정"] --> local["기기 내 보호 저장"]
   local --> evidence["기능별 근거 선택"]
   evidence --> rag["로컬 RAG"]
-  rag --> graph["LangGraph + LangChain 도구"]
-  graph --> ondevice["기기 내 모델"]
-  graph --> consent["전송 범위 동의"] --> remote["선택한 원격 모델"]
+  rag --> agentRuntime["LangGraph + LangChain 도구"]
+  agentRuntime --> ondevice["기기 내 모델"]
+  agentRuntime --> consent["전송 범위 동의"] --> remote["선택한 원격 모델"]
   ondevice --> answer["출처가 연결된 답변"]
   remote --> answer
 ```
