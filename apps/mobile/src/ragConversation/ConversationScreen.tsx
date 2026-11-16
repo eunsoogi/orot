@@ -231,9 +231,7 @@ export function ConversationScreen({
             }
             footer={
               <ConversationTasks.ConversationStoredTaskCards
-                onRestart={question => {
-                  void store.sendPrompt(id, question, onSend);
-                }}
+                onRestart={question => store.sendPrompt(id, question, onSend)}
                 store={store}
                 session={session}
                 onOpenSource={onOpenSource}
