@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import type {
   ConversationSession,
@@ -45,76 +44,104 @@ export function ConversationInterruptionRecovery({
     return null;
   return (
     <View style={styles.section} testID="conversation-interruption-recovery">
-      <AppText accessibilityRole="alert">
-        {t(
-          resumable
-            ? 'conversationInterruption.pausedNotice'
-            : checked
-              ? 'conversationInterruption.resumeUnavailable'
-              : 'conversationInterruption.checkNotice',
-        )}
-      </AppText>
-      {resumable ? (
-        <AppButton
-          title={t('conversationInterruption.resumeAction')}
-          variant="secondary"
-          size="compact"
-          style={styles.action}
-          onPress={() =>
-            store
-              .getSnapshot()
-              .sessions.find(value => value.id === session.id)
-              ?.continueWorkflow?.()
-          }
-        />
-      ) : store.refreshRecovery ? (
-        <AppButton
-          title={t(
-            checking
-              ? 'conversationInterruption.checking'
-              : 'conversationInterruption.checkAction',
+      {(resumable || checked) && (
+        <AppText accessibilityRole="alert">
+          {t(
+            resumable
+              ? 'conversationInterruption.pausedNotice'
+              : checked
+                ? 'conversationInterruption.resumeUnavailable'
+                : 'conversationInterruption.checkNotice',
           )}
-          disabled={checking}
-          variant="secondary"
-          size="compact"
-          style={styles.action}
-          onPress={async () => {
-            if (owner.current) return;
-            const controller = new AbortController();
-            owner.current = controller;
-            setChecking(true);
-            try {
-              await store.refreshRecovery?.(session.id, controller.signal);
-            } catch {
-              /* Protected reads can fail while locked; no request is dispatched. */
-            } finally {
-              if (!controller.signal.aborted) {
+        </AppText>
+      )}
+      <View style={styles.actions}>
+        {resumable ? (
+          <AppButton
+            title={t('conversationInterruption.resumeAction')}
+            variant="text"
+            size="compact"
+            style={styles.action}
+            onPress={() =>
+              store
+                .getSnapshot()
+                .sessions.find(value => value.id === session.id)
+                ?.continueWorkflow?.()
+            }
+          />
+        ) : store.refreshRecovery ? (
+          <AppButton
+            title={t(
+              checking
+                ? 'conversationInterruption.checking'
+                : 'conversationInterruption.checkAction',
+            )}
+            disabled={checking}
+            variant="text"
+            size="compact"
+            style={styles.action}
+            onPress={async () => {
+              if (owner.current) return;
+              const controller = new AbortController();
+              owner.current = controller;
+              setChecking(true);
+              // Protected checkpoint reads may stall; stop waiting without replaying any work.
+              let releaseWait = () => {};
+              const deadline = new Promise<void>(resolve => {
+                releaseWait = resolve;
+              });
+              const timeout = setTimeout(() => {
+                if (owner.current !== controller) return;
+                controller.abort();
+                owner.current = null;
                 setChecking(false);
                 setChecked(true);
+              }, 5000);
+              controller.signal.addEventListener(
+                'abort',
+                () => {
+                  clearTimeout(timeout);
+                  releaseWait();
+                },
+                { once: true },
+              );
+              try {
+                await Promise.race([
+                  store.refreshRecovery?.(session.id, controller.signal),
+                  deadline,
+                ]);
+              } catch {
+                /* Protected reads can fail while locked; no request is dispatched. */
+              } finally {
+                clearTimeout(timeout);
+                if (!controller.signal.aborted) {
+                  setChecking(false);
+                  setChecked(true);
+                }
+                if (owner.current === controller) owner.current = null;
               }
-              if (owner.current === controller) owner.current = null;
-            }
-          }}
-        />
-      ) : null}
-      {!resumable && (
-        <ConversationRestartAction
-          store={store}
-          session={session}
-          onRestart={onRestart}
-        />
-      )}
+            }}
+          />
+        ) : null}
+        {!resumable && (
+          <ConversationRestartAction
+            store={store}
+            session={session}
+            onRestart={onRestart}
+          />
+        )}
+      </View>
     </View>
   );
 }
 const styles = StyleSheet.create({
-  section: {
-    marginHorizontal: 24,
-    marginVertical: 8,
-    padding: 16,
+  // Inline answer actions share the transcript gutter, not another full-width card.
+  section: { marginHorizontal: 24, marginBottom: 8, gap: 4 },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    borderRadius: 16,
-    backgroundColor: appColors.surface,
+    alignItems: 'center',
   },
   action: { alignSelf: 'flex-start', maxWidth: '100%' },
 });

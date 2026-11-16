@@ -42,7 +42,7 @@ test('an uncertain interrupted request has no resend disguised as continuation',
   await render(
     <ConversationInterruptionRecovery store={f.store} session={f.get()} />,
   );
-  expect(screen.getByText(/저장된 진행 상황을 확인/)).toBeTruthy();
+  expect(screen.queryByText(/저장된 진행 상황을 확인/)).toBeNull();
   expect(screen.queryByText('질문 검토 후 이어하기')).toBeNull();
   expect(screen.queryByText('작업 이어하기')).toBeNull();
   expect(f.store.setDraft).not.toHaveBeenCalled();
@@ -98,13 +98,40 @@ test('recovery keeps horizontal space and inspects only after an explicit tap', 
   );
   expect(screen.getByTestId('conversation-interruption-recovery')).toHaveStyle({
     marginHorizontal: 24,
-    padding: 16,
+    marginBottom: 8,
   });
   expect(refreshRecovery).not.toHaveBeenCalled();
-  await fireEvent.press(screen.getByText('저장된 진행 확인'));
+  await fireEvent.press(screen.getByText('이어갈 수 있는지 확인'));
   expect(refreshRecovery).toHaveBeenCalledWith(1, expect.any(AbortSignal));
-  expect(
-    screen.getByText(/지금 이어갈 수 있는 저장 지점이 없어요/),
-  ).toBeTruthy();
+  expect(screen.getByText(/이어갈 지점을 확인하지 못했어요/)).toBeTruthy();
   expect(f.store.setDraft).not.toHaveBeenCalled();
+});
+
+test('a stalled checkpoint inspection times out and allows another explicit attempt', async () => {
+  jest.useFakeTimers();
+  const f = fixture();
+  let signal: AbortSignal | undefined;
+  const refreshRecovery = jest.fn((_id: number, value: AbortSignal) => {
+    signal = value;
+    return new Promise<boolean>(() => {});
+  });
+  const view = await render(
+    <ConversationInterruptionRecovery
+      store={{ ...f.store, refreshRecovery }}
+      session={f.get()}
+    />,
+  );
+  const press = fireEvent.press(screen.getByText('이어갈 수 있는지 확인'));
+  await jest.advanceTimersByTimeAsync(5000);
+  await press;
+  expect(signal?.aborted).toBe(true);
+  expect(screen.getByText('이어갈 수 있는지 확인')).toBeTruthy();
+  expect(screen.queryByText('확인 중…')).toBeNull();
+  expect(screen.getByText(/이어갈 지점을 확인하지 못했어요/)).toBeTruthy();
+  expect(f.store.setDraft).not.toHaveBeenCalled();
+  refreshRecovery.mockResolvedValueOnce(false);
+  await fireEvent.press(screen.getByText('이어갈 수 있는지 확인'));
+  expect(refreshRecovery).toHaveBeenCalledTimes(2);
+  await view.unmount();
+  jest.useRealTimers();
 });

@@ -45,7 +45,7 @@ test('only a separate confirmation starts a new request and discloses cost and d
       onRestart={restart}
     />,
   );
-  await fireEvent.press(screen.getByText('새 요청으로 다시 시작'));
+  await fireEvent.press(screen.getByText('다시 요청'));
   expect(restart).not.toHaveBeenCalled();
   expect(alert.mock.calls[0]?.[1]).toMatch(/추가 API 비용/);
   expect(alert.mock.calls[0]?.[1]).toMatch(/중복/);
@@ -63,7 +63,7 @@ test('a stale confirmation cannot start work after a newer request', async () =>
       onRestart={restart}
     />,
   );
-  await fireEvent.press(screen.getByText('새 요청으로 다시 시작'));
+  await fireEvent.press(screen.getByText('다시 요청'));
   f.set({ ...f.get(), busy: true });
   alert.mock.calls[0]?.[2]?.[1]?.onPress?.();
   expect(restart).not.toHaveBeenCalled();
@@ -85,6 +85,6 @@ test('photo consent is not reused by the restart button', async () => {
       onRestart={restart}
     />,
   );
-  expect(screen.queryByText('새 요청으로 다시 시작')).toBeNull();
+  expect(screen.queryByText('다시 요청')).toBeNull();
   expect(screen.getByText(/사진을 다시 첨부/)).toBeTruthy();
 });
