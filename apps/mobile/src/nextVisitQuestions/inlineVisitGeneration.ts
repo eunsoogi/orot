@@ -79,6 +79,7 @@ export async function generateInlineVisitReview<
     outcome.questions,
     outcome.caveats,
     input.createId,
+    outcome.caveats,
   );
   // Each generation owns a new message; existing reviews remain untouched.
   return {

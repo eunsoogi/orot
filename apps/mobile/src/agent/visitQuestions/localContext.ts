@@ -1,3 +1,4 @@
+import type { VisitQuestionCaveat } from '@orot/domain';
 import type {
   AgentMemoryService,
   AgentMemoryStoreView,
@@ -96,12 +97,16 @@ export async function prepareUpcomingVisitQuestionContext(input: {
     saveReviewedQuestions(
       questions: readonly VisitQuestionCandidate[],
       expectedSavedQuestions: readonly SavedQuestionRevision[],
+      generationCaveats?: readonly VisitQuestionCaveat[],
+      generationQuestionIds?: readonly string[],
     ) {
       return saveReviewedVisitQuestions({
         appointmentId: prepared.appointment.id,
         expectedAppointmentRevision: prepared.appointmentRevision,
         questions,
         expectedSavedQuestions,
+        generationCaveats,
+        generationQuestionIds,
         evidence: prepared.evidence,
         repository,
         memory,
@@ -149,8 +154,15 @@ export async function generateUpcomingVisitQuestionRecommendations(input: {
     saveReviewedQuestions(
       questions: readonly VisitQuestionCandidate[],
       expectedSavedQuestions: readonly SavedQuestionRevision[],
+      generationCaveats?: readonly VisitQuestionCaveat[],
+      generationQuestionIds?: readonly string[],
     ) {
-      return prepared.saveReviewedQuestions(questions, expectedSavedQuestions);
+      return prepared.saveReviewedQuestions(
+        questions,
+        expectedSavedQuestions,
+        generationCaveats,
+        generationQuestionIds,
+      );
     },
   };
 }

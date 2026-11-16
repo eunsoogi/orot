@@ -146,21 +146,13 @@ export type SavedQuestionsState<TReference extends NextVisitEvidenceReference> =
       readonly failureReason?: SavedQuestionReadFailureReason;
     };
 
-export type EvidenceCaveat =
-  | 'incomplete_coverage'
-  | 'truncated_results'
-  | 'conflicting_records'
-  | 'insufficient_evidence'
-  | 'reviewed_memory_unavailable'
-  | 'no_matching_reviewed_memory'
-  | 'public_search_not_retained'
-  | 'public_search_consent_required'
-  | 'public_search_empty'
-  | 'public_search_offline'
-  | 'public_search_failed'
-  | 'public_search_not_configured'
-  | 'public_search_unsupported'
-  | 'public_search_unavailable';
+export type EvidenceCaveat = import('@orot/domain').VisitQuestionCaveat;
+
+/** A live generation owns these candidate IDs and caveats; history cannot synthesize them. */
+export interface VisitQuestionGenerationMetadata {
+  readonly questionIds: readonly string[];
+  readonly caveats: readonly EvidenceCaveat[];
+}
 
 export type QuestionGenerationPhase =
   'idle' | 'generating' | 'reviewing' | 'saving' | 'saved' | 'error';
@@ -220,7 +212,7 @@ export interface NextVisitQuestionsScreenProps<
     signal: AbortSignal,
     observer?: AiWorkflowObserver,
   ) => Promise<GenerationOutcome<TReference>>;
-  /** The adapter must retain these warnings beside questions because question records do not store them. */
+  /** Display caveats remain separate from verified live-generation provenance persisted on new questions. */
   readonly onSaveReviewedQuestions: (
     appointment: Appointment,
     questions: readonly NextVisitQuestion<TReference>[],
@@ -229,6 +221,7 @@ export interface NextVisitQuestionsScreenProps<
       readonly id: string;
       readonly revision: string;
     }[],
+    generationMetadata?: VisitQuestionGenerationMetadata,
   ) => Promise<SaveReviewedQuestionsResult<TReference>>;
   readonly onOpenSource?: (reference: TReference) => void;
   /** Publishes committed draft state so the route can guard back navigation. */
