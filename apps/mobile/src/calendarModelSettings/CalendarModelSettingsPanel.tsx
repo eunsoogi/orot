@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
+import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
 import { ApiCatalogAccount } from '../providers/selection/ApiCatalogAccount';
 import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
 import { t } from '../i18n';
@@ -164,7 +165,6 @@ export function CalendarModelSettingsPanel({
   }
   return (
     <View testID="calendar-model-settings">
-      <Text>{t('modelSettings.calendarPurpose')}</Text>
       <ProviderSelectionChoices
         options={options}
         chatGPTSetup={chatGPTSetup}
@@ -227,7 +227,13 @@ export function CalendarModelSettingsPanel({
           onCancel={() => setPending(null)}
         />
       ) : (
-        <Text>{saved?.modelId ?? t('modelSettings.calendarUnselected')}</Text>
+        <View style={styles.section}>
+          <ModelSelectionSummary
+            label={saved ? t('modelSettings.currentSelection') : undefined}
+            value={saved?.modelId ?? t('modelSettings.calendarUnselected')}
+            testID="calendar-current-model"
+          />
+        </View>
       )}
     </View>
   );
