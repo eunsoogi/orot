@@ -18,7 +18,7 @@ final class CalendarDecisionsTransport: NSObject {
               rejecter reject: @escaping RCTPromiseRejectBlock)
     {
         lock.lock()
-        guard !closed, UUID(uuidString: requestId) != nil, requests[requestId] == nil,
+        guard !closed, requestId.range(of: #"^calendar-decisions-[0-9]{10,16}-[1-9][0-9]{0,12}$"#, options: .regularExpression) != nil, requests[requestId] == nil,
               requests.count < 4, !cancelled.contains(requestId)
         else {
             lock.unlock()
@@ -44,7 +44,7 @@ final class CalendarDecisionsTransport: NSObject {
 
     @objc(cancel:)
     func cancel(_ requestId: String) {
-        guard UUID(uuidString: requestId) != nil else { return }
+        guard requestId.range(of: #"^calendar-decisions-[0-9]{10,16}-[1-9][0-9]{0,12}$"#, options: .regularExpression) != nil else { return }
         lock.lock()
         let request = requests[requestId]
         // Never evict pre-registration cancellations and accidentally permit a delayed sensitive POST.
