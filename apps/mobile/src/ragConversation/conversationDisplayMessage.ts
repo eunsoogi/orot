@@ -14,7 +14,7 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly sourceOwner?: import('../aiFeatures/integration/coldConversationSourceResolvers').ColdConversationSourceOwner;
   readonly citations?: readonly EvidenceReference[];
   readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
-  /** Ephemeral early reply, separate from validated answers and durable history. */
+  /** Reviewed early reply, separate from validated answer text and provider history. */
   readonly initialResponse?: {
     readonly callId: string;
     readonly text: string;

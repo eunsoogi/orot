@@ -41,6 +41,7 @@ export function retainPartial(
     pendingMessage: null,
     messages:
       content ||
+      session.pendingMessage?.initialResponse ||
       retainEmpty ||
       session.pendingMessage?.previousOutputs?.length ||
       session.pendingMessage?.toolEvents?.length
@@ -50,6 +51,9 @@ export function retainPartial(
               id: session.pendingMessage?.id ?? nextId(),
               role: 'assistant',
               content,
+              initialResponse: session.pendingMessage?.withholdHealthBody
+                ? undefined
+                : session.pendingMessage?.initialResponse,
               previousOutputs: session.pendingMessage?.withholdHealthBody
                 ? undefined
                 : session.pendingMessage?.previousOutputs,

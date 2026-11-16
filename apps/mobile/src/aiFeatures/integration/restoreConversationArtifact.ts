@@ -160,6 +160,9 @@ export async function restoreConversationArtifact(input: {
     question: saved.question,
     ...(saved.submittedInput ? { submittedInput: saved.submittedInput } : {}),
     answer: saved.answer,
+    ...(saved.initialResponse
+      ? { initialResponse: saved.initialResponse }
+      : {}),
     ...(saved.healthSummary ? { healthSummary: saved.healthSummary } : {}),
     ...(saved.visitQuestions
       ? {

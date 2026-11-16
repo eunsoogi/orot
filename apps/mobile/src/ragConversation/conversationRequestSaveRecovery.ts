@@ -27,6 +27,10 @@ export function createConversationRequestSaveRecovery(
     });
   };
   return {
+    discardOpenings(id: number) {
+      // Includes deferred/failed saves after the visible request has already settled.
+      for (const turn of observed.get(id) ?? []) turn.discardOpening();
+    },
     observer(
       id: number,
       turn: Turn,

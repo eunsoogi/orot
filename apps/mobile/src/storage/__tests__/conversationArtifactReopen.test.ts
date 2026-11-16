@@ -27,6 +27,7 @@ test('reopen preserves completed output and an empty-corpus wipe fences late ses
       status: 'complete' as const,
       question: 'question',
       answer: 'answer',
+      initialResponse: { callId: 'opening', text: '질문에 맞춰 살펴볼게요.' },
       entryIntent: 'possibilities' as const,
       priorDialogue: [
         { question: 'earlier report', answer: 'follow-up question' },

@@ -21,6 +21,8 @@ export interface ConversationArtifact {
   readonly question: string;
   readonly submittedInput?: ConversationSubmittedInput;
   readonly answer: string;
+  /** Display metadata only; excluded from answer/evidence and provider history. */
+  readonly initialResponse?: { readonly callId: string; readonly text: string };
   readonly sources: readonly ConversationArtifactSource[];
   readonly citations?: readonly EvidenceReference[];
   readonly healthSummary?: HealthSummaryReference;
