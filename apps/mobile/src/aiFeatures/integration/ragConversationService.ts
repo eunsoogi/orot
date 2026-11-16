@@ -1,4 +1,4 @@
-import { startRagConversationOpening as start } from './contextualConversationOpening';
+import { startPreparedRagOpening as start } from './preparedOpeningConsent';
 import { conversationPublicSearchPlan as planSearch } from './conversationPublicSearchPlan';
 import { prepareLiveRagContinuation as continuationFor } from './liveRagConversationCapture';
 import { conversationMutationExecution } from './conversationMutationExecution';
@@ -118,7 +118,9 @@ export function createRagConversationService({
         observer,
         researchInputs,
       });
-      // Overlap local preparation, but finish the opening before any external tool dispatch.
+      // A failed local preflight must not flash an authorization prompt then dispose it.
+      opening.ready();
+      // Finish the reviewed opening before any external tool dispatch.
       await opening?.done;
       const { eager: publicSearch, ...searchPlan } = await planSearch({
         external,
