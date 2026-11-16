@@ -13,11 +13,17 @@ export const visitQuestionDisplayKo = {
   'visitRestore.clarificationsOnly':
     '의료진에게 확인할 질문으로 저장했어요. 생성 당시의 추가 경고는 복원되지 않았습니다.',
   'visitRestore.missingSpan':
-    '원문 근거 위치가 저장되지 않은 질문은 인용을 표시하지 않습니다. 원본 기록을 직접 확인해 주세요. 생성 당시의 추가 경고와 원본 버전도 보관되지 않았습니다.',
+    '원문 근거 위치가 저장되지 않은 질문은 인용을 표시하지 않습니다. 원본 기록을 직접 확인해 주세요.',
   'visitRestore.periodRestored':
     '기간별 건강 근거는 저장된 범위와 버전을 확인해 복원했어요. 생성 당시의 추가 경고는 보관되지 않았으니 근거를 다시 확인해 주세요.',
   'visitRestore.missingVersions':
     '이전에 저장한 질문에는 생성 당시의 추가 경고와 원본 버전 정보가 포함되지 않습니다. 표시된 원문 근거를 함께 확인해 주세요.',
+  'visitRestore.changedOriginal':
+    '생성 당시의 경고는 보관되어 있지만 일부 원문 근거의 버전이 바뀌었습니다. 현재 원문을 다시 확인해 주세요.',
+  'visitRestore.generationClarificationRestored':
+    '의료진에게 확인할 질문과 생성 당시의 추가 안내를 불러왔어요.',
+  'visitRestore.generationRestored':
+    '저장된 생성 경고와 원문 근거의 버전 정보를 확인했어요.',
   'visitRestore.savedScope': '이전에 저장한 질문 안내: {notice}',
   'visitRestore.webNotSaved':
     '{notice} 공개 웹검색 결과와 출처는 저장되지 않았어요.',

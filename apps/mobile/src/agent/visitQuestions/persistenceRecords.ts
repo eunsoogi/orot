@@ -25,6 +25,7 @@ export function createReviewedVisitQuestionRecord(input: {
   readonly now: string;
   readonly metadataByCitation: VisitQuestionEvidenceCollection['metadataByCitation'];
   readonly legacyRecord?: VisitQuestion;
+  readonly generation?: VisitQuestion['generation'];
 }): VisitQuestionCreate {
   const sourceRecordIds = uniqueValues([
     input.appointmentId,
@@ -84,6 +85,7 @@ export function createReviewedVisitQuestionRecord(input: {
       reviewerId: 'local-user',
       reviewedAt: input.now,
     },
+    ...(input.generation ? { generation: input.generation } : {}),
     questionText: input.question.questionText.trim(),
     rationale: input.question.rationale.trim(),
     priority: input.question.priority,

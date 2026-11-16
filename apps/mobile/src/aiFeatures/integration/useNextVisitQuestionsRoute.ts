@@ -207,6 +207,7 @@ export function useNextVisitQuestionsRoute(
         readonly id: string;
         readonly revision: string;
       }[],
+      generationMetadata?: import('../../nextVisitQuestions/types').VisitQuestionGenerationMetadata,
     ): Promise<SaveReviewedQuestionsResult<VisitQuestionEvidenceItem>> => {
       setSaveNotice('');
       try {
@@ -215,6 +216,7 @@ export function useNextVisitQuestionsRoute(
           questions,
           caveats,
           expectedSavedQuestions,
+          generationMetadata,
           resolveSource,
           validateGeneratedArtifact: captureValidator() ?? undefined,
         });

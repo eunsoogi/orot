@@ -81,12 +81,25 @@ export function useQuestionPersistence<
     setPhase('saving');
     setSaveMessage(null);
     try {
-      const result = await onSaveReviewedQuestions(
+      const args = [
         appointment.appointment,
         copyQuestions(draftQuestions),
         [...caveats],
         savedBaseline.current,
+      ] as const;
+      const questionIds = draftQuestions.flatMap(question =>
+        question.identity &&
+        !savedBaseline.current!.some(row => row.id === question.identity!.id)
+          ? [question.identity.id]
+          : [],
       );
+      // Editing persisted questions cannot recertify their old caveats as a new generation.
+      const result = questionIds.length
+        ? await onSaveReviewedQuestions(...args, {
+            questionIds,
+            caveats: [...caveats],
+          })
+        : await onSaveReviewedQuestions(...args);
       if (!isCurrentSave()) return;
       setSavedOverride({
         // Context keys include visit edits; persisted/displayed ownership still uses the stable ID.
