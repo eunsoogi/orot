@@ -9,7 +9,10 @@ import { navigationText } from '../../i18n/navigation';
 import ChatGPTAccountSetupCard from './ChatGPTAccountSetupCard';
 import { ProviderSelectionChoices } from './ProviderSelectionChoices';
 import { ProviderSelectionFooter } from './ProviderSelectionFooter';
-import { providerSelectionScreenStyles as styles } from './providerSelectionScreenPresentation';
+import {
+  providerSelectionScreenStyles as styles,
+  selectionSummaryMessage,
+} from './providerSelectionScreenPresentation';
 import { resolveProviderSelection } from './providerSelection';
 import { providerSelectionText } from './text';
 import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
@@ -152,23 +155,14 @@ export default function ProviderSelectionScreen({
       setSaving(false);
     }
   }
-
-  // Settings shows saved identity, not a catalog-derived warning before refresh.
-  // Feature flows still require an available selection and keep their recovery message.
-  const selectionMessage = loading
-    ? ''
-    : loadError
-      ? providerSelectionText.storageLoadError
-      : resolution.ok
-        ? `${providerSelectionText.selectedPrefix} ${selectedOption?.displayName ?? ''}`
-        : savedSelection
-          ? `${providerSelectionText.selectedPrefix} ${savedSelection.modelId}${
-              presentation === 'settings-provider'
-                ? ''
-                : `\n${providerSelectionText.unavailableSelection}`
-            }`
-          : providerSelectionText.selectPrompt;
-
+  const selectionMessage = selectionSummaryMessage({
+    loading,
+    loadError,
+    available: resolution.ok,
+    displayName: selectedOption?.displayName,
+    savedModelId: savedSelection?.modelId,
+    presentation,
+  });
   return (
     <View style={styles.root}>
       <ScrollView
