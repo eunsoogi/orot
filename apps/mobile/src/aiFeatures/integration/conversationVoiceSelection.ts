@@ -1,4 +1,4 @@
-import { conversationReceiptProvider } from './conversationReceiptProvider';
+import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { conversationBackgroundProvider } from './conversationBackgroundProvider';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { requireSelectedAi } from './provider';
@@ -22,15 +22,15 @@ export async function resolveConversationSelection(
   observer: RagConversationObserver | undefined,
   resolve: () => Promise<ReturnType<typeof requireSelectedAi>>,
 ) {
-  const selected = await withProviderStage('rag', 'selection', resolve);
+  const selected = conversationReceiptSelection(
+    await withProviderStage('rag', 'selection', resolve),
+    observer,
+  );
   return voiceSelectionMatches(observer, selected)
     ? {
         ...selected,
         provider: conversationBackgroundProvider(
-          conversationReceiptProvider(
-            selected.provider,
-            observer?.onProviderReceipt,
-          ),
+          selected.provider,
           selected.remoteProcessing,
           observer?.onExecutionState
             ? extend =>
