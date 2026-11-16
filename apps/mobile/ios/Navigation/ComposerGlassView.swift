@@ -119,10 +119,10 @@ final class ComposerGlassActionView: UIView {
         button.addAction(UIAction { [weak self] _ in
             guard let self else { return }
             // Record only a fixed native delivery boundary; no prompt, label or view identifier.
-            if self.busy, !self.disabled {
+            if busy, !disabled {
                 OrotProviderDiagnostics().report("rag", stage: "stop_native", outcome: "started")
             }
-            self.onComposerPress?([:])
+            onComposerPress?([:])
         }, for: .touchUpInside)
         update()
     }
