@@ -31,6 +31,7 @@ test('app restoration hydrates only recent ten turns then fetches older protecte
     }
     const registry = new LocalEvidenceReferenceRegistry();
     let hydrated = 0;
+    let deleteDuringRead = false;
     const data: AiFeatureLocalData = {
       ...localData([]).data,
       openConversationArtifactStorage: async () => storage,
@@ -47,6 +48,7 @@ test('app restoration hydrates only recent ten turns then fetches older protecte
             expect(request.ids?.length).toBeLessThanOrEqual(10);
             const page = await discovery.readSession(request);
             hydrated += page.items.length;
+            if (deleteDuringRead) await storage.deleteSession('saved');
             return page;
           },
         };
@@ -82,6 +84,15 @@ test('app restoration hydrates only recent ten turns then fetches older protecte
     expect(session().messages).toHaveLength(50);
     expect((await storage.list('saved')).items).toHaveLength(25);
     store.dispose();
+    const cancelled = new AbortController();
+    cancelled.abort();
+    await expect(
+      options.restoreSessionPage!('saved', cancelled.signal),
+    ).rejects.toThrow();
+    deleteDuringRead = true;
+    await expect(
+      options.restoreSessionPage!('saved', new AbortController().signal),
+    ).rejects.toThrow();
   } finally {
     connection.close();
   }

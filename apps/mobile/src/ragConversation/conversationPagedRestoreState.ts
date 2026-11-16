@@ -35,7 +35,20 @@ export function createConversationPagedRestoreState(input: {
   const load = (id: number, signal?: AbortSignal): Promise<void> => {
     const owner = owners.get(id);
     if (!owner || owner.exhausted || signal?.aborted) return Promise.resolve();
-    if (owner.flight) return owner.flight;
+    if (owner.flight) {
+      // A joining caller owns only its wait, not a page started by another reader.
+      // Stop releases that caller immediately while the original reader keeps its fences.
+      const flight = owner.flight;
+      if (!signal) return flight;
+      return new Promise<void>(resolve => {
+        const finish = () => {
+          signal.removeEventListener('abort', finish);
+          resolve();
+        };
+        signal.addEventListener('abort', finish, { once: true });
+        flight.then(finish, finish);
+      });
+    }
     const controller = new AbortController();
     owner.controller = controller;
     const current = () =>
@@ -169,8 +182,8 @@ export function createConversationPagedRestoreState(input: {
     retry: load,
     loadOlder: load,
     /** Fetch only as far as the existing bounded model-history contract requires. */
-    async prepareContext(id: number) {
-      while (owners.has(id)) {
+    async prepareContext(id: number, signal?: AbortSignal) {
+      while (owners.has(id) && !signal?.aborted) {
         const owner = owners.get(id)!;
         const session = input.find(id);
         if (!session || session.restoreFailed || session.historyLoadFailed)
@@ -185,11 +198,11 @@ export function createConversationPagedRestoreState(input: {
         )
           return true;
         const previous = owner.cursor;
-        await load(id);
-        if (owners.get(id) !== owner) return false;
+        await load(id, signal);
+        if (signal?.aborted || owners.get(id) !== owner) return false;
         if (owner.cursor === previous && !owner.exhausted) return false;
       }
-      return true;
+      return !signal?.aborted;
     },
     forget,
     dispose() {

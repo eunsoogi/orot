@@ -1,3 +1,4 @@
+import { useConversationHistoryTarget } from './useConversationHistoryTarget';
 import { useReducer, useRef, type ComponentRef, type RefObject } from 'react';
 import type { ScrollView } from 'react-native';
 import { AppButton } from '../layout/AppButton';
@@ -32,10 +33,11 @@ export function useConversationTranscriptWindow(input: {
   messages: readonly DisplayMessage[];
   sessionId?: number;
   focusId?: string;
+  focusGeneration?: number;
   hasMore?: boolean;
   loading?: boolean;
   failed?: boolean;
-  loadOlder?: () => Promise<void>;
+  loadOlder?: (signal?: AbortSignal) => Promise<void>;
   history: RefObject<ComponentRef<typeof ScrollView> | null>;
   followsBottom: RefObject<boolean>;
   expectedOffset: RefObject<number | null>;
@@ -76,6 +78,7 @@ export function useConversationTranscriptWindow(input: {
   const focused = input.focusId
     ? messages.findIndex(item => item.retainedTurnId === input.focusId)
     : -1;
+  useConversationHistoryTarget({ ...input, found: focused >= 0 });
   if (focused >= 0 && focused < start) {
     start = messages[focused - 1]?.role === 'user' ? focused - 1 : focused;
     current.firstId = messages[start]?.id;

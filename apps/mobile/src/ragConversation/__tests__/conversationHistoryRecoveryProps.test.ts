@@ -26,7 +26,7 @@ test('page and restore retry preserve the exact displayed session owner', async 
   });
   await props.onLoadOlderHistory();
   props.onRetryRestore();
-  expect(target.loadOlderHistory).toHaveBeenCalledWith(42);
+  expect(target.loadOlderHistory).toHaveBeenCalledWith(42, undefined);
   expect(target.retryRestore).toHaveBeenCalledWith(42);
   expect(target.synchronizeModel).not.toHaveBeenCalled();
 });

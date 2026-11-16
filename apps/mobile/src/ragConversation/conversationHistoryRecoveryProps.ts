@@ -15,7 +15,8 @@ export function conversationHistoryRecoveryProps(
     historyHasMore: session.historyHasMore,
     historyLoading: session.historyLoading,
     historyLoadFailed: session.historyLoadFailed,
-    onLoadOlderHistory: () => store.loadOlderHistory(session.id),
+    onLoadOlderHistory: (signal?: AbortSignal) =>
+      store.loadOlderHistory(session.id, signal),
     restoreFailed: session.restoreFailed || session.modelSelectionFailed,
     onRetryRestore: () => {
       if (session.modelSelectionFailed)

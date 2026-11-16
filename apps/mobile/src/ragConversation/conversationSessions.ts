@@ -21,18 +21,16 @@ import { createConversationSessionRemoval } from './conversationSessionRemoval';
 import { createConversationTasks } from './createConversationTasks';
 import { createConversationPhotoImport } from './conversationPhotoImport';
 import { createConversationPhotoConsentController } from './conversationPhotoConsentController';
-export type {
-  ConversationSender,
-  ConversationSession,
-  ConversationSessions,
-} from './conversationSessionTypes';
+export type ConversationSender = S.ConversationSender;
+export type ConversationSession = S.ConversationSession;
+export type ConversationSessions = S.ConversationSessions;
 /** The app owns session state across routes and may provide durable retention. */
 export function createConversationSessions(
   options: S.ConversationSessionOptions = {},
 ) {
   const { owner, empty } = createConversationSessionSeed();
   let bindSender = (sender: S.ConversationSender) => sender;
-  let beforeSend: ((id: number) => Promise<boolean>) | undefined;
+  let beforeSend: Parameters<typeof conversationDispatch>[0]['beforeSend'];
   let snapshot = initialConversationSnapshot(empty());
   const listeners = createConversationListeners();
   let disposed = false;
@@ -131,7 +129,9 @@ export function createConversationSessions(
   });
   const dispatch = conversationDispatch({
     bindSender: sender => bindSender(sender),
-    beforeSend: options.continuousSession ? id => beforeSend!(id) : undefined,
+    beforeSend: options.continuousSession
+      ? (id, signal) => beforeSend!(id, signal)
+      : undefined,
     requests,
     photoDrafts,
     retention: options.retention,
@@ -243,8 +243,8 @@ export function createConversationSessions(
     toolSourceSessionId: options.retention?.activeIdentity ?? (() => null),
   };
   const policy = continuousConversationPolicy(store, options, update);
-  beforeSend = async id =>
-    (await policy.prepareSend(id)) && restoration.prepareContext(id);
+  beforeSend = async (id, signal) =>
+    (await policy.prepareSend(id)) && restoration.prepareContext(id, signal);
   bindSender = policy.bindSender;
   return policy;
 }

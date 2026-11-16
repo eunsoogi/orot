@@ -142,7 +142,8 @@ export function createConversationSessionRestoreState(input: {
     invalidatePage: (_id: number) => {},
     retry: runWhileCurrent,
     loadOlder: async (_id: number, _signal?: AbortSignal) => {},
-    prepareContext: async (_id: number) => true,
+    prepareContext: async (_id: number, signal?: AbortSignal) =>
+      !signal?.aborted,
     forget,
     dispose() {
       for (const id of sessions.keys()) forget(id);
