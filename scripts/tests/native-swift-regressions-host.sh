@@ -50,3 +50,10 @@ let package = Package(
 SWIFT
 # Limit compiler processes, not the concurrency exercised inside each test.
 xcrun swift test --jobs 1 --package-path "$orot_host_root"
+
+# Exercise the shipping admission method with deterministic platform doubles.
+(cd "$repository_root" && node scripts/tests/extract-continued-work-host.mjs "$orot_host_root/ContinuedWork.swift")
+xcrun swiftc "$orot_host_root/ContinuedWork.swift" \
+  "$repository_root/scripts/tests/ConversationContinuedReadmissionHostRegression.swift" \
+  -o "$orot_host_root/continued-readmission"
+"$orot_host_root/continued-readmission"
