@@ -2,7 +2,7 @@ import type { JsonValue, LanguageModelMessage } from '@orot/model-runtime';
 import { hasUnsupportedDateOrValue } from './questionFacts';
 import { reportVisitQuestionValidation } from './validationDiagnostics';
 import { asQuestionObject } from './questionShape';
-import { clarificationQuestions } from './clarificationQuestions';
+import { clarificationQuestionsForEvidence } from './clarificationQuestions';
 import {
   appointmentDateFromContext,
   hasUnsafeClinicalAdvice,
@@ -178,7 +178,7 @@ export function createVisitQuestionTaskResponder() {
             `Available evidence: ${JSON.stringify(evidence)}`,
             `Record conflicts: ${JSON.stringify(input.evidence.conflicts)}`,
             `Search coverage and limits: ${JSON.stringify(input.evidence.coverage)}`,
-            `App-owned clarification questions: ${JSON.stringify(clarificationQuestions)}`,
+            `App-owned clarification questions: ${JSON.stringify(clarificationQuestionsForEvidence(input.evidence.conflicts.length > 0))}`,
           ].join('\n'),
         },
       ];

@@ -6,6 +6,22 @@ import { t } from '../../i18n';
  * The shipped Korean-only catalog must preserve these safety-boundary values verbatim. */
 export const clarificationQuestions = [
   {
+    questionText: t('nextVisit.clarification.careOptions.question'),
+    rationale: t('nextVisit.clarification.careOptions.rationale'),
+  },
+  {
+    questionText: t('nextVisit.clarification.symptomReview.question'),
+    rationale: t('nextVisit.clarification.symptomReview.rationale'),
+  },
+  {
+    questionText: t('nextVisit.clarification.testingPurpose.question'),
+    rationale: t('nextVisit.clarification.testingPurpose.rationale'),
+  },
+  {
+    questionText: t('nextVisit.clarification.carePlan.question'),
+    rationale: t('nextVisit.clarification.carePlan.rationale'),
+  },
+  {
     questionText: t('nextVisit.clarification.preparationRecords.question'),
     rationale: t('nextVisit.clarification.preparationRecords.rationale'),
   },
@@ -45,5 +61,19 @@ export function isKnownClarification(
 ): boolean {
   return clarificationQuestions.some(
     item => item.questionText === questionText && item.rationale === rationale,
+  );
+}
+
+/** A missing or partial search is not proof of a record discrepancy. Keep legacy
+ * pairs valid for saved drafts, but offer record reconciliation only for actual conflicts.
+ * Conditional clinical questions do not assert symptoms, diagnoses or treatment use. */
+export function clarificationQuestionsForEvidence(hasConflicts: boolean) {
+  return clarificationQuestions.filter(
+    item =>
+      item.questionText !==
+        t('nextVisit.clarification.unconfirmedResults.question') &&
+      (hasConflicts ||
+        item.questionText !==
+          t('nextVisit.clarification.conflictingRecords.question')),
   );
 }
