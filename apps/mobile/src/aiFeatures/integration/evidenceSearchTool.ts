@@ -1,3 +1,4 @@
+import type { EvidenceChunk } from '@orot/rag';
 import type {
   EvidenceBatch,
   EvidenceItem,
@@ -55,6 +56,10 @@ export function createLocalEvidenceSearchTool(input: {
   readonly registry?: LocalEvidenceReferenceRegistry;
   readonly allowHealthOverview?: boolean;
   readonly rag: Pick<LocalE5RagService, 'search'>;
+  readonly prepareChunks?: (
+    chunks: readonly EvidenceChunk[],
+    signal: AbortSignal,
+  ) => Promise<void>;
   readonly loadSnapshot?: (
     query: string,
     request: EvidenceSearchRequest,
@@ -124,6 +129,12 @@ export function createLocalEvidenceSearchTool(input: {
           } satisfies EvidenceBatch;
         }
 
+        // Index only the exact scoped candidates the search will rank, never unrelated snapshot text.
+        if (request.signal.aborted)
+          throw new Error('The local evidence request was cancelled.');
+        await input.prepareChunks?.(chunks, request.signal);
+        if (request.signal.aborted)
+          throw new Error('The local evidence request was cancelled.');
         // Candidate loading keeps the original query. Mixed ranking adds concept keys
         // beside it; measurement-only ranking can use those keys alone.
         const hits = await input.rag.search(
