@@ -12,13 +12,13 @@ export const savedMemoryStyles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: appColors.border,
   },
+  // List/detail navigation must not remove the existing filled section grouping.
   panel: {
     gap: 12,
     padding: 16,
     borderRadius: 18,
     backgroundColor: appColors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: appColors.border,
+    borderWidth: 0,
   },
   // Wrapping keeps shared 44pt controls and large text inside narrow layouts.
   header: {

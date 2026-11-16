@@ -33,7 +33,7 @@ export function SavedMemoryBrowser({
   }, [active, state, position]);
   // Retain the page bound while a native detail owns focus, so Back restores the same list position.
   return (
-    <View style={styles.section} testID="saved-memory-browser">
+    <View style={[styles.section, styles.panel]} testID="saved-memory-browser">
       <Text accessibilityRole="header" style={styles.title}>
         {t('savedMemory.title')}
       </Text>
