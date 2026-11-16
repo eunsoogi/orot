@@ -62,7 +62,7 @@ test('shows localized snapshot counts, states and report-timezone freshness', as
   ).toBeNull();
 });
 
-test('announces unknown sync and freshness separately without relying on color', async () => {
+test('shows absent sync metadata neutrally while keeping limitations available', async () => {
   const view = await render(
     <DailyReportCoverage
       coverage={[
@@ -79,10 +79,16 @@ test('announces unknown sync and freshness separately without relying on color',
 
   expect(
     view.getByLabelText(
-      '건강 측정. 자료 확인 상태 미확인. 불러온 원본 기록 1건. 동기화 상태 미확인. 자료 최신 시각 미확인',
+      '건강 측정. 저장된 기록 기준. 불러온 원본 기록 1건. 자료 최신 시각 미확인',
     ),
   ).toBeTruthy();
   expect(view.getByText('자료 최신 시각 미확인')).toBeTruthy();
+  expect(view.queryByText('동기화 완료')).toBeNull();
+  expect(view.queryByText('동기화 상태 미확인')).toBeNull();
+  await fireEvent.press(
+    view.getByRole('button', { name: '건강 측정: 제한과 확인 시각 보기' }),
+  );
+  expect(view.getByText('동기화 상태 미확인')).toBeTruthy();
 });
 
 test('keeps an unavailable snapshot count unknown instead of showing zero', async () => {
@@ -101,7 +107,7 @@ test('keeps an unavailable snapshot count unknown instead of showing zero', asyn
 
   expect(
     view.getByLabelText(
-      '건강 측정. 자료 확인 상태 미확인. 입력 기록 수 미확인. 동기화 상태 미확인. 자료 최신 시각 미확인',
+      '건강 측정. 저장된 기록 기준. 입력 기록 수 미확인. 자료 최신 시각 미확인',
     ),
   ).toBeTruthy();
   expect(view.queryByText('불러온 원본 기록 0건')).toBeNull();
