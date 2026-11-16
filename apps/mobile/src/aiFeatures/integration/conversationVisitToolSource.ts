@@ -16,6 +16,10 @@ export function createConversationVisitToolSource(
   ) => {
     if (registry.resolve(reference)) return reference;
     const identity = referenceOnly(reference);
+    // Generated parents have a durable ID/revision contract. The registry already
+    // aliases these for runtime events; rewriting the private original breaks retention.
+    if (identity.sourceKind === 'generated_artifact')
+      return register(reference, validate, identity);
     const token = operationRunId();
     const period = parseHealthContextScope(identity.locator);
     const durable = {
