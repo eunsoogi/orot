@@ -218,6 +218,12 @@ Calendar event stripes and the explicit next-visit badge remain; internal row di
 
 This inventory does not close the screen audit: medical document/review forms, Health Records category/detail cards, appointment editors, assistant-appearance selection, saved-memory detail work and inference-disclosure surfaces still need individual review. Do not treat a borderless root page as proof that every destination or accessibility mode has been validated.
 
+### Health record surface follow-up
+
+Health Records category summaries and saved observation or medication-dose rows use their existing filled backgrounds without redundant enclosing outlines. This applies only to non-interactive outer containers. Category detail/retry buttons, internal dividers, selection and filter outlines, editable controls, warning text, exact values, provenance and dose status remain unchanged.
+
+Synthetic 320pt simulator observation compared these four containers before and after in light and dark appearance. The maximum-text check covered the first category heading and detail action only; lower rows, actual gestures, VoiceOver, Increased Contrast and Reduce Transparency are not established by this focused observation. The check reused an existing React Native native host with the changed JavaScript, not a fresh full-app build or user records. Component regressions cover category navigation, saved values, unchanged dose status and error/retry behavior. This remains partial coverage of the wider destination audit.
+
 ### Filled review surfaces
 
 Border cleanup preserves every existing card and section background. Review cards for AI feature entries, daily coverage, disease summaries, transcripts, saved medical documents, visit questions and medication summaries use their existing filled surfaces without decorative enclosing outlines. Selection rings, editable input boundaries, photo controls, consent disclosures and internal dividers remain unchanged. The memory list keeps its filled section independently of list/detail navigation.
