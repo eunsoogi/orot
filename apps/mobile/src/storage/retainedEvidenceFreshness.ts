@@ -16,6 +16,8 @@ import { readResearchArtifact } from './researchArtifactCodec';
 import { assertSymptomPeriodAvailable } from './symptomSummaryQuarantine';
 import { requireNonPhotoSources } from '../ragConversation/conversationArtifactSources';
 
+import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
+
 interface Ancestry {
   readonly path: Set<string>;
   visited: number;
@@ -26,6 +28,7 @@ async function assertGeneratedSummaryCurrent(
   source: SavedGeneratedSummarySource,
   manualHistory: ManualHistoryRepository,
   ancestry: Ancestry,
+  validatePeriod?: ReadOnlyPeriodValidation,
 ) {
   const key = `summary:${source.id}`;
   if (
@@ -81,6 +84,7 @@ async function assertGeneratedSummaryCurrent(
       manualHistory,
       false,
       ancestry,
+      validatePeriod,
     );
   } finally {
     ancestry.path.delete(key);
@@ -92,6 +96,7 @@ async function assertGeneratedConversationCurrent(
   source: SavedGeneratedConversationSource,
   manualHistory: ManualHistoryRepository,
   ancestry: Ancestry,
+  validatePeriod?: ReadOnlyPeriodValidation,
 ) {
   const key = `conversation:${source.id}`;
   if (
@@ -133,6 +138,7 @@ async function assertGeneratedConversationCurrent(
       manualHistory,
       false,
       ancestry,
+      validatePeriod,
     );
   } finally {
     ancestry.path.delete(key);
@@ -146,15 +152,26 @@ export async function assertRetainedEvidenceCurrent(
   manualHistory: ManualHistoryRepository,
   requireGeneration = true,
   ancestry: Ancestry = { path: new Set(), visited: 0 },
+  validatePeriod?: ReadOnlyPeriodValidation,
 ) {
   for (const source of sources) {
     if (isPeriodSummarySource(source)) {
       await assertSymptomPeriodAvailable(tx, source);
-      await assertSummaryPeriodCurrent(tx, source, requireGeneration);
+      await (validatePeriod ?? assertSummaryPeriodCurrent)(
+        tx,
+        source,
+        requireGeneration,
+      );
       continue;
     }
     if ('kind' in source && source.kind === 'generated_summary') {
-      await assertGeneratedSummaryCurrent(tx, source, manualHistory, ancestry);
+      await assertGeneratedSummaryCurrent(
+        tx,
+        source,
+        manualHistory,
+        ancestry,
+        validatePeriod,
+      );
       continue;
     }
     if ('kind' in source && source.kind === 'generated_conversation') {
@@ -163,6 +180,7 @@ export async function assertRetainedEvidenceCurrent(
         source,
         manualHistory,
         ancestry,
+        validatePeriod,
       );
       continue;
     }
@@ -197,6 +215,7 @@ export async function assertRetainedEvidenceCurrent(
           manualHistory,
           false,
           ancestry,
+          validatePeriod,
         );
       } finally {
         ancestry.path.delete(key);

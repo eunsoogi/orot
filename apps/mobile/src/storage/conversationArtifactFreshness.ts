@@ -1,3 +1,4 @@
+import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import {
   createManualHistoryRepository,
   type SqlDatabase,
@@ -27,6 +28,7 @@ export async function assertConversationArtifactCurrent(
   database: SqlDatabase,
   artifact: ConversationArtifact,
   requireGeneration: boolean,
+  validatePeriod?: ReadOnlyPeriodValidation,
 ) {
   const history = createManualHistoryRepository(database);
   // New report-bound turns must still belong to the active revision at commit.
@@ -57,7 +59,12 @@ export async function assertConversationArtifactCurrent(
         // The protected request/source join above is the authority for this photo.
         continue;
       } else if (isGeneratedSummarySource(source)) {
-        await assertConversationSummaryParent(tx, database, source);
+        await assertConversationSummaryParent(
+          tx,
+          database,
+          source,
+          validatePeriod,
+        );
       } else if (isGeneratedConversationSource(source)) {
         const result = await tx.execute(
           `SELECT a.result_json, a.id, a.session_id, a.created_at FROM conversation_artifacts a
@@ -87,6 +94,8 @@ export async function assertConversationArtifactCurrent(
           [source],
           history,
           requireGeneration && path.size === 1,
+          undefined,
+          validatePeriod,
         );
       }
     }

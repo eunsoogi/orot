@@ -1,3 +1,4 @@
+import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import {
   createManualHistoryRepository,
   type SqlDatabase,
@@ -15,6 +16,7 @@ export async function assertConversationSummaryParent(
   tx: SqlExecutor,
   database: SqlDatabase,
   source: SavedGeneratedSummarySource,
+  validatePeriod?: ReadOnlyPeriodValidation,
 ) {
   if (
     (source.reference.locator as { type?: unknown }).type === 'daily_report'
@@ -58,5 +60,7 @@ export async function assertConversationSummaryParent(
     summary.sources,
     createManualHistoryRepository(database),
     false,
+    undefined,
+    validatePeriod,
   );
 }
