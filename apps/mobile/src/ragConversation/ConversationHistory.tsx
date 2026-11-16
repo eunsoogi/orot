@@ -1,3 +1,4 @@
+import { useConversationTranscriptWindow } from './useConversationTranscriptWindow';
 import { conversationHistoryError } from './conversationHistoryError';
 import { useConversationJumpToLatest } from './useConversationJumpToLatest';
 import { ConversationJumpToLatest } from './ConversationJumpToLatest';
@@ -38,6 +39,10 @@ export function ConversationHistory({
   restoreFailed = false,
   onRetryRestore,
   sessionId,
+  historyHasMore,
+  historyLoading,
+  historyLoadFailed,
+  onLoadOlderHistory,
   toolSourceSessionId,
   resolveToolSource,
   resolveColdToolSource,
@@ -90,6 +95,23 @@ export function ConversationHistory({
     followsBottom,
     expectedOffset,
   );
+  const window = useConversationTranscriptWindow({
+    hasMore: historyHasMore,
+    loading: historyLoading,
+    failed: historyLoadFailed,
+    loadOlder: onLoadOlderHistory,
+    messages: visibleMessages.filter(message =>
+      transcriptMessageVisible(message, separatedActivity),
+    ),
+    sessionId,
+    focusId: replyFocus?.canReveal() ? replyFocus.messageId : undefined,
+    focusGeneration: replyFocus?.generation,
+    firstRowInset: styles.container.paddingTop,
+    history: historyView,
+    followsBottom,
+    expectedOffset,
+    geometry: scrollGeometry,
+  });
   const followLatest = () =>
     followConversationLatest({
       hasMessages: visibleMessages.length > 0,
@@ -119,6 +141,7 @@ export function ConversationHistory({
           followLatest();
         }}
         onScrollBeginDrag={() => {
+          window.cancelAnchor();
           userScrolling.current = true;
           expectedOffset.current = null;
         }}
@@ -131,7 +154,13 @@ export function ConversationHistory({
         onMomentumScrollEnd={() => {
           userScrolling.current = false;
         }}
-        onScroll={jumpControl.onScroll}
+        onScroll={event => {
+          jumpControl.onScroll(event);
+          window.onTopEdge(
+            event.nativeEvent.contentOffset.y,
+            userScrolling.current,
+          );
+        }}
         onScrollToTop={() => {
           expectedOffset.current = null;
           followsBottom.current = false;
@@ -150,15 +179,16 @@ export function ConversationHistory({
       >
         {header}
         {beforeMessages}
+        {window.control}
         <View
           style={styles.container}
           testID="conversation-message-container"
           onLayout={event => replyScroll.container(event.nativeEvent.layout.y)}
         >
           <ConversationTranscriptMessages
-            messages={visibleMessages.filter(message =>
-              transcriptMessageVisible(message, separatedActivity),
-            )}
+            messages={window.messages}
+            anchorId={window.anchorId}
+            onAnchorLayout={window.onAnchorLayout}
             pendingId={pendingMessage?.id}
             instructions={steeringInstructions}
             replyFocus={replyFocus}
@@ -207,7 +237,10 @@ export function ConversationHistory({
       {jumpControl.away ? (
         <ConversationJumpToLatest
           bottom={composerInset}
-          onPress={jumpControl.jump}
+          onPress={() => {
+            window.cancelAnchor();
+            jumpControl.jump();
+          }}
         />
       ) : null}
     </View>

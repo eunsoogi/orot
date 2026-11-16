@@ -9,6 +9,7 @@ export async function restoreConversationSessionPage(input: {
   readonly sessionId: string;
   readonly cursor?: { readonly createdAt: string; readonly id: string };
   readonly limit?: number;
+  readonly ids?: readonly string[];
   readonly storage: ReturnType<typeof createConversationArtifactStorage>;
   readonly data: AiFeatureLocalData;
   readonly registry: LocalEvidenceReferenceRegistry;
@@ -20,6 +21,8 @@ export async function restoreConversationSessionPage(input: {
     input.sessionId,
     input.cursor,
     input.limit,
+    'conversation',
+    input.ids,
   );
   const items: NonNullable<
     Awaited<ReturnType<typeof restoreConversationArtifact>>

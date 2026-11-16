@@ -13,9 +13,12 @@ export function conversationDispatch(input: {
   retention: ConversationSessionOptions['retention'];
   disposed: () => boolean;
   bindSender?: (sender: ConversationSender) => ConversationSender;
-  beforeSend?: (id: number) => Promise<boolean>;
+  beforeSend?: (id: number, signal: AbortSignal) => Promise<boolean>;
 }) {
-  const preparing = new Map<number, Set<{ cancelled: boolean }>>();
+  const preparing = new Map<
+    number,
+    Set<{ cancelled: boolean; controller: AbortController }>
+  >();
   const send = async (
     id: number,
     sender: ConversationSender,
@@ -23,16 +26,21 @@ export function conversationDispatch(input: {
     registerOwner?: (cancel: () => boolean) => void,
   ) => {
     if (input.disposed()) return;
-    const token = { cancelled: false };
+    const token = { cancelled: false, controller: new AbortController() };
     const owners = preparing.get(id) ?? new Set();
     owners.add(token);
     preparing.set(id, owners);
     registerOwner?.(() => {
       token.cancelled = true;
+      token.controller.abort();
       return true;
     });
     try {
-      if (input.beforeSend && !(await input.beforeSend(id))) return;
+      if (
+        input.beforeSend &&
+        !(await input.beforeSend(id, token.controller.signal))
+      )
+        return;
       if (token.cancelled || input.disposed()) return;
       await input.requests.send(
         id,
@@ -48,7 +56,10 @@ export function conversationDispatch(input: {
   };
   return {
     cancelBeforeSend(id: number) {
-      for (const owner of preparing.get(id) ?? []) owner.cancelled = true;
+      for (const owner of preparing.get(id) ?? []) {
+        owner.cancelled = true;
+        owner.controller.abort();
+      }
     },
     send: (id: number, sender: ConversationSender) => send(id, sender),
     sendPrompt: (id: number, prompt: string, sender: ConversationSender) =>
