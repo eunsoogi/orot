@@ -52,9 +52,7 @@ export default function ProviderSelectionConfirmation({
         </Text>
       </View>
       {option.provider.id === 'openai-api-decisions' ? (
-        <Text style={styles.privacyCopy}>
-          {t('modelSettings.apiUsageCost')}
-        </Text>
+        <Text style={styles.usageCost}>{t('modelSettings.apiUsageCost')}</Text>
       ) : null}
       {hasActionDock ? (
         <View style={styles.summary}>{summary}</View>
@@ -91,6 +89,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   privacyCopy: { flex: 1, color: appColors.secondary, fontSize: 14 },
+  usageCost: { color: appColors.secondary, fontSize: 14 },
   // Fill groups identity; privacy copy and explicit confirmation remain outside this decoration.
   summary: {
     padding: 16,
