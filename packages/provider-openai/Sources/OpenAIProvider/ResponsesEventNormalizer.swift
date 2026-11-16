@@ -39,7 +39,9 @@ struct ResponsesEventNormalizer {
             throw Self.malformed(frameEvent == "message" ? "event_message" : "event_mismatch")
         }
 
-        if let id = try responseStart.observe(object, type: type) { return .responseStarted(id) }
+        if let id = try responseStart.observe(object, type: type) {
+            return .responseStarted(id)
+        }
         switch type {
         case "response.output_text.delta", "response.refusal.delta":
             guard let delta = object["delta"] as? String else { throw Self.malformed("text_delta") }
