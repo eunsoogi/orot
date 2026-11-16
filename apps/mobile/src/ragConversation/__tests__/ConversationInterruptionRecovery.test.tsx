@@ -103,7 +103,7 @@ test('recovery keeps horizontal space and inspects only after an explicit tap', 
   expect(refreshRecovery).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByText('이어갈 수 있는지 확인'));
   expect(refreshRecovery).toHaveBeenCalledWith(1, expect.any(AbortSignal));
-  expect(screen.getByText(/이어갈 지점을 확인하지 못했어요/)).toBeTruthy();
+  expect(screen.getByText(/이어갈 저장 지점이 없어요/)).toBeTruthy();
   expect(f.store.setDraft).not.toHaveBeenCalled();
 });
 
@@ -127,11 +127,29 @@ test('a stalled checkpoint inspection times out and allows another explicit atte
   expect(signal?.aborted).toBe(true);
   expect(screen.getByText('이어갈 수 있는지 확인')).toBeTruthy();
   expect(screen.queryByText('확인 중…')).toBeNull();
-  expect(screen.getByText(/이어갈 지점을 확인하지 못했어요/)).toBeTruthy();
+  expect(screen.getByText(/진행 상황을 확인하지 못했어요/)).toBeTruthy();
   expect(f.store.setDraft).not.toHaveBeenCalled();
   refreshRecovery.mockResolvedValueOnce(false);
   await fireEvent.press(screen.getByText('이어갈 수 있는지 확인'));
   expect(refreshRecovery).toHaveBeenCalledTimes(2);
   await view.unmount();
   jest.useRealTimers();
+});
+
+test('an inspection error does not claim that a checkpoint is absent', async () => {
+  const f = fixture();
+  await render(
+    <ConversationInterruptionRecovery
+      store={{
+        ...f.store,
+        refreshRecovery: jest.fn(async () => {
+          throw new Error('synthetic locked read');
+        }),
+      }}
+      session={f.get()}
+    />,
+  );
+  await fireEvent.press(screen.getByText('이어갈 수 있는지 확인'));
+  expect(screen.getByText(/진행 상황을 확인하지 못했어요/)).toBeTruthy();
+  expect(screen.queryByText(/이어갈 저장 지점이 없어요/)).toBeNull();
 });

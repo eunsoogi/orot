@@ -23,10 +23,10 @@ export function ConversationInterruptionRecovery({
 }) {
   const owner = useRef<AbortController | null>(null);
   const [checking, setChecking] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const [checked, setChecked] = useState<'unavailable' | 'failed'>();
   const responseId = session.messages.at(-1)?.id;
   useEffect(() => {
-    setChecked(false);
+    setChecked(undefined);
     setChecking(false);
     return () => {
       owner.current?.abort();
@@ -50,7 +50,9 @@ export function ConversationInterruptionRecovery({
             resumable
               ? 'conversationInterruption.pausedNotice'
               : checked
-                ? 'conversationInterruption.resumeUnavailable'
+                ? checked === 'failed'
+                  ? 'conversationInterruption.checkFailed'
+                  : 'conversationInterruption.resumeUnavailable'
                 : 'conversationInterruption.checkNotice',
           )}
         </AppText>
@@ -95,7 +97,7 @@ export function ConversationInterruptionRecovery({
                 controller.abort();
                 owner.current = null;
                 setChecking(false);
-                setChecked(true);
+                setChecked('failed');
               }, 5000);
               controller.signal.addEventListener(
                 'abort',
@@ -110,13 +112,14 @@ export function ConversationInterruptionRecovery({
                   store.refreshRecovery?.(session.id, controller.signal),
                   deadline,
                 ]);
+                if (!controller.signal.aborted) setChecked('unavailable');
               } catch {
-                /* Protected reads can fail while locked; no request is dispatched. */
+                /* Protected reads can fail while locked; this does not prove no checkpoint exists. */
+                if (!controller.signal.aborted) setChecked('failed');
               } finally {
                 clearTimeout(timeout);
                 if (!controller.signal.aborted) {
                   setChecking(false);
-                  setChecked(true);
                 }
                 if (owner.current === controller) owner.current = null;
               }

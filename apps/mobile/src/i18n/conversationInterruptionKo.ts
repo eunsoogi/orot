@@ -12,8 +12,10 @@ export const conversationInterruptionKo = {
     '답변이 중단됐어요. 저장된 진행 상황을 확인할 수 있어요. 완료 여부가 불확실한 작업은 반복하지 않아요.',
   'conversationInterruption.checkAction': '이어갈 수 있는지 확인',
   'conversationInterruption.checking': '확인 중…',
+  'conversationInterruption.checkFailed':
+    '진행 상황을 확인하지 못했어요. 다시 확인해 주세요.',
   'conversationInterruption.resumeUnavailable':
-    '이어갈 지점을 확인하지 못했어요. 다시 확인하거나 새로 요청할 수 있어요.',
+    '이어갈 저장 지점이 없어요. 새로 요청할 수 있어요.',
   'conversationInterruption.pausedNotice': '저장된 지점에서 이어갈 수 있어요.',
   'conversationInterruption.resumeAction': '작업 이어하기',
   'conversationInterruption.decision-required':
