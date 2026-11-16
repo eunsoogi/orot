@@ -39,6 +39,15 @@ final class ResponsesWebSocketUpgradeTests: XCTestCase {
         catch { XCTFail("Cancellation must not become retry eligibility") }
     }
 
+    func testRefusalCannotBeReplacedByALateOpenCallback() async throws {
+        let gate = ResponsesWebSocketUpgradeGate()
+        gate.failed(httpStatus: 426)
+        gate.opened()
+        do { try await gate.wait(); XCTFail("Refused upgrade must not release a sender") }
+        catch ResponsesWebSocketUpgradeError.rejectedBeforeRequest {}
+        catch { XCTFail("The first terminal result must be preserved") }
+    }
+
     func testWaitingGateResumesExactlyOnce() async throws {
         let gate = ResponsesWebSocketUpgradeGate()
         let pending = Task { try await gate.wait() }
