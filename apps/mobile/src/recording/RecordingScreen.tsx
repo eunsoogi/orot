@@ -116,6 +116,8 @@ export default function RecordingScreen({
       );
       if (owner !== generation.current) return;
       const next = await service.start(consentAcknowledged);
+      // Native start may finish after a service swap; do not publish its stale UI or visit state.
+      if (owner !== generation.current) return;
       visit.current = candidate;
       clearPendingRecordingRetry(service);
       setLastRecording(null);
