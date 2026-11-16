@@ -22,6 +22,7 @@ import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
 import { LegacySymptomData } from './LegacySymptomData';
 
 export interface RecordsRouteProps {
+  readonly memoryActive?: boolean;
   readonly onOpenMemory?: (memoryId: string) => void;
   readonly onOpenDocumentDetail?: (sourceId: string) => void;
   readonly showAllRecent?: boolean;
@@ -40,6 +41,7 @@ export interface RecordsRouteProps {
 export function RecordsRoute({
   onOpenDocumentDetail,
   onOpenMemory,
+  memoryActive = true,
   showAllRecent = false,
   onOpenRecentRecords,
   recordings,
@@ -149,7 +151,12 @@ export function RecordsRoute({
           {!showAllRecent ? (
             <View style={styles.primaryPanel}>
               <RecordsRouteEntries
-                secondary={<SavedMemoryBrowser onOpenMemory={onOpenMemory} />}
+                secondary={
+                  <SavedMemoryBrowser
+                    active={memoryActive}
+                    onOpenMemory={onOpenMemory}
+                  />
+                }
                 onOpenSavedRecordings={onOpenSavedRecordings}
                 onOpenRecording={onOpenRecording}
                 onOpenHealthLibrary={onOpenHealthLibrary}

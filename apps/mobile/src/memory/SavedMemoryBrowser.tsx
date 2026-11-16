@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -16,16 +16,16 @@ function summary(text: string) {
 /** Summaries remain local; navigation receives only the selected memory ID, never text. */
 export function SavedMemoryBrowser({
   load,
+  active = true,
   onOpenMemory,
 }: {
+  readonly active?: boolean;
   readonly load?: () => Promise<SavedMemory[]>;
   readonly onOpenMemory?: (id: string) => void;
 }) {
-  const { rows, state, refresh } = useSavedMemories(load);
+  const { rows, state, refresh } = useSavedMemories(load, active);
   const [visible, setVisible] = useState(20);
-  useEffect(() => {
-    setVisible(20);
-  }, [rows]);
+  // Retain the page bound while a native detail owns focus, so Back restores the same list position.
   return (
     <View style={styles.section} testID="saved-memory-browser">
       <Text accessibilityRole="header" style={styles.title}>

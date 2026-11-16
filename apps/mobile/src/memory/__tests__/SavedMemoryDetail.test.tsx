@@ -66,3 +66,29 @@ test('missing selected ID never falls back to another memory', async () => {
   expect(screen.getByText('이 기억은 더 이상 볼 수 없어요.')).toBeTruthy();
   expect(screen.queryByText(memory.text)).toBeNull();
 });
+
+test('only the focused screen reloads when native list and detail coexist', async () => {
+  const listLoad = jest.fn().mockResolvedValue([memory]);
+  const detailLoad = jest.fn().mockResolvedValue([memory]);
+  const { SavedMemoryBrowser } = require('../SavedMemoryBrowser');
+  const view = await render(
+    <>
+      <SavedMemoryBrowser active={false} load={listLoad} />
+      <SavedMemoryDetail active memoryId={memory.id} load={detailLoad} />
+    </>,
+  );
+  expect(listLoad).not.toHaveBeenCalled();
+  expect(detailLoad).toHaveBeenCalledTimes(1);
+  await view.rerender(
+    <>
+      <SavedMemoryBrowser active load={listLoad} />
+      <SavedMemoryDetail
+        active={false}
+        memoryId={memory.id}
+        load={detailLoad}
+      />
+    </>,
+  );
+  expect(listLoad).toHaveBeenCalledTimes(1);
+  expect(detailLoad).toHaveBeenCalledTimes(1);
+});

@@ -13,8 +13,10 @@ const kindLabels = {
 /** The native destination reloads its ID through the same foreground/deletion fences as the list. */
 export function SavedMemoryDetail({
   memoryId,
+  active = true,
   load,
 }: {
+  readonly active?: boolean;
   readonly memoryId?: string;
   readonly load?: () => Promise<SavedMemory[]>;
 }) {
@@ -27,7 +29,7 @@ export function SavedMemoryDetail({
     revision: 0,
     inputRevision: 0,
   });
-  const { rows, state, refresh } = useSavedMemories(load);
+  const { rows, state, refresh } = useSavedMemories(load, active);
   const row = rows.find(value => value.id === memoryId);
   return (
     <View style={styles.section} testID="saved-memory-detail">

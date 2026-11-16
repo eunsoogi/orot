@@ -90,6 +90,7 @@ export function AppRouteContent({
             <RecordsRoute
               onOpenDocumentDetail={openDocument}
               onOpenMemory={openMemory}
+              memoryActive={active}
               onOpenRecentRecords={() => actions.push('recent-records')}
               documentImportService={documentImportService}
               recordings={recordings}
@@ -155,7 +156,7 @@ export function AppRouteContent({
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
       );
     case 'saved-memory-detail':
-      return <SavedMemoryDetail memoryId={sourceId} />;
+      return <SavedMemoryDetail memoryId={sourceId} active={active} />;
     case 'medical-document-detail':
       return (
         <MedicalDocumentDetailRoute
@@ -170,6 +171,7 @@ export function AppRouteContent({
         <RecordsRoute
           onOpenDocumentDetail={openDocument}
           onOpenMemory={openMemory}
+          memoryActive={active}
           showAllRecent
           documentImportService={documentImportService}
           recordings={recordings}

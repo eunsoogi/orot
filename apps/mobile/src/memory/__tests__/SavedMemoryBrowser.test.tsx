@@ -75,7 +75,7 @@ it('clears private content on app backgrounding', async () => {
   expect(screen.queryByText(memory.text)).toBeNull();
 });
 
-it('bounds displayed rows and resets the page on refresh', async () => {
+it('bounds rows and retains the expanded page after foreground reload', async () => {
   const rows = Array.from({ length: 21 }, (_, index) => ({
     ...memory,
     id: String(index),
@@ -88,7 +88,7 @@ it('bounds displayed rows and resets the page on refresh', async () => {
   const change = jest.mocked(AppState.addEventListener).mock.calls.at(-1)![1];
   await act(async () => change('background'));
   await act(async () => change('active'));
-  expect(screen.queryByText('합성 20')).toBeNull();
+  expect(screen.getByText('합성 20')).toBeTruthy();
 });
 
 const deletionEvents = [

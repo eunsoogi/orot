@@ -11,6 +11,7 @@ const READ_WAIT_MS = 10_000;
 /** Shared protected read lifecycle for list and detail. Invalidations erase text before cleanup settles. */
 export function useSavedMemories(
   load: () => Promise<SavedMemory[]> = loadSavedLocalMemories,
+  enabled = true,
 ) {
   const [rows, setRows] = useState<SavedMemory[]>([]);
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'failed'>(
@@ -33,7 +34,7 @@ export function useSavedMemories(
 
   const refresh = useCallback(async () => {
     // A queued press after backgrounding must not start a protected read.
-    if (!active.current) return;
+    if (!enabled || !active.current) return;
     clearReadTimer();
     const request = ++generation.current;
     setState('loading');
@@ -56,21 +57,22 @@ export function useSavedMemories(
     } finally {
       if (generation.current === request) clearReadTimer();
     }
-  }, [load, clearReadTimer]);
+  }, [load, clearReadTimer, enabled]);
 
   useEffect(() => {
     // Deletion fences invalidate cached text and pending reads, even if later cleanup fails.
     const unsubscribeClear = subscribeLocalDataClear(close);
     const unsubscribeSource = subscribeLocalSourceDeletion(close);
     const subscription = AppState.addEventListener('change', next => {
-      active.current = next === 'active';
+      active.current = enabled && next === 'active';
       if (!active.current) close();
       else refresh();
     });
     // Wait for confirmed foreground state; an unknown initial state is not permission to expose local text.
-    if (AppState.currentState === 'active') {
+    active.current = enabled && AppState.currentState === 'active';
+    if (active.current) {
       refresh();
-    }
+    } else close();
     return () => {
       clearReadTimer();
       generation.current += 1;
@@ -78,7 +80,7 @@ export function useSavedMemories(
       unsubscribeClear();
       unsubscribeSource();
     };
-  }, [refresh, close, clearReadTimer]);
+  }, [refresh, close, clearReadTimer, enabled]);
 
   return { rows, state, refresh };
 }
