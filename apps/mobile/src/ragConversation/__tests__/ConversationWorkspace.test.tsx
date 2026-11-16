@@ -198,9 +198,15 @@ test('keeps the live request and draft when the Duo pane folds and expands', asy
     });
     expect(screen.getByTestId('rag-conversation-input')).toBe(input);
     expect(input.props.value).toBe('다음 질문 초안');
-    expect(screen.getByTestId('rag-conversation-cancel')).toBeTruthy();
+    expect(screen.getByTestId('rag-conversation-send').props.disabled).toBe(
+      true,
+    );
+    expect(screen.queryByTestId('rag-conversation-cancel')).toBeNull();
+    expect(onSend.mock.calls[0]?.[2]?.aborted).toBe(false);
   }
   expect(onSend).toHaveBeenCalledTimes(1);
+  // Clearing the retained draft restores Stop; folding never cancels the request.
+  await fireEvent.changeText(input, '');
   await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
   expect(onSend.mock.calls[0]?.[2]?.aborted).toBe(true);
 });

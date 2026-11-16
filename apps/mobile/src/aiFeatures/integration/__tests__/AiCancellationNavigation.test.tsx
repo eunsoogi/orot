@@ -122,7 +122,7 @@ test('symptom analysis cancels from the dock without a duplicate page control', 
   ).toBeNull();
 });
 
-test('chat keeps composing available with stop in the send position and no navigation stop', async () => {
+test('chat switches drafted steering to send and restores stop when cleared', async () => {
   let signal: AbortSignal | undefined;
   await render(
     <Shell>
@@ -154,6 +154,11 @@ test('chat keeps composing available with stop in the send position and no navig
     screen.getByTestId('rag-conversation-input'),
     '다음 질문 초안',
   );
+  // This synthetic sender has no steering owner: do not turn Send into cancellation.
+  expect(screen.getByTestId('rag-conversation-send').props.disabled).toBe(true);
+  expect(signal?.aborted).toBe(false);
+  expect(screen.queryByTestId('rag-conversation-cancel')).toBeNull();
+  await fireEvent.changeText(screen.getByTestId('rag-conversation-input'), '');
   await fireEvent.press(
     within(screen.getByTestId('content')).getByTestId(
       'rag-conversation-cancel',
@@ -161,8 +166,9 @@ test('chat keeps composing available with stop in the send position and no navig
   );
   expect(signal?.aborted).toBe(true);
   expect(screen.getByText('답변 생성을 중지했어요.')).toBeTruthy();
+  // With no replacement draft, explicit Stop restores the original prompt for retry.
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
-    '다음 질문 초안',
+    '합성 검증 질문',
   );
   expect(screen.getByTestId('rag-conversation-send')).toBeTruthy();
   expect(
