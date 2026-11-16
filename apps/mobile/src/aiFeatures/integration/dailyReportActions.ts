@@ -82,6 +82,12 @@ export function dailyReportActions(
       ? [index]
       : [],
   );
+  // Recorded-active symptoms deserve a next step even without an admitted visit.
+  // Do not turn missing appointments into proof there is no care plan, or an old
+  // active flag into a current assessment. Existing visit advice avoids duplication.
+  if (symptoms.length && !visits.length) {
+    result.push(claim(t('dailyReport.context.symptomFollowUp'), symptoms));
+  }
   if (visits.length) {
     const key = symptoms.length
       ? 'dailyReport.context.visitSymptoms'
