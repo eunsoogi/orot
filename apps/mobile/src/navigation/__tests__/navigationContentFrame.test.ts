@@ -65,7 +65,7 @@ test('mirrors the system side without changing window coordinates for left-side 
     reservedLeftWidth: 84,
     reservedRightWidth: 0,
     railRightInset: 18,
-    railTopInset: 136,
+    railTopInset: 128,
   });
 });
 

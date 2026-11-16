@@ -12,6 +12,8 @@ import {
 
 export const NAVIGATION_ROOT_RAIL_WIDTH = 48;
 export const NAVIGATION_ROOT_RAIL_GUTTER = 12;
+/** Compact decoration only; native safe areas and occlusions remain fully reserved. */
+export const NAVIGATION_RAIL_VERTICAL_GAP = 4;
 export const NAVIGATION_MINIMUM_COLUMN_WIDTH = 320;
 // Match native 52pt targets and compact 2pt gaps using the canonical destination count.
 export const NAVIGATION_ROOT_RAIL_HEIGHT =
@@ -208,15 +210,15 @@ export function resolveNavigationRootLayout(
         region.x <= railLeft + 0.5 &&
         region.x + region.width >= railRight - 0.5 &&
         region.height >=
-          NAVIGATION_ROOT_RAIL_HEIGHT + 2 * NAVIGATION_ROOT_RAIL_GUTTER,
+          NAVIGATION_ROOT_RAIL_HEIGHT + 2 * NAVIGATION_RAIL_VERTICAL_GAP,
     )
     .sort(
       (first, second) => second.height - first.height || first.y - second.y,
     )[0];
   if (!segment) return BOTTOM_NAVIGATION_ROOT_LAYOUT;
-  const railTopInset = segment.y - window.y + NAVIGATION_ROOT_RAIL_GUTTER;
+  const railTopInset = segment.y - window.y + NAVIGATION_RAIL_VERTICAL_GAP;
   const railBottomInset =
-    windowBottom - segment.y - segment.height + NAVIGATION_ROOT_RAIL_GUTTER;
+    windowBottom - segment.y - segment.height + NAVIGATION_RAIL_VERTICAL_GAP;
   const usableBottom = geometry.safeAreaFrame.y + geometry.safeAreaFrame.height;
   return {
     placement: 'right',
