@@ -85,6 +85,31 @@ export async function beginConversationExecutionLease(
     diagnose('interrupt', reason);
     interrupt(reason);
   };
+  let reconciling = false;
+  let reconcileAgain = false;
+  // Native and AppState can both announce foreground. Keep one bridge check in
+  // flight and one trailing recheck, without caching availability or lease state.
+  const reconcile = async () => {
+    if (closed || interrupted) return;
+    if (reconciling) {
+      reconcileAgain = true;
+      return;
+    }
+    reconciling = true;
+    try {
+      do {
+        reconcileAgain = false;
+        const available = await adapter.protectedDataAvailable();
+        if (closed || interrupted) return;
+        if (available === false) notify('protected-data');
+        else if (!(await adapter.isActive(requestId))) notify('expired');
+      } while (reconcileAgain && !closed && !interrupted);
+    } catch {
+      notify('lease-check-failed');
+    } finally {
+      reconciling = false;
+    }
+  };
   const unsubscribe = adapter.subscribe(event => {
     // A drain is advisory, not an abort: in-flight effects must reach a safe boundary.
     if (
@@ -110,14 +135,7 @@ export async function beginConversationExecutionLease(
         notify('decision-required');
     }
     // Recheck after foregrounding in case suspension delayed the expiration event.
-    if (event.kind === 'foreground' && acquired)
-      adapter
-        .protectedDataAvailable()
-        .then(async available => {
-          if (available === false) notify('protected-data');
-          else if (!(await adapter.isActive(requestId))) notify('expired');
-        })
-        .catch(() => notify('lease-check-failed'));
+    if (event.kind === 'foreground' && acquired) reconcile();
   });
   try {
     if ((await adapter.protectedDataAvailable()) === false)
