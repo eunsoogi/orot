@@ -45,3 +45,21 @@ test('separates consent, source revalidation and provider waits with content-fre
     ['visit', 'evidence_check', 'completed'],
   ]);
 });
+
+test('observes the final presentation fence after the runtime has yielded its result', async () => {
+  const { provider } = makeProvider([
+    suggestionOutput('다음 진료 전에 어떤 변화를 기록하면 좋을까요?'),
+  ]);
+  const { selection, option } = selectedOption(provider);
+  await runVisitQuestionWorkflow({
+    prepared: preparedContext(),
+    selection,
+    providerOptions: [option],
+    recipient: 'Synthetic recipient',
+    confirmConsent: async () => true,
+  });
+  expect(jest.mocked(providerDiagnostic).mock.calls.slice(-2)).toEqual([
+    ['visit', 'evidence_presentation', 'started'],
+    ['visit', 'evidence_presentation', 'completed'],
+  ]);
+});

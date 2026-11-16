@@ -1,3 +1,4 @@
+import { observeVisitEvidencePhase } from './evidencePhaseDiagnostics';
 import { AppointmentSchema, compareTimestamps } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
 import type { VisitQuestionHealthContextSource } from '@orot/domain';
@@ -56,10 +57,11 @@ export function createVisitQuestionEvidenceRevalidator(input: {
     try {
       const currentNow = input.currentTime();
       if (!Number.isFinite(Date.parse(currentNow))) return false;
-      const currentAppointment =
-        await input.queryService.queryNextConfirmedCalendarAppointment(
-          currentNow,
-        );
+      const currentAppointment = await observeVisitEvidencePhase(
+        'evidence_appointment',
+        () =>
+          input.queryService.queryNextConfirmedCalendarAppointment(currentNow),
+      );
       if (
         currentAppointment.status !== 'available' ||
         currentAppointment.appointment === null
@@ -100,7 +102,12 @@ export function createVisitQuestionEvidenceRevalidator(input: {
         const period = input.metadataByCitation.get(
           visitQuestionCitationKey(citation),
         )?.healthContextSource;
-        if (period && !(await input.validateHealthContext?.(period)))
+        if (
+          period &&
+          !(await observeVisitEvidencePhase('evidence_period', async () =>
+            input.validateHealthContext?.(period),
+          ))
+        )
           return false;
       }
       if (personalCitations.length > 0) {
@@ -113,11 +120,16 @@ export function createVisitQuestionEvidenceRevalidator(input: {
             : undefined;
         });
         if (identities.some(identity => !identity)) return false;
-        const currentChunks = await input.buildChunks(input.repository, {
-          identities: identities.filter(
-            (identity): identity is EvidenceRecordIdentity => Boolean(identity),
-          ),
-        });
+        const currentChunks = await observeVisitEvidencePhase(
+          'evidence_records',
+          () =>
+            input.buildChunks(input.repository, {
+              identities: identities.filter(
+                (identity): identity is EvidenceRecordIdentity =>
+                  Boolean(identity),
+              ),
+            }),
+        );
         for (const citation of personalCitations) {
           const metadata = input.metadataByCitation.get(
             visitQuestionCitationKey(citation),
@@ -131,14 +143,15 @@ export function createVisitQuestionEvidenceRevalidator(input: {
                 metadata.recordKind,
           );
           if (!currentChunk) return false;
-          const current = await mapRagHitToVisitQuestionEvidence(
-            input.repository,
-            {
-              chunk: currentChunk,
-              score: 0,
-              lexicalRank: null,
-              vectorRank: null,
-            },
+          const current = await observeVisitEvidencePhase(
+            'evidence_records',
+            () =>
+              mapRagHitToVisitQuestionEvidence(input.repository, {
+                chunk: currentChunk,
+                score: 0,
+                lexicalRank: null,
+                vectorRank: null,
+              }),
           );
           if (
             visitQuestionCitationKey(current.item) !==
@@ -162,9 +175,10 @@ export function createVisitQuestionEvidenceRevalidator(input: {
         memoryGroups.set(query, group);
       }
       for (const [query, group] of memoryGroups) {
-        const currentMemory = await input.queryService.searchMemory(
-          query,
-          LOCAL_MEMORY_MAX_RESULTS,
+        const currentMemory = await observeVisitEvidencePhase(
+          'evidence_memory',
+          () =>
+            input.queryService.searchMemory(query, LOCAL_MEMORY_MAX_RESULTS),
         );
         if (currentMemory.status !== 'available') return false;
         const currentKeys = new Set(
