@@ -66,7 +66,9 @@ test('report request stays in the existing conversation with its draft and one i
 });
 
 test('a single report-choice tap starts the same consent-aware inline workflow without a second generate tap', async () => {
-  const consent = { authorize: jest.fn(async () => 'renewal_required' as const) };
+  const consent = {
+    authorize: jest.fn(async () => 'renewal_required' as const),
+  };
   const start = jest.fn(() => ({
     status: 'started' as const,
     cancel: jest.fn(),
