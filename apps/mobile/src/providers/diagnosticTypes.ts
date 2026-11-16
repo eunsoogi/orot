@@ -9,11 +9,14 @@ export type Stage =
   | 'persistence'
   | 'consent_wait'
   | 'provider_wait'
+  | 'public_search'
   | 'evidence_check';
 export type Outcome =
   | 'started'
   | 'completed'
   | 'failed'
+  | 'timeout'
+  | 'offline'
   | 'result'
   | 'invalid_output'
   | 'needs_clarification'

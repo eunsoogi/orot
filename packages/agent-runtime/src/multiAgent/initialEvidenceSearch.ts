@@ -1,5 +1,5 @@
 import type { Runtime } from '@langchain/langgraph/web';
-import type { MultiAgentWorkflowOptions, EvidenceSearchTool } from './contracts';
+import type { EvidenceBatch, MultiAgentWorkflowOptions, EvidenceSearchTool } from './contracts';
 import type { RuntimeContext } from './runtimeContext';
 import { finishToolEvent, reportProgress } from './runtimeContext';
 import type { WorkflowState } from './state';
@@ -40,7 +40,17 @@ export function availableEvidenceTools<T>(
     : options.tools;
 }
 
-/** Reuse the existing journal/authorization boundary; only a known denial may fall back locally. */
+/** Failed retrieval is distinct from a completed search with no matching records. */
+export function unavailableSearchBatch(batch: Pick<EvidenceBatch, 'items' | 'coverage'>): boolean {
+  return (
+    batch.items.length === 0 &&
+    batch.coverage.some(
+      (coverage) => coverage.sourceKind === 'external_medical' && coverage.gaps.length > 0,
+    )
+  );
+}
+
+/** Reuse the existing journal/authorization boundary; known denials and validated retrieval gaps may fall back locally. */
 export async function executeInitialEvidenceSearch<T>(
   context: RuntimeContext<T>,
   state: WorkflowState,
@@ -48,6 +58,7 @@ export async function executeInitialEvidenceSearch<T>(
   execute: (state: WorkflowState, runtime: Runtime) => Promise<Partial<WorkflowState>>,
 ): Promise<Partial<WorkflowState>> {
   const before = context.currentEvidence.items.length;
+  const priorCoverage = context.currentEvidence.coverage.length;
   const update = await execute(state, runtime);
   if (update.awaitingAuthorization || context.signal.aborted) return update;
   if (context.outcome?.status === 'consent_required') {
@@ -73,7 +84,16 @@ export async function executeInitialEvidenceSearch<T>(
     ...update,
     phase: 'task_response',
     selectedToolId: undefined,
-    initialSearchStatus: context.currentEvidence.items.length > before ? 'success' : 'empty',
+    // A validated no-result batch with an explicit retrieval gap is not a successful empty search.
+    initialSearchStatus:
+      context.currentEvidence.items.length > before
+        ? 'success'
+        : unavailableSearchBatch({
+              items: [],
+              coverage: context.currentEvidence.coverage.slice(priorCoverage),
+            })
+          ? 'unavailable'
+          : 'empty',
   };
 }
 
@@ -85,7 +105,9 @@ export function validInitialSearchResume<T>(
   if (!options.initialSearch) return saved.initialSearchStatus === undefined;
   if (
     !validInitialEvidenceSearch(options) ||
-    !['pending', 'success', 'empty', 'consent_required'].includes(saved.initialSearchStatus ?? '')
+    !['pending', 'success', 'empty', 'unavailable', 'consent_required'].includes(
+      saved.initialSearchStatus ?? '',
+    )
   )
     return false;
   const tool = options.tools.find((value) => value.id === options.initialSearch!.toolId)!;
