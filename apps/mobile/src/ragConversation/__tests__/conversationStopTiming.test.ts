@@ -75,3 +75,34 @@ test('acknowledges abort before waiting for a pending commit and records the lat
   expect(JSON.stringify(observations())).not.toContain('private');
   jest.restoreAllMocks();
 });
+
+test.each(['explicit reason', 'lifetime override'])(
+  'does not mislabel an OS interruption as a Stop: %s',
+  mode => {
+    const before = conversationExecutionDiagnostics();
+    const controller = new AbortController();
+    const finish = jest.fn();
+    const interrupt = jest.fn();
+    const stop = createConversationStopHandler({
+      controllers: new Map([[1, controller]]),
+      pendingTurns: new Map([[1, { saving: true } as PendingTurn]]),
+      snapshots: new Map(),
+      activities: new Map([[1, { finish } as never]]),
+      lifetime: {
+        status: () =>
+          mode === 'lifetime override' ? 'interrupted' : undefined,
+        interrupt,
+      } as unknown as Parameters<
+        typeof createConversationStopHandler
+      >[0]['lifetime'],
+      find: jest.fn(),
+      update: jest.fn(),
+      retainPartial: jest.fn(),
+    });
+    stop(1, false, mode === 'explicit reason' ? 'interrupted' : 'cancelled');
+    expect(controller.signal.aborted).toBe(true);
+    expect(interrupt).toHaveBeenCalledWith(1, 'interrupted');
+    expect(finish).toHaveBeenCalledWith('interrupted');
+    expect(conversationExecutionDiagnostics()).toEqual(before);
+  },
+);

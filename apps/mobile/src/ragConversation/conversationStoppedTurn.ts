@@ -125,8 +125,11 @@ export function createConversationStopHandler(input: {
   ) => {
     const controller = input.controllers.get(id);
     if (!controller) return;
-    let diagnose = stopDiagnostics.get(controller);
-    if (!diagnose) {
+    const status = input.lifetime.status(id, controller) ?? reason;
+    // Lifecycle interruptions share this cleanup path but are not user Stop latency.
+    let diagnose =
+      status === 'cancelled' ? stopDiagnostics.get(controller) : undefined;
+    if (status === 'cancelled' && !diagnose) {
       diagnose = createExecutionDiagnostics(undefined, () => 'unknown');
       stopDiagnostics.set(controller, diagnose);
       diagnose('stop-received');
@@ -135,11 +138,10 @@ export function createConversationStopHandler(input: {
     const snapshot = input.snapshots.get(id);
     snapshot?.cancel();
     if (snapshot) input.update(id, { requestActivity: snapshot.getSnapshot() });
-    const status = input.lifetime.status(id, controller) ?? reason;
     if (status === 'cancelled') turn?.stopCold?.();
     input.lifetime.interrupt(id, status);
     controller.abort();
-    diagnose('abort-dispatched');
+    diagnose?.('abort-dispatched');
     input.steering?.clear(id);
     // System interruption is not an explicit user cancellation; persist the true state.
     input.activities.get(id)?.finish(status);
@@ -150,7 +152,7 @@ export function createConversationStopHandler(input: {
         turn?.summaryCommitted) &&
       !settled
     ) {
-      diagnose('stop-awaiting-commit');
+      diagnose?.('stop-awaiting-commit');
       return;
     }
     input.controllers.delete(id);
@@ -165,6 +167,6 @@ export function createConversationStopHandler(input: {
       turn,
       interruptionReason: input.lifetime.interruptionReason(controller),
     });
-    diagnose('stop-presented');
+    diagnose?.('stop-presented');
   };
 }
