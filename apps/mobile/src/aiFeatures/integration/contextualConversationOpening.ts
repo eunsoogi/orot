@@ -22,6 +22,7 @@ export function startContextualConversationOpening(input: {
   consentScope: MultiAgentExecutionIdentity['consentScope'];
   signal: AbortSignal;
   isCurrent?: () => boolean;
+  isEvidenceCurrent?: () => Promise<boolean>;
 }) {
   const controller = new AbortController();
   const stop = () => controller.abort();
@@ -52,6 +53,7 @@ export function startContextualConversationOpening(input: {
       request: input.request,
       signal: controller.signal,
       validate: validateInitialConversationResponse,
+      isCurrent: input.isEvidenceCurrent,
     });
     if (text && !controller.signal.aborted && (input.isCurrent?.() ?? true))
       input.observer.onTaskStreamEvent({
@@ -76,6 +78,7 @@ export function startRagConversationOpening(
   observer: RagConversationObserver | undefined,
   consent: ExecutionConsentPort,
   signal: AbortSignal,
+  isEvidenceCurrent?: () => Promise<boolean>,
 ) {
   return startContextualConversationOpening({
     selected,
@@ -83,6 +86,7 @@ export function startRagConversationOpening(
     observer,
     consent,
     signal,
+    isEvidenceCurrent,
     consentScope: evidenceConsentScope({
       purpose: 'record_conversation',
       generatedArtifacts: false,

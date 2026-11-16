@@ -49,7 +49,7 @@ test('reviews model-authored contextual text with exact consent and no evidence 
 
 test('a denied preview has no provider effect and does not throw', async () => {
   const f = fixture();
-  f.input.consent.authorize = async () => 'renewal_required';
+  f.authorize.mockResolvedValue('renewal_required');
   expect(await generateContextualInitialReply(f.input)).toBeUndefined();
   expect(f.run.provider.generate).not.toHaveBeenCalled();
 });
@@ -90,10 +90,41 @@ test('pending consent expires without provider dispatch or blocking the caller',
   jest.useFakeTimers();
   try {
     const f = fixture();
-    f.input.consent.authorize = () => new Promise(() => {});
+    f.authorize.mockImplementation(() => new Promise(() => {}));
     const pending = generateContextualInitialReply(f.input);
     await jest.advanceTimersByTimeAsync(10_000);
     expect(await pending).toBeUndefined();
+    expect(f.run.provider.generate).not.toHaveBeenCalled();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('a target changed during consent prevents even preview provider dispatch', async () => {
+  const f = fixture();
+  let current = true;
+  f.authorize.mockImplementation(async () => {
+    current = false;
+    return 'authorized';
+  });
+  expect(
+    await generateContextualInitialReply({ ...f.input, isCurrent: async () => current }),
+  ).toBeUndefined();
+  expect(f.authorize).toHaveBeenCalledTimes(1);
+  expect(f.run.provider.generate).not.toHaveBeenCalled();
+});
+
+test('a stalled target fence remains bounded by the preview deadline', async () => {
+  jest.useFakeTimers();
+  try {
+    const f = fixture();
+    const pending = generateContextualInitialReply({
+      ...f.input,
+      isCurrent: () => new Promise(() => {}),
+    });
+    await jest.advanceTimersByTimeAsync(10_000);
+    expect(await pending).toBeUndefined();
+    expect(f.authorize).not.toHaveBeenCalled();
     expect(f.run.provider.generate).not.toHaveBeenCalled();
   } finally {
     jest.useRealTimers();

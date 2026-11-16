@@ -1,6 +1,6 @@
 import type { LanguageModelProvider, LanguageModelRequest } from '@orot/model-runtime';
 import type { ExecutionConsentPort, MultiAgentExecutionIdentity } from './contracts';
-import { callModel } from './modelCall';
+import { callModel, observeUntilAbort } from './modelCall';
 
 /** Optional, ephemeral prose is never a task result or a journaled action. Two bounded
  * calls have their own budget; failure cannot spend the final task's model allowance.
@@ -11,6 +11,7 @@ export async function generateContextualInitialReply(input: {
   consent: ExecutionConsentPort;
   request: string;
   signal: AbortSignal;
+  isCurrent?: () => Promise<boolean>;
   validate: (text: string, request: string) => string | undefined;
 }): Promise<string | undefined> {
   const controller = new AbortController();
@@ -27,6 +28,20 @@ export async function generateContextualInitialReply(input: {
       timeoutMs: 10_000,
     },
   };
+  const current = async () => {
+    const observed = await observeUntilAbort(
+      input.isCurrent?.() ?? Promise.resolve(true),
+      controller.signal,
+    );
+    return observed.kind === 'value' && observed.value && !controller.signal.aborted;
+  };
+  const consent: ExecutionConsentPort = {
+    authorize: async (request) => {
+      const decision = await input.consent.authorize(request);
+      // A target can change while a person is approving even this request-only preview.
+      return decision === 'authorized' && !(await current()) ? 'renewal_required' : decision;
+    },
+  };
   const invoke = async (system: string, content: string, tokens: number) => {
     const request: LanguageModelRequest = {
       messages: [
@@ -37,17 +52,12 @@ export async function generateContextualInitialReply(input: {
         ? { maxOutputTokens: tokens }
         : {}),
     };
-    const result = await callModel(
-      input.provider,
-      request,
-      execution,
-      input.consent,
-      controller.signal,
-    );
+    if (!(await current())) return undefined;
+    const result = await callModel(input.provider, request, execution, consent, controller.signal);
     return result.status === 'response' &&
       result.response.finishReason === 'complete' &&
       !result.response.toolCalls.length &&
-      !controller.signal.aborted
+      (await current())
       ? result.response.text.trim()
       : undefined;
   };

@@ -1,4 +1,4 @@
-import { startRagConversationOpening as startOpening } from './contextualConversationOpening';
+import { startRagConversationOpening as start } from './contextualConversationOpening';
 import { conversationPublicSearchPlan as planSearch } from './conversationPublicSearchPlan';
 import { prepareLiveRagContinuation as continuationFor } from './liveRagConversationCapture';
 import { conversationMutationExecution } from './conversationMutationExecution';
@@ -48,7 +48,7 @@ export function createRagConversationService({
     const signal = linked.controller.signal;
     const consent = background.consent(consentPort, observer);
     const queryConsent = background.consent(queryConsentPort, observer);
-    let opening: ReturnType<typeof startOpening> | undefined;
+    let opening: ReturnType<typeof start> | undefined;
     let stage: 'selection' | 'data' | 'workflow' = 'data';
     try {
       const target = await targets.resolveConversationTargets({
@@ -83,7 +83,8 @@ export function createRagConversationService({
         selectedAi,
       );
       if (!selected) return { status: 'failure', kind: 'consent_required' };
-      opening = startOpening(selected, request, observer, consent, signal);
+      const current = report?.isCurrent;
+      opening = start(selected, request, observer, consent, signal, current);
       stage = 'data';
       const data =
         target.data ?? (await withProviderStage('rag', 'data', loadLocalData));
