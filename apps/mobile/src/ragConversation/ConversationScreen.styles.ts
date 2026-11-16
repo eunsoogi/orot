@@ -60,7 +60,9 @@ export const styles = StyleSheet.create({
   },
   // Fix structured content width without removing the opposite speaker lane.
   visitQuestionsMessage: { width: '85%' },
-  visitQuestionsBody: { paddingVertical: 12, paddingHorizontal: 8, gap: 8 },
+  // Reclaim only 10pt of the body's 18pt padding for structured questions.
+  // The region and its controls remain 8pt inside the bubble's actual bounds.
+  visitQuestionsRegion: { marginHorizontal: -10 },
   compactStreamingBody: { paddingBottom: 0 },
   messageText: { fontSize: 16, lineHeight: 24 },
   activity: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },

@@ -53,6 +53,8 @@ export function ConversationMessage({
       ? onOpenSource(reference, message.sourceOwner)
       : onOpenSource(reference);
   const user = message.role === 'user';
+  const visitQuestions =
+    !user && message.visitQuestions ? renderVisitQuestions?.(message) : null;
   const MessageText = user ? Text : AiResponseText;
   // Native production verification needs a stable target for completed text, apart from citation controls.
   const messageTextTestID = message.streaming
@@ -110,7 +112,6 @@ export function ConversationMessage({
         style={
           !user && [
             styles.assistantBody,
-            message.visitQuestions && styles.visitQuestionsBody,
             activityBeforeText && styles.compactStreamingBody,
           ]
         }
@@ -221,9 +222,14 @@ export function ConversationMessage({
             {t('ragConversation.conversation.savedVisitQuestionsUnavailable')}
           </Text>
         ) : null}
-        {!user && message.visitQuestions
-          ? renderVisitQuestions?.(message)
-          : null}
+        {visitQuestions != null && visitQuestions !== false ? (
+          <View
+            style={styles.visitQuestionsRegion}
+            testID="conversation-question-region"
+          >
+            {visitQuestions}
+          </View>
+        ) : null}
         {showCitations ? (
           <ConversationSources
             testIDPrefix={`rag-conversation-message-${message.id}`}
