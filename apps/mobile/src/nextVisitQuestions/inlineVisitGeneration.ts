@@ -86,5 +86,6 @@ export async function generateInlineVisitReview<
     review: fresh,
     generation,
     restorationNotice: saved.restorationNotice,
+    restorationWarning: saved.restorationWarning,
   };
 }

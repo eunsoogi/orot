@@ -17,7 +17,8 @@ export const visitQuestionDisplayKo = {
   'visitRestore.periodRestored':
     '기간별 건강 근거는 저장된 범위와 버전을 확인해 복원했어요. 생성 당시의 추가 경고는 보관되지 않았으니 근거를 다시 확인해 주세요.',
   'visitRestore.missingVersions':
-    '저장된 질문에는 생성 당시의 추가 경고와 원본 버전이 보관되지 않아 복원하지 못했습니다. 표시된 원문 근거를 다시 확인해 주세요.',
+    '이전에 저장한 질문에는 생성 당시의 추가 경고와 원본 버전 정보가 포함되지 않습니다. 표시된 원문 근거를 함께 확인해 주세요.',
+  'visitRestore.savedScope': '이전에 저장한 질문 안내: {notice}',
   'visitRestore.webNotSaved':
     '{notice} 공개 웹검색 결과와 출처는 저장되지 않았어요.',
   'visitCard.up': '위로',

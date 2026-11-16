@@ -13,4 +13,5 @@ export interface ConversationVisitQuestions {
   /** A saved turn restores its original candidates and the current saved question list. */
   readonly restoredFromSnapshot?: boolean;
   readonly restorationNotice?: string;
+  readonly restorationWarning?: boolean;
 }

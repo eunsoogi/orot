@@ -66,17 +66,26 @@ export function ConversationVisitQuestionCard({
         state={visit.review}
         theme={theme}
         isSaving={saving}
-        saveMessage={
-          (notice ??
-            [
-              visit.restorationNotice,
-              visit.restoredFromSnapshot
-                ? t('visitQuestions.conversation.restorationNotice')
-                : '',
-            ]
-              .filter(Boolean)
-              .join(' ')) ||
-          undefined
+        saveMessage={notice}
+        restorationNotice={
+          [
+            visit.review.items.some(item => item.origin === 'saved') &&
+            visit.restorationNotice
+              ? t('visitRestore.savedScope', {
+                  notice: visit.restorationNotice,
+                })
+              : '',
+            visit.restoredFromSnapshot
+              ? t('visitQuestions.conversation.restorationNotice')
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' ') || undefined
+        }
+        restorationWarning={
+          visit.review.items.some(item => item.origin === 'saved') &&
+          Boolean(visit.restorationNotice) &&
+          visit.restorationWarning !== false
         }
         onChange={review => {
           store.updateVisitQuestionReview(sessionId, message.id, review);

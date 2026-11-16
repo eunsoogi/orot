@@ -19,6 +19,8 @@ export interface RestoredSavedVisitQuestions {
   readonly caveats: readonly [];
   /** Explains which source locations and generated metadata are absent from persisted questions. */
   readonly restorationNotice: string;
+  /** True when source availability needs attention, not merely historical metadata absence. */
+  readonly restorationWarning?: boolean;
 }
 
 export type SavedVisitQuestionsLoadState =

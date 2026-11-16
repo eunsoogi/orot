@@ -134,6 +134,7 @@ export type SavedQuestionsState<TReference extends NextVisitEvidenceReference> =
       readonly status: 'ready';
       /** Explains missing persisted warnings without presenting them as new visit evidence. */
       readonly restorationNotice?: string;
+      readonly restorationWarning?: boolean;
     } & SavedQuestionsSnapshot<TReference>)
   | {
       readonly status: 'error';
