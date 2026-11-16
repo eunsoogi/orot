@@ -214,6 +214,7 @@ export function ConversationScreen({
             onLinkError={onLinkError}
             beforeMessages={
               <ManualVisitTargetPanels
+                content="recaps"
                 store={store}
                 sessionId={id}
                 durableSessionId={toolSourceSessionId}

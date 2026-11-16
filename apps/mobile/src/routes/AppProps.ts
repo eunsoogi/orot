@@ -24,6 +24,7 @@ import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDo
 
 /** Shared route input contract is separate from rendering so adding a destination does not grow the shell. */
 export interface AppRouteContentProps {
+  readonly discoverManualVisits?: AiFeatureServices['conversationArtifacts'];
   readonly documentImportService?: MedicalDocumentImportService;
   readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
   readonly actions: NavigationRouteActions<AppNavigationRoute>;

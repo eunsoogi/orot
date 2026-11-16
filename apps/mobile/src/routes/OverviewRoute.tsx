@@ -1,3 +1,5 @@
+import { OverviewPreparedVisits } from './OverviewPreparedVisits';
+import type { AiFeatureServices } from '../aiFeatures/integration/featureServiceTypes';
 import { HubBanner } from './HubBanner';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
@@ -18,6 +20,7 @@ import {
 } from './useOverviewPreparationData';
 
 export interface OverviewRouteProps extends OverviewPreparationLoaders {
+  readonly discoverManualVisits?: AiFeatureServices['conversationArtifacts'];
   readonly appointment: Appointment | null;
   readonly appointmentState: 'loading' | 'ready' | 'failed';
   readonly recentRecording: RecordingSourceRecord | null;
@@ -40,6 +43,7 @@ export default function OverviewRoute({
   onOpenSchedule,
   onOpenDailyReport,
   loadSavedVisitQuestions,
+  discoverManualVisits,
 }: OverviewRouteProps) {
   const preparation = useOverviewPreparationData(appointment?.id, {
     loadSavedVisitQuestions,
@@ -99,6 +103,10 @@ export default function OverviewRoute({
             />
           ) : null}
         </NextVisitPanel>
+        <OverviewPreparedVisits
+          appointmentId={appointment?.id}
+          discover={discoverManualVisits}
+        />
         <OverviewMetrics />
       </View>
     </View>
