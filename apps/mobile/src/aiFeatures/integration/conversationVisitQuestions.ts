@@ -27,8 +27,9 @@ export async function generateConversationVisitQuestions(input: {
 }) {
   const current = () => !input.signal.aborted && input.isCurrentOwner();
   if (!current()) return { status: 'cancelled' as const };
-  // A conversation without an explicit visit must not silently select another appointment.
-  if (!input.appointmentId?.trim())
+  // The generic next-visit action resolves the upcoming confirmed appointment.
+  // An explicit but invalid target must never fall back to another appointment.
+  if (input.appointmentId !== undefined && !input.appointmentId.trim())
     return { status: 'no_appointment' as const };
   const appointment = await input.operations.loadAppointment(
     new Date().toISOString(),
