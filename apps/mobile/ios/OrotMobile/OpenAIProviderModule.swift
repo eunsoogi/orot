@@ -115,6 +115,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
                     }
                     guard case let .response(responsePacket) = packet else { continue }
                     switch responsePacket {
+                    case let .responseStarted(id): slot.event(["type": "response_started", "responseId": id] as NSDictionary)
                     case let .textDelta(text): slot.event(["type": "text_delta", "text": text] as NSDictionary)
                     case let .toolCall(toolCall):
                         emittedToolCallIDs.insert(toolCall.id)

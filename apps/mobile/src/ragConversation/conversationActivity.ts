@@ -16,6 +16,8 @@ export type ConversationActivitySnapshot = Readonly<{
   sessionId: number;
   requestId: number;
   stage: ConversationActivityStage;
+  /** Observed provider processing, never a local preparation/dispatch assumption. */
+  responseStarted?: true;
 }>;
 
 /** Publish only while the owning request remains current. */
@@ -52,6 +54,7 @@ export function createConversationActivity(
   });
   let phase: 'preparing' | 'waiting' | 'streaming' = 'preparing';
   let cancelling = false;
+  let responseStarted = false;
   const calls = new Map<string, Map<string, ToolState>>();
 
   const publish = () => {
@@ -74,12 +77,25 @@ export function createConversationActivity(
         : literature
           ? 'literature'
           : phase;
-    if (stage !== snapshot.stage)
-      snapshot = Object.freeze({ sessionId, requestId, stage });
+    if (
+      stage !== snapshot.stage ||
+      Boolean(snapshot.responseStarted) !== responseStarted
+    )
+      snapshot = Object.freeze({
+        sessionId,
+        requestId,
+        stage,
+        ...(responseStarted ? { responseStarted: true as const } : {}),
+      });
   };
 
   return {
     getSnapshot: () => snapshot,
+    responseStarted() {
+      if (!snapshot || cancelling) return;
+      responseStarted = true;
+      publish();
+    },
     waiting() {
       if (!snapshot || cancelling) return;
       phase = 'waiting';
@@ -87,6 +103,7 @@ export function createConversationActivity(
     },
     stream() {
       if (!snapshot || cancelling) return;
+      responseStarted = true;
       phase = 'streaming';
       publish();
     },

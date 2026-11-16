@@ -5,7 +5,7 @@ import XCTest
 final class ResponsesSteeringStateTests: XCTestCase {
     func testAcceptanceIsNotApplicationAndSuccessorCreationCommitsOnce() throws {
         var state = ResponsesSteeringState()
-        XCTAssertEqual(try state.consume(created("original")), [.ready])
+        XCTAssertEqual(try state.consume(created("original")), [.ready, .response(.responseStarted("original"))])
         let sent = try state.prepareSteer(submissionID: "local", text: "Use a concise answer")
         let payload = try XCTUnwrap(JSONSerialization.jsonObject(with: sent) as? [String: String])
         XCTAssertEqual(payload, ["type": "response.steer", "previous_response_id": "original", "input": "Use a concise answer"])
@@ -71,7 +71,7 @@ final class ResponsesSteeringStateTests: XCTestCase {
     }
 
     private func created(_ id: String, previous: String? = nil) throws -> Data {
-        var response = ["id": id]
+        var response = ["id": id, "status": "in_progress"]
         if let previous {
             response["previous_response_id"] = previous
         }

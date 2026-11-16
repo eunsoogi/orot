@@ -121,6 +121,8 @@ public struct ChatGPTResponsesResult: Equatable, Sendable {
 }
 
 public enum ChatGPTResponsesEvent: Equatable, Sendable {
+    /// The service reports a response in progress; never synthesized from transport readiness.
+    case responseStarted(String)
     case textDelta(String)
     case toolCall(ChatGPTResponsesFunctionCall)
     case completed(ChatGPTResponsesResult)

@@ -13,6 +13,7 @@ struct ResponsesEventNormalizer {
     private var functionCallsByItemID = [String: FunctionCallState]()
     private var emittedFunctionCalls = [String: ChatGPTResponsesFunctionCall]()
     private var completedOutput = ResponsesCompletedOutput()
+    private var responseStart = ResponsesStartObservation()
     private var webSearch: ResponsesPublicWebSearch
 
     /// Creates a normalizer while preserving the request identifier for diagnostics.
@@ -38,6 +39,7 @@ struct ResponsesEventNormalizer {
             throw Self.malformed(frameEvent == "message" ? "event_message" : "event_mismatch")
         }
 
+        if let id = try responseStart.observe(object, type: type) { return .responseStarted(id) }
         switch type {
         case "response.output_text.delta", "response.refusal.delta":
             guard let delta = object["delta"] as? String else { throw Self.malformed("text_delta") }

@@ -11,6 +11,7 @@ export interface NativeOpenAIProviderEvent {
 }
 
 type NativeOpenAIProviderPacket =
+  | { readonly type: 'response_started'; readonly responseId: string }
   | { readonly type: 'steering_ready' }
   | { readonly type: 'text_snapshot'; readonly text: string }
   | {
@@ -42,6 +43,12 @@ export function isNativeEnvelope(
 export function isPacket(value: unknown): value is NativeOpenAIProviderPacket {
   if (!value || typeof value !== 'object') return false;
   const packet = value as Record<string, unknown>;
+  if (packet.type === 'response_started')
+    return (
+      typeof packet.responseId === 'string' &&
+      !!packet.responseId.trim() &&
+      packet.responseId.length <= 200
+    );
   if (packet.type === 'steering_ready') return true;
   if (packet.type === 'steering')
     return (

@@ -51,6 +51,7 @@ test('forwards only the explicit optional bridge transport and submission identi
 
 test.each([
   { type: 'steering_ready' },
+  { type: 'response_started', responseId: 'response-synthetic' },
   { type: 'steering', submissionId: 's1', status: 'accepted' },
   {
     type: 'steering',
@@ -78,6 +79,10 @@ test.each([
   { type: 'steering', submissionId: 's1', status: 'complete' },
   { type: 'steering', submissionId: 's1', status: 'applied', steerId: 7 },
   { type: 'text_snapshot', text: null },
+  { type: 'response_started' },
+  { type: 'response_started', responseId: '' },
+  { type: 'response_started', responseId: 7 },
+  { type: 'response_started', responseId: 'x'.repeat(201) },
 ])(
   'rejects malformed acknowledgement before it reaches durable state: %p',
   packet => {

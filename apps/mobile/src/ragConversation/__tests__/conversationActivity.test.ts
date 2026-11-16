@@ -87,3 +87,20 @@ test('ignores conflicting call identity and settles failed parallel calls indepe
   activity.tool(records);
   expect(activity.getSnapshot()?.stage).toBe('waiting');
 });
+
+test('only observed processing or output enables dots; dispatch and late callbacks do not', () => {
+  const active = createConversationActivity(1, 2);
+  active.waiting();
+  expect(active.getSnapshot()?.responseStarted).toBeUndefined();
+  active.responseStarted();
+  expect(active.getSnapshot()?.responseStarted).toBe(true);
+  const observed = active.getSnapshot();
+  active.responseStarted();
+  expect(active.getSnapshot()).toBe(observed);
+  active.cancel();
+  active.settle();
+  active.responseStarted();
+  expect(active.getSnapshot()).toBeNull();
+  const retry = createConversationActivity(1, 3);
+  expect(retry.getSnapshot()?.responseStarted).toBeUndefined();
+});
