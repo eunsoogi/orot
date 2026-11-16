@@ -22,31 +22,6 @@ public final class OpenAIProviderModule: RCTEventEmitter {
         ["OpenAIProviderEvent"]
     }
 
-    @objc(listModels:resolver:rejecter:)
-    public func listModels(_ issuedClientID: String, resolver resolve: @escaping RCTPromiseResolveBlock,
-                           rejecter reject: @escaping RCTPromiseRejectBlock)
-    {
-        Task {
-            do {
-                let models = try await activeClient.listModels(forIssuedClientID: issuedClientID)
-                // Local protocol eligibility after direct-plan authorization; not a server capability claim.
-                resolve(models.map { ["slug": $0.slug, "displayName": $0.displayName,
-                                      "supportsMidTurnSteering": ChatGPTSteerableResponse.supportsModel($0.slug)] as NSDictionary })
-            } catch {
-                let details = OpenAIProviderErrorDetails.make(error)
-                let message = details["message"] as? String ?? "ChatGPT model discovery failed."
-                var userInfo = details
-                userInfo[NSLocalizedDescriptionKey] = message
-                let rejection = NSError(
-                    domain: "OpenAIProvider",
-                    code: details["httpStatusCode"] as? Int ?? 1,
-                    userInfo: userInfo,
-                )
-                reject(details["code"] as? String ?? "CHATGPT_PROVIDER_ERROR", message, rejection)
-            }
-        }
-    }
-
     @objc(startResponse:requestId:issuedClientID:)
     public func startResponse(_ payload: NSDictionary, requestId: String, issuedClientID: String) {
         startNativeResponse(payload, requestId: requestId, issuedClientID: issuedClientID, steerable: false)
@@ -59,7 +34,8 @@ public final class OpenAIProviderModule: RCTEventEmitter {
 
     @objc(steerResponse:submissionId:text:resolver:rejecter:)
     public func steerResponse(_ requestId: String, submissionId: String, text: String,
-                              resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+                              resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock)
+    {
         let handle = steeringLock.withLock { steeringResponses[requestId] }
         Task {
             do {
@@ -99,6 +75,11 @@ public final class OpenAIProviderModule: RCTEventEmitter {
                 var handle: ChatGPTSteerableResponse?
                 let stream: AsyncThrowingStream<ChatGPTSteerableEvent, Error>
                 if steerable {
+                    #if (DEBUG || OROT_TESTS) && targetEnvironment(simulator)
+                        guard activeSimulatorFixtureClient == nil else {
+                            throw ChatGPTResponsesError.unsupportedCapability("live steering in an HTTP-only fixture")
+                        }
+                    #endif
                     let socket = try await activeClient.steerableResponse(request, forIssuedClientID: issuedClientID)
                     guard responseRequests.isActive(slot) else { await socket.close(); return }
                     handle = socket
@@ -108,15 +89,20 @@ public final class OpenAIProviderModule: RCTEventEmitter {
                     let source = try await activeClient.streamResponse(request, forIssuedClientID: issuedClientID)
                     stream = AsyncThrowingStream { continuation in
                         let task = Task {
-                            do { for try await event in source { continuation.yield(.response(event)) }; continuation.finish() }
-                            catch { continuation.finish(throwing: error) }
+                            do { for try await event in source {
+                                continuation.yield(.response(event))
+                            }; continuation.finish() } catch { continuation.finish(throwing: error) }
                         }
                         continuation.onTermination = { @Sendable _ in task.cancel() }
                     }
                 }
                 defer {
                     if let handle {
-                        steeringLock.withLock { if steeringResponses[requestId] === handle { steeringResponses.removeValue(forKey: requestId) } }
+                        steeringLock.withLock {
+                            if steeringResponses[requestId] === handle {
+                                steeringResponses.removeValue(forKey: requestId)
+                            }
+                        }
                         Task { await handle.close() }
                     }
                 }
@@ -128,7 +114,9 @@ public final class OpenAIProviderModule: RCTEventEmitter {
                     case let .textSnapshot(text): slot.event(["type": "text_snapshot", "text": text] as NSDictionary); continue
                     case let .steering(id, status, steerID):
                         var value: [String: Any] = ["type": "steering", "submissionId": id, "status": status]
-                        if let steerID { value["steerId"] = steerID }
+                        if let steerID {
+                            value["steerId"] = steerID
+                        }
                         slot.event(value as NSDictionary)
                         continue
                     case .response: break
@@ -180,6 +168,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
     @objc(cancelResponse:)
     public func cancelResponse(_ requestId: String) {
         responseRequests.cancel(requestID: requestId)?.cancel()
+        steeringLock.withLock { steeringResponses.removeValue(forKey: requestId) }?.cancel()
     }
 
     var activeClient: ChatGPTOAuthClient {
@@ -196,9 +185,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
 
     #if (DEBUG || OROT_TESTS) && targetEnvironment(simulator)
         var activeSimulatorFixtureClient: ChatGPTOAuthClient? {
-            fixtureLock.lock()
-            defer { fixtureLock.unlock() }
-            return simulatorFixture?.client
+            fixtureLock.withLock { simulatorFixture?.client }
         }
     #endif
 
@@ -212,6 +199,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
             return false
         }
         for slot in activeRequests {
+            steeringLock.withLock { steeringResponses.removeValue(forKey: slot.id) }?.cancel()
             emitRequestFailure(
                 slot.id,
                 kind: "authentication",

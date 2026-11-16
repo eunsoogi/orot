@@ -47,8 +47,12 @@ public actor ChatGPTSteerableResponse {
                         let data = try await connection.receive()
                         try Task.checkCancellation()
                         guard !closed else { throw ChatGPTResponsesError.interrupted }
-                        for event in try state.consume(data) { continuation.yield(event) }
-                        if state.finished { continuation.finish(); return }
+                        for event in try state.consume(data) {
+                            continuation.yield(event)
+                        }
+                        if state.finished {
+                            continuation.finish(); return
+                        }
                     }
                     throw ChatGPTResponsesError.interrupted
                 } catch { continuation.finish(throwing: error) }
@@ -58,6 +62,11 @@ public actor ChatGPTSteerableResponse {
                 Task { await self.close() }
             }
         }
+    }
+
+    /// Synchronous cancellation is used by sign-out before another bridge submission can run.
+    public nonisolated func cancel() {
+        connection.close()
     }
 
     public func close() {

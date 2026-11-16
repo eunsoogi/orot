@@ -17,6 +17,7 @@ struct ResponsesSteeringState {
     private var accepted = false
     private var submissionUsed = false
     private var successor = false
+    private var predecessorEnded = false
     private var originalResult: ChatGPTResponsesResult?
     private var normalizer = ResponsesEventNormalizer(requestID: nil)
     private var originalUsage: ChatGPTResponsesUsage?
@@ -26,7 +27,7 @@ struct ResponsesSteeringState {
         guard !finished, let activeID, !submissionUsed,
               !submissionID.isEmpty, submissionID.utf8.count <= 128,
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              text.utf8.count <= 16_384
+              text.utf8.count <= 16384
         else { throw ChatGPTResponsesError.invalidRequest }
         self.submissionID = submissionID
         submissionUsed = true
@@ -45,8 +46,10 @@ struct ResponsesSteeringState {
         if type == "response.created" {
             guard let response = object["response"] as? [String: Any],
                   let id = response["id"] as? String, !id.isEmpty else { throw ChatGPTResponsesError.malformedEvent }
-            if activeID == nil { activeID = id; return [.ready] }
-            guard accepted, !successor, id != activeID else { throw ChatGPTResponsesError.malformedEvent }
+            if activeID == nil {
+                activeID = id; return [.ready]
+            }
+            guard accepted, predecessorEnded, !successor, id != activeID else { throw ChatGPTResponsesError.malformedEvent }
             if let previous = response["previous_response_id"] as? String, previous != targetID {
                 throw ChatGPTResponsesError.malformedEvent
             }
@@ -59,28 +62,35 @@ struct ResponsesSteeringState {
             return try steeringEvent(object, type: type)
         }
         guard activeID != nil else { throw ChatGPTResponsesError.malformedEvent }
-        if let id = object["response_id"] as? String, id != activeID { throw ChatGPTResponsesError.malformedEvent }
+        if let id = object["response_id"] as? String, id != activeID {
+            throw ChatGPTResponsesError.malformedEvent
+        }
         if let response = object["response"] as? [String: Any], let id = response["id"] as? String, id != activeID {
             throw ChatGPTResponsesError.malformedEvent
         }
         if type == "response.incomplete", let response = object["response"] as? [String: Any],
-           let detail = response["incomplete_details"] as? [String: Any], detail["reason"] as? String == "steered" {
+           let detail = response["incomplete_details"] as? [String: Any], detail["reason"] as? String == "steered"
+        {
             guard submissionID != nil, !successor else { throw ChatGPTResponsesError.malformedEvent }
+            predecessorEnded = true
             originalUsage = try ChatGPTResponsesUsage.decode(response["usage"])
             return []
         }
         guard let event = try normalizer.consume(ResponsesSSEFrame(event: nil, data: text)) else { return [] }
         if case let .completed(result) = event {
             if submissionID != nil, !successor {
+                predecessorEnded = true
                 originalResult = result
                 originalUsage = result.usage
                 // Await acceptance/failure or pending, even if completion raced the steer acknowledgement.
                 return []
             }
             finished = true
-            return [.response(.completed(try combinedUsage(result)))]
+            return try [.response(.completed(combinedUsage(result)))]
         }
-        if case .toolCall = event { return [] } // Tools are released only with the validated terminal result.
+        if case .toolCall = event {
+            return []
+        } // Tools are released only with the validated terminal result.
         return [.response(event)]
     }
 
@@ -104,8 +114,11 @@ struct ResponsesSteeringState {
         case "response.steer.failed":
             guard !successor else { throw ChatGPTResponsesError.malformedEvent }
             var events: [ChatGPTSteerableEvent] = [.steering(submissionID: submissionID, status: "failed", steerID: id)]
-            if let result = originalResult { finished = true; events.append(.response(.completed(result))) }
-            else { self.submissionID = nil; targetIDReset() }
+            if let result = originalResult {
+                finished = true; events.append(.response(.completed(result)))
+            } else {
+                self.submissionID = nil; targetIDReset()
+            }
             return events
         default: throw ChatGPTResponsesError.malformedEvent
         }
@@ -125,7 +138,7 @@ struct ResponsesSteeringState {
         let total = originalUsage.totalTokens + usage.totalTokens
         guard max(input, output, total) <= 9_007_199_254_740_991 else { throw ChatGPTResponsesError.malformedEvent }
         return ChatGPTResponsesResult(text: result.text, toolCalls: result.toolCalls,
-            continuationItems: result.continuationItems, webSearch: result.webSearch,
-            usage: ChatGPTResponsesUsage(inputTokens: input, outputTokens: output, totalTokens: total))
+                                      continuationItems: result.continuationItems, webSearch: result.webSearch,
+                                      usage: ChatGPTResponsesUsage(inputTokens: input, outputTokens: output, totalTokens: total))
     }
 }

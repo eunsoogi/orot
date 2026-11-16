@@ -37,7 +37,9 @@ struct URLSessionResponsesWebSocket: ResponsesWebSocketConnection {
         }
     }
 
-    func close() { task.cancel(with: .goingAway, reason: nil) }
+    func close() {
+        task.cancel(with: .goingAway, reason: nil)
+    }
 }
 
 public extension ChatGPTOAuthClient {
@@ -55,6 +57,6 @@ public extension ChatGPTOAuthClient {
         payload.removeValue(forKey: "stream")
         payload["type"] = "response.create"
         let encoded = try JSONSerialization.data(withJSONObject: payload)
-        return ChatGPTSteerableResponse(connection: try URLSessionResponsesWebSocket(accessToken: token), initialRequest: encoded)
+        return try ChatGPTSteerableResponse(connection: URLSessionResponsesWebSocket(accessToken: token), initialRequest: encoded)
     }
 }

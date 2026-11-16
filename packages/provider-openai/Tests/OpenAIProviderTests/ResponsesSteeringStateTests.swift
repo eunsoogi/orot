@@ -60,21 +60,28 @@ final class ResponsesSteeringStateTests: XCTestCase {
         XCTAssertThrowsError(try state.prepareSteer(submissionID: "local", text: "Update"))
         _ = try state.consume(created("original"))
         XCTAssertThrowsError(try state.prepareSteer(submissionID: "local", text: "  "))
-        XCTAssertThrowsError(try state.prepareSteer(submissionID: "local", text: String(repeating: "a", count: 16_385)))
+        XCTAssertThrowsError(try state.prepareSteer(submissionID: "local", text: String(repeating: "a", count: 16385)))
         XCTAssertTrue(ChatGPTSteerableResponse.supportsModel("gpt-6-astra"))
         XCTAssertFalse(ChatGPTSteerableResponse.supportsModel("gpt-60"))
         XCTAssertFalse(ChatGPTSteerableResponse.supportsModel("gpt-5.6"))
     }
 
-    private func event(_ value: [String: Any]) throws -> Data { try JSONSerialization.data(withJSONObject: value) }
+    private func event(_ value: [String: Any]) throws -> Data {
+        try JSONSerialization.data(withJSONObject: value)
+    }
+
     private func created(_ id: String, previous: String? = nil) throws -> Data {
         var response = ["id": id]
-        if let previous { response["previous_response_id"] = previous }
+        if let previous {
+            response["previous_response_id"] = previous
+        }
         return try event(["type": "response.created", "response": response])
     }
+
     private func completed(_ id: String) throws -> Data {
         try event(["type": "response.completed", "response": ["id": id, "status": "completed", "output": []]])
     }
+
     private func steer(_ status: String, target: String = "original") throws -> Data {
         try event(["type": "response.steer.\(status)", "steer": ["id": "server", "previous_response_id": target]])
     }
