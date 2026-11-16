@@ -58,6 +58,9 @@ export const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: appColors.surface,
   },
+  // Structured question rows need reading width, not the narrower chat-bubble lane.
+  visitQuestionsMessage: { alignSelf: 'stretch', maxWidth: '100%' },
+  visitQuestionsBody: { padding: 12, gap: 8 },
   compactStreamingBody: { paddingBottom: 0 },
   messageText: { fontSize: 16, lineHeight: 24 },
   activity: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },

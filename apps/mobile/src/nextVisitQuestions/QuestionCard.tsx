@@ -17,6 +17,7 @@ interface QuestionCardProps<TReference extends NextVisitEvidenceReference> {
   readonly question: NextVisitQuestion<TReference>;
   readonly selectionHeader?: ReactNode;
   readonly priorityInDetails?: boolean;
+  readonly compact?: boolean;
   readonly index: number;
   readonly count: number;
   readonly editable: boolean;
@@ -40,6 +41,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
   question,
   selectionHeader,
   priorityInDetails = false,
+  compact = false,
   index,
   count,
   editable,
@@ -50,7 +52,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
   onRemove,
   onOpenSource,
 }: QuestionCardProps<TReference>) {
-  const styles = createQuestionCardStyles(theme);
+  const styles = createQuestionCardStyles(theme, compact);
   const number = index + 1;
   const [detailsOpen, setDetailsOpen] = useState(false);
 
