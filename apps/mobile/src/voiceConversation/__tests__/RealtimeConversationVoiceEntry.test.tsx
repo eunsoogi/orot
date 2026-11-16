@@ -28,12 +28,17 @@ jest.mock('../../voiceSettings/voiceSettingsStore', () => ({
   },
 }));
 let mockTranscript: (event: RealtimeTranscript) => void = () => {};
+let mockSystemCall = (_id: string, _active: boolean) => {};
 const mockNative = {
   open: jest.fn(async (_id: string) => {}),
   stop: jest.fn(async () => {}),
   pause: jest.fn(async () => {}),
   resume: jest.fn(async () => {}),
   interrupt: jest.fn(async () => {}),
+  onSystemCall: (listener: typeof mockSystemCall) => {
+    mockSystemCall = listener;
+    return () => {};
+  },
   onState: jest.fn(() => () => {}),
   onTranscript: jest.fn((listener: (event: RealtimeTranscript) => void) => {
     mockTranscript = listener;
@@ -110,6 +115,21 @@ it('requires remote audio and cost consent, preserves drafts, never calls the se
   expect(onSend).not.toHaveBeenCalled();
   expect(snapshot.sessions[0].draft).toBe('untouched draft');
   expect(screen.queryByTestId('voice-call-finish')).toBeNull();
+  const id = mockNative.open.mock.calls[0][0];
+  await act(async () => {
+    mockSystemCall(id, true);
+    Object.defineProperty(AppState, 'currentState', {
+      configurable: true,
+      value: 'background',
+    });
+    appChanged('background');
+  });
+  expect(mockNative.stop).not.toHaveBeenCalled();
+  await act(async () => {
+    mockSystemCall(id, false);
+  });
+  await waitFor(() => expect(mockNative.stop).toHaveBeenCalledTimes(1));
+
   await fireEvent.press(screen.getByTestId('voice-call-end'));
   await waitFor(() => expect(mockNative.stop).toHaveBeenCalledTimes(1));
   alert.mockRestore();
