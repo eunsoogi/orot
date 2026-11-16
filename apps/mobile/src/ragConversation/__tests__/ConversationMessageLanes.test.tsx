@@ -44,7 +44,7 @@ test('keeps final questions in the assistant lane with compact inner padding', a
       message={{
         id: 3,
         role: 'assistant',
-        content: '',
+        content: '합성 안내 문장은 일반 답변 여백을 유지합니다.',
         visitQuestions: {
           appointment,
           review: {
@@ -67,9 +67,59 @@ test('keeps final questions in the assistant lane with compact inner padding', a
     width: '85%',
   });
   expect(screen.getByTestId('conversation-message-body')).toHaveStyle({
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    gap: 8,
+    padding: 18,
+    gap: 14,
   });
+  expect(screen.getByTestId('conversation-question-region')).toHaveStyle({
+    marginHorizontal: -10,
+  });
+  expect(screen.getByTestId('rag-conversation-answer-body')).toHaveTextContent(
+    '합성 안내 문장은 일반 답변 여백을 유지합니다.',
+  );
   expect(screen.getByTestId('synthetic-question-list')).toBeTruthy();
 });
+
+// A question-specific inset must never reach ordinary assistant prose or user bubbles.
+test('preserves ordinary answer padding independently from the compact question region', async () => {
+  await render(
+    <ConversationMessage
+      message={{ id: 4, role: 'assistant', content: '합성 일반 답변' }}
+      onOpenSource={jest.fn()}
+      onLinkError={jest.fn()}
+    />,
+  );
+  expect(screen.getByTestId('conversation-message-body')).toHaveStyle({
+    padding: 18,
+    gap: 14,
+  });
+  expect(screen.queryByTestId('conversation-question-region')).toBeNull();
+});
+
+it.each([undefined, () => null])(
+  'does not add an empty region when questions have no renderer output',
+  async renderVisitQuestions => {
+    await render(
+      <ConversationMessage
+        message={{
+          id: 5,
+          role: 'assistant',
+          content: '합성 안내',
+          visitQuestions: {
+            appointment,
+            review: {
+              ownerKey: 'synthetic',
+              items: [],
+              caveats: [],
+              expectedSavedQuestions: [],
+            },
+            validateSource: async () => true,
+          },
+        }}
+        onOpenSource={jest.fn()}
+        onLinkError={jest.fn()}
+        renderVisitQuestions={renderVisitQuestions}
+      />,
+    );
+    expect(screen.queryByTestId('conversation-question-region')).toBeNull();
+  },
+);
