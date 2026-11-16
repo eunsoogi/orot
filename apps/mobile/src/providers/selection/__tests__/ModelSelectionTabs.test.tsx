@@ -22,7 +22,7 @@ const store = () => ({
 });
 const requirements = { inputTypes: ['text'] as const };
 
-it('shows saved identity before catalog refresh without asserting availability', async () => {
+it('shows saved identity without an unsolicited unavailable warning or fallback', async () => {
   const storage = store();
   await render(
     <ProviderSelectionScreen
@@ -35,9 +35,10 @@ it('shows saved identity before catalog refresh without asserting availability',
   expect(screen.getByTestId('provider-selection-current')).toHaveTextContent(
     /gpt-synthetic/,
   );
-  expect(screen.getByTestId('provider-selection-current')).toHaveTextContent(
-    new RegExp(providerSelectionText.unavailableSelection),
-  );
+  expect(
+    screen.queryByText(new RegExp(providerSelectionText.unavailableSelection)),
+  ).toBeNull();
+  expect(storage.clear).not.toHaveBeenCalled();
   expect(storage.save).not.toHaveBeenCalled();
 });
 it('switches accessible tabs and removes the hidden language action surface', async () => {
@@ -87,4 +88,33 @@ it('keeps pending confirmation visible and uses neutral card styling', async () 
   expect(storage.save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('provider-selection-cancel'));
   expect(screen.getByTestId('model-tab-voice')).toBeEnabled();
+});
+
+it('allows explicit replacement of an unavailable saved model without automatic routing', async () => {
+  const storage = store();
+  const committed = jest.fn();
+  await render(
+    <ProviderSelectionScreen
+      presentation="settings-provider"
+      options={[apple]}
+      requirements={requirements}
+      selectionStore={storage}
+      onSelectionCommitted={committed}
+    />,
+  );
+  expect(committed).not.toHaveBeenCalled();
+  const option = screen.getByTestId('provider-option-0');
+  expect(option.props.accessibilityRole).toBe('radio');
+  await fireEvent.press(option);
+  expect(storage.save).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('provider-selection-cancel'));
+  expect(storage.save).not.toHaveBeenCalled();
+  expect(screen.getByTestId('provider-selection-current')).toHaveTextContent(
+    /gpt-synthetic/,
+  );
+  await fireEvent.press(screen.getByTestId('provider-option-0'));
+  await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
+  expect(storage.save).toHaveBeenCalledTimes(1);
+  expect(committed).toHaveBeenCalledTimes(1);
+  expect(storage.clear).not.toHaveBeenCalled();
 });

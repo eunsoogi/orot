@@ -153,6 +153,8 @@ export default function ProviderSelectionScreen({
     }
   }
 
+  // Settings shows saved identity, not a catalog-derived warning before refresh.
+  // Feature flows still require an available selection and keep their recovery message.
   const selectionMessage = loading
     ? ''
     : loadError
@@ -160,7 +162,11 @@ export default function ProviderSelectionScreen({
       : resolution.ok
         ? `${providerSelectionText.selectedPrefix} ${selectedOption?.displayName ?? ''}`
         : savedSelection
-          ? `${providerSelectionText.selectedPrefix} ${savedSelection.modelId}\n${providerSelectionText.unavailableSelection}`
+          ? `${providerSelectionText.selectedPrefix} ${savedSelection.modelId}${
+              presentation === 'settings-provider'
+                ? ''
+                : `\n${providerSelectionText.unavailableSelection}`
+            }`
           : providerSelectionText.selectPrompt;
 
   return (
