@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -90,3 +91,70 @@ test('all four chat choices remain in one transcript and allow a report follow-u
   expect(screen.queryByTestId('daily-report-screen')).toBeNull();
   expect(back).not.toHaveBeenCalled();
 });
+
+test.each(['cancel', 'failure'] as const)(
+  'report %s remains in the shared chat recovery surface',
+  async outcome => {
+    let store!: ConversationSessions;
+    let signal: AbortSignal | undefined;
+    let finish!: (
+      value: Awaited<ReturnType<ConversationScreenProps['onSend']>>,
+    ) => void;
+    const sender: ConversationScreenProps['onSend'] = (
+      _question,
+      _history,
+      currentSignal,
+    ) => {
+      signal = currentSignal;
+      return new Promise(resolve => {
+        finish = resolve;
+      });
+    };
+    function Capture() {
+      store = useConversationSessions();
+      return (
+        <ConversationScreen
+          onBack={jest.fn()}
+          onOpenSource={jest.fn()}
+          onSend={sender}
+          onOpenDailyReport={() => {
+            startConversationReportTurn(store, () => true, sender);
+          }}
+        />
+      );
+    }
+    await render(
+      <ConversationSessionsProvider>
+        <Capture />
+      </ConversationSessionsProvider>,
+    );
+    await fireEvent.press(screen.getByTestId('daily-report-request'));
+    await waitFor(() => expect(signal).toBeDefined());
+    if (outcome === 'cancel') {
+      await fireEvent.press(screen.getByTestId('rag-conversation-cancel'));
+      expect(signal?.aborted).toBe(true);
+      await act(() =>
+        finish({
+          status: 'answer',
+          answer: 'Synthetic late report must not appear',
+          citations: [],
+        }),
+      );
+    } else {
+      await act(() => finish({ status: 'failure', kind: 'consent_required' }));
+    }
+    await waitFor(() =>
+      expect(store.getSnapshot().sessions[0].busy).toBe(false),
+    );
+    expect(store.getSnapshot().sessions).toHaveLength(1);
+    expect(
+      screen.queryByText('Synthetic late report must not appear'),
+    ).toBeNull();
+    expect(screen.queryByTestId('inline-daily-report-task')).toBeNull();
+    expect(screen.getByTestId('rag-conversation-input').props.editable).toBe(
+      true,
+    );
+    if (outcome === 'failure')
+      expect(screen.getByTestId('rag-conversation-error')).toBeTruthy();
+  },
+);
