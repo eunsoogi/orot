@@ -72,7 +72,11 @@ export function appRouteIsScrollable(
   activeTab: string,
 ): boolean {
   return (
-    ['recent-records', 'medical-document-detail'].includes(route.name) ||
+    [
+      'recent-records',
+      'medical-document-detail',
+      'saved-memory-detail',
+    ].includes(route.name) ||
     (route.name === 'root' &&
       ['overview', 'records', 'settings'].includes(activeTab))
   );

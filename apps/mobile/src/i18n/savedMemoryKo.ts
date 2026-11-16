@@ -1,5 +1,8 @@
 /** Presentation only; memory content and its privacy lifecycle are not localized. */
 export const savedMemoryKo = {
+  'savedMemory.openDetail': '기억 상세 보기',
+  'savedMemory.detailTitle': '기억 상세',
+  'savedMemory.notFound': '이 기억은 더 이상 볼 수 없어요.',
   'savedMemory.preference': '선호',
   'savedMemory.reviewedInteraction': '검토한 대화',
   'savedMemory.taskContext': '작업 맥락',
