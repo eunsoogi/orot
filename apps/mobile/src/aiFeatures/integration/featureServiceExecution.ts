@@ -31,7 +31,17 @@ export function toolsFor(
 ) {
   return [
     ...(data.readHealthContext
-      ? [createHealthContextTool(data.readHealthContext, registry, feature)]
+      ? [
+          // Only ordinary conversation opts into pre-dispatch refresh. The RAG
+          // input schema is also used by health summaries, which keep their own
+          // single-read freshness contract.
+          createHealthContextTool(
+            data.readHealthContext,
+            registry,
+            feature,
+            feature === 'rag',
+          ),
+        ]
       : []),
     createLocalEvidenceSearchTool({
       id: 'local-personal-records',

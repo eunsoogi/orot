@@ -57,12 +57,7 @@ test('forwards the exact period to every selected topic and retains relative def
   await tool.search(request);
   expect(
     read.mock.calls.map(([period, topics]) => [period, topics[0]]),
-  ).toEqual(
-    HEALTH_CONTEXT_TOPICS.flatMap(topic => [
-      [window, topic],
-      [window, topic],
-    ]),
-  );
+  ).toEqual(HEALTH_CONTEXT_TOPICS.map(topic => [window, topic]));
   for (const days of [7, 30, 90] as const) {
     read.mockClear();
     await tool.search({

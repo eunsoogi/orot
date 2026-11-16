@@ -7,7 +7,8 @@ import {
   workflowOptions,
   makeProvider,
 } from '../../../../../../packages/agent-runtime/__tests__/multiAgent-external-evidence-fixtures';
-import { createHealthContextTool } from '../healthContextTool';
+import { toolsFor } from '../featureServiceExecution';
+import { localData } from '../featureServiceFixtures';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { healthContextDays } from '../../../healthEvidence/healthContext/window';
 import type { HealthContextReader } from '../../../healthEvidence/healthContext/reader';
@@ -38,7 +39,14 @@ test.each(['accept', 'deny', 'second_change'] as const)(
       .mockResolvedValueOnce(report(2))
       .mockResolvedValue(report(mode === 'second_change' ? 3 : 2));
     const registry = new LocalEvidenceReferenceRegistry();
-    const original = createHealthContextTool(read, registry, 'rag');
+    const original = toolsFor(
+      undefined,
+      { ...localData([]).data, readHealthContext: read },
+      registry,
+      6,
+      true,
+      'rag',
+    )[0]!;
     let batch: EvidenceBatch | undefined;
     const tool = {
       ...original,

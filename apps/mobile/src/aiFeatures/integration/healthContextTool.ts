@@ -78,6 +78,7 @@ export function createHealthContextTool(
   read: HealthContextReader,
   registry: LocalEvidenceReferenceRegistry,
   feature: 'disease' | 'rag' | 'visit' = 'disease',
+  refreshUnexposed = false,
 ): EvidenceSearchTool {
   return {
     id: 'local-health-context',
@@ -190,7 +191,7 @@ export function createHealthContextTool(
           registry,
           read,
           report:
-            feature === 'rag'
+            feature === 'rag' && refreshUnexposed
               ? await refreshHealthContextRead({
                   initial: report,
                   read,

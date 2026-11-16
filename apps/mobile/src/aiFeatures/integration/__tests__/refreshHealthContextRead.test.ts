@@ -82,7 +82,7 @@ test('the RAG tool registers only refreshed content and leaves ordinary freshnes
   const f = setup([report(1), report(2), report(2)]);
   f.read.mockResolvedValue(report(2));
   const registry = new LocalEvidenceReferenceRegistry();
-  const tool = createHealthContextTool(f.read, registry, 'rag');
+  const tool = createHealthContextTool(f.read, registry, 'rag', true);
   const result = await tool.search({
     input: { topics: ['symptoms'], window: { ...scope.window } },
     operationRunId: 'synthetic',
@@ -133,7 +133,7 @@ test('restriction never reads, other feature reads once, and larger replacement 
     maxPayloadBytes: 20_480,
     signal: f.controller.signal,
   };
-  await createHealthContextTool(f.read, registry, 'rag').search({
+  await createHealthContextTool(f.read, registry, 'rag', true).search({
     ...request,
     allowedScope: { ...request.allowedScope, sourceIds: ['restricted'] },
   });
@@ -142,9 +142,12 @@ test('restriction never reads, other feature reads once, and larger replacement 
   expect(f.read).toHaveBeenCalledTimes(1);
   const larger = { ...report(2), limitations: ['synthetic'.repeat(10_000)] };
   f.read.mockReset().mockResolvedValueOnce(report(1)).mockResolvedValue(larger);
-  const result = await createHealthContextTool(f.read, registry, 'rag').search(
-    request,
-  );
+  const result = await createHealthContextTool(
+    f.read,
+    registry,
+    'rag',
+    true,
+  ).search(request);
   if ('status' in result) throw new Error('Expected bounded batch');
   expect(result.items).toEqual([]);
   expect(result.coverage[0]?.gaps).toContain(
