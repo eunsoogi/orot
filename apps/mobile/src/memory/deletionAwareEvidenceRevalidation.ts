@@ -1,3 +1,4 @@
+import type { RecordRepository, SqlDatabase } from '@orot/storage';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { RecordIdSchema } from '@orot/domain';
 import { SqlCipherAgentMemoryStorage } from '../storage/agentMemoryStorage';
@@ -31,9 +32,17 @@ function structuredRecordIdentity(reference: EvidenceReference): string | null {
     : null;
 }
 
+/** Explicit per-workflow storage binding; validation itself cannot be replaced.
+ * Native application callers retain lazy protected storage by default. */
+export interface DeletionRevalidationStorage {
+  openRecords(): Promise<RecordRepository>;
+  openMemoryDatabase(): Promise<SqlDatabase>;
+}
+
 /** Rejects deleted or missing local identities before a resume can restore evidence. */
 export function withLocalDeletionAwareRevalidation(
   revalidate: EvidenceRevalidator,
+  storage?: DeletionRevalidationStorage,
 ): EvidenceRevalidator {
   return async (references, signal) => {
     // Do not open protected local stores when the caller has already cancelled this run.
@@ -48,9 +57,11 @@ export function withLocalDeletionAwareRevalidation(
 
     if (personalRecords.length > 0) {
       // Loading SQLCipher lazily keeps external-only workflows and Node tests from importing native modules.
-      const { openLocalStorage } =
-        require('../storage/secureDatabase') as typeof import('../storage/secureDatabase');
-      const repository = await openLocalStorage();
+      const repository = await (storage
+        ? storage.openRecords()
+        : (
+            require('../storage/secureDatabase') as typeof import('../storage/secureDatabase')
+          ).openLocalStorage());
       if (signal.aborted) return false;
       for (const reference of personalRecords) {
         if (signal.aborted) return false;
@@ -106,9 +117,11 @@ export function withLocalDeletionAwareRevalidation(
 
     if (reviewedMemories.length > 0) {
       if (signal.aborted) return false;
-      const { openLocalAgentMemoryDatabase } =
-        require('../storage/secureDatabase') as typeof import('../storage/secureDatabase');
-      const database = await openLocalAgentMemoryDatabase();
+      const database = await (storage
+        ? storage.openMemoryDatabase()
+        : (
+            require('../storage/secureDatabase') as typeof import('../storage/secureDatabase')
+          ).openLocalAgentMemoryDatabase());
       if (signal.aborted) return false;
       const removedIds = new Set(
         await new SqlCipherAgentMemoryStorage(database).listRemovedSourceIds(),

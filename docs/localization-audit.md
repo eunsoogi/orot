@@ -43,6 +43,30 @@
 
 카탈로그·미지원 locale fallback·보존된 경고·모델 ID interpolation과 조사한 두 디렉터리의 inline 한국어 회귀 검사를 추가했다. 기존 설정/계정/모델 동작 테스트를 함께 검증한다. native UI나 실기기 동작을 검증한 것으로 간주하지 않는다. 아래 나머지 production/native 후보는 후속 작업이며 이 문서나 부분 PR로 전체 현지화가 완료되지 않는다.
 
+## 표시와 저장·프로토콜의 후속 구분
+
+2026-11-15 추가 조사에서 SwiftPM provider 오류와 callback 표시, 요약 기간·불완전 근거 설명, 측정값 선택 결과, 일정 분류 설명을 카탈로그로 이관했다. Europe PMC 검색어별 동의와 로컬 검색 후속 답변도 별도 PR로 검증 중이다. 후속 답변은 대화 기록에 저장될 수 있으므로 비저장 UI라고 설명하지 않는다. 이관 전후 완성 문자열·검색 재개·근거 식별자는 동일하게 보존한다.
+
+- `medicalAppointments/classificationDecision.ts`: wire enum을 검증한 뒤 고정 설명을 추가한다. 화면은 candidate reason을 표시하지만 일정 저장은 재검증한 event snapshot을 사용하며 설명을 저장 결정이나 동의 대상으로 비교하지 않는다.
+- `aiFeatures/integration/continueArtifactSearch.ts`: query/cursor/catalog와 coverage가 재개·분기를 결정한다. answer의 한국어 문구를 프로토콜 값으로 비교하지 않지만, 생성된 답변 자체는 대화에 보존될 수 있다.
+- `aiFeatures/integration/evidencePayload.ts`: 요청 크기 제한 문구는 coverage gap에 추가되며 정확한 `includes` 검사로 중복을 막는다. 표시 전용으로 취급하지 않는다.
+- `aiFeatures/integration/defaultPublicSearch.ts`: 공개 검색 제한 설명은 검증된 결과의 `missingData`에 추가되어 표시·저장된다. 주제 판별 정규식과 함께 남아 있으므로 파일 전체를 단순 UI 이관 대상으로 분류하지 않는다.
+- `aiFeatures/integration/publicWebEvidence.ts`: recipient와 locator title은 외부 전송 동의·증거 출처 문맥에 연결된다. source identity를 검토하지 않은 기계적 이동은 하지 않는다.
+- `treatmentContext/hypertensionEducation.ts`: 대상 집단 문구는 검토 시각과 함께 공개 근거 locator에 들어가고 전체 reference를 `stableJson`으로 비교한다. 원문·revision의 일부로 보존한다.
+- `diseaseHypotheses/appleSummaryRecordSections.ts`: 후속 검토에서 schema는 topic/source ID와 statistic selector를 사용하고 한국어 title은 정규화된 section의 출력 값임을 확인했다. topic key·source ID와 과거 저장 자료를 유지한 채 title 값만 동일하게 이관한다. `summaryOverviewSelections.ts`의 출력 title도 같은 경계다.
+- `ios/OrotMobile/Info.plist`의 권한 사용 목적과 앱 이름은 이미 플랫폼 리소스 값이다. 개인정보 관련 동의 내용을 바꾸거나 지원하지 않는 언어를 추가하는 작업과 단순 코드 문자열 정리를 구분한다.
+- `packages/provider-openai/ios-spike` 및 package fixture는 OAuth 검증용 harness·합성 자료로 분류한다. shipping provider의 오류 표시 리소스와 별개다.
+
+정규식의 한국어 날짜·단위·임상 판정 표현, 모델 지시, 원문 및 근거 직렬화는 유지한다. 최초 아래 인벤토리는 역사적 조사 목록이며 현재 미완료 파일 수가 아니다. 이 후속 구분도 모든 경로의 전수 완료 선언은 아니다.
+
+## 최신 재점검 범위
+
+2026-11-15, main `64922a11`에 요약 section title 이관 배치를 더한 tree를 재점검했다. 테스트·fixture·리소스를 제외한 `apps/mobile/src` TSX의 한국어 포함 파일은 합성 검증용 `NativeReviewProbe.tsx`뿐이었다. shipping Swift/Objective-C 소스의 잔여 한국어는 사진 `displayName` 직렬화 값이었다. 추가로 Git 추적 JavaScript/JSX/MJS/CJS를 조사했으며 한국어는 `scripts/evaluation`의 합성 provider와 평가 정규식에서 확인했다. 이미지·외부 생성 자료까지 모든 표시를 검증했다는 뜻은 아니다.
+
+`evidenceSearchTool.ts`의 제한·실패 문구는 `EvidenceBatch.coverage.gaps`를 생성하고 요청 byte 제한 계산에도 포함된다. `evidenceSnapshot.ts`의 문구 역시 모델 근거 coverage/gaps이며 표시 전용이 아니다. `dailyReportFacts.ts`의 단위·설명은 `modelText` 직렬화, `savedVisitQuestionGeneratedSources.ts`의 문구는 근거 content, `conversationHealthHistory.ts`의 제목은 저장되는 기록 값이다. 이들을 단순 UI 누락으로 분류해 변경하지 않았다.
+
+이 재점검은 명확한 화면 고정문구의 누락 후보를 좁힌 결과다. 저장·모델·검증 경계의 한국어까지 제거하거나, 지원 언어를 늘리거나, 실제 사용자 자료·기기 화면을 검증한 결과가 아니다. 과거 인벤토리는 계속 역사적 기록으로 유지한다.
+
 ## 남아 있는 한국어 포함 소스 인벤토리
 
 테스트/fixture와 기존 리소스는 의도적으로 유지한다. 아래 분류는 경로/역할에 따른 1차 분류이며 실제 사용자 노출 여부와 임상 의미는 후속 파일별 검토가 필요하다. 숫자는 한국어가 있는 물리적 줄 수로 문자열 수가 아니다.

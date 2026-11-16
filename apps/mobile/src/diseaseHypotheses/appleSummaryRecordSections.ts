@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { JsonObject, JsonValue } from '@orot/model-runtime';
 import type { TaskResponderInput } from '@orot/agent-runtime';
 import { structuredSummaryFacts } from './summaryFactValidation';
@@ -11,12 +12,13 @@ import {
   type StatisticChoice,
 } from './computedStatisticChoice';
 
+// Display titles are not wire keys; schema identity remains the original topic/source ID.
 const titles: Record<string, string> = {
-  medications: '복용약',
-  measurements: '건강 측정',
-  activity: '활동 기록',
-  sleep: '수면 기록',
-  symptoms: '증상 기록',
+  medications: t('computedTopic.title.medications'),
+  measurements: t('computedTopic.title.measurements'),
+  activity: t('computedTopic.title.activity'),
+  sleep: t('computedTopic.title.sleep'),
+  symptoms: t('computedTopic.title.symptoms'),
 };
 const object = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);

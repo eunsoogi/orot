@@ -4,7 +4,7 @@
 
 ### 흩어진 건강 기록을, 나를 위한 대화로.
 
-기록을 모으고 · 근거를 확인하고 · 다음 진료를 준비합니다.
+내 기록에 질문하고 · 답변의 근거를 확인하고 · 대화를 이어갑니다.
 
 [![Code Quality](https://github.com/eunsoogi/orot/actions/workflows/code-quality.yml/badge.svg?branch=main)](https://github.com/eunsoogi/orot/actions/workflows/code-quality.yml)
 [![Unit Test](https://github.com/eunsoogi/orot/actions/workflows/unit-test.yml/badge.svg?branch=main)](https://github.com/eunsoogi/orot/actions/workflows/unit-test.yml)
@@ -12,13 +12,39 @@
 [![React Native](https://img.shields.io/badge/React_Native-0.87.1-3182f6)](apps/mobile/package.json)
 [![LangGraph](https://img.shields.io/badge/LangGraph-1.4.18-1C3C3C)](packages/agent-runtime/package.json)
 
-[기능](#기록에서-대화까지) · [화면](#한-손에서도-펼친-화면에서도) · [구조](#아이폰-안에서-시작하는-ai) · [개발 시작](#함께-만들기)
+[대화](#내-건강-기록과-대화하세요) · [기능](#기록에서-대화까지) · [화면](#한-손에서도-펼친-화면에서도) · [구조](#아이폰-안에서-시작하는-ai) · [개발 시작](#함께-만들기)
 
 </div>
 
-![일반 iPhone과 iPhone Duo에서 실행한 오롯의 현재 화면](docs/assets/orot-showcase.png)
+![일반 iPhone과 iPhone Duo에서 실행한 오롯의 대화 화면](docs/assets/orot-showcase.png)
 
 > 건강 기록을 이해하고 진료를 준비하는 앱입니다. AI의 설명은 진단이나 치료 결정을 대신하지 않습니다.
+
+## 내 건강 기록과 대화하세요
+
+1. **내 기록에 질문하세요.** 필요한 기록을 찾아 답변합니다.
+2. **답변의 근거를 확인하세요.** 확인한 자료와 원문 출처를 연결합니다.
+3. **대화를 이어가세요.** 추가 지시를 보내거나 다음 진료 질문을 정리합니다.
+
+## 한 손에서도, 펼친 화면에서도
+
+### 대화가 중심입니다
+
+| 일반 iPhone · Simulator · 세로 화면 | iPhone Duo · 실기기 · 접힌 외부 화면 |
+| --- | --- |
+| 내 기록에 질문하고 답변과 근거에 집중합니다. | 대화와 출처를 확인합니다. 아래 캡처는 접힌 상태입니다. |
+| ![일반 iPhone의 합성 기록 기반 대화 화면](docs/assets/showcase/iphone-conversation.png) | ![iPhone Duo 접힌 외부 화면의 합성 기록 기반 대화 화면](docs/assets/showcase/duo-conversation.png) |
+
+### 한눈에에서 맥락을 확인하세요
+
+Duo의 펼친 내부 화면은 아래 한눈에 갤러리에서 볼 수 있습니다.
+
+| 일반 iPhone | iPhone Duo |
+| --- | --- |
+| 진료 일정과 건강 기록을 한 화면씩 확인합니다. | 펼친 화면에서 건강 기록을 넓은 카드로 확인합니다. |
+| ![일반 iPhone의 합성 데이터 한눈에 화면](docs/assets/showcase/iphone-overview.png) | ![iPhone Duo의 합성 데이터 한눈에 화면](docs/assets/showcase/duo-overview.png) |
+
+
 
 ## 기록에서 대화까지
 
@@ -33,14 +59,6 @@
 | **말로 대화하기**        | Apple 시스템 음성 또는 별도 동의한 OpenAI Realtime 음성 대화를 선택합니다.     |
 
 [기능별 상세 동작과 제한 보기](docs/features.md)
-
-## 한 손에서도, 펼친 화면에서도
-
-| 일반 iPhone                                                                      | iPhone Duo                                                                   |
-| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| 진료 일정과 건강 기록을 한 화면씩 집중해서 봅니다.                               | 펼친 화면에서 건강 기록을 넓은 카드로 확인합니다.                            |
-| ![일반 iPhone의 실제 합성 데이터 화면](docs/assets/showcase/iphone-overview.png) | ![iPhone Duo의 실제 합성 데이터 화면](docs/assets/showcase/duo-overview.png) |
-
 
 ## 대화 중에도, 다음에 돌아와도
 
