@@ -8,7 +8,13 @@ import type { TreatmentConversationSender } from '../treatmentContext/treatmentC
 
 const pendingVisits = new WeakMap<
   ConversationSessions,
-  Map<number, ConversationEntryContext>
+  Map<
+    number,
+    {
+      context: ConversationEntryContext;
+      selected: ConversationEntryContext | undefined;
+    }
+  >
 >();
 
 /** Explicit treatment actions use their own validated sender, never text-based routing. */
@@ -43,7 +49,10 @@ export function visitPreparationSender(
     pendingVisits.set(store, pending);
   }
   const entries = pending;
-  entries.set(id, context);
+  entries.set(id, {
+    context,
+    selected: conversationEntryForSession(store, id),
+  });
   return async (
     ...args: Parameters<
       NonNullable<ConversationScreenProps['prepareVisitQuestions']>
@@ -123,8 +132,9 @@ export function sendConversationMessage(
     const pending = pendingVisits.get(store);
     const selected = conversationEntryForSession(store, id);
     // A newer in-place choice must not inherit a failed visit operation's retry sender.
-    if (pending?.get(id) && pending.get(id) !== selected) pending.delete(id);
-    const context = pending?.get(id) ?? selected;
+    if (pending?.get(id) && pending.get(id)?.selected !== selected)
+      pending.delete(id);
+    const context = pending?.get(id)?.context ?? selected;
     if (prepare && context && pending?.has(id))
       return visitPreparationSender(store, id, prepare, context)(
         question,

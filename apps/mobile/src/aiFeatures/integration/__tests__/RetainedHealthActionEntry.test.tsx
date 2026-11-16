@@ -35,12 +35,26 @@ test.each([
   ['possibilities', 'conversationIntent.possibilities'],
   ['health-summary', 'conversationIntent.healthSummary'],
 ] as const)(
-  'opens %s without replacing the current draft or starting inference',
+  'selects %s in place only after preserving and clearing the pending draft',
   async (action, key) => {
     await render(<AiFeatureRoute onBack={jest.fn()} />);
     await fireEvent.changeText(
       screen.getByTestId('rag-conversation-input'),
       'synthetic draft',
+    );
+    // A pending draft keeps its original purpose; selecting a choice cannot replace it.
+    expect(screen.getByTestId(`conversation-open-${action}`)).toBeDisabled();
+    await fireEvent.press(screen.getByTestId(`conversation-open-${action}`));
+    expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
+      'value',
+      'synthetic draft',
+    );
+    expect(
+      screen.queryByTestId('conversation-intent-use-suggestion'),
+    ).toBeNull();
+    await fireEvent.changeText(
+      screen.getByTestId('rag-conversation-input'),
+      '',
     );
     await fireEvent.press(screen.getByTestId(`conversation-open-${action}`));
     expect(
