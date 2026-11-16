@@ -1,3 +1,4 @@
+import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { startContextualConversationOpening } from './contextualConversationOpening';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
@@ -60,7 +61,10 @@ export function createHealthSummaryService(input: {
       request.question.length > 1000
     )
       throw new Error('Invalid health summary request.');
-    const selected = await input.selectedAi();
+    const selected = conversationReceiptSelection(
+      await input.selectedAi(),
+      observer,
+    );
     let data: AiFeatureLocalData;
     try {
       data = await input.loadData();

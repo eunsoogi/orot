@@ -1,3 +1,4 @@
+import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { startContextualConversationOpening } from './contextualConversationOpening';
 import { visitConsentScope } from '../../agent/execution/inferenceConsentScopes';
 import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
@@ -45,7 +46,10 @@ export async function generateConversationVisitQuestions(input: {
       localEvidenceFingerprint(appointment)
   )
     return { status: 'appointment_changed' as const };
-  const selectedAi = await input.resolveSelectedAi();
+  const selectedAi = conversationReceiptSelection(
+    await input.resolveSelectedAi(),
+    input.observer,
+  );
   if (!current()) return { status: 'cancelled' as const };
   if (selectedAi.status !== 'ready')
     return { status: 'provider_unavailable' as const };

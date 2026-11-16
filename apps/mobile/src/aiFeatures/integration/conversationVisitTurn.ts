@@ -52,6 +52,14 @@ export function createConversationVisitTurn(deps: {
         deps.registerSource,
       ),
       observer: {
+        ...(input.observer?.onProviderReceipt
+          ? {
+              onProviderReceipt: (receipt: 'accepted' | 'response_started') => {
+                if (!input.signal.aborted)
+                  input.observer?.onProviderReceipt?.(receipt);
+              },
+            }
+          : {}),
         onTaskStreamEvent: event => {
           if (!input.signal.aborted) input.observer?.onTaskStreamEvent?.(event);
         },
