@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
@@ -25,8 +25,9 @@ export function ConversationRestartAction({
   return (
     <AppButton
       title={t('conversationInterruption.restartAction')}
-      variant="secondary"
+      variant="text"
       size="compact"
+      style={styles.action}
       onPress={() => {
         const response = session.messages.at(-1);
         Alert.alert(
@@ -59,3 +60,7 @@ export function ConversationRestartAction({
     />
   );
 }
+
+const styles = StyleSheet.create({
+  action: { alignSelf: 'flex-start', maxWidth: '100%' },
+});
