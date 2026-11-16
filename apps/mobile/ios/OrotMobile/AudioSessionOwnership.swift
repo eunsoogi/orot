@@ -44,6 +44,22 @@ final class AudioSessionOwnership {
         try setActive(true)
     }
 
+    /// CallKit activates the session. Configure only; never start microphone audio before its callback.
+    func prepareSystemCall(_ token: Token) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        guard owner == token else { throw Failure.stale }
+        try configure(.playAndRecord, .voiceChat, [.defaultToSpeaker, .allowBluetoothHFP])
+    }
+
+    /// Track the externally activated session so ordinary fail-closed release still deactivates it.
+    func systemCallActivated(_ token: Token) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        guard owner == token else { throw Failure.stale }
+        active = true
+    }
+
     /// A suspended owner keeps its reservation and must explicitly resume.
     func suspend(_ token: Token) throws {
         lock.lock()

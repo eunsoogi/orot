@@ -1,3 +1,4 @@
+import { resumeVoice } from './voiceSession';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import { VoiceCallIdentity } from './VoiceCallIdentity';
@@ -36,7 +37,8 @@ export function RealtimeConversationVoiceEntry(
     const snapshot = live.store.getSnapshot();
     const session = snapshot.sessions.find(item => item.id === live.sessionId);
     return Boolean(
-      (AppState.currentState === 'active' ||
+      (owner.current?.isSystemCallActive() ||
+        AppState.currentState === 'active' ||
         (AppState.currentState === 'inactive' &&
           owner.current?.getState().phase === 'authorizing')) &&
       !live.busy &&
@@ -95,8 +97,9 @@ export function RealtimeConversationVoiceEntry(
     const app = AppState.addEventListener('change', value => {
       // Permission prompts temporarily deactivate iOS; native open still waits for foreground.
       if (
-        value === 'background' ||
-        (value === 'inactive' && voice.getState().phase !== 'authorizing')
+        !voice.isSystemCallActive() &&
+        (value === 'background' ||
+          (value === 'inactive' && voice.getState().phase !== 'authorizing'))
       )
         voice.stop();
     });
@@ -172,7 +175,7 @@ export function RealtimeConversationVoiceEntry(
           setTranscripts([]);
         }}
         onMute={() => owner.current?.mute()}
-        onResume={() => owner.current?.resume()}
+        onResume={() => resumeVoice(owner.current)}
         onFinish={() => {}}
       />
       {!visible && (

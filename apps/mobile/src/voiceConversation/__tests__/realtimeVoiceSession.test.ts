@@ -8,6 +8,7 @@ const flush = async () => {
 function fixture() {
   let stateEvent: (id: string, phase: VoicePhase) => void = () => {};
   let interrupted: (id: string) => void = () => {};
+  let systemCall = (_id: string, _active: boolean) => {};
   const native: NativeRealtimeVoice = {
     open: jest.fn(async () => {}),
     stop: jest.fn(async () => {}),
@@ -19,6 +20,10 @@ function fixture() {
       return jest.fn();
     },
     onTranscript: jest.fn(() => jest.fn()),
+    onSystemCall: listener => {
+      systemCall = listener;
+      return jest.fn();
+    },
     onInterrupted: listener => {
       interrupted = listener;
       return jest.fn();
@@ -41,6 +46,7 @@ function fixture() {
   });
   return {
     session,
+    systemCall: (id: string, active: boolean) => systemCall(id, active),
     native,
     credentials,
     changed,
@@ -166,4 +172,36 @@ it('mutes capture and resumes the same remote session without reopening or crede
   f.session.stop();
   await flush();
   expect(f.native.stop).toHaveBeenCalledWith(id);
+});
+
+test('only the current activated call permits continuation and stop revokes late grants', async () => {
+  const f = fixture();
+  f.session.start();
+  await flush();
+  const id = (f.native.open as jest.Mock).mock.calls[0][0];
+  expect(f.session.isSystemCallActive()).toBe(false);
+  f.systemCall('foreign', true);
+  expect(f.session.isSystemCallActive()).toBe(false);
+  f.systemCall(id, true);
+  expect(f.session.isSystemCallActive()).toBe(true);
+  f.session.stop();
+  expect(f.session.isSystemCallActive()).toBe(false);
+  f.systemCall(id, true);
+  await flush();
+  f.systemCall(id, true);
+  expect(f.session.isSystemCallActive()).toBe(false);
+});
+
+it('revokes the system-call lease on mute and rejects stale activation after pause', async () => {
+  const f = fixture();
+  f.session.start();
+  await flush();
+  const id = (f.native.open as jest.Mock).mock.calls[0][0];
+  f.systemCall(id, true);
+  f.state(id, 'listening');
+  f.session.mute();
+  f.systemCall(id, true);
+  await flush();
+  expect(f.session.isSystemCallActive()).toBe(false);
+  expect(f.native.pause).toHaveBeenCalledWith(id);
 });

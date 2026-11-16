@@ -20,6 +20,9 @@ export interface NativeRealtimeVoice {
   interrupt(id: string): Promise<void>;
   onState(listener: (id: string, phase: VoicePhase) => void): () => void;
   onTranscript(listener: (event: RealtimeTranscript) => void): () => void;
+  onSystemCall?(
+    listener: (callId: string, active: boolean) => void,
+  ): () => void;
   onInterrupted(listener: (id: string) => void): () => void;
 }
 
@@ -81,6 +84,14 @@ export function nativeRealtimeVoice(): NativeRealtimeVoice | null {
           ['user', 'assistant'].includes(String(event.role))
         )
           listener(event as unknown as RealtimeTranscript);
+      }),
+    onSystemCall: listener =>
+      subscribe('VoiceRealtimeSystemCall', event => {
+        if (
+          typeof event.callId === 'string' &&
+          typeof event.active === 'boolean'
+        )
+          listener(event.callId, event.active);
       }),
     onInterrupted: listener =>
       subscribe('VoiceRealtimeInterrupted', event => {

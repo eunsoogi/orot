@@ -56,6 +56,38 @@ final class AudioSessionOwnershipTests: OrotFailFastTestCase {
         XCTAssertNoThrow(try owner.reserve())
     }
 
+    func testSystemCallPreparationDoesNotActivateBeforeTheSystemCallback() throws {
+        var configured = 0
+        var mutations: [Bool] = []
+        let owner = AudioSessionOwnership(configure: { category, mode, _ in
+            XCTAssertEqual(category, .playAndRecord)
+            XCTAssertEqual(mode, .voiceChat)
+            configured += 1
+        }, setActive: { mutations.append($0) })
+        let token = try owner.reserve()
+        try owner.prepareSystemCall(token)
+        XCTAssertEqual(configured, 1)
+        XCTAssertEqual(mutations, [])
+        XCTAssertThrowsError(try owner.reserve())
+        try owner.systemCallActivated(token)
+        XCTAssertEqual(mutations, [])
+        try owner.release(token)
+        XCTAssertEqual(mutations, [false])
+        XCTAssertThrowsError(try owner.systemCallActivated(token))
+    }
+
+    func testSystemCallLeaseRejectsDelayedCleanupFromPriorCall() {
+        var lease = VoiceSystemCallLease()
+        let previous = UUID(), next = UUID()
+        XCTAssertTrue(lease.acquire(previous))
+        XCTAssertFalse(lease.acquire(next))
+        XCTAssertTrue(lease.release(previous))
+        XCTAssertTrue(lease.acquire(next))
+        XCTAssertFalse(lease.release(previous))
+        XCTAssertEqual(lease.owner, next)
+        XCTAssertTrue(lease.release(next))
+    }
+
     func testConcurrentReservationsHaveExactlyOneWinner() {
         let owner = AudioSessionOwnership(configure: { _, _, _ in }, setActive: { _ in })
         let resultLock = NSLock()

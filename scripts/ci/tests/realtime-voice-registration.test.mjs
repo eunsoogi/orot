@@ -9,7 +9,7 @@ test('Realtime lifecycle cases have exactly one core integration owner', () => {
   const cases = iosTestInventory('core').filter((id) =>
     id.includes('/RealtimeVoiceLifecycleTests/'),
   );
-  assert.equal(cases.length, 6);
+  assert.equal(cases.length, 8);
   const scheduled = iosTestCohortTasks('core-integration').flatMap((task) => task.identifiers);
   for (const id of cases) assert.equal(scheduled.filter((candidate) => candidate === id).length, 1);
   assert.deepEqual(
@@ -26,6 +26,7 @@ test('Realtime production modules retain lifecycle and shared audio ownership de
     'RealtimeVoiceCall.swift',
     'VoiceRealtimeModule.swift',
     'VoiceRealtimeModule.m',
+    'VoiceSystemCallLifecycle.swift',
   ]) {
     const impact = iosTestImpactForPath(`apps/mobile/ios/OrotMobile/${file}`);
     assert.equal(impact.reason, 'realtime-voice-native-module');

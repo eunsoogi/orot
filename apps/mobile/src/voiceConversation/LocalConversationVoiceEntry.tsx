@@ -15,7 +15,7 @@ import {
 import { VoiceConversationControl } from './VoiceConversationControl';
 import { VoiceConversationScreen } from './VoiceConversationScreen';
 import { nativeVoiceConversation } from './nativeVoiceConversation';
-import { createVoiceSession } from './voiceSession';
+import { createVoiceSession, resumeVoice } from './voiceSession';
 import { initialVoiceState, type VoiceState } from './voiceTurn';
 let nextTurn = 0;
 /** Binds explicit voice consent and request ownership to the currently visible conversation. */
@@ -59,6 +59,8 @@ export function LocalConversationVoiceEntry(
         selected,
         owned,
         transcript: append,
+        isSystemCallActive: () =>
+          session.current?.isSystemCallActive() ?? false,
       }),
       value => {
         if (mounted.current) setState(value);
@@ -71,7 +73,7 @@ export function LocalConversationVoiceEntry(
       voice.stop();
     });
     const subscription = AppState.addEventListener('change', value => {
-      if (value === 'background') voice.stop();
+      if (value === 'background' && !voice.isSystemCallActive()) voice.stop();
     });
     return () => {
       mounted.current = false;
@@ -219,7 +221,7 @@ export function LocalConversationVoiceEntry(
           clear();
         }}
         onMute={() => session.current?.stop()}
-        onResume={() => session.current?.resume()}
+        onResume={() => resumeVoice(session.current)}
         onFinish={() => session.current?.finish()}
       />
       {!visible && (
