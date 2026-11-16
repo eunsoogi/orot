@@ -194,6 +194,7 @@ export function ConversationStoredTaskCards({
                   actions.select,
                   actions.identity,
                   actions.result,
+                  session.id,
                 )}
               </Fragment>
             );

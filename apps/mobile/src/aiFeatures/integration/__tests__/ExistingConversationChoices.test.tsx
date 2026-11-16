@@ -60,22 +60,19 @@ test.each([
     await fireEvent.press(screen.getByTestId(button));
     expect(screen.getByTestId('rag-conversation-input')).toBe(input);
     expect(push).not.toHaveBeenCalled();
-    expect(send).not.toHaveBeenCalled();
-    expect(prepare).not.toHaveBeenCalled();
     expect(consent.authorize).not.toHaveBeenCalled();
     if (intent === 'visit-questions') {
-      await fireEvent.press(screen.getByTestId('conversation-visit-prepare'));
+      expect(prepare).toHaveBeenCalledTimes(1);
+      expect(send).not.toHaveBeenCalled();
       expect(prepare).toHaveBeenCalledWith(
         expect.objectContaining({
           context: expect.objectContaining({ intent }),
         }),
       );
     } else {
-      await fireEvent.press(
-        screen.getByTestId('conversation-intent-use-suggestion'),
-      );
-      expect(input).toHaveProp('value', conversationIntentRequests[intent]);
-      await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(prepare).not.toHaveBeenCalled();
+      expect(input).toHaveProp('value', '');
       expect(send).toHaveBeenCalledWith(
         conversationIntentRequests[intent],
         expect.any(Array),

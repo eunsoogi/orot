@@ -7,7 +7,7 @@ export interface RetainedHealthActions {
   readonly healthSummary?: () => void;
 }
 
-/** Select an in-place purpose without replacing a draft or automatically sending it. */
+/** Submit an explicit in-place purpose without replacing existing input; sender consent still applies. */
 export function ConversationRetainedActions({
   actions,
   disabled = false,

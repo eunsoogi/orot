@@ -147,7 +147,9 @@ export function AiFeatureFlow({
                 if (services.dailyReport)
                   requestConversationReport(
                     conversationStore,
-                    isEntryCurrent ?? (() => false),
+                    isConversationVisible,
+                    undefined,
+                    true,
                   );
               }}
               onOpenConversationHistory={() =>

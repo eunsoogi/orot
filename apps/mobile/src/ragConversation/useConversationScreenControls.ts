@@ -1,3 +1,4 @@
+import { immediateConversationChoices } from './immediateConversationChoices';
 import type { ConversationSessions } from './conversationSessions';
 import { useReplyFocusForSession } from '../replyNotifications/replyFocus';
 import { useConversationPhotoControls } from './useConversationPhotoControls';
@@ -13,6 +14,8 @@ export function useConversationScreenControls(
   voiceSelection?: ConversationScreenProps['voiceSelection'],
   busy?: boolean,
   onSend?: ConversationScreenProps['onSend'],
+  retainedActions?: ConversationScreenProps['retainedActions'],
+  prepareVisitQuestions?: ConversationScreenProps['prepareVisitQuestions'],
 ) {
   const photo = useConversationPhotoControls(store, id);
   const [voiceMessage, setVoiceMessage] = useState({
@@ -24,6 +27,16 @@ export function useConversationScreenControls(
     [id],
   );
   return {
+    quickChoices: onSend
+      ? immediateConversationChoices(
+          store,
+          id,
+          retainedActions,
+          onSend,
+          prepareVisitQuestions,
+          isEntryCurrent,
+        )
+      : retainedActions,
     photo,
     status:
       voiceSelection && onSend && voiceMessage.sessionId === id

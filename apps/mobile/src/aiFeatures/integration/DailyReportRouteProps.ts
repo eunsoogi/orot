@@ -10,6 +10,8 @@ import type { ConversationEntryContext } from './conversationIntent';
 
 /** Boundaries for displaying and retaining a report within a conversation. */
 export interface DailyReportRouteProps {
+  /** Live quick-choice authority only; never persisted or inferred from route entry. */
+  readonly claimRequestedStart?: () => boolean;
   readonly feature: ReturnType<typeof createDailyReportFeature>;
   readonly initialIdentity?: DailyReportIdentity;
   readonly initialOperation?: ReturnType<

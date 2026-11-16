@@ -54,6 +54,7 @@ export interface ConversationScreenProps {
     onTaskResult: (
       target: NonNullable<ConversationEntryContext['dailyReport']>,
     ) => Promise<void>,
+    sessionId: number,
   ) => ReactNode;
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
