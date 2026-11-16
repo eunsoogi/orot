@@ -11,6 +11,7 @@ import { parseHealthContextScope } from '../../healthEvidence/healthContext/scop
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import { registerHealthContextEvidence } from './healthContextEvidence';
+import { refreshHealthContextRead } from './refreshHealthContextRead';
 import {
   jsonByteLength,
   MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES,
@@ -188,7 +189,20 @@ export function createHealthContextTool(
         const item = registerHealthContextEvidence({
           registry,
           read,
-          report,
+          report:
+            feature === 'rag'
+              ? await refreshHealthContextRead({
+                  initial: report,
+                  read,
+                  signal: request.signal,
+                  scope: {
+                    kind: 'health_context_period',
+                    version: 1,
+                    topic,
+                    window,
+                  },
+                })
+              : report,
           scope: { kind: 'health_context_period', version: 1, topic, window },
           detail: input.detail as HealthContextDetail,
         });

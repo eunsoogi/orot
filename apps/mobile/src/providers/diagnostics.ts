@@ -1,3 +1,4 @@
+import { staleEvidenceDiagnostic } from './staleEvidenceDiagnostic';
 import { NativeModules } from 'react-native';
 
 import type { Feature, Stage, Outcome } from './diagnosticTypes';
@@ -50,6 +51,16 @@ export function reportWorkflowOutcome(
   providerErrorCode?: string,
   validationReason?: string,
 ) {
+  if (status === 'stale_evidence') {
+    // Diagnosis must not change cancellation, source validation or the UI result.
+    try {
+      providerDiagnostic(
+        feature,
+        'validation',
+        staleEvidenceDiagnostic(validationReason),
+      );
+    } catch {}
+  }
   if (status === 'invalid_output') {
     const known: Readonly<Record<string, Outcome>> = {
       'The task responder returned malformed structured output.': 'task_json',
