@@ -8,7 +8,6 @@ import {
 } from '@testing-library/react-native';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { voiceSettingsStore } from '../voiceSettingsStore';
-
 jest.mock('../voiceSettingsStore', () => ({
   voiceSettingsStore: {
     load: jest.fn(),
