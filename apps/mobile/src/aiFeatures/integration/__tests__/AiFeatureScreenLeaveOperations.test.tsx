@@ -88,8 +88,9 @@ test('retains a possibilities request on leave and ignores its late result after
     />,
   );
   expect(route.getByTestId('rag-conversation-input')).toHaveProp('value', '');
-  await fireEvent.press(
-    route.getByTestId('conversation-intent-use-suggestion'),
+  await fireEvent.changeText(
+    route.getByTestId('rag-conversation-input'),
+    'Synthetic explicit question',
   );
   await fireEvent.press(route.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(signal).toBeInstanceOf(AbortSignal));

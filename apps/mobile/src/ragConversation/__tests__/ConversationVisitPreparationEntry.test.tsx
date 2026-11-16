@@ -131,6 +131,12 @@ test('Home visit entry preserves drafts and prepares only after an explicit tap'
 
   const input = screen.getByTestId('rag-conversation-input');
   await fireEvent.changeText(input, '새 진료 초안');
+  expect(screen.getByTestId('conversation-visit-prepare')).toBeDisabled();
+  await fireEvent.press(screen.getByTestId('conversation-visit-prepare'));
+  expect(prepare).not.toHaveBeenCalled();
+  expect(input).toHaveProp('value', '새 진료 초안');
+  // The canonical visit choice obeys the same draft guard as the other three choices.
+  await fireEvent.changeText(input, '');
   const observedComposerDrafts: string[] = [];
   const stopObservingDrafts = store.subscribe(() => {
     const snapshot = store.getSnapshot();
@@ -142,10 +148,7 @@ test('Home visit entry preserves drafts and prepares only after an explicit tap'
   await fireEvent.press(screen.getByTestId('conversation-visit-prepare'));
   await waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
   stopObservingDrafts();
-  expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
-    'value',
-    '새 진료 초안',
-  );
+  expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
   expect(observedComposerDrafts).not.toContain(
     conversationIntentRequests['visit-questions'],
   );
@@ -160,10 +163,7 @@ test('Home visit entry preserves drafts and prepares only after an explicit tap'
       appointmentId: 'appointment-a',
     },
   );
-  expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
-    'value',
-    '새 진료 초안',
-  );
+  expect(screen.getByTestId('rag-conversation-input')).toHaveProp('value', '');
   expect(
     store.getSnapshot().sessions.find(session => session.id === originalId)
       ?.draft,
@@ -213,6 +213,6 @@ test('Home visit entry preserves drafts and prepares only after an explicit tap'
     store
       .getSnapshot()
       .sessions.find(session => session.id === preparedSessionId)?.draft,
-  ).toBe('새 진료 초안');
+  ).toBe('');
   expect(prepare).toHaveBeenCalledTimes(2);
 });

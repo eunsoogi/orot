@@ -58,17 +58,25 @@ test.each([
     );
     await fireEvent.press(screen.getByTestId(`conversation-open-${action}`));
     expect(
-      screen.getByTestId('conversation-intent-use-suggestion'),
-    ).toHaveTextContent(
-      t('conversationIntent.useSuggestion', { question: t(key) }),
-    );
+      screen.queryByTestId('conversation-intent-use-suggestion'),
+    ).toBeNull();
     expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
       'value',
       '',
     );
     expect(screen.queryByTestId('rag-conversation-progress')).toBeNull();
-    await fireEvent.press(
-      screen.getByTestId('conversation-intent-use-suggestion'),
+    for (const id of [
+      'conversation-open-possibilities',
+      'conversation-open-visit-questions',
+      'conversation-open-health-summary',
+      'daily-report-request',
+    ]) {
+      expect(screen.getAllByTestId(id)).toHaveLength(1);
+    }
+    // The composer remains available for a user-authored request, without a prompt-copy button.
+    await fireEvent.changeText(
+      screen.getByTestId('rag-conversation-input'),
+      t(key),
     );
     expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
       'value',
