@@ -106,6 +106,16 @@ test('old explicit active status is context, resolved history is not current, an
     const text = result.report.supportedContext
       .map(item => item.text)
       .join(' ');
+    const followUp = result.report.supportedContext.find(item =>
+      item.text.includes('현재도 이어지거나 악화되면'),
+    );
+    expect(followUp?.sourceReferences).toEqual([
+      { source: 'symptom_entry', recordId: 'ongoing' },
+    ]);
+    expect(followUp?.section).toBe('actions');
+    expect(JSON.stringify(generate.mock.calls[0]![0])).toContain(
+      '현재도 이어지거나 악화되면',
+    );
     expect(text).toContain('이전에 시작된 기록도 포함');
     expect(text).toContain('해소된 것으로 기록');
     expect(text).not.toContain('오늘 기록에는');
