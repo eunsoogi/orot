@@ -5,7 +5,7 @@ import type { VisitQuestionResponderInput } from '../taskContract';
 import { validateVisitQuestionTaskResult } from '../taskValidation';
 
 const input: VisitQuestionResponderInput = {
-  request: '다음 진료에서 상의할 내용을 준비해 줘',
+  request: '다음 진료에서 검사 여부를 포함해 상의할 내용을 준비해 줘',
   evidence: { items: [], coverage: [], conflicts: [] },
 };
 const responder = createVisitQuestionTaskResponder();
