@@ -4,6 +4,8 @@ import { appColors } from '../layout/appColors';
 /** Bounded local-memory presentation shared by all loading and recovery states. */
 export const savedMemoryStyles = StyleSheet.create({
   section: { gap: 12, minWidth: 0 },
+  // Standalone detail has no Records panel ancestor to provide reading margins.
+  detail: { paddingHorizontal: 24, paddingVertical: 16 },
   entry: {
     borderRadius: 18,
     backgroundColor: appColors.surface,

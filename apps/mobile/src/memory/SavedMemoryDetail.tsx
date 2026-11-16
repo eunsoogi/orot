@@ -32,7 +32,7 @@ export function SavedMemoryDetail({
   const { rows, state, refresh } = useSavedMemories(load, active);
   const row = rows.find(value => value.id === memoryId);
   return (
-    <View style={styles.section} testID="saved-memory-detail">
+    <View style={[styles.section, styles.detail]} testID="saved-memory-detail">
       <Text accessibilityRole="header" style={styles.title}>
         {t('savedMemory.detailTitle')}
       </Text>
