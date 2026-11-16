@@ -29,10 +29,11 @@ import {
   saveVectorRevision,
   vectorDocumentFingerprint,
 } from './ragVectorStoreRevision';
+import { PrivateVectorStoreRetriever } from './sqlCipherVectorStoreSupport';
 import {
-  PrivateVectorStoreRetriever,
-  vectorSimilarity,
-} from './sqlCipherVectorStoreSupport';
+  searchVectorSnapshot,
+  type VectorSearchSnapshot,
+} from './ragVectorSearchWindow';
 
 export interface SqlCipherVectorFilter extends EvidenceSearchFilters {
   /** Caller-owned bounded evidence page, never an implicit full-database scan. */
@@ -188,6 +189,7 @@ export class SqlCipherVectorStore extends VectorStore {
         'Vector search needs an explicit candidate page of at most 500 chunks.',
       );
     }
+    query = [...query];
     // Conversion clones the page before asynchronous SQL or native hashing can yield control.
     const chunks = filterEvidenceChunks(
       vectorStoreChunks(filter.candidates.map(evidenceChunkToDocument)),
@@ -195,29 +197,26 @@ export class SqlCipherVectorStore extends VectorStore {
     );
     if (chunks.length === 0) return [];
     await this.prepare();
-    let hits: [DocumentInterface, number][] = [];
-    await this.database.transaction(async transaction => {
-      const storage = this.transactionStorage(transaction);
-      const candidates = await eligibleVectorChunks(chunks, storage);
-      const ids = candidates.map(chunk => chunk.id);
-      const vectors = new Map(
-        (await storage.listForModel(this.model, ids)).map(entry => [
-          entry.chunkId,
-          entry.vector,
-        ]),
-      );
-      const revisions = await readVectorRevisions(transaction, this.model, ids);
-      for (const chunk of candidates) {
-        const vector = vectors.get(chunk.id);
-        if (!vector) continue;
-        // Stable chunk IDs survive corrections. Never pair a new document with an old vector,
-        // or trust a legacy writer that replaced the blob without updating this revision digest.
-        const fingerprint = await vectorDocumentFingerprint(chunk, vector);
-        if (revisions.get(chunk.id) !== fingerprint) continue;
-        const score = vectorSimilarity(query, vector);
-        if (Number.isFinite(score))
-          hits.push([evidenceChunkToDocument(chunk), score]);
-      }
+    const hits = await searchVectorSnapshot(query, async () => {
+      let snapshot!: VectorSearchSnapshot;
+      await this.database.transaction(async transaction => {
+        const storage = this.transactionStorage(transaction);
+        const candidates = await eligibleVectorChunks(chunks, storage);
+        const ids = candidates.map(chunk => chunk.id);
+        const vectors = new Map(
+          (await storage.listForModel(this.model, ids)).map(entry => [
+            entry.chunkId,
+            entry.vector,
+          ]),
+        );
+        const revisions = await readVectorRevisions(
+          transaction,
+          this.model,
+          ids,
+        );
+        snapshot = { candidates, vectors, revisions };
+      });
+      return snapshot;
     });
     hits.sort(
       ([left, a], [right, b]) =>
