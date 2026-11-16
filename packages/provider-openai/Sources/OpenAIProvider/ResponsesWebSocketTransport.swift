@@ -9,6 +9,8 @@ protocol ResponsesWebSocketConnection: Sendable {
 /// Only the documented Responses endpoint is admitted. No private ChatGPT routes or reconnect replay.
 struct URLSessionResponsesWebSocket: ResponsesWebSocketConnection {
     let task: URLSessionWebSocketTask
+    private let session: URLSession
+    private let upgrade: ResponsesWebSocketUpgradeDelegate
 
     init(accessToken: String) throws {
         guard !accessToken.isEmpty else { throw ChatGPTOAuthError.reauthorizationRequired }
@@ -19,9 +21,19 @@ struct URLSessionResponsesWebSocket: ResponsesWebSocketConnection {
         configuration.httpCookieStorage = nil
         configuration.urlCache = nil
         configuration.httpShouldSetCookies = false
-        task = URLSession(configuration: configuration).webSocketTask(with: request)
+        upgrade = ResponsesWebSocketUpgradeDelegate()
+        session = URLSession(configuration: configuration, delegate: upgrade, delegateQueue: nil)
+        task = session.webSocketTask(with: request)
         task.maximumMessageSize = 1_048_576
         task.resume()
+    }
+
+    func waitUntilOpen() async throws {
+        try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            try await upgrade.gate.wait()
+            try Task.checkCancellation()
+        } onCancel: { close() }
     }
 
     func send(_ data: Data) async throws {
@@ -38,12 +50,14 @@ struct URLSessionResponsesWebSocket: ResponsesWebSocketConnection {
     }
 
     func close() {
+        upgrade.gate.cancelled()
         task.cancel(with: .goingAway, reason: nil)
+        session.invalidateAndCancel()
     }
 }
 
 public extension ChatGPTOAuthClient {
-    /// Refresh and scope checks match SSE. A rejected upgrade is surfaced, never silently retried as another request.
+    /// Refresh and scope checks match SSE. No response.create can be sent until the upgrade is confirmed.
     func steerableResponse(_ request: ChatGPTResponsesRequest, forIssuedClientID issuedClientID: String) async throws -> ChatGPTSteerableResponse {
         guard ChatGPTSteerableResponse.supportsModel(request.model), request.publicWebQuery == nil else {
             throw ChatGPTResponsesError.unsupportedCapability("mid-turn steering")
@@ -57,6 +71,13 @@ public extension ChatGPTOAuthClient {
         payload.removeValue(forKey: "stream")
         payload["type"] = "response.create"
         let encoded = try JSONSerialization.data(withJSONObject: payload)
-        return try ChatGPTSteerableResponse(connection: URLSessionResponsesWebSocket(accessToken: token), initialRequest: encoded)
+        let connection = try URLSessionResponsesWebSocket(accessToken: token)
+        do {
+            try await connection.waitUntilOpen()
+            return ChatGPTSteerableResponse(connection: connection, initialRequest: encoded)
+        } catch {
+            connection.close()
+            throw error
+        }
     }
 }
