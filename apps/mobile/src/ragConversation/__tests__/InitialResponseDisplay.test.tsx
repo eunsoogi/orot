@@ -4,7 +4,7 @@ import { ConversationInitialResponse } from '../ConversationInitialResponse';
 import { initialConversationResponse } from '../initialResponse';
 
 /** The initial reply is visible prose, not a progress spinner or validated final-answer body. */
-test('shows the initial response while waiting, then the actual final answer', async () => {
+test('keeps the generated opening before the final answer after streaming ends', async () => {
   const props = { onOpenSource: jest.fn(), onLinkError: jest.fn() };
   const initial = {
     id: 2,
@@ -23,10 +23,12 @@ test('shows the initial response while waiting, then the actual final answer', a
   await view.rerender(
     <ConversationMessage
       {...props}
-      message={{ id: 2, role: 'assistant', content: '검증된 최종 답변' }}
+      message={{ ...initial, streaming: false, content: '검증된 최종 답변' }}
     />,
   );
-  expect(screen.queryByTestId('rag-conversation-initial-response')).toBeNull();
+  expect(
+    screen.getAllByTestId('rag-conversation-initial-response'),
+  ).toHaveLength(1);
   expect(screen.getByTestId('rag-conversation-answer-body')).toHaveTextContent(
     '검증된 최종 답변',
   );
@@ -74,4 +76,23 @@ test('does not flash a receipt for fast answers and clears its timer when cancel
     cleared.mockRestore();
     jest.useRealTimers();
   }
+});
+
+test('renders identical generated opening and final prose once without removing the opening', async () => {
+  await render(
+    <ConversationMessage
+      onOpenSource={jest.fn()}
+      onLinkError={jest.fn()}
+      message={{
+        id: 2,
+        role: 'assistant',
+        content: '같은 문장',
+        initialResponse: { callId: 'opening', text: '같은 문장' },
+      }}
+    />,
+  );
+  expect(screen.getAllByText('같은 문장')).toHaveLength(1);
+  expect(
+    screen.getByTestId('rag-conversation-initial-response'),
+  ).toHaveTextContent('같은 문장');
 });

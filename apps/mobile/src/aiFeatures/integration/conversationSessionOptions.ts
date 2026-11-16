@@ -20,7 +20,6 @@ import { conversationExecutionNative } from '../../ragConversation/conversationE
 import { createConversationSessionStorage } from './conversationSessionStorage';
 import { conversationPhotoPreparationOption } from './conversationPhotoPreparation';
 import type { requireSelectedAi } from './provider';
-
 /** Bind the app-owned session store to encrypted writes and source-checked restoration. */
 export function createConversationSessionOptions(input: {
   readonly coldResume?: ConversationSessionOptions['coldResume'];
@@ -145,6 +144,9 @@ export function createConversationSessionOptions(input: {
               ? { submittedInput: turn.submittedInput }
               : {}),
             answer: turn.answer,
+            ...(turn.initialResponse
+              ? { initialResponse: turn.initialResponse }
+              : {}),
             citations: turn.citations,
             healthSources: healthSourceDependencies(
               turn.sources.map(
@@ -177,7 +179,6 @@ export function createConversationSessionOptions(input: {
         !(await discovery.revalidateSession(sessionId, version, turns, signal))
       )
         throw new Error('Conversation content changed during restoration.');
-      // Interrupted tool-only turns have no validated prose, but remain visible and never running.
       for (const turn of toolTurns)
         if (
           !restored.some(item => item.toolMessageId === turn.messageId) &&

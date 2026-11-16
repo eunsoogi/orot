@@ -181,13 +181,19 @@ export function ConversationMessage({
             {t('ragConversation.photo.message')}
           </Text>
         ) : null}
-        {!user && message.streaming && message.initialResponse ? (
+        {!user &&
+        message.initialResponse &&
+        (message.streaming || message.initialResponse.source !== 'receipt') ? (
           <ConversationInitialResponse
             key={message.initialResponse.callId}
             response={message.initialResponse}
           />
         ) : null}
-        {message.content ? (
+        {/* Keep the opening in place; an exact repeated final sentence need not be painted twice. */}
+        {message.content &&
+        (user ||
+          message.initialResponse?.source === 'receipt' ||
+          message.content.trim() !== message.initialResponse?.text.trim()) ? (
           <MessageText
             selectable
             style={[styles.messageText, user && styles.userText]}

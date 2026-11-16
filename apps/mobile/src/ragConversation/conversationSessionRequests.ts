@@ -65,8 +65,7 @@ export function createConversationSessionRequests(
     reportFenceFailure: id =>
       update(id, { error: getRagConversationFailureCopy('unavailable') }),
   });
-  const nextMessage = () => ++messageId;
-  const retainPartial = retainPartialFor(find, update, nextMessage);
+  const retainPartial = retainPartialFor(find, update, () => ++messageId);
   const ownership = {
     find,
     update,
@@ -87,6 +86,7 @@ export function createConversationSessionRequests(
     cancel,
     steer: steering.submit,
     clearSteering: steering.clear,
+    discardOpenings: saveRecovery.discardOpenings,
     ...createConversationRequestDisposal(ownership),
     async send(
       id: number,

@@ -68,6 +68,20 @@ export function decodeConversationArtifact(
       value.sources.length > CONVERSATION_SOURCE_LIMIT
     )
       return null;
+    if (
+      value.initialResponse !== undefined &&
+      (!object(value.initialResponse) ||
+        typeof value.initialResponse.callId !== 'string' ||
+        !value.initialResponse.callId ||
+        value.initialResponse.callId.length > 200 ||
+        typeof value.initialResponse.text !== 'string' ||
+        !value.initialResponse.text.trim() ||
+        value.initialResponse.text.length > 300 ||
+        Object.keys(value.initialResponse).some(
+          key => !['callId', 'text'].includes(key),
+        ))
+    )
+      return null;
     if (!validConversationArtifactInput(value)) return null;
     for (const source of value.sources) {
       if (!object(source) || !object(source.reference)) return null;
