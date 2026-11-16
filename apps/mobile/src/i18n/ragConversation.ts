@@ -3,6 +3,7 @@ import { voiceConversationKo } from './voiceConversationKo';
 
 /** Korean catalog entries for the grounded local-record conversation screen. */
 export const ragConversationKo = {
+  'ragConversation.jumpLatest': '최신 메시지로 이동',
   ...voiceConversationKo,
   ...conversationToolKo,
   'ragConversation.title': '기록과 대화',
