@@ -124,3 +124,20 @@ test('health deletion clears prior raw text immediately and prevents later reapp
   );
   run.sessions.dispose();
 });
+
+test('scopes live delivery availability to the current request without changing answer content', async () => {
+  const run = await running();
+  const emit = run.observer.onTaskStreamEvent!;
+  emit({ type: 'text_delta', text: 'Existing partial' });
+  emit({ type: 'steering_availability', mode: 'live' });
+  expect(run.state().steeringDeliveryMode).toBe('live');
+  expect(run.state().pendingMessage?.content).toBe('Existing partial');
+  emit({ type: 'steering_availability', mode: 'limit_reached' });
+  expect(run.state().steeringDeliveryMode).toBe('limit_reached');
+  run.sessions.cancel(1);
+  emit({ type: 'steering_availability', mode: 'live' });
+  expect(run.state().steeringDeliveryMode).not.toBe('live');
+  run.finish();
+  await run.sending;
+  run.sessions.dispose();
+});

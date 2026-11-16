@@ -1,3 +1,5 @@
+import type { MultiAgentResponderStreamEvent } from './responderStreamEvent';
+export type { MultiAgentResponderStreamEvent } from './responderStreamEvent';
 import type { LocalActionRecoveryLifecycle } from './localActionRecoveryLifecycle';
 import type { InitialToolResponseContract } from './initialToolResponseContract';
 import type { EvidenceRestoration } from './evidenceRestoration';
@@ -241,10 +243,3 @@ export type MultiAgentProgressEvent =
       readonly status: 'started' | 'completed' | 'failed' | 'cancelled';
       readonly sourceKind: import('./evidenceContracts').EvidenceSourceKind;
     };
-export type MultiAgentResponderStreamEvent =
-  /** The active response accepted the steer into its successor; archive prior partial output first. */
-  | { readonly type: 'steering_applied' }
-  | { readonly type: 'initial_response'; readonly callId: string; readonly text: string }
-  | { readonly type: 'started' }
-  | { readonly type: 'text_delta'; readonly text: string }
-  | { readonly type: 'text_snapshot'; readonly text: string };

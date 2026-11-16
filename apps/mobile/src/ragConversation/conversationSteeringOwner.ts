@@ -23,6 +23,7 @@ export function createConversationSteeringOwner(
     entries.delete(id);
     update(id, {
       steeringInstructions: [],
+      steeringDeliveryMode: undefined,
       steeringAvailable: false,
       steeringSubmitting: false,
       steeringError: false,

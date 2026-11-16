@@ -117,6 +117,11 @@ export function createConversationTurnActivity(input: {
       },
       onTaskStreamEvent(event: Parameters<typeof applyWorkflowStreamEvent>[1]) {
         const pending = input.find(input.id)?.pendingMessage;
+        if (event.type === 'steering_availability') {
+          if (input.current() && pending?.id === input.responseId)
+            input.update(input.id, { steeringDeliveryMode: event.mode });
+          return;
+        }
         if (event.type === 'steering_applied') {
           // Archive only the owning visible generation, never a late callback or withheld health body.
           if (

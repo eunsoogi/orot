@@ -134,6 +134,7 @@ export type ConversationSender = (
 /** Memory-only conversation state keeps drafts and request activity scoped to one session. */
 export interface ConversationSession {
   readonly steeringAvailable?: boolean;
+  readonly steeringDeliveryMode?: 'live' | 'boundary' | 'limit_reached';
   readonly steeringError?: boolean;
   readonly steeringSubmitting?: boolean;
   readonly steeringInstructions?: readonly import('../storage/conversationSteeringStorage').StoredSteeringInstruction[];

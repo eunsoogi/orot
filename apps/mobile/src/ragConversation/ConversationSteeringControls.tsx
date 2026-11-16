@@ -14,7 +14,17 @@ export function ConversationSteeringControls({
   if (!available && !rows.length) return null;
   return (
     <View testID="conversation-steering-controls">
-      {available ? <AppText>{t('conversationSteering.notice')}</AppText> : null}
+      {available ? (
+        <AppText>
+          {t(
+            session.steeringDeliveryMode === 'live'
+              ? 'conversationSteering.live_notice'
+              : session.steeringDeliveryMode === 'limit_reached'
+                ? 'conversationSteering.limit_notice'
+                : 'conversationSteering.notice',
+          )}
+        </AppText>
+      ) : null}
       {session.steeringError ? (
         <AppText accessibilityLiveRegion="polite">
           {t('conversationSteering.failed')}

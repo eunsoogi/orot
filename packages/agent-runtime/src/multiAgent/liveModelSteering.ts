@@ -23,6 +23,7 @@ export function liveModelSteering<TResult>(
   const provider = context.options.provider;
   const store = context.options.operationJournal?.steering;
   const budget = context.midTurnSteeringBudget;
+  reportTaskStreamEvent(context, { type: 'steering_availability', mode: 'boundary' });
   if (
     !provider.capabilities.midTurnSteering ||
     !budget?.available ||
@@ -67,6 +68,7 @@ export function liveModelSteering<TResult>(
     if (!(await store!.beginLive!(operationId, row.id))) return;
     // Reserve before sending, including uncertain delivery. A new UI submission is never a replay.
     budget!.used = true;
+    reportTaskStreamEvent(context, { type: 'steering_availability', mode: 'limit_reached' });
     submitted = row.id;
     if (!active || context.signal.aborted) {
       await store!.settleLive!(operationId, row.id, 'failed');
@@ -90,7 +92,7 @@ export function liveModelSteering<TResult>(
           draining = undefined;
           if (wakeAgain) {
             wakeAgain = false;
-            void wake();
+            wake().catch(() => {});
           }
         });
     // Storage emits while persisting a claim; never await our own drain recursively.
@@ -100,7 +102,8 @@ export function liveModelSteering<TResult>(
     onReady(value) {
       if (active) {
         control = value;
-        void wake();
+        reportTaskStreamEvent(context, { type: 'steering_availability', mode: 'live' });
+        wake().catch(() => {});
       }
     },
     async onEvent(event) {
@@ -123,6 +126,10 @@ export function liveModelSteering<TResult>(
     },
     async close() {
       active = false;
+      reportTaskStreamEvent(context, {
+        type: 'steering_availability',
+        mode: budget.used ? 'limit_reached' : 'boundary',
+      });
       abortSteering();
       context.signal.removeEventListener('abort', abortSteering);
       unsubscribe();

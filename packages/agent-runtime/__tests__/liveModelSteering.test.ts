@@ -52,6 +52,7 @@ function fixture(authorized = true) {
 test('submits during the active invocation without awaiting completion and persists before transport', async () => {
   const f = fixture();
   const submit = jest.fn(async () => {});
+  f.context = { ...f.context, onTaskStreamEvent: jest.fn() };
   const live = liveModelSteering(f.context, 'model:1', request, f.consent);
   await live.provider.generate(request);
   f.options()!.midTurnSteering!.onReady({ submit });
@@ -71,6 +72,14 @@ test('submits during the active invocation without awaiting completion and persi
     }),
   );
   await live.close();
+  expect(f.context.onTaskStreamEvent).toHaveBeenCalledWith({
+    type: 'steering_availability',
+    mode: 'live',
+  });
+  expect(f.context.onTaskStreamEvent).toHaveBeenLastCalledWith({
+    type: 'steering_availability',
+    mode: 'limit_reached',
+  });
 });
 
 test('refused exact payload consent sends nothing and leaves the original invocation untouched', async () => {
