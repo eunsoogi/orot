@@ -1,3 +1,4 @@
+import { conversationEntryForSession } from './useConversationEntryIntent';
 import { canSelectConversationChoice } from './selectConversationChoice';
 import { ConversationInterruptionRecovery } from './ConversationInterruptionRecovery';
 import {
@@ -91,6 +92,25 @@ export function ConversationTaskHeader({
 }) {
   const { id } = session;
   const report = reportActions(store, session, routeKey ?? 'daily-report');
+  const eligible = canSelectConversationChoice(store, session);
+  // Retain the entry's appointment identity rather than presenting a second generic visit action.
+  const entryOwnsVisit = Boolean(
+    session.entryPrompt &&
+    conversationEntryForSession(store, id)?.intent === 'visit-questions',
+  );
+  const guardedReportRequest = (request: (() => void) | undefined) =>
+    request &&
+    (() => {
+      const snapshot = store.getSnapshot();
+      const current = snapshot.sessions.find(item => item.id === id);
+      if (
+        snapshot.activeId !== id ||
+        !current ||
+        !canSelectConversationChoice(store, current)
+      )
+        return;
+      request();
+    });
   const routeCard = session.taskCards?.find(
     card => card.id === (routeKey ?? 'daily-report'),
   );
@@ -120,17 +140,19 @@ export function ConversationTaskHeader({
     <>
       <ConversationRetainedActions
         actions={retainedActions}
-        disabled={!canSelectConversationChoice(store, session)}
+        disabled={!eligible}
+        hideVisitQuestions={entryOwnsVisit}
       />
       <DailyReportConversationHeader
         report={selectedReport}
-        onRequest={
+        disabled={!eligible}
+        onRequest={guardedReportRequest(
           renderReportTask
             ? reportOwner !== null && reportOwner !== id
               ? requestInOtherSession
               : undefined
-            : onOpenDailyReport
-        }
+            : onOpenDailyReport,
+        )}
       />
       {renderReportTask && (reportOwner === null || reportOwner === id)
         ? renderReportTask(

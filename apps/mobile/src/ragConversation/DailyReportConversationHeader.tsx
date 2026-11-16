@@ -7,9 +7,11 @@ import type { ConversationEntryContext } from '../aiFeatures/integration/convers
 export function DailyReportConversationHeader({
   report,
   onRequest,
+  disabled = false,
 }: {
   report?: ConversationEntryContext['dailyReport'];
   onRequest?: () => void;
+  disabled?: boolean;
 }) {
   return (
     <>
@@ -28,6 +30,7 @@ export function DailyReportConversationHeader({
           title={t('dailyReport.openFromChat')}
           testID="daily-report-request"
           variant="secondary"
+          disabled={disabled}
           onPress={onRequest}
         />
       ) : null}
