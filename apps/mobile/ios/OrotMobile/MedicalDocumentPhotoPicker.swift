@@ -169,7 +169,7 @@ final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate
         // Preview stays in memory during review; the protected original is the persisted copy.
         return [
             "id": identifier,
-            "displayName": "사진.\(ext)",
+            "displayName": String(format: NSLocalizedString("medicalPhoto.displayName", tableName: "NativeInterfaceCopy", comment: "New photo attachment display name; stored names are never rewritten"), ext),
             "contentHash": "sha256:\(hash)",
             "previewData": "data:image/\(ext == "jpg" ? "jpeg" : ext);base64,\(data.base64EncodedString())",
             "sections": [["id": UUID().uuidString.lowercased(), "text": text,

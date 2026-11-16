@@ -7,5 +7,7 @@
 	<string>진행 중</string>
 	<key>action.delete</key>
 	<string>삭제</string>
+	<key>medicalPhoto.displayName</key>
+	<string>사진.%@</string>
 </dict>
 </plist>

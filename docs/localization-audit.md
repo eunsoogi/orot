@@ -304,3 +304,9 @@
 - native `MedicalDocumentPhotoPicker.swift`의 `사진.<확장자>`는 첨부 파일 metadata 기본값이다. JS 카탈로그만 바꾸어 해결되는 화면 문구가 아니므로 별도 native 저장·복원 경계 검토가 남는다. provider iOS spike와 synthetic calendar/probe는 개발·합성 표면이다.
 
 이 검색은 원문 포함 파일을 찾는 source audit이며 전체 이미지·native UI·실모델 및 동적 생성 문자열의 현지화 완료 증거가 아니다. 부모 이슈는 열린 상태로 유지한다.
+
+## 신규 사진 첨부 기본 표시 이름
+
+2026-11-16 main `158bbbb5`에서 일반 production TSX의 잔여 한국어는 확인되지 않았으며, TS의 모델 지시·정규식·정확 비교·합성 fixture와 진행 중인 보고서 경계는 유지했다. 별도 native 잔여인 `MedicalDocumentPhotoPicker.swift`의 신규 사진 첨부 표시 이름만 기존 `NativeInterfaceCopy` 기본 문자열 테이블로 옮긴다. `사진.%@`에 기존 jpg/heic/png 확장자를 보간하므로 기존 결과 바이트를 유지한다. 한국어 단일 기본 테이블이며 다른 언어 리소스는 추가하지 않는다.
+
+이 이름은 검토 화면에 표시되고 저장 시 source title이 될 수 있다. 실제 보호 파일명은 기존 UUID와 확장자이며 변경하지 않는다. 문서 선택기의 원본 파일명, 이미 저장된 제목, OCR 원문·hash·preview·동의·삭제·중복 재시도는 바꾸지 않는다. 클라우드 리소스/소스 동등성 및 합성 저장 회귀와 실제 UIKit/Bundle 런타임 증거를 구분하며, 이 배치로 전체 동적·모델 생성 문자열 현지화 완료를 주장하지 않는다.
