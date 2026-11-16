@@ -1,3 +1,4 @@
+import { createReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
@@ -13,6 +14,8 @@ export async function revalidateSummaryArtifacts(
   const history = createManualHistoryRepository(database);
   let valid = true;
   await database.transaction(async tx => {
+    // This batch performs no writes; only identical period recalculations are shared.
+    const validatePeriod = createReadOnlyPeriodValidation(tx);
     for (const item of items) {
       const daily = await tx.execute(
         'SELECT run_id FROM daily_report_revisions WHERE run_id = ?',
@@ -40,7 +43,14 @@ export async function revalidateSummaryArtifacts(
         return;
       }
       try {
-        await assertRetainedEvidenceCurrent(tx, saved.sources, history, false);
+        await assertRetainedEvidenceCurrent(
+          tx,
+          saved.sources,
+          history,
+          false,
+          undefined,
+          validatePeriod,
+        );
       } catch {
         valid = false;
         return;

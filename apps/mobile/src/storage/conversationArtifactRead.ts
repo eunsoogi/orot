@@ -1,3 +1,4 @@
+import { createReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import type { SqlDatabase } from '@orot/storage';
 import {
   decodeConversationArtifact,
@@ -17,6 +18,8 @@ export function createConversationArtifactReader(
     await ensure();
     const output: (ConversationArtifact | null)[] = [];
     await database.transaction(async tx => {
+      // This batch performs no writes; only identical period recalculations are shared.
+      const validatePeriod = createReadOnlyPeriodValidation(tx);
       if (lease) {
         const session = await tx.execute(
           'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ?',
@@ -42,7 +45,13 @@ export function createConversationArtifactReader(
           continue;
         }
         try {
-          await assertConversationArtifactCurrent(tx, database, value, false);
+          await assertConversationArtifactCurrent(
+            tx,
+            database,
+            value,
+            false,
+            validatePeriod,
+          );
           output.push(value);
         } catch {
           output.push(null);
