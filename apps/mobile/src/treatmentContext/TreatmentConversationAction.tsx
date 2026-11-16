@@ -61,6 +61,7 @@ export function TreatmentConversationAction(props: TreatmentActionProps) {
           {pending ? <AppText>{t('treatmentSafety.checking')}</AppText> : null}
           <NavigationInlineTransition
             transitionKey={mode}
+            depth={mode === 'form' ? 0 : 1}
             style={styles.content}
           >
             {pending === 'other' ? null : result !== null ? (

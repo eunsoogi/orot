@@ -212,8 +212,8 @@ export function NativeRouteStack<Name extends string>({
             },
           })}
           screenOptions={{
-            // The pinned native animator fades a transient snapshot, never live glass.
-            animation: reduceMotion ? 'none' : 'fade',
+            // UIKit reverses the horizontal push for Back and interactive pop; tab fades stay in the root scene.
+            animation: reduceMotion ? 'none' : 'slide_from_right',
             animationDuration: 220,
             animationMatchesGesture: true,
             contentStyle: styles.content,

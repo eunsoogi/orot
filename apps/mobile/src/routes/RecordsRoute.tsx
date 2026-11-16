@@ -100,6 +100,7 @@ export function RecordsRoute({
     return (
       <NavigationInlineTransition
         transitionKey="review"
+        depth={1}
         style={styles.transition}
       >
         <VerticalPageSections
@@ -125,6 +126,7 @@ export function RecordsRoute({
     return (
       <NavigationInlineTransition
         transitionKey="detail"
+        depth={1}
         style={styles.transition}
       >
         <MedicalDocumentSourceView
