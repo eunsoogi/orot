@@ -125,9 +125,10 @@ export function createConversationSessionRequests(
         ReturnType<typeof startConversationRetainedRequest>
       >;
       try {
-        retained = await retention?.beginTurn(id, controller.signal);
-        if (!current()) return;
-        if (retained || hasPhoto)
+        retained = retention
+          ? await retention.beginTurn(id, controller.signal)
+          : undefined;
+        if (current() && (retained || hasPhoto))
           photoInput = await startConversationRetainedRequest({
             id,
             question,
