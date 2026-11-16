@@ -125,7 +125,7 @@ export async function loadFeatureEvidenceSnapshot(
 /** Re-embeds only missing or changed local text while the encrypted RAG service remains open. */
 export async function indexChangedFeatureEvidence(
   data: AiFeatureLocalData,
-  snapshot: LocalEvidenceSnapshot,
+  snapshot: Pick<LocalEvidenceSnapshot, 'chunks'>,
   signal: AbortSignal,
 ): Promise<void> {
   let fingerprints = indexedChunkFingerprints.get(data.rag);

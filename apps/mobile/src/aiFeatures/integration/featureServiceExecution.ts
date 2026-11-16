@@ -41,6 +41,8 @@ export function toolsFor(
       registry,
       allowHealthOverview: healthOverview,
       rag: data.rag,
+      prepareChunks: (chunks, signal) =>
+        indexChangedFeatureEvidence(data, { chunks }, signal),
       async loadSnapshot(query, request) {
         const scope = request.allowedScope;
         const next = await loadFeatureEvidenceSnapshot(
@@ -61,8 +63,6 @@ export function toolsFor(
         // Overview selection is SQL-ordered by topic and does not use embedding ranking.
         if (request.input.view === 'health_overview')
           providerDiagnostic(feature, 'data', 'overview_selected');
-        if (request.input.view !== 'health_overview')
-          await indexChangedFeatureEvidence(data, next, request.signal);
         return next;
       },
     }),
@@ -72,13 +72,14 @@ export function toolsFor(
       maxResults: localResultLimit,
       snapshot,
       rag: data.rag,
+      prepareChunks: (chunks, signal) =>
+        indexChangedFeatureEvidence(data, { chunks }, signal),
       async loadSnapshot(_query, request) {
         const next = await loadFeatureMemorySnapshot(
           data,
           registry,
           request.signal,
         );
-        await indexChangedFeatureEvidence(data, next, request.signal);
         return next;
       },
     }),
