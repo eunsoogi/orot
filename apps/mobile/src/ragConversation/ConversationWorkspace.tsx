@@ -50,7 +50,9 @@ export function ConversationWorkspace(props: Props) {
       >
         <FloatingAssistantSurface
           session={props.session}
-          identityWidth={plan.visible ? plan.activityWidth : undefined}
+          identityWidth={
+            plan.visible ? plan.activityWidth : plan.transcriptWidth
+          }
         >
           <View
             style={[styles.row, !plan.visible && styles.single]}
