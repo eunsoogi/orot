@@ -2,14 +2,7 @@
 
 const { buildSyntheticClarificationResponse } = require('./clarification-response.cjs');
 
-function parsedToolResult(message) {
-  if (typeof message.result !== 'string') return message.result;
-  try {
-    return JSON.parse(message.result);
-  } catch {
-    return undefined;
-  }
-}
+const { parsedToolResult, evidenceFromRequest } = require('./request-evidence.cjs');
 
 function appointmentContextFromRequest(request) {
   const prefix = 'Appointment and user context: ';
@@ -21,7 +14,7 @@ function appointmentContextFromRequest(request) {
   return JSON.parse(contextLine.slice(prefix.length));
 }
 
-// The standard app tool message carries an EvidenceBatch directly in this harness's default result mode.
+// Both full-batch and reference-only tool results preserve search coverage.
 function searchedKinds(request) {
   return new Set(
     request.messages.flatMap((message) => {
@@ -32,14 +25,6 @@ function searchedKinds(request) {
         : [];
     }),
   );
-}
-
-function evidenceFromRequest(request) {
-  return request.messages.flatMap((message) => {
-    if (message.role !== 'tool') return [];
-    const result = parsedToolResult(message);
-    return Array.isArray(result?.items) ? result.items : [];
-  });
 }
 
 // Keep failure diagnostics to tool names and evidence-batch metadata; fixture content stays out of logs.

@@ -171,6 +171,8 @@ final class OrotProviderDiagnostics: NSObject {
                "task_summary_empty_section_5", "task_summary_empty_section_6", "task_summary_empty_section_7", "task_summary_empty_section_8",
                "overview_selected", "context_started", "context_selected",
                "context_preparation_started", "context_preparation_completed", "context_calendar_started", "context_calendar_completed",
+               "context_generation_started", "context_generation_completed",
+               "context_transaction_wait_started", "context_transaction_wait_completed",
                "context_quantities_started", "context_quantities_completed", "context_medications_started", "context_medications_completed",
                "context_sleep_started", "context_sleep_completed", "context_symptoms_started", "context_symptoms_completed",
                "task_quantity_ratio", "task_quantity_unit", "task_quantity_precision", "task_quantity_value",

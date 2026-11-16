@@ -17,6 +17,7 @@ export type ModelAuthorizationResult =
   | ModelAuthorizationGrant
   | { readonly status: 'cancelled'; readonly providerStop: 'not_started' }
   | { readonly status: 'consent_required' }
+  | { readonly status: 'budget_exceeded' }
   | { readonly status: 'unavailable'; readonly errorCode: 'invalid_request' };
 
 function snapshot(value: unknown): string | undefined {
@@ -37,9 +38,12 @@ export async function authorizeModelCall(
   if (signal.aborted) return { status: 'cancelled', providerStop: 'not_started' };
   const payload = snapshot(request);
   const identity = snapshot(execution);
-  if (!payload || !identity || utf8ByteLength(payload) > execution.budget.maxPayloadBytes) {
+  if (!payload || !identity) {
     return { status: 'unavailable', errorCode: 'invalid_request' };
   }
+  // A local size limit is not an account/provider configuration failure. Reject before consent or dispatch.
+  if (utf8ByteLength(payload) > execution.budget.maxPayloadBytes)
+    return { status: 'budget_exceeded' };
   if (execution.remoteProcessing) {
     try {
       const approval = await observeUntilAbort(
