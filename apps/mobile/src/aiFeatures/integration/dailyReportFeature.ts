@@ -131,6 +131,7 @@ export function createDailyReportFeature(
           }
         },
         () => dailyReportDeadlineFailure(deadlineContext),
+        deadlineContext,
       );
     },
   });

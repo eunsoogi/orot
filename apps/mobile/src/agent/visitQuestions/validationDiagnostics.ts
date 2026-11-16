@@ -4,7 +4,7 @@ import { UNSUPPORTED_QUESTION_FACTS_REASON } from './taskValidation';
 import type { VisitQuestionEvidenceBatch } from './taskContract';
 
 const knownReasons = {
-  'A visit requires three to five question candidates.': 'task_question_count',
+  'A visit requires one to five question candidates.': 'task_question_count',
   'A question text is invalid.': 'task_question_text',
   'A rationale or priority is invalid.': 'task_question_rationale',
   'A question must cite one to three unique evidence IDs.':

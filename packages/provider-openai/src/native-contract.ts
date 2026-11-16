@@ -82,6 +82,7 @@ export interface ChatGPTPlanNativeError {
 export type ChatGPTPlanSteeringStatus = 'accepted' | 'applied' | 'pending' | 'failed';
 
 export type ChatGPTPlanNativeEvent =
+  | { readonly requestId: string; readonly type: 'response_started'; readonly responseId: string }
   | { readonly requestId: string; readonly type: 'steering_ready' }
   | { readonly requestId: string; readonly type: 'text_snapshot'; readonly text: string }
   | {

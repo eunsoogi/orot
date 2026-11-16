@@ -87,7 +87,7 @@ export const nextVisitCopyKo = {
   'nextVisit.generation.needsClarification':
     '현재 자료만으로는 질문을 준비하기 어려워요.',
   'nextVisit.generation.clarificationNextStep':
-    '관련 건강 기록을 확인하거나 보완한 뒤 다시 질문을 만들어 주세요.',
+    '원하면 이번 진료에서 궁금한 점이나 상의할 목표를 더 구체적으로 알려 주세요.',
   'nextVisit.generation.refreshRequired':
     '자료가 바뀌었어요. 최신 내용을 확인한 뒤 다시 시도해 주세요.',
   'nextVisit.generation.providerUnavailable':

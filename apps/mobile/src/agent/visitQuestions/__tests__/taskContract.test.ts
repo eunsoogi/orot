@@ -141,7 +141,6 @@ describe('visit question task responder', () => {
 
   it.each([
     { questions: [] },
-    { questions: response().questions.slice(0, 2) },
     {
       questions: [...response().questions, ...response().questions.slice(0, 3)],
     },

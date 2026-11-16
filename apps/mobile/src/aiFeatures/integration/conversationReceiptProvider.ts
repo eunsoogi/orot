@@ -1,4 +1,5 @@
 import type {
+  LanguageModelExecutionOptions,
   LanguageModelProvider,
   LanguageModelResponse,
 } from '@orot/model-runtime';
@@ -28,27 +29,58 @@ export function conversationReceiptProvider(
       /* Display observation cannot alter provider behavior. */
     }
   };
+  const responseOptions = (
+    options: LanguageModelExecutionOptions | undefined,
+    live: () => boolean,
+  ): LanguageModelExecutionOptions => ({
+    ...options,
+    onResponseStarted() {
+      if (!live() || options?.signal?.aborted) return;
+      report(true, options?.signal);
+      try {
+        options?.onResponseStarted?.();
+      } catch {
+        /* Observation cannot fail generation. */
+      }
+    },
+  });
   const hasOutput = (response: LanguageModelResponse) =>
     Boolean(response.text.trim() || response.toolCalls.length);
   return {
     ...provider,
     async generate(request, options) {
-      const result = await provider.generate(request, options);
-      if (result.ok) report(hasOutput(result.value), options?.signal);
-      return result;
+      let live = true;
+      try {
+        const result = await provider.generate(
+          request,
+          responseOptions(options, () => live),
+        );
+        if (result.ok) report(hasOutput(result.value), options?.signal);
+        return result;
+      } finally {
+        live = false;
+      }
     },
     ...(provider.stream
       ? ({
           async *stream(request, options) {
-            for await (const result of provider.stream!(request, options)) {
-              if (result.ok) {
-                const event = result.value;
-                if (event.type === 'completed')
-                  report(hasOutput(event.response), options?.signal);
-                else if (event.type === 'tool_call' || event.text.trim())
-                  report(true, options?.signal);
+            let live = true;
+            try {
+              for await (const result of provider.stream!(
+                request,
+                responseOptions(options, () => live),
+              )) {
+                if (result.ok) {
+                  const event = result.value;
+                  if (event.type === 'completed')
+                    report(hasOutput(event.response), options?.signal);
+                  else if (event.type === 'tool_call' || event.text.trim())
+                    report(true, options?.signal);
+                }
+                yield result;
               }
-              yield result;
+            } finally {
+              live = false;
             }
           },
         } satisfies Pick<LanguageModelProvider, 'stream'>)

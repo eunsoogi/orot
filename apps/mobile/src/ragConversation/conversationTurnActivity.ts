@@ -1,3 +1,4 @@
+import { reportOpening } from '../aiFeatures/integration/openingObservation';
 import { createConversationDeliveryObserver } from './conversationDeliveryObserver';
 import {
   mergeConversationToolEvents,
@@ -111,7 +112,15 @@ export function createConversationTurnActivity(input: {
         });
     },
     observer: {
-      onProviderReceipt: delivery?.onProviderReceipt,
+      onProviderReceipt(receipt: 'accepted' | 'response_started') {
+        if (!input.current()) return;
+        delivery?.onProviderReceipt(receipt);
+        // Publish read before showing processing dots; both observations own this request.
+        if (receipt === 'response_started') {
+          input.activity?.responseStarted();
+          input.activityChanged?.();
+        }
+      },
       // A provider may deliver a callback after cancellation or a newer retry.
       // Only the request that still owns this activity may record that callback.
       onToolEvent(event: ConversationToolEvent) {
@@ -177,6 +186,10 @@ export function createConversationTurnActivity(input: {
                 initialResponse: { callId: event.callId, text: event.text },
               },
             });
+            reportOpening('opening_display', 'completed');
+          } else {
+            // Rejected display ownership is not proof of stale health evidence.
+            reportOpening('opening_display', 'unavailable');
           }
           return;
         }

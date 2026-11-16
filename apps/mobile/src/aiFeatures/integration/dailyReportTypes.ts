@@ -69,3 +69,16 @@ export interface DailyReportServiceRequest {
     | { readonly kind: 'revise'; readonly expectedRunId: string | null };
   readonly signal: AbortSignal;
 }
+
+/** Failure subset emitted by report authorization, model dispatch and validation. */
+export type DailyReportModelFailureCode = Extract<
+  DailyReportFailureCode,
+  | 'cancelled'
+  | 'timeout'
+  | 'consent_required'
+  | 'provider_unavailable'
+  | 'source_revision_changed'
+  | 'source_read_failed'
+  | 'partial_stream'
+  | 'malformed_output'
+>;

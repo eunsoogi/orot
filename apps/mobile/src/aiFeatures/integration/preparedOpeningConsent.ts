@@ -1,3 +1,4 @@
+import { reportOpening } from './openingObservation';
 import { startRagConversationOpening } from './contextualConversationOpening';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
 
@@ -6,6 +7,7 @@ import type { ExecutionConsentPort } from '@orot/agent-runtime';
 export function createPreparedOpeningConsent(consent: ExecutionConsentPort) {
   let settle!: (ready: boolean) => void;
   let settled = false;
+  reportOpening('opening_preflight', 'started');
   const ready = new Promise<boolean>(resolve => {
     settle = resolve;
   });
@@ -20,6 +22,7 @@ export function createPreparedOpeningConsent(consent: ExecutionConsentPort) {
     release(value: boolean) {
       if (settled) return;
       settled = true;
+      reportOpening('opening_preflight', value ? 'completed' : 'failed');
       settle(value);
     },
   };

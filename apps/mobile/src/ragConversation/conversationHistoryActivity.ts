@@ -47,5 +47,9 @@ export function conversationHistoryActivity(
       !pending?.content.trim()),
   );
 
-  return { visibleMessages, showActivityBubble };
+  return {
+    visibleMessages,
+    showActivityBubble,
+    processing: Boolean(activity?.responseStarted),
+  };
 }

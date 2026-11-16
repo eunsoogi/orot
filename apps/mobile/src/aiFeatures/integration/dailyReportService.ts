@@ -35,6 +35,7 @@ export function createDailyReportService(
           { ...request, signal },
         ),
       () => dailyReportDeadlineFailure(deadlineContext),
+      deadlineContext,
     );
   };
 }
