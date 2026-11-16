@@ -147,7 +147,8 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
     private func openManualHistory(_ app: XCUIApplication, title: String = "Synthetic Duo original") throws {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         XCTAssertFalse(UITestConditions.element(app, "records-open-manual-history").exists)
-        let entry = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
+        // Stable identity lets the existing window-owner guard select the real route surface.
+        let entry = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label BEGINSWITH %@", "saved-memory-entry-", title)).firstMatch
         XCTAssertTrue(UITestConditions.exists(entry), app.debugDescription)
         FormUITestConditions.reveal(entry, in: app, scrollID: "navigation-route-scroll")
         XCTAssertTrue(entry.isHittable, app.debugDescription)

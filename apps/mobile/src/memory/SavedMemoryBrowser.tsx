@@ -76,6 +76,7 @@ export function SavedMemoryBrowser({
           {rows.slice(0, visible).map(row => (
             <AppButton
               key={row.id}
+              testID={`saved-memory-entry-${row.id}`}
               variant="list"
               title={summary(row.text)}
               summary={t('savedMemory.savedAt', {
