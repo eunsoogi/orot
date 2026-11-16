@@ -70,3 +70,20 @@ test('a broken scheduler trace cannot fail the read or its deferred callback', (
   expect(() => traceHealthContextScheduler(trace)).not.toThrow();
   expect(run).not.toThrow();
 });
+
+test('admission cancels a pending scheduler probe without a false completion token', () => {
+  let run!: () => void;
+  jest.spyOn(globalThis, 'setImmediate').mockImplementation(callback => {
+    run = callback;
+    return 1 as unknown as ReturnType<typeof setImmediate>;
+  });
+  const clear = jest
+    .spyOn(globalThis, 'clearImmediate')
+    .mockImplementation(() => {});
+  const trace = jest.fn();
+  const stop = traceHealthContextScheduler(trace);
+  stop();
+  run();
+  expect(clear).toHaveBeenCalledTimes(1);
+  expect(trace.mock.calls).toEqual([['scheduler', 'started']]);
+});

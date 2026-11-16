@@ -26,8 +26,11 @@ export async function traceHealthContext<T>(
 }
 
 /** A same-turn probe distinguishes event-loop scheduling from transaction callback entry. */
-export function traceHealthContextScheduler(trace?: HealthContextTrace): void {
-  if (!trace) return;
+export function traceHealthContextScheduler(
+  trace?: HealthContextTrace,
+): () => void {
+  if (!trace) return () => {};
+  let active = true;
   const report = (status: 'started' | 'completed') => {
     try {
       trace('scheduler', status);
@@ -37,5 +40,13 @@ export function traceHealthContextScheduler(trace?: HealthContextTrace): void {
   };
   report('started');
   // Do not await or gate the database: this measures scheduling without changing ordering.
-  setImmediate(() => report('completed'));
+  const handle = setImmediate(() => {
+    if (active) report('completed');
+    active = false;
+  });
+  // No completion token means admission won the race; never retain a probe beyond its read.
+  return () => {
+    active = false;
+    clearImmediate(handle);
+  };
 }

@@ -137,11 +137,22 @@ export function createHealthContextReader(
     let report: HealthContextReport | undefined;
     // The native adapter queues transactions; distinguish that wait from the report queries.
     trace?.('transaction_wait', 'started');
-    traceHealthContextScheduler(trace);
-    await database.transaction(async tx => {
-      trace?.('transaction_wait', 'completed');
-      report = await readHealthContextReport(tx, window, topics, signal, trace);
-    });
+    const stopProbe = traceHealthContextScheduler(trace);
+    try {
+      await database.transaction(async tx => {
+        stopProbe();
+        trace?.('transaction_wait', 'completed');
+        report = await readHealthContextReport(
+          tx,
+          window,
+          topics,
+          signal,
+          trace,
+        );
+      });
+    } finally {
+      stopProbe();
+    }
     if (!report) throw new Error('Health context could not be read.');
     cache.delete(key);
     cache.set(key, report);
