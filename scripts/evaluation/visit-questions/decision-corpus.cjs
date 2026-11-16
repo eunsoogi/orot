@@ -43,6 +43,16 @@ function decisionCases() {
       },
     };
   }
+  const variation = build(
+    'ordinary-variation-only',
+    '합성 정기 방문에 꼭 필요한 질문만 추려 주세요.',
+    evidence(
+      'synthetic-variation',
+      '합성 측정 요약의 값들이 서로 다르다. 오류나 증상, 미해결 관리 결정은 기록하지 않았다. 이것이 다른 건강 문제가 없다는 뜻은 아니다.',
+    ),
+    { noQuestionExpected: true, requiredDecisionIds: [], decisions: [] },
+    'needs_clarification',
+  );
   return [
     build(
       'function-impact',
@@ -87,6 +97,7 @@ function decisionCases() {
       },
       'needs_clarification',
     ),
+    variation,
   ];
 }
 module.exports = { decisionCases };
