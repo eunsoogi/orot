@@ -65,14 +65,13 @@ export function ConversationHistory({
     followsBottom,
     expectedOffset,
   });
-  const { visibleMessages, showActivityBubble, processing } =
-    conversationHistoryActivity(
-      messages,
-      pendingMessage,
-      requestSessionId,
-      requestActivity,
-      separatedActivity,
-    );
+  const { visibleMessages, showActivityBubble } = conversationHistoryActivity(
+    messages,
+    pendingMessage,
+    requestSessionId,
+    requestActivity,
+    separatedActivity,
+  );
   useConversationHistoryUserTurnFollow(
     sessionId ?? null,
     messages,
@@ -216,9 +215,7 @@ export function ConversationHistory({
             renderVisitQuestions,
           }}
         />
-        {showActivityBubble ? (
-          <ConversationActivityBubble processing={processing} />
-        ) : null}
+        {showActivityBubble ? <ConversationActivityBubble /> : null}
         <ConversationHistoryStatus
           error={conversationHistoryError(
             error,

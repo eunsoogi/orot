@@ -97,6 +97,14 @@ export function createConversationTurnActivity(input: {
       if (before !== input.activity.getSnapshot()) input.activityChanged?.();
     }
   };
+  const onProviderReceipt = (receipt: 'accepted' | 'response_started') => {
+    if (!input.current()) return;
+    delivery?.onProviderReceipt(receipt);
+    if (receipt === 'response_started') {
+      input.activity?.responseStarted();
+      input.activityChanged?.();
+    }
+  };
   return {
     metadata,
     finish(status: 'failed' | 'cancelled' | 'interrupted') {
@@ -112,15 +120,7 @@ export function createConversationTurnActivity(input: {
         });
     },
     observer: {
-      onProviderReceipt(receipt: 'accepted' | 'response_started') {
-        if (!input.current()) return;
-        delivery?.onProviderReceipt(receipt);
-        // Publish read before showing processing dots; both observations own this request.
-        if (receipt === 'response_started') {
-          input.activity?.responseStarted();
-          input.activityChanged?.();
-        }
-      },
+      onProviderReceipt,
       // A provider may deliver a callback after cancellation or a newer retry.
       // Only the request that still owns this activity may record that callback.
       onToolEvent(event: ConversationToolEvent) {
@@ -173,9 +173,12 @@ export function createConversationTurnActivity(input: {
             input.current() &&
             pending?.id === input.responseId &&
             !pending.withholdHealthBody &&
+            Boolean(event.text.trim()) &&
             (!pending.initialResponse ||
               pending.initialResponse.source === 'receipt')
           ) {
+            // Accepted generated output is evidence even when its provider is separate from the main call.
+            onProviderReceipt('response_started');
             input.retained?.retainOpening({
               callId: event.callId,
               text: event.text,

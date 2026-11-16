@@ -58,8 +58,8 @@ test('shows preparation without processing dots before provider acknowledgement'
     screen.queryAllByTestId('rag-conversation-activity-dot', {
       includeHiddenElements: true,
     }),
-  ).toHaveLength(0);
-  expect(screen.getByTestId('conversation-response-waiting')).toBeTruthy();
+  ).toHaveLength(3);
+  expect(screen.queryByTestId('conversation-response-waiting')).toBeNull();
   expect(screen.queryByTestId('rag-conversation-stream')).toBeNull();
   expect(screen.queryByTestId('rag-conversation-progress')).toBeNull();
 });
