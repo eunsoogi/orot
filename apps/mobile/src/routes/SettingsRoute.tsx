@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   group: {
     backgroundColor: appColors.surface,
     borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
     borderColor: appColors.border,
     overflow: 'hidden',
   },

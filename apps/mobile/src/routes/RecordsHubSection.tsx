@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     marginHorizontal: hubSpacing.horizontal,
     marginTop: hubSpacing.top,
     borderRadius: 24,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: appColors.border,
     backgroundColor: appColors.surface,
     overflow: 'hidden',

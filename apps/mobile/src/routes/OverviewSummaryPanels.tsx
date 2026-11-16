@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   recording: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
     borderColor: appColors.border,
     backgroundColor: appColors.surface,
     borderRadius: 12,
