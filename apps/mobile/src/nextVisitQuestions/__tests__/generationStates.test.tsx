@@ -220,7 +220,7 @@ test('shows insufficient evidence without creating a question review list', asyn
   expect(
     await screen.findByTestId('next-visit-generation-message'),
   ).toHaveTextContent(
-    '합성 근거가 부족합니다. 관련 건강 기록을 확인하거나 보완한 뒤 다시 질문을 만들어 주세요.',
+    '합성 근거가 부족합니다. 원하면 이번 진료에서 궁금한 점이나 상의할 목표를 더 구체적으로 알려 주세요.',
   );
   expect(
     screen.getByText('현재 확인된 근거가 부족해 질문을 만들지 않았어요.'),
@@ -228,10 +228,10 @@ test('shows insufficient evidence without creating a question review list', asyn
   expect(screen.queryByTestId('next-visit-review-list')).toBeNull();
 });
 
-test('rejects a generated result that does not contain three to five candidates', async () => {
+test('rejects a generated result that contains no candidates', async () => {
   const onGenerate: Props['onGenerate'] = async () => ({
     status: 'ready',
-    questions: questions.slice(0, 2),
+    questions: [],
     caveats: [],
   });
   await render(<NextVisitQuestionsScreen {...makeProps({ onGenerate })} />);

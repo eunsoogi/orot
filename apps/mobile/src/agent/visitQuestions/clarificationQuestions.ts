@@ -70,8 +70,21 @@ export function isKnownClarification(
 export function clarificationQuestionsForEvidence(hasConflicts: boolean) {
   return clarificationQuestions.filter(
     item =>
-      item.questionText !==
-        t('nextVisit.clarification.unconfirmedResults.question') &&
+      // Keep saved exact pairs valid, but do not offer logistical filler for new clinical drafts.
+      ![
+        'unconfirmedResults',
+        'preparationRecords',
+        'medicationInformation',
+        'visitPreparation',
+      ].some(
+        key =>
+          item.questionText ===
+          t(
+            `nextVisit.clarification.${key}.question` as Parameters<
+              typeof t
+            >[0],
+          ),
+      ) &&
       (hasConflicts ||
         item.questionText !==
           t('nextVisit.clarification.conflictingRecords.question')),
