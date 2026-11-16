@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { styles } from '../ConversationScreen.styles';
 import { HealthSummaryCard } from '../HealthSummaryCard';
 import { reference } from '../../diseaseHypotheses/taskTestSupport';
 import { OMITTED_SUMMARY_CONTENT_NOTE } from '../../diseaseHypotheses/summaryPartialValidation';
@@ -24,7 +25,7 @@ test('shows the admitted period, sections, source and retry without claiming a s
               title: '수면',
               summary: '수면 기록이에요.',
               uncertainty: '기록이 없는 날은 알 수 없어요.',
-              missingData: [],
+              missingData: ['추가 기록이 없어요.'],
               supportingEvidence: [reference],
               contraryEvidence: [],
             },
@@ -37,6 +38,19 @@ test('shows the admitted period, sections, source and retry without claiming a s
       onRetry={onRetry}
     />,
   );
+  for (const text of [
+    '수면',
+    '수면 기록이에요.',
+    '기록이 없는 날은 알 수 없어요.',
+    '추가 기록이 없어요.',
+  ]) {
+    const prose = screen.getByText(text);
+    expect(prose).toHaveStyle(styles.messageText);
+    expect(prose.props.allowFontScaling).toBe(true);
+    expect(prose.props.adjustsFontSizeToFit).toBe(false);
+    expect(prose.props.maxFontSizeMultiplier).toBeUndefined();
+    expect(prose.props.numberOfLines).toBeUndefined();
+  }
   expect(screen.getByText(/미만 \(UTC\)/)).toBeTruthy();
   expect(screen.getByText('기록이 없는 날은 알 수 없어요.')).toBeTruthy();
   expect(screen.getByText('저장하지 못했어요.')).toBeTruthy();
