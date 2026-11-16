@@ -1,3 +1,4 @@
+import { reportConversationException } from '../../providers/conversationFailureDiagnostic';
 import { reportConversationPreparationFailure } from './conversationHistoryFailure';
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import { AiProviderSelectionError } from './provider';
@@ -8,6 +9,7 @@ export function ragConversationFailure(
   signal: AbortSignal,
   stage: 'selection' | 'data' | 'workflow',
 ): RagConversationOutcome {
+  reportConversationException('conversation_dispatch', error);
   if (stage === 'data') reportConversationPreparationFailure(error);
   if (signal.aborted || (error instanceof Error && error.name === 'AbortError'))
     return { status: 'failure', kind: 'cancelled' };

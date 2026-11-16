@@ -139,7 +139,7 @@ final class OrotProviderDiagnostics: NSObject {
     @objc func report(_ feature: String, stage: String, outcome: String) {
         guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
               ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
-              ["tool_capture_personal", "tool_capture_memory", "tool_capture_generated", "tool_capture_external",
+              ["conversation_dispatch", "conversation_run", "tool_capture_personal", "tool_capture_memory", "tool_capture_generated", "tool_capture_external",
                "tool_event_adapter", "tool_event_discard", "tool_event_capture", "tool_event_write", "tool_event_bind",
                "opening_generate", "opening_validate", "opening_review", "opening_consent",
                "opening_delivery", "opening_preflight", "opening_display", "stop_native", "stop_js", "stop_abort", "stop_settlement", "conversation_photo_flush", "conversation_preview_flush", "conversation_activity_flush", "conversation_stop_fence", "conversation_lifetime_settle", "conversation_save",
@@ -150,7 +150,8 @@ final class OrotProviderDiagnostics: NSObject {
                "consent_wait", "provider_wait", "evidence_check", "public_search", "history_preparation",
                "evidence_appointment", "evidence_period", "evidence_records",
                "evidence_memory", "evidence_presentation"].contains(stage),
-              ["tool_cited_changed", "tool_photo_owner", "tool_filter_rejected",
+              ["workflow_search_failed", "workflow_search_unavailable", "workflow_exception", "workflow_action_unknown", "workflow_unavailable_other",
+               "tool_cited_changed", "tool_photo_owner", "tool_filter_rejected",
                "tool_generated_changed", "tool_generated_identity", "tool_generated_lineage",
                "tool_photo_changed", "tool_parent_changed", "tool_parent_invalid",
                "history_discovery_unavailable", "history_page_unavailable", "history_turn_unavailable",

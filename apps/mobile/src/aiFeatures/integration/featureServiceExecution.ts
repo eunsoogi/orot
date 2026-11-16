@@ -158,8 +158,10 @@ export function executionOptions(input: {
       references: readonly EvidenceReference[],
       signal: AbortSignal,
     ) => {
-      if (signal.aborted || references.length === 0)
-        return Promise.resolve(false);
+      if (signal.aborted) return Promise.resolve(false);
+      // A completed empty lookup has no source revision to invalidate. Coverage
+      // and task grounding still decide whether this evidence can support an answer.
+      if (references.length === 0) return Promise.resolve(true);
       const external = references.filter(
         reference => reference.sourceKind === 'external_medical',
       );
