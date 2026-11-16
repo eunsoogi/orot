@@ -22,7 +22,7 @@ jest.mock('../../layout/AppButton', () => ({
       <Pressable
         {...props}
         onPress={() => {
-          void onPress?.();
+          onPress?.();
         }}
       >
         <Text>{title}</Text>
