@@ -59,6 +59,7 @@ export async function journaledModelCall<TResult>(
       signal,
       undefined,
       onTextEvent,
+      options.onModelStage,
     );
   }
   const operationId = `${operation.operationKey}:call-${++operation.callIndex}`;
@@ -134,6 +135,7 @@ export async function journaledModelCall<TResult>(
         approvalSignal,
         undefined,
         onTextEvent,
+        options.onModelStage,
       );
     } finally {
       await live.close();

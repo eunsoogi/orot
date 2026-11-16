@@ -1,3 +1,4 @@
+import { observeModelStage } from './modelStageDiagnostics';
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { LanguageModelStreamEvent } from '@orot/model-runtime';
 import { referencesFromBatch } from './evidence';
@@ -35,7 +36,9 @@ export async function revalidateCurrentEvidence<TResult>(
   const revalidation = deferEvidenceAdapter(signal, () =>
     options.revalidateEvidence(references, signal),
   );
-  const result = await observeUntilAbort(revalidation, signal);
+  const result = await observeModelStage(options.onModelStage, 'evidence_check', () =>
+    observeUntilAbort(revalidation, signal),
+  );
   if (result.kind === 'cancelled') canceled(context, providerStop);
   else if (result.kind !== 'value' || !result.value) {
     stop(context, 'Evidence changed while the model request was in progress.', 'stale_evidence');
@@ -58,7 +61,9 @@ export async function callModelWithEvidenceFreshness<TResult>(
   let staleAfterConsent = false;
   const consent: ExecutionConsentPort = {
     authorize: async (outbound) => {
-      const decision = await options.consent.authorize(outbound);
+      const decision = await observeModelStage(options.onModelStage, 'consent_wait', () =>
+        options.consent.authorize(outbound),
+      );
       if (decision !== 'authorized') return decision;
       if (!(await ensureCurrent('not_started'))) {
         staleAfterConsent = true;

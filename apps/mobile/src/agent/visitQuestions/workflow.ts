@@ -177,6 +177,7 @@ export async function runVisitQuestionWorkflow(input: {
       budget,
     },
     provider: resolution.provider,
+    onModelStage: (stage, event) => providerDiagnostic('visit', stage, event),
     request:
       input.request ??
       '다음 외래 진료에서 확인할 질문을 현재 기록 근거와 함께 준비해 주세요.',
