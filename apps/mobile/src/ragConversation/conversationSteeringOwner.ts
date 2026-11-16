@@ -23,6 +23,7 @@ export function createConversationSteeringOwner(
     entries.delete(id);
     update(id, {
       steeringInstructions: [],
+      steeringDeliveryMode: undefined,
       steeringAvailable: false,
       steeringSubmitting: false,
       steeringError: false,
@@ -95,7 +96,7 @@ export function createConversationSteeringOwner(
           steeringInstructions: resumable
             ? session.steeringInstructions
             : session.steeringInstructions?.map(row =>
-                row.status === 'applied'
+                row.status === 'applied' || row.status === 'delivery_pending'
                   ? row
                   : { ...row, status: 'not_applied' },
               ),

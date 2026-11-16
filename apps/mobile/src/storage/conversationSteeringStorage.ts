@@ -1,3 +1,4 @@
+import { createLiveSteering } from './conversationLiveSteering';
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
@@ -7,7 +8,8 @@ export interface StoredSteeringInstruction {
   readonly id: string;
   readonly text: string;
   readonly sequence: number;
-  readonly status: 'queued' | 'prepared' | 'applied' | 'not_applied';
+  readonly status:
+    'queued' | 'prepared' | 'applied' | 'not_applied' | 'delivery_pending';
 }
 /**
  * Serialized protected-DB operations. An operation's first bound payload is immutable;
@@ -48,6 +50,7 @@ export async function createConversationSteeringStorage(input: {
     }));
   }
   return {
+    ...createLiveSteering({ database, keys, live, emit }),
     subscribe(listener: () => Promise<void>) {
       listeners.add(listener);
       return () => {
@@ -130,8 +133,15 @@ export async function createConversationSteeringStorage(input: {
           )
         ).rows[0];
         if (pending) return;
+        const liveRows = (
+          await sql.execute(
+            "SELECT id FROM conversation_live_steering WHERE request_id=? AND run_id=? AND status IN ('sent', 'accepted', 'pending')",
+            keys,
+          )
+        ).rows;
+        const uncertain = new Set(liveRows.map(row => String(row.id)));
         const rows = (await read(sql)).filter(
-          row => row.status !== 'not_applied',
+          row => row.status !== 'not_applied' && !uncertain.has(row.id),
         );
         if (!rows.length) {
           result = request;

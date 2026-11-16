@@ -117,6 +117,31 @@ export function createConversationTurnActivity(input: {
       },
       onTaskStreamEvent(event: Parameters<typeof applyWorkflowStreamEvent>[1]) {
         const pending = input.find(input.id)?.pendingMessage;
+        if (event.type === 'steering_availability') {
+          if (input.current() && pending?.id === input.responseId)
+            input.update(input.id, { steeringDeliveryMode: event.mode });
+          return;
+        }
+        if (event.type === 'steering_applied') {
+          // Archive only the owning visible generation, never a late callback or withheld health body.
+          if (
+            input.current() &&
+            pending?.id === input.responseId &&
+            !pending.withholdHealthBody
+          ) {
+            input.update(input.id, {
+              pendingMessage: {
+                ...pending,
+                previousOutputs: pending.content.trim()
+                  ? [...(pending.previousOutputs ?? []), pending.content]
+                  : pending.previousOutputs,
+                content: '',
+                initialResponse: undefined,
+              },
+            });
+          }
+          return;
+        }
         if (event.type === 'initial_response') {
           // The pending bubble is already scoped by this live request/attempt. Never save
           // the receipt as answer text or accept a late callback after Stop/newer work.
@@ -170,6 +195,7 @@ export function createConversationTurnActivity(input: {
                 id: input.responseId,
                 content: applyWorkflowStreamEvent(pending.content, event),
                 initialResponse: pending.initialResponse,
+                previousOutputs: pending.previousOutputs,
                 activity: pending.activity,
                 ...metadata(),
               },

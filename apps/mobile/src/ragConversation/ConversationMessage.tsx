@@ -4,6 +4,7 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
+import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
 import { ConversationSources } from './ConversationSources';
 import { ConversationToolEvents } from './ConversationToolEvents';
@@ -105,6 +106,7 @@ export function ConversationMessage({
           ]
         }
       >
+        <ConversationPreviousOutputs outputs={message.previousOutputs} />
         {message.incomplete && message.content ? (
           <>
             <Text style={styles.activity}>

@@ -41,6 +41,7 @@ export function refreshConversationSources(input: {
             pendingMessage: {
               ...session.pendingMessage,
               content: '',
+              previousOutputs: undefined,
               withholdHealthBody: true,
               deletedHealthIds:
                 deletedIds &&

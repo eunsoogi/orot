@@ -27,3 +27,24 @@ test('retained stream forwards only initial responses, never provisional clinica
   observer.onTaskStreamEvent?.(initial);
   expect(onTaskStreamEvent.mock.calls).toEqual([[initial]]);
 });
+
+test('retained stream forwards content-free steering availability while withholding partial output', () => {
+  const onTaskStreamEvent = jest.fn();
+  const observer = conversationStreamObservers(
+    { onTaskStreamEvent },
+    true,
+    new LocalEvidenceReferenceRegistry(),
+    { providerId: 'synthetic', modelId: 'synthetic' },
+  );
+  const availability = {
+    type: 'steering_availability' as const,
+    mode: 'live' as const,
+  };
+  observer.onTaskStreamEvent?.(availability);
+  observer.onTaskStreamEvent?.({ type: 'steering_applied' });
+  observer.onTaskStreamEvent?.({
+    type: 'text_delta',
+    text: 'withheld synthetic prose',
+  });
+  expect(onTaskStreamEvent.mock.calls).toEqual([[availability]]);
+});

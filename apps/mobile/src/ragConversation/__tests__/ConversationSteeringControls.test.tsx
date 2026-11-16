@@ -41,3 +41,19 @@ test('does not expose steering before a durable owner exists', async () => {
   );
   expect(view.queryByTestId('conversation-steering-send')).toBeNull();
 });
+
+test('distinguishes active socket readiness from the single live-submission limit', async () => {
+  const view = await render(
+    <ConversationSteeringControls
+      session={{ ...session, steeringDeliveryMode: 'live' }}
+    />,
+  );
+  expect(view.getByText(t('conversationSteering.live_notice'))).toBeTruthy();
+  await view.rerender(
+    <ConversationSteeringControls
+      session={{ ...session, steeringDeliveryMode: 'limit_reached' }}
+    />,
+  );
+  expect(view.queryByText(t('conversationSteering.live_notice'))).toBeNull();
+  expect(view.getByText(t('conversationSteering.limit_notice'))).toBeTruthy();
+});

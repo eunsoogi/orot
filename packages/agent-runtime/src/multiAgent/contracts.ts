@@ -1,3 +1,5 @@
+import type { MultiAgentResponderStreamEvent } from './responderStreamEvent';
+export type { MultiAgentResponderStreamEvent } from './responderStreamEvent';
 import type { LocalActionRecoveryLifecycle } from './localActionRecoveryLifecycle';
 import type { InitialToolResponseContract } from './initialToolResponseContract';
 import type { EvidenceRestoration } from './evidenceRestoration';
@@ -231,7 +233,6 @@ export interface MultiAgentInvocation {
   /** Fence an earlier preview before a new tool input is dispatched. */
   readonly beforeTaskInputChange?: (signal: AbortSignal) => Promise<void>;
 }
-
 export type MultiAgentProgressEvent =
   | {
       readonly type: 'model_started';
@@ -242,9 +243,3 @@ export type MultiAgentProgressEvent =
       readonly status: 'started' | 'completed' | 'failed' | 'cancelled';
       readonly sourceKind: import('./evidenceContracts').EvidenceSourceKind;
     };
-
-export type MultiAgentResponderStreamEvent =
-  | { readonly type: 'initial_response'; readonly callId: string; readonly text: string }
-  | { readonly type: 'started' }
-  | { readonly type: 'text_delta'; readonly text: string }
-  | { readonly type: 'text_snapshot'; readonly text: string };

@@ -22,7 +22,9 @@ function displayedText(
         ? ''
         : event.type === 'text_delta'
           ? current + event.text
-          : event.text,
+          : event.type === 'text_snapshot'
+            ? event.text
+            : current,
     '',
   );
 }

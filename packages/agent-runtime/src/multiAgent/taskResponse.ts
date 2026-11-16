@@ -46,7 +46,16 @@ export async function consumeTaskModelResponse<TResult>(
   if (onTaskText) {
     reportTaskStreamEvent(context, { type: 'started' });
   }
-  const response = await callConversationalResponder(context, state, request, input, onTaskText);
+  // Reserve at most one server continuation from the original graph budget.
+  const liveBudget = { available: state.modelCalls < state.budget.maxModelCalls, used: false };
+  context.midTurnSteeringBudget = liveBudget;
+  let response: Awaited<ReturnType<typeof callConversationalResponder<TResult>>>;
+  try {
+    response = await callConversationalResponder(context, state, request, input, onTaskText);
+  } finally {
+    context.midTurnSteeringBudget = undefined;
+  }
+
   // Count the bounded mandatory-search retry in the same checkpoint as ordinary calls.
   const result = await consumeInitialOutcome(
     context,

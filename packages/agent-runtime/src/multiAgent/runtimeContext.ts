@@ -41,6 +41,8 @@ export interface RuntimeContext<TResult> {
   readonly pause?: import('./workflowPause').MultiAgentPauseController;
   /** Auxiliary classification is journaled and consented, but must not consume task steering. */
   readonly modelCallPurpose?: 'preview_review';
+  /** A responder reserves one successor from its existing budget, never a fresh turn budget. */
+  midTurnSteeringBudget?: { available: boolean; used: boolean };
   activeModelOperation?: { readonly operationKey: string; callIndex: number };
   pausedCheckpoint?: import('./contracts').MultiAgentCheckpointState;
   readonly options: MultiAgentWorkflowOptions<TResult>;

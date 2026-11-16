@@ -1,3 +1,4 @@
+import { liveModelSteering } from './liveModelSteering';
 import type { LanguageModelRequest, LanguageModelStreamEvent } from '@orot/model-runtime';
 import type { ExecutionConsentPort } from './contracts';
 import { referencesFromBatch } from './evidence';
@@ -75,6 +76,14 @@ export async function journaledModelCall<TResult>(
   const record = await journal.loadOrCreate(identity);
   if (signal.aborted) return { status: 'cancelled', providerStop: 'not_started' };
   if (record.status === 'completed') {
+    if (context.midTurnSteeringBudget) {
+      try {
+        context.midTurnSteeringBudget.used =
+          JSON.parse(record.result).liveSteeringReserved === true;
+      } catch {
+        return { status: 'unavailable', errorCode: 'invalid_request' };
+      }
+    }
     await steering?.acknowledge(operationId);
     // The adapter and caller source fence both revalidate evidence before completed values are used.
     return (
@@ -114,20 +123,29 @@ export async function journaledModelCall<TResult>(
     const claimed = await journal.begin({ ...identity, revision: record.revision });
     if (claimed.status !== 'claimed')
       return { status: 'unavailable', errorCode: 'invalid_request' };
-    const outcome = await dispatchAuthorizedModelCall(
-      options.provider,
-      request,
-      options.execution,
-      grant,
-      approvalSignal,
-      undefined,
-      onTextEvent,
-    );
+    const live = liveModelSteering(context, operationId, request, consent, prepare);
+    let outcome: ModelCallOutcome;
+    try {
+      outcome = await dispatchAuthorizedModelCall(
+        live.provider,
+        request,
+        options.execution,
+        grant,
+        approvalSignal,
+        undefined,
+        onTextEvent,
+      );
+    } finally {
+      await live.close();
+    }
     if (outcome.status === 'response') {
       const stored = await journal.complete({
         ...identity,
         claim: claimed.claim,
-        result: JSON.stringify(outcome),
+        result: JSON.stringify({
+          ...outcome,
+          liveSteeringReserved: context.midTurnSteeringBudget?.used === true,
+        }),
       });
       if (!stored) return { status: 'unavailable', errorCode: 'invalid_request' };
       await steering?.acknowledge(operationId);

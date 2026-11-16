@@ -1,3 +1,4 @@
+import { conversationPreviousOutputsKo } from './conversationPreviousOutputsKo';
 import { dailyReportSleepKo } from './dailyReportSleepKo';
 import { dailyReportAnalysisKo } from './dailyReportAnalysisKo';
 import { dailyReportHistoryKo } from './dailyReportHistoryKo';
@@ -19,6 +20,7 @@ export const aiFeatureCatalogsKo = {
   ...dailyReportAnalysisKo,
   ...conversationInterruptionKo,
   ...conversationSteeringKo,
+  ...conversationPreviousOutputsKo,
   ...dailyReportActionsKo,
   ...dailyReportHistoryKo,
   ...aiActivityKo,

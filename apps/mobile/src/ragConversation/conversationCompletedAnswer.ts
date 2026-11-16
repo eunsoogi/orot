@@ -68,6 +68,9 @@ export function conversationCompletedAnswer(input: {
         id: messageId,
         role: 'assistant',
         content,
+        previousOutputs: session.pendingMessage?.withholdHealthBody
+          ? undefined
+          : session.pendingMessage?.previousOutputs,
         ...(input.dailyReport ? { dailyReport: input.dailyReport } : {}),
         ...activity.metadata(session.pendingMessage?.withholdHealthBody),
         ...(input.retainedTurnId

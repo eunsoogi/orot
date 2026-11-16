@@ -3,6 +3,8 @@ import type { LanguageModelResponse } from '@orot/model-runtime';
 export interface ChatGPTPlanModelDescriptor {
   readonly slug: string;
   readonly displayName: string;
+  /** Locally validated transport eligibility, not a guarantee of account authorization. */
+  readonly supportsMidTurnSteering?: boolean;
 }
 
 export interface ChatGPTPlanMessage {
@@ -77,7 +79,18 @@ export interface ChatGPTPlanNativeError {
   readonly bodyTruncated?: boolean;
 }
 
+export type ChatGPTPlanSteeringStatus = 'accepted' | 'applied' | 'pending' | 'failed';
+
 export type ChatGPTPlanNativeEvent =
+  | { readonly requestId: string; readonly type: 'steering_ready' }
+  | { readonly requestId: string; readonly type: 'text_snapshot'; readonly text: string }
+  | {
+      readonly requestId: string;
+      readonly type: 'steering';
+      readonly submissionId: string;
+      readonly status: ChatGPTPlanSteeringStatus;
+      readonly steerId?: string;
+    }
   | { readonly requestId: string; readonly type: 'text_delta'; readonly text: string }
   | {
       readonly requestId: string;
@@ -103,6 +116,13 @@ export interface ChatGPTPlanNativeBridge {
     issuedClientID: string,
     request: ChatGPTPlanRequest,
   ): Promise<void>;
+  /** Opt-in same-connection Responses WebSocket path; never automatic SSE replay. */
+  startSteerableResponse?(
+    requestId: string,
+    issuedClientID: string,
+    request: ChatGPTPlanRequest,
+  ): Promise<void>;
+  steerResponse?(requestId: string, submissionId: string, text: string): Promise<void>;
   cancelResponse(requestId: string): void;
   startPublicWebSearch?(
     requestId: string,
