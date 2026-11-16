@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useCalendarModelActions } from './useCalendarModelActions';
 import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
@@ -163,6 +164,13 @@ export function CalendarModelSettingsPanel({
       setSaving(false);
     }
   }
+  const hasDock = useCalendarModelActions(
+    pending !== null,
+    saving,
+    resolution?.ok === true && !loadError,
+    confirm,
+    () => setPending(null),
+  );
   return (
     <View testID="calendar-model-settings">
       <ProviderSelectionChoices
@@ -212,11 +220,11 @@ export function CalendarModelSettingsPanel({
             />
           ))}
         </View>
-        <Text style={styles.detail}>{t('modelSettings.decisionsNotice')}</Text>
       </View>
       {message ? <Text accessibilityRole="alert">{message}</Text> : null}
       {pending ? (
         <ProviderSelectionConfirmation
+          hasActionDock={hasDock}
           option={current ?? pending}
           blockedMessage={
             resolution?.ok ? null : t('modelSettings.accountReadFailed')

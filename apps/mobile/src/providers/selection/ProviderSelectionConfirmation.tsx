@@ -51,6 +51,11 @@ export default function ProviderSelectionConfirmation({
             : providerSelectionText.remotePrivacy}
         </Text>
       </View>
+      {option.provider.id === 'openai-api-decisions' ? (
+        <Text style={styles.privacyCopy}>
+          {t('modelSettings.apiUsageCost')}
+        </Text>
+      ) : null}
       {hasActionDock ? (
         <View style={styles.summary}>{summary}</View>
       ) : (

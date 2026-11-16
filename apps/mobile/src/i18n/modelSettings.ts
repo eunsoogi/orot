@@ -6,6 +6,8 @@ export const modelSettingsKo = {
   'modelSettings.calendarPurpose':
     '캘린더 일정의 진료 관련성을 분류할 모델이에요. 대화 모델은 바뀌지 않아요.',
   'modelSettings.calendarUnselected': '캘린더 분류 모델을 선택해 주세요.',
+  'modelSettings.apiUsageCost':
+    '이 모델을 사용하면 별도 OpenAI API 사용료가 청구돼요.',
   'modelSettings.decisionsNotice':
     'OpenAI API의 Decisions 모델만 표시해요. API 사용료는 별도로 청구돼요.',
   'modelSettings.noDecisionModels':

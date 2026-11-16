@@ -126,6 +126,9 @@ it('offers only the documented Decisions model returned by explicit account disc
   expect(screen.getByText('Synthetic Decisions')).toBeTruthy();
   expect(screen.queryByText('fake-decision-model')).toBeNull();
   await fireEvent.press(screen.getByTestId('provider-option-0'));
+  expect(
+    screen.getByText('이 모델을 사용하면 별도 OpenAI API 사용료가 청구돼요.'),
+  ).toBeTruthy();
   account.accountStatus.mockResolvedValue({ connected: true, revision: 4 });
   await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
   expect(store.save).not.toHaveBeenCalled();
@@ -227,10 +230,10 @@ it('groups unset and saved identity in the shared summary without the removed in
     ),
   ).toBeNull();
   expect(
-    screen.getByText(
+    screen.queryByText(
       'OpenAI API의 Decisions 모델만 표시해요. API 사용료는 별도로 청구돼요.',
     ),
-  ).toBeTruthy();
+  ).toBeNull();
   await fireEvent.press(screen.getByTestId('provider-option-0'));
   expect(screen.queryByTestId('calendar-current-model-card')).toBeNull();
   expect(store.save).not.toHaveBeenCalled();
