@@ -42,7 +42,7 @@ test('offers an accessible action and keeps a new confirmation visibly pending',
     minHeight: 44,
     minWidth: 44,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 0,
     paddingHorizontal: 12,
   });
   await fireEvent.press(confirm);
