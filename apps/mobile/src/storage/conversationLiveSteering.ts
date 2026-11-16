@@ -50,6 +50,7 @@ export function createLiveSteering(input: {
       id: string,
       status: 'accepted' | 'applied' | 'pending' | 'failed',
     ): Promise<boolean> {
+      const observedAt = new Date().toISOString();
       let changed = false;
       await database.transaction(async sql => {
         if (!(await live(sql))) return;
@@ -77,6 +78,16 @@ export function createLiveSteering(input: {
             id,
           ],
         );
+        if (status !== 'failed') {
+          // Preserve the first observation. Applied without an earlier accepted ack
+          // establishes reading now, not an invented earlier transmission timestamp.
+          const column = status === 'applied' ? 'read_at' : 'sent_at';
+          await sql.execute(
+            `INSERT INTO conversation_steering_receipt_times (request_id, run_id, id, ${column}) VALUES (?, ?, ?, ?)
+             ON CONFLICT(request_id, run_id, id) DO UPDATE SET ${column}=COALESCE(${column}, excluded.${column})`,
+            [...keys, id, observedAt],
+          );
+        }
         changed = true;
       });
       if (changed) await emit();

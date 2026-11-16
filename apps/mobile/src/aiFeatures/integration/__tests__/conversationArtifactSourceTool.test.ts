@@ -33,6 +33,11 @@ test('follows a conversation source through its own catalog and revokes it when 
       status: 'complete',
       question: 'question',
       answer: 'answer',
+      delivery: {
+        submittedAt: '2035-01-01T00:00:00.000Z',
+        acceptedAt: '2035-01-01T00:00:01.000Z',
+        readAt: '2035-01-01T00:00:02.000Z',
+      },
       sources: [
         {
           reference,
@@ -73,6 +78,11 @@ test('follows a conversation source through its own catalog and revokes it when 
       signal: new AbortController().signal,
     });
     if (!restored) throw new Error('Missing conversation');
+    expect(restored.delivery).toEqual({
+      submittedAt: '2035-01-01T00:00:00.000Z',
+      acceptedAt: '2035-01-01T00:00:01.000Z',
+      readAt: '2035-01-01T00:00:02.000Z',
+    });
     const source = restored.sources[0]!;
     registerArtifactSource(registry, 'run', source, {
       id: restored.id,

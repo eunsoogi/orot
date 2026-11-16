@@ -1,3 +1,4 @@
+import { createConversationDeliveryRetention } from './conversationDeliveryRetention';
 import { createConversationOpeningRetention } from './conversationOpeningRetention';
 import { notifyConversationInterruption } from '../replyNotifications/notifyConversationInterruption';
 import type { ConversationTurnRetentionInput } from './conversationTurnRetentionInput';
@@ -16,6 +17,7 @@ export function createConversationTurnRetention(
   input: ConversationTurnRetentionInput,
 ) {
   const opening = createConversationOpeningRetention();
+  const delivery = createConversationDeliveryRetention();
   let pending: ConversationArtifact | undefined;
   let preparation: PrepareConversationRetention | undefined;
   let preparing = false;
@@ -26,7 +28,9 @@ export function createConversationTurnRetention(
     if (writing)
       throw new Error('The conversation output is already being saved.');
     // A settled failed write may drop revoked display metadata; never mutate an in-flight commit.
-    const sanitized = opening.withoutRevokedOpening(value);
+    const sanitized = delivery.withoutRevokedDelivery(
+      opening.withoutRevokedOpening(value),
+    );
     if (pending === value) pending = sanitized;
     value = sanitized;
     writing = true;
@@ -52,6 +56,7 @@ export function createConversationTurnRetention(
       JSON.stringify({
         ...candidate,
         ...opening.openingMetadata(),
+        ...delivery.deliveryMetadata(),
         id: input.turnId,
         sessionId: input.sessionId,
         createdAt: input.createdAt,
@@ -64,7 +69,11 @@ export function createConversationTurnRetention(
   return {
     ...createConversationRetainedPreview(input),
     retainOpening: opening.retainOpening,
-    discardOpening: opening.discardOpening,
+    retainDelivery: delivery.retainDelivery,
+    discardOpening() {
+      opening.discardOpening();
+      delivery.discardDelivery();
+    },
     toolMessageId: input.turnId,
     ...(input.storage.openWorkflowContinuation
       ? { openWorkflowContinuation: input.storage.openWorkflowContinuation }
