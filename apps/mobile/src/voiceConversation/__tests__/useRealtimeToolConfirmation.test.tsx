@@ -143,3 +143,18 @@ it('snapshots the displayed request and rejects an approval after foreground is 
   await fireEvent.press(screen.getByTestId('realtime-tool-confirmation-allow'));
   expect(await decision).toBe(false);
 });
+
+it('does not approve when cancellation wins during the native dismissal transition', async () => {
+  await render(<Harness />);
+  const abort = new AbortController();
+  let decision!: Promise<boolean>;
+  await act(() => {
+    decision = controller.confirm({ ...input(), signal: abort.signal });
+  });
+  await fireEvent.press(screen.getByTestId('realtime-tool-confirmation-allow'));
+  const lateDismiss = controller.node?.props.onDismiss;
+  await act(() => abort.abort());
+  expect(await decision).toBe(false);
+  await act(() => lateDismiss());
+  expect(controller.node).toBeNull();
+});
