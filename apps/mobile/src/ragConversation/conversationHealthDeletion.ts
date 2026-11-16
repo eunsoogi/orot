@@ -84,6 +84,9 @@ export function filterHealthDerivedMessages(
 ) {
   return messages.flatMap(message => {
     if (message.role !== 'assistant') return [message];
+    // Prior streamed text has no validated source independence, even when the final answer does.
+    if (message.previousOutputs?.length)
+      message = { ...message, previousOutputs: undefined };
     const tools = message.toolEvents?.filter(
       event => event.inputSummary.sourceKind === 'external_medical',
     );

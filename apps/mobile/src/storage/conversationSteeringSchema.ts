@@ -11,6 +11,13 @@ export async function setupConversationSteering(database: SqlDatabase) {
       request_id TEXT NOT NULL, run_id TEXT NOT NULL, operation_id TEXT NOT NULL,
       base TEXT NOT NULL, payload TEXT NOT NULL, through_sequence INTEGER NOT NULL,
       PRIMARY KEY(request_id, run_id, operation_id))`);
+    await sql.execute(`CREATE TABLE IF NOT EXISTS conversation_live_steering (
+      request_id TEXT NOT NULL, run_id TEXT NOT NULL, id TEXT NOT NULL,
+      operation_id TEXT NOT NULL, status TEXT NOT NULL,
+      PRIMARY KEY(request_id, run_id, id))`);
+    await sql.execute(`CREATE TRIGGER IF NOT EXISTS live_steering_removed
+      AFTER DELETE ON conversation_steering BEGIN
+      DELETE FROM conversation_live_steering WHERE request_id=OLD.request_id AND run_id=OLD.run_id AND id=OLD.id; END`);
     for (const [table, key] of [
       ['conversation_requests', 'id'],
       ['conversation_workflow_resumes', 'request_id'],
@@ -22,9 +29,10 @@ export async function setupConversationSteering(database: SqlDatabase) {
     await sql.execute(`CREATE TRIGGER IF NOT EXISTS steering_epoch_changed
       AFTER UPDATE ON conversation_journal_epoch BEGIN
       DELETE FROM conversation_steering; DELETE FROM conversation_steering_bindings; END`);
+    await sql.execute(`DROP TRIGGER IF EXISTS steering_request_completed`);
     await sql.execute(`CREATE TRIGGER IF NOT EXISTS steering_request_completed
       AFTER UPDATE OF status ON conversation_requests WHEN NEW.status = 'completed' BEGIN
       UPDATE conversation_steering SET status = 'not_applied'
-      WHERE request_id = NEW.id AND status != 'applied'; END`);
+      WHERE request_id = NEW.id AND status NOT IN ('applied', 'delivery_pending'); END`);
   });
 }

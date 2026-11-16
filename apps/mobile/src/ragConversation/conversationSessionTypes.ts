@@ -154,6 +154,7 @@ export interface ConversationSession {
       readonly text: string;
       readonly source?: 'receipt';
     };
+    readonly previousOutputs?: readonly string[];
     id: number;
     content: string;
     activity: string;

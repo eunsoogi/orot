@@ -40,7 +40,9 @@ export function conversationSteeringHistory(
           typeof row.sequence !== 'number' ||
           !Number.isSafeInteger(row.sequence) ||
           row.sequence < 1 ||
-          (row.status !== 'applied' && row.status !== 'not_applied')
+          (row.status !== 'applied' &&
+            row.status !== 'not_applied' &&
+            row.status !== 'delivery_pending')
         )
           return;
         rows.push({

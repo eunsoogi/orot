@@ -6,6 +6,7 @@ final class OpenAIProviderRequestRegistry {
     final class Slot {
         let ticket: ChatGPTRequestLifecycleGate.Ticket
         var task: Task<Void, Never>?
+        var steering: ChatGPTSteerableResponse?
         let event: (NSDictionary) -> Void
 
         var id: String {
@@ -70,7 +71,7 @@ final class OpenAIProviderRequestRegistry {
         let activeRequests = tickets.compactMap { requests.removeValue(forKey: $0.id) }
         lock.unlock()
 
-        activeRequests.forEach { $0.task?.cancel() }
+        activeRequests.forEach { $0.steering?.cancel(); $0.task?.cancel() }
         return activeRequests
     }
 
@@ -87,6 +88,7 @@ final class OpenAIProviderRequestRegistry {
             return nil
         }
         requests.removeValue(forKey: requestID)
+        slot.steering?.cancel()
         slot.task?.cancel()
         let task = slot.task
         lock.unlock()
@@ -103,6 +105,26 @@ final class OpenAIProviderRequestRegistry {
         lock.unlock()
         if !isActive {
             task.cancel()
+        }
+    }
+
+    /// Shares the request lock so a late socket cannot register after cancellation or sign-out.
+    func attachSteering(_ handle: ChatGPTSteerableResponse, to slot: Slot) -> Bool {
+        let attached = lock.withLock {
+            guard requests[slot.id] === slot, lifecycle.isActive(slot.ticket) else { return false }
+            slot.steering = handle
+            return true
+        }
+        if !attached {
+            handle.cancel()
+        }
+        return attached
+    }
+
+    func steering(requestID: String) -> ChatGPTSteerableResponse? {
+        lock.withLock {
+            guard let slot = requests[requestID], lifecycle.isActive(slot.ticket) else { return nil }
+            return slot.steering
         }
     }
 

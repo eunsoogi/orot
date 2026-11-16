@@ -24,12 +24,19 @@ export type WorkflowOperationRecord =
 export interface WorkflowSteeringStore {
   subscribe?(listener: () => Promise<void>): () => void;
   enqueue(id: string, text: string): Promise<boolean>;
+  /** Persist an at-most-once live submission before sending; uncertainty must not replay it. */
+  beginLive?(operationId: string, id: string): Promise<boolean>;
+  settleLive?(
+    operationId: string,
+    id: string,
+    status: 'accepted' | 'applied' | 'pending' | 'failed',
+  ): Promise<boolean>;
   list(): Promise<
     readonly {
       readonly id: string;
       readonly text: string;
       readonly sequence: number;
-      readonly status: 'queued' | 'prepared' | 'applied' | 'not_applied';
+      readonly status: 'queued' | 'prepared' | 'applied' | 'not_applied' | 'delivery_pending';
     }[]
   >;
   bind(

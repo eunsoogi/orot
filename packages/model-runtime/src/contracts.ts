@@ -46,6 +46,8 @@ export interface ProviderCapabilities {
 }
 
 export interface LanguageModelCapabilities extends ProviderCapabilities {
+  /** True only when this selected transport/model can receive input during an active response. */
+  readonly midTurnSteering?: boolean;
   readonly streaming: boolean;
   readonly structuredOutput: boolean;
   readonly toolCalling: boolean;
@@ -132,6 +134,18 @@ export type LanguageModelStreamEvent =
   | { readonly type: 'tool_call'; readonly toolCall: ToolCall }
   | { readonly type: 'completed'; readonly response: LanguageModelResponse };
 
+/** Invocation-local steering; acceptance is not proof the successor applied the input. */
+export interface LanguageModelExecutionOptions {
+  readonly signal?: AbortSignal;
+  readonly midTurnSteering?: {
+    onReady(control: { submit(id: string, text: string): Promise<void> }): void;
+    onEvent(event: {
+      readonly id: string;
+      readonly status: 'accepted' | 'applied' | 'pending' | 'failed';
+    }): Promise<void>;
+  };
+}
+
 export interface LanguageModelProvider {
   readonly kind: 'language-model';
   readonly id: ProviderId;
@@ -141,11 +155,11 @@ export interface LanguageModelProvider {
   readonly searchPublicWeb?: PublicWebSearch;
   generate(
     request: LanguageModelRequest,
-    options?: { readonly signal?: AbortSignal },
+    options?: LanguageModelExecutionOptions,
   ): Promise<ProviderResult<LanguageModelResponse>>;
   stream?(
     request: LanguageModelRequest,
-    options?: { readonly signal?: AbortSignal },
+    options?: LanguageModelExecutionOptions,
   ): AsyncIterable<ProviderResult<LanguageModelStreamEvent>>;
 }
 

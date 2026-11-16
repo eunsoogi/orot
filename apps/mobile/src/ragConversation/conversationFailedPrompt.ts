@@ -40,13 +40,19 @@ export function retainPartial(
   update(id, {
     pendingMessage: null,
     messages:
-      content || retainEmpty || session.pendingMessage?.toolEvents?.length
+      content ||
+      retainEmpty ||
+      session.pendingMessage?.previousOutputs?.length ||
+      session.pendingMessage?.toolEvents?.length
         ? [
             ...session.messages,
             {
               id: session.pendingMessage?.id ?? nextId(),
               role: 'assistant',
               content,
+              previousOutputs: session.pendingMessage?.withholdHealthBody
+                ? undefined
+                : session.pendingMessage?.previousOutputs,
               activity,
               incomplete: true,
               toolMessageId: session.pendingMessage?.toolMessageId,

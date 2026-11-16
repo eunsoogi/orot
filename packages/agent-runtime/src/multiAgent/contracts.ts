@@ -231,7 +231,6 @@ export interface MultiAgentInvocation {
   /** Fence an earlier preview before a new tool input is dispatched. */
   readonly beforeTaskInputChange?: (signal: AbortSignal) => Promise<void>;
 }
-
 export type MultiAgentProgressEvent =
   | {
       readonly type: 'model_started';
@@ -242,8 +241,9 @@ export type MultiAgentProgressEvent =
       readonly status: 'started' | 'completed' | 'failed' | 'cancelled';
       readonly sourceKind: import('./evidenceContracts').EvidenceSourceKind;
     };
-
 export type MultiAgentResponderStreamEvent =
+  /** The active response accepted the steer into its successor; archive prior partial output first. */
+  | { readonly type: 'steering_applied' }
   | { readonly type: 'initial_response'; readonly callId: string; readonly text: string }
   | { readonly type: 'started' }
   | { readonly type: 'text_delta'; readonly text: string }

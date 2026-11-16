@@ -24,6 +24,9 @@ export async function callConversationalResponder<TResult>(
     withNativeTools(context, state, request),
     onTaskText,
   );
+  if (context.midTurnSteeringBudget?.used) state = { ...state, modelCalls: state.modelCalls + 1 };
+  // Mandatory lookup retries are separate calls, not additional live-steering reservations.
+  context.midTurnSteeringBudget = undefined;
   if (
     outcome?.status !== 'response' ||
     outcome.response.finishReason !== 'complete' ||

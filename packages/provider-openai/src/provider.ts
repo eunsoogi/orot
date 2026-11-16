@@ -1,3 +1,4 @@
+import { supportsMidTurnSteering } from './mid-turn-steering';
 import {
   providerFailure,
   providerSuccess,
@@ -66,6 +67,7 @@ export function createChatGPTPlanProvider(
       streaming: true,
       structuredOutput: false,
       toolCalling: true,
+      ...(supportsMidTurnSteering(options) ? { midTurnSteering: true } : {}),
     },
     ...(options.bridge.startPublicWebSearch
       ? ({
@@ -86,7 +88,13 @@ export function createChatGPTPlanProvider(
     },
     stream(request, execution) {
       return cancellableStream(
-        createChatGPTPlanStream(options, nextRequestID, request, continuationsByCallID),
+        createChatGPTPlanStream(
+          options,
+          nextRequestID,
+          request,
+          continuationsByCallID,
+          execution?.midTurnSteering,
+        ),
         execution?.signal,
       );
     },

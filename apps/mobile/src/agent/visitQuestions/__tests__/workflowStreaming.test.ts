@@ -98,7 +98,7 @@ test('streams only the first question field and keeps evidence activity content-
   for (const event of stream) {
     if (event.type === 'started') preview = '';
     else if (event.type === 'text_delta') preview += event.text;
-    else preview = event.text;
+    else if (event.type === 'text_snapshot') preview = event.text;
   }
   expect(preview).toBe(result.questions[0]?.questionText);
   expect(progress).toContainEqual({

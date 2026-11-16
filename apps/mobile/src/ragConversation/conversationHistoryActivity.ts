@@ -18,6 +18,7 @@ export function conversationHistoryActivity(
       ? requestActivity
       : null;
   const hasPendingContent = Boolean(
+    pending?.previousOutputs?.length ||
     pending?.initialResponse ||
     pending?.content.trim() ||
     pending?.toolEvents?.length,

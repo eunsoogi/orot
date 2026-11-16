@@ -95,7 +95,7 @@ export function createConversationSteeringOwner(
           steeringInstructions: resumable
             ? session.steeringInstructions
             : session.steeringInstructions?.map(row =>
-                row.status === 'applied'
+                row.status === 'applied' || row.status === 'delivery_pending'
                   ? row
                   : { ...row, status: 'not_applied' },
               ),
