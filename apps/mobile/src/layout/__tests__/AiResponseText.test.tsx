@@ -1,98 +1,112 @@
 import { act, render, screen } from '@testing-library/react-native';
-import { Animated } from 'react-native';
 import { AiResponseText } from '../AiResponseText';
 import { NavigationMotionContext } from '../../navigation/NavigationMotionContext';
 
-let completions: Array<(result: { finished: boolean }) => void>;
-let timing: jest.SpyInstance;
+let interval: jest.SpyInstance;
+let clear: jest.SpyInstance;
 beforeEach(() => {
-  completions = [];
-  timing = jest.spyOn(Animated, 'timing').mockImplementation(() => ({
-    start: callback => {
-      if (callback) completions.push(callback);
-    },
-    stop: jest.fn(),
-    reset: jest.fn(),
-  }));
+  jest.useFakeTimers({ now: 1000 });
+  interval = jest.spyOn(globalThis, 'setInterval');
+  clear = jest.spyOn(globalThis, 'clearInterval');
 });
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.useRealTimers();
+});
 
-test('commits intermediate glyph opacity for iOS virtual text instead of requiring a native view', async () => {
-  await render(<AiResponseText>새 내용</AiResponseText>);
-  expect(timing.mock.calls[0]![1].useNativeDriver).toBe(false);
-  const value = timing.mock.calls[0]![0] as Animated.Value;
+test('paints intermediate glyph opacity and settles into selectable text', async () => {
+  await render(
+    <AiResponseText selectable testID="answer">
+      새 내용
+    </AiResponseText>,
+  );
   expect(screen.getByTestId('ai-response-fragment').props.style.opacity).toBe(
     0,
   );
-  await act(() => value.setValue(0.45));
+  await act(() => jest.advanceTimersByTime(160));
   expect(screen.getByTestId('ai-response-fragment').props.style.opacity).toBe(
-    0.45,
+    0.5,
   );
-});
-
-test('fades only new suffixes, retains selectable text and coalesces completed fragments', async () => {
-  const view = await render(
-    <AiResponseText selectable testID="answer">
-      첫 문장
-    </AiResponseText>,
-  );
-  expect(timing).toHaveBeenCalledTimes(1);
-  await act(() => completions[0]!({ finished: true }));
-  await view.rerender(
-    <AiResponseText selectable testID="answer">
-      첫 문장 다음
-    </AiResponseText>,
-  );
-  expect(timing).toHaveBeenCalledTimes(2);
-  expect(screen.getByTestId('answer')).toHaveTextContent('첫 문장 다음');
+  await act(() => jest.advanceTimersByTime(160));
+  expect(screen.getByTestId('answer').props.children).toEqual(['새 내용', []]);
   expect(screen.getByTestId('answer').props.selectable).toBe(true);
-  await view.rerender(
-    <AiResponseText selectable testID="answer">
-      첫 문장 다음
-    </AiResponseText>,
-  );
-  expect(timing).toHaveBeenCalledTimes(2);
-  await act(() => completions[1]!({ finished: true }));
-  expect(screen.getByTestId('answer').props.children).toEqual([
-    '첫 문장 다음',
-    [],
-  ]);
-  expect(timing).toHaveBeenLastCalledWith(
-    expect.anything(),
-    expect.objectContaining({
-      duration: 320,
-      useNativeDriver: false,
-      isInteraction: false,
-    }),
+  expect(clear.mock.calls.map(call => call[0])).toEqual(
+    interval.mock.results.map(result => result.value),
   );
 });
 
-test('a replacement discards obsolete draft fragments and ignores their late completion', async () => {
+test('keeps prior text opaque while appended suffix fades independently', async () => {
+  const view = await render(
+    <AiResponseText testID="answer">첫 문장</AiResponseText>,
+  );
+  await act(() => jest.advanceTimersByTime(320));
+  await view.rerender(
+    <AiResponseText testID="answer">첫 문장 다음</AiResponseText>,
+  );
+  expect(screen.getByTestId('answer').props.children[0]).toBe('첫 문장');
+  expect(screen.getByTestId('ai-response-fragment').props.style.opacity).toBe(
+    0,
+  );
+  await act(() => jest.advanceTimersByTime(320));
+  expect(screen.getByTestId('answer')).toHaveTextContent('첫 문장 다음');
+});
+
+test('replacement discards obsolete ranges and unmount cancels frame work', async () => {
   const view = await render(
     <AiResponseText testID="answer">이전 초안</AiResponseText>,
   );
+  await act(() => jest.advanceTimersByTime(160));
   await view.rerender(
     <AiResponseText testID="answer">검증된 새 내용</AiResponseText>,
   );
-  await act(() => completions[0]!({ finished: true }));
+  await act(() => jest.advanceTimersByTime(320));
   expect(screen.getByTestId('answer')).toHaveTextContent('검증된 새 내용');
   expect(screen.getByTestId('answer')).not.toHaveTextContent('이전 초안');
-  expect(timing).toHaveBeenCalledTimes(2);
+  await view.rerender(<AiResponseText>다시 시작</AiResponseText>);
+  await view.unmount();
+  expect(clear.mock.calls.map(call => call[0])).toEqual(
+    interval.mock.results.map(result => result.value),
+  );
 });
 
-test('Reduce Motion shows all content immediately and stops an in-progress fade', async () => {
+test('Reduce Motion exposes all text immediately and stops an active clock', async () => {
   const content = (reduced: boolean) => (
     <NavigationMotionContext.Provider value={reduced}>
       <AiResponseText testID="answer">전체 내용</AiResponseText>
     </NavigationMotionContext.Provider>
   );
   const view = await render(content(true));
-  expect(timing).not.toHaveBeenCalled();
+  expect(clear.mock.calls.map(call => call[0])).toEqual(
+    interval.mock.results.map(result => result.value),
+  );
   expect(screen.getByTestId('answer')).toHaveTextContent('전체 내용');
   await view.unmount();
   const active = await render(content(false));
-  const animation = timing.mock.results[0]!.value;
+  expect(interval.mock.calls.length - clear.mock.calls.length).toBe(1);
   await active.rerender(content(true));
-  expect(animation.stop).toHaveBeenCalled();
+  expect(clear.mock.calls.map(call => call[0])).toEqual(
+    interval.mock.results.map(result => result.value),
+  );
   expect(screen.getByTestId('answer')).toHaveTextContent('전체 내용');
+});
+
+test('twenty overlapping suffixes share one frame callback and preserve every character', async () => {
+  const view = await render(<AiResponseText testID="answer">x</AiResponseText>);
+  for (let i = 2; i <= 20; i++) {
+    await act(() => jest.advanceTimersByTime(16));
+    await view.rerender(
+      <AiResponseText testID="answer">{'x'.repeat(i)}</AiResponseText>,
+    );
+  }
+  expect(screen.getAllByTestId('ai-response-fragment')).toHaveLength(20);
+  expect(interval).toHaveBeenCalledTimes(1);
+  expect(interval.mock.calls.length - clear.mock.calls.length).toBe(1);
+  await act(() => jest.advanceTimersByTime(320));
+  expect(screen.getByTestId('answer').props.children).toEqual([
+    'x'.repeat(20),
+    [],
+  ]);
+  expect(clear.mock.calls.map(call => call[0])).toEqual(
+    interval.mock.results.map(result => result.value),
+  );
 });
