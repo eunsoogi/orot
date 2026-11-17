@@ -1,6 +1,17 @@
 import '../src/agent/polyfills';
 import { useState } from 'react';
-import { AppRegistry, Button, StyleSheet, Text, View } from 'react-native';
+import {
+  AppRegistry,
+  Button,
+  NativeModules,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import {
+  continuousRetentionProbeSelection,
+  continuousRetentionProbeChoices,
+} from './continuousRetentionProbeSelection';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
 import { ConversationScreen } from '../src/ragConversation/ConversationScreen';
@@ -12,12 +23,22 @@ import { LocalEvidenceReferenceRegistry } from '../src/aiFeatures/integration/ev
 import { openLocalAgentMemoryDatabase } from '../src/storage/secureDatabase';
 import { NavigationRouteAdapter } from '../src/navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../src/navigation/navigationController';
+import { appContentLayoutOwner } from '../src/navigation/appContentLayoutPolicy';
 import type { ConversationSender } from '../src/ragConversation/conversationSessionTypes';
+
+const settings =
+  NativeModules.SettingsManager?.settings ??
+  NativeModules.SettingsManager?.getConstants?.().settings ??
+  {};
+const continuousEntry = settings.OROT_TEST_CONTINUOUS_RETENTION === 'YES';
+const rootTabEntry =
+  continuousEntry && settings.OROT_TEST_RETENTION_ROOT_TABS === 'YES';
 
 // This opt-in test entry uses the app's protected database; only synthetic values enter its counter.
 const options = createConversationSessionOptions({
   loadLocalData: openAiFeatureLocalData,
   registry: new LocalEvidenceReferenceRegistry(),
+  selectedAi: continuousEntry ? continuousRetentionProbeSelection : undefined,
 });
 let release: (() => void) | undefined;
 let publish: ((value: string) => void) | undefined;
@@ -87,7 +108,9 @@ async function readProbe() {
 function Probe() {
   const [otherTab, setOtherTab] = useState(false);
   const [controller] = useState(() =>
-    createNavigationController<'conversation' | 'history'>('conversation'),
+    createNavigationController<'root' | 'conversation' | 'history'>(
+      rootTabEntry ? 'root' : 'conversation',
+    ),
   );
   const [status, setStatus] = useState('unread');
   publish = setStatus;
@@ -95,7 +118,12 @@ function Probe() {
     <SafeAreaProvider>
       <ConversationSessionsProvider options={options}>
         <View style={styles.root}>
-          <SafeAreaView edges={['top']}>
+          {/* Keep the opt-in navigation root at the production window origin;
+              stacked probe controls would invalidate native keyboard coordinates. */}
+          <SafeAreaView
+            edges={['top']}
+            style={continuousEntry ? styles.overlayControls : undefined}
+          >
             <View style={styles.controls}>
               <View style={styles.control}>
                 <Button
@@ -130,6 +158,14 @@ function Probe() {
           ) : (
             <NavigationRouteAdapter
               controller={controller}
+              contentLayoutOwner={
+                rootTabEntry ? appContentLayoutOwner : 'scene'
+              }
+              rootTabs={
+                rootTabEntry
+                  ? { activeTab: 'conversation', onSelect: () => {} }
+                  : undefined
+              }
               leaveState={{
                 readState: () => ({
                   hasUnsavedChanges: false,
@@ -150,6 +186,12 @@ function Probe() {
                     onOpenHistory={() => navigation.push('history')}
                     onOpenSource={() => {}}
                     onSend={send}
+                    retainedActions={
+                      continuousEntry
+                        ? continuousRetentionProbeChoices
+                        : undefined
+                    }
+                    onOpenDailyReport={continuousEntry ? () => {} : undefined}
                   />
                 )
               }
@@ -165,6 +207,13 @@ AppRegistry.registerComponent(appName, () => Probe);
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  overlayControls: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 2,
+  },
   controls: { flexDirection: 'row', justifyContent: 'space-around' },
   control: { minWidth: 44, minHeight: 44, justifyContent: 'center' },
 });

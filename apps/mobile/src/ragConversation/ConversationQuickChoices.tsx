@@ -24,7 +24,11 @@ const styles = StyleSheet.create({
   choices: { gap: 12, paddingVertical: 20 },
   divider: {
     marginBottom: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: appColors.border,
+    // This marks the restored-history boundary, not a decorative card edge.
+    // A full point and the supporting-text token remain legible on both canvases.
+    height: 1,
+    flexShrink: 0,
+    alignSelf: 'stretch',
+    backgroundColor: appColors.secondary,
   },
 });
