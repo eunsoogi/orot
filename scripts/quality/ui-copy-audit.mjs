@@ -118,8 +118,29 @@ export function findDirectKoreanCopy(source, file = 'screen.tsx') {
       expression(child, follow);
     });
   }
+  // JSX object spreads bypass JsxAttribute nodes. Inspect only explicit display fields;
+  // never resolve a props object, computed key, getter or nested spread as user-facing copy.
+  function displaySpread(node) {
+    let value = node.expression;
+    while (
+      ts.isParenthesizedExpression(value) ||
+      ts.isAsExpression(value) ||
+      ts.isSatisfiesExpression(value) ||
+      ts.isNonNullExpression(value)
+    )
+      value = value.expression;
+    if (!ts.isObjectLiteralExpression(value)) return;
+    for (const property of value.properties) {
+      if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property))
+        continue;
+      if (!ts.isIdentifier(property.name) && !ts.isStringLiteral(property.name)) continue;
+      if (!displayAttributes.has(property.name.text)) continue;
+      scalar(ts.isPropertyAssignment(property) ? property.initializer : property.name);
+    }
+  }
   function visit(node) {
     if (ts.isJsxText(node)) literal(node);
+    if (ts.isJsxSpreadAttribute(node)) displaySpread(node);
     if (
       ts.isJsxAttribute(node) &&
       displayAttributes.has(node.name.getText(parsed)) &&

@@ -24,7 +24,11 @@ export function displayCopyAliases(parsed) {
         .createProgram([parsed.fileName], { noLib: true, noResolve: true }, host)
         .getTypeChecker();
     }
-    const declaration = checker.getSymbolAtLocation(node)?.valueDeclaration;
+    // A shorthand field binds both a property and a lexical value; follow the value only.
+    const symbol = ts.isShorthandPropertyAssignment(node.parent)
+      ? checker.getShorthandAssignmentValueSymbol(node.parent)
+      : checker.getSymbolAtLocation(node);
+    const declaration = symbol?.valueDeclaration;
     if (
       !declaration ||
       visited.has(declaration) ||
