@@ -6,6 +6,13 @@ export const savedMemoryStyles = StyleSheet.create({
   section: { gap: 12, minWidth: 0 },
   // Standalone detail has no Records panel ancestor to provide reading margins.
   detail: { paddingHorizontal: 24, paddingVertical: 16 },
+  readingDetail: {
+    width: '100%',
+    maxWidth: 800,
+    alignSelf: 'center',
+    gap: 20,
+    paddingVertical: 24,
+  },
   entry: {
     borderRadius: 18,
     backgroundColor: appColors.surface,

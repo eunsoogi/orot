@@ -1,5 +1,8 @@
 /** Presentation only; memory content and its privacy lifecycle are not localized. */
 export const savedMemoryKo = {
+  'savedMemory.contentTitle': '기억 내용',
+  'savedMemory.metadataTitle': '저장 정보',
+  'savedMemory.sourceCount': '연결된 출처 {count}개',
   'savedMemory.userStated': '사용자가 말한 내용',
   'savedMemory.openDetail': '기억 상세 보기',
   'savedMemory.detailTitle': '기억 상세',
