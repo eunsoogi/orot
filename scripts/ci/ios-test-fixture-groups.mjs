@@ -24,6 +24,7 @@ export const iosFixtureGroups = Object.freeze({
     'KeyboardSafeAreaUITests',
     'ConversationComposerDockUITests',
     'ConversationRetentionUITests',
+    'ConversationContinuousEntryUITests',
     'ConversationHealthSummaryUITests',
     'ConversationVisitPreparationUITests',
     'ConversationToolEventsUITests',

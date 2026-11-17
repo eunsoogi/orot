@@ -18,6 +18,7 @@ export const questionCohorts = {
       'ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
       'ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
       'ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
+      'ConversationContinuousEntryUITests/testContinuousEntryRestoresChoiceBoundaryAfterRestart',
       'ConversationRetentionUITests/testCompletionCommitsOnceWhileAnotherConversationIsVisible',
       'ConversationRetentionUITests/testCompletionCommitsWhileBackgroundLeaseIsActive',
       'ConversationRetentionUITests/testNativeLeaseEndsAfterCommittedCompletion',
