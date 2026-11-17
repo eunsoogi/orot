@@ -60,7 +60,10 @@ export function SettingsReplyNotificationSection() {
         {t('settings.replyNotification.title')}
       </Text>
       <View style={styles.card}>
-        <Text style={styles.description}>
+        <Text
+          style={[styles.description, styles.introduction]}
+          testID="settings-reply-notification-description"
+        >
           {t('settings.replyNotification.description')}
         </Text>
         <SettingsNotificationDivider />
@@ -178,6 +181,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   description: { color: appColors.secondary, fontSize: 15 },
+  // Match the daily reminder introduction without adding padding to error messages.
+  introduction: { paddingBottom: 12 },
   row: {
     alignItems: 'center',
     flexDirection: 'row',
