@@ -1,11 +1,9 @@
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import {
-  restoreConversationArtifact,
-  restoreConversationArtifactSnapshot,
-} from './restoreConversationArtifact';
+import { restoreConversationArtifact } from './restoreConversationArtifact';
 import { fingerprint } from './evidenceUtils';
+import { createConversationPageHydration } from './conversationPageHydration';
 
 /** Restore each turn with fresh source aliases, and withhold stale or unavailable results. */
 export async function restoreConversationSessionPage(input: {
@@ -33,16 +31,20 @@ export async function restoreConversationSessionPage(input: {
   const unavailableItems: { id: string; createdAt: string }[] = [];
   // One transaction shares identical period calculations while still checking each
   // root's deletion, parent, policy and source guards independently.
-  const snapshots = await input.storage.readMany(
+  const snapshots = await input.storage.readManyWithAncestry(
     page.items.map(item => item.id),
   );
+  const hydrate = createConversationPageHydration(input, snapshots.ancestry);
   for (const [index, item] of page.items.entries()) {
     if (input.signal.aborted)
       throw new Error('Conversation restoration was cancelled.');
-    const result = await restoreConversationArtifactSnapshot(
-      { ...input, id: item.id },
-      snapshots[index] ?? null,
-    );
+    const snapshot = snapshots.items[index];
+    if (
+      snapshot &&
+      fingerprint(snapshots.ancestry.get(item.id)) !== fingerprint(snapshot)
+    )
+      throw new Error('Conversation ancestry changed during restoration.');
+    const result = snapshot ? await hydrate(item.id) : null;
     if (result?.sessionId === input.sessionId) items.push(result);
     else unavailableItems.push({ id: item.id, createdAt: item.createdAt });
   }

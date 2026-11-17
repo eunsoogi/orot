@@ -11,10 +11,22 @@ export async function restoreConversationParentSource(
   registry: LocalEvidenceReferenceRegistry,
   data: AiFeatureLocalData,
   signal: AbortSignal,
-): Promise<{
-  reference: EvidenceReference;
-  sourceStatus: 'current' | 'unknown';
-} | null> {
+  initialSnapshot?: () => Promise<
+    | {
+        revision: string;
+        sourceStatus: 'current' | 'unknown';
+      }
+    | null
+    | undefined
+  >,
+): Promise<
+  | {
+      reference: EvidenceReference;
+      sourceStatus: 'current' | 'unknown';
+    }
+  | null
+  | undefined
+> {
   const discovery = await data.conversationArtifactDiscovery?.(registry);
   if (!discovery || signal.aborted) return null;
   const readSource = async (
@@ -35,16 +47,27 @@ export async function restoreConversationParentSource(
       },
     };
   };
-  const initial = await readSource(signal);
-  if (
-    initial.status !== 'available' ||
-    initial.document.sourceKind !== 'generated_artifact' ||
-    initial.document.sourceStatus === 'changed' ||
-    signal.aborted
-  )
-    return null;
+  // A page may supply a fully hydrated transaction-validated ancestor only for
+  // registration. Neither this callback nor its snapshot enters the live resolver.
+  const snapshot = initialSnapshot ? await initialSnapshot() : undefined;
+  let sourceStatus: 'current' | 'unknown';
+  if (snapshot !== undefined) {
+    if (!snapshot || snapshot.revision !== source.revision || signal.aborted)
+      return null;
+    sourceStatus = snapshot.sourceStatus;
+  } else {
+    const initial = await readSource(signal);
+    if (
+      initial.status !== 'available' ||
+      initial.document.sourceKind !== 'generated_artifact' ||
+      initial.document.sourceStatus === 'changed' ||
+      signal.aborted
+    )
+      return null;
+    sourceStatus = initial.document.sourceStatus;
+  }
   return {
-    sourceStatus: initial.document.sourceStatus,
+    sourceStatus,
     reference: referenceOnly(
       registry.add({
         reference: source.reference,

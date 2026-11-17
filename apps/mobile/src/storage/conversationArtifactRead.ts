@@ -1,3 +1,4 @@
+import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { createReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import type { SqlDatabase } from '@orot/storage';
@@ -15,6 +16,7 @@ export function createConversationArtifactReader(
   const readManyWithLease = async (
     ids: readonly string[],
     lease?: { readonly sessionId: string; readonly version: number },
+    collectValidated?: (artifact: ConversationArtifact) => void,
   ): Promise<(ConversationArtifact | null)[]> => {
     await ensure();
     const output: (ConversationArtifact | null)[] = [];
@@ -52,6 +54,7 @@ export function createConversationArtifactReader(
             value,
             false,
             validatePeriod,
+            collectValidated,
           );
           output.push(value);
         } catch (error) {
@@ -66,6 +69,21 @@ export function createConversationArtifactReader(
   const readMany = (ids: readonly string[]) => readManyWithLease(ids);
   return {
     readMany,
+    async readManyWithAncestry(ids: readonly string[]) {
+      // Publish the graph only after the protected transaction commits. This is
+      // a page-local snapshot, never authority for live source reads or later requests.
+      const ancestry = new Map<string, ConversationArtifact>();
+      const items = await readManyWithLease(ids, undefined, artifact => {
+        const existing = ancestry.get(artifact.id);
+        if (existing && fingerprint(existing) !== fingerprint(artifact))
+          throw new Error('Conversation ancestry changed inside its snapshot.');
+        ancestry.set(artifact.id, artifact);
+      });
+      return {
+        items,
+        ancestry: ancestry as ReadonlyMap<string, ConversationArtifact>,
+      };
+    },
     // Lease and content must share one snapshot, including when the page is empty.
     readSessionMany(
       sessionId: string,

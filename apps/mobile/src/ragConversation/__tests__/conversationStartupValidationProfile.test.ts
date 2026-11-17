@@ -95,7 +95,7 @@ test.each([1, 4, 10])(
         ),
       );
       expect(result.discoveryPage!.reportReads).toBe(2);
-      expect(result.historyPage!.reportReads).toBe(5);
+      expect(result.historyPage!.reportReads).toBe(4);
       console.info(
         'SYNTHETIC_STARTUP_PROFILE',
         JSON.stringify({ turns: count, ...result }),

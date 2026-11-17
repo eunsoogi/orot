@@ -1,4 +1,5 @@
-import { periodRemovalMembership } from './periodRemovalMembership';
+import type { HealthContextTopic } from '../healthEvidence/healthContext/types';
+import { periodRemovalQuery } from './periodRemovalMembership';
 import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
@@ -26,6 +27,20 @@ export function periodRowReferences(
      WHERE linked.value = ${marker} OR json_extract(segment.payload_json, '$.recordingSourceId') = ${marker}))`;
 }
 
+// Exhaustive topic mapping mirrors the discriminants in healthPeriodDeletionGuards.
+// A new topic must choose its contributor tables instead of silently reusing health rows.
+const topicTables: Record<HealthContextTopic, readonly string[]> = {
+  measurements: ['health_observations'],
+  activity: ['health_observations'],
+  sleep: ['health_observations'],
+  symptoms: ['symptom_entries'],
+  medications: [
+    'medication_definitions',
+    'medication_assertions',
+    'dose_events',
+  ],
+};
+
 /** Existing markers must also fence a period captured after a logical removal. */
 export async function assertPeriodNotRemoved(
   tx: SqlExecutor,
@@ -37,6 +52,9 @@ export async function assertPeriodNotRemoved(
     localQueryTimestampKey(source.scope.window.toExclusive),
   ];
   for (const [table, guard] of Object.entries(healthPeriodDeletionGuards())) {
+    // These are the exact topic discriminants in the shared contributor guards,
+    // not observed-empty data or cached availability assumptions.
+    if (!topicTables[source.scope.topic].includes(table)) continue;
     for (const marker of [
       'source_deletion_tombstones',
       'agent_memory_removed_sources',
@@ -60,10 +78,10 @@ export async function assertPeriodNotRemoved(
                   ]
                 : ['0'];
       for (const candidate of candidates) {
-        // Keep the singleton bounds outermost: SQLite can then use both concept and
-        // time keys, instead of scanning all historical records before applying p.
+        // Apply the same contributor and time filters to direct, singleton and
+        // legacy-shape candidates; indexed lookup never substitutes for validation.
         const result = await tx.execute(
-          `SELECT h.id FROM (SELECT ? AS topic, ? AS from_key, ? AS to_key) p CROSS JOIN ${table} h WHERE (${candidate}) AND (${guard.replaceAll('OLD.', 'h.')}) AND (${periodRemovalMembership(marker, ({ health_observations: 'health_observation', medication_definitions: 'medication_definition', medication_assertions: 'medication_assertion', dose_events: 'dose_event', symptom_entries: 'symptom_entry' } as Record<string, string>)[table]!)}) LIMIT 1`,
+          periodRemovalQuery(table, marker, guard, candidate),
           bindings,
         );
         if (result.rows.length)
