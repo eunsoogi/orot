@@ -190,7 +190,11 @@ export function ConversationMessage({
             <ConversationMessageText
               content={message.content}
               user={user}
-              allowReport={!message.streaming && !message.incomplete}
+              allowReport={
+                !message.streaming &&
+                !message.incomplete &&
+                !message.historyUnavailable
+              }
               testID={conversationMessageBodyTestID(message)}
             />
           ) : null}

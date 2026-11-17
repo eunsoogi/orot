@@ -1,4 +1,8 @@
 import {
+  restoreUnavailableHistoryTurns,
+  revalidateUnavailableHistory,
+} from './restoreUnavailableHistoryTurns';
+import {
   restoreUnavailableToolTurns,
   excludeUnavailableToolRequests,
 } from './restoreUnavailableToolTurns';
@@ -30,6 +34,7 @@ export async function restoreConversationSessionTurns(
   const turns: Awaited<
     ReturnType<typeof discovery.readSession>
   >['items'][number][] = [];
+  const unavailableHistory: { id: string; createdAt: string }[] = [];
   let cursor: Parameters<typeof discovery.readSession>[0]['cursor'];
   do {
     const page = await discovery.readSession({
@@ -38,8 +43,9 @@ export async function restoreConversationSessionTurns(
       signal,
       ...(selection ? { ids: selection.ids } : {}),
     });
-    if (page.unavailableCount)
+    if (page.unavailableCount !== (page.unavailableItems?.length ?? 0))
       throw new Error('Conversation content is unavailable.');
+    unavailableHistory.push(...(page.unavailableItems ?? []));
     turns.push(...page.items);
     cursor = page.nextCursor ?? undefined;
   } while (cursor && !signal.aborted);
@@ -184,8 +190,11 @@ export async function restoreConversationSessionTurns(
     (await storage.readUnavailableToolMetadata?.(sessionId)) ?? []
   ).filter(item => !selection || selection.ids.includes(item.messageId));
   restoreUnavailableToolTurns(restored, unavailable);
+  restoreUnavailableHistoryTurns(restored, unavailableHistory);
+  await revalidateUnavailableHistory(storage, sessionId, unavailableHistory);
   const times = new Map([
     ...unavailable.map(item => [item.messageId, item.createdAt] as const),
+    ...unavailableHistory.map(item => [item.id, item.createdAt] as const),
     ...turns.map(turn => [turn.id, turn.createdAt] as const),
     ...toolTurns.map(turn => [turn.messageId, turn.createdAt] as const),
     ...interrupted.map(request => [request.id, request.createdAt] as const),
@@ -194,7 +203,10 @@ export async function restoreConversationSessionTurns(
     input.coldResume,
     signal,
     orderRestoredConversationTurns(restored, times),
-    excludeUnavailableToolRequests(interrupted, unavailable),
+    excludeUnavailableToolRequests(interrupted, [
+      ...unavailable,
+      ...unavailableHistory.map(item => ({ messageId: item.id })),
+    ]),
     storage,
     sessionId,
     version,

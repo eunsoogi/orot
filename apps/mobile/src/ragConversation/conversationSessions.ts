@@ -1,3 +1,6 @@
+import { invalidateTasks } from './invalidateConversationTaskRefresh';
+import { conversationPhotoSurface } from './conversationPhotoSurface';
+import { prepareConversationSend } from './conversationSendPreflight';
 import type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 import { continuousConversationPolicy } from './continuousConversationPolicy';
 import { recoveryFor } from './conversationRecoveryRefresh';
@@ -19,8 +22,6 @@ import { conversationTreatmentOwnership } from './conversationTreatmentOwnership
 import { createConversationHistoryLoader } from './conversationHistoryLoader';
 import { createConversationSessionRemoval } from './conversationSessionRemoval';
 import { createConversationTasks } from './createConversationTasks';
-import { createConversationPhotoImport } from './conversationPhotoImport';
-import { createConversationPhotoConsentController } from './conversationPhotoConsentController';
 export type ConversationSender = S.ConversationSender;
 export type ConversationSession = S.ConversationSession;
 export type ConversationSessions = S.ConversationSessions;
@@ -35,8 +36,8 @@ export function createConversationSessions(
   const listeners = createConversationListeners();
   let disposed = false;
   let lifecycle = 0;
-  const photoDrafts = createConversationPhotoImport();
-  const photoConsent = createConversationPhotoConsentController();
+  const photoSurface = conversationPhotoSurface(options);
+  const { photoDrafts, photoConsent } = photoSurface;
   const apply = (next: S.ConversationSnapshot | null) => {
     if (next) {
       snapshot = next;
@@ -133,6 +134,9 @@ export function createConversationSessions(
       ? (id, signal) => beforeSend!(id, signal)
       : undefined,
     requests,
+    find,
+    update,
+    current: id => !options.continuousSession || snapshot.activeId === id,
     photoDrafts,
     retention: options.retention,
     disposed: () => disposed,
@@ -141,12 +145,7 @@ export function createConversationSessions(
     refreshRecovery: recoveryFor(options, find, update, () => disposed),
     resumeCold: requests.resumeCold,
     steer: requests.steer,
-    photoDrafts,
-    photoConsent,
-    photoRetirement: options.photoPreparation?.retirement,
-    photoDeliveryAvailable: Boolean(
-      options.photoPreparation && options.retention,
-    ),
+    ...photoSurface,
     attachExisting,
     loadHistory,
     loadOlderHistory: restoration.loadOlder,
@@ -187,13 +186,7 @@ export function createConversationSessions(
           : restoration.retry(id, signal),
     refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
       if (disposed) return;
-      taskState.invalidateWrites();
-      const retryTaskIds = new Set(
-        snapshot.sessions
-          .filter(session => taskRefresh.has(session.id))
-          .map(session => session.id),
-      );
-      taskRefresh.invalidate();
+      const retryIds = invalidateTasks(snapshot, taskState, taskRefresh);
       refreshConversationSources({
         snapshot,
         event,
@@ -201,7 +194,7 @@ export function createConversationSessions(
         requests,
         restoration,
         refreshTasks: taskRefresh.start,
-        retryTaskIds,
+        retryTaskIds: retryIds,
         update,
         apply: change => apply({ ...snapshot, ...change }),
       });
@@ -213,6 +206,7 @@ export function createConversationSessions(
       lifecycle++;
       taskState.invalidate();
       taskRefresh.invalidate();
+      dispatch.disposeBeforeSend();
       requests.dispose();
       restoration.dispose();
       options.retention?.invalidate();
@@ -229,6 +223,7 @@ export function createConversationSessions(
       lifecycle++;
       taskState.invalidate();
       taskRefresh.invalidate();
+      dispatch.disposeBeforeSend();
       requests.dispose();
       restoration.dispose();
       options.retention?.invalidate();
@@ -243,8 +238,12 @@ export function createConversationSessions(
     toolSourceSessionId: options.retention?.activeIdentity ?? (() => null),
   };
   const policy = continuousConversationPolicy(store, options, update);
-  beforeSend = async (id, signal) =>
-    (await policy.prepareSend(id)) && restoration.prepareContext(id, signal);
+  beforeSend = prepareConversationSend({
+    select: policy.prepareSend,
+    context: restoration.prepareContext,
+    find,
+    current: id => !disposed && snapshot.activeId === id,
+  });
   bindSender = policy.bindSender;
   return policy;
 }

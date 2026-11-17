@@ -2,6 +2,8 @@ import type { ConversationEntryContext } from '../aiFeatures/integration/convers
 import type { EvidenceReference } from '@orot/agent-runtime';
 
 export type RestoredTurn = {
+  /** Metadata-only local notice, not an interrupted or reusable answer. */
+  readonly historyUnavailable?: true;
   readonly question: string;
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly delivery?: import('./conversationMessageDelivery').ConversationMessageDelivery;

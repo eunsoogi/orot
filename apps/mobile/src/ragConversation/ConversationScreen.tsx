@@ -136,7 +136,7 @@ export function ConversationScreen({
               session={session}
               store={store}
               cancelling={session.requestActivity?.stage === 'cancelling'}
-              disabled={conversationComposerDisabled(session)}
+              disabled={conversationComposerDisabled(session, store.continuous)}
               compact={composerLayout.compact}
               maximumInputHeight={composerLayout.maximumInputHeight}
               onChangeText={value => store.setDraft(id, value)}

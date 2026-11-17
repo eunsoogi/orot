@@ -27,23 +27,28 @@ export async function restoreConversationSessionPage(input: {
   const items: NonNullable<
     Awaited<ReturnType<typeof restoreConversationArtifact>>
   >[] = [];
-  let unavailableCount = 0;
+  const unavailableItems: { id: string; createdAt: string }[] = [];
   for (const item of page.items) {
     if (input.signal.aborted)
       throw new Error('Conversation restoration was cancelled.');
     const result = await restoreConversationArtifact({ ...input, id: item.id });
     if (result?.sessionId === input.sessionId) items.push(result);
-    else unavailableCount++;
+    else unavailableItems.push({ id: item.id, createdAt: item.createdAt });
   }
   // Recheck the entire page in one transaction against a consistent source snapshot.
   const saved = await input.storage.readMany(items.map(item => item.id));
   for (let index = items.length - 1; index >= 0; index--) {
     if (!saved[index] || fingerprint(saved[index]) !== items[index]!.revision) {
-      items.splice(index, 1);
-      unavailableCount++;
+      // A stable withheld row can become a notice, but mid-read changes cancel publication.
+      throw new Error('Conversation content changed during restoration.');
     }
   }
   if (input.signal.aborted)
     throw new Error('Conversation restoration was cancelled.');
-  return { items, unavailableCount, nextCursor: page.nextCursor };
+  return {
+    items,
+    unavailableItems,
+    unavailableCount: unavailableItems.length,
+    nextCursor: page.nextCursor,
+  };
 }

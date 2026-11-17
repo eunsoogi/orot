@@ -31,6 +31,7 @@ export function conversationHistoryPayload(
     .filter(
       message =>
         !message.incomplete &&
+        !message.historyUnavailable &&
         !(
           message.failed &&
           message.role === 'user' &&
@@ -48,6 +49,7 @@ export function retainedHistoryTurns(
   const eligible = messages.filter(
     message =>
       !message.incomplete &&
+      !message.historyUnavailable &&
       !(
         message.failed &&
         message.role === 'user' &&

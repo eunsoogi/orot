@@ -23,6 +23,7 @@ export function createConversationRecoveryRefresh(input: RecoveryInput) {
       session.restoring ||
       session.quarantined ||
       !answer?.incomplete ||
+      answer.historyUnavailable ||
       answer.interruptionReason === 'user-stopped' ||
       !answer.toolMessageId ||
       !lease ||

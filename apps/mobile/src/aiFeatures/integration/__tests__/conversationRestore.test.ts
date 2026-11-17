@@ -98,21 +98,21 @@ test('reopens a saved conversation with fresh source aliases and rejects it afte
       [...firstPage.items, ...nextPage.items].map(item => item.id).sort(),
     ).toEqual(['turn', 'turn-2']);
     let undo: number | null = null;
-    const hiddenPage = await restoreConversationSessionPage({
-      sessionId: 'session',
-      registry,
-      data,
-      signal: new AbortController().signal,
-      storage: {
-        ...storage,
-        async readMany(ids) {
-          undo = await storage.hideSession('session');
-          return storage.readMany(ids);
+    await expect(
+      restoreConversationSessionPage({
+        sessionId: 'session',
+        registry,
+        data,
+        signal: new AbortController().signal,
+        storage: {
+          ...storage,
+          async readMany(ids) {
+            undo = await storage.hideSession('session');
+            return storage.readMany(ids);
+          },
         },
-      },
-    });
-    expect(hiddenPage.items).toEqual([]);
-    expect(hiddenPage.unavailableCount).toBe(2);
+      }),
+    ).rejects.toThrow('Conversation content changed during restoration.');
     await storage.undoHiddenSession('session', undo!);
     const restored = await restoreConversationArtifact({
       id: 'turn',

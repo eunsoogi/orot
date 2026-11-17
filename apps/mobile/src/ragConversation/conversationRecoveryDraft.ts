@@ -13,6 +13,7 @@ export function conversationRecoveryDraft(session: ConversationSession) {
   const question = session.messages.at(-2);
   if (
     !answer?.incomplete ||
+    answer.historyUnavailable ||
     !answer.interruptionReason ||
     answer.interruptionReason === 'user-stopped' ||
     answer.role !== 'assistant' ||

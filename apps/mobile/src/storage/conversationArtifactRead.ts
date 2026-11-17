@@ -1,3 +1,4 @@
+import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { createReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import type { SqlDatabase } from '@orot/storage';
 import {
@@ -53,7 +54,9 @@ export function createConversationArtifactReader(
             validatePeriod,
           );
           output.push(value);
-        } catch {
+        } catch (error) {
+          // Only proven invalid lineage is unavailable; operational failures remain retryable.
+          if (!(error instanceof RetainedSourceInvalidError)) throw error;
           output.push(null);
         }
       }
