@@ -66,7 +66,7 @@ test('forwards the exact period to every selected topic and retains relative def
     });
     expect(healthContextDays(read.mock.calls[0]![0])).toHaveLength(days);
   }
-  expect(tool.parseInput({})).toMatchObject({ days: 30 });
+  expect(tool.parseInput({})).not.toHaveProperty('days');
 });
 
 test('validates periods, dose history and the published schema without widening other features', () => {
@@ -82,17 +82,16 @@ test('validates periods, dose history and the published schema without widening 
     { window, days: 7 },
     { window: { ...window, timeZone: 'Not/AZone' } },
     { window: { ...window, toExclusive: window.fromInclusive } },
-    { window: { ...window, toExclusive: '2027-03-01T00:00:00Z' } },
     { window: dose, topics: ['sleep'] },
     { window: { ...window, doseHistory: { page: 0, pageSize: 0 } } },
   ])
     expect(tool.parseInput(input)).toBeUndefined();
   expect(
     createHealthContextTool(read, registry, 'disease').parseInput({ window }),
-  ).toBeUndefined();
+  ).toMatchObject({ window });
   expect(
     createHealthContextTool(read, registry, 'visit').parseInput({ window }),
-  ).toBeUndefined();
+  ).toMatchObject({ window });
   const schema = tool.inputSchema as {
     properties: { window: { required: string[] } };
   };
@@ -102,7 +101,7 @@ test('validates periods, dose history and the published schema without widening 
     'timeZone',
   ]);
   expect(ragConversationTask.systemPrompt).toContain(
-    'an explicit window for a requested period',
+    'an explicit window only for a requested period',
   );
   expect(ragConversationTask.systemPrompt).toContain('select only medications');
 });

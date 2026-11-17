@@ -1,3 +1,4 @@
+import type { ResolveHealthContextWindow } from '../../healthEvidence/healthContext/availableWindow';
 import { buildVisitContext } from './visitContext';
 import { AppointmentSchema } from '@orot/domain';
 import type { Appointment } from '@orot/domain';
@@ -28,9 +29,7 @@ import {
   searchVisitQuestionEvidence,
   type VisitQuestionSearchSource,
 } from './evidenceSearch';
-
 type VisitQuestionRagPort = Pick<LocalE5RagService, 'index' | 'search'>;
-
 export type VisitQuestionContextResult =
   | { readonly status: 'cancelled' }
   | { readonly status: 'no_confirmed_upcoming_appointment' }
@@ -65,7 +64,6 @@ export type VisitQuestionContextResult =
         reference: EvidenceReference,
       ) => Promise<VisitQuestionEvidenceItem | undefined>;
     };
-
 /** Loads only the chosen appointment; clinical evidence is fetched by subsequent model tool calls. */
 export async function prepareVisitQuestionContext(input: {
   readonly now: string;
@@ -78,6 +76,7 @@ export async function prepareVisitQuestionContext(input: {
   readonly buildChunks: VisitQuestionChunkBuilder;
   readonly currentTime?: () => string;
   readonly readHealthContext?: HealthContextReader;
+  readonly resolveHealthContextWindow?: ResolveHealthContextWindow;
   readonly validateGeneratedArtifact?: (
     citation: VisitQuestionEvidenceItem,
     metadata: VisitQuestionEvidenceMetadata,
@@ -138,7 +137,11 @@ export async function prepareVisitQuestionContext(input: {
   const metadataByCitation = new Map(initialEvidence.metadataByCitation);
   const evidence = { ...initialEvidence, metadataByCitation };
   const healthContext = input.readHealthContext
-    ? createVisitHealthContext(input.readHealthContext, metadataByCitation)
+    ? createVisitHealthContext(
+        input.readHealthContext,
+        metadataByCitation,
+        input.resolveHealthContextWindow,
+      )
     : undefined;
   // A later search can reveal a conflict that was split across batches.
   let hasMaterialConflict = initialEvidence.batch.conflicts.length > 0;

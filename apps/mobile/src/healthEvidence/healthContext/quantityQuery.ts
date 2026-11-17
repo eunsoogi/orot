@@ -1,4 +1,8 @@
 import {
+  healthContextCalendarParameter,
+  healthContextCalendarSql,
+} from './calendarSql';
+import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
 } from '@orot/storage';
@@ -24,7 +28,7 @@ const concepts = [
 
 /** Materialize the bounded period once, applying an optional ingestion cutoff before selecting sensor series.
  * Joining raw observations to both days and selected series made SQLite repeatedly expand JSON/time expressions.
- * Fetch at most thirteen series, using the last only as an overflow indicator; return twelve complete daily series.
+ * Every sensor series remains separate and is returned; ranking changes order, not inclusion.
  */
 export async function readHealthQuantityContext(
   executor: SqlExecutor,
@@ -33,14 +37,9 @@ export async function readHealthQuantityContext(
   family: 'all' | 'measurements' | 'activity' = 'all',
   dataAvailableThrough?: string,
 ): Promise<{ series: readonly HealthQuantitySeries[]; truncated: boolean }> {
-  if (!days.length || days.length > 90)
-    throw new RangeError('Invalid health context days.');
+  if (!days.length) throw new RangeError('Invalid health context days.');
   if (signal?.aborted) throw new Error('Health context was cancelled.');
-  const parameters: SqlValue[] = days.flatMap(day => [
-    day.date,
-    localQueryTimestampKey(day.fromInclusive),
-    localQueryTimestampKey(day.toExclusive),
-  ]);
+  const parameters: SqlValue[] = [healthContextCalendarParameter(days)];
   const from = localQueryTimestampKey(days[0]!.fromInclusive);
   const to = localQueryTimestampKey(days[days.length - 1]!.toExclusive);
   const at = localQueryTimestampKeyExpression('r.effective_at');
@@ -58,7 +57,7 @@ export async function readHealthQuantityContext(
     parameters.push(localQueryTimestampKey(dataAvailableThrough));
   const result = await executor.execute(
     `SELECT * FROM (
-      WITH days(date, from_key, to_key) AS (VALUES ${days.map(() => '(?, ?, ?)').join(', ')}),
+      WITH days(date, from_key, to_key) AS (${healthContextCalendarSql}),
       observations AS MATERIALIZED (
         SELECT r.id, r.effective_at AS at, ${at} AS at_key,
           CASE lower(json_extract(r.payload_json, '$.concept'))
@@ -109,7 +108,7 @@ export async function readHealthQuantityContext(
         ORDER BY preference, CASE concept
           WHEN 'blood pressure systolic' THEN 0 WHEN 'blood pressure diastolic' THEN 1
           WHEN 'heart_rate' THEN 2 WHEN 'body_mass' THEN 3 WHEN 'step_count' THEN 4 ELSE 5 END,
-          concept, unit, sensor LIMIT 13
+          concept, unit, sensor
       )
       SELECT d.*, s.selected_rank FROM daily d JOIN selected s USING (concept, unit, sensor)
       ORDER BY s.selected_rank, d.date
@@ -163,7 +162,7 @@ export async function readHealthQuantityContext(
     series.set(key, entry);
   }
   return {
-    series: [...series.values()].slice(0, 12),
-    truncated: series.size > 12,
+    series: [...series.values()],
+    truncated: false,
   };
 }

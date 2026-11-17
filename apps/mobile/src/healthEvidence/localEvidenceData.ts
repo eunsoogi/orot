@@ -1,3 +1,7 @@
+import {
+  readAvailableHealthContextWindow,
+  type ResolveHealthContextWindow,
+} from './healthContext/availableWindow';
 import type { SqlDatabase } from '@orot/storage';
 import { createManualHistoryRepository } from '@orot/storage';
 import type { ManualHistoryRepository } from '@orot/storage';
@@ -31,6 +35,7 @@ export interface LocalEvidenceData {
       : never
   ) => ReturnType<typeof readDailyReportSnapshot>;
   readonly readHealthContext?: HealthContextReader;
+  readonly resolveHealthContextWindow?: ResolveHealthContextWindow;
   readonly manualHistory: ManualHistoryRepository;
   readManualHistoryCandidates(
     query: string,
@@ -80,6 +85,19 @@ export function createLocalEvidenceData(
       readDailyReportSnapshot(database, calendar, scope, signal),
     readManualHistoryCandidates: (query, signal, scope) =>
       readManualHistoryCandidates(manualHistory, query, signal, scope),
+    async resolveHealthContextWindow(signal, endAt, timeZone) {
+      await prepare();
+      let window: Awaited<ReturnType<ResolveHealthContextWindow>> = null;
+      await database.transaction(async tx => {
+        window = await readAvailableHealthContextWindow(
+          tx,
+          signal,
+          endAt,
+          timeZone,
+        );
+      });
+      return window;
+    },
     async readHealthContext(window, topics, signal, trace) {
       await prepare();
       return readHealthContext(window, topics, signal, trace);

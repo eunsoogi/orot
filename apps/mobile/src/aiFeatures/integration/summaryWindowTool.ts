@@ -1,3 +1,4 @@
+import type { ResolveHealthContextWindow } from '../../healthEvidence/healthContext/availableWindow';
 import type { EvidenceSearchTool } from '@orot/agent-runtime';
 import type { HealthContextWindow } from '../../healthEvidence/healthContext/types';
 import { stableJson } from './evidenceUtils';
@@ -11,6 +12,7 @@ export function bindSummaryWindow(
     readonly window?: HealthContextWindow;
     readonly endAt: string;
     readonly timeZone: string;
+    readonly resolveWindow?: ResolveHealthContextWindow;
   },
 ): {
   tool: EvidenceSearchTool;
@@ -28,15 +30,13 @@ export function bindSummaryWindow(
         ? parseHealthSummaryWindow(input.window)
         : input.days !== undefined
           ? recentHealthContextWindow(
-              parsed.days as 7 | 30 | 90,
+              parsed.days as number,
               options.endAt,
               options.timeZone,
             )
-          : (admitted ??
-            options.window ??
-            recentHealthContextWindow(30, options.endAt, options.timeZone));
+          : (admitted ?? options.window);
     if (
-      !window ||
+      ((input.window !== undefined || input.days !== undefined) && !window) ||
       (options.window && stableJson(window) !== stableJson(options.window))
     )
       return undefined;
@@ -44,11 +44,7 @@ export function bindSummaryWindow(
     delete rest.days;
     return {
       ...rest,
-      window: {
-        fromInclusive: window.fromInclusive,
-        toExclusive: window.toExclusive,
-        timeZone: window.timeZone,
-      },
+      ...(window ? { window: { ...window } } : {}),
     };
   };
   return {
@@ -58,11 +54,47 @@ export function bindSummaryWindow(
       description: `${tool.description} Keep the same period across this summary.`,
       parseInput: parse,
       async search(request) {
-        const input = parse(request.input);
+        // Availability metadata is local data too: do not read it outside admitted scope.
+        if (
+          request.signal.aborted ||
+          !request.allowedScope.sourceKinds.includes('personal_record') ||
+          request.allowedScope.sourceIds ||
+          request.allowedScope.timeRange
+        )
+          return tool.search(request);
+        let input = parse(request.input);
         if (!input)
           throw new Error(
             'The health summary period does not match the request.',
           );
+        if (!input.window) {
+          if (!options.resolveWindow)
+            throw new Error(
+              'An explicit summary period is required when availability cannot be resolved.',
+            );
+          const available = await options.resolveWindow(
+            request.signal,
+            options.endAt,
+            options.timeZone,
+          );
+          if (!available) {
+            return {
+              items: [],
+              coverage: [
+                {
+                  sourceKind: 'personal_record',
+                  searchedSourceIds: [],
+                  gaps: [],
+                  truncated: false,
+                  resultLimit: request.resultLimit,
+                  returnedCount: 0,
+                },
+              ],
+              conflicts: [],
+            };
+          }
+          input = { ...input, window: { ...available } };
+        }
         const window = input.window as unknown as HealthContextWindow;
         if (admitted && stableJson(admitted) !== stableJson(window))
           throw new Error('The health summary period changed.');

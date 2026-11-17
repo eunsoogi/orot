@@ -30,10 +30,24 @@ function fixture() {
     deletionGeneration: 0,
   }));
   const registry = new LocalEvidenceReferenceRegistry();
-  return { read, registry, tool: createHealthContextTool(read, registry) };
+  return {
+    read,
+    registry,
+    tool: createHealthContextTool(
+      read,
+      registry,
+      'disease',
+      false,
+      async () => ({
+        fromInclusive: '2025-01-01T00:00:00Z',
+        toExclusive: '2026-01-01T00:00:00Z',
+        timeZone: 'UTC',
+      }),
+    ),
+  };
 }
 
-test('does not read before model selection, defaults to 30 days and reads only chosen topics', async () => {
+test('does not read before model selection, defaults to available history and reads only chosen topics', async () => {
   const f = fixture();
   expect(f.read).not.toHaveBeenCalled();
   const result = await f.tool.search({
@@ -43,7 +57,7 @@ test('does not read before model selection, defaults to 30 days and reads only c
   if ('status' in result) throw new Error('Expected period evidence');
   expect(result.items).toHaveLength(2);
   expect(f.read).toHaveBeenCalledTimes(2);
-  expect(healthContextDays(f.read.mock.calls[0]![0])).toHaveLength(30);
+  expect(healthContextDays(f.read.mock.calls[0]![0])).toHaveLength(365);
   expect(f.read.mock.calls.map(call => call[1])).toEqual([
     ['medications'],
     ['measurements'],
@@ -59,10 +73,10 @@ test('does not read before model selection, defaults to 30 days and reads only c
   ).toBe(true);
 });
 
-test('does not widen a source/time restriction and rejects unbounded or malformed tool arguments', async () => {
+test('does not widen a source/time restriction and rejects invalid or malformed tool arguments', async () => {
   const f = fixture();
   for (const input of [
-    { days: 365 },
+    { days: 0 },
     { days: '30' },
     { topics: ['anything'] },
     { topics: [] },

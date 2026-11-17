@@ -1,3 +1,4 @@
+import { createLocalEvidenceData } from '../../../healthEvidence/localEvidenceData';
 import type { EvidenceSearchRequest } from '@orot/agent-runtime';
 import { createVisitHealthContext } from '../healthContext';
 import { visitHealthFixture } from '../testing/healthContextFixture';
@@ -9,7 +10,11 @@ test('reads bounded period facts only after selection and preserves scope, cance
   try {
     const read = jest.fn(f.read);
     const metadata = new Map();
-    const context = createVisitHealthContext(read, metadata);
+    const context = createVisitHealthContext(
+      read,
+      metadata,
+      createLocalEvidenceData(f.database).resolveHealthContextWindow,
+    );
     const request: EvidenceSearchRequest = {
       operationRunId: 'synthetic-visit',
       operationKey: 'period-call',

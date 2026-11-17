@@ -1,3 +1,4 @@
+import type { ResolveHealthContextWindow } from '../../healthEvidence/healthContext/availableWindow';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { VisitQuestionHealthContextSource } from '@orot/domain';
@@ -18,9 +19,16 @@ import type { VisitQuestionEvidenceItem } from './taskContract';
 export function createVisitHealthContext(
   read: HealthContextReader,
   metadata: Map<string, VisitQuestionEvidenceMetadata>,
+  resolveWindow?: ResolveHealthContextWindow,
 ) {
   const registry = new LocalEvidenceReferenceRegistry();
-  const source = createHealthContextTool(read, registry, 'visit');
+  const source = createHealthContextTool(
+    read,
+    registry,
+    'visit',
+    false,
+    resolveWindow,
+  );
   const capture = async (
     reference: EvidenceReference,
     content: string,
