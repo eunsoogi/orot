@@ -87,6 +87,17 @@ export function searchPublicWeb(
     try {
       unsubscribe = options.bridge.subscribe((event) => {
         if (settled || event.requestId !== requestID) return;
+        if (event.type === 'response_started') {
+          // Native emits this lifecycle packet before public evidence too. Validate
+          // its bounded identity, but never cache it as a private continuation.
+          if (
+            typeof event.responseId !== 'string' ||
+            !event.responseId.trim() ||
+            event.responseId.length > 200
+          )
+            finish(malformed(), true);
+          return;
+        }
         if (event.type === 'text_delta') {
           if (typeof event.text !== 'string') {
             finish(malformed(), true);
