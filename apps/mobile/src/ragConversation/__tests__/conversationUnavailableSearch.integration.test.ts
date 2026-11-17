@@ -77,7 +77,6 @@ test.each([
           type: 'result',
           value: {
             answerKind: grounded ? 'grounded' : 'conversation',
-            completion: 'partial',
             answer: grounded
               ? '수면 시간이 7 hours로 기록되어 있어요.'
               : '어떤 점이 궁금하신가요?',
@@ -161,7 +160,6 @@ test.each([
       if (grounded && result.status === 'result') {
         expect(result.value).toMatchObject({
           answerKind: 'grounded',
-          completion: 'partial',
           answer: local.content,
         });
         expect(result.citations).toEqual([
@@ -197,7 +195,6 @@ test.each([
         outcome: {
           status: 'answer',
           answer: local.content,
-          completion: 'partial',
           citations: result.citations,
         },
         publicSearch: { status: 'unavailable' },

@@ -8,7 +8,7 @@ import {
   response,
 } from '../testSupport/conversationEnvelopeFixtures';
 
-test('a validated partial answer retains its label in the conversation', async () => {
+test('a validated answer retains its citations without a legacy coverage label', async () => {
   const f = fixture();
   f.generate.mockReset().mockResolvedValueOnce(
     response({
@@ -16,7 +16,6 @@ test('a validated partial answer retains its label in the conversation', async (
       value: {
         answerKind: 'grounded',
         answer: '기록 일부만 확인했어요.',
-        completion: 'partial',
       },
       citations: ['synthetic-evidence'],
     }),
@@ -31,7 +30,6 @@ test('a validated partial answer retains its label in the conversation', async (
     ),
   );
   expect(sessions.getSnapshot().sessions[0]?.messages[1]).toMatchObject({
-    completion: 'partial',
     citations: [expect.objectContaining({ evidenceId: 'synthetic-evidence' })],
   });
   sessions.dispose();

@@ -58,11 +58,15 @@ test('explicit treatment action reaches a validated conversation answer without 
         expect.objectContaining({
           role: 'assistant',
           content: treatmentSafetyKo['treatmentSafety.generalOptions'],
-          completion: 'partial',
           citations: [],
         }),
       ]),
     );
+    expect(
+      sessions
+        .getSnapshot()
+        .sessions[0]?.messages.find(message => message.role === 'assistant'),
+    ).not.toHaveProperty('completion');
     expect(authorize).not.toHaveBeenCalled();
     expect(search).not.toHaveBeenCalled();
     expect(

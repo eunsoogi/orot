@@ -14,7 +14,6 @@ export function conversationArtifactExcerpt(
     createdAt: metadata.createdAt,
     provider: metadata.providerId,
     model: metadata.modelId,
-    completion: metadata.completion,
     sourceStatus,
     warning:
       'Historical AI-generated answer, not independently verified medical evidence.',
@@ -38,7 +37,6 @@ export function compactConversationArtifactExcerpt(
   return JSON.stringify({
     kind: 'conversation_turn',
     createdAt: metadata.createdAt,
-    completion: metadata.completion,
     sourceStatus,
     warning:
       'Historical AI-generated answer; open its citation for the saved result.',

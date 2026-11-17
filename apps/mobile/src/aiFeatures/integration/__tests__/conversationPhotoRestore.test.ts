@@ -188,7 +188,7 @@ test('an interrupted photo-only input restores only after native source validati
       new AbortController().signal,
     );
     expect(turns).toMatchObject([
-      { question: '', answer: '', completion: 'partial', submittedInput },
+      { question: '', answer: '', interrupted: true, submittedInput },
     ]);
     const update = jest.fn();
     const restore = createConversationSessionRestoreState({

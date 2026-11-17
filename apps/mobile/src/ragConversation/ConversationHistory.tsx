@@ -1,3 +1,5 @@
+import { conversationHistoryScrollEvents } from './conversationHistoryScrollEvents';
+import { useConversationReadingPosition } from './useConversationReadingPosition';
 import { useConversationTranscriptWindow } from './useConversationTranscriptWindow';
 import { conversationHistoryError } from './conversationHistoryError';
 import { useConversationJumpToLatest } from './useConversationJumpToLatest';
@@ -7,7 +9,7 @@ import { followConversationLatest } from './followConversationLatest';
 import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
 import { transcriptMessageVisible } from './conversationWorkspaceLayout';
 import { useFloatingIdentityInset } from '../assistantAppearance/FloatingIdentityInset';
-import { useRef, type ComponentRef } from 'react';
+import { useEffect, useRef, type ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
 import { styles } from './ConversationScreen.styles';
 import { ConversationTranscriptMessages } from './ConversationTranscriptMessages';
@@ -15,9 +17,8 @@ import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
 import { ConversationActivityBubble } from './ConversationActivityBubble';
 import { conversationHistoryActivity } from './conversationHistoryActivity';
-import type { ConversationHistoryProps } from './ConversationHistoryProps';
 import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserTurn';
-/** Owns the scrollable transcript and keeps visit targets before messages in visual and source order. */
+/** Owns transcript scrolling, restoration and reader-directed history loading. */
 export function ConversationHistory({
   messages,
   steeringInstructions,
@@ -36,6 +37,7 @@ export function ConversationHistory({
   unsavedCount = 0,
   retryingSave = false,
   onRetrySave,
+  restoring = false,
   restoreFailed = false,
   onRetryRestore,
   sessionId,
@@ -50,7 +52,7 @@ export function ConversationHistory({
   replyFocus,
   requestSessionId,
   requestActivity,
-}: ConversationHistoryProps) {
+}: import('./ConversationHistoryProps').ConversationHistoryProps) {
   const identityInset = useFloatingIdentityInset();
   const composerInset = useFloatingComposerInset();
   const separatedActivity = useSeparatedConversationActivity();
@@ -96,6 +98,19 @@ export function ConversationHistory({
     followsBottom,
     expectedOffset,
   );
+  const reading = useConversationReadingPosition({
+    sessionId: toolSourceSessionId,
+    messages: visibleMessages,
+    blocked: restoring || restoreFailed,
+    hasMore: historyHasMore,
+    loading: historyLoading,
+    failed: historyLoadFailed,
+    focused: Boolean(replyFocus?.canReveal()),
+    history: historyView,
+    followsBottom,
+    expectedOffset,
+    geometry: scrollGeometry,
+  });
   const window = useConversationTranscriptWindow({
     hasMore: historyHasMore,
     loading: historyLoading,
@@ -105,7 +120,7 @@ export function ConversationHistory({
       transcriptMessageVisible(message, separatedActivity),
     ),
     sessionId,
-    focusId: replyFocus?.canReveal() ? replyFocus.messageId : undefined,
+    focusId: replyFocus?.canReveal() ? replyFocus.messageId : reading.targetId,
     focusGeneration: replyFocus?.generation,
     firstRowInset: styles.container.paddingTop,
     history: historyView,
@@ -114,6 +129,7 @@ export function ConversationHistory({
     geometry: scrollGeometry,
   });
   const followLatest = () =>
+    !reading.pending &&
     followConversationLatest({
       hasMessages: visibleMessages.length > 0,
       compact,
@@ -126,6 +142,11 @@ export function ConversationHistory({
       historyView,
       scrollGeometry,
     });
+  const wasRestoringPosition = useRef(reading.pending);
+  useEffect(() => {
+    if (wasRestoringPosition.current && !reading.pending) followLatest();
+    wasRestoringPosition.current = reading.pending;
+  });
   return (
     <View style={styles.history}>
       <ScrollView
@@ -136,46 +157,17 @@ export function ConversationHistory({
           paddingBottom: bottomInset + composerInset + (compact ? 0 : 20),
         }}
         keyboardShouldPersistTaps="handled"
-        onLayout={({ nativeEvent }) => {
-          viewportHeight.current = nativeEvent.layout.height;
-          jumpControl.refresh({ height: nativeEvent.layout.height });
-          followLatest();
-        }}
-        onScrollBeginDrag={() => {
-          jumpControl.cancelJump();
-          window.cancelAnchor();
-          userScrolling.current = true;
-          expectedOffset.current = null;
-        }}
-        onScrollEndDrag={() => {
-          userScrolling.current = false;
-        }}
-        onMomentumScrollBegin={() => {
-          userScrolling.current = true;
-        }}
-        onMomentumScrollEnd={() => {
-          userScrolling.current = false;
-        }}
-        onScroll={event => {
-          jumpControl.onScroll(event);
-          window.onTopEdge(
-            event.nativeEvent.contentOffset.y,
-            userScrolling.current,
-          );
-        }}
-        onScrollToTop={() => {
-          jumpControl.cancelJump();
-          expectedOffset.current = null;
-          followsBottom.current = false;
-        }}
+        {...conversationHistoryScrollEvents({
+          reading,
+          viewportHeight,
+          followLatest,
+          jumpControl,
+          window,
+          userScrolling,
+          expectedOffset,
+          followsBottom,
+        })}
         scrollEventThrottle={16}
-        onContentSizeChange={(_width, height) => {
-          jumpControl.refresh({
-            height: viewportHeight.current,
-            contentHeight: height,
-          });
-          followLatest();
-        }}
         testID="rag-conversation-history"
       >
         {header}
@@ -184,9 +176,13 @@ export function ConversationHistory({
         <View
           style={styles.container}
           testID="conversation-message-container"
-          onLayout={event => replyScroll.container(event.nativeEvent.layout.y)}
+          onLayout={event => {
+            replyScroll.container(event.nativeEvent.layout.y);
+            reading.container(event.nativeEvent.layout.y);
+          }}
         >
           <ConversationTranscriptMessages
+            onReadingLayout={reading.row}
             messages={window.messages}
             entryChoices={entryChoices}
             anchorId={window.anchorId}
@@ -224,7 +220,6 @@ export function ConversationHistory({
             }}
           />
         </View>
-        {/* The footer stays in place while compact follow targets the end of messages. */}
         <View
           collapsable={false}
           onLayout={event => {
@@ -240,8 +235,10 @@ export function ConversationHistory({
         <ConversationJumpToLatest
           bottom={composerInset}
           onPress={() => {
+            reading.cancel();
             window.cancelAnchor();
             jumpControl.jump();
+            reading.save({ bottom: true });
           }}
         />
       ) : null}

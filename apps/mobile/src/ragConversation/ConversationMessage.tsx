@@ -138,11 +138,6 @@ export function ConversationMessage({
               onPress={() => onContinueCold(message.toolMessageId!)}
             />
           ) : null}
-          {message.completion === 'partial' ? (
-            <Text style={styles.activity}>
-              {t('ragConversation.savedPartial')}
-            </Text>
-          ) : null}
           {activityBeforeText ? activity : null}
           {!user && message.toolEvents?.length ? (
             <View

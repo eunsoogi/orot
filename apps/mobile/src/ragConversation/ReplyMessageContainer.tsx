@@ -7,11 +7,15 @@ export function ReplyMessageContainer({
   onLayout,
   children,
   onPosition,
+  onFrame,
+  readingId,
 }: {
+  readingId?: number;
   focused: boolean;
   onLayout(y: number): void;
   children: ReactNode;
   onPosition?: (y: number) => void;
+  onFrame?: (y: number, height: number) => void;
 }) {
   return (
     <View
@@ -20,14 +24,17 @@ export function ReplyMessageContainer({
           ? 'conversation-reply-focus'
           : onPosition
             ? 'conversation-earlier-anchor'
-            : undefined
+            : readingId !== undefined
+              ? `conversation-reading-row-${readingId}`
+              : undefined
       }
       onLayout={
-        focused || onPosition
+        focused || onPosition || onFrame
           ? event => {
               const y = event.nativeEvent.layout.y;
               if (focused) onLayout(y);
               onPosition?.(y);
+              onFrame?.(y, event.nativeEvent.layout.height);
             }
           : undefined
       }

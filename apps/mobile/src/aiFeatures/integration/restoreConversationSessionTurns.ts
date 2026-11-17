@@ -1,3 +1,4 @@
+import type { RestoredTurn } from '../../ragConversation/conversationRestoredTurn';
 import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
 import { restoreColdConversationPreviews } from './restoreColdConversationEligibility';
 import { restoreConversationToolTurns } from './restoreConversationToolTurns';
@@ -75,53 +76,57 @@ export async function restoreConversationSessionTurns(
     ) !== fingerprint(savedToolTurns)
   )
     throw new Error('Conversation content changed during restoration.');
-  const restored = await Promise.all(
-    turns.reverse().map(async turn => {
-      const visitQuestions =
-        turn.visitQuestions && input.loadSavedVisitQuestions
-          ? await restoreConversationVisitQuestions({
-              appointmentId: turn.visitQuestions.appointmentId,
-              candidates: turn.visitQuestions.candidates,
-              ownerKey: `${sessionId}:${turn.id}`,
-              loadSaved: input.loadSavedVisitQuestions,
-              registry: input.registry,
-              signal,
-            })
-          : undefined;
-      return {
-        question: turn.question,
-        ...(turn.delivery ? { delivery: turn.delivery } : {}),
-        ...(turn.submittedInput ? { submittedInput: turn.submittedInput } : {}),
-        answer: turn.answer,
-        ...(turn.initialResponse
-          ? { initialResponse: turn.initialResponse }
-          : {}),
-        citations: turn.citations,
-        healthSources: healthSourceDependencies(
-          turn.sources.map(source => input.registry.resolve(source) ?? source),
-        ),
-        completion: turn.status,
-        ...(turn.entryIntent ? { entryIntent: turn.entryIntent } : {}),
-        ...(turn.dailyReport ? { dailyReport: turn.dailyReport } : {}),
-        ...(turn.healthSummary
-          ? {
-              healthSummary:
-                (await input.restoreHealthSummary?.(turn.healthSummary)) ??
-                null,
-            }
-          : {}),
-        toolMessageId: turn.id,
-        toolEvents:
-          toolTurns.find(toolTurn => toolTurn.messageId === turn.id)
-            ?.toolEvents ?? [],
-        ...(visitQuestions
-          ? { visitQuestions }
-          : turn.visitQuestions
-            ? { visitQuestionsUnavailable: true }
+  const restored: (RestoredTurn & { toolMessageId: string })[] =
+    await Promise.all(
+      turns.reverse().map(async turn => {
+        const visitQuestions =
+          turn.visitQuestions && input.loadSavedVisitQuestions
+            ? await restoreConversationVisitQuestions({
+                appointmentId: turn.visitQuestions.appointmentId,
+                candidates: turn.visitQuestions.candidates,
+                ownerKey: `${sessionId}:${turn.id}`,
+                loadSaved: input.loadSavedVisitQuestions,
+                registry: input.registry,
+                signal,
+              })
+            : undefined;
+        return {
+          question: turn.question,
+          ...(turn.delivery ? { delivery: turn.delivery } : {}),
+          ...(turn.submittedInput
+            ? { submittedInput: turn.submittedInput }
             : {}),
-      };
-    }),
-  );
+          answer: turn.answer,
+          ...(turn.initialResponse
+            ? { initialResponse: turn.initialResponse }
+            : {}),
+          citations: turn.citations,
+          healthSources: healthSourceDependencies(
+            turn.sources.map(
+              source => input.registry.resolve(source) ?? source,
+            ),
+          ),
+          ...(turn.entryIntent ? { entryIntent: turn.entryIntent } : {}),
+          ...(turn.dailyReport ? { dailyReport: turn.dailyReport } : {}),
+          ...(turn.healthSummary
+            ? {
+                healthSummary:
+                  (await input.restoreHealthSummary?.(turn.healthSummary)) ??
+                  null,
+              }
+            : {}),
+          toolMessageId: turn.id,
+          toolEvents:
+            toolTurns.find(toolTurn => toolTurn.messageId === turn.id)
+              ?.toolEvents ?? [],
+          ...(visitQuestions
+            ? { visitQuestions }
+            : turn.visitQuestions
+              ? { visitQuestionsUnavailable: true }
+              : {}),
+        };
+      }),
+    );
   if (!(await discovery.revalidateSession(sessionId, version, turns, signal)))
     throw new Error('Conversation content changed during restoration.');
   for (const turn of toolTurns)
@@ -134,7 +139,7 @@ export async function restoreConversationSessionTurns(
         answer: '',
         citations: [],
         healthSources: [],
-        completion: 'partial',
+        interrupted: true,
         toolMessageId: turn.messageId,
         toolEvents: turn.toolEvents,
       });
@@ -148,7 +153,7 @@ export async function restoreConversationSessionTurns(
         answer: '',
         citations: [],
         healthSources: [],
-        completion: 'partial',
+        interrupted: true,
         toolMessageId: request.id,
         toolEvents:
           toolTurns.find(turn => turn.messageId === request.id)?.toolEvents ??

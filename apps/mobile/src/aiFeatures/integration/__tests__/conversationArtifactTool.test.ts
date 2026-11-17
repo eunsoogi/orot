@@ -56,10 +56,12 @@ test('searches prior conversations with scoped cursors, bounded payloads and del
     if ('status' in first) throw new Error('Unexpected consent result');
     expect(first.items).toHaveLength(1);
     expect(first.items[0]?.content).toContain('Historical AI-generated');
-    expect(JSON.parse(first.items[0]!.content).completion).toBe('partial');
+    expect(JSON.parse(first.items[0]!.content)).not.toHaveProperty(
+      'completion',
+    );
     const full = await tool.search({ ...request, maxPayloadBytes: 20000 });
     if ('status' in full) throw new Error('Unexpected consent result');
-    expect(JSON.parse(full.items[0]!.content).completion).toBe('partial');
+    expect(JSON.parse(full.items[0]!.content)).not.toHaveProperty('completion');
     expect(JSON.stringify(first)).not.toContain('private-');
     const token = first.coverage[0]?.nextCursor;
     expect(token).toBeDefined();

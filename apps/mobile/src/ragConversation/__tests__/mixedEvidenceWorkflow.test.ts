@@ -112,7 +112,7 @@ test('the actual workflow binds both source claims to their citations and preser
   });
   expect(result.status).toBe('answer');
   if (result.status === 'answer') {
-    expect(result.completion).toBe('partial');
+    expect(result).not.toHaveProperty('completion');
     expect(result.answer).toContain(local.content);
     expect(result.answer).toContain('직접적인 비교는 확인하지 못했어요');
     expect(result.citations.map(item => item.evidenceId)).toEqual([

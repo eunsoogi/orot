@@ -19,7 +19,9 @@ export function ConversationTranscriptMessages({
   messageProps,
   anchorId,
   onAnchorLayout,
+  onReadingLayout,
 }: {
+  readonly onReadingLayout?: (id: number, y: number, height: number) => void;
   readonly entryChoices?: ReactNode;
   readonly messages: readonly DisplayMessage[];
   readonly anchorId?: number;
@@ -41,10 +43,16 @@ export function ConversationTranscriptMessages({
   const rows = messages.map(message => (
     <ReplyMessageContainer
       key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
+      readingId={onReadingLayout ? message.id : undefined}
       focused={Boolean(
         replyFocus && message.retainedTurnId === replyFocus.messageId,
       )}
       onLayout={onLayout}
+      onFrame={
+        onReadingLayout
+          ? (y, height) => onReadingLayout(message.id, y, height)
+          : undefined
+      }
       onPosition={message.id === anchorId ? onAnchorLayout : undefined}
     >
       <ConversationSteeringMessages

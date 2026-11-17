@@ -5,7 +5,7 @@ jest.mock('../../layout/AiResponseText', () => ({
   AiResponseText: require('react-native').Text,
 }));
 
-test('marks a saved partial answer without calling it an unfinished stream', async () => {
+test('preserves a saved partial answer without adding the redundant saved-partial notice', async () => {
   await render(
     <ConversationMessage
       message={{
@@ -18,6 +18,6 @@ test('marks a saved partial answer without calling it an unfinished stream', asy
       onLinkError={jest.fn()}
     />,
   );
-  expect(screen.getByText('일부만 생성되어 저장된 답변이에요.')).toBeTruthy();
+  expect(screen.queryByText('일부만 생성되어 저장된 답변이에요.')).toBeNull();
   expect(screen.getByText('부분 답변')).toBeTruthy();
 });

@@ -34,7 +34,6 @@ export const evidenceSourceKo = {
   'evidenceSource.priorConversation': '이전 AI 대화',
   'evidenceSource.generatedAt': '생성 시각',
   'evidenceSource.completion': '완료 상태',
-  'evidenceSource.partialAnswer': '일부만 생성된 답변',
   'evidenceSource.sourceStatus': '출처 상태',
   'evidenceSource.currentSource': '현재 출처와 일치',
   'evidenceSource.unavailableSource': '일부 출처 상태를 확인할 수 없음',

@@ -146,14 +146,6 @@ export function presentEvidenceSource(
             label: t('evidenceSource.generatedAt'),
             value: document.metadata.createdAt,
           },
-          ...(document.metadata.completion === 'partial'
-            ? [
-                {
-                  label: t('evidenceSource.completion'),
-                  value: t('evidenceSource.partialAnswer'),
-                },
-              ]
-            : []),
           {
             label: t('evidenceSource.sourceStatus'),
             value:

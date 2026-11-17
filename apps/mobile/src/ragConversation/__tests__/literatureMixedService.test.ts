@@ -3,7 +3,7 @@ import { runRagConversationTurn } from '../service';
 
 jest.mock('@orot/agent-runtime', () => ({ runMultiAgentWorkflow: jest.fn() }));
 
-test('marks a mixed-source response partial when the local explanation was not rendered', async () => {
+test('preserves mixed-source limitations without a completion classification', async () => {
   const paper = {
     sourceKind: 'external_medical' as const,
     sourceId: 'europe-pmc',
@@ -39,7 +39,6 @@ test('marks a mixed-source response partial when the local explanation was not r
   });
   expect(outcome).toMatchObject({
     status: 'answer',
-    completion: 'partial',
     citations: [paper],
     answer: expect.stringContaining('기록과의 비교는 확인하지 못했어요'),
   });
@@ -66,7 +65,6 @@ test('keeps both citations when both claims were rendered and marks the comparis
     status: 'result',
     value: {
       answer: '기록 원문과 문헌 원문. 비교 미확인.',
-      completion: 'partial',
       literatureReferences: [paper],
       localReferences: [local],
     },
@@ -86,7 +84,6 @@ test('keeps both citations when both claims were rendered and marks the comparis
   });
   expect(outcome).toMatchObject({
     status: 'answer',
-    completion: 'partial',
     citations: [paper, local],
     answer: expect.stringContaining('비교 미확인'),
   });

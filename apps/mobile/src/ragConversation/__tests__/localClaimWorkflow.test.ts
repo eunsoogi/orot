@@ -106,7 +106,7 @@ test.each([
     });
     if (result.status === 'answer') {
       if (missingLiterature) {
-        expect(result.completion).toBe('partial');
+        expect(result).not.toHaveProperty('completion');
         expect(result.answer).toContain('문헌');
         expect(result.answer).toContain('비교');
         expect(result.answer).toContain('확인하지 못');

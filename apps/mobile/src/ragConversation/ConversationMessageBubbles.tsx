@@ -40,8 +40,7 @@ export function ConversationMessageBubbles({
       presentation.visitQuestions !== false) ||
     message.visitQuestionsUnavailable ||
     message.dailyReport ||
-    (presentation.showCitations && message.citations?.length) ||
-    message.completion === 'partial',
+    (presentation.showCitations && message.citations?.length),
   );
   // Hidden tool activity and unavailable renderers must not create a painted surface.
   // Keep user messages and the existing delayed receipt lifecycle outside this predicate.

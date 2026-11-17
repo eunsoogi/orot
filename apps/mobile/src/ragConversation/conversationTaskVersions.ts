@@ -1,3 +1,4 @@
+import { legacyCompletionTask } from './conversationLegacyCompletion';
 import { ragConversationTask } from './task';
 import { validateInitialConversationResponse } from './initialResponse';
 
@@ -10,24 +11,25 @@ const publicFallbackInstruction =
   'If optional public web research failed, answer a supported local-record question with completion=partial using only its supplied local evidence, and state that public research was unavailable. Never invent external findings. ';
 
 /** Retain previous tool-preview ordering for either protected v9 policy. New sends
- * use v10; restoration never creates a new opening or mutates a saved checkpoint. */
+ * use v11; restoration never creates a new opening or mutates a saved checkpoint. */
 export function restoreConversationTask(
   identity: { taskType: string; taskVersion: string },
   exactInput?: string,
-) {
+): typeof ragConversationTask | undefined {
   if (identity.taskType !== ragConversationTask.taskType) return undefined;
   if (identity.taskVersion === ragConversationTask.taskVersion)
     return ragConversationTask;
+  if (identity.taskVersion === '10') return legacyCompletionTask();
   if (identity.taskVersion !== '9') return undefined;
   const withFallback = {
-    ...ragConversationTask,
+    ...legacyCompletionTask(),
     taskVersion: '9',
     initialToolResponse: validateInitialConversationResponse,
     reviewInitialToolResponse: true,
     systemPrompt:
-      legacyInitialResponseInstruction + ragConversationTask.systemPrompt,
+      legacyInitialResponseInstruction + legacyCompletionTask().systemPrompt,
   };
-  const original = {
+  const original: typeof ragConversationTask = {
     ...withFallback,
     systemPrompt: withFallback.systemPrompt.replace(
       publicFallbackInstruction,

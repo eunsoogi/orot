@@ -89,7 +89,6 @@ export function conversationCompletedAnswer(input: {
                 : {}),
               citations: outcome.citations,
               healthSources: outcome.healthSources,
-              completion: outcome.completion,
               healthSummary: outcome.healthSummary,
               visitQuestions: outcome.visitQuestions,
               retryHealthSummary: outcome.retryHealthSummary

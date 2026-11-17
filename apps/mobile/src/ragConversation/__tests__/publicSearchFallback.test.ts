@@ -4,7 +4,6 @@ import type { TaskResponderInput } from '@orot/agent-runtime';
 
 const value = {
   answerKind: 'grounded',
-  completion: 'partial',
   answer: '합성 기록 요약',
 };
 function input(): TaskResponderInput {
@@ -47,14 +46,14 @@ function input(): TaskResponderInput {
   };
 }
 
-test('only app-owned public failure gaps permit a partial local answer', () => {
+test('only actual coverage and evidence, not a model completion label, permit a local answer', () => {
   expect(acceptsLocalPublicSearchFallback(value, input())).toBe(true);
   expect(
     acceptsLocalPublicSearchFallback(
       { ...value, completion: 'complete' },
       input(),
     ),
-  ).toBe(false);
+  ).toBe(true);
 });
 
 test.each([

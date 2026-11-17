@@ -10,8 +10,14 @@ export function conversationHistoryRecoveryProps(
     ConversationSessions,
     'loadOlderHistory' | 'synchronizeModel' | 'retryRestore'
   >,
+  active = true,
 ) {
   return {
+    restoring:
+      !active ||
+      session.restoring ||
+      session.quarantined ||
+      session.modelSelectionPending,
     historyHasMore: session.historyHasMore,
     historyLoading: session.historyLoading,
     historyLoadFailed: session.historyLoadFailed,

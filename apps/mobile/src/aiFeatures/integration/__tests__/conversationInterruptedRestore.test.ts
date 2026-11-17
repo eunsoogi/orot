@@ -55,7 +55,7 @@ test('a reopened request restores its question as interrupted without starting a
       {
         question: 'Synthetic question',
         answer: '',
-        completion: 'partial',
+        interrupted: true,
         toolMessageId: 'request',
       },
     ]);
