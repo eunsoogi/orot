@@ -10,19 +10,31 @@ enum ResponsesSafetyRefusal {
         if let part = object["part"] as? [String: Any], part["type"] as? String == "refusal" {
             throw refusal()
         }
-        if let item = object["item"] as? [String: Any] { try validateOutput([item]) }
+        if let item = object["item"] as? [String: Any] {
+            try validateOutput([item])
+        }
         if let response = object["response"] as? [String: Any] {
             if let details = response["incomplete_details"] as? [String: Any],
-               details["reason"] as? String == "content_filter" { throw refusal() }
-            if let output = response["output"] as? [[String: Any]] { try validateOutput(output) }
+               details["reason"] as? String == "content_filter"
+            {
+                throw refusal()
+            }
+            if let output = response["output"] as? [[String: Any]] {
+                try validateOutput(output)
+            }
         }
     }
 
     static func validateOutput(_ output: [[String: Any]]) throws {
         for item in output {
-            if item["type"] as? String == "refusal" { throw refusal() }
+            if item["type"] as? String == "refusal" {
+                throw refusal()
+            }
             if let content = item["content"] as? [[String: Any]],
-               content.contains(where: { $0["type"] as? String == "refusal" }) { throw refusal() }
+               content.contains(where: { $0["type"] as? String == "refusal" })
+            {
+                throw refusal()
+            }
         }
     }
 
