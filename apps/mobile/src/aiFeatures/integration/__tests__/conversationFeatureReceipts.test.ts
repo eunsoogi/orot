@@ -71,6 +71,9 @@ test('visit turn forwards the original receipt through its selected option befor
   jest
     .mocked(defaultVisitQuestionRouteOperations.generate)
     .mockImplementation(async input => {
+      // Synthetic route preparation must honor the same opening/consent gate as production.
+      if (input.beforeResearch && !(await input.beforeResearch()))
+        return { status: 'cancelled' };
       expect(input.selectedAi.provider).toBe(input.selectedAi.option.provider);
       await input.selectedAi.option.provider.generate(
         { messages: [] } as never,

@@ -1,3 +1,5 @@
+import { createPreparedOpeningConsent } from './preparedOpeningConsent';
+import { observeVisitPreflight } from './visitPreflightDiagnostics';
 import { conversationConsentScope } from './conversationBackgroundProvider';
 import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { startContextualConversationOpening } from './contextualConversationOpening';
@@ -39,9 +41,11 @@ export async function generateConversationVisitQuestions(input: {
   // An explicit but invalid target must never fall back to another appointment.
   if (input.appointmentId !== undefined && !input.appointmentId.trim())
     return { status: 'no_appointment' as const };
-  const appointment = await input.operations.loadAppointment(
-    new Date().toISOString(),
-    input.appointmentId,
+  const appointment = await observeVisitPreflight('preflight_appointment', () =>
+    input.operations.loadAppointment(
+      new Date().toISOString(),
+      input.appointmentId,
+    ),
   );
   if (!current()) return { status: 'cancelled' as const };
   if (!appointment) return { status: 'no_appointment' as const };
@@ -52,7 +56,7 @@ export async function generateConversationVisitQuestions(input: {
   )
     return { status: 'appointment_changed' as const };
   const selectedAi = conversationReceiptSelection(
-    await input.resolveSelectedAi(),
+    await observeVisitPreflight('preflight_selection', input.resolveSelectedAi),
     input.observer,
   );
   if (!current()) return { status: 'cancelled' as const };
@@ -60,11 +64,19 @@ export async function generateConversationVisitQuestions(input: {
     return { status: 'provider_unavailable' as const };
   let opening:
     ReturnType<typeof startContextualConversationOpening> | undefined;
+  const gate = createPreparedOpeningConsent(
+    {
+      authorize: async request =>
+        (await confirmConsent(request)) ? 'authorized' : 'renewal_required',
+    },
+    'visit',
+  );
   try {
     const outcome = await generateInlineVisitReview({
       ownerKey: input.ownerKey,
       appointmentId: appointment.id,
-      loadSaved: input.loadSaved,
+      loadSaved: id =>
+        observeVisitPreflight('preflight_saved', () => input.loadSaved(id)),
       isCurrentOwner: input.isCurrentOwner,
       signal: input.signal,
       generate: async () => {
@@ -76,18 +88,22 @@ export async function generateConversationVisitQuestions(input: {
           signal: input.signal,
           consentScope: visitConsentScope,
           isCurrent: current,
-          consent: {
-            authorize: async request =>
-              (await confirmConsent(request))
-                ? 'authorized'
-                : 'renewal_required',
-          },
+          consent: gate.port,
         });
-        // Only new generation needs an opening; tools start after its bounded attempt.
-        await opening?.done;
-        if (!current()) return { status: 'cancelled' as const };
+        // Start local preparation immediately, but reveal opening consent only after
+        // preparation succeeds. A local failure must not dismiss a visible prompt.
+        const openingDone = observeVisitPreflight(
+          'preflight_opening',
+          () => opening!.done,
+        );
         return input.operations.generate({
           appointment,
+          isCurrentOwner: current,
+          beforeResearch: async () => {
+            gate.release(current());
+            await openingDone;
+            return current();
+          },
           request: input.request,
           selectedAi,
           signal: input.signal,
@@ -102,6 +118,7 @@ export async function generateConversationVisitQuestions(input: {
       ? { ...outcome, appointment, selectedAi }
       : outcome;
   } finally {
+    gate.release(false);
     opening?.dispose();
   }
 }
