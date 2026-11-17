@@ -34,6 +34,12 @@ enum ResponsesSteeringDiagnostics {
     }
 
     static func beforeActiveFailure(_ object: [String: Any], type: String) -> ChatGPTResponsesError {
+        if let message = ResponsesBeforeActiveDiagnostics.message(
+            type: type,
+            enabled: ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
+        ) {
+            NSLog("%@", message)
+        }
         let category: ResponsesMalformedDiagnostics.Category
         switch type {
         case "error":
