@@ -51,6 +51,18 @@ enum GlassIconButtonTestAssertions {
             control.disabled = false
             control.sendActions(for: .touchUpInside)
             XCTAssertEqual(calls, 2)
+            // The compact visual treatment must not scale the interactive or accessible frame.
+            control.visualScale = 0.5
+            control.layoutIfNeeded()
+            XCTAssertEqual(control.bounds.size, CGSize(width: size, height: size))
+            XCTAssertEqual(control.configuration?.background.backgroundInsets.top, size / 4)
+            XCTAssertEqual(control.configuration?.background.backgroundInsets.leading, size / 4)
+            XCTAssertTrue(control.hitTest(CGPoint(x: 1, y: 1), with: nil) === control)
+            control.sendActions(for: .touchUpInside)
+            XCTAssertEqual(calls, 3)
+            control.visualScale = 1
+            control.layoutIfNeeded()
+            XCTAssertEqual(control.configuration?.background.backgroundInsets.top, 0)
             control.removeFromSuperview()
         }
     }

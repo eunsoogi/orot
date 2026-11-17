@@ -17,7 +17,6 @@ import { ConversationActivityBubble } from './ConversationActivityBubble';
 import { conversationHistoryActivity } from './conversationHistoryActivity';
 import type { ConversationHistoryProps } from './ConversationHistoryProps';
 import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserTurn';
-
 /** Owns the scrollable transcript and keeps visit targets before messages in visual and source order. */
 export function ConversationHistory({
   messages,
@@ -67,6 +66,7 @@ export function ConversationHistory({
   const expectedOffset = useRef<number | null>(null);
   const jumpControl = useConversationJumpToLatest({
     sessionId,
+    replyFocusGeneration: replyFocus?.generation,
     compact,
     composerInset,
     messageEnd,
@@ -141,6 +141,7 @@ export function ConversationHistory({
           followLatest();
         }}
         onScrollBeginDrag={() => {
+          jumpControl.cancelJump();
           window.cancelAnchor();
           userScrolling.current = true;
           expectedOffset.current = null;
@@ -162,6 +163,7 @@ export function ConversationHistory({
           );
         }}
         onScrollToTop={() => {
+          jumpControl.cancelJump();
           expectedOffset.current = null;
           followsBottom.current = false;
         }}

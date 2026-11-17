@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ComponentRef, RefObject } from 'react';
 import type {
   NativeSyntheticEvent,
@@ -9,11 +9,13 @@ import {
   conversationIsNearLatest,
   conversationVisibleOffset,
 } from './conversationVisibleOffset';
+import { NavigationMotionContext } from '../navigation/NavigationMotionContext';
 type Geometry = { height: number; contentHeight: number; offset: number };
 
 /** Read actual scroll geometry without treating keyboard/reflow changes as reader intent. */
 export function useConversationJumpToLatest(input: {
   sessionId?: number;
+  replyFocusGeneration?: number;
   compact: boolean;
   composerInset: number;
   messageEnd: RefObject<number | null>;
@@ -33,10 +35,20 @@ export function useConversationJumpToLatest(input: {
     scrollGeometry,
     historyView,
   } = input;
+  const reduceMotion = useContext(NavigationMotionContext);
+  const animatedTarget = useRef<number | null>(null);
+  const focusGeneration = useRef(input.replyFocusGeneration);
+  // A notification focus owns the next scroll, even before its row layout arrives.
+  if (focusGeneration.current !== input.replyFocusGeneration) {
+    focusGeneration.current = input.replyFocusGeneration;
+    animatedTarget.current = null;
+    followsBottom.current = false;
+  }
   const [away, setAway] = useState(false);
   const measured = useRef<Geometry | null>(null);
   useEffect(() => {
     measured.current = null;
+    animatedTarget.current = null;
     setAway(false);
   }, [input.sessionId]);
   const refresh = useCallback(
@@ -58,7 +70,7 @@ export function useConversationJumpToLatest(input: {
               composerInset,
             )
           : Math.max(0, geometry.contentHeight - geometry.height);
-      setAway(end - geometry.offset > 8);
+      setAway(animatedTarget.current === null && end - geometry.offset > 8);
     },
     [compact, composerInset, messageEnd],
   );
@@ -66,6 +78,15 @@ export function useConversationJumpToLatest(input: {
   useEffect(() => {
     refresh();
   }, [refresh]);
+  // An accessibility preference change must also stop an already running animation.
+  useEffect(() => {
+    if (!reduceMotion || animatedTarget.current === null) return;
+    const y = animatedTarget.current;
+    animatedTarget.current = null;
+    followsBottom.current = true;
+    expectedOffset.current = y;
+    historyView.current?.scrollTo({ y, animated: false });
+  }, [reduceMotion, followsBottom, expectedOffset, historyView]);
   const onScroll = ({
     nativeEvent,
   }: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -80,7 +101,40 @@ export function useConversationJumpToLatest(input: {
       contentHeight: contentSize.height,
       offset: contentOffset.y,
     };
+    if (
+      animatedTarget.current !== null &&
+      expectedOffset.current !== animatedTarget.current
+    )
+      animatedTarget.current = null;
     refresh(scrollGeometry.current);
+    // Intermediate animation frames are programmatic, not renewed reader intent.
+    const target = animatedTarget.current;
+    if (target !== null) {
+      const clamped = Math.min(
+        target,
+        Math.max(0, contentSize.height - layoutMeasurement.height),
+      );
+      if (Math.abs(contentOffset.y - clamped) >= 1) return;
+      const latest =
+        compact && messageEnd.current !== null
+          ? conversationVisibleOffset(
+              messageEnd.current,
+              layoutMeasurement.height,
+              composerInset,
+            )
+          : Math.max(0, contentSize.height - layoutMeasurement.height);
+      if (Math.abs(latest - contentOffset.y) >= 1) {
+        animatedTarget.current = latest;
+        expectedOffset.current = latest;
+        historyView.current?.scrollTo({ y: latest, animated: !reduceMotion });
+        return;
+      }
+      animatedTarget.current = null;
+      followsBottom.current = true;
+      expectedOffset.current = null;
+      refresh(scrollGeometry.current);
+      return;
+    }
     if (previous && Math.abs(contentOffset.y - previous.offset) < 1) return;
     // Geometry changes and our own offset corrections do not imply reader intent.
     if (changed && !userScrolling.current) {
@@ -128,6 +182,11 @@ export function useConversationJumpToLatest(input: {
     away,
     refresh,
     onScroll,
+    cancelJump() {
+      // A real drag owns scrolling immediately, even halfway through a jump.
+      if (animatedTarget.current !== null) followsBottom.current = false;
+      animatedTarget.current = null;
+    },
     jump() {
       // Explicit activation gives following back to the reader, even during generation.
       followsBottom.current = true;
@@ -144,8 +203,12 @@ export function useConversationJumpToLatest(input: {
             ? Math.max(0, geometry.contentHeight - geometry.height)
             : null;
       expectedOffset.current = y;
-      if (y === null) historyView.current?.scrollToEnd({ animated: false });
-      else historyView.current?.scrollTo({ y, animated: false });
+      const animated = !reduceMotion;
+      animatedTarget.current = animated ? y : null;
+      // Streaming must not replace the in-flight animation with a nonanimated follow.
+      followsBottom.current = animatedTarget.current === null;
+      if (y === null) historyView.current?.scrollToEnd({ animated });
+      else historyView.current?.scrollTo({ y, animated });
       setAway(false);
     },
   };

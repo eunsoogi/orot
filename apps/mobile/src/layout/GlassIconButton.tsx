@@ -1,5 +1,6 @@
 import {
   Platform,
+  View,
   StyleSheet,
   Pressable,
   requireNativeComponent,
@@ -12,6 +13,7 @@ import { appColors } from './appColors';
 
 interface NativeProps extends ViewProps {
   symbolName: string;
+  visualScale: number;
   actionLabel: string;
   actionHint: string;
   actionTestID: string;
@@ -34,7 +36,9 @@ export function GlassIconButton({
   onPress,
   style,
   testID = '',
+  visualScale = 1,
 }: {
+  readonly visualScale?: number;
   readonly symbolName: string;
   readonly accessibilityLabel: string;
   readonly accessibilityHint?: string;
@@ -45,6 +49,9 @@ export function GlassIconButton({
   readonly style?: StyleProp<ViewStyle>;
   readonly testID?: string;
 }) {
+  const scale = Number.isFinite(visualScale)
+    ? Math.max(0.5, Math.min(1, visualScale))
+    : 1;
   // Mirror the native guard at the bridge boundary: stale queued events cannot activate a disabled action.
   const invoke = () => {
     if (!disabled) onPress?.();
@@ -52,6 +59,7 @@ export function GlassIconButton({
   return NativeButton ? (
     <NativeButton
       symbolName={symbolName}
+      visualScale={scale}
       actionLabel={accessibilityLabel}
       actionHint={accessibilityHint}
       actionTestID={testID}
@@ -73,10 +81,12 @@ export function GlassIconButton({
       style={style}
       testID={testID}
     >
-      <AppSymbol
-        name={symbolName}
-        color={disabled ? appColors.secondary : appColors.text}
-      />
+      <View pointerEvents="none" style={{ transform: [{ scale }] }}>
+        <AppSymbol
+          name={symbolName}
+          color={disabled ? appColors.secondary : appColors.text}
+        />
+      </View>
     </Pressable>
   );
 }
