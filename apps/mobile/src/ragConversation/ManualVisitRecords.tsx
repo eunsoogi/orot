@@ -24,10 +24,12 @@ import type {
 /** Confirmation is explicit: loading or selecting a prepared question never creates an asked record. */
 export function ManualVisitRecords({
   appointmentId,
+  embedded = false,
   open = openManualVisitRecords,
   drafts,
 }: {
   readonly appointmentId: string;
+  readonly embedded?: boolean;
   readonly open?: () => Promise<ManualVisitRecordsService>;
   readonly drafts?: ManualVisitDrafts;
 }) {
@@ -129,7 +131,10 @@ export function ManualVisitRecords({
   };
   if (!items.length && !error) return null;
   return (
-    <View style={styles.panel} testID="manual-visit-records">
+    <View
+      style={[styles.panel, embedded && styles.embeddedPanel]}
+      testID="manual-visit-records"
+    >
       <Text accessibilityRole="header" style={styles.title}>
         {t('visitQuestions.manual.title')}
       </Text>

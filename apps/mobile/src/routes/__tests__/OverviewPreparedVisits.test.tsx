@@ -15,9 +15,19 @@ jest.mock('@react-navigation/native', () => ({
   useIsFocused: () => mockFocused,
 }));
 jest.mock('../../ragConversation/ManualVisitRecords', () => ({
-  ManualVisitRecords: ({ appointmentId }: { appointmentId: string }) => {
+  ManualVisitRecords: ({
+    appointmentId,
+    embedded,
+  }: {
+    appointmentId: string;
+    embedded?: boolean;
+  }) => {
     const { Text } = require('react-native');
-    return <Text>{`prepared:${appointmentId}`}</Text>;
+    return (
+      <Text
+        accessibilityHint={embedded ? 'embedded' : 'standalone'}
+      >{`prepared:${appointmentId}`}</Text>
+    );
   },
 }));
 jest.mock('../../ragConversation/ConversationSavedRecaps', () => ({
@@ -51,6 +61,9 @@ test('shows existing prepared actions only on focused foreground Overview', asyn
     });
   await render(<OverviewPreparedVisits appointmentId="synthetic-visit" />);
   expect(screen.getByText('prepared:synthetic-visit')).toBeTruthy();
+  expect(
+    screen.getByText('prepared:synthetic-visit').props.accessibilityHint,
+  ).toBe('embedded');
   expect(screen.queryByText('recap:synthetic-visit')).toBeNull();
   await act(async () => change('background'));
   expect(screen.queryByText('prepared:synthetic-visit')).toBeNull();

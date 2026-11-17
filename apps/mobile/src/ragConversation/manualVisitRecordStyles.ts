@@ -4,6 +4,8 @@ import { appColors } from '../layout/appColors';
 /** Shared layout for the visit record panel and its inline editor. */
 export const styles = StyleSheet.create({
   panel: { padding: 20, gap: 12 },
+  // Overview already supplies its shared section gutter and vertical gap.
+  embeddedPanel: { padding: 0 },
   title: { fontSize: 18, fontWeight: '700' },
   card: {
     backgroundColor: appColors.surface,

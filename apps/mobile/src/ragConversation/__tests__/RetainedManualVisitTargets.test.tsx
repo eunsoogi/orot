@@ -3,9 +3,19 @@ import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import { RetainedManualVisitTargets } from '../RetainedManualVisitTargets';
 
 jest.mock('../ManualVisitRecords', () => ({
-  ManualVisitRecords: ({ appointmentId }: { appointmentId: string }) => {
+  ManualVisitRecords: ({
+    appointmentId,
+    embedded,
+  }: {
+    appointmentId: string;
+    embedded?: boolean;
+  }) => {
     const { Text } = require('react-native');
-    return <Text>{appointmentId}</Text>;
+    return (
+      <Text accessibilityHint={embedded ? 'embedded' : 'standalone'}>
+        {appointmentId}
+      </Text>
+    );
   },
 }));
 jest.mock('../ConversationSavedRecaps', () => ({
@@ -15,31 +25,38 @@ jest.mock('../ConversationSavedRecaps', () => ({
   },
 }));
 
-test('shows Recap for a source-validated restored visit', async () => {
-  const discovery = {
-    activeSessionVersion: jest.fn().mockResolvedValue(0),
-    readSession: jest.fn().mockResolvedValue({
-      items: [
-        {
-          id: 'turn',
-          revision: '1',
-          visitQuestions: { appointmentId: 'visit' },
-        },
-      ],
-      unavailableCount: 0,
-      nextCursor: null,
-    }),
-    revalidateSession: jest.fn().mockResolvedValue(true),
-  };
-  await render(
-    <RetainedManualVisitTargets
-      sessionId="session"
-      discover={jest.fn().mockResolvedValue(discovery)}
-      excluded="[]"
-    />,
-  );
-  await waitFor(() => expect(screen.getByText('recap:visit')).toBeTruthy());
-});
+test.each([true, false])(
+  'restored visit preserves Recap and embedded=%s presentation',
+  async embedded => {
+    const discovery = {
+      activeSessionVersion: jest.fn().mockResolvedValue(0),
+      readSession: jest.fn().mockResolvedValue({
+        items: [
+          {
+            id: 'turn',
+            revision: '1',
+            visitQuestions: { appointmentId: 'visit' },
+          },
+        ],
+        unavailableCount: 0,
+        nextCursor: null,
+      }),
+      revalidateSession: jest.fn().mockResolvedValue(true),
+    };
+    await render(
+      <RetainedManualVisitTargets
+        embedded={embedded}
+        sessionId="session"
+        discover={jest.fn().mockResolvedValue(discovery)}
+        excluded="[]"
+      />,
+    );
+    await waitFor(() => expect(screen.getByText('recap:visit')).toBeTruthy());
+    expect(screen.getByText('visit').props.accessibilityHint).toBe(
+      embedded ? 'embedded' : 'standalone',
+    );
+  },
+);
 
 test('a source deletion aborts an older retained-session read before it can expose a visit', async () => {
   let finish!: (page: unknown) => void;

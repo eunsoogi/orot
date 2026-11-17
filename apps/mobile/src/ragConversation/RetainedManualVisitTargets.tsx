@@ -15,6 +15,7 @@ import type { ManualVisitDrafts } from './useManualVisitDraft';
 /** Restores only exact visits from source-validated turns of the currently active durable session. */
 export function RetainedManualVisitTargets({
   content = 'all',
+  embedded = false,
   sessionId,
   discover,
   drafts,
@@ -22,6 +23,7 @@ export function RetainedManualVisitTargets({
   loadRecapDatabase,
 }: {
   readonly content?: 'all' | 'recaps' | 'questions';
+  readonly embedded?: boolean;
   readonly sessionId: string;
   readonly discover: AiFeatureServices['conversationArtifacts'];
   readonly drafts?: ManualVisitDrafts;
@@ -115,7 +117,11 @@ export function RetainedManualVisitTargets({
             />
           )}
           {content !== 'recaps' && (
-            <ManualVisitRecords appointmentId={id} drafts={drafts} />
+            <ManualVisitRecords
+              appointmentId={id}
+              drafts={drafts}
+              embedded={embedded}
+            />
           )}
         </Fragment>
       ))}
