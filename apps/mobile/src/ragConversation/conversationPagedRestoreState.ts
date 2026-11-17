@@ -121,9 +121,8 @@ export function createConversationPagedRestoreState(input: {
                 error: '',
                 steeringInstructions: [],
                 steeringAvailable: false,
-                dailyReport: page.turns
-                  .flatMap(turn => (turn.dailyReport ? [turn.dailyReport] : []))
-                  .at(-1),
+                // Reopening history must not turn a past report into a mandatory input for a new question.
+                dailyReport: undefined,
                 entryIntent: page.turns.some(
                   turn => turn.entryIntent === 'possibilities',
                 )

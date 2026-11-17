@@ -121,7 +121,7 @@ test.each([
   },
 );
 
-test('restores different report revisions on their own turns and selects the latest target', async () => {
+test('restores different report revisions on their own turns without selecting a target', async () => {
   const report = {
     identity: createDailyReportIdentity('2026-11-10', 'Asia/Seoul'),
     runId: 'report',
@@ -145,7 +145,7 @@ test('restores different report revisions on their own turns and selects the lat
     1,
     expect.objectContaining({
       restoreFailed: false,
-      dailyReport: { ...report, revision: 2 },
+      dailyReport: undefined,
       messages: expect.arrayContaining([
         expect.objectContaining({ content: 'answer', dailyReport: report }),
         expect.objectContaining({
@@ -186,6 +186,12 @@ test('accepts the same saved report despite different JSON key order', async () 
   await state.start(1, 'saved');
   expect(update).toHaveBeenCalledWith(
     1,
-    expect.objectContaining({ restoreFailed: false, dailyReport: report }),
+    expect.objectContaining({
+      restoreFailed: false,
+      dailyReport: undefined,
+      messages: expect.arrayContaining([
+        expect.objectContaining({ dailyReport: report }),
+      ]),
+    }),
   );
 });

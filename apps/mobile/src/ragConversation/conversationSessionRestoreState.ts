@@ -53,10 +53,7 @@ export function createConversationSessionRestoreState(input: {
         controller.signal.aborted
       )
         return;
-      const reports = turns.flatMap(turn =>
-        turn.dailyReport ? [turn.dailyReport] : [],
-      );
-      // Each turn retains its own exact report; only the latest turn sets the next follow-up target.
+      // Restored report provenance stays on each turn. History does not constitute a new report selection.
       let nextId = 0;
       const messages = conversationRestoredMessages(
         turns,
@@ -68,7 +65,7 @@ export function createConversationSessionRestoreState(input: {
         taskCards,
         steeringInstructions: [],
         steeringAvailable: false,
-        dailyReport: reports.at(-1),
+        dailyReport: undefined,
         // Only validated retained turns can restore an exploration intent.
         entryIntent: turns.some(turn => turn.entryIntent === 'possibilities')
           ? 'possibilities'
