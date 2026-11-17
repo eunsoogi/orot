@@ -1,3 +1,4 @@
+import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import { observeSavedMemoryRead } from '../savedMemoryReadDiagnostics';
 import { readFileSync } from 'node:fs';
@@ -20,6 +21,7 @@ const transformed = transformSync(readFileSync(filename, 'utf8'), {
 });
 const loaded = { exports: {} };
 const dependencies = {
+  '../i18n': () => require('../../i18n'),
   './savedMemoryReadDiagnostics': () =>
     require('../savedMemoryReadDiagnostics'),
   '@orot/agent-memory': () => require('@orot/agent-memory'),
@@ -43,7 +45,9 @@ jest.mock('../../storage/secureDatabase', () => ({
   openLocalAgentMemoryDatabase: jest.fn(),
 }));
 jest.mock('../../storage/agentMemoryStorage', () => ({
-  SqlCipherAgentMemoryStorage: jest.fn(),
+  SqlCipherAgentMemoryStorage: jest.fn(() => ({
+    listUnavailableMetadata: async () => [],
+  })),
 }));
 jest.mock('@orot/agent-memory', () => ({ listSavedMemories: jest.fn() }));
 
@@ -118,4 +122,25 @@ test('enumeration failure stays distinct from successful empty records', async (
     'completed',
   ]);
   expect(JSON.stringify(report.mock.calls)).not.toContain(secretError.message);
+});
+
+test('a parent quarantined between the list read and metadata read cannot publish its earlier text', async () => {
+  jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue({});
+  jest
+    .mocked(listSavedMemories)
+    .mockResolvedValue([{ id: 'same', text: 'Synthetic old private text' }]);
+  jest.mocked(SqlCipherAgentMemoryStorage).mockImplementationOnce(() => ({
+    listUnavailableMetadata: async () => [
+      {
+        id: 'same',
+        createdAt: 1,
+        reason: 'unverifiable_parent',
+        recovery: 'review_again',
+      },
+    ],
+  }));
+  const rows = await loadSavedLocalMemories();
+  expect(rows).toHaveLength(1);
+  expect(rows[0].unavailableReason).toBe('unverifiable_parent');
+  expect(JSON.stringify(rows)).not.toContain('Synthetic old private text');
 });

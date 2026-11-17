@@ -1,4 +1,8 @@
 import {
+  quarantinedMemoryRecords,
+  memoryParentAvailable,
+} from './agentMemoryParentQuarantine';
+import {
   assertUserStatementMemoryCurrent,
   UserStatementSourceUnavailableError,
 } from './userStatementMemoryGuards';
@@ -18,6 +22,7 @@ export async function compactAgentMemory(
   records: PersistedMemoryRecord[],
 ): Promise<void> {
   await assertSafeSymptomCompaction(transaction, records);
+  const quarantined = await quarantinedMemoryRecords(transaction);
   const removed = await transaction.execute(
     'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
   );
@@ -43,6 +48,7 @@ export async function compactAgentMemory(
     )
       continue;
     try {
+      if (!(await memoryParentAvailable(transaction, record))) continue;
       await assertUserStatementMemoryCurrent(transaction, record);
       current.push(record);
     } catch (error) {
@@ -50,5 +56,12 @@ export async function compactAgentMemory(
       if (!(error instanceof UserStatementSourceUnavailableError)) throw error;
     }
   }
-  await reconcileAgentMemoryRecords(transaction, current);
+  await reconcileAgentMemoryRecords(transaction, [
+    ...current,
+    ...quarantined.filter(
+      record =>
+        !referencesAnySource(record, removedIds) &&
+        !referencesAnySource(record, invalidated),
+    ),
+  ]);
 }

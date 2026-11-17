@@ -1,3 +1,4 @@
+import { legacyResearchPeriodAvailable } from './legacyResearchPeriodQuarantine';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { retainedResearchMetadata } from '../aiFeatures/integration/retainedResearchSearch';
 import type { ResearchArtifact } from './researchArtifactStorage';
@@ -23,6 +24,7 @@ export async function readResearchArtifact(
     [rowId],
   );
   const item = decodeResearchArtifact(rowId, result.rows[0]?.snapshot_json);
+  if (item && !(await legacyResearchPeriodAvailable(tx, item))) return null;
   if (item?.originSession) {
     const session = await tx.execute(
       'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON s.generation = g.generation WHERE g.singleton = 1 AND s.id = ? AND s.hidden = 0',

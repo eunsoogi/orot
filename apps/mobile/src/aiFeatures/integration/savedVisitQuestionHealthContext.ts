@@ -53,8 +53,15 @@ export async function restoreVisitQuestionHealthContext(
   source: VisitQuestionHealthContextSource,
   read: HealthContextReader | undefined,
   registry: LocalEvidenceReferenceRegistry,
+  trustedPolicy = false,
 ) {
   const current = await readPeriod(source, read);
+  if (
+    !trustedPolicy &&
+    ['measurements', 'activity'].includes(source.scope.topic) &&
+    current.report.deletionGeneration !== source.deletionGeneration
+  )
+    throw new SavedVisitQuestionsReadError('unverifiable_legacy_period');
   if (healthContextRevision(current.scope, current.report) !== source.revision)
     throw new SavedVisitQuestionsReadError('changed_health_context');
   return registerCurrentPeriod(source, current, registry);
@@ -65,8 +72,15 @@ export async function restoreVisitQuestionPeriodForHistory(
   source: VisitQuestionHealthContextSource,
   read: HealthContextReader | undefined,
   registry: LocalEvidenceReferenceRegistry,
+  trustedPolicy = false,
 ) {
   const current = await readPeriod(source, read);
+  if (
+    !trustedPolicy &&
+    ['measurements', 'activity'].includes(source.scope.topic) &&
+    current.report.deletionGeneration !== source.deletionGeneration
+  )
+    throw new SavedVisitQuestionsReadError('unverifiable_legacy_period');
   if (healthContextRevision(current.scope, current.report) === source.revision)
     return {
       item: registerCurrentPeriod(source, current, registry),

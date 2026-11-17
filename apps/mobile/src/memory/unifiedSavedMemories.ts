@@ -1,7 +1,9 @@
 import type { AgentMemoryHit } from '@orot/agent-memory';
 import type { ManualHistoryScreenRecord } from '../manualHistory/types';
 
-export type AgentSavedMemory = Omit<AgentMemoryHit, 'score'>;
+export type AgentSavedMemory = Omit<AgentMemoryHit, 'score'> & {
+  readonly unavailableReason?: 'unverifiable_parent';
+};
 export interface HistorySavedMemory {
   readonly sourceKind: 'manual_history';
   readonly id: string;

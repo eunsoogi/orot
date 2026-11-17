@@ -1,3 +1,4 @@
+import { markCurrentVisitPeriod } from '../../storage/legacyVisitPeriodQuarantine';
 import { captureQuestionGeneration } from './generationMetadata';
 import type { VisitQuestionCaveat } from '@orot/domain';
 import type { AgentMemoryService } from '@orot/agent-memory';
@@ -219,6 +220,7 @@ export async function saveReviewedVisitQuestions(
         );
       }
       await writer.put('visit_question', question);
+      if (sql) await markCurrentVisitPeriod(sql, question);
       for (const source of question.healthContextSources ?? []) {
         if (!sql)
           throw new Error('Atomic health-period storage is unavailable.');

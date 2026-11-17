@@ -1,3 +1,8 @@
+import {
+  memoryParentAvailable,
+  memoryParentQuarantineRevision,
+  unavailableMemoryMetadata,
+} from './agentMemoryParentQuarantine';
 import { observeDatabaseOwner } from './databaseOwnerDiagnostics';
 import { commitAgentMemoryWrites } from './agentMemoryStorageWrites';
 import type { SqlDatabase } from '@orot/storage';
@@ -63,7 +68,8 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
               'DELETE FROM agent_memory_records WHERE id = ?',
               [record.id],
             );
-          } else retained.push(record);
+          } else if (await memoryParentAvailable(transaction, record))
+            retained.push(record);
         }
       }),
     );
@@ -126,7 +132,15 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     ];
   }
 
-  listQuarantineRevision = () => symptomQuarantineRevision(this.database);
+  listQuarantineRevision = async () =>
+    JSON.stringify([
+      await symptomQuarantineRevision(this.database),
+      await memoryParentQuarantineRevision(this.database),
+    ]);
+  async listUnavailableMetadata() {
+    await this.ensureTable();
+    return unavailableMemoryMetadata(this.database);
+  }
   async markSourceRemoved(
     sourceId: string,
     kinds?: readonly string[],

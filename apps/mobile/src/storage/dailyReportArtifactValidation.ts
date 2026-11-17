@@ -1,3 +1,4 @@
+import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { acquireReportCalendarGuard } from '../aiFeatures/integration/dailyReportSystemCalendar';
 import { invalidateDailyReportRun } from './dailyReportInvalidation';
 import type { ManualHistoryRepository, SqlExecutor } from '@orot/storage';
@@ -12,6 +13,7 @@ export async function validateDailyReportArtifact(
   tx: SqlExecutor,
   id: string,
   history: ManualHistoryRepository,
+  propagateOperationalErrors = false,
 ) {
   const row = (
     await tx.execute(
@@ -68,7 +70,12 @@ export async function validateDailyReportArtifact(
         lineage,
       }),
     };
-  } catch {
+  } catch (error) {
+    if (
+      propagateOperationalErrors &&
+      !(error instanceof RetainedSourceInvalidError)
+    )
+      throw error;
     return null;
   } finally {
     guard.dispose();

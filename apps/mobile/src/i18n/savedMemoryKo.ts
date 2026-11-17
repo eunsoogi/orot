@@ -1,5 +1,9 @@
 /** Presentation only; memory content and its privacy lifecycle are not localized. */
 export const savedMemoryKo = {
+  'savedMemory.quarantinedParent':
+    '이전에 검토한 기억의 출처를 확인할 수 없어 원문과 AI 재사용을 차단했어요. 저장된 원본은 보존되어 있어요.',
+  'savedMemory.reviewAgain':
+    '원래 진료 질문이나 조사 화면에서 최신 근거로 다시 검토해 새 기억을 저장해 주세요. 이 화면에서는 AI 요청을 보내지 않아요.',
   'savedMemory.contentTitle': '기억 내용',
   'savedMemory.metadataTitle': '저장 정보',
   'savedMemory.sourceCount': '연결된 출처 {count}개',

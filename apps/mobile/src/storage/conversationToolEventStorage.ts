@@ -1,3 +1,10 @@
+import { toolEventRecovery } from './toolEventRecovery';
+import {
+  setupToolPeriodPolicy,
+  legacyToolPeriodAvailable,
+  markToolPeriodPolicy,
+  unavailableToolMetadata,
+} from './legacyToolPeriodQuarantine';
 import { conversationSelectedIds } from './conversationSelectedIds';
 import type { SqlDatabase } from '@orot/storage';
 import {
@@ -23,15 +30,17 @@ export interface StoredConversationToolTurn {
   }[];
 }
 
-// Several feature adapters may open the same live connection. Only a new connection is a restart.
-const recoveries = new WeakMap<SqlDatabase, Promise<void>>();
-
 /** Tool calls share the encrypted conversation session lease and deletion lifecycle. */
 export function createConversationToolEventStorage(
   database: SqlDatabase,
-  ensure: () => Promise<void>,
+  ensureStorage: () => Promise<void>,
 ) {
+  const ensure = async () => {
+    await ensureStorage();
+    await setupToolPeriodPolicy(database);
+  };
   return {
+    readUnavailableToolMetadata: unavailableToolMetadata(database, ensure),
     /** A source that cannot be retained must not leave a permanently running call. */
     async discardToolEvent(input: {
       sessionId: string;
@@ -103,7 +112,7 @@ export function createConversationToolEventStorage(
         if (!session.rows.length)
           throw new Error('Conversation is unavailable.');
         const prior = await tx.execute(
-          'SELECT message_id, created_at, event_json FROM conversation_tool_events WHERE session_id = ? AND run_id = ? AND call_id = ?',
+          'SELECT e.message_id, e.created_at, e.event_json, l.sources_json FROM conversation_tool_events e LEFT JOIN conversation_tool_lineage l USING(session_id,run_id,call_id) WHERE e.session_id = ? AND e.run_id = ? AND e.call_id = ?',
           [input.sessionId, event.operationRunId, event.callId],
         );
         const row = prior.rows[0];
@@ -117,6 +126,19 @@ export function createConversationToolEventStorage(
           ? projectConversationToolEvent(JSON.parse(String(row.event_json)))
           : null;
         if (row && !old) throw new Error('Stored tool event is invalid.');
+        if (
+          old &&
+          !(await legacyToolPeriodAvailable(
+            tx,
+            [input.sessionId, event.operationRunId, event.callId],
+            decodeToolLineage(
+              JSON.parse(String(row?.sources_json ?? '[]')),
+              old,
+              input,
+            ).sources,
+          ))
+        )
+          throw new Error('The legacy tool result must be regenerated.');
         const merged = mergeConversationToolEvents(old ? [old] : [], event)[0]!;
         // Validate the exact source revisions under the same lease as the event write.
         if (!old || (old.status === 'started' && event.status !== 'started'))
@@ -144,27 +166,14 @@ export function createConversationToolEventStorage(
           );
         if (!old || (old.status === 'started' && event.status !== 'started'))
           await indexToolLineage(tx, input.sessionId, event, lineage.sources);
+        await markToolPeriodPolicy(
+          tx,
+          [input.sessionId, event.operationRunId, event.callId],
+          true,
+        );
       });
     },
-    /** Call once at application storage startup, before any new request can begin. */
-    async recoverInterruptedToolEvents() {
-      await ensure();
-      let recovery = recoveries.get(database);
-      if (!recovery) {
-        recovery = database
-          .transaction(async tx => {
-            await tx.execute(
-              "UPDATE conversation_tool_events SET event_json = json_set(event_json, '$.status', 'interrupted') WHERE json_extract(event_json, '$.status') = 'started'",
-            );
-          })
-          .catch(error => {
-            recoveries.delete(database);
-            throw error;
-          });
-        recoveries.set(database, recovery);
-      }
-      await recovery;
-    },
+    recoverInterruptedToolEvents: toolEventRecovery(database, ensure),
     async readToolTurns(
       sessionId: string,
       expectedVersion?: number,
@@ -201,6 +210,15 @@ export function createConversationToolEventStorage(
               createdAt: String(row.created_at),
             },
           );
+          await indexToolLineage(tx, sessionId, event, lineage.sources);
+          if (
+            !(await legacyToolPeriodAvailable(
+              tx,
+              [sessionId, event.operationRunId, event.callId],
+              lineage.sources,
+            ))
+          )
+            continue;
           await assertToolLineage(tx, database, lineage, false);
           const messageId = String(row.message_id);
           const prior = turns.get(messageId);

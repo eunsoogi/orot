@@ -19,7 +19,12 @@ export async function readResearchSource(
   const discovery = await data.researchArtifactDiscovery?.();
   if (!discovery || signal.aborted) return { status: 'unavailable' };
   const current = await discovery.read(id, signal);
-  if (!current) return { status: 'missing' };
+  if (!current) {
+    const unavailable = await discovery.readUnavailableMetadata?.(id);
+    return unavailable
+      ? { status: 'unavailable', reason: 'unverifiable_legacy_period' }
+      : { status: 'missing' };
+  }
   if (current.metadata.revision !== revision) return { status: 'changed' };
   const supported = await reusableResearchInputGraph(
     current.content.inputSources,

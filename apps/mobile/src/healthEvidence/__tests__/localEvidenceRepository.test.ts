@@ -98,9 +98,12 @@ describe('bounded local health evidence repository', () => {
     ).toMatchObject({ description: 'Synthetic mild headache' });
     expect(statements).toHaveLength(Object.keys(STORAGE_TABLES).length);
     expect(statements.every(({ query }) => /LIMIT \?/.test(query))).toBe(true);
-    expect(statements.every(({ parameters }) => parameters.at(-1) === 2)).toBe(
-      true,
-    );
+    for (const { query, parameters } of statements) {
+      // Visit policy is applied before the visible row quota, using transport pages.
+      if (/FROM visit_questions?(_records)? WHERE/.test(query))
+        expect(parameters.slice(-2)).toEqual([100, 0]);
+      else expect(parameters.at(-1)).toBe(2);
+    }
   });
 
   it('follows exact source IDs through duplicate re-import and deletion', async () => {

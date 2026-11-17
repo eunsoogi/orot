@@ -1,3 +1,4 @@
+import { memoryParentAvailable } from './agentMemoryParentQuarantine';
 import { type SqlExecutor, type ManualHistoryRepository } from '@orot/storage';
 import type { SavedRecordSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
@@ -53,6 +54,13 @@ export async function assertRetainedRecordsCurrent(
       throw new RetainedSourceInvalidError(
         'A cited source was removed before saving.',
         'deleted',
+      );
+    if (
+      memory &&
+      !(await memoryParentAvailable(tx, decodeAgentMemoryRecord(serialized)))
+    )
+      throw new RetainedSourceInvalidError(
+        'The reviewed memory parent is unavailable.',
       );
     const parsed = JSON.parse(serialized);
     if (

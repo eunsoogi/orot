@@ -81,6 +81,10 @@ export function createResearchArtifactDiscovery(
   });
   return {
     revalidatePage: storage.revalidatePage,
+    readUnavailableMetadata: async (id: string) => {
+      const value = identity(id);
+      return value === null ? null : storage.readUnavailableMetadata(value);
+    },
     async search(input: {
       query: string;
       cursor?: string;

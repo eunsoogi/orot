@@ -136,7 +136,8 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
       );
       expect(profile.get('record-read')?.calls).toBe(1);
       expect(profile.get('dependency-index')?.calls).toBe(1);
-      expect([...profile.values()].reduce((n, p) => n + p.calls, 0)).toBe(8);
+      // Four fixed policy setup/check/stamp calls preserve quarantine without per-member work.
+      expect([...profile.values()].reduce((n, p) => n + p.calls, 0)).toBe(12);
       const indexed = await database.execute(
         'SELECT count(*) AS count FROM conversation_tool_dependencies',
       );
