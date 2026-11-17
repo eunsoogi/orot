@@ -9,8 +9,9 @@ import { ConversationComposer } from '../ConversationComposer';
 
 // Synthetic geometry proves reservation ownership; native layout is checked separately.
 test.each([
-  ['right', 800, 34, 4],
-  ['bottom', 800, 94, 64],
+  ['right', 800, 34, 28],
+  ['bottom', 800, 94, 98],
+  ['right', 800, 54, 58],
   ['right', 500, 0, 4],
   ['bottom', 500, 52, 56],
 ] as const)(
@@ -27,7 +28,9 @@ test.each([
       geometry,
       { x: 0, y: 0, width: 390, height },
       1,
+      true,
     );
+    expect(plan.height).toBe(height);
     const shell = resolveNavigationOcclusion({
       placement,
       reservedRightWidth: 0,
@@ -35,7 +38,12 @@ test.each([
       systemInsets: { top: 0, right: 0, bottom: 34, left: 0 },
       measuredBottomActionOcclusion: clearance,
     });
-    const adjusted = conversationWorkspaceOcclusion(shell, height, plan);
+    const adjusted = conversationWorkspaceOcclusion(
+      shell,
+      height,
+      plan,
+      Math.max(0, plan.top + plan.height - 766),
+    );
     const composer = (compact: boolean) => (
       <NavigationOcclusionContext.Provider value={adjusted}>
         <ConversationComposer
