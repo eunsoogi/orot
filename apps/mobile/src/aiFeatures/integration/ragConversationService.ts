@@ -21,7 +21,6 @@ import * as voiceSelection from './conversationVoiceSelection';
 import { prepareConversationPhoto as preparePhoto } from './conversationPhotoService';
 import * as targets from './conversationEntryTargets';
 import { conversationExternalEvidence } from './conversationExternalEvidence';
-/** Keeps local availability checks ahead of provider resolution and model dispatch. */
 export function createRagConversationService({
   consent: consentPort,
   queryConsent: queryConsentPort,
@@ -122,7 +121,8 @@ export function createRagConversationService({
       opening.ready();
       // Finish the reviewed opening before any external tool dispatch.
       await opening?.done;
-      const { eager: publicSearch, ...searchPlan } = await planSearch({
+      // Preserve the live getter rather than copying its preflight value with object rest.
+      const searchPlan = await planSearch({
         external,
         observer,
         runId: createOperationRunId?.() ?? operationRunId(),
@@ -148,7 +148,7 @@ export function createRagConversationService({
           }),
         ),
       });
-      if (publicSearch.status === 'cancelled')
+      if (searchPlan.eager.status === 'cancelled')
         return { status: 'failure', kind: 'cancelled' };
       const { tools, generated, localRetrievalFailed } =
         createConversationToolBundle({
@@ -207,14 +207,14 @@ export function createRagConversationService({
           history,
           retention,
           rag: data.rag,
-          search: publicSearch,
+          search: searchPlan.eager,
           registry,
           workflow: {
             ...run.conversationRunWorkflow(
               execution,
               historyIsCurrent,
               !!history.references.length || !!report,
-              publicSearch,
+              searchPlan.eager,
               searchPlan.chargeEagerSearch,
             ),
             initialSearch: searchPlan.initialSearch,
