@@ -20,7 +20,7 @@ import { registerConversationPhotoEvidence } from './conversationPhotoEvidence';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 
 /** Restore opaque source links only while the saved result and every local input remain current. */
-type RestoreInput = {
+export type RestoreInput = {
   readonly id: string;
   readonly storage: Pick<
     ReturnType<typeof createConversationArtifactStorage>,
@@ -42,14 +42,30 @@ export async function restoreConversationArtifact(input: RestoreInput) {
 export function restoreConversationArtifactSnapshot(
   input: RestoreInput,
   saved: ConversationArtifact | null,
+  parentSnapshot?: (id: string) => Promise<
+    | {
+        revision: string;
+        sourceStatus: 'current' | 'unknown';
+      }
+    | null
+    | undefined
+  >,
 ) {
-  return hydrate(input, saved, false);
+  return hydrate(input, saved, false, parentSnapshot);
 }
 
 async function hydrate(
   input: RestoreInput,
   saved: ConversationArtifact | null,
   recheck: boolean,
+  parentSnapshot?: (id: string) => Promise<
+    | {
+        revision: string;
+        sourceStatus: 'current' | 'unknown';
+      }
+    | null
+    | undefined
+  >,
 ) {
   if (
     !saved ||
@@ -128,6 +144,7 @@ async function hydrate(
             input.registry,
             input.data,
             input.signal,
+            parentSnapshot ? () => parentSnapshot(source.id) : undefined,
           );
     if (!current) return null;
     inheritedSourceUnknown ||= current.sourceStatus === 'unknown';

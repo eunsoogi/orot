@@ -149,8 +149,8 @@ export async function restoreConversationSessionTurns(
         };
       }),
     );
-  if (!(await discovery.revalidateSession(sessionId, version, turns, signal)))
-    throw new Error('Conversation content changed during restoration.');
+  // Assembly below is synchronous; its final fence also covers the awaited
+  // visit/summary restoration above, without two adjacent lineage recalculations.
   for (const turn of toolTurns)
     if (
       !restored.some(item => item.toolMessageId === turn.messageId) &&

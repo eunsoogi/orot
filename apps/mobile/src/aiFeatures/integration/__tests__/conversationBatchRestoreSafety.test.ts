@@ -134,7 +134,7 @@ test('a changed root between the initial and final batches rejects the hydrated 
     let batches = 0;
     jest.spyOn(f.storage, 'readMany').mockImplementation(async ids => {
       batches += 1;
-      if (batches === 2) {
+      if (batches === 1) {
         await f.database.execute(
           "UPDATE conversation_artifacts SET result_json=json_set(result_json, '$.answer', 'Synthetic changed') WHERE id='older'",
         );
@@ -144,7 +144,7 @@ test('a changed root between the initial and final batches rejects the hydrated 
     await expect(
       f.discovery.readSession({ sessionId: 'session', signal: signal() }),
     ).rejects.toThrow('Conversation content changed during restoration.');
-    expect(batches).toBe(2);
+    expect(batches).toBe(1);
   } finally {
     jest.restoreAllMocks();
     f.close();

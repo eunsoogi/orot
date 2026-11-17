@@ -29,6 +29,7 @@ export async function assertConversationArtifactCurrent(
   artifact: ConversationArtifact,
   requireGeneration: boolean,
   validatePeriod?: ReadOnlyPeriodValidation,
+  collectValidated?: (artifact: ConversationArtifact) => void,
 ) {
   const history = createManualHistoryRepository(database);
   // New report-bound turns must still belong to the active revision at commit.
@@ -107,6 +108,7 @@ export async function assertConversationArtifactCurrent(
         current.sources,
       );
     path.delete(current.id);
+    collectValidated?.(current);
   };
   await visit(artifact);
 }

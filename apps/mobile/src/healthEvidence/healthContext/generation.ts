@@ -1,3 +1,4 @@
+import { ensurePeriodRemovalIndexes } from '../../storage/periodRemovalIndexes';
 import type { SqlExecutor } from '@orot/storage';
 import { localQueryTimestampKeyExpression } from '@orot/storage';
 
@@ -39,6 +40,7 @@ export async function ensureHealthContextGeneration(
   await executor.execute(
     `CREATE INDEX IF NOT EXISTS health_context_symptom_time ON symptom_entries (${localQueryTimestampKeyExpression("coalesce(json_extract(payload_json, '$.startedAt'), effective_at)")})`,
   );
+  await ensurePeriodRemovalIndexes(executor);
   for (const table of tables) {
     for (const event of ['INSERT', 'UPDATE', 'DELETE'] as const) {
       await executor.execute(`CREATE TRIGGER IF NOT EXISTS health_context_${table}_${event.toLowerCase()}

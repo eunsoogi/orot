@@ -16,7 +16,7 @@ test('period removal keeps indexed bounds for generic measurements and workout o
     ).currentGeneration();
     const source = f.saved.sources.find(isPeriodSummarySource)!;
     const plans: string[] = [];
-    const previousPlans: string[] = [];
+
     await assertPeriodNotRemoved(
       {
         execute: async (sql, bindings) => {
@@ -26,15 +26,6 @@ test('period removal keeps indexed bounds for generic measurements and workout o
               bindings,
             );
             plans.push(...plan.rows.map(row => String(row.detail)));
-            const old = sql.replace(
-              /FROM (\(SELECT \? AS topic, \? AS from_key, \? AS to_key\) p) CROSS JOIN (\w+ h) WHERE/,
-              'FROM $2 CROSS JOIN $1 WHERE',
-            );
-            const previous = await planDb.database.execute(
-              `EXPLAIN QUERY PLAN ${old}`,
-              bindings,
-            );
-            previousPlans.push(...previous.rows.map(row => String(row.detail)));
           }
           return planDb.database.execute(sql, bindings);
         },
@@ -43,19 +34,21 @@ test('period removal keeps indexed bounds for generic measurements and workout o
     );
     expect(
       plans.some(plan =>
-        /health_context_observation_time.*<expr>>\?.*<expr><\?/.test(plan),
+        /health_observations_period_fallback.*<expr>>\?.*<expr><\?/.test(plan),
       ),
     ).toBe(true);
     expect(
       plans.some(plan =>
-        /health_context_quantity_time.*<expr>=\?.*<expr><\?/.test(plan),
+        /health_observations_period_singleton.*<expr>=\?/.test(plan),
       ),
     ).toBe(true);
+    // Direct markers use primary keys; the rare legacy shape retains exact
+    // bounded fallback lookup rather than the old all-health-row outer loop.
     expect(
-      previousPlans.some(plan =>
-        /health_context_observation_time.*<expr>>\?.*<expr><\?/.test(plan),
+      plans.some(plan =>
+        /SEARCH h.*sqlite_autoindex_health_observations_1.*id=/.test(plan),
       ),
-    ).toBe(false);
+    ).toBe(true);
   } finally {
     planDb.close();
     f.close();
