@@ -16,8 +16,12 @@ export function ConversationTranscriptMessages({
   replyFocus,
   onLayout,
   messageProps,
+  anchorId,
+  onAnchorLayout,
 }: {
   readonly messages: readonly DisplayMessage[];
+  readonly anchorId?: number;
+  readonly onAnchorLayout?: (y: number) => void;
   readonly pendingId?: number;
   readonly instructions: ConversationHistoryProps['steeringInstructions'];
   readonly replyFocus: ConversationHistoryProps['replyFocus'];
@@ -40,6 +44,7 @@ export function ConversationTranscriptMessages({
             replyFocus && message.retainedTurnId === replyFocus.messageId,
           )}
           onLayout={onLayout}
+          onPosition={message.id === anchorId ? onAnchorLayout : undefined}
         >
           <ConversationSteeringMessages
             instructions={

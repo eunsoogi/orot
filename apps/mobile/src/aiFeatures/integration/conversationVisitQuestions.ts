@@ -1,3 +1,4 @@
+import { conversationConsentScope } from './conversationBackgroundProvider';
 import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { startContextualConversationOpening } from './contextualConversationOpening';
 import { visitConsentScope } from '../../agent/execution/inferenceConsentScopes';
@@ -28,6 +29,10 @@ export async function generateConversationVisitQuestions(input: {
   readonly observer?: AiWorkflowObserver;
   readonly registerToolSource?: AiFeatureServices['registerVisitQuestionSource'];
 }) {
+  const confirmConsent = conversationConsentScope(
+    { authorize: input.confirmConsent },
+    input.observer,
+  ).authorize;
   const current = () => !input.signal.aborted && input.isCurrentOwner();
   if (!current()) return { status: 'cancelled' as const };
   // The generic next-visit action resolves the upcoming confirmed appointment.
@@ -73,7 +78,7 @@ export async function generateConversationVisitQuestions(input: {
           isCurrent: current,
           consent: {
             authorize: async request =>
-              (await input.confirmConsent(request))
+              (await confirmConsent(request))
                 ? 'authorized'
                 : 'renewal_required',
           },
@@ -86,7 +91,7 @@ export async function generateConversationVisitQuestions(input: {
           request: input.request,
           selectedAi,
           signal: input.signal,
-          confirmConsent: input.confirmConsent,
+          confirmConsent,
           generatedArtifactTools: input.generatedArtifactTools,
           observer: input.observer,
           registerToolSource: input.registerToolSource,

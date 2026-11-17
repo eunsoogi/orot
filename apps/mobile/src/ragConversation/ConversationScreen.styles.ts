@@ -73,14 +73,14 @@ export const styles = StyleSheet.create({
     // Secondary activity keeps touch targets without prominent nested cards.
     backgroundColor: 'transparent',
   },
-  // Keep each disclosure's native press target comfortable at larger text sizes.
+  // Tighten line spacing, never the 44pt target or dynamically scaled text.
   toolEventToggle: {
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 0,
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   toolEventName: {
     flex: 1,
@@ -94,11 +94,11 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   toolEventDetails: {
-    gap: 12,
+    gap: 8,
     borderTopWidth: 1,
     borderTopColor: appColors.border,
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   toolEventSection: { gap: 4 },
   toolEventSectionLabel: {

@@ -6,14 +6,6 @@ import { AppText as Text } from '../layout/AppText';
 import { formatDateTime, t } from '../i18n';
 import { useSavedMemories, type SavedMemory } from './useSavedMemories';
 import { savedMemoryStyles as styles } from './savedMemoryStyles';
-// Keep a multi-paragraph memory compact without changing the stored or detail text.
-function summary(text: string) {
-  const characters = Array.from(text.replace(/\s+/g, ' ').trim());
-  return characters.length > 100
-    ? characters.slice(0, 100).join('') + '…'
-    : characters.join('');
-}
-
 /** Summaries remain local; navigation receives only the selected memory ID, never text. */
 export function SavedMemoryBrowser({
   load,
@@ -33,7 +25,10 @@ export function SavedMemoryBrowser({
   }, [active, state, position]);
   // Retain the page bound while a native detail owns focus, so Back restores the same list position.
   return (
-    <View style={[styles.section, styles.panel]} testID="saved-memory-browser">
+    <View
+      style={[styles.section, styles.panel, styles.previewList]}
+      testID="saved-memory-browser"
+    >
       <Text accessibilityRole="header" style={styles.title}>
         {t('savedMemory.title')}
       </Text>
@@ -78,7 +73,10 @@ export function SavedMemoryBrowser({
               key={row.id}
               testID={`saved-memory-entry-${row.id}`}
               variant="list"
-              title={summary(row.text)}
+              // Native wrapping, not a character slice, owns the two-line preview.
+              title={row.text.replace(/\s+/g, ' ').trim()}
+              titleNumberOfLines={2}
+              size="compact"
               summary={t('savedMemory.savedAt', {
                 date: formatDateTime(new Date(row.createdAt)),
               })}

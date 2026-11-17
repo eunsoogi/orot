@@ -11,7 +11,6 @@ import { ConversationHistory } from '../ConversationHistory';
 import type { ConversationSession } from '../conversationSessionTypes';
 import { conversationToolEventFixtures } from '../testSupport/conversationToolEventFixtures';
 import { conversationWorkspaceLayout } from '../conversationWorkspaceLayout';
-
 let mockHinge = true;
 let hostWidth = 390;
 const measurable = View as unknown as {
@@ -40,7 +39,6 @@ jest.mock('../../assistantAppearance/AssistantHeader', () => ({
 jest.mock('../../assistantAppearance/FloatingProfileGradient', () => ({
   FloatingProfileGradient: () => null,
 }));
-
 const session: ConversationSession = {
   id: 1,
   title: '합성 대화',
@@ -72,7 +70,6 @@ function Workspace() {
     </ConversationWorkspace>
   );
 }
-
 const originalWindow = Dimensions.get('window');
 beforeEach(() => {
   mockHinge = true;
@@ -126,6 +123,10 @@ test('reflows activity and identity without remounting transcript or losing erro
     within(history).queryByTestId('rag-conversation-tool-events'),
   ).toBeNull();
   const pane = screen.getByTestId('conversation-activity-pane');
+  expect(
+    screen.getByTestId('conversation-activity-lines').props
+      .contentContainerStyle,
+  ).toContainEqual(expect.objectContaining({ gap: 4 }));
   expect(within(pane).getByTestId('rag-conversation-tool-events')).toBeTruthy();
   await fireEvent.press(within(pane).getByTestId('rag-tool-group-toggle'));
   const tool = within(pane).getByTestId(

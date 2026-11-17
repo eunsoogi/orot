@@ -1,3 +1,4 @@
+import { conversationSelectedIds } from './conversationSelectedIds';
 import {
   parseTask,
   type ConversationTaskCard,
@@ -166,7 +167,12 @@ export function createConversationTaskCardStorage(
       });
       return stored;
     },
-    async readTaskCards(sessionId: string, version: number) {
+    async readTaskCards(
+      sessionId: string,
+      version: number,
+      selectedIds?: readonly string[],
+    ) {
+      const selected = conversationSelectedIds('id', selectedIds);
       await ensure();
       let cards: {
         id: string;
@@ -177,8 +183,8 @@ export function createConversationTaskCardStorage(
       await database.transaction(async tx => {
         await requireSession(tx, sessionId, version);
         const result = await tx.execute(
-          'SELECT id, created_at, revision, task_json FROM conversation_task_cards WHERE session_id = ? ORDER BY created_at, id',
-          [sessionId],
+          `SELECT id, created_at, revision, task_json FROM conversation_task_cards WHERE session_id = ?${selected.clause} ORDER BY created_at, id`,
+          [sessionId, ...selected.parameters],
         );
         cards = result.rows.map(row => {
           const task =

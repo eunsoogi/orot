@@ -1,38 +1,25 @@
-import type { ConversationEntryContext } from '../aiFeatures/integration/conversationIntent';
-import type { EvidenceReference } from '@orot/agent-runtime';
+import { createConversationPagedRestoreState } from './conversationPagedRestoreState';
+import { conversationRestoredMessages } from './conversationRestoredMessages';
+import type { RestoredTurn } from './conversationRestoredTurn';
 import type { ConversationSession } from './conversationSessionTypes';
 import { getRagConversationCopy } from './copy';
 import { t } from '../i18n';
 
-type RestoredTurn = {
-  readonly question: string;
-  readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
-  readonly delivery?: import('./conversationMessageDelivery').ConversationMessageDelivery;
-  readonly answer: string;
-  readonly initialResponse?: import('../storage/conversationArtifactTypes').ConversationArtifact['initialResponse'];
-  readonly preview?: string;
-  readonly interrupted?: true;
-  readonly coldResume?: { readonly attempt: number };
-  interruptionReason?: import('./conversationExecutionLease').ConversationRecoveryReason;
-  readonly citations: readonly EvidenceReference[];
-  readonly healthSources?: import('./conversationHealthDeletion').HealthSourceDependencies;
-  readonly completion?: 'complete' | 'partial';
-  readonly entryIntent?: 'possibilities';
-  readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
-  readonly toolMessageId?: string;
-  readonly toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
-  readonly healthSummary?: import('./healthSummary').HealthSummaryResult | null;
-  readonly visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
-  readonly visitQuestionsUnavailable?: boolean;
-};
-
 /** Rebuild displayed turns with freshly validated sources, and keep failures retryable. */
 export function createConversationSessionRestoreState(input: {
+  page?: import('./conversationHistoryPage').ReadConversationHistoryPage;
+  find?: (id: number) => ConversationSession | undefined;
   read?: (id: string, signal: AbortSignal) => Promise<readonly RestoredTurn[]>;
   readSteering?: import('./conversationSessionTypes').ConversationSessionOptions['restoreSteering'];
   readTasks?: import('./conversationSessionTypes').ConversationSessionOptions['restoreTasks'];
   update: (id: number, change: Partial<ConversationSession>) => void;
 }) {
+  if (input.page && input.find)
+    return createConversationPagedRestoreState({
+      ...input,
+      read: input.page,
+      find: input.find,
+    });
   const sessions = new Map<
     number,
     { durableId: string; controller?: AbortController }
@@ -70,57 +57,12 @@ export function createConversationSessionRestoreState(input: {
         turn.dailyReport ? [turn.dailyReport] : [],
       );
       // Each turn retains its own exact report; only the latest turn sets the next follow-up target.
-      const messages = turns.flatMap((turn, index) => [
-        ...(turn.question || turn.submittedInput?.ocr
-          ? [
-              {
-                id: -(2 * index + 1),
-                role: 'user' as const,
-                content: turn.question,
-                delivery: turn.delivery,
-                ...(turn.submittedInput
-                  ? { submittedInput: turn.submittedInput }
-                  : {}),
-                ...(!turn.answer && turn.completion === 'partial'
-                  ? { failed: true }
-                  : {}),
-              },
-            ]
-          : []),
-        {
-          id: -(2 * index + 2),
-          role: 'assistant' as const,
-          steeringInstructions: receipts[index],
-          content: turn.preview ?? turn.answer,
-          initialResponse: turn.initialResponse,
-          citations: turn.citations,
-          healthSources: turn.healthSources,
-          toolMessageId: turn.toolMessageId,
-          coldResume: turn.coldResume,
-          ...(turn.question && turn.toolMessageId && !turn.interrupted
-            ? { retainedTurnId: turn.toolMessageId }
-            : {}),
-          toolEvents: turn.toolEvents,
-          ...(turn.healthSummary !== undefined
-            ? { healthSummary: turn.healthSummary }
-            : {}),
-          visitQuestions: turn.visitQuestions,
-          visitQuestionsUnavailable: turn.visitQuestionsUnavailable,
-          ...(turn.dailyReport ? { dailyReport: turn.dailyReport } : {}),
-          ...(turn.interrupted ||
-          (!turn.answer && turn.completion === 'partial')
-            ? {
-                incomplete: true,
-                interruptionReason:
-                  turn.interruptionReason ?? 'process-interrupted',
-                activity: turn.interruptionReason
-                  ? t(`conversationInterruption.${turn.interruptionReason}`)
-                  : t('ragConversation.progressInterrupted'),
-              }
-            : {}),
-          ...(turn.completion ? { completion: turn.completion } : {}),
-        },
-      ]);
+      let nextId = 0;
+      const messages = conversationRestoredMessages(
+        turns,
+        receipts,
+        () => --nextId,
+      );
       input.update(id, {
         messages,
         taskCards,
@@ -197,7 +139,11 @@ export function createConversationSessionRestoreState(input: {
       sessions.set(id, { durableId });
       await runWhileCurrent(id, signal);
     },
+    invalidatePage: (_id: number) => {},
     retry: runWhileCurrent,
+    loadOlder: async (_id: number, _signal?: AbortSignal) => {},
+    prepareContext: async (_id: number, signal?: AbortSignal) =>
+      !signal?.aborted,
     forget,
     dispose() {
       for (const id of sessions.keys()) forget(id);
