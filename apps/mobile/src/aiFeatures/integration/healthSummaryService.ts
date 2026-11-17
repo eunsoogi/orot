@@ -1,3 +1,4 @@
+import { conversationConsentScope } from './conversationBackgroundProvider';
 import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { startContextualConversationOpening } from './contextualConversationOpening';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
@@ -48,6 +49,7 @@ export function createHealthSummaryService(input: {
       }
     | { failure: RagConversationOutcome }
   > => {
+    const consent = conversationConsentScope(input.consent, observer);
     const createdAt = input.now?.() ?? new Date().toISOString();
     const timeZone =
       input.timeZone?.() ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -104,7 +106,7 @@ export function createHealthSummaryService(input: {
     const execution = executionOptions({
       selected,
       operationRunId: runId,
-      consent: input.consent,
+      consent,
       registry: input.registry,
       tools: [bound.tool],
       consentPurpose: 'symptom_summary',
@@ -115,7 +117,7 @@ export function createHealthSummaryService(input: {
       request: request.question,
       observer,
       signal,
-      consent: input.consent,
+      consent,
       consentScope: execution.execution.consentScope,
     });
     try {

@@ -1,3 +1,4 @@
+import { conversationSelectedIds } from './conversationSelectedIds';
 import type { SqlDatabase } from '@orot/storage';
 import {
   mergeConversationToolEvents,
@@ -167,8 +168,10 @@ export function createConversationToolEventStorage(
     async readToolTurns(
       sessionId: string,
       expectedVersion?: number,
+      selectedIds?: readonly string[],
     ): Promise<readonly StoredConversationToolTurn[]> {
       await ensure();
+      const selected = conversationSelectedIds('e.message_id', selectedIds);
       const turns = new Map<string, StoredConversationToolTurn>();
       await database.transaction(async tx => {
         // An empty event list must still prove that the session lease is live.
@@ -181,8 +184,8 @@ export function createConversationToolEventStorage(
             throw new Error('Conversation is unavailable.');
         }
         const result = await tx.execute(
-          'SELECT e.message_id, e.created_at, e.event_json, l.sources_json FROM conversation_tool_events e JOIN conversation_artifact_sessions s ON s.id = e.session_id AND s.hidden = 0 JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation LEFT JOIN conversation_tool_lineage l ON l.session_id = e.session_id AND l.run_id = e.run_id AND l.call_id = e.call_id WHERE e.session_id = ? ORDER BY e.created_at, e.message_id, e.run_id, e.call_id',
-          [sessionId],
+          `SELECT e.message_id, e.created_at, e.event_json, l.sources_json FROM conversation_tool_events e JOIN conversation_artifact_sessions s ON s.id = e.session_id AND s.hidden = 0 JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation LEFT JOIN conversation_tool_lineage l ON l.session_id = e.session_id AND l.run_id = e.run_id AND l.call_id = e.call_id WHERE e.session_id = ?${selected.clause} ORDER BY e.created_at, e.message_id, e.run_id, e.call_id`,
+          [sessionId, ...selected.parameters],
         );
         for (const row of result.rows) {
           const event = projectConversationToolEvent(

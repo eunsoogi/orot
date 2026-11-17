@@ -29,6 +29,10 @@ export interface ConversationHistoryProps {
   readonly onRetrySave?: () => void;
   readonly restoreFailed?: boolean;
   readonly onRetryRestore?: () => void;
+  readonly historyHasMore?: boolean;
+  readonly historyLoading?: boolean;
+  readonly historyLoadFailed?: boolean;
+  readonly onLoadOlderHistory?: (signal?: AbortSignal) => Promise<void>;
   readonly sessionId?: number;
   readonly toolSourceSessionId?: string | null;
   readonly resolveColdToolSource?: import('../aiFeatures/integration/coldConversationSourceResolvers').ResolveColdConversationToolSource;

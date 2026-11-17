@@ -1,18 +1,13 @@
+import type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 import { continuousConversationPolicy } from './continuousConversationPolicy';
 import { recoveryFor } from './conversationRecoveryRefresh';
 import { createConversationSessionRequests } from './conversationSessionRequests';
 import { conversationDispatch } from './conversationDispatch';
-import type {
-  ConversationSender,
-  ConversationSession,
-  ConversationSessionOptions,
-  ConversationSnapshot,
-} from './conversationSessionTypes';
+import type * as S from './conversationSessionTypes';
 import { createConversationSessionRestoreState } from './conversationSessionRestoreState';
 import { createConversationSessionAttachment } from './conversationSessionAttachment';
 import { createConversationRetrySave } from './conversationRetrySave';
 import { refreshConversationSources } from './conversationSourceRefresh';
-import type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 import { createConversationListeners } from './conversationListeners';
 import { createConversationVisitReviewUpdater } from './conversationVisitReviewUpdate';
 import {
@@ -26,24 +21,23 @@ import { createConversationSessionRemoval } from './conversationSessionRemoval';
 import { createConversationTasks } from './createConversationTasks';
 import { createConversationPhotoImport } from './conversationPhotoImport';
 import { createConversationPhotoConsentController } from './conversationPhotoConsentController';
-export type { ConversationSender, ConversationSession };
-export type { ConversationSessions } from './conversationSessionTypes';
-
+export type ConversationSender = S.ConversationSender;
+export type ConversationSession = S.ConversationSession;
+export type ConversationSessions = S.ConversationSessions;
 /** The app owns session state across routes and may provide durable retention. */
 export function createConversationSessions(
-  options: ConversationSessionOptions = {},
+  options: S.ConversationSessionOptions = {},
 ) {
   const { owner, empty } = createConversationSessionSeed();
-  let bindSender: (sender: ConversationSender) => ConversationSender = sender =>
-    sender;
-  let beforeSend: ((id: number) => Promise<boolean>) | undefined;
+  let bindSender = (sender: S.ConversationSender) => sender;
+  let beforeSend: Parameters<typeof conversationDispatch>[0]['beforeSend'];
   let snapshot = initialConversationSnapshot(empty());
   const listeners = createConversationListeners();
   let disposed = false;
   let lifecycle = 0;
   const photoDrafts = createConversationPhotoImport();
   const photoConsent = createConversationPhotoConsentController();
-  const apply = (next: ConversationSnapshot | null) => {
+  const apply = (next: S.ConversationSnapshot | null) => {
     if (next) {
       snapshot = next;
       listeners.emit();
@@ -51,7 +45,7 @@ export function createConversationSessions(
   };
   const update = (
     id: number,
-    change: Partial<ConversationSession>,
+    change: Partial<S.ConversationSession>,
     stream = false,
   ) => {
     if (disposed) return;
@@ -88,6 +82,8 @@ export function createConversationSessions(
   );
   const restoration = createConversationSessionRestoreState({
     read: options.restoreSession,
+    page: options.restoreSessionPage,
+    find,
     readSteering: options.restoreSteering,
     readTasks: options.restoreTasks,
     update,
@@ -133,7 +129,9 @@ export function createConversationSessions(
   });
   const dispatch = conversationDispatch({
     bindSender: sender => bindSender(sender),
-    beforeSend: options.continuousSession ? id => beforeSend!(id) : undefined,
+    beforeSend: options.continuousSession
+      ? (id, signal) => beforeSend!(id, signal)
+      : undefined,
     requests,
     photoDrafts,
     retention: options.retention,
@@ -151,6 +149,7 @@ export function createConversationSessions(
     ),
     attachExisting,
     loadHistory,
+    loadOlderHistory: restoration.loadOlder,
     subscribe: listeners.subscribe,
     getSnapshot: () => snapshot,
     setDraft: (id: number, draft: string) => update(id, { draft }),
@@ -244,7 +243,8 @@ export function createConversationSessions(
     toolSourceSessionId: options.retention?.activeIdentity ?? (() => null),
   };
   const policy = continuousConversationPolicy(store, options, update);
-  beforeSend = policy.prepareSend;
+  beforeSend = async (id, signal) =>
+    (await policy.prepareSend(id)) && restoration.prepareContext(id, signal);
   bindSender = policy.bindSender;
   return policy;
 }

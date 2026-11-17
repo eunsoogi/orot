@@ -9,5 +9,5 @@ export const historyDisplayKo = {
   'ragConversation.conversation.continuationGaps':
     '일부 저장 결과는 읽지 못했어요.',
   'historyDisplay.yearDate': '{year}년 {date}',
-  'historyDisplay.saveTitle': '과거 건강 기록에 저장',
+  'historyDisplay.saveTitle': '기억에 저장',
 } as const;

@@ -3,10 +3,9 @@ import XCTest
 /// Shares the manual-history launch configuration across persistence and sheet journeys.
 enum ManualHistoryUITestSupport {
     @MainActor
-    static func launch(_ app: XCUIApplication, largeText: Bool = false, scenario: String? = nil, observeAppearance: Bool = false, observeGeometry: Bool = false, initialDate: String? = nil) {
+    static func launch(_ app: XCUIApplication, largeText: Bool = false, scenario: String? = nil, observeAppearance: Bool = false, observeGeometry: Bool = false, initialDate: String? = nil, seed: String = "known") {
         app.launchArguments = [
-            scenario == nil ? "-OROT_TEST_PROFILE" : "-OROT_TEST_SCENARIO",
-            scenario ?? "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
+            "-OROT_TEST_SCENARIO", scenario ?? "memory-history", "-OROT_TEST_MEMORY_SEED", seed, "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ] + (largeText ? ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"] : [])
             + (observeAppearance ? AppearanceUITestConditions.observationArguments : [])
             + (observeGeometry ? ["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"] : [])
@@ -50,7 +49,7 @@ enum ManualHistoryDateSheetUITestSupport {
     @MainActor
     private static func open(_ app: XCUIApplication) {
         let button = UITestConditions.element(app, "manual-history-open-date-picker")
-        FormUITestConditions.reveal(button, in: app, scrollID: "manual-history-scroll")
+        FormUITestConditions.reveal(button, in: app, scrollID: "navigation-route-scroll")
         XCTAssertTrue(button.isHittable, app.debugDescription)
         button.tap()
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-native-date-picker")), app.debugDescription)

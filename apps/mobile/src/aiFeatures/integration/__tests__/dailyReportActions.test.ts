@@ -131,3 +131,36 @@ test.each(['taken', 'administered', 'observed'] as const)(
     expect(claims[0]?.text).not.toContain('복용 여부가 확정되지');
   },
 );
+
+test.each(['absent', 'cancelled'] as const)(
+  'offers a source-bound next step for recorded active symptoms with %s visit',
+  mode => {
+    const symptom: LocalHealthEvidenceRecord = {
+      kind: 'symptom_entry',
+      record: SymptomEntrySchema.parse({
+        ...metadata('ongoing'),
+        effectiveAt: '2034-12-20T01:00:00Z',
+        status: 'active',
+        description: 'Synthetic symptom',
+      }),
+    };
+    const values =
+      mode === 'cancelled' ? [visit('cancelled'), symptom] : [symptom];
+    const claims = summarize(values);
+    expect(claims[0]?.text).toContain('현재도 이어지거나 악화되면');
+    expect(claims[0]?.text).toContain(
+      '기록만으로 현재 증상이나 원인을 확정하지',
+    );
+    expect(claims[0]?.text).toContain('기록 정리나 예약을 기다리지');
+    expect(claims[0]?.sourceReferences).toEqual([
+      { source: 'symptom_entry', recordId: 'ongoing' },
+    ]);
+    expect(claims.at(-1)?.text).toContain('현재 접근 가능한');
+    expect(symptom.record.effectiveAt).toBe('2034-12-20T01:00:00Z');
+    const resolved = {
+      ...symptom,
+      record: { ...symptom.record, status: 'resolved' as const },
+    };
+    expect(summarize([resolved])).toHaveLength(1);
+  },
+);

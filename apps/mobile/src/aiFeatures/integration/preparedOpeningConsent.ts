@@ -1,13 +1,17 @@
+import type { Feature } from '../../providers/diagnosticTypes';
 import { reportOpening } from './openingObservation';
 import { startRagConversationOpening } from './contextualConversationOpening';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
 
 /** The optional opening owns no user prompt until local preflight succeeds.
  * Failure closes only this gate; it never approves, reuses or dismisses another request. */
-export function createPreparedOpeningConsent(consent: ExecutionConsentPort) {
+export function createPreparedOpeningConsent(
+  consent: ExecutionConsentPort,
+  feature?: Feature,
+) {
   let settle!: (ready: boolean) => void;
   let settled = false;
-  reportOpening('opening_preflight', 'started');
+  reportOpening('opening_preflight', 'started', feature);
   const ready = new Promise<boolean>(resolve => {
     settle = resolve;
   });
@@ -22,7 +26,11 @@ export function createPreparedOpeningConsent(consent: ExecutionConsentPort) {
     release(value: boolean) {
       if (settled) return;
       settled = true;
-      reportOpening('opening_preflight', value ? 'completed' : 'failed');
+      reportOpening(
+        'opening_preflight',
+        value ? 'completed' : 'failed',
+        feature,
+      );
       settle(value);
     },
   };

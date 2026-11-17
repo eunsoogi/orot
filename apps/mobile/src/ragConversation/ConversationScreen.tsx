@@ -1,3 +1,4 @@
+import { conversationHistoryRecoveryProps } from './conversationHistoryRecoveryProps';
 import { conversationComposerDisabled } from './conversationComposerDisabled';
 import { useConversationPresentationSnapshot } from './useConversationPresentationSnapshot';
 import { ConversationBackButton } from './ConversationBackButton';
@@ -157,6 +158,7 @@ export function ConversationScreen({
             onContinueCold={requestId =>
               store.resumeCold(id, requestId).catch(() => {})
             }
+            {...conversationHistoryRecoveryProps(session, store)}
             sessionId={id}
             requestSessionId={id}
             requestActivity={session.requestActivity}
@@ -170,14 +172,6 @@ export function ConversationScreen({
             retryingSave={session.retryingSave || busy}
             onRetrySave={() => {
               store.retrySave(id);
-            }}
-            restoreFailed={
-              session.restoreFailed || session.modelSelectionFailed
-            }
-            onRetryRestore={() => {
-              if (session.modelSelectionFailed)
-                store.synchronizeModel(true).catch(() => {});
-              else store.retryRestore(id);
             }}
             onOpenSource={onOpenSource}
             {...{ resolveToolSource, resolveColdToolSource }}

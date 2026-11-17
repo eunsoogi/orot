@@ -84,6 +84,7 @@ RCT_EXPORT_VIEW_PROPERTY(color, UIColor)
 
 // UIKit owns the complete button, including native Glass highlighting and disabled accessibility.
 @interface RCT_EXTERN_MODULE (GlassIconButtonManager, RCTViewManager)
+RCT_EXPORT_VIEW_PROPERTY(visualScale, CGFloat)
 RCT_EXPORT_VIEW_PROPERTY(symbolName, NSString)
 RCT_EXPORT_VIEW_PROPERTY(actionLabel, NSString)
 RCT_EXPORT_VIEW_PROPERTY(actionHint, NSString)

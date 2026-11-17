@@ -32,7 +32,9 @@ export function showStoppedConversationTurn(input: {
   find: (id: number) => ConversationSession;
   update: (id: number, change: Partial<ConversationSession>) => void;
   retainPartial: (id: number, activity: string, retainEmpty?: boolean) => void;
+  current?: () => boolean;
 }) {
+  if (input.current?.() === false) return;
   const copy = getRagConversationCopy();
   if (input.turn?.coldResponseId !== undefined) {
     const session = input.find(input.id);
@@ -66,6 +68,7 @@ export function showStoppedConversationTurn(input: {
       : copy.progressCancelled,
     true,
   );
+  if (input.current?.() === false) return;
   if (input.status === 'interrupted') {
     const session = input.find(input.id);
     const last = session.messages.at(-1);
@@ -82,6 +85,7 @@ export function showStoppedConversationTurn(input: {
         ),
       });
   }
+  if (input.current?.() === false) return;
   if (input.turn)
     restoreFailedPrompt(
       input.find,
@@ -120,6 +124,12 @@ export function createConversationStopHandler(input: {
     AbortController,
     ReturnType<typeof createExecutionDiagnostics>
   >();
+  // Synchronous callbacks cannot redirect this Stop to a replacement in the same session.
+  // Retain same-owner settlement, then release the guard before the next user event.
+  const stopping = new Map<
+    number,
+    { controller: AbortController; settled: boolean }
+  >();
   return (
     id: number,
     settled = false,
@@ -127,51 +137,80 @@ export function createConversationStopHandler(input: {
   ) => {
     const controller = input.controllers.get(id);
     if (!controller) return;
-    const status = input.lifetime.status(id, controller) ?? reason;
-    // Lifecycle interruptions share this cleanup path but are not user Stop latency.
-    let diagnose =
-      status === 'cancelled' ? stopDiagnostics.get(controller) : undefined;
-    if (status === 'cancelled' && !diagnose) {
-      diagnose = createExecutionDiagnostics(undefined, () => 'unknown');
-      stopDiagnostics.set(controller, diagnose);
-      diagnose('stop-received');
-    }
-    const turn = input.pendingTurns.get(id);
-    const snapshot = input.snapshots.get(id);
-    snapshot?.cancel();
-    if (snapshot) input.update(id, { requestActivity: snapshot.getSnapshot() });
-    if (status === 'cancelled') turn?.stopCold?.();
-    input.lifetime.interrupt(id, status);
-    controller.abort();
-    diagnose?.('abort-dispatched');
-    if (diagnose) conversationBoundary('stop_abort', 'completed');
-    input.steering?.clear(id);
-    // System interruption is not an explicit user cancellation; persist the true state.
-    input.activities.get(id)?.finish(status);
-    if (
-      (turn?.coldStopping ||
-        turn?.saving ||
-        turn?.summarySaving ||
-        turn?.summaryCommitted) &&
-      !settled
-    ) {
-      diagnose?.('stop-awaiting-commit');
-      if (diagnose) stopSettlement.start(controller);
+    const active = stopping.get(id);
+    if (active) {
+      if (active.controller === controller && settled) active.settled = true;
       return;
     }
-    input.controllers.delete(id);
-    input.pendingTurns.delete(id);
-    snapshot?.settle();
-    if (input.snapshots.get(id) === snapshot) input.snapshots.delete(id);
-    input.update(id, { artifactContinuation: null, requestActivity: null });
-    showStoppedConversationTurn({
-      ...input,
-      id,
-      status,
-      turn,
-      interruptionReason: input.lifetime.interruptionReason(controller),
-    });
-    diagnose?.('stop-presented');
-    stopSettlement.finish(controller);
+    const cleanup = { controller, settled };
+    stopping.set(id, cleanup);
+    try {
+      const current = () => {
+        if (input.controllers.get(id) === controller) return true;
+        // Cancel only the captured detached request; never interrupt a newer lifetime by ID.
+        controller.abort();
+        return false;
+      };
+      const status = input.lifetime.status(id, controller) ?? reason;
+      // Lifecycle interruptions share this cleanup path but are not user Stop latency.
+      let diagnose =
+        status === 'cancelled' ? stopDiagnostics.get(controller) : undefined;
+      if (status === 'cancelled' && !diagnose) {
+        diagnose = createExecutionDiagnostics(undefined, () => 'unknown');
+        stopDiagnostics.set(controller, diagnose);
+        diagnose('stop-received');
+      }
+      const turn = input.pendingTurns.get(id);
+      const snapshot = input.snapshots.get(id);
+      snapshot?.cancel();
+      if (snapshot)
+        input.update(id, { requestActivity: snapshot.getSnapshot() });
+      if (!current()) return;
+      if (status === 'cancelled') turn?.stopCold?.();
+      if (!current()) return;
+      input.lifetime.interrupt(id, status);
+      if (!current()) return;
+      controller.abort();
+      // An abort observer may supersede the UI owner; never clear the replacement.
+      if (!current()) return;
+      diagnose?.('abort-dispatched');
+      if (diagnose) conversationBoundary('stop_abort', 'completed');
+      input.steering?.clear(id);
+      if (!current()) return;
+      // System interruption is not an explicit user cancellation; persist the true state.
+      input.activities.get(id)?.finish(status);
+      if (!current()) return;
+      if (
+        (turn?.coldStopping ||
+          turn?.saving ||
+          turn?.summarySaving ||
+          turn?.summaryCommitted) &&
+        !cleanup.settled
+      ) {
+        diagnose?.('stop-awaiting-commit');
+        if (diagnose) stopSettlement.start(controller);
+        return;
+      }
+      input.controllers.delete(id);
+      input.pendingTurns.delete(id);
+      snapshot?.settle();
+      if (input.snapshots.get(id) === snapshot) input.snapshots.delete(id);
+      stopSettlement.finish(controller);
+      input.update(id, { artifactContinuation: null, requestActivity: null });
+      const noReplacement = () => !input.controllers.has(id);
+      if (!noReplacement()) return;
+      showStoppedConversationTurn({
+        ...input,
+        id,
+        status,
+        turn,
+        interruptionReason: input.lifetime.interruptionReason(controller),
+        current: noReplacement,
+      });
+      diagnose?.('stop-presented');
+      stopSettlement.finish(controller);
+    } finally {
+      stopping.delete(id);
+    }
   };
 }

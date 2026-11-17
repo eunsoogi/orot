@@ -25,9 +25,13 @@ export function refreshConversationSources(input: {
   const [origin, deletedIds] = input.event ?? [];
   for (const session of snapshot.sessions) requests.clearSteering(session.id);
   if (origin === 'healthkit') {
-    for (const session of snapshot.sessions)
+    for (const session of snapshot.sessions) {
+      restoration.invalidatePage(session.id);
       requests.discardOpenings(session.id);
+    }
     const restrict = (session: ConversationSession) => ({
+      historyLoading: false,
+      historyLoadFailed: session.historyLoading || session.historyLoadFailed,
       messages: filterHealthDerivedMessages(session.messages, deletedIds).map(
         message => ({ ...message, steeringInstructions: undefined }),
       ),

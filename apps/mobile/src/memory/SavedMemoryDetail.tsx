@@ -1,4 +1,7 @@
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import { useState } from 'react';
+import { HistoryMemoryDetail } from './HistoryMemoryDetail';
+import { isHistoryMemory } from './unifiedSavedMemories';
 import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
@@ -20,19 +23,20 @@ export function SavedMemoryDetail({
   readonly memoryId?: string;
   readonly load?: () => Promise<SavedMemory[]>;
 }) {
-  // Read-only detail owns no unsaved operation; native Back must remain available while loading.
-  useNavigationLeaveStateRegistration({
-    canLeave: true,
-    hasUnsavedChanges: false,
-    isRecording: false,
-    hasOngoingOperation: false,
-    revision: 0,
-    inputRevision: 0,
-  });
+  const [correctionTarget, setCorrectionTarget] = useState<{
+    original: string | undefined;
+    id: string;
+  } | null>(null);
+  // A reused native route must never render the previous selection while an effect catches up.
+  const selectedId =
+    correctionTarget && correctionTarget.original === memoryId
+      ? correctionTarget.id
+      : memoryId;
   const { rows, state, refresh } = useSavedMemories(load, active);
-  const row = rows.find(value => value.id === memoryId);
+  const row = rows.find(value => value.id === selectedId);
   return (
     <View style={[styles.section, styles.detail]} testID="saved-memory-detail">
+      {(!row || !isHistoryMemory(row)) && <ReadOnlyMemoryNavigation />}
       <Text accessibilityRole="header" style={styles.title}>
         {t('savedMemory.detailTitle')}
       </Text>
@@ -64,7 +68,17 @@ export function SavedMemoryDetail({
         </>
       )}
       {state === 'ready' && !row && <Text>{t('savedMemory.notFound')}</Text>}
-      {row && (
+      {row && isHistoryMemory(row) && (
+        <HistoryMemoryDetail
+          key={row.id}
+          record={row.record}
+          onChanged={id => {
+            setCorrectionTarget({ original: memoryId, id });
+            refresh();
+          }}
+        />
+      )}
+      {row && !isHistoryMemory(row) && (
         <>
           <Text style={styles.body} selectable>
             {row.text}
@@ -76,9 +90,11 @@ export function SavedMemoryDetail({
             })}
           </Text>
           <Text style={styles.description}>
-            {row.provenance.reviewState === 'user_confirmed'
-              ? t('savedMemory.confirmed')
-              : t('savedMemory.reviewed')}{' '}
+            {String(row.provenance.reviewState) === 'user_stated'
+              ? t('savedMemory.userStated')
+              : row.provenance.reviewState === 'user_confirmed'
+                ? t('savedMemory.confirmed')
+                : t('savedMemory.reviewed')}{' '}
             {t('savedMemory.sources', {
               count: row.provenance.sourceIds.length,
             })}
@@ -87,4 +103,17 @@ export function SavedMemoryDetail({
       )}
     </View>
   );
+}
+
+function ReadOnlyMemoryNavigation() {
+  // Read-only detail owns no unsaved operation; native Back must remain available while loading.
+  useNavigationLeaveStateRegistration({
+    canLeave: true,
+    hasUnsavedChanges: false,
+    isRecording: false,
+    hasOngoingOperation: false,
+    revision: 0,
+    inputRevision: 0,
+  });
+  return null;
 }

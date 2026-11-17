@@ -6,7 +6,10 @@ import {
 } from '../../../agent/visitQuestions/testing/persistenceFixtures';
 import { generateConversationVisitQuestions } from '../conversationVisitQuestions';
 import type { SelectedAiResolution } from '../provider';
-import type { VisitQuestionRouteOperations } from '../visitQuestionsRouteOperations';
+import type {
+  VisitQuestionRouteOperations,
+  VisitQuestionRouteGenerationInput,
+} from '../visitQuestionsRouteOperations';
 
 /** Synthetic provider/review results prove dispatch and display order, not model prose quality. */
 test.each(['ALLOW', 'DENY'])(
@@ -37,16 +40,22 @@ test.each(['ALLOW', 'DENY'])(
       recipient: f.options.execution.recipient,
       remoteProcessing: true,
     } as unknown as Extract<SelectedAiResolution, { status: 'ready' }>;
-    const generate = jest.fn(async () => {
-      expect(events).toEqual(verdict === 'ALLOW' ? ['initial_response'] : []);
-      events.push('final');
-      return {
-        status: 'ready' as const,
-        questions: [candidate],
-        caveats: [],
-        validateSource: async () => true,
-      };
-    });
+    const generate = jest.fn(
+      async (input: VisitQuestionRouteGenerationInput) => {
+        // The route now starts local preparation early, then gates research on the opening.
+        // Honor that production boundary in this synthetic final-generation port.
+        expect(input.beforeResearch).toBeDefined();
+        expect(await input.beforeResearch!()).toBe(true);
+        expect(events).toEqual(verdict === 'ALLOW' ? ['initial_response'] : []);
+        events.push('final');
+        return {
+          status: 'ready' as const,
+          questions: [candidate],
+          caveats: [],
+          validateSource: async () => true,
+        };
+      },
+    );
     const result = await generateConversationVisitQuestions({
       ownerKey: 'synthetic-opening',
       request: '다음 진료 질문을 준비해 줘',

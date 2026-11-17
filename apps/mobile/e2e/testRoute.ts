@@ -42,6 +42,7 @@ export type TestRoute =
   | 'openai-provider'
   | 'next-visit-questions'
   | 'manual-history-recovery'
+  | 'memory-history'
   | (typeof capabilityScenarios)[number];
 
 /** Keep native service tests isolated from UI probe startup and reject unknown test profiles. */
@@ -51,7 +52,8 @@ export function selectTestRoute(settings: Record<string, unknown>): TestRoute {
   }
   const scenario = settings.OROT_TEST_SCENARIO;
   if (scenario !== undefined) {
-    if (scenario === 'manual-history-recovery') return scenario;
+    if (scenario === 'manual-history-recovery' || scenario === 'memory-history')
+      return scenario;
     if (capabilityScenarios.some(candidate => candidate === scenario))
       return scenario as (typeof capabilityScenarios)[number];
     throw new Error('Unsupported test scenario');

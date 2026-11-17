@@ -53,6 +53,15 @@ export function createConversationVisitTurn(deps: {
       ),
       observer: {
         expectedConversationModel: input.observer?.expectedConversationModel,
+        // Do not manufacture a lifecycle observer for non-conversation callers.
+        ...(input.observer?.onExecutionState
+          ? {
+              onExecutionState: (state: 'working' | 'local' | 'decision') => {
+                if (!input.signal.aborted)
+                  input.observer?.onExecutionState?.(state);
+              },
+            }
+          : {}),
         ...(input.observer?.onProviderReceipt
           ? {
               onProviderReceipt: (receipt: 'accepted' | 'response_started') => {

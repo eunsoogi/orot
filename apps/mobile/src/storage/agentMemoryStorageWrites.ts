@@ -1,3 +1,7 @@
+import {
+  assertUserStatementMemoryCurrent,
+  setupUserStatementMemoryGuards,
+} from './userStatementMemoryGuards';
 import type { SqlDatabase } from '@orot/storage';
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import {
@@ -21,6 +25,14 @@ export async function commitAgentMemoryWrites(
   removedKinds: Map<string, readonly string[] | undefined>,
 ) {
   await database.transaction(async transaction => {
+    if (
+      [...writes.values()].some(
+        record =>
+          (record?.meta.provenance as { reviewState?: string } | undefined)
+            ?.reviewState === 'user_stated',
+      )
+    )
+      await setupUserStatementMemoryGuards(transaction);
     const removedResult = await transaction.execute(
       'SELECT source_id FROM agent_memory_removed_sources ORDER BY source_id',
     );
@@ -36,6 +48,7 @@ export async function commitAgentMemoryWrites(
     const removedSymptoms = await deletedSymptomIds(transaction);
     for (const record of writes.values()) {
       if (record) {
+        await assertUserStatementMemoryCurrent(transaction, record);
         if (referencesDeletedSymptom(record, removedSymptoms))
           throw new Error('Memory cannot reference a deleted symptom.');
         assertNoSourceReference(
