@@ -23,6 +23,7 @@ function fixture(onStart?: (bridge: FakeBridge, id: string) => Promise<void>) {
   const startPublicWebSearch = jest.fn(
     async (id: string, _account: string, _request: ChatGPTPlanPublicWebRequest) => {
       if (onStart) return onStart(bridge, id);
+      bridge.emit({ requestId: id, type: 'response_started', responseId: 'synthetic-response' });
       bridge.emit({ requestId: id, type: 'text_delta', text });
       bridge.emit({ requestId: id, type: 'completed', text, webSearch });
     },
@@ -186,6 +187,39 @@ test('preserves model/account policy rejection without falling back to an unrela
   await expect(run.provider.searchPublicWeb!({ query: 'Public concept' })).resolves.toMatchObject({
     ok: false,
     error: { code: 'unsupported_capability' },
+  });
+  expect(run.startPublicWebSearch).toHaveBeenCalledTimes(1);
+  expect(run.bridge.started).toHaveLength(0);
+});
+
+test.each(['', ' ', 'a'.repeat(201)])(
+  'rejects malformed public response identity',
+  async (responseId) => {
+    const run = fixture(async (bridge, id) => {
+      bridge.emit({ requestId: id, type: 'response_started', responseId });
+      bridge.emit({ requestId: id, type: 'text_delta', text });
+      bridge.emit({ requestId: id, type: 'completed', text, webSearch });
+    });
+    await expect(run.provider.searchPublicWeb!({ query: 'Public concept' })).resolves.toMatchObject(
+      {
+        ok: false,
+        error: { code: 'internal_error' },
+      },
+    );
+    expect(run.bridge.cancelled).toContain('public-request');
+  },
+);
+
+test('keeps safety refusal terminal after response start and ignores late success', async () => {
+  const run = fixture(async (bridge, id) => {
+    bridge.emit({ requestId: id, type: 'response_started', responseId: 'synthetic-response' });
+    bridge.emit({ requestId: id, type: 'failed', error: { code: 'safety_refusal' } });
+    bridge.emit({ requestId: id, type: 'text_delta', text });
+    bridge.emit({ requestId: id, type: 'completed', text, webSearch });
+  });
+  await expect(run.provider.searchPublicWeb!({ query: 'Public concept' })).resolves.toMatchObject({
+    ok: false,
+    error: { code: 'safety_refusal' },
   });
   expect(run.startPublicWebSearch).toHaveBeenCalledTimes(1);
   expect(run.bridge.started).toHaveLength(0);
