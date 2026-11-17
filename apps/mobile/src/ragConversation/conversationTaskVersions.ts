@@ -1,3 +1,4 @@
+import { withoutReportTemplate } from './conversationLegacyTemplateMessages';
 import { legacyCompletionTask } from './conversationLegacyCompletion';
 import { ragConversationTask } from './task';
 import { validateInitialConversationResponse } from './initialResponse';
@@ -11,7 +12,7 @@ const publicFallbackInstruction =
   'If optional public web research failed, answer a supported local-record question with completion=partial using only its supplied local evidence, and state that public research was unavailable. Never invent external findings. ';
 
 /** Retain previous tool-preview ordering for either protected v9 policy. New sends
- * use v12; restoration never creates a new opening or mutates a saved checkpoint. */
+ * use v14; restoration never creates a new opening or mutates a saved checkpoint. */
 export function restoreConversationTask(
   identity: { taskType: string; taskVersion: string },
   exactInput?: string,
@@ -19,8 +20,21 @@ export function restoreConversationTask(
   if (identity.taskType !== ragConversationTask.taskType) return undefined;
   if (identity.taskVersion === ragConversationTask.taskVersion)
     return ragConversationTask;
+  if (identity.taskVersion === '13')
+    return {
+      ...ragConversationTask,
+      taskVersion: '13',
+      createMessages: input =>
+        withoutReportTemplate(ragConversationTask.createMessages(input)),
+    };
   if (identity.taskVersion === '11') {
-    const legacy = { ...ragConversationTask, taskVersion: '11' };
+    const legacy = {
+      ...ragConversationTask,
+      taskVersion: '11',
+      createMessages: (
+        input: Parameters<typeof ragConversationTask.createMessages>[0],
+      ) => withoutReportTemplate(ragConversationTask.createMessages(input)),
+    };
     delete legacy.nativeToolResultMode;
     return legacy;
   }

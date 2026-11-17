@@ -1,3 +1,4 @@
+import { withoutReportTemplate } from './conversationLegacyTemplateMessages';
 import type { JsonObject } from '@orot/model-runtime';
 import { ragConversationTask } from './task';
 
@@ -23,6 +24,9 @@ export function legacyCompletionTask() {
   const legacy = {
     ...ragConversationTask,
     taskVersion: '10',
+    createMessages: (
+      input: Parameters<typeof ragConversationTask.createMessages>[0],
+    ) => withoutReportTemplate(ragConversationTask.createMessages(input)),
     systemPrompt: ragConversationTask.systemPrompt
       .replace(newInstruction, oldInstruction)
       .replace(
