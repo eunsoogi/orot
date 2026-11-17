@@ -5,7 +5,8 @@ import { requestsLiteratureExplanation } from './literatureIntent';
 
 /** Only optional web availability may be missing from a partial local-record
  * answer. Citation binding, clinical validation and freshness still run normally.
- * No external claim, local coverage gap, conflict or literature request qualifies. */
+ * No external claim, local coverage gap, conflict or literature request qualifies.
+ * An explicitly ranked local sample retains its ordinary bounded scope. */
 export function acceptsLocalPublicSearchFallback(
   value: JsonValue,
   input: TaskResponderInput,
@@ -45,7 +46,11 @@ export function acceptsLocalPublicSearchFallback(
           entry.searchedSourceIds.includes(item.sourceId),
       ),
     ) &&
-    local.every(entry => !entry.gaps.length && !entry.truncated) &&
+    local.every(
+      entry =>
+        !entry.gaps.length &&
+        (!entry.truncated || entry.selectionMethod === 'ranked_retrieval'),
+    ) &&
     external.every(
       entry =>
         entry.returnedCount === 0 &&

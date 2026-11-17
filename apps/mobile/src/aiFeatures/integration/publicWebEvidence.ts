@@ -22,13 +22,15 @@ import {
   PublicWebSearchTimeoutError,
 } from './boundedPublicWebRequest';
 import { publicWebUnavailableEvidence } from './publicWebUnavailableEvidence';
-import { PublicSearchOfflineError } from './publicSearchFailure';
-
+import {
+  PublicSearchOfflineError,
+  permitsPublicSearchFallback,
+} from './publicSearchFailure';
+import { reportPublicSearchProviderFailure } from '../../providers/publicSearchDiagnostics';
 import {
   parsePublicWebQuery,
   publicWebQuerySchema,
 } from '../../agent/execution/publicWebQuery';
-
 // Only app-owned topic labels can cross this automatic search boundary. Consent
 // alone cannot establish that arbitrary model-generated text is anonymous.
 function parsePublicTopics(value: unknown) {
@@ -163,10 +165,11 @@ export function createPublicWebEvidence(input: {
           }
           if (request.signal.aborted)
             throw new Error('Public web search was cancelled.');
+          if (!result.ok) reportPublicSearchProviderFailure(result.error.code);
           if (
             !result.ok &&
-            result.error.code === 'provider_unavailable' &&
-            input.recoverUnavailable
+            input.recoverUnavailable &&
+            permitsPublicSearchFallback(result.error)
           )
             return publicWebUnavailableEvidence(
               result.error.connectivity === 'offline'
