@@ -1,3 +1,4 @@
+import { parseSourceConversationReport } from './sourceConversationReportTemplate';
 import { t } from '../i18n';
 import { parseDailyConversationReport } from './dailyConversationReportTemplate';
 
@@ -28,6 +29,8 @@ export function parseConversationReport(content: string) {
   const title = `# ${template.title}\n`;
   if (!content.startsWith(title)) return parseDailyConversationReport(content);
   const remainder = content.slice(title.length).replace(/^\n+/u, '');
+  const sources = parseSourceConversationReport(remainder);
+  if (sources) return { title: template.title, sections: sources };
   const sections: ConversationReportSection[] = [];
   let cursor = 0;
   for (const [index, heading] of template.sections.entries()) {

@@ -1,4 +1,8 @@
 export const conversationTemplateKo = {
+  'conversationTemplate.possibilities.verifiedSources': '검증된 기록과 문헌',
+  'conversationTemplate.possibilities.records': '기록에서 확인한 내용',
+  'conversationTemplate.possibilities.literature': '검증된 공개 문헌',
+  'conversationTemplate.possibilities.comparisonLimits': '비교의 한계',
   'conversationTemplate.daily.scope': '확인 범위와 한계',
   'conversationTemplate.possibilities.title': '질병 가능성 보고서',
   'conversationTemplate.possibilities.observations':
