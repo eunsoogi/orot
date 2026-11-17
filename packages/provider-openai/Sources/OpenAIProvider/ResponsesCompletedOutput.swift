@@ -33,7 +33,7 @@ struct ResponsesCompletedOutput {
         guard terminal.isEmpty, observedItem else { return terminal }
         guard consistent, !added.isEmpty, done.count == added.count,
               Set(done.keys) == Set(0 ..< added.count)
-        else { throw ChatGPTResponsesError.malformedEvent }
+        else { throw ResponsesMalformedDiagnostics.failure(.completedOutputConsistency) }
         return (0 ..< added.count).map { done[$0]! }
     }
 }

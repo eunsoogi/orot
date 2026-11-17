@@ -12,16 +12,16 @@ struct ResponsesStartObservation {
             if let candidate {
                 guard let id = candidate as? String, !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                       id.utf8.count <= 200, responseID == nil || responseID == id
-                else { throw ChatGPTResponsesError.malformedEvent }
+                else { throw ResponsesMalformedDiagnostics.failure(.startIdentity) }
             }
         }
         guard type == "response.created" || type == "response.in_progress" else { return nil }
         guard let response, let id = response["id"] as? String,
               let status = response["status"] as? String,
               status == "in_progress" || (type == "response.created" && status == "queued")
-        else { throw ChatGPTResponsesError.malformedEvent }
+        else { throw ResponsesMalformedDiagnostics.failure(.startStatus) }
         if let explicit = object["response_id"] as? String, explicit != id {
-            throw ChatGPTResponsesError.malformedEvent
+            throw ResponsesMalformedDiagnostics.failure(.startIdentityMismatch)
         }
         responseID = id
         guard status == "in_progress", !emitted else { return nil }

@@ -36,9 +36,9 @@ struct ResponsesPublicWebSearch {
             guard enabled else { throw ChatGPTResponsesError.unsupportedCapability("hosted tools") }
             guard let id = item["id"] as? String, !id.isEmpty,
                   observedIDs.insert(id).inserted, observedIDs.count <= Self.maxCalls
-            else { throw ChatGPTResponsesError.malformedEvent }
+            else { throw ResponsesMalformedDiagnostics.failure(.publicCallIdentityOrLimit) }
         } else if enabled, item["type"] as? String == "function_call" {
-            throw ChatGPTResponsesError.malformedEvent
+            throw ResponsesMalformedDiagnostics.failure(.publicFunctionCall)
         }
     }
 
@@ -55,27 +55,27 @@ struct ResponsesPublicWebSearch {
                   return $0["status"] as? String == "completed" &&
                       ["search", "open_page", "find_in_page"].contains(action?["type"] as? String ?? "")
               })
-        else { throw ChatGPTResponsesError.malformedEvent }
+        else { throw ResponsesMalformedDiagnostics.failure(.publicCompletedCalls) }
 
         var citations = [ChatGPTWebCitation]()
         for item in output where item["type"] as? String == "message" {
             guard let parts = item["content"] as? [[String: Any]] else {
-                throw ChatGPTResponsesError.malformedEvent
+                throw ResponsesMalformedDiagnostics.failure(.publicMessageContent)
             }
             for part in parts where part["type"] as? String == "output_text" {
                 guard let text = part["text"] as? String,
                       let annotations = part["annotations"] as? [[String: Any]]
-                else { throw ChatGPTResponsesError.malformedEvent }
+                else { throw ResponsesMalformedDiagnostics.failure(.publicTextAnnotations) }
                 for annotation in annotations where annotation["type"] as? String == "url_citation" {
                     let citation = try Self.citation(annotation, text: text)
                     if !citations.contains(citation) {
                         citations.append(citation)
                     }
-                    guard citations.count <= 8 else { throw ChatGPTResponsesError.malformedEvent }
+                    guard citations.count <= 8 else { throw ResponsesMalformedDiagnostics.failure(.publicCitationLimit) }
                 }
             }
         }
-        guard !citations.isEmpty else { throw ChatGPTResponsesError.malformedEvent }
+        guard !citations.isEmpty else { throw ResponsesMalformedDiagnostics.failure(.publicCitationsMissing) }
         return ChatGPTPublicWebSearchResult(callCount: calls.count, citations: citations)
     }
 
@@ -88,7 +88,7 @@ struct ResponsesPublicWebSearch {
               !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, title.count <= 256,
               let start = integer(item["start_index"]), let end = integer(item["end_index"]),
               start >= 0, end > start, end <= text.utf16.count
-        else { throw ChatGPTResponsesError.malformedEvent }
+        else { throw ResponsesMalformedDiagnostics.failure(.publicCitationShape) }
         return ChatGPTWebCitation(url: url, title: title)
     }
 

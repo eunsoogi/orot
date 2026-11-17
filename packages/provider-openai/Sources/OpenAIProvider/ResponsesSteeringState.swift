@@ -42,18 +42,18 @@ struct ResponsesSteeringState {
               let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = object["type"] as? String,
               let text = String(data: data, encoding: .utf8)
-        else { throw ChatGPTResponsesError.malformedEvent }
+        else { throw ResponsesMalformedDiagnostics.failure(.steeringFrameShape) }
         if type == "response.created" {
             guard let response = object["response"] as? [String: Any],
-                  let id = response["id"] as? String, !id.isEmpty else { throw ChatGPTResponsesError.malformedEvent }
+                  let id = response["id"] as? String, !id.isEmpty else { throw ResponsesMalformedDiagnostics.failure(.steeringCreatedIdentity) }
             if activeID == nil {
                 let started = try normalizer.consume(ResponsesSSEFrame(event: nil, data: text))
                 activeID = id
                 return [.ready] + (started.map { [.response($0)] } ?? [])
             }
-            guard accepted, predecessorEnded, !successor, id != activeID else { throw ChatGPTResponsesError.malformedEvent }
+            guard accepted, predecessorEnded, !successor, id != activeID else { throw ResponsesMalformedDiagnostics.failure(.steeringSuccessorOrder) }
             if let previous = response["previous_response_id"] as? String, previous != targetID {
-                throw ChatGPTResponsesError.malformedEvent
+                throw ResponsesMalformedDiagnostics.failure(.steeringPredecessorIdentity)
             }
             successor = true
             activeID = id
@@ -64,17 +64,26 @@ struct ResponsesSteeringState {
         if type.hasPrefix("response.steer.") {
             return try steeringEvent(object, type: type)
         }
-        guard activeID != nil else { throw ChatGPTResponsesError.malformedEvent }
+        guard activeID != nil || type == "codex.response.metadata" else {
+            throw ResponsesSteeringDiagnostics.beforeActiveFailure(object, type: type)
+        }
         if let id = object["response_id"] as? String, id != activeID {
-            throw ChatGPTResponsesError.malformedEvent
+            throw ResponsesMalformedDiagnostics.failure(.steeringResponseIdentity)
         }
         if let response = object["response"] as? [String: Any], let id = response["id"] as? String, id != activeID {
-            throw ChatGPTResponsesError.malformedEvent
+            throw ResponsesMalformedDiagnostics.failure(.steeringNestedIdentity)
+        }
+        // The public Codex WebSocket client treats this exact event as connection
+        // metadata, not response creation. Reuse refusal and identity validation,
+        // but do not expose headers, bind readiness, execute tools or retain state.
+        if type == "codex.response.metadata" {
+            try normalizer.validateConnectionMetadata(object)
+            return []
         }
         if type == "response.incomplete", let response = object["response"] as? [String: Any],
            let detail = response["incomplete_details"] as? [String: Any], detail["reason"] as? String == "steered"
         {
-            guard submissionID != nil, !successor else { throw ChatGPTResponsesError.malformedEvent }
+            guard submissionID != nil, !successor else { throw ResponsesMalformedDiagnostics.failure(.steeringIncompleteOrder) }
             predecessorEnded = true
             originalUsage = try ChatGPTResponsesUsage.decode(response["usage"])
             return []
@@ -102,20 +111,20 @@ struct ResponsesSteeringState {
               let steer = object["steer"] as? [String: Any],
               steer["previous_response_id"] as? String == targetID,
               let id = steer["id"] as? String, !id.isEmpty,
-              steerID == nil || steerID == id else { throw ChatGPTResponsesError.malformedEvent }
+              steerID == nil || steerID == id else { throw ResponsesMalformedDiagnostics.failure(.steeringAcknowledgmentIdentity) }
         steerID = id
         switch type {
         case "response.steer.accepted":
-            guard !accepted else { throw ChatGPTResponsesError.malformedEvent }
+            guard !accepted else { throw ResponsesMalformedDiagnostics.failure(.steeringDuplicateAccepted) }
             accepted = true
             return [.steering(submissionID: submissionID, status: "accepted", steerID: id)]
         case "response.steer.pending":
-            guard accepted, !successor, let result = originalResult else { throw ChatGPTResponsesError.malformedEvent }
+            guard accepted, !successor, let result = originalResult else { throw ResponsesMalformedDiagnostics.failure(.steeringPendingOrder) }
             // The graph owns tool/approval execution. Closing this socket cannot preserve pending steering.
             finished = true
             return [.steering(submissionID: submissionID, status: "pending", steerID: id), .response(.completed(result))]
         case "response.steer.failed":
-            guard !successor else { throw ChatGPTResponsesError.malformedEvent }
+            guard !successor else { throw ResponsesMalformedDiagnostics.failure(.steeringFailureOrder) }
             var events: [ChatGPTSteerableEvent] = [.steering(submissionID: submissionID, status: "failed", steerID: id)]
             if let result = originalResult {
                 finished = true; events.append(.response(.completed(result)))
@@ -123,7 +132,7 @@ struct ResponsesSteeringState {
                 self.submissionID = nil; targetIDReset()
             }
             return events
-        default: throw ChatGPTResponsesError.malformedEvent
+        default: throw ResponsesMalformedDiagnostics.failure(.steeringUnknownEvent)
         }
     }
 
@@ -139,7 +148,7 @@ struct ResponsesSteeringState {
         let input = originalUsage.inputTokens + usage.inputTokens
         let output = originalUsage.outputTokens + usage.outputTokens
         let total = originalUsage.totalTokens + usage.totalTokens
-        guard max(input, output, total) <= 9_007_199_254_740_991 else { throw ChatGPTResponsesError.malformedEvent }
+        guard max(input, output, total) <= 9_007_199_254_740_991 else { throw ResponsesMalformedDiagnostics.failure(.steeringUsageSum) }
         return ChatGPTResponsesResult(text: result.text, toolCalls: result.toolCalls,
                                       continuationItems: result.continuationItems, webSearch: result.webSearch,
                                       usage: ChatGPTResponsesUsage(inputTokens: input, outputTokens: output, totalTokens: total))

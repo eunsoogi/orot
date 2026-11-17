@@ -24,6 +24,13 @@ struct ResponsesEventNormalizer {
         webSearch = ResponsesPublicWebSearch(enabled: publicWebSearch)
     }
 
+    /// Metadata never advances the lifecycle. Validate even while a completed
+    /// original response is held pending a steering acknowledgement.
+    mutating func validateConnectionMetadata(_ object: [String: Any]) throws {
+        try ResponsesSafetyRefusal.validate(object, type: "codex.response.metadata")
+        _ = try responseStart.observe(object, type: "codex.response.metadata")
+    }
+
     mutating func consume(_ frame: ResponsesSSEFrame) throws -> ChatGPTResponsesEvent? {
         guard !completed else { return nil }
         if frame.data == "[DONE]" {
@@ -48,7 +55,7 @@ struct ResponsesEventNormalizer {
             guard let delta = object["delta"] as? String else { throw Self.malformed("text_delta") }
             accumulatedText.append(delta)
             if webSearch.enabled, accumulatedText.utf8.count > ResponsesPublicWebSearch.maxTextBytes {
-                throw ChatGPTResponsesError.malformedEvent
+                throw ResponsesMalformedDiagnostics.failure(.publicTextByteLimit)
             }
             return delta.isEmpty ? nil : .textDelta(delta)
         case "response.output_item.added":

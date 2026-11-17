@@ -77,7 +77,7 @@ public struct ChatGPTResponsesUsage: Equatable, Sendable {
 
     static func decode(_ value: Any?) throws -> Self? {
         guard let value, !(value is NSNull) else { return nil }
-        guard let object = value as? [String: Any] else { throw ChatGPTResponsesError.malformedEvent }
+        guard let object = value as? [String: Any] else { throw ResponsesMalformedDiagnostics.failure(.usageShape) }
         return try Self(
             inputTokens: count(object["input_tokens"]),
             outputTokens: count(object["output_tokens"]),
@@ -88,11 +88,11 @@ public struct ChatGPTResponsesUsage: Equatable, Sendable {
     private static func count(_ value: Any?) throws -> Int {
         // JSON booleans also bridge as NSNumber. Reject them and anything unsafe in JavaScript.
         guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID() else {
-            throw ChatGPTResponsesError.malformedEvent
+            throw ResponsesMalformedDiagnostics.failure(.usageCountType)
         }
         let count = number.doubleValue
         guard count.isFinite, count >= 0, count <= 9_007_199_254_740_991, count.rounded() == count else {
-            throw ChatGPTResponsesError.malformedEvent
+            throw ResponsesMalformedDiagnostics.failure(.usageCountRange)
         }
         return Int(count)
     }
