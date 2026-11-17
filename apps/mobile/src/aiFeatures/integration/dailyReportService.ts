@@ -24,12 +24,12 @@ export function createDailyReportService(
     input.calendarReader,
   );
   return (request: DailyReportServiceRequest) => {
-    // Feature and service bounds share this state so whichever timer fires first keeps the stage.
+    // Explicit finite callers share stage diagnostics; interactive work is only cancelled by its owner.
     const deadlineContext =
       sharedDeadlineContext ?? createDailyReportDeadlineContext();
     return boundedDailyReport(
       request.signal,
-      input.timeoutMs ?? 90_000,
+      input.timeoutMs ?? null,
       signal =>
         runDailyReport(
           {

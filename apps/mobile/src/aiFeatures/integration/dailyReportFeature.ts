@@ -54,11 +54,12 @@ export function createDailyReportFeature(
       }
     },
     run: (identity, mode, signal, observer) => {
-      // The feature deadline begins before storage opens, so share its stage with the service bound.
+      // Share cancellation and stage diagnostics from storage opening through generation.
+      // Interactive reports have no app-imposed wall-clock deadline.
       const deadlineContext = createDailyReportDeadlineContext('report_read');
       return boundedDailyReport(
         signal,
-        90_000,
+        null,
         async operationSignal => {
           let db: SqlDatabase;
           try {

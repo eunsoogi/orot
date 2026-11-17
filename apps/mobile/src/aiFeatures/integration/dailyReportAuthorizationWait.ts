@@ -16,12 +16,12 @@ function state(context: DailyReportDeadlineContext) {
   return current;
 }
 
-/** Nested feature/service/provider budgets count processing, not a person's decision.
+/** Optional finite callers count processing, not a person's decision; null installs no timer.
  * All timers retain spent time and unregister on settlement; Stop is never paused. */
 export function reportProcessingDeadline(
   context: DailyReportDeadlineContext | undefined,
   expire: () => void,
-  milliseconds: number,
+  milliseconds: number | null,
 ) {
   const deadline = createInitialReplyDeadline(expire, milliseconds);
   const current = context ? state(context) : undefined;
