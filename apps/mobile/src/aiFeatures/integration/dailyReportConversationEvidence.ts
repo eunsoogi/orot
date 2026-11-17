@@ -1,3 +1,4 @@
+import { reportTargetFailure } from '../../providers/reportTargetDiagnostic';
 import type { EvidenceItem } from '@orot/agent-runtime';
 import type { ConversationEntryContext } from './conversationIntent';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -28,20 +29,33 @@ export async function prepareDailyReportConversationEvidence(input: {
       input.signal,
     );
   const initial = await read();
-  if (initial.status !== 'current' || input.signal.aborted) return null;
+  if (input.signal.aborted)
+    return reportTargetFailure('report_target_cancelled');
+  if (initial.status !== 'current')
+    return reportTargetFailure(
+      initial.status === 'stale'
+        ? 'report_target_stale'
+        : initial.status === 'deleted'
+          ? 'report_target_deleted'
+          : 'report_target_unavailable',
+    );
   // Without any cited record, sending the turn would silently drop the selected report.
   if (
     !initial.sources.length ||
     initial.sources.length > RAG_CONVERSATION_BUDGET.maxEvidenceItems
   )
-    return null;
+    return reportTargetFailure(
+      !initial.sources.length
+        ? 'report_target_empty'
+        : 'report_target_item_limit',
+    );
   const originals = initial.sources.map(source =>
     input.registry.resolve(source),
   );
   if (
     originals.some(source => !source || source.sourceKind !== 'personal_record')
   )
-    return null;
+    return reportTargetFailure('report_target_registry_missing');
   const items: EvidenceItem[] = [];
   const data = await input.loadLocalData();
   for (const [index, source] of initial.sources.entries()) {
@@ -50,14 +64,14 @@ export async function prepareDailyReportConversationEvidence(input: {
       result.status !== 'available' ||
       result.document.sourceKind !== 'personal_record'
     )
-      return null;
+      return reportTargetFailure('report_target_source_unavailable');
     const content =
       'health_overview: ' +
       JSON.stringify({
         records: result.document.records.map(healthOverviewFacts),
       });
     if (utf8ByteLength(content) > MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES)
-      return null;
+      return reportTargetFailure('report_target_item_payload');
     for (const id of await data.findIdentifiers(content, input.signal))
       input.registry.registerSensitiveIdentifier(id);
     const original = originals[index]!;
@@ -73,7 +87,8 @@ export async function prepareDailyReportConversationEvidence(input: {
         validate: signal => input.registry.revalidateEvidence([source], signal),
       }),
     );
-    if (jsonByteLength(items) > MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES) return null;
+    if (jsonByteLength(items) > MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES)
+      return reportTargetFailure('report_target_batch_payload');
   }
   const expected = stableJson(originals);
   const isCurrent = async () => {
@@ -89,5 +104,7 @@ export async function prepareDailyReportConversationEvidence(input: {
       !input.signal.aborted
     );
   };
-  return (await isCurrent()) ? { items, isCurrent } : null;
+  return (await isCurrent())
+    ? { items, isCurrent }
+    : reportTargetFailure('report_target_recheck');
 }
