@@ -123,7 +123,7 @@ public extension ChatGPTOAuthClient {
                             // Bound the entire hosted-search stream, including reasoning and
                             // repeated metadata, rather than only its displayed answer text.
                             publicStreamBytes += chunk.count
-                            guard publicStreamBytes <= 1_048_576 else { throw ChatGPTResponsesError.malformedEvent }
+                            guard publicStreamBytes <= 1_048_576 else { throw ResponsesMalformedDiagnostics.failure(.publicStreamByteLimit) }
                         }
                         for frame in try decoder.append(chunk) {
                             if let event = try normalizer.consume(frame) {

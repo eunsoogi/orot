@@ -48,7 +48,7 @@ struct ResponsesEventNormalizer {
             guard let delta = object["delta"] as? String else { throw Self.malformed("text_delta") }
             accumulatedText.append(delta)
             if webSearch.enabled, accumulatedText.utf8.count > ResponsesPublicWebSearch.maxTextBytes {
-                throw ChatGPTResponsesError.malformedEvent
+                throw ResponsesMalformedDiagnostics.failure(.publicTextByteLimit)
             }
             return delta.isEmpty ? nil : .textDelta(delta)
         case "response.output_item.added":

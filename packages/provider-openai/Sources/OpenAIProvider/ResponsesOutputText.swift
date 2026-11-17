@@ -14,7 +14,7 @@ enum ResponsesOutputText {
         }
         guard let output = response["output"] as? [[String: Any]] else {
             if publicWebSearch {
-                throw ChatGPTResponsesError.malformedEvent
+                throw ResponsesMalformedDiagnostics.failure(.publicOutputShape)
             }
             return fallback
         }
@@ -32,7 +32,7 @@ enum ResponsesOutputText {
         let text = parts.joined()
         if publicWebSearch, let declared = response["output_text"] {
             guard let declaredText = declared as? String, declaredText == text else {
-                throw ChatGPTResponsesError.malformedEvent
+                throw ResponsesMalformedDiagnostics.failure(.publicOutputTextMismatch)
             }
         }
         return text
