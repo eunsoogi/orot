@@ -1,3 +1,4 @@
+import { ConversationReportSection } from './ConversationReportSection';
 import { useId } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -74,8 +75,7 @@ export function HealthSummaryCard({
           ))
         : null}
       {result.analysis.hypotheses.map((section, index) => (
-        <View key={index} style={styles.section}>
-          <HealthSummaryText text={section.title} title />
+        <ConversationReportSection key={index} title={section.title}>
           <HealthSummaryText text={section.summary} />
           {section.uncertainty ? (
             <HealthSummaryText text={section.uncertainty} />
@@ -94,7 +94,7 @@ export function HealthSummaryCard({
               onLinkError={onLinkError}
             />
           ) : null}
-        </View>
+        </ConversationReportSection>
       ))}
       <AppText testID="health-summary-save-status">
         {saved?.status === 'saved'
@@ -133,6 +133,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: { fontWeight: '600' },
-  section: { gap: 6 },
   retry: { minHeight: 44, justifyContent: 'center' },
 });

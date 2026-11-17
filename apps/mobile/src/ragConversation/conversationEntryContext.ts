@@ -1,3 +1,4 @@
+import { possibilityTemplateInstruction } from './conversationReportTemplate';
 import type { JsonValue } from '@orot/model-runtime';
 import type { EvidenceItem } from '@orot/agent-runtime';
 
@@ -20,9 +21,15 @@ export function conversationTaskInput(
     typeof context === 'object' &&
     !Array.isArray(context) &&
     (context as Readonly<Record<string, JsonValue>>).photoAttachment === true;
+  const entryContext = conversationEntryContext(context, evidence);
+  const answerTemplate = possibilityTemplateInstruction(
+    question,
+    entryContext?.intent,
+  );
   return {
     question,
-    entryContext: conversationEntryContext(context, evidence),
+    entryContext,
+    ...(answerTemplate ? { answerTemplate } : {}),
     displayTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     ...(photo
       ? {

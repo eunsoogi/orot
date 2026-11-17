@@ -14,6 +14,7 @@ export const HealthSummaryText = memo(function SummaryProse({
 }) {
   return (
     <AppText
+      accessibilityRole={title ? 'header' : undefined}
       style={title ? titleStyle : styles.messageText}
       allowFontScaling
       adjustsFontSizeToFit={false}

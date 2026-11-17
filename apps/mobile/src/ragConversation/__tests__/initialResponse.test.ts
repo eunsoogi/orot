@@ -127,7 +127,7 @@ test('keeps opening prose in the live boundary instead of repeating it during to
   expect(JSON.parse(message.content).initialResponseText).toBeUndefined();
   expect(ragConversationTask.initialToolResponse).toBeUndefined();
   expect(ragConversationTask.reviewInitialToolResponse).toBeUndefined();
-  expect(ragConversationTask.taskVersion).toBe('13');
+  expect(ragConversationTask.taskVersion).toBe('14');
   expect(
     validateInitialConversationResponse('어떤 흐름인지 함께 살펴볼게요.'),
   ).toBe('어떤 흐름인지 함께 살펴볼게요.');

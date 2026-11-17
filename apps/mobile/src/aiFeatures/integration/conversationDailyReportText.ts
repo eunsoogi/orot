@@ -35,16 +35,20 @@ export function conversationDailyReportText(
     })
     .filter(Boolean);
   return [
-    t('dailyReport.title'),
+    `# ${t('dailyReport.title')}`,
     t('dailyReport.reportCutoff', {
       time: formatDateTime(
         new Date(saved.context.generationCutoff),
         saved.context.identity.timeZone,
       ),
     }),
+    ...(saved.report.supportedContext.length &&
+    !saved.report.supportedContext[0]?.section
+      ? [`## ${t('dailyReport.supportedContext')}`]
+      : []),
     ...saved.report.supportedContext.flatMap((claim, index, claims) => [
       ...(claim.section && claim.section !== claims[index - 1]?.section
-        ? [t(`dailyReport.analysis.${claim.section}`)]
+        ? [`## ${t(`dailyReport.analysis.${claim.section}`)}`]
         : []),
       ...(claim.section === 'model' && claims[index - 1]?.section !== 'model'
         ? [t('dailyReport.analysis.modelCaution')]
@@ -53,13 +57,17 @@ export function conversationDailyReportText(
     ]),
     ...(saved.report.observations.length
       ? [
-          t('dailyReport.observations'),
+          `## ${t('dailyReport.observations')}`,
           ...saved.report.observations.map(item => item.text),
         ]
       : []),
     ...(saved.report.followUpQuestions.length
-      ? [t('dailyReport.suggestedQuestions'), ...saved.report.followUpQuestions]
+      ? [
+          `## ${t('dailyReport.suggestedQuestions')}`,
+          ...saved.report.followUpQuestions,
+        ]
       : []),
+    `## ${t('conversationTemplate.daily.scope')}`,
     ...coverage,
     t('dailyReport.reportCaution'),
   ].join('\n\n');
