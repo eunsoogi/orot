@@ -98,11 +98,15 @@ export async function beginConversationExecutionLease(
     reconciling = true;
     try {
       do {
+        // Observe actual bridge checks, not duplicate foreground notifications.
         reconcileAgain = false;
+        diagnose('foreground-check-started');
         const available = await adapter.protectedDataAvailable();
         if (closed || interrupted) return;
         if (available === false) notify('protected-data');
         else if (!(await adapter.isActive(requestId))) notify('expired');
+        // A passed lease check is not provider progress; late results have no owner.
+        else if (!closed && !interrupted) diagnose('foreground-check-passed');
       } while (reconcileAgain && !closed && !interrupted);
     } catch {
       notify('lease-check-failed');
@@ -120,6 +124,8 @@ export async function beginConversationExecutionLease(
       !pauseRequested
     ) {
       pauseRequested = true;
+      // This acknowledges the advisory request, not successful checkpoint creation.
+      diagnose('pause-requested');
       requestPause();
     }
     if (event.kind === 'continued' && event.requestId === requestId)
