@@ -154,3 +154,5 @@ export { validateEvidenceBatch } from './multiAgent/evidence';
 export type { LocalActionTool } from './multiAgent/actionContracts';
 
 export { preparePendingActionRecovery } from './multiAgent/pendingActionRecoveryOptions';
+
+export type { CoverageDiagnosticCode } from './multiAgent/coverageDiagnostics';

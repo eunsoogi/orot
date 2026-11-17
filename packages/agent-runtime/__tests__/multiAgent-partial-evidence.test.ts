@@ -205,3 +205,21 @@ test('does not invoke or apply an unrecognized policy callback', async () => {
   expect(result.status).toBe('result');
   if (result.status === 'result') expect(result.value.summary).toBe('Cited observation');
 });
+
+test('coverage observer sees the blocking branch only and cannot alter its outcome', async () => {
+  const { options } = fixture([answer, answer, answer]);
+  const plain = await runMultiAgentWorkflow(options);
+  const observer = jest.fn(() => {
+    throw new Error('diagnostic sink');
+  });
+  const observed = await runMultiAgentWorkflow({ ...options, onCoverageDiagnostic: observer });
+  expect(observed).toEqual(plain);
+  expect(observer).toHaveBeenCalledWith('coverage_personal_gap');
+  observer.mockClear();
+  await runMultiAgentWorkflow({
+    ...options,
+    task: { ...options.task, allowPartialEvidence: true },
+    onCoverageDiagnostic: observer,
+  });
+  expect(observer).not.toHaveBeenCalled();
+});

@@ -104,6 +104,14 @@ export async function runRagConversationTurn(
     const result = await runContinuableConversationWorkflow(
       {
         ...options.workflow,
+        onCoverageDiagnostic: code => {
+          try {
+            options.workflow.onCoverageDiagnostic?.(code);
+          } catch {
+            /* Observer isolation. */
+          }
+          providerDiagnostic('rag', 'validation', code);
+        },
         request: question,
         context: conversationWorkflowContext(options),
         task: ragConversationTask,
