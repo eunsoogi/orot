@@ -10,6 +10,8 @@ import type {
 } from '@orot/model-runtime';
 import { jsonByteLength } from '../../aiFeatures/integration/evidenceUtils';
 import { ragConversationTask } from '../task';
+import { conversationWorkflowContext } from '../conversationWorkflowContext';
+import { fixture as conversationFixture } from '../testSupport/conversationEnvelopeFixtures';
 
 // Synthetic content only. Exercise actual request construction and authorization,
 // not a replacement size estimator or a live account/model.
@@ -189,4 +191,32 @@ test('interactive requests can cross the old aggregate cap without raising evide
   expect(f.requests).toHaveLength(2);
   expect(jsonByteLength(f.requests[1])).toBeGreaterThan(65536);
   expect(f.authorize).toHaveBeenCalledTimes(2);
+});
+
+test('keeps a historical question once through tool rounds without bypassing authorization', async () => {
+  const f = fixture(61_000);
+  const question = 'SYNTHETIC_PRIOR_QUESTION_' + 'q'.repeat(900);
+  const result = await runMultiAgentWorkflow({
+    ...f.options,
+    context: conversationWorkflowContext({
+      ...conversationFixture().options,
+      previousMessages: [{ role: 'user', content: question }],
+      validatedPriorTurns: [{ question, answer: 'synthetic validated answer' }],
+    }),
+    execution: {
+      ...f.options.execution,
+      budget: { ...f.options.execution.budget, maxModelRequestBytes: null },
+    },
+  });
+  expect(result.status).toBe('result');
+  expect(f.requests).toHaveLength(2);
+  for (const request of f.requests) {
+    expect(JSON.stringify(request).split(question)).toHaveLength(2);
+  }
+  expect(JSON.stringify(f.requests[1]).split(f.content)).toHaveLength(2);
+  expect(result).toMatchObject({
+    citations: [expect.objectContaining({ evidenceId: 'fixture-evidence' })],
+  });
+  expect(f.authorize).toHaveBeenCalledTimes(2);
+  expect(f.revalidateEvidence).toHaveBeenCalled();
 });
