@@ -42,8 +42,11 @@ export async function authorizeModelCall(
     return { status: 'unavailable', errorCode: 'invalid_request' };
   }
   // A local size limit is not an account/provider configuration failure. Reject before consent or dispatch.
-  if (utf8ByteLength(payload) > execution.budget.maxPayloadBytes)
-    return { status: 'budget_exceeded' };
+  const limit =
+    execution.budget.maxModelRequestBytes === undefined
+      ? execution.budget.maxPayloadBytes
+      : execution.budget.maxModelRequestBytes;
+  if (limit !== null && utf8ByteLength(payload) > limit) return { status: 'budget_exceeded' };
   if (execution.remoteProcessing) {
     try {
       const approval = await observeUntilAbort(

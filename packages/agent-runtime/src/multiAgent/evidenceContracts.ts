@@ -60,6 +60,9 @@ export interface MultiAgentBudget {
   readonly maxToolCalls: number;
   readonly maxResearchCycles: number;
   readonly maxPayloadBytes: number;
+  /** Omitted uses maxPayloadBytes. Null removes only the aggregate model-request cap,
+   * not individual evidence/output bounds or the provider's own limits. */
+  readonly maxModelRequestBytes?: number | null;
   readonly maxOutputTokens: number;
   /** null explicitly disables elapsed time cancellation; source, call and size budgets still apply. */
   readonly timeoutMs: number | null;

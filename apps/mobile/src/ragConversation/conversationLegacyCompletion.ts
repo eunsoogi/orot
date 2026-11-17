@@ -20,7 +20,7 @@ const addCompletion = (schema: JsonObject): JsonObject => {
 /** Exact old request contracts remain readable. Their coverage label is never
  * projected into new answer storage or presentation; real interruption is separate. */
 export function legacyCompletionTask() {
-  return {
+  const legacy = {
     ...ragConversationTask,
     taskVersion: '10',
     systemPrompt: ragConversationTask.systemPrompt
@@ -50,4 +50,7 @@ export function legacyCompletionTask() {
         (value as JsonObject).completion === 'partial',
       ) && ragConversationTask.acceptsIncompleteEvidence!(value, input),
   };
+  // Absence is significant to protected exactInput, including its stable serialization.
+  delete legacy.nativeToolResultMode;
+  return legacy;
 }
