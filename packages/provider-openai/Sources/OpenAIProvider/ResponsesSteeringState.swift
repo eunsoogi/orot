@@ -22,6 +22,11 @@ struct ResponsesSteeringState {
     private var normalizer = ResponsesEventNormalizer(requestID: nil)
     private var originalUsage: ChatGPTResponsesUsage?
     private(set) var finished = false
+    /// A submitted steer can leave pending server input even when the original result is terminal.
+    /// Conservatively retire every steered connection instead of guessing server queue state.
+    var canReuseConnection: Bool {
+        finished && !submissionUsed
+    }
 
     mutating func prepareSteer(submissionID: String, text: String) throws -> Data {
         guard !finished, let activeID, !submissionUsed,

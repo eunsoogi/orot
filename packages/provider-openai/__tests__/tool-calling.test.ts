@@ -39,6 +39,7 @@ describe('ChatGPT plan local tool calling', () => {
     });
 
     expect(bridge.started[0]?.request).toEqual({
+      transportScope: expect.any(String),
       model: 'gpt-test',
       messages: [{ role: 'user', content: 'Look up source-42.' }],
       tools: [

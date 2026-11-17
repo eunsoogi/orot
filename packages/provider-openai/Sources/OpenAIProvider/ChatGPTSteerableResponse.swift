@@ -51,6 +51,9 @@ public actor ChatGPTSteerableResponse {
                             continuation.yield(event)
                         }
                         if state.finished {
+                            if state.canReuseConnection {
+                                connection.completed()
+                            }
                             continuation.finish(); return
                         }
                     }
