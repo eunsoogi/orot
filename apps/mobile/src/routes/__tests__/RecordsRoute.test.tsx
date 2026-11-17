@@ -94,12 +94,12 @@ test('keeps existing Records actions and medical document import available', asy
   ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('records-new-recording'));
   await fireEvent.press(screen.getByTestId('records-open-saved-recordings'));
-  await fireEvent.press(screen.getByTestId('records-open-manual-history'));
+  expect(screen.queryByTestId('records-open-manual-history')).toBeNull();
   await fireEvent.press(screen.getByTestId('records-open-health-library'));
 
   expect(props.onOpenRecording).toHaveBeenCalledTimes(1);
   expect(props.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
-  expect(props.onOpenManualHistory).toHaveBeenCalledTimes(1);
+  expect(props.onOpenManualHistory).not.toHaveBeenCalled();
   expect(props.onOpenHealthLibrary).toHaveBeenCalledTimes(1);
 });
 

@@ -10,7 +10,7 @@ interface ManualHistoryEntryDetailsProps {
   entry: ManualHistoryScreenRecord;
   history: readonly ManualHistoryScreenRecord[];
   onCorrect: () => void;
-  onClose: () => void;
+  onClose?: () => void;
   onDelete: () => void | Promise<void>;
   deleting: boolean;
 }
@@ -38,7 +38,7 @@ function recordedAtLabel(recordedAt: string): string {
   });
 }
 
-/** Makes deletion a separate, explicit action because it removes the full correction lineage. */
+/** Keeps lineage deletion explicit; text identities disambiguate native window ownership without grouping AX content. */
 export default function ManualHistoryEntryDetails({
   entry,
   history,
@@ -58,7 +58,9 @@ export default function ManualHistoryEntryDetails({
       </Text>
       <Text>{entry.details}</Text>
       {history.length <= 1 ? (
-        <Text>{t('manualHistory.status', { review: reviewLabel(entry) })}</Text>
+        <Text testID="manual-history-current-status">
+          {t('manualHistory.status', { review: reviewLabel(entry) })}
+        </Text>
       ) : null}
       {history.length > 1 ? (
         <View style={styles.history} testID="manual-history-correction-history">
@@ -82,13 +84,18 @@ export default function ManualHistoryEntryDetails({
                     version.kind) as `manualHistory.kind.${ManualHistoryScreenRecord['kind']}`,
                 )}
               </Text>
-              <Text>
+              <Text testID={'manual-history-status-version-' + version.id}>
                 {t('manualHistory.status', { review: reviewLabel(version) })}
               </Text>
               <Text testID="manual-history-recorded-at">
                 {recordedAtLabel(version.recordedAt)}
               </Text>
-              <Text style={styles.entryTitle}>{version.title}</Text>
+              <Text
+                style={styles.entryTitle}
+                testID={'manual-history-title-version-' + version.id}
+              >
+                {version.title}
+              </Text>
               <Text testID={'manual-history-date-version-' + version.id}>
                 {effectiveDateLabel(version.effectiveDate)}
               </Text>
@@ -141,13 +148,15 @@ export default function ManualHistoryEntryDetails({
           />
         </View>
       )}
-      <Button
-        variant="secondary"
-        disabled={deleting}
-        onPress={onClose}
-        testID="manual-history-close-details"
-        title={t('manualHistory.detail.close')}
-      />
+      {onClose ? (
+        <Button
+          variant="secondary"
+          disabled={deleting}
+          onPress={onClose}
+          testID="manual-history-close-details"
+          title={t('manualHistory.detail.close')}
+        />
+      ) : null}
     </View>
   );
 }

@@ -8,12 +8,19 @@ import {
 import { createHealthEvidenceTestDatabase } from '../../healthEvidence/localEvidenceTestSupport';
 import { openLocalManualHistoryRepository } from '../../manualHistory/localRepository';
 import { selectTestRoute } from '../../../e2e/testRoute';
-import { RecordsRoute } from '../RecordsRoute';
+import { SavedMemoryBrowser } from '../../memory/SavedMemoryBrowser';
+import { SavedMemoryDetail } from '../../memory/SavedMemoryDetail';
 import {
-  ManualHistoryRepositoryOpenerContext,
-  ManualHistoryRoute,
-} from '../ManualHistoryRoute';
+  unifySavedMemories,
+  type SavedMemory,
+} from '../../memory/unifiedSavedMemories';
+import { AppState } from 'react-native';
+import { AppButton } from '../../layout/AppButton';
 
+beforeEach(() => {
+  AppState.currentState = 'active';
+  jest.mocked(AppState.addEventListener).mockReturnValue({ remove: jest.fn() });
+});
 jest.mock('../../storage/secureDatabase', () => ({
   openLocalAgentMemoryDatabase: jest.fn(),
   openLocalStorage: jest.fn(),
@@ -37,98 +44,91 @@ test('admits manual-history recovery only as an explicit test scenario', () => {
   ).toThrow('Unsupported test scenario');
 });
 
-function RecordsAndManualHistoryRoutes() {
-  const [showManualHistory, setShowManualHistory] = useState(false);
-  if (showManualHistory) {
-    return <ManualHistoryRoute onBack={() => setShowManualHistory(false)} />;
-  }
-  return (
-    <RecordsRoute
-      recordings={[]}
-      recordingState="ready"
-      onRetryRecordings={() => undefined}
-      onOpenSavedRecordings={() => undefined}
-      onOpenRecording={() => undefined}
-      onOpenHealthLibrary={() => undefined}
-      onOpenManualHistory={() => setShowManualHistory(true)}
-    />
+/** A seeded original stands in for existing user data; new manual creation is deliberately absent. */
+function MemoryRoutes({ load }: { load: () => Promise<SavedMemory[]> }) {
+  const [id, setId] = useState<string | null>(null);
+  return id ? (
+    <>
+      <SavedMemoryDetail memoryId={id} load={load} />
+      <AppButton title="목록으로" onPress={() => setId(null)} />
+    </>
+  ) : (
+    <SavedMemoryBrowser load={load} onOpenMemory={setId} />
   );
 }
 
-test('opens from Records, saves, leaves, and reloads a structured manual-history entry', async () => {
+async function setupDatabase() {
   const { database, close } = createHealthEvidenceTestDatabase();
   await runMigrations(database);
   const storage = createRecordRepository(database);
   mockedOpenLocalStorage.mockResolvedValue(storage);
   mockedOpenLocalAgentMemoryDatabase.mockResolvedValue(database);
-  const view = await render(<RecordsAndManualHistoryRoutes />);
+  const repository = await openLocalManualHistoryRepository();
+  await repository.create({
+    kind: 'note',
+    title: 'Synthetic history query marker',
+    details: 'Synthetic persisted details.',
+    effectiveDate: { status: 'unknown' },
+  });
+  const load = async () => unifySavedMemories([], await repository.list());
+  return { storage, load, close };
+}
+
+test('opens existing originals through Memory, corrects, leaves and reloads without a manual-create entry', async () => {
+  const { storage, load, close } = await setupDatabase();
+  const view = await render(<MemoryRoutes load={load} />);
   try {
-    await fireEvent.press(view.getByTestId('records-open-manual-history'));
-    await view.findByTestId('manual-history-empty');
-    await fireEvent.press(view.getByTestId('manual-history-add'));
-    await fireEvent.changeText(
-      view.getByTestId('manual-history-title-input'),
-      'Synthetic history query marker',
-    );
+    expect(view.queryByTestId('records-open-manual-history')).toBeNull();
+    expect(view.queryByTestId('manual-history-add')).toBeNull();
+    await fireEvent.press(view.getByText(/Synthetic history query marker/));
+    await view.findByTestId('manual-history-correct');
+    await fireEvent.press(view.getByTestId('manual-history-correct'));
     await fireEvent.changeText(
       view.getByTestId('manual-history-details-input'),
-      'Synthetic persisted details for the route integration test.',
+      'Synthetic corrected details.',
     );
-    await fireEvent.press(view.getByTestId('manual-history-date-unknown'));
     await fireEvent.press(view.getByTestId('manual-history-save'));
-    await view.findByText('Synthetic history query marker');
-
-    await fireEvent.press(view.getByTestId('manual-history-back'));
-    expect(view.getByTestId('records-title')).toBeTruthy();
-    await fireEvent.press(view.getByTestId('records-open-manual-history'));
-    await view.findByText('Synthetic history query marker');
-
+    await view.findByTestId('manual-history-correct');
+    await fireEvent.press(view.getByText('목록으로'));
+    await fireEvent.press(view.getByText(/Synthetic history query marker/));
+    await view.findByTestId('manual-history-correction-history');
+    expect(
+      view.getAllByText('Synthetic corrected details.').length,
+    ).toBeGreaterThan(0);
     await expect(
       storage.manualHistory.list({ search: 'query marker' }),
     ).resolves.toHaveLength(1);
     await expect(
       storage.manualHistory.list({ dateStatus: 'unknown' }),
     ).resolves.toHaveLength(1);
+    const entries = await storage.manualHistory.list();
+    await expect(
+      storage.manualHistory.history(entries[0].id),
+    ).resolves.toHaveLength(2);
   } finally {
-    view.unmount();
+    await view.unmount();
     close();
     mockedOpenLocalStorage.mockReset();
     mockedOpenLocalAgentMemoryDatabase.mockReset();
   }
 });
 
-test('retries a failed route open through the real repository and returns to Records', async () => {
-  const { database, close } = createHealthEvidenceTestDatabase();
-  await runMigrations(database);
-  const storage = createRecordRepository(database);
-  mockedOpenLocalStorage.mockResolvedValue(storage);
-  mockedOpenLocalAgentMemoryDatabase.mockResolvedValue(database);
-  let attempts = 0;
-  const openRepository = jest.fn(async () => {
-    attempts += 1;
-    if (attempts === 1) throw new Error('Synthetic repository-open failure.');
-    return openLocalManualHistoryRepository();
-  });
-  const view = await render(
-    <ManualHistoryRepositoryOpenerContext.Provider value={openRepository}>
-      <RecordsAndManualHistoryRoutes />
-    </ManualHistoryRepositoryOpenerContext.Provider>,
-  );
+test('retries a failed unified read and opens the preserved original', async () => {
+  const { load, close } = await setupDatabase();
+  const retryLoad = jest
+    .fn()
+    .mockRejectedValueOnce(new Error('Synthetic locked store'))
+    .mockImplementation(load);
+  const view = await render(<MemoryRoutes load={retryLoad} />);
   try {
-    await fireEvent.press(view.getByTestId('records-open-manual-history'));
-    await view.findByTestId('route-load-retry');
-    expect(openRepository).toHaveBeenCalledTimes(1);
-
-    await fireEvent.press(view.getByTestId('route-load-retry'));
-    await view.findByTestId('manual-history-empty');
-    expect(openRepository).toHaveBeenCalledTimes(2);
-    expect(mockedOpenLocalStorage).toHaveBeenCalledTimes(1);
-    expect(mockedOpenLocalAgentMemoryDatabase).toHaveBeenCalledTimes(1);
-
-    await fireEvent.press(view.getByTestId('manual-history-back'));
-    expect(view.getByTestId('records-title')).toBeTruthy();
+    await fireEvent.press(view.getByText('다시 시도'));
+    expect(retryLoad).toHaveBeenCalledTimes(2);
+    await fireEvent.press(view.getByText(/Synthetic history query marker/));
+    await view.findByTestId('manual-history-correct');
+    await fireEvent.press(view.getByText('목록으로'));
+    expect(view.getByTestId('saved-memory-browser')).toBeTruthy();
   } finally {
-    view.unmount();
+    await view.unmount();
     close();
     mockedOpenLocalStorage.mockReset();
     mockedOpenLocalAgentMemoryDatabase.mockReset();

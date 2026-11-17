@@ -35,7 +35,8 @@ it('loads concise rows on entry and opens details by ID without refresh or close
   expect(screen.queryByText('새로고침')).toBeNull();
   expect(screen.queryByRole('button', { name: '기억 닫기' })).toBeNull();
   expect(screen.queryByText('사용자 확인 · 출처 1개')).toBeNull();
-  await fireEvent.press(screen.getByText(memory.text));
+  expect(screen.getByTestId(`saved-memory-entry-${memory.id}`)).toBeTruthy();
+  await fireEvent.press(screen.getByTestId(`saved-memory-entry-${memory.id}`));
   expect(open).toHaveBeenCalledWith(memory.id);
   expect(load).toHaveBeenCalledTimes(1);
 });

@@ -1,3 +1,4 @@
+import { enqueueManualHistoryMemory } from './userStatementMemoryJobs';
 import {
   additionalHistoryOperation,
   insertHistoryOperationReceipt,
@@ -94,13 +95,14 @@ export async function saveConversationHealthHistory(
     const entry = createManualHistoryEntry({
       id,
       kind: 'note',
-      title: '대화에서 저장한 과거 건강 기록',
+      title: '대화에서 남긴 기억',
       details,
       // Relative/approximate dates stay verbatim, not silently normalized to today.
       effectiveDate: { status: 'unknown' },
       recordedAt: now,
     });
     await insertManualHistoryEntry(tx, entry);
+    await enqueueManualHistoryMemory(tx, id);
     if (additional) await insertHistoryOperationReceipt(tx, input, id);
     else
       await tx.execute(

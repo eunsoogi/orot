@@ -1,12 +1,10 @@
+import { enqueueStatementMemory } from './userStatementMemoryJobs';
 import { conversationTimelinePages } from './conversationTimelinePages';
 import { continuousConversationStorage } from './continuousConversationStorage';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
 import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
-import {
-  localQueryTimestampKey,
-  type SqlDatabase,
-  type SqlExecutor,
-} from '@orot/storage';
+import { localQueryTimestampKey } from '@orot/storage';
+import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import {
   decodeConversationArtifact,
@@ -227,6 +225,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         // After this check, commit wins; the caller must report the saved result even if cancellation arrives later.
         assertConversationNotCancelled(signal);
         await commitConversationRequest(tx, decoded, expectedSessionVersion);
+        await enqueueStatementMemory(tx, decoded);
       });
     },
     async list(

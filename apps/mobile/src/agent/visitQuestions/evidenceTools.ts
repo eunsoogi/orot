@@ -114,7 +114,7 @@ export function createVisitQuestionEvidenceSearchTools(input: {
     description:
       sourceKind === 'personal_record'
         ? 'Search current local health records and transcript evidence for a short query. Return only source-linked evidence from the allowed local records.'
-        : 'Search current user-reviewed Rememori memories for a short query. Return only source-linked reviewed memory.',
+        : 'Search source-linked Rememori memories. Preserve each item reviewState: user-stated entries are dated unreviewed statements, not verified diagnoses or current facts.',
     inputSchema: QUERY_SCHEMA,
     parseInput: parseQuery,
     async search(request, runtime) {

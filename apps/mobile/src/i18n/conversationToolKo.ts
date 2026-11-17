@@ -2,10 +2,10 @@
 export const conversationToolKo = {
   'ragConversation.workspace.activity': '확인한 자료',
   'ragConversation.workspace.empty': '대화 중 수행한 작업이 여기에 표시돼요.',
-  'ragConversation.tool.name.saveHistory': '과거 건강 기록 저장',
+  'ragConversation.tool.name.saveHistory': '기억 저장',
   'ragConversation.tool.name.health': '건강 기록 확인',
   'ragConversation.tool.name.records': '개인 기록 검색',
-  'ragConversation.tool.name.memory': '확인된 기억 검색',
+  'ragConversation.tool.name.memory': '기억 검색',
   'ragConversation.tool.name.summaries': '저장된 요약 검색',
   'ragConversation.tool.name.conversations': '이전 대화 검색',
   'ragConversation.tool.name.research': '저장된 조사 검색',
