@@ -1,3 +1,4 @@
+import { workflowClarificationDiagnostic } from './workflowClarificationDiagnostic';
 import { workflowBudgetDiagnostic } from './workflowBudgetDiagnostic';
 import { workflowUnavailableDiagnostic } from './workflowUnavailableDiagnostic';
 import { staleEvidenceDiagnostic } from './staleEvidenceDiagnostic';
@@ -53,6 +54,17 @@ export function reportWorkflowOutcome(
   providerErrorCode?: string,
   validationReason?: string,
 ) {
+  if (status === 'needs_clarification') {
+    try {
+      providerDiagnostic(
+        feature,
+        'validation',
+        workflowClarificationDiagnostic(validationReason),
+      );
+    } catch {
+      // Observability must not alter clarification, evidence validation or the UI outcome.
+    }
+  }
   if (status === 'budget_exceeded') {
     try {
       providerDiagnostic(
