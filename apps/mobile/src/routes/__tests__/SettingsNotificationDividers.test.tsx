@@ -27,6 +27,13 @@ test.each(['daily', 'reply'])(
         <SettingsReplyNotificationSection />
       ),
     );
+    expect(
+      screen.getByTestId(
+        kind === 'daily'
+          ? 'settings-daily-reminder-description'
+          : 'settings-reply-notification-description',
+      ),
+    ).toHaveStyle({ paddingBottom: 12, fontSize: 15 });
     const rules = screen.getAllByTestId('settings-notification-divider', {
       includeHiddenElements: true,
     });
