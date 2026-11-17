@@ -75,7 +75,6 @@ export function treatmentConversationSender(input: {
         status: 'answer',
         answer: result.claims.map(claim => claim.text).join('\n'),
         citations: result.claims.flatMap(claim => claim.citations),
-        completion: 'partial',
       };
     }
     if (result.status === 'urgent' || result.status === 'policy') {

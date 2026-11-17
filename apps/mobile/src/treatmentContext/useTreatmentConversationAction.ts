@@ -16,7 +16,6 @@ import {
 import type { SavedTreatmentChoice } from './treatmentSavedLibrary';
 import type { TreatmentSourceChoice } from './treatmentSourceChoices';
 import type { TreatmentRequestAction } from './treatmentRequestProducer';
-
 import type { VerifiedTreatmentSource } from './treatmentSourceLinks';
 import type {
   TreatmentActionProps,
@@ -98,6 +97,7 @@ export function useTreatmentConversationAction({
       let lease = ownership.lease(sessionId);
       let links: readonly VerifiedTreatmentSource[] = [];
       let general: readonly string[] = [];
+      let verified = false;
       const ownerIsCurrent = () => {
         if (!ownership.isActive(sessionId)) return false;
         const current = ownership.lease(sessionId);
@@ -150,6 +150,8 @@ export function useTreatmentConversationAction({
             ownerIsCurrent: () =>
               ownerIsCurrent() && (!saved || lease?.id === saved.sessionId),
             onVerified: (verifiedLinks, verifiedGeneral) => {
+              // Source verification is explicit; answer coverage is not a safety signal.
+              verified = true;
               links = verifiedLinks;
               general = verifiedGeneral;
             },
@@ -176,13 +178,11 @@ export function useTreatmentConversationAction({
             outcome.status === 'answer'
               ? outcome.answer
               : t('treatmentSafety.withheld'),
-          verified:
-            outcome.status === 'answer' && outcome.completion === 'partial',
+          verified: outcome.status === 'answer' && verified,
           links,
           general,
         });
     }, 'submit');
-
   const remove = (item: SavedTreatmentChoice) =>
     run(async signal => {
       const database = await openTreatmentDatabase();
