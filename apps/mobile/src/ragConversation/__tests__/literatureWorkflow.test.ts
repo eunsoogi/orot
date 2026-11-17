@@ -72,7 +72,7 @@ test('renders a verified paper and retains the matching citation', async () => {
   const result = await runRagConversationTurn(f.options);
   expect(result.status).toBe('answer');
   if (result.status === 'answer') {
-    expect(result.completion).toBe('partial');
+    expect(result).not.toHaveProperty('completion');
     expect(result.answer).toContain('관찰 결과인지 확인하지 못했어요');
     expect(result.answer).not.toContain('보고된 통계:');
     expect(result.answer).toContain('오즈비 1.40');
@@ -134,7 +134,7 @@ test('a proposed statistic is returned only as an unverified partial source quot
   });
   expect(outcome.status).toBe('answer');
   if (outcome.status === 'answer') {
-    expect(outcome.completion).toBe('partial');
+    expect(outcome).not.toHaveProperty('completion');
     expect(outcome.answer).toContain('관찰 결과인지 확인하지 못했어요');
     expect(outcome.answer).not.toContain('보고된 통계:');
     expect(outcome.citations).toEqual([

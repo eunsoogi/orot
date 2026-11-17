@@ -3,7 +3,7 @@ import type { TaskResponderInput } from '@orot/agent-runtime';
 import { publicSearchFailureGaps } from '../aiFeatures/integration/publicSearchFailure';
 import { requestsLiteratureExplanation } from './literatureIntent';
 
-/** Only optional web availability may be missing from a partial local-record
+/** Only optional web availability may be missing from a grounded local-record
  * answer. Citation binding, clinical validation and freshness still run normally.
  * No external claim, local coverage gap, conflict or literature request qualifies.
  * An explicitly ranked local sample retains its ordinary bounded scope. */
@@ -16,9 +16,7 @@ export function acceptsLocalPublicSearchFallback(
     typeof value !== 'object' ||
     Array.isArray(value) ||
     !('answerKind' in value) ||
-    !('completion' in value) ||
     value.answerKind !== 'grounded' ||
-    value.completion !== 'partial' ||
     requestsLiteratureExplanation(input.request) ||
     /(?:웹|인터넷|온라인).*(?:검색|찾|확인)|(?:search|look up|find).*\b(?:web|internet|online)\b|\b(?:web|internet|online)\b.*(?:search|look up|find)/iu.test(
       input.request,

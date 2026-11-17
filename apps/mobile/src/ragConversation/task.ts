@@ -26,15 +26,12 @@ import {
 import { conversationTaskInput } from './conversationEntryContext';
 import { priorDialogue } from './priorDialogue';
 import { possibilityPrompt } from './possibilityPrompt';
-import * as initialReply from './initialResponse';
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
   readonly content: string;
 }
 export interface GroundedRagAnswer {
   readonly answer: string;
-  /** A validated answer may cover only part of the user's request. */
-  readonly completion?: 'complete' | 'partial';
   /** Omitted legacy values remain grounded; only explicit social/clarifying replies need no sources. */
   readonly answerKind?: 'grounded' | 'conversation' | 'prior_output';
   readonly literatureReferences?: readonly LiteratureIdentity[];
@@ -46,7 +43,7 @@ export interface GroundedRagAnswer {
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
   // The live send boundary owns the reviewed opening; never spend another preview call during tools.
-  taskVersion: initialReply.initialResponseTaskVersion,
+  taskVersion: '11',
   allowBoundedExternalEvidence: true,
   acceptsIncompleteEvidence: acceptsLocalPublicSearchFallback,
   allowRankedLocalEvidence: true,
@@ -64,12 +61,12 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
     'Choose answerKind=conversation for greetings, acknowledgements, emotional support without factual or clinical claims, and questions that clarify what the user means. Reply naturally without citations or an evidence disclaimer. Do not require a search merely to continue a conversation. ' +
     'Choose answerKind=grounded for claims about records, health measurements, medications, symptoms or medical knowledge. Retrieve supporting evidence when absent; never label such claims conversation to evade grounding. If a turn mixes social language with a substantive health question, use grounded. ' +
     'Choose answerKind=prior_output only to show a previously generated result; cite generated artifact IDs. The application will display the retained text itself. ' +
-    'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. If optional public web research failed, answer a supported local-record question with completion=partial using only its supplied local evidence, and state that public research was unavailable. Never invent external findings. ' +
+    'For grounded answers, use only the supplied current evidence. Previous conversation is context, not evidence. If optional public web research failed, answer a supported local-record question using only its supplied local evidence, and state that public research was unavailable. Never invent external findings. ' +
     'When entryContext identifies a selected visit by evidence ID, use that visit as the requested target and do not replace it with another appointment. ' +
     'A generated_artifact is a historical AI output, not an independent medical fact or corroboration. When asked about a prior output, identify its origin, generation date, uncertainty and source status. For clinical claims retrieve and cite the underlying current sources separately. A paged result is not an exhaustive search; use its nextCursor for more results. When asked to continue on a later turn, reuse the earlier search query so the local tool continues its saved page. ' +
     possibilityPrompt +
     'Cite exact current evidence IDs in the top-level citations field. ' +
-    'Set completion to partial when the answer provides useful supported information but cannot address all requested topics; explain the missing portion. Otherwise set it to complete. Never use partial to bypass evidence or citation requirements. ' +
+    'Explain any missing requested information directly in the answer. Never bypass evidence or citation requirements. ' +
     'Local evidence is a ranked search sample, not an exhaustive medication list or medical history. Say what the retrieved records support and never infer absence from omitted results. ' +
     'For broad health questions or trends prefer local-health-context (30 days, summary detail by default) for full-period medication, measurement, activity, sleep and symptom statistics. Choose 7 or 90 days, or an explicit window for a requested period, and weekly or daily detail when needed; use raw-record search for drilldown. If unavailable use view=health_overview. Missing days are unknown, not zero or missed medication. Never add overlapping sensor step series or infer a complete night from calendar-day sleep durations. The model chooses each tool and query. ' +
     'Respect sourceSemantics: step_count amounts in count are steps, never occurrences. Sleep stages describe individual intervals, not episode counts or whole-night totals. Convert clock times to displayTimeZone, or label the retained source time zone explicitly. ' +
@@ -153,6 +150,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
           key !== 'literature' &&
           key !== 'localClaims',
       ) ||
+      // Historical checkpoints may supply the old label; validate but do not propagate it.
       ('completion' in value &&
         value.completion !== 'complete' &&
         value.completion !== 'partial') ||
@@ -201,9 +199,6 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
         value: {
           answer: rendered.answer,
           answerKind: 'grounded' as const,
-          ...(value.completion === 'partial' || rendered.partial
-            ? { completion: 'partial' as const }
-            : {}),
           literatureReferences: rendered.literatureReferences,
           localReferences: rendered.localReferences,
         },
@@ -232,9 +227,6 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
       status: 'valid',
       value: {
         answer: value.answer,
-        ...(value.completion === 'partial'
-          ? { completion: 'partial' as const }
-          : {}),
         ...(value.answerKind === 'conversation' ||
         value.answerKind === 'grounded' ||
         value.answerKind === 'prior_output'

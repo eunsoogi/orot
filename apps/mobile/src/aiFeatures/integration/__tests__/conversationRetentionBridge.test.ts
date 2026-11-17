@@ -74,7 +74,8 @@ test('a retention consumer can persist and invalidate a captured conversation th
     expect(retention.canRetry()).toBe(true);
     await retention.retry();
     const saved = await storage.read('turn');
-    expect(saved?.status).toBe('partial');
+    // A validated response is finished; this storage state makes no claim of exhaustive coverage.
+    expect(saved?.status).toBe('complete');
     expect(saved?.sources).toHaveLength(2);
     expect(saved?.citations?.[0]?.evidenceId).toBe(records[0]!.id);
     expect(runner).toHaveBeenCalledTimes(1);

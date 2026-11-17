@@ -135,7 +135,6 @@ test.each([
                   type: 'result',
                   value: {
                     answerKind: 'grounded',
-                    completion: 'partial',
                     answer:
                       '저장된 합성 기억을 확인했어요. 공개 자료는 확인하지 못했어요.',
                   },
@@ -215,7 +214,6 @@ test.each([
       } else if (grounded) {
         expect(result).toMatchObject({
           status: 'answer',
-          completion: 'partial',
           citations: [
             expect.objectContaining({ sourceKind: 'reviewed_memory' }),
           ],

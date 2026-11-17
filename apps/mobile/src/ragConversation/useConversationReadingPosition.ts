@@ -37,7 +37,11 @@ export function useConversationReadingPosition(input: {
     !owner.current ||
     !owner.current.alive
   ) {
-    const invalidated = Boolean(owner.current && !owner.current.alive);
+    const previous = owner.current;
+    const invalidated = Boolean(previous && !previous.alive);
+    // Revoking a storage lease does not remount unchanged native rows. Reuse geometry only within this same session.
+    const geometry =
+      invalidated && previous?.id === input.sessionId ? previous : undefined;
     if (owner.current) owner.current.alive = false;
     owner.current = {
       id: input.sessionId,
@@ -45,8 +49,8 @@ export function useConversationReadingPosition(input: {
       cancelled: invalidated,
       reading: false,
       ready: !input.sessionId,
-      rows: new Map(),
-      origin: null,
+      rows: geometry?.rows ?? new Map(),
+      origin: geometry?.origin ?? null,
       writing: false,
     };
   }

@@ -43,7 +43,5 @@ export function renderMixedEvidenceAnswer(
       .join('\n\n'),
     localReferences: local?.references ?? [],
     literatureReferences: literature?.references ?? [],
-    // Source-bound excerpts do not yet establish the meaning of each selected sentence.
-    partial: Boolean(literature) || missingLiterature,
   };
 }

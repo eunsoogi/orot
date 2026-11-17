@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { AppState, ScrollView } from 'react-native';
 import { ConversationHistory } from '../ConversationHistory';
 import { openConversationReadingPosition } from '../openConversationReadingPosition';
+import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import type { ConversationReadingPosition } from '../../storage/conversationReadingPositionStorage';
 
 jest.mock('../openConversationReadingPosition', () => ({
@@ -124,4 +125,32 @@ test('a saved older row requests history once then yields to explicit user dragg
     <ConversationHistory {...props} historyHasMore onLoadOlderHistory={load} />,
   );
   expect(load).toHaveBeenCalledTimes(1);
+});
+
+test('an unrelated source deletion reacquires the lease without requiring unchanged rows to relayout', async () => {
+  const read = jest
+    .fn()
+    .mockResolvedValueOnce({ version: 0, position: null })
+    .mockResolvedValue({ version: 2, position: null });
+  const write = jest.fn();
+  open.mockResolvedValue({ read, write });
+  await render(<ConversationHistory {...props} />);
+  await layout();
+  await act(() => notifyLocalSourceDeleted());
+  // Native layout is unchanged: deliberately do not fire container or row layouts again.
+  await fireEvent(history(), 'scrollBeginDrag');
+  await fireEvent.scroll(history(), {
+    nativeEvent: {
+      contentOffset: { y: 74 },
+      contentSize: { height: 1000 },
+      layoutMeasurement: { height: 400 },
+    },
+  });
+  await fireEvent(history(), 'scrollEndDrag');
+  expect(write).toHaveBeenLastCalledWith(
+    'session',
+    2,
+    expect.objectContaining({ turnId: 'turn', offset: 24 }),
+    expect.any(Function),
+  );
 });

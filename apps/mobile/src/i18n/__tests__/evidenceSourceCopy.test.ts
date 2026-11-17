@@ -12,7 +12,6 @@ test('source notices retain clinical uncertainty and unavailable provenance', ()
   expect(t('evidenceSource.unavailableSource')).toBe(
     '일부 출처 상태를 확인할 수 없음',
   );
-  expect(t('evidenceSource.partialAnswer')).toBe('일부만 생성된 답변');
 });
 
 test('manual history preserves original text and unknown-date, unreviewed status', () => {

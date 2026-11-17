@@ -7,7 +7,7 @@ import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evi
 import { runRagConversationTurn } from '../service';
 import { fixture, response } from '../testSupport/conversationEnvelopeFixtures';
 
-test('a validated partial model response reaches the screen and SQLite', async () => {
+test('a legacy coverage label is omitted while validated response text reaches screen and SQLite', async () => {
   const db = await healthContextFixture();
   try {
     const storage = createConversationArtifactStorage(db.database);
@@ -58,11 +58,11 @@ test('a validated partial model response reaches the screen and SQLite', async (
         return (await bridge.finish(outcome)).outcome;
       },
     );
-    expect(sessions.getSnapshot().sessions[0]?.messages[1]?.completion).toBe(
-      'partial',
+    expect(sessions.getSnapshot().sessions[0]?.messages[1]).not.toHaveProperty(
+      'completion',
     );
     expect(await storage.read('id-2')).toMatchObject({
-      status: 'partial',
+      status: 'complete',
       answer: '한 가지는 함께 살펴볼 수 있어요.',
     });
     sessions.dispose();

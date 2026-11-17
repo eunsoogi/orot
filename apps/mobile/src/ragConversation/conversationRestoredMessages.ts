@@ -21,7 +21,8 @@ export function conversationRestoredMessages(
             ...(turn.submittedInput
               ? { submittedInput: turn.submittedInput }
               : {}),
-            ...(!turn.answer && turn.completion === 'partial'
+            ...(turn.interrupted ||
+            (!turn.answer && turn.completion === 'partial')
               ? { failed: true }
               : {}),
           },
@@ -58,7 +59,6 @@ export function conversationRestoredMessages(
               : t('ragConversation.progressInterrupted'),
           }
         : {}),
-      ...(turn.completion ? { completion: turn.completion } : {}),
     },
   ]);
 }

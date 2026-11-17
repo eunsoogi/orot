@@ -125,7 +125,7 @@ test('public success fixture calls a tool then cites retrieved evidence', async 
   expect(result.value.answer).toContain(
     'Synthetic public abstract for workflow verification.',
   );
-  expect(result.value.completion).toBe('partial');
+  expect(result.value).not.toHaveProperty('completion');
 });
 
 test('missing abstracts still reject the final answer despite the success query', async () => {

@@ -50,7 +50,7 @@ test('binds the observed abstract statistic without dropping its heterogeneity',
       '오즈비 1.40 (95% 신뢰구간 1.27-1.55)',
     );
     expect(result.value.answer).toContain('83.7%');
-    expect(result.value.completion).toBe('partial');
+    expect(result.value).not.toHaveProperty('completion');
     expect(result.value.answer).toContain('관찰 결과인지 확인하지 못했어요');
     expect(result.value.literatureReferences).toEqual([
       expect.objectContaining({
@@ -71,7 +71,7 @@ test('preserves the selected real-source limitation alongside the bound result',
   expect(result.status).toBe('valid');
   if (result.status === 'valid') {
     expect(result.value.answer).toContain(limitation);
-    expect(result.value.completion).toBe('partial');
+    expect(result.value).not.toHaveProperty('completion');
     expect(result.value.literatureReferences).toEqual([
       expect.objectContaining({
         evidenceId: 'MED:42948184',
@@ -105,7 +105,7 @@ test('does not report a proposed estimate as an observed statistic', () => {
   );
   expect(result.status).toBe('valid');
   if (result.status === 'valid') {
-    expect(result.value.completion).toBe('partial');
+    expect(result.value).not.toHaveProperty('completion');
     expect(result.value.answer).toContain('관찰 결과인지 확인하지 못했어요');
     expect(result.value.answer).not.toContain('보고된 통계:');
     expect(result.value.answer).not.toContain('관찰됐어요');
@@ -120,7 +120,7 @@ test('does not present a hypothetical example as an observed result', () => {
   );
   expect(result.status).toBe('valid');
   if (result.status === 'valid') {
-    expect(result.value.completion).toBe('partial');
+    expect(result.value).not.toHaveProperty('completion');
     expect(result.value.answer).toContain('관찰 결과인지 확인하지 못했어요');
     expect(result.value.answer).not.toContain('보고된 통계:');
     expect(result.value.answer).not.toContain('관찰됐어요');
@@ -134,7 +134,7 @@ test('marks an unverified source statistic as a partial quotation, not an observ
   );
   expect(result.status).toBe('valid');
   if (result.status === 'valid') {
-    expect(result.value.completion).toBe('partial');
+    expect(result.value).not.toHaveProperty('completion');
     expect(result.value.answer).toContain('관찰 결과인지 확인하지 못했어요');
     expect(result.value.answer).not.toContain('보고된 통계:');
     expect(result.value.answer).not.toContain('연구 결과 (초록 원문):');

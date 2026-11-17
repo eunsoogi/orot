@@ -105,7 +105,7 @@ export function ConversationHistory({
     hasMore: historyHasMore,
     loading: historyLoading,
     failed: historyLoadFailed,
-    focused: Boolean(replyFocus),
+    focused: Boolean(replyFocus?.canReveal()),
     history: historyView,
     followsBottom,
     expectedOffset,

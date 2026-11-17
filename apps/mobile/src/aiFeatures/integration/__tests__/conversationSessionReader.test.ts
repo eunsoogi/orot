@@ -63,7 +63,9 @@ test('attaches all saved pages in chronological order and rejects a mid-read del
     ]);
     expect(
       store.getSnapshot().sessions.find(item => item.id === id)?.messages[3],
-    ).toMatchObject({ completion: 'partial' });
+    ).not.toHaveProperty('completion');
+    // Old records remain byte-compatible; omitting the label is not rewriting history.
+    expect((await storage.read('2'))?.status).toBe('partial');
     store.dispose();
 
     let pages = 0;

@@ -73,7 +73,7 @@ export function createConversationPagedRestoreState(input: {
         );
         const receipts = await Promise.all(
           page.turns.map(turn =>
-            turn.toolMessageId && turn.completion === 'complete'
+            turn.toolMessageId && Boolean(turn.answer) && !turn.interrupted
               ? (input.readSteering?.(
                   owner.durableId,
                   turn.toolMessageId,

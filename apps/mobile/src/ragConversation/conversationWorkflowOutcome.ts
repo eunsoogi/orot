@@ -54,9 +54,6 @@ export async function conversationWorkflowOutcome(
               status: 'answer',
               answer: result.value.answer,
               citations: [],
-              ...(result.value.completion === 'partial'
-                ? { completion: 'partial' }
-                : {}),
             },
       );
     }
@@ -97,9 +94,6 @@ export async function conversationWorkflowOutcome(
     );
     return accepted({
       status: 'answer',
-      ...(result.value.completion === 'partial' || presentation.mixed
-        ? { completion: 'partial' }
-        : {}),
       // Label source-relative time even when the model omits that qualifier in its prose.
       answer: presentation.mixed
         ? `${result.value.answer}\n\n${t('ragConversation.mixed.recordComparisonUnavailable')}`

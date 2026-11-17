@@ -41,7 +41,7 @@ test('does not label a study result as the population', () => {
   );
   expect(result.status).toBe('valid');
   if (result.status === 'valid') {
-    expect(result.value.completion).toBe('partial');
+    expect(result.value).not.toHaveProperty('completion');
     expect(result.value.answer).toContain('선택한 문장의 역할');
     expect(result.value.answer).not.toContain('연구 대상 (초록 원문):');
   }
@@ -203,7 +203,7 @@ test.each([
     );
     expect(result.status).toBe('valid');
     if (result.status === 'valid') {
-      expect(result.value.completion).toBe('partial');
+      expect(result.value).not.toHaveProperty('completion');
       expect(result.value.answer).not.toContain(
         '연관성이 있다고 서술되어 있어요',
       );

@@ -1,6 +1,6 @@
 import { presentEvidenceSource } from '../evidenceSourcePresentation';
 
-test('a partial historical conversation is labeled in source details', () => {
+test('legacy partial history keeps source caveats without a separate coverage label', () => {
   const sections = presentEvidenceSource({
     sourceKind: 'generated_artifact',
     metadata: {
@@ -20,8 +20,12 @@ test('a partial historical conversation is labeled in source details', () => {
     sources: [],
     sourceStatus: 'current',
   });
-  expect(sections[0]?.rows).toContainEqual({
+  expect(sections[0]?.rows).not.toContainEqual({
     label: '완료 상태',
     value: '일부만 생성된 답변',
+  });
+  expect(sections[0]?.rows).toContainEqual({
+    label: '출처 상태',
+    value: '현재 출처와 일치',
   });
 });
