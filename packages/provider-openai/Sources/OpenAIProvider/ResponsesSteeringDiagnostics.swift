@@ -16,7 +16,7 @@ enum ResponsesSteeringDiagnostics {
         case other
     }
 
-    // Same exact parameter allowlist as the native provider diagnostic sink.
+    /// Same exact parameter allowlist as the native provider diagnostic sink.
     enum Parameter: String, CaseIterable {
         case model, temperature, tools, input, store, other
         case maxOutputTokens = "max_output_tokens"
