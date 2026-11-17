@@ -107,16 +107,13 @@ describe('Settings provider presentation', () => {
     expect(screen.getByTestId('chatgpt-account-status')).toHaveTextContent(
       providerSelectionText.chatGPTAccountSignedOut,
     );
+    expect(screen.queryByTestId('provider-option-0-capabilities')).toBeNull();
+    expect(screen.getByText('기기 안에서 처리')).toBeTruthy();
+    expect(screen.getByTestId('provider-option-1-capabilities')).toBeTruthy();
+    // The catalog wrapper takes natural content height rather than filling the scroll page.
     expect(
-      screen.getByTestId('provider-option-0-capabilities'),
-    ).toHaveTextContent(
-      `${providerSelectionText.capabilitiesSummary}: ${[
-        providerSelectionText.capabilityInput.text,
-        providerSelectionText.capabilityInput.image,
-        providerSelectionText.capabilityStreaming,
-        providerSelectionText.capabilityToolCalling,
-      ].join(' · ')}`,
-    );
+      screen.getByTestId('provider-choices-content').props.style,
+    ).toBeUndefined();
 
     await fireEvent.press(screen.getByTestId('provider-option-1'));
     expect(store.save).not.toHaveBeenCalled();

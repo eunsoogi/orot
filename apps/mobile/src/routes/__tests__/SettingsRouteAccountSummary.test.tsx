@@ -42,7 +42,7 @@ beforeEach(() => {
   mockFocused = true;
 });
 
-test('shows the saved AI and connected account count from current account state', async () => {
+test('omits model identity while retaining the connected account count', async () => {
   const listAccounts = jest.fn(
     async (): Promise<readonly OpenAIAccountSummary[]> => [
       {
@@ -54,7 +54,7 @@ test('shows the saved AI and connected account count from current account state'
   );
   await renderSettings(settingsRouteResolverOptions(undefined, listAccounts));
 
-  expect(await screen.findByText('Apple Intelligence')).toBeTruthy();
+  expect(screen.queryByText('Apple Intelligence')).toBeNull();
   expect(screen.queryByText('Stale cached label')).toBeNull();
   expect(
     within(screen.getByTestId('settings-open-accounts')).getByText(

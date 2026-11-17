@@ -96,7 +96,7 @@ test('routes Settings provider controls through shared Back', async () => {
   );
 });
 
-test('updates the Settings provider summary after a committed selection', async () => {
+test('retains a committed selection without a model subtitle on Settings', async () => {
   const store = persistedSelectionStore(null);
   await renderApp({
     aiFeatureServiceDependencies: providerDependencies(store),
@@ -109,8 +109,17 @@ test('updates the Settings provider summary after a committed selection', async 
   await fireEvent.press(screen.getByTestId('provider-option-0'));
   await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
 
+  await screen.findByTestId('settings-title');
+  expect(screen.queryByText(apple.provider.displayName)).toBeNull();
+  expect(await store.load()).toEqual({
+    providerId: apple.provider.id,
+    modelId: apple.modelId,
+  });
+  await fireEvent.press(screen.getByTestId('settings-open-provider'));
   await waitFor(() =>
-    expect(screen.getByText(apple.provider.displayName)).toBeTruthy(),
+    expect(
+      screen.getByTestId('provider-option-0').props.accessibilityState.selected,
+    ).toBe(true),
   );
 });
 

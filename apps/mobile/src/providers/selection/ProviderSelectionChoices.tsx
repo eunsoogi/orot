@@ -48,7 +48,8 @@ export function ProviderSelectionChoices({
           option={option}
           requirements={requirements}
           showCapabilities={
-            presentation === 'feature' || presentation === 'settings-provider'
+            presentation === 'feature' ||
+            (presentation === 'settings-provider' && !local)
           }
           selected={
             selected?.provider.id === option.provider.id &&
@@ -96,21 +97,23 @@ export function ProviderSelectionChoices({
   ) : null;
 
   if (presentation === 'settings-provider' || presentation === 'feature') {
-    // Both sections stay in one measured region and retain their screen-owned selection state.
+    // A content-sized wrapper keeps the measured catalog from pushing its summary to the bottom.
     return (
-      <AdaptiveColumns
-        primary={
-          <View>
-            {localPanel}
-            {connectedPanel}
-          </View>
-        }
-        testID={
-          presentation === 'settings-provider'
-            ? 'settings-provider-panels'
-            : 'provider-selection-feature-panels'
-        }
-      />
+      <View testID="provider-choices-content">
+        <AdaptiveColumns
+          primary={
+            <View>
+              {localPanel}
+              {connectedPanel}
+            </View>
+          }
+          testID={
+            presentation === 'settings-provider'
+              ? 'settings-provider-panels'
+              : 'provider-selection-feature-panels'
+          }
+        />
+      </View>
     );
   }
 
