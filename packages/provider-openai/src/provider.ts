@@ -27,6 +27,7 @@ export interface ChatGPTPlanProviderOptions {
   readonly issuedClientID: string;
   readonly model: ChatGPTPlanModelDescriptor;
   readonly requestIDFactory?: () => string;
+  readonly transportScope?: string;
 }
 
 export async function listChatGPTPlanModels(
@@ -56,6 +57,8 @@ export async function listChatGPTPlanModels(
 export function createChatGPTPlanProvider(
   options: ChatGPTPlanProviderOptions,
 ): LanguageModelProvider {
+  // A new provider lifetime cannot inherit another workflow's remote transport.
+  options = { ...options, transportScope: createRequestID() };
   const nextRequestID = options.requestIDFactory ?? createRequestID;
   const continuationsByCallID = new Map<string, readonly string[]>();
   const provider: LanguageModelProvider = {

@@ -74,6 +74,7 @@ describe('ChatGPT plan model adapter', () => {
     });
     expect(bridge.started).toHaveLength(1);
     expect(bridge.started[0]?.request).toEqual({
+      transportScope: expect.any(String),
       model: 'gpt-test',
       messages: [
         { role: 'system', content: 'Be concise.' },

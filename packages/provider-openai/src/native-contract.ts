@@ -38,6 +38,8 @@ export interface ChatGPTPlanNativeToolCall {
 }
 
 export interface ChatGPTPlanRequest {
+  /** Process-local connection scope, consumed natively and never sent to the service. */
+  readonly transportScope?: string;
   readonly model: string;
   readonly messages: readonly ChatGPTPlanInputMessage[];
   readonly tools?: readonly ChatGPTPlanToolDefinition[];

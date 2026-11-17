@@ -4,6 +4,13 @@ protocol ResponsesWebSocketConnection: Sendable {
     func send(_ data: Data) async throws
     func receive() async throws -> Data
     func close()
+    func completed()
+}
+
+extension ResponsesWebSocketConnection {
+    func completed() {
+        close()
+    }
 }
 
 /// Only the documented Responses endpoint is admitted. No private ChatGPT routes or reconnect replay.
@@ -71,12 +78,24 @@ public extension ChatGPTOAuthClient {
         payload.removeValue(forKey: "stream")
         payload["type"] = "response.create"
         let encoded = try JSONSerialization.data(withJSONObject: payload)
-        let connection = try URLSessionResponsesWebSocket(accessToken: token)
+        let key = request.transportScope.map {
+            ResponsesConnectionPool.Key(scope: $0, account: issuedClientID, model: request.model, credential: token)
+        }
+        let pooled = key.map { responseConnections.take($0) }
+        let connection: any ResponsesWebSocketConnection
+        if let reused = pooled?.1 {
+            connection = reused
+        } else {
+            let fresh = try URLSessionResponsesWebSocket(accessToken: token)
+            do { try await fresh.waitUntilOpen() } catch { fresh.close(); throw error }
+            connection = fresh
+        }
+        let owned = pooled.map { responseConnections.lease(connection, generation: $0.0) } ?? connection
         do {
-            try await connection.waitUntilOpen()
-            return ChatGPTSteerableResponse(connection: connection, initialRequest: encoded)
+            try Task.checkCancellation()
+            return ChatGPTSteerableResponse(connection: owned, initialRequest: encoded)
         } catch {
-            connection.close()
+            owned.close()
             throw error
         }
     }

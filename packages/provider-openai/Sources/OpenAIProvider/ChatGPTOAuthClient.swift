@@ -5,6 +5,7 @@ public final class ChatGPTOAuthClient: Sendable {
     let responsesTransport: any ChatGPTResponsesHTTPTransport
     private let agentName: String
     private let credentialStore: any ChatGPTCredentialStore
+    let responseConnections = ResponsesConnectionPool()
     let sessionManager: ChatGPTSessionManager
 
     public init(
@@ -201,8 +202,14 @@ public final class ChatGPTOAuthClient: Sendable {
         try credentialStore.listAccounts().map(ChatGPTAccountSummary.init(account:))
     }
 
+    /// Drop idle transports before any credential/account transition.
+    public func invalidateResponseConnections() {
+        responseConnections.invalidate()
+    }
+
     public func signOut(issuedClientID: String) async throws -> ChatGPTSignOutResult {
-        try await sessionManager.signOut(issuedClientID: issuedClientID)
+        invalidateResponseConnections()
+        return try await sessionManager.signOut(issuedClientID: issuedClientID)
     }
 
     static func isValidRedirectURI(_ url: URL) -> Bool {

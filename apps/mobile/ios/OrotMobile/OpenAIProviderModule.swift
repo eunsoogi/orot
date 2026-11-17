@@ -200,6 +200,7 @@ public final class OpenAIProviderModule: RCTEventEmitter {
 
     /// Invalidate account-scoped streams synchronously before credential clearing begins.
     func beginSignOut(for issuedClientID: String) -> Bool {
+        activeClient.invalidateResponseConnections()
         guard let activeRequests = responseRequests.beginSignOut(for: issuedClientID) else {
             return false
         }

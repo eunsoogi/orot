@@ -16,7 +16,6 @@ import type { ChatGPTPlanProviderOptions } from './provider';
 import type { ChatGPTPlanNativeEvent } from './native-contract';
 import { prepareRequest } from './request-mapper';
 import { nativeResponse } from './usage';
-
 export function createChatGPTPlanStream(
   options: ChatGPTPlanProviderOptions,
   nextRequestID: () => string,
@@ -195,7 +194,10 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
         ? this.options.bridge.startSteerableResponse!
         : this.options.bridge.startResponse;
       this.startTask = start
-        .call(this.options.bridge, this.requestID, this.options.issuedClientID, this.prepared.value)
+        .call(this.options.bridge, this.requestID, this.options.issuedClientID, {
+          ...this.prepared.value,
+          transportScope: this.options.transportScope,
+        })
         .then(() => {
           if (this.closed) this.cancelNativeRequest();
         });
