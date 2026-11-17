@@ -25,6 +25,7 @@ const reasons = new Map<string, Outcome>([
   ['The attached photo changed before saving.', 'tool_photo_changed'],
   ['The generated parent changed or was removed.', 'tool_parent_changed'],
   ['The generated parent cannot be retained.', 'tool_parent_invalid'],
+  ['The generated parent is unavailable.', 'tool_parent_unavailable'],
 ]);
 
 /** Observe only failed source captures; preserve the exact result/error and never emit its text. */
