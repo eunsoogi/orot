@@ -1,5 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { StyleSheet } from 'react-native';
+import { appColors } from '../../layout/appColors';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
 import {
   columnsAxis,
@@ -121,4 +123,31 @@ test('uses native usable regions and retains expanded candidate details through 
     screen.getByTestId('medical-appointment-details-calendar-candidate-1').props
       .accessibilityState.expanded,
   ).toBe(true);
+});
+
+it('keeps filled candidate rows and disclosure boundaries without an enclosing outline', async () => {
+  await setWindowSize(320, 1.5);
+  await renderMedicalRoute();
+  const group = screen.getByTestId('medical-appointment-candidate-group');
+  expect(StyleSheet.flatten(group.props.style)).toMatchObject({
+    borderWidth: 0,
+    borderRadius: 20,
+    overflow: 'hidden',
+  });
+  const details = screen.getByTestId(
+    'medical-appointment-details-calendar-candidate-1',
+  );
+  // The line between occurrences is functional; the surrounding frame is not.
+  expect(StyleSheet.flatten(details.parent?.props.style)).toMatchObject({
+    backgroundColor: appColors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  });
+  expect(
+    StyleSheet.flatten(details.props.style).minHeight,
+  ).toBeGreaterThanOrEqual(44);
+  expect(details.props.accessibilityRole).toBe('button');
+  expect(details.props.accessibilityState.expanded).toBe(false);
+  await fireEvent.press(details);
+  expect(screen.getByText(/분류 근거: Synthetic classification/)).toBeTruthy();
+  expect(details.props.accessibilityState.expanded).toBe(true);
 });
