@@ -63,26 +63,45 @@ public struct ChatGPTResponsesUsage: Equatable, Sendable {
     public let inputTokens: Int
     public let outputTokens: Int
     public let totalTokens: Int
+    public let cachedInputTokens: Int?
 
-    public init(inputTokens: Int, outputTokens: Int, totalTokens: Int) {
+    public init(inputTokens: Int, outputTokens: Int, totalTokens: Int, cachedInputTokens: Int? = nil) {
         self.inputTokens = inputTokens
         self.outputTokens = outputTokens
         self.totalTokens = totalTokens
+        self.cachedInputTokens = cachedInputTokens
     }
 
     /// The React Native bridge admits only the closed numeric shape, not provider diagnostics.
     public var nativePayload: [String: Int] {
-        ["inputTokens": inputTokens, "outputTokens": outputTokens, "totalTokens": totalTokens]
+        var payload = ["inputTokens": inputTokens, "outputTokens": outputTokens, "totalTokens": totalTokens]
+        if let cachedInputTokens {
+            payload["cachedInputTokens"] = cachedInputTokens
+        }
+        return payload
     }
 
     static func decode(_ value: Any?) throws -> Self? {
         guard let value, !(value is NSNull) else { return nil }
         guard let object = value as? [String: Any] else { throw ResponsesMalformedDiagnostics.failure(.usageShape) }
+        let inputTokens = try count(object["input_tokens"])
+        // Cache detail is optional telemetry, not an answer-validity boundary.
+        let details = object["input_tokens_details"] as? [String: Any]
+        let cached = cacheCount(details?["cached_tokens"], inputTokens: inputTokens)
         return try Self(
-            inputTokens: count(object["input_tokens"]),
+            inputTokens: inputTokens,
             outputTokens: count(object["output_tokens"]),
             totalTokens: count(object["total_tokens"]),
+            cachedInputTokens: cached,
         )
+    }
+
+    /// Absent or malformed optional telemetry is unknown; do not emit parser-failure diagnostics.
+    private static func cacheCount(_ value: Any?, inputTokens: Int) -> Int? {
+        guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID() else { return nil }
+        let count = number.doubleValue
+        guard count.isFinite, count >= 0, count <= Double(inputTokens), count.rounded() == count else { return nil }
+        return Int(count)
     }
 
     private static func count(_ value: Any?) throws -> Int {

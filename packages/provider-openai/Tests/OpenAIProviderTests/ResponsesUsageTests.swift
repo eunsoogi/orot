@@ -12,9 +12,21 @@ final class ResponsesUsageTests: XCTestCase {
             "input_tokens_details": ["cached_tokens": 20],
         ]))
         guard case let .completed(result) = event else { return XCTFail("Expected terminal result.") }
-        XCTAssertEqual(result.usage, ChatGPTResponsesUsage(inputTokens: 123, outputTokens: 17, totalTokens: 140))
-        XCTAssertEqual(result.usage?.nativePayload, ["inputTokens": 123, "outputTokens": 17, "totalTokens": 140])
+        XCTAssertEqual(result.usage, ChatGPTResponsesUsage(inputTokens: 123, outputTokens: 17, totalTokens: 140, cachedInputTokens: 20))
+        XCTAssertEqual(result.usage?.nativePayload, ["inputTokens": 123, "outputTokens": 17, "totalTokens": 140, "cachedInputTokens": 20])
         XCTAssertEqual(result.text, "")
+    }
+
+    func testOptionalCacheCountsAreBoundedAndDoNotInvalidateAnswers() throws {
+        let cases: [(Any, Int?)] = [(0, 0), (3, 3), (-1, nil), (4, nil), (true, nil), ("2", nil), (1.5, nil), (NSNull(), nil)]
+        for (cached, expected) in cases {
+            let usage = try ChatGPTResponsesUsage.decode([
+                "input_tokens": 3, "output_tokens": 2, "total_tokens": 5,
+                "input_tokens_details": ["cached_tokens": cached],
+            ])
+            XCTAssertEqual(usage?.cachedInputTokens, expected)
+            XCTAssertEqual(usage?.totalTokens, 5)
+        }
     }
 
     func testZeroCountsAreReportedCountsAndNotMissingValues() throws {

@@ -1,6 +1,7 @@
 import { createChatGPTPlanProvider } from '../../provider-openai/src/provider';
 import { FakeBridge } from '../../provider-openai/__tests__/providerTestSupport';
 import { InMemoryFakeLanguageModelProvider } from '@orot/model-runtime';
+import { NativeStreamingChatModel } from '../src/langchain/streaming';
 import { NativeChatModel } from '../src/langchain/chatModel';
 
 describe('native chat reported usage', () => {
@@ -31,6 +32,31 @@ describe('native chat reported usage', () => {
       expect(bridge.cancelled).toEqual([]);
     },
   );
+
+  it.each([0, 7])('retains cache reads in both adapters: %p', async (cachedInputTokens) => {
+    const usage = { inputTokens: 7, outputTokens: 2, totalTokens: 9, cachedInputTokens };
+    const bridge = new FakeBridge(async (requestId, native) => {
+      native.emit({ requestId, type: 'text_delta', text: 'Answer' });
+      native.emit({ requestId, type: 'completed', text: 'Answer', usage });
+    });
+    const model = new NativeStreamingChatModel(
+      createChatGPTPlanProvider({
+        bridge,
+        issuedClientID: 'synthetic-account',
+        model: { slug: 'synthetic', displayName: 'Synthetic' },
+      }),
+    );
+    const expected = {
+      input_tokens: 7,
+      output_tokens: 2,
+      total_tokens: 9,
+      input_token_details: { cache_read: cachedInputTokens },
+    };
+    expect((await model.invoke('Question')).usage_metadata).toEqual(expected);
+    const chunks = [];
+    for await (const chunk of await model.stream('Question')) chunks.push(chunk);
+    expect(chunks.at(-1)?.usage_metadata).toEqual(expected);
+  });
 
   it('keeps unreported usage absent rather than estimating from text', async () => {
     const model = new NativeChatModel(new InMemoryFakeLanguageModelProvider());

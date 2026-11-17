@@ -66,6 +66,33 @@ final class ResponsesSteeringStateTests: XCTestCase {
         XCTAssertFalse(ChatGPTSteerableResponse.supportsModel("gpt-5.6"))
     }
 
+    func testSteeredCacheUsageRequiresBothReportedCounts() throws {
+        let pairs: [(Int?, Int?)] = [(2, 3), (0, 0), (nil, 3), (2, nil)]
+        for pair in pairs {
+            var state = ResponsesSteeringState()
+            _ = try state.consume(created("original"))
+            _ = try state.prepareSteer(submissionID: "local", text: "Update")
+            _ = try state.consume(steer("accepted"))
+            func usage(_ cached: Int?) -> [String: Any] {
+                var value: [String: Any] = ["input_tokens": 5, "output_tokens": 1, "total_tokens": 6]
+                if let cached {
+                    value["input_tokens_details"] = ["cached_tokens": cached]
+                }
+                return value
+            }
+            _ = try state.consume(event(["type": "response.incomplete", "response": [
+                "id": "original", "incomplete_details": ["reason": "steered"], "usage": usage(pair.0),
+            ]]))
+            _ = try state.consume(created("successor", previous: "original"))
+            let events = try state.consume(event(["type": "response.completed", "response": [
+                "id": "successor", "status": "completed", "output": [], "usage": usage(pair.1),
+            ]]))
+            guard case let .response(.completed(result)) = events.last else { return XCTFail("Expected completion") }
+            XCTAssertEqual(result.usage?.inputTokens, 10)
+            XCTAssertEqual(result.usage?.cachedInputTokens, pair.0.flatMap { first in pair.1.map { first + $0 } })
+        }
+    }
+
     private func event(_ value: [String: Any]) throws -> Data {
         try JSONSerialization.data(withJSONObject: value)
     }
