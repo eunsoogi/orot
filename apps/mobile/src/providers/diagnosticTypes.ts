@@ -68,6 +68,7 @@ export type Stage =
   | 'evidence_memory'
   | 'evidence_presentation';
 export type Outcome =
+  | import('./workflowBudgetDiagnostic').BudgetDiagnosticOutcome
   | 'workflow_search_failed'
   | 'workflow_search_unavailable'
   | 'workflow_exception'

@@ -1,3 +1,4 @@
+import { workflowBudgetDiagnostic } from './workflowBudgetDiagnostic';
 import { workflowUnavailableDiagnostic } from './workflowUnavailableDiagnostic';
 import { staleEvidenceDiagnostic } from './staleEvidenceDiagnostic';
 import { NativeModules } from 'react-native';
@@ -52,6 +53,17 @@ export function reportWorkflowOutcome(
   providerErrorCode?: string,
   validationReason?: string,
 ) {
+  if (status === 'budget_exceeded') {
+    try {
+      providerDiagnostic(
+        feature,
+        'validation',
+        workflowBudgetDiagnostic(validationReason),
+      );
+    } catch {
+      // Optional observation must not replace the original workflow outcome.
+    }
+  }
   if (status === 'unavailable') {
     try {
       providerDiagnostic(
