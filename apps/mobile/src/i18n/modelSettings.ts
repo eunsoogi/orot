@@ -2,10 +2,10 @@
 export const modelSettingsKo = {
   'modelSettings.decisionsUnavailable':
     '이 앱에서 OpenAI API 분류 모델을 사용할 수 없어요.',
-  'modelSettings.calendarTab': '캘린더 분류 모델',
+  'modelSettings.calendarTab': '일정 분류 모델',
   'modelSettings.calendarPurpose':
     '캘린더 일정의 진료 관련성을 분류할 모델이에요. 대화 모델은 바뀌지 않아요.',
-  'modelSettings.calendarUnselected': '캘린더 분류 모델을 선택해 주세요.',
+  'modelSettings.calendarUnselected': '일정 분류 모델을 선택해 주세요.',
   'modelSettings.apiUsageCost':
     '이 모델을 사용하면 별도 OpenAI API 사용료가 청구돼요.',
   'modelSettings.decisionsNotice':
