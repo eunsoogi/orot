@@ -149,8 +149,12 @@ struct ResponsesSteeringState {
         let output = originalUsage.outputTokens + usage.outputTokens
         let total = originalUsage.totalTokens + usage.totalTokens
         guard max(input, output, total) <= 9_007_199_254_740_991 else { throw ResponsesMalformedDiagnostics.failure(.steeringUsageSum) }
+        // A partial cache count cannot represent the whole steered request.
+        let cached = originalUsage.cachedInputTokens.flatMap { first in
+            usage.cachedInputTokens.map { first + $0 }
+        }
         return ChatGPTResponsesResult(text: result.text, toolCalls: result.toolCalls,
                                       continuationItems: result.continuationItems, webSearch: result.webSearch,
-                                      usage: ChatGPTResponsesUsage(inputTokens: input, outputTokens: output, totalTokens: total))
+                                      usage: ChatGPTResponsesUsage(inputTokens: input, outputTokens: output, totalTokens: total, cachedInputTokens: cached))
     }
 }

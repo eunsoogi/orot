@@ -1,3 +1,4 @@
+import { cachedTokenDetails } from './cacheUsage';
 /** Validate terminal native stream metadata before exposing standard chunks. */
 import { AIMessageChunk } from '@langchain/core/messages';
 import { ChatGenerationChunk } from '@langchain/core/outputs';
@@ -44,6 +45,7 @@ export function usageMetadata(response: LanguageModelResponse): AIMessageChunk['
     input_tokens: usage.inputTokens,
     output_tokens: usage.outputTokens,
     total_tokens: usage.totalTokens,
+    ...cachedTokenDetails(usage),
   };
 }
 

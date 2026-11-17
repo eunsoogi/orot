@@ -30,6 +30,13 @@ function nativeUsage(value: unknown): Pick<LanguageModelResponse, 'usage'> {
       inputTokens: usage.inputTokens as number,
       outputTokens: usage.outputTokens as number,
       totalTokens: usage.totalTokens as number,
+      // Optional diagnostics cannot turn a valid answer into a transport failure.
+      ...(typeof usage.cachedInputTokens === 'number' &&
+      Number.isSafeInteger(usage.cachedInputTokens) &&
+      usage.cachedInputTokens >= 0 &&
+      usage.cachedInputTokens <= (usage.inputTokens as number)
+        ? { cachedInputTokens: usage.cachedInputTokens }
+        : {}),
     },
   };
 }

@@ -126,6 +126,8 @@ export interface LanguageModelResponse {
     readonly inputTokens: number;
     readonly outputTokens: number;
     readonly totalTokens: number;
+    /** Reported cache reads only. Missing or invalid means unknown, not zero. */
+    readonly cachedInputTokens?: number;
   };
 }
 

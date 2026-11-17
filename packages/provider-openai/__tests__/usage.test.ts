@@ -54,6 +54,28 @@ describe('ChatGPT terminal token usage', () => {
     expect(bridge.cancelled).toEqual([]);
   });
 
+  it.each([0, 9, undefined, null, -1, 10, true, '3', 1.5, Infinity])(
+    'keeps optional cache reads bounded without losing the answer: %p',
+    async (cachedInputTokens) => {
+      const counts = { inputTokens: 9, outputTokens: 3, totalTokens: 12 };
+      const { provider } = fixture({ ...counts, cachedInputTokens });
+      const expected =
+        cachedInputTokens === 0 || cachedInputTokens === 9
+          ? { ...counts, cachedInputTokens }
+          : counts;
+      const result = await provider.generate(baseRequest);
+      expect(result).toEqual({
+        ok: true,
+        value: {
+          text: '',
+          toolCalls: [],
+          finishReason: 'complete',
+          usage: expected,
+        },
+      });
+    },
+  );
+
   it('preserves usage while the terminal tool calls are delivered before the response', async () => {
     const usage = { inputTokens: 9, outputTokens: 3, totalTokens: 12 };
     const bridge = new FakeBridge(async (requestId, target) => {

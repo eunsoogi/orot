@@ -1,4 +1,5 @@
 import { validateGenerationOptions } from './chatOptions';
+import { cachedTokenDetails } from './cacheUsage';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage, type BaseMessage, type BaseMessageLike } from '@langchain/core/messages';
 import type {
@@ -29,10 +30,8 @@ import {
   type StructuredOutputPlan,
   type StructuredOutputSchema,
 } from './structuredOutput';
-
 export { NativeChatModelError };
 export type { NativeChatModelCallOptions };
-
 /** Runnable invocation over an already selected, consent-gated provider. No provider selection,
  * tool binding, streaming strategy, structured-output strategy or consent is created here.
  * Those strategies can extend this class in separate modules without changing the native port. */
@@ -219,6 +218,7 @@ export class NativeChatModel extends BaseChatModel<NativeChatModelCallOptions> {
                 input_tokens: usage.inputTokens,
                 output_tokens: usage.outputTokens,
                 total_tokens: usage.totalTokens,
+                ...cachedTokenDetails(usage),
               },
             }),
       });
