@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { ScrollView } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 import { ConversationHistory } from '../ConversationHistory';
 import type { DisplayMessage } from '../ConversationMessage';
 
@@ -10,11 +10,13 @@ const turns = (count = 30): DisplayMessage[] =>
   Array.from({ length: count }, (_, index) => [
     {
       id: -(2 * index + 1),
+      restoredHistory: true as const,
       role: 'user' as const,
       content: `Synthetic question ${index}`,
     },
     {
       id: -(2 * index + 2),
+      restoredHistory: true as const,
       role: 'assistant' as const,
       content: `Synthetic answer ${index}`,
       retainedTurnId: `turn-${index}`,
@@ -45,6 +47,7 @@ test('only a user top-edge scroll fetches a database page and prepends preserve 
     <ConversationHistory
       {...base}
       sessionId={1}
+      entryChoices={<Text>Synthetic boundary choices</Text>}
       messages={recent}
       historyHasMore
       onLoadOlderHistory={loadOlder}
@@ -76,6 +79,7 @@ test('only a user top-edge scroll fetches a database page and prepends preserve 
     <ConversationHistory
       {...base}
       sessionId={1}
+      entryChoices={<Text>Synthetic boundary choices</Text>}
       messages={all}
       historyHasMore={false}
       onLoadOlderHistory={loadOlder}
@@ -89,6 +93,7 @@ test('only a user top-edge scroll fetches a database page and prepends preserve 
   );
   expect(scrollTo).toHaveBeenLastCalledWith({ y: 720, animated: false });
   expect(screen.getByText('Synthetic question 0')).toBeTruthy();
+  expect(screen.getAllByText('Synthetic boundary choices')).toHaveLength(1);
   expect(screen.getByTestId('conversation-earlier-messages')).toBeDisabled();
 });
 

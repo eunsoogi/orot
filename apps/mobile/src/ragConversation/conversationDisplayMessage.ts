@@ -3,6 +3,8 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 
 /** Display-only view of a turn; retained identity controls all durable source actions. */
 export interface DisplayMessage extends RagConversationMessage {
+  /** Display-only origin marker; never a provider-history or persistence permission. */
+  readonly restoredHistory?: true;
   readonly delivery?: import('./conversationMessageDelivery').ConversationMessageDelivery;
   readonly deliveryPending?: boolean;
   readonly steeringInstructions?: readonly import('../storage/conversationSteeringStorage').StoredSteeringInstruction[];
