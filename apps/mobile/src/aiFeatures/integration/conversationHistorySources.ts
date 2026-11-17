@@ -1,3 +1,4 @@
+import { readSelectedConversationHistory } from './readSelectedConversationHistory';
 import { ConversationHistoryFailure } from './conversationHistoryFailure';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { RagConversationMessage } from '../../ragConversation/task';
@@ -120,24 +121,11 @@ export async function conversationHistorySources(input: {
   // An identified retained turn must be revalidated before its text is sent.
   if (!discovery)
     throw new ConversationHistoryFailure('history_discovery_unavailable');
-  const turns: Awaited<
-    ReturnType<typeof discovery.readSession>
-  >['items'][number][] = [];
-  let cursor: { readonly createdAt: string; readonly id: string } | undefined;
-  do {
-    const page = await discovery.readSession({
-      sessionId: session.id,
-      ...(cursor ? { cursor } : {}),
-      signal: input.signal,
-    });
-    if (page.unavailableCount)
-      throw new ConversationHistoryFailure('history_page_unavailable');
-    turns.push(...page.items);
-    cursor = page.nextCursor ?? undefined;
-  } while (
-    expected.some(item => !turns.some(turn => turn.id === item.id)) &&
-    cursor &&
-    !input.signal.aborted
+  const turns = await readSelectedConversationHistory(
+    discovery,
+    session.id,
+    expected.map(item => item.id),
+    input.signal,
   );
   const selected = expected.flatMap(item => {
     const turn = turns.find(
