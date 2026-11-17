@@ -131,6 +131,8 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue>
   extends EvidenceRestoration, LocalActionRecoveryLifecycle {
   readonly execution: MultiAgentExecutionIdentity;
   readonly provider: LanguageModelProvider;
+  /** Optional closed coverage codes; excluded from task and checkpoint identity. */
+  readonly onCoverageDiagnostic?: import('./coverageDiagnostics').CoverageDiagnosticObserver;
   /** Optional content-free timings; no request, response or identity is exposed. */
   readonly onModelStage?: import('./modelStageDiagnostics').ModelStageObserver;
   readonly request: string;

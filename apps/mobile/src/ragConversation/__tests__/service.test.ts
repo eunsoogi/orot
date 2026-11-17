@@ -103,6 +103,7 @@ test('loads a fresh snapshot for each turn and passes only E5-selected evidence 
 test('forwards safe progress and task-stream observers to the workflow', async () => {
   jest.mocked(runMultiAgentWorkflow).mockClear();
   const current = snapshot(baseReference);
+  const onCoverageDiagnostic = jest.fn();
   const onProgress = jest.fn();
   const onTaskStreamEvent = jest.fn();
   const search = jest.fn(async () => [
@@ -119,12 +120,18 @@ test('forwards safe progress and task-stream observers to the workflow', async (
       loadCurrentEvidence: async () => current,
       rag: { search } as never,
       workflow: {
+        onCoverageDiagnostic,
         consent: { authorize: jest.fn(async () => 'authorized') },
       } as never,
     },
     { onProgress, onTaskStreamEvent },
   );
 
+  const observer = jest.mocked(runMultiAgentWorkflow).mock.calls[0]?.[0]
+    .onCoverageDiagnostic;
+  expect(observer).toBeDefined();
+  observer?.('coverage_gap_payload');
+  expect(onCoverageDiagnostic).toHaveBeenCalledWith('coverage_gap_payload');
   expect(runMultiAgentWorkflow).toHaveBeenCalledTimes(1);
   expect(jest.mocked(runMultiAgentWorkflow).mock.calls[0]?.[1]).toEqual({
     onProgress,

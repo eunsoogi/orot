@@ -209,6 +209,7 @@
 		A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */; };
 		A62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */; };
 		A62F00000000000000000005 /* AppleFoundationModelsSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */; };
+		A73D00000000000000000001 /* ProviderDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73D00000000000000000001 /* ProviderDiagnostics.swift */; };
 		A62F00000000000000000006 /* AppleFoundationModelsSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000006 /* AppleFoundationModelsSession.swift */; };
 		A62F00000000000000000007 /* AppleFoundationModelsMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000007 /* AppleFoundationModelsMock.swift */; };
 		A62F00000000000000000008 /* AppleFoundationModelsMock.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000008 /* AppleFoundationModelsMock.m */; };
@@ -628,6 +629,7 @@
 		B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsCodec.swift; path = OrotMobile/AppleFoundationModelsCodec.swift; sourceTree = "<group>"; };
 		B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsRequestSlot.swift; path = OrotMobile/AppleFoundationModelsRequestSlot.swift; sourceTree = "<group>"; };
 		B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSupport.swift; path = OrotMobile/AppleFoundationModelsSupport.swift; sourceTree = "<group>"; };
+		B73D00000000000000000001 /* ProviderDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProviderDiagnostics.swift; path = OrotMobile/ProviderDiagnostics.swift; sourceTree = "<group>"; };
 		B62F00000000000000000006 /* AppleFoundationModelsSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsSession.swift; path = OrotMobile/AppleFoundationModelsSession.swift; sourceTree = "<group>"; };
 		B62F00000000000000000007 /* AppleFoundationModelsMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsMock.swift; path = OrotMobile/AppleFoundationModelsMock.swift; sourceTree = "<group>"; };
 		B62F00000000000000000008 /* AppleFoundationModelsMock.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsMock.m; path = OrotMobile/AppleFoundationModelsMock.m; sourceTree = "<group>"; };
@@ -835,6 +837,7 @@
 				B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */,
 				B62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift */,
 				B62F00000000000000000005 /* AppleFoundationModelsSupport.swift */,
+				B73D00000000000000000001 /* ProviderDiagnostics.swift */,
 				B62F00000000000000000008 /* AppleFoundationModelsMock.m */,
 				B62F00000000000000000007 /* AppleFoundationModelsMock.swift */,
 				B62F00000000000000000006 /* AppleFoundationModelsSession.swift */,
@@ -1577,6 +1580,7 @@
 				A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */,
 				A62F00000000000000000004 /* AppleFoundationModelsRequestSlot.swift in Sources */,
 				A62F00000000000000000005 /* AppleFoundationModelsSupport.swift in Sources */,
+				A73D00000000000000000001 /* ProviderDiagnostics.swift in Sources */,
 				A62F00000000000000000008 /* AppleFoundationModelsMock.m in Sources */,
 				A62F00000000000000000007 /* AppleFoundationModelsMock.swift in Sources */,
 				A62F00000000000000000006 /* AppleFoundationModelsSession.swift in Sources */,
