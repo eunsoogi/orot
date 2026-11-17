@@ -45,7 +45,7 @@ struct URLSessionResponsesWebSocket: ResponsesWebSocketConnection {
         switch try await task.receive() {
         case let .string(text): return Data(text.utf8)
         case let .data(data): return data
-        @unknown default: throw ChatGPTResponsesError.malformedEvent
+        @unknown default: throw ResponsesMalformedDiagnostics.failure(.webSocketMessageKind)
         }
     }
 

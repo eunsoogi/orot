@@ -4,6 +4,23 @@ import Foundation
 /// can enter this opt-in log. Returning the original error preserves all rejection behavior.
 enum ResponsesMalformedDiagnostics {
     enum Category: String, CaseIterable {
+        case steeringFrameShape = "steering_frame_shape"
+        case steeringCreatedIdentity = "steering_created_identity"
+        case steeringSuccessorOrder = "steering_successor_order"
+        case steeringPredecessorIdentity = "steering_predecessor_identity"
+        case steeringNoActive = "steering_no_active"
+        case steeringResponseIdentity = "steering_response_identity"
+        case steeringNestedIdentity = "steering_nested_identity"
+        case steeringIncompleteOrder = "steering_incomplete_order"
+        case steeringAcknowledgmentIdentity = "steering_acknowledgment_identity"
+        case steeringDuplicateAccepted = "steering_duplicate_accepted"
+        case steeringPendingOrder = "steering_pending_order"
+        case steeringFailureOrder = "steering_failure_order"
+        case steeringUnknownEvent = "steering_unknown_event"
+        case steeringUsageSum = "steering_usage_sum"
+        case steeringNoActiveError = "steering_no_active_error"
+        case steeringNoActiveFailed = "steering_no_active_failed"
+        case webSocketMessageKind = "web_socket_message_kind"
         case startIdentity = "start_identity"
         case startStatus = "start_status"
         case startIdentityMismatch = "start_identity_mismatch"
