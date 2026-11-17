@@ -139,7 +139,7 @@ export function ConversationMessage({
             />
           ) : null}
           {activityBeforeText ? activity : null}
-          {/* Restored execution rows are not replayed; the workspace retains source access. */}
+          {/* Restored execution rows are not replayed; individual answer citations remain available. */}
           {!user && !message.restoredHistory && message.toolEvents?.length ? (
             <View
               style={!showToolActivity && styles.toolEventsHidden}
