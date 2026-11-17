@@ -39,11 +39,12 @@ struct ResponsesEventNormalizer {
             throw Self.malformed(frameEvent == "message" ? "event_message" : "event_mismatch")
         }
 
+        try ResponsesSafetyRefusal.validate(object, type: type)
         if let id = try responseStart.observe(object, type: type) {
             return .responseStarted(id)
         }
         switch type {
-        case "response.output_text.delta", "response.refusal.delta":
+        case "response.output_text.delta":
             guard let delta = object["delta"] as? String else { throw Self.malformed("text_delta") }
             accumulatedText.append(delta)
             if webSearch.enabled, accumulatedText.utf8.count > ResponsesPublicWebSearch.maxTextBytes {
@@ -90,6 +91,7 @@ struct ResponsesEventNormalizer {
                 throw Self.malformed("completion_state")
             }
             let output = try completedOutput.resolve(Self.responseOutput(response, publicWebSearch: webSearch.enabled))
+            try ResponsesSafetyRefusal.validateOutput(output)
             response["output"] = output
             let finalText = try ResponsesOutputText.resolve(
                 response, fallback: accumulatedText, publicWebSearch: webSearch.enabled,

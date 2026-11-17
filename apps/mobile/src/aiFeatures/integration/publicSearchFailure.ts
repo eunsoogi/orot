@@ -23,6 +23,5 @@ export function permitsPublicSearchFallback(error: ProviderError): boolean {
     'unsupported_capability',
     'unsupported_input',
     'invalid_request',
-    'internal_error',
   ].includes(error.code);
 }

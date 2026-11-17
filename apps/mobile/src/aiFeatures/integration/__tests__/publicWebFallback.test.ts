@@ -102,7 +102,6 @@ test.each([
   'unsupported_capability',
   'unsupported_input',
   'invalid_request',
-  'internal_error',
 ] as const)(
   'preserves local fallback after explicit search failure %s',
   async code => {
@@ -124,6 +123,7 @@ test.each([
 );
 
 test.each([
+  'internal_error',
   'safety_refusal',
   'invalid_provider',
   'duplicate_provider',

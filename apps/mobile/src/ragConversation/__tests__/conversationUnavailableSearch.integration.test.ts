@@ -31,7 +31,7 @@ const { makeProvider, workflowOptions } = jest.requireActual<{
 test.each([
   { grounded: false, code: 'provider_unavailable', ranked: false },
   { grounded: true, code: 'provider_unavailable', ranked: false },
-  { grounded: true, code: 'internal_error', ranked: true },
+  { grounded: true, code: 'authentication_required', ranked: true },
   { grounded: true, code: 'rate_limited', ranked: true },
   { grounded: true, code: 'unsupported_capability', ranked: false },
 ] as const)(

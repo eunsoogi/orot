@@ -15,7 +15,8 @@ enum OpenAIProviderErrorDetails {
             case let .incomplete(details): result["kind"] = "incomplete"; Self.add(details, to: &result)
             case .interrupted: result["kind"] = "interrupted"
             case let .httpFailure(details), let .responseFailure(details): add(details, to: &result)
-            case .invalidHTTPResponse, .invalidContentType, .malformedEvent: break
+            // Invalid structures are not evidence that an optional service is unavailable.
+            case .invalidHTTPResponse, .invalidContentType, .malformedEvent: result["kind"] = "malformed_response"
             }
         } else if let error = error as? ChatGPTOAuthError {
             switch error {
