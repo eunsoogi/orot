@@ -1,4 +1,7 @@
-import type { SqlExecutor } from '@orot/storage';
+import {
+  localQueryTimestampKeyExpression,
+  type SqlExecutor,
+} from '@orot/storage';
 import {
   healthPeriodDeletionGuards,
   replaceHealthPeriodTrigger,
@@ -10,9 +13,11 @@ export async function setupConversationPeriodGuards(tx: SqlExecutor) {
   const periodTrigger = replaceHealthPeriodTrigger.bind(null, tx);
   for (const [table, guard] of Object.entries(healthPeriodDeletionGuards())) {
     const next = guard.replaceAll('OLD.', 'NEW.');
+    // Later imports never contributed to a bounded snapshot; removal and correction remain conservative.
+    const ingestion = localQueryTimestampKeyExpression('NEW.ingested_at');
     await periodTrigger(
       `CREATE TRIGGER IF NOT EXISTS conversation_period_added_${table} AFTER INSERT ON ${table} BEGIN
-      DELETE FROM conversation_artifacts WHERE id IN (SELECT p.artifact_id FROM conversation_artifact_periods p WHERE ${next}); END`,
+      DELETE FROM conversation_artifacts WHERE id IN (SELECT p.artifact_id FROM conversation_artifact_periods p WHERE (${next}) AND (p.data_available_through_key IS NULL OR ${ingestion} <= p.data_available_through_key)); END`,
     );
     await periodTrigger(
       `CREATE TRIGGER IF NOT EXISTS conversation_period_changed_${table} AFTER UPDATE ON ${table}

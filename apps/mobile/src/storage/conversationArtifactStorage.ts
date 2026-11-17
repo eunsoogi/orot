@@ -3,7 +3,7 @@ import { conversationTimelinePages } from './conversationTimelinePages';
 import { continuousConversationStorage } from './continuousConversationStorage';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
 import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
-import { localQueryTimestampKey } from '@orot/storage';
+import { appendConversationPeriod } from './conversationPeriodCutoff';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import {
@@ -195,15 +195,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
               [decoded.id, source.kind, source.id],
             );
           } else if (isPeriodSummarySource(source)) {
-            await tx.execute(
-              'INSERT OR IGNORE INTO conversation_artifact_periods (artifact_id, topic, from_key, to_key) VALUES (?, ?, ?, ?)',
-              [
-                decoded.id,
-                source.scope.topic,
-                localQueryTimestampKey(source.scope.window.fromInclusive),
-                localQueryTimestampKey(source.scope.window.toExclusive),
-              ],
-            );
+            await appendConversationPeriod(tx, decoded.id, source.scope);
           } else {
             if (source.reference.sourceKind !== 'external_medical') {
               for (const id of [

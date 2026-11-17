@@ -1,7 +1,8 @@
-import { setupConversationPeriodGuards } from './conversationPeriodGuards';
 import { STORAGE_TABLES, type SqlExecutor } from '@orot/storage';
 import { ensureHealthContextGeneration } from '../healthEvidence/healthContext/generation';
 import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
+import { ensureConversationPeriodCutoff } from './conversationPeriodCutoff';
+import { setupConversationPeriodGuards } from './conversationPeriodGuards';
 import { periodRowReferences } from './conversationPeriodRemoval';
 import {
   jsonValueChangedPredicate,
@@ -133,6 +134,7 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_artifact_periods (artifact_id TEXT NOT NULL, topic TEXT NOT NULL, from_key TEXT NOT NULL, to_key TEXT NOT NULL, PRIMARY KEY (artifact_id, topic, from_key, to_key))',
   );
+  await ensureConversationPeriodCutoff(tx);
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS agent_memory_records (id TEXT PRIMARY KEY NOT NULL, record_json TEXT NOT NULL)',
   );
