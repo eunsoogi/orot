@@ -57,8 +57,8 @@ test('cancellation before the final transactional check rolls back the output', 
               const result = await tx.execute(query, args);
               if (
                 abortOnInsert &&
-                query.startsWith(
-                  'INSERT OR IGNORE INTO conversation_artifact_periods',
+                /^INSERT(?: OR IGNORE)? INTO conversation_artifact_periods\b/.test(
+                  query,
                 )
               ) {
                 abortOnInsert = false;
@@ -84,6 +84,7 @@ test('cancellation before the final transactional check rolls back the output', 
     };
     abortOnInsert = true;
     await expect(storage.append(value, controller.signal)).rejects.toThrow();
+    expect(controller.signal.aborted).toBe(true);
     expect(await storage.read('turn')).toBeNull();
   } finally {
     f.close();
