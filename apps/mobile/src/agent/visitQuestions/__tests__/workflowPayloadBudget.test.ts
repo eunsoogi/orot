@@ -3,30 +3,40 @@ import {
   makeProvider,
   preparedContext,
   selectedOption,
+  successfulOutputs,
 } from '../testing/workflowFixtures';
-import { t } from '../../../i18n';
+import { jsonByteLength } from '../../../aiFeatures/integration/evidenceUtils';
 
-// A synthetic oversized request exercises the real runtime-to-visit mapping without provider use.
-test('reports local payload exhaustion as a bounded request failure rather than provider configuration', async () => {
-  const { provider, requests } = makeProvider([]);
-  const { selection, option } = selectedOption(provider);
-  const confirmConsent = jest.fn(async () => true);
-  const result = await runVisitQuestionWorkflow({
-    prepared: preparedContext(),
-    request: '합성'.repeat(12_000),
-    selection,
-    providerOptions: [option],
-    recipient: 'Synthetic selected account',
-    confirmConsent,
-  });
-  expect(result).toMatchObject({
-    status: 'budget_exceeded',
-    message: t('visitQuestions.workflowResults.failure.budgetExceeded'),
-  });
-  expect(result).not.toHaveProperty('providerErrorCode');
-  expect(JSON.stringify(result)).not.toContain(
-    t('ragConversation.failureProviderConfiguration'),
-  );
-  expect(requests).toEqual([]);
-  expect(confirmConsent).not.toHaveBeenCalled();
-});
+// Interactive requests are not rejected by the former aggregate app cap. The
+// actual provider, source validation and remote consent still own their boundaries.
+test.each([true, false])(
+  'oversized interactive visit request respects consent=%s rather than the old app cap',
+  async allowed => {
+    const prepared = preparedContext();
+    const { provider, requests } = makeProvider(
+      successfulOutputs(
+        prepared.initialEvidence,
+        prepared.supplementalEvidence,
+      ),
+    );
+    const { selection, option } = selectedOption(provider);
+    const confirmConsent = jest.fn(async () => allowed);
+    const result = await runVisitQuestionWorkflow({
+      prepared,
+      request: '합성'.repeat(12_000),
+      selection,
+      providerOptions: [option],
+      recipient: 'Synthetic selected account',
+      confirmConsent,
+    });
+    expect(confirmConsent).toHaveBeenCalled();
+    expect(result.status).toBe(allowed ? 'ready' : 'consent_required');
+    if (allowed) {
+      expect(requests.length).toBeGreaterThan(0);
+      expect(jsonByteLength(requests[0])).toBeGreaterThan(65536);
+      if (result.status !== 'ready')
+        throw new Error('Expected synthetic grounded questions');
+      expect(result.questions).toHaveLength(3);
+    } else expect(requests).toEqual([]);
+  },
+);

@@ -43,7 +43,10 @@ export interface GroundedRagAnswer {
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
   // The live send boundary owns the reviewed opening; never spend another preview call during tools.
-  taskVersion: '11',
+  taskVersion: '12',
+  // Full current evidence is already in createMessages. Preserve tool identity and
+  // coverage without sending the same body a second time in native tool history.
+  nativeToolResultMode: 'evidence_references',
   allowBoundedExternalEvidence: true,
   acceptsIncompleteEvidence: acceptsLocalPublicSearchFallback,
   allowRankedLocalEvidence: true,

@@ -1,11 +1,18 @@
 import { MAX_MULTI_AGENT_BUDGET } from './contracts';
 import type { MultiAgentWorkflowOptions } from './contracts';
 
-/** All count and size limits remain mandatory; only elapsed time accepts an explicit opt-out. */
+/** Evidence/output and loop budgets remain mandatory; request-size and elapsed time have explicit opt-outs. */
 export function validBudget<TResult>(options: MultiAgentWorkflowOptions<TResult>): boolean {
   const keys = Object.keys(MAX_MULTI_AGENT_BUDGET) as (keyof typeof MAX_MULTI_AGENT_BUDGET)[];
   return (
-    Object.keys(options.execution.budget).length === keys.length &&
+    Object.keys(options.execution.budget).every(
+      (key) => key === 'maxModelRequestBytes' || keys.includes(key as (typeof keys)[number]),
+    ) &&
+    (options.execution.budget.maxModelRequestBytes === undefined ||
+      options.execution.budget.maxModelRequestBytes === null ||
+      (Number.isSafeInteger(options.execution.budget.maxModelRequestBytes) &&
+        options.execution.budget.maxModelRequestBytes > 0 &&
+        options.execution.budget.maxModelRequestBytes <= MAX_MULTI_AGENT_BUDGET.maxPayloadBytes)) &&
     keys.every((key) => {
       const value = options.execution.budget[key];
       if (key === 'timeoutMs' && value === null) return true;

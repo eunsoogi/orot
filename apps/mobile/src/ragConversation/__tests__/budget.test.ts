@@ -36,5 +36,6 @@ test('shipping evidence workflows retain count and size bounds without an elapse
   expect(RAG_CONVERSATION_BUDGET).toEqual({
     ...DEFAULT_MULTI_AGENT_BUDGET,
     timeoutMs: null,
+    maxModelRequestBytes: null,
   });
 });

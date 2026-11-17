@@ -1,3 +1,5 @@
+import historicalContracts from '../testSupport/conversationLegacyPayloadContracts.json';
+import { stableJson } from '../../aiFeatures/integration/evidenceUtils';
 import { ragConversationTask } from '../task';
 import { restoreConversationTask } from '../conversationTaskVersions';
 import {
@@ -10,7 +12,7 @@ const input = {
   evidence: { items: [], coverage: [], conflicts: [] },
 } as unknown as TaskResponderInput;
 test('new answer contract has no coverage completion classification', () => {
-  expect(ragConversationTask.taskVersion).toBe('11');
+  expect(ragConversationTask.taskVersion).toBe('12');
   for (const schema of [
     conversationResultSchema,
     literatureConversationResultSchema,
@@ -61,4 +63,30 @@ test('legacy task identities preserve old exact prompt and result contract witho
       taskVersion: 'unknown',
     }),
   ).toBeUndefined();
+});
+
+test('legacy response contracts keep full native receipts while new turns avoid duplicate bodies', () => {
+  expect(ragConversationTask.nativeToolResultMode).toBe('evidence_references');
+  for (const taskVersion of ['9', '10', '11'] as const) {
+    const legacy = restoreConversationTask({
+      taskType: ragConversationTask.taskType,
+      taskVersion,
+    });
+    expect(legacy?.taskVersion).toBe(taskVersion);
+    // Frozen from the shipped pre-change contracts at 66726774, not reconstructed from the live task.
+    expect(stableJson(legacy)).toBe(historicalContracts[taskVersion]);
+    expect(legacy?.nativeToolResultMode).toBeUndefined();
+    expect(
+      Object.prototype.hasOwnProperty.call(legacy, 'nativeToolResultMode'),
+    ).toBe(false);
+  }
+  const previous = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '11',
+  })!;
+  expect(previous.createMessages(input)).toEqual(
+    ragConversationTask.createMessages(input),
+  );
+  expect(previous.systemPrompt).toBe(ragConversationTask.systemPrompt);
+  expect(previous.resultSchema).toEqual(ragConversationTask.resultSchema);
 });

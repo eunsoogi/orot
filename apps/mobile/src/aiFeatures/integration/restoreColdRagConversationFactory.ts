@@ -1,3 +1,4 @@
+import { restoreConversationRequestBudget } from './restoreConversationRequestBudget';
 import { coldArtifactPaging } from './artifactPagingSnapshot';
 import { restoreColdConversationActions } from './restoreColdConversationActions';
 import { readColdPhotoBinding } from './coldPhotoBinding';
@@ -157,7 +158,7 @@ export async function restoreColdRagConversationFactory(input: {
   const historyIsCurrent = async () =>
     !signal.aborted &&
     (!aliases.length || (await registry.revalidateEvidence(aliases, signal)));
-  const options: MultiAgentWorkflowOptions<GroundedRagAnswer> = {
+  let options: MultiAgentWorkflowOptions<GroundedRagAnswer> = {
     ...guardHistory(execution, historyIsCurrent, true),
     ...(publicSearch
       ? {
@@ -194,6 +195,7 @@ export async function restoreColdRagConversationFactory(input: {
         deps.deletionRevalidationStorage,
       ),
   };
+  options = restoreConversationRequestBudget(options, d.exactInput);
   await validateColdRagBatches(
     saved.evidenceBatches as unknown as EvidenceBatch[],
     options,
