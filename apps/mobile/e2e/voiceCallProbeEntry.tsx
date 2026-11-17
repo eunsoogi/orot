@@ -1,6 +1,12 @@
 // E2E-only entry. No native microphone, speech recognition, or provider is invoked.
 import { useEffect, useRef, useState } from 'react';
-import { AppRegistry, AppState, Text } from 'react-native';
+import {
+  AppRegistry,
+  AppState,
+  Text,
+  Pressable,
+  StyleSheet,
+} from 'react-native';
 import { name as appName } from '../app.json';
 import { SavedVoiceCallIdentity } from '../src/voiceConversation/VoiceCallIdentity';
 import { VoiceConversationScreen } from '../src/voiceConversation/VoiceConversationScreen';
@@ -11,6 +17,7 @@ import type {
   DuplexTranscript,
   DuplexSpeechStart,
 } from '../src/voiceConversation/nativeDuplexVoice';
+import { useVoiceTranscript } from '../src/voiceConversation/useVoiceTranscript';
 import { initialVoiceState } from '../src/voiceConversation/voiceTurn';
 
 function syntheticCall() {
@@ -68,28 +75,48 @@ function syntheticCall() {
     onInterrupted: () => () => {},
     onListening: () => () => {},
   };
-  return { native, duplex };
+  return {
+    native,
+    duplex,
+    beginSpeech() {
+      if (!callId) return;
+      started?.({ callId, generation: ++generation });
+    },
+  };
 }
 
-function VoiceCallProbeEntry() {
+export function VoiceCallProbeEntry() {
+  const { lines, append, clear } = useVoiceTranscript();
+  const fixture = useRef<ReturnType<typeof syntheticCall> | null>(null);
   const [state, setState] = useState(initialVoiceState);
   const [visible, setVisible] = useState(true);
   const session = useRef<ReturnType<typeof createDuplexVoiceSession> | null>(
     null,
   );
   useEffect(() => {
-    const fixture = syntheticCall();
+    const call = syntheticCall();
+    fixture.current = call;
+    let turn = 0;
     const controller = createDuplexVoiceSession(
       {
-        native: fixture.native,
+        native: call.native,
         language: 'ko-KR',
         authorize: async () => true,
         isCurrent: () => true,
         photoPending: () => false,
-        submit: async () => 'Synthetic fixture output',
+        submit: async (_identity, text) => {
+          const id = String(++turn);
+          append({ id: id + '-user', role: 'user', text });
+          append({
+            id: id + '-answer',
+            role: 'assistant',
+            text: 'Synthetic fixture output',
+          });
+          return 'Synthetic fixture output';
+        },
         cancel: async () => {},
       },
-      fixture.duplex,
+      call.duplex,
       setState,
     );
     session.current = controller;
@@ -99,14 +126,18 @@ function VoiceCallProbeEntry() {
       turnId: 'fixture',
     });
     const subscription = AppState.addEventListener('change', value => {
-      if (value === 'background') controller.stop();
+      if (value === 'background') {
+        controller.stop();
+        clear();
+      }
     });
     return () => {
       subscription.remove();
       controller.dispose();
       session.current = null;
+      fixture.current = null;
     };
-  }, []);
+  }, [append, clear]);
   return (
     <>
       <Text testID="voice-fixture-state">
@@ -116,13 +147,29 @@ function VoiceCallProbeEntry() {
         visible={visible}
         phase={state.phase}
         status={`Synthetic ${state.phase}`}
+        transcript={lines}
         identity={
-          <SavedVoiceCallIdentity
-            value={{ avatar: 'star', name: 'Orot synthetic fixture' }}
-          />
+          <>
+            <SavedVoiceCallIdentity
+              value={{ avatar: 'star', name: 'Orot synthetic fixture' }}
+            />
+            {/* Test-only event injection exercises the duplex listener, not the manual interrupt callback. */}
+            {state.phase === 'speaking' ? (
+              <Pressable
+                testID="voice-fixture-speech-start"
+                accessibilityRole="button"
+                accessibilityLabel="Simulate speech start"
+                style={styles.speechStart}
+                onPress={() => fixture.current?.beginSpeech()}
+              >
+                <Text>Simulate speech start</Text>
+              </Pressable>
+            ) : null}
+          </>
         }
         onEnd={() => {
           session.current?.stop();
+          clear();
           setVisible(false);
         }}
         onMute={() => {
@@ -141,4 +188,8 @@ function VoiceCallProbeEntry() {
     </>
   );
 }
+const styles = StyleSheet.create({
+  speechStart: { minHeight: 44, minWidth: 44, padding: 12 },
+});
+
 AppRegistry.registerComponent(appName, () => VoiceCallProbeEntry);

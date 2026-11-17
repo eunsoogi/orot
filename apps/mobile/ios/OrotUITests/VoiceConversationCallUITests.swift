@@ -32,7 +32,12 @@ final class VoiceConversationCallUITests: OrotFailFastTestCase {
         guard ready("Synthetic listening", in: app) else { return }
         guard tap("말하기 완료", in: app, scroll: surface) else { return }
         guard ready("Synthetic speaking", in: app) else { return }
-        guard tap("답변 중단하고 말하기", in: app, scroll: surface) else { return }
+        XCTAssertFalse(UITestConditions.element(app, "voice-call-interrupt").exists)
+        let transcript = UITestConditions.element(app, "voice-transcript-scroll")
+        XCTAssertTrue(transcript.exists)
+        XCTAssertTrue(app.staticTexts["AI: Synthetic fixture output"].exists)
+        // Inject speechStarted through the fake native port; never invoke a removed manual control.
+        guard tap("Simulate speech start", in: app, scroll: surface) else { return }
         guard ready("Synthetic listening", in: app) else { return }
         guard tap("음성 대화 종료", in: app, scroll: surface) else { return }
         let closed = UITestConditions.element(app, "voice-fixture-state")
