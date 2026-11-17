@@ -167,7 +167,7 @@ test('continues a restored possibilities conversation after a plain route entry'
 });
 
 test.each([false, true])(
-  'continues a restored report conversation (possibilities: %s)',
+  'keeps restored report provenance without implicitly selecting it (possibilities: %s)',
   async possibilities => {
     const report = {
       identity: {
@@ -235,10 +235,14 @@ test.each([false, true])(
       expect.any(Array),
       expect.any(AbortSignal),
       expect.any(Object),
-      expect.objectContaining({
-        dailyReport: report,
-        intent: possibilities ? 'possibilities' : 'conversation',
-      }),
+      ...(possibilities
+        ? [expect.objectContaining({ intent: 'possibilities' })]
+        : []),
+    );
+    expect(send.mock.calls[0]).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ dailyReport: report }),
+      ]),
     );
   },
 );

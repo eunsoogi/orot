@@ -62,13 +62,30 @@ test('all four chat choices remain in one transcript and allow a report follow-u
   await waitFor(() =>
     expect(screen.getByText('Synthetic daily-report result')).toBeTruthy(),
   );
+  // A historical report remains visible, but only an explicit selection binds a follow-up.
+  const session = store.getSnapshot().sessions[0];
+  expect(session.dailyReport).toBeUndefined();
+  expect(session.messages.some(message => message.dailyReport === target)).toBe(
+    true,
+  );
+  // Consumed report metadata must not rerun or bind the next ordinary question.
+  await fireEvent.changeText(
+    screen.getByTestId('rag-conversation-input'),
+    'Synthetic independent question',
+  );
+  await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+  await waitFor(() => expect(sender).toHaveBeenCalledTimes(2));
+  expect(sender.mock.calls[1][4]?.intent).toBe('conversation');
+  expect(sender.mock.calls[1][4]?.dailyReport).toBeUndefined();
+  await waitFor(() => expect(store.getSnapshot().sessions[0].busy).toBe(false));
+  await act(() => store.selectDailyReport(session.id, target));
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),
     'Synthetic report follow-up',
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
-  await waitFor(() => expect(sender).toHaveBeenCalledTimes(2));
-  expect(sender.mock.calls[1][4]).toMatchObject({ dailyReport: target });
+  await waitFor(() => expect(sender).toHaveBeenCalledTimes(3));
+  expect(sender.mock.calls[2][4]).toMatchObject({ dailyReport: target });
   await waitFor(() => expect(store.getSnapshot().sessions[0].busy).toBe(false));
   for (const [index, button] of [
     'conversation-open-possibilities',
@@ -76,15 +93,15 @@ test('all four chat choices remain in one transcript and allow a report follow-u
     'conversation-open-visit-questions',
   ].entries()) {
     await fireEvent.press(screen.getByTestId(button));
-    await waitFor(() => expect(sender).toHaveBeenCalledTimes(index + 3));
+    await waitFor(() => expect(sender).toHaveBeenCalledTimes(index + 4));
     await waitFor(() =>
       expect(store.getSnapshot().sessions[0].busy).toBe(false),
     );
   }
   expect(store.getSnapshot().sessions).toHaveLength(1);
-  expect(store.getSnapshot().sessions[0].messages).toHaveLength(10);
+  expect(store.getSnapshot().sessions[0].messages).toHaveLength(12);
   expect(screen.getAllByTestId('conversation-assistant-message')).toHaveLength(
-    5,
+    6,
   );
   expect(screen.getByText('Synthetic daily-report result')).toBeTruthy();
   expect(screen.queryByTestId('inline-daily-report-task')).toBeNull();

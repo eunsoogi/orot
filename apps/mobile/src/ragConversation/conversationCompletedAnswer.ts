@@ -59,9 +59,7 @@ export function conversationCompletedAnswer(input: {
         : input.copy.insufficient;
   update(id, {
     pendingMessage: null,
-    ...(outcome.status === 'answer' && outcome.dailyReport
-      ? { dailyReport: outcome.dailyReport }
-      : {}),
+    // A generated report is retained on its own message, not selected for every later prompt.
     ...(input.retentionUnavailable && !session.error
       ? { error: t('ragConversation.conversation.answerSaveSourceUnavailable') }
       : {}),

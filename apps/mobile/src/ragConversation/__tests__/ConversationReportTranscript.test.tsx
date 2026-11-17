@@ -21,7 +21,10 @@ test('a retained report answer suppresses duplicate header and legacy task rende
     dailyReport: target,
   }));
   const session = store.getSnapshot().sessions[0];
-  expect(session.dailyReport).toEqual(target);
+  expect(session.dailyReport).toBeUndefined();
+  expect(session.messages).toEqual(
+    expect.arrayContaining([expect.objectContaining({ dailyReport: target })]),
+  );
   const saved = jest.fn(() => null);
   const stored = jest.fn(() => null);
   await render(
