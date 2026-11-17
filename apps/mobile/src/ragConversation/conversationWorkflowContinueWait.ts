@@ -13,7 +13,12 @@ export async function waitForWorkflowContinue(
   },
   entries: Map<number, ConversationLifetimeEntry>,
 ): Promise<boolean> {
-  if (!input.pauseState) return false;
+  // Persistence can finish after Stop or owner replacement. Never publish stale recovery UI.
+  const current = () =>
+    entries.get(entry.id) === entry &&
+    !entry.status &&
+    !entry.controller.signal.aborted;
+  if (!input.pauseState || !current()) return false;
   return new Promise(resolve => {
     let settled = false;
     let resuming = false;
@@ -22,20 +27,24 @@ export async function waitForWorkflowContinue(
       settled = true;
       entry.controller.signal.removeEventListener('abort', aborted);
       if (entries.get(entry.id) === entry) input.pauseState?.(entry.id);
-      resolve(result);
+      // Clearing the action is observable and may synchronously replace or stop its owner.
+      resolve(result && current());
     };
     const aborted = () => finish(false);
     entry.controller.signal.addEventListener('abort', aborted, { once: true });
     input.pauseState?.(entry.id, () => {
-      if (
-        settled ||
-        resuming ||
-        entries.get(entry.id) !== entry ||
-        entry.controller.signal.aborted
-      )
+      if (settled || resuming) return;
+      if (!current()) {
+        finish(false);
         return;
+      }
       resuming = true;
       input.pauseState?.(entry.id);
+      // UI publication can synchronously stop or replace this owner before lease acquisition.
+      if (!current()) {
+        finish(false);
+        return;
+      }
       (async () => {
         entry.executionId = `${entry.leasePrefix ?? `${entry.turn.toolMessageId}:lease:${entry.id}`}:${++entry.leaseAttempt}`;
         if (input.execution) {
@@ -56,24 +65,14 @@ export async function waitForWorkflowContinue(
             () => requestOwnedConversationPause(entry, entries),
             entry.diagnose,
           );
-          if (
-            entries.get(entry.id) !== entry ||
-            entry.controller.signal.aborted ||
-            entry.status
-          )
-            release();
+          if (!current()) release();
           else entry.release = release;
         }
-        if (
-          entry.controller.signal.aborted ||
-          entries.get(entry.id) !== entry
-        ) {
+        if (!current()) {
           entry.release?.();
           entry.release = undefined;
         }
-        finish(
-          !entry.controller.signal.aborted && entries.get(entry.id) === entry,
-        );
+        finish(current());
       })().catch(() => finish(false));
     });
     if (entry.controller.signal.aborted) finish(false);
