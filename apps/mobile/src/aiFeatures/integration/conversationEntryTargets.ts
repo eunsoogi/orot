@@ -1,3 +1,4 @@
+import { reportTargetFailure } from '../../providers/reportTargetDiagnostic';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import type { ConversationEntryContext } from './conversationIntent';
 import { resolveConversationEntryTarget } from './conversationVisitTarget';
@@ -24,7 +25,11 @@ export async function resolveConversationTargets(input: {
           signal: input.signal,
         })
       : undefined;
-  if (selected && !report) return { failure: 'stale_evidence' as const };
+  if (selected && !report) {
+    if (!input.resolveDailyReport)
+      reportTargetFailure('report_target_resolver_missing');
+    return { failure: 'stale_evidence' as const };
+  }
   const target = await resolveConversationEntryTarget(input);
   return { ...target, report };
 }
