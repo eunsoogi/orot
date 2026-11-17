@@ -99,8 +99,15 @@ export function createHealthSummaryService(input: {
         },
         input.registry,
         'rag',
+        false,
+        data.resolveHealthContextWindow,
       ),
-      { window: explicitWindow, endAt: createdAt, timeZone },
+      {
+        window: explicitWindow,
+        endAt: createdAt,
+        timeZone,
+        resolveWindow: data.resolveHealthContextWindow,
+      },
     );
     const runId = input.createRunId();
     const execution = executionOptions({
@@ -133,8 +140,8 @@ export function createHealthSummaryService(input: {
       // Keep the existing schema and result validator while removing legacy public-search and relative-period instructions.
       systemPrompt: original.systemPrompt
         .replace(
-          'For this broad summary prefer local-health-context with days=30 and detail=summary across all available topics. It aggregates the whole period, not a few recent samples. If unavailable, use the personal-record tool with view=health_overview.',
-          'Use local-health-context for the requested period. Select one time-zone-aware window or relative period and keep it across every topic; the default is 30 local days when no period is requested.',
+          'For this broad summary prefer local-health-context with detail=summary across all available topics. Omit days/window unless the user requested a narrower period so all available imported history is included. It aggregates the whole period, not a few recent samples. If unavailable, use the personal-record tool with view=health_overview.',
+          'Use local-health-context for the requested period. Select one time-zone-aware window or relative period only when requested and keep it across every topic; without a requested period omit days/window to include all available imported history.',
         )
         .replace(
           'The request includes both a personal-record summary and public medical context explaining the recorded concepts. After searching personal records, use the public medical literature tool for related general concepts. Queries must contain only generic medical concepts, never names, identifiers or verbatim private records.',

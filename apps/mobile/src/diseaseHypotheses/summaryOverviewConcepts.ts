@@ -3,6 +3,7 @@ export type OverviewRow = {
   readonly amount: number;
   readonly unit: string;
   readonly time?: string;
+  readonly summaryText?: string;
   readonly raw: import('@orot/model-runtime').JsonValue;
 };
 

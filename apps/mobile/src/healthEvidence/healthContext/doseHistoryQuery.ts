@@ -14,15 +14,13 @@ export async function readDoseHistory(
   const selection = window.doseHistory;
   if (
     !selection ||
-    !Number.isInteger(selection.page) ||
+    !Number.isSafeInteger(selection.page) ||
     selection.page < 0 ||
-    selection.page > 1000 ||
+    !Number.isSafeInteger(selection.page * selection.pageSize) ||
     !Number.isInteger(selection.pageSize) ||
     selection.pageSize < 1 ||
     selection.pageSize > 20 ||
-    (selection.medicationName !== undefined &&
-      (!selection.medicationName.trim() ||
-        selection.medicationName.length > 200))
+    (selection.medicationName !== undefined && !selection.medicationName.trim())
   )
     throw new RangeError('Invalid dose history selection.');
   const time = localQueryTimestampKeyExpression('d.effective_at');

@@ -1,3 +1,4 @@
+import { sensorOverviewRow } from './summarySensorRows';
 import { t } from '../i18n';
 import type { EvidenceItem, TaskResponderInput } from '@orot/agent-runtime';
 import type { JsonValue } from '@orot/model-runtime';
@@ -43,7 +44,7 @@ export function overviewSelectionSources(
       !object(value) ||
       !['measurements', 'activity'].includes(String(value.topic)) ||
       !Array.isArray(value.records) ||
-      !value.records.length ||
+      (!value.records.length && !Array.isArray(value.sensorSummaries)) ||
       value.records.length > 32
     )
       return;
@@ -54,6 +55,14 @@ export function overviewSelectionSources(
       if (!row) return;
       rows.push(row);
     }
+    for (const raw of Array.isArray(value.sensorSummaries)
+      ? value.sensorSummaries
+      : []) {
+      const row = sensorOverviewRow(raw);
+      if (!row) return;
+      rows.push(row);
+    }
+    if (!rows.length) return;
     return { item, topic: String(value.topic), rows };
   };
   for (const item of personal) {
@@ -183,15 +192,17 @@ export function resolveOverviewSelections(
     sections.push({
       title: t('computedTopic.title.overview'),
       summary: rows
-        .map(row =>
-          t('computedTopic.overviewRow', {
-            label: row.label,
-            amount: row.amount,
-            unit: row.unit,
-            time: row.time
-              ? t('computedTopic.recordTime', { time: row.time })
-              : '',
-          }),
+        .map(
+          row =>
+            row.summaryText ??
+            t('computedTopic.overviewRow', {
+              label: row.label,
+              amount: row.amount,
+              unit: row.unit,
+              time: row.time
+                ? t('computedTopic.recordTime', { time: row.time })
+                : '',
+            }),
         )
         .join('\n'),
       supportingEvidence: [item.evidenceId],
@@ -212,7 +223,10 @@ export function resolveOverviewSelections(
         'health_overview: ' +
         JSON.stringify({
           topic: source.topic,
-          records: rows.map(row => row.raw),
+          records: rows.filter(row => !row.summaryText).map(row => row.raw),
+          sensorSummaries: rows
+            .filter(row => row.summaryText)
+            .map(row => row.raw),
         }),
     };
   });

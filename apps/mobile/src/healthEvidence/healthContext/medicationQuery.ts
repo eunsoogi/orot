@@ -1,4 +1,8 @@
 import {
+  healthContextCalendarParameter,
+  healthContextCalendarSql,
+} from './calendarSql';
+import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
 } from '@orot/storage';
@@ -29,11 +33,7 @@ export async function readHealthMedicationContext(
     ? `AND ${localQueryTimestampKeyExpression('d.ingested_at')} <= ?`
     : '';
   const days = healthContextDays(window);
-  const parameters: SqlValue[] = days.flatMap(day => [
-    day.date,
-    localQueryTimestampKey(day.fromInclusive),
-    localQueryTimestampKey(day.toExclusive),
-  ]);
+  const parameters: SqlValue[] = [healthContextCalendarParameter(days)];
   if (window.dataAvailableThrough)
     parameters.push(localQueryTimestampKey(window.dataAvailableThrough));
   parameters.push(localQueryTimestampKey(window.toExclusive));
@@ -48,7 +48,7 @@ export async function readHealthMedicationContext(
     parameters.push(localQueryTimestampKey(window.dataAvailableThrough));
   const result = await executor.execute(
     `SELECT * FROM (
-    WITH days(date, from_key, to_key) AS (VALUES ${days.map(() => '(?, ?, ?)').join(', ')}), catalog AS (
+    WITH days(date, from_key, to_key) AS (${healthContextCalendarSql}), catalog AS (
       SELECT id, json_extract(payload_json, '$.displayText') AS name,
         'healthkit_registration' AS source, json_extract(payload_json, '$.hasSchedule') AS schedule,
         json_extract(payload_json, '$.isArchived') AS archived, NULL AS instruction, NULL AS confirmed
@@ -92,12 +92,12 @@ export async function readHealthMedicationContext(
       coalesce(d.events, 0) AS events, coalesce(d.days, 0) AS days, d.first_at, d.last_at
     FROM catalog c LEFT JOIN dose_counts d ON d.medication = c.id
     WHERE c.archived IS NULL OR c.archived = 0 OR d.events > 0
-    ORDER BY c.source, c.name, c.id LIMIT 33
+    ORDER BY c.source, c.name, c.id
   )`,
     parameters,
   );
   if (signal?.aborted) throw new Error('Health context was cancelled.');
-  const medications = result.rows.slice(0, 32).map(row => {
+  const medications = result.rows.map(row => {
     if (
       typeof row.id !== 'string' ||
       typeof row.name !== 'string' ||
@@ -143,5 +143,5 @@ export async function readHealthMedicationContext(
       ...(typeof row.last_at === 'string' ? { lastDoseAt: row.last_at } : {}),
     };
   });
-  return { medications, truncated: result.rows.length > 32 };
+  return { medications, truncated: false };
 }

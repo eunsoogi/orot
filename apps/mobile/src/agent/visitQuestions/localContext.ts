@@ -84,6 +84,7 @@ export async function prepareUpcomingVisitQuestionContext(input: {
     repository,
     rag,
     readHealthContext: localData.readHealthContext,
+    resolveHealthContextWindow: localData.resolveHealthContextWindow,
     validateGeneratedArtifact: input.validateGeneratedArtifact,
     buildChunks: createBoundedVisitQuestionChunkBuilder(async () =>
       createLocalEvidenceData(

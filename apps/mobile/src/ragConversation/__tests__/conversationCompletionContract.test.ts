@@ -87,7 +87,14 @@ test('legacy response contracts keep full native receipts while new turns avoid 
   expect(previous.createMessages(input)).toEqual(
     ragConversationTask.createMessages(input),
   );
-  expect(previous.systemPrompt).toBe(ragConversationTask.systemPrompt);
+  // Historical prompts retain their original period policy; only current work uses full history.
+  expect(previous.systemPrompt).toContain('30 days, summary detail by default');
+  expect(ragConversationTask.systemPrompt).toContain(
+    'all available imported history, summary detail by default',
+  );
+  expect(ragConversationTask.systemPrompt).not.toContain(
+    'at most 90 local calendar days',
+  );
   expect(previous.resultSchema).toHaveProperty(
     'properties.answer.maxLength',
     4000,

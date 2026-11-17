@@ -7,8 +7,8 @@ import { fingerprint } from './evidenceUtils';
 import {
   conflictingDailyReportIndexes,
   incomparableDailyReportIndexes,
-  dailyReportFacts,
 } from './dailyReportFacts';
+import { dailyReportSensorFacts } from './dailyReportSensorFacts';
 import { dailyReportProviderFacts } from './dailyReportProjection';
 import type { prepareReportCalendar } from './dailyReportSystemCalendar';
 import type {
@@ -31,7 +31,15 @@ export async function prepareDailyReportFacts(
 ) {
   const conflicts = conflictingDailyReportIndexes(snapshot.values);
   const incomparable = incomparableDailyReportIndexes(snapshot.values);
-  const required = [...new Set([...conflicts, ...incomparable])];
+  const sources = snapshot.sourceSnapshot.records.slice(
+    0,
+    snapshot.values.length,
+  );
+  const local = dailyReportSensorFacts(snapshot.values, sources);
+  const rawRequired = new Set([...conflicts, ...incomparable]);
+  const required = local.sourceIndexes.flatMap((members, index) =>
+    members.some(member => rawRequired.has(member)) ? [index] : [],
+  );
   const sourceSnapshot = {
     ...snapshot.sourceSnapshot,
     revision: external
@@ -96,10 +104,6 @@ export async function prepareDailyReportFacts(
       calendar.context.identity.timeZone,
     ),
   );
-  const sources = snapshot.sourceSnapshot.records.slice(
-    0,
-    snapshot.values.length,
-  );
   const sleepFacts = dailyReportSleepContext(
     snapshot.values,
     sources,
@@ -114,10 +118,7 @@ export async function prepareDailyReportFacts(
     role: 'guidance' as const,
   }));
   const facts = [
-    ...dailyReportFacts(
-      snapshot.values,
-      snapshot.sourceSnapshot.records.slice(0, snapshot.values.length),
-    ),
+    ...local.facts,
     ...(external?.facts ?? []),
     ...baselineFacts,
     ...sleepFacts,
@@ -135,6 +136,7 @@ export async function prepareDailyReportFacts(
   );
   return {
     required,
+    factSourceIndexes: local.sourceIndexes,
     sourceSnapshot,
     facts,
     baselineFacts,

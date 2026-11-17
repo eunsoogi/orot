@@ -10,13 +10,15 @@ import {
   LocalEvidenceReferenceRegistry,
   type EvidenceSourceReadResult,
 } from './evidenceRegistry';
-import { healthOverviewFacts } from './healthOverviewFacts';
+import {
+  providerRecordFacts,
+  addProviderJsonEvidence,
+} from './providerObservationEvidence';
 import { scopedEvidenceItems } from './evidenceItemScope';
 import {
   fingerprint,
   jsonByteLength,
   MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES,
-  stableJson,
 } from './evidenceUtils';
 
 /** One explicit model-selected read supplies bounded samples by topic, not a computed diagnosis or exhaustive totals. */
@@ -101,7 +103,7 @@ export function healthOverviewEvidence(
         },
       };
     };
-    const item = registry.add({
+    const item = addProviderJsonEvidence(registry, {
       reference: {
         sourceKind: 'personal_record',
         sourceId: id,
@@ -123,7 +125,14 @@ export function healthOverviewEvidence(
           ? 'reviewed'
           : 'unknown',
       },
-      content: `health_overview: ${stableJson({ topic, selection: 'bounded_recent_samples_not_exhaustive', records: references.map(ref => healthOverviewFacts(rows!.get(ref.evidenceId)!)) })}`,
+      prefix: 'health_overview: ',
+      value: {
+        topic,
+        selection: 'bounded_recent_samples_not_exhaustive',
+        ...providerRecordFacts(
+          references.map(ref => rows!.get(ref.evidenceId)!),
+        ),
+      },
       readSource,
       validate: signal => registry.revalidateEvidence(references, signal),
     });

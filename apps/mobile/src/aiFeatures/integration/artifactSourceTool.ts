@@ -1,3 +1,11 @@
+import {
+  addProviderJsonEvidence,
+  providerJsonContent,
+} from './providerObservationEvidence';
+import {
+  isBulkSensorObservation,
+  summarizeProviderObservations,
+} from './providerObservationProjection';
 import type { EvidenceBatch, EvidenceSearchTool } from '@orot/agent-runtime';
 import type { JsonObject } from '@orot/model-runtime';
 import type { AiFeatureLocalData } from './localData';
@@ -46,7 +54,8 @@ export function createArtifactSourceTool(
       if (
         !parsed ||
         !request.allowedScope.sourceKinds.includes(kind) ||
-        request.allowedScope.sourceIds ||
+        (request.allowedScope.sourceIds !== undefined &&
+          request.allowedScope.sourceIds.length !== 1) ||
         request.allowedScope.timeRange ||
         !Number.isSafeInteger(request.resultLimit) ||
         request.resultLimit < 1 ||
@@ -64,6 +73,11 @@ export function createArtifactSourceTool(
       if (!lineage || lineage.reference.sourceKind !== kind)
         throw new Error('Artifact source is unavailable.');
       const reference = lineage.reference;
+      if (
+        request.allowedScope.sourceIds &&
+        !request.allowedScope.sourceIds.includes(reference.sourceId)
+      )
+        throw new Error('Artifact source is outside the selected scope.');
       const original = registry.resolve(reference);
       if (!original) throw new Error('Artifact source is unavailable.');
       const discovery =
@@ -97,18 +111,44 @@ export function createArtifactSourceTool(
           (result.document.sourceKind === 'reviewed_memory')
       )
         throw new Error('Artifact source changed or is unavailable.');
-      const raw = JSON.stringify(presentEvidenceSource(result.document));
+      // Tool-chosen IDs do not authorize raw samples. Only a host-bound exact record scope does.
+      const document = result.document;
+      const selectedRecord =
+        document.sourceKind === 'personal_record' &&
+        document.records.length === 1 &&
+        request.allowedScope.sourceIds?.length === 1 &&
+        original.evidenceId === document.records[0]!.record.id &&
+        original.sourceId === original.evidenceId;
+      const bulk =
+        document.sourceKind === 'personal_record' &&
+        !selectedRecord &&
+        document.records.some(isBulkSensorObservation);
+      const value =
+        bulk && document.sourceKind === 'personal_record'
+          ? {
+              source: presentEvidenceSource({
+                ...document,
+                records: document.records.filter(
+                  row => !isBulkSensorObservation(row),
+                ),
+              }),
+              sensorSummaries: summarizeProviderObservations(
+                document.records,
+              ).map(group => group.content),
+            }
+          : presentEvidenceSource(document);
+      const raw = JSON.stringify(value);
       for (const id of await data.findIdentifiers(raw, request.signal))
         registry.registerSensitiveIdentifier(id);
-      const content = registry.redactText(raw);
+      const content = providerJsonContent(registry, value);
       if (
         request.executionLimits !== 'unbounded' &&
         jsonByteLength(content) > request.maxPayloadBytes - 1024
       )
         throw new Error('Artifact source exceeds the requested size.');
-      const item = registry.add({
+      const item = addProviderJsonEvidence(registry, {
         reference: original,
-        content,
+        value,
         readSource,
         validate: async signal =>
           (await readSource(signal)).status === 'available',

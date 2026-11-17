@@ -2,9 +2,7 @@ import { compareTimestamps, TimestampSchema } from '@orot/domain';
 import { dateKey, dayFormatter, dayStart, shiftDate } from './calendarDate';
 import type { HealthContextDay, HealthContextWindow } from './types';
 
-const dayMilliseconds = 86_400_000;
-
-/** A window contains at most 90 local calendar days; exact time bounds remain authoritative. */
+/** Preserve the caller-selected local-calendar period without an arbitrary day ceiling. */
 export function healthContextDays(
   window: HealthContextWindow,
 ): HealthContextDay[] {
@@ -17,13 +15,8 @@ export function healthContextDays(
         'The data availability cutoff must cover the requested occurrence window.',
       );
   }
-  if (
-    compareTimestamps(window.fromInclusive, window.toExclusive) >= 0 ||
-    to - from > 91 * dayMilliseconds
-  )
-    throw new RangeError(
-      'The health context window must advance within 90 calendar days.',
-    );
+  if (compareTimestamps(window.fromInclusive, window.toExclusive) >= 0)
+    throw new RangeError('The health context window must advance.');
   const formatter = dayFormatter(window.timeZone);
   const endDate = dateKey(formatter, to);
   const exactMidnight = new Date(dayStart(endDate, formatter)).toISOString();
@@ -56,20 +49,20 @@ export function healthContextDays(
           compareTimestamps(clippedFrom, start) !== 0 ||
           compareTimestamps(clippedTo, end) !== 0,
       });
-    if (days.length > 90)
-      throw new RangeError(
-        'The health context window exceeds 90 calendar days.',
-      );
   }
   return days;
 }
 
 /** Defaults count local days, rather than assuming every day lasts 24 hours. */
 export function recentHealthContextWindow(
-  days: 7 | 30 | 90,
+  days: number,
   endAt = new Date().toISOString(),
   timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
 ): HealthContextWindow {
+  if (!Number.isSafeInteger(days) || days < 1)
+    throw new RangeError(
+      'The calendar-day count must be a positive safe integer.',
+    );
   const to = Date.parse(TimestampSchema.parse(endAt));
   const formatter = dayFormatter(timeZone);
   const current = dateKey(formatter, to);

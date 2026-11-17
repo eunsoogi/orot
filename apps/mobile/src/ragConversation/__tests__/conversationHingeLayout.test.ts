@@ -116,3 +116,67 @@ test('clips the top indicator and keyboard-contracted host without changing hori
   expect(plan.top).toBe(40);
   expect(plan.height).toBe(260);
 });
+
+// The shell, not a second safe-area crop, owns routed content's bottom edge.
+test.each([669, 400])(
+  'fills a routed %s-point host without adding height above the keyboard',
+  height => {
+    const geometry = createNavigationGeometrySnapshot({
+      ...openGeometry,
+      hasHinge: true,
+    });
+    const bounds = { x: 0, y: 0, width: 867, height };
+    const plan = conversationHingeLayout(geometry, bounds, 1, true);
+    expect(plan.top).toBe(0);
+    expect(plan.height).toBe(height);
+    expect(plan.transcriptWidth).toBeCloseTo(867 * 0.68);
+    expect(geometry?.safeAreaInsets.bottom).toBe(34);
+    expect(geometry?.safeAreaFrame.height).toBe(635);
+  },
+);
+
+test('drawing through the home area still stops at an active bottom occlusion', () => {
+  const geometry = createNavigationGeometrySnapshot({
+    ...openGeometry,
+    reservedRegions: [
+      {
+        id: 'bottom-occlusion',
+        kind: 'occlusion',
+        isActive: true,
+        frame: { x: 0, y: 620, width: 951, height: 49 },
+        margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      },
+    ],
+  });
+  const plan = conversationHingeLayout(
+    geometry,
+    { x: 0, y: 0, width: 867, height: 669 },
+    1,
+    true,
+  );
+  expect(plan.height).toBe(620);
+});
+
+test('routed horizontal-fold fallback never extends through the division', () => {
+  const geometry = createNavigationGeometrySnapshot({
+    ...dividedGeometry,
+    hasHinge: true,
+    reservedRegions: [
+      {
+        id: 'horizontal',
+        kind: 'division',
+        isActive: true,
+        frame: { x: 0, y: 440, width: 1000, height: 40 },
+        margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      },
+    ],
+  });
+  const plan = conversationHingeLayout(
+    geometry,
+    { x: 14, y: 40, width: 964, height: 860 },
+    1,
+    true,
+  );
+  expect(plan.visible).toBe(false);
+  expect(plan.height).toBe(400);
+});

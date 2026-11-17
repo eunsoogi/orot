@@ -39,6 +39,7 @@ export function toolsFor(
             registry,
             feature,
             feature === 'rag',
+            data.resolveHealthContextWindow,
           ),
         ]
       : []),

@@ -1,4 +1,8 @@
 import {
+  healthContextCalendarParameter,
+  healthContextCalendarSql,
+} from './calendarSql';
+import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
 } from '@orot/storage';
@@ -16,14 +20,11 @@ export async function readHealthSleepContext(
   days: readonly HealthSleepDay[];
   unsupportedCategories: boolean;
 }> {
-  if (!days.length || days.length > 90)
-    throw new RangeError('Invalid sleep context days.');
+  if (!days.length) throw new RangeError('Invalid sleep context days.');
   if (signal?.aborted) throw new Error('Health context was cancelled.');
-  const parameters: SqlValue[] = days.flatMap(day => [
-    day.date,
-    day.fromInclusive,
-    day.toExclusive,
-  ]);
+  const parameters: SqlValue[] = [
+    healthContextCalendarParameter(days, 'instant'),
+  ];
   parameters.push(
     localQueryTimestampKey(days.at(-1)!.toExclusive),
     localQueryTimestampKey(days[0]!.fromInclusive),
@@ -38,7 +39,7 @@ export async function readHealthSleepContext(
   );
   const result = await executor.execute(
     `SELECT * FROM (
-    WITH days(date, from_at, to_at) AS (VALUES ${days.map(() => '(?, ?, ?)').join(', ')}),
+    WITH days(date, from_at, to_at) AS (${healthContextCalendarSql}),
     samples AS (
       SELECT d.date,
         max(julianday(r.effective_at), julianday(d.from_at)) * 86400 AS start,
@@ -54,7 +55,8 @@ export async function readHealthSleepContext(
       FROM health_observations r JOIN days d
         ON julianday(r.effective_at) < julianday(d.to_at)
           AND julianday(json_extract(r.payload_json, '$.endedAt')) > julianday(d.from_at)
-      WHERE json_extract(r.payload_json, '$.concept') IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep')
+      WHERE json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
+        AND json_extract(r.payload_json, '$.concept') IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep')
         AND ${currentEvidenceCondition('health_observation')}
         AND ${fromKey} < ? AND ${toKey} > ?
         ${ingestionFilter}

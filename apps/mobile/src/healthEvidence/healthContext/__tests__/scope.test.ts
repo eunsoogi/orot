@@ -47,10 +47,32 @@ test.each([
     ...scope,
     window: { ...scope.window, toExclusive: '2026-09-01T00:00:00Z' },
   },
-  {
-    ...scope,
-    window: { ...scope.window, toExclusive: '2027-01-01T00:00:00Z' },
-  },
 ])('rejects malformed or widened saved scope %j', input => {
   expect(parseHealthContextScope(input)).toBeUndefined();
+});
+
+// Long periods and late pages remain exact saved scopes, not reasons to omit records.
+test('retains long periods and pages beyond the former ceiling', () => {
+  const input = {
+    ...scope,
+    window: {
+      ...scope.window,
+      toExclusive: '2028-01-01T00:00:00Z',
+      doseHistory: {
+        page: 1001,
+        pageSize: 20,
+        medicationName: 'name'.repeat(100),
+      },
+    },
+  };
+  expect(parseHealthContextScope(input)).toEqual(input);
+  expect(
+    parseHealthContextScope({
+      ...input,
+      window: {
+        ...input.window,
+        doseHistory: { page: Number.MAX_SAFE_INTEGER, pageSize: 20 },
+      },
+    }),
+  ).toBeUndefined();
 });

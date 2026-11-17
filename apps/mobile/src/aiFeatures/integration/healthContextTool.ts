@@ -1,3 +1,4 @@
+import type { ResolveHealthContextWindow } from '../../healthEvidence/healthContext/availableWindow';
 import type { EvidenceBatch, EvidenceSearchTool } from '@orot/agent-runtime';
 import type { JsonObject } from '@orot/model-runtime';
 import type { HealthContextReader } from '../../healthEvidence/healthContext/reader';
@@ -25,8 +26,10 @@ function parseInput(
     Object.keys(v).some(
       key => !['days', 'topics', 'detail', 'window'].includes(key),
     ) ||
-    (v.days !== undefined && ![7, 30, 90].includes(Number(v.days))) ||
-    (v.days !== undefined && typeof v.days !== 'number') ||
+    (v.days !== undefined &&
+      (typeof v.days !== 'number' ||
+        !Number.isSafeInteger(v.days) ||
+        v.days < 1)) ||
     (v.detail !== undefined &&
       !['summary', 'weekly', 'daily'].includes(String(v.detail))) ||
     (v.topics !== undefined &&
@@ -47,19 +50,19 @@ function parseInput(
           topic: 'medications',
           window: v.window,
         });
-  // Explicit windows are RAG-only; paged dose history remains medication-only.
+  // Explicit clinical periods are available to every feature; dose history remains RAG-only.
   if (
     v.window !== undefined &&
-    (!allowDoseHistory ||
-      v.days !== undefined ||
+    (v.days !== undefined ||
       !scope ||
+      (!allowDoseHistory && scope.window.doseHistory) ||
       (scope.window.doseHistory &&
         v.topics !== undefined &&
         (v.topics as unknown[]).some(topic => topic !== 'medications')))
   )
     return undefined;
   return {
-    ...(v.window ? {} : { days: (v.days as number) ?? 30 }),
+    ...(v.days === undefined ? {} : { days: v.days as number }),
     topics:
       (v.topics as string[]) ??
       (scope?.window.doseHistory
@@ -76,23 +79,26 @@ export function createHealthContextTool(
   registry: LocalEvidenceReferenceRegistry,
   feature: 'disease' | 'rag' | 'visit' = 'disease',
   refreshUnexposed = false,
+  resolveWindow?: ResolveHealthContextWindow,
 ): EvidenceSearchTool {
   return {
     id: 'local-health-context',
     sourceKind: 'personal_record',
     execution: 'local_read_only',
     description:
-      'Read longitudinal health context from the last 7, 30 (default), or 90 local calendar days. For broad summaries choose topics and summary, weekly, or daily detail. Step sensor sums are separate, not merged totals. Measurements include heart-rate sample ranges grouped by time overlap with already imported workout intervals, not proof of exercise, rest or causation. No new HealthKit reads are performed.' +
+      'Read longitudinal health context across all available imported history by default. Specify positive calendar days or an explicit window only when the requested clinical period is narrower. For broad summaries choose topics and summary, weekly, or daily detail. Step sensor sums are separate, not merged totals. Measurements include heart-rate sample ranges grouped by time overlap with already imported workout intervals, not proof of exercise, rest or causation. No new HealthKit reads are performed.' +
+      ' Explicit windows are [fromInclusive, toExclusive) ISO instants in an IANA time zone. Convert calendar boundaries using the requested zone.' +
       (feature === 'rag'
-        ? ' For any topics, choose window with explicit ISO instants and IANA timeZone for a specific period. The range covers at most 90 local days and is [fromInclusive, toExclusive); convert local calendar boundaries using the requested time zone. For medication history only, optionally add doseHistory with an exact medicationName, zero-based page (0-1000) and pageSize (1-20). Follow hasMore with the next page up to page 1000; narrow the period beyond that. Data changes can shift pages. Registration and scheduled times are not intake; an absent event is unknown.'
+        ? ' Medication doseHistory supports an exact medicationName and nonnegative page with pageSize 1-20. Follow hasMore. Registration and scheduled times are not intake; absent events are unknown.'
         : ''),
     inputSchema: {
       type: 'object',
       properties: {
-        // Apple native tools support string enums only. The closed numeric choices are enforced by parseInput.
+        // The parser validates an explicit positive day count; omission never inserts a time cutoff.
         days: {
           type: 'integer',
-          description: 'Choose 7, 30, or 90 local calendar days; default 30.',
+          description:
+            'Positive local calendar days only for a requested relative period; omit for all available history.',
         },
         topics: {
           type: 'array',
@@ -101,32 +107,34 @@ export function createHealthContextTool(
           items: { type: 'string', enum: [...HEALTH_CONTEXT_TOPICS] },
         },
         detail: { type: 'string', enum: ['summary', 'weekly', 'daily'] },
-        ...(feature === 'rag'
-          ? {
-              window: {
-                type: 'object',
-                description:
-                  'Period for selected topics: explicit ISO instant fromInclusive and toExclusive, IANA timeZone. Omit days. Optional doseHistory { medicationName?: exact name, page: zero-based integer, pageSize: 1-20 } is medications-only.',
-                properties: {
-                  fromInclusive: { type: 'string' },
-                  toExclusive: { type: 'string' },
-                  timeZone: { type: 'string' },
-                  doseHistory: {
-                    type: 'object',
-                    properties: {
-                      medicationName: { type: 'string' },
-                      page: { type: 'integer' },
-                      pageSize: { type: 'integer' },
+        ...{
+          window: {
+            type: 'object',
+            description:
+              'Period for selected topics: explicit ISO instant fromInclusive and toExclusive, IANA timeZone. Omit days. Optional doseHistory { medicationName?: exact name, page: zero-based integer, pageSize: 1-20 } is medications-only.',
+            properties: {
+              fromInclusive: { type: 'string' },
+              toExclusive: { type: 'string' },
+              timeZone: { type: 'string' },
+              ...(feature === 'rag'
+                ? {
+                    doseHistory: {
+                      type: 'object',
+                      properties: {
+                        medicationName: { type: 'string' },
+                        page: { type: 'integer' },
+                        pageSize: { type: 'integer' },
+                      },
+                      required: ['page', 'pageSize'],
+                      additionalProperties: false,
                     },
-                    required: ['page', 'pageSize'],
-                    additionalProperties: false,
-                  },
-                },
-                required: ['fromInclusive', 'toExclusive', 'timeZone'],
-                additionalProperties: false,
-              },
-            }
-          : {}),
+                  }
+                : {}),
+            },
+            required: ['fromInclusive', 'toExclusive', 'timeZone'],
+            additionalProperties: false,
+          },
+        },
       },
       additionalProperties: false,
     },
@@ -171,7 +179,16 @@ export function createHealthContextTool(
             topic: 'medications',
             window: input.window,
           })!.window
-        : recentHealthContextWindow(input.days as 7 | 30 | 90);
+        : input.days !== undefined
+          ? recentHealthContextWindow(input.days as number)
+          : resolveWindow
+            ? await resolveWindow(request.signal)
+            : undefined;
+      if (window === undefined)
+        throw new Error(
+          'An explicit health context period is required when availability cannot be resolved.',
+        );
+      if (window === null) return batch();
       for (const topic of [...new Set(input.topics as HealthContextTopic[])]) {
         if (items.length >= request.resultLimit) {
           gaps.push('topic_result_limit_reached');

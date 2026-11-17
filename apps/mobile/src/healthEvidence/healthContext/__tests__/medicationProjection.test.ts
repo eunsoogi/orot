@@ -159,7 +159,7 @@ test.each([800, 20_480])(
       registry,
     );
     const result = await tool.search({
-      input: { topics: ['medications'] },
+      input: { topics: ['medications'], window: { ...periodWindow } },
       operationRunId: 'synthetic-medication-context',
       operationKey: 'selected-period',
       allowedScope: { sourceKinds: ['personal_record'] },

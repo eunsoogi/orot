@@ -1,3 +1,8 @@
+import { resultCoverage } from './evidenceSearchCoverage';
+import {
+  providerObservationEvidence,
+  selectedProviderRecordId,
+} from './providerObservationEvidence';
 import type { EvidenceChunk } from '@orot/rag';
 import type {
   EvidenceBatch,
@@ -22,31 +27,6 @@ import {
   jsonByteLength,
   MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES,
 } from './evidenceUtils';
-
-function resultCoverage(
-  snapshot: LocalEvidenceSnapshot,
-  request: EvidenceSearchRequest,
-  sourceKind: EvidenceItem['sourceKind'],
-  items: readonly EvidenceItem[],
-  truncated: boolean,
-  failure?: string,
-) {
-  const base = snapshot.coverage.find(value => value.sourceKind === sourceKind);
-  return {
-    sourceKind,
-    // Only the application snapshot can attest that ranked selection covered a complete local inventory.
-    ...(base?.selectionMethod ? { selectionMethod: base.selectionMethod } : {}),
-    searchedSourceIds: [...new Set(items.map(item => item.sourceId))],
-    ...(request.allowedScope.timeRange
-      ? { requestedTimeRange: request.allowedScope.timeRange }
-      : {}),
-    gaps: [...(base?.gaps ?? []), ...(failure ? [failure] : [])],
-    truncated: Boolean(base?.truncated || truncated),
-    resultLimit: request.resultLimit,
-    returnedCount: items.length,
-  };
-}
-
 /** Creates one local-only search surface per evidence kind and never returns an out-of-scope item. */
 export function createLocalEvidenceSearchTool(input: {
   readonly id: string;
@@ -128,15 +108,13 @@ export function createLocalEvidenceSearchTool(input: {
             conflicts: [],
           } satisfies EvidenceBatch;
         }
-
-        // Index only the exact scoped candidates the search will rank, never unrelated snapshot text.
+        // Index only the scoped candidates.
         if (request.signal.aborted)
           throw new Error('The local evidence request was cancelled.');
         await input.prepareChunks?.(chunks, request.signal);
         if (request.signal.aborted)
           throw new Error('The local evidence request was cancelled.');
-        // Candidate loading keeps the original query. Mixed ranking adds concept keys
-        // beside it; measurement-only ranking can use those keys alone.
+        // Ranking may expand concept keys without changing the admitted candidates.
         const hits = await input.rag.search(
           evidenceRagSearchQuery(parsed.query as string),
           chunks,
@@ -188,14 +166,29 @@ export function createLocalEvidenceSearchTool(input: {
           selected.push(item);
           seen.add(localEvidenceKey(item));
         }
+        const projected =
+          input.sourceKind === 'personal_record' &&
+          input.registry &&
+          snapshot.personalRecords
+            ? providerObservationEvidence(
+                selected,
+                snapshot.personalRecords,
+                input.registry,
+                selectedProviderRecordId(
+                  input.registry,
+                  selected,
+                  request.allowedScope.sourceIds,
+                ),
+              )
+            : selected;
         return {
-          items: selected,
+          items: projected,
           coverage: [
             resultCoverage(
               snapshot,
               request,
               input.sourceKind,
-              selected,
+              projected,
               hits.length >= request.resultLimit ||
                 omittedForPayload ||
                 selected.length < hits.length,
@@ -226,9 +219,7 @@ export function createLocalEvidenceSearchTool(input: {
     },
   };
 }
-
-// An unexecuted tool has no evidence or coverage claim. This fallback is used only
-// to describe a failed first read, never as an invented complete inventory.
+// An unexecuted tool cannot claim a complete inventory.
 const unsearchedSnapshot: LocalEvidenceSnapshot = {
   inventory: {
     inventoryComplete: false,

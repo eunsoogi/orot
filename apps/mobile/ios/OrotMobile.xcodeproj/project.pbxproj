@@ -118,6 +118,7 @@
 		A1BC2D3E4F5061728394A5B6 /* ConversationComposerDockUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1CD2E3F405162738495A6B7 /* ConversationComposerDockUITests.swift */; };
 		B468C3F7915A4E2FB7C153A8 /* ConversationHistoryDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B468C3F7915A4E2FB7C153A9 /* ConversationHistoryDuoUITests.swift */; };
 		F186C37142B34DA58E9A1470 /* ConversationRetentionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F186C37142B34DA58E9A1471 /* ConversationRetentionUITests.swift */; };
+		C0120A764E8F48AE9DA831A0 /* ConversationContinuousEntryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0120A764E8F48AE9DA831A1 /* ConversationContinuousEntryUITests.swift */; };
 		F186C37142B34DA58E9A1472 /* BackgroundCommitSignal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F186C37142B34DA58E9A1473 /* BackgroundCommitSignal.swift */; };
 		A71D65500000000000000001 /* ConversationHealthSummaryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71D65500000000000000002 /* ConversationHealthSummaryUITests.swift */; };
 		B293CE9B83AE4900898394E2 /* ConversationVisitPreparationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BA841376EAD419392DD9172 /* ConversationVisitPreparationUITests.swift */; };
@@ -747,6 +748,7 @@
 		B1CD2E3F405162738495A6B7 /* ConversationComposerDockUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationComposerDockUITests.swift; sourceTree = "<group>"; };
 		B468C3F7915A4E2FB7C153A9 /* ConversationHistoryDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationHistoryDuoUITests.swift; sourceTree = "<group>"; };
 		F186C37142B34DA58E9A1471 /* ConversationRetentionUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationRetentionUITests.swift; sourceTree = "<group>"; };
+		C0120A764E8F48AE9DA831A1 /* ConversationContinuousEntryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationContinuousEntryUITests.swift; sourceTree = "<group>"; };
 		F186C37142B34DA58E9A1473 /* BackgroundCommitSignal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackgroundCommitSignal.swift; sourceTree = "<group>"; };
 		A71D65500000000000000002 /* ConversationHealthSummaryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationHealthSummaryUITests.swift; sourceTree = "<group>"; };
 		2BA841376EAD419392DD9172 /* ConversationVisitPreparationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConversationVisitPreparationUITests.swift; sourceTree = "<group>"; };
@@ -1236,6 +1238,7 @@
 				B1CD2E3F405162738495A6B7 /* ConversationComposerDockUITests.swift */,
 				B468C3F7915A4E2FB7C153A9 /* ConversationHistoryDuoUITests.swift */,
 				F186C37142B34DA58E9A1471 /* ConversationRetentionUITests.swift */,
+				C0120A764E8F48AE9DA831A1 /* ConversationContinuousEntryUITests.swift */,
 				F186C37142B34DA58E9A1473 /* BackgroundCommitSignal.swift */,
 				A71D65500000000000000002 /* ConversationHealthSummaryUITests.swift */,
 				2BA841376EAD419392DD9172 /* ConversationVisitPreparationUITests.swift */,
@@ -1795,6 +1798,7 @@
 				A1BC2D3E4F5061728394A5B6 /* ConversationComposerDockUITests.swift in Sources */,
 				B468C3F7915A4E2FB7C153A8 /* ConversationHistoryDuoUITests.swift in Sources */,
 				F186C37142B34DA58E9A1470 /* ConversationRetentionUITests.swift in Sources */,
+				C0120A764E8F48AE9DA831A0 /* ConversationContinuousEntryUITests.swift in Sources */,
 				F186C37142B34DA58E9A1472 /* BackgroundCommitSignal.swift in Sources */,
 				A71D65500000000000000001 /* ConversationHealthSummaryUITests.swift in Sources */,
 				B293CE9B83AE4900898394E2 /* ConversationVisitPreparationUITests.swift in Sources */,

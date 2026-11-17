@@ -58,7 +58,17 @@ describe('shared-fixture workflow comparison', () => {
       expect(cases[0].paths[0].metrics.citation_support).toBe(1);
       expect(cases[0].paths[2].executionStatus).toBe('completed');
       expect(cases[0].paths[2].metrics.retrieval_recall).toBeGreaterThan(0);
-      expect(cases[2].paths[2].metrics.useful_questions).toBe(0);
+      expect(cases[2].paths[2].executionStatus).toBe('completed');
+      // Production period evidence now supplies calendar scope; the dated clarification is no longer replaced by generic copy.
+      expect(
+        cases[2].paths[2].deliveredEvidenceIds.some((id: string) =>
+          id.startsWith('health-context-'),
+        ),
+      ).toBe(true);
+      expect(cases[2].paths[2].output.message).toContain(
+        fixture.cases[2].expected.unobservedDates[0],
+      );
+      expect(cases[2].paths[2].metrics.useful_questions).toBe(1);
     }
     if (process.env.OROT_RUN_WORKFLOW_COMPARISON === '1') {
       writeFileSync(
@@ -92,6 +102,18 @@ describe('shared-fixture workflow comparison', () => {
     expect(failed.temporal_error).toBeNull();
     expect(failed.numeric_error).toBeNull();
     expect(failed.clarification_count).toBeNull();
+    expect(failed.useful_questions).toBeNull();
+    // Completed but generic clarification is measurable poor quality, not an execution failure.
+    const weakClarification = comparisonMetrics(
+      fixture.cases[2],
+      {
+        ...output,
+        status: 'needs_clarification',
+        message: '어떤 점이 궁금한가요?',
+      },
+      [],
+    );
+    expect(weakClarification.useful_questions).toBe(0);
   });
 
   it('rejects an invalid integration revision instead of manufacturing dependency proof', () => {

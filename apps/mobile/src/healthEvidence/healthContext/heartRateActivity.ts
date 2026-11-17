@@ -1,4 +1,8 @@
 import {
+  healthContextCalendarParameter,
+  healthContextCalendarSql,
+} from './calendarSql';
+import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
 } from '@orot/storage';
@@ -25,8 +29,7 @@ export async function addHeartRateActivityContext(
   dataAvailableThrough?: string,
 ): Promise<readonly HealthQuantitySeries[]> {
   if (!series.some(item => item.concept === 'heart_rate')) return series;
-  if (!days.length || days.length > 90)
-    throw new RangeError('Invalid health context days.');
+  if (!days.length) throw new RangeError('Invalid health context days.');
   if (signal?.aborted) throw new Error('Health context was cancelled.');
   const from = localQueryTimestampKey(days[0]!.fromInclusive);
   const to = localQueryTimestampKey(days.at(-1)!.toExclusive);
@@ -36,11 +39,7 @@ export async function addHeartRateActivityContext(
   );
   const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
   const cutoff = dataAvailableThrough ? `AND ${ingestion} <= ?` : '';
-  const parameters: SqlValue[] = days.flatMap(day => [
-    day.date,
-    localQueryTimestampKey(day.fromInclusive),
-    localQueryTimestampKey(day.toExclusive),
-  ]);
+  const parameters: SqlValue[] = [healthContextCalendarParameter(days)];
   parameters.push(to, from);
   if (dataAvailableThrough)
     parameters.push(localQueryTimestampKey(dataAvailableThrough));
@@ -50,11 +49,12 @@ export async function addHeartRateActivityContext(
   parameters.push(to);
   const result = await executor.execute(
     `SELECT * FROM (
-    WITH days(date, from_key, to_key) AS (VALUES ${days.map(() => '(?, ?, ?)').join(', ')}),
+    WITH days(date, from_key, to_key) AS (${healthContextCalendarSql}),
     workouts AS MATERIALIZED (
       SELECT ${at} AS start_key, ${end} AS end_key
       FROM health_observations r
-      WHERE json_extract(r.payload_json, '$.concept') = 'workout_duration'
+      WHERE json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
+        AND json_extract(r.payload_json, '$.concept') = 'workout_duration'
         AND ${currentEvidenceCondition('health_observation')}
         AND ${at} < ? AND ${end} > ? AND ${end} > ${at} ${cutoff}
     ), heart AS MATERIALIZED (
@@ -66,7 +66,8 @@ export async function addHeartRateActivityContext(
         COALESCE(json_extract(r.payload_json, '$.provenance.source.productType'),
           json_extract(r.payload_json, '$.provenance.source.device.model'), '') AS sensor
       FROM health_observations r
-      WHERE json_extract(r.payload_json, '$.concept') = 'heart_rate'
+      WHERE json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
+        AND json_extract(r.payload_json, '$.concept') = 'heart_rate'
         AND ${currentEvidenceCondition('health_observation')}
         AND ${at} >= ? AND ${at} < ? ${cutoff}
         AND json_extract(r.payload_json, '$.value.kind') = 'quantity'

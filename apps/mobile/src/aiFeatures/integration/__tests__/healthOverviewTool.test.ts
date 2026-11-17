@@ -33,10 +33,12 @@ test('one selected overview returns bounded diverse facts with exact, revalidate
     'heart_rate',
     'body_mass',
     'step_count',
-    '깊은 수면',
+    'asleepDeep',
     '기록된 예시 증상',
   ])
     expect(content).toContain(expected);
+  expect(content).toContain('sensor_period_summary');
+  expect(content).toContain('retrieved_subset');
   expect(content).not.toContain('private-');
   expect(content).not.toContain('display_not_provided');
   expect(content).not.toContain('ingestedAt');

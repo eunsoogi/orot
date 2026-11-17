@@ -174,7 +174,7 @@ export async function restoreRetainedSources(
     };
     const sourceRead = await readSource(new AbortController().signal);
     sourceChanged ||= sourceRead.status !== 'available';
-    // Reuse the selected result's revision reads; never preload history or regenerate stored prose.
+    // Local-only saved-prose review needs original semantics; this evidence never enters provider requests.
     if (
       sourceRead.status === 'available' &&
       sourceRead.document.sourceKind === 'personal_record'

@@ -1,3 +1,4 @@
+import { createLocalEvidenceData } from '../../../healthEvidence/localEvidenceData';
 import { createAgentMemory } from '@orot/agent-memory';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import type { HealthContextTopic } from '../../../healthEvidence/healthContext/types';
@@ -109,6 +110,8 @@ export async function visitHealthFixture(
     rag: { index: jest.fn(), search: jest.fn(async () => []) },
     buildChunks,
     readHealthContext: read,
+    resolveHealthContextWindow:
+      createLocalEvidenceData(database).resolveHealthContextWindow,
     currentTime: () => now,
   });
   if (prepared.status !== 'ready')
