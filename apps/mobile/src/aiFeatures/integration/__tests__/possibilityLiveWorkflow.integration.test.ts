@@ -5,16 +5,31 @@ import { createConversationArtifactStorage } from '../../../storage/conversation
 import { createRagConversationService } from '../ragConversationService';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
-import { localData } from '../featureServiceFixtures';
+import { localData, memoryRecord } from '../featureServiceFixtures';
+import { openLocalAgentMemoryDatabase } from '../../../storage/secureDatabase';
+
+jest.mock('../../../storage/secureDatabase', () => ({
+  openLocalAgentMemoryDatabase: jest.fn(),
+}));
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 
 /** Actual live service, graph and SQLite; provider content and local records are synthetic. */
-test.each(['unavailable', 'unexpected', 'cancelled'] as const)(
+test.each([
+  'unavailable',
+  'grounded',
+  'grounded-denied',
+  'grounded-changed',
+  'unexpected',
+  'cancelled',
+] as const)(
   'preserves the live possibility boundary after opening (%s)',
   async mode => {
     const opened = openSqliteTestDatabase(':memory:');
     try {
       await runMigrations(opened.database);
+      jest
+        .mocked(openLocalAgentMemoryDatabase)
+        .mockResolvedValue(opened.database);
       const artifacts = createConversationArtifactStorage(opened.database);
       await artifacts.createSession(
         'session',
@@ -32,6 +47,7 @@ test.each(['unavailable', 'unexpected', 'cancelled'] as const)(
         question,
         createdAt: '2026-11-16T00:00:00.000Z',
       });
+      const grounded = mode.startsWith('grounded');
       const f = publicEvidenceFixture();
       const controller = new AbortController();
       f.search.mockResolvedValue(
@@ -76,6 +92,59 @@ test.each(['unavailable', 'unexpected', 'cancelled'] as const)(
             }),
           ),
         );
+      if (grounded) {
+        // Keep the actual durable graph, local tool, alias and citation validators.
+        // Only provider output and memory retrieval are synthetic.
+        generate
+          .mockReset()
+          .mockResolvedValueOnce(output('요청하신 내용을 살펴볼게요.'))
+          .mockResolvedValueOnce(output('ALLOW'))
+          .mockResolvedValueOnce(
+            providerSuccess({
+              text: '',
+              finishReason: 'tool_calls' as const,
+              toolCalls: [
+                {
+                  id: 'local-read',
+                  name: 'local-reviewed-memory',
+                  arguments: { query: '합성 기억' },
+                },
+              ],
+            }),
+          )
+          .mockImplementation(
+            async (
+              request: import('@orot/model-runtime').LanguageModelRequest,
+            ) => {
+              const evidence = request.messages.flatMap(message => {
+                if (
+                  message.role !== 'user' ||
+                  typeof message.content !== 'string'
+                )
+                  return [];
+                try {
+                  const value = JSON.parse(message.content);
+                  return Array.isArray(value.evidence) ? value.evidence : [];
+                } catch {
+                  return [];
+                }
+              });
+              expect(evidence.length).toBeGreaterThan(0);
+              return output(
+                JSON.stringify({
+                  type: 'result',
+                  value: {
+                    answerKind: 'grounded',
+                    completion: 'partial',
+                    answer:
+                      '저장된 합성 기억을 확인했어요. 공개 자료는 확인하지 못했어요.',
+                  },
+                  citations: evidence.map(item => item.evidenceId),
+                }),
+              );
+            },
+          );
+      }
       const selected = {
         ...f.selected,
         provider: {
@@ -85,10 +154,23 @@ test.each(['unavailable', 'unexpected', 'cancelled'] as const)(
           capabilities: {
             ...f.selected.provider.capabilities,
             streaming: false,
+            ...(grounded ? { toolCalling: true } : {}),
           },
         },
       };
-      const data = localData([]).data;
+      const local = localData(grounded ? [memoryRecord(1)] : []);
+      const data = local.data;
+      if (mode === 'grounded-denied' || mode === 'grounded-changed') {
+        f.authorize.mockImplementation(async request => {
+          const hasMemory = JSON.stringify(request.payload).includes(
+            '기억 내용 1',
+          );
+          if (!hasMemory) return 'authorized';
+          if (mode === 'grounded-denied') return 'renewal_required';
+          local.replaceMemoryRecords([]);
+          return 'authorized';
+        });
+      }
       data.openConversationArtifactStorage = async () => artifacts;
       const send = createRagConversationService({
         selectedAi: async () => selected,
@@ -123,7 +205,23 @@ test.each(['unavailable', 'unexpected', 'cancelled'] as const)(
       expect(events).toContainEqual(
         expect.objectContaining({ type: 'initial_response' }),
       );
-      if (mode === 'unavailable') {
+      if (mode === 'grounded-denied' || mode === 'grounded-changed') {
+        expect(result).toMatchObject({
+          status: 'failure',
+          kind:
+            mode === 'grounded-denied' ? 'consent_required' : 'stale_evidence',
+        });
+        expect(generate).toHaveBeenCalledTimes(3);
+      } else if (grounded) {
+        expect(result).toMatchObject({
+          status: 'answer',
+          completion: 'partial',
+          citations: [
+            expect.objectContaining({ sourceKind: 'reviewed_memory' }),
+          ],
+        });
+        expect(generate).toHaveBeenCalledTimes(4);
+      } else if (mode === 'unavailable') {
         expect(result).toMatchObject({
           status: 'answer',
           answer: expect.stringContaining('증상'),
