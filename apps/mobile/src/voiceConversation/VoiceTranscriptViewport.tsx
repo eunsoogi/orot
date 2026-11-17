@@ -23,8 +23,22 @@ export function VoiceTranscriptViewport({
 }) {
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const following = useRef(true);
+  const dragging = useRef(false);
+  const geometry = useRef<{
+    offset: number;
+    height: number;
+    content: number;
+  } | null>(null);
   const { fontScale } = useWindowDimensions();
-  if (!lines.length) following.current = true;
+  if (!lines.length) {
+    following.current = true;
+    dragging.current = false;
+    geometry.current = null;
+  }
+  const follow = () => {
+    if (following.current && !dragging.current)
+      scroll.current?.scrollToEnd({ animated: false });
+  };
   return (
     <View
       testID="voice-transcript-viewport"
@@ -38,15 +52,47 @@ export function VoiceTranscriptViewport({
         onScroll={event => {
           const { contentOffset, contentSize, layoutMeasurement } =
             event.nativeEvent;
+          const previous = geometry.current;
+          const current = {
+            offset: contentOffset.y,
+            height: layoutMeasurement.height,
+            content: contentSize.height,
+          };
+          geometry.current = current;
+          // A resize/content event at the same (or clamped) offset is not reader intent.
+          // Preserve drag/momentum and unchanged-geometry accessibility scrolling below.
+          if (
+            previous &&
+            !dragging.current &&
+            (previous.height !== current.height ||
+              previous.content !== current.content) &&
+            Math.abs(
+              current.offset -
+                Math.min(
+                  Math.max(0, previous.offset),
+                  Math.max(0, current.content - current.height),
+                ),
+            ) < 1
+          )
+            return;
           following.current =
-            contentSize.height - contentOffset.y - layoutMeasurement.height <=
-            24;
+            current.content - current.offset - current.height <= 24;
+        }}
+        onScrollBeginDrag={() => {
+          dragging.current = true;
+        }}
+        onScrollEndDrag={() => {
+          dragging.current = false;
+        }}
+        onMomentumScrollBegin={() => {
+          dragging.current = true;
+        }}
+        onMomentumScrollEnd={() => {
+          dragging.current = false;
         }}
         scrollEventThrottle={16}
-        onContentSizeChange={() => {
-          if (following.current)
-            scroll.current?.scrollToEnd({ animated: false });
-        }}
+        onLayout={follow}
+        onContentSizeChange={follow}
       >
         {lines.map(line => (
           <AppText key={line.id} maxFontSizeMultiplier={2} style={styles.line}>
