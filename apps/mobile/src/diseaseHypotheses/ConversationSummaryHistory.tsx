@@ -18,12 +18,14 @@ import type { DiseaseHypothesisAnalysis } from './types';
 /** Legacy summaries have no verified session mapping: show the original artifact, never invented turns. */
 export function ConversationSummaryHistory({
   history,
+  onRegenerate,
   onOpenSource,
   navigationRouteKey,
   onNavigationStateChange,
 }: {
   readonly navigationRouteKey?: string;
   readonly onNavigationStateChange?: AiFeatureNavigationStateChange;
+  readonly onRegenerate?: () => void;
   readonly history?: SymptomSummaryHistory;
   readonly onOpenSource: (reference: EvidenceReference) => void;
 }) {
@@ -57,6 +59,7 @@ export function ConversationSummaryHistory({
           {history ? (
             <SavedSummaryHistory
               history={history}
+              onRegenerate={onRegenerate}
               current={selected?.savedSummary}
               expanded
               disabled={false}

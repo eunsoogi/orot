@@ -1,3 +1,4 @@
+import { setupHealthPeriodMarkerGuards } from './healthPeriodMarkerGuards';
 import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
@@ -68,6 +69,14 @@ export async function setupVisitQuestionPeriods(tx: SqlExecutor) {
       );
     }
   }
+  await setupHealthPeriodMarkerGuards(
+    tx,
+    'visit_question_period_logical',
+    condition => `
+    INSERT OR IGNORE INTO agent_memory_removed_sources (source_id) SELECT p.dependency_id FROM visit_question_periods p WHERE ${condition};
+    DELETE FROM visit_question_records WHERE id IN (SELECT p.record_id FROM ${officialPeriods} p WHERE ${condition});
+    DELETE FROM visit_questions WHERE id IN (SELECT p.question_id FROM visit_question_periods p WHERE ${condition});`,
+  );
 }
 
 /** Save normalized dependencies atomically with the question; fixed descriptors remain in its backup payload too. */

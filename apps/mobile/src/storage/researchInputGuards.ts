@@ -1,5 +1,9 @@
+import { periodRowReferences } from './conversationPeriodRemoval';
 import { STORAGE_TABLES, type SqlExecutor } from '@orot/storage';
-import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
+import {
+  healthPeriodDeletionGuards,
+  replaceHealthPeriodTrigger,
+} from './healthPeriodDependencies';
 import { memoryContentChangedPredicate } from './memoryContentChange';
 import {
   ensureTypedDeletionMarkers,
@@ -59,9 +63,16 @@ export async function setupResearchInputGuards(tx: SqlExecutor) {
     'agent_memory_removed_sources',
   ]) {
     if (!present.has(table)) continue;
+    const affectedPeriods = Object.entries(healthPeriodDeletionGuards())
+      .filter(([sourceTable]) => present.has(sourceTable))
+      .map(([sourceTable, guard]) => {
+        const kind = sources.find(([, name]) => name === sourceTable)![0];
+        return `DELETE FROM research_artifacts WHERE id IN (SELECT p.artifact_id FROM research_artifact_periods p WHERE EXISTS (SELECT 1 FROM ${sourceTable} h WHERE ${periodRowReferences('NEW.source_id', table, kind)} AND (${guard.replaceAll('OLD.', 'h.')})));`;
+      })
+      .join('\n');
     await tx.execute(`DROP TRIGGER IF EXISTS research_${table}_removed`);
     await tx.execute(`CREATE TRIGGER research_${table}_removed AFTER INSERT ON ${table} BEGIN
-      DELETE FROM research_artifacts WHERE id IN (SELECT artifact_id FROM research_artifact_sources WHERE record_id = NEW.source_id AND record_kind NOT IN ('generated_summary', 'generated_conversation', 'generated_research') AND ${markerMatchesArtifactSource(table, 'NEW.source_id', 'research_artifact_sources', 'source_identity')}); END`);
+      DELETE FROM research_artifacts WHERE id IN (SELECT artifact_id FROM research_artifact_sources WHERE record_id = NEW.source_id AND record_kind NOT IN ('generated_summary', 'generated_conversation', 'generated_research') AND ${markerMatchesArtifactSource(table, 'NEW.source_id', 'research_artifact_sources', 'source_identity')}); ${affectedPeriods} END`);
   }
   for (const [table, kind] of [
     ['conversation_invalid_summaries', 'generated_summary'],
@@ -106,8 +117,11 @@ export async function setupResearchInputGuards(tx: SqlExecutor) {
         } as Record<string, string>
       )[table]!;
       for (const event of ['INSERT', 'UPDATE'] as const)
-        await tx.execute(`CREATE TRIGGER IF NOT EXISTS research_period_stale_${table}_${event.toLowerCase()} AFTER ${event} ON transcript_artifact_staleness WHEN NEW.artifact_kind = '${kind}' BEGIN
-          DELETE FROM research_artifacts WHERE id IN (SELECT p.artifact_id FROM research_artifact_periods p JOIN ${table} h ON h.id = NEW.artifact_id WHERE ${guard.replaceAll('OLD.', 'h.')}); END`);
+        await replaceHealthPeriodTrigger(
+          tx,
+          `CREATE TRIGGER IF NOT EXISTS research_period_stale_${table}_${event.toLowerCase()} AFTER ${event} ON transcript_artifact_staleness WHEN NEW.artifact_kind = '${kind}' BEGIN
+          DELETE FROM research_artifacts WHERE id IN (SELECT p.artifact_id FROM research_artifact_periods p JOIN ${table} h ON h.id = NEW.artifact_id WHERE ${guard.replaceAll('OLD.', 'h.')}); END`,
+        );
     }
   }
 }

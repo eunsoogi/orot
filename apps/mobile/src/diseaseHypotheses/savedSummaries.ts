@@ -67,10 +67,26 @@ export function hasCompleteSummaryLineage(saved: SavedSymptomSummary): boolean {
 export type SavedSummaryListItem = Pick<
   SavedSymptomSummary,
   'id' | 'createdAt' | 'modelName'
-> & { readonly inputLineage?: 'unknown' };
+> & {
+  readonly inputLineage?: 'unknown';
+  readonly unavailableReason?: 'legacy_period_unverified';
+};
+/** No saved text or source payload may accompany an unverifiable legacy result. */
+export type SavedSummaryUnavailable = {
+  readonly status: 'unavailable';
+  readonly reason: 'legacy_period_unverified';
+};
+export type SavedSummaryReadStatus =
+  | { summary: SavedSymptomSummary; sourceChanged: boolean }
+  | SavedSummaryUnavailable;
 export interface SymptomSummaryHistory {
   list(before?: string): Promise<readonly SavedSummaryListItem[]>;
   read(id: string): Promise<DiseaseHypothesisAnalysis | null>;
+  readStatus?(
+    id: string,
+  ): Promise<
+    { analysis: DiseaseHypothesisAnalysis } | SavedSummaryUnavailable | null
+  >;
   retrySave?(): Promise<DiseaseHypothesisAnalysis | null>;
 }
 export interface SymptomSummaryStorage {
@@ -78,7 +94,5 @@ export interface SymptomSummaryStorage {
   list(before?: string): Promise<readonly SavedSummaryListItem[]>;
   read(id: string): Promise<SavedSymptomSummary | null>;
   /** Read content and its irreversible source-change marker from one snapshot. */
-  readWithStatus(
-    id: string,
-  ): Promise<{ summary: SavedSymptomSummary; sourceChanged: boolean } | null>;
+  readWithStatus(id: string): Promise<SavedSummaryReadStatus | null>;
 }

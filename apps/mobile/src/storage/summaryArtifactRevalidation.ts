@@ -1,3 +1,4 @@
+import { legacySummaryPeriodAvailable } from './legacySummaryPeriodQuarantine';
 import { createReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
@@ -43,6 +44,10 @@ export async function revalidateSummaryArtifacts(
         return;
       }
       try {
+        if (!(await legacySummaryPeriodAvailable(tx, saved))) {
+          valid = false;
+          return;
+        }
         await assertRetainedEvidenceCurrent(
           tx,
           saved.sources,

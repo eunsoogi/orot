@@ -201,6 +201,7 @@ export function AiFeatureFlowScreen({
         <ConversationSummaryHistory
           navigationRouteKey={navigationRouteKey}
           onNavigationStateChange={onFeatureNavigationStateChange}
+          onRegenerate={onOpenHealthSummary}
           history={services.summaryHistory}
           onOpenSource={onOpenSource}
         />
@@ -210,6 +211,7 @@ export function AiFeatureFlowScreen({
     case 'summary-history':
       return services.summaryHistory && onRestoreSummary ? (
         <SummaryHistoryScreen
+          onRegenerate={onOpenHealthSummary}
           history={services.summaryHistory}
           onRestore={onRestoreSummary}
         />

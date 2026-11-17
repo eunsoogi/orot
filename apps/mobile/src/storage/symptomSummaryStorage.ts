@@ -1,3 +1,9 @@
+import { readSavedSummaryStatus } from './savedSummaryReadStatus';
+import {
+  setupLegacySummaryPeriodQuarantine,
+  markCurrentSummaryPeriodPolicy,
+  visibleLegacySummaryPeriod,
+} from './legacySummaryPeriodQuarantine';
 import {
   createManualHistoryRepository,
   STORAGE_TABLES,
@@ -106,7 +112,6 @@ export function createSymptomSummaryStorage(
       await tx.execute(`CREATE TRIGGER summary_memory_changed AFTER UPDATE ON agent_memory_records
         WHEN ${memoryContentChangedPredicate()} BEGIN
         DELETE FROM symptom_summary_runs WHERE ${completeSummaryDeletion} AND id IN (SELECT summary_id FROM symptom_summary_sources WHERE record_kind = 'reviewed_memory' AND record_id = OLD.id); END`);
-      // Repair results retained by older versions when a referenced source was already deleted.
       const sourceTables = {
         ...Object.fromEntries(
           Object.entries(STORAGE_TABLES).map(([kind, value]) => [
@@ -123,6 +128,7 @@ export function createSymptomSummaryStorage(
           [kind],
         );
       }
+      await setupLegacySummaryPeriodQuarantine(tx);
     });
   }
   return {
@@ -141,6 +147,12 @@ export function createSymptomSummaryStorage(
         );
         if (invalid.rows.length)
           throw new Error('The summary was removed or its sources changed.');
+        const quarantine = await tx.execute(
+          'SELECT status FROM summary_period_policy WHERE summary_id = ?',
+          [value.id],
+        );
+        if (quarantine.rows[0]?.status === 'quarantined')
+          throw new Error('The summary must be regenerated.');
         // Recheck even an idempotent retry; a quarantined result must not report a successful save.
         await assertRetainedEvidenceCurrent(tx, value.sources, manualHistory);
         const existing = await tx.execute(
@@ -157,6 +169,7 @@ export function createSymptomSummaryStorage(
           'INSERT INTO symptom_summary_runs (id, created_at, model_name, result_json) VALUES (?, ?, ?, ?)',
           [value.id, value.createdAt, value.modelName, serialized],
         );
+        await markCurrentSummaryPeriodPolicy(tx, value.id);
         for (const source of value.sources) {
           if (isPeriodSummarySource(source)) {
             await appendSummaryPeriod(tx, value.id, source);
@@ -186,18 +199,28 @@ export function createSymptomSummaryStorage(
     },
     async list(before) {
       await ensure();
-      // A stable cursor and fixed page size bound history reads independently of total saved runs.
       const rows = await database.execute(
-        `SELECT r.id, r.created_at, r.model_name, r.result_json FROM symptom_summary_runs r WHERE (? IS NULL OR r.id < ?) AND NOT EXISTS (SELECT 1 FROM daily_report_revisions d WHERE d.run_id = r.id) AND ${visibleSummary} ORDER BY r.id DESC LIMIT 10`,
+        `SELECT r.id, r.created_at, r.model_name, CASE WHEN ${visibleLegacySummaryPeriod} THEN r.result_json ELSE NULL END AS result_json, NOT (${visibleLegacySummaryPeriod}) AS quarantined FROM symptom_summary_runs r WHERE (? IS NULL OR r.id < ?) AND NOT EXISTS (SELECT 1 FROM daily_report_revisions d WHERE d.run_id = r.id) AND ${visibleSummary} ORDER BY r.id DESC LIMIT 10`,
         [before ?? null, before ?? null],
       );
-      return rows.rows.flatMap(row => {
+      return rows.rows.flatMap<
+        import('../diseaseHypotheses/savedSummaries').SavedSummaryListItem
+      >(row => {
         if (
           typeof row.id !== 'string' ||
           typeof row.created_at !== 'string' ||
           typeof row.model_name !== 'string'
         )
           return [];
+        if (row.quarantined === 1)
+          return [
+            {
+              id: row.id,
+              createdAt: row.created_at,
+              modelName: row.model_name,
+              unavailableReason: 'legacy_period_unverified' as const,
+            },
+          ];
         const saved = decodeSavedSymptomSummary(row.result_json);
         return [
           {
@@ -214,21 +237,14 @@ export function createSymptomSummaryStorage(
     async read(id) {
       await ensure();
       const result = await database.execute(
-        `SELECT r.result_json FROM symptom_summary_runs r WHERE r.id = ? AND ${visibleSummary}`,
+        `SELECT r.result_json FROM symptom_summary_runs r WHERE r.id = ? AND ${visibleSummary} AND ${visibleLegacySummaryPeriod}`,
         [id],
       );
       return decodeSavedSymptomSummary(result.rows[0]?.result_json);
     },
     async readWithStatus(id) {
       await ensure();
-      const result = await database.execute(
-        `SELECT r.result_json, EXISTS (SELECT 1 FROM conversation_invalid_summaries invalid WHERE invalid.id = r.id) AS invalid FROM symptom_summary_runs r WHERE r.id = ? AND ${visibleSummary}`,
-        [id],
-      );
-      const summary = decodeSavedSymptomSummary(result.rows[0]?.result_json);
-      return summary
-        ? { summary, sourceChanged: result.rows[0]?.invalid === 1 }
-        : null;
+      return readSavedSummaryStatus(database, id);
     },
   };
 }

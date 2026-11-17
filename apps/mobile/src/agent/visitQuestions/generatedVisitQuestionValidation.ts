@@ -1,3 +1,4 @@
+import { legacySummaryPeriodAvailable } from '../../storage/legacySummaryPeriodQuarantine';
 import type { SqlExecutor, ManualHistoryRepository } from '@orot/storage';
 import { validateDailyReportArtifact } from '../../storage/dailyReportArtifactValidation';
 import { decodeSavedSymptomSummary } from '../../storage/symptomSummaryStorageCodec';
@@ -85,6 +86,8 @@ export async function assertGeneratedVisitQuestionSource(
       fingerprint(saved) !== source.revision
     )
       throw new Error('The generated summary changed or was removed.');
+    if (!(await legacySummaryPeriodAvailable(sql, saved)))
+      throw new Error('The legacy summary must be regenerated.');
     return;
   }
   const result = await sql.execute(

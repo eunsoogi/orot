@@ -11,8 +11,10 @@ import type { DiseaseHypothesisAnalysis } from './types';
 /** A separate stack destination keeps history browsing out of the retained summary form. */
 export function SummaryHistoryScreen({
   history,
+  onRegenerate,
   onRestore,
 }: {
+  readonly onRegenerate?: () => void;
   readonly history: SymptomSummaryHistory;
   readonly onRestore: (value: DiseaseHypothesisAnalysis) => void;
 }) {
@@ -32,6 +34,7 @@ export function SummaryHistoryScreen({
           </AppText>
           <SavedSummaryHistory
             history={history}
+            onRegenerate={onRegenerate}
             expanded
             disabled={false}
             onRestore={onRestore}
