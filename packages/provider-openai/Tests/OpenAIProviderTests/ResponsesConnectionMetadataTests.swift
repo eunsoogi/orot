@@ -44,7 +44,9 @@ final class ResponsesConnectionMetadataTests: XCTestCase {
     func testMetadataCannotHideSafetyRefusalBeforeOrAfterCreation() throws {
         for started in [false, true] {
             var state = ResponsesSteeringState()
-            if started { _ = try state.consume(created()) }
+            if started {
+                _ = try state.consume(created())
+            }
             XCTAssertThrowsError(try state.consume(metadata(["part": ["type": "refusal"]]))) { error in
                 guard case let ChatGPTResponsesError.responseFailure(details) = error else {
                     return XCTFail("Expected terminal refusal")
