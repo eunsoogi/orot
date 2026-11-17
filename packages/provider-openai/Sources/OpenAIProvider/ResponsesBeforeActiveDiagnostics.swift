@@ -4,7 +4,7 @@ import Foundation
 /// Responses server events plus explicitly named connection-control candidates.
 enum ResponsesBeforeActiveDiagnostics {
     enum Event: String, CaseIterable {
-        case error = "error"
+        case error
         case responseCreated = "response.created"
         case responseCompleted = "response.completed"
         case responseFailed = "response.failed"
@@ -71,10 +71,10 @@ enum ResponsesBeforeActiveDiagnostics {
         case sessionCreated = "session.created"
         case sessionUpdated = "session.updated"
         case rateLimitsUpdated = "rate_limits.updated"
-        case ping = "ping"
-        case pong = "pong"
-        case heartbeat = "heartbeat"
-        case keepalive = "keepalive"
+        case ping
+        case pong
+        case heartbeat
+        case keepalive
         case keepAlive = "keep_alive"
         case connectionKeepalive = "connection.keepalive"
         case connectionEstablished = "connection.established"
