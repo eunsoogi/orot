@@ -1,3 +1,4 @@
+import { publicSearchNotice } from '../defaultPublicSearch';
 import { prepareLiveRagContinuation } from '../liveRagConversationCapture';
 import { providerFailure } from '@orot/model-runtime';
 import { createRagConversationService } from '../ragConversationService';
@@ -115,6 +116,9 @@ test.each(['success', 'unavailable', 'empty', 'consent_required'] as const)(
     if (result.status !== 'answer')
       throw new Error('Expected synthetic answer.');
     if (status === 'success') expect(result.answer).toBe('로컬 기록 답변');
-    else expect(result.answer).not.toBe('로컬 기록 답변');
+    else
+      expect(result.answer).toBe(
+        `로컬 기록 답변\n\n${publicSearchNotice(status)}`,
+      );
   },
 );
