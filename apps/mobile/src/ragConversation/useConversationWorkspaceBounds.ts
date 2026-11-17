@@ -72,11 +72,25 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
     width: fallback?.width ?? width,
     height: fallback?.height ?? height,
   };
-  const plan = conversationHingeLayout(geometry, hostBounds, fontScale);
+  const plan = conversationHingeLayout(
+    geometry,
+    hostBounds,
+    fontScale,
+    shared !== null,
+  );
   const workspaceOcclusion = conversationWorkspaceOcclusion(
     occlusion,
     hostBounds.height,
     plan,
+    shared && geometry
+      ? Math.max(
+          0,
+          hostBounds.y +
+            plan.top +
+            plan.height -
+            (geometry.safeAreaFrame.y + geometry.safeAreaFrame.height),
+        )
+      : 0,
   );
   useEffect(() => {
     if (routeKey)
