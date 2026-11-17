@@ -66,6 +66,9 @@ export async function openLocalManualHistoryRepository(): Promise<ManualHistoryS
       return (await repository.history(id)).map(toScreenRecord);
     },
     async delete(id) {
+      // Schema setup uses the global queue; finish it before owning the deletion transaction.
+      // Source lineage and vector tombstones still commit or roll back together below.
+      await rag.prepare();
       let deleted = false;
       await database.transaction(async transaction => {
         let lineage: StoredManualHistoryEntry[];

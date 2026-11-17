@@ -37,6 +37,7 @@ export async function restoreConversationVisitQuestions(input: {
     appointment,
     restoredFromSnapshot: true,
     restorationNotice: saved.restorationNotice,
+    restorationWarning: saved.restorationWarning,
     review: createInlineVisitReview(
       input.ownerKey,
       saved.questions,

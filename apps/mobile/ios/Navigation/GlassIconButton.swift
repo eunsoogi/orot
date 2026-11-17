@@ -3,6 +3,20 @@ import UIKit
 
 /// A standard UIKit glass control owns highlighting, disabled state and the accessible hit target.
 final class GlassIconButton: UIButton {
+    /// Shrink the visible material and glyph only; UIButton keeps its full accessible bounds.
+    @objc var visualScale: CGFloat = 1 {
+        didSet { configure() }
+    }
+
+    private var configuredSize = CGSize.zero
+
+    override func layoutSubviews() {
+        if configuredSize != bounds.size {
+            configure()
+        }
+        super.layoutSubviews()
+    }
+
     @objc var symbolName = "" {
         didSet { configure() }
     }
@@ -52,6 +66,8 @@ final class GlassIconButton: UIButton {
     /// Use system configuration rather than a passive effect below a separately implemented button.
     /// A filled system fallback is intentionally opaque when transparency is disabled or unavailable.
     @objc private func configure() {
+        configuredSize = bounds.size
+        let scale = visualScale.isFinite ? max(0.5, min(1, visualScale)) : 1
         var config: UIButton.Configuration
         if #available(iOS 26.0, *), !UIAccessibility.isReduceTransparencyEnabled {
             config = .glass()
@@ -59,10 +75,14 @@ final class GlassIconButton: UIButton {
             config = .filled()
             config.baseBackgroundColor = .secondarySystemBackground
         }
+        config.background.backgroundInsets = NSDirectionalEdgeInsets(
+            top: bounds.height * (1 - scale) / 2, leading: bounds.width * (1 - scale) / 2,
+            bottom: bounds.height * (1 - scale) / 2, trailing: bounds.width * (1 - scale) / 2,
+        )
         config.cornerStyle = .capsule
         config.contentInsets = .zero
         config.baseForegroundColor = .label
-        config.image = UIImage(systemName: symbolName, withConfiguration: AppSymbolSizing.configuration())
+        config.image = UIImage(systemName: symbolName, withConfiguration: AppSymbolSizing.configuration(pointSize: AppSymbolSizing.compactPointSize * scale))
         configuration = config
         isEnabled = !disabled
     }

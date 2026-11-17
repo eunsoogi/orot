@@ -102,6 +102,10 @@ export function selectChecksForPaths(changedPaths, policies = null, { runtimeRoo
   for (const path of selection.paths) {
     const lower = path.toLowerCase();
     const file = basename(lower);
+    // Direct UI-copy auditing runs even when no quality script itself changed.
+    if (lower.startsWith('apps/mobile/src/') && lower.endsWith('.tsx')) {
+      selection.policy_tests = true;
+    }
     if (extname(path).toLowerCase() === '.md') {
       // Markdown is outside the formatter; CI guidance changes retain policy regression checks.
       selection.policy_tests = true;

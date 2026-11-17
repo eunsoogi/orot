@@ -188,6 +188,7 @@ function App({
                   {...homeData}
                   documentImportService={documentImportService}
                   loadSavedVisitQuestions={ai.services.loadSavedVisitQuestions}
+                  discoverManualVisits={ai.services.conversationArtifacts}
                   actions={actions}
                   activeTab={activeTab}
                   selectTab={selectActiveTab}

@@ -17,6 +17,9 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
 
         guard replace(app, "manual-history-title-input", with: "Synthetic history before correction") else { return }
         guard replace(app, "manual-history-details-input", with: "Synthetic details recorded by the user.", multiline: true) else { return }
+        // The preserved original has an unknown date; enter a known date through the real control.
+        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "manual-history-date-unknown-selected")), app.debugDescription)
+        tap(app, "manual-history-date-unknown", in: "navigation-route-scroll")
         ManualHistoryDateSheetUITestSupport.exerciseDismissalsAndSelect(app, day: 9)
         let details = FormUITestConditions.multilineInput(app, identifier: "manual-history-details-input")
         FormUITestConditions.reveal(details, in: app, scrollID: "navigation-route-scroll")
@@ -192,7 +195,8 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
     private func openManualHistory(_ app: XCUIApplication, title: String = "Synthetic known original") throws {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         XCTAssertFalse(UITestConditions.element(app, "records-open-manual-history").exists)
-        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
+        // Stable identity lets the existing window-owner guard select the real route surface.
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label BEGINSWITH %@", "saved-memory-entry-", title)).firstMatch
         XCTAssertTrue(UITestConditions.exists(row), app.debugDescription)
         FormUITestConditions.reveal(row, in: app, scrollID: "navigation-route-scroll")
         XCTAssertTrue(row.isHittable)
@@ -221,7 +225,8 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
 
     @MainActor
     private func visible(_ app: XCUIApplication, _ label: String) {
-        let text = app.staticTexts.matching(NSPredicate(format: "label == %@", label)).firstMatch
+        // Match the unchanged visible label and a stable text identity; keep window and viewport guards.
+        let text = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label == %@", "manual-history-", label)).firstMatch
         XCTAssertTrue(UITestConditions.exists(text), app.debugDescription)
         FormUITestConditions.reveal(text, in: app, scrollID: "navigation-route-scroll", towardTop: true)
         XCTAssertTrue(text.isHittable)

@@ -27,6 +27,8 @@ export const savedMemoryStyles = StyleSheet.create({
     backgroundColor: appColors.surface,
     borderWidth: 0,
   },
+  // Tighten only the list rhythm; detail reading styles and fonts stay unchanged.
+  previewList: { gap: 4 },
   // Wrapping keeps shared 44pt controls and large text inside narrow layouts.
   header: {
     flexDirection: 'row',

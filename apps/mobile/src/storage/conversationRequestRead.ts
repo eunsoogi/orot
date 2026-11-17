@@ -1,3 +1,4 @@
+import { conversationSelectedIds } from './conversationSelectedIds';
 import { decodeConversationRecoveryReason } from '../ragConversation/conversationExecutionLease';
 import type { SqlDatabase } from '@orot/storage';
 import {
@@ -11,11 +12,16 @@ export function createConversationRequestReader(
   ensure: () => Promise<void>,
 ) {
   return {
-    async listInterruptedRequests(sessionId: string, version: number) {
+    async listInterruptedRequests(
+      sessionId: string,
+      version: number,
+      selectedIds?: readonly string[],
+    ) {
+      const selected = conversationSelectedIds('r.id', selectedIds);
       await ensure();
       const result = await database.execute(
-        "SELECT r.id, r.question, r.created_at, r.input_json, r.interruption_reason FROM conversation_requests r JOIN conversation_artifact_sessions s ON s.id = r.session_id AND s.hidden = 0 AND s.version = r.session_version JOIN conversation_artifact_generation g ON g.singleton = 1 AND g.generation = s.generation WHERE r.session_id = ? AND r.session_version = ? AND r.status = 'interrupted' ORDER BY r.created_at, r.id",
-        [sessionId, version],
+        `SELECT r.id, r.question, r.created_at, r.input_json, r.interruption_reason FROM conversation_requests r JOIN conversation_artifact_sessions s ON s.id = r.session_id AND s.hidden = 0 AND s.version = r.session_version JOIN conversation_artifact_generation g ON g.singleton = 1 AND g.generation = s.generation WHERE r.session_id = ? AND r.session_version = ? AND r.status = 'interrupted'${selected.clause} ORDER BY r.created_at, r.id`,
+        [sessionId, version, ...selected.parameters],
       );
       return result.rows.map(row => {
         if (

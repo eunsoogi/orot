@@ -147,7 +147,8 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
     private func openManualHistory(_ app: XCUIApplication, title: String = "Synthetic Duo original") throws {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         XCTAssertFalse(UITestConditions.element(app, "records-open-manual-history").exists)
-        let entry = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
+        // Stable identity lets the existing window-owner guard select the real route surface.
+        let entry = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label BEGINSWITH %@", "saved-memory-entry-", title)).firstMatch
         XCTAssertTrue(UITestConditions.exists(entry), app.debugDescription)
         FormUITestConditions.reveal(entry, in: app, scrollID: "navigation-route-scroll")
         XCTAssertTrue(entry.isHittable, app.debugDescription)
@@ -187,7 +188,8 @@ final class ManualHistoryDuoUITests: OrotFailFastTestCase {
 
     @MainActor
     private func visible(_ app: XCUIApplication, _ label: String) {
-        let text = app.staticTexts.matching(NSPredicate(format: "label == %@", label)).firstMatch
+        // Match the unchanged visible label and a stable text identity; keep window and viewport guards.
+        let text = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label == %@", "manual-history-", label)).firstMatch
         XCTAssertTrue(UITestConditions.exists(text), app.debugDescription)
         FormUITestConditions.reveal(text, in: app, scrollID: "navigation-route-scroll", towardTop: true)
         XCTAssertTrue(text.isHittable, app.debugDescription)

@@ -1,3 +1,4 @@
+import { conversationConsentScope } from './conversationBackgroundProvider';
 import { createLocalEvidenceData } from '../../healthEvidence/localEvidenceData';
 import { createDailyReportStorage } from '../../storage/dailyReportStorage';
 import {
@@ -31,7 +32,13 @@ export function createDailyReportService(
       input.timeoutMs ?? 90_000,
       signal =>
         runDailyReport(
-          { ...input, data, storage, deadlineContext },
+          {
+            ...input,
+            consent: conversationConsentScope(input.consent, request.observer),
+            data,
+            storage,
+            deadlineContext,
+          },
           { ...request, signal },
         ),
       () => dailyReportDeadlineFailure(deadlineContext),

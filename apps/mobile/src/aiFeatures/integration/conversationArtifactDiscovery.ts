@@ -101,6 +101,7 @@ export function createConversationArtifactDiscovery(input: {
       readonly sessionId: string;
       readonly cursor?: { readonly createdAt: string; readonly id: string };
       readonly limit?: number;
+      readonly ids?: readonly string[];
       readonly signal: AbortSignal;
     }) => restoreConversationSessionPage({ ...input, ...request }),
     async search({

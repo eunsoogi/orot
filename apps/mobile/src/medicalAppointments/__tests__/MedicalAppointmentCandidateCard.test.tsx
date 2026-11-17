@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { MedicalAppointmentCandidateCard } from '../MedicalAppointmentCandidateCard';
 import type { CandidateReview } from '../classificationWorkflow';
 
@@ -53,4 +54,31 @@ it('shows occurrence details and automatic-save state without a per-card save ac
   expect(screen.getByText('일정을 저장했습니다.')).toBeTruthy();
   expect(screen.queryByText('저장 중입니다.')).toBeNull();
   expect(screen.getAllByRole('button')).toHaveLength(1);
+});
+
+it('preserves title width and lets scaled badges wrap without changing disclosure semantics', async () => {
+  await render(
+    <MedicalAppointmentCandidateCard
+      candidate={candidate}
+      isSaved={false}
+      isSaving={false}
+    />,
+  );
+  const details = screen.getByTestId('medical-appointment-details-example');
+  expect(StyleSheet.flatten(details.props.style)).toMatchObject({
+    flexWrap: 'wrap',
+    minHeight: 44,
+  });
+  const title = screen.getByText('정기 진료');
+  expect(StyleSheet.flatten(title.parent?.props.style)).toMatchObject({
+    flex: 1,
+    minWidth: '50%',
+  });
+  expect(details.props.accessibilityRole).toBe('button');
+  await fireEvent.press(details);
+  expect(screen.getByText(/진료 예약으로 확인됩니다/)).toBeTruthy();
+  expect(
+    screen.getByTestId('medical-appointment-details-example').props
+      .accessibilityState.expanded,
+  ).toBe(true);
 });

@@ -320,3 +320,17 @@
 합성 회귀는 한국어와 미지원 `en-US`, `ja-JP`, `fr-FR`에서 동일 수신자/locator title, 중괄호가 포함된 계정 이름의 그대로 삽입, provider/model identity와 한 번의 검색 호출을 검사한다. 기존 동의 거절·취소·요청 범위 회귀는 별도로 유지한다. 번역 결과를 assertion의 expected 값으로 재사용하지 않고 기존 한국어 원문을 고정 기대값으로 둔다.
 
 그 밖의 출현은 자동 제거하지 않는다. `initialResponse.ts`는 versioned checkpoint 호환 문구이고, `periodQuestionFacts`·summary 사실/언어 검사는 단위와 임상 검증 계약이다. evidence payload/snapshot/search의 gap 문구는 모델 직렬화·byte budget에 영향을 주며, 사진/병력/진료 질문 evidence 문구와 건강기록 제목은 저장 또는 모델 근거다. `dailyReportFacts` 단위 표현은 별도 #946 표시 개선의 소유 범위로 남긴다. 이 배치는 그런 계약을 무검증으로 바꾸지 않으며 모든 화면·자료의 현지화 완료를 주장하지 않는다.
+
+## 직접 JSX 표시 문구 회귀 방지
+
+2026-11-16 main `d476c1e6` 재점검에서 shipping TSX의 직접 한국어 표시 문구는 기존 카탈로그로 이관된 상태였다. 일반 TS의 임상·의도 정규식, 모델 검색어, 버전 체크포인트 및 저장·직렬화 문구는 표시 전용이라고 판단하지 않아 그대로 보존했다.
+
+`scripts/quality/ui-copy-audit.mjs`는 TypeScript AST로 직접 JSX 텍스트와 title, label, accessibilityLabel, accessibilityHint, placeholder, message, status, pipeline 속성의 문자열·템플릿을 검사한다. 주석·정규식·이벤트 콜백을 기계적으로 번역하지 않는다. 테스트·카탈로그 디렉터리 및 정확한 개발 전용 `NativeReviewProbe.tsx` 경로만 제외하며, 임의의 Probe 이름 파일은 제외하지 않는다. 앱 src의 TSX 변경은 기존 policy test gate를 실행해 이 검사를 누락하지 않는다.
+
+이 검사는 간접 변수·동적 생성 문구, TS 직렬화, native 리소스, 이미지 및 실제 모델 출력의 완전한 현지화를 증명하지 않는다. 한국어 단일 카탈로그와 미지원 locale fallback, 보간·동의·임상 의미 및 기존 사용자 자료는 변경하지 않는다. 부모 이슈의 수동 경계 감사는 계속 필요하다.
+
+## 같은 파일의 표시 상수 별칭 검사
+
+2026-11-17 main `706b0c4d` 기준으로 직접 JSX 검사에는 `const label = "한국어"; <Text>{label}</Text>` 형태가 포함되지 않았다. 이번 후속은 화면 속성과 본문에서 참조하는 같은 파일의 scalar `const` 별칭만 TypeScript의 lexical symbol binding으로 추적한다. 별칭 체인, 템플릿, 조건식과 문자열 결합의 원문 위치를 한 번 보고하며, 매개변수와 블록의 동일 이름 변수는 다른 선언으로 구분한다. 순환 참조는 평가하지 않고 종료한다.
+
+메모리 안의 단일 source file만 사용하며 import, 라이브러리, 실제 사용자 자료를 읽지 않는다. 변경 가능한 변수, 객체 필드, 함수 호출과 콜백의 결과를 추론하지 않는다. 임상·모델 지시·정규식·저장 원문이나 카탈로그 값을 자동 번역하거나 수정하지 않는다. 기존 shipping TSX를 이 확대된 검사로 다시 확인했으며 추가 위반은 없었다. 이는 간접 객체·동적 데이터, native 리소스, 이미지 및 모델 출력의 전수 현지화 완료 증거가 아니므로 #957은 열린 상태로 유지한다.

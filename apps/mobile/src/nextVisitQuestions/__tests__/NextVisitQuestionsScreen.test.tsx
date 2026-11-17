@@ -132,6 +132,10 @@ test('opens evidence and lets the person edit, reorder, save, and cancel a later
     ],
     ['conflicting_records'],
     [],
+    {
+      questionIds: [expect.any(String), expect.any(String)],
+      caveats: ['conflicting_records'],
+    },
   );
 
   await fireEvent.press(screen.getByTestId('next-visit-saved-edit'));
@@ -197,6 +201,10 @@ test('passes evidence caveats to the save adapter', async () => {
     ),
     ['conflicting_records'],
     [],
+    {
+      questionIds: questions.map(() => expect.any(String)),
+      caveats: ['conflicting_records'],
+    },
   );
 });
 
