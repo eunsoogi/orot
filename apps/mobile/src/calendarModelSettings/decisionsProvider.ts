@@ -29,7 +29,8 @@ export function createCalendarDecisionsOption(
     Boolean(transport?.post && transport?.cancel);
   return {
     modelId,
-    displayName: 'GPT-6 Luna · OpenAI API',
+    // Decisions is the service; preserve its documented model and stored identity.
+    displayName: 'Decisions · GPT-6 Luna',
     privacyBoundary: 'selected-context-remote',
     availability: available
       ? { status: 'available' }
