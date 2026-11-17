@@ -74,6 +74,9 @@ beforeEach(() => {
 });
 it('returns the existing cited runtime envelope without tool or streaming claims', async () => {
   const option = createCalendarDecisionsOption('gpt-6-luna', 7);
+  expect(option.displayName).toBe('Decisions · GPT-6 Luna');
+  expect(option.modelId).toBe('gpt-6-luna');
+  expect(option.provider.id).toBe('openai-api-decisions');
   expect(option.provider.capabilities).toMatchObject({
     toolCalling: false,
     streaming: false,
