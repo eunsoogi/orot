@@ -168,6 +168,8 @@ test('phase observations retain lease ownership without interrupting healthy wor
     'acquired',
     'phase',
     'foreground',
+    'foreground-check-started',
+    'foreground-check-passed',
     'release',
   ]);
   expect(observations[2].phase).toBe('background');
