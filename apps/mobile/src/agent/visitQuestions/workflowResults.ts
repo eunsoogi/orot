@@ -149,12 +149,6 @@ export async function mapVisitQuestionWorkflowResult(input: {
       };
     generatedContext.push(original);
   }
-  if (generatedContext.length > 3)
-    return {
-      status: 'unavailable',
-      message: t(SAFE_FAILURE_MESSAGE_KEYS.unavailable),
-      memoryStatus: prepared.evidence.memoryStatus,
-    };
   const questions: VisitQuestionCandidate[] = [];
   for (const question of result.value.questions) {
     const citations: VisitQuestionEvidenceItem[] = [];

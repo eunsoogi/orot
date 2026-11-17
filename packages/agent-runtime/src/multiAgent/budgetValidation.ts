@@ -1,12 +1,15 @@
 import { MAX_MULTI_AGENT_BUDGET } from './contracts';
 import type { MultiAgentWorkflowOptions } from './contracts';
 
-/** Evidence/output and loop budgets remain mandatory; request-size and elapsed time have explicit opt-outs. */
+/** Validate host policy and legacy finite hints before dispatch; model input cannot select this policy. */
 export function validBudget<TResult>(options: MultiAgentWorkflowOptions<TResult>): boolean {
   const keys = Object.keys(MAX_MULTI_AGENT_BUDGET) as (keyof typeof MAX_MULTI_AGENT_BUDGET)[];
   return (
+    (options.execution.budget.executionLimits === undefined ||
+      options.execution.budget.executionLimits === 'unbounded') &&
     Object.keys(options.execution.budget).every(
       (key) =>
+        key === 'executionLimits' ||
         key === 'maxModelRequestBytes' ||
         key === 'maxAccumulatedEvidenceItems' ||
         keys.includes(key as (typeof keys)[number]),

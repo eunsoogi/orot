@@ -1,15 +1,15 @@
-/** Bound page reads without interpolating identities or loading unrelated private bodies. */
+/** Bind one JSON array so selected identities do not hit a per-ID SQL parameter ceiling. */
 export function conversationSelectedIds(
   column: 'id' | 'r.id' | 'e.message_id' | 'a.id',
   ids?: readonly string[],
 ) {
   if (ids === undefined) return { clause: '', parameters: [] as string[] };
-  if (ids.length > 50 || ids.some(id => !id || id.length > 210))
+  if (ids.some(id => !id || id.length > 210))
     throw new RangeError('Invalid conversation page identities.');
   return {
     clause: ids.length
-      ? ` AND ${column} IN (${ids.map(() => '?').join(',')})`
+      ? ` AND ${column} IN (SELECT value FROM json_each(?))`
       : ' AND 0',
-    parameters: [...ids],
+    parameters: ids.length ? [JSON.stringify(ids)] : [],
   };
 }

@@ -42,8 +42,9 @@ export function createResearchArtifactTool(
         !Number.isSafeInteger(request.resultLimit) ||
         request.resultLimit < 1 ||
         request.resultLimit > 8 ||
-        !Number.isSafeInteger(request.maxPayloadBytes) ||
-        request.maxPayloadBytes < 2048 ||
+        (request.executionLimits !== 'unbounded' &&
+          (!Number.isSafeInteger(request.maxPayloadBytes) ||
+            request.maxPayloadBytes < 2048)) ||
         !data.researchArtifactDiscovery
       )
         throw new Error('Research discovery scope is unavailable.');
@@ -89,8 +90,13 @@ export function createResearchArtifactTool(
               ? 'Citation metadata only; publication abstract was not retained.'
               : 'Historical AI-generated public web explanation, not an original passage or independently verified fact.',
           source: detail.content.source,
-          generatedText: detail.content.generatedText?.slice(0, 1200) ?? null,
-          excerptTruncated: (detail.content.generatedText?.length ?? 0) > 1200,
+          generatedText:
+            (request.executionLimits === 'unbounded'
+              ? detail.content.generatedText
+              : detail.content.generatedText?.slice(0, 1200)) ?? null,
+          excerptTruncated:
+            request.executionLimits !== 'unbounded' &&
+            (detail.content.generatedText?.length ?? 0) > 1200,
         });
         for (const id of await data.findIdentifiers(content, request.signal))
           registry.registerSensitiveIdentifier(id);
@@ -111,7 +117,10 @@ export function createResearchArtifactTool(
             (await readSource(signal)).status === 'available',
         };
         let item = registry.add(itemInput);
-        if (jsonByteLength([...items, item]) > request.maxPayloadBytes - 1024) {
+        if (
+          request.executionLimits !== 'unbounded' &&
+          jsonByteLength([...items, item]) > request.maxPayloadBytes - 1024
+        ) {
           if (lastEmitted) {
             resumeCursor = lastEmitted;
             break;
@@ -127,7 +136,10 @@ export function createResearchArtifactTool(
               excerptTruncated: true,
             }),
           });
-          if (jsonByteLength([item]) > request.maxPayloadBytes - 1024)
+          if (
+            request.executionLimits !== 'unbounded' &&
+            jsonByteLength([item]) > request.maxPayloadBytes - 1024
+          )
             throw new Error('Research metadata exceeds the payload limit.');
         }
         items.push(item);

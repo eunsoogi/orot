@@ -1,3 +1,4 @@
+import { createWorkflowRunControl, type WorkflowRunControl } from './workflowRunControl';
 import { invokeWithPause } from './workflowPause';
 import type { JsonValue } from '@orot/model-runtime';
 import { normalizeThreadId } from '../checkpointConfig';
@@ -28,41 +29,6 @@ import {
   withCheckpointThreadLock,
   withDeferredEvidenceAdapters,
 } from './workflowCheckpoint';
-interface WorkflowRunControl {
-  signal: AbortSignal;
-  timedOut: () => boolean;
-  dispose: () => void;
-}
-// Optional deadlines cover queueing and graph work; explicit null keeps caller cancellation only.
-function createWorkflowRunControl(
-  callerSignal: AbortSignal | undefined,
-  timeoutMs: number | null,
-): WorkflowRunControl {
-  const controller = new AbortController();
-  let timedOut = false;
-  const abortFromCaller = () => controller.abort();
-  if (callerSignal?.aborted) controller.abort();
-  else callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
-  const timer =
-    timeoutMs === null
-      ? undefined
-      : setTimeout(() => {
-          timedOut = true;
-          controller.abort();
-        }, timeoutMs);
-  return {
-    signal: controller.signal,
-    timedOut: () => timedOut,
-    dispose: () => {
-      if (timer !== undefined) clearTimeout(timer);
-      callerSignal?.removeEventListener('abort', abortFromCaller);
-      // A provider can retain a native tool callback between graph steps. Release it on
-      // every terminal outcome without changing the caller's cancellation state.
-      controller.abort();
-    },
-  };
-}
-
 // Coordinates validated graph runs and restores saved evidence only after source checks pass.
 export function runMultiAgentWorkflow<TResult = JsonValue>(
   options: MultiAgentWorkflowOptions<TResult>,
@@ -75,7 +41,9 @@ export function runMultiAgentWorkflow<TResult = JsonValue>(
     }
     const runControl = createWorkflowRunControl(
       invocation.signal,
-      options.execution.budget.timeoutMs,
+      options.execution.budget.executionLimits === 'unbounded'
+        ? null
+        : options.execution.budget.timeoutMs,
     );
     return withCheckpointThreadLock(threadId, runControl.signal, () =>
       runMultiAgentWorkflowUnlocked(options, invocation, runControl),
@@ -131,7 +99,12 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
   const ownsRunControl = suppliedRunControl === undefined;
   const runControl =
     suppliedRunControl ??
-    createWorkflowRunControl(invocation.signal, options.execution.budget.timeoutMs);
+    createWorkflowRunControl(
+      invocation.signal,
+      options.execution.budget.executionLimits === 'unbounded'
+        ? null
+        : options.execution.budget.timeoutMs,
+    );
   const context: RuntimeContext<TResult> = {
     options,
     pause: invocation.pause,
@@ -228,6 +201,11 @@ async function runMultiAgentWorkflowUnlocked<TResult = JsonValue>(
             () =>
               graph.invoke(input, {
                 ...invocation.config,
+                // LangGraph counts graph steps independently of model/tool calls. This in-process
+                // control is not part of the persisted execution identity or model payload.
+                ...(options.execution.budget.executionLimits === 'unbounded'
+                  ? { recursionLimit: Infinity }
+                  : {}),
                 durability: 'sync',
                 control: context.pause?.control,
               }),

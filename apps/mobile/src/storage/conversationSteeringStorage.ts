@@ -76,8 +76,7 @@ export async function createConversationSteeringStorage(input: {
     },
     async enqueue(id: string, text: string): Promise<boolean> {
       const submittedAt = new Date().toISOString();
-      if (!id.trim() || id.length > 128 || !text.trim() || text.length > 1000)
-        return false;
+      if (!id.trim() || id.length > 128 || !text.trim()) return false;
       let accepted = false;
       await database.transaction(async sql => {
         if (!(await live(sql))) return;
@@ -87,12 +86,6 @@ export async function createConversationSteeringStorage(input: {
           accepted = previous.text === text;
           return;
         }
-        if (
-          rows.length >= 16 ||
-          rows.reduce((sum, row) => sum + row.text.length, 0) + text.length >
-            4000
-        )
-          return;
         await sql.execute(
           'INSERT INTO conversation_steering VALUES (?, ?, ?, ?, ?, ?)',
           [...keys, id, rows.length + 1, text, 'queued'],
@@ -119,7 +112,6 @@ export async function createConversationSteeringStorage(input: {
     ): Promise<LanguageModelRequest | undefined> {
       if (!operationId || operationId.length > 300) return undefined;
       const base = stableJson(request);
-      if (base.length > 2_000_000) return undefined;
       let result: LanguageModelRequest | undefined;
       await database.transaction(async sql => {
         if (!(await live(sql))) return;
@@ -177,7 +169,6 @@ export async function createConversationSteeringStorage(input: {
           ],
         };
         const serialized = stableJson(payload);
-        if (serialized.length > 2_000_000) return;
         const through = rows.at(-1)?.sequence ?? 0;
         await sql.execute(
           'INSERT INTO conversation_steering_bindings VALUES (?, ?, ?, ?, ?, ?)',

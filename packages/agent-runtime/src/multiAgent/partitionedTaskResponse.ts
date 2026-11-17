@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import type { JsonValue, LanguageModelResponse } from '@orot/model-runtime';
 import type { TaskResponderInput } from './contracts';
 import type { RuntimeContext } from './runtimeContext';
@@ -48,7 +49,7 @@ export async function callPartitionedTaskResponse<TResult>(
   groups: readonly TaskResponderInput[],
 ): Promise<PartitionOutcome> {
   let modelCalls = state.modelCalls;
-  if (modelCalls + groups.length - 1 > state.budget.maxModelCalls) {
+  if (modelCalls + groups.length - 1 > executionLimit(state.budget, 'maxModelCalls')) {
     stop(
       context,
       'The complete partitioned result exceeds the model call budget.',
@@ -67,7 +68,10 @@ export async function callPartitionedTaskResponse<TResult>(
       research: group.research && {
         ...group.research,
         candidateTools: [],
-        remainingModelCalls: Math.max(0, state.budget.maxModelCalls - modelCalls),
+        remainingModelCalls:
+          state.budget.executionLimits === 'unbounded'
+            ? null
+            : Math.max(0, state.budget.maxModelCalls - modelCalls),
       },
     };
     const request = await buildTaskRequest(
@@ -113,9 +117,9 @@ export async function callPartitionedTaskResponse<TResult>(
       if (
         response.finishReason !== 'complete' ||
         response.toolCalls.length ||
-        utf8ByteLength(response.text) > state.budget.maxPayloadBytes ||
+        utf8ByteLength(response.text) > executionLimit(state.budget, 'maxPayloadBytes') ||
         utf8ByteLength(canonicalJson(await parseJsonOutput(response))) >
-          state.budget.maxPayloadBytes ||
+          executionLimit(state.budget, 'maxPayloadBytes') ||
         decoded.type !== 'result'
       ) {
         stop(

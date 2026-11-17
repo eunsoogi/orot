@@ -6,20 +6,12 @@ test('counts Korean and supplementary Unicode text as UTF-8 bytes', () => {
   expect(jsonByteLength({ content: '한' })).toBe(17);
 });
 
-test('keeps the newest chat history within its UTF-8 request allowance', () => {
-  const history = boundRagConversationHistory([
-    { role: 'user', content: '오래된 질문'.repeat(1_000) },
-    { role: 'assistant', content: '최근 답변 😀'.repeat(1_000) },
-    { role: 'user', content: '현재 질문' },
-  ]);
-
-  expect(history.at(-1)).toEqual({ role: 'user', content: '현재 질문' });
-  expect(
-    history.reduce(
-      (total, message) => total + utf8ByteLength(message.content),
-      0,
-    ),
-  ).toBeLessThanOrEqual(4 * 1024);
+test('preserves all user history beyond the former turn, character and byte ceilings', () => {
+  const messages = Array.from({ length: 12 }, (_, index) => ({
+    role: 'user' as const,
+    content: `${index}:` + '한😀'.repeat(2000),
+  }));
+  expect(boundRagConversationHistory(messages)).toEqual(messages);
 });
 
 test('discarded assistant prose does not consume the user history allowance', () => {

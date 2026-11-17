@@ -59,21 +59,35 @@ final class ResponsesPublicWebSearchTests: XCTestCase {
         XCTAssertThrowsError(try normalizer.consume(completion()))
     }
 
-    func testExcessOrDuplicateObservedSearchRequestsFailImmediately() throws {
+    func testAdditionalSearchRequestsAreAllowedButDuplicateIdentitiesFail() throws {
         var normalizer = ResponsesEventNormalizer(requestID: nil, publicWebSearch: true)
         try addSearch(&normalizer, id: "ws_1")
         try addSearch(&normalizer, id: "ws_2")
-        XCTAssertThrowsError(try addSearch(&normalizer, id: "ws_3"))
+        try addSearch(&normalizer, id: "ws_3")
         var duplicate = ResponsesEventNormalizer(requestID: nil, publicWebSearch: true)
         try addSearch(&duplicate, id: "ws_1")
         XCTAssertThrowsError(try addSearch(&duplicate, id: "ws_1"))
     }
 
-    func testPublicTextHasAnObservedByteBound() throws {
+    func testLargePublicTextAndAdditionalCitationsRemainComplete() throws {
+        var search = ResponsesPublicWebSearch(enabled: true)
+        let calls: [[String: Any]] = (0..<12).map { index in
+            ["type": "web_search_call", "id": "ws_\(index)", "status": "completed", "action": ["type": "search"]]
+        }
+        for call in calls { try search.recordAdded(call) }
+        let annotations: [[String: Any]] = (0..<16).map { index in
+            ["type": "url_citation", "url": "https://example.org/\(index)", "title": "Source \(index)", "start_index": 0, "end_index": 1]
+        }
+        let text = String(repeating: "한", count: 20000)
+        let result = try search.result(calls + [["type": "message", "content": [[
+            "type": "output_text", "text": text, "annotations": annotations,
+        ]]]])
+        XCTAssertEqual(result?.callCount, 12)
+        XCTAssertEqual(result?.citations.count, 16)
         var normalizer = ResponsesEventNormalizer(requestID: nil, publicWebSearch: true)
-        XCTAssertThrowsError(try normalizer.consume(frame("response.output_text.delta", [
-            "delta": String(repeating: "a", count: ResponsesPublicWebSearch.maxTextBytes + 1),
-        ])))
+        let delta = try normalizer.consume(frame("response.output_text.delta", ["delta": text]))
+        guard case let .textDelta(value) = delta else { return XCTFail("Expected intact text") }
+        XCTAssertEqual(value, text)
     }
 
     func testMalformedAndMissingCitationDataCannotBecomeSearchEvidence() throws {

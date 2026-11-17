@@ -48,8 +48,6 @@ export function projectResearchArtifact(item: ResearchArtifactInput) {
     inputLineage: 'complete',
     inputSources: item.inputSources ?? [],
   });
-  if (text.length > 50000)
-    throw new Error('Research snapshot exceeds its size limit.');
   if (!decodeResearchArtifact(1, text))
     throw new Error('Research snapshot metadata is invalid.');
   return { source, text };

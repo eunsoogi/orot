@@ -1,11 +1,6 @@
+import { readSelectedEvidenceRows } from './readSelectedEvidenceRows';
 import type { RecordKind, RecordMap, SqlExecutor } from '@orot/storage';
 import { parseRecord, STORAGE_TABLES } from '@orot/storage';
-
-export const DEFAULT_HEALTH_EVIDENCE_ROWS_PER_KIND = 100;
-export const MAX_HEALTH_EVIDENCE_ROWS_PER_KIND = 100;
-export const DEFAULT_HEALTH_EVIDENCE_TOTAL_ROWS = 400;
-export const MAX_HEALTH_EVIDENCE_TOTAL_ROWS = 400;
-export const MAX_HEALTH_EVIDENCE_RECORD_BYTES = 16 * 1024;
 
 export type LocalHealthEvidenceRecord = {
   [K in RecordKind]: { readonly kind: K; readonly record: RecordMap[K] };
@@ -38,20 +33,14 @@ export function checkHealthEvidenceAbort(signal?: AbortSignal): void {
 export function parseHealthEvidenceLimits(
   options: HealthEvidenceQueryOptions = {},
 ) {
-  const rowsPerKind =
-    options.rowsPerKind ?? DEFAULT_HEALTH_EVIDENCE_ROWS_PER_KIND;
-  const totalRows = options.totalRows ?? DEFAULT_HEALTH_EVIDENCE_TOTAL_ROWS;
+  const rowsPerKind = options.rowsPerKind ?? null;
+  const totalRows = options.totalRows ?? null;
   if (
-    !Number.isSafeInteger(rowsPerKind) ||
-    rowsPerKind < 1 ||
-    rowsPerKind > MAX_HEALTH_EVIDENCE_ROWS_PER_KIND ||
-    !Number.isSafeInteger(totalRows) ||
-    totalRows < 1 ||
-    totalRows > MAX_HEALTH_EVIDENCE_TOTAL_ROWS
+    [rowsPerKind, totalRows].some(
+      value => value !== null && (!Number.isSafeInteger(value) || value < 1),
+    )
   ) {
-    throw new Error(
-      'The local evidence query limit is outside its supported range.',
-    );
+    throw new Error('The local evidence query limit is invalid.');
   }
   return { rowsPerKind, totalRows };
 }
@@ -60,18 +49,27 @@ export async function queryHealthEvidenceRows<K extends RecordKind>(
   executor: SqlExecutor,
   kind: K,
   filter: HealthEvidenceRecordFilter,
-  limit: number,
+  limit: number | null,
   signal?: AbortSignal,
 ): Promise<Array<Record<string, unknown>>> {
   checkHealthEvidenceAbort(signal);
   const condition = filterCondition(kind, filter);
-  const result = await executor.execute(
-    `SELECT id,
-      CASE WHEN length(CAST(payload_json AS BLOB)) <= ? THEN payload_json ELSE NULL END AS payload_json,
+  const sql = `SELECT id,
+      payload_json,
       length(CAST(payload_json AS BLOB)) AS payload_bytes
-     FROM ${STORAGE_TABLES[kind].table} WHERE ${condition.sql}${kind === 'symptom_entry' ? ' AND NOT EXISTS (SELECT 1 FROM legacy_symptom_deleted deleted WHERE deleted.id = symptom_entries.id)' : ''} ORDER BY id LIMIT ?`,
-    [MAX_HEALTH_EVIDENCE_RECORD_BYTES, ...condition.parameters, limit],
-  );
+     FROM ${STORAGE_TABLES[kind].table} WHERE ${condition.sql}${kind === 'symptom_entry' ? ' AND NOT EXISTS (SELECT 1 FROM legacy_symptom_deleted deleted WHERE deleted.id = symptom_entries.id)' : ''} ORDER BY id`;
+  const result =
+    limit === null
+      ? await readSelectedEvidenceRows(
+          executor,
+          sql,
+          condition.parameters,
+          signal,
+        )
+      : await executor.execute(`${sql} LIMIT ?`, [
+          ...condition.parameters,
+          limit,
+        ]);
   // SQLite calls are not interruptible through SqlDatabase; discard their result after cancellation.
   checkHealthEvidenceAbort(signal);
   return result.rows;
@@ -86,8 +84,7 @@ export function decodeHealthEvidenceRecord<K extends RecordKind>(
     typeof row.payload_json !== 'string' ||
     typeof row.payload_bytes !== 'number' ||
     !Number.isSafeInteger(row.payload_bytes) ||
-    row.payload_bytes < 0 ||
-    row.payload_bytes > MAX_HEALTH_EVIDENCE_RECORD_BYTES
+    row.payload_bytes < 0
   ) {
     throw new Error(`A stored ${kind} record could not be read safely.`);
   }
@@ -106,19 +103,12 @@ export function decodeHealthEvidenceRecord<K extends RecordKind>(
 export function appendHealthEvidenceRows<K extends RecordKind>(
   kind: K,
   rows: readonly Record<string, unknown>[],
-  rowLimit: number,
+  rowLimit: number | null,
   records: LocalHealthEvidenceRecord[],
   truncatedKinds: Set<RecordKind>,
 ): void {
-  if (rows.length > rowLimit) truncatedKinds.add(kind);
-  for (const row of rows.slice(0, rowLimit)) {
-    if (
-      typeof row.payload_bytes === 'number' &&
-      row.payload_bytes > MAX_HEALTH_EVIDENCE_RECORD_BYTES
-    ) {
-      truncatedKinds.add(kind);
-      continue;
-    }
+  if (rowLimit !== null && rows.length > rowLimit) truncatedKinds.add(kind);
+  for (const row of rows.slice(0, rowLimit ?? rows.length)) {
     records.push(decodeHealthEvidenceRecord(kind, row));
   }
 }

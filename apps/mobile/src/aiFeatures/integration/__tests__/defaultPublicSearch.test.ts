@@ -138,3 +138,13 @@ test('reserves an attempted public provider call, including an empty result', ()
       .maxModelCalls,
   ).toBe(4);
 });
+
+test('does not subtract a call allowance from unbounded interactive work', () => {
+  const budget = {
+    ...DEFAULT_MULTI_AGENT_BUDGET,
+    executionLimits: 'unbounded' as const,
+  };
+  expect(budgetAfterPublicSearch(budget, { status: 'empty' }, true)).toBe(
+    budget,
+  );
+});

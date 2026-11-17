@@ -132,8 +132,8 @@ test('high-volume sensors cannot consume medication, visit, symptom and history 
     expect(comparisons[0]?.text).toContain('하루 전체의 분포나 변화량은 아니');
     expect(
       snapshot.values.filter(item => item.kind === 'health_observation').length,
-    ).toBeLessThan(100);
-    expect(utf8ByteLength(JSON.stringify(snapshot.values))).toBeLessThan(
+    ).toBe(123);
+    expect(utf8ByteLength(JSON.stringify(snapshot.values))).toBeGreaterThan(
       64 * 1024,
     );
     expect(
@@ -141,8 +141,8 @@ test('high-volume sensors cannot consume medication, visit, symptom and history 
         item => item.source === 'health_observation',
       ),
     ).toMatchObject({
-      status: 'partial',
-      limitationCodes: expect.arrayContaining(['bounded_source_sampling']),
+      status: 'unknown',
+      limitationCodes: expect.not.arrayContaining(['bounded_source_sampling']),
     });
     expect(
       dailyReportGuidance(

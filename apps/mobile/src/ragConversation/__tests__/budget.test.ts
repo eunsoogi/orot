@@ -6,7 +6,7 @@ import { createAppleSelectionOption } from '../../providers/selection/options';
 import { RAG_CONVERSATION_BUDGET } from '../budget';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../../agent/evidenceWorkflowBudget';
 
-test('shipping conversations separate accumulated count from search and call bounds', () => {
+test('shipping workflows use unbounded execution while retaining a retrieval page size', () => {
   const option = createAppleSelectionOption('available');
   const input = {
     selected: {
@@ -35,7 +35,7 @@ test('shipping conversations separate accumulated count from search and call bou
     ...RAG_CONVERSATION_BUDGET,
     maxAccumulatedEvidenceItems: null,
   });
-  // Other feature workflows keep their historical accumulated count contract.
+  // All interactive feature workflows use the same explicit execution policy.
   for (const consentPurpose of [
     'symptom_summary',
     'disease_hypotheses',
@@ -46,6 +46,8 @@ test('shipping conversations separate accumulated count from search and call bou
   }
   expect(RAG_CONVERSATION_BUDGET).toEqual({
     ...DEFAULT_MULTI_AGENT_BUDGET,
+    executionLimits: 'unbounded',
+    maxAccumulatedEvidenceItems: null,
     timeoutMs: null,
     maxModelRequestBytes: null,
   });

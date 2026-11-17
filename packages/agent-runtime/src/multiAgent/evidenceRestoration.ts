@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { deferEvidenceAdapter } from './modelCallFreshness';
 import type { EvidenceBatch, EvidenceReference } from './evidenceContracts';
 import type { MultiAgentWorkflowOptions } from './contracts';
@@ -32,7 +33,7 @@ export async function restoreOrderedEvidenceBatches<T>(
   if (
     !Array.isArray(batches) ||
     !batches.length ||
-    batches.length > options.execution.budget.maxToolCalls + 1 ||
+    batches.length > executionLimit(options.execution.budget, 'maxToolCalls') + 1 ||
     batches.some((batch, index) =>
       validateEvidenceBatch(
         batch,

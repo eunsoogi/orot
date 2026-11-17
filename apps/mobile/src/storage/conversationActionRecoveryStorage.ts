@@ -99,7 +99,6 @@ export async function stageConversationActionRecovery(
   const payload = stableJson(supplied);
   const d: ConversationActionRecoveryStage = JSON.parse(payload);
   if (
-    payload.length > 2_000_000 ||
     d.version !== 1 ||
     !d.ownerProcessId ||
     d.ownerProcessId.length > 200 ||

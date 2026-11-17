@@ -16,7 +16,7 @@ export interface ConversationColdResumeDescriptor {
   reconstruction: JsonObject;
 }
 
-/** Reject non-JSON and oversized values instead of silently dropping functions or undefined fields. */
+/** Reject non-JSON values instead of silently dropping functions or undefined fields. */
 export function encodeColdResume(
   value: ConversationColdResumeDescriptor,
 ): string {
@@ -31,8 +31,6 @@ export function encodeColdResume(
       throw new Error('Non-JSON cold resume descriptor.');
     return item;
   });
-  if (json.length > 2_000_000)
-    throw new Error('Cold resume descriptor is too large.');
   const parsed = JSON.parse(json) as ConversationColdResumeDescriptor;
   if (
     parsed.version !== 1 ||

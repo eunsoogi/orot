@@ -13,7 +13,7 @@ export interface RecapUnit {
 }
 
 /** Units are source text fragments, not authenticated speaker turns or word timestamps. */
-export function recapUnits(input: RecapInput): RecapUnit[] {
+export function recapUnits(input: RecapInput, unbounded = false): RecapUnit[] {
   const units: RecapUnit[] = [];
   for (const segment of [...input.segments].sort((a, b) => a.segmentOrdinal - b.segmentOrdinal)) {
     let startOffset = 0;
@@ -43,7 +43,8 @@ export function recapUnits(input: RecapInput): RecapUnit[] {
         endOffset,
         text: segment.text.slice(startOffset, endOffset),
       });
-      if (units.length > 1024) throw new RecapChunkBudgetError('Recap unit budget exceeded.');
+      if (!unbounded && units.length > 1024)
+        throw new RecapChunkBudgetError('Recap unit budget exceeded.');
       startOffset = endOffset;
     }
   }

@@ -166,7 +166,8 @@ export function createLangChainEvidenceTool(
         !Number.isSafeInteger(reserved.maxPayloadBytes) ||
         reserved.maxPayloadBytes < 1 ||
         reserved.maxPayloadBytes > MAX_MULTI_AGENT_BUDGET.maxPayloadBytes ||
-        utf8ByteLength(canonicalJson(input)) > reserved.maxPayloadBytes
+        (reserved.executionLimits !== 'unbounded' &&
+          utf8ByteLength(canonicalJson(input)) > reserved.maxPayloadBytes)
       ) {
         return failure('budget_exceeded');
       }
@@ -193,7 +194,10 @@ export function createLangChainEvidenceTool(
           return failure(
             batch.status === 'consent_required' ? 'consent_required' : 'invalid_output',
           );
-        if (utf8ByteLength(canonicalJson(batch)) > reserved.maxPayloadBytes)
+        if (
+          reserved.executionLimits !== 'unbounded' &&
+          utf8ByteLength(canonicalJson(batch)) > reserved.maxPayloadBytes
+        )
           return failure('budget_exceeded');
         if (!validBatch(batch, domain, reserved)) return failure('invalid_output');
         const fresh =
@@ -225,6 +229,7 @@ function validBatch(
     !validateEvidenceBatch(batch, reserved.allowedScope, {
       ...MAX_MULTI_AGENT_BUDGET,
       maxEvidenceItems: reserved.resultLimit,
+      executionLimits: reserved.executionLimits,
     }) &&
     batch.items.every(
       (item) => isEvidenceReference(item) && item.sourceKind === domain.sourceKind,

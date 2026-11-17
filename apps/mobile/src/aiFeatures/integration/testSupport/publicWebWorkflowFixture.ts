@@ -125,10 +125,9 @@ export function workflowFixture(
     externalEvidence: literature,
     diseaseRunner,
     ragRunner: async (options, invocation) => {
-      expect(options.workflow.execution.budget.maxModelCalls).toBe(
-        allowWeb ? 3 : 4,
+      expect(options.workflow.execution.budget.executionLimits).toBe(
+        'unbounded',
       );
-      expect(options.workflow.execution.budget.maxToolCalls).toBe(2);
       publicReference = options.publicEvidence?.items[0]
         ? referenceOnly(options.publicEvidence.items[0])
         : undefined;

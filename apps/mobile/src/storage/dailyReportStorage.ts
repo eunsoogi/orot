@@ -64,7 +64,6 @@ export function createDailyReportStorage(
       ...checked,
       lineage: input.lineage,
     });
-    if (stored.length > 128_000) return { status: 'error' as const };
     const guard = await acquireReportCalendarGuard(
       checked.context,
       calendarReader,

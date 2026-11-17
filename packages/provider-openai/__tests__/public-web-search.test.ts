@@ -119,7 +119,8 @@ test('cancels promptly and repeats the stop request after a late bridge registra
 test.each([
   undefined,
   null as never,
-  { ...webSearch, callCount: 3 },
+  { ...webSearch, callCount: 0 },
+  { ...webSearch, callCount: Number.MAX_SAFE_INTEGER + 1 },
   { ...webSearch, callCount: 1.5 },
   { ...webSearch, citations: [] },
   { ...webSearch, citations: [{ url: 'file:///private', title: 'Invalid' }] },
@@ -138,21 +139,25 @@ test.each([
   },
 );
 
-test('bounds multibyte text independently of TextEncoder availability', async () => {
-  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'TextEncoder');
-  Object.defineProperty(globalThis, 'TextEncoder', { configurable: true, value: undefined });
-  try {
-    const run = fixture(async (bridge, id) => {
-      bridge.emit({ requestId: id, type: 'text_delta', text: '한'.repeat(10_923) });
-    });
-    await expect(run.provider.searchPublicWeb!({ query: 'Public concept' })).resolves.toMatchObject(
-      { ok: false },
-    );
-    expect(run.bridge.cancelled).toContain('public-request');
-  } finally {
-    if (descriptor) Object.defineProperty(globalThis, 'TextEncoder', descriptor);
-    else Reflect.deleteProperty(globalThis, 'TextEncoder');
-  }
+test('preserves large multibyte results with additional search calls and citations', async () => {
+  const completeText = '한'.repeat(20_000);
+  const metadata = {
+    callCount: 12,
+    citations: Array.from({ length: 16 }, (_, index) => ({
+      url: `https://example.org/source/${index}`,
+      title: `Source ${index}`,
+    })),
+  };
+  const run = fixture(async (bridge, id) => {
+    bridge.emit({ requestId: id, type: 'text_delta', text: completeText.slice(0, 10_000) });
+    bridge.emit({ requestId: id, type: 'text_delta', text: completeText.slice(10_000) });
+    bridge.emit({ requestId: id, type: 'completed', text: completeText, webSearch: metadata });
+  });
+  await expect(run.provider.searchPublicWeb!({ query: 'Public concept' })).resolves.toEqual({
+    ok: true,
+    value: { text: completeText, ...metadata },
+  });
+  expect(run.bridge.cancelled).toHaveLength(0);
 });
 
 test.each(['mismatched-text', 'oversized-text', 'function-call'])(

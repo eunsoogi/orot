@@ -27,7 +27,6 @@ test.each([
   [{ answer: 'Synthetic', answerKind: 'unknown' }, 'task_value_kind'],
   [{ answer: 4 }, 'task_answer_type'],
   [{ answer: ' \n ' }, 'task_answer_empty'],
-  [{ answer: 'S'.repeat(4001) }, 'task_answer_length'],
 ] as const)(
   'rejected shape emits one closed code without changing the decision',
   (value, code) => {
@@ -37,7 +36,7 @@ test.each([
       ragConversationTask.validateResult(value as JsonValue, input),
     ).toEqual({
       status: 'invalid',
-      reason: 'The answer was empty or outside the supported size.',
+      reason: 'The answer was empty or malformed.',
     });
     expect(report.mock.calls).toEqual([['rag', 'validation', code]]);
   },
@@ -59,13 +58,13 @@ test('a real clinical rejection is distinct from format and does not publish the
   ]);
 });
 
-test('accepted and clarification decisions stay silent, including the original length boundary', () => {
+test('accepted and clarification decisions stay silent, beyond the former answer length ceiling', () => {
   const report = jest.fn();
   NativeModules.OrotProviderDiagnostics = { report };
   expect(
     ragConversationTask.validateResult(
       {
-        answer: 'S'.repeat(4000),
+        answer: 'S'.repeat(10000),
         answerKind: 'conversation',
         completion: 'partial',
       },
@@ -108,7 +107,7 @@ test('unknown reasons and thrown validators never disclose private text or chang
 test('unavailable or failing observation cannot change validation', () => {
   const original = {
     status: 'invalid' as const,
-    reason: 'The answer was empty or outside the supported size.',
+    reason: 'The answer was empty or malformed.',
   };
   expect(observeConversationResultValidation(null, () => original)).toBe(
     original,

@@ -5,11 +5,7 @@ import { localEvidenceFingerprint } from '../../agent/visitQuestions/evidence';
 import { isEligibleNextVisit } from '../../routes/nextAppointment';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import {
-  fingerprint,
-  MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES,
-  utf8ByteLength,
-} from './evidenceUtils';
+import { fingerprint } from './evidenceUtils';
 import type { ConversationEntryContext } from './conversationIntent';
 import { withProviderStage } from '../../providers/diagnostics';
 import type { EvidenceItem } from '@orot/agent-runtime';
@@ -109,9 +105,7 @@ export async function prepareConversationVisitTarget(input: {
       calendarTitle: appointment.calendarEventSnapshot?.title,
       endsAt: appointment.endsAt,
     });
-  // Never send an unbounded calendar label as an initial model input.
-  if (utf8ByteLength(content) > MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES)
-    throw new Error('Selected visit evidence exceeds the supported payload.');
+  // Keep the selected visit intact; identifiers are still redacted before dispatch.
   for (const id of await data.findIdentifiers(content, signal))
     registry.registerSensitiveIdentifier(id);
   if (signal.aborted) return null;

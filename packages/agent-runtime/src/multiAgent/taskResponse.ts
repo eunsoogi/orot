@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { steeringFinalBoundary } from './steeringFinalBoundary';
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { TaskResponderInput } from './contracts';
@@ -47,7 +48,10 @@ export async function consumeTaskModelResponse<TResult>(
     reportTaskStreamEvent(context, { type: 'started' });
   }
   // Reserve at most one server continuation from the original graph budget.
-  const liveBudget = { available: state.modelCalls < state.budget.maxModelCalls, used: false };
+  const liveBudget = {
+    available: state.modelCalls < executionLimit(state.budget, 'maxModelCalls'),
+    used: false,
+  };
   context.midTurnSteeringBudget = liveBudget;
   let response: Awaited<ReturnType<typeof callConversationalResponder<TResult>>>;
   try {
@@ -90,7 +94,7 @@ async function consumeInitialOutcome<TResult>(
     canceled(context);
     return { ...completeState(), modelCalls: state.modelCalls };
   }
-  if (state.modelCalls >= state.budget.maxModelCalls) {
+  if (state.modelCalls >= executionLimit(state.budget, 'maxModelCalls')) {
     stop(context, 'The model call budget was exhausted.', 'budget_exceeded');
     return { ...completeState(), modelCalls: state.modelCalls };
   }

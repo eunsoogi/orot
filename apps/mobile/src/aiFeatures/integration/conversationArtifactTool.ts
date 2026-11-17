@@ -56,8 +56,9 @@ export function createConversationArtifactTool(
         !Number.isSafeInteger(request.resultLimit) ||
         request.resultLimit < 1 ||
         request.resultLimit > 8 ||
-        !Number.isSafeInteger(request.maxPayloadBytes) ||
-        request.maxPayloadBytes < 2048 ||
+        (request.executionLimits !== 'unbounded' &&
+          (!Number.isSafeInteger(request.maxPayloadBytes) ||
+            request.maxPayloadBytes < 2048)) ||
         !data.conversationArtifactDiscovery
       )
         throw new Error(
@@ -101,6 +102,7 @@ export function createConversationArtifactTool(
               detail.content,
               detail.sources,
               sourceStatus,
+              request.executionLimits === 'unbounded',
             );
         for (const id of await data.findIdentifiers(body, request.signal))
           registry.registerSensitiveIdentifier(id);
@@ -149,7 +151,10 @@ export function createConversationArtifactTool(
         };
         let item = registry.add({ ...base, content: body });
         let full = !options.referenceOnly;
-        if (jsonByteLength([...items, item]) > request.maxPayloadBytes - 1024) {
+        if (
+          request.executionLimits !== 'unbounded' &&
+          jsonByteLength([...items, item]) > request.maxPayloadBytes - 1024
+        ) {
           if (lastCursor) {
             resumeCursor = lastCursor;
             break;
@@ -159,7 +164,10 @@ export function createConversationArtifactTool(
             ...base,
             content: compactConversationArtifactExcerpt(metadata, sourceStatus),
           });
-          if (jsonByteLength([item]) > request.maxPayloadBytes - 1024)
+          if (
+            request.executionLimits !== 'unbounded' &&
+            jsonByteLength([item]) > request.maxPayloadBytes - 1024
+          )
             throw new Error('Artifact metadata exceeds the requested size.');
         }
         items.push(item);

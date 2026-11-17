@@ -66,12 +66,12 @@ export function decodeConversationSubmittedInput(
     typeof value.requestId !== 'string' ||
     !value.requestId ||
     value.requestId.length > 200 ||
-    typeof value.question !== 'string' ||
-    value.question.length > 1000
+    typeof value.question !== 'string'
   )
     return null;
   try {
-    if (JSON.stringify(value).length > 128_000) return null;
+    // Serialization must remain valid; source text length is not a consent or integrity boundary.
+    JSON.stringify(value);
   } catch {
     return null;
   }

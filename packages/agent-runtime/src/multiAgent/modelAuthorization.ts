@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { ExecutionConsentPort, MultiAgentExecutionIdentity } from './contracts';
 import { observeUntilAbort } from './operationObservation';
@@ -44,9 +45,14 @@ export async function authorizeModelCall(
   // A local size limit is not an account/provider configuration failure. Reject before consent or dispatch.
   const limit =
     execution.budget.maxModelRequestBytes === undefined
-      ? execution.budget.maxPayloadBytes
+      ? executionLimit(execution.budget, 'maxPayloadBytes')
       : execution.budget.maxModelRequestBytes;
-  if (limit !== null && utf8ByteLength(payload) > limit) return { status: 'budget_exceeded' };
+  if (
+    execution.budget.executionLimits !== 'unbounded' &&
+    limit !== null &&
+    utf8ByteLength(payload) > limit
+  )
+    return { status: 'budget_exceeded' };
   if (execution.remoteProcessing) {
     try {
       const approval = await observeUntilAbort(

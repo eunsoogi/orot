@@ -32,8 +32,7 @@ function reference(value: unknown): value is EvidenceReference {
 export function decodeSavedSymptomSummary(
   serialized: unknown,
 ): SavedSymptomSummary | null {
-  if (typeof serialized !== 'string' || serialized.length > 128_000)
-    return null;
+  if (typeof serialized !== 'string') return null;
   try {
     const value: unknown = JSON.parse(serialized);
     if (
@@ -44,8 +43,7 @@ export function decodeSavedSymptomSummary(
       !Number.isFinite(Date.parse(value.createdAt as string)) ||
       !object(value.analysis) ||
       (value.inputLineage !== undefined && value.inputLineage !== 'complete') ||
-      !Array.isArray(value.sources) ||
-      value.sources.length > 24
+      !Array.isArray(value.sources)
     )
       return null;
     if (
@@ -110,7 +108,6 @@ export function decodeSavedSymptomSummary(
         (object(source.reference.locator) &&
           source.reference.locator.kind === 'health_context_period') ||
         !Array.isArray(source.records) ||
-        source.records.length > 32 ||
         source.records.some(
           record =>
             !object(record) ||

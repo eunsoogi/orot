@@ -46,12 +46,11 @@ function validate(
     typeof value.answer !== 'string' ||
     (value.answer.trim().length === 0 &&
       !('literature' in value) &&
-      !('localClaims' in value)) ||
-    value.answer.length > 4000
+      !('localClaims' in value))
   ) {
     return {
       status: 'invalid',
-      reason: 'The answer was empty or outside the supported size.',
+      reason: 'The answer was empty or malformed.',
     } as const;
   }
   if (

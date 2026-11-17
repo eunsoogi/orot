@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { callModelWithEvidenceFreshness } from './modelCallFreshness';
 import { canceled, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
@@ -20,7 +21,7 @@ export async function reviewInitialToolResponse<TResult>(
   // or weakening photo consent. The selected tool and grounded final flow keep their gates.
   if (context.options.photoInput) return { accepted: false, modelCalls: state.modelCalls };
   // Keep capacity for the selected search and grounded final response; never raise a budget.
-  const reserve = state.budget.maxModelCalls - state.modelCalls;
+  const reserve = executionLimit(state.budget, 'maxModelCalls') - state.modelCalls;
   if (reserve < 2) return { accepted: false, modelCalls: state.modelCalls };
   const request = {
     messages: [
@@ -42,11 +43,12 @@ export async function reviewInitialToolResponse<TResult>(
         content: JSON.stringify({ request: context.options.request, candidate }),
       },
     ],
-    ...(context.options.provider.capabilities.requestControls?.includes('maxOutputTokens')
+    ...(state.budget.executionLimits !== 'unbounded' &&
+    context.options.provider.capabilities.requestControls?.includes('maxOutputTokens')
       ? { maxOutputTokens: Math.min(64, state.budget.maxOutputTokens) }
       : {}),
   };
-  if (utf8ByteLength(canonicalJson(request)) > state.budget.maxPayloadBytes)
+  if (utf8ByteLength(canonicalJson(request)) > executionLimit(state.budget, 'maxPayloadBytes'))
     return { accepted: false, modelCalls: state.modelCalls };
   const modelCalls = state.modelCalls + 1;
   // Preview is optional: never let its reviewer consume the entire task deadline.

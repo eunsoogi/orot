@@ -1,10 +1,6 @@
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import type { SqlDatabase } from '@orot/storage';
-import {
-  createLocalHealthEvidenceRepository,
-  MAX_HEALTH_EVIDENCE_RECORD_BYTES,
-  MAX_HEALTH_EVIDENCE_ROWS_PER_KIND,
-} from '../localEvidenceRepository';
+import { createLocalHealthEvidenceRepository } from '../localEvidenceRepository';
 import { createHealthEvidenceTestDatabase } from '../localEvidenceTestSupport';
 
 const timestamp = '2026-10-07T00:00:00.000Z';
@@ -53,22 +49,18 @@ describe('local health evidence query limits', () => {
 
   afterEach(() => close());
 
-  it('marks an oversized stored record incomplete without returning its payload', async () => {
+  it('retains a valid stored record beyond the former byte ceiling', async () => {
     const records = createRecordRepository(database);
     await records.sourceRecords.create(
-      sourceRecord(
-        'large-source',
-        'x'.repeat(MAX_HEALTH_EVIDENCE_RECORD_BYTES + 1),
-        'a',
-      ),
+      sourceRecord('large-source', 'x'.repeat(16 * 1024 + 1), 'a'),
     );
 
     const inventory =
       await createLocalHealthEvidenceRepository(database).readInventory();
 
-    expect(inventory.inventoryComplete).toBe(false);
-    expect(inventory.truncatedKinds).toContain('source_record');
-    expect(inventory.records).toEqual([]);
+    expect(inventory.inventoryComplete).toBe(true);
+    expect(inventory.truncatedKinds).toEqual([]);
+    expect(inventory.records).toHaveLength(1);
   });
 
   it('charges the exact source against per-kind and total row caps', async () => {
@@ -104,22 +96,22 @@ describe('local health evidence query limits', () => {
     expect(oneRowKind.truncatedKinds).toContain('source_record');
     expect(oneRowKind.complete).toBe(false);
 
-    for (let index = 1; index < MAX_HEALTH_EVIDENCE_ROWS_PER_KIND; index += 1) {
+    for (let index = 1; index < 100; index += 1) {
       await createLinkedSource(index);
     }
     const maxRowKind = await adapter.querySource('source-a', {
-      rowsPerKind: MAX_HEALTH_EVIDENCE_ROWS_PER_KIND,
+      rowsPerKind: 100,
       totalRows: 400,
     });
     const maxRowSources = maxRowKind.records.filter(
       ({ kind }) => kind === 'source_record',
     );
-    expect(maxRowSources).toHaveLength(MAX_HEALTH_EVIDENCE_ROWS_PER_KIND);
+    expect(maxRowSources).toHaveLength(100);
     expect(maxRowKind.truncatedKinds).toContain('source_record');
     expect(maxRowKind.complete).toBe(false);
 
     const oneTotalRow = await adapter.querySource('source-a', {
-      rowsPerKind: MAX_HEALTH_EVIDENCE_ROWS_PER_KIND,
+      rowsPerKind: 100,
       totalRows: 1,
     });
     expect(oneTotalRow.records).toHaveLength(1);
@@ -127,7 +119,7 @@ describe('local health evidence query limits', () => {
     expect(oneTotalRow.complete).toBe(false);
   });
 
-  it('bounds source-linked rows and rejects limits above the public cap', async () => {
+  it('honors explicit source selection without imposing a public maximum', async () => {
     const records = createRecordRepository(database);
     await records.sourceRecords.create(
       sourceRecord('source-a', 'Synthetic source', 'b'),
@@ -149,8 +141,47 @@ describe('local health evidence query limits', () => {
     expect(result.truncatedKinds).toEqual(['evidence_span']);
     await expect(
       adapter.readInventory({
-        rowsPerKind: MAX_HEALTH_EVIDENCE_ROWS_PER_KIND + 1,
+        rowsPerKind: 100 + 1,
       }),
-    ).rejects.toThrow('query limit');
+    ).resolves.toMatchObject({ inventoryComplete: true });
+  });
+  it('pages through more than the former total and per-kind quotas', async () => {
+    const records = createRecordRepository(database);
+    await records.sourceRecords.create(
+      sourceRecord('source-a', 'Synthetic source', 'c'),
+    );
+    for (let index = 0; index < 405; index += 1) {
+      await records.evidenceSpans.create(
+        evidenceSpan(`span-${String(index).padStart(3, '0')}`, 'source-a'),
+      );
+    }
+    const adapter = createLocalHealthEvidenceRepository(database);
+    const inventory = await adapter.readInventory();
+    const linked = await adapter.querySource('source-a');
+    expect(inventory.inventoryComplete).toBe(true);
+    expect(inventory.records).toHaveLength(406);
+    expect(linked.complete).toBe(true);
+    expect(linked.records).toHaveLength(406);
+    const abort = new AbortController();
+    const cancellable: SqlDatabase = {
+      execute: database.execute,
+      transaction: operation =>
+        database.transaction(tx =>
+          operation({
+            ...tx,
+            execute: async (sql, parameters = []) => {
+              const page = await tx.execute(sql, parameters);
+              if (sql.includes('OFFSET ?') && parameters.at(-1) === 100)
+                abort.abort();
+              return page;
+            },
+          }),
+        ),
+    };
+    await expect(
+      createLocalHealthEvidenceRepository(cancellable).readInventory({
+        signal: abort.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
   });
 });

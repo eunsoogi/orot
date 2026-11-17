@@ -56,17 +56,19 @@ export interface EvidenceBatch {
 }
 
 export interface MultiAgentBudget {
+  /** Host-selected policy: no artificial execution/result ceilings. Numeric fields remain legacy batching hints. */
+  readonly executionLimits?: 'unbounded';
   readonly maxModelCalls: number;
   readonly maxToolCalls: number;
   readonly maxResearchCycles: number;
   readonly maxPayloadBytes: number;
-  /** Omitted uses maxPayloadBytes. Null removes only the aggregate model-request cap,
-   * not individual evidence/output bounds or the provider's own limits. */
+  /** For finite callers, omitted uses maxPayloadBytes and null removes the aggregate request cap.
+   * Unbounded execution never overrides the provider's own physical limits. */
   readonly maxModelRequestBytes?: number | null;
   readonly maxOutputTokens: number;
-  /** null explicitly disables elapsed time cancellation; source, call and size budgets still apply. */
+  /** null disables elapsed time cancellation; unbounded execution also disables it. */
   readonly timeoutMs: number | null;
-  /** Per-search page size; legacy callers also use this as the accumulated count cap. */
+  /** Per-search page size; finite legacy callers also use this as the accumulated count cap. */
   readonly maxEvidenceItems: number;
   /** Null admits all bounded source batches without an additional total-count ceiling. */
   readonly maxAccumulatedEvidenceItems?: null;
@@ -155,6 +157,7 @@ export interface ExternalMedicalQueryConsentPort {
 }
 
 export interface EvidenceSearchRequest {
+  readonly executionLimits?: 'unbounded';
   readonly operationRunId: string;
   readonly operationKey: string;
   readonly input: JsonObject;

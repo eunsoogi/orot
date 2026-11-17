@@ -94,3 +94,20 @@ describe('visit question persistence contracts', () => {
     ).toBe(false);
   });
 });
+
+it('retains every validated generated parent beyond the former three-parent ceiling', () => {
+  const generatedArtifactSources = Array.from({ length: 12 }, (_, index) => ({
+    kind: 'generated_conversation' as const,
+    type: 'conversation_turn' as const,
+    id: `turn-${index}`,
+    revision: `revision-${index}`,
+  }));
+  const question = { ...legacyQuestion, generatedArtifactSources };
+  expect(VisitQuestionSchema.parse(question)).toEqual(question);
+  expect(
+    VisitQuestionSchema.safeParse({
+      ...question,
+      generatedArtifactSources: [...generatedArtifactSources, generatedArtifactSources[0]],
+    }).success,
+  ).toBe(false);
+});

@@ -3,7 +3,6 @@ import type { LocalHealthEvidenceInventory } from './localEvidenceRepository';
 import {
   appendHealthEvidenceRows,
   checkHealthEvidenceAbort,
-  DEFAULT_HEALTH_EVIDENCE_ROWS_PER_KIND,
   HEALTH_EVIDENCE_RECORD_KINDS,
   queryHealthEvidenceRows,
 } from './localEvidenceQueries';
@@ -11,7 +10,7 @@ import type { LocalHealthEvidenceRecord } from './localEvidenceQueries';
 
 /**
  * Reads the complete inventory in bounded SQL pages on one snapshot. A page
- * limit is not missing evidence; oversized rows still make coverage incomplete.
+ * limit is not missing evidence; all valid selected records retain their payload.
  * Yielding between pages lets navigation and cancellation events reach JS.
  */
 export async function readCompleteEvidenceInventory(
@@ -21,7 +20,7 @@ export async function readCompleteEvidenceInventory(
   const records: LocalHealthEvidenceRecord[] = [];
   const availableKinds: RecordKind[] = [];
   const truncatedKinds = new Set<RecordKind>();
-  const pageSize = DEFAULT_HEALTH_EVIDENCE_ROWS_PER_KIND;
+  const pageSize = 100;
   checkHealthEvidenceAbort(signal);
   await database.transaction(async transaction => {
     for (const kind of HEALTH_EVIDENCE_RECORD_KINDS) {

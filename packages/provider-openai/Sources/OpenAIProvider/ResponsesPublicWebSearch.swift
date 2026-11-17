@@ -12,13 +12,11 @@ public struct ChatGPTPublicWebSearchResult: Equatable, Sendable {
     public let citations: [ChatGPTWebCitation]
 }
 
-/// The plan route does not accept max_tool_calls. This is an observed local ceiling:
-/// rejecting an excess event requests cancellation but cannot undo remote work already started.
+/// Hosted search can perform as many steps as the provider needs. Validate identities and
+/// public-only output without turning completed calls or citations into a local execution quota.
 struct ResponsesPublicWebSearch {
     let enabled: Bool
     private var observedIDs = Set<String>()
-    static let maxCalls = 2
-    static let maxTextBytes = 32768
 
     init(enabled: Bool) {
         self.enabled = enabled
@@ -35,7 +33,7 @@ struct ResponsesPublicWebSearch {
         if item["type"] as? String == "web_search_call" {
             guard enabled else { throw ChatGPTResponsesError.unsupportedCapability("hosted tools") }
             guard let id = item["id"] as? String, !id.isEmpty,
-                  observedIDs.insert(id).inserted, observedIDs.count <= Self.maxCalls
+                  observedIDs.insert(id).inserted
             else { throw ResponsesMalformedDiagnostics.failure(.publicCallIdentityOrLimit) }
         } else if enabled, item["type"] as? String == "function_call" {
             throw ResponsesMalformedDiagnostics.failure(.publicFunctionCall)
@@ -46,7 +44,7 @@ struct ResponsesPublicWebSearch {
         guard enabled else { return nil }
         let calls = output.filter { $0["type"] as? String == "web_search_call" }
         let ids = calls.compactMap { $0["id"] as? String }
-        guard !calls.isEmpty, calls.count <= Self.maxCalls,
+        guard !calls.isEmpty,
               ids.count == calls.count, !ids.contains(""), Set(ids).count == ids.count,
               observedIDs.isSubset(of: Set(ids)),
               !output.contains(where: { $0["type"] as? String == "function_call" }),
@@ -71,7 +69,6 @@ struct ResponsesPublicWebSearch {
                     if !citations.contains(citation) {
                         citations.append(citation)
                     }
-                    guard citations.count <= 8 else { throw ResponsesMalformedDiagnostics.failure(.publicCitationLimit) }
                 }
             }
         }

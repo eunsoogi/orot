@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { evidenceSearchCapacity } from './evidenceCapacity';
 import type {
   MultiAgentExecutionIdentity,
@@ -23,7 +24,7 @@ export function responderResearchAvailability(
         isSourceAllowed(allowedScope, tool.sourceKind) &&
         (tool.additionalModelCalls === undefined ||
           state.modelCalls + tool.additionalModelCalls + (nativeTools ? 1 : 2) <=
-            state.budget.maxModelCalls) &&
+            executionLimit(state.budget, 'maxModelCalls')) &&
         allowedScope.sourceIds?.length !== 0 &&
         (tool.id !== EUROPE_PMC_TOOL_ID ||
           (allowedScope.timeRange === undefined &&
@@ -35,12 +36,18 @@ export function responderResearchAvailability(
       execution: toolExecution,
       ...(additionalModelCalls === undefined ? {} : { additionalModelCalls }),
     }));
-  const remainingModelCalls = Math.max(0, state.budget.maxModelCalls - state.modelCalls);
-  const remainingToolCalls = Math.max(0, state.budget.maxToolCalls - state.toolCalls);
+  const remainingModelCalls = Math.max(
+    0,
+    executionLimit(state.budget, 'maxModelCalls') - state.modelCalls,
+  );
+  const remainingToolCalls = Math.max(
+    0,
+    executionLimit(state.budget, 'maxToolCalls') - state.toolCalls,
+  );
   const remainingResearchCycles =
-    revised && !nativeTools
+    revised && !nativeTools && state.budget.executionLimits !== 'unbounded'
       ? 0
-      : Math.max(0, state.budget.maxResearchCycles - state.researchCycles);
+      : Math.max(0, executionLimit(state.budget, 'maxResearchCycles') - state.researchCycles);
   return {
     canRequestEvidence:
       candidateTools.length > 0 &&
@@ -50,8 +57,9 @@ export function responderResearchAvailability(
       evidenceSearchCapacity(state.budget, state.evidenceReferences.length) > 0,
     allowedScope,
     candidateTools,
-    remainingModelCalls,
-    remainingToolCalls,
-    remainingResearchCycles,
+    remainingModelCalls: state.budget.executionLimits === 'unbounded' ? null : remainingModelCalls,
+    remainingToolCalls: state.budget.executionLimits === 'unbounded' ? null : remainingToolCalls,
+    remainingResearchCycles:
+      state.budget.executionLimits === 'unbounded' ? null : remainingResearchCycles,
   };
 }

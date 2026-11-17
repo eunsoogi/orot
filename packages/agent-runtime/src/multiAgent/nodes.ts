@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { availableEvidenceTools } from './initialEvidenceSearch';
 import type { JsonObject } from '@orot/model-runtime';
 import { isSourceAllowed } from './evidence';
@@ -24,7 +25,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       canceled(context);
       return completeState();
     }
-    if (state.modelCalls >= state.budget.maxModelCalls) {
+    if (state.modelCalls >= executionLimit(state.budget, 'maxModelCalls')) {
       stop(context, 'The model call budget was exhausted.', 'budget_exceeded');
       return completeState();
     }
@@ -82,11 +83,11 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       stop(context, 'No bounded evidence search is available for this request.');
       return completeState();
     }
-    if (state.researchCycles >= state.budget.maxResearchCycles) {
+    if (state.researchCycles >= executionLimit(state.budget, 'maxResearchCycles')) {
       stop(context, 'The evidence research cycle budget was exhausted.', 'budget_exceeded');
       return completeState();
     }
-    if (state.modelCalls >= state.budget.maxModelCalls) {
+    if (state.modelCalls >= executionLimit(state.budget, 'maxModelCalls')) {
       stop(context, 'The model call budget was exhausted.', 'budget_exceeded');
       return completeState();
     }
@@ -122,7 +123,10 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
     const outcome = await callModelWithEvidenceFreshness(context, request);
     if (!outcome) return completeState();
     if (outcome.status !== 'response') return finishModelFailure(context, outcome);
-    const plan = await decodeResearchPlan(outcome.response, state.budget.maxPayloadBytes);
+    const plan = await decodeResearchPlan(
+      outcome.response,
+      executionLimit(state.budget, 'maxPayloadBytes'),
+    );
     const tool =
       plan &&
       availableEvidenceTools(options, state).find((candidate) => candidate.id === plan.toolId);
@@ -146,7 +150,7 @@ export function createNodes<TResult>(context: RuntimeContext<TResult>) {
       );
       return completeState();
     }
-    if (utf8ByteLength(canonicalJson(input)) > state.budget.maxPayloadBytes) {
+    if (utf8ByteLength(canonicalJson(input)) > executionLimit(state.budget, 'maxPayloadBytes')) {
       stop(context, 'The researcher tool input exceeded the payload limit.', 'budget_exceeded');
       return completeState();
     }

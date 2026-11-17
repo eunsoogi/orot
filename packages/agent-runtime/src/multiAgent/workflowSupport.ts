@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { exceedsEvidenceCapacity } from './evidenceCapacity';
 import { isVerifiedPendingActionRecovery } from './pendingActionRecoveryOptions';
 import { canRecoverCommittedActions, recoverCommittedAction } from './recoverCommittedAction';
@@ -31,7 +32,6 @@ import { checkpointMatchesRun, type WorkflowState } from './state';
 import { isOrderedTimestampRange } from './timestamps';
 import { validToolModelCost } from './evidenceToolModelBudget';
 import { validPhotoInput } from './photoInputValidation';
-
 function validEvidenceTool(tool: EvidenceSearchTool, scope: AllowedEvidenceScope): boolean {
   // Network access is reserved for external medical sources; local health and memory tools stay local.
   const executionMatchesSource =
@@ -158,9 +158,9 @@ export function resumeState<TResult>(
     !isNonNegativeSafeInteger(saved.modelCalls) ||
     !isNonNegativeSafeInteger(saved.toolCalls) ||
     !isNonNegativeSafeInteger(saved.researchCycles) ||
-    saved.modelCalls > options.execution.budget.maxModelCalls ||
-    saved.toolCalls > options.execution.budget.maxToolCalls ||
-    saved.researchCycles > options.execution.budget.maxResearchCycles ||
+    saved.modelCalls > executionLimit(options.execution.budget, 'maxModelCalls') ||
+    saved.toolCalls > executionLimit(options.execution.budget, 'maxToolCalls') ||
+    saved.researchCycles > executionLimit(options.execution.budget, 'maxResearchCycles') ||
     exceedsEvidenceCapacity(options.execution.budget, saved.evidenceReferences.length) ||
     (saved.phase === 'evidence_research' && !saved.evidenceNeed) ||
     (saved.phase === 'task_response' &&

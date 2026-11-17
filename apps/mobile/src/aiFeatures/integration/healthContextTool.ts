@@ -205,10 +205,12 @@ export function createHealthContextTool(
           detail: input.detail as HealthContextDetail,
         });
         items.push(item);
-        // The caller already reserved this bounded batch allowance. A smaller
-        // feature-local ceiling would discard requested topics despite available capacity.
-        // Measure the whole envelope and keep each topic intact; never trim facts to fit.
-        if (jsonByteLength(batch()) > request.maxPayloadBytes) {
+        // Legacy bounded callers keep their envelope allowance; interactive work
+        // retains complete topics and lets the selected provider report its capacity.
+        if (
+          request.executionLimits !== 'unbounded' &&
+          jsonByteLength(batch()) > request.maxPayloadBytes
+        ) {
           items.pop();
           gaps.push(
             'period_detail_exceeds_payload_limit_choose_fewer_topics_or_summary',

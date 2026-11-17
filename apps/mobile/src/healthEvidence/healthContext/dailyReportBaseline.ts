@@ -1,3 +1,4 @@
+import { readSelectedEvidenceRows } from '../readSelectedEvidenceRows';
 import {
   baselineCandidateFilter,
   baselineCandidateOrder,
@@ -18,7 +19,6 @@ import {
 import { candidateScopeCondition } from '../evidenceCandidateScope';
 import type { EvidenceCandidateScope } from '../evidenceCandidateScope';
 import type { LocalHealthEvidenceRecord } from '../localEvidenceQueries';
-import { MAX_HEALTH_EVIDENCE_RECORD_BYTES } from '../localEvidenceQueries';
 import type { DailyReportCalendarWindow } from './dailyReportWindow';
 import type { DailyReportLineage } from '../../storage/dailyReportStorageTypes';
 
@@ -82,7 +82,7 @@ export async function readDailyReportBaseline(
   calendar: DailyReportCalendarWindow,
   scope: EvidenceCandidateScope,
   today: readonly LocalHealthEvidenceRecord[],
-  byteBudget: number,
+  byteBudget: number | null,
   signal?: AbortSignal,
 ) {
   const values: LocalHealthEvidenceRecord[] = [];
@@ -107,26 +107,27 @@ export async function readDailyReportBaseline(
   const at = localQueryTimestampKeyExpression('r.effective_at');
   const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
   const rows = (
-    await tx.execute(
-      `SELECT r.id, CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES.health_observation.table} r WHERE ${selected.sql} AND ${relevant.sql} AND ${at} >= ? AND ${at} < ? AND ${ingestion} <= ? AND json_extract(r.payload_json, '$.observationKind') = 'measurement' ORDER BY ${baselineCandidateOrder(at)} LIMIT 101`,
+    await readSelectedEvidenceRows(
+      tx,
+      `SELECT r.id, r.payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES.health_observation.table} r WHERE ${selected.sql} AND ${relevant.sql} AND ${at} >= ? AND ${at} < ? AND ${ingestion} <= ? AND json_extract(r.payload_json, '$.observationKind') = 'measurement' ORDER BY ${baselineCandidateOrder(at)}`,
       [
-        MAX_HEALTH_EVIDENCE_RECORD_BYTES,
         ...selected.parameters,
         relevant.parameter,
         localQueryTimestampKey(range.fromInclusive),
         localQueryTimestampKey(range.toExclusive),
         localQueryTimestampKey(calendar.generationCutoff),
       ],
+      signal,
     )
   ).rows;
-  let partial = rows.length > 100;
+  let partial = false;
   let bytes = 0;
-  for (const row of rows.slice(0, 100)) {
+  for (const row of rows) {
     if (signal?.aborted) throw new Error('Baseline read cancelled.');
     if (
       typeof row.payload_json !== 'string' ||
       typeof row.payload_bytes !== 'number' ||
-      bytes + row.payload_bytes > byteBudget
+      (byteBudget !== null && bytes + row.payload_bytes > byteBudget)
     ) {
       partial = true;
       continue;

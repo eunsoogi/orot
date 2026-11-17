@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import type { JsonValue, LanguageModelRequest } from '@orot/model-runtime';
 import type { TaskResponderInput } from './contracts';
 import { isEvidenceIndependentResult } from './evidenceIndependentResult';
@@ -30,7 +31,8 @@ export async function callConversationalResponder<TResult>(
   if (
     outcome?.status !== 'response' ||
     outcome.response.finishReason !== 'complete' ||
-    utf8ByteLength(canonicalJson(outcome.response)) > state.budget.maxPayloadBytes ||
+    utf8ByteLength(canonicalJson(outcome.response)) >
+      executionLimit(state.budget, 'maxPayloadBytes') ||
     !context.options.task.isEvidenceIndependentResult ||
     input.evidence.items.length ||
     state.toolCalls ||
@@ -45,7 +47,8 @@ export async function callConversationalResponder<TResult>(
   )
     return { outcome, state };
   // One call selects a tool and another answers from its result; never raise the caller's budget.
-  if (state.modelCalls + 2 > state.budget.maxModelCalls) return { outcome, state };
+  if (state.modelCalls + 2 > executionLimit(state.budget, 'maxModelCalls'))
+    return { outcome, state };
   const nextState = { ...state, modelCalls: state.modelCalls + 1 };
   reportProgress(context, { type: 'model_started', phase: 'revised_response' });
   const requiredOutcome = await callModelWithEvidenceFreshness(

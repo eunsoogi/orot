@@ -1,5 +1,3 @@
-import { utf8ByteLength } from './protocol';
-
 export type SteeringStatus = 'queued' | 'prepared' | 'applied' | 'not_applied';
 export interface SteeringInstruction {
   readonly id: string;
@@ -14,7 +12,7 @@ export interface SteeringBatch {
 export type SteeringEnqueueResult = 'queued' | 'duplicate' | 'rejected';
 
 /**
- * Request-owned, bounded in-memory queue. It never dispatches or grants approval.
+ * Request-owned in-memory queue. It never dispatches or grants approval.
  * The continuation owner must persist a claimed batch in protected storage before
  * provider intent. Reconstructing this queue is not permission to replay a call.
  */
@@ -23,7 +21,6 @@ export function createSteeringQueue(owner: string) {
   let revision = 0;
   let prepared: SteeringBatch | undefined;
   let closed = false;
-  let totalBytes = 0;
   const snapshot = () => instructions.map((instruction) => ({ ...instruction }));
   return {
     snapshot,
@@ -37,16 +34,8 @@ export function createSteeringQueue(owner: string) {
       if (closed || requestOwner !== owner || !id.trim() || !text.trim()) return 'rejected';
       const previous = instructions.find((instruction) => instruction.id === id);
       if (previous) return previous.text === text ? 'duplicate' : 'rejected';
-      const bytes = utf8ByteLength(text);
-      if (
-        id.length > 128 ||
-        bytes > 4096 ||
-        totalBytes + bytes > 16384 ||
-        instructions.length >= 16
-      )
-        return 'rejected';
+      if (id.length > 128) return 'rejected';
       instructions.push({ id, text, sequence: instructions.length + 1, status: 'queued' });
-      totalBytes += bytes;
       return 'queued';
     },
     /** Called only after the active provider/tool operation settles, before a new model request. */
@@ -94,7 +83,6 @@ export function createSteeringQueue(owner: string) {
       closed = true;
       prepared = undefined;
       instructions = [];
-      totalBytes = 0;
     },
   };
 }

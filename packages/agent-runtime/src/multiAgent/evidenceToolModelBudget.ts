@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import type { EvidenceSearchTool, ProviderStopObservation } from './contracts';
 import type { WorkflowState } from './state';
 
@@ -15,7 +16,7 @@ export function validToolModelCost(tool: EvidenceSearchTool): boolean {
 export function canReserveToolModelCall(tool: EvidenceSearchTool, state: WorkflowState): boolean {
   return (
     tool.additionalModelCalls === undefined ||
-    state.modelCalls + tool.additionalModelCalls < state.budget.maxModelCalls
+    state.modelCalls + tool.additionalModelCalls < executionLimit(state.budget, 'maxModelCalls')
   );
 }
 

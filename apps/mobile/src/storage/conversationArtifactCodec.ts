@@ -19,8 +19,7 @@ import {
 export function decodeConversationArtifact(
   serialized: unknown,
 ): ConversationArtifact | null {
-  // Admission bounds incoming batches and calls. A smaller serialized-artifact cap
-  // would reject valid accumulated lineage only after a successful answer.
+  // Validate source and shape independently of content length; successful work must remain restorable.
   if (typeof serialized !== 'string') return null;
   try {
     const value: unknown = JSON.parse(serialized);
@@ -47,21 +46,15 @@ export function decodeConversationArtifact(
         !validConversationReportTarget(value.dailyReport)) ||
       (value.priorDialogue !== undefined &&
         (!Array.isArray(value.priorDialogue) ||
-          value.priorDialogue.length > 4 ||
           value.priorDialogue.some(
             turn =>
               !object(turn) ||
               typeof turn.question !== 'string' ||
-              turn.question.length > 1000 ||
-              typeof turn.answer !== 'string' ||
-              turn.answer.length > 1000,
+              typeof turn.answer !== 'string',
           ))) ||
       (value.priorUserReports !== undefined &&
         (!Array.isArray(value.priorUserReports) ||
-          value.priorUserReports.length > 8 ||
-          value.priorUserReports.some(
-            report => typeof report !== 'string' || report.length > 2000,
-          ))) ||
+          value.priorUserReports.some(report => typeof report !== 'string'))) ||
       (value.priorDialogueOmitted !== undefined &&
         value.priorDialogueOmitted !== true) ||
       !Array.isArray(value.sources)
@@ -75,7 +68,6 @@ export function decodeConversationArtifact(
         value.initialResponse.callId.length > 200 ||
         typeof value.initialResponse.text !== 'string' ||
         !value.initialResponse.text.trim() ||
-        value.initialResponse.text.length > 300 ||
         Object.keys(value.initialResponse).some(
           key => !['callId', 'text'].includes(key),
         ))
@@ -155,7 +147,6 @@ export function decodeConversationArtifact(
           (object(ref.locator) &&
             ref.locator.kind === 'health_context_period') ||
           !Array.isArray(source.records) ||
-          source.records.length > 32 ||
           (ref.sourceKind !== 'external_medical' &&
             source.records.length === 0) ||
           (ref.sourceKind === 'external_medical' &&

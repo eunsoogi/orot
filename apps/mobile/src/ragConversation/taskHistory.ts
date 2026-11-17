@@ -20,14 +20,14 @@ export function appointmentState(content: string): string | undefined {
   }
 }
 
-/** Bound prior conversation as context; it is not current evidence. */
+/** Preserve structurally valid prior conversation as context, never current evidence. */
 export function priorMessages(
   context: JsonValue | undefined,
 ): readonly RagConversationMessage[] {
-  // Current visit entry stores the same bounded history inside its intent context.
+  // Current visit entry stores the same validated history inside its intent context.
   if (isObject(context)) context = context.history as JsonValue | undefined;
   if (!Array.isArray(context)) return [];
-  return context.slice(-8).flatMap(message => {
+  return context.flatMap(message => {
     if (
       !message ||
       typeof message !== 'object' ||
@@ -36,6 +36,6 @@ export function priorMessages(
       typeof message.content !== 'string'
     )
       return [];
-    return [{ role: message.role, content: message.content.slice(0, 2000) }];
+    return [{ role: message.role, content: message.content }];
   });
 }

@@ -9,15 +9,7 @@ import type { RagConversationMessage } from '../../ragConversation/task';
 import { providerHistoryMessage } from '../../ragConversation/conversationHistoryPayload';
 import type { LocalEvidenceSnapshot } from './evidenceSnapshot';
 import { localEvidenceKey } from './evidenceSnapshot';
-import {
-  jsonByteLength,
-  MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES,
-  utf8ByteLength,
-} from './evidenceUtils';
-
-const MAX_INITIAL_EVIDENCE_ITEMS = 8;
-const MAX_RAG_HISTORY_BYTES = 4 * 1024;
-const PAYLOAD_GAP = '일부 근거가 요청 크기 제한으로 제외되었어요.';
+const PAYLOAD_GAP = '일부 근거의 현재 출처를 확인하지 못했어요.';
 
 function evidenceCoverage(
   snapshot: LocalEvidenceSnapshot,
@@ -48,7 +40,7 @@ function evidenceCoverage(
   });
 }
 
-/** Selects only complete evidence items that fit the workflow's request budget. */
+/** Preserve complete ranked items without applying an unrelated serialized-size allowance. */
 export function selectInitialEvidence(
   snapshot: LocalEvidenceSnapshot,
   hits: readonly HybridEvidenceSearchHit[],
@@ -57,54 +49,21 @@ export function selectInitialEvidence(
     snapshot.items.map(item => [localEvidenceKey(item), item]),
   );
   const selected: EvidenceItem[] = [];
-  const omittedKinds = new Set<EvidenceItem['sourceKind']>();
   const seen = new Set<string>();
-  for (const hit of hits.slice(0, MAX_INITIAL_EVIDENCE_ITEMS)) {
+  for (const hit of hits) {
     const key = localEvidenceKey(hit.chunk.metadata);
     const item = byKey.get(key);
     if (!item || seen.has(key)) continue;
-    const candidate = [...selected, item];
-    const batch = {
-      items: candidate,
-      coverage: evidenceCoverage(
-        snapshot,
-        candidate,
-        MAX_INITIAL_EVIDENCE_ITEMS,
-      ),
-      conflicts: [],
-    } satisfies EvidenceBatch;
-    if (jsonByteLength(batch) > MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES) {
-      omittedKinds.add(item.sourceKind);
-      continue;
-    }
     selected.push(item);
     seen.add(key);
   }
 
   const result: EvidenceBatch = {
     items: selected,
-    coverage: evidenceCoverage(snapshot, selected, MAX_INITIAL_EVIDENCE_ITEMS),
+    coverage: evidenceCoverage(snapshot, selected, Math.max(1, hits.length)),
     conflicts: [],
   };
-  if (hits.length > MAX_INITIAL_EVIDENCE_ITEMS) {
-    for (const hit of hits.slice(MAX_INITIAL_EVIDENCE_ITEMS)) {
-      const item = byKey.get(localEvidenceKey(hit.chunk.metadata));
-      if (item) omittedKinds.add(item.sourceKind);
-    }
-  }
-  if (omittedKinds.size === 0) return result;
-  return {
-    ...result,
-    coverage: result.coverage.map(value =>
-      omittedKinds.has(value.sourceKind)
-        ? {
-            ...value,
-            gaps: [...value.gaps, PAYLOAD_GAP],
-            truncated: true,
-          }
-        : value,
-    ),
-  };
+  return result;
 }
 
 export interface BoundedRagSelection {
@@ -113,7 +72,7 @@ export interface BoundedRagSelection {
   readonly omittedForPayload: boolean;
 }
 
-/** Bounds fresh RAG evidence before any provider call and aborts when a relevant hit must be omitted. */
+/** Abort only when selected source evidence cannot be resolved, never because of serialized size. */
 export function createPayloadBoundedRagSearch(input: {
   readonly rag: Pick<LocalE5RagService, 'search'>;
   readonly snapshot: LocalEvidenceSnapshot;
@@ -152,18 +111,6 @@ export function createPayloadBoundedRagSearch(input: {
             omittedForPayload ||= !item;
             continue;
           }
-          const candidate = [...selected, item];
-          const candidateBatch = {
-            items: candidate,
-            coverage: evidenceCoverage(input.snapshot, candidate, resultLimit),
-            conflicts: [],
-          } satisfies EvidenceBatch;
-          if (
-            jsonByteLength(candidateBatch) > MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES
-          ) {
-            omittedForPayload = true;
-            continue;
-          }
           selected.push(item);
           selectedHits.push(hit);
           seen.add(key);
@@ -187,60 +134,11 @@ export function createPayloadBoundedRagSearch(input: {
   };
 }
 
-function utf8Suffix(value: string, maxBytes: number): string {
-  let start = value.length;
-  let remaining = maxBytes;
-  while (start > 0) {
-    let codePointStart = start - 1;
-    const lastUnit = value.charCodeAt(codePointStart);
-    if (
-      lastUnit >= 0xdc00 &&
-      lastUnit <= 0xdfff &&
-      codePointStart > 0 &&
-      value.charCodeAt(codePointStart - 1) >= 0xd800 &&
-      value.charCodeAt(codePointStart - 1) <= 0xdbff
-    ) {
-      codePointStart -= 1;
-    }
-    const bytes = utf8ByteLength(value.slice(codePointStart, start));
-    if (bytes > remaining) break;
-    remaining -= bytes;
-    start = codePointStart;
-  }
-  return value.slice(start);
-}
-
-function lastUtf16Units(value: string, maxUnits: number): string {
-  let start = Math.max(0, value.length - maxUnits);
-  if (
-    start > 0 &&
-    start < value.length &&
-    value.charCodeAt(start) >= 0xdc00 &&
-    value.charCodeAt(start) <= 0xdfff &&
-    value.charCodeAt(start - 1) >= 0xd800 &&
-    value.charCodeAt(start - 1) <= 0xdbff
-  ) {
-    start += 1;
-  }
-  return value.slice(start);
-}
-
-/** Keeps only recent chat text within a small UTF-8 allowance; citations always come from fresh records. */
+/** Preserve eligible user context; citations still come only from revalidated sources. */
 export function boundRagConversationHistory(
   messages: readonly RagConversationMessage[],
 ): readonly RagConversationMessage[] {
-  let remaining = MAX_RAG_HISTORY_BYTES;
-  const bounded: RagConversationMessage[] = [];
-  for (const message of messages.slice(-8).reverse()) {
-    if (remaining === 0) break;
-    const projected = providerHistoryMessage(message);
-    const content = utf8Suffix(
-      lastUtf16Units(projected.content, 2000),
-      remaining,
-    );
-    if (!content) continue;
-    remaining -= utf8ByteLength(content);
-    bounded.push({ role: projected.role, content });
-  }
-  return bounded.reverse();
+  return messages
+    .map(providerHistoryMessage)
+    .filter(message => message.content.length > 0);
 }

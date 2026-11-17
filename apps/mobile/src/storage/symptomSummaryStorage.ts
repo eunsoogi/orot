@@ -130,7 +130,7 @@ export function createSymptomSummaryStorage(
       assertSummaryNotCancelled(signal);
       await ensure();
       const serialized = JSON.stringify(value);
-      if (serialized.length > 128_000 || !decodeSavedSymptomSummary(serialized))
+      if (!decodeSavedSymptomSummary(serialized))
         throw new Error('The summary cannot be saved.');
       assertSummaryNotCancelled(signal);
       await database.transaction(async tx => {

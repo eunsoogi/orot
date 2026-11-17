@@ -34,7 +34,6 @@ const GeneratedArtifactSourceSchema = z
   );
 const GeneratedArtifactSourcesSchema = z
   .array(GeneratedArtifactSourceSchema)
-  .max(3)
   .refine(
     (sources) =>
       new Set(sources.map((source) => `${source.kind}\u0000${source.id}`)).size === sources.length,

@@ -42,8 +42,7 @@ export function decodeResearchArtifact(
     typeof id !== 'number' ||
     !Number.isSafeInteger(id) ||
     id < 1 ||
-    typeof serialized !== 'string' ||
-    serialized.length > 50000
+    typeof serialized !== 'string'
   )
     return null;
   try {

@@ -103,7 +103,7 @@ describe('complete paged evidence inventory', () => {
     }
   });
 
-  it('never declares an inventory complete when an oversized record was omitted', async () => {
+  it('retains valid records beyond the former payload size ceiling', async () => {
     const { database, close } = createHealthEvidenceTestDatabase();
     try {
       await runMigrations(database);
@@ -125,9 +125,9 @@ describe('complete paged evidence inventory', () => {
         [JSON.stringify({ ...row, displayText: '합'.repeat(6000) }), row.id],
       );
       const snapshot = await readCompleteEvidenceInventory(database);
-      expect(snapshot.inventoryComplete).toBe(false);
-      expect(snapshot.truncatedKinds).toContain('medication_definition');
-      expect(snapshot.records).toHaveLength(0);
+      expect(snapshot.inventoryComplete).toBe(true);
+      expect(snapshot.truncatedKinds).toEqual([]);
+      expect(snapshot.records).toHaveLength(1);
     } finally {
       close();
     }

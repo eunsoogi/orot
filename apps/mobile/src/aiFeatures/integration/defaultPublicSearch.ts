@@ -20,6 +20,7 @@ export function budgetAfterPublicSearch(
   search: Pick<DefaultPublicSearchResult, 'status'>,
   hasTool: boolean,
 ): MultiAgentBudget {
+  if (budget.executionLimits === 'unbounded') return budget;
   const spent =
     search.status === 'success' ||
     search.status === 'empty' ||
@@ -123,6 +124,7 @@ export async function runDefaultPublicSearch(input: {
       allowedScope: { sourceKinds: ['external_medical'] },
       resultLimit: 1,
       maxPayloadBytes: 65536,
+      executionLimits: 'unbounded',
       signal: input.signal,
     });
     if (input.signal.aborted) return { status: 'cancelled' };

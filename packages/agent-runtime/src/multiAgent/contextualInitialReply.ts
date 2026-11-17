@@ -8,8 +8,8 @@ import type { LanguageModelProvider, LanguageModelRequest } from '@orot/model-ru
 import type { ExecutionConsentPort, MultiAgentExecutionIdentity } from './contracts';
 import { callModel, observeUntilAbort } from './modelCall';
 
-/** Optional, ephemeral prose is never a task result or a journaled action. Two bounded
- * calls have their own budget; failure cannot spend the final task's model allowance.
+/** Optional, ephemeral prose is never a task result or a journaled action. Generation
+ * and independent review are separate stages; failure cannot spend the final task's model allowance.
  * Both exact payloads pass the ordinary consent gate, with no records or tools added. */
 export async function generateContextualInitialReply(input: {
   provider: LanguageModelProvider;
@@ -35,10 +35,13 @@ export async function generateContextualInitialReply(input: {
       : controller.signal.aborted
         ? ('cancelled' as const)
         : ('stale_evidence' as const);
-  const deadline = createInitialReplyDeadline(() => {
-    timedOut = true;
-    abort();
-  }, 10_000);
+  const deadline = createInitialReplyDeadline(
+    () => {
+      timedOut = true;
+      abort();
+    },
+    input.execution.budget.executionLimits === 'unbounded' ? null : 10_000,
+  );
   const execution = {
     ...input.execution,
     budget: {
@@ -93,7 +96,8 @@ export async function generateContextualInitialReply(input: {
         { role: 'system', content: system },
         { role: 'user', content },
       ],
-      ...(input.provider.capabilities.requestControls?.includes('maxOutputTokens')
+      ...(input.execution.budget.executionLimits !== 'unbounded' &&
+      input.provider.capabilities.requestControls?.includes('maxOutputTokens')
         ? { maxOutputTokens: tokens }
         : {}),
     };

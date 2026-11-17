@@ -110,7 +110,7 @@ test('equal text never collapses separate turns or promotes ordinary history to 
   expect(omitted).not.toHaveProperty('priorDialogueQuestionReferences');
 });
 
-test('uses only indices in the bounded request and preserves unmatched full bounded text', () => {
+test('indexes the complete request without dropping earlier turns', () => {
   const history = Array.from({ length: 10 }, (_, n) => ({
     role: 'user',
     content: `q${n}`,
@@ -118,13 +118,13 @@ test('uses only indices in the bounded request and preserves unmatched full boun
   const body = conversationRequestHistory({
     history,
     priorDialogue: [
-      { question: 'q0', answer: 'out of bound' },
-      { question: 'q9', answer: 'in bound' },
+      { question: 'q0', answer: 'earliest answer' },
+      { question: 'q9', answer: 'latest answer' },
     ],
   });
-  expect(body.previousConversation[7].content).toBe('q9');
+  expect(body.previousConversation).toEqual(history);
   expect(body.priorDialogue).toEqual([
-    { question: 'q0', answer: 'out of bound' },
-    { questionFromPreviousConversation: 7, answer: 'in bound' },
+    { questionFromPreviousConversation: 0, answer: 'earliest answer' },
+    { questionFromPreviousConversation: 9, answer: 'latest answer' },
   ]);
 });
