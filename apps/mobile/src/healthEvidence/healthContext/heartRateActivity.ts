@@ -16,6 +16,9 @@ import type {
 
 /** Enrich retained heart-rate series from local intervals only. A time overlap is not
  * a HealthKit workout association, active exercise, causation or a clinical judgment.
+ * A boundary-first calendar sweep assigns exact local days without scanning every day per sample.
+ * healthContextDays supplies ordered, non-overlapping date/end keys; carrying their maxima
+ * preserves DST and fractional endpoints, and the end-key check excludes gaps.
  * A sorted timeline carries the maximum prior workout end, avoiding a workout scan per sample.
  * At a shared instant, interval ends sort before workout starts and point samples after them:
  * [start, end) intervals exclude an adjacent workout, while points include a workout's start.
@@ -57,7 +60,7 @@ export async function addHeartRateActivityContext(
         AND json_extract(r.payload_json, '$.concept') = 'workout_duration'
         AND ${currentEvidenceCondition('health_observation')}
         AND ${at} < ? AND ${end} > ? AND ${end} > ${at} ${cutoff}
-    ), heart AS MATERIALIZED (
+    ), undated_heart AS MATERIALIZED (
       SELECT ${at} AS start_key, ${end} AS end_key,
         json_extract(r.payload_json, '$.value.unit') AS unit,
         json_extract(r.payload_json, '$.value.amount') AS amount,
@@ -73,18 +76,32 @@ export async function addHeartRateActivityContext(
         AND json_extract(r.payload_json, '$.value.kind') = 'quantity'
         AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
         AND json_type(r.payload_json, '$.value.unit') = 'text'
+    ), calendar_events AS (
+      SELECT h.*, NULL AS calendar_date, NULL AS calendar_to, 1 AS boundary_order FROM undated_heart h
+      UNION ALL
+      SELECT from_key, NULL, NULL, NULL, NULL, date, to_key, 0 FROM days
+    ), calendar_timeline AS (
+      SELECT e.*, max(calendar_date) OVER calendar_order AS date,
+        max(calendar_to) OVER calendar_order AS to_key
+      FROM calendar_events e
+      WINDOW calendar_order AS (
+        ORDER BY start_key, boundary_order ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      )
+    ), heart AS MATERIALIZED (
+      SELECT start_key, end_key, unit, amount, sensor, date
+      FROM calendar_timeline WHERE boundary_order = 1 AND start_key < to_key
     ), events AS (
       SELECT h.*, CASE WHEN h.end_key > h.start_key THEN h.end_key ELSE h.start_key END AS event_key,
         CASE WHEN h.end_key > h.start_key THEN 0 ELSE 2 END AS event_order,
         NULL AS workout_end FROM heart h
       UNION ALL
-      SELECT NULL, NULL, NULL, NULL, NULL, start_key, 1, end_key FROM workouts
+      SELECT NULL, NULL, NULL, NULL, NULL, NULL, start_key, 1, end_key FROM workouts
     ), timeline AS (
       SELECT e.*, max(workout_end) OVER (
         ORDER BY event_key, event_order ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
       ) AS latest_workout_end FROM events e
     ), classified AS (
-      SELECT h.*, (SELECT date FROM days WHERE h.start_key >= from_key AND h.start_key < to_key LIMIT 1) AS date,
+      SELECT h.*,
         CASE WHEN h.end_key IS NULL OR h.end_key < h.start_key OR h.end_key > ?
           OR NOT EXISTS (SELECT 1 FROM workouts) THEN 'unknown'
         WHEN latest_workout_end > h.start_key THEN 'workout_overlap'
