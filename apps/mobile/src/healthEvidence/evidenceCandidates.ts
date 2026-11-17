@@ -1,3 +1,4 @@
+import { visitPeriodEvidenceAvailable } from '../storage/visitPeriodEvidencePolicy';
 import { STORAGE_TABLES } from '@orot/storage';
 import type { RecordKind, SqlDatabase, SqlExecutor } from '@orot/storage';
 import type { HealthEvidenceInventory } from './coverage';
@@ -70,8 +71,11 @@ async function readDependencies(
         [...batch],
       );
       for (const row of result.rows) {
-        if (!selected.has(`${kind}\u0000${row.id}`))
-          dependencies.push(decodeHealthEvidenceRecord(kind, row));
+        if (!selected.has(`${kind}\u0000${row.id}`)) {
+          const entry = decodeHealthEvidenceRecord(kind, row);
+          if (await visitPeriodEvidenceAvailable(executor, entry))
+            dependencies.push(entry);
+        }
       }
     }
   }
@@ -131,7 +135,9 @@ export async function readEvidenceCandidates(
           scope,
         },
       );
-      candidates.push(...page.records);
+      for (const entry of page.records)
+        if (await visitPeriodEvidenceAvailable(transaction, entry))
+          candidates.push(entry);
       hasMoreCandidates ||= page.nextCursor !== null;
       if (page.incomplete) truncatedKinds.push(kind);
     }

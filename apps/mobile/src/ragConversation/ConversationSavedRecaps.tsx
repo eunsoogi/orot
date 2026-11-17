@@ -1,11 +1,9 @@
+import { visibleVisitQuestionRecords } from '../storage/visibleVisitQuestionRecords';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import type { RecapResult, VisitQuestionRecord } from '@orot/domain';
 import type { SqlDatabase } from '@orot/storage';
-import {
-  createVisitQuestionRecordRepository,
-  readCurrentRecapResult,
-} from '@orot/storage';
+import { readCurrentRecapResult } from '@orot/storage';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
@@ -35,6 +33,7 @@ export function ConversationSavedRecaps({
 }) {
   const [results, setResults] = useState<RecapResult[]>([]);
   const [failed, setFailed] = useState(false);
+  const [quarantined, setQuarantined] = useState(false);
   const [statuses, setStatuses] = useState<string[]>([]);
   const [records, setRecords] = useState<VisitQuestionRecord[]>([]);
   useEffect(() => {
@@ -44,10 +43,10 @@ export function ConversationSavedRecaps({
       const current = ++revision;
       (async () => {
         const database = await loadDatabase();
-        const official =
-          await createVisitQuestionRecordRepository(
-            database,
-          ).listForAppointment(appointmentId);
+        const visibleRecords = visibleVisitQuestionRecords(database);
+        const official = await visibleRecords.listForAppointment(appointmentId);
+        const unavailable =
+          await visibleRecords.unavailableForAppointment(appointmentId);
         const pending = await database.execute(
           "SELECT work_status FROM recap_bindings WHERE appointment_id = ? AND work_status <> 'saved' ORDER BY recording_id",
           [appointmentId],
@@ -69,7 +68,17 @@ export function ConversationSavedRecaps({
             loaded.push(result);
         }
         if (active && current === revision) {
-          setResults(loaded);
+          setResults(
+            loaded.filter(
+              result =>
+                !result.questions.some(question =>
+                  unavailable.some(
+                    item => item.questionId === question.questionId,
+                  ),
+                ),
+            ),
+          );
+          setQuarantined(unavailable.length > 0);
           setRecords(official);
           setStatuses(pending.rows.map(row => String(row.work_status)));
           setFailed(false);
@@ -102,6 +111,11 @@ export function ConversationSavedRecaps({
   }, [appointmentId, loadDatabase]);
   return (
     <View>
+      {quarantined ? (
+        <AppText accessibilityRole="alert">
+          {t('visitQuestions.restore.legacyPeriodUnavailable')}
+        </AppText>
+      ) : null}
       {failed ? (
         <AppText accessibilityRole="alert">
           {t('visitQuestions.recap.loadError')}

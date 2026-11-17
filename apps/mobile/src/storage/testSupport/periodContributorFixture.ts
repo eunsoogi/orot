@@ -21,6 +21,7 @@ export async function periodContributorFixture(
   concept: string,
   topic: HealthContextTopic,
   overlap = false,
+  duplicate = false,
 ) {
   const opened = openSqliteTestDatabase(':memory:');
   await runMigrations(opened.database);
@@ -54,6 +55,11 @@ export async function periodContributorFixture(
         '2026-10-01T01:00:00Z',
       ),
     );
+  if (duplicate)
+    await repository.put('health_observation', {
+      ...candidate,
+      id: 'duplicate',
+    });
   const read = createHealthContextReader(opened.database),
     registry = new LocalEvidenceReferenceRegistry();
   const report = await read(window, [topic]);

@@ -1,3 +1,4 @@
+import { markResearchPeriodPolicy } from './legacyResearchPeriodQuarantine';
 import type { SqlDatabase } from '@orot/storage';
 import type { RetainedResearch } from '../aiFeatures/integration/retainedResearchSearch';
 import { projectResearchArtifact } from './researchArtifactProjection';
@@ -164,6 +165,7 @@ export function createResearchArtifactStorage(database: SqlDatabase) {
           if (typeof id !== 'number' || !Number.isSafeInteger(id))
             throw new Error('Research identity is unavailable.');
           await appendResearchInputs(tx, database, id, item.inputSources ?? []);
+          await markResearchPeriodPolicy(tx, id, true);
           if (item.requestKey)
             await recordResearchRequest(tx, item.requestKey, id);
           ids.push(id);
@@ -172,6 +174,23 @@ export function createResearchArtifactStorage(database: SqlDatabase) {
           throw new Error('Research retention was cancelled.');
       });
       return ids;
+    },
+    async readUnavailableMetadata(id: number) {
+      await ensure();
+      const row = (
+        await database.execute(
+          "SELECT a.id,json_extract(a.snapshot_json,'$.createdAt') AS created_at FROM research_artifacts a JOIN research_period_policy p ON p.artifact_id=a.id WHERE a.id=? AND p.status='quarantined'",
+          [id],
+        )
+      ).rows[0];
+      return row
+        ? {
+            id: Number(row.id),
+            createdAt: String(row.created_at),
+            reason: 'unverifiable_legacy_period' as const,
+            recovery: 'regenerate' as const,
+          }
+        : null;
     },
     async read(id: number): Promise<ResearchArtifact | null> {
       await ensure();

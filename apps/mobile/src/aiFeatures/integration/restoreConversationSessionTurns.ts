@@ -1,3 +1,7 @@
+import {
+  restoreUnavailableToolTurns,
+  excludeUnavailableToolRequests,
+} from './restoreUnavailableToolTurns';
 import type { RestoredTurn } from '../../ragConversation/conversationRestoredTurn';
 import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
 import { restoreColdConversationPreviews } from './restoreColdConversationEligibility';
@@ -176,7 +180,12 @@ export async function restoreConversationSessionTurns(
     version,
     signal,
   });
+  const unavailable = (
+    (await storage.readUnavailableToolMetadata?.(sessionId)) ?? []
+  ).filter(item => !selection || selection.ids.includes(item.messageId));
+  restoreUnavailableToolTurns(restored, unavailable);
   const times = new Map([
+    ...unavailable.map(item => [item.messageId, item.createdAt] as const),
     ...turns.map(turn => [turn.id, turn.createdAt] as const),
     ...toolTurns.map(turn => [turn.messageId, turn.createdAt] as const),
     ...interrupted.map(request => [request.id, request.createdAt] as const),
@@ -185,7 +194,7 @@ export async function restoreConversationSessionTurns(
     input.coldResume,
     signal,
     orderRestoredConversationTurns(restored, times),
-    interrupted,
+    excludeUnavailableToolRequests(interrupted, unavailable),
     storage,
     sessionId,
     version,

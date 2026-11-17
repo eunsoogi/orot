@@ -5,6 +5,7 @@ export type SavedQuestionReadFailureReason =
   | 'missing_citation_source'
   | 'stale_artifact'
   | 'changed_saved_questions'
+  | 'unverifiable_legacy_period'
   | 'changed_health_context'
   | 'health_context_reader_unavailable'
   | 'changed_generated_source'
@@ -31,6 +32,7 @@ export type VisitQuestionPreflightRecovery =
       readonly status: 'stale_evidence';
       readonly reason:
         | 'stale_artifact'
+        | 'unverifiable_legacy_period'
         | 'changed_health_context'
         | 'changed_generated_source';
       readonly action: 'revalidate_saved_question_sources';
@@ -53,6 +55,7 @@ export function recoveryForSavedQuestionReadFailure(
         action: 'retry_saved_question_read',
       };
     case 'stale_artifact':
+    case 'unverifiable_legacy_period':
     case 'changed_health_context':
     case 'changed_generated_source':
       return {

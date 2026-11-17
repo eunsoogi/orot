@@ -1,3 +1,4 @@
+import { visitPeriodEvidenceAvailable } from '../storage/visitPeriodEvidencePolicy';
 import { readSelectedEvidenceRows } from './readSelectedEvidenceRows';
 import type { RecordKind, RecordMap, SqlExecutor } from '@orot/storage';
 import { parseRecord, STORAGE_TABLES } from '@orot/storage';
@@ -58,8 +59,9 @@ export async function queryHealthEvidenceRows<K extends RecordKind>(
       payload_json,
       length(CAST(payload_json AS BLOB)) AS payload_bytes
      FROM ${STORAGE_TABLES[kind].table} WHERE ${condition.sql}${kind === 'symptom_entry' ? ' AND NOT EXISTS (SELECT 1 FROM legacy_symptom_deleted deleted WHERE deleted.id = symptom_entries.id)' : ''} ORDER BY id`;
+  const guarded = kind === 'visit_question' || kind === 'visit_question_record';
   const result =
-    limit === null
+    limit === null || guarded
       ? await readSelectedEvidenceRows(
           executor,
           sql,
@@ -72,7 +74,18 @@ export async function queryHealthEvidenceRows<K extends RecordKind>(
         ]);
   // SQLite calls are not interruptible through SqlDatabase; discard their result after cancellation.
   checkHealthEvidenceAbort(signal);
-  return result.rows;
+  if (kind !== 'visit_question' && kind !== 'visit_question_record')
+    return result.rows;
+  const visible = [];
+  for (const row of result.rows)
+    if (
+      await visitPeriodEvidenceAvailable(
+        executor,
+        decodeHealthEvidenceRecord(kind, row),
+      )
+    )
+      visible.push(row);
+  return visible.slice(0, limit ?? visible.length);
 }
 
 export function decodeHealthEvidenceRecord<K extends RecordKind>(

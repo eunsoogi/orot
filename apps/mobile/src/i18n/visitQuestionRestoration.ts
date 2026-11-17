@@ -1,5 +1,7 @@
 /** Messages for restoring reviewed visit questions and their historical sources. */
 export const visitQuestionRestorationKo = {
+  'visitQuestions.restore.legacyPeriodUnavailable':
+    '이전 질문의 삭제 이력을 확인할 수 없어 내용을 표시하지 않았어요. 원본은 보관되어 있어요. 현재 근거로 질문을 다시 생성해 주세요.',
   'visitQuestions.search.offline':
     '인터넷에 연결되어 있지 않아 공개 웹검색 결과를 반영하지 않았어요.',
   'visitQuestions.search.failed':

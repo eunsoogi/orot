@@ -1,4 +1,5 @@
 import React from 'react';
+import type { SqlTransaction } from '@orot/storage';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { subscribeRecapRetry } from '../../transcription/recapUpdates';
 import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
@@ -10,6 +11,7 @@ import {
 
 const result = recapResult(recapInput());
 jest.mock('@orot/storage', () => ({
+  ...jest.requireActual('@orot/storage'),
   readCurrentRecapResult: jest.fn(),
   createVisitQuestionRecordRepository: jest.fn(() => ({
     listForAppointment: async () => [],
@@ -28,7 +30,12 @@ it('removes displayed results immediately when a source is deleted and refresh f
           ? []
           : [{ recording_id: result.recordingSourceId }],
       }),
-      transaction: async () => {},
+      transaction: async (run: (tx: SqlTransaction) => Promise<void>) =>
+        run({
+          execute: async () => ({ rows: [] }),
+          commit: () => ({ rows: [] }),
+          rollback: () => ({ rows: [] }),
+        }),
     };
   };
   await act(async () => {
@@ -57,7 +64,12 @@ it('requests a retry only for the displayed visit', async () => {
         ? [{ work_status: 'save_failed' }]
         : [],
     }),
-    transaction: async () => {},
+    transaction: async (run: (tx: SqlTransaction) => Promise<void>) =>
+      run({
+        execute: async () => ({ rows: [] }),
+        commit: () => ({ rows: [] }),
+        rollback: () => ({ rows: [] }),
+      }),
   });
   await act(async () => {
     render(
@@ -81,7 +93,12 @@ it('does not display a result belonging to another visit', async () => {
         ? []
         : [{ recording_id: 'recording-1' }],
     }),
-    transaction: async () => {},
+    transaction: async (run: (tx: SqlTransaction) => Promise<void>) =>
+      run({
+        execute: async () => ({ rows: [] }),
+        commit: () => ({ rows: [] }),
+        rollback: () => ({ rows: [] }),
+      }),
   });
   await act(async () => {
     render(
@@ -115,7 +132,12 @@ it('shows a user correction separately from the AI result', async () => {
         ? []
         : [{ recording_id: result.recordingSourceId }],
     }),
-    transaction: async () => {},
+    transaction: async (run: (tx: SqlTransaction) => Promise<void>) =>
+      run({
+        execute: async () => ({ rows: [] }),
+        commit: () => ({ rows: [] }),
+        rollback: () => ({ rows: [] }),
+      }),
   });
   await act(async () => {
     render(
@@ -137,7 +159,12 @@ it('shows a saved result for its selected visit', async () => {
         ? []
         : [{ recording_id: result.recordingSourceId }],
     }),
-    transaction: async () => {},
+    transaction: async (run: (tx: SqlTransaction) => Promise<void>) =>
+      run({
+        execute: async () => ({ rows: [] }),
+        commit: () => ({ rows: [] }),
+        rollback: () => ({ rows: [] }),
+      }),
   });
   await act(async () => {
     render(

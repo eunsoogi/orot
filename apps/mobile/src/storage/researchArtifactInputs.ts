@@ -1,4 +1,8 @@
 import {
+  legacyResearchPeriodAvailable,
+  markResearchPeriodPolicy,
+} from './legacyResearchPeriodQuarantine';
+import {
   createManualHistoryRepository,
   localQueryTimestampKey,
   type SqlDatabase,
@@ -59,6 +63,12 @@ export async function rebuildResearchSearch(
         throw new Error('Invalid research identity.');
       const item = decodeResearchArtifact(row.id, row.snapshot_json);
       let current = item;
+      if (item && !(await legacyResearchPeriodAvailable(tx, item))) {
+        // Preserve removal cascades without admitting quarantined content as reusable evidence.
+        await indexResearchInputs(tx, item.id, item.inputSources);
+        cursor = row.id;
+        continue;
+      }
       if (item) {
         try {
           await appendResearchInputs(tx, database, row.id, item.inputSources);
@@ -123,6 +133,28 @@ export async function setupResearchInputs(tx: SqlExecutor) {
     'CREATE INDEX IF NOT EXISTS research_artifact_source_id ON research_artifact_sources (record_id)',
   );
   await setupResearchInputGuards(tx);
+  await tx.execute(
+    "CREATE TABLE IF NOT EXISTS research_period_policy (artifact_id INTEGER PRIMARY KEY NOT NULL, status TEXT NOT NULL CHECK(status IN ('current','quarantined')))",
+  );
+  await tx.execute(
+    'CREATE TRIGGER IF NOT EXISTS research_period_policy_removed AFTER DELETE ON research_artifacts BEGIN DELETE FROM research_period_policy WHERE artifact_id=OLD.id; END',
+  );
+  const legacy = await tx.execute(
+    'SELECT id,snapshot_json FROM research_artifacts WHERE NOT EXISTS (SELECT 1 FROM research_period_policy p WHERE p.artifact_id=research_artifacts.id)',
+  );
+  for (const row of legacy.rows) {
+    const item = decodeResearchArtifact(row.id, row.snapshot_json);
+    if (item) {
+      await markResearchPeriodPolicy(
+        tx,
+        item.id,
+        await legacyResearchPeriodAvailable(tx, item),
+      );
+      // Restored snapshots may predate dependency projections. Rebuild deletion edges
+      // immediately, without making a quarantined snapshot reusable.
+      await indexResearchInputs(tx, item.id, item.inputSources);
+    }
+  }
 }
 
 /** Bind all admitted inputs and validate them in the same transaction as the research write. */
@@ -138,6 +170,16 @@ export async function appendResearchInputs(
     sources,
     createManualHistoryRepository(database),
   );
+  await indexResearchInputs(tx, id, sources);
+}
+
+/** Rebuild only typed dependency identities from an already decoded snapshot.
+ * Quarantine blocks reuse, not the owner's later explicit source-deletion cascades. */
+async function indexResearchInputs(
+  tx: SqlExecutor,
+  id: number,
+  sources: readonly SavedSummarySource[],
+) {
   for (const source of sources) {
     if (isPeriodSummarySource(source)) {
       await tx.execute(

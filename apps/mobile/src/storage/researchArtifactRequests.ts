@@ -10,7 +10,7 @@ export async function existingResearchRequest(
   if (!key || key.length > 512)
     throw new Error('Invalid research request identity.');
   const result = await tx.execute(
-    'SELECT r.artifact_id, a.snapshot_json FROM research_artifact_requests r LEFT JOIN research_artifacts a ON a.id = r.artifact_id AND NOT EXISTS (SELECT 1 FROM research_artifact_invalid invalid WHERE invalid.id = a.id) WHERE r.request_key = ?',
+    `SELECT r.artifact_id, a.snapshot_json FROM research_artifact_requests r LEFT JOIN research_artifacts a ON a.id = r.artifact_id AND NOT EXISTS (SELECT 1 FROM research_artifact_invalid invalid WHERE invalid.id = a.id) AND NOT EXISTS (SELECT 1 FROM research_period_policy p WHERE p.artifact_id=a.id AND p.status='quarantined') WHERE r.request_key = ?`,
     [key],
   );
   if (!result.rows.length) return null;

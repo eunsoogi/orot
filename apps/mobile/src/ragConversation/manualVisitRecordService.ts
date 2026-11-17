@@ -1,5 +1,7 @@
+import { t } from '../i18n';
+import { visibleVisitQuestionRecords } from '../storage/visibleVisitQuestionRecords';
+import { legacyVisitPeriodAvailable } from '../storage/legacyVisitPeriodQuarantine';
 import {
-  createVisitQuestionRecordRepository,
   readVisitQuestionRevision,
   readCurrentRecapResult,
 } from '@orot/storage';
@@ -16,7 +18,7 @@ export interface ManualVisitQuestion {
 
 /** Uses the same encrypted database and transaction-bound revision as official record writes. */
 export function createManualVisitRecords(database: SqlDatabase) {
-  const official = createVisitQuestionRecordRepository(database);
+  const official = visibleVisitQuestionRecords(database);
   return {
     async load(appointmentId: string): Promise<ManualVisitQuestion[]> {
       let questions: Array<{ question: VisitQuestion; revision: string }> = [];
@@ -36,6 +38,10 @@ export function createManualVisitRecords(database: SqlDatabase) {
             const question = VisitQuestionSchema.parse(
               JSON.parse(String(row.payload_json)),
             );
+            if (!(await legacyVisitPeriodAvailable(sql, question)))
+              throw new Error(
+                t('visitQuestions.restore.legacyPeriodUnavailable'),
+              );
             const revision = await readVisitQuestionRevision(sql, question.id);
             if (!revision) throw new Error('Question revision is unavailable.');
             return { question, revision };

@@ -109,6 +109,7 @@ export async function saveReviewedVisitQuestionMemory(
   if (!memory) return 'retry_required';
   const sourceIds = uniqueValues(
     questions.flatMap(question => [
+      question.id,
       question.appointmentId,
       ...question.provenance.sourceRecordIds,
       ...(question.generatedArtifactSources ?? []).map(
@@ -141,6 +142,10 @@ export async function saveReviewedVisitQuestionMemory(
       ].join('\n'),
       provenance: {
         sourceIds,
+        sourceReferences: questions.map(question => ({
+          kind: 'visit_question',
+          id: question.id,
+        })),
         sourceDates: [...sourceDates].map(([sourceId, date]) => ({
           sourceId,
           date,

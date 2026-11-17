@@ -35,10 +35,7 @@ interface EvidenceSourceDetailScreenProps {
   ) => Promise<EvidenceSourceReadResult>;
 }
 
-type ScreenState =
-  | { readonly status: 'loading' }
-  | Exclude<EvidenceSourceReadResult, { readonly status: 'unavailable' }>
-  | { readonly status: 'unavailable' };
+type ScreenState = { readonly status: 'loading' } | EvidenceSourceReadResult;
 
 /** Re-reads a citation on entry and discards the result if the screen closes mid-request. */
 export function EvidenceSourceDetailScreen({
@@ -57,7 +54,14 @@ export function EvidenceSourceDetailScreen({
   );
   const [state, setState] = useState<ScreenState>({ status: 'loading' });
   const selectedReference = sourceStack.at(-1) ?? reference;
-  const retryLabel = t('appointments.retry');
+  const quarantined =
+    state.status === 'unavailable' &&
+    state.reason === 'unverifiable_legacy_period';
+  const retryLabel = quarantined
+    ? t('aiFeatures.source.regenerateResearch')
+    : t('appointments.retry');
+  const recover = () =>
+    quarantined ? onBack() : setAttempt(value => value + 1);
   const hasDock = useNavigationRouteActions(
     state.status === 'unavailable'
       ? [
@@ -67,7 +71,7 @@ export function EvidenceSourceDetailScreen({
             accessibilityLabel: retryLabel,
             testID: 'ai-feature-source-retry',
             systemImageName: 'arrow.clockwise',
-            onPress: () => setAttempt(value => value + 1),
+            onPress: recover,
           },
         ]
       : [],
@@ -167,13 +171,17 @@ export function EvidenceSourceDetailScreen({
             style={styles.error}
             testID="ai-feature-source-unavailable"
           >
-            {t('aiFeatures.source.unavailable')}
+            {t(
+              quarantined
+                ? 'aiFeatures.source.quarantinedResearch'
+                : 'aiFeatures.source.unavailable',
+            )}
           </Text>
           {!hasDock ? (
             <AppButton
-              onPress={() => setAttempt(value => value + 1)}
+              onPress={recover}
               testID="ai-feature-source-retry"
-              title={t('appointments.retry')}
+              title={retryLabel}
             />
           ) : null}
         </View>

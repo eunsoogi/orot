@@ -1,3 +1,8 @@
+import { attestNewMemoryPeriods } from './agentMemoryPeriodAttestation';
+import {
+  memoryParentAvailable,
+  assertPriorMemoryAvailable,
+} from './agentMemoryParentQuarantine';
 import {
   assertUserStatementMemoryCurrent,
   setupUserStatementMemoryGuards,
@@ -49,6 +54,10 @@ export async function commitAgentMemoryWrites(
     for (const record of writes.values()) {
       if (record) {
         await assertUserStatementMemoryCurrent(transaction, record);
+        await assertPriorMemoryAvailable(transaction, record);
+        await attestNewMemoryPeriods(transaction, record);
+        if (!(await memoryParentAvailable(transaction, record)))
+          throw new Error('The reviewed memory parent is unavailable.');
         if (referencesDeletedSymptom(record, removedSymptoms))
           throw new Error('Memory cannot reference a deleted symptom.');
         assertNoSourceReference(

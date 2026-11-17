@@ -64,4 +64,7 @@ export type EvidenceSourceDocument =
 
 export type EvidenceSourceReadResult =
   | { readonly status: 'available'; readonly document: EvidenceSourceDocument }
-  | { readonly status: 'missing' | 'changed' | 'unavailable' };
+  | {
+      readonly status: 'missing' | 'changed' | 'unavailable';
+      readonly reason?: 'unverifiable_legacy_period';
+    };

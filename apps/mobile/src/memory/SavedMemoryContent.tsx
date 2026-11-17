@@ -6,6 +6,15 @@ import type { AgentSavedMemory } from './unifiedSavedMemories';
 
 /** Present the exact stored text, never parse it into newer facts or invent source-opening actions. */
 export function SavedMemoryContent({ memory }: { memory: AgentSavedMemory }) {
+  if (memory.unavailableReason)
+    return (
+      <AppText
+        accessibilityRole="alert"
+        testID="saved-memory-parent-unavailable"
+      >
+        {t('savedMemory.quarantinedParent')} {t('savedMemory.reviewAgain')}
+      </AppText>
+    );
   const kind = {
     preference: t('savedMemory.preference'),
     reviewed_interaction: t('savedMemory.reviewedInteraction'),

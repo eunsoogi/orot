@@ -78,7 +78,7 @@ describe('saving reviewed visit questions', () => {
       memoryKey: 'visit-question-review:appointment-1',
       kind: 'reviewed_interaction',
       provenance: {
-        sourceIds: ['appointment-1', 'source-1'],
+        sourceIds: [result.questions[0]!.id, 'appointment-1', 'source-1'],
         reviewState: 'human_reviewed',
       },
     });

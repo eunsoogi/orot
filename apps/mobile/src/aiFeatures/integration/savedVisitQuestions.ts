@@ -1,3 +1,4 @@
+import { readVisitPeriodPolicy } from '../../storage/legacyVisitPeriodQuarantine';
 import { restoreQuestionGeneration } from './savedVisitQuestionGeneration';
 import type { EvidenceCaveat } from '../../nextVisitQuestions/types';
 import { savedVisitQuestionNotice } from './savedVisitQuestionNotice';
@@ -99,12 +100,16 @@ export async function restoreSavedVisitQuestions(input: {
           return citation;
         }),
       );
+      const trustedPolicy = await readVisitPeriodPolicy(input.records, row);
+      if (!trustedPolicy && row.healthContextSources?.length)
+        throw new SavedVisitQuestionsReadError('unverifiable_legacy_period');
       const periods = await Promise.all(
         (row.healthContextSources ?? []).map(source =>
           restoreVisitQuestionPeriodForHistory(
             source,
             input.readHealthContext,
             input.registry,
+            trustedPolicy,
           ),
         ),
       );

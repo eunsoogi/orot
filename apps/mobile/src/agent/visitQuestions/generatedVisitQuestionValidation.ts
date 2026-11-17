@@ -8,6 +8,8 @@ import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import type { VisitQuestionEvidenceMetadata } from './evidence';
 import type { VisitQuestionEvidenceItem } from './taskContract';
 
+export class GeneratedVisitSourceInvalidError extends Error {}
+
 /** Recheck the exact generated parent inside the reviewed-question write transaction. */
 export async function assertGeneratedVisitQuestionSource(
   item: VisitQuestionEvidenceItem,
@@ -37,7 +39,9 @@ export async function assertGeneratedVisitQuestionSource(
       (source.type === 'research_publication' ||
         source.type === 'research_web_explanation')
   )
-    throw new Error('The generated artifact parent is incomplete or invalid.');
+    throw new GeneratedVisitSourceInvalidError(
+      'The generated artifact parent is incomplete or invalid.',
+    );
   if (source.kind === 'generated_research') {
     const saved = await readResearchArtifact(sql, source.id);
     const type =
@@ -49,20 +53,26 @@ export async function assertGeneratedVisitQuestionSource(
       type !== source.type ||
       fingerprint(saved) !== source.revision
     )
-      throw new Error('The saved research result changed or was removed.');
+      throw new GeneratedVisitSourceInvalidError(
+        'The saved research result changed or was removed.',
+      );
     return;
   }
   if (source.kind === 'generated_summary') {
     if (source.type === 'daily_report') {
       if (!manualHistory)
-        throw new Error('Daily report source validation is unavailable.');
+        throw new GeneratedVisitSourceInvalidError(
+          'Daily report source validation is unavailable.',
+        );
       const daily = await validateDailyReportArtifact(
         sql,
         source.id,
         manualHistory,
       );
       if (!daily || daily.fingerprint !== source.revision)
-        throw new Error('The daily report changed or was removed.');
+        throw new GeneratedVisitSourceInvalidError(
+          'The daily report changed or was removed.',
+        );
       return;
     }
     const invalid = await sql.execute(
@@ -85,9 +95,13 @@ export async function assertGeneratedVisitQuestionSource(
       type !== source.type ||
       fingerprint(saved) !== source.revision
     )
-      throw new Error('The generated summary changed or was removed.');
+      throw new GeneratedVisitSourceInvalidError(
+        'The generated summary changed or was removed.',
+      );
     if (!(await legacySummaryPeriodAvailable(sql, saved)))
-      throw new Error('The legacy summary must be regenerated.');
+      throw new GeneratedVisitSourceInvalidError(
+        'The legacy summary must be regenerated.',
+      );
     return;
   }
   const result = await sql.execute(
@@ -110,6 +124,8 @@ export async function assertGeneratedVisitQuestionSource(
     saved.citations === undefined ||
     fingerprint(saved) !== source.revision
   )
-    throw new Error('The generated conversation changed or was removed.');
+    throw new GeneratedVisitSourceInvalidError(
+      'The generated conversation changed or was removed.',
+    );
   return;
 }

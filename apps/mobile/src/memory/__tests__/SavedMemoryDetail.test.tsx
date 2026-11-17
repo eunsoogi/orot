@@ -93,3 +93,19 @@ test('only the focused screen reloads when native list and detail coexist', asyn
   expect(listLoad).toHaveBeenCalledTimes(1);
   expect(detailLoad).toHaveBeenCalledTimes(1);
 });
+
+test('quarantined metadata shows review guidance without rendering saved text', async () => {
+  await render(
+    <SavedMemoryDetail
+      memoryId={memory.id}
+      load={async () => [
+        { ...memory, unavailableReason: 'unverifiable_parent' },
+      ]}
+    />,
+  );
+  expect(
+    await screen.findByTestId('saved-memory-parent-unavailable'),
+  ).toBeTruthy();
+  expect(screen.queryByText(memory.text)).toBeNull();
+  expect(screen.queryByTestId('saved-memory-verbatim')).toBeNull();
+});

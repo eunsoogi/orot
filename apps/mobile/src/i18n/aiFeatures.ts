@@ -34,6 +34,9 @@ export const aiFeaturesKo = {
   'aiFeatures.source.missing': '저장된 근거가 삭제되어 열 수 없어요.',
   'aiFeatures.source.changed':
     '저장된 근거가 바뀌었어요. 최신 기록에서 다시 확인해 주세요.',
+  'aiFeatures.source.quarantinedResearch':
+    '이전 조사에 쓰인 건강 기록을 확인할 수 없어 원문과 AI 재사용을 차단했어요. 저장 자료는 보존되어 있어요. 이전 화면에서 최신 기록으로 새 조사를 요청해 주세요.',
+  'aiFeatures.source.regenerateResearch': '돌아가서 새 조사 요청',
   'aiFeatures.source.unavailable':
     '저장된 근거를 불러오지 못했어요. 다시 시도해 주세요.',
 } as const;

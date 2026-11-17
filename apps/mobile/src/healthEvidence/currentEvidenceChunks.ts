@@ -1,3 +1,4 @@
+import { visitPeriodEvidenceAvailable } from '../storage/visitPeriodEvidencePolicy';
 import { STORAGE_TABLES } from '@orot/storage';
 import type { RecordKind, RecordMap, SqlDatabase } from '@orot/storage';
 import {
@@ -53,6 +54,7 @@ export async function readCurrentEvidenceChunks(
       );
       if (!rows.rows[0]) continue;
       const entry = decodeHealthEvidenceRecord(kind, rows.rows[0]);
+      if (!(await visitPeriodEvidenceAvailable(transaction, entry))) continue;
       if (entry.kind === 'transcript_segment') {
         const revision = await transaction.execute(
           "SELECT count(*) AS total FROM transcript_segments WHERE json_extract(payload_json, '$.transcriptId') = ? AND json_extract(payload_json, '$.revision') = ?",
