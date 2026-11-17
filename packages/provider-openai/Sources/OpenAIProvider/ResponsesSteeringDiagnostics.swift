@@ -44,7 +44,7 @@ enum ResponsesSteeringDiagnostics {
             type: type,
             enabled: ProcessInfo.processInfo.arguments.contains("-OROT_PROTOCOL_TYPE_DIAGNOSTICS"),
         ) {
-            NSLog("%@", message)
+            FileHandle.standardError.write(Data((message + "\n").utf8))
         }
         let category: ResponsesMalformedDiagnostics.Category
         switch type {

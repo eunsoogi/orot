@@ -4,7 +4,7 @@ import XCTest
 
 final class ResponsesSteeringDiagnosticsTests: XCTestCase {
     func testProtocolTypeRequiresSeparateOptInAndBounds() {
-        let prefix = "OROT_PROVIDER_DIAGNOSTIC provider=openai stage=steering_protocol event_name="
+        let prefix = "OROT_PROTOCOL_TYPE_DIAGNOSTIC type="
         XCTAssertNil(ResponsesBeforeActiveDiagnostics.protocolMessage(type: "synthetic.event", enabled: false))
         XCTAssertEqual(ResponsesBeforeActiveDiagnostics.protocolMessage(type: "synthetic.event-1_v2", enabled: true),
                        prefix + "synthetic.event-1_v2")
@@ -14,9 +14,10 @@ final class ResponsesSteeringDiagnosticsTests: XCTestCase {
 
     func testProtocolTypeRejectsInvalidShapeWithoutEchoingIt() {
         for type in ["", "1event", "Upper", "two words", "https://example.test", "event/path", "event?query", "event\ntext",
-                     "évent", String(repeating: "a", count: 65)] {
+                     "évent", String(repeating: "a", count: 65)]
+        {
             XCTAssertEqual(ResponsesBeforeActiveDiagnostics.protocolMessage(type: type, enabled: true),
-                           "OROT_PROVIDER_DIAGNOSTIC provider=openai stage=steering_protocol event_name=invalid")
+                           "OROT_PROTOCOL_TYPE_DIAGNOSTIC type=invalid")
         }
     }
 

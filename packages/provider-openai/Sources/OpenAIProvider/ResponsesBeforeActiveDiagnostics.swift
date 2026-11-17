@@ -81,8 +81,8 @@ enum ResponsesBeforeActiveDiagnostics {
         case other
     }
 
-    // Separate, local-only diagnostic. Format bounds do not prove a value is non-sensitive.
-    // Never attach its output to public reports; accepts only the protocol discriminator.
+    /// Separate, local-only diagnostic. Format bounds do not prove a value is non-sensitive.
+    /// Never attach its output to public reports; accepts only the protocol discriminator.
     static func protocolMessage(type: String, enabled: Bool) -> String? {
         guard enabled else { return nil }
         let bytes = Array(type.utf8)
@@ -93,7 +93,7 @@ enum ResponsesBeforeActiveDiagnostics {
                     || byte == 95 || byte == 46 || byte == 45
             }
         let name = valid ? type : "invalid"
-        return "OROT_PROVIDER_DIAGNOSTIC provider=openai stage=steering_protocol event_name=\(name)"
+        return "OROT_PROTOCOL_TYPE_DIAGNOSTIC type=\(name)"
     }
 
     static func message(type: String, enabled: Bool) -> String? {
