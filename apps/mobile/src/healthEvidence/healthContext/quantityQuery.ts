@@ -16,6 +16,10 @@ import type {
 
 /** Materialize the selected period once, applying an optional ingestion cutoff before selecting sensor series.
  * Joining raw observations to both days and selected series made SQLite repeatedly expand JSON/time expressions.
+ * Sweep bound calendar starts together with observations: each sample gets its local day
+ * without rescanning/parsing the entire JSON calendar. healthContextDays supplies
+ * chronologically ordered, nonoverlapping days, so running maxima carry their boundaries. Boundaries sort before samples
+ * at the same exact key; the exclusive end check preserves the caller's clipped partial-day boundaries.
  * Every sensor series remains separate and is returned; ranking changes order, not inclusion.
  */
 export async function readHealthQuantityContext(
@@ -72,10 +76,22 @@ export async function readHealthQuantityContext(
           AND json_extract(r.payload_json, '$.value.kind') = 'quantity'
           AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
           AND json_type(r.payload_json, '$.value.unit') = 'text'
-      ), dated AS MATERIALIZED (
-        SELECT o.*, (SELECT d.date FROM days d
-          WHERE o.at_key >= d.from_key AND o.at_key < d.to_key LIMIT 1) AS date
+      ), calendar_events AS (
+        SELECT o.*, NULL AS calendar_date, NULL AS calendar_to, 1 AS sample
         FROM observations o
+        UNION ALL
+        SELECT NULL, NULL, from_key, NULL, NULL, NULL, NULL, date, to_key, 0
+        FROM days
+      ), calendar_sweep AS (
+        SELECT *, max(calendar_date) OVER calendar_order AS date,
+          max(calendar_to) OVER calendar_order AS day_to
+        FROM calendar_events
+        WINDOW calendar_order AS (
+          ORDER BY at_key, sample ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        )
+      ), dated AS MATERIALIZED (
+        SELECT id, at, at_key, concept, unit, amount, sensor, date
+        FROM calendar_sweep WHERE sample = 1 AND at_key < day_to
       ), ranked AS (
         SELECT d.*, row_number() OVER (
           PARTITION BY d.date, d.concept, d.unit, d.sensor ORDER BY d.at_key DESC, d.id

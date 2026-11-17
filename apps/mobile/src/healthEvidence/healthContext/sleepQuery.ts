@@ -10,7 +10,10 @@ import type { SqlExecutor, SqlValue } from '@orot/storage';
 import { currentEvidenceCondition } from '../evidenceCandidateScope';
 import type { HealthContextDay, HealthSleepDay } from './types';
 
-/** Merge overlapping intervals before duration math and filter by ingestion cutoff; codes and duplicate sources are never sleep counts. */
+/** Merge overlapping intervals before duration math; codes are never sleep counts.
+ * Filter and decode observations once, then clip against predecoded calendar days.
+ * Unlike point samples, an interval may span several days. Materialize clipped
+ * samples once for both stage unions without changing the existing Julian precision. */
 export async function readHealthSleepContext(
   executor: SqlExecutor,
   days: readonly HealthContextDay[],
@@ -39,11 +42,12 @@ export async function readHealthSleepContext(
   );
   const result = await executor.execute(
     `SELECT * FROM (
-    WITH days(date, from_at, to_at) AS (${healthContextCalendarSql}),
-    samples AS (
-      SELECT d.date,
-        max(julianday(r.effective_at), julianday(d.from_at)) * 86400 AS start,
-        min(julianday(json_extract(r.payload_json, '$.endedAt')), julianday(d.to_at)) * 86400 AS finish,
+    WITH calendar(date, from_at, to_at) AS (${healthContextCalendarSql}),
+    days AS MATERIALIZED (
+      SELECT date, julianday(from_at) AS from_at, julianday(to_at) AS to_at FROM calendar
+    ), observations AS MATERIALIZED (
+      SELECT julianday(r.effective_at) AS start,
+        julianday(json_extract(r.payload_json, '$.endedAt')) AS finish,
         CASE json_extract(r.payload_json, '$.value.text')
           WHEN '0' THEN 'inBed' WHEN 'inBed' THEN 'inBed'
           WHEN '1' THEN 'asleepUnspecified' WHEN 'asleepUnspecified' THEN 'asleepUnspecified'
@@ -52,14 +56,16 @@ export async function readHealthSleepContext(
           WHEN '4' THEN 'asleepDeep' WHEN 'asleepDeep' THEN 'asleepDeep'
           WHEN '5' THEN 'asleepREM' WHEN 'asleepREM' THEN 'asleepREM'
           ELSE 'unsupported' END AS stage
-      FROM health_observations r JOIN days d
-        ON julianday(r.effective_at) < julianday(d.to_at)
-          AND julianday(json_extract(r.payload_json, '$.endedAt')) > julianday(d.from_at)
+      FROM health_observations r
       WHERE json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
         AND json_extract(r.payload_json, '$.concept') IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep')
         AND ${currentEvidenceCondition('health_observation')}
         AND ${fromKey} < ? AND ${toKey} > ?
         ${ingestionFilter}
+    ), samples AS MATERIALIZED (
+      SELECT d.date, max(o.start, d.from_at) * 86400 AS start,
+        min(o.finish, d.to_at) * 86400 AS finish, o.stage
+      FROM observations o JOIN days d ON o.start < d.to_at AND o.finish > d.from_at
     ), intervals AS (
       SELECT * FROM samples WHERE finish > start
       UNION ALL SELECT date, start, finish, 'all_asleep' AS stage FROM samples

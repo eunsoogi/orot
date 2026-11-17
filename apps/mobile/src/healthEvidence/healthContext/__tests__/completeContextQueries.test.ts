@@ -68,7 +68,8 @@ test('preserves all selected series, medicines and complete symptom text with co
     const calendarBindings: number[] = [];
     const executor: SqlExecutor = {
       execute: (sql, parameters = []) => {
-        if (sql.includes('WITH days(')) {
+        // Identify bound calendars independently of CTE names used by query optimizations.
+        if (sql.includes('json_each(?)')) {
           expect(sql).toContain('json_each(?)');
           calendarBindings.push(parameters.length);
         }
