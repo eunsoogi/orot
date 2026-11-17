@@ -17,13 +17,17 @@ const styles = StyleSheet.create({
   },
   heading: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 10,
     minHeight: 44,
   },
-  identity: { flex: 1, gap: 4 },
+  // Keep the title readable when a scaled classification badge wraps below it.
+  identity: { flex: 1, minWidth: '50%', gap: 4 },
   title: { fontSize: 18, lineHeight: 26, fontWeight: '600' },
   badge: {
+    flexShrink: 1,
+    maxWidth: '100%',
     backgroundColor: appColors.primarySoft,
     borderRadius: 20,
     paddingHorizontal: 12,

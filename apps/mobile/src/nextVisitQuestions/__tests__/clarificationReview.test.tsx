@@ -52,6 +52,13 @@ test('keeps saved questions separate while selecting and saving a mixed review',
     ],
     ['incomplete_coverage'],
     [{ id: 'fixture-1', revision: 'revision-1' }],
+    {
+      // Only the two retained live candidates own this generation's caveats.
+      questionIds: onSaveReviewedQuestions.mock.calls[0]![1].map(
+        question => question.identity!.id,
+      ),
+      caveats: ['incomplete_coverage'],
+    },
   );
   await fireEvent.press(await screen.findByTestId('next-visit-saved-edit'));
   expect(screen.getByTestId('next-visit-question-text-1')).toHaveDisplayValue(

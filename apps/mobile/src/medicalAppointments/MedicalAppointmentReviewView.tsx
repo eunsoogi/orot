@@ -153,7 +153,10 @@ export function MedicalAppointmentReviewView(props: Props) {
                 <Text style={styles.coverage} accessibilityLiveRegion="polite">
                   {copy.coverage(props.eventCount, classified)}
                 </Text>
-                <View style={styles.group}>
+                <View
+                  style={styles.group}
+                  testID="medical-appointment-candidate-group"
+                >
                   {props.candidates
                     .filter(isConfidentMedical)
                     .map(candidate => (
@@ -205,8 +208,8 @@ const styles = StyleSheet.create({
   group: {
     borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: appColors.border,
+    // Candidate fills group the list; row dividers retain separate disclosure targets.
+    borderWidth: 0,
   },
   footer: { gap: 12 },
   limit: { fontSize: 12, lineHeight: 19, color: appColors.secondary },

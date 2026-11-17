@@ -1,3 +1,4 @@
+import type { VisitQuestionCaveat } from '@orot/domain';
 import type {
   AgentMemoryService,
   AgentMemoryStoreView,
@@ -6,8 +7,8 @@ import {
   openLocalAgentMemory,
   openLocalAgentMemoryStore,
 } from '../../memory/localAgentMemory';
-import { LocalE5EmbeddingProvider } from '../../rag/localE5EmbeddingProvider';
-import { localE5NativeBackend } from '../../rag/localE5NativeBackend';
+import type { LocalE5EmbeddingProvider } from '../../rag/localE5EmbeddingProvider';
+import { localMemoryProvider } from '../../memory/localMemoryProvider';
 import { openLocalE5RagService } from '../../rag/localE5RagService';
 import { openLocalRecordQueryService } from '../localRecordQuery';
 import { prepareVisitQuestionContext } from './evidenceService';
@@ -58,7 +59,7 @@ export async function prepareUpcomingVisitQuestionContext(input: {
   let memory: AgentMemoryService | undefined;
   let memoryStore: AgentMemoryStoreView | undefined;
   try {
-    localMemoryEmbedder ??= new LocalE5EmbeddingProvider(localE5NativeBackend);
+    localMemoryEmbedder ??= localMemoryProvider();
     memory = await openLocalAgentMemory(localMemoryEmbedder);
   } catch {
     // The query layer reports unavailable memory while retaining usable local RAG evidence.
@@ -96,12 +97,16 @@ export async function prepareUpcomingVisitQuestionContext(input: {
     saveReviewedQuestions(
       questions: readonly VisitQuestionCandidate[],
       expectedSavedQuestions: readonly SavedQuestionRevision[],
+      generationCaveats?: readonly VisitQuestionCaveat[],
+      generationQuestionIds?: readonly string[],
     ) {
       return saveReviewedVisitQuestions({
         appointmentId: prepared.appointment.id,
         expectedAppointmentRevision: prepared.appointmentRevision,
         questions,
         expectedSavedQuestions,
+        generationCaveats,
+        generationQuestionIds,
         evidence: prepared.evidence,
         repository,
         memory,
@@ -149,8 +154,15 @@ export async function generateUpcomingVisitQuestionRecommendations(input: {
     saveReviewedQuestions(
       questions: readonly VisitQuestionCandidate[],
       expectedSavedQuestions: readonly SavedQuestionRevision[],
+      generationCaveats?: readonly VisitQuestionCaveat[],
+      generationQuestionIds?: readonly string[],
     ) {
-      return prepared.saveReviewedQuestions(questions, expectedSavedQuestions);
+      return prepared.saveReviewedQuestions(
+        questions,
+        expectedSavedQuestions,
+        generationCaveats,
+        generationQuestionIds,
+      );
     },
   };
 }

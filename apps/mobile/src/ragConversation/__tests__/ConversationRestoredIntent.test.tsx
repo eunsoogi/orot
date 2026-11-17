@@ -224,6 +224,7 @@ test.each([false, true])(
     expect(
       screen.getAllByText(/선택한 보고서: 2026-11-10 · Asia\/Seoul/).length,
     ).toBeGreaterThan(0);
+    expect(screen.getByText('답변')).toBeTruthy();
     await fireEvent.changeText(
       screen.getByTestId('rag-conversation-input'),
       '이어서',

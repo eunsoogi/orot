@@ -80,6 +80,7 @@ describe('openLocalManualHistoryRepository', () => {
     );
     mockedCreateLocalE5RagService.mockReturnValue({
       deleteChunks,
+      prepare: jest.fn(async () => {}),
     } as unknown as ReturnType<typeof createLocalE5RagService>);
 
     const repository = await openLocalManualHistoryRepository();
@@ -179,6 +180,7 @@ describe('openLocalManualHistoryRepository', () => {
     );
     mockedCreateLocalE5RagService.mockReturnValue({
       deleteChunks,
+      prepare: jest.fn(async () => {}),
     } as unknown as ReturnType<typeof createLocalE5RagService>);
 
     const repository = await openLocalManualHistoryRepository();

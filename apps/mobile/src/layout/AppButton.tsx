@@ -34,6 +34,8 @@ interface AppButtonProps extends ButtonProps {
   readonly leadingContent?: ReactNode;
   /** Supporting row text, also included in the default accessible name. */
   readonly summary?: string;
+  /** Optional visual truncation only; the accessible name retains the whole title. */
+  readonly titleNumberOfLines?: number;
   /** Optional visual chevron or other non-interactive content for a list row. */
   readonly trailingContent?: ReactNode;
   /** Optional caller framing for a feature-specific control state. */
@@ -61,6 +63,7 @@ export function AppButton({
   busy,
   leadingContent,
   summary,
+  titleNumberOfLines,
   trailingContent,
 }: AppButtonProps) {
   const isBusy = Boolean(busy ?? accessibilityState?.busy);
@@ -109,6 +112,7 @@ export function AppButton({
           leadingContent={leadingContent}
           summary={summary}
           title={title}
+          titleNumberOfLines={titleNumberOfLines}
           titleStyle={[
             styles.label,
             labelStyles[variant],
@@ -117,7 +121,12 @@ export function AppButton({
           trailingContent={trailingContent}
         />
       ) : (
-        <Text allowFontScaling style={[styles.label, labelStyles[variant]]}>
+        <Text
+          allowFontScaling
+          numberOfLines={titleNumberOfLines}
+          ellipsizeMode="tail"
+          style={[styles.label, labelStyles[variant]]}
+        >
           {title}
         </Text>
       )}

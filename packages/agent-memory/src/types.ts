@@ -1,7 +1,7 @@
 import type { MemoryRecord, StorageAdapter } from 'rememori';
 
 export type AgentMemoryKind = 'preference' | 'reviewed_interaction' | 'task_context';
-export type AgentMemoryReviewState = 'user_confirmed' | 'human_reviewed';
+export type AgentMemoryReviewState = 'user_confirmed' | 'human_reviewed' | 'user_stated';
 
 export interface AgentMemorySourceDate {
   readonly sourceId: string;

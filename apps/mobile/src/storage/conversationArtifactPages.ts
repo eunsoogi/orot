@@ -1,3 +1,4 @@
+import { conversationSelectedIds } from './conversationSelectedIds';
 import type { SqlExecutor } from '@orot/storage';
 import { treatmentArtifactPredicate } from './treatmentSessionIdentity';
 
@@ -8,6 +9,7 @@ export async function listConversationArtifactPage(
   cursor?: { readonly createdAt: string; readonly id: string },
   limit = 50,
   kind: 'conversation' | 'treatment' = 'conversation',
+  ids?: readonly string[],
 ) {
   if (
     !Number.isSafeInteger(limit) ||
@@ -19,16 +21,18 @@ export async function listConversationArtifactPage(
         new Date(cursor.createdAt).toISOString() !== cursor.createdAt))
   )
     throw new RangeError('Invalid conversation page.');
+  const selected = conversationSelectedIds('a.id', ids);
   const result = await database.execute(
     `SELECT a.id, a.created_at FROM conversation_artifacts a
       JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0
       JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
-      WHERE a.session_id = ? AND ${kind === 'treatment' ? treatmentArtifactPredicate : `NOT (${treatmentArtifactPredicate})`}
+      WHERE a.session_id = ?${selected.clause} AND ${kind === 'treatment' ? treatmentArtifactPredicate : `NOT (${treatmentArtifactPredicate})`}
       AND a.created_at = strftime('%Y-%m-%dT%H:%M:%fZ', julianday(a.created_at))
       AND (? IS NULL OR a.created_at < ? OR (a.created_at = ? AND a.id < ?))
       ORDER BY a.created_at DESC, a.id DESC LIMIT ?`,
     [
       sessionId,
+      ...selected.parameters,
       cursor?.createdAt ?? null,
       cursor?.createdAt ?? null,
       cursor?.createdAt ?? null,

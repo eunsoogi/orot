@@ -1,3 +1,4 @@
+import { restorationQuestionIds } from '../../ragConversation/conversationVisitQuestions';
 import { useState } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { VisitQuestionEvidenceItem } from '../../agent/visitQuestions/taskContract';
@@ -41,6 +42,11 @@ export function ConversationVisitQuestionCard({
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const visit = message.visitQuestions!;
+  const restoredIds = restorationQuestionIds(visit);
+  const hasRestoredQuestions = visit.review.items.some(
+    item =>
+      item.question.identity && restoredIds.includes(item.question.identity.id),
+  );
   const current = () =>
     store
       .getSnapshot()
@@ -66,17 +72,25 @@ export function ConversationVisitQuestionCard({
         state={visit.review}
         theme={theme}
         isSaving={saving}
-        saveMessage={
-          (notice ??
-            [
-              visit.restorationNotice,
-              visit.restoredFromSnapshot
-                ? t('visitQuestions.conversation.restorationNotice')
-                : '',
-            ]
-              .filter(Boolean)
-              .join(' ')) ||
-          undefined
+        saveMessage={notice}
+        restorationNotice={
+          [
+            hasRestoredQuestions && visit.restorationNotice
+              ? t('visitRestore.savedScope', {
+                  notice: visit.restorationNotice,
+                })
+              : '',
+            visit.restoredFromSnapshot
+              ? t('visitQuestions.conversation.restorationNotice')
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' ') || undefined
+        }
+        restorationWarning={
+          hasRestoredQuestions &&
+          Boolean(visit.restorationNotice) &&
+          visit.restorationWarning !== false
         }
         onChange={review => {
           store.updateVisitQuestionReview(sessionId, message.id, review);

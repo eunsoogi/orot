@@ -1,3 +1,4 @@
+import { SettingsNotificationDivider } from './SettingsNotificationDivider';
 import { useEffect, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Switch, View } from 'react-native';
 import { t } from '../i18n';
@@ -62,6 +63,7 @@ export function SettingsReplyNotificationSection() {
         <Text style={styles.description}>
           {t('settings.replyNotification.description')}
         </Text>
+        <SettingsNotificationDivider />
         <View style={styles.row}>
           <Text style={styles.label}>
             {t('settings.replyNotification.enabled')}
@@ -78,6 +80,7 @@ export function SettingsReplyNotificationSection() {
             }}
           />
         </View>
+        <SettingsNotificationDivider />
         <View style={styles.row}>
           <Text style={styles.label}>
             {t('settings.replyNotification.preview')}

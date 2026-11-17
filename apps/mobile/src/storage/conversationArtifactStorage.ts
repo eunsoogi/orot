@@ -1,11 +1,10 @@
+import { enqueueStatementMemory } from './userStatementMemoryJobs';
+import { conversationTimelinePages } from './conversationTimelinePages';
 import { continuousConversationStorage } from './continuousConversationStorage';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
 import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
-import {
-  localQueryTimestampKey,
-  type SqlDatabase,
-  type SqlExecutor,
-} from '@orot/storage';
+import { localQueryTimestampKey } from '@orot/storage';
+import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import {
   decodeConversationArtifact,
@@ -60,6 +59,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   return {
+    listTimeline: conversationTimelinePages(database, ensure),
     continuousSession: continuousConversationStorage(database, ensure),
     readSteeringHistory: conversationSteeringHistory(database, ensure),
     openWorkflowContinuation: conversationWorkflowContinuationOpener(database),
@@ -225,6 +225,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         // After this check, commit wins; the caller must report the saved result even if cancellation arrives later.
         assertConversationNotCancelled(signal);
         await commitConversationRequest(tx, decoded, expectedSessionVersion);
+        await enqueueStatementMemory(tx, decoded);
       });
     },
     async list(
@@ -232,6 +233,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       cursor?: { readonly createdAt: string; readonly id: string },
       limit = 50,
       kind: 'conversation' | 'treatment' = 'conversation',
+      ids?: readonly string[],
     ) {
       await ensure();
       return listConversationArtifactPage(
@@ -240,6 +242,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         cursor,
         limit,
         kind,
+        ids,
       );
     },
   };

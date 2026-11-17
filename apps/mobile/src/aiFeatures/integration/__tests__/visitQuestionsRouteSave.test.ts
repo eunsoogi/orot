@@ -110,6 +110,12 @@ test('saves a restored citation only while its source and evidence revisions sti
 
   expect(result.questions[0]?.citations).toEqual([reviewedCitation]);
   expect(context.saveReviewedQuestions).toHaveBeenCalledTimes(1);
+  expect(context.saveReviewedQuestions).toHaveBeenCalledWith(
+    expect.any(Array),
+    [],
+    undefined,
+    undefined,
+  );
 });
 
 test('reloads an exact cited identity without ranking the record library again', async () => {

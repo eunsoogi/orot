@@ -1,3 +1,4 @@
+import { isProvenance as isAgentMemoryProvenance } from './validation';
 import { tool } from '@langchain/core/tools';
 import type { ToolRuntime } from '@langchain/core/tools';
 import type { BaseStore, Item } from '@langchain/langgraph/web';
@@ -35,7 +36,7 @@ export function createAgentMemoryTools(_memory: AgentMemoryService, policy: Agen
     {
       name: 'remember_user_memory',
       description:
-        'Store a user-confirmed preference, reviewed interaction, or task context after the caller authorizes the write.',
+        'Store a caller-authorized preference, reviewed interaction, or source-backed user statement. The caller supplies trust and provenance; the model cannot mark content reviewed.',
       schema: draftSchema,
     },
   );
@@ -157,14 +158,4 @@ function memoryHitFromStoreItem(item: Item): AgentMemoryHit | null {
     provenance,
     createdAt: value.createdAt,
   };
-}
-
-function isAgentMemoryProvenance(value: unknown): value is AgentMemoryHit['provenance'] {
-  if (!value || typeof value !== 'object') return false;
-  const provenance = value as AgentMemoryHit['provenance'];
-  return (
-    Array.isArray(provenance.sourceIds) &&
-    provenance.sourceIds.every((id) => typeof id === 'string') &&
-    (provenance.reviewState === 'user_confirmed' || provenance.reviewState === 'human_reviewed')
-  );
 }

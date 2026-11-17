@@ -40,7 +40,9 @@ import { createConversationArtifactDiscovery } from '../../aiFeatures/integratio
 import { selectedVisitQuery } from '../../agent/visitQuestions/selectedVisitQuery';
 import { loadSavedVisitQuestionState } from '../../aiFeatures/integration/savedVisitQuestions';
 import { createInlineVisitReview } from '../../nextVisitQuestions/inlineVisitReview';
-import { ConversationScreen } from '../ConversationScreen';
+import { RestoredVisitDestinations } from '../testSupport/RestoredVisitDestinations';
+import { AppState } from 'react-native';
+jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
 import {
   ConversationSessionsProvider,
   useConversationSessions,
@@ -58,6 +60,8 @@ jest.mock('../manualVisitRecordService', () => ({
 }));
 
 test('restores a source-validated visit and its official answer after reopening SQLite and the conversation', async () => {
+  const originalAppState = AppState.currentState;
+  AppState.currentState = 'active';
   const directory = mkdtempSync(join(tmpdir(), 'manual-visit-conversation-'));
   const path = join(directory, 'records.sqlite');
   let connection = openSqliteTestDatabase(path);
@@ -206,18 +210,15 @@ test('restores a source-validated visit and its official answer after reopening 
     const view = await render(
       <ConversationSessionsProvider options={makeOptions()}>
         <Capture />
-        <ConversationScreen
-          onBack={jest.fn()}
-          onOpenSource={jest.fn()}
-          onSend={jest.fn()}
-          {...({ discoverManualVisits: async () => discovery } as object)}
-        />
+        <RestoredVisitDestinations discover={async () => discovery} />
       </ConversationSessionsProvider>,
     );
     await act(async () => {
       await current.attachExisting('saved', 0, '2026-10-05T00:00:00.000Z');
     });
     clock.mockRestore();
+    expect(screen.queryByText('저장된 답변')).toBeNull();
+    await fireEvent.press(screen.getByText('한눈에'));
     await screen.findByText('저장된 답변');
     await verifyManualVisitHealthKitRefresh(records);
     await fireEvent.press(screen.getByText('저장'));
@@ -243,6 +244,7 @@ test('restores a source-validated visit and its official answer after reopening 
   } finally {
     connection.close();
     rmSync(directory, { recursive: true, force: true });
+    AppState.currentState = originalAppState;
     jest.restoreAllMocks();
   }
 });

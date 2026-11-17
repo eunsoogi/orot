@@ -16,6 +16,8 @@ import {
 } from '../storage/localDataClearEvents';
 
 interface ManualVisitTargetPanelsProps {
+  readonly content?: 'all' | 'recaps' | 'questions';
+  readonly appointmentId?: string;
   readonly store: ConversationSessions;
   readonly sessionId: number;
   readonly messages: readonly DisplayMessage[];
@@ -32,6 +34,8 @@ export function ManualVisitTargetPanels(props: ManualVisitTargetPanelsProps) {
 }
 
 function ManualVisitSessionPanels({
+  content = 'all',
+  appointmentId: overviewAppointmentId,
   store,
   sessionId,
   messages,
@@ -58,6 +62,8 @@ function ManualVisitSessionPanels({
     store,
     sessionId,
   )?.appointmentId;
+  if (available && overviewAppointmentId)
+    targets.set(overviewAppointmentId, 'overview');
   if (available && entryAppointment) targets.set(entryAppointment, 'entry');
   for (const message of available ? messages : []) {
     const visit = message.visitQuestions;
@@ -71,8 +77,12 @@ function ManualVisitSessionPanels({
     <>
       {[...targets].map(([appointmentId, revision]) => (
         <Fragment key={sessionId + ':' + appointmentId + ':' + revision}>
-          <ConversationSavedRecaps appointmentId={appointmentId} />
-          <ManualVisitRecords appointmentId={appointmentId} drafts={drafts} />
+          {content !== 'questions' && (
+            <ConversationSavedRecaps appointmentId={appointmentId} />
+          )}
+          {content !== 'recaps' && (
+            <ManualVisitRecords appointmentId={appointmentId} drafts={drafts} />
+          )}
         </Fragment>
       ))}
       {available &&
@@ -81,6 +91,7 @@ function ManualVisitSessionPanels({
       messages.some(message => message.visitQuestionsUnavailable) ? (
         <RetainedManualVisitTargets
           key={durableSessionId}
+          content={content}
           sessionId={durableSessionId}
           discover={discover}
           drafts={drafts}

@@ -1,3 +1,7 @@
+import {
+  withStatementMemory,
+  scheduleStatementMemory,
+} from '../../memory/scheduleStatementMemory';
 import { createLocalE5RagService } from '../../rag/localE5RagService';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import { createLocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
@@ -86,7 +90,9 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     async saveConversationHistory(input, signal) {
       const { saveConversationHealthHistory } =
         await import('../../storage/conversationHealthHistory');
-      return saveConversationHealthHistory(database, input, signal);
+      const id = await saveConversationHealthHistory(database, input, signal);
+      scheduleStatementMemory(database);
+      return id;
     },
     async recoverConversationHistory(input, signal) {
       const { recoverConversationHealthHistory } =
@@ -144,7 +150,10 @@ async function openDefault(): Promise<AiFeatureLocalData> {
             { createReplyNotificationStorage },
           ]) =>
             createReplyNotificationStorage(
-              createConversationArtifactStorage(database),
+              withStatementMemory(
+                createConversationArtifactStorage(database),
+                database,
+              ),
               database,
             ),
         )

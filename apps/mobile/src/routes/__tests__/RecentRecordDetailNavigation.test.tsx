@@ -1,7 +1,8 @@
 import { AppState } from 'react-native';
-import { loadSavedLocalMemories } from '../../memory/savedLocalMemories';
-jest.mock('../../memory/savedLocalMemories', () => ({
-  loadSavedLocalMemories: jest.fn(async () => []),
+import { loadUnifiedLocalMemories } from '../../memory/unifiedSavedMemories';
+jest.mock('../../memory/unifiedSavedMemories', () => ({
+  ...jest.requireActual('../../memory/unifiedSavedMemories'),
+  loadUnifiedLocalMemories: jest.fn(async () => []),
 }));
 import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import {
@@ -202,7 +203,7 @@ test('deletion invalidation clears excerpts while cleanup blocks Back, then retu
 test('memory list opens an ID-owned native destination and returns through the controller', async () => {
   AppState.currentState = 'active';
   const text = 'Synthetic memory ' + 'long detail '.repeat(15);
-  jest.mocked(loadSavedLocalMemories).mockResolvedValue([
+  jest.mocked(loadUnifiedLocalMemories).mockResolvedValue([
     {
       id: 'synthetic-memory',
       text,
@@ -212,7 +213,9 @@ test('memory list opens an ID-owned native destination and returns through the c
     },
   ] as never);
   const controller = await renderRoute();
-  await fireEvent.press(await screen.findByText(text.slice(0, 100) + '…'));
+  await fireEvent.press(
+    await screen.findByTestId('saved-memory-entry-synthetic-memory'),
+  );
   expect(controller.getSnapshot().currentRoute.name).toBe(
     'saved-memory-detail',
   );
@@ -221,5 +224,7 @@ test('memory list opens an ID-owned native destination and returns through the c
   expect(JSON.stringify(controller.getSnapshot())).not.toContain(text);
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(controller.getSnapshot().currentRoute.name).toBe('root');
-  expect(await screen.findByText(text.slice(0, 100) + '…')).toBeTruthy();
+  expect(
+    await screen.findByTestId('saved-memory-entry-synthetic-memory'),
+  ).toBeTruthy();
 });

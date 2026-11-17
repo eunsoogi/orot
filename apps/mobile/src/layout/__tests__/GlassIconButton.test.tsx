@@ -5,6 +5,7 @@ test('bridges native activation, label, hint and busy state without a passive ma
   const onPress = jest.fn();
   const view = await render(
     <GlassIconButton
+      visualScale={0.5}
       symbolName="waveform"
       accessibilityLabel="음성"
       accessibilityHint="음성 대화 시작"
@@ -23,6 +24,7 @@ test('bridges native activation, label, hint and busy state without a passive ma
   let action = screen.getByTestId('native-action');
   expect(action.props).toMatchObject({
     symbolName: 'waveform',
+    visualScale: 0.5,
     actionLabel: '음성',
     actionHint: '음성 대화 시작',
     busy: true,

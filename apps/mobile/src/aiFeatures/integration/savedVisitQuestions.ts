@@ -1,3 +1,5 @@
+import { restoreQuestionGeneration } from './savedVisitQuestionGeneration';
+import type { EvidenceCaveat } from '../../nextVisitQuestions/types';
 import { savedVisitQuestionNotice } from './savedVisitQuestionNotice';
 import type { EvidenceItem } from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
@@ -73,6 +75,9 @@ export async function restoreSavedVisitQuestions(input: {
       !row.generatedArtifactSources?.length,
   );
   const citationCache = new Map<string, EvidenceItem>();
+  const caveats = new Set<EvidenceCaveat>();
+  let allGenerationMetadataRestored = true;
+  let hasChangedOriginal = false;
   let hasChangedPeriod = false;
   let hasUnknownGeneratedSource = false;
   const questions = await Promise.all(
@@ -110,6 +115,18 @@ export async function restoreSavedVisitQuestions(input: {
         input.registry,
       );
       hasUnknownGeneratedSource ||= generated.unknown;
+      const generation = await restoreQuestionGeneration(
+        row,
+        [
+          ...citations,
+          ...periods.map(period => period.item),
+          ...generated.items,
+        ],
+        input.registry,
+      );
+      generation.caveats.forEach(caveat => caveats.add(caveat));
+      allGenerationMetadataRestored &&= generation.complete;
+      hasChangedOriginal ||= generation.changed;
       return {
         identity: {
           id: row.id,
@@ -173,9 +190,17 @@ export async function restoreSavedVisitQuestions(input: {
   return {
     appointmentId,
     questions,
-    caveats: [],
+    caveats: [...caveats],
+    restorationWarning:
+      hasChangedOriginal ||
+      hasChangedPeriod ||
+      hasUnknownGeneratedSource ||
+      hasGeneratedOnly ||
+      hasQuestionWithoutSourceSpan,
     // An empty appointment list has no legacy metadata to restore or warn about.
     restorationNotice: savedVisitQuestionNotice({
+      allGenerationMetadataRestored,
+      hasChangedOriginal,
       empty: questions.length === 0,
       hasChangedPeriod,
       hasUnknownGeneratedSource,

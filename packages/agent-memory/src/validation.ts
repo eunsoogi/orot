@@ -82,7 +82,11 @@ function normalizeProvenance(value: AgentMemoryProvenance): AgentMemoryProvenanc
 export function isProvenance(value: unknown): value is AgentMemoryProvenance {
   if (!value || typeof value !== 'object') return false;
   const provenance = value as Partial<AgentMemoryProvenance>;
-  if (provenance.reviewState !== 'user_confirmed' && provenance.reviewState !== 'human_reviewed')
+  if (
+    provenance.reviewState !== 'user_confirmed' &&
+    provenance.reviewState !== 'human_reviewed' &&
+    provenance.reviewState !== 'user_stated'
+  )
     return false;
   if (
     !Array.isArray(provenance.sourceIds) ||
@@ -117,5 +121,14 @@ export function isProvenance(value: unknown): value is AgentMemoryProvenance {
     )
       return false;
   }
+  // Automatic verbatim statements are not reviewed facts and require durable dated lineage.
+  if (
+    provenance.reviewState === 'user_stated' &&
+    (!provenance.sourceIds.length ||
+      !provenance.sourceReferences?.length ||
+      !provenance.sourceDates?.length ||
+      provenance.sourceDates.some((item) => !Number.isFinite(Date.parse(item.date))))
+  )
+    return false;
   return true;
 }

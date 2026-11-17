@@ -29,3 +29,5 @@ export type {
 } from './types';
 
 export { listSavedMemories } from './savedMemories';
+
+export { isProvenance as isAgentMemoryProvenance } from './validation';

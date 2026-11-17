@@ -18,7 +18,11 @@ import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evi
 import type { ConversationScreenProps } from '../ConversationScreenProps';
 
 jest.mock('../../aiFeatures/integration/contextualConversationOpening', () => ({
-  startContextualConversationOpening: () => undefined,
+  // An unavailable opening still returns its settled lifecycle handle in production.
+  startContextualConversationOpening: () => ({
+    done: Promise.resolve(),
+    dispose: jest.fn(),
+  }),
 }));
 jest.mock('../../aiFeatures/integration/visitQuestionsRouteOperations', () => ({
   defaultVisitQuestionRouteOperations: {
@@ -60,6 +64,9 @@ test('regeneration uses the same decision prompt and bounded quality correction 
   jest
     .mocked(defaultVisitQuestionRouteOperations.generate)
     .mockImplementation(async input => {
+      // Preserve the real preflight gate before this synthetic workflow dispatch.
+      if (input.beforeResearch && !(await input.beforeResearch()))
+        return { status: 'cancelled' };
       const result = await runVisitQuestionWorkflow({
         prepared: preparedContext(),
         request: input.request,

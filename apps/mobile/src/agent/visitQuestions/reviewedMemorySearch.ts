@@ -1,5 +1,8 @@
 import type { EvidenceSearchRuntime } from '@orot/agent-runtime';
-import { AGENT_MEMORY_NAMESPACE } from '@orot/agent-memory';
+import {
+  AGENT_MEMORY_NAMESPACE,
+  isAgentMemoryProvenance,
+} from '@orot/agent-memory';
 import { LOCAL_MEMORY_MAX_RESULTS } from '@orot/agent-runtime';
 import type { LocalMemoryHit } from '@orot/agent-runtime';
 
@@ -64,7 +67,7 @@ function toLocalMemoryHit(item: GraphStoreItem): LocalMemoryHit | null {
     (value.kind !== 'preference' &&
       value.kind !== 'reviewed_interaction' &&
       value.kind !== 'task_context') ||
-    !isMemoryProvenance(provenance) ||
+    !isAgentMemoryProvenance(provenance) ||
     typeof value.createdAt !== 'number'
   ) {
     return null;
@@ -77,26 +80,4 @@ function toLocalMemoryHit(item: GraphStoreItem): LocalMemoryHit | null {
     provenance,
     createdAt: value.createdAt,
   };
-}
-
-function isMemoryProvenance(
-  value: unknown,
-): value is LocalMemoryHit['provenance'] {
-  if (!value || typeof value !== 'object') return false;
-  const provenance = value as LocalMemoryHit['provenance'];
-  return (
-    Array.isArray(provenance.sourceIds) &&
-    provenance.sourceIds.every(id => typeof id === 'string') &&
-    (provenance.reviewState === 'user_confirmed' ||
-      provenance.reviewState === 'human_reviewed') &&
-    (provenance.sourceDates === undefined ||
-      (Array.isArray(provenance.sourceDates) &&
-        provenance.sourceDates.every(
-          sourceDate =>
-            typeof sourceDate === 'object' &&
-            sourceDate !== null &&
-            typeof sourceDate.sourceId === 'string' &&
-            typeof sourceDate.date === 'string',
-        )))
-  );
 }
