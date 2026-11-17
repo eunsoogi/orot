@@ -14,6 +14,7 @@ import { t } from '../i18n';
 import type { ConversationSession } from './conversationSessionTypes';
 import type { ConversationHistoryProps } from './ConversationHistoryProps';
 import { ConversationToolEvents } from './ConversationToolEvents';
+import { ConversationRetainedToolSources } from './ConversationRetainedToolSources';
 import { SeparatedConversationActivity } from './ConversationWorkspaceContext';
 import { useConversationWorkspaceBounds } from './useConversationWorkspaceBounds';
 
@@ -125,7 +126,12 @@ function ActivityPane({
     ? [...session.messages, session.pendingMessage]
     : session.messages;
   const activity = activityLabel(session);
-  const hasEvents = messages.some(message => message.toolEvents?.length);
+  // Restored statuses are transient UI; retained sources remain available separately.
+  const hasEvents = messages.some(message =>
+    'restoredHistory' in message && message.restoredHistory
+      ? message.toolEvents?.some(event => event.sources.length > 0)
+      : message.toolEvents?.length,
+  );
   return (
     <View
       style={[styles.pane, { width }, !visible && styles.hidden]}
@@ -153,17 +159,29 @@ function ActivityPane({
         ) : null}
         {messages.map(message =>
           message.toolEvents?.length ? (
-            <ConversationToolEvents
-              key={message.id}
-              events={message.toolEvents}
-              messageId={message.toolMessageId ?? String(message.id)}
-              durableMessageId={message.toolMessageId}
-              sessionId={props.toolSourceSessionId}
-              resolveToolSource={props.resolveToolSource}
-              onOpenSource={props.onOpenSource}
-              onLinkError={props.onLinkError}
-              allowSourceActions
-            />
+            'restoredHistory' in message && message.restoredHistory ? (
+              <ConversationRetainedToolSources
+                key={message.id}
+                events={message.toolEvents}
+                durableMessageId={message.toolMessageId}
+                sessionId={props.toolSourceSessionId}
+                resolveToolSource={props.resolveToolSource}
+                onOpenSource={props.onOpenSource}
+                onLinkError={props.onLinkError}
+              />
+            ) : (
+              <ConversationToolEvents
+                key={message.id}
+                events={message.toolEvents}
+                messageId={message.toolMessageId ?? String(message.id)}
+                durableMessageId={message.toolMessageId}
+                sessionId={props.toolSourceSessionId}
+                resolveToolSource={props.resolveToolSource}
+                onOpenSource={props.onOpenSource}
+                onLinkError={props.onLinkError}
+                allowSourceActions
+              />
+            )
           ) : null,
         )}
       </ScrollView>

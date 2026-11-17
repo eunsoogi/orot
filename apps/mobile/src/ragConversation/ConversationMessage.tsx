@@ -139,7 +139,8 @@ export function ConversationMessage({
             />
           ) : null}
           {activityBeforeText ? activity : null}
-          {!user && message.toolEvents?.length ? (
+          {/* Restored execution rows are not replayed; the workspace retains source access. */}
+          {!user && !message.restoredHistory && message.toolEvents?.length ? (
             <View
               style={!showToolActivity && styles.toolEventsHidden}
               accessibilityElementsHidden={!showToolActivity}
