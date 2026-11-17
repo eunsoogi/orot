@@ -28,17 +28,44 @@ export function renderMixedEvidenceAnswer(
   const missingLiterature = Boolean(
     local && !literature && requestsLiteratureExplanation(request),
   );
+  const limitations = [
+    local && literature
+      ? t('ragConversation.mixed.directComparisonUnavailable')
+      : undefined,
+    missingLiterature
+      ? t('ragConversation.mixed.literatureAndComparisonUnavailable')
+      : undefined,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
   return {
-    answer: [
-      local?.answer,
-      literature?.answer,
-      local && literature
-        ? t('ragConversation.mixed.directComparisonUnavailable')
-        : undefined,
-      missingLiterature
-        ? t('ragConversation.mixed.literatureAndComparisonUnavailable')
-        : undefined,
-    ]
+    sections: [
+      ...(local
+        ? [
+            {
+              title: t('conversationTemplate.possibilities.records'),
+              content: local.answer,
+            },
+          ]
+        : []),
+      ...(literature
+        ? [
+            {
+              title: t('conversationTemplate.possibilities.literature'),
+              content: literature.answer,
+            },
+          ]
+        : []),
+      ...(limitations
+        ? [
+            {
+              title: t('conversationTemplate.possibilities.comparisonLimits'),
+              content: limitations,
+            },
+          ]
+        : []),
+    ],
+    answer: [local?.answer, literature?.answer, limitations]
       .filter(Boolean)
       .join('\n\n'),
     localReferences: local?.references ?? [],
