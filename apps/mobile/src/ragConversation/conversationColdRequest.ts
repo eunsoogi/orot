@@ -36,6 +36,8 @@ export function createConversationColdRequest(
       !retention.releaseAdoptedTurn ||
       !session ||
       session.busy ||
+      session.restoring ||
+      session.restoreFailed ||
       session.quarantined ||
       input.controllers.has(id) ||
       matches?.length !== 1 ||
@@ -80,10 +82,14 @@ export function createConversationColdRequest(
     };
     input.controllers.set(id, controller);
     input.pendingTurns.set(id, request);
+    // Protected history must remain resolved across inspect/adopt waits, not just at the tap.
     const current = () =>
       input.controllers.get(id) === controller &&
       !controller.signal.aborted &&
-      !!input.find(id);
+      !!input.find(id) &&
+      !input.find(id).restoring &&
+      !input.find(id).restoreFailed &&
+      !input.find(id).quarantined;
     let turn: Turn | undefined;
     let activity: Activity | undefined;
     let paused = false;
