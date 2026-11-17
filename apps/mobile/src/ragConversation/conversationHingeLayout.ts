@@ -1,4 +1,5 @@
 import type { NavigationGeometrySnapshot } from '../navigation/navigationGeometry';
+import { createNavigationGeometrySnapshot } from '../navigation/navigationGeometry';
 import { resolveAdaptiveColumns } from '../layout/adaptiveColumnsPlan';
 import { conversationWorkspaceLayout } from './conversationWorkspaceLayout';
 
@@ -7,7 +8,17 @@ export function conversationHingeLayout(
   geometry: NavigationGeometrySnapshot | null,
   bounds: { x: number; width: number; y?: number; height?: number },
   fontScale: number,
+  scrollsUnderBottomSafeArea = false,
 ) {
+  // Routed content shares the shell's full-height scroll surface. Recompute
+  // regions without the home inset, not without physical folds/occlusions;
+  // fixed controls still consume the shell's authoritative bottom clearance.
+  if (geometry && scrollsUnderBottomSafeArea) {
+    geometry = createNavigationGeometrySnapshot({
+      ...geometry,
+      safeAreaInsets: { ...geometry.safeAreaInsets, bottom: 0 },
+    });
+  }
   const activeDivision = Boolean(
     geometry?.reservedRegions.some(
       region => region.isActive && region.kind === 'division',

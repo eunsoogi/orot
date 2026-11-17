@@ -48,6 +48,25 @@ describe('visit question persistence contracts', () => {
     };
     const question = { ...legacyQuestion, healthContextSources: [source] };
     expect(VisitQuestionSchema.parse(JSON.parse(JSON.stringify(question)))).toEqual(question);
+    const completeHistory = {
+      ...question,
+      healthContextSources: [
+        {
+          ...source,
+          scope: {
+            ...source.scope,
+            window: {
+              ...source.scope.window,
+              toExclusive: '2027-10-01T00:00:00Z',
+              dataAvailableThrough: '2027-10-02T00:00:00Z',
+            },
+          },
+        },
+      ],
+    };
+    expect(VisitQuestionSchema.parse(JSON.parse(JSON.stringify(completeHistory)))).toEqual(
+      completeHistory,
+    );
     for (const invalid of [
       { ...source, deletionGeneration: -1 },
       { ...source, revision: '' },
@@ -67,7 +86,7 @@ describe('visit question persistence contracts', () => {
         ...source,
         scope: {
           ...source.scope,
-          window: { ...source.scope.window, toExclusive: '2027-10-01T00:00:00Z' },
+          window: { ...source.scope.window, dataAvailableThrough: '2026-10-04T00:00:00Z' },
         },
       },
     ])

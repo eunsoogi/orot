@@ -11,6 +11,8 @@ export const VisitQuestionHealthContextSourceSchema = z.strictObject({
       .strictObject({
         fromInclusive: TimestampSchema,
         toExclusive: TimestampSchema,
+        // Preserve the resolver's ingestion fence through backup and source revalidation.
+        dataAvailableThrough: TimestampSchema.optional(),
         timeZone: z
           .string()
           .min(1)
@@ -28,8 +30,9 @@ export const VisitQuestionHealthContextSourceSchema = z.strictObject({
       .refine(
         (window) =>
           compareTimestamps(window.fromInclusive, window.toExclusive) < 0 &&
-          Date.parse(window.toExclusive) - Date.parse(window.fromInclusive) <= 91 * 86_400_000,
-        'A health period must advance within ninety local calendar days.',
+          (window.dataAvailableThrough === undefined ||
+            compareTimestamps(window.dataAvailableThrough, window.toExclusive) >= 0),
+        'A health period must advance and its availability cutoff must cover its end.',
       ),
   }),
   revision: z.string().min(1),

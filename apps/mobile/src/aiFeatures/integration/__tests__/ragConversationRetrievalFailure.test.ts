@@ -50,7 +50,13 @@ test.each([
           await tool.search({
             operationRunId: 'synthetic',
             operationKey: 'lookup',
-            input: {},
+            input: {
+              window: {
+                fromInclusive: '2026-10-01T00:00:00Z',
+                toExclusive: '2026-10-02T00:00:00Z',
+                timeZone: 'UTC',
+              },
+            },
             allowedScope: { sourceKinds: ['personal_record'] },
             resultLimit: 8,
             maxPayloadBytes: 20480,

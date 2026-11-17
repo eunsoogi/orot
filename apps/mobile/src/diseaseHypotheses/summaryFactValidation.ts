@@ -1,3 +1,4 @@
+import { sensorSummaryFacts } from './summarySensorRows';
 import type { EvidenceItem } from '@orot/agent-runtime';
 import type { DiseaseHypothesisAnalysis } from './types';
 import { summaryConcreteIssue } from './summaryConcreteFacts';
@@ -25,7 +26,10 @@ export function structuredSummaryFacts(content: string): readonly Fact[] {
     if (!object(value)) return [];
     if (match[1] === 'health_context') return summaryPeriodFacts(value);
     if (match[1] === 'health_overview')
-      return Array.isArray(value.records) ? value.records.filter(object) : [];
+      return [
+        ...(Array.isArray(value.records) ? value.records.filter(object) : []),
+        ...sensorSummaryFacts(value.sensorSummaries),
+      ];
     return [
       {
         ...value,

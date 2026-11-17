@@ -55,7 +55,8 @@ export async function readHealthSleepContext(
       FROM health_observations r JOIN days d
         ON julianday(r.effective_at) < julianday(d.to_at)
           AND julianday(json_extract(r.payload_json, '$.endedAt')) > julianday(d.from_at)
-      WHERE json_extract(r.payload_json, '$.concept') IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep')
+      WHERE json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
+        AND json_extract(r.payload_json, '$.concept') IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep')
         AND ${currentEvidenceCondition('health_observation')}
         AND ${fromKey} < ? AND ${toKey} > ?
         ${ingestionFilter}

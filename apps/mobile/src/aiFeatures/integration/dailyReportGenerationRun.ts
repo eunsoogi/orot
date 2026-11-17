@@ -68,6 +68,7 @@ export async function generateDailyReportWithCalendar(
   let providerFacts: Awaited<ReturnType<typeof dailyReportProviderFacts>>;
   let sourceSnapshot: Snapshot['sourceSnapshot'];
   let required: number[];
+  let factSourceIndexes: number[][];
   let baselineFacts: ReturnType<typeof dailyReportFacts> = [];
   let sleepFacts: ReturnType<typeof dailyReportFacts> = [];
   input.deadlineContext.stage = 'source_read';
@@ -85,6 +86,7 @@ export async function generateDailyReportWithCalendar(
     }
     ({
       required,
+      factSourceIndexes,
       sourceSnapshot,
       facts,
       providerFacts,
@@ -176,7 +178,7 @@ export async function generateDailyReportWithCalendar(
     supportedContext: dailyReportAnalysis(
       snapshot.values,
       snapshot.sourceSnapshot.records.slice(0, snapshot.values.length),
-      selection.indexes.filter(index => index < snapshot.values.length),
+      selection.indexes.flatMap(index => factSourceIndexes[index] ?? []),
       baselineFacts,
       external?.facts ?? [],
       reportModelClaims(selection.analysis, facts),

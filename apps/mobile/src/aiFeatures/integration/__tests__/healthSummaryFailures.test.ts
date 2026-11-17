@@ -50,6 +50,9 @@ test.each([
 });
 
 test('reports a failed local read separately from an empty result', async () => {
+  const failedRead = jest.fn(async () => {
+    throw new Error('read failed');
+  });
   const runner: typeof runDiseaseHypothesisAnalysis = async options => {
     try {
       await options.tools[0]!.search({
@@ -87,9 +90,7 @@ test('reports a failed local read separately from an empty result', async () => 
       ),
     loadData: async () => ({
       ...localData([]).data,
-      readHealthContext: async () => {
-        throw new Error('read failed');
-      },
+      readHealthContext: failedRead,
     }),
     registry: new LocalEvidenceReferenceRegistry(),
     consent,
@@ -98,10 +99,18 @@ test('reports a failed local read separately from an empty result', async () => 
   });
   expect(
     await createConversationHealthSummary(service)(
-      { question: '요약' },
+      {
+        question: '요약',
+        window: {
+          fromInclusive: '2026-10-01T00:00:00Z',
+          toExclusive: '2026-10-02T00:00:00Z',
+          timeZone: 'UTC',
+        },
+      },
       new AbortController().signal,
     ),
   ).toEqual({ status: 'failure', kind: 'retrieval_failed' });
+  expect(failedRead).toHaveBeenCalledTimes(1);
 });
 
 test('reports a completed empty search without treating it as a read failure', async () => {

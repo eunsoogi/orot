@@ -14,19 +14,7 @@ import type {
   HealthQuantitySeries,
 } from './types';
 
-const concepts = [
-  'blood pressure systolic',
-  'blood_pressure_systolic',
-  'blood pressure diastolic',
-  'blood_pressure_diastolic',
-  'heart_rate',
-  'body_mass',
-  'weight',
-  'step_count',
-  'workout_duration',
-] as const;
-
-/** Materialize the bounded period once, applying an optional ingestion cutoff before selecting sensor series.
+/** Materialize the selected period once, applying an optional ingestion cutoff before selecting sensor series.
  * Joining raw observations to both days and selected series made SQLite repeatedly expand JSON/time expressions.
  * Every sensor series remains separate and is returned; ranking changes order, not inclusion.
  */
@@ -45,14 +33,17 @@ export async function readHealthQuantityContext(
   const at = localQueryTimestampKeyExpression('r.effective_at');
   const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
   const ingestionFilter = dataAvailableThrough ? `AND ${ingestion} <= ?` : '';
-  const selectedConcepts = concepts.filter(
-    concept =>
-      family === 'all' ||
-      (concept === 'step_count' || concept === 'workout_duration'
-        ? family === 'activity'
-        : family === 'measurements'),
-  );
-  parameters.push(...selectedConcepts, from, to);
+  // The schema distinguishes numeric measurements from narrative clinical facts.
+  // Do not silently omit a valid metric merely because its name is not a UI preset.
+  const concept = "lower(json_extract(r.payload_json, '$.concept'))";
+  const activity = `${concept} IN ('step_count', 'workout_duration')`;
+  const familyFilter =
+    family === 'all'
+      ? ''
+      : family === 'activity'
+        ? `AND ${activity}`
+        : `AND NOT (${activity})`;
+  parameters.push(from, to);
   if (dataAvailableThrough)
     parameters.push(localQueryTimestampKey(dataAvailableThrough));
   const result = await executor.execute(
@@ -72,7 +63,9 @@ export async function readHealthQuantityContext(
           COALESCE(json_extract(r.payload_json, '$.provenance.source.productType'),
                    json_extract(r.payload_json, '$.provenance.source.device.model'), '') AS sensor
         FROM health_observations r
-        WHERE json_extract(r.payload_json, '$.concept') IN (${selectedConcepts.map(() => '?').join(', ')})
+        WHERE json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
+          AND (json_extract(r.payload_json, '$.observationKind') = 'measurement' OR ${concept} = 'workout_duration')
+          ${familyFilter}
           AND ${currentEvidenceCondition('health_observation')}
           AND ${at} >= ? AND ${at} < ?
           ${ingestionFilter}

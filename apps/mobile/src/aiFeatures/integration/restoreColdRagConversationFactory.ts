@@ -201,6 +201,7 @@ export async function restoreColdRagConversationFactory(input: {
     options,
     external,
     signal,
+    registry,
   );
   if (
     continuationInput(options) !== d.exactInput ||

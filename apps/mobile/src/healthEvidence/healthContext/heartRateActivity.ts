@@ -53,7 +53,8 @@ export async function addHeartRateActivityContext(
     workouts AS MATERIALIZED (
       SELECT ${at} AS start_key, ${end} AS end_key
       FROM health_observations r
-      WHERE json_extract(r.payload_json, '$.concept') = 'workout_duration'
+      WHERE json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
+        AND json_extract(r.payload_json, '$.concept') = 'workout_duration'
         AND ${currentEvidenceCondition('health_observation')}
         AND ${at} < ? AND ${end} > ? AND ${end} > ${at} ${cutoff}
     ), heart AS MATERIALIZED (
@@ -65,7 +66,8 @@ export async function addHeartRateActivityContext(
         COALESCE(json_extract(r.payload_json, '$.provenance.source.productType'),
           json_extract(r.payload_json, '$.provenance.source.device.model'), '') AS sensor
       FROM health_observations r
-      WHERE json_extract(r.payload_json, '$.concept') = 'heart_rate'
+      WHERE json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
+        AND json_extract(r.payload_json, '$.concept') = 'heart_rate'
         AND ${currentEvidenceCondition('health_observation')}
         AND ${at} >= ? AND ${at} < ? ${cutoff}
         AND json_extract(r.payload_json, '$.value.kind') = 'quantity'
