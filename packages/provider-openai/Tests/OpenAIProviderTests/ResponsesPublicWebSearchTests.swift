@@ -71,11 +71,13 @@ final class ResponsesPublicWebSearchTests: XCTestCase {
 
     func testLargePublicTextAndAdditionalCitationsRemainComplete() throws {
         var search = ResponsesPublicWebSearch(enabled: true)
-        let calls: [[String: Any]] = (0..<12).map { index in
+        let calls: [[String: Any]] = (0 ..< 12).map { index in
             ["type": "web_search_call", "id": "ws_\(index)", "status": "completed", "action": ["type": "search"]]
         }
-        for call in calls { try search.recordAdded(call) }
-        let annotations: [[String: Any]] = (0..<16).map { index in
+        for call in calls {
+            try search.recordAdded(call)
+        }
+        let annotations: [[String: Any]] = (0 ..< 16).map { index in
             ["type": "url_citation", "url": "https://example.org/\(index)", "title": "Source \(index)", "start_index": 0, "end_index": 1]
         }
         let text = String(repeating: "한", count: 20000)
