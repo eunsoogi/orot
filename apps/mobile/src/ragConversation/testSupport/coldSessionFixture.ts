@@ -72,6 +72,9 @@ export async function coldSessionFixture() {
     createId,
     begin,
     session: () => session,
+    updateSession: (change: Partial<ConversationSession>) => {
+      session = { ...session, ...change };
+    },
     expire: () =>
       listener?.({ kind: 'expired', requestId: begin.mock.calls.at(-1)![0] }),
     pause: () =>
