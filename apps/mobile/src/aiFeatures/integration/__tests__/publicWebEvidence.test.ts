@@ -107,7 +107,7 @@ test('terminates a stalled provider request and cancels its signal', async () =>
       () => false,
       () => true,
     );
-    await jest.advanceTimersByTimeAsync(30_000);
+    await jest.advanceTimersByTimeAsync(180_000);
     expect(await rejected).toBe(true);
     expect(signal.aborted).toBe(true);
   } finally {

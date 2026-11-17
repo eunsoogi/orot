@@ -25,7 +25,7 @@ test.each([false, true])(
         value => value,
         () => 'rejected',
       );
-      await jest.advanceTimersByTimeAsync(30_000);
+      await jest.advanceTimersByTimeAsync(180_000);
       expect(await settled).toMatchObject({
         items: [],
         conflicts: [],

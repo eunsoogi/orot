@@ -1,3 +1,4 @@
+import { reportCoverageDiagnostics } from './coverageDiagnostics';
 import { clarificationMessageFromValidation } from './clarificationResult';
 import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coveragePolicy';
 import type { JsonValue, LanguageModelResponse } from '@orot/model-runtime';
@@ -105,6 +106,11 @@ export async function consumeResponderResponse<TResult>(
       context.options.task.allowPagedGeneratedArtifacts,
     );
   if (partial && !canContinueWithPartialEvidence(context.options.task, input.evidence)) {
+    reportCoverageDiagnostics(
+      input.evidence,
+      context.options.task,
+      context.options.onCoverageDiagnostic,
+    );
     let taskClarificationMessage: string | undefined;
     try {
       const validation = context.options.task.validateResult(decoded.value as JsonValue, input);
