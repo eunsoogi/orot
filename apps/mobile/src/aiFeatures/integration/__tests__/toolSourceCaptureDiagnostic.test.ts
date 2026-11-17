@@ -22,6 +22,7 @@ test.each([
   ['The attached photo changed before saving.', 'tool_photo_changed'],
   ['The generated parent changed or was removed.', 'tool_parent_changed'],
   ['The generated parent cannot be retained.', 'tool_parent_invalid'],
+  ['The generated parent is unavailable.', 'tool_parent_unavailable'],
   ['private unknown text', 'other'],
   ['The cited source changed before saving. private suffix', 'other'],
   ['__proto__', 'other'],

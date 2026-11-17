@@ -1,3 +1,4 @@
+import { reportToolCaptureFailure } from './conversationToolCaptureFailure';
 import { providerDiagnostic } from '../providers/diagnostics';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 
@@ -31,6 +32,7 @@ export async function observeToolRetention<T>(
     report(
       error instanceof RetainedSourceInvalidError ? 'stale_evidence' : 'failed',
     );
+    if (stage === 'tool_event_capture') reportToolCaptureFailure(error);
     throw error;
   }
 }
