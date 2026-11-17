@@ -66,7 +66,7 @@ final class ConversationContinuousEntryUITests: OrotFailFastTestCase {
         app.buttons["retention-probe-refresh"].tap()
         let label = app.staticTexts["retention-probe-status"]
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", expected), object: label)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 10), .completed, label.debugDescription)
+        XCTAssertEqual(UITestConditions.wait(for: [expectation]), .completed, label.debugDescription)
     }
 
     private func send(_ app: XCUIApplication, question: String = "Synthetic retention question", waitForPartial: Bool = true) -> Bool {
