@@ -125,7 +125,7 @@ test('fresh creation, visit preparation, migration, document import, backup and 
     // Tool-event disclosure uses the same fresh fixture store as the conversation journeys.
     'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
     'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable',
-    'OrotUITests/ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
+    'OrotUITests/ConversationComposerDockUITests/testCompactContinuousConversationRetainsEarlierTurns',
     'OrotUITests/ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
     // The visit-preparation UI fixture keeps its synthetic conversation in a fresh app container.
     'OrotUITests/ConversationVisitPreparationUITests/testLongPreparedQuestionKeepsAccessibleOrderWithLargeTextAndKeyboard',

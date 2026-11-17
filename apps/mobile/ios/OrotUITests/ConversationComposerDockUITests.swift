@@ -56,37 +56,37 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
 
     /// A compact history selection returns to the conversation before its page action is used.
     @MainActor
-    func testCompactHistorySelectionReturnsToConversation() {
+    func testCompactContinuousConversationRetainsEarlierTurns() {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         XCUIDevice.shared.orientation = .portrait
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
         let input = UITestConditions.element(app, "rag-conversation-input")
-        XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
-        input.tap()
-        input.typeText("history selection")
-        app.buttons.matching(identifier: "rag-conversation-send").firstMatch.tap()
-        let citation = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
-        XCTAssertTrue(UITestConditions.exists(citation))
-        // Compact session controls scroll with the header; they are not native dock or overflow actions.
-        let sessions = app.buttons.matching(identifier: "rag-conversation-sessions-toggle").firstMatch
-        guard FormUITestConditions.reveal(sessions, in: app, scrollID: "rag-conversation-history", towardTop: true) != nil else { return }
-        sessions.tap()
-        let history = UITestConditions.element(app, "conversation-history-screen")
-        let row = UITestConditions.element(app, "conversation-history-session-1")
-        XCTAssertTrue(UITestConditions.exists(history) && UITestConditions.exists(row))
-        XCTAssertGreaterThan(app.frame.height, app.frame.width)
-        XCTAssertFalse(UITestConditions.element(app, "conversation-history-preview").exists)
-        XCTAssertTrue(row.isHittable)
-        row.tap()
-        XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")))
-        XCTAssertFalse(history.exists)
-        let newSession = app.buttons.matching(identifier: "rag-conversation-new-session").firstMatch
-        guard FormUITestConditions.reveal(newSession, in: app, scrollID: "rag-conversation-history", towardTop: true) != nil else { return }
-        newSession.tap()
-        XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
-        XCTAssertFalse(citation.exists)
+        let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
+        let citations = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기"))
+        let questions = ["First continuous question", "Second continuous question"]
+        for (index, question) in questions.enumerated() {
+            XCTAssertTrue(UITestConditions.exists(input) && input.isHittable)
+            input.tap()
+            input.typeText(question)
+            UITestConditions.value(input, equals: question)
+            ConversationComposerDockUITestConditions.waitForVisibleKeyboard(in: app)
+            XCTAssertTrue(send.isEnabled && send.isHittable)
+            XCTAssertGreaterThanOrEqual(send.frame.width, 44)
+            XCTAssertGreaterThanOrEqual(send.frame.height, 44)
+            send.tap()
+            XCTAssertTrue(UITestConditions.exists(citations.element(boundBy: index)))
+            XCTAssertEqual(citations.count, index + 1, "Each completed turn retains its own source action")
+        }
+        // Continuous conversation replaced manual session selection; earlier turns stay in this transcript.
+        for question in questions {
+            let body = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@ AND label == %@", "conversation-message-body", question)).firstMatch
+            XCTAssertTrue(UITestConditions.exists(body))
+        }
+        XCTAssertFalse(UITestConditions.element(app, "rag-conversation-sessions-toggle").exists)
+        XCTAssertFalse(UITestConditions.element(app, "rag-conversation-new-session").exists)
+        XCTAssertTrue(input.isHittable && app.frame.height > app.frame.width)
     }
 
     @MainActor

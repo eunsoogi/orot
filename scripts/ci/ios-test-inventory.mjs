@@ -111,7 +111,7 @@ export const fixtureTests = [
   'OrotUITests/ConversationRetentionUITests/testNativeLeaseEndsAfterExplicitStop',
   'OrotUITests/ConversationToolEventsUITests/testSyntheticToolCallsExpandIndependentlyWithNativeTargets',
   'OrotUITests/ConversationComposerDockUITests/testFailureKeepsComposerReachable',
-  'OrotUITests/ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
+  'OrotUITests/ConversationComposerDockUITests/testCompactContinuousConversationRetainsEarlierTurns',
   'OrotUITests/ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
   // Keep the visit-entry review, long question, large text and native keyboard boundary in the fixture suite.
   'OrotUITests/ConversationVisitPreparationUITests/testLongPreparedQuestionKeepsAccessibleOrderWithLargeTextAndKeyboard',
