@@ -18,13 +18,13 @@ import {
   selectConversationResultSchema,
 } from './literatureSchema';
 import type { LiteratureIdentity } from './literatureCitationBinding';
-import { appointmentState, isObject, priorMessages } from './taskHistory';
+import { appointmentState, isObject } from './taskHistory';
 import {
   isEvidenceIndependentConversation,
   requestsLiteratureExplanation,
 } from './literatureIntent';
 import { conversationTaskInput } from './conversationEntryContext';
-import { priorDialogue } from './priorDialogue';
+import { conversationRequestHistory } from './conversationRequestHistory';
 import { possibilityPrompt } from './possibilityPrompt';
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
@@ -43,7 +43,7 @@ export interface GroundedRagAnswer {
 export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
   // The live send boundary owns the reviewed opening; never spend another preview call during tools.
-  taskVersion: '12',
+  taskVersion: '13',
   // Full current evidence is already in createMessages. Preserve tool identity and
   // coverage without sending the same body a second time in native tool history.
   nativeToolResultMode: 'evidence_references',
@@ -108,8 +108,7 @@ export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
             'Answer directly in Korean, briefly for a simple fact and in short paragraphs for multiple requested topics. Use available follow-up tools for missing requested topics before treating a partial search as insufficient. For medication questions, report recorded medications and dose facts without unrelated consultation plans. Describe the state at the record time rather than asserting current status.',
           temporalRequirements:
             'scheduled/rescheduled means planned, completed means finished, and cancelled means cancelled. An event title or consultation intention does not establish ongoing or completed care. Resolve relative times against the source record time, not today.',
-          previousConversation: priorMessages(input.context),
-          priorDialogue: priorDialogue(input.context),
+          ...conversationRequestHistory(input.context),
           priorDialogueOmitted:
             isObject(input.context) &&
             input.context.priorDialogueOmitted === true,
