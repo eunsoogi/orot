@@ -134,7 +134,7 @@ export async function generateDailyReportWithCalendar(
         },
         includesSystemCalendar: !!external?.facts.length,
         signal: request.signal,
-        timeoutMs: input.timeoutMs ?? 90_000,
+        timeoutMs: input.timeoutMs ?? null,
         deadlineContext: input.deadlineContext,
         revalidate: async signal => {
           input.deadlineContext.stage = 'source_read';

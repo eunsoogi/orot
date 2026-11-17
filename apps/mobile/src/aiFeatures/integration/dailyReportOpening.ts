@@ -10,8 +10,8 @@ import type { SelectedAiResolution } from './provider';
 
 /** Only a live conversation receives a model-authored opening. Source preparation has
  * succeeded; reuse/lookup never calls this. No health facts or report text enter its payload.
- * The existing outer report deadline and Stop remain; preview processing is bounded
- * separately from explicit authorization waits. */
+ * Stop still propagates to both opening and report work; optional opening delivery
+ * cannot authorize or replace the final report. */
 export async function generateDailyReportOpening(
   input: DailyReportRunInput,
   request: DailyReportServiceRequest,

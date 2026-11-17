@@ -49,7 +49,7 @@ export interface DailyReportServiceInput {
   readonly now: () => string;
   readonly createRunId: () => string;
   readonly resolveSelected?: () => Promise<SelectedAiResolution>;
-  readonly timeoutMs?: number;
+  readonly timeoutMs?: number | null;
 }
 
 /** Prepared dependencies shared by the lookup and generation stages. */

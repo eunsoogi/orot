@@ -16,7 +16,7 @@ import type {
   LanguageModelRequest,
 } from '@orot/model-runtime';
 import type { SelectedAiResolution } from './provider';
-import { stableJson, utf8ByteLength } from './evidenceUtils';
+import { stableJson } from './evidenceUtils';
 import {
   providerDiagnostic,
   reportProviderException,
@@ -36,7 +36,7 @@ export async function selectDailyReportFacts(input: {
   reportContext?: ReportModelContext;
   includesSystemCalendar?: boolean;
   signal: AbortSignal;
-  timeoutMs: number;
+  timeoutMs: number | null;
   deadlineContext: DailyReportDeadlineContext;
   revalidate: (signal: AbortSignal) => Promise<boolean>;
 }): Promise<
@@ -100,10 +100,8 @@ export async function selectDailyReportFacts(input: {
       }),
     ]);
   try {
-    if (utf8ByteLength(JSON.stringify(request)) > 64 * 1024) {
-      providerDiagnostic('daily_report', 'provider_error', 'unsupported_input');
-      return { status: 'failed', code: 'provider_unavailable' };
-    }
+    // Capacity belongs to the selected provider; exact-payload consent and source
+    // revalidation still precede dispatch regardless of request size.
     if (input.selected.remoteProcessing) {
       input.deadlineContext.stage = 'consent';
       let decision: ConsentDecision;

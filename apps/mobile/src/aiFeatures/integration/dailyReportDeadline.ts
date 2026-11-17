@@ -48,10 +48,11 @@ export function dailyReportDeadlineFailure(
   }
 }
 
-/** Bound preparation as well as inference; a late operation cannot publish after abort. */
+/** Propagate cancellation through preparation and inference; finite deadlines are opt-in.
+ * Even without a timer, a late operation cannot publish after its owner aborts. */
 export async function boundedDailyReport<T>(
   signal: AbortSignal,
-  timeoutMs: number,
+  timeoutMs: number | null,
   work: (signal: AbortSignal) => Promise<T>,
   onTimeout?: () => DeadlineFailure,
   context?: DailyReportDeadlineContext,
