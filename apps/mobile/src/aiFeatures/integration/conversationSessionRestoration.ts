@@ -1,7 +1,10 @@
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
-import { restoreConversationArtifact } from './restoreConversationArtifact';
+import {
+  restoreConversationArtifact,
+  restoreConversationArtifactSnapshot,
+} from './restoreConversationArtifact';
 import { fingerprint } from './evidenceUtils';
 
 /** Restore each turn with fresh source aliases, and withhold stale or unavailable results. */
@@ -28,10 +31,18 @@ export async function restoreConversationSessionPage(input: {
     Awaited<ReturnType<typeof restoreConversationArtifact>>
   >[] = [];
   const unavailableItems: { id: string; createdAt: string }[] = [];
-  for (const item of page.items) {
+  // One transaction shares identical period calculations while still checking each
+  // root's deletion, parent, policy and source guards independently.
+  const snapshots = await input.storage.readMany(
+    page.items.map(item => item.id),
+  );
+  for (const [index, item] of page.items.entries()) {
     if (input.signal.aborted)
       throw new Error('Conversation restoration was cancelled.');
-    const result = await restoreConversationArtifact({ ...input, id: item.id });
+    const result = await restoreConversationArtifactSnapshot(
+      { ...input, id: item.id },
+      snapshots[index] ?? null,
+    );
     if (result?.sessionId === input.sessionId) items.push(result);
     else unavailableItems.push({ id: item.id, createdAt: item.createdAt });
   }
@@ -43,6 +54,17 @@ export async function restoreConversationSessionPage(input: {
       throw new Error('Conversation content changed during restoration.');
     }
   }
+  // A null initial snapshot can mean either stable quarantine or a row removed
+  // after listing. Recheck metadata too, including hidden sessions and unavailable rows.
+  const latestPage = await input.storage.list(
+    input.sessionId,
+    input.cursor,
+    input.limit,
+    'conversation',
+    input.ids,
+  );
+  if (fingerprint(latestPage) !== fingerprint(page))
+    throw new Error('Conversation content changed during restoration.');
   if (input.signal.aborted)
     throw new Error('Conversation restoration was cancelled.');
   return {

@@ -1,3 +1,4 @@
+import type { ConversationArtifact } from '../../storage/conversationArtifactCodec';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -19,7 +20,7 @@ import { registerConversationPhotoEvidence } from './conversationPhotoEvidence';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 
 /** Restore opaque source links only while the saved result and every local input remain current. */
-export async function restoreConversationArtifact(input: {
+type RestoreInput = {
   readonly id: string;
   readonly storage: Pick<
     ReturnType<typeof createConversationArtifactStorage>,
@@ -28,10 +29,34 @@ export async function restoreConversationArtifact(input: {
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly data: AiFeatureLocalData;
   readonly signal: AbortSignal;
-}) {
+};
+
+export async function restoreConversationArtifact(input: RestoreInput) {
   if (input.signal.aborted) return null;
-  const saved = await input.storage.read(input.id);
-  if (!saved || saved.citations === undefined || input.signal.aborted)
+  return hydrate(input, await input.storage.read(input.id), true);
+}
+
+/** Only the page reader may hydrate an already validated batch snapshot. Its final
+ * readMany fence is mandatory before publication. Live aliases always retain the
+ * original strict storage, never this snapshot or a snapshot-serving proxy. */
+export function restoreConversationArtifactSnapshot(
+  input: RestoreInput,
+  saved: ConversationArtifact | null,
+) {
+  return hydrate(input, saved, false);
+}
+
+async function hydrate(
+  input: RestoreInput,
+  saved: ConversationArtifact | null,
+  recheck: boolean,
+) {
+  if (
+    !saved ||
+    saved.id !== input.id ||
+    saved.citations === undefined ||
+    input.signal.aborted
+  )
     return null;
   // A database row alone cannot prove a staged native original still exists unchanged.
   if (
@@ -121,7 +146,7 @@ export async function restoreConversationArtifact(input: {
     ))
   )
     return null;
-  const latest = await input.storage.read(input.id);
+  const latest = recheck ? await input.storage.read(input.id) : saved;
   if (
     !latest ||
     fingerprint(latest) !== fingerprint(saved) ||
