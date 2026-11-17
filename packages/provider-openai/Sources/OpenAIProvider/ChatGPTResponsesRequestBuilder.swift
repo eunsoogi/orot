@@ -7,7 +7,7 @@ enum ChatGPTResponsesRequestBuilder {
               !input.messages.isEmpty || input.publicWebQuery != nil,
               !accessToken.isEmpty
         else {
-            throw ChatGPTResponsesError.invalidRequest
+            throw ResponsesRequestValidationDiagnostics.failure(.builderEnvelope)
         }
 
         var instructions = [String]()
@@ -16,7 +16,7 @@ enum ChatGPTResponsesRequestBuilder {
         if let query = input.publicWebQuery {
             guard inputMessages.isEmpty, input.tools.isEmpty, input.toolChoice == nil,
                   ResponsesPublicWebSearch.validQuery(query)
-            else { throw ChatGPTResponsesError.invalidRequest }
+            else { throw ResponsesRequestValidationDiagnostics.failure(.publicSearchEnvelope) }
             // This request contains only the explicitly reviewed public query. Never replay
             // private model messages, function results or opaque provider continuation items.
             inputMessages = [
@@ -33,7 +33,7 @@ enum ChatGPTResponsesRequestBuilder {
                 guard !callID.isEmpty, !name.isEmpty,
                       Self.jsonObject(argumentsJSON) != nil
                 else {
-                    throw ChatGPTResponsesError.invalidRequest
+                    throw ResponsesRequestValidationDiagnostics.failure(.functionCall)
                 }
                 messages.append([
                     "type": "function_call",
@@ -42,13 +42,13 @@ enum ChatGPTResponsesRequestBuilder {
                     "arguments": argumentsJSON,
                 ])
             case let .functionCallOutput(callID, output):
-                guard !callID.isEmpty else { throw ChatGPTResponsesError.invalidRequest }
+                guard !callID.isEmpty else { throw ResponsesRequestValidationDiagnostics.failure(.functionOutput) }
                 messages.append(["type": "function_call_output", "call_id": callID, "output": output])
             case let .continuationItem(json):
                 guard let item = Self.jsonObject(json),
                       Self.isSupportedContinuationItem(item)
                 else {
-                    throw ChatGPTResponsesError.invalidRequest
+                    throw ResponsesRequestValidationDiagnostics.failure(.continuationItem)
                 }
                 messages.append(item)
             }
@@ -67,7 +67,7 @@ enum ChatGPTResponsesRequestBuilder {
         }
         // Preserve explicit first-search selection across the native HTTP boundary.
         if let choice = input.toolChoice {
-            guard choice == "required", !input.tools.isEmpty else { throw ChatGPTResponsesError.invalidRequest }
+            guard choice == "required", !input.tools.isEmpty else { throw ResponsesRequestValidationDiagnostics.failure(.toolChoice) }
             body["tool_choice"] = choice
         }
         if !input.tools.isEmpty {
@@ -78,7 +78,7 @@ enum ChatGPTResponsesRequestBuilder {
                       let parameters = Self.jsonObject(tool.parametersJSON),
                       !tool.strict
                 else {
-                    throw ChatGPTResponsesError.invalidRequest
+                    throw ResponsesRequestValidationDiagnostics.failure(.toolDefinition)
                 }
                 var definition: [String: Any] = [
                     "type": "function",
@@ -96,7 +96,8 @@ enum ChatGPTResponsesRequestBuilder {
             body["instructions"] = instructions.joined(separator: "\n\n")
         }
         let encoded = try JSONSerialization.data(withJSONObject: body)
-        guard encoded.count <= 1_048_576 else { throw ChatGPTResponsesError.invalidRequest }
+        // Do not impose an application byte ceiling on valid outgoing context.
+        // Provider acceptance and inbound parser/resource protections remain separate.
 
         var request = URLRequest(url: URL(string: "\(ChatGPTOAuthConstants.resource)/responses")!)
         request.httpMethod = "POST"

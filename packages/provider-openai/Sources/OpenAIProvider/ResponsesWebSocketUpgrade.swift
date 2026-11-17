@@ -18,7 +18,7 @@ final class ResponsesWebSocketUpgradeGate: @unchecked Sendable {
                 if let result {
                     return result
                 }
-                guard waiter == nil else { return .failure(ChatGPTResponsesError.invalidRequest) }
+                guard waiter == nil else { return .failure(ResponsesRequestValidationDiagnostics.failure(.duplicateUpgradeWait)) }
                 waiter = continuation
                 return nil
             }

@@ -31,9 +31,10 @@ struct ResponsesSteeringState {
     mutating func prepareSteer(submissionID: String, text: String) throws -> Data {
         guard !finished, let activeID, !submissionUsed,
               !submissionID.isEmpty, submissionID.utf8.count <= 128,
-              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              text.utf8.count <= 16384
-        else { throw ChatGPTResponsesError.invalidRequest }
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { throw ResponsesRequestValidationDiagnostics.failure(.steeringState) }
+        // Outgoing user instructions are not truncated or rejected by an app byte
+        // ceiling. Identity/lifecycle guards and inbound frame protections stay separate.
         self.submissionID = submissionID
         submissionUsed = true
         targetID = activeID

@@ -44,7 +44,7 @@ struct URLSessionResponsesWebSocket: ResponsesWebSocketConnection {
     }
 
     func send(_ data: Data) async throws {
-        guard let text = String(data: data, encoding: .utf8) else { throw ChatGPTResponsesError.invalidRequest }
+        guard let text = String(data: data, encoding: .utf8) else { throw ResponsesRequestValidationDiagnostics.failure(.outgoingTextEncoding) }
         try await task.send(.string(text))
     }
 

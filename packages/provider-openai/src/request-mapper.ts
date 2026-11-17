@@ -141,7 +141,18 @@ function isSupportedResponseItem(json: string): boolean {
     const item: unknown = JSON.parse(json);
     if (!isJsonObject(item)) return false;
     const type = item.type;
-    return typeof type === 'string' && RESPONSE_ITEM_TYPES.has(type);
+    if (typeof type !== 'string' || !RESPONSE_ITEM_TYPES.has(type)) return false;
+    if (type !== 'function_call') return true;
+    // Match the native builder before replaying an opaque function item. The
+    // continuation is provider context, not permission to accept malformed calls.
+    if (
+      ![item.id, item.call_id, item.name].every(
+        (value) => typeof value === 'string' && value.length > 0,
+      ) ||
+      typeof item.arguments !== 'string'
+    )
+      return false;
+    return isJsonObject(JSON.parse(item.arguments));
   } catch {
     return false;
   }

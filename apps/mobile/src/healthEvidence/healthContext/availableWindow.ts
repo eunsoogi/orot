@@ -50,7 +50,10 @@ export async function readAvailableHealthContextWindow(
       AND ${currentEvidenceCondition(kind)}`;
   });
   const result = await executor.execute(
-    `SELECT occurred FROM (${queries.join(' UNION ALL ')}) ORDER BY time_key LIMIT 1`,
+    // Each branch keeps every eligibility filter before its local minimum. The
+    // global minimum is then among at most five rows, not all imported samples.
+    // This is an exact minimum reduction, never a record/history result cap.
+    `SELECT occurred FROM (${queries.map(query => `SELECT * FROM (${query} ORDER BY time_key LIMIT 1)`).join(' UNION ALL ')}) ORDER BY time_key LIMIT 1`,
     sources.flatMap(() => [cutoff, cutoff]),
   );
   if (signal?.aborted) throw new Error('Health context was cancelled.');

@@ -40,6 +40,19 @@ export async function ensureHealthContextGeneration(
   await executor.execute(
     `CREATE INDEX IF NOT EXISTS health_context_symptom_time ON symptom_entries (${localQueryTimestampKeyExpression("coalesce(json_extract(payload_json, '$.startedAt'), effective_at)")})`,
   );
+  // Activity selection is case-normalized, so its index must use the identical
+  // expression; the raw-concept index cannot narrow lower(concept) IN lookups.
+  await executor.execute(
+    `CREATE INDEX IF NOT EXISTS health_context_activity_time ON health_observations (lower(json_extract(payload_json, '$.concept')), ${localQueryTimestampKeyExpression('effective_at')})`,
+  );
+  // Availability asks for the first admitted row in each kind. These exact-time
+  // indexes let its per-kind minimum stop before scanning an entire catalog.
+  await executor.execute(
+    `CREATE INDEX IF NOT EXISTS health_context_assertion_time ON medication_assertions (${localQueryTimestampKeyExpression('effective_at')})`,
+  );
+  await executor.execute(
+    `CREATE INDEX IF NOT EXISTS health_context_registration_time ON medication_definitions (${localQueryTimestampKeyExpression('coalesce(effective_at, ingested_at)')})`,
+  );
   await ensurePeriodRemovalIndexes(executor);
   for (const table of tables) {
     for (const event of ['INSERT', 'UPDATE', 'DELETE'] as const) {
