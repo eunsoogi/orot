@@ -181,3 +181,18 @@ test.each(['delete-call', 'abort', 'session-generation'] as const)(
     await expect(result).resolves.toBeUndefined();
   },
 );
+
+test('a strict unavailable parent never becomes an empty valid cold source snapshot', async () => {
+  const f = await fixture();
+  f.read.mockClear();
+  f.readToolTurns.mockRejectedValue(new Error('Synthetic unavailable parent'));
+  await expect(
+    f.services.resolveColdConversationToolSource(
+      owner,
+      f.source,
+      f.signal,
+      scope,
+    ),
+  ).resolves.toBeUndefined();
+  expect(f.read).not.toHaveBeenCalled();
+});

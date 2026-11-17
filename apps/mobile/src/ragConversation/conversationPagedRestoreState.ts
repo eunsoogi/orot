@@ -36,8 +36,7 @@ export function createConversationPagedRestoreState(input: {
     const owner = owners.get(id);
     if (!owner || owner.exhausted || signal?.aborted) return Promise.resolve();
     if (owner.flight) {
-      // A joining caller owns only its wait, not a page started by another reader.
-      // Stop releases that caller immediately while the original reader keeps its fences.
+      // Joining cancellation releases this wait, never the scroll reader's ownership.
       const flight = owner.flight;
       if (!signal) return flight;
       return new Promise<void>(resolve => {
@@ -58,7 +57,7 @@ export function createConversationPagedRestoreState(input: {
     const cancel = () => {
       controller.abort();
       if (owners.get(id) === owner && owner.controller === controller) {
-        // A stopped SQL read may settle late; a new Send must own a fresh retry immediately.
+        // Detach stopped SQL immediately; its late result cannot own a fresh retry.
         owner.controller = undefined;
         owner.flight = undefined;
         input.update(id, {
@@ -214,7 +213,6 @@ export function createConversationPagedRestoreState(input: {
           if (owners.get(id) !== owner) return false;
           continue;
         }
-        // Exclude all failed users conservatively, including a possible retry of the same prompt.
         if (
           owner.initialized &&
           (owner.exhausted ||
@@ -237,7 +235,12 @@ export function createConversationPagedRestoreState(input: {
         )
           return false;
       }
-      return !signal?.aborted;
+      const session = input.find(id);
+      return (
+        !signal?.aborted &&
+        !session?.restoreFailed &&
+        !session?.leaseRefreshRequired
+      );
     },
     forget,
     dispose() {

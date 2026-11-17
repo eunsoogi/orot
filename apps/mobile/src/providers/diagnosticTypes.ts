@@ -1,7 +1,9 @@
+import type { ConversationHistoryStage } from './conversationHistoryDiagnostic';
 export type { Outcome } from './diagnosticOutcomes';
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
 export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report' | 'storage';
 export type Stage =
+  | ConversationHistoryStage
   | 'conversation_model_preflight'
   | 'conversation_history_preflight'
   | 'conversation_dispatch'

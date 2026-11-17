@@ -16,6 +16,12 @@ type Store = {
     current?: () => boolean,
     signal?: AbortSignal,
   ): Promise<number>;
+  refreshLease(
+    id: number,
+    lease: { id: string; version: number },
+    current: () => boolean,
+    signal: AbortSignal,
+  ): Promise<void>;
   select(id: number): void;
   cancel(id: number): void;
   create(): void;
@@ -62,6 +68,15 @@ export function continuousConversationPolicy<T extends Store>(
             session => store.toolSourceSessionId(session.id) === target.id,
           );
         if (existing) {
+          const lease = options.retention?.activeLease(existing.id);
+          if (
+            !lease ||
+            lease.version !== target.version ||
+            existing.leaseRefreshRequired
+          ) {
+            await store.refreshLease(existing.id, target, current, signal);
+            if (!current()) return;
+          }
           if (existing.id !== activeId) store.cancel(activeId);
           store.select(existing.id);
 

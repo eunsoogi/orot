@@ -1,3 +1,4 @@
+import { RetainedSourceInvalidError } from './retainedSourceError';
 import type { StoredConversationToolTurn } from '../../storage/conversationToolEventStorage';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -36,8 +37,10 @@ export async function restoreConversationToolTurns(
               value.runId === event.operationRunId &&
               value.callId === event.callId,
           );
-          if (!lineage || signal.aborted)
-            throw new Error('Tool source is unavailable.');
+          if (signal.aborted)
+            throw new Error('Tool restoration was cancelled.');
+          if (!lineage)
+            throw new RetainedSourceInvalidError('Tool source is unavailable.');
           const restored = await restoreRetainedSources(
             requireNonPhotoSources(
               lineage.sources.filter(
@@ -51,8 +54,10 @@ export async function restoreConversationToolTurns(
             registry,
             data,
           );
-          if (restored.sourceChanged || signal.aborted)
-            throw new Error('Tool source changed.');
+          if (signal.aborted)
+            throw new Error('Tool restoration was cancelled.');
+          if (restored.sourceChanged)
+            throw new RetainedSourceInvalidError('Tool source changed.');
           let index = 0;
           const sources = await Promise.all(
             event.sources.map(async source => {
@@ -71,7 +76,9 @@ export async function restoreConversationToolTurns(
                   signal,
                 );
                 if (!restoredResearch)
-                  throw new Error('Tool research source is unavailable.');
+                  throw new RetainedSourceInvalidError(
+                    'Tool research source is unavailable.',
+                  );
                 const bound = bindConversationToolSource({
                   alias: restoredResearch.reference,
                   sessionId,
@@ -105,7 +112,10 @@ export async function restoreConversationToolTurns(
                   ? restoreFilteredToolSource(dependency, registry, storage)
                   : dependency &&
                     restored.mapping.get(stableJson(dependency.reference));
-              if (!alias) throw new Error('Tool source is unavailable.');
+              if (!alias)
+                throw new RetainedSourceInvalidError(
+                  'Tool source is unavailable.',
+                );
               const bound = bindConversationToolSource({
                 alias,
                 sessionId,

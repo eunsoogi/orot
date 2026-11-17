@@ -5,7 +5,7 @@ import {
   markToolPeriodPolicy,
   unavailableToolMetadata,
 } from './legacyToolPeriodQuarantine';
-import { conversationSelectedIds } from './conversationSelectedIds';
+import { conversationToolSnapshotReader } from './conversationToolSnapshot';
 import type { SqlDatabase } from '@orot/storage';
 import {
   mergeConversationToolEvents,
@@ -39,6 +39,7 @@ export function createConversationToolEventStorage(
     await ensureStorage();
     await setupToolPeriodPolicy(database);
   };
+  const readSnapshot = conversationToolSnapshotReader(database, ensure);
   return {
     readUnavailableToolMetadata: unavailableToolMetadata(database, ensure),
     /** A source that cannot be retained must not leave a permanently running call. */
@@ -174,73 +175,15 @@ export function createConversationToolEventStorage(
       });
     },
     recoverInterruptedToolEvents: toolEventRecovery(database, ensure),
+    readToolTurnsSnapshot: readSnapshot,
     async readToolTurns(
       sessionId: string,
       expectedVersion?: number,
       selectedIds?: readonly string[],
-    ): Promise<readonly StoredConversationToolTurn[]> {
-      await ensure();
-      const selected = conversationSelectedIds('e.message_id', selectedIds);
-      const turns = new Map<string, StoredConversationToolTurn>();
-      await database.transaction(async tx => {
-        // An empty event list must still prove that the session lease is live.
-        if (expectedVersion !== undefined) {
-          const lease = await tx.execute(
-            'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ?',
-            [sessionId, expectedVersion],
-          );
-          if (!lease.rows.length)
-            throw new Error('Conversation is unavailable.');
-        }
-        const result = await tx.execute(
-          `SELECT e.message_id, e.created_at, e.event_json, l.sources_json FROM conversation_tool_events e JOIN conversation_artifact_sessions s ON s.id = e.session_id AND s.hidden = 0 JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation LEFT JOIN conversation_tool_lineage l ON l.session_id = e.session_id AND l.run_id = e.run_id AND l.call_id = e.call_id WHERE e.session_id = ?${selected.clause} ORDER BY e.created_at, e.message_id, e.run_id, e.call_id`,
-          [sessionId, ...selected.parameters],
-        );
-        for (const row of result.rows) {
-          const event = projectConversationToolEvent(
-            JSON.parse(String(row.event_json)),
-          );
-          if (!event) throw new Error('Stored tool event is invalid.');
-          const lineage = decodeToolLineage(
-            row.sources_json ? JSON.parse(String(row.sources_json)) : [],
-            event,
-            {
-              messageId: String(row.message_id),
-              sessionId,
-              createdAt: String(row.created_at),
-            },
-          );
-          await indexToolLineage(tx, sessionId, event, lineage.sources);
-          if (
-            !(await legacyToolPeriodAvailable(
-              tx,
-              [sessionId, event.operationRunId, event.callId],
-              lineage.sources,
-            ))
-          )
-            continue;
-          await assertToolLineage(tx, database, lineage, false);
-          const messageId = String(row.message_id);
-          const prior = turns.get(messageId);
-          turns.set(messageId, {
-            messageId,
-            createdAt: String(row.created_at),
-            toolEvents: mergeConversationToolEvents(
-              prior?.toolEvents ?? [],
-              event,
-            ),
-            lineages: [
-              ...(prior?.lineages ?? []),
-              {
-                runId: event.operationRunId,
-                callId: event.callId,
-                sources: lineage.sources,
-              },
-            ],
-          });
-        }
-      });
-      return [...turns.values()];
+    ) {
+      // Preserve the original typed error (including reason) for live bindings and cold resume.
+      return (await readSnapshot(sessionId, expectedVersion, selectedIds, true))
+        .items;
     },
   };
 }

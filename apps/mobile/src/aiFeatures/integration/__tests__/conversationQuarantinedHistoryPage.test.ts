@@ -159,9 +159,9 @@ test('a session removed while restoring notices does not publish metadata', asyn
   const f = await fixture();
   try {
     await f.quarantine();
-    const readTools = f.storage.readToolTurns.bind(f.storage);
+    const readTools = f.storage.readToolTurnsSnapshot.bind(f.storage);
     jest
-      .spyOn(f.storage, 'readToolTurns')
+      .spyOn(f.storage, 'readToolTurnsSnapshot')
       .mockImplementationOnce(async (...args) => {
         await f.storage.deleteSession('session');
         return readTools(...args);
