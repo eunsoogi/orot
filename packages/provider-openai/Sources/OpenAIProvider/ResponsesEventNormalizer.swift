@@ -24,6 +24,13 @@ struct ResponsesEventNormalizer {
         webSearch = ResponsesPublicWebSearch(enabled: publicWebSearch)
     }
 
+    /// Metadata never advances the lifecycle. Validate even while a completed
+    /// original response is held pending a steering acknowledgement.
+    mutating func validateConnectionMetadata(_ object: [String: Any]) throws {
+        try ResponsesSafetyRefusal.validate(object, type: "codex.response.metadata")
+        _ = try responseStart.observe(object, type: "codex.response.metadata")
+    }
+
     mutating func consume(_ frame: ResponsesSSEFrame) throws -> ChatGPTResponsesEvent? {
         guard !completed else { return nil }
         if frame.data == "[DONE]" {

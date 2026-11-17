@@ -64,12 +64,21 @@ struct ResponsesSteeringState {
         if type.hasPrefix("response.steer.") {
             return try steeringEvent(object, type: type)
         }
-        guard activeID != nil else { throw ResponsesSteeringDiagnostics.beforeActiveFailure(object, type: type) }
+        guard activeID != nil || type == "codex.response.metadata" else {
+            throw ResponsesSteeringDiagnostics.beforeActiveFailure(object, type: type)
+        }
         if let id = object["response_id"] as? String, id != activeID {
             throw ResponsesMalformedDiagnostics.failure(.steeringResponseIdentity)
         }
         if let response = object["response"] as? [String: Any], let id = response["id"] as? String, id != activeID {
             throw ResponsesMalformedDiagnostics.failure(.steeringNestedIdentity)
+        }
+        // The public Codex WebSocket client treats this exact event as connection
+        // metadata, not response creation. Reuse refusal and identity validation,
+        // but do not expose headers, bind readiness, execute tools or retain state.
+        if type == "codex.response.metadata" {
+            try normalizer.validateConnectionMetadata(object)
+            return []
         }
         if type == "response.incomplete", let response = object["response"] as? [String: Any],
            let detail = response["incomplete_details"] as? [String: Any], detail["reason"] as? String == "steered"

@@ -81,21 +81,6 @@ enum ResponsesBeforeActiveDiagnostics {
         case other
     }
 
-    /// Separate, local-only diagnostic. Format bounds do not prove a value is non-sensitive.
-    /// Never attach its output to public reports; accepts only the protocol discriminator.
-    static func protocolMessage(type: String, enabled: Bool) -> String? {
-        guard enabled else { return nil }
-        let bytes = Array(type.utf8)
-        let valid = !bytes.isEmpty && bytes.count <= 64
-            && (97 ... 122).contains(bytes[0])
-            && bytes.allSatisfy { byte in
-                (97 ... 122).contains(byte) || (48 ... 57).contains(byte)
-                    || byte == 95 || byte == 46 || byte == 45
-            }
-        let name = valid ? type : "invalid"
-        return "OROT_PROTOCOL_TYPE_DIAGNOSTIC type=\(name)"
-    }
-
     static func message(type: String, enabled: Bool) -> String? {
         guard enabled else { return nil }
         let event = Event(rawValue: type) ?? .other
