@@ -109,7 +109,7 @@ test('keeps Home compact and groups calendar and appointment management under Re
   expect(screen.queryByTestId('calendar-connect')).toBeNull();
   expect(screen.getByTestId('schedule-open-appointments')).toBeTruthy();
   expect(screen.getByTestId('open-medical-appointments')).toHaveTextContent(
-    /AI로 일정 분류/,
+    /일정 분류/,
   );
   expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
 
