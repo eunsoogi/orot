@@ -88,6 +88,12 @@ public enum ChatGPTResponsesRequestDecoder {
         if value["toolChoice"] != nil, toolChoice != "required" || tools.isEmpty {
             throw ChatGPTResponsesError.invalidRequest
         }
-        return ChatGPTResponsesRequest(model: model, messages: messages, tools: tools, toolChoice: toolChoice)
+        let scope = value["transportScope"] as? String
+        if value["transportScope"] != nil,
+           scope == nil || scope!.isEmpty || scope!.utf8.count > 128 || scope!.contains(where: { !$0.isASCII || $0.isWhitespace })
+        {
+            throw ChatGPTResponsesError.invalidRequest
+        }
+        return ChatGPTResponsesRequest(model: model, messages: messages, tools: tools, toolChoice: toolChoice, transportScope: scope)
     }
 }

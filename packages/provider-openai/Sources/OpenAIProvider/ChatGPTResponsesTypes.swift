@@ -42,6 +42,8 @@ public struct ChatGPTResponsesRequest: Equatable, Sendable {
     public let tools: [ChatGPTResponsesToolDefinition]
     public let toolChoice: String?
     public let publicWebQuery: String?
+    /// Native-only transport identity. Never included in a remote request.
+    public let transportScope: String?
 
     public init(
         model: String,
@@ -49,12 +51,14 @@ public struct ChatGPTResponsesRequest: Equatable, Sendable {
         tools: [ChatGPTResponsesToolDefinition] = [],
         toolChoice: String? = nil,
         publicWebQuery: String? = nil,
+        transportScope: String? = nil,
     ) {
         self.model = model
         self.messages = messages
         self.tools = tools
         self.toolChoice = toolChoice
         self.publicWebQuery = publicWebQuery
+        self.transportScope = transportScope
     }
 }
 
