@@ -92,17 +92,22 @@ test('retains an actual period coverage gap in the review screen instead of losi
 });
 
 test.each([
-  ['measurements', 'quantity_sensor_series_limit_reached', true],
-  ['medications', 'medication_catalog_limit_reached', true],
-  ['sleep', 'unsupported_sleep_categories_excluded_from_duration', false],
-  ['measurements', undefined, false],
+  ['measurements', 'complete_sensor_catalog', undefined, false],
+  ['medications', 'complete_medication_catalog', undefined, false],
+  [
+    'sleep',
+    'unsupported_sleep',
+    'unsupported_sleep_categories_excluded_from_duration',
+    false,
+  ],
+  ['measurements', 'ordinary_measurements', undefined, false],
 ] as const)(
-  'propagates actual %s reader limitations (%s) to review caveats',
-  async (topic, limitation, truncated) => {
+  'retains complete %s facts for %s while propagating real coverage caveats',
+  async (topic, scenario, limitation, truncated) => {
     jest.useFakeTimers({ now: Date.parse('2026-10-05T12:00:00Z') });
     const f = await visitHealthFixture(topic);
     try {
-      if (limitation === 'quantity_sensor_series_limit_reached') {
+      if (scenario === 'complete_sensor_catalog') {
         for (let index = 0; index < 13; index++) {
           const row = healthObservation(
             `sensor-${index}`,
@@ -120,7 +125,7 @@ test.each([
             },
           });
         }
-      } else if (limitation === 'medication_catalog_limit_reached') {
+      } else if (scenario === 'complete_medication_catalog') {
         for (let index = 0; index < 33; index++)
           await f.records.put(
             'medication_definition',
@@ -139,6 +144,11 @@ test.each([
       }
       const report = await f.read(f.report.window, [topic]);
       expect(report.limitations).toEqual(limitation ? [limitation] : []);
+      if (scenario === 'complete_sensor_catalog')
+        expect(report.quantities).toHaveLength(14);
+      if (scenario === 'complete_medication_catalog')
+        expect(report.medications).toHaveLength(34);
+
       jest.mocked(loadVisitQuestionsContext).mockResolvedValue({
         prepareUpcomingVisitQuestionContext: async () => ({
           ...f.prepared,
@@ -149,6 +159,7 @@ test.each([
         const batch = await input.prepared.healthContextTool!.search({
           operationRunId: 'synthetic',
           operationKey: 'actual-period',
+          executionLimits: 'unbounded',
           input: { topics: [topic] },
           allowedScope: { sourceKinds: ['personal_record'] },
           resultLimit: 1,
@@ -159,6 +170,15 @@ test.each([
           throw new Error('Expected actual computed facts.');
         expect(batch.coverage[0]?.gaps).toEqual(limitation ? [limitation] : []);
         expect(batch.coverage[0]?.truncated).toBe(truncated);
+        // Assert complete model-facing evidence, not merely a successful reader result.
+        const facts = JSON.parse(
+          batch.items[0]!.content.replace(/^health_context: /, ''),
+        );
+        if (scenario === 'complete_sensor_catalog')
+          expect(facts.quantities).toHaveLength(14);
+        if (scenario === 'complete_medication_catalog')
+          expect(facts.medications).toHaveLength(34);
+
         return {
           status: 'ready',
           questions: [],

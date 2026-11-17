@@ -39,21 +39,29 @@ test('reports invalid saved provenance without claiming a health record changed'
           scope: {
             ...source.scope,
             window: {
-              fromInclusive: '2026-01-01T00:00:00Z',
-              toExclusive: '2026-04-02T00:00:00Z',
+              fromInclusive: '2026-04-02T00:00:00Z',
+              toExclusive: '2026-01-01T00:00:00Z',
               timeZone: 'UTC',
             },
           },
         },
       ],
     };
-    // The stored schema admits 91 elapsed days; the reader permits only 90 local days.
-    await fixture.records.put('visit_question', invalidRow);
-    const before = await fixture.records.list('visit_question');
+    // Simulate malformed persisted provenance at the repository boundary. A reversed
+    // interval is invalid regardless of the supported duration; valid storage is untouched.
+    const originalList = fixture.records.list.bind(fixture.records);
+    const before = await originalList('visit_question');
+    const malformedRecords = {
+      ...fixture.records,
+      list: (async (...args: Parameters<typeof fixture.records.list>) =>
+        args[0] === 'visit_question'
+          ? [invalidRow]
+          : originalList(...args)) as typeof fixture.records.list,
+    };
     const read = jest.fn(fixture.read);
     const result = await loadSavedVisitQuestionState({
       appointmentId: fixture.prepared.appointment.id,
-      records: fixture.records,
+      records: malformedRecords,
       sourceReader: createLocalHealthEvidenceRepository(fixture.database),
       readHealthContext: read,
       registry: new LocalEvidenceReferenceRegistry(),

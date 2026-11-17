@@ -1,3 +1,5 @@
+import { validateColdObservationPolicy } from './coldObservationPolicy';
+import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import {
   validateEvidenceBatch,
   type EvidenceBatch,
@@ -13,7 +15,16 @@ export async function validateColdRagBatches(
   options: MultiAgentWorkflowOptions<unknown>,
   external: ReturnType<typeof conversationExternalEvidence>,
   signal: AbortSignal,
+  registry: LocalEvidenceReferenceRegistry,
 ) {
+  await validateColdObservationPolicy(
+    [
+      ...(options.initialEvidence ? [options.initialEvidence] : []),
+      ...batches,
+    ].flatMap(batch => batch.items),
+    registry,
+    signal,
+  );
   const references = batches.flatMap(batch => batch.items.map(referenceOnly));
   if (
     batches.some((batch, index) =>

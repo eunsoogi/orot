@@ -3,7 +3,12 @@ import type { EvidenceItem } from '@orot/agent-runtime';
 import type { ConversationEntryContext } from './conversationIntent';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { createDailyReportSourceResolver } from './dailyReportSources';
-import { healthOverviewFacts } from './healthOverviewFacts';
+import {
+  providerRecordFacts,
+  addProviderJsonEvidence,
+  providerObservationEvidence,
+} from './providerObservationEvidence';
+import type { LocalHealthEvidenceRecord } from '../../healthEvidence/localEvidenceRepository';
 import { stableJson } from './evidenceUtils';
 import type { AiFeatureLocalData } from './localData';
 
@@ -44,6 +49,7 @@ export async function prepareDailyReportConversationEvidence(input: {
   )
     return reportTargetFailure('report_target_registry_missing');
   const items: EvidenceItem[] = [];
+  const rows = new Map<string, LocalHealthEvidenceRecord>();
   const data = await input.loadLocalData();
   for (const [index, source] of initial.sources.entries()) {
     const result = await input.registry.readSource(source, input.signal);
@@ -55,25 +61,30 @@ export async function prepareDailyReportConversationEvidence(input: {
     const content =
       'health_overview: ' +
       JSON.stringify({
-        records: result.document.records.map(healthOverviewFacts),
+        ...providerRecordFacts(result.document.records),
       });
     // Preserve complete cited facts; provider capacity is not a local evidence rejection.
     for (const id of await data.findIdentifiers(content, input.signal))
       input.registry.registerSensitiveIdentifier(id);
     const original = originals[index]!;
     // The report locator identifies its snapshot entry; the deletion guard needs the stored row identity.
-    items.push(
-      input.registry.add({
-        reference: {
-          ...original,
-          locator: { kind: 'structured_record', recordId: original.evidenceId },
-        },
-        content,
-        readSource: signal => input.registry.readSource(source, signal),
-        validate: signal => input.registry.revalidateEvidence([source], signal),
-      }),
+    const item = addProviderJsonEvidence(input.registry, {
+      reference: {
+        ...original,
+        locator: { kind: 'structured_record', recordId: original.evidenceId },
+      },
+      value: providerRecordFacts(result.document.records),
+      prefix: 'health_overview: ',
+      readSource: signal => input.registry.readSource(source, signal),
+      validate: signal => input.registry.revalidateEvidence([source], signal),
+    });
+    items.push(item);
+    const row = result.document.records.find(
+      record => record.record.id === original.evidenceId,
     );
+    if (row) rows.set(item.evidenceId, row);
   }
+  const projected = providerObservationEvidence(items, rows, input.registry);
   const expected = stableJson(originals);
   const isCurrent = async () => {
     if (input.signal.aborted) return false;
@@ -89,6 +100,6 @@ export async function prepareDailyReportConversationEvidence(input: {
     );
   };
   return (await isCurrent())
-    ? { items, isCurrent }
+    ? { items: projected, isCurrent }
     : reportTargetFailure('report_target_recheck');
 }

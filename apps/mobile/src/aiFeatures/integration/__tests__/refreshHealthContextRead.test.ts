@@ -125,7 +125,7 @@ test('restriction never reads, other feature reads once, and larger replacement 
   f.read.mockResolvedValue(report(1));
   const registry = new LocalEvidenceReferenceRegistry();
   const request = {
-    input: { topics: ['symptoms'] },
+    input: { topics: ['symptoms'], window: { ...scope.window } },
     operationRunId: 'synthetic',
     operationKey: 'synthetic',
     allowedScope: { sourceKinds: ['personal_record' as const] },

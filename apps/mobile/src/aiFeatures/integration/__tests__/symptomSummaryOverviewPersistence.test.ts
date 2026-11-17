@@ -65,7 +65,7 @@ test('a mixed overview selection survives the service save and SQLite history re
       if (!measurement) throw new Error('Missing measurements');
       const rows = JSON.parse(
         measurement.content.slice('health_overview: '.length),
-      ).records as { concept: string }[];
+      ).sensorSummaries as { concept: string }[];
       const index = rows.findIndex(row => row.concept === 'heart_rate');
       if (index < 0) throw new Error('Missing heart rate row');
       const text = JSON.stringify({
@@ -137,6 +137,10 @@ test('a mixed overview selection survives the service save and SQLite history re
     )
       throw new Error(`Expected saved summary: ${JSON.stringify(result)}`);
     expect(result.result.value.hypotheses[0]!.summary).toContain('76');
+    expect(result.result.value.hypotheses[0]!.summary).toContain('평균');
+    expect(result.result.value.hypotheses[0]!.summary).toContain(
+      '조회 부분집합',
+    );
     expect(result.result.value.omittedUnsupportedContent).toBe(true);
     const reopened = await services.summaryHistory!.read(
       result.result.value.savedSummary.id,

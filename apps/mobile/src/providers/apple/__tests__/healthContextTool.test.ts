@@ -33,6 +33,8 @@ test('serializes the actual longitudinal tool before selection on Apple native t
     ]),
   });
   expect(read).not.toHaveBeenCalled();
-  expect(tool.parseInput({ days: 365 })).toBeUndefined();
+  expect(tool.parseInput({ days: 365 })).toMatchObject({ days: 365 });
+  expect(tool.parseInput({ days: -1 })).toBeUndefined();
+  expect(tool.parseInput({})?.days).toBeUndefined();
   expect(tool.parseInput({ days: 30 })).toMatchObject({ days: 30 });
 });

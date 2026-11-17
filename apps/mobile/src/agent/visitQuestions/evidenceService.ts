@@ -1,6 +1,7 @@
+import { projectVisitSensorEvidence } from './providerSensorEvidence';
+import type { ResolveHealthContextWindow } from '../../healthEvidence/healthContext/availableWindow';
 import { buildVisitContext } from './visitContext';
-import { AppointmentSchema } from '@orot/domain';
-import type { Appointment } from '@orot/domain';
+import { AppointmentSchema, type Appointment } from '@orot/domain';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import {
   createVisitQuestionEvidenceRevalidator,
@@ -28,9 +29,7 @@ import {
   searchVisitQuestionEvidence,
   type VisitQuestionSearchSource,
 } from './evidenceSearch';
-
 type VisitQuestionRagPort = Pick<LocalE5RagService, 'index' | 'search'>;
-
 export type VisitQuestionContextResult =
   | { readonly status: 'cancelled' }
   | { readonly status: 'no_confirmed_upcoming_appointment' }
@@ -65,7 +64,6 @@ export type VisitQuestionContextResult =
         reference: EvidenceReference,
       ) => Promise<VisitQuestionEvidenceItem | undefined>;
     };
-
 /** Loads only the chosen appointment; clinical evidence is fetched by subsequent model tool calls. */
 export async function prepareVisitQuestionContext(input: {
   readonly now: string;
@@ -78,6 +76,7 @@ export async function prepareVisitQuestionContext(input: {
   readonly buildChunks: VisitQuestionChunkBuilder;
   readonly currentTime?: () => string;
   readonly readHealthContext?: HealthContextReader;
+  readonly resolveHealthContextWindow?: ResolveHealthContextWindow;
   readonly validateGeneratedArtifact?: (
     citation: VisitQuestionEvidenceItem,
     metadata: VisitQuestionEvidenceMetadata,
@@ -125,7 +124,6 @@ export async function prepareVisitQuestionContext(input: {
   ) {
     return { status: 'no_confirmed_upcoming_appointment' };
   }
-
   const { context, query } = buildVisitContext(appointment);
   const buildChunks = input.buildChunks;
   const initialEvidence: VisitQuestionEvidenceCollection = {
@@ -134,13 +132,15 @@ export async function prepareVisitQuestionContext(input: {
     memoryStatus: 'not_searched',
   };
   if (input.signal?.aborted) return { status: 'cancelled' };
-  // This same map is extended by later read-only research results before revalidation or save.
   const metadataByCitation = new Map(initialEvidence.metadataByCitation);
   const evidence = { ...initialEvidence, metadataByCitation };
   const healthContext = input.readHealthContext
-    ? createVisitHealthContext(input.readHealthContext, metadataByCitation)
+    ? createVisitHealthContext(
+        input.readHealthContext,
+        metadataByCitation,
+        input.resolveHealthContextWindow,
+      )
     : undefined;
-  // A later search can reveal a conflict that was split across batches.
   let hasMaterialConflict = initialEvidence.batch.conflicts.length > 0;
   const searchEvidence = async (
     searchQuery: string,
@@ -149,7 +149,7 @@ export async function prepareVisitQuestionContext(input: {
     signal?: AbortSignal,
     runtime?: EvidenceSearchRuntime,
   ) => {
-    const searched = await searchVisitQuestionEvidence({
+    const raw = await searchVisitQuestionEvidence({
       query: searchQuery,
       maxEvidenceItems,
       sourceKind,
@@ -159,9 +159,15 @@ export async function prepareVisitQuestionContext(input: {
       buildChunks,
       signal,
     });
-    for (const [key, metadata] of searched.metadataByCitation) {
+    const searched = await projectVisitSensorEvidence({
+      collection: raw,
+      repository: input.repository,
+      periodTool: healthContext?.tool,
+      metadata: metadataByCitation,
+      signal,
+    });
+    for (const [key, metadata] of searched.metadataByCitation)
       metadataByCitation.set(key, metadata);
-    }
     hasMaterialConflict ||=
       searched.batch.conflicts.length > 0 ||
       hasConflictingHealthObservations(
@@ -171,7 +177,6 @@ export async function prepareVisitQuestionContext(input: {
       ...searched,
       batch: {
         ...searched.batch,
-        // Keep private record details out of the shared workflow's conflict notice.
         conflicts: hasMaterialConflict
           ? [
               'Conflicting health observation values exist for the same concept and time.',
@@ -190,7 +195,6 @@ export async function prepareVisitQuestionContext(input: {
     currentTime: input.currentTime ?? (() => new Date().toISOString()),
     validateHealthContext: healthContext?.validate,
   });
-
   return {
     status: 'ready',
     appointment,

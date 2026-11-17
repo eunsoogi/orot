@@ -7,6 +7,8 @@ export const computedTopicKo = {
   'computedTopic.title.symptoms': '증상 기록',
   'computedTopic.title.overview': '측정 기록',
   'computedTopic.overviewRow': '{label}: {amount} {unit}{time}.',
+  'computedTopic.sensorSubset':
+    '{label}: 조회한 표본 {count}개 평균 {mean} {unit}, 최소 {minimum}, 최대 {maximum}. 표본 기간 {from} ~ {to}. 전체 이력 합계가 아닌 조회 부분집합이에요.',
   'computedTopic.recordTime': ' · 기록 시각 {time}',
   'computedTopic.queriedOnly': '조회한 기록에 한정돼요.',
   'computedTopic.conflictingMeasurements':

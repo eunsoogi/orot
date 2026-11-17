@@ -66,16 +66,14 @@ export function parseHealthContextScope(
         Object.keys(d).some(
           key => !['medicationName', 'page', 'pageSize'].includes(key),
         ) ||
-        !Number.isInteger(d.page) ||
+        !Number.isSafeInteger(d.page) ||
         Number(d.page) < 0 ||
-        Number(d.page) > 1000 ||
+        !Number.isSafeInteger(Number(d.page) * Number(d.pageSize)) ||
         !Number.isInteger(d.pageSize) ||
         Number(d.pageSize) < 1 ||
         Number(d.pageSize) > 20 ||
         (d.medicationName !== undefined &&
-          (typeof d.medicationName !== 'string' ||
-            !d.medicationName.trim() ||
-            d.medicationName.length > 200))
+          (typeof d.medicationName !== 'string' || !d.medicationName.trim()))
       )
         return undefined;
     }

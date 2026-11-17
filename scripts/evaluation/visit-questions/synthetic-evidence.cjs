@@ -24,6 +24,7 @@ const {
   createFixtureRepository,
 } = require('./synthetic-fixture-adapters.cjs');
 const { createSyntheticMemory } = require('./synthetic-memory.cjs');
+const { createSyntheticHealthContext } = require('./synthetic-health-context.cjs');
 
 const FIXTURE_SEED = 'orot-visit-questions-eval-v1';
 const FIXTURE_NOW = '2030-04-26T00:00:00.000Z';
@@ -86,7 +87,9 @@ async function makePreparedContext(
     ragSearchCalls: 0,
   };
   const memory = await createSyntheticMemory(fixture.reviewedMemory, fixture.fixtureId, trace);
+  let healthContext;
   try {
+    healthContext = await createSyntheticHealthContext(repository, FIXTURE_NOW);
     const evidenceData = createFixtureEvidenceData(repository, trace);
     const buildChunks = createBoundedVisitQuestionChunkBuilder(async () => evidenceData);
     const queryService = createLocalRecordQueryService(
@@ -95,6 +98,8 @@ async function makePreparedContext(
     );
     const { createSyntheticRag } = require('./synthetic-rag.cjs');
     const prepared = await prepareVisitQuestionContext({
+      readHealthContext: healthContext.readHealthContext,
+      resolveHealthContextWindow: healthContext.resolveHealthContextWindow,
       now: FIXTURE_NOW,
       currentTime: () => FIXTURE_NOW,
       maxEvidenceItems: DEFAULT_MULTI_AGENT_BUDGET.maxEvidenceItems,
@@ -114,9 +119,24 @@ async function makePreparedContext(
       memory.memoryHit,
       prepared,
     );
-    return { prepared, evaluationCase, trace, close: memory.close };
+    return {
+      prepared,
+      evaluationCase,
+      trace,
+      close: async () => {
+        try {
+          await memory.close();
+        } finally {
+          healthContext.close();
+        }
+      },
+    };
   } catch (error) {
-    await memory.close();
+    try {
+      await memory.close();
+    } finally {
+      healthContext?.close();
+    }
     throw error;
   }
 }

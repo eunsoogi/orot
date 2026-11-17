@@ -41,14 +41,14 @@ test('counts thirty calendar days including a partial today, or thirty completed
   });
 });
 
-test('rejects invalid zones, reversed windows and unbounded history', () => {
-  expect(() =>
+test('preserves a selected full year and rejects invalid zones', () => {
+  expect(
     healthContextDays({
       fromInclusive: '2026-01-01T00:00:00Z',
       toExclusive: '2027-01-01T00:00:00Z',
       timeZone: 'UTC',
     }),
-  ).toThrow();
+  ).toHaveLength(365);
   expect(() =>
     recentHealthContextWindow(7, '2026-10-20T00:00:00Z', 'invalid/zone'),
   ).toThrow();

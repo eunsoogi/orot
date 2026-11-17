@@ -145,10 +145,10 @@ test('keeps conflicting same-instant measurements even when the model selects on
     });
     const result = await service(request());
     if (result.status !== 'completed') throw new Error(JSON.stringify(result));
-    expect(result.report.observations).toHaveLength(2);
+    expect(result.report.observations).toHaveLength(1);
     expect(
       result.report.observations
-        .map(item => item.sourceReferences[0]?.recordId)
+        .flatMap(item => item.sourceReferences.map(ref => ref.recordId))
         .sort(),
     ).toEqual(['first', 'second']);
     expect(result.report.coverage).toEqual(
@@ -195,7 +195,7 @@ test('treats differing units as incomparable rather than contradictory', () => {
   expect(incomparableDailyReportIndexes([first, second])).toEqual([0, 1]);
 });
 
-test('bounds conflict output and marks omitted conflicting records', async () => {
+test('summarizes conflicting samples without omitting member provenance', async () => {
   const connection = openSqliteTestDatabase(':memory:');
   try {
     await runMigrations(connection.database);
@@ -216,14 +216,13 @@ test('bounds conflict output and marks omitted conflicting records', async () =>
     });
     const result = await service(request());
     if (result.status !== 'completed') throw new Error(JSON.stringify(result));
-    expect(result.report.observations).toHaveLength(8);
+    expect(result.report.observations).toHaveLength(1);
+    expect(result.report.observations[0]!.sourceReferences).toHaveLength(10);
     expect(result.report.coverage).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           source: 'record_conflicts',
-          limitationCodes: expect.arrayContaining([
-            'conflicting_records_omitted',
-          ]),
+          limitationCodes: ['conflicting_measurements'],
         }),
       ]),
     );

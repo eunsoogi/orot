@@ -57,6 +57,20 @@ export function withStructuredPossibilityReport(
   return {
     ...base,
     taskVersion: '15',
+    // Only current tasks adopt complete-history defaults; restored v14 prompts stay byte-identical.
+    systemPrompt: base.systemPrompt
+      .replace(
+        'local-health-context (30 days, summary detail by default)',
+        'local-health-context (all available imported history, summary detail by default)',
+      )
+      .replace(
+        'Choose 7 or 90 days, or an explicit window for a requested period,',
+        'Choose a positive day count or an explicit window only for a requested period,',
+      )
+      .replace(
+        'exclusive end, at most 90 local calendar days.',
+        'exclusive end.',
+      ),
     correctionInstructionForInvalidResult(reason) {
       if (reason !== 'The requested possibility report was not structured.')
         return base.correctionInstructionForInvalidResult?.(reason);
