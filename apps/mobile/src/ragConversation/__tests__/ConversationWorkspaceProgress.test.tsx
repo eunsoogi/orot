@@ -139,3 +139,63 @@ test('retains progress when expanded streaming text is hidden and clears at comp
   expect(dots()).toHaveLength(0);
   expect(screen.getByText('완료 답변')).toBeTruthy();
 });
+
+test('restored pages retain source access without replaying tool status through reflow', async () => {
+  const restored: ConversationSession = {
+    ...session,
+    busy: false,
+    pendingMessage: null,
+    requestActivity: null,
+    messages: [
+      {
+        id: -44,
+        role: 'assistant',
+        restoredHistory: true,
+        content: 'Retained answer',
+        toolMessageId: 'retained-turn',
+        toolEvents: conversationToolEventFixtures,
+      },
+    ],
+  };
+  await render(workspace(restored));
+  for (const width of [1000, 390, 1000]) {
+    hostWidth = width;
+    await fireEvent(screen.getByTestId('conversation-workspace'), 'layout', {
+      nativeEvent: { layout: { width } },
+    });
+    expect(
+      screen.queryAllByTestId('rag-conversation-tool-events', {
+        includeHiddenElements: true,
+      }),
+    ).toHaveLength(0);
+    expect(screen.getByText('Retained answer')).toBeTruthy();
+    if (width === 1000)
+      expect(
+        screen.getByTestId('conversation-retained-tool-sources'),
+      ).toBeTruthy();
+  }
+});
+
+test('a new request exposes live events without reviving restored statuses', async () => {
+  hostWidth = 1000;
+  await render(
+    workspace({
+      ...session,
+      messages: [
+        {
+          id: -44,
+          role: 'assistant',
+          restoredHistory: true,
+          content: 'Prior answer',
+          toolEvents: conversationToolEventFixtures.map(event => ({
+            ...event,
+            sources: [],
+          })),
+        },
+      ],
+    }),
+  );
+  const pane = within(screen.getByTestId('conversation-activity-pane'));
+  expect(pane.getAllByTestId('rag-conversation-tool-events')).toHaveLength(1);
+  expect(pane.queryByTestId('conversation-retained-tool-sources')).toBeNull();
+});
