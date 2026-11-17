@@ -74,13 +74,11 @@ function fixture() {
       deletionGeneration: 0,
     };
   });
+  const registry = new LocalEvidenceReferenceRegistry();
   return {
     read,
-    tool: createHealthContextTool(
-      read,
-      new LocalEvidenceReferenceRegistry(),
-      'rag',
-    ),
+    registry,
+    tool: createHealthContextTool(read, registry, 'rag'),
   };
 }
 
@@ -154,3 +152,43 @@ test.each([
     expect(f.read).not.toHaveBeenCalled();
   },
 );
+
+test('returns requested daily strata above the old feature cap when the caller permits the full envelope', async () => {
+  const f = fixture();
+  const result = await f.tool.search({
+    ...request,
+    maxPayloadBytes: 65536,
+    input: { ...request.input, detail: 'daily' },
+  });
+  if ('status' in result) throw new Error('Expected period evidence');
+  expect(result.items).toHaveLength(1);
+  expect(jsonByteLength(result)).toBeGreaterThan(20480);
+  expect(jsonByteLength(result)).toBeLessThanOrEqual(65536);
+  expect(result.coverage[0]?.gaps).toEqual([]);
+  expect(result.coverage[0]?.truncated).toBe(false);
+  const content = JSON.parse(
+    result.items[0]!.content.slice('health_context: '.length),
+  );
+  expect(content.quantities[0].days).toHaveLength(90);
+  for (const day of content.quantities[0].days) {
+    expect(day.activityContext).toHaveLength(3);
+    expect(
+      day.activityContext.reduce(
+        (sum: number, group: { samples: number }) => sum + group.samples,
+        0,
+      ),
+    ).toBe(3);
+  }
+  expect(JSON.stringify(result)).not.toContain('private-synthetic-sensor');
+  expect(
+    await f.registry.revalidateEvidence(result.items, request.signal),
+  ).toBe(true);
+  const current = await f.read(window, ['measurements'], request.signal);
+  f.read.mockResolvedValue({
+    ...current,
+    deletionGeneration: current.deletionGeneration + 1,
+  });
+  expect(
+    await f.registry.revalidateEvidence(result.items, request.signal),
+  ).toBe(false);
+});

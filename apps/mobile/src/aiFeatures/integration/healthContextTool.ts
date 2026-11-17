@@ -12,10 +12,7 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import { registerHealthContextEvidence } from './healthContextEvidence';
 import { refreshHealthContextRead } from './refreshHealthContextRead';
-import {
-  jsonByteLength,
-  MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES,
-} from './evidenceUtils';
+import { jsonByteLength } from './evidenceUtils';
 
 function parseInput(
   value: unknown,
@@ -208,10 +205,10 @@ export function createHealthContextTool(
           detail: input.detail as HealthContextDetail,
         });
         items.push(item);
-        if (
-          jsonByteLength(batch()) >
-          Math.min(request.maxPayloadBytes, MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES)
-        ) {
+        // The caller already reserved this bounded batch allowance. A smaller
+        // feature-local ceiling would discard requested topics despite available capacity.
+        // Measure the whole envelope and keep each topic intact; never trim facts to fit.
+        if (jsonByteLength(batch()) > request.maxPayloadBytes) {
           items.pop();
           gaps.push(
             'period_detail_exceeds_payload_limit_choose_fewer_topics_or_summary',
