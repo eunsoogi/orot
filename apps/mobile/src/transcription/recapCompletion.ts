@@ -124,8 +124,8 @@ export function createRecapCompletion(ports: RecapCompletionPorts) {
               sourceKinds: ['personal_record'],
               sourceIds: [sourceId],
             },
-            // This is a sequential extraction pass, not the multi-agent research loop. Each bounded chunk runs once.
-            budget: { ...EVIDENCE_WORKFLOW_BUDGET, maxModelCalls: 64 },
+            // Chunking controls each extraction request, not the total transcript admitted.
+            budget: EVIDENCE_WORKFLOW_BUDGET,
             consentScope: {
               purpose: 'visit_recap',
               dataCategories: [

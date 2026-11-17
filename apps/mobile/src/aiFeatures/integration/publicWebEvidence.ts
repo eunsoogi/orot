@@ -31,8 +31,7 @@ import {
   parsePublicWebQuery,
   publicWebQuerySchema,
 } from '../../agent/execution/publicWebQuery';
-// Only app-owned topic labels can cross this automatic search boundary. Consent
-// alone cannot establish that arbitrary model-generated text is anonymous.
+// Only app-owned topics cross this boundary; consent cannot make arbitrary text anonymous.
 function parsePublicTopics(value: unknown) {
   if (!value || typeof value !== 'object' || !('topics' in value))
     return undefined;
@@ -40,7 +39,6 @@ function parsePublicTopics(value: unknown) {
     ? (value as import('@orot/model-runtime').JsonObject)
     : undefined;
 }
-
 /** Keep the selected public-search request isolated from private model history. */
 export function createPublicWebEvidence(input: {
   readonly selected: ReturnType<typeof requireSelectedAi>;
@@ -101,6 +99,7 @@ export function createPublicWebEvidence(input: {
           scope: request.allowedScope,
           limit: request.resultLimit,
           bytes: request.maxPayloadBytes,
+          executionLimits: request.executionLimits,
         });
       const original = identity();
       if (request.signal.aborted) return { status: 'consent_required' };
@@ -190,11 +189,9 @@ export function createPublicWebEvidence(input: {
           if (
             !response.text.trim() ||
             !Number.isSafeInteger(response.callCount) ||
-            response.callCount < 1 ||
-            response.callCount > 2
-          ) {
+            response.callCount < 1
+          )
             throw new Error('The public web response was invalid.');
-          }
           const at = (input.now ?? (() => new Date().toISOString()))();
           const item = {
             sourceKind: 'external_medical' as const,
@@ -233,7 +230,10 @@ export function createPublicWebEvidence(input: {
               },
             ],
           };
-          if (jsonByteLength(batch) > request.maxPayloadBytes)
+          if (
+            request.executionLimits !== 'unbounded' &&
+            jsonByteLength(batch) > request.maxPayloadBytes
+          )
             throw new Error('Public web evidence exceeded the payload bound.');
           references.add(referenceOnly(item));
           return batch;

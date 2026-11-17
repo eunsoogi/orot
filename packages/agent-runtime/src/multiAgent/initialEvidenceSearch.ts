@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import type { Runtime } from '@langchain/langgraph/web';
 import type { EvidenceBatch, MultiAgentWorkflowOptions, EvidenceSearchTool } from './contracts';
 import type { RuntimeContext } from './runtimeContext';
@@ -23,7 +24,8 @@ export function validInitialEvidenceSearch<T>(options: MultiAgentWorkflowOptions
     return (
       !!parsed &&
       canonicalJson(parsed) === canonicalJson(initial.input) &&
-      utf8ByteLength(canonicalJson(initial.input)) <= options.execution.budget.maxPayloadBytes
+      utf8ByteLength(canonicalJson(initial.input)) <=
+        executionLimit(options.execution.budget, 'maxPayloadBytes')
     );
   } catch {
     return false;

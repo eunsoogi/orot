@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 
@@ -14,7 +15,7 @@ export async function steeringFinalBoundary<TResult>(
     context.signal.aborted ||
     context.outcome?.status !== 'result' ||
     result.phase !== 'complete' ||
-    calls >= state.budget.maxModelCalls ||
+    calls >= executionLimit(state.budget, 'maxModelCalls') ||
     state.committedAction ||
     state.committedActionReceipts?.length
   )

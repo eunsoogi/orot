@@ -2,12 +2,13 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ArtifactMetadata } from '../../healthEvidence/artifactDiscovery';
 import { retainedResearchMetadata } from './retainedResearchSearch';
 
-/** Provider text is bounded and explicitly identifies prior output as generated. */
+/** Preserve complete text for interactive work; label prior output as generated, never fresh facts. */
 export function conversationArtifactExcerpt(
   metadata: ArtifactMetadata,
   content: { question: string; answer: string },
   sources: readonly EvidenceReference[],
   sourceStatus: 'current' | 'changed' | 'unknown',
+  complete = false,
 ) {
   return JSON.stringify({
     kind: 'conversation_turn',
@@ -17,10 +18,11 @@ export function conversationArtifactExcerpt(
     sourceStatus,
     warning:
       'Historical AI-generated answer, not independently verified medical evidence.',
-    question: content.question.slice(0, 400),
-    answer: content.answer.slice(0, 1200),
+    question: complete ? content.question : content.question.slice(0, 400),
+    answer: complete ? content.answer : content.answer.slice(0, 1200),
     excerptTruncated:
-      content.question.length > 400 || content.answer.length > 1200,
+      !complete &&
+      (content.question.length > 400 || content.answer.length > 1200),
     sources: sources.map(source => ({
       kind: source.sourceKind,
       evidenceId: source.evidenceId,

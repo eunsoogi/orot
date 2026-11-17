@@ -85,15 +85,15 @@ test('binds the exact current appointment, redacts its identifiers and rejects l
       ...appointment,
       clinicLabel: '가'.repeat(10_000),
     });
-    await expect(
-      prepareConversationVisitTarget({
-        data,
-        registry,
-        appointmentId: appointment.id,
-        signal,
-        now,
-      }),
-    ).rejects.toThrow('could not be read safely');
+    const large = await prepareConversationVisitTarget({
+      data,
+      registry,
+      appointmentId: appointment.id,
+      signal,
+      now,
+    });
+    expect(large?.content).toContain('가'.repeat(10_000));
+    expect(await registry.revalidateEvidence([large!], signal)).toBe(true);
     await records.put('appointment', appointment);
     await records.delete('source_record', source.id);
     expect(await registry.revalidateEvidence([item], signal)).toBe(false);

@@ -51,8 +51,9 @@ export function createArtifactSourceTool(
         !Number.isSafeInteger(request.resultLimit) ||
         request.resultLimit < 1 ||
         request.resultLimit > 8 ||
-        !Number.isSafeInteger(request.maxPayloadBytes) ||
-        request.maxPayloadBytes < 1024
+        (request.executionLimits !== 'unbounded' &&
+          (!Number.isSafeInteger(request.maxPayloadBytes) ||
+            request.maxPayloadBytes < 1024))
       )
         throw new Error('Artifact source scope is unavailable.');
       const lineage = artifactSource(
@@ -100,7 +101,10 @@ export function createArtifactSourceTool(
       for (const id of await data.findIdentifiers(raw, request.signal))
         registry.registerSensitiveIdentifier(id);
       const content = registry.redactText(raw);
-      if (jsonByteLength(content) > request.maxPayloadBytes - 1024)
+      if (
+        request.executionLimits !== 'unbounded' &&
+        jsonByteLength(content) > request.maxPayloadBytes - 1024
+      )
         throw new Error('Artifact source exceeds the requested size.');
       const item = registry.add({
         reference: original,

@@ -59,6 +59,21 @@ test('searches prior conversations with scoped cursors, bounded payloads and del
     expect(JSON.parse(first.items[0]!.content)).not.toHaveProperty(
       'completion',
     );
+    // Interactive searches do not discard or compact a page to fit the legacy byte allowance.
+    const unlimited = await tool.search({
+      ...request,
+      executionLimits: 'unbounded',
+    });
+    if ('status' in unlimited)
+      throw new Error('Expected complete artifact page');
+    expect(unlimited.items).toHaveLength(3);
+    expect(JSON.parse(unlimited.items[0]!.content)).toMatchObject({
+      answer: 'answer '.repeat(220),
+      excerptTruncated: false,
+    });
+    expect(JSON.stringify(unlimited).length).toBeGreaterThan(
+      request.maxPayloadBytes,
+    );
     const full = await tool.search({ ...request, maxPayloadBytes: 20000 });
     if ('status' in full) throw new Error('Unexpected consent result');
     expect(JSON.parse(full.items[0]!.content)).not.toHaveProperty('completion');

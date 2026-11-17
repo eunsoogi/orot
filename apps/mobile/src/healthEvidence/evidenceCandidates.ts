@@ -8,7 +8,6 @@ import {
   checkHealthEvidenceAbort,
   decodeHealthEvidenceRecord,
   HEALTH_EVIDENCE_RECORD_KINDS,
-  MAX_HEALTH_EVIDENCE_RECORD_BYTES,
 } from './localEvidenceQueries';
 import type { LocalHealthEvidenceRecord } from './localEvidenceQueries';
 import { HEALTH_OVERVIEW_KINDS } from './healthOverviewScope';
@@ -35,8 +34,6 @@ function dependencyIds(
     if (kind === 'transcript_segment' && 'recordingSourceId' in record)
       ids.add(record.recordingSourceId);
   }
-  if (ids.size > 1024)
-    throw new Error('Selected evidence has too many source dependencies.');
   return [...ids];
 }
 
@@ -51,8 +48,6 @@ async function readDependencies(
     const link = doseMedicationLink(entry);
     return link ? [link] : [];
   });
-  if (new Set([...ids, ...medications.map(link => link.id)]).size > 1024)
-    throw new Error('Selected evidence has too many source dependencies.');
   const selected = new Set(
     candidates.map(item => `${item.kind}\u0000${item.record.id}`),
   );
@@ -69,10 +64,10 @@ async function readDependencies(
       checkHealthEvidenceAbort(signal);
       const batch = kindIds.slice(offset, offset + 100);
       const result = await executor.execute(
-        `SELECT id, CASE WHEN length(CAST(payload_json AS BLOB)) <= ? THEN payload_json ELSE NULL END AS payload_json,
+        `SELECT id, payload_json,
           length(CAST(payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table}
           WHERE id IN (${batch.map(() => '?').join(', ')})`,
-        [MAX_HEALTH_EVIDENCE_RECORD_BYTES, ...batch],
+        [...batch],
       );
       for (const row of result.rows) {
         if (!selected.has(`${kind}\u0000${row.id}`))
@@ -177,11 +172,9 @@ export async function findEvidenceIdentifiers(
         throw new Error('Invalid local evidence identifier.');
       identifiers.add(row.id);
     }
-    if (identifiers.size > 1024)
-      throw new Error('Selected text contains too many local identifiers.');
   }
   const manualHistory = await database.execute(
-    'SELECT id FROM manual_history_entries WHERE instr(?, id) > 0 LIMIT 1025',
+    'SELECT id FROM manual_history_entries WHERE instr(?, id) > 0',
     [text],
   );
   for (const row of manualHistory.rows) {
@@ -189,8 +182,6 @@ export async function findEvidenceIdentifiers(
       throw new Error('Invalid local evidence identifier.');
     identifiers.add(row.id);
   }
-  if (identifiers.size > 1024)
-    throw new Error('Selected text contains too many local identifiers.');
   checkHealthEvidenceAbort(signal);
   return [...identifiers];
 }

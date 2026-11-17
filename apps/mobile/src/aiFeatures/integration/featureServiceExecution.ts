@@ -1,6 +1,5 @@
 import type { createExternalConversationEvidence } from './externalConversationEvidence';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../../agent/evidenceWorkflowBudget';
-import { RAG_CONVERSATION_BUDGET } from '../../ragConversation/budget';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import type {
   EvidenceReference,
@@ -138,18 +137,7 @@ export function executionOptions(input: {
       },
       // Both local and literature tools need time for retrieval plus a cited answer.
       budget: {
-        ...(input.medicalExplanation || input.external?.usesPublicWeb
-          ? {
-              ...EVIDENCE_WORKFLOW_BUDGET,
-              maxModelCalls: generatedArtifacts ? 8 : 4,
-              maxToolCalls: generatedArtifacts
-                ? 4
-                : EVIDENCE_WORKFLOW_BUDGET.maxToolCalls,
-              maxOutputTokens: 1024,
-            }
-          : input.external
-            ? RAG_CONVERSATION_BUDGET
-            : EVIDENCE_WORKFLOW_BUDGET),
+        ...EVIDENCE_WORKFLOW_BUDGET,
         ...(input.consentPurpose === 'record_conversation'
           ? { maxAccumulatedEvidenceItems: null }
           : {}),

@@ -20,12 +20,12 @@ const turn = (length: number) => ({
   answer: 'a'.repeat(length),
 });
 
-test('accepts valid dialogue and report bounds', () => {
+test('accepts complete dialogue and reports beyond legacy content ceilings', () => {
   expect(
     decode({
       entryIntent: 'possibilities',
-      priorDialogue: Array(4).fill(turn(1000)),
-      priorUserReports: Array(8).fill('r'.repeat(2000)),
+      priorDialogue: Array(12).fill(turn(5000)),
+      priorUserReports: Array(20).fill('r'.repeat(5000)),
       priorDialogueOmitted: true,
     }),
   ).not.toBeNull();
@@ -35,15 +35,11 @@ test.each([
   { entryIntent: 'other' },
   { entryIntent: 3 },
   { priorDialogue: {} },
-  { priorDialogue: Array(5).fill(turn(1)) },
-  { priorDialogue: [turn(1001)] },
   { priorDialogue: [{ question: 1, answer: 'a' }] },
   { priorUserReports: 'report' },
-  { priorUserReports: Array(9).fill('r') },
-  { priorUserReports: ['r'.repeat(2001)] },
   { priorUserReports: [1] },
   { priorDialogueOmitted: false },
-])('rejects malformed or excessive saved dialogue: %p', extra => {
+])('rejects malformed saved dialogue: %p', extra => {
   expect(decode(extra)).toBeNull();
 });
 

@@ -1,3 +1,4 @@
+import { readSelectedEvidenceRows } from '../readSelectedEvidenceRows';
 import { doseHistorySqlKey } from './dailyReportHistorySelection';
 import { dailyReportBaselineInterval, compareTimestamps } from '@orot/domain';
 import type { DailyReportSourceRecord } from '@orot/domain';
@@ -12,7 +13,6 @@ import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { candidateScopeCondition } from '../evidenceCandidateScope';
 import type { EvidenceCandidateScope } from '../evidenceCandidateScope';
 import type { LocalHealthEvidenceRecord } from '../localEvidenceQueries';
-import { MAX_HEALTH_EVIDENCE_RECORD_BYTES } from '../localEvidenceQueries';
 import type { DailyReportCalendarWindow } from './dailyReportWindow';
 import type { DailyReportLineage } from '../../storage/dailyReportStorageTypes';
 
@@ -45,7 +45,7 @@ export async function readDailyReportBehaviorHistory(
   calendar: DailyReportCalendarWindow,
   scope: EvidenceCandidateScope,
   today: readonly LocalHealthEvidenceRecord[],
-  byteBudget: number,
+  byteBudget: number | null,
   signal?: AbortSignal,
 ) {
   const values: LocalHealthEvidenceRecord[] = [];
@@ -63,9 +63,11 @@ export async function readDailyReportBehaviorHistory(
     if (kind === 'dose_event' && !medicationKeys.size) continue;
     const selected = candidateScopeCondition(kind, scope);
     const sourceBudget =
-      kind === 'dose_event' && medicationKeys.size
-        ? Math.floor(byteBudget / 2)
-        : byteBudget - bytes;
+      byteBudget === null
+        ? null
+        : kind === 'dose_event' && medicationKeys.size
+          ? Math.floor(byteBudget / 2)
+          : byteBudget - bytes;
     let sourceBytes = 0;
     const at = localQueryTimestampKeyExpression('r.effective_at');
     const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
@@ -74,10 +76,10 @@ export async function readDailyReportBehaviorHistory(
         ? "AND json_extract(r.payload_json, '$.concept') = 'workout_duration'"
         : `AND ${doseHistorySqlKey} IN (SELECT value FROM json_each(?))`;
     const rows = (
-      await tx.execute(
-        `SELECT r.id, CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table} r WHERE ${selected.sql} ${filter} AND ${at} >= ? AND ${at} < ? AND ${ingestion} <= ? ORDER BY ${kind === 'dose_event' ? `row_number() OVER (PARTITION BY ${doseHistorySqlKey} ORDER BY ${at} DESC, r.id),` : ''} ${at} DESC, r.id LIMIT 51`,
+      await readSelectedEvidenceRows(
+        tx,
+        `SELECT r.id, r.payload_json, length(CAST(r.payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table} r WHERE ${selected.sql} ${filter} AND ${at} >= ? AND ${at} < ? AND ${ingestion} <= ? ORDER BY ${kind === 'dose_event' ? `row_number() OVER (PARTITION BY ${doseHistorySqlKey} ORDER BY ${at} DESC, r.id),` : ''} ${at} DESC, r.id`,
         [
-          MAX_HEALTH_EVIDENCE_RECORD_BYTES,
           ...selected.parameters,
           ...(kind === 'dose_event'
             ? [JSON.stringify([...medicationKeys])]
@@ -86,16 +88,17 @@ export async function readDailyReportBehaviorHistory(
           localQueryTimestampKey(range.toExclusive),
           localQueryTimestampKey(calendar.generationCutoff),
         ],
+        signal,
       )
     ).rows;
-    partial ||= rows.length > 50;
-    for (const row of rows.slice(0, 50)) {
+    for (const row of rows) {
       if (signal?.aborted) throw new Error('History read cancelled.');
       if (
         typeof row.payload_json !== 'string' ||
         typeof row.payload_bytes !== 'number' ||
-        bytes + row.payload_bytes > byteBudget ||
-        sourceBytes + row.payload_bytes > sourceBudget
+        (byteBudget !== null && bytes + row.payload_bytes > byteBudget) ||
+        (sourceBudget !== null &&
+          sourceBytes + row.payload_bytes > sourceBudget)
       ) {
         partial = true;
         continue;

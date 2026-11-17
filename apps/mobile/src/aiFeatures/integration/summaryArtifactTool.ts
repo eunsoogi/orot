@@ -73,8 +73,9 @@ export function createSummaryArtifactTool(
         !Number.isSafeInteger(request.resultLimit) ||
         request.resultLimit < 1 ||
         request.resultLimit > 8 ||
-        !Number.isSafeInteger(request.maxPayloadBytes) ||
-        request.maxPayloadBytes < 2048 ||
+        (request.executionLimits !== 'unbounded' &&
+          (!Number.isSafeInteger(request.maxPayloadBytes) ||
+            request.maxPayloadBytes < 2048)) ||
         !data.summaryArtifactDiscovery
       )
         throw new Error('The generated artifact search scope is unavailable.');
@@ -114,6 +115,7 @@ export function createSummaryArtifactTool(
           detail.content,
           sourceStatus,
           detail.sources,
+          request.executionLimits === 'unbounded',
         );
         let compact = Boolean(options.referenceOnly);
         const body = compact ? excerpt.compact : excerpt.full;
@@ -154,8 +156,11 @@ export function createSummaryArtifactTool(
             (await readSource(signal)).status === 'available',
         };
         let item = registry.add(itemInput);
-        // Reserve space for coverage and cursor metadata in the provider payload.
-        if (jsonByteLength([...items, item]) > request.maxPayloadBytes - 1024) {
+        // Only legacy bounded callers reserve envelope space; interactive results stay complete.
+        if (
+          request.executionLimits !== 'unbounded' &&
+          jsonByteLength([...items, item]) > request.maxPayloadBytes - 1024
+        ) {
           if (lastEmittedId) {
             // Resume after the last emitted result so this matching artifact is not skipped.
             resumeCursor = lastEmittedId;
@@ -163,7 +168,10 @@ export function createSummaryArtifactTool(
           }
           compact = true;
           item = registry.add({ ...itemInput, content: excerpt.compact });
-          if (jsonByteLength([item]) > request.maxPayloadBytes - 1024)
+          if (
+            request.executionLimits !== 'unbounded' &&
+            jsonByteLength([item]) > request.maxPayloadBytes - 1024
+          )
             throw new Error('Artifact metadata exceeds the requested size.');
         }
         items.push(item);

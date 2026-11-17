@@ -5,7 +5,6 @@ import { compareTimestamps } from '@orot/domain';
 import { candidateScopeCondition } from '../evidenceCandidateScope';
 import type { EvidenceCandidateScope } from '../evidenceCandidateScope';
 import type { LocalHealthEvidenceRecord } from '../localEvidenceQueries';
-import { MAX_HEALTH_EVIDENCE_RECORD_BYTES } from '../localEvidenceQueries';
 
 /** Read only explicit dose links under the same SQLite transaction and source
  * authorization. Missing, future, stale or oversized metadata stays unresolved. */
@@ -47,8 +46,8 @@ export async function readDailyReportMedicationContext(
     const selected = candidateScopeCondition(link.kind, scope);
     const row = (
       await tx.execute(
-        `SELECT r.payload_json FROM ${STORAGE_TABLES[link.kind].table} r WHERE r.id = ? AND ${selected.sql} AND length(CAST(r.payload_json AS BLOB)) <= ?`,
-        [link.id, ...selected.parameters, MAX_HEALTH_EVIDENCE_RECORD_BYTES],
+        `SELECT r.payload_json FROM ${STORAGE_TABLES[link.kind].table} r WHERE r.id = ? AND ${selected.sql} `,
+        [link.id, ...selected.parameters],
       )
     ).rows[0];
     if (typeof row?.payload_json !== 'string') continue;

@@ -44,7 +44,9 @@ test('a separate research snapshot is discoverable, readable and invalidates dep
               },
             ],
           },
-          generatedText: 'Generated interpretation of a public source.',
+          generatedText: 'Generated interpretation of a public source. '.repeat(
+            900,
+          ),
         },
       ],
       await research.currentGeneration(),
@@ -65,11 +67,18 @@ test('a separate research snapshot is discoverable, readable and invalidates dep
       allowedScope: { sourceKinds: ['generated_artifact'] },
       resultLimit: 4,
       maxPayloadBytes: 10000,
+      executionLimits: 'unbounded',
       signal,
     });
     if ('status' in result) throw new Error('Unexpected consent');
     expect(result.items).toHaveLength(1);
     expect(result.items[0]!.content).toContain('not an original passage');
+    expect(JSON.parse(result.items[0]!.content)).toMatchObject({
+      generatedText: 'Generated interpretation of a public source. '.repeat(
+        900,
+      ),
+      excerptTruncated: false,
+    });
     const detail = await registry.readSource(result.items[0]!, signal);
     expect(
       detail.status === 'available' &&

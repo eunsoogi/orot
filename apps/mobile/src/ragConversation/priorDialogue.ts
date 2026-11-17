@@ -1,13 +1,13 @@
 import type { JsonValue } from '@orot/model-runtime';
 
-/** Bound restored dialogue from untrusted context before it reaches the provider. */
+/** Validate restored dialogue structure without truncating its source-validated text. */
 export function priorDialogue(context: JsonValue | undefined) {
   if (!context || typeof context !== 'object' || Array.isArray(context))
     return [];
   const turns = (context as { readonly [key: string]: JsonValue })
     .priorDialogue;
   if (!Array.isArray(turns)) return [];
-  return turns.slice(-4).flatMap(turn =>
+  return turns.flatMap(turn =>
     turn &&
     typeof turn === 'object' &&
     !Array.isArray(turn) &&
@@ -15,8 +15,8 @@ export function priorDialogue(context: JsonValue | undefined) {
     typeof turn.answer === 'string'
       ? [
           {
-            question: turn.question.slice(0, 1000),
-            answer: turn.answer.slice(0, 1000),
+            question: turn.question,
+            answer: turn.answer,
           },
         ]
       : [],

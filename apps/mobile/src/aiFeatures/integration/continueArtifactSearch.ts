@@ -49,7 +49,9 @@ export async function continueArtifactSearch(input: {
     },
     allowedScope: { sourceKinds: ['generated_artifact'] },
     resultLimit: 8,
+    // Pagination is a batch size, not a byte quota for retained artifacts.
     maxPayloadBytes: 20 * 1024,
+    executionLimits: 'unbounded',
     signal: input.signal,
   });
   if ('status' in result)

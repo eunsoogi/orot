@@ -67,9 +67,9 @@ export interface TaskResponderInput {
       import('./evidenceContracts').EvidenceSearchTool,
       'id' | 'sourceKind' | 'execution' | 'additionalModelCalls'
     >[];
-    readonly remainingModelCalls: number;
-    readonly remainingToolCalls: number;
-    readonly remainingResearchCycles: number;
+    readonly remainingModelCalls: number | null;
+    readonly remainingToolCalls: number | null;
+    readonly remainingResearchCycles: number | null;
   };
 }
 export type TaskResultValidation<TResult> =

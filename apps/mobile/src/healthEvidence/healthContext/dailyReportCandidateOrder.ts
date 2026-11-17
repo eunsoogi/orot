@@ -1,10 +1,3 @@
-/** Per-source budgets keep frequent sensor samples from consuming medication,
- * symptom, appointment, identity and history capacity. They are display bounds,
- * not assertions of complete clinical coverage. Total day allocation is 48 KiB. */
-export function dailyReportSourceBudget(kind: string) {
-  return (kind === 'health_observation' ? 24 : 8) * 1024;
-}
-
 /** Round-robin recent samples across exact metric/unit/provenance groups. Keep
  * the existing severe-pressure verification boundary ahead of normal sampling.
  * This intentionally prioritizes safety, not statistical representativeness;

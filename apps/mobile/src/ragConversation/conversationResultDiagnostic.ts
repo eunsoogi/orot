@@ -23,7 +23,7 @@ function classify(
 ): ConversationResultDiagnostic {
   if (reason === 'The answer contained a definitive clinical claim.')
     return 'task_clinical_rejected';
-  if (reason !== 'The answer was empty or outside the supported size.')
+  if (reason !== 'The answer was empty or malformed.')
     return 'task_validator_other';
   if (!isObject(value)) return 'task_value_object';
   if (
@@ -59,7 +59,6 @@ function classify(
     !('localClaims' in value)
   )
     return 'task_answer_empty';
-  if (value.answer.length > 4000) return 'task_answer_length';
   return 'task_validator_other';
 }
 

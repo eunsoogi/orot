@@ -52,6 +52,7 @@ export function retainPublicWebResults(
       scope: request.allowedScope,
       resultLimit: request.resultLimit,
       maxPayloadBytes: request.maxPayloadBytes,
+      executionLimits: request.executionLimits,
     });
     const prior = pending.get(key);
     if (prior) {

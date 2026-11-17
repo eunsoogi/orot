@@ -12,7 +12,7 @@ const identity = {
   sessionId: 'session',
   sessionVersion: 0,
 };
-async function saved() {
+async function saved(extraReconstruction: Record<string, string> = {}) {
   const f = await fixture();
   const store = createConversationColdResumeStorage(f.connection.database);
   const manifest = continuationManifest(
@@ -29,7 +29,12 @@ async function saved() {
     request: f.options.request,
     submittedInput: null,
     exactInput: continuationInput(f.options),
-    reconstruction: { taskVersion: 'synthetic-v1', batches: [], aliases: [] },
+    reconstruction: {
+      taskVersion: 'synthetic-v1',
+      batches: [],
+      aliases: [],
+      ...extraReconstruction,
+    },
   };
   await createConversationWorkflowResumeStorage(
     f.connection.database,
@@ -225,3 +230,19 @@ test.each(['checkpoint', 'pending writes'])(
     }
   },
 );
+
+test('restores a large protected reconstruction without dropping its payload', async () => {
+  const f = await saved({ retainedEvidence: 'x'.repeat(2_100_000) });
+  try {
+    expect(
+      await createConversationColdResumeStorage(f.connection.database).open(
+        identity,
+      ),
+    ).toEqual(f.descriptor);
+    expect(f.descriptor.reconstruction.retainedEvidence).toHaveLength(
+      2_100_000,
+    );
+  } finally {
+    f.connection.close();
+  }
+});

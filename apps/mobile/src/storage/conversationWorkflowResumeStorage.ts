@@ -7,22 +7,8 @@ export type { ConversationResumeBoundary } from './conversationWorkflowResumeBou
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { setupConversationWorkflowResume } from './conversationWorkflowResumeSchema';
-export interface ConversationResumeManifest {
-  requestId: string;
-  sessionId: string;
-  sessionVersion: number;
-  operationRunId: string;
-  threadId: string;
-  providerId: string;
-  modelId: string;
-  recipient: string;
-  inputIdentity: string;
-  contextIdentity: string;
-  scopeIdentity: string;
-  approvalIdentity: string;
-  budgetIdentity: string;
-  workflowVersion: string;
-}
+import type { ConversationResumeManifest } from './conversationWorkflowResumeManifest';
+export type { ConversationResumeManifest } from './conversationWorkflowResumeManifest';
 export interface ConversationResumeClaim {
   requestId: string;
   checkpointId: string;
@@ -118,7 +104,12 @@ export function createConversationWorkflowResumeStorage(
         ].some(key => {
           const value = m[key as keyof ConversationResumeManifest];
           return (
-            typeof value !== 'string' || !value.trim() || value.length > 2000
+            typeof value !== 'string' ||
+            !value.trim() ||
+            (!['scopeIdentity', 'approvalIdentity', 'budgetIdentity'].includes(
+              key,
+            ) &&
+              value.length > 2000)
           );
         })
       )

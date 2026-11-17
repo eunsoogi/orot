@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { evidenceSearchCapacity } from './evidenceCapacity';
 import { availableEvidenceTools } from './initialEvidenceSearch';
 import { journaledEvidenceSearch } from './journaledEvidenceSearch';
@@ -33,7 +34,7 @@ export function prepareEvidenceSearch<TResult>(
   if (
     !tool ||
     !context.researchInput ||
-    state.toolCalls >= state.budget.maxToolCalls ||
+    state.toolCalls >= executionLimit(state.budget, 'maxToolCalls') ||
     evidenceSearchCapacity(state.budget, state.evidenceReferences.length) === 0 ||
     !canReserveToolModelCall(tool, state)
   ) {
@@ -113,6 +114,7 @@ export async function invokePreparedEvidenceSearch<TResult>(
       // Each search remains paged; only legacy callers consume a shared item quota.
       resultLimit: evidenceSearchCapacity(state.budget, state.evidenceReferences.length),
       maxPayloadBytes: state.budget.maxPayloadBytes,
+      executionLimits: state.budget.executionLimits,
     }),
     revalidateEvidence: (references, signal) =>
       context.options.revalidateEvidence(references, signal),

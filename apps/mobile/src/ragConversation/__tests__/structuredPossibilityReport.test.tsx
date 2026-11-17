@@ -1,3 +1,4 @@
+import type { JsonObject } from '@orot/model-runtime';
 import {
   answer,
   record,
@@ -110,11 +111,17 @@ test('clarification stays plain, and old v14 checkpoints keep their exact prose 
     taskType: legacyTask.taskType,
     taskVersion: '14',
   })!;
-  expect(old).toBe(legacyTask);
+  expect(old.taskVersion).toBe('14');
   expect(old.createMessages(input)).toEqual(legacyTask.createMessages(input));
-  expect(old.createResultSchema!(input)).toEqual(
-    legacyTask.createResultSchema!(input),
-  );
+  const schema = legacyTask.createResultSchema!(input);
+  const properties = schema.properties as JsonObject;
+  expect(old.createResultSchema!(input)).toEqual({
+    ...schema,
+    properties: {
+      ...properties,
+      answer: { ...(properties.answer as JsonObject), maxLength: 4000 },
+    },
+  });
   expect(
     old.validateResult(
       { answerKind: 'grounded', answer: 'Synthetic prose.' },

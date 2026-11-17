@@ -74,16 +74,14 @@ describe('request-owned steering queue', () => {
     expect(queue.snapshot()[0].text).toBe('Original');
   });
 
-  it('bounds UTF-8 bytes, queue size and total retained text', () => {
+  it('preserves large instructions and queues beyond the former byte and count ceilings', () => {
     const queue = createSteeringQueue(owner);
     expect(queue.enqueue(owner, 'blank', '  ')).toBe('rejected');
-    expect(queue.enqueue(owner, 'large', '가'.repeat(1366))).toBe('rejected');
-    for (let index = 0; index < 4; index += 1)
-      expect(queue.enqueue(owner, String(index), 'x'.repeat(4096))).toBe('queued');
-    expect(queue.enqueue(owner, 'overflow', 'x')).toBe('rejected');
-    const countQueue = createSteeringQueue(owner);
-    for (let index = 0; index < 16; index += 1)
-      expect(countQueue.enqueue(owner, String(index), 'x')).toBe('queued');
-    expect(countQueue.enqueue(owner, 'overflow', 'x')).toBe('rejected');
+    const text = '가😀'.repeat(6000);
+    for (let index = 0; index < 20; index += 1)
+      expect(queue.enqueue(owner, String(index), text)).toBe('queued');
+    expect(queue.prepare(owner)?.instructions).toHaveLength(20);
+    expect(queue.snapshot().every((item) => item.text === text)).toBe(true);
+    expect(queue.enqueue('wrong-owner', 'other', text)).toBe('rejected');
   });
 });

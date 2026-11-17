@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { reportCoverageDiagnostics } from './coverageDiagnostics';
 import { clarificationMessageFromValidation } from './clarificationResult';
 import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coveragePolicy';
@@ -35,7 +36,7 @@ export async function consumeResponderResponse<TResult>(
     );
     return completeState();
   }
-  if (await outputExceedsLimit(response, state.budget.maxPayloadBytes)) {
+  if (await outputExceedsLimit(response, executionLimit(state.budget, 'maxPayloadBytes'))) {
     stop(context, 'The task responder output exceeded the payload limit.', 'budget_exceeded');
     return completeState();
   }
@@ -65,7 +66,10 @@ export async function consumeResponderResponse<TResult>(
       );
       return completeState();
     }
-    if (revised || state.researchCycles >= state.budget.maxResearchCycles) {
+    if (
+      (revised && state.budget.executionLimits !== 'unbounded') ||
+      state.researchCycles >= executionLimit(state.budget, 'maxResearchCycles')
+    ) {
       stop(context, 'The task still needs evidence after the bounded research cycle.');
       return completeState();
     }

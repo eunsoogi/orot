@@ -94,25 +94,8 @@ export async function runVisitQuestionWorkflow(input: {
   }
   const recipient = remoteProcessing ? (requestedRecipient ?? '') : 'on-device';
 
-  // Leave room within the shared maximum for one malformed-envelope correction after two searches.
-  const artifactResearch =
-    input.generatedTools?.some(
-      tool => tool.sourceKind === 'generated_artifact',
-    ) ?? false;
-  const budget = {
-    ...EVIDENCE_WORKFLOW_BUDGET,
-    maxModelCalls:
-      (artifactResearch ? 6 : 4) - (input.reservedPublicSearchCall ? 1 : 0),
-    maxToolCalls: artifactResearch ? 4 : EVIDENCE_WORKFLOW_BUDGET.maxToolCalls,
-  };
-  const maxInitialItems = budget.maxEvidenceItems - 3;
-  if (input.prepared.evidence.batch.items.length > maxInitialItems) {
-    return {
-      status: 'unavailable',
-      message: t('visitQuestions.workflow.insufficientEvidenceBudget'),
-      memoryStatus: input.prepared.evidence.memoryStatus,
-    } as const;
-  }
+  // Searches and answers share cancellation and consent, not a fixed call allowance.
+  const budget = EVIDENCE_WORKFLOW_BUDGET;
 
   const aliases = createVisitQuestionEvidenceAliases(
     input.prepared.evidence.batch,

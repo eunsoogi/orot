@@ -115,12 +115,36 @@ test('identical enqueue retries are idempotent; changed text and stale ownership
     expect(await f.steering.enqueue('a', 'Original instruction')).toBe(true);
     expect(await f.steering.enqueue('a', 'Original instruction')).toBe(true);
     expect(await f.steering.enqueue('a', 'Changed')).toBe(false);
-    expect(await f.steering.enqueue('b', 'x'.repeat(1001))).toBe(false);
+    expect(await f.steering.enqueue('b', 'x'.repeat(1001))).toBe(true);
     await f.connection.database.execute(
       "UPDATE conversation_artifact_sessions SET version=version+1 WHERE id='session'",
     );
     expect(await f.steering.enqueue('b', 'Late instruction')).toBe(false);
     expect(await f.steering.bind('model-1:call-1', request)).toBeUndefined();
+  } finally {
+    f.connection.close();
+  }
+});
+
+test('large steering and more than sixteen instructions remain bound to the exact request', async () => {
+  const f = await fixture();
+  try {
+    for (let index = 0; index < 20; index++)
+      expect(
+        await f.steering.enqueue(`large-${index}`, 'x'.repeat(110_000)),
+      ).toBe(true);
+    const bound = await f.steering.bind('model-1:call-1', request);
+    expect(bound?.messages).toHaveLength(21);
+    const last = bound?.messages.at(-1);
+    expect(last && 'content' in last ? last.content : undefined).toHaveLength(
+      110_000,
+    );
+    expect(await f.steering.bind('model-1:call-1', request)).toEqual(bound);
+    expect(
+      await f.steering.bind('model-1:call-1', {
+        messages: [{ role: 'user', content: 'changed' }],
+      }),
+    ).toBeUndefined();
   } finally {
     f.connection.close();
   }

@@ -41,7 +41,6 @@ export const conversationResultSchema = {
     answer: {
       type: 'string',
       minLength: 1,
-      maxLength: 4000,
       description:
         'A direct Korean answer using the requested record topics and their limits. A simple fact may need one sentence; a question across topics may need short paragraphs. Omit unrelated plans, internal IDs and field names.',
     },

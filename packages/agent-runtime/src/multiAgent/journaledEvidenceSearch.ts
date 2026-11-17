@@ -40,7 +40,8 @@ export async function journaledEvidenceSearch<TResult>(
   if (saved.status === 'completed') {
     const batch = JSON.parse(saved.result) as EvidenceBatch;
     if (
-      utf8ByteLength(saved.result) > request.maxPayloadBytes ||
+      (request.executionLimits !== 'unbounded' &&
+        utf8ByteLength(saved.result) > request.maxPayloadBytes) ||
       validateEvidenceBatch(batch, request.allowedScope, context.options.execution.budget) ||
       !(await context.options.revalidateEvidence(referencesFromBatch(batch), context.signal))
     ) {
@@ -80,7 +81,8 @@ export async function journaledEvidenceSearch<TResult>(
     if (!('status' in result)) {
       const raw = JSON.stringify(result);
       if (
-        utf8ByteLength(raw) > request.maxPayloadBytes ||
+        (request.executionLimits !== 'unbounded' &&
+          utf8ByteLength(raw) > request.maxPayloadBytes) ||
         validateEvidenceBatch(result, request.allowedScope, context.options.execution.budget) ||
         !(await journal.complete({ ...identity, claim: claim.claim, result: raw }))
       ) {

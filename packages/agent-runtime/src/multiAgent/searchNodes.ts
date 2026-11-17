@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { exceedsEvidenceCapacity } from './evidenceCapacity';
 import { availableEvidenceTools, requiresCompleteResearch } from './initialEvidenceSearch';
 import { unavailableSearchBatch } from './initialEvidenceSearch';
@@ -103,7 +104,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       context.options.execution.allowedScope,
       state.budget,
     );
-    if (utf8ByteLength(canonicalJson(batch)) > state.budget.maxPayloadBytes) {
+    if (utf8ByteLength(canonicalJson(batch)) > executionLimit(state.budget, 'maxPayloadBytes')) {
       stop(context, 'The evidence result exceeded the payload limit.', 'budget_exceeded');
       return completeState();
     }

@@ -126,3 +126,39 @@ test('legacy web snapshots without complete input lineage are withheld', async (
     db.close();
   }
 });
+
+test('saves and restores a large web explanation without weakening source metadata or deletion', async () => {
+  const db = openSqliteTestDatabase(':memory:');
+  try {
+    await runMigrations(db.database);
+    const store = createResearchArtifactStorage(db.database);
+    const lease = await store.currentGeneration();
+    const item = {
+      createdAt: '2026-10-05T00:00:00.000Z',
+      originFeature: 'public_web_search',
+      providerId: 'provider',
+      modelId: 'model',
+      source: {
+        kind: 'public_web_search' as const,
+        sources: [
+          { title: 'Large synthetic explanation', url: 'https://example.org' },
+        ],
+        status: 'historical_snapshot' as const,
+        retrievedAt: '2026-10-05T00:00:00.000Z',
+      },
+      generatedText: 'Synthetic explanation. '.repeat(8000),
+      inputSources: [],
+    };
+    await store.append([item], lease);
+    const found = await store.search('synthetic', null, 1);
+    expect(found.items).toHaveLength(1);
+    const restored = await store.read(found.items[0]!.id);
+    expect(restored?.generatedText).toBe(item.generatedText);
+    expect(restored?.source).toEqual(item.source);
+    await createRecordRepository(db.database).deleteAllLocalData();
+    expect(await store.read(found.items[0]!.id)).toBeNull();
+    await expect(store.append([item], lease)).rejects.toThrow();
+  } finally {
+    db.close();
+  }
+});

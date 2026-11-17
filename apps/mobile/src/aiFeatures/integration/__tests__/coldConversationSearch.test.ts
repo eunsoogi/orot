@@ -52,20 +52,20 @@ test.each<JsonValue>([
   ).toThrow('contract');
 });
 
-test('changed budget history is rejected before dispatch', async () => {
+test('obsolete accounting history cannot spend or replay an unbounded search', async () => {
   const f = await fixture({ version: 1, status: 'unavailable', charged: true });
   f.descriptor.reconstruction = {
     ...f.descriptor.reconstruction,
     publicSearch: { version: 1, status: 'unavailable', charged: false },
   };
-  await expect(
-    restoreColdRagConversationFactory({
-      descriptor: f.descriptor,
-      dependencies: f.dependencies,
-      signal: f.controller.signal,
-      readKnownCallIds: async () => [],
-    }),
-  ).rejects.toThrow('policy');
+  const restored = await restoreColdRagConversationFactory({
+    descriptor: f.descriptor,
+    dependencies: f.dependencies,
+    signal: f.controller.signal,
+    readKnownCallIds: async () => [],
+  });
+  expect(continuationInput(restored.options)).toBe(f.descriptor.exactInput);
+  expect(restored.options.execution.budget.executionLimits).toBe('unbounded');
   expect(f.search).not.toHaveBeenCalled();
   expect(f.authorize).not.toHaveBeenCalled();
 });

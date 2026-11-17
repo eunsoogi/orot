@@ -1,7 +1,7 @@
 import { readDailyReportBaseline } from './dailyReportBaseline';
 import { readDailyReportBehaviorHistory } from './dailyReportBehaviorHistory';
 
-/** Share the remaining snapshot byte budget; each history preserves separate roles and limitations. */
+/** Preserve separate history roles; null reads the complete selected history without a byte quota. */
 export async function readDailyReportHistory(
   ...args: Parameters<typeof readDailyReportBaseline>
 ) {
@@ -12,7 +12,7 @@ export async function readDailyReportHistory(
     args[1],
     args[2],
     args[3],
-    Math.floor(args[4] / 2),
+    args[4] === null ? null : Math.floor(args[4] / 2),
     args[5],
   );
   const behavior = await readDailyReportBehaviorHistory(
@@ -20,7 +20,7 @@ export async function readDailyReportHistory(
     args[1],
     args[2],
     args[3],
-    args[4] - baseline.bytes,
+    args[4] === null ? null : args[4] - baseline.bytes,
     args[5],
   );
   return {

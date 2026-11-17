@@ -13,7 +13,7 @@ export interface RecapSlice {
 export class RecapChunkBudgetError extends Error {}
 
 /** Never invent word-level timestamps. Slices retain absolute UTF-16 offsets within their source segment. */
-export function recapChunks(input: RecapInput): RecapSlice[][] {
+export function recapChunks(input: RecapInput, unbounded = false): RecapSlice[][] {
   const slices: RecapSlice[] = [];
   for (const segment of [...input.segments].sort((a, b) => a.segmentOrdinal - b.segmentOrdinal)) {
     for (let startOffset = 0; startOffset < segment.text.length;) {
@@ -30,8 +30,8 @@ export function recapChunks(input: RecapInput): RecapSlice[][] {
         endOffset,
         text: segment.text.slice(startOffset, endOffset),
       });
-      // Sixty-four chunks hold at most eight slices each, even before overlap.
-      if (slices.length > 512)
+      // Legacy finite callers retain their admission policy; interactive callers process every chunk.
+      if (!unbounded && slices.length > 512)
         throw new RecapChunkBudgetError('Recap transcript exceeds the bounded chunk budget.');
       if (endOffset === segment.text.length) break;
       startOffset = endOffset - 512;
@@ -53,7 +53,7 @@ export function recapChunks(input: RecapInput): RecapSlice[][] {
     length += slice.text.length;
   }
   if (current.length) chunks.push(current);
-  if (chunks.length > 64)
+  if (!unbounded && chunks.length > 64)
     throw new RecapChunkBudgetError('Recap transcript exceeds the bounded chunk budget.');
   return chunks;
 }

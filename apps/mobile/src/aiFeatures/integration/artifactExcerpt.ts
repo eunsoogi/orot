@@ -3,29 +3,34 @@ import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { retainedResearchMetadata } from './retainedResearchSearch';
 
-/** Bound provider text while keeping full retained content behind a revalidated citation. */
+/** Interactive requests retain complete interpretations; legacy previews may remain compact. */
 export function artifactExcerpt(
   metadata: ArtifactMetadata,
   analysis: DiseaseHypothesisAnalysis,
   sourceStatus: 'current' | 'changed' | 'unknown',
   sources: readonly EvidenceReference[] = [],
+  complete = false,
 ) {
-  const truncated = analysis.hypotheses.some(
-    section =>
-      section.title.length > 100 ||
-      section.summary.length > 700 ||
-      section.uncertainty.length > 300 ||
-      section.missingData.length > 3 ||
-      section.missingData.some(text => text.length > 100),
-  );
+  const truncated =
+    !complete &&
+    analysis.hypotheses.some(
+      section =>
+        section.title.length > 100 ||
+        section.summary.length > 700 ||
+        section.uncertainty.length > 300 ||
+        section.missingData.length > 3 ||
+        section.missingData.some(text => text.length > 100),
+    );
   // Locators can contain unsupported fields; public details are exposed through the validated projection below.
   const sections = analysis.hypotheses.map(section => ({
-    title: section.title.slice(0, 100),
-    summary: section.summary.slice(0, 700),
-    uncertainty: section.uncertainty.slice(0, 300),
-    missingData: section.missingData
-      .slice(0, 3)
-      .map(text => text.slice(0, 100)),
+    title: complete ? section.title : section.title.slice(0, 100),
+    summary: complete ? section.summary : section.summary.slice(0, 700),
+    uncertainty: complete
+      ? section.uncertainty
+      : section.uncertainty.slice(0, 300),
+    missingData: complete
+      ? section.missingData
+      : section.missingData.slice(0, 3).map(text => text.slice(0, 100)),
     supportingSources: section.supportingEvidence.map(reference => ({
       kind: reference.sourceKind,
       evidenceId: reference.evidenceId,

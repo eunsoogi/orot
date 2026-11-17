@@ -2,7 +2,7 @@ import type { JsonValue } from '@orot/model-runtime';
 import { priorDialogue } from './priorDialogue';
 import { priorMessages } from './taskHistory';
 
-/** Compact only the request projection, after the existing admission and bounds.
+/** Compact only the request projection, after the existing source validation.
  * References share text, not turn identity or evidence trust. Keep every ordered
  * slot and validated answer; never infer equality from a prefix or normalization.
  */

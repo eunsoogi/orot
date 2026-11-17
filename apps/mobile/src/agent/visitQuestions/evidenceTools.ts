@@ -124,7 +124,10 @@ export function createVisitQuestionEvidenceSearchTools(input: {
         );
       }
       const { query, limit } = searchInput(request, input.maxEvidenceItems);
-      const remaining = input.maxEvidenceItems - input.initialEvidenceCount;
+      const remaining =
+        request.executionLimits === 'unbounded'
+          ? limit
+          : input.maxEvidenceItems - input.initialEvidenceCount;
       const maxEvidenceItems = Math.min(limit, remaining);
       if (maxEvidenceItems < 1) {
         throw new Error(
@@ -179,7 +182,10 @@ export function createVisitQuestionEvidenceSearchTools(input: {
         request: EvidenceSearchRequest,
         runtime?: EvidenceSearchRuntime,
       ) {
-        const remaining = 3 - generatedCount;
+        const remaining =
+          request.executionLimits === 'unbounded'
+            ? request.resultLimit
+            : 3 - generatedCount;
         if (tool.sourceKind === 'generated_artifact' && remaining < 1)
           throw new Error(
             'The visit question has reached its generated parent limit.',

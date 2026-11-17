@@ -11,7 +11,6 @@ import type { RecordKind, SqlExecutor, SqlValue } from '@orot/storage';
 import {
   appendHealthEvidenceRows,
   checkHealthEvidenceAbort,
-  MAX_HEALTH_EVIDENCE_RECORD_BYTES,
 } from './localEvidenceQueries';
 import type { LocalHealthEvidenceRecord } from './localEvidenceQueries';
 import { HEALTH_OVERVIEW_PRIORITY_SQL } from './healthOverviewScope';
@@ -74,7 +73,6 @@ export async function readRankedEvidencePage(
   const cursor = options.cursor;
   const scope = candidateScopeCondition(kind, options.scope);
   const parameters: SqlValue[] = [
-    MAX_HEALTH_EVIDENCE_RECORD_BYTES,
     ...(options.scope?.selection === 'health_overview' &&
     kind === 'health_observation'
       ? []
@@ -123,7 +121,7 @@ export async function readRankedEvidencePage(
       : `SELECT id, score, sort_time, 1 AS diversity_rank FROM (${scored})`;
   const result = await executor.execute(
     `SELECT r.id, page.score, page.sort_time, page.diversity_rank,
-       CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json,
+       r.payload_json,
        length(CAST(r.payload_json AS BLOB)) AS payload_bytes
      FROM ${STORAGE_TABLES[kind].table} r JOIN (
        SELECT ranked.* FROM (${diversity}) ranked

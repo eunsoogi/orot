@@ -39,3 +39,14 @@ it('retains stable references across overlapping chunks', () => {
   expect(chunks[0][chunks[0].length - 1]).toEqual(chunks[1][0]);
   expect(new Set(chunks.flat().map((unit) => unit.ref)).size).toBe(units.length);
 });
+
+it('keeps every source unit and chunk beyond the old aggregate ceiling in interactive execution', () => {
+  const input = recapInput('질문? 답변. '.repeat(600));
+  expect(() => recapUnits(input)).toThrow();
+  const units = recapUnits(input, true);
+  const chunks = recapUnitChunks(units);
+  expect(units.length).toBeGreaterThan(1024);
+  expect(chunks.length).toBeGreaterThan(64);
+  expect(units.map((unit) => unit.text).join('')).toBe(input.segments[0].text);
+  expect(new Set(chunks.flat().map((unit) => unit.ref)).size).toBe(units.length);
+});

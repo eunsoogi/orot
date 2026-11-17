@@ -49,15 +49,8 @@ export type {
   HealthEvidenceQueryOptions,
   LocalHealthEvidenceRecord,
 } from './localEvidenceQueries';
-export {
-  DEFAULT_HEALTH_EVIDENCE_ROWS_PER_KIND,
-  DEFAULT_HEALTH_EVIDENCE_TOTAL_ROWS,
-  MAX_HEALTH_EVIDENCE_RECORD_BYTES,
-  MAX_HEALTH_EVIDENCE_ROWS_PER_KIND,
-  MAX_HEALTH_EVIDENCE_TOTAL_ROWS,
-} from './localEvidenceQueries';
 
-/** Reads bounded snapshots and exact source-linked rows from the app's existing SQLCipher store. */
+/** Reads paged snapshots and exact source-linked rows from the app's existing SQLCipher store. */
 export function createLocalHealthEvidenceRepository(
   database: SqlDatabase,
 ): LocalHealthEvidenceRepository {
@@ -74,15 +67,16 @@ export function createLocalHealthEvidenceRepository(
         for (const kind of HEALTH_EVIDENCE_RECORD_KINDS) {
           checkHealthEvidenceAbort(options.signal);
           queriedKinds.push(kind);
-          const rowLimit = Math.min(
+          const rowLimit = selectedRowLimit(
             rowsPerKind,
-            Math.max(0, totalRows - records.length),
+            totalRows,
+            records.length,
           );
           const rows = await queryHealthEvidenceRows(
             transaction,
             kind,
             { kind: 'all' },
-            rowLimit + 1,
+            rowLimit === null ? null : rowLimit + 1,
             options.signal,
           );
           if (rows.length > 0) availableKinds.push(kind);
@@ -163,18 +157,19 @@ export function createLocalHealthEvidenceRepository(
           if (kind !== 'source_record') queriedKinds.push(kind);
           // The exact source was already added above, so linked sources share its per-kind quota.
           const kindRowLimit =
-            kind === 'source_record'
+            kind === 'source_record' && rowsPerKind !== null
               ? Math.max(0, rowsPerKind - 1)
               : rowsPerKind;
-          const rowLimit = Math.min(
+          const rowLimit = selectedRowLimit(
             kindRowLimit,
-            Math.max(0, totalRows - records.length),
+            totalRows,
+            records.length,
           );
           const rows = await queryHealthEvidenceRows(
             transaction,
             kind,
             { kind: 'source', value: sourceId },
-            rowLimit + 1,
+            rowLimit === null ? null : rowLimit + 1,
             options.signal,
           );
           if (rows.length > 0 && !availableKinds.includes(kind)) {
@@ -212,4 +207,18 @@ export async function openLocalHealthEvidenceRepository(): Promise<LocalHealthEv
   return createLocalHealthEvidenceRepository(
     await openLocalAgentMemoryDatabase(),
   );
+}
+
+/** Explicit caller selection limits remain opt-in; defaults never silently omit stored rows. */
+function selectedRowLimit(
+  perKind: number | null,
+  total: number | null,
+  count: number,
+) {
+  const remaining = total === null ? null : Math.max(0, total - count);
+  return perKind === null
+    ? remaining
+    : remaining === null
+      ? perKind
+      : Math.min(perKind, remaining);
 }

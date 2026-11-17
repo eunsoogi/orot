@@ -59,7 +59,6 @@ export async function createConversationOperationJournal(
       !identity.operationId ||
       identity.operationId.length > 300 ||
       typeof identity.input !== 'string' ||
-      identity.input.length > 2_000_000 ||
       !Array.isArray(identity.evidenceReferences)
     )
       return undefined;
@@ -166,11 +165,7 @@ export async function createConversationOperationJournal(
       return result;
     },
     async complete(identity) {
-      if (
-        typeof identity.result !== 'string' ||
-        identity.result.length > 2_000_000
-      )
-        return false;
+      if (typeof identity.result !== 'string') return false;
       const epoch = await valid(identity);
       if (epoch === undefined) return false;
       let completed = false;

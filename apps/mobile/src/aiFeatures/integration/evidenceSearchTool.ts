@@ -153,7 +153,7 @@ export function createLocalEvidenceSearchTool(input: {
           request.maxPayloadBytes,
           MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES,
         );
-        // Keep bounded room for a later model-selected literature search or refinement.
+        // Page size limits retrieval work, not the cumulative evidence or item bytes.
         for (const hit of hits.slice(
           0,
           Math.min(
@@ -175,6 +175,7 @@ export function createLocalEvidenceSearchTool(input: {
               : undefined,
           );
           if (
+            request.executionLimits !== 'unbounded' &&
             jsonByteLength({
               items: candidate,
               coverage: [candidateCoverage],

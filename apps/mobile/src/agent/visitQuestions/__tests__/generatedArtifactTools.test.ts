@@ -87,67 +87,81 @@ test('artifact search keeps redacted detail tokens available to the source tool'
   );
 });
 
-test('caps admitted generated parents at the storage contract limit', async () => {
-  const aliases = createVisitQuestionEvidenceAliases({
-    items: [],
-    coverage: [],
-    conflicts: [],
-  });
-  let sequence = 0;
-  const search = jest.fn(async (_request: EvidenceSearchRequest) => {
-    const id = `e${++sequence}`;
-    return {
-      items: [
-        {
-          sourceKind: 'generated_artifact' as const,
-          sourceId: `s${sequence}`,
-          sourceRevision: 'sr',
-          evidenceId: id,
-          evidenceRevision: 'er',
-          locator: { kind: 'local-evidence', token: id },
-          effectiveTime: null,
-          reviewState: 'unreviewed' as const,
-          content: 'Synthetic output',
-        },
-      ],
+test.each([false, true])(
+  'generated parent admission follows execution policy (unbounded=%s)',
+  async unbounded => {
+    const aliases = createVisitQuestionEvidenceAliases({
+      items: [],
       coverage: [],
       conflicts: [],
-    };
-  });
-  const tools = createVisitQuestionEvidenceSearchTools({
-    aliases,
-    searchEvidence: async () => {
-      throw new Error('unused');
-    },
-    initialEvidenceCount: 0,
-    maxEvidenceItems: 8,
-    generatedTools: [
-      {
-        id: 'generated',
-        sourceKind: 'generated_artifact',
-        execution: 'local_read_only',
-        description: 'synthetic',
-        inputSchema: {},
-        parseInput: () => ({}),
-        search,
+    });
+    let sequence = 0;
+    const search = jest.fn(async (_request: EvidenceSearchRequest) => {
+      const id = `e${++sequence}`;
+      return {
+        items: [
+          {
+            sourceKind: 'generated_artifact' as const,
+            sourceId: `s${sequence}`,
+            sourceRevision: 'sr',
+            evidenceId: id,
+            evidenceRevision: 'er',
+            locator: { kind: 'local-evidence', token: id },
+            effectiveTime: null,
+            reviewState: 'unreviewed' as const,
+            content: 'Synthetic output',
+          },
+        ],
+        coverage: [],
+        conflicts: [],
+      };
+    });
+    const tools = createVisitQuestionEvidenceSearchTools({
+      aliases,
+      searchEvidence: async () => {
+        throw new Error('unused');
       },
-    ],
-  });
-  const request = {
-    operationRunId: 'run',
-    operationKey: 'search',
-    input: {},
-    allowedScope: { sourceKinds: ['generated_artifact' as const] },
-    resultLimit: 8,
-    maxPayloadBytes: 4000,
-    signal: new AbortController().signal,
-  };
-  const tool = tools.find(item => item.id === 'generated')!;
-  await tool.search(request);
-  await tool.search(request);
-  await tool.search(request);
-  expect(search.mock.calls.map(([value]) => value.resultLimit)).toEqual([
-    3, 2, 1,
-  ]);
-  await expect(tool.search(request)).rejects.toThrow('generated parent limit');
-});
+      initialEvidenceCount: 0,
+      maxEvidenceItems: 8,
+      generatedTools: [
+        {
+          id: 'generated',
+          sourceKind: 'generated_artifact',
+          execution: 'local_read_only',
+          description: 'synthetic',
+          inputSchema: {},
+          parseInput: () => ({}),
+          search,
+        },
+      ],
+    });
+    const request = {
+      operationRunId: 'run',
+      operationKey: 'search',
+      input: {},
+      allowedScope: { sourceKinds: ['generated_artifact' as const] },
+      resultLimit: 8,
+      maxPayloadBytes: 4000,
+      ...(unbounded ? { executionLimits: 'unbounded' as const } : {}),
+      signal: new AbortController().signal,
+    };
+    const tool = tools.find(item => item.id === 'generated')!;
+    await tool.search(request);
+    await tool.search(request);
+    await tool.search(request);
+    if (unbounded) {
+      await tool.search(request);
+      expect(search).toHaveBeenCalledTimes(4);
+      expect(search.mock.calls.map(([value]) => value.resultLimit)).toEqual([
+        8, 8, 8, 8,
+      ]);
+    } else {
+      expect(search.mock.calls.map(([value]) => value.resultLimit)).toEqual([
+        3, 2, 1,
+      ]);
+      await expect(tool.search(request)).rejects.toThrow(
+        'generated parent limit',
+      );
+    }
+  },
+);

@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { exceedsEvidenceCapacity } from './evidenceCapacity';
 import { AuthorizationPaused, isAuthorizationPaused } from './journaledModelCall';
 import { observeUntilAbort } from './modelCall';
@@ -27,7 +28,11 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
         canceled(context);
         return completeState();
       }
-      if (!tool || !context.researchInput || state.toolCalls >= state.budget.maxToolCalls) {
+      if (
+        !tool ||
+        !context.researchInput ||
+        state.toolCalls >= executionLimit(state.budget, 'maxToolCalls')
+      ) {
         stop(context, 'The local action cannot be dispatched.', 'invalid_output');
         return completeState();
       }
@@ -125,7 +130,7 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
         if (
           batch.items.some((item) => item.sourceKind !== 'personal_record') ||
           validateEvidenceBatch(batch, context.options.execution.allowedScope, state.budget) ||
-          utf8ByteLength(canonicalJson(batch)) > state.budget.maxPayloadBytes
+          utf8ByteLength(canonicalJson(batch)) > executionLimit(state.budget, 'maxPayloadBytes')
         ) {
           stop(context, 'The committed action result could not be validated.', 'invalid_output');
           return completeState();

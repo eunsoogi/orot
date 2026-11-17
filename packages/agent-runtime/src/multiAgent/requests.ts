@@ -52,7 +52,10 @@ export async function buildTaskRequest<TResult>(
               ...input.research,
               canRequestEvidence: false,
               remainingResearchCycles: 0,
-              remainingModelCalls: Math.max(0, input.research.remainingModelCalls - 1),
+              remainingModelCalls:
+                input.research.remainingModelCalls === null
+                  ? null
+                  : Math.max(0, input.research.remainingModelCalls - 1),
             },
           }
         : input;
@@ -194,7 +197,9 @@ function requestControls(
 ) {
   const supported = provider.capabilities.requestControls ?? [];
   return {
-    ...(supported.includes('maxOutputTokens') ? { maxOutputTokens: budget.maxOutputTokens } : {}),
+    ...(supported.includes('maxOutputTokens') && budget.executionLimits !== 'unbounded'
+      ? { maxOutputTokens: budget.maxOutputTokens }
+      : {}),
     ...(supported.includes('temperature') ? { temperature } : {}),
   };
 }

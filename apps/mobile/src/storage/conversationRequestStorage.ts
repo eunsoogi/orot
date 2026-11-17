@@ -115,7 +115,6 @@ export function createConversationRequestStorage(
         sessionVersion < 0 ||
         typeof question !== 'string' ||
         (!question && !submitted?.ocr) ||
-        question.length > 1000 ||
         (input.submittedInput !== undefined && !submitted) ||
         (submitted &&
           (submitted.sessionId !== sessionId ||

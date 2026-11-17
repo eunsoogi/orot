@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { evidenceSearchCapacity } from './evidenceCapacity';
 import { availableEvidenceTools } from './initialEvidenceSearch';
 import type {
@@ -39,8 +40,8 @@ export function withNativeTools<TResult>(
   ];
   const available =
     offeredTools.length > 0 &&
-    state.toolCalls < state.budget.maxToolCalls &&
-    state.modelCalls < state.budget.maxModelCalls &&
+    state.toolCalls < executionLimit(state.budget, 'maxToolCalls') &&
+    state.modelCalls < executionLimit(state.budget, 'maxModelCalls') &&
     evidenceSearchCapacity(state.budget, state.evidenceReferences.length) > 0;
   return {
     ...request,
@@ -118,11 +119,11 @@ export async function consumeNativeToolCall<TResult>(
     return completeState();
   }
   if (
-    state.toolCalls >= state.budget.maxToolCalls ||
-    state.modelCalls >= state.budget.maxModelCalls ||
+    state.toolCalls >= executionLimit(state.budget, 'maxToolCalls') ||
+    state.modelCalls >= executionLimit(state.budget, 'maxModelCalls') ||
     ('sourceKind' in tool && !canReserveToolModelCall(tool, state)) ||
     evidenceSearchCapacity(state.budget, state.evidenceReferences.length) === 0 ||
-    utf8ByteLength(canonicalJson(response)) > state.budget.maxPayloadBytes
+    utf8ByteLength(canonicalJson(response)) > executionLimit(state.budget, 'maxPayloadBytes')
   ) {
     stop(context, 'The model tool call exceeded the run budget.', 'budget_exceeded');
     return completeState();

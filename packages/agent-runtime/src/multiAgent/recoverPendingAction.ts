@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import type { MultiAgentCheckpointState, MultiAgentWorkflowOptions } from './contracts';
 import { canonicalJson, utf8ByteLength } from './protocol';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
@@ -31,7 +32,7 @@ export async function recoverPendingAction<TResult>(
     !saved ||
     saved.operationId !== `${pending.operationKey}:context` ||
     signal.aborted ||
-    utf8ByteLength(saved.input) > state.budget.maxPayloadBytes
+    utf8ByteLength(saved.input) > executionLimit(state.budget, 'maxPayloadBytes')
   )
     return undefined;
   try {
@@ -74,7 +75,7 @@ export async function recoverPendingAction<TResult>(
       !batch.items.length ||
       batch.items.some((item) => item.sourceKind !== 'personal_record') ||
       validateEvidenceBatch(batch, options.execution.allowedScope, state.budget) ||
-      utf8ByteLength(canonicalJson(batch)) > state.budget.maxPayloadBytes ||
+      utf8ByteLength(canonicalJson(batch)) > executionLimit(state.budget, 'maxPayloadBytes') ||
       !(await options.revalidateEvidence(referencesFromBatch(batch), signal)) ||
       signal.aborted
     )

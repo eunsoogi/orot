@@ -115,16 +115,10 @@ public extension ChatGPTOAuthClient {
             let task = Task {
                 var decoder = ResponsesSSEDecoder()
                 var normalizer = ResponsesEventNormalizer(requestID: requestID, publicWebSearch: input.publicWebQuery != nil)
-                var publicStreamBytes = 0
                 do {
                     for try await chunk in body {
                         try Task.checkCancellation()
-                        if input.publicWebQuery != nil {
-                            // Bound the entire hosted-search stream, including reasoning and
-                            // repeated metadata, rather than only its displayed answer text.
-                            publicStreamBytes += chunk.count
-                            guard publicStreamBytes <= 1_048_576 else { throw ResponsesMalformedDiagnostics.failure(.publicStreamByteLimit) }
-                        }
+                        // The decoder bounds incomplete frames; completed events do not consume a run quota.
                         for frame in try decoder.append(chunk) {
                             if let event = try normalizer.consume(frame) {
                                 continuation.yield(event)

@@ -53,7 +53,6 @@ export function searchPublicWeb(
       cancelRequested = false,
       started = false;
     let text = '',
-      textBytes = 0,
       unsubscribe = () => {};
     const cancelNative = () => {
       try {
@@ -103,13 +102,8 @@ export function searchPublicWeb(
             finish(malformed(), true);
             return;
           }
-          textBytes += utf8Bytes(event.text);
-          // A supplementary character split across SSE packets is four bytes, not
-          // two replacement characters. Count only each delta, without rescanning all text.
-          if (/[\ud800-\udbff]$/u.test(text) && /^[\udc00-\udfff]/u.test(event.text))
-            textBytes -= 2;
+          // Completed deltas remain intact; transport framing guards are not a response-size quota.
           text += event.text;
-          if (textBytes > 32_768) finish(malformed(), true);
         } else if (event.type === 'failed') finish(providerFailure(toProviderError(event.error)));
         else if (event.type === 'completed') {
           if (
@@ -153,12 +147,10 @@ function validResult(input: unknown): input is ChatGPTPlanWebSearchResult {
   const value = input as ChatGPTPlanWebSearchResult;
   return (
     value !== undefined &&
-    Number.isInteger(value.callCount) &&
+    Number.isSafeInteger(value.callCount) &&
     value.callCount >= 1 &&
-    value.callCount <= 2 &&
     Array.isArray(value.citations) &&
     value.citations.length > 0 &&
-    value.citations.length <= 8 &&
     value.citations.every((citation) => {
       if (
         !citation ||
@@ -182,14 +174,4 @@ function validResult(input: unknown): input is ChatGPTPlanWebSearchResult {
       }
     })
   );
-}
-
-/** Hermes need not expose TextEncoder before an AI workflow loads its polyfills. */
-function utf8Bytes(value: string): number {
-  let bytes = 0;
-  for (const character of value) {
-    const point = character.codePointAt(0)!;
-    bytes += point <= 0x7f ? 1 : point <= 0x7ff ? 2 : point <= 0xffff ? 3 : 4;
-  }
-  return bytes;
 }

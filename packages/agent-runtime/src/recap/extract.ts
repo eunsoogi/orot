@@ -70,18 +70,20 @@ export async function extractTranscriptRecap(
     }
     if (!input.questions.length) return { status: 'no_questions' };
     if (options.evidenceMode === 'references') {
-      allUnits = recapUnits(input);
+      allUnits = recapUnits(input, execution.budget.executionLimits === 'unbounded');
       unitChunks = recapUnitChunks(allUnits);
-      if (unitChunks.length > 64) return { status: 'budget_exceeded' };
+      if (execution.budget.executionLimits !== 'unbounded' && unitChunks.length > 64)
+        return { status: 'budget_exceeded' };
       chunks = [];
-    } else chunks = recapChunks(input);
+    } else chunks = recapChunks(input, execution.budget.executionLimits === 'unbounded');
   } catch (error) {
     return { status: error instanceof RecapChunkBudgetError ? 'budget_exceeded' : 'invalid_input' };
   }
   if (
-    !Number.isInteger(execution.budget.maxModelCalls) ||
-    (options.evidenceMode === 'references' ? unitChunks.length : chunks.length) >
-      execution.budget.maxModelCalls
+    execution.budget.executionLimits !== 'unbounded' &&
+    (!Number.isInteger(execution.budget.maxModelCalls) ||
+      (options.evidenceMode === 'references' ? unitChunks.length : chunks.length) >
+        execution.budget.maxModelCalls)
   ) {
     return { status: 'budget_exceeded' };
   }
@@ -105,7 +107,8 @@ export async function extractTranscriptRecap(
       options.evidenceMode === 'references' ? recapReferenceJsonSchema : recapModelJsonSchema;
     const request: LanguageModelRequest = {
       // Providers that do not expose this control retain their own output limit.
-      ...(provider.capabilities.requestControls?.includes('maxOutputTokens')
+      ...(execution.budget.executionLimits !== 'unbounded' &&
+      provider.capabilities.requestControls?.includes('maxOutputTokens')
         ? { maxOutputTokens: execution.budget.maxOutputTokens }
         : {}),
       messages: [

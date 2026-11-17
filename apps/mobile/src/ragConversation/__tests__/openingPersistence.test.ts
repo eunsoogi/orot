@@ -137,9 +137,15 @@ test('rejects malformed persisted opening metadata while old artifacts remain co
     sources: [],
   };
   expect(decodeConversationArtifact(JSON.stringify(artifact))).not.toBeNull();
+  const longOpening = { ...opening, text: 'x'.repeat(10000) };
+  expect(
+    decodeConversationArtifact(
+      JSON.stringify({ ...artifact, initialResponse: longOpening }),
+    )?.initialResponse,
+  ).toEqual(longOpening);
   for (const initialResponse of [
     null,
-    { ...opening, text: 'x'.repeat(301) },
+    { ...opening, text: '' },
     { ...opening, source: 'receipt' },
   ]) {
     expect(

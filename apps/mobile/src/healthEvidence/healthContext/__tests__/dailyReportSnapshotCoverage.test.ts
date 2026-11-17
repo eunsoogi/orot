@@ -75,12 +75,12 @@ test('applies source authorization, day overlap, ingestion cutoff, and bounded c
       calendar.context,
       { sourceIds: ['oversized'] },
     );
-    expect(oversized.values).toHaveLength(0);
+    expect(oversized.values).toHaveLength(1);
     expect(
       oversized.sourceSnapshot.coverage.find(
         item => item.source === 'health_observation',
       )?.status,
-    ).toBe('partial');
+    ).toBe('unknown');
     for (let index = 0; index < 5; index++)
       await put(`large-${index}`, { concept: 'x'.repeat(15000) });
     const large = await readDailyReportSnapshot(
@@ -91,12 +91,12 @@ test('applies source authorization, day overlap, ingestion cutoff, and bounded c
       },
     );
     expect(large.values.length).toBeGreaterThan(0);
-    expect(large.values.length).toBeLessThan(5);
+    expect(large.values.length).toBe(5);
     expect(
       large.sourceSnapshot.coverage.find(
         item => item.source === 'health_observation',
       )?.status,
-    ).toBe('partial');
+    ).toBe('unknown');
     for (let index = 0; index < 101; index++)
       await put(`bounded-${String(index).padStart(3, '0')}`, {});
     const bounded = await readDailyReportSnapshot(
@@ -109,13 +109,13 @@ test('applies source authorization, day overlap, ingestion cutoff, and bounded c
         item => item.source === 'health_observation',
       ),
     ).toMatchObject({
-      status: 'partial',
-      limitationCodes: expect.arrayContaining(['snapshot_incomplete']),
+      status: 'unknown',
+      limitationCodes: expect.not.arrayContaining(['snapshot_incomplete']),
     });
-    // The 100-row cap still applies, with a stricter reserved health byte budget.
+    // Scoped paging retains every eligible row beyond the former row and byte ceilings.
     expect(bounded.sourceSnapshot.records.length).toBeGreaterThan(0);
-    expect(bounded.sourceSnapshot.records.length).toBeLessThanOrEqual(100);
-    expect(utf8ByteLength(JSON.stringify(bounded.values))).toBeLessThan(
+    expect(bounded.sourceSnapshot.records.length).toBeGreaterThan(100);
+    expect(utf8ByteLength(JSON.stringify(bounded.values))).toBeGreaterThan(
       26 * 1024,
     );
   } finally {

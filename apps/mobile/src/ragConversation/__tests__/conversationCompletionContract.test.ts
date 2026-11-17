@@ -88,5 +88,11 @@ test('legacy response contracts keep full native receipts while new turns avoid 
     ragConversationTask.createMessages(input),
   );
   expect(previous.systemPrompt).toBe(ragConversationTask.systemPrompt);
-  expect(previous.resultSchema).toEqual(ragConversationTask.resultSchema);
+  expect(previous.resultSchema).toHaveProperty(
+    'properties.answer.maxLength',
+    4000,
+  );
+  expect(ragConversationTask.resultSchema).not.toHaveProperty(
+    'properties.answer.maxLength',
+  );
 });

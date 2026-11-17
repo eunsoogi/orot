@@ -11,7 +11,6 @@ import { currentEvidenceCondition } from './evidenceCandidateScope';
 import {
   checkHealthEvidenceAbort,
   decodeHealthEvidenceRecord,
-  MAX_HEALTH_EVIDENCE_RECORD_BYTES,
 } from './localEvidenceQueries';
 
 export interface EvidenceRecordIdentity {
@@ -47,10 +46,10 @@ export async function readCurrentEvidenceChunks(
       checkHealthEvidenceAbort(signal);
       const rows = await transaction.execute(
         `SELECT r.id,
-          CASE WHEN length(CAST(r.payload_json AS BLOB)) <= ? THEN r.payload_json ELSE NULL END AS payload_json,
+          r.payload_json,
           length(CAST(r.payload_json AS BLOB)) AS payload_bytes
           FROM ${STORAGE_TABLES[kind].table} r WHERE r.id = ? AND ${currentEvidenceCondition(kind)}`,
-        [MAX_HEALTH_EVIDENCE_RECORD_BYTES, id],
+        [id],
       );
       if (!rows.rows[0]) continue;
       const entry = decodeHealthEvidenceRecord(kind, rows.rows[0]);

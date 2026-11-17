@@ -128,8 +128,9 @@ export function healthOverviewEvidence(
       validate: signal => registry.revalidateEvidence(references, signal),
     });
     if (
+      request.executionLimits !== 'unbounded' &&
       jsonByteLength(batch([...items, item])) >
-      Math.min(request.maxPayloadBytes, MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES)
+        Math.min(request.maxPayloadBytes, MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES)
     ) {
       continue;
     }

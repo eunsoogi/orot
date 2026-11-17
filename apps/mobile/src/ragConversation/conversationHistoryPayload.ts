@@ -15,16 +15,11 @@ export function providerHistoryMessage({
   };
 }
 
-/** Bound user context while excluding assistant prose whose complete lineage is not retained. */
+/** Preserve user context while excluding assistant prose whose complete lineage is not retained. */
 export function boundedProviderHistory(
   messages: readonly RagConversationMessage[],
 ): readonly RagConversationMessage[] {
-  return messages.slice(-8).map(message =>
-    providerHistoryMessage({
-      role: message.role,
-      content: message.content.slice(0, 2000),
-    }),
-  );
+  return messages.map(providerHistoryMessage);
 }
 
 /** Assistant prose lacks complete input lineage; retrieve it explicitly after its sources are checked. */
@@ -50,17 +45,15 @@ export function retainedHistoryTurns(
   messages: readonly DisplayMessage[],
   retryQuestion: string,
 ) {
-  const eligible = messages
-    .filter(
-      message =>
-        !message.incomplete &&
-        !(
-          message.failed &&
-          message.role === 'user' &&
-          message.content === retryQuestion
-        ),
-    )
-    .slice(-8);
+  const eligible = messages.filter(
+    message =>
+      !message.incomplete &&
+      !(
+        message.failed &&
+        message.role === 'user' &&
+        message.content === retryQuestion
+      ),
+  );
   return eligible.flatMap((message, index) => {
     const answer = eligible[index + 1];
     return message.role === 'user' &&

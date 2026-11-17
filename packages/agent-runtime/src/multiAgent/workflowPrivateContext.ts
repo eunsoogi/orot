@@ -1,3 +1,4 @@
+import { executionLimit } from './executionLimits';
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import { toLangChainMessages, toNativeMessages } from '../langchain/messages';
 import { canonicalJson, utf8ByteLength } from './protocol';
@@ -34,7 +35,7 @@ export async function preparePrivateOperationContext<TResult>(
       pendingCallId: context.pendingNativeToolCallId,
       researchInput: context.researchInput,
     });
-    if (utf8ByteLength(input) > state.budget.maxPayloadBytes) return false;
+    if (utf8ByteLength(input) > executionLimit(state.budget, 'maxPayloadBytes')) return false;
     return (
       (
         await journal.loadOrCreate({
@@ -49,7 +50,7 @@ export async function preparePrivateOperationContext<TResult>(
   if (
     !saved ||
     saved.operationId !== operationId ||
-    utf8ByteLength(saved.input) > state.budget.maxPayloadBytes
+    utf8ByteLength(saved.input) > executionLimit(state.budget, 'maxPayloadBytes')
   )
     return false;
   try {

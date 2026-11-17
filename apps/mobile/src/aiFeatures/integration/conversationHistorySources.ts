@@ -6,45 +6,17 @@ import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { boundRagConversationHistory } from './evidencePayload';
-import { stableJson } from './evidenceUtils';
 
-/** Bound historical context independently of the current turn's selected evidence. */
-export function selectDialogueBySourceBudget<
-  T extends { readonly sources: readonly EvidenceReference[] },
->(
-  turns: readonly T[],
-  registry: Pick<LocalEvidenceReferenceRegistry, 'resolve'>,
-) {
-  const keys = new Set<string>();
-  const admitted: T[] = [];
-  const limit = 16;
-  for (const turn of turns) {
-    const next = new Set(keys);
-    for (const source of turn.sources)
-      next.add(stableJson(registry.resolve(source) ?? source));
-    if (next.size > limit) continue;
-    admitted.push(turn);
-    for (const key of next) keys.add(key);
-  }
-  return {
-    admitted,
-    omittedTurns: turns.filter(turn => !admitted.includes(turn)),
-    omitted: admitted.length !== turns.length,
-  };
-}
-
-/** Snapshot exactly the bounded, redacted user reports sent to the model. */
+/** Snapshot every eligible, redacted user report sent to the model. */
 export function prepareConversationHistory(
   history: readonly RagConversationMessage[],
   registry: LocalEvidenceReferenceRegistry,
   excludedQuestions: readonly string[] = [],
 ) {
   const excluded = new Set(excludedQuestions);
-  const eligible = history
-    .slice(-8)
-    .filter(
-      message => message.role !== 'user' || !excluded.has(message.content),
-    );
+  const eligible = history.filter(
+    message => message.role !== 'user' || !excluded.has(message.content),
+  );
   const messages = boundRagConversationHistory(eligible).map(message => ({
     ...message,
     content: registry.redactText(message.content),
@@ -68,7 +40,7 @@ export function conversationHistoryIsCurrent(
   );
 }
 
-/** Prepare the same bounded reports for model dispatch and durable retention. */
+/** Prepare the same validated reports for model dispatch and durable retention. */
 export async function loadConversationHistory(
   input: Parameters<typeof conversationHistorySources>[0] & {
     readonly messages: readonly RagConversationMessage[];
@@ -188,20 +160,15 @@ export async function conversationHistorySources(input: {
       }),
     );
   });
-  // The retained answer supplies the question being answered, not medical evidence.
-  const bounded = selectDialogueBySourceBudget(selected, input.registry);
-  const excludedQuestions = bounded.omittedTurns.map(turn => turn.question);
-  const excluded = new Set(excludedQuestions);
-  // Equal reports cannot be separated safely once one turn is omitted.
-  const admitted = bounded.admitted.filter(
-    turn => !excluded.has(turn.question),
-  );
+  // Every selected turn has passed identity, session and source validation above.
+  // Keep its complete lineage rather than dropping older turns to meet a local quota.
+  const admitted = selected;
   const priorTurns = admitted
     .slice()
     .reverse()
     .map(turn => ({
-      question: input.registry.redactText(turn.question.slice(0, 1000)),
-      answer: input.registry.redactText(turn.answer.slice(0, 1000)),
+      question: input.registry.redactText(turn.question),
+      answer: input.registry.redactText(turn.answer),
     }));
   // Photo ownership belongs to the original request, so retain its validated
   // parent turn instead of assigning the original to a later request.
@@ -221,7 +188,7 @@ export async function conversationHistorySources(input: {
     references,
     sources,
     priorTurns,
-    omitted: bounded.omitted,
-    excludedQuestions,
+    omitted: false,
+    excludedQuestions: [],
   };
 }

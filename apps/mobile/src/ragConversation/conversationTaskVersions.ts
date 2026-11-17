@@ -1,3 +1,4 @@
+import { withLegacyConversationSchema } from './conversationLegacySchema';
 import { ragConversationTask as currentTask } from './task';
 import { withoutReportTemplate } from './conversationLegacyTemplateMessages';
 import { legacyCompletionTask } from './conversationLegacyCompletion';
@@ -21,14 +22,14 @@ export function restoreConversationTask(
   if (identity.taskType !== ragConversationTask.taskType) return undefined;
   if (identity.taskVersion === currentTask.taskVersion) return currentTask;
   if (identity.taskVersion === ragConversationTask.taskVersion)
-    return ragConversationTask;
+    return withLegacyConversationSchema(ragConversationTask);
   if (identity.taskVersion === '13')
-    return {
+    return withLegacyConversationSchema({
       ...ragConversationTask,
       taskVersion: '13',
       createMessages: input =>
         withoutReportTemplate(ragConversationTask.createMessages(input)),
-    };
+    });
   if (identity.taskVersion === '11') {
     const legacy = {
       ...ragConversationTask,
@@ -38,12 +39,13 @@ export function restoreConversationTask(
       ) => withoutReportTemplate(ragConversationTask.createMessages(input)),
     };
     delete legacy.nativeToolResultMode;
-    return legacy;
+    return withLegacyConversationSchema(legacy);
   }
-  if (identity.taskVersion === '10') return legacyCompletionTask();
+  if (identity.taskVersion === '10')
+    return withLegacyConversationSchema(legacyCompletionTask());
   if (identity.taskVersion !== '9') return undefined;
   const withFallback = {
-    ...legacyCompletionTask(),
+    ...withLegacyConversationSchema(legacyCompletionTask()),
     taskVersion: '9',
     initialToolResponse: validateInitialConversationResponse,
     reviewInitialToolResponse: true,

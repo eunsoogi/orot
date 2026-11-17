@@ -4,13 +4,7 @@ import type { ConversationEntryContext } from './conversationIntent';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { createDailyReportSourceResolver } from './dailyReportSources';
 import { healthOverviewFacts } from './healthOverviewFacts';
-import {
-  MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES,
-  jsonByteLength,
-  stableJson,
-  utf8ByteLength,
-} from './evidenceUtils';
-import { RAG_CONVERSATION_BUDGET } from '../../ragConversation/budget';
+import { stableJson } from './evidenceUtils';
 import type { AiFeatureLocalData } from './localData';
 
 /** Pin only cited local facts, and check the report head and source revisions on every dispatch. */
@@ -63,8 +57,7 @@ export async function prepareDailyReportConversationEvidence(input: {
       JSON.stringify({
         records: result.document.records.map(healthOverviewFacts),
       });
-    if (utf8ByteLength(content) > MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES)
-      return reportTargetFailure('report_target_item_payload');
+    // Preserve complete cited facts; provider capacity is not a local evidence rejection.
     for (const id of await data.findIdentifiers(content, input.signal))
       input.registry.registerSensitiveIdentifier(id);
     const original = originals[index]!;
@@ -80,8 +73,6 @@ export async function prepareDailyReportConversationEvidence(input: {
         validate: signal => input.registry.revalidateEvidence([source], signal),
       }),
     );
-    if (jsonByteLength(items) > RAG_CONVERSATION_BUDGET.maxPayloadBytes)
-      return reportTargetFailure('report_target_batch_payload');
   }
   const expected = stableJson(originals);
   const isCurrent = async () => {
