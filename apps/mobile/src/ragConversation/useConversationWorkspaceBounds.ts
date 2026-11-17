@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HostInstance } from 'react-native';
-import { useWindowDimensions } from 'react-native';
+import { AppState, useWindowDimensions } from 'react-native';
 import { useNavigationGeometry } from '../navigation/NavigationGeometryProvider';
 import { useNavigationContentFrame } from '../navigation/navigationContentFrame';
 import { observeNavigationTest } from '../navigation/navigationTestObservation';
@@ -22,7 +22,10 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
     height: number;
   } | null>(null);
   const measurementSequence = useRef(0);
+  const appState = useRef(AppState.currentState);
   const measure = useCallback(() => {
+    if (appState.current === 'background' || appState.current === 'inactive')
+      return;
     const sequence = ++measurementSequence.current;
     ref.current?.measureInWindow((x, y, measuredWidth, measuredHeight) => {
       // A later layout owns its measurement even when bridge callbacks complete out of order.
@@ -47,13 +50,20 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
       );
     });
   }, []);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      appState.current = state;
+      // Suspended geometry cannot overwrite the resumed host. A foreground transition
+      // must remeasure even when window dimensions and native snapshot are unchanged.
+      measurementSequence.current += 1;
+      if (state === 'active') measure();
+    });
+    return () => {
+      subscription.remove();
       // Ignore an in-flight native callback after this host has unmounted.
       measurementSequence.current += 1;
-    },
-    [],
-  );
+    };
+  }, [measure]);
   useEffect(measure, [measure, geometry, shared, width, height, fontScale]);
   const fallback = shared?.availableContentFrame ?? geometry?.safeAreaFrame;
   const hostBounds = bounds ?? {
