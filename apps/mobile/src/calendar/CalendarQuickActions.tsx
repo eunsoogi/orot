@@ -40,7 +40,6 @@ export function CalendarQuickActions({
       onPress: onOpenMedicalAppointments,
       testID: 'open-medical-appointments',
       title: t('schedule.classifyAppointments'),
-      subtitle: t('schedule.classifyAppointmentsHint'),
       symbol: 'tag',
     });
   }

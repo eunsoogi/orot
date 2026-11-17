@@ -222,7 +222,7 @@ it('groups unset and saved identity in the shared summary without the removed in
     borderWidth: 0,
   });
   expect(screen.getByTestId('calendar-current-model')).toHaveTextContent(
-    '캘린더 분류 모델을 선택해 주세요.',
+    '일정 분류 모델을 선택해 주세요.',
   );
   expect(
     screen.queryByText(

@@ -29,10 +29,8 @@ test('groups available appointment shortcuts into a compact, accessible row', as
   expect(primarySchedule.props.accessibilityRole).toBe('button');
   expect(medicalSchedule.props.accessibilityRole).toBe('button');
   expect(primarySchedule.props.accessibilityLabel).toBe('예약 관리');
-  expect(medicalSchedule.props.accessibilityLabel).toBe(
-    'AI로 일정 분류, 필요할 때만 실행',
-  );
-  expect(within(shortcuts).getByText('필요할 때만 실행')).toBeTruthy();
+  expect(medicalSchedule.props.accessibilityLabel).toBe('일정 분류');
+  expect(within(shortcuts).queryByText('필요할 때만 실행')).toBeNull();
   await fireEvent.press(primarySchedule);
   await fireEvent.press(medicalSchedule);
   expect(onOpenAppointments).toHaveBeenCalledTimes(1);
