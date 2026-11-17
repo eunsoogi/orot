@@ -1,6 +1,6 @@
 import { providerSuccess } from '@orot/model-runtime';
 import type { JsonObject, LanguageModelRequest } from '@orot/model-runtime';
-import type { EvidenceReference, EvidenceItem } from '@orot/agent-runtime';
+import type { EvidenceReference } from '@orot/agent-runtime';
 import * as openAI from '../../../providers/openai';
 import { createAiFeatureServices } from '../featureServices';
 import { runRagConversationTurn } from '../../../ragConversation/service';
@@ -52,7 +52,7 @@ export function workflowFixture(
           },
         ],
       });
-    const citations: EvidenceReference[] = request.messages.flatMap(message => {
+    const citations: string[] = request.messages.flatMap(message => {
       if (
         message.role !== 'tool' ||
         !message.result ||
@@ -61,8 +61,9 @@ export function workflowFixture(
       )
         return [];
       const value = message.result as Record<string, unknown>;
-      return Array.isArray(value.items)
-        ? value.items.map(item => referenceOnly(item as EvidenceItem))
+      // Current conversation bodies live in task messages; tool receipts retain citation IDs.
+      return Array.isArray(value.evidenceIds)
+        ? value.evidenceIds.filter((id): id is string => typeof id === 'string')
         : [];
     });
     return providerSuccess({
@@ -74,7 +75,7 @@ export function workflowFixture(
         },
         citations: [
           ...citations,
-          ...(publicReference ? [publicReference] : []),
+          ...(publicReference ? [publicReference.evidenceId] : []),
         ],
       }),
       toolCalls: [],
