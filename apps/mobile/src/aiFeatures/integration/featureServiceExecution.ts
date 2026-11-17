@@ -137,8 +137,8 @@ export function executionOptions(input: {
         ],
       },
       // Both local and literature tools need time for retrieval plus a cited answer.
-      budget:
-        input.medicalExplanation || input.external?.usesPublicWeb
+      budget: {
+        ...(input.medicalExplanation || input.external?.usesPublicWeb
           ? {
               ...EVIDENCE_WORKFLOW_BUDGET,
               maxModelCalls: generatedArtifacts ? 8 : 4,
@@ -149,7 +149,11 @@ export function executionOptions(input: {
             }
           : input.external
             ? RAG_CONVERSATION_BUDGET
-            : EVIDENCE_WORKFLOW_BUDGET,
+            : EVIDENCE_WORKFLOW_BUDGET),
+        ...(input.consentPurpose === 'record_conversation'
+          ? { maxAccumulatedEvidenceItems: null }
+          : {}),
+      },
     },
     provider: input.selected.provider,
     tools: input.tools,

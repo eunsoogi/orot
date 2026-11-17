@@ -6,13 +6,18 @@ export function validBudget<TResult>(options: MultiAgentWorkflowOptions<TResult>
   const keys = Object.keys(MAX_MULTI_AGENT_BUDGET) as (keyof typeof MAX_MULTI_AGENT_BUDGET)[];
   return (
     Object.keys(options.execution.budget).every(
-      (key) => key === 'maxModelRequestBytes' || keys.includes(key as (typeof keys)[number]),
+      (key) =>
+        key === 'maxModelRequestBytes' ||
+        key === 'maxAccumulatedEvidenceItems' ||
+        keys.includes(key as (typeof keys)[number]),
     ) &&
     (options.execution.budget.maxModelRequestBytes === undefined ||
       options.execution.budget.maxModelRequestBytes === null ||
       (Number.isSafeInteger(options.execution.budget.maxModelRequestBytes) &&
         options.execution.budget.maxModelRequestBytes > 0 &&
         options.execution.budget.maxModelRequestBytes <= MAX_MULTI_AGENT_BUDGET.maxPayloadBytes)) &&
+    (options.execution.budget.maxAccumulatedEvidenceItems === undefined ||
+      options.execution.budget.maxAccumulatedEvidenceItems === null) &&
     keys.every((key) => {
       const value = options.execution.budget[key];
       if (key === 'timeoutMs' && value === null) return true;

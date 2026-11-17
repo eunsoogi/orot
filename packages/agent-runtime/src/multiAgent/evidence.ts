@@ -1,3 +1,5 @@
+import { canonicalJson } from './protocol';
+import { exceedsEvidenceCapacity } from './evidenceCapacity';
 import type {
   AllowedEvidenceScope,
   EvidenceBatch,
@@ -104,7 +106,8 @@ export function validateEvidenceBatch(
   budget: MultiAgentBudget,
 ): string | undefined {
   // Reject broadened provenance, time bounds, duplicate revisions, and inaccurate coverage together.
-  if (batch.items.length > budget.maxEvidenceItems) return 'The evidence item limit was exceeded.';
+  if (exceedsEvidenceCapacity(budget, batch.items.length))
+    return 'The evidence item limit was exceeded.';
   const seen = new Set<string>();
   for (const item of batch.items) {
     if (
@@ -140,7 +143,7 @@ export function validateEvidenceBatch(
           !/^[a-zA-Z0-9-]{1,64}$/u.test(coverage.nextCursor))) ||
       !Number.isInteger(coverage.resultLimit) ||
       coverage.resultLimit < 1 ||
-      coverage.resultLimit > budget.maxEvidenceItems ||
+      exceedsEvidenceCapacity(budget, coverage.resultLimit) ||
       !Number.isInteger(coverage.returnedCount) ||
       coverage.returnedCount < 0 ||
       coverage.returnedCount > coverage.resultLimit ||
@@ -207,4 +210,10 @@ export function hasIncompleteCoverage(batch: EvidenceBatch): boolean {
     batch.coverage.length === 0 ||
     batch.coverage.some((coverage) => coverage.truncated || coverage.gaps.length > 0)
   );
+}
+
+/** Identity ignores object key order and JSON-omitted optional properties, while
+ * retaining all projected provenance fields and the order of locator arrays. */
+export function serializedReferenceKey(reference: EvidenceReference): string {
+  return canonicalJson(JSON.parse(JSON.stringify(reference)));
 }

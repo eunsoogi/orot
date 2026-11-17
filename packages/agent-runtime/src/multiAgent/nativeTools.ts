@@ -1,3 +1,4 @@
+import { evidenceSearchCapacity } from './evidenceCapacity';
 import { availableEvidenceTools } from './initialEvidenceSearch';
 import type {
   LanguageModelMessage,
@@ -40,7 +41,7 @@ export function withNativeTools<TResult>(
     offeredTools.length > 0 &&
     state.toolCalls < state.budget.maxToolCalls &&
     state.modelCalls < state.budget.maxModelCalls &&
-    state.evidenceReferences.length < state.budget.maxEvidenceItems;
+    evidenceSearchCapacity(state.budget, state.evidenceReferences.length) > 0;
   return {
     ...request,
     messages: [
@@ -120,7 +121,7 @@ export async function consumeNativeToolCall<TResult>(
     state.toolCalls >= state.budget.maxToolCalls ||
     state.modelCalls >= state.budget.maxModelCalls ||
     ('sourceKind' in tool && !canReserveToolModelCall(tool, state)) ||
-    state.evidenceReferences.length >= state.budget.maxEvidenceItems ||
+    evidenceSearchCapacity(state.budget, state.evidenceReferences.length) === 0 ||
     utf8ByteLength(canonicalJson(response)) > state.budget.maxPayloadBytes
   ) {
     stop(context, 'The model tool call exceeded the run budget.', 'budget_exceeded');

@@ -1,9 +1,9 @@
+import { exceedsEvidenceCapacity } from './evidenceCapacity';
 import { availableEvidenceTools, requiresCompleteResearch } from './initialEvidenceSearch';
 import { unavailableSearchBatch } from './initialEvidenceSearch';
 import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coveragePolicy';
-import type { EvidenceBatch, EvidenceReference } from './contracts';
-import { referencesFromBatch, validateEvidenceBatch } from './evidence';
-import { observeUntilAbort } from './modelCall';
+import type { EvidenceBatch } from './contracts';
+import { referencesFromBatch, validateEvidenceBatch, serializedReferenceKey } from './evidence';
 import { canceled, completeState, reportProgress, stop, finishToolEvent } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
@@ -11,19 +11,18 @@ import { canonicalJson, utf8ByteLength } from './protocol';
 import { invokePreparedEvidenceSearch, prepareEvidenceSearch } from './prepareEvidenceSearch';
 import { toolProviderStop } from './evidenceToolModelBudget';
 import { deferEvidenceAdapter } from './modelCallFreshness';
+import { observeUntilAbort } from './modelCall';
 import type { Runtime } from '@langchain/langgraph/web';
 import { appendNativeToolResultMessage } from './nativeTools';
 
 // Search remains read-only; the external adapter verifies the declared outbound permission before networking.
 export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
-  const { options } = context;
-
   const executeSearch = async (state: WorkflowState, runtime: Runtime) => {
     if (context.signal.aborted) {
       canceled(context);
       return completeState();
     }
-    const tool = availableEvidenceTools(options, state).find(
+    const tool = availableEvidenceTools(context.options, state).find(
       (candidate) => candidate.id === state.selectedToolId,
     );
     if (!tool || !context.researchInput || state.pendingOperation?.kind !== 'tool') {
@@ -99,7 +98,11 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       return completeState();
     }
     context.researchInput = undefined;
-    const invalid = validateEvidenceBatch(batch, options.execution.allowedScope, state.budget);
+    const invalid = validateEvidenceBatch(
+      batch,
+      context.options.execution.allowedScope,
+      state.budget,
+    );
     if (utf8ByteLength(canonicalJson(batch)) > state.budget.maxPayloadBytes) {
       stop(context, 'The evidence result exceeded the payload limit.', 'budget_exceeded');
       return completeState();
@@ -125,7 +128,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       );
       return completeState();
     }
-    if (prior.length + next.length > state.budget.maxEvidenceItems) {
+    if (exceedsEvidenceCapacity(state.budget, prior.length + next.length)) {
       stop(context, 'The evidence item budget was exceeded.', 'budget_exceeded');
       return completeState();
     }
@@ -146,7 +149,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       const callId = context.pendingNativeToolCallId;
       const result = JSON.parse(
         JSON.stringify(
-          options.task.nativeToolResultMode === 'evidence_references'
+          context.options.task.nativeToolResultMode === 'evidence_references'
             ? {
                 contentLocation: 'current_task_messages',
                 evidenceIds: batch.items.map((item) => item.evidenceId),
@@ -170,7 +173,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         pendingOperation: undefined,
       };
     }
-    if (hasDuplicate || (next.length === 0 && requiresCompleteResearch(options, state))) {
+    if (hasDuplicate || (next.length === 0 && requiresCompleteResearch(context.options, state))) {
       finishToolEvent(context, toolStatus, next);
       context.outcome = {
         status: 'needs_clarification',
@@ -188,7 +191,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     context.currentEvidence = combined;
     finishToolEvent(context, toolStatus, next);
     if (
-      requiresCompleteResearch(options, state) &&
+      requiresCompleteResearch(context.options, state) &&
       hasBlockingCoverage(
         combined,
         context.options.task.allowBoundedExternalEvidence,
@@ -215,12 +218,6 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     prepareSearch: (state: WorkflowState) => prepareEvidenceSearch(context, state),
     executeSearch,
   };
-}
-
-/** Identity ignores object key order and JSON-omitted optional properties, while
- * retaining all projected provenance fields and the order of locator arrays. */
-function serializedReferenceKey(reference: EvidenceReference): string {
-  return canonicalJson(JSON.parse(JSON.stringify(reference)));
 }
 
 async function evidenceIsFresh<TResult>(

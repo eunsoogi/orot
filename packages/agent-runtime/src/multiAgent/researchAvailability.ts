@@ -1,3 +1,4 @@
+import { evidenceSearchCapacity } from './evidenceCapacity';
 import type {
   MultiAgentExecutionIdentity,
   EvidenceSearchTool,
@@ -46,7 +47,7 @@ export function responderResearchAvailability(
       remainingModelCalls >= (nativeTools ? 1 : 2) &&
       remainingToolCalls > 0 &&
       (nativeTools || remainingResearchCycles > 0) &&
-      state.evidenceReferences.length < state.budget.maxEvidenceItems,
+      evidenceSearchCapacity(state.budget, state.evidenceReferences.length) > 0,
     allowedScope,
     candidateTools,
     remainingModelCalls,

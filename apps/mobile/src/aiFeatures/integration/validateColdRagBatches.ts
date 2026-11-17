@@ -16,11 +16,16 @@ export async function validateColdRagBatches(
 ) {
   const references = batches.flatMap(batch => batch.items.map(referenceOnly));
   if (
-    batches.some(batch =>
+    batches.some((batch, index) =>
       validateEvidenceBatch(
         batch,
         options.execution.allowedScope,
-        options.execution.budget,
+        index === 0
+          ? options.execution.budget
+          : {
+              ...options.execution.budget,
+              maxAccumulatedEvidenceItems: undefined,
+            },
       ),
     ) ||
     signal.aborted ||

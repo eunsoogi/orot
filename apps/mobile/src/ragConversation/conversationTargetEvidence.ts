@@ -4,16 +4,17 @@ import type { EvidenceBatch, EvidenceItem } from '@orot/agent-runtime';
 export function includeConversationTarget(
   batch: EvidenceBatch,
   target: EvidenceItem | undefined,
-  limit: number,
+  limit: number | null,
 ): EvidenceBatch {
   if (!target) return batch;
-  if (!Number.isSafeInteger(limit) || limit < 1)
+  if (limit !== null && (!Number.isSafeInteger(limit) || limit < 1))
     throw new RangeError('The evidence budget must admit the selected visit.');
   // Citation IDs must remain unambiguous across local and public evidence.
   if (batch.items.some(item => item.evidenceId === target.evidenceId))
     throw new Error('The selected visit evidence identifier is ambiguous.');
   const retained = batch.items;
-  const items = [target, ...retained].slice(0, limit);
+  const combined = [target, ...retained];
+  const items = limit === null ? combined : combined.slice(0, limit);
   const coverage = batch.coverage.map(entry => {
     const count = items.filter(
       item => item.sourceKind === entry.sourceKind,
@@ -49,7 +50,7 @@ export function includeConversationTarget(
 export function includeDailyReportEvidence(
   batch: EvidenceBatch,
   items: readonly EvidenceItem[],
-  limit: number,
+  limit: number | null,
 ): EvidenceBatch {
   return [...items]
     .reverse()
@@ -64,9 +65,9 @@ export function includeConversationTargets(
   batch: EvidenceBatch,
   visit: EvidenceItem | undefined,
   report: readonly EvidenceItem[],
-  limit: number,
+  limit: number | null,
 ): EvidenceBatch {
-  if (report.length + Number(Boolean(visit)) > limit)
+  if (limit !== null && report.length + Number(Boolean(visit)) > limit)
     throw new RangeError('Selected evidence exceeds the evidence budget.');
   return includeDailyReportEvidence(
     includeConversationTarget(batch, visit, limit),

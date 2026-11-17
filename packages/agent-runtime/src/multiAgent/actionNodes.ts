@@ -1,3 +1,4 @@
+import { exceedsEvidenceCapacity } from './evidenceCapacity';
 import { AuthorizationPaused, isAuthorizationPaused } from './journaledModelCall';
 import { observeUntilAbort } from './modelCall';
 import { referencesFromBatch, validateEvidenceBatch } from './evidence';
@@ -135,7 +136,7 @@ export function createActionNodes<TResult>(context: RuntimeContext<TResult>) {
           conflicts: [...context.currentEvidence.conflicts, ...batch.conflicts],
         };
         if (
-          combined.items.length > state.budget.maxEvidenceItems ||
+          exceedsEvidenceCapacity(state.budget, combined.items.length) ||
           !(await context.options.revalidateEvidence(referencesFromBatch(combined), context.signal))
         ) {
           stop(context, 'The committed action evidence is unavailable.', 'stale_evidence');

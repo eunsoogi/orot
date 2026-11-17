@@ -33,8 +33,17 @@ export async function restoreOrderedEvidenceBatches<T>(
     !Array.isArray(batches) ||
     !batches.length ||
     batches.length > options.execution.budget.maxToolCalls + 1 ||
-    batches.some((batch) =>
-      validateEvidenceBatch(batch, options.execution.allowedScope, options.execution.budget),
+    batches.some((batch, index) =>
+      validateEvidenceBatch(
+        batch,
+        options.execution.allowedScope,
+        index === 0
+          ? options.execution.budget
+          : {
+              ...options.execution.budget,
+              maxAccumulatedEvidenceItems: undefined,
+            },
+      ),
     )
   )
     return undefined;

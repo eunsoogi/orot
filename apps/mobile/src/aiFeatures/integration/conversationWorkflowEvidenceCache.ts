@@ -128,7 +128,10 @@ export function conversationWorkflowEvidenceCache<T>(
             gaps: [...new Set(original.flatMap(value => value.gaps))],
             truncated: original.some(value => value.truncated),
             // These counts describe the retained union, not a new search or a fabricated complete history.
-            resultLimit: options.execution.budget.maxEvidenceItems,
+            resultLimit:
+              options.execution.budget.maxAccumulatedEvidenceItems === null
+                ? Math.max(1, count)
+                : options.execution.budget.maxEvidenceItems,
             returnedCount: count,
           };
         }),

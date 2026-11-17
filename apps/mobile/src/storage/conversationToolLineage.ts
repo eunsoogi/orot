@@ -30,8 +30,7 @@ export function decodeToolLineage(
   event: ConversationToolEvent,
   identity: { messageId: string; sessionId: string; createdAt: string },
 ) {
-  if (!Array.isArray(value) || value.length > 24)
-    throw new Error('Invalid tool source lineage.');
+  if (!Array.isArray(value)) throw new Error('Invalid tool source lineage.');
   const isFiltered = (item: unknown) =>
     Boolean(
       item &&

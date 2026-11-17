@@ -1,3 +1,4 @@
+import { exceedsEvidenceCapacity } from './evidenceCapacity';
 import { isVerifiedPendingActionRecovery } from './pendingActionRecoveryOptions';
 import { canRecoverCommittedActions, recoverCommittedAction } from './recoverCommittedAction';
 import { restoreOrderedEvidenceBatches } from './evidenceRestoration';
@@ -26,8 +27,7 @@ import {
 import { observeUntilAbort } from './modelCall';
 import { requireTaskContract } from './responses';
 import type { PrivateOutcome } from './runtimeContext';
-import { checkpointMatchesRun } from './state';
-import type { WorkflowState } from './state';
+import { checkpointMatchesRun, type WorkflowState } from './state';
 import { isOrderedTimestampRange } from './timestamps';
 import { validToolModelCost } from './evidenceToolModelBudget';
 import { validPhotoInput } from './photoInputValidation';
@@ -161,7 +161,7 @@ export function resumeState<TResult>(
     saved.modelCalls > options.execution.budget.maxModelCalls ||
     saved.toolCalls > options.execution.budget.maxToolCalls ||
     saved.researchCycles > options.execution.budget.maxResearchCycles ||
-    saved.evidenceReferences.length > options.execution.budget.maxEvidenceItems ||
+    exceedsEvidenceCapacity(options.execution.budget, saved.evidenceReferences.length) ||
     (saved.phase === 'evidence_research' && !saved.evidenceNeed) ||
     (saved.phase === 'task_response' &&
       !saved.awaitingAuthorization &&

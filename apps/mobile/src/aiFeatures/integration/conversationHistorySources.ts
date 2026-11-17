@@ -7,10 +7,8 @@ import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { boundRagConversationHistory } from './evidencePayload';
 import { stableJson } from './evidenceUtils';
-import { CONVERSATION_SOURCE_LIMIT } from '../../storage/conversationArtifactCodec';
-import { RAG_CONVERSATION_BUDGET } from '../../ragConversation/budget';
 
-/** Reserve space for this turn's evidence before admitting previous AI text. */
+/** Bound historical context independently of the current turn's selected evidence. */
 export function selectDialogueBySourceBudget<
   T extends { readonly sources: readonly EvidenceReference[] },
 >(
@@ -19,8 +17,7 @@ export function selectDialogueBySourceBudget<
 ) {
   const keys = new Set<string>();
   const admitted: T[] = [];
-  const limit =
-    CONVERSATION_SOURCE_LIMIT - RAG_CONVERSATION_BUDGET.maxEvidenceItems;
+  const limit = 16;
   for (const turn of turns) {
     const next = new Set(keys);
     for (const source of turn.sources)

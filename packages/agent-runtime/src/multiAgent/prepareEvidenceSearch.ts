@@ -1,3 +1,4 @@
+import { evidenceSearchCapacity } from './evidenceCapacity';
 import { availableEvidenceTools } from './initialEvidenceSearch';
 import { journaledEvidenceSearch } from './journaledEvidenceSearch';
 import { canceled, completeState, emitToolEvent, operationKey, stop } from './runtimeContext';
@@ -33,7 +34,7 @@ export function prepareEvidenceSearch<TResult>(
     !tool ||
     !context.researchInput ||
     state.toolCalls >= state.budget.maxToolCalls ||
-    state.evidenceReferences.length >= state.budget.maxEvidenceItems ||
+    evidenceSearchCapacity(state.budget, state.evidenceReferences.length) === 0 ||
     !canReserveToolModelCall(tool, state)
   ) {
     stop(context, 'The read-only evidence search could not be started.', 'budget_exceeded');
@@ -109,8 +110,8 @@ export async function invokePreparedEvidenceSearch<TResult>(
       operationRunId: context.options.execution.operationRunId,
       operationKey: pending.operationKey,
       allowedScope: context.options.execution.allowedScope,
-      // Successive results consume the same evidence capacity, including existing references.
-      resultLimit: state.budget.maxEvidenceItems - state.evidenceReferences.length,
+      // Each search remains paged; only legacy callers consume a shared item quota.
+      resultLimit: evidenceSearchCapacity(state.budget, state.evidenceReferences.length),
       maxPayloadBytes: state.budget.maxPayloadBytes,
     }),
     revalidateEvidence: (references, signal) =>

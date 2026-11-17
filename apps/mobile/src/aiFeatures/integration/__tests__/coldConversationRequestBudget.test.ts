@@ -4,7 +4,11 @@ import { restoreColdRagConversationFactory } from '../restoreColdRagConversation
 import { restoreConversationTask } from '../../../ragConversation/conversationTaskVersions';
 import { continuationInput } from '../../../storage/conversationWorkflowContinuationIdentity';
 
-async function historicalFixture(taskVersion: string, altered = false) {
+async function historicalFixture(
+  taskVersion: string,
+  altered = false,
+  oldRequestLimit = true,
+) {
   const f = await coldRagFactoryFixture();
   const task = restoreConversationTask({
     taskType: f.options.task.taskType,
@@ -13,7 +17,8 @@ async function historicalFixture(taskVersion: string, altered = false) {
   const budget: {
     -readonly [K in keyof MultiAgentBudget]: MultiAgentBudget[K];
   } = { ...f.options.execution.budget };
-  delete budget.maxModelRequestBytes;
+  if (oldRequestLimit) delete budget.maxModelRequestBytes;
+  delete budget.maxAccumulatedEvidenceItems;
   if (altered) budget.maxModelCalls = 1;
   const options = {
     ...f.options,
@@ -64,3 +69,29 @@ test('historical compatibility cannot accept an arbitrary changed call budget', 
   expect(f.authorize).not.toHaveBeenCalled();
   expect(f.search).not.toHaveBeenCalled();
 });
+
+// A protected invocation from before the count opt-out retains the old quota.
+test.each(['13', '14'])(
+  'restores the exact bounded evidence budget for v%s without widening consent',
+  async version => {
+    const f = await historicalFixture(version, false, false);
+    const restored = await restoreColdRagConversationFactory({
+      descriptor: f.descriptor,
+      dependencies: f.dependencies,
+      signal: f.controller.signal,
+      readKnownCallIds: async () => [],
+    });
+    expect(continuationInput(restored.options)).toBe(f.descriptor.exactInput);
+    expect(restored.options.execution.budget).toEqual(
+      f.options.execution.budget,
+    );
+    expect(
+      Object.hasOwn(
+        restored.options.execution.budget,
+        'maxAccumulatedEvidenceItems',
+      ),
+    ).toBe(false);
+    expect(f.authorize).not.toHaveBeenCalled();
+    expect(f.search).not.toHaveBeenCalled();
+  },
+);
