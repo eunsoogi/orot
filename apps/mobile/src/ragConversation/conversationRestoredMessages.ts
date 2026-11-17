@@ -14,6 +14,7 @@ export function conversationRestoredMessages(
       ? [
           {
             id: nextId(),
+            restoredHistory: true as const,
             role: 'user' as const,
             content: turn.question,
             delivery: turn.delivery,
@@ -28,6 +29,7 @@ export function conversationRestoredMessages(
       : []),
     {
       id: nextId(),
+      restoredHistory: true as const,
       role: 'assistant' as const,
       steeringInstructions: receipts[index],
       content: turn.preview ?? turn.answer,

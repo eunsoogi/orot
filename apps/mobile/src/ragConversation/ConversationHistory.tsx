@@ -31,6 +31,7 @@ export function ConversationHistory({
   header,
   beforeMessages,
   footer,
+  entryChoices,
   compact = false,
   unsavedCount = 0,
   retryingSave = false,
@@ -173,8 +174,6 @@ export function ConversationHistory({
             height: viewportHeight.current,
             contentHeight: height,
           });
-          // Keep the compact header available before a conversation has a message.
-          // After an answer arrives, following its end keeps the reading viewport useful.
           followLatest();
         }}
         testID="rag-conversation-history"
@@ -189,6 +188,7 @@ export function ConversationHistory({
         >
           <ConversationTranscriptMessages
             messages={window.messages}
+            entryChoices={entryChoices}
             anchorId={window.anchorId}
             onAnchorLayout={window.onAnchorLayout}
             pendingId={pendingMessage?.id}

@@ -1,5 +1,5 @@
 import { ConversationMessageReceipt } from './ConversationMessageReceipt';
-import type { ComponentProps } from 'react';
+import { Fragment, type ComponentProps, type ReactNode } from 'react';
 import {
   ConversationMessage,
   type DisplayMessage,
@@ -11,6 +11,7 @@ import type { ConversationHistoryProps } from './ConversationHistoryProps';
 /** Receipts belong to their response, never to whichever turn happens to be last later. */
 export function ConversationTranscriptMessages({
   messages,
+  entryChoices,
   pendingId,
   instructions,
   replyFocus,
@@ -19,6 +20,7 @@ export function ConversationTranscriptMessages({
   anchorId,
   onAnchorLayout,
 }: {
+  readonly entryChoices?: ReactNode;
   readonly messages: readonly DisplayMessage[];
   readonly anchorId?: number;
   readonly onAnchorLayout?: (y: number) => void;
@@ -35,31 +37,41 @@ export function ConversationTranscriptMessages({
     pendingId === undefined
       ? undefined
       : messages.find(message => message.id === pendingId);
+  const firstLive = messages.findIndex(message => !message.restoredHistory);
+  const rows = messages.map(message => (
+    <ReplyMessageContainer
+      key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
+      focused={Boolean(
+        replyFocus && message.retainedTurnId === replyFocus.messageId,
+      )}
+      onLayout={onLayout}
+      onPosition={message.id === anchorId ? onAnchorLayout : undefined}
+    >
+      <ConversationSteeringMessages
+        instructions={
+          message === target ? instructions : message.steeringInstructions
+        }
+      />
+      <ConversationMessage message={message} {...messageProps} />
+      {message.role === 'user' ? (
+        <ConversationMessageReceipt
+          delivery={message.delivery}
+          pending={message.deliveryPending}
+        />
+      ) : null}
+    </ReplyMessageContainer>
+  ));
+  // A stable sibling key preserves choice/task state across the first live append and older prepends.
+  // Fragments add no layout wrapper, preserving reply-focus and paging row coordinates.
+  if (entryChoices != null)
+    rows.splice(
+      firstLive < 0 ? rows.length : firstLive,
+      0,
+      <Fragment key="conversation-entry-choices">{entryChoices}</Fragment>,
+    );
   return (
     <>
-      {messages.map(message => (
-        <ReplyMessageContainer
-          key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
-          focused={Boolean(
-            replyFocus && message.retainedTurnId === replyFocus.messageId,
-          )}
-          onLayout={onLayout}
-          onPosition={message.id === anchorId ? onAnchorLayout : undefined}
-        >
-          <ConversationSteeringMessages
-            instructions={
-              message === target ? instructions : message.steeringInstructions
-            }
-          />
-          <ConversationMessage message={message} {...messageProps} />
-          {message.role === 'user' ? (
-            <ConversationMessageReceipt
-              delivery={message.delivery}
-              pending={message.deliveryPending}
-            />
-          ) : null}
-        </ReplyMessageContainer>
-      ))}
+      {rows}
       {!target ? (
         <ConversationSteeringMessages instructions={instructions} />
       ) : null}

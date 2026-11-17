@@ -203,6 +203,27 @@ export function ConversationScreen({
                 disclaimer={copy.disclaimer}
               />
             }
+            entryChoices={
+              <ConversationQuickChoices>
+                <ConversationTasks.ConversationTaskHeader
+                  store={store}
+                  session={session}
+                  onOpenSource={onOpenSource}
+                  selectedReport={selectedReport}
+                  routeKey={navigationRouteKey}
+                  reportOwner={reportOwner}
+                  onOpenDailyReport={onOpenDailyReport}
+                  retainedActions={quickChoices}
+                  visitAction={
+                    <ConversationEntryAction
+                      {...{ store, session, prepareVisitQuestions }}
+                    />
+                  }
+                  renderReportTask={renderReportTask}
+                  renderSavedReport={renderSavedReport}
+                />
+              </ConversationQuickChoices>
+            }
             footer={
               <>
                 <ConversationTasks.ConversationStoredTaskCards
@@ -214,25 +235,6 @@ export function ConversationScreen({
                   durableSessionId={toolSourceSessionId}
                   renderStoredReportTask={renderStoredReportTask}
                 />
-                <ConversationQuickChoices>
-                  <ConversationTasks.ConversationTaskHeader
-                    store={store}
-                    session={session}
-                    onOpenSource={onOpenSource}
-                    selectedReport={selectedReport}
-                    routeKey={navigationRouteKey}
-                    reportOwner={reportOwner}
-                    onOpenDailyReport={onOpenDailyReport}
-                    retainedActions={quickChoices}
-                    visitAction={
-                      <ConversationEntryAction
-                        {...{ store, session, prepareVisitQuestions }}
-                      />
-                    }
-                    renderReportTask={renderReportTask}
-                    renderSavedReport={renderSavedReport}
-                  />
-                </ConversationQuickChoices>
               </>
             }
           />
