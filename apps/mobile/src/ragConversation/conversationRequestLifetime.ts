@@ -1,3 +1,8 @@
+import {
+  requestOwnedConversationPause,
+  clearDrainedConversationPause,
+  registerConversationPause,
+} from './conversationDeferredPause';
 import { interruptConversationLifetime } from './conversationLifetimeInterruption';
 import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
 import { waitForWorkflowContinue } from './conversationWorkflowContinueWait';
@@ -62,7 +67,7 @@ export function createConversationRequestLifetime(input: {
           }
         },
         () => requiresConversationDecisionAbort(entry, input.execution),
-        () => entry.requestPause?.(),
+        () => requestOwnedConversationPause(entry, entries),
         entry.diagnose,
       );
       if (
@@ -124,15 +129,12 @@ export function createConversationRequestLifetime(input: {
             requiresConversationDecisionAbort(entry, input.execution);
           } else entry.waitingForDecision = false;
         },
-        onWorkflowPauseController: (requestPause: () => void) => {
-          const entry = owners.get(controller);
-          if (
-            entry &&
-            entries.get(entry.id) === entry &&
-            !controller.signal.aborted
-          )
-            entry.requestPause = requestPause;
-        },
+        onWorkflowPauseController: (requestPause: () => void) =>
+          registerConversationPause(
+            owners.get(controller),
+            entries,
+            requestPause,
+          ),
         onWorkflowPaused: async (
           reason: 'expired' | 'decision-required' = 'expired',
         ) => {
@@ -143,6 +145,7 @@ export function createConversationRequestLifetime(input: {
             controller.signal.aborted
           )
             return false;
+          clearDrainedConversationPause(entry);
           // The graph boundary is already durable; reuse the existing generic notification policy.
           await entry.turn
             .interruptRequest('interrupted', reason)

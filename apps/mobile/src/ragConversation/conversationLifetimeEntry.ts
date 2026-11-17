@@ -10,6 +10,7 @@ export type ConversationLifetimeEntry = {
   waitingForDecision?: boolean;
   resumableApproval?: boolean;
   requestPause?: () => void;
+  pendingPause?: boolean;
   controller: AbortController;
   turn: Turn;
   status?: StopStatus;
