@@ -23,6 +23,7 @@ import { LocalEvidenceReferenceRegistry } from '../src/aiFeatures/integration/ev
 import { openLocalAgentMemoryDatabase } from '../src/storage/secureDatabase';
 import { NavigationRouteAdapter } from '../src/navigation/NavigationRouteAdapter';
 import { createNavigationController } from '../src/navigation/navigationController';
+import { appContentLayoutOwner } from '../src/navigation/appContentLayoutPolicy';
 import type { ConversationSender } from '../src/ragConversation/conversationSessionTypes';
 
 const settings =
@@ -30,6 +31,8 @@ const settings =
   NativeModules.SettingsManager?.getConstants?.().settings ??
   {};
 const continuousEntry = settings.OROT_TEST_CONTINUOUS_RETENTION === 'YES';
+const rootTabEntry =
+  continuousEntry && settings.OROT_TEST_RETENTION_ROOT_TABS === 'YES';
 
 // This opt-in test entry uses the app's protected database; only synthetic values enter its counter.
 const options = createConversationSessionOptions({
@@ -105,7 +108,9 @@ async function readProbe() {
 function Probe() {
   const [otherTab, setOtherTab] = useState(false);
   const [controller] = useState(() =>
-    createNavigationController<'conversation' | 'history'>('conversation'),
+    createNavigationController<'root' | 'conversation' | 'history'>(
+      rootTabEntry ? 'root' : 'conversation',
+    ),
   );
   const [status, setStatus] = useState('unread');
   publish = setStatus;
@@ -153,6 +158,14 @@ function Probe() {
           ) : (
             <NavigationRouteAdapter
               controller={controller}
+              contentLayoutOwner={
+                rootTabEntry ? appContentLayoutOwner : 'scene'
+              }
+              rootTabs={
+                rootTabEntry
+                  ? { activeTab: 'conversation', onSelect: () => {} }
+                  : undefined
+              }
               leaveState={{
                 readState: () => ({
                   hasUnsavedChanges: false,

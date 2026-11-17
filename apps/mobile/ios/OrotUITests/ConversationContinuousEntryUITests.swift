@@ -60,6 +60,41 @@ final class ConversationContinuousEntryUITests: OrotFailFastTestCase {
         keyboardCapture.name = "continuous-restored-new-turn-keyboard"
         keyboardCapture.lifetime = .keepAlways
         add(keyboardCapture)
+        assertRootTabComposer(app)
+    }
+
+    /// Exercise the production root-tab shell separately from the standalone retention route.
+    private func assertRootTabComposer(_ app: XCUIApplication) {
+        app.terminate()
+        app.launchArguments += ["-OROT_TEST_RETENTION_ROOT_TABS", "YES"]
+        app.launch()
+        let input = UITestConditions.element(app, "rag-conversation-input")
+        let tab = app.buttons["navigation-tab-conversation"]
+        XCTAssertTrue(UITestConditions.exists(input))
+        XCTAssertTrue(UITestConditions.exists(tab))
+        XCTAssertTrue(tab.isHittable)
+        XCTAssertTrue(input.isHittable)
+        // On this ordinary portrait iPhone, navigation must actually be below the composer.
+        XCTAssertGreaterThan(tab.frame.minY, app.frame.midY)
+        XCTAssertLessThanOrEqual(input.frame.maxY, tab.frame.minY)
+        let resting = XCTAttachment(screenshot: app.screenshot())
+        resting.name = "ordinary-iphone-root-tabs-composer"
+        resting.lifetime = .keepAlways
+        add(resting)
+        input.tap()
+        input.typeText("Synthetic bottom tab keyboard")
+        ConversationComposerDockUITestConditions.waitForVisibleKeyboard(in: app)
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            input.isHittable && input.frame.maxY <= app.keyboards.firstMatch.frame.minY
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+        XCTAssertEqual(input.value as? String, "Synthetic bottom tab keyboard")
+        XCTAssertTrue(input.isHittable)
+        XCTAssertLessThanOrEqual(input.frame.maxY, app.keyboards.firstMatch.frame.minY)
+        let keyboard = XCTAttachment(screenshot: app.screenshot())
+        keyboard.name = "ordinary-iphone-root-tabs-keyboard"
+        keyboard.lifetime = .keepAlways
+        add(keyboard)
     }
 
     private func observe(_ app: XCUIApplication, _ expected: String) {
