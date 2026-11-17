@@ -32,7 +32,7 @@ public actor ChatGPTSteerableResponse {
     }
 
     public func events() -> AsyncThrowingStream<ChatGPTSteerableEvent, Error> {
-        guard !started else { return AsyncThrowingStream { $0.finish(throwing: ChatGPTResponsesError.invalidRequest) } }
+        guard !started else { return AsyncThrowingStream { $0.finish(throwing: ResponsesRequestValidationDiagnostics.failure(.duplicateResponseStart)) } }
         started = true
         return AsyncThrowingStream { continuation in
             let task = Task {

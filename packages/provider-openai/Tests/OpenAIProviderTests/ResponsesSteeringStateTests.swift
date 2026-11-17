@@ -55,12 +55,18 @@ final class ResponsesSteeringStateTests: XCTestCase {
         XCTAssertThrowsError(try state.consume(created("successor", previous: "foreign")))
     }
 
-    func testSteeringRequiresCreatedResponseAndBoundedUserText() throws {
+    func testSteeringRequiresCreatedResponseAndNonemptyUserText() throws {
         var state = ResponsesSteeringState()
         XCTAssertThrowsError(try state.prepareSteer(submissionID: "local", text: "Update"))
         _ = try state.consume(created("original"))
         XCTAssertThrowsError(try state.prepareSteer(submissionID: "local", text: "  "))
-        XCTAssertThrowsError(try state.prepareSteer(submissionID: "local", text: String(repeating: "a", count: 16385)))
+        XCTAssertThrowsError(try state.prepareSteer(submissionID: "", text: "Update"))
+        XCTAssertThrowsError(try state.prepareSteer(submissionID: String(repeating: "i", count: 129), text: "Update"))
+        let text = String(repeating: "a", count: 16385)
+        let sent = try state.prepareSteer(submissionID: "local", text: text)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: sent) as? [String: Any])
+        XCTAssertEqual(object["input"] as? String, text)
+        XCTAssertThrowsError(try state.prepareSteer(submissionID: "second", text: "Update"))
         XCTAssertTrue(ChatGPTSteerableResponse.supportsModel("gpt-6-astra"))
         XCTAssertFalse(ChatGPTSteerableResponse.supportsModel("gpt-60"))
         XCTAssertFalse(ChatGPTSteerableResponse.supportsModel("gpt-5.6"))
