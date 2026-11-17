@@ -1,3 +1,5 @@
+import type { ProviderError } from '@orot/model-runtime';
+
 /** A closed cause produced only after the provider reports an explicit offline error. */
 export class PublicSearchOfflineError extends Error {}
 
@@ -9,3 +11,17 @@ export const publicSearchFailureGaps = {
   unavailable:
     'Public web search was unavailable; no external evidence was retrieved.',
 } as const;
+
+/** These explicit failures invalidate only the isolated optional read. Do not
+ * retry, reuse its payload, or recover refusal/configuration/programmer errors. */
+export function permitsPublicSearchFallback(error: ProviderError): boolean {
+  return [
+    'provider_unavailable',
+    'rate_limited',
+    'authentication_required',
+    'credential_unavailable',
+    'unsupported_capability',
+    'unsupported_input',
+    'invalid_request',
+  ].includes(error.code);
+}

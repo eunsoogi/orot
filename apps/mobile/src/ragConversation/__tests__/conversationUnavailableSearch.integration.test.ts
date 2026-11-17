@@ -28,9 +28,15 @@ const { makeProvider, workflowOptions } = jest.requireActual<{
 );
 
 /** Real SQLite and graph; synthetic public search fails before an authorized local-only response. */
-test.each([false, true])(
-  'unavailable research preserves grounded local fallback across pause (local fact: %s)',
-  async grounded => {
+test.each([
+  { grounded: false, code: 'provider_unavailable', ranked: false },
+  { grounded: true, code: 'provider_unavailable', ranked: false },
+  { grounded: true, code: 'authentication_required', ranked: true },
+  { grounded: true, code: 'rate_limited', ranked: true },
+  { grounded: true, code: 'unsupported_capability', ranked: false },
+] as const)(
+  'failed research preserves local fallback across pause: $code / ranked=$ranked',
+  async ({ grounded, code, ranked }) => {
     const connection = openSqliteTestDatabase(':memory:');
     try {
       await runMigrations(connection.database);
@@ -45,7 +51,7 @@ test.each([false, true])(
       fixture.search.mockResolvedValue({
         ok: false,
         error: {
-          code: 'provider_unavailable',
+          code,
           message: 'synthetic',
           retryable: true,
         },
@@ -96,7 +102,10 @@ test.each([false, true])(
                   sourceKind: 'personal_record' as const,
                   searchedSourceIds: [local.sourceId],
                   gaps: [],
-                  truncated: false,
+                  truncated: ranked,
+                  ...(ranked
+                    ? { selectionMethod: 'ranked_retrieval' as const }
+                    : {}),
                   resultLimit: 1,
                   returnedCount: 1,
                 },

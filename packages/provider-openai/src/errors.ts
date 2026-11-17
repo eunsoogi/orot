@@ -33,6 +33,14 @@ export function toProviderError(value: unknown): ProviderError {
           ? userInfo.code
           : nestedCode,
   };
+  // Refusal takes precedence over HTTP/availability categories and is never retried.
+  if (details.code === 'safety_refusal' || details.code === 'content_filter') {
+    return {
+      code: 'safety_refusal',
+      message: 'ChatGPT declined this request for safety.',
+      retryable: false,
+    };
+  }
   if (
     details.kind === 'usage_limit' ||
     details.code === 'rate_limited' ||

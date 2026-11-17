@@ -93,3 +93,87 @@ test('unknown provider throws remain terminal instead of being converted to empt
     ),
   ).rejects.toThrow('synthetic unexpected failure');
 });
+
+// Provider failures are outcomes of the isolated optional read, not valid citations.
+test.each([
+  'rate_limited',
+  'authentication_required',
+  'credential_unavailable',
+  'unsupported_capability',
+  'unsupported_input',
+  'invalid_request',
+] as const)(
+  'preserves local fallback after explicit search failure %s',
+  async code => {
+    const run = publicEvidenceFixture();
+    run.search.mockResolvedValue({
+      ok: false,
+      error: { code, message: 'private synthetic detail', retryable: false },
+    });
+    const web = createPublicWebEvidence({ ...run, recoverUnavailable: true })!;
+    await expect(web.tool.search(run.request)).resolves.toMatchObject({
+      items: [],
+      coverage: [
+        { returnedCount: 0, gaps: [expect.stringContaining('unavailable')] },
+      ],
+    });
+    expect(run.search).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(web.snapshot())).not.toContain('web-result');
+  },
+);
+
+test.each([
+  'internal_error',
+  'safety_refusal',
+  'invalid_provider',
+  'duplicate_provider',
+] as const)(
+  'does not recover policy or provider configuration failure %s',
+  async code => {
+    const run = publicEvidenceFixture();
+    run.search.mockResolvedValue({
+      ok: false,
+      error: { code, message: 'synthetic', retryable: false },
+    });
+    await expect(
+      createPublicWebEvidence({
+        ...run,
+        recoverUnavailable: true,
+      })!.tool.search(run.request),
+    ).rejects.toThrow();
+  },
+);
+
+test('typed failures do not recover cancellation or opt-out of optional recovery', async () => {
+  const run = publicEvidenceFixture();
+  run.search.mockResolvedValue({
+    ok: false,
+    error: { code: 'rate_limited', message: 'synthetic', retryable: false },
+  });
+  await expect(
+    createPublicWebEvidence(run)!.tool.search(run.request),
+  ).rejects.toThrow();
+  run.search.mockImplementation(async () => {
+    run.controller.abort();
+    return {
+      ok: false,
+      error: { code: 'internal_error', message: 'synthetic', retryable: false },
+    };
+  });
+  await expect(
+    createPublicWebEvidence({ ...run, recoverUnavailable: true })!.tool.search(
+      run.request,
+    ),
+  ).rejects.toThrow();
+});
+
+test('denied search consent never dispatches or turns into a failed-search result', async () => {
+  const run = publicEvidenceFixture();
+  run.authorize.mockResolvedValue('renewal_required');
+  await expect(
+    createPublicWebEvidence({ ...run, recoverUnavailable: true })!.tool.search(
+      run.request,
+    ),
+  ).resolves.toEqual({ status: 'consent_required' });
+  expect(run.search).not.toHaveBeenCalled();
+});

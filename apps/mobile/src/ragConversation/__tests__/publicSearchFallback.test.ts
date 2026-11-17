@@ -92,3 +92,35 @@ test.each(['웹에서 수면 자료를 찾아 줘', 'Search online for sleep res
     ).toBe(false);
   },
 );
+
+test('accepts an explicitly ranked local sample, but not a real local coverage gap', () => {
+  const current = input();
+  const ranked = {
+    ...current,
+    evidence: {
+      ...current.evidence,
+      coverage: current.evidence.coverage.map(entry =>
+        entry.sourceKind === 'personal_record'
+          ? {
+              ...entry,
+              truncated: true,
+              selectionMethod: 'ranked_retrieval' as const,
+            }
+          : entry,
+      ),
+    },
+  };
+  expect(acceptsLocalPublicSearchFallback(value, ranked)).toBe(true);
+  const missing = {
+    ...ranked,
+    evidence: {
+      ...ranked.evidence,
+      coverage: ranked.evidence.coverage.map(entry =>
+        entry.sourceKind === 'personal_record'
+          ? { ...entry, gaps: ['missing records'] }
+          : entry,
+      ),
+    },
+  };
+  expect(acceptsLocalPublicSearchFallback(value, missing)).toBe(false);
+});
