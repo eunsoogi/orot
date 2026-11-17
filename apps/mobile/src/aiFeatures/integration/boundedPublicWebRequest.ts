@@ -3,7 +3,10 @@ import type { PublicWebSearch } from '@orot/model-runtime';
 /** Only this local deadline, not caller cancellation, permits a known lookup limitation. */
 export class PublicWebSearchTimeoutError extends Error {}
 
-/** Bound network work after disclosure; waiting for a person's consent has no deadline. */
+/** Allow the selected ChatGPT transport's 180-second request window instead of
+ * preempting legitimate hosted search at 30 seconds. This watchdog still bounds
+ * an unresponsive bridge; Stop/OS cancellation remains immediate and no retry is made.
+ * The deadline starts after disclosure, never while waiting for consent. */
 export async function boundedPublicWebRequest(
   search: PublicWebSearch,
   query: string,
@@ -28,7 +31,7 @@ export async function boundedPublicWebRequest(
     timeout = setTimeout(
       () =>
         abort(new PublicWebSearchTimeoutError('Public web search timed out.')),
-      30_000,
+      180_000,
     );
     return await Promise.race([
       search({ query }, { signal: controller.signal }),
