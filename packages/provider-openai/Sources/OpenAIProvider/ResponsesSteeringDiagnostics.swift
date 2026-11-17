@@ -1,7 +1,7 @@
 import Foundation
 
-/// Values from the wire are reduced to closed enums before formatting. Unknown
-/// strings, messages, response IDs and numeric values are never emitted.
+/// Normal diagnostics reduce wire values to closed enums before formatting.
+/// A separate local-only opt-in may emit the bounded protocol type, never the object.
 enum ResponsesSteeringDiagnostics {
     enum Code: String, CaseIterable {
         case invalidRequest = "invalid_request"
@@ -37,6 +37,12 @@ enum ResponsesSteeringDiagnostics {
         if let message = ResponsesBeforeActiveDiagnostics.message(
             type: type,
             enabled: ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
+        ) {
+            NSLog("%@", message)
+        }
+        if let message = ResponsesBeforeActiveDiagnostics.protocolMessage(
+            type: type,
+            enabled: ProcessInfo.processInfo.arguments.contains("-OROT_PROTOCOL_TYPE_DIAGNOSTICS"),
         ) {
             NSLog("%@", message)
         }
