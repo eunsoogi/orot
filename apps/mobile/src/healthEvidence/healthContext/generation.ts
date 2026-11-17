@@ -29,6 +29,10 @@ export async function ensureHealthContextGeneration(
   await executor.execute(
     `CREATE INDEX IF NOT EXISTS health_context_quantity_time ON health_observations (json_extract(payload_json, '$.concept'), ${localQueryTimestampKeyExpression('effective_at')})`,
   );
+  // Generic measurement concepts cannot use the leading concept key of the older index.
+  await executor.execute(
+    `CREATE INDEX IF NOT EXISTS health_context_observation_time ON health_observations (${localQueryTimestampKeyExpression('effective_at')})`,
+  );
   await executor.execute(
     `CREATE INDEX IF NOT EXISTS health_context_dose_time ON dose_events (${localQueryTimestampKeyExpression('effective_at')})`,
   );

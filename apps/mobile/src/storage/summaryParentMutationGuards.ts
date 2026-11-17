@@ -1,5 +1,8 @@
 import { STORAGE_TABLES, type SqlExecutor } from '@orot/storage';
-import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
+import {
+  healthPeriodDeletionGuards,
+  replaceHealthPeriodTrigger,
+} from './healthPeriodDependencies';
 import {
   jsonValueChangedPredicate,
   memoryContentChangedPredicate,
@@ -55,11 +58,17 @@ export async function setupSummaryParentMutationGuards(tx: SqlExecutor) {
     ${mark("SELECT summary_id AS id FROM symptom_summary_sources WHERE record_kind = 'manual_history' AND record_id = OLD.id")} END`);
   for (const [table, guard] of Object.entries(healthPeriodDeletionGuards())) {
     const next = guard.replaceAll('OLD.', 'NEW.');
-    await tx.execute(`CREATE TRIGGER IF NOT EXISTS summary_parent_period_added_${table} AFTER INSERT ON ${table} BEGIN
-      ${mark(`SELECT p.summary_id AS id FROM symptom_summary_periods p WHERE ${next}`)} END`);
-    await tx.execute(`CREATE TRIGGER IF NOT EXISTS summary_parent_period_changed_${table} AFTER UPDATE ON ${table}
+    await replaceHealthPeriodTrigger(
+      tx,
+      `CREATE TRIGGER IF NOT EXISTS summary_parent_period_added_${table} AFTER INSERT ON ${table} BEGIN
+      ${mark(`SELECT p.summary_id AS id FROM symptom_summary_periods p WHERE ${next}`)} END`,
+    );
+    await replaceHealthPeriodTrigger(
+      tx,
+      `CREATE TRIGGER IF NOT EXISTS summary_parent_period_changed_${table} AFTER UPDATE ON ${table}
       WHEN OLD.id IS NOT NEW.id OR ${jsonValueChangedPredicate('OLD.payload_json', 'NEW.payload_json')} BEGIN
-      ${mark(`SELECT p.summary_id AS id FROM symptom_summary_periods p WHERE (${guard}) OR (${next})`)} END`);
+      ${mark(`SELECT p.summary_id AS id FROM symptom_summary_periods p WHERE (${guard}) OR (${next})`)} END`,
+    );
     const kind = (
       {
         health_observations: 'health_observation',
@@ -70,8 +79,11 @@ export async function setupSummaryParentMutationGuards(tx: SqlExecutor) {
       } as Record<string, string>
     )[table]!;
     for (const event of ['INSERT', 'UPDATE'])
-      await tx.execute(`CREATE TRIGGER IF NOT EXISTS summary_parent_period_stale_${table}_${event.toLowerCase()} AFTER ${event} ON transcript_artifact_staleness WHEN NEW.artifact_kind = '${kind}' BEGIN
-        ${mark(`SELECT p.summary_id AS id FROM symptom_summary_periods p JOIN ${table} h ON h.id = NEW.artifact_id WHERE ${guard.replaceAll('OLD.', 'h.')}`)} END`);
+      await replaceHealthPeriodTrigger(
+        tx,
+        `CREATE TRIGGER IF NOT EXISTS summary_parent_period_stale_${table}_${event.toLowerCase()} AFTER ${event} ON transcript_artifact_staleness WHEN NEW.artifact_kind = '${kind}' BEGIN
+        ${mark(`SELECT p.summary_id AS id FROM symptom_summary_periods p JOIN ${table} h ON h.id = NEW.artifact_id WHERE ${guard.replaceAll('OLD.', 'h.')}`)} END`,
+      );
   }
   for (const event of ['INSERT', 'UPDATE'])
     await tx.execute(`CREATE TRIGGER IF NOT EXISTS summary_parent_source_stale_${event.toLowerCase()} AFTER ${event} ON transcript_artifact_staleness BEGIN

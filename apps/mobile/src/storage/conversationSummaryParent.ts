@@ -1,3 +1,4 @@
+import { legacySummaryPeriodAvailable } from './legacySummaryPeriodQuarantine';
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import {
   createManualHistoryRepository,
@@ -54,6 +55,10 @@ export async function assertConversationSummaryParent(
   )
     throw new RetainedSourceInvalidError(
       'The generated summary changed or was removed.',
+    );
+  if (!(await legacySummaryPeriodAvailable(tx, summary)))
+    throw new RetainedSourceInvalidError(
+      'The legacy summary must be regenerated.',
     );
   await assertRetainedEvidenceCurrent(
     tx,

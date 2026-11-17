@@ -1,3 +1,4 @@
+import { setupHealthPeriodMarkerGuards } from './healthPeriodMarkerGuards';
 import { localQueryTimestampKey, type SqlExecutor } from '@orot/storage';
 import type { SavedPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { ensureHealthContextGeneration } from '../healthEvidence/healthContext/generation';
@@ -28,6 +29,12 @@ export async function setupSummaryPeriods(tx: SqlExecutor) {
     await tx.execute(`CREATE TRIGGER summary_period_moved_${table} AFTER UPDATE ON ${table} BEGIN
       DELETE FROM symptom_summary_runs WHERE ${completeSummaryDeletion} AND id IN (SELECT p.summary_id FROM symptom_summary_periods p WHERE (${guard}) AND NOT coalesce((${nextGuard}), 0)); END`);
   }
+  await setupHealthPeriodMarkerGuards(
+    tx,
+    'summary_period_logical',
+    condition =>
+      `DELETE FROM symptom_summary_runs WHERE ${completeSummaryDeletion} AND id IN (SELECT p.summary_id FROM symptom_summary_periods p WHERE ${condition});`,
+  );
 }
 
 /** Recalculate within the caller's write transaction; deletion/replacement cannot race the derived result insert. */

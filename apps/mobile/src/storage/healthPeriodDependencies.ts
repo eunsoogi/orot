@@ -17,9 +17,22 @@ export function healthPeriodDeletionGuards(): Readonly<Record<string, string>> {
     "json_extract(OLD.payload_json, '$.endedAt')",
   );
   const point = (at: string) => `${at} >= p.from_key AND ${at} < p.to_key`;
-  const concept = "json_extract(OLD.payload_json, '$.concept')";
+  const rawConcept = "json_extract(OLD.payload_json, '$.concept')";
+  const concept = `lower(${rawConcept})`;
+  const clinical =
+    "json_extract(OLD.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')";
+  const numeric =
+    "json_extract(OLD.payload_json, '$.value.kind') = 'quantity' AND json_type(OLD.payload_json, '$.value.amount') IN ('integer', 'real') AND json_type(OLD.payload_json, '$.value.unit') = 'text'";
+  const measurement =
+    "json_extract(OLD.payload_json, '$.observationKind') = 'measurement'";
+  const activity = `${concept} IN ('step_count', 'workout_duration')`;
+  // Workout intervals also contribute to heart-rate context in measurement reports,
+  // including intervals starting before the saved window. Do not reduce these to point membership.
+  // A stored period descriptor does not attest absence of heart-rate series, so
+  // workout overlap conservatively fences measurement scopes even without one.
+  const workoutOverlap = `${rawConcept} = 'workout_duration' AND ${time} < p.to_key AND ${end} > p.from_key AND ${end} > ${time}`;
   return {
-    health_observations: `(p.topic = 'measurements' AND ${concept} IN ('blood pressure systolic', 'blood_pressure_systolic', 'blood pressure diastolic', 'blood_pressure_diastolic', 'heart_rate', 'body_mass', 'weight') AND ${point(time)}) OR (p.topic = 'activity' AND ${concept} = 'step_count' AND ${point(time)}) OR (p.topic = 'sleep' AND ${concept} IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep') AND ${time} < p.to_key AND ${end} > p.from_key)`,
+    health_observations: `${clinical} AND ((p.topic = 'measurements' AND (((${measurement}) AND (${numeric}) AND NOT (${activity}) AND ${point(time)}) OR (${workoutOverlap}))) OR (p.topic = 'activity' AND (${measurement} OR ${concept} = 'workout_duration') AND (${numeric}) AND (${activity}) AND ${point(time)}) OR (p.topic = 'sleep' AND ${rawConcept} IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep') AND ${time} < p.to_key AND ${end} > p.from_key))`,
     medication_definitions: "p.topic = 'medications'",
     medication_assertions: "p.topic = 'medications'",
     dose_events: `p.topic = 'medications' AND ${point(time)}`,
@@ -59,4 +72,16 @@ export async function assertHealthPeriodCurrent(
     healthContextRevision(source.scope, report) !== source.revision
   )
     throw new Error('The cited health period changed before saving.');
+}
+
+/** Reinstall app-authored period triggers on every schema opening, including old backups.
+ * IF NOT EXISTS alone would silently retain obsolete contributor rules. */
+export async function replaceHealthPeriodTrigger(tx: SqlExecutor, sql: string) {
+  const name =
+    /^CREATE TRIGGER(?: IF NOT EXISTS)? ([a-zA-Z_][a-zA-Z0-9_]*)\s/u.exec(
+      sql,
+    )?.[1];
+  if (!name) throw new Error('Invalid app health-period trigger definition.');
+  await tx.execute(`DROP TRIGGER IF EXISTS ${name}`);
+  await tx.execute(sql);
 }

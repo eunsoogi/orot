@@ -40,6 +40,15 @@ export function createSymptomSummaryPersistence(input: {
   const history: SymptomSummaryHistory = {
     retrySave: async () => retry?.() ?? null,
     list: async before => (await store()).list(before),
+    async readStatus(id) {
+      const status = await (await store()).readWithStatus(id);
+      if (!status || 'status' in status) return status;
+      const analysis = await history.read(id);
+      if (analysis) return { analysis };
+      // A deletion fence may change while sources are restored; never return the old text.
+      const latest = await (await store()).readWithStatus(id);
+      return latest && 'status' in latest ? latest : null;
+    },
     async read(id) {
       const storage = await store();
       const saved = await storage.read(id);
@@ -51,7 +60,11 @@ export function createSymptomSummaryPersistence(input: {
       );
       // Deletion or revision changes may commit while source links are rebuilt.
       const latest = await storage.readWithStatus(id);
-      if (!latest || fingerprint(latest.summary) !== fingerprint(saved))
+      if (
+        !latest ||
+        'status' in latest ||
+        fingerprint(latest.summary) !== fingerprint(saved)
+      )
         return null;
       return latest.sourceChanged && restored.savedSummary?.status === 'saved'
         ? {

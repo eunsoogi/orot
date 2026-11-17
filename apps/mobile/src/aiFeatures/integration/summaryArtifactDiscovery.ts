@@ -182,7 +182,7 @@ export function createSummaryArtifactDiscovery(input: {
       // Source deletion can remove the artifact while its dependencies are being read.
       const latest = await input.storage.readWithStatus(id);
       checkCancelled(signal);
-      if (!latest) return null;
+      if (!latest || 'status' in latest) return null;
       if (fingerprint(latest.summary) !== fingerprint(saved))
         throw new Error('A saved artifact changed during detail read.');
       const changed =

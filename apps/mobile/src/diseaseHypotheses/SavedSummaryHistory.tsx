@@ -1,3 +1,6 @@
+import { SavedSummaryReviewWarnings } from './SavedSummaryReviewWarnings';
+import { SavedSummaryHistoryRows } from './SavedSummaryHistoryRows';
+import { SavedSummaryUnavailable } from './SavedSummaryUnavailable';
 import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -21,7 +24,9 @@ export function SavedSummaryHistory({
   disabled,
   expanded,
   onRestore,
+  onRegenerate,
 }: {
+  readonly onRegenerate?: () => void;
   readonly history: SymptomSummaryHistory;
   readonly current?: DiseaseHypothesisAnalysis['savedSummary'];
   readonly disabled: boolean;
@@ -29,6 +34,7 @@ export function SavedSummaryHistory({
   readonly onRestore: (value: DiseaseHypothesisAnalysis) => void;
 }) {
   const [rows, setRows] = useState<readonly SavedSummaryListItem[]>([]);
+  const [unavailable, setUnavailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -69,9 +75,18 @@ export function SavedSummaryHistory({
     setBusy(true);
     setError(false);
     try {
-      const result = await history.read(id);
+      const status = history.readStatus ? await history.readStatus(id) : null;
+      if (!mounted.current) return;
+      if (status && 'status' in status) {
+        setUnavailable(true);
+        return;
+      }
+      const result = history.readStatus
+        ? status?.analysis
+        : await history.read(id);
       // Back may remove this history scene while encrypted storage is still reading.
       if (!mounted.current) return;
+      setUnavailable(false);
       if (!result) throw new Error('Saved summary unavailable.');
       onRestore(result);
     } catch {
@@ -92,7 +107,21 @@ export function SavedSummaryHistory({
       setBusy(false);
     }
   }
+  const quarantined = unavailable || rows.some(row => row.unavailableReason);
   const hasDock = useNavigationRouteActions([
+    ...(quarantined && onRegenerate
+      ? [
+          {
+            id: 'regenerate-summary',
+            label: t('summaryHistory.regenerate'),
+            accessibilityLabel: t('summaryHistory.regenerate'),
+            testID: 'summary-period-regenerate',
+            systemImageName: 'arrow.clockwise',
+            disabled: disabled || busy,
+            onPress: onRegenerate,
+          },
+        ]
+      : []),
     ...(current?.status === 'failed' || current?.status === 'source_unavailable'
       ? [
           {
@@ -125,6 +154,12 @@ export function SavedSummaryHistory({
   if (!current && !expanded && !error) return null;
   return (
     <View style={styles.container} testID="symptom-summary-history">
+      {quarantined ? (
+        <SavedSummaryUnavailable
+          disabled={disabled || busy}
+          onRegenerate={hasDock ? undefined : onRegenerate}
+        />
+      ) : null}
       {current?.status === 'saved' ? (
         <AppText testID="symptom-summary-saved">
           {t('summaryHistory.saved', {
@@ -138,23 +173,7 @@ export function SavedSummaryHistory({
           {t('summaryHistory.sourceChanged')}
         </AppText>
       ) : null}
-      {current?.status === 'saved'
-        ? current.contentReviewIssues?.map(issue => (
-            <AppText
-              key={issue}
-              accessibilityRole="alert"
-              testID={`summary-content-review-${issue}`}
-            >
-              {issue === 'prescription'
-                ? t('summaryHistory.reviewPrescription')
-                : issue === 'sleep_count'
-                  ? t('summaryHistory.reviewSleepCount')
-                  : issue === 'sleep_duration'
-                    ? t('summaryHistory.reviewSleepDuration')
-                    : t('summaryHistory.reviewSteps')}
-            </AppText>
-          ))
-        : null}
+      <SavedSummaryReviewWarnings current={current} />
       {current?.status === 'failed' ||
       current?.status === 'source_unavailable' ? (
         <>
@@ -194,22 +213,11 @@ export function SavedSummaryHistory({
           {rows.length === 0 && !error && !loading ? (
             <AppText>{t('summaryHistory.empty')}</AppText>
           ) : null}
-          {rows.map(row => (
-            <View key={row.id}>
-              <AppButton
-                key={row.id}
-                variant="secondary"
-                title={`${new Date(row.createdAt).toLocaleString('ko-KR')} · ${row.modelName}`}
-                disabled={disabled || busy || row.inputLineage === 'unknown'}
-                onPress={() => {
-                  read(row.id);
-                }}
-              />
-              {row.inputLineage === 'unknown' ? (
-                <AppText>{t('summaryHistory.unknownLineage')}</AppText>
-              ) : null}
-            </View>
-          ))}
+          <SavedSummaryHistoryRows
+            rows={rows}
+            disabled={disabled || busy}
+            onRead={read}
+          />
           {hasMore ? (
             <AppButton
               title={t('summaryHistory.more')}

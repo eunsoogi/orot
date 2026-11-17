@@ -134,6 +134,8 @@ test('success keys distinguish versions, scope and generation requirements; fail
 test('ordinary write-transaction validation does not memoize and observes source mutations', async () => {
   const f = await healthContextFixture();
   try {
+    // Production writes open the owning catalog before transaction-only validation.
+    await f.storage.list();
     const history = createManualHistoryRepository(f.database);
     await f.database.transaction(async tx => {
       await assertRetainedEvidenceCurrent(tx, f.saved.sources, history);

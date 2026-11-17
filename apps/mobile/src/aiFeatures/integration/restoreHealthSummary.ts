@@ -41,7 +41,11 @@ export async function restoreHealthSummary(input: {
     input.data,
   );
   const latest = await input.storage.readWithStatus(saved.id);
-  if (!latest || fingerprint(latest.summary) !== fingerprint(saved))
+  if (
+    !latest ||
+    'status' in latest ||
+    fingerprint(latest.summary) !== fingerprint(saved)
+  )
     return null;
   return {
     reference: input.reference,

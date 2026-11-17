@@ -1,3 +1,5 @@
+import { assertPeriodNotRemoved } from './conversationPeriodRemoval';
+import { legacySummaryPeriodAvailable } from './legacySummaryPeriodQuarantine';
 import { type SqlExecutor, type ManualHistoryRepository } from '@orot/storage';
 import type { SavedSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
@@ -78,6 +80,10 @@ async function assertGeneratedSummaryCurrent(
       throw new RetainedSourceInvalidError(
         'The generated summary changed or was removed.',
       );
+    if (!(await legacySummaryPeriodAvailable(tx, parent)))
+      throw new RetainedSourceInvalidError(
+        'The legacy summary must be regenerated.',
+      );
     await assertRetainedEvidenceCurrent(
       tx,
       requireNonPhotoSources(parent.sources),
@@ -157,6 +163,7 @@ export async function assertRetainedEvidenceCurrent(
   for (const source of sources) {
     if (isPeriodSummarySource(source)) {
       await assertSymptomPeriodAvailable(tx, source);
+      await assertPeriodNotRemoved(tx, source);
       await (validatePeriod ?? assertSummaryPeriodCurrent)(
         tx,
         source,

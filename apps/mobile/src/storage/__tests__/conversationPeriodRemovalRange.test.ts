@@ -6,7 +6,7 @@ import { createConversationArtifactStorage } from '../conversationArtifactStorag
 import { assertPeriodNotRemoved } from '../conversationPeriodRemoval';
 
 /** Exercise the emitted production SQL and real schema, not a hand-written substitute query. */
-test('period removal uses the existing concept and time index bounds', async () => {
+test('period removal keeps indexed bounds for generic measurements and workout overlaps', async () => {
   const f = await healthContextFixture();
   const planDb = openSqliteTestDatabase(':memory:');
   try {
@@ -43,16 +43,17 @@ test('period removal uses the existing concept and time index bounds', async () 
     );
     expect(
       plans.some(plan =>
-        /health_context_quantity_time.*<expr>=\?.*<expr>>\?.*<expr><\?/.test(
-          plan,
-        ),
+        /health_context_observation_time.*<expr>>\?.*<expr><\?/.test(plan),
+      ),
+    ).toBe(true);
+    expect(
+      plans.some(plan =>
+        /health_context_quantity_time.*<expr>=\?.*<expr><\?/.test(plan),
       ),
     ).toBe(true);
     expect(
       previousPlans.some(plan =>
-        /health_context_quantity_time.*<expr>=\?.*<expr>>\?.*<expr><\?/.test(
-          plan,
-        ),
+        /health_context_observation_time.*<expr>>\?.*<expr><\?/.test(plan),
       ),
     ).toBe(false);
   } finally {
@@ -62,6 +63,29 @@ test('period removal uses the existing concept and time index bounds', async () 
 });
 
 const cases = [
+  ['measurements', 'blood_glucose', '2026-10-01T01:00:00Z', null, true],
+  ['measurements', 'body_temperature', '2026-09-30T23:59:59Z', null, false],
+  [
+    'measurements',
+    'workout_duration',
+    '2026-09-30T23:00:00Z',
+    '2026-10-01T01:00:00Z',
+    true,
+  ],
+  [
+    'measurements',
+    'workout_duration',
+    '2026-09-30T23:00:00Z',
+    '2026-10-01T00:00:00Z',
+    false,
+  ],
+  [
+    'activity',
+    'workout_duration',
+    '2026-10-01T01:00:00Z',
+    '2026-10-01T02:00:00Z',
+    true,
+  ],
   [
     'sleep',
     'HKCategoryTypeIdentifierSleepAnalysis',

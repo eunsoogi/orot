@@ -1,5 +1,8 @@
 /** Saved-summary display copy only; clinical review and source visibility guards remain in their owners. */
 export const summaryHistoryKo = {
+  'summaryHistory.periodUnavailable':
+    '원본 기록 삭제 이력을 확인할 수 없어 이 요약을 표시하지 않아요. 현재 기록으로 다시 생성해 주세요.',
+  'summaryHistory.regenerate': '현재 기록으로 새 요약 만들기',
   'summaryHistory.retrySave': '다시 저장',
   'summaryHistory.reload': '다시 불러오기',
   'summaryHistory.reviewPrescription':

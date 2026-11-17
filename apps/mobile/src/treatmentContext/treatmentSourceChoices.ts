@@ -157,6 +157,7 @@ async function possibilityChoices(database: SqlDatabase) {
     const saved = await storage.readWithStatus(item.id);
     if (
       !saved ||
+      'status' in saved ||
       saved.sourceChanged ||
       saved.summary.inputLineage !== 'complete' ||
       saved.summary.analysis.presentation

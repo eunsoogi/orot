@@ -1,5 +1,8 @@
 import { STORAGE_TABLES, type SqlExecutor } from '@orot/storage';
-import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
+import {
+  healthPeriodDeletionGuards,
+  replaceHealthPeriodTrigger,
+} from './healthPeriodDependencies';
 import {
   jsonValueChangedPredicate,
   memoryContentChangedPredicate,
@@ -64,7 +67,8 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
       ['DELETE', guard],
       ['UPDATE', update],
     ] as const)
-      await tx.execute(
+      await replaceHealthPeriodTrigger(
+        tx,
         `CREATE TRIGGER IF NOT EXISTS tool_period_${table}_${event.toLowerCase()} AFTER ${event} ON ${table} BEGIN ${erase('conversation_tool_periods', condition)} END`,
       );
     const kinds: Record<string, string> = {
@@ -79,14 +83,16 @@ export async function setupConversationToolGuards(tx: SqlExecutor) {
       'agent_memory_removed_sources',
     ]) {
       const condition = `EXISTS (SELECT 1 FROM ${table} h WHERE ${periodRowReferences('NEW.source_id', marker, kinds[table]!)} AND (${guard.replaceAll('OLD.', 'h.')}))`;
-      await tx.execute(
+      await replaceHealthPeriodTrigger(
+        tx,
         `CREATE TRIGGER IF NOT EXISTS tool_period_${table}_${marker} AFTER INSERT ON ${marker} BEGIN ${erase('conversation_tool_periods', condition)} END`,
       );
     }
     for (const event of ['INSERT', 'UPDATE']) {
       const kind = kinds[table]!;
       const condition = `EXISTS (SELECT 1 FROM ${table} h WHERE h.id = NEW.artifact_id AND (${guard.replaceAll('OLD.', 'h.')}))`;
-      await tx.execute(
+      await replaceHealthPeriodTrigger(
+        tx,
         `CREATE TRIGGER IF NOT EXISTS tool_period_stale_${table}_${event.toLowerCase()} AFTER ${event} ON transcript_artifact_staleness WHEN NEW.artifact_kind = '${kind}' BEGIN ${erase('conversation_tool_periods', condition)} END`,
       );
     }
