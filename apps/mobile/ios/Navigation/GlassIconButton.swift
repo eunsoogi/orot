@@ -11,7 +11,9 @@ final class GlassIconButton: UIButton {
     private var configuredSize = CGSize.zero
 
     override func layoutSubviews() {
-        if configuredSize != bounds.size { configure() }
+        if configuredSize != bounds.size {
+            configure()
+        }
         super.layoutSubviews()
     }
 
@@ -75,7 +77,8 @@ final class GlassIconButton: UIButton {
         }
         config.background.backgroundInsets = NSDirectionalEdgeInsets(
             top: bounds.height * (1 - scale) / 2, leading: bounds.width * (1 - scale) / 2,
-            bottom: bounds.height * (1 - scale) / 2, trailing: bounds.width * (1 - scale) / 2)
+            bottom: bounds.height * (1 - scale) / 2, trailing: bounds.width * (1 - scale) / 2,
+        )
         config.cornerStyle = .capsule
         config.contentInsets = .zero
         config.baseForegroundColor = .label
