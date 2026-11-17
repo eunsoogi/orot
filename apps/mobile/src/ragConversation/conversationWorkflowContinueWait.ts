@@ -1,3 +1,4 @@
+import { requestOwnedConversationPause } from './conversationDeferredPause';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
 import { beginConversationExecutionLease } from './conversationExecutionLease';
 import type { ConversationLifetimeEntry } from './conversationRequestLifetime';
@@ -52,7 +53,7 @@ export async function waitForWorkflowContinue(
               input.interrupt(entry.id);
             },
             () => requiresConversationDecisionAbort(entry, input.execution),
-            () => entry.requestPause?.(),
+            () => requestOwnedConversationPause(entry, entries),
             entry.diagnose,
           );
           if (
