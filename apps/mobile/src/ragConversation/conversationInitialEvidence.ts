@@ -35,7 +35,9 @@ export async function conversationInitialEvidence(
           ...(options.photoEvidence ?? []),
           ...(options.dailyReportEvidence ?? []),
         ],
-        options.workflow.execution.budget.maxEvidenceItems,
+        options.workflow.execution.budget.maxAccumulatedEvidenceItems === null
+          ? null
+          : options.workflow.execution.budget.maxEvidenceItems,
       )
     : combined;
 }

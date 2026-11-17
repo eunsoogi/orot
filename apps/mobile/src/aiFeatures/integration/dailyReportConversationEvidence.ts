@@ -40,15 +40,8 @@ export async function prepareDailyReportConversationEvidence(input: {
           : 'report_target_unavailable',
     );
   // Without any cited record, sending the turn would silently drop the selected report.
-  if (
-    !initial.sources.length ||
-    initial.sources.length > RAG_CONVERSATION_BUDGET.maxEvidenceItems
-  )
-    return reportTargetFailure(
-      !initial.sources.length
-        ? 'report_target_empty'
-        : 'report_target_item_limit',
-    );
+  if (!initial.sources.length)
+    return reportTargetFailure('report_target_empty');
   const originals = initial.sources.map(source =>
     input.registry.resolve(source),
   );
@@ -87,7 +80,7 @@ export async function prepareDailyReportConversationEvidence(input: {
         validate: signal => input.registry.revalidateEvidence([source], signal),
       }),
     );
-    if (jsonByteLength(items) > MAX_FEATURE_EVIDENCE_PAYLOAD_BYTES)
+    if (jsonByteLength(items) > RAG_CONVERSATION_BUDGET.maxPayloadBytes)
       return reportTargetFailure('report_target_batch_payload');
   }
   const expected = stableJson(originals);

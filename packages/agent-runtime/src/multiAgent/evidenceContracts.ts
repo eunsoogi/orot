@@ -66,7 +66,10 @@ export interface MultiAgentBudget {
   readonly maxOutputTokens: number;
   /** null explicitly disables elapsed time cancellation; source, call and size budgets still apply. */
   readonly timeoutMs: number | null;
+  /** Per-search page size; legacy callers also use this as the accumulated count cap. */
   readonly maxEvidenceItems: number;
+  /** Null admits all bounded source batches without an additional total-count ceiling. */
+  readonly maxAccumulatedEvidenceItems?: null;
 }
 
 export const DEFAULT_MULTI_AGENT_BUDGET = {

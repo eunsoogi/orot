@@ -1,4 +1,7 @@
-import { includeConversationTarget } from '../conversationTargetEvidence';
+import {
+  includeConversationTarget,
+  includeConversationTargets,
+} from '../conversationTargetEvidence';
 
 const target = {
   sourceKind: 'personal_record' as const,
@@ -51,4 +54,23 @@ test('reserves the exact target and reports truncation within the existing evide
     ],
     conflicts: [],
   });
+});
+
+test('count opt-out keeps all selected and independently retrieved references', () => {
+  const selected = Array.from({ length: 25 }, (_, index) => ({
+    ...target,
+    evidenceId: `selected-${index}`,
+    sourceId: `selected-${index}`,
+  }));
+  const batch = { items: [other], coverage: [], conflicts: [] };
+  const result = includeConversationTargets(batch, undefined, selected, null);
+  expect(result.items).toEqual([...selected, other]);
+  expect(result.coverage[0]?.returnedCount).toBe(26);
+  expect(result.coverage[0]?.truncated).toBe(false);
+  expect(() =>
+    includeConversationTargets(batch, undefined, selected, 8),
+  ).toThrow();
+  expect(() =>
+    includeConversationTargets(batch, undefined, [other], null),
+  ).toThrow('ambiguous');
 });

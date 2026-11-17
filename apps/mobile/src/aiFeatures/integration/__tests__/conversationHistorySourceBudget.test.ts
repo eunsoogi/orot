@@ -7,7 +7,7 @@ import {
 } from '../conversationHistorySources';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 
-test('reserves current evidence while storing bounded previous dialogue in SQLite', async () => {
+test('bounds previous dialogue independently while preserving all admitted current sources in SQLite', async () => {
   const connection = openSqliteTestDatabase(':memory:');
   try {
     await runMigrations(connection.database);
@@ -62,13 +62,15 @@ test('reserves current evidence while storing bounded previous dialogue in SQLit
     await storage.append(artifact);
     expect((await storage.read('turn'))?.sources).toHaveLength(24);
     expect((await storage.read('turn'))?.priorDialogueOmitted).toBe(true);
-    await expect(
-      storage.append({
-        ...artifact,
-        id: 'overflow',
-        sources: [...sources, { reference: refs[16]!, records: [] }],
-      }),
-    ).rejects.toThrow();
+    // Historical dialogue selection remains bounded; it no longer imposes a
+    // shared 24-source ceiling that rejects a valid current answer after dispatch.
+    const accumulated = {
+      ...artifact,
+      id: 'accumulated',
+      sources: [...sources, { reference: refs[16]!, records: [] }],
+    };
+    await storage.append(accumulated);
+    expect(await storage.read('accumulated')).toEqual(accumulated);
   } finally {
     connection.close();
   }

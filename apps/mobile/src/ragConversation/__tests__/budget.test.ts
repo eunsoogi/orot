@@ -6,7 +6,7 @@ import { createAppleSelectionOption } from '../../providers/selection/options';
 import { RAG_CONVERSATION_BUDGET } from '../budget';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../../agent/evidenceWorkflowBudget';
 
-test('shipping evidence workflows retain count and size bounds without an elapsed deadline', () => {
+test('shipping conversations separate accumulated count from search and call bounds', () => {
   const option = createAppleSelectionOption('available');
   const input = {
     selected: {
@@ -27,12 +27,23 @@ test('shipping evidence workflows retain count and size bounds without an elapse
   const external = createExternalConversationEvidence({
     search: async () => ({ status: 'empty' }),
   });
-  expect(executionOptions(input).execution.budget).toBe(
-    EVIDENCE_WORKFLOW_BUDGET,
-  );
-  expect(executionOptions({ ...input, external }).execution.budget).toBe(
-    RAG_CONVERSATION_BUDGET,
-  );
+  expect(executionOptions(input).execution.budget).toEqual({
+    ...EVIDENCE_WORKFLOW_BUDGET,
+    maxAccumulatedEvidenceItems: null,
+  });
+  expect(executionOptions({ ...input, external }).execution.budget).toEqual({
+    ...RAG_CONVERSATION_BUDGET,
+    maxAccumulatedEvidenceItems: null,
+  });
+  // Other feature workflows keep their historical accumulated count contract.
+  for (const consentPurpose of [
+    'symptom_summary',
+    'disease_hypotheses',
+  ] as const) {
+    expect(
+      executionOptions({ ...input, consentPurpose }).execution.budget,
+    ).toEqual(EVIDENCE_WORKFLOW_BUDGET);
+  }
   expect(RAG_CONVERSATION_BUDGET).toEqual({
     ...DEFAULT_MULTI_AGENT_BUDGET,
     timeoutMs: null,

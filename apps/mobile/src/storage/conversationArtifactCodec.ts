@@ -15,14 +15,13 @@ import {
   validConversationArtifactInput,
 } from './conversationArtifactInput';
 
-export const CONVERSATION_SOURCE_LIMIT = 24;
-
 /** Persisted JSON is untrusted; reject malformed dependencies before using their table identities. */
 export function decodeConversationArtifact(
   serialized: unknown,
 ): ConversationArtifact | null {
-  if (typeof serialized !== 'string' || serialized.length > 128_000)
-    return null;
+  // Admission bounds incoming batches and calls. A smaller serialized-artifact cap
+  // would reject valid accumulated lineage only after a successful answer.
+  if (typeof serialized !== 'string') return null;
   try {
     const value: unknown = JSON.parse(serialized);
     if (
@@ -65,8 +64,7 @@ export function decodeConversationArtifact(
           ))) ||
       (value.priorDialogueOmitted !== undefined &&
         value.priorDialogueOmitted !== true) ||
-      !Array.isArray(value.sources) ||
-      value.sources.length > CONVERSATION_SOURCE_LIMIT
+      !Array.isArray(value.sources)
     )
       return null;
     if (
@@ -225,7 +223,6 @@ export function decodeConversationArtifact(
     if (
       value.citations !== undefined &&
       (!Array.isArray(value.citations) ||
-        value.citations.length > 24 ||
         value.citations.some(
           citation =>
             !sources.some(
