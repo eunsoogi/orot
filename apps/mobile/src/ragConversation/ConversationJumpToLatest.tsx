@@ -18,6 +18,7 @@ export function ConversationJumpToLatest({
     >
       <GlassIconButton
         symbolName="arrow.down"
+        visualScale={0.5}
         accessibilityLabel={t('ragConversation.jumpLatest')}
         onPress={onPress}
         style={styles.button}
