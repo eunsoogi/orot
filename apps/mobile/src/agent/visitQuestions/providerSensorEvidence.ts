@@ -81,15 +81,39 @@ export async function projectVisitSensorEvidence(input: {
     batch: {
       ...input.collection.batch,
       items,
+      // Coverage describes the combined source-kind batch, not the nested period tool in isolation.
       coverage: [
-        ...input.collection.batch.coverage.map(coverage => ({
-          ...coverage,
-          returnedCount: items.filter(
-            item => item.sourceKind === coverage.sourceKind,
-          ).length,
-        })),
-        ...period.coverage,
-      ],
+        ...new Set([
+          ...items.map(item => item.sourceKind),
+          ...input.collection.batch.coverage.map(entry => entry.sourceKind),
+          ...period.coverage.map(entry => entry.sourceKind),
+        ]),
+      ].map(sourceKind => {
+        const sourceItems = items.filter(
+          item => item.sourceKind === sourceKind,
+        );
+        const original = input.collection.batch.coverage.find(
+          entry => entry.sourceKind === sourceKind,
+        );
+        const coverages = [
+          ...input.collection.batch.coverage,
+          ...period.coverage,
+        ].filter(entry => entry.sourceKind === sourceKind);
+        return {
+          ...original,
+          sourceKind,
+          ...(original?.selectionMethod
+            ? { selectionMethod: original.selectionMethod }
+            : {}),
+          searchedSourceIds: [
+            ...new Set(coverages.flatMap(entry => entry.searchedSourceIds)),
+          ],
+          gaps: [...new Set(coverages.flatMap(entry => entry.gaps))],
+          truncated: coverages.some(entry => entry.truncated),
+          resultLimit: original?.resultLimit ?? sourceItems.length,
+          returnedCount: sourceItems.length,
+        };
+      }),
     },
   };
 }

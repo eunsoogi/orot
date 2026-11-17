@@ -114,6 +114,7 @@ test('fresh creation, visit preparation, migration, document import, backup and 
     'OrotUITests/RecordingDeletionRecoveryUITests/testFreshRecordingCanBeDeletedImmediatelyAfterStopAndSave',
     'OrotUITests/ConversationComposerDockUITests/testDockRemainsReachableAcrossConversationStates',
     'OrotUITests/ConversationRetentionUITests/testStreamSurvivesNavigationBackgroundAndRestoresAfterRestart',
+    'OrotUITests/ConversationContinuousEntryUITests/testContinuousEntryRestoresChoiceBoundaryAfterRestart',
     'OrotUITests/AssistantAppearanceUITests/testRequiredAppearanceNameKeyboardAndRelaunch',
     'OrotUITests/AssistantReplyEntryUITests/testSavedReplyWaitsForAppearanceAndOpensAfterSave',
     'OrotUITests/ReplyFocusGeometryUITests/testSavedReplyAndNewerGenerationRevealWithinRealViewport',

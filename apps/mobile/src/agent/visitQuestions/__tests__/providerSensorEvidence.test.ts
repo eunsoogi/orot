@@ -1,3 +1,7 @@
+import {
+  validateEvidenceBatch,
+  DEFAULT_MULTI_AGENT_BUDGET,
+} from '@orot/agent-runtime';
 import type { RecordRepository } from '@orot/storage';
 import type { EvidenceItem, EvidenceSearchTool } from '@orot/agent-runtime';
 import type { HealthObservation } from '@orot/domain';
@@ -134,5 +138,90 @@ test('an unfamiliar typed measurement still uses period aggregation rather than 
     expect.objectContaining({
       input: { topics: ['measurements'], detail: 'summary' },
     }),
+  );
+});
+
+test('mixed source-kind coverage counts the combined batch and passes the production runtime validator', async () => {
+  const f = fixture({
+    ...healthObservation('sensor', 'heart_rate', '2026-10-01T10:00:00Z'),
+    value: { kind: 'quantity', amount: 93, unit: 'count/min' },
+  });
+  const narrative = {
+    ...f.item,
+    sourceId: 'narrative',
+    evidenceId: 'narrative',
+    content: 'Original symptom description',
+  };
+  const period = {
+    ...f.item,
+    sourceId: 'period',
+    evidenceId: 'period',
+    content: 'period statistics only',
+  };
+  const metadata = {
+    sourceRecordIds: [],
+    sourceRecordRevisions: [],
+    sourceDates: [],
+    healthContextSource: { topic: 'measurements' },
+  } as unknown as VisitQuestionEvidenceMetadata;
+  const coverage = {
+    sourceKind: 'personal_record' as const,
+    searchedSourceIds: ['s1', 'narrative'],
+    gaps: [],
+    truncated: false,
+    resultLimit: 8,
+    returnedCount: 2,
+  };
+  const emptyMemoryCoverage = {
+    sourceKind: 'reviewed_memory' as const,
+    searchedSourceIds: [],
+    gaps: ['No matching reviewed memory'],
+    truncated: false,
+    resultLimit: 8,
+    returnedCount: 0,
+    requestedTimeRange: {
+      fromInclusive: '2026-10-01T00:00:00Z',
+      toExclusive: '2026-10-02T00:00:00Z',
+    },
+  };
+  const search = jest.fn(async () => ({
+    items: [period],
+    coverage: [
+      {
+        ...coverage,
+        searchedSourceIds: ['period'],
+        resultLimit: 1,
+        returnedCount: 1,
+      },
+    ],
+    conflicts: [],
+  }));
+  const result = await projectVisitSensorEvidence({
+    ...f,
+    collection: {
+      ...f.collection,
+      batch: {
+        ...f.collection.batch,
+        items: [f.item, narrative],
+        coverage: [coverage, emptyMemoryCoverage],
+      },
+    },
+    metadata: new Map([[visitQuestionCitationKey(period), metadata]]),
+    periodTool: { search } as unknown as EvidenceSearchTool,
+  });
+  expect(result.batch.items).toEqual([narrative, period]);
+  expect(result.batch.coverage).toEqual([
+    { ...coverage, searchedSourceIds: ['s1', 'narrative', 'period'] },
+    emptyMemoryCoverage,
+  ]);
+  expect(
+    validateEvidenceBatch(
+      result.batch,
+      { sourceKinds: ['personal_record', 'reviewed_memory'] },
+      DEFAULT_MULTI_AGENT_BUDGET,
+    ),
+  ).toBeUndefined();
+  expect(result.batch.items.some(item => item.content === f.item.content)).toBe(
+    false,
   );
 });
