@@ -1,3 +1,4 @@
+import { sleepCalendarConnector } from './sleepIntervalCalendarSql';
 import {
   healthContextCalendarParameter,
   healthContextCalendarSql,
@@ -11,7 +12,7 @@ import { currentEvidenceCondition } from '../evidenceCandidateScope';
 import type { HealthContextDay, HealthSleepDay } from './types';
 
 /** Merge overlapping intervals before duration math; codes are never sleep counts.
- * Filter and decode observations once, then clip against predecoded calendar days.
+ * Filter and decode observations once, then enumerate only overlapping calendar days.
  * Unlike point samples, an interval may span several days. Materialize clipped
  * samples once for both stage unions without changing the existing Julian precision. */
 export async function readHealthSleepContext(
@@ -42,9 +43,10 @@ export async function readHealthSleepContext(
   );
   const result = await executor.execute(
     `SELECT * FROM (
-    WITH calendar(date, from_at, to_at) AS (${healthContextCalendarSql}),
+    WITH RECURSIVE calendar(date, from_at, to_at) AS (${healthContextCalendarSql}),
     days AS MATERIALIZED (
-      SELECT date, julianday(from_at) AS from_at, julianday(to_at) AS to_at FROM calendar
+      SELECT date, julianday(from_at) AS from_at, julianday(to_at) AS to_at,
+        row_number() OVER (ORDER BY julianday(from_at)) AS day_index FROM calendar
     ), observations AS MATERIALIZED (
       SELECT julianday(r.effective_at) AS start,
         julianday(json_extract(r.payload_json, '$.endedAt')) AS finish,
@@ -62,11 +64,7 @@ export async function readHealthSleepContext(
         AND ${currentEvidenceCondition('health_observation')}
         AND ${fromKey} < ? AND ${toKey} > ?
         ${ingestionFilter}
-    ), samples AS MATERIALIZED (
-      SELECT d.date, max(o.start, d.from_at) * 86400 AS start,
-        min(o.finish, d.to_at) * 86400 AS finish, o.stage
-      FROM observations o JOIN days d ON o.start < d.to_at AND o.finish > d.from_at
-    ), intervals AS (
+    ), ${sleepCalendarConnector(days)}, intervals AS (
       SELECT * FROM samples WHERE finish > start
       UNION ALL SELECT date, start, finish, 'all_asleep' AS stage FROM samples
         WHERE stage IN ('asleepUnspecified', 'asleepCore', 'asleepDeep', 'asleepREM') AND finish > start

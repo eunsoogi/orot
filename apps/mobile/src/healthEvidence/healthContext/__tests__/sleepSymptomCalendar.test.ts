@@ -1,3 +1,4 @@
+import { sleepIntervalCalendarSql } from '../sleepIntervalCalendarSql';
 import {
   createRecordRepository,
   runMigrations,
@@ -16,6 +17,15 @@ import { healthContextDays } from '../window';
 function legacy(executor: SqlExecutor): SqlExecutor {
   return {
     execute: async (sql: string, parameters: SqlValue[] = []) => {
+      // Normalize only the new interval calendar connector before applying the frozen legacy oracle.
+      sql = sql.replace(
+        sleepIntervalCalendarSql,
+        `samples AS MATERIALIZED (
+      SELECT d.date, max(o.start, d.from_at) * 86400 AS start,
+        min(o.finish, d.to_at) * 86400 AS finish, o.stage
+      FROM observations o JOIN days d ON o.start < d.to_at AND o.finish > d.from_at
+    )`,
+      );
       if (sql.includes('calendar_sweep')) {
         const at = localQueryTimestampKeyExpression(
           "coalesce(json_extract(r.payload_json, '$.startedAt'), r.effective_at)",

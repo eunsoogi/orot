@@ -32,6 +32,14 @@ test.each([
     'SELECT * FROM (WITH days(date) AS (VALUES (?)) SELECT * FROM days)',
     'sql_aggregate',
   ],
+  [
+    'SELECT * FROM (WITH calendar(date) AS (VALUES (?)) SELECT count(*) FROM health_observations)',
+    'sql_aggregate',
+  ],
+  [
+    'SELECT * FROM (WITH RECURSIVE calendar(date) AS (VALUES (?)) SELECT count(*) FROM health_observations)',
+    'sql_aggregate',
+  ],
   ['SELECT vector_blob FROM rag_embeddings WHERE chunk_id = ?', 'sql_vector'],
   [
     'SELECT payload_json FROM health_observations WHERE id = ?',

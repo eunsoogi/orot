@@ -18,7 +18,9 @@ function family(query: string): SqlFamily {
   if (/^\s*(CREATE|DROP|ALTER|PRAGMA)\b/i.test(query)) return 'sql_schema';
   if (/SELECT mutations, deletions FROM health_context_generation/i.test(query))
     return 'sql_generation';
-  if (/\bWITH\s+days\s*\(/i.test(query)) return 'sql_aggregate';
+  // Calendar-based sleep intervals are aggregates too, including the recursive day sweep.
+  if (/\bWITH\s+(?:RECURSIVE\s+)?(?:days|calendar)\s*\(/i.test(query))
+    return 'sql_aggregate';
   if (
     /\b(rag_embeddings|rag_embedding_models|rag_vector_document_revisions)\b/i.test(
       query,
