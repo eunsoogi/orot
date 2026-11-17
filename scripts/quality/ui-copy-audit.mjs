@@ -125,7 +125,8 @@ export function findDirectKoreanCopy(source, file = 'screen.tsx') {
     while (
       ts.isParenthesizedExpression(value) ||
       ts.isAsExpression(value) ||
-      ts.isSatisfiesExpression(value)
+      ts.isSatisfiesExpression(value) ||
+      ts.isNonNullExpression(value)
     )
       value = value.expression;
     if (!ts.isObjectLiteralExpression(value)) return;
@@ -134,7 +135,7 @@ export function findDirectKoreanCopy(source, file = 'screen.tsx') {
         continue;
       if (!ts.isIdentifier(property.name) && !ts.isStringLiteral(property.name)) continue;
       if (!displayAttributes.has(property.name.text)) continue;
-      expression(ts.isPropertyAssignment(property) ? property.initializer : property.name);
+      scalar(ts.isPropertyAssignment(property) ? property.initializer : property.name);
     }
   }
   function visit(node) {

@@ -5,6 +5,7 @@ import { findDirectKoreanCopy } from '../ui-copy-audit.mjs';
 test('checks display fields in direct JSX object spreads, including scalar aliases', () => {
   for (const source of [
     '<Button {...{ title: "합성 제목" }} />',
+    '<Button {...({ title: "합성 제목" }!)} />',
     '<Button {...({ "accessibilityLabel": `합성 이름` } as const)} />',
     '<Input {...({ placeholder: "합성 입력" } satisfies Props)} />',
     'const title="합성 제목"; const view=<Button {...{title}}/>;',
@@ -19,6 +20,8 @@ test('does not interpret unknown spreads, computed fields, callbacks or record p
     '<Button {...{["title"]: "동적 이름", get label(){return "원문";}}}/>',
     'const props={title:"저장 원문"}; const view=<Button {...props}/>;',
     '<Button {...makeProps("모델 지시")}/>',
+    '<Button {...{ title: buildPrompt("모델 지시") }}/>',
+    '<Button {...{ title: () => "모델 지시" }}/>',
     '<Button {...(ready ? {title:"동적 원문"} : other)}/>',
   ])
     assert.deepEqual(findDirectKoreanCopy(source), [], source);
