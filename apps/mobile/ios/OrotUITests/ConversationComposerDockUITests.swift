@@ -54,7 +54,7 @@ final class ConversationComposerDockUITests: OrotFailFastTestCase {
         ConversationComposerDockUITestConditions.assertReachable(send, in: app)
     }
 
-    /// A compact history selection returns to the conversation before its page action is used.
+    /// Two compact continuous turns retain their text and sources without manual session controls.
     @MainActor
     func testCompactContinuousConversationRetainsEarlierTurns() {
         let app = XCUIApplication()
