@@ -15,7 +15,6 @@ export type ConversationTurnActivity = ReturnType<
   typeof createConversationTurnActivity
 >;
 
-/** The response bubble and durable turn share one call map; content never enters tool metadata. */
 export function createConversationTurnActivity(input: {
   id: number;
   responseId: number;
@@ -45,7 +44,7 @@ export function createConversationTurnActivity(input: {
         });
   let events: readonly ConversationToolEvent[] = input.initialToolEvents ?? [];
   let writing = Promise.resolve();
-  let failed = false;
+  const failedCalls = new Set<string>();
   let healthBodyWithheld = false;
   const copy = getRagConversationCopy();
   const toolMessageId =
@@ -67,12 +66,18 @@ export function createConversationTurnActivity(input: {
     if (next === events) return;
     events = next;
     // Every write is serialized, including cancellation after the visible request has ended.
-    if (input.retained)
+    if (input.retained) {
+      const key = JSON.stringify([event.operationRunId, event.callId]);
       writing = writing
-        .then(() => input.retained!.recordToolEvent(event))
+        .then(async () => {
+          await input.retained!.recordToolEvent(event);
+          // A durably saved terminal snapshot supersedes a failed start for this call only.
+          if (event.status !== 'started') failedCalls.delete(key);
+        })
         .catch(() => {
-          failed = true;
+          failedCalls.add(key);
         });
+    }
     const session = input.find(input.id);
     if (!session) return; // A removed in-memory session cannot be revived by a late callback.
     const pending = session.pendingMessage;
@@ -114,7 +119,7 @@ export function createConversationTurnActivity(input: {
     },
     async flush() {
       await writing;
-      if (failed && input.current())
+      if (failedCalls.size && input.current())
         input.update(input.id, {
           error: t('ragConversation.conversation.toolActivitySaveFailed'),
         });
