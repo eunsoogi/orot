@@ -59,6 +59,7 @@ it('does not present a static catalog or credentials and refreshes only explicit
   const local = within(view.getByTestId('voice-model-group-local'));
   const api = within(view.getByTestId('voice-model-group-openai-api'));
   expect(local.getByTestId('voice-model-apple-system-speech')).toBeTruthy();
+  expect(local.getByText('기기 안에서 처리')).toBeTruthy();
   expect(local.queryByTestId('voice-model-gpt-realtime-2.1-mini')).toBeNull();
   expect(api.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy();
   expect(api.queryByTestId('voice-model-apple-system-speech')).toBeNull();
@@ -109,8 +110,8 @@ it('preserves unavailable saved selection and never silently substitutes local',
     .mocked(voiceSettingsStore.accountStatus)
     .mockResolvedValue({ connected: false, revision: 1 });
   const view = await render(<VoiceSettingsPanel />);
-  await waitFor(() =>
-    expect(view.getByText(/저장된 모델 gpt-realtime-2.1/)).toBeTruthy(),
+  expect(await view.findByTestId('voice-current-model')).toHaveTextContent(
+    /GPT Realtime 2.1/,
   );
   expect(
     view.getByTestId('voice-settings-save').props.accessibilityState.disabled,
@@ -119,6 +120,7 @@ it('preserves unavailable saved selection and never silently substitutes local',
     view.getByTestId('voice-model-apple-system-speech').props.accessibilityState
       .selected,
   ).toBe(false);
+  expect(view.queryByText(/저장된 모델 gpt-realtime-2.1/)).toBeNull();
   expect(voiceSettingsStore.save).not.toHaveBeenCalled();
 });
 it('keeps inaccessible settings from being overwritten', async () => {
@@ -183,7 +185,6 @@ it('ignores a late catalog response after disconnection', async () => {
     view.getByTestId('voice-model-refresh').props.accessibilityState.disabled,
   ).toBe(true);
 });
-
 it('keeps settings quiet without starting a call or granting runtime consent', async () => {
   jest.mocked(hasRealtimeVoiceRuntime).mockReturnValue(true);
   const view = await render(<VoiceSettingsPanel />);
@@ -218,7 +219,6 @@ it('reports failed persistence without claiming the selected model was saved', a
   );
   expect(view.queryByText(/음성 설정을 저장했습니다/)).toBeNull();
 });
-
 it('shows the stored model before refresh and keeps it distinct from an unsaved choice', async () => {
   const view = await render(<VoiceSettingsPanel />);
   await waitFor(() =>

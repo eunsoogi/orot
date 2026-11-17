@@ -89,11 +89,6 @@ export function VoiceSettingsPanel({
         {!catalog.fresh && catalog.ids.length > 0 ? (
           <Text style={styles.detail}>{t('modelSettings.staleModels')}</Text>
         ) : null}
-        {mode === 'openai-api' && !catalog.ids.includes(model) ? (
-          <Text accessibilityRole="alert">
-            {t('modelSettings.savedModelUnavailable', { model })}
-          </Text>
-        ) : null}
       </View>
       <View style={styles.section}>
         {!busy && !failedLoad ? (

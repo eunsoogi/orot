@@ -43,10 +43,8 @@ export function useSettingsRouteSummaries(
       .then(selection => {
         if (!current) return;
         if (selection.status === 'ready') {
-          // The committed root label tracks the latest choice; resolution first confirms it is still valid.
-          setSelectedAiSummary(
-            selectedProvider || selection.option.displayName,
-          );
+          // Model identity belongs in its detail screen; keep only actionable root statuses.
+          setSelectedAiSummary('');
         } else if (selection.status === 'selection-required') {
           setSelectedAiSummary(providerSelectionText.selectPrompt);
         } else {

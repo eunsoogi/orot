@@ -8,7 +8,7 @@ export const voiceModels = [
     id: 'apple-system-speech',
     mode: 'local',
     title: t('modelSettings.appleVoice'),
-    detail: t('modelSettings.appleVoiceDescription'),
+    detail: t('modelSettings.localProcessing'),
   },
   {
     id: 'gpt-realtime-2.1',

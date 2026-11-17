@@ -73,7 +73,7 @@ export function SettingsRoute({
                   symbol="sparkles"
                   tone="purple"
                   onPress={onOpenProviderSettings}
-                  summary={selectedAiSummary}
+                  summary={selectedAiSummary || undefined}
                   testID="settings-open-provider"
                   title={t('settings.provider')}
                 />
