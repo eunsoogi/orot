@@ -29,6 +29,7 @@ export function OverviewPreparedVisits({
   return (
     <ManualVisitTargetPanels
       content="questions"
+      embedded
       appointmentId={appointmentId}
       store={store}
       sessionId={session.id}

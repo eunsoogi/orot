@@ -17,6 +17,7 @@ import {
 
 interface ManualVisitTargetPanelsProps {
   readonly content?: 'all' | 'recaps' | 'questions';
+  readonly embedded?: boolean;
   readonly appointmentId?: string;
   readonly store: ConversationSessions;
   readonly sessionId: number;
@@ -35,6 +36,7 @@ export function ManualVisitTargetPanels(props: ManualVisitTargetPanelsProps) {
 
 function ManualVisitSessionPanels({
   content = 'all',
+  embedded = false,
   appointmentId: overviewAppointmentId,
   store,
   sessionId,
@@ -81,7 +83,11 @@ function ManualVisitSessionPanels({
             <ConversationSavedRecaps appointmentId={appointmentId} />
           )}
           {content !== 'recaps' && (
-            <ManualVisitRecords appointmentId={appointmentId} drafts={drafts} />
+            <ManualVisitRecords
+              appointmentId={appointmentId}
+              drafts={drafts}
+              embedded={embedded}
+            />
           )}
         </Fragment>
       ))}
@@ -92,6 +98,7 @@ function ManualVisitSessionPanels({
         <RetainedManualVisitTargets
           key={durableSessionId}
           content={content}
+          embedded={embedded}
           sessionId={durableSessionId}
           discover={discover}
           drafts={drafts}
