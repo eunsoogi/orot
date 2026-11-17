@@ -1,3 +1,4 @@
+import { refreshConversationRetentionLease } from './refreshConversationRetentionLease';
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import {
   conversationSessionTurns,
@@ -71,6 +72,11 @@ export function createConversationSessionRetention(input: {
     return { storage, current, version };
   }
   return {
+    refreshExisting: refreshConversationRetentionLease(
+      slots,
+      input.openStorage,
+      () => lifecycle,
+    ),
     invalidate() {
       lifecycle += 1;
       for (const slot of slots.values())

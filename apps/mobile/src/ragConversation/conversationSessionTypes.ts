@@ -175,6 +175,7 @@ export interface ConversationSession {
   } | null;
   readonly busy: boolean;
   readonly preparingSend?: boolean;
+  readonly leaseRefreshRequired?: boolean;
   readonly error: string;
   readonly unsavedCount?: number;
   readonly retryingSave?: boolean;

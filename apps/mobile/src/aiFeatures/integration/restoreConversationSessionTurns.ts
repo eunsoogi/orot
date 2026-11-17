@@ -9,7 +9,8 @@ import {
 import type { RestoredTurn } from '../../ragConversation/conversationRestoredTurn';
 import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
 import { restoreColdConversationPreviews } from './restoreColdConversationEligibility';
-import { restoreConversationToolTurns } from './restoreConversationToolTurns';
+import { restoreHistoryToolTurns } from './restoreHistoryToolTurns';
+import { observeConversationHistory } from '../../providers/conversationHistoryDiagnostic';
 import { fingerprint } from './evidenceUtils';
 import { restoreConversationVisitQuestions } from './restoreConversationVisitQuestions';
 import { healthSourceDependencies } from '../../ragConversation/conversationHealthDeletion';
@@ -37,12 +38,17 @@ export async function restoreConversationSessionTurns(
   const unavailableHistory: { id: string; createdAt: string }[] = [];
   let cursor: Parameters<typeof discovery.readSession>[0]['cursor'];
   do {
-    const page = await discovery.readSession({
-      sessionId,
-      ...(cursor ? { cursor } : {}),
+    const page = await observeConversationHistory(
+      'history_artifacts',
+      () =>
+        discovery.readSession({
+          sessionId,
+          ...(cursor ? { cursor } : {}),
+          signal,
+          ...(selection ? { ids: selection.ids } : {}),
+        }),
       signal,
-      ...(selection ? { ids: selection.ids } : {}),
-    });
+    );
     if (page.unavailableCount !== (page.unavailableItems?.length ?? 0))
       throw new Error('Conversation content is unavailable.');
     unavailableHistory.push(...(page.unavailableItems ?? []));
@@ -52,10 +58,10 @@ export async function restoreConversationSessionTurns(
   if (signal.aborted)
     throw new Error('Conversation restoration was cancelled.');
   const storage = await openStorage();
-  const savedToolTurns = await storage.readToolTurns(
-    sessionId,
-    version,
-    selection?.ids,
+  const savedToolSnapshot = await observeConversationHistory(
+    'history_tool_read',
+    () => storage.readToolTurnsSnapshot(sessionId, version, selection?.ids),
+    signal,
   );
   const interrupted = await storage.listInterruptedRequests(
     sessionId,
@@ -70,20 +76,26 @@ export async function restoreConversationSessionTurns(
     version,
     signal,
   });
-  const toolTurns = await restoreConversationToolTurns(
-    savedToolTurns,
-    input.registry,
-    data,
+  const toolSnapshot = await observeConversationHistory(
+    'history_tool_restore',
+    () =>
+      restoreHistoryToolTurns(
+        savedToolSnapshot.items,
+        input.registry,
+        data,
+        signal,
+        sessionId,
+        storage,
+      ),
     signal,
-    sessionId,
-    storage,
   );
+  const toolTurns = toolSnapshot.items;
   // Content and tool events must not outlive a session deletion or source change during restoration.
   if (
     !(await discovery.revalidateSession(sessionId, version, turns, signal)) ||
     fingerprint(
-      await storage.readToolTurns(sessionId, version, selection?.ids),
-    ) !== fingerprint(savedToolTurns)
+      await storage.readToolTurnsSnapshot(sessionId, version, selection?.ids),
+    ) !== fingerprint(savedToolSnapshot)
   )
     throw new Error('Conversation content changed during restoration.');
   const restored: (RestoredTurn & { toolMessageId: string })[] =
@@ -186,9 +198,10 @@ export async function restoreConversationSessionTurns(
     version,
     signal,
   });
-  const unavailable = (
-    (await storage.readUnavailableToolMetadata?.(sessionId)) ?? []
-  ).filter(item => !selection || selection.ids.includes(item.messageId));
+  const unavailable = [
+    ...savedToolSnapshot.unavailable,
+    ...toolSnapshot.unavailable,
+  ];
   restoreUnavailableToolTurns(restored, unavailable);
   restoreUnavailableHistoryTurns(restored, unavailableHistory);
   await revalidateUnavailableHistory(storage, sessionId, unavailableHistory);
@@ -199,7 +212,7 @@ export async function restoreConversationSessionTurns(
     ...toolTurns.map(turn => [turn.messageId, turn.createdAt] as const),
     ...interrupted.map(request => [request.id, request.createdAt] as const),
   ]);
-  return restoreColdConversationPreviews(
+  const output = await restoreColdConversationPreviews(
     input.coldResume,
     signal,
     orderRestoredConversationTurns(restored, times),
@@ -211,4 +224,14 @@ export async function restoreConversationSessionTurns(
     sessionId,
     version,
   );
+  // Even notices must match the final selected tool snapshot after visit/photo/cold reads.
+  if (
+    signal.aborted ||
+    fingerprint(
+      await storage.readToolTurnsSnapshot(sessionId, version, selection?.ids),
+    ) !== fingerprint(savedToolSnapshot) ||
+    signal.aborted
+  )
+    throw new Error('Conversation content changed during restoration.');
+  return output;
 }

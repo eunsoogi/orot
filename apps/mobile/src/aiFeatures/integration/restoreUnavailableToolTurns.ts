@@ -4,7 +4,11 @@ import { t } from '../../i18n';
 /** A quarantined tool result restores only an explanation, never its old payload or source aliases. */
 export function restoreUnavailableToolTurns(
   restored: (RestoredTurn & { toolMessageId: string })[],
-  metadata: readonly { messageId: string; createdAt: string }[],
+  metadata: readonly {
+    messageId: string;
+    createdAt: string;
+    reason?: string;
+  }[],
 ) {
   for (const item of metadata) {
     const index = restored.findIndex(
@@ -12,7 +16,11 @@ export function restoreUnavailableToolTurns(
     );
     const safe = {
       question: '',
-      answer: t('ragConversation.conversation.legacyToolUnavailable'),
+      answer: t(
+        item.reason === 'source_unavailable'
+          ? 'ragConversation.conversation.historyUnavailable'
+          : 'ragConversation.conversation.legacyToolUnavailable',
+      ),
       citations: [],
       healthSources: [],
       historyUnavailable: true as const,

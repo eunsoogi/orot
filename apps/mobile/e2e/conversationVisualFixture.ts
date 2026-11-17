@@ -67,6 +67,7 @@ const visualSessionRetention: NonNullable<
     return syntheticToolSourceSessionId;
   },
   async attachExisting() {},
+  async refreshExisting() {},
   async beginTurn(_id, signal) {
     if (signal.aborted) throw new Error('Conversation is unavailable.');
     return {

@@ -3,7 +3,7 @@ import { conversationPhotoSurface } from './conversationPhotoSurface';
 import { prepareConversationSend } from './conversationSendPreflight';
 import type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 import { continuousConversationPolicy } from './continuousConversationPolicy';
-import { recoveryFor } from './conversationRecoveryRefresh';
+import { conversationRecoveryActions } from './conversationRecoveryActions';
 import { createConversationSessionRequests } from './conversationSessionRequests';
 import { conversationDispatch } from './conversationDispatch';
 import type * as S from './conversationSessionTypes';
@@ -142,7 +142,14 @@ export function createConversationSessions(
     disposed: () => disposed,
   });
   const store = {
-    refreshRecovery: recoveryFor(options, find, update, () => disposed),
+    ...conversationRecoveryActions({
+      options,
+      find,
+      update,
+      restoration,
+      taskRefresh,
+      disposed: () => disposed,
+    }),
     resumeCold: requests.resumeCold,
     steer: requests.steer,
     ...photoSurface,
@@ -178,12 +185,6 @@ export function createConversationSessions(
       if (!disposed) requests.cancel(id);
     },
     retrySave,
-    retryRestore: (id: number, signal?: AbortSignal) =>
-      disposed
-        ? Promise.resolve()
-        : taskRefresh.has(id)
-          ? taskRefresh.retry(id)
-          : restoration.retry(id, signal),
     refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
       if (disposed) return;
       const retryIds = invalidateTasks(snapshot, taskState, taskRefresh);
