@@ -1,9 +1,15 @@
+import { publicSearchNotice } from '../defaultPublicSearch';
+import { prepareLiveRagContinuation } from '../liveRagConversationCapture';
 import { providerFailure } from '@orot/model-runtime';
 import { createRagConversationService } from '../ragConversationService';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { localData } from '../featureServiceFixtures';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
 import type { runRagConversationTurn } from '../../../ragConversation/service';
+
+jest.mock('../liveRagConversationCapture', () => ({
+  prepareLiveRagContinuation: jest.fn(async () => undefined),
+}));
 
 function fixture() {
   const run = publicEvidenceFixture();
@@ -92,3 +98,27 @@ test('cancellation during search stops the feature before model execution', asyn
   });
   expect(run.runner).not.toHaveBeenCalled();
 });
+
+// Keep the real search plan and finish path; only the durable runner is synthetic.
+test.each(['success', 'unavailable', 'empty', 'consent_required'] as const)(
+  'retained search final notice uses the settled %s status',
+  async status => {
+    jest.mocked(prepareLiveRagContinuation).mockResolvedValueOnce({} as never);
+    const run = fixture();
+    run.runner.mockImplementationOnce(async options => {
+      expect(options.workflow?.initialSearch?.toolId).toBe('public-web-search');
+      options.onInitialSearchStatus?.(status);
+      return { status: 'answer', answer: '로컬 기록 답변', citations: [] };
+    });
+    const result = await run.send('혈압 기록을 알려줘', []);
+    expect(run.search).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ status: 'answer' });
+    if (result.status !== 'answer')
+      throw new Error('Expected synthetic answer.');
+    if (status === 'success') expect(result.answer).toBe('로컬 기록 답변');
+    else
+      expect(result.answer).toBe(
+        `로컬 기록 답변\n\n${publicSearchNotice(status)}`,
+      );
+  },
+);

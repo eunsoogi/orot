@@ -1,6 +1,6 @@
 import { withoutReportTemplate } from './conversationLegacyTemplateMessages';
 import type { JsonObject } from '@orot/model-runtime';
-import { ragConversationTask } from './task';
+import { legacyTask as ragConversationTask } from './task';
 
 const oldInstruction =
   'Set completion to partial when the answer provides useful supported information but cannot address all requested topics; explain the missing portion. Otherwise set it to complete. Never use partial to bypass evidence or citation requirements. ';

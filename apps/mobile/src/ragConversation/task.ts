@@ -1,3 +1,4 @@
+import { withStructuredPossibilityReport } from './structuredPossibilityReport';
 import { validateConversationResult } from './conversationResultValidation';
 import { acceptsLocalPublicSearchFallback } from './publicSearchFallback';
 import type { JsonObject, LanguageModelMessage } from '@orot/model-runtime';
@@ -30,8 +31,9 @@ export interface GroundedRagAnswer {
 }
 
 /** Distinguishes dialogue from claims needing current sources; history is context only.
- * Publish prose only after complete-response validation. Tool progress has its own observer. */
-export const ragConversationTask: TaskResponderContract<GroundedRagAnswer> = {
+ * Publish prose only after complete-response validation. Tool progress has its own observer.
+ * This v14 base also reconstructs protected legacy checkpoints without new formatting contracts. */
+export const legacyTask: TaskResponderContract<GroundedRagAnswer> = {
   taskType: 'grounded_rag_conversation',
   // The live send boundary owns the reviewed opening; never spend another preview call during tools.
   taskVersion: '14',
@@ -138,3 +140,5 @@ export interface RagConversationCurrentEvidence {
   readonly batch: EvidenceBatch;
   readonly chunks: readonly import('@orot/rag').EvidenceChunk[];
 }
+
+export const ragConversationTask = withStructuredPossibilityReport(legacyTask);

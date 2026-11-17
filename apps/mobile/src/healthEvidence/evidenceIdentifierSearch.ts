@@ -25,10 +25,9 @@ export async function findIdentifiersInTable(
     throw new Error('The identifier catalog could not be read.');
   if (total === 0) return { rows: [] };
   if (total <= 1024) {
-    return database.execute(
-      `SELECT id FROM ${table} WHERE instr(?, id) > 0 LIMIT 1025`,
-      [text],
-    );
+    return database.execute(`SELECT id FROM ${table} WHERE instr(?, id) > 0`, [
+      text,
+    ]);
   }
   return database.execute(
     `SELECT DISTINCT id FROM (
@@ -41,7 +40,7 @@ export async function findIdentifiersInTable(
       SELECT r.id FROM lengths CROSS JOIN positions CROSS JOIN ${table} r
         ON r.id = CAST(substr(CAST(? AS BLOB), positions.position, lengths.size) AS TEXT)
       WHERE positions.position + lengths.size - 1 <= length(CAST(? AS BLOB))
-    ) LIMIT 1025`,
+    )`,
     [text, text, text, text],
   );
 }
