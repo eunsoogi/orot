@@ -32,7 +32,7 @@ export const questionCohorts = {
       'KeyboardSafeAreaUITests/testKoreanPrimaryActionRemainsReachableWithLargeTextAndKeyboardOpen',
       'KeyboardSafeAreaUITests/testConversationLongTitlesAndFullSwipeAcrossTextSizes',
       'ConversationComposerDockUITests/testFailureKeepsComposerReachable',
-      'ConversationComposerDockUITests/testCompactHistorySelectionReturnsToConversation',
+      'ConversationComposerDockUITests/testCompactContinuousConversationRetainsEarlierTurns',
       'ConversationHealthSummaryUITests/testSyntheticSummaryCardSourceRetryAndVoiceOver',
       'ConversationVisitPreparationUITests/testLongPreparedQuestionKeepsAccessibleOrderWithLargeTextAndKeyboard',
     ],
