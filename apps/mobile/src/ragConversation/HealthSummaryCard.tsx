@@ -8,7 +8,7 @@ import type { HealthSummaryResult } from './healthSummary';
 import { OMITTED_SUMMARY_CONTENT_NOTE } from '../diseaseHypotheses/summaryPartialValidation';
 import { INCOMPLETE_SUMMARY_EVIDENCE_NOTE } from '../diseaseHypotheses/summaryPartialEvidence';
 import { t } from '../i18n';
-import { styles as conversationStyles } from './ConversationScreen.styles';
+import { HealthSummaryText } from './HealthSummaryText';
 
 /** Show only the validated sections and their original source links. */
 export function HealthSummaryCard({
@@ -75,39 +75,13 @@ export function HealthSummaryCard({
         : null}
       {result.analysis.hypotheses.map((section, index) => (
         <View key={index} style={styles.section}>
-          <AppText
-            style={[styles.title, conversationStyles.messageText]}
-            allowFontScaling
-            adjustsFontSizeToFit={false}
-          >
-            {section.title}
-          </AppText>
-          {/* Generated prose uses the same body size as ordinary answers, never fit-to-width. */}
-          <AppText
-            style={conversationStyles.messageText}
-            allowFontScaling
-            adjustsFontSizeToFit={false}
-          >
-            {section.summary}
-          </AppText>
+          <HealthSummaryText text={section.title} title />
+          <HealthSummaryText text={section.summary} />
           {section.uncertainty ? (
-            <AppText
-              style={conversationStyles.messageText}
-              allowFontScaling
-              adjustsFontSizeToFit={false}
-            >
-              {section.uncertainty}
-            </AppText>
+            <HealthSummaryText text={section.uncertainty} />
           ) : null}
           {section.missingData.map((missing, item) => (
-            <AppText
-              key={item}
-              style={conversationStyles.messageText}
-              allowFontScaling
-              adjustsFontSizeToFit={false}
-            >
-              {missing}
-            </AppText>
+            <HealthSummaryText key={item} text={missing} />
           ))}
           {showCitations ? (
             <ConversationSources
