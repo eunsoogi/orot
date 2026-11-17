@@ -1,11 +1,10 @@
+import { appendConversationSourceRows } from './conversationArtifactSourceRows';
 import { enqueueStatementMemory } from './userStatementMemoryJobs';
 import { conversationTimelinePages } from './conversationTimelinePages';
 import { continuousConversationStorage } from './continuousConversationStorage';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
 import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
-import { appendConversationPeriod } from './conversationPeriodCutoff';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
-import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import {
   decodeConversationArtifact,
   type ConversationArtifact,
@@ -17,12 +16,7 @@ import { createConversationCompletionReader } from './conversationCompletionRead
 import { listConversationArtifactPage } from './conversationArtifactPages';
 import { createConversationSessionVisibility } from './conversationSessionVisibility';
 import { assertConversationNotCancelled } from './conversationArtifactCancellation';
-import {
-  isGeneratedSummarySource,
-  isGeneratedConversationSource,
-  isGeneratedResearchSource,
-  isConversationPhotoSource,
-} from '../ragConversation/conversationArtifactSources';
+import { isGeneratedSummarySource } from '../ragConversation/conversationArtifactSources';
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 import { createConversationToolEventStorage } from './conversationToolEventStorage';
 import { createFilteredToolPeriodStorage } from './conversationToolFilteredStorage';
@@ -181,39 +175,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         );
         if (decoded.treatmentContext)
           await appendTreatmentTaskCard(tx, decoded);
-        for (const source of decoded.sources) {
-          if (isConversationPhotoSource(source)) {
-            // The request-source table owns the photo; no medical-record row is fabricated.
-            continue;
-          } else if (
-            isGeneratedSummarySource(source) ||
-            isGeneratedConversationSource(source) ||
-            isGeneratedResearchSource(source)
-          ) {
-            await tx.execute(
-              'INSERT OR IGNORE INTO conversation_artifact_sources (artifact_id, record_kind, record_id) VALUES (?, ?, ?)',
-              [decoded.id, source.kind, source.id],
-            );
-          } else if (isPeriodSummarySource(source)) {
-            await appendConversationPeriod(tx, decoded.id, source.scope);
-          } else {
-            if (source.reference.sourceKind !== 'external_medical') {
-              for (const id of [
-                source.reference.sourceId,
-                source.reference.evidenceId,
-              ])
-                await tx.execute(
-                  'INSERT OR IGNORE INTO conversation_artifact_sources (artifact_id, record_kind, record_id) VALUES (?, ?, ?)',
-                  [decoded.id, 'identity', id],
-                );
-            }
-            for (const record of source.records)
-              await tx.execute(
-                'INSERT OR IGNORE INTO conversation_artifact_sources (artifact_id, record_kind, record_id) VALUES (?, ?, ?)',
-                [decoded.id, record.kind, record.id],
-              );
-          }
-        }
+        await appendConversationSourceRows(tx, decoded);
         // After this check, commit wins; the caller must report the saved result even if cancellation arrives later.
         assertConversationNotCancelled(signal);
         await commitConversationRequest(tx, decoded, expectedSessionVersion);

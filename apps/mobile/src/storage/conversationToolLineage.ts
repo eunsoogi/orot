@@ -175,7 +175,9 @@ export async function assertToolLineage(
       await readFilteredToolPeriod(tx, source, requireGeneration);
 }
 
-/** Index dependencies for the existing source deletion and freshness boundaries. */
+/** Index every dependency in the owning transaction, without a bridge call per
+ * sensor member. Bound JSON retains typed identities and precise period keys;
+ * INSERT OR IGNORE preserves the existing duplicate/deletion semantics. */
 export async function indexToolLineage(
   tx: SqlExecutor,
   sessionId: string,
@@ -184,53 +186,41 @@ export async function indexToolLineage(
 ) {
   const key = JSON.stringify([sessionId, event.operationRunId, event.callId]);
   const prefix = [key, sessionId, event.operationRunId, event.callId];
+  const records: [string, string][] = [];
+  const periods: [string, string, string][] = [];
   for (const source of sources) {
     if (isExternalToolResearch(source)) {
-      await tx.execute(
-        'INSERT OR IGNORE INTO conversation_tool_dependencies VALUES (?, ?, ?, ?, ?, ?)',
-        [...prefix, 'generated_research', source.research.id],
-      );
+      records.push(['generated_research', source.research.id]);
     } else if ('kind' in source && source.kind === 'conversation_photo') {
       throw new Error('Photo tool sources are unsupported.');
     } else if (
-      'kind' in source &&
-      source.kind === 'filtered_medication_period'
+      ('kind' in source && source.kind === 'filtered_medication_period') ||
+      isPeriodSummarySource(source)
     ) {
-      await tx.execute(
-        'INSERT OR IGNORE INTO conversation_tool_periods VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [
-          ...prefix,
-          source.scope.topic,
-          localQueryTimestampKey(source.scope.window.fromInclusive),
-          localQueryTimestampKey(source.scope.window.toExclusive),
-        ],
-      );
-    } else if (isPeriodSummarySource(source)) {
-      await tx.execute(
-        'INSERT OR IGNORE INTO conversation_tool_periods VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [
-          ...prefix,
-          source.scope.topic,
-          localQueryTimestampKey(source.scope.window.fromInclusive),
-          localQueryTimestampKey(source.scope.window.toExclusive),
-        ],
-      );
+      periods.push([
+        source.scope.topic,
+        localQueryTimestampKey(source.scope.window.fromInclusive),
+        localQueryTimestampKey(source.scope.window.toExclusive),
+      ]);
     } else if ('kind' in source && source.kind.startsWith('generated_')) {
-      await tx.execute(
-        'INSERT OR IGNORE INTO conversation_tool_dependencies VALUES (?, ?, ?, ?, ?, ?)',
-        [...prefix, source.kind, source.id],
-      );
+      records.push([source.kind, source.id]);
     } else if ('records' in source) {
       for (const id of [source.reference.sourceId, source.reference.evidenceId])
-        await tx.execute(
-          'INSERT OR IGNORE INTO conversation_tool_dependencies VALUES (?, ?, ?, ?, ?, ?)',
-          [...prefix, 'identity', id],
-        );
+        records.push(['identity', id]);
       for (const record of source.records)
-        await tx.execute(
-          'INSERT OR IGNORE INTO conversation_tool_dependencies VALUES (?, ?, ?, ?, ?, ?)',
-          [...prefix, record.kind, record.id],
-        );
+        records.push([record.kind, record.id]);
     }
   }
+  if (records.length)
+    await tx.execute(
+      `INSERT OR IGNORE INTO conversation_tool_dependencies
+       SELECT ?, ?, ?, ?, json_extract(value, '$[0]'), json_extract(value, '$[1]') FROM json_each(?)`,
+      [...prefix, JSON.stringify(records)],
+    );
+  if (periods.length)
+    await tx.execute(
+      `INSERT OR IGNORE INTO conversation_tool_periods
+       SELECT ?, ?, ?, ?, json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]') FROM json_each(?)`,
+      [...prefix, JSON.stringify(periods)],
+    );
 }
