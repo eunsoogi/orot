@@ -174,6 +174,7 @@ export interface ConversationSession {
     toolEvents?: readonly import('@orot/agent-runtime').ConversationToolEvent[];
   } | null;
   readonly busy: boolean;
+  readonly preparingSend?: boolean;
   readonly error: string;
   readonly unsavedCount?: number;
   readonly retryingSave?: boolean;

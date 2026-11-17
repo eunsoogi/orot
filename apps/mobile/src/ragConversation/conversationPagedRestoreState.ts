@@ -55,7 +55,21 @@ export function createConversationPagedRestoreState(input: {
       owners.get(id) === owner &&
       owner.controller === controller &&
       !controller.signal.aborted;
-    const cancel = () => controller.abort();
+    const cancel = () => {
+      controller.abort();
+      if (owners.get(id) === owner && owner.controller === controller) {
+        // A stopped SQL read may settle late; a new Send must own a fresh retry immediately.
+        owner.controller = undefined;
+        owner.flight = undefined;
+        input.update(id, {
+          restoring: false,
+          historyLoading: false,
+          ...(owner.initialized
+            ? { historyLoadFailed: true }
+            : { restoreFailed: true }),
+        });
+      }
+    };
     signal?.addEventListener('abort', cancel, { once: true });
     const initial = !owner.initialized;
     input.update(
@@ -64,16 +78,21 @@ export function createConversationPagedRestoreState(input: {
         ? { restoring: true, restoreFailed: false }
         : { historyLoading: true, historyLoadFailed: false },
     );
-    owner.flight = (async () => {
+    if (!current()) return Promise.resolve();
+    const flight = (async () => {
       try {
         const page = await input.read(
           owner.durableId,
           controller.signal,
           owner.cursor,
         );
+        if (!current()) return;
         const receipts = await Promise.all(
           page.turns.map(turn =>
-            turn.toolMessageId && Boolean(turn.answer) && !turn.interrupted
+            turn.toolMessageId &&
+            Boolean(turn.answer) &&
+            !turn.interrupted &&
+            !turn.historyUnavailable
               ? (input.readSteering?.(
                   owner.durableId,
                   turn.toolMessageId,
@@ -156,7 +175,8 @@ export function createConversationPagedRestoreState(input: {
         }
       }
     })();
-    return owner.flight;
+    if (current()) owner.flight = flight;
+    return flight;
   };
   return {
     async start(id: number, durableId: string, signal?: AbortSignal) {
@@ -180,26 +200,42 @@ export function createConversationPagedRestoreState(input: {
     },
     retry: load,
     loadOlder: load,
-    /** Fetch only as far as the existing bounded model-history contract requires. */
+    /** Retry a failed read once per explicit send, never dispatch with unvalidated history. */
     async prepareContext(id: number, signal?: AbortSignal) {
+      let retried = false;
       while (owners.has(id) && !signal?.aborted) {
         const owner = owners.get(id)!;
         const session = input.find(id);
-        if (!session || session.restoreFailed || session.historyLoadFailed)
-          return false;
+        if (!session || session.quarantined) return false;
+        if (session.restoreFailed || session.historyLoadFailed) {
+          if (retried) return false;
+          retried = true;
+          await load(id, signal);
+          if (owners.get(id) !== owner) return false;
+          continue;
+        }
         // Exclude all failed users conservatively, including a possible retry of the same prompt.
         if (
           owner.initialized &&
           (owner.exhausted ||
             session.messages.filter(
-              message => !message.incomplete && !message.failed,
+              message =>
+                !message.incomplete &&
+                !message.failed &&
+                !message.historyUnavailable,
             ).length >= 8)
         )
           return true;
         const previous = owner.cursor;
         await load(id, signal);
         if (signal?.aborted || owners.get(id) !== owner) return false;
-        if (owner.cursor === previous && !owner.exhausted) return false;
+        if (
+          owner.cursor === previous &&
+          !owner.exhausted &&
+          !input.find(id)?.restoreFailed &&
+          !input.find(id)?.historyLoadFailed
+        )
+          return false;
       }
       return !signal?.aborted;
     },

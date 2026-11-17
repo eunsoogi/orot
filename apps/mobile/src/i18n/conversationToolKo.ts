@@ -1,5 +1,11 @@
 /** Localized display names for conversation tools, independent of persisted identifiers. */
 export const conversationToolKo = {
+  'ragConversation.preflight.failed':
+    '대화 기록이나 선택한 AI를 확인하지 못해 전송하지 않았어요. 다시 보내 주세요.',
+  'ragConversation.preflight.preparing':
+    '대화 기록과 모델을 확인하고 있어요. 중지할 수 있어요.',
+  'ragConversation.conversation.historyUnavailable':
+    '이전 답변의 출처를 확인할 수 없어 내용을 표시하지 않았어요. 새 질문으로 다시 확인해 주세요.',
   'ragConversation.conversation.legacyToolUnavailable':
     '이전 도구 결과의 삭제 이력을 확인할 수 없어 내용을 표시하지 않았어요. 원본은 보관되어 있어요. 새 요청으로 다시 확인해 주세요.',
 

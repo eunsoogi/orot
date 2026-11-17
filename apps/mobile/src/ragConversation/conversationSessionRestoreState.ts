@@ -36,9 +36,18 @@ export function createConversationSessionRestoreState(input: {
         input.readTasks?.(entry.durableId, controller.signal) ??
           Promise.resolve([]),
       ]);
+      if (
+        sessions.get(id) !== entry ||
+        entry.controller !== controller ||
+        controller.signal.aborted
+      )
+        return;
       const receipts = await Promise.all(
         turns.map(turn =>
-          turn.toolMessageId && Boolean(turn.answer) && !turn.interrupted
+          turn.toolMessageId &&
+          Boolean(turn.answer) &&
+          !turn.interrupted &&
+          !turn.historyUnavailable
             ? (input.readSteering?.(
                 entry.durableId,
                 turn.toolMessageId,
@@ -139,8 +148,17 @@ export function createConversationSessionRestoreState(input: {
     invalidatePage: (_id: number) => {},
     retry: runWhileCurrent,
     loadOlder: async (_id: number, _signal?: AbortSignal) => {},
-    prepareContext: async (_id: number, signal?: AbortSignal) =>
-      !signal?.aborted,
+    async prepareContext(id: number, signal?: AbortSignal) {
+      if (signal?.aborted) return false;
+      if (sessions.has(id)) await runWhileCurrent(id, signal);
+      const session = input.find?.(id);
+      return (
+        !signal?.aborted &&
+        !session?.restoreFailed &&
+        !session?.restoring &&
+        !session?.quarantined
+      );
+    },
     forget,
     dispose() {
       for (const id of sessions.keys()) forget(id);

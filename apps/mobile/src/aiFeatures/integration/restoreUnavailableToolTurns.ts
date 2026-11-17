@@ -15,7 +15,7 @@ export function restoreUnavailableToolTurns(
       answer: t('ragConversation.conversation.legacyToolUnavailable'),
       citations: [],
       healthSources: [],
-      interrupted: true as const,
+      historyUnavailable: true as const,
       toolMessageId: item.messageId,
       toolEvents: [],
     };

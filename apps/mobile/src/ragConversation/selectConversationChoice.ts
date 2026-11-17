@@ -21,8 +21,9 @@ export function canSelectConversationChoice(
 ) {
   return (
     !session.busy &&
+    !session.preparingSend &&
     !session.draft &&
-    !conversationComposerDisabled(session) &&
+    !conversationComposerDisabled(session, store.continuous) &&
     store.photoDrafts.get(session.id).status === 'empty'
   );
 }

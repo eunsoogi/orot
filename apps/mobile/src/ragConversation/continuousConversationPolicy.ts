@@ -103,19 +103,38 @@ export function continuousConversationPolicy<T extends Store>(
       .catch(() => {});
     return work;
   };
-  const ready = async (id: number) => {
+  const ready = async (id: number, signal?: AbortSignal) => {
+    if (signal?.aborted) return false;
     if (!enabled) return true;
     const work = synchronizeModel();
     const expected = controller;
-    await work;
-    if (disposed || expected !== controller || expected?.signal.aborted)
+    const cancel = () => {
+      if (controller !== expected) return;
+      ++epoch;
+      expected?.abort();
+      pending = undefined;
+      update(store.getSnapshot().activeId, { modelSelectionPending: false });
+    };
+    signal?.addEventListener('abort', cancel, { once: true });
+    if (signal?.aborted) cancel();
+    try {
+      await work;
+    } finally {
+      signal?.removeEventListener('abort', cancel);
+    }
+    if (
+      signal?.aborted ||
+      disposed ||
+      expected !== controller ||
+      expected?.signal.aborted
+    )
       return false;
     const snapshot = store.getSnapshot();
     const session = snapshot.sessions.find(item => item.id === id);
     return (
       snapshot.activeId === id &&
-      !session?.restoring &&
-      !session?.restoreFailed &&
+      Boolean(session) &&
+      !session?.quarantined &&
       !session?.modelSelectionPending &&
       !session?.modelSelectionFailed
     );

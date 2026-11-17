@@ -1,3 +1,5 @@
+import { AppText } from '../layout/AppText';
+import { t } from '../i18n';
 import type { ComponentProps } from 'react';
 import { ConversationComposer } from './ConversationComposer';
 import { ConversationSteeringControls } from './ConversationSteeringControls';
@@ -16,17 +18,31 @@ export function ConversationSteeringComposer({
   'value' | 'busy' | 'steeringControls' | 'onSteer' | 'steeringDisabled'
 > & { session: ConversationSession; store: ConversationSessions }) {
   return (
-    <ConversationComposer
-      {...props}
-      value={session.draft}
-      busy={session.busy}
-      onSteer={() => {
-        store.steer(session.id).catch(() => {});
-      }}
-      steeringDisabled={
-        !session.steeringAvailable || session.steeringSubmitting
-      }
-      steeringControls={<ConversationSteeringControls session={session} />}
-    />
+    <>
+      {session.preparingSend ? (
+        <AppText
+          accessibilityRole="text"
+          testID="conversation-preflight-status"
+        >
+          {t('ragConversation.preflight.preparing')}
+        </AppText>
+      ) : null}
+      <ConversationComposer
+        {...props}
+        value={session.draft}
+        busy={session.busy || Boolean(session.preparingSend)}
+        onSteer={
+          session.preparingSend
+            ? undefined
+            : () => {
+                store.steer(session.id).catch(() => {});
+              }
+        }
+        steeringDisabled={
+          !session.steeringAvailable || session.steeringSubmitting
+        }
+        steeringControls={<ConversationSteeringControls session={session} />}
+      />
+    </>
   );
 }
