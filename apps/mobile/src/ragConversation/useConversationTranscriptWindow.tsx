@@ -77,7 +77,9 @@ export function useConversationTranscriptWindow(input: {
   }
   if (input.loadOlder) start = 0;
   const focused = input.focusId
-    ? messages.findIndex(item => item.retainedTurnId === input.focusId)
+    ? messages.findIndex(
+        item => (item.retainedTurnId ?? item.toolMessageId) === input.focusId,
+      )
     : -1;
   useConversationHistoryTarget({ ...input, found: focused >= 0 });
   if (focused >= 0 && focused < start) {
