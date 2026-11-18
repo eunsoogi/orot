@@ -108,47 +108,32 @@ enum ClassificationFailureNoticeUITestSupport {
             XCTFail("Failure reader requires the isolated synthetic classification fixture")
             return
         }
-        var observations: [[String: Any]] = []
-        defer {
-            if let data = try? JSONSerialization.data(withJSONObject: observations, options: [.sortedKeys]) {
-                let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
-                attachment.name = "synthetic-classification-failure-pages"
-                attachment.lifetime = .keepAlways
-                testCase.add(attachment)
-            }
-        }
         let results = testCase.node(app, "medical-appointment-results")
-        // This fixture's local denial/failure has no remote I/O; a bounded observation fails rather than hanging forever.
-        guard results.waitForExistence(timeout: 10) else {
-            observations.append(["stageExists": false])
+        observe(app, results: results, phase: "before-stage-wait", testCase: testCase)
+        // This synthetic fixture has no remote I/O; bounded observation fails rather than hanging forever.
+        let appeared = results.waitForExistence(timeout: 10)
+        observe(app, results: results, phase: "after-stage-wait", testCase: testCase)
+        guard appeared else {
             XCTFail("Synthetic failure did not reach its results stage")
             return
         }
-        let previous = results.descendants(matching: .any).matching(identifier: "medical-appointment-previous-result").firstMatch
-        guard previous.exists, !previous.isEnabled else {
-            observations.append(["firstPage": false])
-            XCTFail("Failure reading must begin at the first document page")
+        let previous = testCase.node(app, "medical-appointment-previous-result")
+        guard validStage(app, results: results), previous.exists, !previous.isEnabled else {
+            XCTFail("Failure reading must begin at the unique results stage's first page")
             return
         }
         var pages: [String] = []
         var seen = Set<String>()
         for index in 0 ..< 256 {
-            let targets = results.descendants(matching: .any).matching(identifier: "classification-page-text")
-            let count = targets.count
-            var record: [String: Any] = ["page": index, "targetCount": count]
-            if count == 1, let snapshot = try? targets.firstMatch.snapshot() {
-                record["type"] = String(describing: snapshot.elementType)
-                record["label"] = String(snapshot.label.prefix(2048))
-                record["value"] = String((snapshot.value as? String ?? "").prefix(2048))
-            }
-            observations.append(record)
-            guard count == 1 else {
-                XCTFail("Expected exactly one results-scoped native page target")
+            observe(app, results: results, phase: "page-\(index)", testCase: testCase)
+            let targets = app.descendants(matching: .any).matching(identifier: "classification-page-text")
+            guard validStage(app, results: results), targets.count == 1 else {
+                XCTFail("Expected exactly one page in the unique results screen")
                 return
             }
             let target = targets.firstMatch
             let text = UITestConditions.text(target)
-            let viewport = results.descendants(matching: .any).matching(identifier: "classification-text-viewport").firstMatch
+            let viewport = testCase.node(app, "classification-text-viewport")
             guard !text.isEmpty, text.count <= 2048, seen.insert(text).inserted,
                   viewport.exists, !target.frame.isEmpty,
                   viewport.frame.insetBy(dx: -1, dy: -1).contains(target.frame),
@@ -158,7 +143,7 @@ enum ClassificationFailureNoticeUITestSupport {
                 return
             }
             pages.append(text)
-            let next = results.descendants(matching: .any).matching(identifier: "medical-appointment-next-result").firstMatch
+            let next = testCase.node(app, "medical-appointment-next-result")
             guard next.exists else {
                 XCTFail("Failure reader lost its paging control")
                 return
@@ -175,12 +160,60 @@ enum ClassificationFailureNoticeUITestSupport {
             let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 target.exists && UITestConditions.text(target) != text
             }, object: nil)
-            guard XCTWaiter.wait(for: [changed], timeout: 10) == .completed else {
+            let advanced = XCTWaiter.wait(for: [changed], timeout: 10)
+            observe(app, results: results, phase: "after-page-\(index)", testCase: testCase)
+            guard advanced == .completed else {
                 XCTFail("The failure reader did not advance to a distinct native page")
                 return
             }
         }
         XCTFail("Failure document exceeded the bounded page inventory")
+    }
+
+    /// React parentage is not assumed to be the native AX hierarchy. Match the proven staged reader,
+    /// then require unique identities and enclosing geometry rather than accepting arbitrary global text.
+    private static func validStage(_ app: XCUIApplication, results: XCUIElement) -> Bool {
+        let ids = ["medical-appointment-results", "classification-page-text", "classification-text-viewport",
+                   "classification-stage-footer", "medical-appointment-previous-result", "medical-appointment-next-result"]
+        guard ids.allSatisfy({ app.descendants(matching: .any).matching(identifier: $0).count == 1 }),
+              ["medical-appointment-confirmation", "medical-appointment-progress"].allSatisfy({
+                  app.descendants(matching: .any).matching(identifier: $0).count == 0
+              }), !results.frame.isEmpty, app.frame.contains(results.frame) else { return false }
+        let viewport = UITestConditions.element(app, "classification-text-viewport")
+        let footer = UITestConditions.element(app, "classification-stage-footer")
+        guard !viewport.frame.isEmpty, !footer.frame.isEmpty,
+              results.frame.insetBy(dx: -1, dy: -1).contains(viewport.frame),
+              results.frame.insetBy(dx: -1, dy: -1).contains(footer.frame) else { return false }
+        return ["medical-appointment-previous-result", "medical-appointment-next-result"].allSatisfy {
+            let control = UITestConditions.element(app, $0)
+            return control.frame.width >= 44 && control.frame.height >= 44
+                && footer.frame.insetBy(dx: -1, dy: -1).contains(control.frame)
+        }
+    }
+
+    /// Persist before every possible fail-fast assertion; defer is not reliable when XCTest aborts a case.
+    private static func observe(_ app: XCUIApplication, results: XCUIElement, phase: String, testCase: AppointmentConsentUITests) {
+        let ids = ["medical-appointment-results", "medical-appointment-confirmation", "medical-appointment-progress",
+                   "classification-page-text", "classification-text-viewport", "classification-stage-footer",
+                   "medical-appointment-previous-result", "medical-appointment-next-result"]
+        let records: [[String: Any]] = ids.map { id in
+            let query = app.descendants(matching: .any).matching(identifier: id)
+            let targets: [[String: Any]] = query.allElementsBoundByIndex.prefix(2).compactMap { target in
+                guard let snapshot = try? target.snapshot() else { return nil }
+                return ["type": String(describing: snapshot.elementType), "frame": NSStringFromCGRect(snapshot.frame),
+                        "exists": target.exists, "enabled": snapshot.isEnabled, "hittable": target.isHittable,
+                        "label": String(snapshot.label.prefix(2048)), "value": String((snapshot.value as? String ?? "").prefix(2048))]
+            }
+            return ["id": id, "globalCount": query.count,
+                    "descendantCount": results.exists ? results.descendants(matching: .any).matching(identifier: id).count : 0,
+                    "targets": targets]
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: records, options: [.sortedKeys]) {
+            let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+            attachment.name = "synthetic-classification-failure-\(phase)"
+            attachment.lifetime = .keepAlways
+            testCase.add(attachment)
+        }
     }
 
     static func assertMessage(_ pages: [String], reason: String) {

@@ -69,20 +69,23 @@ test('missing pages, changed category, prefix, timing or preserved-results suffi
     assert.equal(accepted(nativePages(changed, 52)), false, changed);
 });
 
-test('native reader remains scoped, bounded and diagnostic while original safety assertions stay present', () => {
+test('native reader remains unique-screen scoped, bounded and diagnostic while original safety assertions stay present', () => {
   assert.match(
     swift,
-    /results\.descendants\(matching: \.any\)\.matching\(identifier: "classification-page-text"\)/,
+    /app\.descendants\(matching: \.any\)\.matching\(identifier: "classification-page-text"\)/,
   );
-  assert.match(swift, /guard count == 1/);
-  assert.match(swift, /guard previous.exists, !previous.isEnabled/);
+  assert.match(swift, /guard validStage\(app, results: results\), targets.count == 1/);
+  assert.match(
+    swift,
+    /guard validStage\(app, results: results\), previous.exists, !previous.isEnabled/,
+  );
   assert.match(swift, /for index in 0 \.\.< 256/);
   assert.match(swift, /if !next\.isEnabled/);
   assert.match(swift, /seen\.insert\(text\)\.inserted/);
   assert.match(swift, /contains\(target\.frame\)/);
-  assert.match(swift, /record\["type"\]/);
-  assert.match(swift, /record\["label"\]/);
-  assert.match(swift, /record\["value"\]/);
+  assert.match(swift, /"type": String\(describing: snapshot.elementType\)/);
+  assert.match(swift, /"label": String\(snapshot.label.prefix\(2048\)\)/);
+  assert.match(swift, /"value": String/);
   assert.match(swift, /XCTWaiter\.wait\(for: \[changed\], timeout: 10\)/);
   const original = readFileSync(
     'apps/mobile/ios/OrotUITests/AppointmentConsentUITests.swift',
@@ -95,4 +98,65 @@ test('native reader remains scoped, bounded and diagnostic while original safety
     /XCTAssertFalse\(node\(app, "calendar-classification-synthetic-calendar-save"\)\.exists\)/,
   );
   assert.match(original, /waitForWidthChange\(page, from: compactWidth\)/);
+});
+
+test('native AX membership uses global identity plus geometry, not React descendant parentage', () => {
+  const reader = swift.slice(swift.indexOf('enum ClassificationFailureNoticeUITestSupport'));
+  const stage = reader.slice(
+    reader.indexOf('private static func validStage'),
+    reader.indexOf('private static func observe'),
+  );
+  for (const id of [
+    'medical-appointment-results',
+    'classification-page-text',
+    'classification-text-viewport',
+    'classification-stage-footer',
+    'medical-appointment-previous-result',
+    'medical-appointment-next-result',
+  ]) {
+    assert.ok(stage.includes(`"${id}"`));
+  }
+  assert.match(stage, /ids.allSatisfy[\s\S]*count == 1/);
+  assert.match(
+    stage,
+    /"medical-appointment-confirmation", "medical-appointment-progress"[\s\S]*count == 0/,
+  );
+  assert.match(stage, /app.frame.contains\(results.frame\)/);
+  for (const frame of ['viewport', 'footer']) assert.ok(stage.includes(`contains(${frame}.frame)`));
+  assert.match(stage, /control.frame.width >= 44 && control.frame.height >= 44/);
+  assert.match(stage, /footer.frame.insetBy\(dx: -1, dy: -1\).contains\(control.frame\)/);
+  assert.doesNotMatch(
+    reader.slice(0, reader.indexOf('private static func observe')),
+    /results.descendants/,
+  );
+});
+
+test('bounded synthetic diagnostics are persisted before fail-fast guards rather than deferred', () => {
+  const reader = swift.slice(swift.indexOf('enum ClassificationFailureNoticeUITestSupport'));
+  assert.doesNotMatch(reader, /defer\s*\{/);
+  assert.ok(
+    reader.indexOf('test-settings-consent-') < reader.indexOf('phase: "before-stage-wait"'),
+  );
+  assert.ok(reader.indexOf('phase: "after-stage-wait"') < reader.indexOf('guard appeared'));
+  assert.ok(
+    reader.indexOf('phase: "page-') <
+      reader.indexOf('guard validStage(app, results: results), targets'),
+  );
+  assert.ok(reader.indexOf('phase: "after-page-') < reader.indexOf('guard advanced'));
+  for (const key of [
+    'globalCount',
+    'descendantCount',
+    'type',
+    'frame',
+    'exists',
+    'enabled',
+    'hittable',
+    'label',
+    'value',
+  ]) {
+    assert.ok(reader.includes(`"${key}"`));
+  }
+  assert.match(reader, /allElementsBoundByIndex.prefix\(2\)/);
+  assert.match(reader, /testCase.add\(attachment\)/);
+  assert.doesNotMatch(reader, /debugDescription/);
 });

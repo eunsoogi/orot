@@ -609,3 +609,12 @@ next까지 순서대로 읽으며 첫 previous disabled, 비어 있지 않은 �
 기존 provider 0/1, payload privacy, 실패 후 저장 0, 회전·설정동의 assertions는
 변경하지 않는다. 새 oracle의 Swift 컴파일과 실제 실패 case는 독립 검토 뒤
 정확 revision으로 재실행해야 하며, 이전 native 차단 결과를 성공으로 바꾸지 않는다.
+
+
+### 실패 reader의 AX 계층 후속 교정
+
+`5816b15f`의 hosted CI는 모두 성공했지만 원래 disclosure native case는 results 존재 확인 뒤 previous target의 descendant 조회에서 실패했다. 첫 페이지 enabled 검증과 전체 문서 검증에는 도달하지 못했다. fail-fast 설정 때문에 defer attachment도 남지 않았으므로 실제 AX flattening이나 target type을 원인으로 확정하지 않는다. 원래 staged PASS와 이 실패는 별도 증거로 유지한다.
+
+기존 staged PASS와 같은 app-global 식별자 조회를 사용하되 results/page/viewport/footer/이전/다음의 유일성, confirmation/progress 부재, app→results→viewport/footer 및 viewport→text/footer→44pt actions의 실제 frame 포함을 요구한다. 단순 global 첫 일치로 안전 검증을 줄이지 않는다. 첫 이전 버튼 disabled, 마지막 다음 버튼 disabled, 페이지 누락/반복 거부, 전체 batch/숫자/reason/suffix 검증과 provider/privacy/save/회전 assertions는 유지한다.
+
+합성 scenario/UUID 인자 확인 후 첫 대기 전후와 각 페이지/전환 뒤, assertion보다 먼저 한정된 8개 식별자의 global/descendant 수와 최대 2개 target의 type/frame/exists/enabled/hittable 및 2,048자 이하 label/value를 즉시 attachment로 저장한다. 전체 앱 AX나 사용자 콘텐츠는 수집하지 않는다. 이번 Node 회귀는 native 소스 계약과 실제 TypeScript pagination 의미 검증이며 Swift/UIKit 실행은 아니다. 다음 컴파일/원래 case 수용 전 실제 AX 계약 적합성은 미검증이다.
