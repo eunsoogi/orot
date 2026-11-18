@@ -180,10 +180,10 @@ describe('ProviderSelectionScreen', () => {
     );
 
     expect(
-      screen.getByText(providerSelectionText.unavailableSelection, {
+      screen.queryByText(providerSelectionText.unavailableSelection, {
         exact: false,
       }),
-    ).toBeTruthy();
+    ).toBeNull();
 
     expect(screen.getByText('ChatGPT 계정을 확인할 수 없어요.')).toBeTruthy();
     expect(

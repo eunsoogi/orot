@@ -86,7 +86,6 @@ export function VoiceSettingsPanel({
           requirements={{ inputTypes: ['text'] }}
           disabled
           selected={false}
-          showCapabilities={false}
           index={0}
           onPress={() => undefined}
         />
@@ -95,7 +94,7 @@ export function VoiceSettingsPanel({
         <Text accessibilityRole="header" style={styles.heading}>
           OpenAI API
         </Text>
-        <View style={styles.account}>
+        <View style={styles.catalogAccount}>
           <VoiceCatalogAccount
             catalog={catalog}
             onOpenAccounts={onOpenAccounts}

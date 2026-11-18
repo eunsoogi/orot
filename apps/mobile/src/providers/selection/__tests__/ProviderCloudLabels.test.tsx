@@ -63,6 +63,9 @@ it('keeps denied cloud choices visible and disabled in language/calendar while p
     expect(screen.getByText('Private Cloud Compute에서 처리')).toBeTruthy();
     expect(screen.getByText('사용 승인을 받지 못했어요.')).toBeTruthy();
     expect(screen.queryByText(APPLE_PCC_MODEL_ID)).toBeNull();
+    expect(screen.queryByText(t('provider.pcc.privacy'))).toBeNull();
+    expect(screen.queryByTestId('provider-option-0-capabilities')).toBeNull();
+    expect(screen.queryByTestId('provider-option-1-capabilities')).toBeNull();
     expect(
       screen.queryByText(t('modelSettings.subscriptionNotice')),
     ).toBeNull();
@@ -77,6 +80,8 @@ it('keeps denied cloud choices visible and disabled in language/calendar while p
   ).toHaveTextContent(new RegExp(t('modelSettings.appleVoice')));
   expect(screen.getByText('Private Cloud Compute에서 처리')).toBeTruthy();
   expect(screen.getByText('사용 승인을 받지 못했어요.')).toBeTruthy();
+  expect(screen.queryByText(t('provider.pcc.privacy'))).toBeNull();
+  expect(screen.queryByTestId('provider-option-0-capabilities')).toBeNull();
   expect(screen.getByTestId('provider-option-0')).toBeDisabled();
   await fireEvent.press(screen.getByTestId('provider-option-0'));
   expect(screen.queryByText(t('modelSettings.subscriptionNotice'))).toBeNull();

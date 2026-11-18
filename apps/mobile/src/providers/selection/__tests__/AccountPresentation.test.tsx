@@ -1,6 +1,7 @@
 import { render, fireEvent } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import SettingsAccountsPanels from '../SettingsAccountsPanels';
+import { ProviderCatalogAccount } from '../ProviderCatalogAccount';
 import type { ChatGPTAccountSetup } from '../types';
 import { providerSettingsStyles } from '../../../layout/providerSettingsPresentation';
 
@@ -70,4 +71,28 @@ test('renders the same mark for subscription and API without changing account se
   expect(choice.props.accessibilityState.selected).toBe(true);
   await fireEvent.press(choice);
   expect(onAccountSelected).toHaveBeenCalledWith('synthetic-connected');
+});
+
+// Layout geometry shares the model card inset without asserting native pixels.
+test('keeps refresh centered on the model selection lane when details expand', async () => {
+  const onAction = jest.fn();
+  const view = await render(
+    <ProviderCatalogAccount
+      setup={{ ...setup, presentation: 'feature', onAction }}
+    />,
+  );
+  const lane = () =>
+    StyleSheet.flatten(
+      view.getByTestId('chatgpt-account-action-lane').props.style,
+    );
+  expect(lane()).toMatchObject({ marginRight: -13, width: 44 });
+  expect(lane().position).toBeUndefined();
+  expect(lane().top).toBeUndefined();
+  expect(
+    StyleSheet.flatten(providerSettingsStyles.catalogAccount).padding,
+  ).toBeUndefined();
+  await fireEvent.press(view.getByTestId('chatgpt-account-details'));
+  expect(lane()).toMatchObject({ marginRight: -13, width: 44 });
+  await fireEvent.press(view.getByTestId('chatgpt-account-action'));
+  expect(onAction).toHaveBeenCalledTimes(1);
 });
