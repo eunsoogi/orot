@@ -155,6 +155,28 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
         XCTAssertEqual(absent["standardRagDeletionFence"] as? Bool, true)
     }
 
+    /// Actual async execute and owner close/delete; active interrupt and module invalidation need separate native barriers.
+    func testNativePeriodStatementCachePreservesOwnerBoundaries() async throws {
+        let result = try await operation("health-context-persistence", parameters: [
+            "fixtureIdentifier": "test-period-cache-\(UUID().uuidString)",
+            "mode": "native-statement-cache",
+        ])
+        for key in ["synthetic", "encrypted", "mutationObserved", "rollbackObserved", "schemaRecovery", "closedRejected", "reopened", "ownedFileDeleted"] {
+            XCTAssertEqual(result[key] as? Bool, true, key)
+        }
+        XCTAssertEqual(result["exactQueryCount"] as? Int, 4)
+        XCTAssertEqual(result["closeSettled"] as? Int, 8)
+        XCTAssertEqual(result["deleteSettled"] as? Int, 8)
+        for prefix in ["close", "delete"] {
+            let resolved = try XCTUnwrap(result[prefix + "Resolved"] as? Int)
+            let interrupted = try XCTUnwrap(result[prefix + "Interrupted"] as? Int)
+            XCTAssertEqual(resolved + interrupted, 8)
+        }
+        for key in ["cacheHitObserved", "activeInterruptVerified", "ownerInvalidateVerified"] {
+            XCTAssertEqual(result[key] as? Bool, false, key)
+        }
+    }
+
     private func operation(_ name: String, parameters: [String: Any] = [:]) async throws -> [String: Any] {
         let result = try await TestOperationBroker.shared.request(name, parameters: parameters)
         XCTAssertEqual(result["platform"] as? String, "ios")

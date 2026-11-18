@@ -18,7 +18,13 @@ import {
 /** Exercise computed-source persistence and deletion with an isolated encrypted file, never application records. */
 export async function runHealthContextPersistenceTestOperation(
   identifier: unknown,
+  mode?: unknown,
 ) {
+  if (mode === 'native-statement-cache') {
+    const { runNativePeriodCacheOperation } =
+      await import('./nativePeriodCacheOperation');
+    return runNativePeriodCacheOperation(identifier);
+  }
   if (
     typeof identifier !== 'string' ||
     !/^test-period-summary-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(
