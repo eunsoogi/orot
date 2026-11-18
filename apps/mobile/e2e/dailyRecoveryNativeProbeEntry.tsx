@@ -5,6 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
 import { openSettingsConsentNativeStore } from './settingsConsentNativeStore';
 import { createDailyRecoveryNativeSession } from './dailyRecoveryNativeSession';
+import { DailyRecoveryConsumerProbe } from './DailyRecoveryConsumerProbe';
 
 /** Isolated acceptance entry: no normal app, provider registration or real credentials. */
 function DailyRecoveryNativeEntry() {
@@ -13,6 +14,7 @@ function DailyRecoveryNativeEntry() {
   > | null>(null);
   const [status, setStatus] = useState('preparing');
   const [busy, setBusy] = useState(false);
+  const [consumer, setConsumer] = useState(false);
   useEffect(() => {
     let active = true;
     let close: (() => void) | undefined;
@@ -27,6 +29,7 @@ function DailyRecoveryNativeEntry() {
       )
         throw new Error('Explicit isolated daily recovery test required');
       const phase = launch.OROT_DAILY_RECOVERY_PHASE;
+      const consumerRequested = launch.OROT_DAILY_RECOVERY_UI === 'consumer';
       if (!['create', 'reopen', 'cleanup'].includes(phase))
         throw new Error('Unknown synthetic recovery phase');
       const store = await openSettingsConsentNativeStore(
@@ -48,6 +51,7 @@ function DailyRecoveryNativeEntry() {
         phase === 'create' ? await next.stage() : await next.inspect();
       if (active) {
         setSession(next);
+        setConsumer(consumerRequested);
         setStatus(JSON.stringify(result));
       }
     };
@@ -81,7 +85,13 @@ function DailyRecoveryNativeEntry() {
       <SafeAreaView>
         <View>
           <Text testID="daily-recovery-native-status">{status}</Text>
-          {(['resume', 'cancel', 'delete', 'revoke'] as const).map(action => (
+          {consumer && session ? (
+            <DailyRecoveryConsumerProbe session={session} />
+          ) : null}
+          {(!consumer
+            ? (['resume', 'cancel', 'delete', 'revoke'] as const)
+            : []
+          ).map(action => (
             <Button
               key={action}
               testID={`daily-recovery-native-${action}`}
