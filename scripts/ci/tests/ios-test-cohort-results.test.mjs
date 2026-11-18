@@ -33,7 +33,7 @@ test('Linux aggregation retains all first-attempt observations from each compati
     ['release-core', 174],
     ['release-ui', 49],
     ['speech', 9],
-    ['debug', 29],
+    ['debug', 30],
   ])
     assert.equal(verifyIosTestCohortResults(report(cohort), cohort, context).length, count);
 });

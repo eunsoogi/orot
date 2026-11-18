@@ -24,7 +24,8 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
 
     @objc(getPrivateCloudComputeAvailability:rejecter:)
     public func getPrivateCloudComputeAvailability(_ resolve: @escaping RCTPromiseResolveBlock,
-                                                   rejecter _: @escaping RCTPromiseRejectBlock) {
+                                                   rejecter _: @escaping RCTPromiseRejectBlock)
+    {
         resolve(availability(["modelRoute": "private-cloud-compute"]))
     }
 

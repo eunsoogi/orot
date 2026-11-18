@@ -61,17 +61,17 @@ import Foundation
         }
 
         #if !(OROT_TESTS && targetEnvironment(simulator))
-        /// A requested remote route never silently falls back to a different privacy boundary.
-        static func session(_ request: [String: Any], instructions: String) throws -> LanguageModelSession {
-            try validateRoute(request)
-            if request["modelRoute"] as? String == "private-cloud-compute" {
-                if #available(iOS 27.0, *) {
-                    return LanguageModelSession(model: PrivateCloudComputeLanguageModel(), instructions: instructions)
+            /// A requested remote route never silently falls back to a different privacy boundary.
+            static func session(_ request: [String: Any], instructions: String) throws -> LanguageModelSession {
+                try validateRoute(request)
+                if request["modelRoute"] as? String == "private-cloud-compute" {
+                    if #available(iOS 27.0, *) {
+                        return LanguageModelSession(model: PrivateCloudComputeLanguageModel(), instructions: instructions)
+                    }
+                    throw appleFoundationModelsFailure("APPLE_MODEL_UNAVAILABLE", "PCC requires iOS 27.", "unsupportedOS")
                 }
-                throw appleFoundationModelsFailure("APPLE_MODEL_UNAVAILABLE", "PCC requires iOS 27.", "unsupportedOS")
+                return LanguageModelSession(instructions: instructions)
             }
-            return LanguageModelSession(instructions: instructions)
-        }
         #endif
 
         static func generate(_ payload: NSDictionary, requestId: String) async throws -> [String: Any] {
