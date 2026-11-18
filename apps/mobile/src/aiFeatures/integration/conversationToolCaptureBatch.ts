@@ -59,7 +59,7 @@ export function conversationToolCapture(input: Input) {
       input.storage.readToolTurns === read && ownsRegistry(input.registry);
     const owner: ConversationCaptureOwner = {
       registry: input.registry,
-      async prepare(requests, signal) {
+      async prepare(requests, signal, reads) {
         const selected = requests.map(request => {
           const binding = bindings.get(request.id);
           if (
@@ -112,7 +112,7 @@ export function conversationToolCapture(input: Input) {
           input.registry,
           selected.map(binding => binding.input.alias),
           signal,
-          { recheckFallback: true },
+          { recheckFallback: true, reads },
         );
         return {
           results: selected.map(

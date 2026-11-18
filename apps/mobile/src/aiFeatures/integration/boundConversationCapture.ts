@@ -20,7 +20,7 @@ export function createBoundConversationCaptureOwner(input: {
 }): ConversationCaptureOwner {
   const owner: ConversationCaptureOwner = {
     registry: input.registry,
-    async prepare(requests, signal) {
+    async prepare(requests, signal, reads) {
       const bindings = requests.map(request => {
         if (!request.bound) throw new Error('Missing bound capture authority.');
         return request.bound;
@@ -28,9 +28,9 @@ export function createBoundConversationCaptureOwner(input: {
       const current = async () => {
         if (signal.aborted || !boundCaptureAuthorityUnchanged(owner))
           return false;
-        const rows = await input.storage.readMany(
-          bindings.map(binding => binding.parentId),
-        );
+        const rows = await (
+          reads?.forStorage(input.storage) ?? input.storage
+        ).readMany(bindings.map(binding => binding.parentId));
         return (
           !signal.aborted &&
           boundCaptureAuthorityUnchanged(owner) &&
@@ -48,7 +48,7 @@ export function createBoundConversationCaptureOwner(input: {
         input.registry,
         bindings.map(binding => binding.reference),
         signal,
-        { recheckFallback: true },
+        { recheckFallback: true, reads },
       );
       return {
         results: bindings.map(

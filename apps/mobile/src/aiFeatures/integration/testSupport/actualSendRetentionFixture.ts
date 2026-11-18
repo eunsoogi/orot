@@ -47,7 +47,7 @@ export async function actualSendRetentionFixture(variant: string, samples = 0) {
   const count =
     variant === 'one'
       ? 1
-      : variant === 'same-six' || variant === 'nested-six'
+      : variant.endsWith('-six')
         ? 6
         : variant === 'same-twelve'
           ? 12
@@ -56,18 +56,20 @@ export async function actualSendRetentionFixture(variant: string, samples = 0) {
     | import('../../../storage/conversationArtifactCodec').ConversationArtifact
     | undefined;
   for (let index = 0; index < count; index++) {
-    const window =
-      variant === 'distinct-three'
-        ? {
-            ...original,
-            toExclusive: new Date(Date.UTC(2026, 9, index + 2)).toISOString(),
-          }
-        : original;
+    const window = variant.includes('distinct')
+      ? {
+          ...original,
+          toExclusive: new Date(Date.UTC(2026, 9, index + 2)).toISOString(),
+        }
+      : original;
+    const topic = variant.includes('topics')
+      ? (['measurements', 'activity', 'sleep'] as const)[index % 3]!
+      : source.scope.topic;
     const item = registerHealthContextEvidence({
       registry: f.input.registry,
       read: data.readHealthContext!,
-      report: await data.readHealthContext!(window, [source.scope.topic]),
-      scope: { ...source.scope, window },
+      report: await data.readHealthContext!(window, [topic]),
+      scope: { ...source.scope, topic, window },
     });
     const captured = await captureConversationSources(
       [item],
