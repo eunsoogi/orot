@@ -1,3 +1,4 @@
+import { registerConversationStrictReaders } from './conversationStrictReadOwner';
 import { appendConversationSourceRows } from './conversationArtifactSourceRows';
 import { enqueueStatementMemory } from './userStatementMemoryJobs';
 import { conversationTimelinePages } from './conversationTimelinePages';
@@ -53,7 +54,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   const tools = createConversationToolEventStorage(database, ensure);
-  return {
+  const storage = {
     listTimeline: conversationTimelinePages(database, ensure),
     continuousSession: continuousConversationStorage(database, ensure),
     readSteeringHistory: conversationSteeringHistory(database, ensure),
@@ -205,4 +206,6 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       );
     },
   };
+  registerConversationStrictReaders(storage);
+  return storage;
 }
