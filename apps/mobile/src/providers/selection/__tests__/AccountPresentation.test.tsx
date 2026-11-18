@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import SettingsAccountsPanels from '../SettingsAccountsPanels';
 import type { ChatGPTAccountSetup } from '../types';
@@ -23,11 +23,10 @@ const setup: ChatGPTAccountSetup = {
 };
 test('account sections and actions share the model settings presentation contract', async () => {
   const view = await render(<SettingsAccountsPanels setup={setup} />);
-  // The API credential editor now embeds the shared account title beside its provider mark.
-  // The ChatGPT group retains the shared outer section heading.
+  // Subscription and API identities share peer section headings.
   for (const [title, style] of [
     ['ChatGPT', providerSettingsStyles.heading],
-    ['OpenAI API', providerSettingsStyles.title],
+    ['OpenAI API', providerSettingsStyles.heading],
   ] as const) {
     expect(
       StyleSheet.flatten(view.getByRole('header', { name: title }).props.style),
@@ -39,4 +38,36 @@ test('account sections and actions share the model settings presentation contrac
   expect(
     view.getByTestId('chatgpt-account-action').props.accessibilityLabel,
   ).toBe('로그인');
+});
+
+// The shared mark is mocked only to observe identical component usage, not native pixels.
+jest.mock('../OpenAIProviderMark', () => ({
+  OpenAIProviderMark: () => {
+    const { View } = require('react-native');
+    return <View testID="synthetic-openai-mark" />;
+  },
+}));
+test('renders the same mark for subscription and API without changing account selection', async () => {
+  const onAccountSelected = jest.fn();
+  const view = await render(
+    <SettingsAccountsPanels
+      setup={{
+        ...setup,
+        accounts: [
+          {
+            issuedClientID: 'synthetic-connected',
+            requiresSignIn: false,
+            hasDirectPlanAccess: true,
+          },
+        ],
+        selectedAccountID: 'synthetic-connected',
+        onAccountSelected,
+      }}
+    />,
+  );
+  expect(view.getAllByTestId('synthetic-openai-mark')).toHaveLength(2);
+  const choice = view.getByTestId('chatgpt-account-0');
+  expect(choice.props.accessibilityState.selected).toBe(true);
+  await fireEvent.press(choice);
+  expect(onAccountSelected).toHaveBeenCalledWith('synthetic-connected');
 });
