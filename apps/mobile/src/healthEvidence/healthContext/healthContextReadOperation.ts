@@ -1,3 +1,7 @@
+import {
+  startReportCalculationDiagnostic,
+  endReportCalculationDiagnostic,
+} from './reportCalculationDiagnostic';
 import type { SqlDatabase } from '@orot/storage';
 import {
   committedReportCache,
@@ -24,7 +28,12 @@ export function registerHealthContextReadOwner(
   owners.set(reader, (operationSignal, shared) => {
     const sharedCache = committedReportCache(shared, database);
     const cache = sharedCache ?? new Map<string, HealthContextReport>();
+    if (!sharedCache) startReportCalculationDiagnostic(cache);
     const scoped = readWithCache(cache);
+    const clearDiagnostic = () => {
+      if (!sharedCache) endReportCalculationDiagnostic(cache);
+    };
+    operationSignal?.addEventListener('abort', clearDiagnostic, { once: true });
     let disposed = false;
     return {
       read: async (...args) => {
@@ -49,6 +58,8 @@ export function registerHealthContextReadOwner(
       },
       dispose() {
         disposed = true;
+        clearDiagnostic();
+        operationSignal?.removeEventListener('abort', clearDiagnostic);
         if (!sharedCache) cache.clear();
       },
     };

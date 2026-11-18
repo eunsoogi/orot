@@ -1,3 +1,7 @@
+import {
+  startReportCalculationDiagnostic,
+  endReportCalculationDiagnostic,
+} from './reportCalculationDiagnostic';
 import type { SqlDatabase } from '@orot/storage';
 import type { HealthContextReport } from './types';
 
@@ -45,10 +49,12 @@ export function createCommittedReportScope(database: SqlDatabase) {
     kind: 'committed_report_scope',
   });
   const reports = new ScopedReports();
+  startReportCalculationDiagnostic(reports);
   owners.set(token, { database, reports });
   return {
     token,
     dispose() {
+      endReportCalculationDiagnostic(reports);
       reports.active = false;
       reports.clear();
     },
