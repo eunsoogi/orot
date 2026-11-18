@@ -15,7 +15,7 @@ jest.mock('../../agent/execution/saveModelSettingsConsent', () => ({
 }));
 jest.mock(
   '../../layout/AppButton',
-  () => require('./calendarButtonFixture').calendarButtonFixture,
+  () => require('../testSupport/calendarButtonFixture').calendarButtonFixture,
 );
 
 jest.mock('../calendarModelStore', () => ({

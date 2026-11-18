@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { Alert, AppState } from 'react-native';
-import { mockNative, realtimeEvents } from './realtimeNativeEventsFixture';
+import { mockNative, realtimeEvents } from '../testSupport/realtimeNativeEventsFixture';
 import { RealtimeConversationVoiceEntry } from '../RealtimeConversationVoiceEntry';
 import type { ConversationSessions } from '../../ragConversation/conversationSessionTypes';
 
@@ -14,7 +14,7 @@ import type { ConversationSessions } from '../../ragConversation/conversationSes
 import {
   mockAuthorize,
   mockPermission,
-} from './realtimeSettingsPermissionFixture';
+} from '../testSupport/realtimeSettingsPermissionFixture';
 jest.mock('../useRealtimeSettingsPermission', () => ({
   useRealtimeSettingsPermission: () => mockPermission,
 }));

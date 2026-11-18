@@ -1,4 +1,4 @@
-import { waitForRefreshEnabled } from './voiceSettingsViewFixture';
+import { waitForRefreshEnabled } from '../testSupport/voiceSettingsViewFixture';
 import { hasRealtimeVoiceRuntime } from '../voiceRuntimeCapability';
 import {
   act,
