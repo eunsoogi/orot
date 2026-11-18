@@ -37,11 +37,47 @@ export async function runHealthContextTestOperation(identifier: unknown) {
     const records = createRecordRepository(database);
     await seedHealthContextNativeRecords(records);
     const read = createHealthContextReader(database);
+    let quantityReads = 0;
+    const trace: import('../src/healthEvidence/healthContext/trace').HealthContextTrace =
+      (phase, status) => {
+        if (phase === 'quantities' && status === 'started') quantityReads++;
+      };
     const started = Date.now();
-    const report = await read(contextWindow, HEALTH_CONTEXT_TOPICS);
+    const report = await read(
+      contextWindow,
+      HEALTH_CONTEXT_TOPICS,
+      undefined,
+      trace,
+    );
     const elapsedMs = Date.now() - started;
-    const cached = await read(contextWindow, HEALTH_CONTEXT_TOPICS);
-    // Exercise the largest allowed calendar span on Hermes/SQLCipher as well as the four-day exact oracle.
+    const expected = JSON.stringify(report);
+    const cached = await read(
+      contextWindow,
+      HEALTH_CONTEXT_TOPICS,
+      undefined,
+      trace,
+    );
+    const cachedEqual = JSON.stringify(cached) === expected;
+    // Cache reuse is work/value equivalence, not caller-object identity. A caller
+    // may receive a mutable first result or a frozen snapshot; neither may poison reuse.
+    const target = report.quantities[0]?.days[0];
+    const originalMean = target?.mean;
+    let mutationIsolated = false;
+    try {
+      if (target) Reflect.set(target, 'mean', -999999);
+      const afterMutation = await read(
+        contextWindow,
+        HEALTH_CONTEXT_TOPICS,
+        undefined,
+        trace,
+      );
+      mutationIsolated =
+        Boolean(target) && JSON.stringify(afterMutation) === expected;
+    } finally {
+      if (target) Reflect.set(target, 'mean', originalMean);
+    }
+    const cacheReused = quantityReads === 1 && cachedEqual && mutationIsolated;
+    // Exercise a longer 90-day calendar on Hermes/SQLCipher alongside the four-day exact oracle.
     const longStarted = Date.now();
     const longReport = await read(
       recentHealthContextWindow(
@@ -60,7 +96,13 @@ export async function runHealthContextTestOperation(identifier: unknown) {
       .map(series => series.days.reduce((sum, day) => sum + day.sum, 0))
       .sort((a, b) => a - b);
     await records.delete('health_observation', 'bp-1-0');
-    const deleted = await read(contextWindow, HEALTH_CONTEXT_TOPICS);
+    const beforeDeletionRead = quantityReads;
+    const deleted = await read(
+      contextWindow,
+      HEALTH_CONTEXT_TOPICS,
+      undefined,
+      trace,
+    );
     const changedPressure = deleted.quantities.find(
       series => series.concept === 'blood pressure systolic',
     );
@@ -108,8 +150,9 @@ export async function runHealthContextTestOperation(identifier: unknown) {
       medication: report.medications[0],
       sleep: report.sleep[0],
       symptoms: report.symptoms,
-      cacheReused: cached === report,
+      cacheReused,
       deletionInvalidated:
+        quantityReads === beforeDeletionRead + 1 &&
         deleted.deletionGeneration > report.deletionGeneration &&
         changedPressure?.days[0]?.samples === 1 &&
         changedPressure.days[0].mean === 141,
