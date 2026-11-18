@@ -585,3 +585,27 @@ case는 별도로 정확 한 번 등록된다. 실제 native 실행과 수용은
 이 entry 준비나 클라우드 검증을 native 통과로 표시하지 않는다. 기존 standalone 저장소
 case와 assertion은 유지한다. 원격 provider, authorize, 자동 재전송 및 실제 사용자
 자료는 이 수용에 포함하지 않는다. 생성 결과가 오기 전 OS 중단은 별도 문제다.
+
+
+#### 실패 문서 pagination oracle 후속
+
+정확 `9708ad5d`의 staged 성공 case 1회 통과와 별도로, 기존 disclosure case는
+승인 거부 문구와 provider 0이 보인 상태에서 단일 StaticText predicate를 기다리다
+중단됐다. 원본 AX snapshot은 없어 실제 AX type 또는 줄바꿈이 직접 원인인지는
+미확정이다. 실제 pagination 함수에 합성 native line 높이를 주면 단일 문장이
+여러 줄과 페이지로 나뉘므로 기존 연속 부분문자열 predicate는 같은 원문을
+거부한다. 이 재현을 실제 기기 AX의 입증으로 확대하지 않는다.
+
+새 test-only reader는 결과 stage 안의 유일한 page target부터 마지막 disabled
+next까지 순서대로 읽으며 첫 previous disabled, 비어 있지 않은 내용, 중복 없는
+페이지, 실제 viewport containment를 요구한다. 합성 문서 한정 최대 256페이지,
+페이지별 2048문자 및 조건 대기 10초를 넘으면 성공/skip 대신 진단과 실패를 남긴다.
+이 값은 제품 성능 SLA가 아니라 고정 in-memory 실패 fixture의 무한 대기 방지
+상한이다. 문서의 native whitespace만 정규화한 뒤 첫 묶음·숫자 초·정확 사유·
+완료 분류 유지 문구 전체를 검증한다. 누락/중복/잘못된 사유는 여전히 실패한다.
+각 페이지의 synthetic target 개수·AX type·label/value는 제한된 JSON attachment로
+보존하고 실제 사용자 화면이나 전체 hierarchy는 수집하지 않는다.
+
+기존 provider 0/1, payload privacy, 실패 후 저장 0, 회전·설정동의 assertions는
+변경하지 않는다. 새 oracle의 Swift 컴파일과 실제 실패 case는 독립 검토 뒤
+정확 revision으로 재실행해야 하며, 이전 native 차단 결과를 성공으로 바꾸지 않는다.

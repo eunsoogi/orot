@@ -200,11 +200,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
     /// Shares the fixture's failure-copy assertion with the disclosure observation helper.
     @MainActor
     func failureNotice(_ app: XCUIApplication, reason: String) {
-        // The batch summary includes measured duration; assert its stable failure category, not the retired generic fallback.
-        let notice = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@",
-                                                          "1번째 묶음 처리 중 ", reason)).firstMatch
-        XCTAssertTrue(notice.waitForAppearance())
-        XCTAssertTrue(notice.label.hasSuffix("완료한 분류는 유지했어요."))
+        ClassificationFailureNoticeUITestSupport.assertNotice(app, reason: reason, testCase: self)
     }
 
     @MainActor
