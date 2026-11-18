@@ -11,7 +11,10 @@ export function classificationStageEvents(): readonly CalendarEvent[] {
     calendarEventSnapshot: {
       title:
         index === 0
-          ? '합성 긴 진료 예약 '.repeat(30)
+          ? Array.from(
+              { length: 30 },
+              (_partValue, part) => `합성 긴 진료 예약 ${part + 1}`,
+            ).join(' ')
           : `합성 진료 예약 ${index + 1}`,
       timeZoneIdentifier: 'Asia/Seoul',
       isAllDay: false,

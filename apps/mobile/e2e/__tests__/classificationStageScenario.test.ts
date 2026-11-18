@@ -15,6 +15,12 @@ it('holds real batch responses at 0/9, 8/9 and 9/9 before the synthetic save gat
     phases.push(phase),
   );
   const events = classificationStageEvents();
+  expect(events[0]?.calendarEventSnapshot.title).toBe(
+    Array.from(
+      { length: 30 },
+      (_, part) => `합성 긴 진료 예약 ${part + 1}`,
+    ).join(' '),
+  );
   const progress: number[] = [];
   const provider = makeProvider(jest.fn(scenario.generate));
   const options = input(events, {

@@ -529,3 +529,35 @@ local-recovery storage. It does not render the production
 consumer bindings remain covered separately by the cloud
 `DailyReportLocalRecovery.test.tsx` and `dailyReportRecoveryConsumer.test.ts`
 regressions; native acceptance of the actual consumer UI remains unverified.
+
+#### 단계별 분류 자동 native case 준비 (실행 전)
+
+`AppointmentConsentUITests/testApprovedBatchesExposeMeasuredProgressAndAllResultPages`는
+`fixtures` 및 `duo` inventory에 같은 한 case로 등록합니다. 기존 설정 취소/실패 저장 방지,
+회전 disclosure와 App-navigation/Back case는 삭제하거나 약화하지 않습니다. 새 case는
+UUID 격리 저장소에서 실제 설정 UI 승인 후에만 합성 remote provider의 gate를 해제합니다.
+실제 완료 배치의 AX 값 `0% → 88% → 100%`와 provider 호출 `1 → 2 → 2`, 저장 gate 전
+저장 marker 부재, progress 중 결과/확인 페이지 부재를 확인합니다. 마지막 해제 후 결과를
+앞으로 끝까지 읽고 뒤로 같은 순서로 돌아오며 9개 제목, 인덱스를 붙인 긴 첫 제목의 전체
+원문, 본문 viewport containment, 모든 footer 동작의 44pt 최소 크기/도달성을 검사합니다.
+인덱스는 같은 반복 제목 페이지가 우연히 같아 변화 감지가 불가능한 fixture 문제를 없애며,
+실제 일정이나 제품 데이터 형식에는 영향을 주지 않습니다.
+
+이 case 소스/등록 및 cloud 회귀는 native 성공 증거가 아닙니다. 아직 컴파일/실행 전이며
+실행자는 progress AX label/value와 원문 pagination의 실제 UIKit 결과를 보존해야 합니다.
+fixture gate 44pt와 진단 텍스트가 차감된 화면을 스크린샷에 함께 남깁니다. 이것은
+App-navigation 제품 geometry 또는 실제 VoiceOver 구동의 대체 증거가 아닙니다.
+
+최소 후속 수용 순서는 iPhone 기본 크기의 새 case, 기존 disclosure 거부/실패 case,
+기존 실제 App-navigation Back case이며, 한 소유 Simulator에서 순차 실행합니다.
+그 뒤 별도 Duo wide 한 번은 가용 폭 차이/본문 읽기 경계를, XXXL 한 번은 실제 native line
+측정/reader 확대·닫기 경계를 관찰합니다. Reduce Motion과 VoiceOver는 각각 실제 OS 설정과
+해당 읽기/화면전환을 관찰한 증거가 별도로 필요하며, 일반 AX 존재만으로 통과로 주장하지 않습니다.
+전체 창도 한 줄과 footer를 담지 못하는 극단 치수는 계속 미지원입니다. native reader dismiss
+전 요청 미실행/닫기 취소, 긴 reason 원문, fade 완료와 실제 접근성 설정 조합은 아직 새 case가
+직접 증명하지 않는 잔여 항목으로 유지합니다. cloud component 회귀의 해당 증거와 혼동하지 않습니다.
+
+현재 taskVersion 4는 candidateId/decision 두 필드만 받아 고정 한국어 분류 근거를 만듭니다.
+새 case는 그 근거 원문 접근도 확인하되, 긴 자유서술 reason을 provider에 주입해 wire 검증을
+우회하지 않습니다. 장문 reason native 증거가 필요하면 별도 저장결과/reader fixture로
+검증해야 하며 현재 성공 배치 case가 그 경계를 증명한다고 주장하지 않습니다.

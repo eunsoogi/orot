@@ -1,5 +1,6 @@
 /** Maps Swift test files that extend an XCTest suite declared in another source file. */
 export const swiftSuiteExtensions = new Map([
+  ['OrotUITests/ClassificationStagesUITests.swift', 'AppointmentConsentUITests'],
   ['OrotIntegrationTests/RealtimeVoiceToolLifecycleTests.swift', 'RealtimeVoiceLifecycleTests'],
   ['OrotIntegrationTests/RealtimeVoiceSystemLifecycleTests.swift', 'RealtimeVoiceLifecycleTests'],
   ['OrotUITests/HealthRecordsDetailDuoUITests.swift', 'HealthImportDuoUITests'],
