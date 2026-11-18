@@ -1,0 +1,157 @@
+import { createAiFeatureServices } from '../featureServices';
+import { consent } from '../featureServiceFixtures';
+import { captureConversationToolSources } from '../captureConversationToolSources';
+import { registerHealthContextEvidence } from '../healthContextEvidence';
+import { isPeriodSummarySource } from '../../../diseaseHypotheses/savedSummaries';
+import { createConversationLocalAccess } from '../conversationLocalAccess';
+import { createConversationSessionStorage } from '../conversationSessionStorage';
+import { sharedAncestryProfileFixture } from '../testSupport/sharedAncestryProfileFixture';
+import { createLocalEvidenceData } from '../../../healthEvidence/localEvidenceData';
+import { registerConversationReadOperation } from '../conversationReadOperation';
+import { createSummaryArtifactDiscovery } from '../summaryArtifactDiscovery';
+import { createSymptomSummaryStorage } from '../../../storage/symptomSummaryStorage';
+
+/** Real SQLite tool lineage adds the path absent from the prior text-only fixture. */
+test.each(['ordered', 'reordered', 'cutoff'] as const)(
+  'shipping feature service restores direct period tool with %s window once',
+  async variant => {
+    const f = await sharedAncestryProfileFixture(1, false);
+    const data = await f.input.loadLocalData();
+    data.readHealthContext = createLocalEvidenceData(
+      f.database,
+    ).readHealthContext!;
+    registerConversationReadOperation(data, async (scoped, registry) =>
+      createSummaryArtifactDiscovery({
+        database: f.database,
+        storage: createSymptomSummaryStorage(f.database),
+        data: scoped,
+        registry,
+      }),
+    );
+    const artifact = (await f.storage.read('turn-0'))!;
+    const summary = (await createSymptomSummaryStorage(f.database).read(
+      'summary-0',
+    ))!;
+    const source = summary.sources.find(isPeriodSummarySource)!;
+    const original = source.scope.window;
+    const window =
+      variant === 'reordered'
+        ? {
+            timeZone: original.timeZone,
+            toExclusive: original.toExclusive,
+            fromInclusive: original.fromInclusive,
+          }
+        : {
+            ...original,
+            ...(variant === 'cutoff'
+              ? { dataAvailableThrough: '2026-11-01T00:00:00.000Z' }
+              : {}),
+          };
+    const item = registerHealthContextEvidence({
+      registry: f.input.registry,
+      read: data.readHealthContext!,
+      report: await data.readHealthContext!(window, [source.scope.topic]),
+      scope: { ...source.scope, window },
+    });
+    const captured = await captureConversationToolSources(
+      {
+        version: 1,
+        operationRunId: 'synthetic-run',
+        callId: 'synthetic-call',
+        toolName: 'health',
+        order: 1,
+        status: 'completed',
+        inputSummary: { sourceKind: item.sourceKind },
+        resultSummary: { referenceCount: 1 },
+        sources: [item],
+      },
+      f.input.registry,
+    );
+    await f.storage.appendToolEvent({
+      sessionId: 'session',
+      messageId: artifact.id,
+      createdAt: artifact.createdAt,
+      sessionVersion: (await f.storage.activeSessionVersion('session'))!,
+      ...captured,
+    });
+    // Match the shipping localData composition rather than injecting one raw store.
+    const nativeTransaction = f.database.transaction.bind(f.database);
+    let queue = Promise.resolve();
+    f.database.transaction = work => {
+      const next = queue.then(() => nativeTransaction(work));
+      queue = next.catch(() => undefined);
+      return next;
+    };
+    Object.assign(
+      data,
+      createConversationLocalAccess(f.database, () => data, {
+        storage: async () =>
+          jest.requireActual('../../../storage/conversationArtifactStorage'),
+        notifications: async () =>
+          jest.requireActual(
+            '../../../replyNotifications/replyNotificationStorage',
+          ),
+        discovery: async () =>
+          jest.requireActual('../conversationArtifactDiscovery'),
+      }),
+    );
+    const open = createConversationSessionStorage(f.input.loadLocalData);
+    await open();
+    // Invalidate the bounded global report cache without changing this source window.
+    await f.repository.put('health_observation', {
+      ...f.inside,
+      id: 'future-profile',
+      effectiveAt: '2027-01-01T00:00:00Z',
+      ingestedAt: '2027-01-01T00:00:00Z',
+      recordedAt: '2027-01-01T00:00:00Z',
+    });
+    const services = createAiFeatureServices(consent, {
+      loadLocalData: async () => data,
+    });
+    const options = services.conversationSessionOptions();
+    const transaction = f.database.transaction.bind(f.database);
+    const queries = new Map<string, number>();
+    f.database.transaction = work =>
+      transaction(async tx => {
+        const execute = tx.execute.bind(tx);
+        tx.execute = async (...args) => {
+          if (/WITH days\(/.test(args[0])) {
+            const key = JSON.stringify(args);
+            queries.set(key, (queries.get(key) ?? 0) + 1);
+          }
+          return execute(...args);
+        };
+        await work(tx);
+      });
+    try {
+      const page = await options.restoreSessionPage!(
+        'session',
+        new AbortController().signal,
+      );
+      expect(page.turns).toHaveLength(1);
+      expect(page.turns[0]!.answer).toBe(artifact.answer);
+      expect(page.turns[0]!.toolEvents).toHaveLength(1);
+      console.info(
+        'SYNTHETIC_TOOL_HISTORY',
+        JSON.stringify({
+          uniqueQueries: queries.size,
+          exactRepeatCounts: [...queries.values()],
+        }),
+      );
+      expect([...queries.values()]).toEqual(
+        variant === 'cutoff' ? [1, 1, 1, 1] : [1, 1],
+      );
+      await f.repository.delete('health_observation', f.inside.id);
+      const afterDelete = await options.restoreSessionPage!(
+        'session',
+        new AbortController().signal,
+      );
+      expect(afterDelete.turns.flatMap(turn => turn.toolEvents ?? [])).toEqual(
+        [],
+      );
+    } finally {
+      f.database.transaction = transaction;
+      f.close();
+    }
+  },
+);
