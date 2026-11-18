@@ -1,4 +1,3 @@
-import { withConversationArchive } from './conversationArchive';
 import { invalidateTasks } from './invalidateConversationTaskRefresh';
 import { conversationPhotoSurface } from './conversationPhotoSurface';
 import { prepareConversationSend } from './conversationSendPreflight';
@@ -246,5 +245,5 @@ export function createConversationSessions(
     current: id => !disposed && snapshot.activeId === id,
   });
   bindSender = policy.bindSender;
-  return withConversationArchive(policy, options);
+  return policy;
 }

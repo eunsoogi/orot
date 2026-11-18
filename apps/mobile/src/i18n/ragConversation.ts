@@ -1,4 +1,3 @@
-import { conversationArchiveKo } from './conversationArchiveKo';
 import { conversationHistoryPagingKo } from './conversationHistoryPagingKo';
 import { conversationToolKo } from './conversationToolKo';
 import { voiceConversationKo } from './voiceConversationKo';
@@ -7,7 +6,6 @@ import { voiceConversationKo } from './voiceConversationKo';
 export const ragConversationKo = {
   'ragConversation.jumpLatest': '최신 메시지로 이동',
   ...voiceConversationKo,
-  ...conversationArchiveKo,
   ...conversationHistoryPagingKo,
   ...conversationToolKo,
   'ragConversation.title': '기록과 대화',

@@ -102,8 +102,6 @@ export function ConversationScreen({
   const coldResumeBusy = busy || session.restoring || session.retryingSave;
   const header = (
     <ConversationScreenHeader
-      archive={store.archive}
-      active={isEntryCurrent?.() ?? true}
       routeKey={navigationRouteKey}
       onBack={onBack}
       provider={providerSelection}
