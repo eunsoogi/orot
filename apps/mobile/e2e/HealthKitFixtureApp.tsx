@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { NativeModules, StyleSheet, Text, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../src/healthkit/autoSyncCheckpoint';
 import App from '../App';
+import { appearanceStore } from '../src/assistantAppearance/appearanceStore';
+import { prepareHealthImportAppearance } from './healthImportAppearanceFixture';
 
 interface SimulatorHealthKitFixtureModule {
   prepareSyntheticFixtures(
@@ -33,6 +35,17 @@ export function HealthKitFixtureApp({
           throw new Error('The Simulator fixture was not synthetic.');
         }
         prepared = true;
+        const manager = NativeModules.SettingsManager as
+          | {
+              settings?: Record<string, unknown>;
+              getConstants?: () => { settings?: Record<string, unknown> };
+            }
+          | undefined;
+        // Mount the real gate only after the explicitly requested synthetic preference commits.
+        await prepareHealthImportAppearance(
+          manager?.settings ?? manager?.getConstants?.().settings,
+          appearanceStore,
+        );
         if (active) setStatus('ready');
         else await healthKitFixture.removeSyntheticFixture();
       })
