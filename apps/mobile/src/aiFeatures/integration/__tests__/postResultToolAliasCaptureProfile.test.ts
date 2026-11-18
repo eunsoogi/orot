@@ -215,7 +215,7 @@ test.each(['one', 'same-six', 'distinct-six'] as const)(
           ? [3, 3]
           : variant === 'same-six'
             ? [13, 13]
-            : Array(12).fill(4),
+            : Array(12).fill(3),
       );
     } finally {
       spy.mockRestore();
