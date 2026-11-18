@@ -70,6 +70,7 @@ test('scheduled cohort jobs use one consistent role and target', () => {
     'Plan / Coverage',
     'Plan / Select',
     'Validate / Complete',
+    'Build / Production defaults',
     ...['Debug', 'Release', 'Production', 'OAuth'].map((name) => 'Build / ' + name),
     ...iosTestExecutionPlan().map((item) => 'Test / ' + item.name),
     'Test / OAuth',

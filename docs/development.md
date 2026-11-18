@@ -250,6 +250,8 @@ Release의 현재 175개 관측은 22개 기능 cohort에 배정됩니다. Debug
 
 ## 전체 CI와 제품 재사용
 
+Production의 signing defaults 검증은 별도 20분 선행 작업에서 기존 Debug·Release 및 Simulator·iPhoneOS의 실제 workspace 설정을 확인합니다. 생성된 Pods 프로젝트와 xcconfig가 필요하므로 고정 의존성 준비는 두 호스트에서 수행하지만 앱 빌드는 반복하지 않습니다. source SHA·run·attempt·입력 digest·실제 생성된 signing 설정 fingerprint·실제 Xcode/SDK가 일치하는 검증 근거만 Production receipt에 결합하며, 누락·불일치·실패·취소·건너뛰기는 성공으로 처리하지 않습니다. 이는 암호학적 서명이 아닌 실행 출처 검증입니다. 두 작업 모두 20분 제한을 유지하며 전체 대기시간과 의존성 설치 비용은 늘어납니다. 관측된 cold build 자체가 약 19분 50초를 사용했으므로 분리만으로 이후 hosted 완료를 보장하지 않습니다.
+
 Full E2E graph의 각 독립 Mac 작업에는 최대 20분의 GitHub Actions 하드리밋을 적용합니다. Questions의 Conversation은 composer·화면 모드 전환 메서드를, Accessibility는 키보드·큰 글자 및 제목·스와이프 메서드를 완전한 단위로 나누어 실행합니다. 모든 28개 cohort를 실행하고 auth suite를 별도 job으로 마친 뒤 전체 receipt를 검증합니다. 빌드·Simulator 준비·테스트·정리를 포함한 작업 시간이며, 취소나 미실행은 통과로 집계하지 않습니다.
 
 `E2E Test`는 `0 18 * * *` UTC schedule과 수동 `workflow_dispatch`로 실행됩니다. Schedule은 기본 브랜치인 `main`에서 매일 03:00 KST에 Full 검증을 시작하며, 수동 Full dispatch도 `main`에서만 실행합니다. 다른 브랜치는 명시적으로 candidate 모드를 선택한 경우에만 제한된 Mac 검증을 시작합니다. PR이나 main push는 E2E를 시작하지 않습니다. PR의 16개 필수 검사는 Code Quality, Unit Test, Policy Check 범위이며 E2E는 필수 검사에 포함하지 않습니다. release workflow는 대상 main SHA의 성공한 nightly Full 결과만 받아들입니다.

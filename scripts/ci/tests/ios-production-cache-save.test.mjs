@@ -29,6 +29,11 @@ test('only verified production outputs are cached before later integration or UI
   ]);
   assert.equal(restore.with['save-always'], undefined);
   assert.equal(save.with['save-always'], undefined);
+  // Defaults now succeed in the prerequisite job and are validated by receipt creation before save.
+  assert.match(
+    steps.find((step) => step.run?.includes('ios-production-receipt.mjs write')).run,
+    /artifacts\/production-defaults\/defaults-receipt\.json/,
+  );
   const position = (command) => steps.findIndex((step) => step.run?.includes(command));
   const saveIndex = steps.indexOf(save);
   assert.ok(steps.indexOf(restore) < position('ios-derived-data-cache.mjs prepare production'));
@@ -37,7 +42,6 @@ test('only verified production outputs are cached before later integration or UI
     'ios-test-source-inputs.mjs',
     'ios-derived-data-cache.mjs write production',
     'verify-apple-model-product.mjs production',
-    'verify-simulator-keychain-defaults.mjs',
     'ios-production-receipt.mjs write',
   ]) {
     const index = position(command);

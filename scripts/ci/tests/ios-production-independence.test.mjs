@@ -46,13 +46,18 @@ test('production and OAuth remain mandatory without delaying test-product consum
     assert.ok(!ancestors(jobs, id).includes('production_validation'), id);
   }
   assert.ok(jobs.completeness.needs.includes('production_validation'));
-  const production = read(jobs.production_validation.uses).jobs.validation;
+  const productionJobs = read(jobs.production_validation.uses).jobs;
+  const production = productionJobs.validation;
+  assert.equal(production.needs, 'defaults');
+  assert.match(
+    commands(productionJobs.defaults.steps).join('\n'),
+    /ios-production-defaults-receipt.mjs write/,
+  );
   assert.equal(production['runs-on'], 'xcode-27');
   const source = commands(production.steps).join('\n');
   for (const obligation of [
     'build-ios-simulator-app.sh build',
     'verify-apple-model-product.mjs production',
-    'verify-simulator-keychain-defaults.mjs',
   ]) {
     assert.ok(source.includes(obligation), obligation);
     assert.ok(source.indexOf(obligation) < source.indexOf('ios-production-receipt.mjs write'));

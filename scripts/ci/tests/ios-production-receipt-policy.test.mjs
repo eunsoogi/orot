@@ -17,7 +17,22 @@ const env = {
   GITHUB_RUN_ATTEMPT: '1',
 };
 const receipt = () => ({
-  schemaVersion: 2,
+  schemaVersion: 3,
+  defaultsEvidence: {
+    schemaVersion: 1,
+    passed: true,
+    obligation: 'simulator-keychain-defaults',
+    context: {
+      sourceSha: env.GITHUB_SHA,
+      runId: env.GITHUB_RUN_ID,
+      attempt: env.GITHUB_RUN_ATTEMPT,
+      inputDigest: 'b'.repeat(64),
+      signingInputDigest: 'c'.repeat(64),
+      xcode: 'Xcode 27.2\nBuild version 18A123',
+      sdk: '27.2',
+      developerDirectory: '/Applications/Xcode_27.2.app/Contents/Developer',
+    },
+  },
   sourceSha: env.GITHUB_SHA,
   runId: env.GITHUB_RUN_ID,
   attempt: env.GITHUB_RUN_ATTEMPT,
@@ -27,11 +42,25 @@ const receipt = () => ({
   flags: 'default',
   derivedData: 'apps/mobile/ios/build-production',
   inputDigest: 'b'.repeat(64),
+  signingInputDigest: 'c'.repeat(64),
   appArtifacts: {
     appBinarySha256: 'c'.repeat(64),
     infoPlistSha256: 'd'.repeat(64),
   },
   obligations: Object.fromEntries(productionBuildObligations().map((name) => [name, 'passed'])),
+});
+
+test('the final production receipt rejects missing or mismatched independent defaults evidence', () => {
+  for (const evidence of [undefined, null, {}, { ...receipt().defaultsEvidence, passed: false }]) {
+    const changed = receipt();
+    changed.defaultsEvidence = evidence;
+    assert.throws(() => verifyProductionBuildReceipt(changed, env));
+  }
+  for (const key of ['sourceSha', 'runId', 'attempt', 'inputDigest', 'sdk', 'developerDirectory']) {
+    const changed = receipt();
+    changed.defaultsEvidence.context[key] += 'x';
+    assert.throws(() => verifyProductionBuildReceipt(changed, env));
+  }
 });
 
 const oauth = () => ({

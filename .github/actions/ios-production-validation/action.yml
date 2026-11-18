@@ -57,12 +57,9 @@ runs:
     - name: Verify production uses the Apple SDK without the model mock
       shell: bash
       run: scripts/ci/run-command.sh apple-production-boundary artifacts/ios-focus/apple-production-boundary.log -- node scripts/ci/verify-apple-model-product.mjs production apps/mobile/ios/build-production/Build/Products/Debug-iphonesimulator/Orot.app
-    - name: Verify Simulator defaults
-      shell: bash
-      run: node scripts/ci/verify-simulator-keychain-defaults.mjs
     - name: Record completed production build obligations
       shell: bash
-      run: node scripts/ci/ios-production-receipt.mjs write artifacts/ios-focus/production-receipt.json
+      run: node scripts/ci/ios-production-receipt.mjs write artifacts/ios-focus/production-receipt.json artifacts/production-defaults/defaults-receipt.json
     - name: Save verified production outputs
       # This cache contains only the production app and Pods. OAuth's separate products and tests remain final-gate obligations.
       if: success() && steps.production_cache_restore.outputs.cache-hit != 'true'
