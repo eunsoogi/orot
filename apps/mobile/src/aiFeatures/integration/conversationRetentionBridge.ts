@@ -1,3 +1,4 @@
+import { observeConversationFinalization as finalize } from '../../ragConversation/conversationFinalizationDiagnostics';
 import type { ConversationEntryContext } from './conversationIntent';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type {
@@ -84,10 +85,12 @@ export function createConversationRetentionBridge(input: {
           )
         )
           throw new Error('Complete answer lineage is unavailable.');
-        const captured = await captureConversationSources(
-          [...admitted, ...outcome.citations],
-          input.registry,
-          signal,
+        const captured = await finalize('conversation_retention_capture', () =>
+          captureConversationSources(
+            [...admitted, ...outcome.citations],
+            input.registry,
+            signal,
+          ),
         );
         const citations = outcome.citations.map(reference =>
           captured.mapping.get(JSON.stringify(reference))!,

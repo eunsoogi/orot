@@ -1,3 +1,4 @@
+import type { ConversationCaptureOwner } from './evidenceCaptureBatch';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
@@ -14,6 +15,7 @@ export function bindConversationSources(input: {
     'read'
   >;
   readonly registry: LocalEvidenceReferenceRegistry;
+  readonly captureOwner?: ConversationCaptureOwner;
 }): EvidenceReference[] | null {
   const bound: EvidenceReference[] = [];
   for (const citation of input.citations) {
@@ -41,6 +43,20 @@ export function bindConversationSources(input: {
         input.registry.add({
           reference: referenceOnly(original),
           content: '',
+          capture: input.captureOwner
+            ? {
+                owner: input.captureOwner,
+                identity: {
+                  id: original.sourceId,
+                  revision: original.sourceRevision,
+                  bound: {
+                    parentId: input.parentId,
+                    parentRevision: input.parentRevision,
+                    reference: referenceOnly(citation),
+                  },
+                },
+              }
+            : undefined,
           readSource,
           validate: async signal =>
             (await readSource(signal)).status === 'available',

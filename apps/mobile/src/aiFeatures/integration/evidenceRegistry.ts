@@ -1,4 +1,12 @@
 import {
+  validationContext,
+  type EvidenceValidationContext,
+} from './evidenceValidationContext';
+import {
+  registerConversationCapture,
+  type ConversationCaptureCapability,
+} from './evidenceCaptureBatch';
+import {
   captureRegistry,
   restoreRegistry,
   type EvidenceRegistrySnapshot,
@@ -19,9 +27,7 @@ export type {
   EvidenceSourceDocument,
   EvidenceSourceReadResult,
 } from './evidenceSourceDocument';
-export interface EvidenceValidationContext {
-  once<T>(key: object, load: () => Promise<T>): Promise<T>;
-}
+export type { EvidenceValidationContext } from './evidenceValidationContext';
 type ReferenceValidator = (
   signal: AbortSignal,
   context: EvidenceValidationContext,
@@ -32,19 +38,6 @@ export interface RegistryEntry {
   readonly original: EvidenceReference;
   readonly validate: ReferenceValidator;
   readonly readSource: SourceReader;
-}
-function validationContext(): EvidenceValidationContext {
-  const loads = new Map<object, Promise<unknown>>();
-  return {
-    once<T>(key: object, load: () => Promise<T>): Promise<T> {
-      let result = loads.get(key) as Promise<T> | undefined;
-      if (!result) {
-        result = Promise.resolve().then(load);
-        loads.set(key, result);
-      }
-      return result;
-    },
-  };
 }
 /** Keeps raw local identifiers behind a turn-local citation that can be revalidated before use. */
 export class LocalEvidenceReferenceRegistry {
@@ -85,6 +78,7 @@ export class LocalEvidenceReferenceRegistry {
   }
   add(input: {
     readonly reference: EvidenceReference;
+    readonly capture?: ConversationCaptureCapability;
     readonly content: string;
     readonly validate: ReferenceValidator;
     readonly readSource: SourceReader;
@@ -113,6 +107,7 @@ export class LocalEvidenceReferenceRegistry {
       readSource: input.readSource,
     });
     this.toolReferences.add(reference);
+    registerConversationCapture(this, reference, input.capture);
     return { ...reference, content: this.redactText(input.content) };
   }
   redactText(value: string): string {

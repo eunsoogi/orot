@@ -85,6 +85,12 @@ async function openDefault(): Promise<AiFeatureLocalData> {
   const memoryStorage = new SqlCipherAgentMemoryStorage(database);
   let conversationStorage:
     Promise<ReturnType<typeof createConversationArtifactStorage>> | undefined;
+  // Share the discovery owner per registry, not hydrated documents or validity.
+  // Separate databases/local-data surfaces retain separate owners and callbacks.
+  const conversationDiscoveries = new WeakMap<
+    LocalEvidenceReferenceRegistry,
+    Promise<ReturnType<typeof createConversationArtifactDiscovery>>
+  >();
   const data: AiFeatureLocalData = {
     repository,
     async saveConversationHistory(input, signal) {
@@ -124,19 +130,31 @@ async function openDefault(): Promise<AiFeatureLocalData> {
       });
     },
     async conversationArtifactDiscovery(registry) {
-      const [
-        { createConversationArtifactDiscovery },
-        { createConversationArtifactStorage },
-      ] = await Promise.all([
-        import('./conversationArtifactDiscovery'),
-        import('../../storage/conversationArtifactStorage'),
-      ]);
-      return createConversationArtifactDiscovery({
-        database,
-        storage: createConversationArtifactStorage(database),
-        data,
-        registry,
-      });
+      let discovery = conversationDiscoveries.get(registry);
+      if (!discovery) {
+        discovery = Promise.all([
+          import('./conversationArtifactDiscovery'),
+          import('../../storage/conversationArtifactStorage'),
+        ])
+          .then(
+            ([
+              { createConversationArtifactDiscovery },
+              { createConversationArtifactStorage },
+            ]) =>
+              createConversationArtifactDiscovery({
+                database,
+                storage: createConversationArtifactStorage(database),
+                data,
+                registry,
+              }),
+          )
+          .catch(error => {
+            conversationDiscoveries.delete(registry);
+            throw error;
+          });
+        conversationDiscoveries.set(registry, discovery);
+      }
+      return discovery;
     },
     async openConversationArtifactStorage() {
       // One wrapper owns notification serialization and deletion observers for this protected database.
