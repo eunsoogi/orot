@@ -1,4 +1,5 @@
 import { t } from '../../i18n';
+import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { AppText as Text } from '../../layout/AppText';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppSymbol } from '../../layout/AppSymbol';
@@ -31,6 +32,7 @@ export default function ProviderSelectionOptionCard({
   index,
   onPress,
 }: ProviderSelectionOptionCardProps) {
+  // Cloud copy never changes provider identity, availability, or selection consent.
   const blockedMessage = getBlockedMessage(option, requirements);
   const capabilityLabels = showCapabilities ? getCapabilityLabels(option) : [];
   const selectable = blockedMessage === null && !disabled;
@@ -55,7 +57,9 @@ export default function ProviderSelectionOptionCard({
         <Text style={shared.detail}>
           {option.privacyBoundary === 'on-device'
             ? t('modelSettings.localProcessing')
-            : option.modelId}
+            : option.provider.id === APPLE_PCC_PROVIDER_ID
+              ? t('provider.pcc.processing')
+              : option.modelId}
         </Text>
         {showCapabilities ? (
           <Text

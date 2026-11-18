@@ -1,3 +1,6 @@
+import ProviderSelectionOptionCard from '../providers/selection/ProviderSelectionOptionCard';
+import { applePrivateCloudComputeProvider } from '../providers/apple';
+import { APPLE_PCC_MODEL_ID } from '../providers/selection/privateCloudCompute';
 import { t } from '../i18n';
 import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
 import { View } from 'react-native';
@@ -68,6 +71,25 @@ export function VoiceSettingsPanel({
           Apple
         </Text>
         {choices('local')}
+        {/* Display-only: PCC has no voice runtime and must never enter voiceModels or save. */}
+        <ProviderSelectionOptionCard
+          option={{
+            provider: applePrivateCloudComputeProvider,
+            modelId: APPLE_PCC_MODEL_ID,
+            displayName: 'Apple Intelligence',
+            privacyBoundary: 'selected-context-remote',
+            availability: {
+              status: 'unavailable',
+              message: t('provider.pcc.entitlementRequired'),
+            },
+          }}
+          requirements={{ inputTypes: ['text'] }}
+          disabled
+          selected={false}
+          showCapabilities={false}
+          index={0}
+          onPress={() => undefined}
+        />
       </View>
       <View style={styles.section} testID="voice-model-group-openai-api">
         <Text accessibilityRole="header" style={styles.heading}>
