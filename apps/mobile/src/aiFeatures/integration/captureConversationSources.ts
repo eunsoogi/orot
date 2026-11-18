@@ -1,5 +1,6 @@
 import {
   hasConversationToolCapture,
+  hasOwnedBoundConversationCapture,
   prepareCaptureSources,
 } from './evidenceCaptureBatch';
 import { stableEvidenceReference } from './stableEvidenceReference';
@@ -22,7 +23,8 @@ export async function captureConversationSources(
       ref =>
         ref.sourceKind === 'generated_artifact' ||
         (ref.sourceKind !== 'external_medical' &&
-          hasConversationToolCapture(registry, ref)),
+          (hasConversationToolCapture(registry, ref) ||
+            hasOwnedBoundConversationCapture(registry, ref))),
     ),
     signal,
   );

@@ -1,3 +1,4 @@
+import { ownsBoundCaptureAuthority } from './boundCaptureAuthority';
 import { stableJson } from './evidenceUtils';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -71,6 +72,19 @@ export function hasConversationToolCapture(
   return Boolean(
     capabilities.get(registry)?.get(stableEvidenceReference(reference))
       ?.identity.tool,
+  );
+}
+
+/** Bound personal sources require a discovery-issued, currently exact reader pair. */
+export function hasOwnedBoundConversationCapture(
+  registry: LocalEvidenceReferenceRegistry,
+  reference: EvidenceReference,
+) {
+  const capability = capabilities
+    .get(registry)
+    ?.get(stableEvidenceReference(reference));
+  return Boolean(
+    capability?.identity.bound && ownsBoundCaptureAuthority(capability.owner),
   );
 }
 
