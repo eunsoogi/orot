@@ -4,7 +4,7 @@ import {
   type SqlDatabase,
 } from '@orot/storage';
 import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
-import { openOpSqliteFileQueue } from '../../aiFeatures/integration/__tests__/opSqliteFileQueueFixture';
+import { openOpSqliteFileQueue } from '../../aiFeatures/integration/testSupport/opSqliteFileQueueFixture';
 import { ensureHealthContextGeneration } from '../../healthEvidence/healthContext/generation';
 import { loadOverviewMetrics } from './metricLoader';
 const now = new Date('2026-01-15T12:00:00Z');

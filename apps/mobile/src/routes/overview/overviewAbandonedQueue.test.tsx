@@ -5,7 +5,7 @@ import { createLocalEvidenceData } from '../../healthEvidence/localEvidenceData'
 import { ensureHealthContextGeneration } from '../../healthEvidence/healthContext/generation';
 import { createHealthContextTool } from '../../aiFeatures/integration/healthContextTool';
 import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
-import { openOpSqliteWorker } from '../../aiFeatures/integration/__tests__/opSqliteWorkerFixture';
+import { openOpSqliteWorker } from '../../aiFeatures/integration/testSupport/opSqliteWorkerFixture';
 import { useOverviewMetrics } from './useOverviewMetrics';
 const fs = require('node:fs');
 const path = require('node:path');
