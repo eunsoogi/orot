@@ -1,3 +1,4 @@
+import { healthContextReportCacheKey } from '../healthEvidence/healthContext/reportCacheKey';
 import {
   createCommittedReportScope,
   committedReportCache,
@@ -80,9 +81,8 @@ export function committedPeriodReadOperation(
           check();
           const before = await readHealthContextGeneration(tx);
           check();
-          const key = JSON.stringify([
-            source.scope.window,
-            [source.scope.topic],
+          const key = healthContextReportCacheKey(source.scope.window, [
+            source.scope.topic,
           ]);
           const cached = reports.get(key);
           const report =

@@ -1,3 +1,4 @@
+import { healthContextReportCacheKey } from './reportCacheKey';
 import { immutableReportSnapshot } from './committedReportScope';
 import { registerHealthContextReadOwner } from './healthContextReadOperation';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
@@ -144,7 +145,7 @@ export function createHealthContextReader(
       await ready;
       trace?.('preparation', 'completed');
       if (signal?.aborted) throw new Error('Health context was cancelled.');
-      const key = JSON.stringify([window, [...new Set(topics)].sort()]);
+      const key = healthContextReportCacheKey(window, topics);
       const current = await traceHealthContext(trace, 'generation', () =>
         readHealthContextGeneration(database),
       );
