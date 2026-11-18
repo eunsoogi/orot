@@ -76,6 +76,8 @@ export const feature: ReturnType<typeof createDailyReportFeature> = {
   lookup: async requested =>
     requested.key === identity.key ? saved : { status: 'missing' },
   preview: async () => ({ status: 'not_today' }),
+  pendingRecovery: async () => [],
+  resumeRecovery: async () => ({ status: 'unavailable' }),
   retain: () => () => {},
   active: () => null,
   start: () => {

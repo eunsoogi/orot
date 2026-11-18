@@ -90,7 +90,9 @@ export function registerCapabilityTestEntry(
       require('./summaryVisualProbeEntry');
       break;
     case 'daily-report-visual':
-      require('./dailyReportVisualProbeEntry');
+      if (settings.OROT_DAILY_RECOVERY === 'synthetic')
+        require('./dailyRecoveryNativeProbeEntry');
+      else require('./dailyReportVisualProbeEntry');
       break;
     case 'local-e5':
       require('./localE5EmbeddingProbeEntry');

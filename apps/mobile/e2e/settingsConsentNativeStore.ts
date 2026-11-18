@@ -103,6 +103,11 @@ export async function openSettingsConsentNativeStore(
         },
       };
     },
+    // A separate synthetic epoch, never an API secret or normal credential service.
+    recoveryCredential: {
+      read: () => read('recovery-credential'),
+      write: (value: string) => write('recovery-credential', value),
+    },
     close() {
       database.close();
     },
@@ -112,6 +117,7 @@ export async function openSettingsConsentNativeStore(
         await resetGenericPassword({ service: service(`authority-${slot}`) });
         await resetGenericPassword({ service: service(`selection-${slot}`) });
       }
+      await resetGenericPassword({ service: service('recovery-credential') });
       await resetGenericPassword({ service: service('database-key') });
     },
   };

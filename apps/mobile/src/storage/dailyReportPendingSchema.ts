@@ -6,6 +6,13 @@ export async function setupDailyReportPending(tx: SqlExecutor) {
   await tx.execute(`CREATE TABLE IF NOT EXISTS daily_report_pending (
     run_id TEXT PRIMARY KEY, identity_key TEXT NOT NULL, candidate_json TEXT,
     owner_json TEXT NOT NULL)`);
+  // Only final-validated staging is discoverable across readers or process restarts.
+  await tx.execute(`CREATE TABLE IF NOT EXISTS daily_report_pending_publication (
+    run_id TEXT PRIMARY KEY REFERENCES daily_report_pending(run_id) ON DELETE CASCADE)`);
+  await tx.execute(`CREATE TRIGGER IF NOT EXISTS daily_pending_unpublish
+    AFTER UPDATE OF candidate_json ON daily_report_pending
+    WHEN NEW.candidate_json IS NULL BEGIN
+    DELETE FROM daily_report_pending_publication WHERE run_id = NEW.run_id; END`);
   await tx.execute(`CREATE TABLE IF NOT EXISTS daily_report_pending_sources (
     run_id TEXT NOT NULL REFERENCES daily_report_pending(run_id) ON DELETE CASCADE,
     record_kind TEXT NOT NULL, local_id TEXT NOT NULL, revision TEXT NOT NULL,
