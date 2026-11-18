@@ -74,7 +74,8 @@ test('shows saved questions without a symptom journal shortcut', async () => {
       `${formatDate(new Date())} · ${t('overview.localTimeZone', { zone: Intl.DateTimeFormat().resolvedOptions().timeZone })}`,
     ),
   ).toBeTruthy();
-  expect(await screen.findByText('저장한 질문 1개')).toBeTruthy();
+  expect(screen.getByText('진료 당일 질문 보기')).toBeTruthy();
+  expect(screen.queryByText('저장한 질문 1개')).toBeNull();
   expect(screen.queryByTestId('home-ongoing-symptoms')).toBeNull();
   expect(screen.queryByTestId('overview-recent-records-panel')).toBeNull();
   expect(screen.queryByTestId('home-new-recording')).toBeNull();
@@ -89,7 +90,7 @@ test('keeps Home preparation explicit and compact within the filled visit card',
 
   const action = screen.getByTestId('overview-prepare-visit');
   expect(action.props.accessibilityRole).toBe('button');
-  expect(action.props.accessibilityLabel).toBe('진료 준비하기');
+  expect(action.props.accessibilityLabel).toBe('진료 당일 질문 보기');
   expect(StyleSheet.flatten(action.props.style)).toMatchObject({
     alignSelf: 'flex-start',
     maxWidth: '100%',
@@ -103,30 +104,24 @@ test('keeps Home preparation explicit and compact within the filled visit card',
   expect(input.onPrepareVisit).toHaveBeenCalledTimes(1);
 });
 
-test('shows unfinished preparation only after a successful empty read for a real visit', async () => {
-  const loadSavedVisitQuestions = jest
-    .fn()
-    .mockRejectedValueOnce(new Error('locked'))
-    .mockResolvedValue(savedOverviewQuestions('next-visit'));
+test('does not eagerly read question text or counts on Overview', async () => {
+  const loadSavedVisitQuestions = jest.fn();
   await render(<OverviewRoute {...props({ loadSavedVisitQuestions })} />);
-  expect(await screen.findByTestId('overview-questions-retry')).toBeTruthy();
+  expect(loadSavedVisitQuestions).not.toHaveBeenCalled();
   expect(screen.queryByTestId('overview-preparation-pending')).toBeNull();
-  expect(screen.queryByTestId('overview-recent-recording')).toBeNull();
-  await fireEvent.press(screen.getByTestId('overview-questions-retry'));
-  expect(
-    await screen.findByTestId('overview-preparation-pending'),
-  ).toBeTruthy();
+  expect(screen.getByText('진료 당일 질문 보기')).toBeTruthy();
 });
 
 test('keeps the confirmed visit and preparation visible during a refresh and failure', async () => {
   const input = props();
   const route = await render(<OverviewRoute {...input} />);
-  expect(await screen.findByText('저장한 질문 1개')).toBeTruthy();
+  expect(screen.getByText('진료 당일 질문 보기')).toBeTruthy();
+  expect(screen.queryByText('저장한 질문 1개')).toBeNull();
 
   await route.rerender(<OverviewRoute {...input} appointmentState="loading" />);
   expect(screen.getByTestId('overview-appointment-loading')).toBeTruthy();
   expect(screen.getByTestId('overview-next-appointment-clinic')).toBeTruthy();
-  expect(screen.getByText('저장한 질문 1개')).toBeTruthy();
+  expect(screen.getByText('진료 당일 질문 보기')).toBeTruthy();
 
   await route.rerender(<OverviewRoute {...input} appointmentState="failed" />);
   expect(screen.getByTestId('overview-next-appointment-clinic')).toBeTruthy();

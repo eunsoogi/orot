@@ -13,11 +13,7 @@ import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NextVisitPanel } from './OverviewSummaryPanels';
 import { OverviewMetrics } from './overview/OverviewMetrics';
-import { OverviewPreparationQuestions } from './OverviewPreparationPanels';
-import {
-  useOverviewPreparationData,
-  type OverviewPreparationLoaders,
-} from './useOverviewPreparationData';
+import type { OverviewPreparationLoaders } from './useOverviewPreparationData';
 
 export interface OverviewRouteProps extends OverviewPreparationLoaders {
   readonly discoverManualVisits?: AiFeatureServices['conversationArtifacts'];
@@ -42,12 +38,8 @@ export default function OverviewRoute({
   onPrepareVisit,
   onOpenSchedule,
   onOpenDailyReport,
-  loadSavedVisitQuestions,
   discoverManualVisits,
 }: OverviewRouteProps) {
-  const preparation = useOverviewPreparationData(appointment?.id, {
-    loadSavedVisitQuestions,
-  });
   useNavigationLeaveStateRegistration({
     canLeave: true,
     hasUnsavedChanges: false,
@@ -90,19 +82,7 @@ export default function OverviewRoute({
           onOpenSchedule={onOpenSchedule}
           onPrepareVisit={onPrepareVisit}
           onRetryAppointments={onRetryAppointments}
-        >
-          {appointment ? (
-            <OverviewPreparationQuestions
-              questions={
-                preparation.questions?.appointmentId === appointment.id
-                  ? preparation.questions
-                  : null
-              }
-              state={preparation.questionState}
-              onRetry={preparation.retry}
-            />
-          ) : null}
-        </NextVisitPanel>
+        />
         <OverviewPreparedVisits
           appointmentId={appointment?.id}
           discover={discoverManualVisits}

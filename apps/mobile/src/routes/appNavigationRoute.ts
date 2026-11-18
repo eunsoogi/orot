@@ -14,6 +14,7 @@ export type AppNavigationRoute =
   | 'manual-history'
   | 'appointments'
   | 'appointment-preparation'
+  | 'visit-day-questions'
   | 'medical'
   | 'medical-manual'
   | 'settings-provider'

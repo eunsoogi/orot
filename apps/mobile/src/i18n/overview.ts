@@ -1,4 +1,11 @@
 export const overviewKo = {
+  'visitDayQuestions.open': '진료 당일 질문 보기',
+  'visitDayQuestions.title': '진료 당일 물어볼 질문',
+  'visitDayQuestions.empty':
+    '이 진료에 저장한 질문이 아직 없어요. 대화에서 진료 질문을 준비한 뒤 검토해 저장해 주세요.',
+  'visitDayQuestions.readOnly':
+    '검토해 저장한 질문을 읽는 화면이에요. 새 질문을 생성하거나 기존 기록을 변경하지 않아요.',
+
   'overview.title': '한눈에',
   'overview.healthOverview': '내 건강 한눈에',
   'overview.localTimeZone': '현지 시간 {zone}',
