@@ -5,6 +5,7 @@ final class FormScrollGeometryUITests: XCTestCase {
     @MainActor
     func testFormGestureBoundaries() throws {
         try FormScrollGeometryRegression.verify()
+        try verifyActionDockOcclusion()
         XCTAssertEqual(FormScrollGeometry.uniqueOwnerIndex([1, 0]), 0)
         XCTAssertEqual(FormScrollGeometry.uniqueOwnerIndex([0, 1]), 1)
         XCTAssertNil(FormScrollGeometry.uniqueOwnerIndex([0, 0]))
@@ -34,5 +35,41 @@ final class FormScrollGeometryUITests: XCTestCase {
         for point in [drag.start, drag.end] {
             XCTAssertTrue(shifted.viewport.contains(CGPoint(x: point.dx + origin.x, y: point.dy + origin.y)))
         }
+    }
+
+    /// Representative synthetic frames reproduce the hosted editor/dock overlap; native hit testing remains separate.
+    private func verifyActionDockOcclusion() throws {
+        let app = CGRect(x: 0, y: 0, width: 402, height: 874)
+        let scroll = CGRect(x: 0, y: 110, width: 402, height: 764)
+        let editor = CGRect(x: 55, y: 776, width: 292, height: 70)
+        let save = CGRect(x: 101, y: 792, width: 160, height: 48)
+        let before = try XCTUnwrap(FormScrollGeometry(application: app, scroll: scroll, keyboard: nil))
+        XCTAssertTrue(before.contains(editor))
+        XCTAssertTrue(save.contains(CGPoint(x: editor.midX, y: editor.midY)))
+        for origin in [CGPoint.zero, CGPoint(x: 11, y: 23)] {
+            let movedEditor = editor.offsetBy(dx: origin.x, dy: origin.y)
+            let safe = FormScrollGeometry.unobstructedScrollFrame(
+                scroll.offsetBy(dx: origin.x, dy: origin.y), target: movedEditor,
+                controls: [save.offsetBy(dx: origin.x, dy: origin.y)],
+            )
+            XCTAssertEqual(safe.maxY, 792 + origin.y)
+            let geometry = try XCTUnwrap(FormScrollGeometry(application: app.offsetBy(dx: origin.x, dy: origin.y), scroll: safe, keyboard: nil))
+            XCTAssertFalse(geometry.contains(movedEditor))
+            let drag = try XCTUnwrap(geometry.gesture(target: movedEditor, towardTop: false, horizontalPosition: 0.5))
+            XCTAssertLessThan(drag.end.dy, drag.start.dy)
+            for point in [drag.start, drag.end] {
+                XCTAssertTrue(geometry.viewport.contains(CGPoint(x: point.dx + origin.x, y: point.dy + origin.y)))
+            }
+            XCTAssertTrue(geometry.contains(movedEditor.offsetBy(dx: 0, dy: -70)))
+        }
+        // A button beside the target does not turn its transparent horizontal gap into an obstacle.
+        let beside = CGRect(x: 350, y: 792, width: 44, height: 48)
+        XCTAssertEqual(FormScrollGeometry.unobstructedScrollFrame(scroll, target: editor, controls: [beside]), scroll)
+        XCTAssertEqual(FormScrollGeometry.unobstructedScrollFrame(scroll, target: editor, controls: []), scroll)
+        let safe = FormScrollGeometry.unobstructedScrollFrame(scroll, target: editor, controls: [save])
+        let keyboard = CGRect(x: 0, y: 590, width: 402, height: 284)
+        let focused = try XCTUnwrap(FormScrollGeometry(application: app, scroll: safe, keyboard: keyboard))
+        XCTAssertEqual(focused.viewport.maxY, 590)
+        XCTAssertFalse(focused.contains(editor))
     }
 }
