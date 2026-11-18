@@ -142,6 +142,11 @@ export function createConversationArtifactReader(
       const operation = committedPeriodReadOperation(database, signal);
       const scoped = methods(operation);
       return {
+        get healthContextReportScope() {
+          return owned() && operation.active
+            ? operation.reportScope
+            : undefined;
+        },
         readMany: (ids: readonly string[]) =>
           (owned() ? scoped : this).readMany(ids),
         readManyWithAncestry: (ids: readonly string[]) =>

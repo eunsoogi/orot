@@ -1,0 +1,68 @@
+import type { SqlDatabase } from '@orot/storage';
+import type { HealthContextReport } from './types';
+
+/** Tokens are identity capabilities, never serialized input or source-validity proof. */
+export type CommittedReportScope = Readonly<{ kind: 'committed_report_scope' }>;
+class ScopedReports extends Map<string, HealthContextReport> {
+  active = true;
+  override set(key: string, value: HealthContextReport) {
+    if (this.active && super.get(key) !== value)
+      super.set(key, immutableReportSnapshot(value));
+    return this;
+  }
+}
+const snapshots = new WeakSet<HealthContextReport>();
+/** Keep caller-visible mutable objects out of both bounded and operation caches. */
+export function immutableReportSnapshot(
+  value: HealthContextReport,
+): HealthContextReport {
+  if (snapshots.has(value)) return value;
+  const copy = immutableSnapshot(value);
+  snapshots.add(copy);
+  return copy;
+}
+
+// Copy before freezing so callers retain ownership of their input window/report.
+function immutableSnapshot<T>(value: T): T {
+  if (!value || typeof value !== 'object') return value;
+  const copy = Array.isArray(value)
+    ? value.map(immutableSnapshot)
+    : Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [
+          key,
+          immutableSnapshot(item),
+        ]),
+      );
+  return Object.freeze(copy) as T;
+}
+const owners = new WeakMap<
+  CommittedReportScope,
+  { database: SqlDatabase; reports: ScopedReports }
+>();
+
+export function createCommittedReportScope(database: SqlDatabase) {
+  const token: CommittedReportScope = Object.freeze({
+    kind: 'committed_report_scope',
+  });
+  const reports = new ScopedReports();
+  owners.set(token, { database, reports });
+  return {
+    token,
+    dispose() {
+      reports.active = false;
+      reports.clear();
+    },
+  };
+}
+
+/** Only exact database owners can share already-committed values. Late publication
+ * after disposal is ignored, including an outstanding transaction's completion. */
+export function committedReportCache(
+  token: CommittedReportScope | undefined,
+  database: SqlDatabase,
+) {
+  const owner = token && owners.get(token);
+  return owner?.database === database && owner.reports.active
+    ? owner.reports
+    : undefined;
+}

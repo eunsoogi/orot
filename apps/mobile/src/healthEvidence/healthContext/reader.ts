@@ -1,3 +1,4 @@
+import { immutableReportSnapshot } from './committedReportScope';
 import { registerHealthContextReadOwner } from './healthContextReadOperation';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import {
@@ -196,17 +197,18 @@ export function createHealthContextReader(
       if (!sameGeneration(report, committed))
         throw new Error('Health context changed before publication.');
       cache.delete(key);
-      cache.set(key, report);
+      cache.set(key, immutableReportSnapshot(report));
       if (maxEntries !== undefined && cache.size > maxEntries)
         cache.delete(cache.keys().next().value!);
       return report;
     };
   const baseCache = new Map<string, HealthContextReport>();
   const reader = createRead(baseCache, HEALTH_CONTEXT_TOPICS.length);
-  registerHealthContextReadOwner(reader, cache => {
+  registerHealthContextReadOwner(reader, database, cache => {
     // Copy only committed bounded entries. Each scoped hit still checks live
     // generations and cancellation; scoped results never flow back to baseCache.
-    for (const [key, report] of baseCache) cache.set(key, report);
+    for (const [key, report] of baseCache)
+      if (!cache.has(key)) cache.set(key, report);
     return createRead(cache);
   });
   return reader;

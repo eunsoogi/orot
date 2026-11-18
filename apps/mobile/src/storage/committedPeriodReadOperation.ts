@@ -1,3 +1,7 @@
+import {
+  createCommittedReportScope,
+  committedReportCache,
+} from '../healthEvidence/healthContext/committedReportScope';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import type { HealthContextReport } from '../healthEvidence/healthContext/types';
 import { readHealthContextReport } from '../healthEvidence/healthContext/reader';
@@ -19,12 +23,13 @@ export function committedPeriodReadOperation(
   database: SqlDatabase,
   signal?: AbortSignal,
 ) {
-  const reports = new Map<string, HealthContextReport>();
+  const reportScope = createCommittedReportScope(database);
+  const reports = committedReportCache(reportScope.token, database)!;
   let disposed = false;
   const cancel = () => reports.clear();
   const dispose = () => {
     disposed = true;
-    reports.clear();
+    reportScope.dispose();
     signal?.removeEventListener('abort', cancel);
   };
   signal?.addEventListener('abort', cancel, { once: true });
@@ -32,6 +37,7 @@ export function committedPeriodReadOperation(
     if (signal?.aborted) throw new Error('Conversation read was cancelled.');
   };
   return {
+    reportScope: reportScope.token,
     dispose,
     get active() {
       return !disposed;

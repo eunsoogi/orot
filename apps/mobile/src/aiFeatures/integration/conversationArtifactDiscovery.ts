@@ -1,3 +1,4 @@
+import { registerConversationHistoryReadOwner } from './conversationHistoryReadOperation';
 import { createBoundConversationCaptureOwner } from './boundConversationCapture';
 import { createConversationCaptureOwner } from './conversationCaptureBatch';
 import type { SqlDatabase } from '@orot/storage';
@@ -77,7 +78,27 @@ export function createConversationArtifactDiscovery(input: {
       boundCaptureOwner,
     }),
   };
-  return {
+  const revalidateSession = async (
+    reads: Pick<typeof input.storage, 'readSessionMany'>,
+    sessionId: string,
+    version: number,
+    items: readonly { readonly id: string; readonly revision: string }[],
+    signal: AbortSignal,
+  ) => {
+    if (signal.aborted) return false;
+    const values = await reads.readSessionMany(
+      sessionId,
+      version,
+      items.map(item => item.id),
+    );
+    return (
+      !signal.aborted &&
+      values.every((value, index) =>
+        Boolean(value && fingerprint(value) === items[index]!.revision),
+      )
+    );
+  };
+  const discovery = {
     ...capture,
     read,
     async revalidatePage(
@@ -95,25 +116,14 @@ export function createConversationArtifactDiscovery(input: {
     },
     listSessions: input.storage.listSessions,
     activeSessionVersion: input.storage.activeSessionVersion,
-    async revalidateSession(
-      sessionId: string,
-      version: number,
-      items: readonly { readonly id: string; readonly revision: string }[],
-      signal: AbortSignal,
-    ) {
-      if (signal.aborted) return false;
-      const values = await input.storage.readSessionMany(
-        sessionId,
-        version,
-        items.map(item => item.id),
-      );
-      return (
-        !signal.aborted &&
-        values.every((value, index) =>
-          Boolean(value && fingerprint(value) === items[index]!.revision),
-        )
-      );
-    },
+    revalidateSession: (
+      ...args: Parameters<typeof revalidateSession> extends [
+        unknown,
+        ...infer Rest,
+      ]
+        ? Rest
+        : never
+    ) => revalidateSession(input.storage, ...args),
     readSession: (request: {
       readonly sessionId: string;
       readonly cursor?: { readonly createdAt: string; readonly id: string };
@@ -193,4 +203,20 @@ export function createConversationArtifactDiscovery(input: {
       };
     },
   };
+  registerConversationHistoryReadOwner(discovery, signal => {
+    const operation = input.storage.beginReadOperation?.(signal);
+    if (!operation) return undefined;
+    return {
+      readSession: request =>
+        restoreConversationSessionPage({
+          ...input,
+          ...request,
+          boundCaptureOwner,
+          readOperation: operation,
+        }),
+      revalidateSession: (...args) => revalidateSession(operation, ...args),
+      dispose: operation.dispose,
+    };
+  });
+  return discovery;
 }

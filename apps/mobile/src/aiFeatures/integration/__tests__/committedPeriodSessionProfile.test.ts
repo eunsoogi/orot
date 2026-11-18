@@ -57,7 +57,7 @@ test('one session operation reuses six committed periods but never source validi
       signal: new AbortController().signal,
     });
     expect(page.items).toHaveLength(6);
-    expect(aggregate).toBe(24);
+    expect(aggregate).toBe(12);
     console.info(
       JSON.stringify({
         stage: 'session-committed-reports',
