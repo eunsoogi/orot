@@ -4,6 +4,7 @@ import {
   screen,
   within,
 } from '@testing-library/react-native';
+import { appColors } from '../../layout/appColors';
 import { ConversationScreen } from '../ConversationScreen';
 
 /** These fixtures prove transcript ordering and action wiring, not native geometry. */
@@ -31,7 +32,11 @@ test('keeps four guarded choices above new answers without report-selection pros
   expect(within(choices).getAllByRole('button')).toHaveLength(4);
   expect(choices).toHaveStyle({ paddingVertical: 20, gap: 12 });
   const divider = screen.getByTestId('conversation-choices-divider');
-  expect(divider).toHaveStyle({ marginBottom: 8 });
+  expect(divider).toHaveStyle({
+    marginBottom: 8,
+    height: 1,
+    backgroundColor: appColors.border,
+  });
   expect(divider.props.accessible).toBe(false);
   expect(divider.props.pointerEvents).toBe('none');
   await fireEvent.changeText(
