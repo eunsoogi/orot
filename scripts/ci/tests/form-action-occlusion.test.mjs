@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { formReplaceBody } from '../form-replace-body.mjs';
 
 const root = new URL('../../../apps/mobile/ios/OrotUITests/', import.meta.url);
 const source = (name) => readFileSync(new URL(name, root), 'utf8');
@@ -47,4 +48,29 @@ test('registered geometry regression retains occlusion, transparent-gap, keyboar
   ]) {
     assert.ok(regression.includes(expected), expected);
   }
+});
+
+test('Swift parity extraction ignores commentary and fails before compiling incomplete boundaries', () => {
+  const form = source('FormUITestConditions.swift');
+  const body = formReplaceBody(form);
+  assert.ok(body.startsWith('    static func replace('));
+  assert.ok(body.includes('private static func recordTiming('));
+  assert.ok(!body.includes('static func exposeFocusedInput('));
+  assert.ok(!body.includes('private static func navigationControlFrames('));
+  const changedComment = form.replace('/// Native buttons', '/// A differently worded note');
+  assert.equal(
+    formReplaceBody(changedComment).replace('/// A differently worded note', '/// Native buttons'),
+    body,
+  );
+  assert.throws(() =>
+    formReplaceBody(form.replace('static func replace(', 'static func missing(')),
+  );
+  assert.throws(() =>
+    formReplaceBody(
+      form.replace('private static func navigationControlFrames(', 'private static func missing('),
+    ),
+  );
+  assert.throws(() =>
+    formReplaceBody('    private static func navigationControlFrames(\n    static func replace('),
+  );
 });

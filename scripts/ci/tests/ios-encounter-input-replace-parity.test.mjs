@@ -4,15 +4,13 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { formReplaceBody } from '../form-replace-body.mjs';
 
 test('the original replace body performs identical actions and assertions with absent or failing observation', () => {
   const directory = mkdtempSync(join(tmpdir(), 'orot-input-parity-'));
   try {
     const form = readFileSync('apps/mobile/ios/OrotUITests/FormUITestConditions.swift', 'utf8');
-    const body = form.slice(
-      form.indexOf('    static func replace('),
-      form.indexOf('    /// Native navigation'),
-    );
+    const body = formReplaceBody(form);
     // Only external UI dependencies are doubled; the real replace/measure/timing bodies execute unchanged.
     writeFileSync(
       join(directory, 'main.swift'),
