@@ -1,3 +1,5 @@
+import { ensureHealthContextGeneration } from '../generation';
+import { previousHeartCalendarSweep } from '../testSupport/heartRateActivityLegacySql';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import type { SqlExecutor } from '@orot/storage';
 import { healthObservation } from '../../../../../../packages/storage/__tests__/localQueryTestSupport';
@@ -44,11 +46,12 @@ function legacyCalendar(query: string): string {
 }
 
 test.each([30, 180])(
-  'calendar sweep preserves all %i days without a correlated calendar scan',
+  'indexed calendar preserves all %i days without a correlated calendar scan',
   async count => {
     const f = createHealthEvidenceTestDatabase();
     try {
       await runMigrations(f.database);
+      await ensureHealthContextGeneration(f.database);
       const records = createRecordRepository(f.database);
       const base = Date.UTC(2025, 0, 1);
       const iso = (day: number, sample = 0) =>
@@ -89,7 +92,8 @@ test.each([30, 180])(
         series(days),
       );
       const sweepMs = performance.now() - started;
-      const previous = legacyCalendar(query);
+      const sweep = previousHeartCalendarSweep(query);
+      const previous = legacyCalendar(sweep);
       expect(previous).not.toContain('calendar_timeline');
       const legacyStarted = performance.now();
       const legacy = await f.database.execute(previous, parameters);
@@ -101,7 +105,11 @@ test.each([30, 180])(
         result[0]!.days.every(day => day.activityContext?.[0]?.samples === 20),
       ).toBe(true);
       expect(query).not.toMatch(/SELECT date FROM days WHERE h.start_key/);
-      expect(query).toContain('ORDER BY start_key, boundary_order');
+      expect(query).not.toContain('calendar_timeline');
+      expect(query).toContain('FROM days d CROSS JOIN health_observations r');
+      expect((await f.database.execute(sweep, parameters)).rows).toEqual(
+        current.rows,
+      );
       console.info(
         JSON.stringify({
           benchmark: 'heart_calendar',
@@ -130,11 +138,12 @@ test.each([
     '2026-11-02T05:00:00Z',
   ],
 ])(
-  'calendar sweep preserves DST and submillisecond half-open endpoints from %s',
+  'indexed calendar preserves DST and submillisecond half-open endpoints from %s',
   async (from, to, midnight) => {
     const f = createHealthEvidenceTestDatabase();
     try {
       await runMigrations(f.database);
+      await ensureHealthContextGeneration(f.database);
       const records = createRecordRepository(f.database);
       const days = healthContextDays({
         fromInclusive: from,

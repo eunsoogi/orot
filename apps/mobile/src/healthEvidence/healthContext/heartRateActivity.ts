@@ -16,9 +16,10 @@ import type {
 
 /** Enrich retained heart-rate series from local intervals only. A time overlap is not
  * a HealthKit workout association, active exercise, causation or a clinical judgment.
- * A boundary-first calendar sweep assigns exact local days without scanning every day per sample.
- * healthContextDays supplies ordered, non-overlapping date/end keys; carrying their maxima
- * preserves DST and fractional endpoints, and the end-key check excludes gaps.
+ * healthContextDays supplies non-overlapping local days; each day seeks the
+ * existing concept/time expression index.
+ * Exact half-open keys preserve DST, partial days and fractional endpoints without
+ * sorting all samples together with calendar boundaries. No sample or day is capped.
  * A sorted timeline carries the maximum prior workout end, avoiding a workout scan per sample.
  * At a shared instant, interval ends sort before workout starts and point samples after them:
  * [start, end) intervals exclude an adjacent workout, while points include a workout's start.
@@ -52,7 +53,7 @@ export async function addHeartRateActivityContext(
   parameters.push(to);
   const result = await executor.execute(
     `SELECT * FROM (
-    WITH days(date, from_key, to_key) AS (${healthContextCalendarSql}),
+    WITH days(date, from_key, to_key) AS MATERIALIZED (${healthContextCalendarSql}),
     workouts AS MATERIALIZED (
       SELECT ${at} AS start_key, ${end} AS end_key
       FROM health_observations r
@@ -60,36 +61,22 @@ export async function addHeartRateActivityContext(
         AND json_extract(r.payload_json, '$.concept') = 'workout_duration'
         AND ${currentEvidenceCondition('health_observation')}
         AND ${at} < ? AND ${end} > ? AND ${end} > ${at} ${cutoff}
-    ), undated_heart AS MATERIALIZED (
+    ), heart AS MATERIALIZED (
       SELECT ${at} AS start_key, ${end} AS end_key,
         json_extract(r.payload_json, '$.value.unit') AS unit,
         json_extract(r.payload_json, '$.value.amount') AS amount,
         COALESCE(json_extract(r.payload_json, '$.provenance.source.sourceIdentifier'),
           json_extract(r.payload_json, '$.provenance.origin')) || ':' ||
         COALESCE(json_extract(r.payload_json, '$.provenance.source.productType'),
-          json_extract(r.payload_json, '$.provenance.source.device.model'), '') AS sensor
-      FROM health_observations r
+          json_extract(r.payload_json, '$.provenance.source.device.model'), '') AS sensor, d.date AS date
+      FROM days d CROSS JOIN health_observations r
       WHERE json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
         AND json_extract(r.payload_json, '$.concept') = 'heart_rate'
         AND ${currentEvidenceCondition('health_observation')}
-        AND ${at} >= ? AND ${at} < ? ${cutoff}
+        AND ${at} >= d.from_key AND ${at} < d.to_key AND ${at} >= ? AND ${at} < ? ${cutoff}
         AND json_extract(r.payload_json, '$.value.kind') = 'quantity'
         AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
         AND json_type(r.payload_json, '$.value.unit') = 'text'
-    ), calendar_events AS (
-      SELECT h.*, NULL AS calendar_date, NULL AS calendar_to, 1 AS boundary_order FROM undated_heart h
-      UNION ALL
-      SELECT from_key, NULL, NULL, NULL, NULL, date, to_key, 0 FROM days
-    ), calendar_timeline AS (
-      SELECT e.*, max(calendar_date) OVER calendar_order AS date,
-        max(calendar_to) OVER calendar_order AS to_key
-      FROM calendar_events e
-      WINDOW calendar_order AS (
-        ORDER BY start_key, boundary_order ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-      )
-    ), heart AS MATERIALIZED (
-      SELECT start_key, end_key, unit, amount, sensor, date
-      FROM calendar_timeline WHERE boundary_order = 1 AND start_key < to_key
     ), events AS (
       SELECT h.*, CASE WHEN h.end_key > h.start_key THEN h.end_key ELSE h.start_key END AS event_key,
         CASE WHEN h.end_key > h.start_key THEN 0 ELSE 2 END AS event_order,
