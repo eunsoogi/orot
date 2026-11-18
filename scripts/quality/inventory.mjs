@@ -1,3 +1,4 @@
+import { isImmutableOnnxPath, verifyOnnxVendor, vendorPath } from '../ci/verify-onnx-vendor.mjs';
 import { readFileSync } from 'node:fs';
 import { lstat } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
@@ -54,6 +55,13 @@ function policyValue(record, key) {
 }
 
 export function classifyPath(path) {
+  if (isImmutableOnnxPath(path))
+    return {
+      path,
+      kind: 'excluded',
+      reason: 'Immutable upstream ONNX 1.24.2 source; never reformat.',
+      validation: 'scripts/ci/tests/onnx-vendor-integrity.test.mjs',
+    };
   const excluded = policyValue(policy.excludedPaths, path);
   if (excluded) {
     // This comment-only file becomes active code if a rule is added, so guard its exception.
@@ -108,6 +116,8 @@ export async function buildInventory({
   trackedPaths = trackedAndNewPaths(),
   root = repositoryRoot,
 } = {}) {
+  // Integrity is mandatory before excluding any upstream file from local tools.
+  if (trackedPaths.some((path) => path.startsWith(`${vendorPath}/`))) verifyOnnxVendor(root);
   const entries = trackedPaths.map(classifyPath);
   validateLintScopes(entries);
   const existingEntries = [];

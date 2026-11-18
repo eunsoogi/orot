@@ -12,7 +12,7 @@ function repositoryEnvironment(env) {
 }
 
 export function buildInputDigest(root, env = process.env) {
-  // Hash app, package, and dependency-patch inputs before generated setup rewrites metadata.
+  // Hash app, package, and dependency-patch and exact vendored ONNX inputs before generated setup rewrites metadata.
   const gitEnv = repositoryEnvironment(env);
   const files = execFileSync('git', ['-C', root, 'ls-files', '-z'], {
     encoding: 'utf8',
@@ -27,6 +27,7 @@ export function buildInputDigest(root, env = process.env) {
         file.startsWith('apps/mobile/') ||
         file.startsWith('packages/') ||
         file.startsWith('vendor/patches/') ||
+        file.startsWith('vendor/onnxruntime-swift-package-manager/') ||
         ['pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json', '.nvmrc'].includes(file),
     )
     .sort()) {
@@ -58,6 +59,7 @@ export function productContext(root, profile, env = process.env) {
       'apps/mobile',
       'packages',
       'vendor/patches',
+      'vendor/onnxruntime-swift-package-manager',
       'pnpm-lock.yaml',
       'pnpm-workspace.yaml',
       'package.json',

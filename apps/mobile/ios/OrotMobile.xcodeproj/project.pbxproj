@@ -1391,7 +1391,7 @@
 			mainGroup = 83CBB9F61A601CBA00E9B192;
 			packageReferences = (
 				C63F00000000000000000001 /* XCLocalSwiftPackageReference "provider-openai" */,
-				F24E00000000000000000031 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */,
+				F24E00000000000000000031 /* XCLocalSwiftPackageReference "onnxruntime-swift-package-manager" */,
 				F24E00000000000000000032 /* XCRemoteSwiftPackageReference "swift-package-support-sentencepiece" */,
 			);
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
@@ -2286,17 +2286,13 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "../../../packages/provider-openai";
 		};
+		F24E00000000000000000031 /* XCLocalSwiftPackageReference "onnxruntime-swift-package-manager" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../vendor/onnxruntime-swift-package-manager";
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		F24E00000000000000000031 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/microsoft/onnxruntime-swift-package-manager.git";
-			requirement = {
-				kind = exactVersion;
-				version = 1.24.2;
-			};
-		};
 		F24E00000000000000000032 /* XCRemoteSwiftPackageReference "swift-package-support-sentencepiece" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/liuliu/swift-package-support-sentencepiece.git";
@@ -2315,7 +2311,7 @@
 		};
 		F24E00000000000000000021 /* onnxruntime */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F24E00000000000000000031 /* XCRemoteSwiftPackageReference "onnxruntime-swift-package-manager" */;
+			package = F24E00000000000000000031 /* XCLocalSwiftPackageReference "onnxruntime-swift-package-manager" */;
 			productName = onnxruntime;
 		};
 		F24E00000000000000000022 /* swift-package-support-sentencepiece */ = {
