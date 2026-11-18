@@ -47,6 +47,8 @@ export const modelSettingsKo = {
     'API 키를 저장하지 못했습니다. 기존 연결은 유지됩니다.',
   'modelSettings.keyConnected': 'API 키 연결됨',
   'modelSettings.keyDisconnected': 'API 키 연결 안 됨',
+  'modelSettings.editApiKey': 'OpenAI API 키 수정',
+  'modelSettings.logoutApi': 'OpenAI API 로그아웃',
   'modelSettings.apiKey': 'OpenAI API 키',
   'modelSettings.replaceKey': '변경할 API 키 입력',
   'modelSettings.enterKey': 'API 키 입력',

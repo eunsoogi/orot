@@ -2,7 +2,7 @@ import { OpenAIAccountPanel } from '../../voiceSettings/OpenAIAccountPanel';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
 import { AccountConnectionActions } from './AccountConnectionActions';
 import { providerSettingsStyles } from '../../layout/providerSettingsPresentation';
-import { AppSymbol } from '../../layout/AppSymbol';
+import { OpenAIProviderMark } from './OpenAIProviderMark';
 import { AppText as Text } from '../../layout/AppText';
 import { appColors } from '../../layout/appColors';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -68,11 +68,9 @@ export default function SettingsAccountsPanels({
                           style={styles.account}
                           testID={`chatgpt-account-${index}`}
                         >
-                          <AppSymbol
-                            name={selected ? 'checkmark.circle.fill' : 'circle'}
-                            size={18}
-                            color={appColors.text}
-                          />
+                          <View style={providerSettingsStyles.icon}>
+                            <OpenAIProviderMark />
+                          </View>
                           <View style={styles.accountCopy}>
                             <Text style={styles.accountTitle}>
                               {providerSelectionText.chatGPTAccountName(
