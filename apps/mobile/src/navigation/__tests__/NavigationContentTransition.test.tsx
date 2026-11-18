@@ -211,3 +211,15 @@ test('fades through a sibling veil without translating either screen', async () 
     screen.queryByText('Home', { includeHiddenElements: true }),
   ).toBeNull();
 });
+
+// A native driver may report interruption without a newer React tab transition.
+test('an interrupted incoming fade uncovers the mounted destination', async () => {
+  const view = await render(transition('home', 'Home'));
+  await view.rerender(transition('records', 'Records'));
+  await act(() => pendingAnimations[0]!.complete({ finished: true }));
+  await act(() => pendingAnimations[1]!.complete({ finished: false }));
+  expect(screen.getByText('Records')).toBeVisible();
+  expect(
+    screen.getByTestId('navigation-content-transition').props.pointerEvents,
+  ).toBe('auto');
+});
