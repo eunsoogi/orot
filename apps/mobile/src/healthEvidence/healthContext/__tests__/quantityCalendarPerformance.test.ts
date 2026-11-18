@@ -3,6 +3,7 @@ import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tes
 import { healthObservation } from '../../../../../../packages/storage/__tests__/localQueryTestSupport';
 import { readHealthQuantityContext } from '../quantityQuery';
 import { healthContextDays } from '../window';
+import { ensureHealthContextGeneration } from '../generation';
 
 // Synthetic SQLite benchmark: identical samples, increasing calendar width.
 // Assert the query-plan structure and full result, not host-dependent wall-clock speed.
@@ -10,6 +11,8 @@ test('aggregates synthetic long-history samples without dropping data', async ()
   const { database, close } = openSqliteTestDatabase(':memory:');
   try {
     await runMigrations(database);
+    // Match createHealthContextReader readiness, including its timestamp index.
+    await ensureHealthContextGeneration(database);
     await database.transaction(async tx => {
       for (let index = 0; index < 10000; index += 1) {
         const at = new Date(Date.UTC(2026, 0, 1) + index * 60000).toISOString();
