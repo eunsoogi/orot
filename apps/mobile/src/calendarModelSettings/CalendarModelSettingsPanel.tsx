@@ -1,3 +1,4 @@
+import { useModelConsentSave } from '../agent/execution/useModelConsentSave';
 import { useEffect, useRef, useState } from 'react';
 import { useCalendarModelActions } from './useCalendarModelActions';
 import { View } from 'react-native';
@@ -35,6 +36,7 @@ export function CalendarModelSettingsPanel({
   ) => void;
   readonly onBusyChange: (busy: boolean) => void;
 }) {
+  const saveConsent = useModelConsentSave('calendar', calendarModelStore);
   const [connected, setConnected] = useState(false);
   const [saved, setSaved] = useState<ProviderSelection | null>(null);
   const [pending, setPending] = useState<ProviderSelectionOption | null>(null);
@@ -154,7 +156,7 @@ export function CalendarModelSettingsPanel({
         providerId: current.provider.id,
         modelId: current.modelId,
       };
-      await calendarModelStore.save(selection);
+      await saveConsent(current);
       setSaved(selection);
       setPending(null);
       setMessage('');
@@ -223,6 +225,7 @@ export function CalendarModelSettingsPanel({
       {message ? <Text accessibilityRole="alert">{message}</Text> : null}
       {pending ? (
         <ProviderSelectionConfirmation
+          consentSlot="calendar"
           hasActionDock={hasDock}
           option={current ?? pending}
           blockedMessage={

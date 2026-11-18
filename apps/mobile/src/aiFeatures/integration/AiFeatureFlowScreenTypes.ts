@@ -1,3 +1,4 @@
+import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import type { ReactElement } from 'react';
 import type {
   EvidenceItem,
@@ -20,6 +21,7 @@ export interface VisitQuestionsRenderInput {
   readonly onOpenSource: (reference: EvidenceItem) => void;
   readonly onRouteStateChange: (state: VisitQuestionsRouteState) => void;
   readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
+  readonly consent?: ExecutionConsentPort;
   readonly confirmConsent: (
     request: OutboundProcessingRequest,
   ) => Promise<boolean>;
@@ -72,6 +74,7 @@ export interface AiFeatureFlowScreenProps {
     owner?: import('./coldConversationSourceResolvers').ColdConversationSourceOwner,
   ) => void;
   readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
+  readonly consent?: ExecutionConsentPort;
   readonly confirmConsent: (
     request: OutboundProcessingRequest,
   ) => Promise<boolean>;

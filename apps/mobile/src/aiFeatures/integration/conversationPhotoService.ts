@@ -1,3 +1,4 @@
+import { isExecutionConsentCurrent } from '@orot/agent-runtime';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import type { AiFeatureLocalData } from './localData';
@@ -73,6 +74,17 @@ export function bindConversationPhotoExecution(
     photoInput: {
       evidenceIds: evidence.map(item => item.evidenceId),
       consent: {
+        isAuthorizationCurrent: (
+          request: Parameters<typeof authorizeConversationPhoto>[0]['request'],
+        ) => isExecutionConsentCurrent(base.consent, request),
+        subscribeAuthorizationInvalidation: (
+          request: Parameters<typeof authorizeConversationPhoto>[0]['request'],
+          listener: () => void,
+        ) =>
+          base.consent.subscribeAuthorizationInvalidation?.(
+            request,
+            listener,
+          ) ?? (() => {}),
         async authorize(
           request: Parameters<typeof authorizeConversationPhoto>[0]['request'],
         ) {
@@ -125,7 +137,11 @@ export function bindConversationPhotoExecution(
                 );
               });
             },
-            confirm: photo.confirm,
+            // Photo identity/source checks stay here; remote transmission approval belongs to settings.
+            confirm: request.remoteProcessing
+              ? async () =>
+                  (await base.consent.authorize(request)) === 'authorized'
+              : photo.confirm,
           });
           return result === 'authorized'
             ? ('authorized' as const)

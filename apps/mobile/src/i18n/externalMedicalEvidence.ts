@@ -24,7 +24,7 @@ export const externalMedicalEvidenceKo = {
   'externalMedicalEvidence.consent':
     '검색어를 Europe PMC에 전송하는 데 동의해요.',
   'externalMedicalEvidence.consentRequired':
-    '검색어 전송에 동의한 뒤 검색할 수 있어요.',
+    '모델 설정에서 Europe PMC 검색어 전송에 동의한 뒤 검색해 주세요.',
   'externalMedicalEvidence.empty': '검색 결과가 없어요.',
   'externalMedicalEvidence.unavailable':
     '외부 자료를 불러오지 못했어요. 연결을 확인하고 다시 시도해 주세요.',

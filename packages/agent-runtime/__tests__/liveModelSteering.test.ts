@@ -1,12 +1,12 @@
 import { liveModelSteering } from '../src/multiAgent/liveModelSteering';
 import type { RuntimeContext } from '../src/multiAgent/runtimeContext';
-import type { WorkflowSteeringStore } from '../src';
-import type { LanguageModelExecutionOptions } from '@orot/model-runtime';
+import type { WorkflowSteeringStore } from '../src/multiAgent/workflowOperationJournal';
+import type { LanguageModelProvider, LanguageModelExecutionOptions } from '@orot/model-runtime';
 import { makeProvider, workflowOptions } from './multiAgent-external-evidence-fixtures';
 
 const request = { messages: [{ role: 'user' as const, content: 'Synthetic question' }] };
 function fixture(authorized = true) {
-  const { provider, generate } = makeProvider([]);
+  const provider: LanguageModelProvider = makeProvider([]).provider;
   let listener: (() => Promise<void>) | undefined;
   const rows = [{ id: 'live', text: 'Shorter please', sequence: 1, status: 'queued' as const }];
   const store: WorkflowSteeringStore = {
@@ -42,10 +42,11 @@ function fixture(authorized = true) {
     midTurnSteeringBudget: { available: true, used: false },
   } as unknown as RuntimeContext<unknown>;
   let options: LanguageModelExecutionOptions | undefined;
-  generate.mockImplementation(async (_request, execution) => {
+  provider.generate = async (_request, execution) => {
     options = execution;
     return { ok: false, error: { code: 'internal_error', message: '', retryable: false } };
-  });
+  };
+  context.options.provider.generate = provider.generate;
   return { context, consent, store, options: () => options, wake: async () => listener?.() };
 }
 
@@ -134,4 +135,24 @@ test('closing bounds an unresolved bridge submission without replay or false fai
   expect(f.context.midTurnSteeringBudget!.used).toBe(true);
   expect(f.store.settleLive).not.toHaveBeenCalled();
   expect(f.context.signal.aborted).toBe(false);
+});
+
+test('settings revoked during durable beginLive blocks the final bridge submit', async () => {
+  const f = fixture();
+  let current = true;
+  const consent = { ...f.consent, isAuthorizationCurrent: () => current };
+  jest.mocked(f.store.beginLive!).mockImplementation(async () => {
+    current = false;
+    return true;
+  });
+  const submit = jest.fn(async () => {});
+  const live = liveModelSteering(f.context, 'model:1', request, consent);
+  await live.provider.generate(request);
+  f.options()!.midTurnSteering!.onReady({ submit });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(f.store.beginLive).toHaveBeenCalledTimes(1);
+  expect(submit).not.toHaveBeenCalled();
+  expect(f.store.settleLive).toHaveBeenCalledWith('model:1', 'live', 'failed');
+  expect(f.context.signal.aborted).toBe(false);
+  await live.close();
 });

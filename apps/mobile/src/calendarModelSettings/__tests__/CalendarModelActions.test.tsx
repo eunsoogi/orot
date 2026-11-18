@@ -8,6 +8,13 @@ import {
 } from '../../navigation/useNavigationPrimaryAction';
 import { calendarModelStore } from '../calendarModelStore';
 
+// View-only boundary: SQLite grant activation and credential races have dedicated service tests.
+jest.mock('../../agent/execution/saveModelSettingsConsent', () => ({
+  saveModelSettingsConsent: async (input: {
+    store: { save(value: unknown): Promise<void> };
+    selection: unknown;
+  }) => input.store.save(input.selection),
+}));
 jest.mock('../calendarModelStore', () => ({
   calendarModelStore: {
     load: jest.fn(async () => null),

@@ -1,11 +1,13 @@
+import { useVoiceConsentSave } from './useVoiceConsentSave';
 import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { localVoiceModel } from './voiceModels';
 import { voiceSettingsStore, type VoiceMode } from './voiceSettingsStore';
 import type { useVoiceCatalog } from './useVoiceCatalog';
 
-/** Owns a draft independently from saved choice; saving never starts audio or grants consent. */
+/** Owns a draft independently from saved choice; saving never starts audio; explicit external selection includes settings consent. */
 export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
+  const saveConsent = useVoiceConsentSave(catalog.revision);
   const [mode, setMode] = useState<VoiceMode>('local');
   const [model, setModel] = useState<string>(localVoiceModel);
   const [savedModel, setSavedModel] = useState<string | null>(null);
@@ -43,13 +45,7 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
     setBusy(true);
     setMessage('');
     try {
-      await voiceSettingsStore.save({
-        mode,
-        model,
-        ...(mode === 'openai-api' && catalog.revision !== null
-          ? { expectedAccountRevision: catalog.revision }
-          : {}),
-      });
+      await saveConsent(mode, model);
       if (!mounted.current) return;
       setSavedModel(model);
       setMessage(t('modelSettings.voiceSaved'));

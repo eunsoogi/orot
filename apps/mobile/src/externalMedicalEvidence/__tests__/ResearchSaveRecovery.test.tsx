@@ -1,3 +1,19 @@
+// This view fixture controls the separately persisted settings decision; real grant/transport guards have service tests.
+const mockSettingsAuthorize = jest.fn(
+  async () => 'authorized' as 'authorized' | 'renewal_required',
+);
+jest.mock('../../agent/execution/useInferenceConsent', () => ({
+  useInferenceConsent: () => ({
+    consent: {
+      authorize: mockSettingsAuthorize,
+      isAuthorizationCurrent: () => true,
+    },
+    disclosureSheet: null,
+  }),
+}));
+beforeEach(() => {
+  mockSettingsAuthorize.mockReset().mockResolvedValue('authorized');
+});
 import { fireEvent, screen } from '@testing-library/react-native';
 import { runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
@@ -54,9 +70,7 @@ test('a failed literature retention is visible and the user can retry the search
       'synthetic',
     );
     await fireEvent.press(screen.getByTestId('external-evidence-search'));
-    await fireEvent.press(
-      await screen.findByTestId('inference-disclosure-allow'),
-    );
+    expect(screen.queryByTestId('inference-disclosure-allow')).toBeNull();
     expect(
       await screen.findByText(getExternalMedicalEvidenceCopy().unavailable),
     ).toBeTruthy();

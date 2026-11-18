@@ -5,6 +5,7 @@ import type { EncounterApproval, EncounterPending } from '@orot/agent-runtime';
 import {
   SqliteCheckpointSaver,
   validateEncounterApproval,
+  isExecutionConsentCurrent,
 } from '@orot/agent-runtime';
 import { persistEncounterApproval } from '../agent/encounter/persistence';
 import {
@@ -177,6 +178,13 @@ export function createEncounterReviewService(
       const executionId = discovery.executionId(session);
       let denied = false;
       const model = composeEncounterModel(sourceId, executionId, selected, {
+        isAuthorizationCurrent(request) {
+          const valid = isExecutionConsentCurrent(consent, request);
+          if (!valid) denied = true;
+          return valid;
+        },
+        subscribeAuthorizationInvalidation:
+          consent.subscribeAuthorizationInvalidation?.bind(consent),
         async authorize(request) {
           const result = await consent.authorize(request);
           if (result !== 'authorized') denied = true;

@@ -1,3 +1,9 @@
+import {
+  apiCredentialMutation,
+  beginVoiceSettingsMutation,
+  createVoiceConsentIdentity,
+} from './voiceConsentIdentity';
+import { createConsentGeneration } from '../agent/execution/consentGeneration';
 import { discoverApiModels } from './voiceApiModelCatalog';
 import { localVoiceModel, validVoiceModel } from './voiceModels';
 import {
@@ -16,6 +22,7 @@ interface StoredVoiceSettings {
   mode: VoiceMode;
   model: string;
   apiKey: string;
+  credentialEpoch?: string;
 }
 const service = 'com.orot.mobile.voice-settings.v1';
 let accountRevision = 0;
@@ -37,7 +44,9 @@ async function read(): Promise<StoredVoiceSettings> {
     !['local', 'openai-api'].includes(parsed.mode) ||
     typeof parsed.model !== 'string' ||
     !validVoiceModel(parsed.mode, parsed.model) ||
-    typeof parsed.apiKey !== 'string'
+    typeof parsed.apiKey !== 'string' ||
+    (parsed.credentialEpoch !== undefined &&
+      !/^[a-f0-9]{64}$/.test(parsed.credentialEpoch))
   ) {
     throw new Error('Voice settings unavailable');
   }
@@ -46,6 +55,22 @@ async function read(): Promise<StoredVoiceSettings> {
 
 /** Keep credentials out of React state and saved-settings readbacks. No network validation occurs. */
 export const voiceSettingsStore = {
+  ...createVoiceConsentIdentity({
+    read,
+    enqueue(work) {
+      const next = saving.catch(() => undefined).then(work);
+      saving = next;
+      return next;
+    },
+    async write(value) {
+      const saved = await setGenericPassword(
+        'voice-settings',
+        JSON.stringify(value),
+        { service, accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
+      );
+      if (!saved) throw new Error('Credential identity could not be saved');
+    },
+  }),
   async load(): Promise<VoiceSettings> {
     const value = await read();
     return {
@@ -54,10 +79,7 @@ export const voiceSettingsStore = {
       hasApiKey: Boolean(value.apiKey),
     };
   },
-  /** Reads only for the explicitly selected Realtime model after caller-owned audio consent.
-   * This is not a consent grant or a network validity check. Keep the returned secret
-   * out of React state, persistence, errors and logs; discard it after authentication.
-   */
+  /** Exact selected Realtime credentials only; keep this secret out of UI/logs/storage. */
   async realtimeCredentials(
     expectedModel: string,
   ): Promise<{ model: string; apiKey: string }> {
@@ -88,6 +110,9 @@ export const voiceSettingsStore = {
     removeKey?: boolean;
     expectedAccountRevision?: number;
   }): Promise<void> {
+    const finishMutation = beginVoiceSettingsMutation(
+      Boolean(value.removeKey || value.replacementKey?.trim()),
+    );
     const operation = saving
       .catch(() => undefined)
       .then(async () => {
@@ -116,6 +141,11 @@ export const voiceSettingsStore = {
             mode: value.mode,
             model,
             apiKey,
+            credentialEpoch: value.removeKey
+              ? undefined
+              : value.replacementKey?.trim()
+                ? createConsentGeneration()
+                : prior.credentialEpoch,
           }),
           { service, accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
         );
@@ -124,13 +154,12 @@ export const voiceSettingsStore = {
           accountRevision += 1;
         listeners.forEach(listener => listener());
       });
-    saving = operation;
-    return operation;
+    saving = operation.finally(finishMutation);
+    return saving;
   },
-  /** The existing device-only item remains the sole credential authority. Moving
-   * its management UI requires no secret copy, destructive migration or fallback.
-   */
+  /** The same device-only item owns credentials and epochs; neither leaves this storage boundary. */
   setAccountKey(key: string): Promise<void> {
+    const finishMutation = apiCredentialMutation.begin();
     const operation = saving
       .catch(() => undefined)
       .then(async () => {
@@ -140,15 +169,19 @@ export const voiceSettingsStore = {
           throw new Error('Invalid API credential');
         const saved = await setGenericPassword(
           'voice-settings',
-          JSON.stringify({ ...prior, apiKey }),
+          JSON.stringify({
+            ...prior,
+            apiKey,
+            credentialEpoch: apiKey ? createConsentGeneration() : undefined,
+          }),
           { service, accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
         );
         if (!saved) throw new Error('API account could not be saved');
         accountRevision += 1;
         listeners.forEach(listener => listener());
       });
-    saving = operation;
-    return operation;
+    saving = operation.finally(finishMutation);
+    return saving;
   },
   async accountStatus(): Promise<{ connected: boolean; revision: number }> {
     await saving.catch(() => undefined);
@@ -157,9 +190,7 @@ export const voiceSettingsStore = {
     if (revision !== accountRevision) return voiceSettingsStore.accountStatus();
     return { connected: Boolean(value.apiKey), revision };
   },
-  /** Only explicit catalog refresh uses this boundary, never audio or inference.
-   * Provider payloads/errors are not returned; an account change invalidates results.
-   */
+  /** Explicit catalog refresh only; account changes invalidate the returned models. */
   async discoverModels(
     signal: AbortSignal,
   ): Promise<{ revision: number; ids: string[] }> {
@@ -177,9 +208,7 @@ export const voiceSettingsStore = {
       },
     );
   },
-  /** Calendar inference has its own model selection and consent. Never reuse the voice mode.
-   * A caller must discard the secret after one native request and fence account changes.
-   */
+  /** Calendar selection is independent; discard secrets after use and fence account changes. */
   async classificationCredentials(
     expectedRevision: number,
     signal?: AbortSignal,

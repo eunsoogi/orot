@@ -1,200 +1,109 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import type { ReactNode } from 'react';
-import { Button } from 'react-native';
-import type { OutboundProcessingRequest } from '@orot/agent-runtime';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { act, render } from '@testing-library/react-native';
+import type {
+  ExecutionConsentPort,
+  OutboundProcessingRequest,
+} from '@orot/agent-runtime';
 import { useInferenceConsent } from '../useInferenceConsent';
+import { resolveSettingsConsentOwner } from '../settingsConsentOwner';
+import { settingsConsentRepository } from '../../../storage/settingsConsentRepository';
 
-/** Keeps the sheet's nested Modal safe-area provider mounted in Jest's native-view stub. */
-function withRootSafeArea(children: ReactNode) {
-  return (
-    <SafeAreaProvider
-      initialMetrics={{
-        frame: { x: 0, y: 0, width: 430, height: 800 },
-        insets: { top: 0, right: 0, bottom: 24, left: 0 },
-      }}
-    >
-      {children}
-    </SafeAreaProvider>
-  );
+jest.mock('../settingsConsentOwner', () => ({
+  resolveSettingsConsentOwner: jest.fn(),
+}));
+jest.mock('../../../storage/settingsConsentRepository', () => ({
+  settingsConsentRepository: jest.fn(),
+}));
+const identity = {
+  providerId: 'synthetic',
+  modelId: 'model',
+  recipient: 'Synthetic recipient',
+  authorityGeneration: 'generation',
+  credentialEpoch: 'credential',
+};
+const permission = {
+  purpose: 'record_conversation',
+  policyVersion: 'local-records-v1',
+  dataCategories: ['conversation'],
+  sourceKinds: ['personal_record'],
+};
+const owner = {
+  slot: 'conversation' as const,
+  domain: 'model' as const,
+  identity,
+  isCurrent: () => true,
+};
+const read = jest.fn();
+let port: ExecutionConsentPort;
+function Harness() {
+  const value = useInferenceConsent();
+  port = value.consent;
+  return value.disclosureSheet;
 }
-
-function renderWithSafeArea(children: ReactNode) {
-  return render(withRootSafeArea(children));
-}
-
 function request(
-  text: string,
-  signal: AbortSignal = new AbortController().signal,
+  text = 'Synthetic',
+  signal = new AbortController().signal,
 ): OutboundProcessingRequest {
   return {
-    operationRunId: 'synthetic-run',
-    providerId: 'synthetic-provider',
-    modelId: 'synthetic-model',
-    recipient: 'synthetic-recipient',
+    ...identity,
+    operationRunId: 'synthetic',
     remoteProcessing: true,
-    allowedScope: {
-      sourceKinds: ['personal_record'],
-      sourceIds: ['fixture-1'],
-    },
+    consentScope: permission,
+    allowedScope: { sourceKinds: ['personal_record'] },
     payload: { messages: [{ role: 'user', content: text }] },
     signal,
   };
 }
+beforeEach(() => {
+  jest.mocked(resolveSettingsConsentOwner).mockResolvedValue(owner);
+  read.mockReset().mockResolvedValue({
+    version: 1,
+    catalogVersion: 'model-settings-v1',
+    identity,
+    permissions: [permission],
+  });
+  jest.mocked(settingsConsentRepository).mockResolvedValue({ read } as never);
+});
 
-function ConsentHarness({
-  outboundRequest,
-  onResult,
-}: {
-  readonly outboundRequest: OutboundProcessingRequest;
-  readonly onResult?: (result: string) => void;
-}) {
-  const { consent, disclosureSheet } = useInferenceConsent();
-
-  async function authorize() {
-    const decision = await consent.authorize(outboundRequest);
-    const nextResult = decision === 'authorized' ? 'authorized' : 'renewal';
-    onResult?.(nextResult);
-  }
-
-  function startAuthorization(): void {
-    // Keep the event handler synchronous so fireEvent can reach the pending consent decision.
-    authorize().then(
-      () => undefined,
-      () => undefined,
-    );
-  }
-
-  return (
-    <>
-      <Button
-        onPress={startAuthorization}
-        testID="authorize-request"
-        title="Authorize request"
-      />
-      {disclosureSheet}
-    </>
+test('approved data categories authorize subsequent conversations without a modal or payload-specific repeat prompt', async () => {
+  const view = await render(<Harness />);
+  await expect(port.authorize(request('Synthetic first'))).resolves.toBe(
+    'authorized',
   );
-}
+  await expect(port.authorize(request('Synthetic next'))).resolves.toBe(
+    'authorized',
+  );
+  expect(read).toHaveBeenCalledTimes(2);
+  expect(view.queryByTestId('inference-disclosure-modal')).toBeNull();
+});
 
-describe('useInferenceConsent', () => {
-  it('denies a pull-down dismissal and asks again rather than remembering approval', async () => {
-    const onResult = jest.fn();
-    const view = await renderWithSafeArea(
-      <ConsentHarness
-        outboundRequest={request('Synthetic dismissed transfer.')}
-        onResult={onResult}
-      />,
-    );
-    await fireEvent.press(view.getByTestId('authorize-request'));
-    await fireEvent(
-      await view.findByTestId('inference-disclosure-modal'),
-      'requestClose',
-    );
-    await waitFor(() => expect(onResult).toHaveBeenCalledWith('renewal'));
-    expect(view.queryByTestId('inference-disclosure-modal')).toBeNull();
-    await fireEvent.press(view.getByTestId('authorize-request'));
-    expect(await view.findByTestId('inference-disclosure-modal')).toBeTruthy();
-    expect(onResult).toHaveBeenCalledTimes(1);
-    await fireEvent.press(view.getByTestId('inference-disclosure-cancel'));
-    await waitFor(() => expect(onResult).toHaveBeenCalledTimes(2));
-    expect(onResult).not.toHaveBeenCalledWith('authorized');
-  });
-  it('requires a fresh approval when the request payload changes', async () => {
-    const original = request('Synthetic selected note A.');
-    const onResult = jest.fn();
-    const view = await renderWithSafeArea(
-      <ConsentHarness outboundRequest={original} onResult={onResult} />,
-    );
+test('missing settings permission and expanded data deny without a fallback chat prompt', async () => {
+  const view = await render(<Harness />);
+  read.mockResolvedValueOnce(null);
+  await expect(port.authorize(request())).resolves.toBe('renewal_required');
+  const changed = request();
+  await expect(
+    port.authorize({
+      ...changed,
+      consentScope: { ...permission, dataCategories: ['raw_photo'] },
+    }),
+  ).resolves.toBe('renewal_required');
+  expect(view.queryByTestId('inference-disclosure-modal')).toBeNull();
+});
 
-    await fireEvent.press(view.getByTestId('authorize-request'));
-    await fireEvent.press(
-      await view.findByTestId('inference-disclosure-expand'),
-    );
-    expect(await view.findByText('Synthetic selected note A.')).toBeTruthy();
-    await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
-    await waitFor(() => expect(onResult).toHaveBeenCalledWith('authorized'));
-
-    await view.rerender(
-      withRootSafeArea(
-        <ConsentHarness
-          outboundRequest={request('Synthetic selected note B.')}
-          onResult={onResult}
-        />,
-      ),
-    );
-    await fireEvent.press(view.getByTestId('authorize-request'));
-    await fireEvent.press(
-      await view.findByTestId('inference-disclosure-expand'),
-    );
-    expect(await view.findByText('Synthetic selected note B.')).toBeTruthy();
-    expect(onResult).toHaveBeenCalledTimes(1);
-    await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
-    await waitFor(() =>
-      expect(onResult).toHaveBeenLastCalledWith('authorized'),
-    );
-  });
-
-  it('denies an explicit user cancellation', async () => {
-    const onResult = jest.fn();
-    const view = await renderWithSafeArea(
-      <ConsentHarness
-        outboundRequest={request('Synthetic cancellation request.')}
-        onResult={onResult}
-      />,
-    );
-
-    await fireEvent.press(view.getByTestId('authorize-request'));
-    await fireEvent.press(
-      await view.findByTestId('inference-disclosure-expand'),
-    );
-    expect(
-      await view.findByText('Synthetic cancellation request.'),
-    ).toBeTruthy();
-    await fireEvent.press(view.getByTestId('inference-disclosure-cancel'));
-    await waitFor(() => expect(onResult).toHaveBeenCalledWith('renewal'));
-  });
-
-  it('denies an open request on abort and when its screen unmounts', async () => {
-    const controller = new AbortController();
-    const onResult = jest.fn();
-    const view = await renderWithSafeArea(
-      <ConsentHarness
-        outboundRequest={request('Synthetic request.', controller.signal)}
-        onResult={onResult}
-      />,
-    );
-
-    await fireEvent.press(view.getByTestId('authorize-request'));
-    await fireEvent.press(
-      await view.findByTestId('inference-disclosure-expand'),
-    );
-    expect(await view.findByText('Synthetic request.')).toBeTruthy();
-    await act(async () => controller.abort());
-    await waitFor(() => expect(onResult).toHaveBeenCalledWith('renewal'));
-    expect(view.queryByTestId('inference-disclosure-sheet')).toBeNull();
-
-    const unmountController = new AbortController();
-    const onUnmountResult = jest.fn();
-    await view.rerender(
-      withRootSafeArea(
-        <ConsentHarness
-          outboundRequest={request(
-            'Synthetic second request.',
-            unmountController.signal,
-          )}
-          onResult={onUnmountResult}
-        />,
-      ),
-    );
-    await fireEvent.press(view.getByTestId('authorize-request'));
-    await fireEvent.press(
-      await view.findByTestId('inference-disclosure-expand'),
-    );
-    expect(await view.findByText('Synthetic second request.')).toBeTruthy();
-    await act(async () => view.unmount());
-    await waitFor(() =>
-      expect(onUnmountResult).toHaveBeenCalledWith('renewal'),
-    );
-  });
+test('abort and unmount invalidate pending and already issued request witnesses', async () => {
+  const view = await render(<Harness />);
+  const outbound = request();
+  await expect(port.authorize(outbound)).resolves.toBe('authorized');
+  const invalidated = jest.fn();
+  const stop = port.subscribeAuthorizationInvalidation!(outbound, invalidated);
+  const controller = new AbortController();
+  controller.abort();
+  await expect(
+    port.authorize(request('Synthetic stopped', controller.signal)),
+  ).resolves.toBe('renewal_required');
+  await act(async () => view.unmount());
+  expect(port.isAuthorizationCurrent!(outbound)).toBe(false);
+  expect(invalidated).toHaveBeenCalled();
+  await expect(port.authorize(request())).resolves.toBe('renewal_required');
+  stop();
 });
