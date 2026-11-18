@@ -117,3 +117,56 @@ test('cancellation before replacement commit preserves the existing report and r
     await c.close();
   }
 });
+
+test('queued recovery cancellation does not resurrect an independent repository deletion after save rollback', async () => {
+  const c = openOpSqliteFileQueue();
+  try {
+    const { createRecordRepository } =
+      require('@orot/storage') as typeof import('@orot/storage');
+    const { candidate, witness } = await dailyReportRecoveryFixture(c.database);
+    const recovery = createDailyReportLocalRecovery(c.database);
+    const controller = new AbortController();
+    expect(await recovery.stage(candidate, witness, controller.signal)).toEqual(
+      { status: 'staged' },
+    );
+    let deletion: Promise<boolean> | undefined;
+    let cancellation: Promise<void> | undefined;
+    c.observeSubmit(query => {
+      if (!query.startsWith('INSERT INTO symptom_summary_runs')) return;
+      c.observeSubmit();
+      controller.abort();
+      // Independent repository caller uses the actual installed driver's queue;
+      // this is not a DELETE injected into the save transaction's executor.
+      deletion = createRecordRepository(c.database).delete(
+        'health_observation',
+        candidate.lineage[0]!.localId,
+      );
+      cancellation = recovery.cancel(candidate.runId);
+    });
+    expect(
+      await recovery.resume(candidate.runId, witness, controller.signal),
+    ).toEqual({ status: 'unavailable' });
+    expect(deletion).toBeDefined();
+    await deletion;
+    await cancellation;
+    expect(
+      (await c.database.execute('SELECT id FROM health_observations')).rows,
+    ).toEqual([]);
+    expect(
+      (await c.database.execute('SELECT run_id FROM daily_report_revisions'))
+        .rows,
+    ).toEqual([]);
+    expect(
+      (
+        await c.database.execute(
+          'SELECT candidate_json FROM daily_report_pending',
+        )
+      ).rows[0]?.candidate_json,
+    ).toBeNull();
+    expect(
+      await recovery.stage(candidate, witness, new AbortController().signal),
+    ).toEqual({ status: 'unavailable' });
+  } finally {
+    await c.close();
+  }
+});
