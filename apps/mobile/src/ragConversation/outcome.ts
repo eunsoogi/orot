@@ -12,6 +12,7 @@ export type RagConversationFailureKind =
   | 'consent_required'
   | 'cancelled'
   | 'retrieval_failed'
+  | 'daily_report_sources_unavailable'
   | 'validation_failed'
   | 'stale_evidence'
   | 'visit_no_appointment'

@@ -58,9 +58,10 @@ test.each([
             `EXPLAIN QUERY PLAN ${sql}`,
             bindings,
           );
+          // Both covering and table-backed indexes retain bounded candidate seeks.
           expect(
             plan.rows.filter(row =>
-              /SEARCH r USING INDEX/.test(String(row.detail)),
+              /SEARCH r USING (?:COVERING )?INDEX/.test(String(row.detail)),
             ),
           ).toHaveLength(5);
           return result;

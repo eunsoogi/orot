@@ -1,11 +1,22 @@
 // LangGraph reads ReadableStream during module initialization on Hermes.
 import '../src/agent/polyfills';
 import 'react-native-get-random-values';
-import { useMemo, useState } from 'react';
-import { AppRegistry, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  AppRegistry,
+  NativeModules,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { providerFailure } from '@orot/model-runtime';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import type { AppointmentRepository } from '@orot/storage';
+import {
+  classificationStageEvents,
+  createClassificationStageScenario,
+} from './classificationStageScenario';
 import { name as appName } from '../app.json';
 import MedicalAppointmentClassificationScreen from '../src/medicalAppointments/MedicalAppointmentClassificationScreen';
 import type { CalendarAutoSyncState } from '../src/calendar/calendarAutoSync';
@@ -27,18 +38,41 @@ const syntheticEvent: CalendarEvent = {
   },
 };
 
-const styles = StyleSheet.create({ root: { flex: 1 } });
+const settings = NativeModules?.SettingsManager;
+const staged =
+  (settings?.settings ?? settings?.getConstants?.().settings ?? {})
+    .OROT_TEST_CLASSIFICATION_STAGES === 'YES';
+const events = staged ? classificationStageEvents() : [syntheticEvent];
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  gate: { minHeight: 44, justifyContent: 'center' },
+});
 
 function MedicalAppointmentClassificationProbeEntry() {
+  const [waiting, setWaiting] = useState<'model' | 'save' | null>(null);
+  const scenario = useMemo(
+    () => createClassificationStageScenario(setWaiting),
+    [],
+  );
+  useEffect(() => {
+    scenario.activate();
+    return () => scenario.dispose();
+  }, [scenario]);
   const [providerCalls, setProviderCalls] = useState(0);
   const [saved, setSaved] = useState(false);
   const bridge = useMemo<CalendarBridge>(
     () => ({
       requestAccessAndListUpcomingEvents: async () => ({
         access: 'fullAccess',
-        events: [syntheticEvent],
+        events: [...events],
       }),
-      findEvent: async () => ({ access: 'fullAccess', event: syntheticEvent }),
+      findEvent: async identifier => ({
+        access: 'fullAccess',
+        event:
+          events.find(value => value.calendarEventIdentifier === identifier) ??
+          null,
+      }),
       addEventStoreListener: () => ({ remove: () => undefined }),
     }),
     [],
@@ -46,7 +80,7 @@ function MedicalAppointmentClassificationProbeEntry() {
   const calendarSync = useMemo<CalendarAutoSyncState>(
     () => ({
       access: 'fullAccess',
-      events: [syntheticEvent],
+      events,
       query: {
         fromInclusive: '2035-01-01T00:00:00.000Z',
         toExclusive: '2036-01-01T00:00:00.000Z',
@@ -67,6 +101,7 @@ function MedicalAppointmentClassificationProbeEntry() {
         list: async () => [],
         create: async () => undefined,
         confirmCalendarEvent: async () => {
+          if (staged) await scenario.waitForSave();
           setSaved(true);
           return undefined;
         },
@@ -74,7 +109,7 @@ function MedicalAppointmentClassificationProbeEntry() {
         update: async () => undefined,
         cancel: async () => undefined,
       }) as unknown as AppointmentRepository,
-    [],
+    [scenario],
   );
   const provider = useMemo<LanguageModelProvider>(
     () => ({
@@ -87,8 +122,9 @@ function MedicalAppointmentClassificationProbeEntry() {
         structuredOutput: false,
         toolCalling: false,
       },
-      generate: async () => {
+      generate: async (request, options) => {
         setProviderCalls(current => current + 1);
+        if (staged) return scenario.generate(request, options);
         return providerFailure({
           code: 'provider_unavailable',
           message: 'Synthetic provider failure for local manual review.',
@@ -96,7 +132,7 @@ function MedicalAppointmentClassificationProbeEntry() {
         });
       },
     }),
-    [],
+    [scenario],
   );
   const selectedProvider = useMemo<ProviderSelectionOption>(
     () => ({
@@ -118,6 +154,19 @@ function MedicalAppointmentClassificationProbeEntry() {
         <Text testID="calendar-classification-synthetic-calendar-save">
           syntheticCalendarSave=confirmed
         </Text>
+      ) : null}
+      {staged ? (
+        <Pressable
+          testID="classification-release-response"
+          accessibilityRole="button"
+          accessibilityLabel={`Release synthetic ${waiting ?? 'idle'}`}
+          disabled={!waiting}
+          accessibilityState={{ disabled: !waiting }}
+          onPress={scenario.release}
+          style={styles.gate}
+        >
+          <Text>{`Synthetic gate: ${waiting ?? 'idle'}`}</Text>
+        </Pressable>
       ) : null}
       <MedicalAppointmentClassificationScreen
         bridge={bridge}

@@ -163,16 +163,7 @@ test('reflows in measured Duo regions while preserving a pending choice and conf
 
   expect(panelAxis()).toBe('column');
   expect(screen.queryByTestId(`${featurePanelsID}-secondary`)).toBeNull();
-  expect(
-    screen.getByTestId('provider-option-0-capabilities'),
-  ).toHaveTextContent(
-    `${providerSelectionText.capabilitiesSummary}: ${[
-      providerSelectionText.capabilityInput.text,
-      providerSelectionText.capabilityStreaming,
-      providerSelectionText.capabilityStructuredOutput,
-      providerSelectionText.capabilityToolCalling,
-    ].join(' · ')}`,
-  );
+  expect(screen.queryByTestId('provider-option-0-capabilities')).toBeNull();
   expect(
     screen.getByTestId('provider-option-2').props.accessibilityState.disabled,
   ).toBe(true);
