@@ -27,7 +27,7 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(disclosure))
         XCTAssertTrue(UITestConditions.text(disclosure).contains("OpenAI Realtime API"))
         tap(app, "voice-settings-save", scroll: "settings-provider-screen")
-        XCTAssertTrue(wait { node(app, "voice-current-model").exists && UITestConditions.text(node(app, "voice-current-model")).contains("GPT Realtime 2.1 mini") })
+        XCTAssertTrue(wait { self.node(app, "voice-current-model").exists && UITestConditions.text(self.node(app, "voice-current-model")).contains("GPT Realtime 2.1 mini") })
         inspect(app, expected: "authorized")
         app.terminate()
         launch(app, identifier, "reopen")
@@ -65,7 +65,7 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(disclosure))
         XCTAssertTrue(UITestConditions.text(disclosure).contains(recipient))
         tap(app, "provider-selection-confirm", scroll: "settings-provider-screen")
-        XCTAssertTrue(wait { !node(app, "provider-selection-confirm").exists })
+        XCTAssertTrue(wait { !self.node(app, "provider-selection-confirm").exists })
     }
 
     @MainActor
