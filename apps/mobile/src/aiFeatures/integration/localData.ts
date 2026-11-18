@@ -1,8 +1,6 @@
+import { createConversationLocalAccess } from './conversationLocalAccess';
 import { registerConversationReadOperation } from './conversationReadOperation';
-import {
-  withStatementMemory,
-  scheduleStatementMemory,
-} from '../../memory/scheduleStatementMemory';
+import { scheduleStatementMemory } from '../../memory/scheduleStatementMemory';
 import { createLocalE5RagService } from '../../rag/localE5RagService';
 import type { LocalE5RagService } from '../../rag/localE5RagService';
 import { createLocalHealthEvidenceRepository } from '../../healthEvidence/localEvidenceRepository';
@@ -84,14 +82,6 @@ async function openDefault(): Promise<AiFeatureLocalData> {
   const repository = createLocalHealthEvidenceRepository(database);
   const rag = createLocalE5RagService(database);
   const memoryStorage = new SqlCipherAgentMemoryStorage(database);
-  let conversationStorage:
-    Promise<ReturnType<typeof createConversationArtifactStorage>> | undefined;
-  // Share the discovery owner per registry, not hydrated documents or validity.
-  // Separate databases/local-data surfaces retain separate owners and callbacks.
-  const conversationDiscoveries = new WeakMap<
-    LocalEvidenceReferenceRegistry,
-    Promise<ReturnType<typeof createConversationArtifactDiscovery>>
-  >();
   const summaryDiscovery = async (
     scoped: AiFeatureLocalData,
     registry: LocalEvidenceReferenceRegistry,
@@ -134,58 +124,7 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     ...createLocalEvidenceData(database),
     loadMemoryRecords: () => memoryStorage.listRecords(),
     summaryArtifactDiscovery: registry => summaryDiscovery(data, registry),
-    async conversationArtifactDiscovery(registry) {
-      let discovery = conversationDiscoveries.get(registry);
-      if (!discovery) {
-        discovery = Promise.all([
-          import('./conversationArtifactDiscovery'),
-          import('../../storage/conversationArtifactStorage'),
-        ])
-          .then(
-            ([
-              { createConversationArtifactDiscovery },
-              { createConversationArtifactStorage },
-            ]) =>
-              createConversationArtifactDiscovery({
-                database,
-                storage: createConversationArtifactStorage(database),
-                data,
-                registry,
-              }),
-          )
-          .catch(error => {
-            conversationDiscoveries.delete(registry);
-            throw error;
-          });
-        conversationDiscoveries.set(registry, discovery);
-      }
-      return discovery;
-    },
-    async openConversationArtifactStorage() {
-      // One wrapper owns notification serialization and deletion observers for this protected database.
-      conversationStorage ??= Promise.all([
-        import('../../storage/conversationArtifactStorage'),
-        import('../../replyNotifications/replyNotificationStorage'),
-      ])
-        .then(
-          ([
-            { createConversationArtifactStorage },
-            { createReplyNotificationStorage },
-          ]) =>
-            createReplyNotificationStorage(
-              withStatementMemory(
-                createConversationArtifactStorage(database),
-                database,
-              ),
-              database,
-            ),
-        )
-        .catch(error => {
-          conversationStorage = undefined;
-          throw error;
-        });
-      return conversationStorage;
-    },
+    ...createConversationLocalAccess(database, () => data),
     async validateConversationPhotoInput(input, signal) {
       const [
         { createConversationArtifactStorage },
