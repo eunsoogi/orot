@@ -49,7 +49,7 @@ export async function actualSendRetentionFixture(variant: string, samples = 0) {
       ? 1
       : variant.endsWith('-six')
         ? 6
-        : variant === 'same-twelve'
+        : variant.endsWith('-twelve')
           ? 12
           : 3;
   let parent:
