@@ -14,6 +14,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_STORAGE_DIAGNOSTICS", "enabled", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_CONVERSATION_HIT_OBSERVATION", observationSession, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
+        try RoutesAppearanceUITestConditions.prepare(app)
         try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         // The health editor is available independently of asynchronous record reads.
         NavigationUITestConditions.route(app, markers: ["overview-metrics-edit"])
@@ -82,6 +83,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
             }
             UITestConditions.terminateStandaloneApp(app)
         }
+        try RoutesAppearanceUITestConditions.prepare(app)
         XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
         for dark in [false, true] {
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
