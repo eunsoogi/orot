@@ -1,3 +1,4 @@
+import { verifyProductionDefaults } from './ios-production-defaults-policy.mjs';
 import { verifyOAuthReceipt } from './oauth-test-results.mjs';
 
 const obligations = [
@@ -19,7 +20,7 @@ export function verifyProductionBuildReceipt(receipt, env) {
   )
     throw new Error('Production receipt requires its actual workflow context');
   if (
-    receipt.schemaVersion !== 2 ||
+    receipt.schemaVersion !== 3 ||
     receipt.sourceSha !== env.GITHUB_SHA ||
     receipt.runId !== env.GITHUB_RUN_ID ||
     receipt.attempt !== env.GITHUB_RUN_ATTEMPT ||
@@ -43,6 +44,7 @@ export function verifyProductionBuildReceipt(receipt, env) {
     !/^[a-f0-9]{64}$/.test(receipt.appArtifacts?.infoPlistSha256 ?? '')
   )
     throw new Error('Production receipt lacks inspected app artifacts');
+  verifyProductionDefaults(receipt.defaultsEvidence, env, { inputDigest: receipt.inputDigest });
   return receipt;
 }
 

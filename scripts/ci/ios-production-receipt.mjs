@@ -1,3 +1,5 @@
+import { productionDefaultsContext } from './ios-production-defaults-receipt.mjs';
+import { verifyProductionDefaults } from './ios-production-defaults-policy.mjs';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { getDerivedDataRoot, inspectCachedApp } from './ios-derived-data-cache-paths.mjs';
@@ -12,7 +14,8 @@ import {
 const obligations = productionBuildObligations();
 
 const [command, path, ...extra] = process.argv.slice(2);
-if (extra.length) throw new Error('Unexpected production receipt arguments');
+if (extra.length !== (command === 'write' ? 1 : 0))
+  throw new Error('Unexpected production receipt arguments');
 if (command === 'write') {
   if (
     process.env.GITHUB_ACTIONS !== 'true' ||
@@ -23,9 +26,15 @@ if (command === 'write') {
   // This producer inspects only its own app and completed static guards. The Linux aggregate requires OAuth's separate executor receipt.
   const app = inspectCachedApp('production', getDerivedDataRoot(process.cwd(), 'production'));
   if (app.reason) throw new Error('Production app inspection failed: ' + app.reason);
+  const defaultsEvidence = verifyProductionDefaults(
+    JSON.parse(readFileSync(extra[0], 'utf8')),
+    process.env,
+    productionDefaultsContext(),
+  );
   const receipt = verifyProductionBuildReceipt(
     {
-      schemaVersion: 2,
+      schemaVersion: 3,
+      defaultsEvidence,
       sourceSha: process.env.GITHUB_SHA,
       runId: process.env.GITHUB_RUN_ID,
       attempt: process.env.GITHUB_RUN_ATTEMPT,
@@ -63,5 +72,5 @@ if (command === 'write') {
   );
 } else
   throw new Error(
-    'Usage: ios-production-receipt.mjs write <build-receipt> | verify <build-receipt> (set OROT_IOS_OAUTH_REQUIRED and, when true, OROT_IOS_OAUTH_RECEIPT_PATH)',
+    'Usage: ios-production-receipt.mjs write <build-receipt> <defaults-receipt> | verify <build-receipt> (set OROT_IOS_OAUTH_REQUIRED and, when true, OROT_IOS_OAUTH_RECEIPT_PATH)',
   );

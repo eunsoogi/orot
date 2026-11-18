@@ -14,7 +14,15 @@ test('production cache reuse skips only app compilation, preserving separate OAu
   );
   assert.match(action, /apps\/mobile\/ios\/build-production\n\s+apps\/mobile\/ios\/Pods/);
   assert.match(action, /app_reusable != 'true'/);
-  assert.match(action, /verify-simulator-keychain-defaults\.mjs/);
+  assert.match(action, /artifacts\/production-defaults\/defaults-receipt\.json/);
+  assert.match(
+    readFileSync('scripts/ci/ios-production-defaults-receipt.mjs', 'utf8'),
+    /verify-simulator-keychain-defaults\.mjs/,
+  );
+  assert.match(
+    readFileSync('.github/workflows/ios-production-validation.yml', 'utf8'),
+    /needs: defaults/,
+  );
   const oauthBuild = readFileSync('.github/workflows/ios-oauth-build.yml', 'utf8');
   assert.match(
     oauthBuild,
