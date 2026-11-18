@@ -1,3 +1,4 @@
+import { healthContextReportCacheKey } from '../reportCacheKey';
 import { beginHealthContextReadOperation } from '../healthContextReadOperation';
 import type { SqlDatabase } from '@orot/storage';
 import { healthContextFixture } from '../../../aiFeatures/integration/testSupport/healthContextPersistenceFixture';
@@ -76,7 +77,7 @@ test('an actual foreign database reader cannot reuse a same-generation owned rep
     expect(report.deletionGeneration).toBe(expected.deletionGeneration);
     const owner = createCommittedReportScope(first.database);
     committedReportCache(owner.token, first.database)!.set(
-      JSON.stringify([window, ['measurements']]),
+      healthContextReportCacheKey(window, ['measurements']),
       report,
     );
     const operation = beginHealthContextReadOperation(
