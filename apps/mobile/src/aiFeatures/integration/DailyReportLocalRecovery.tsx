@@ -17,7 +17,10 @@ export function DailyReportLocalRecovery({
   onBusy,
   onSaved,
 }: {
-  feature: ReturnType<typeof createDailyReportFeature>;
+  feature: Pick<
+    ReturnType<typeof createDailyReportFeature>,
+    'pendingRecovery' | 'resumeRecovery'
+  >;
   identity: DailyReportIdentity | null;
   busy: boolean;
   revision: unknown;
