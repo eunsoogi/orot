@@ -192,7 +192,7 @@ export function CalendarModelSettingsPanel({
         <Text accessibilityRole="header" style={styles.heading}>
           OpenAI API
         </Text>
-        <View style={styles.account}>
+        <View style={styles.catalogAccount}>
           <ApiCatalogAccount
             connected={connected}
             busy={refreshing || saving}
@@ -210,7 +210,6 @@ export function CalendarModelSettingsPanel({
               index={options.length + index}
               disabled={saving || loading || loadError}
               requirements={requirements}
-              showCapabilities={false}
               selected={
                 (pending?.modelId ?? saved?.modelId) === option.modelId &&
                 (pending?.provider.id ?? saved?.providerId) ===

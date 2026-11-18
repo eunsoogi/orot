@@ -3,15 +3,17 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
+import { COMPACT_APP_SYMBOL_POINT_SIZE } from '../../layout/iconSizing';
 import { providerSettingsStyles as shared } from '../../layout/providerSettingsPresentation';
 import { appColors } from '../../layout/appColors';
 import type { ChatGPTAccountSetup } from './types';
 import { providerSelectionText as copy } from './text';
 import { OpenAIProviderMark } from './OpenAIProviderMark';
 
-const CARD_PADDING = 10;
+const CARD_PADDING = 16;
 const CARD_GAP = 8;
 const ACTION_TARGET_SIZE = 44;
+const SELECTION_SYMBOL_SIZE = COMPACT_APP_SYMBOL_POINT_SIZE;
 
 /** Account controls use actual authentication state; model selection never implies consent. */
 export function ProviderCatalogAccount({
@@ -41,12 +43,7 @@ export function ProviderCatalogAccount({
       : setup.actionTitle;
   return (
     <View style={styles.container} testID="chatgpt-account-setup">
-      <View
-        style={[
-          styles.content,
-          actionVisible ? styles.contentWithAction : undefined,
-        ]}
-      >
+      <View style={styles.content}>
         <View style={shared.header}>
           <View style={shared.icon}>
             <OpenAIProviderMark />
@@ -66,6 +63,40 @@ export function ProviderCatalogAccount({
                 : copy.chatGPTNoAccounts}
             </Text>
           </Pressable>
+          {actionVisible ? (
+            <View
+              pointerEvents="box-none"
+              style={styles.actionOverlay}
+              testID="chatgpt-account-action-lane"
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={actionLabel}
+                accessibilityState={{
+                  disabled: actionDisabled,
+                  busy: actionBusy,
+                }}
+                disabled={actionDisabled}
+                onPress={
+                  setup.signingIn ? setup.onCancelSignIn : setup.onAction
+                }
+                testID={
+                  setup.signingIn
+                    ? 'chatgpt-cancel-sign-in'
+                    : setup.presentation === 'settings-provider'
+                      ? 'settings-provider-load-models'
+                      : 'chatgpt-account-action'
+                }
+                style={shared.action}
+              >
+                <AppSymbol
+                  name="arrow.triangle.2.circlepath"
+                  size={18}
+                  color={appColors.primary}
+                />
+              </Pressable>
+            </View>
+          ) : null}
         </View>
         {(expanded || setup.accounts.length > 1 || !ready) &&
           setup.accounts.map((item, number) => (
@@ -136,54 +167,20 @@ export function ProviderCatalogAccount({
           </Pressable>
         ) : null}
       </View>
-      {actionVisible ? (
-        <View pointerEvents="box-none" style={styles.actionOverlay}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={actionLabel}
-            accessibilityState={{
-              disabled: actionDisabled,
-              busy: actionBusy,
-            }}
-            disabled={actionDisabled}
-            onPress={setup.signingIn ? setup.onCancelSignIn : setup.onAction}
-            testID={
-              setup.signingIn
-                ? 'chatgpt-cancel-sign-in'
-                : setup.presentation === 'settings-provider'
-                  ? 'settings-provider-load-models'
-                  : 'chatgpt-account-action'
-            }
-            style={shared.action}
-          >
-            <AppSymbol
-              name="arrow.triangle.2.circlepath"
-              size={18}
-              color={appColors.primary}
-            />
-          </Pressable>
-        </View>
-      ) : null}
     </View>
   );
 }
 const styles = StyleSheet.create({
   container: { position: 'relative' },
   content: { gap: CARD_GAP, padding: CARD_PADDING },
-  // Leave one card gap plus the 44pt action target clear of the card content.
-  contentWithAction: {
-    paddingRight: CARD_PADDING + CARD_GAP + ACTION_TARGET_SIZE,
-  },
   // A single bounded text column lets long locale copy wrap before the action lane.
   accountCopy: { flex: 1, minWidth: 0, gap: 2 },
   accountText: { flexShrink: 1, minWidth: 0, color: appColors.secondary },
-  // This full-height overlay centers the fixed target as the card grows.
+  // Keep the target in the measured header row so Dynamic Type also centers it.
+  // The negative inset aligns its center with the smaller model selection symbol.
   actionOverlay: {
-    position: 'absolute',
-    top: 0,
-    right: CARD_PADDING,
-    bottom: 0,
     width: ACTION_TARGET_SIZE,
+    marginRight: (SELECTION_SYMBOL_SIZE - ACTION_TARGET_SIZE) / 2,
     justifyContent: 'center',
   },
   action: {

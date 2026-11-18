@@ -135,6 +135,8 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
             XCTAssertTrue(portraitLayout.routeKey == rootRouteKey && portraitLayout.columns == 1 && (question.value as? String) == draft)
         }
 
+        try NavigationForegroundUITestConditions.restoreEditableDraft(app, draft: draft, citation: source)
+
         let finalQuestion = try waitForGeometry(app, routeKey: rootRouteKey)
         NavigationWindowGeometryUITestConditions.assertGeometry(finalQuestion)
         let conversationFrame = try NavigationGeometryUITestConditions.captureBoundary(

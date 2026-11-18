@@ -5,7 +5,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppSymbol } from '../../layout/AppSymbol';
 import { providerSettingsStyles as shared } from '../../layout/providerSettingsPresentation';
 import { appColors } from '../../layout/appColors';
-import type { ProviderInputType } from '@orot/model-runtime';
 import { isProviderSelectionOptionSelectable } from './providerSelection';
 import { providerSelectionText } from './text';
 import type {
@@ -16,7 +15,6 @@ import type {
 interface ProviderSelectionOptionCardProps {
   readonly option: ProviderSelectionOption;
   readonly requirements: ProviderSelectionRequirements;
-  readonly showCapabilities: boolean;
   readonly selected: boolean;
   readonly disabled: boolean;
   readonly index: number;
@@ -26,15 +24,13 @@ interface ProviderSelectionOptionCardProps {
 export default function ProviderSelectionOptionCard({
   option,
   requirements,
-  showCapabilities,
   selected,
   disabled,
   index,
   onPress,
 }: ProviderSelectionOptionCardProps) {
-  // Cloud copy never changes provider identity, availability, or selection consent.
+  // Descriptive capability lists are omitted; actual capability and availability gates stay enforced.
   const blockedMessage = getBlockedMessage(option, requirements);
-  const capabilityLabels = showCapabilities ? getCapabilityLabels(option) : [];
   const selectable = blockedMessage === null && !disabled;
   return (
     <Pressable
@@ -61,14 +57,6 @@ export default function ProviderSelectionOptionCard({
               ? t('provider.pcc.processing')
               : option.modelId}
         </Text>
-        {showCapabilities ? (
-          <Text
-            style={styles.capabilities}
-            testID={`provider-option-${index}-capabilities`}
-          >
-            {`${providerSelectionText.capabilitiesSummary}: ${capabilityLabels.length > 0 ? capabilityLabels.join(' · ') : providerSelectionText.noDeclaredCapabilities}`}
-          </Text>
-        ) : null}
         {blockedMessage ? (
           <Text accessibilityRole="alert" style={styles.unavailable}>
             {blockedMessage}
@@ -81,26 +69,6 @@ export default function ProviderSelectionOptionCard({
       />
     </Pressable>
   );
-}
-
-/** Exposes only adapter-declared features because this catalog has no per-model capability metadata. */
-function getCapabilityLabels(option: ProviderSelectionOption): string[] {
-  const capabilities = option.provider.capabilities;
-  return [
-    ...capabilities.inputTypes.map(
-      (inputType: ProviderInputType) =>
-        providerSelectionText.capabilityInput[inputType],
-    ),
-    ...(capabilities.streaming
-      ? [providerSelectionText.capabilityStreaming]
-      : []),
-    ...(capabilities.structuredOutput
-      ? [providerSelectionText.capabilityStructuredOutput]
-      : []),
-    ...(capabilities.toolCalling
-      ? [providerSelectionText.capabilityToolCalling]
-      : []),
-  ];
 }
 
 function getBlockedMessage(
@@ -118,6 +86,5 @@ function getBlockedMessage(
 }
 
 const styles = StyleSheet.create({
-  capabilities: { color: appColors.secondary, fontSize: 13, flexWrap: 'wrap' },
   unavailable: { color: appColors.danger },
 });

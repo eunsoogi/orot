@@ -61,6 +61,14 @@ test('records only the actual current failure category and ignores late outcomes
   expect(f.observations().at(-1)?.outcome).toBe('provider_unavailable');
   f.life.outcome(f.controller, { status: 'failure', kind: 'retrieval_failed' });
   expect(f.observations().at(-1)?.outcome).toBe('retrieval_failed');
+  f.life.outcome(f.controller, {
+    status: 'failure',
+    kind: 'daily_report_sources_unavailable',
+  });
+  expect(f.observations().at(-1)?.outcome).toBe(
+    'daily_report_sources_unavailable',
+  );
+  expect(JSON.stringify(f.observations())).not.toContain('private');
   f.life.outcome(f.controller, { status: 'unavailable' });
   expect(f.observations().at(-1)?.outcome).toBe('unavailable');
   await f.life.settle(1, f.controller);
