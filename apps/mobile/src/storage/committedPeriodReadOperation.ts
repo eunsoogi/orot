@@ -6,6 +6,7 @@ import { healthContextReportCacheKey } from '../healthEvidence/healthContext/rep
 import {
   createCommittedReportScope,
   committedReportCache,
+  committedReportCalendar,
 } from '../healthEvidence/healthContext/committedReportScope';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import type { HealthContextReport } from '../healthEvidence/healthContext/types';
@@ -33,8 +34,10 @@ export function committedPeriodReadOperation(
 ) {
   const reportScope = createCommittedReportScope(database);
   const reports = committedReportCache(reportScope.token, database)!;
+  const calendar = committedReportCalendar(reportScope.token, database)!;
   let disposed = false;
   const cancel = () => {
+    calendar.dispose();
     reports.clear();
     endReportCalculationDiagnostic(reports);
   };
@@ -43,6 +46,7 @@ export function committedPeriodReadOperation(
     reportScope.dispose();
     signal?.removeEventListener('abort', cancel);
   };
+  if (signal?.aborted) cancel();
   signal?.addEventListener('abort', cancel, { once: true });
   const check = () => {
     if (signal?.aborted)
@@ -113,6 +117,7 @@ export function committedPeriodReadOperation(
                   undefined,
                   undefined,
                   reports,
+                  calendar,
                 );
           const after = await readHealthContextGeneration(tx);
           check();

@@ -8,10 +8,8 @@ import {
 } from './calendarDate';
 import type { HealthContextDay, HealthContextWindow } from './types';
 
-/** Preserve the caller-selected local-calendar period without an arbitrary day ceiling. */
-export function healthContextDays(
-  window: HealthContextWindow,
-): HealthContextDay[] {
+/** Validate every calendar read, including cache hits, without enumerating days. */
+export function validateHealthContextWindow(window: HealthContextWindow) {
   const from = Date.parse(TimestampSchema.parse(window.fromInclusive));
   const to = Date.parse(TimestampSchema.parse(window.toExclusive));
   if (window.dataAvailableThrough !== undefined) {
@@ -24,6 +22,14 @@ export function healthContextDays(
   if (compareTimestamps(window.fromInclusive, window.toExclusive) >= 0)
     throw new RangeError('The health context window must advance.');
   const formatter = dayFormatter(window.timeZone);
+  return { from, to, formatter };
+}
+
+/** Preserve the caller-selected local-calendar period without an arbitrary day ceiling. */
+export function healthContextDays(
+  window: HealthContextWindow,
+): HealthContextDay[] {
+  const { from, to, formatter } = validateHealthContextWindow(window);
   const endDate = dateKey(formatter, to);
   const exactMidnight = new Date(dayStart(endDate, formatter)).toISOString();
   // Date.parse truncates sub-millisecond digits. Only an exact midnight excludes that local day.

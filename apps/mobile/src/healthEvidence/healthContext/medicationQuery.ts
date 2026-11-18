@@ -8,7 +8,10 @@ import {
 } from '@orot/storage';
 import type { SqlExecutor, SqlValue } from '@orot/storage';
 import { currentEvidenceCondition } from '../evidenceCandidateScope';
-import { healthContextDays } from './window';
+import {
+  readHealthContextCalendar,
+  type HealthContextCalendarScope,
+} from './calendarReadScope';
 import type { HealthContextWindow, HealthMedicationProfile } from './types';
 
 /** Current registrations use ingestion cutoff; dose history uses actual occurrence time. */
@@ -16,6 +19,7 @@ export async function readHealthMedicationContext(
   executor: SqlExecutor,
   window: HealthContextWindow,
   signal?: AbortSignal,
+  calendar?: HealthContextCalendarScope,
 ): Promise<{
   medications: readonly HealthMedicationProfile[];
   truncated: boolean;
@@ -32,7 +36,7 @@ export async function readHealthMedicationContext(
   const doseIngestionFilter = hasCutoff
     ? `AND ${localQueryTimestampKeyExpression('d.ingested_at')} <= ?`
     : '';
-  const days = healthContextDays(window);
+  const days = readHealthContextCalendar(calendar, window);
   const parameters: SqlValue[] = [healthContextCalendarParameter(days)];
   if (window.dataAvailableThrough)
     parameters.push(localQueryTimestampKey(window.dataAvailableThrough));

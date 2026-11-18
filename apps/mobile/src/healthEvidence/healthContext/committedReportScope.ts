@@ -1,4 +1,8 @@
 import {
+  createHealthContextCalendarScope,
+  type HealthContextCalendarScope,
+} from './calendarReadScope';
+import {
   startReportCalculationDiagnostic,
   endReportCalculationDiagnostic,
 } from './reportCalculationDiagnostic';
@@ -41,7 +45,11 @@ function immutableSnapshot<T>(value: T): T {
 }
 const owners = new WeakMap<
   CommittedReportScope,
-  { database: SqlDatabase; reports: ScopedReports }
+  {
+    database: SqlDatabase;
+    reports: ScopedReports;
+    calendar: HealthContextCalendarScope;
+  }
 >();
 
 export function createCommittedReportScope(database: SqlDatabase) {
@@ -50,10 +58,12 @@ export function createCommittedReportScope(database: SqlDatabase) {
   });
   const reports = new ScopedReports();
   startReportCalculationDiagnostic(reports);
-  owners.set(token, { database, reports });
+  const calendar = createHealthContextCalendarScope();
+  owners.set(token, { database, reports, calendar });
   return {
     token,
     dispose() {
+      calendar.dispose();
       endReportCalculationDiagnostic(reports);
       reports.active = false;
       reports.clear();
@@ -70,5 +80,16 @@ export function committedReportCache(
   const owner = token && owners.get(token);
   return owner?.database === database && owner.reports.active
     ? owner.reports
+    : undefined;
+}
+
+/** Calendar reuse follows the same exact DB owner, independently of report values. */
+export function committedReportCalendar(
+  token: CommittedReportScope | undefined,
+  database: SqlDatabase,
+) {
+  const owner = token && owners.get(token);
+  return owner?.database === database && owner.reports.active
+    ? owner.calendar
     : undefined;
 }
