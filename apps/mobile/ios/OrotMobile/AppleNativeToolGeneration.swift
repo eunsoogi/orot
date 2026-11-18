@@ -27,19 +27,21 @@ final class AppleNativeToolGeneration: @unchecked Sendable {
     // Keeps production scheduling on Dispatch while letting lifecycle tests advance deadlines virtually.
     private let watchdogScheduler: WatchdogScheduler
     let requestId: String
+    let modelRoute: String
     // This is application correlation identity, never an SDK-generated transcript ID.
     let callId: String
     let onTermination: () -> Void
 
     /// Interactive work ends through caller cancellation; finite watchdogs are explicit opt-ins.
     /// The scheduler seam lets tests exercise deadline behavior without a wall-clock wait.
-    init(requestId: String, timeoutSeconds: TimeInterval? = nil,
+    init(requestId: String, modelRoute: String = "on-device", timeoutSeconds: TimeInterval? = nil,
          watchdogScheduler: @escaping WatchdogScheduler = { item, interval in
              DispatchQueue.global().asyncAfter(deadline: .now() + interval, execute: item)
          },
          onTermination: @escaping () -> Void)
     {
         self.requestId = requestId
+        self.modelRoute = modelRoute
         self.timeoutSeconds = timeoutSeconds
         self.watchdogScheduler = watchdogScheduler
         callId = requestId + "-bridge-tool-" + UUID().uuidString

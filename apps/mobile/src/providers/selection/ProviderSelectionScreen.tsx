@@ -1,4 +1,5 @@
 import { t } from '../../i18n';
+import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { ModelSelectionTabs } from './ModelSelectionTabs';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../../layout/AppButton';
@@ -205,7 +206,9 @@ export default function ProviderSelectionScreen({
               message={selectionMessage}
               saveError={saveError}
               remoteAvailable={options.some(
-                option => option.privacyBoundary !== 'on-device',
+                option =>
+                  option.privacyBoundary !== 'on-device' &&
+                  option.provider.id !== APPLE_PCC_PROVIDER_ID,
               )}
               resolution={pendingResolution}
               onCancel={() => {

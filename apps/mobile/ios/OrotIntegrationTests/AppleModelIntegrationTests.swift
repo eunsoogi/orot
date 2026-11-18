@@ -6,6 +6,25 @@ import XCTest
 #endif
 
 final class AppleModelIntegrationTests: OrotFailFastTestCase {
+    func testPrivateCloudRouteAdmissionIsFailClosed() throws {
+        #if canImport(FoundationModels)
+            if #available(iOS 26.0, *) {
+                XCTAssertNoThrow(try AppleFoundationModelsSession.validateRoute([:]))
+                XCTAssertNoThrow(try AppleFoundationModelsSession.validateRoute(["modelRoute": "on-device"]))
+                XCTAssertThrowsError(try AppleFoundationModelsSession.validateRoute(["modelRoute": "unknown"]))
+                // Recap can never become a remote transformation, even in an entitled build.
+                XCTAssertThrowsError(try AppleFoundationModelsSession.validateRoute([
+                    "modelRoute": "private-cloud-compute", "profile": "recap-transformation",
+                ]))
+                #if OROT_TESTS && targetEnvironment(simulator)
+                    let status = AppleFoundationModelsSession.privateCloudAvailability()["status"] as? String
+                    XCTAssertTrue(["unsupportedOS", "entitlementRequired"].contains(status ?? ""))
+                    XCTAssertThrowsError(try AppleFoundationModelsSession.validateRoute(["modelRoute": "private-cloud-compute"]))
+                #endif
+            }
+        #endif
+    }
+
     func testStreamingFailurePreservesKnownNativeDecisions() {
         // These bridge-level synthetic errors do not claim real Apple model execution.
         for code in ["SAFETY_REFUSAL", "UNSUPPORTED_CAPABILITY", "INVALID_REQUEST"] {

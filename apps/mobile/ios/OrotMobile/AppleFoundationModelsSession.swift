@@ -26,10 +26,59 @@ import Foundation
             #endif
         }
 
+        /// A release must opt in only after managed entitlement provisioning is approved.
+        /// This flag is not proof of entitlement: the OS still owns admission and quotas.
+        static func privateCloudAvailability() -> [String: Any] {
+            guard #available(iOS 27.0, *) else { return ["status": "unsupportedOS"] }
+            #if OROT_PCC_ENABLED && !(OROT_TESTS && targetEnvironment(simulator))
+                let model = PrivateCloudComputeLanguageModel()
+                switch model.availability {
+                case .available:
+                    return ["status": model.quotaUsage.isLimitReached ? "quotaExceeded" : "available"]
+                case .unavailable(.deviceNotEligible): return ["status": "unsupportedDevice"]
+                case .unavailable(.systemNotReady): return ["status": "modelNotReady"]
+                case .unavailable: return ["status": "unavailable"]
+                }
+            #else
+                // Mock products must not advertise real PCC access through their local fixture.
+                return ["status": "entitlementRequired"]
+            #endif
+        }
+
+        static func validateRoute(_ request: [String: Any]) throws {
+            guard request["modelRoute"] == nil || request["modelRoute"] as? String == "on-device" ||
+                request["modelRoute"] as? String == "private-cloud-compute"
+            else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Unknown Apple model route.", nil) }
+            if request["modelRoute"] as? String == "private-cloud-compute" {
+                guard request["profile"] == nil else {
+                    throw appleFoundationModelsFailure("INVALID_REQUEST", "Recap transformations must remain on device.", nil)
+                }
+                let status = privateCloudAvailability()["status"] as? String ?? "unavailable"
+                guard status == "available" else {
+                    throw appleFoundationModelsFailure("APPLE_MODEL_UNAVAILABLE", "Private Cloud Compute is unavailable.", status)
+                }
+            }
+        }
+
+        #if !(OROT_TESTS && targetEnvironment(simulator))
+        /// A requested remote route never silently falls back to a different privacy boundary.
+        static func session(_ request: [String: Any], instructions: String) throws -> LanguageModelSession {
+            try validateRoute(request)
+            if request["modelRoute"] as? String == "private-cloud-compute" {
+                if #available(iOS 27.0, *) {
+                    return LanguageModelSession(model: PrivateCloudComputeLanguageModel(), instructions: instructions)
+                }
+                throw appleFoundationModelsFailure("APPLE_MODEL_UNAVAILABLE", "PCC requires iOS 27.", "unsupportedOS")
+            }
+            return LanguageModelSession(instructions: instructions)
+        }
+        #endif
+
         static func generate(_ payload: NSDictionary, requestId: String) async throws -> [String: Any] {
             guard let request = payload as? [String: Any], let prompt = request["prompt"] as? String,
                   let instructions = request["instructions"] as? String
             else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Prompt and instructions are required.", nil) }
+            try validateRoute(request)
             if let profile = request["profile"] {
                 guard let name = profile as? String, name == "recap-transformation",
                       request["mode"] as? String == "text", request["schema"] == nil,
@@ -66,7 +115,7 @@ import Foundation
             #if OROT_TESTS && targetEnvironment(simulator)
                 text = try await AppleFoundationModelsMock.shared.respond(request)
             #else
-                let session = LanguageModelSession(instructions: instructions)
+                let session = try session(request, instructions: instructions)
                 let options = GenerationOptions(temperature: request["temperature"] as? Double, maximumResponseTokens: request["maxOutputTokens"] as? Int)
                 if let schema {
                     text = try await session.respond(to: prompt, schema: schema, options: options).content.jsonString
@@ -89,6 +138,7 @@ import Foundation
                   let prompt = request["prompt"] as? String,
                   let instructions = request["instructions"] as? String
             else { throw appleFoundationModelsFailure("INVALID_REQUEST", "Prompt, mode and instructions are required.", nil) }
+            try validateRoute(request)
             if request["profile"] != nil {
                 throw appleFoundationModelsFailure("INVALID_REQUEST", "Transformation requests cannot stream.", nil)
             }
@@ -108,7 +158,7 @@ import Foundation
             #if OROT_TESTS && targetEnvironment(simulator)
                 finalText = try await AppleFoundationModelsMock.shared.stream(request, snapshot: snapshot)
             #else
-                let session = LanguageModelSession(instructions: instructions)
+                let session = try session(request, instructions: instructions)
                 let options = GenerationOptions(temperature: request["temperature"] as? Double, maximumResponseTokens: request["maxOutputTokens"] as? Int)
                 var latest: String?
                 if let schema {

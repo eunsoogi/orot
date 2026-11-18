@@ -2,11 +2,18 @@ import { AppleFoundationModelsProvider } from '@orot/provider-apple';
 import {
   appleFoundationModelsNativeBridge,
   appleRecapNativeBridge,
+  applePrivateCloudComputeNativeBridge,
 } from './nativeBridge';
 
 export const appleFoundationModelsProvider = new AppleFoundationModelsProvider(
   appleFoundationModelsNativeBridge,
 );
+
+export const applePrivateCloudComputeProvider =
+  new AppleFoundationModelsProvider(
+    applePrivateCloudComputeNativeBridge,
+    'private-cloud-compute',
+  );
 
 /** The selected Apple identity remains unchanged while Recap uses a text-only transformation. */
 export function appleRecapProvider() {

@@ -17,6 +17,7 @@ interface NativeAppleModule {
   addListener(eventName: string): void;
   removeListeners(count: number): void;
   getAvailability(): Promise<AppleModelAvailability>;
+  getPrivateCloudComputeAvailability?(): Promise<AppleModelAvailability>;
   generate(
     request: AppleNativeRequest,
     requestId: string,
@@ -57,6 +58,41 @@ export const appleFoundationModelsNativeBridge: AppleFoundationModelsNativeBridg
     cancel(requestId) {
       nativeModule?.cancel(requestId);
     },
+  };
+
+/** A distinct bridge binds every request to PCC; no network fallback changes consent. */
+export const applePrivateCloudComputeNativeBridge: AppleFoundationModelsNativeBridge =
+  {
+    async getAvailability() {
+      if (!nativeModule?.getPrivateCloudComputeAvailability) {
+        return { status: 'unsupportedOS' };
+      }
+      return nativeModule.getPrivateCloudComputeAvailability();
+    },
+    async generate(request, requestId) {
+      if (!nativeModule) throw bridgeUnavailable();
+      return nativeModule.generate(
+        {
+          ...serializeAppleRequest(request),
+          modelRoute: 'private-cloud-compute',
+        },
+        requestId,
+      );
+    },
+    stream(request, requestId) {
+      try {
+        return createNativeStream(
+          {
+            ...serializeAppleRequest(request),
+            modelRoute: 'private-cloud-compute',
+          },
+          requestId,
+        );
+      } catch (error) {
+        return singleError(error);
+      }
+    },
+    cancel: requestId => nativeModule?.cancel(requestId),
   };
 
 /** This bridge is scoped to Recap and never exposes a streaming or tool path. */

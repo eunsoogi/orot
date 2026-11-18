@@ -14,6 +14,7 @@ import { coreTests } from './ios-core-test-inventory.mjs';
 const providerTests = [
   'OrotIntegrationTests/RagWorkflowIntegrationTests/testPublicRetrievalReturnsAnAnswerWithGroundedCitations',
   'OrotIntegrationTests/AppleModelIntegrationTests/testStreamingFailurePreservesKnownNativeDecisions',
+  'OrotIntegrationTests/AppleModelIntegrationTests/testPrivateCloudRouteAdmissionIsFailClosed',
   'OrotIntegrationTests/AppleModelIntegrationTests/testMockAvailabilityGenerationStreamingCancellationAndFailures',
   'OrotIntegrationTests/AppleWorkflowIntegrationTests/testMockCalendarClassificationCitedQuestionsAndWorkflowCancellation',
   'OrotIntegrationTests/AppleWorkflowIntegrationTests/testThreeMockCalendarClassificationsAndTwoImportsKeepOneMedicalOccurrence',

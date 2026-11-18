@@ -12,7 +12,7 @@ final class AppleNativeToolRegistry: @unchecked Sendable {
     {
         try await resumePrevious(request)
         try Task.checkCancellation()
-        let generation = AppleNativeToolGeneration(requestId: requestId) { [weak self] in self?.remove(requestId) }
+        let generation = AppleNativeToolGeneration(requestId: requestId, modelRoute: request["modelRoute"] as? String ?? "on-device") { [weak self] in self?.remove(requestId) }
         try register(generation)
         return try await generation.start { try await operation(generation) }
     }
@@ -21,6 +21,11 @@ final class AppleNativeToolRegistry: @unchecked Sendable {
         guard let results = request["nativeToolResults"] as? [[String: Any]], let result = results.last else { return }
         guard let id = result["toolCallId"] as? String else { throw AppleNativeToolGeneration.failure("Tool result identity was missing.") }
         guard let generation = find(id) else { throw AppleNativeToolGeneration.failure("No pending native callback matches this result.") }
+        // Never feed a result admitted for one model into a producer owned by another.
+        guard generation.modelRoute == (request["modelRoute"] as? String ?? "on-device") else {
+            generation.cancel()
+            throw AppleNativeToolGeneration.failure("Tool result model route did not match its producer.")
+        }
         let calls = (request["nativeToolCalls"] as? [[String: Any]] ?? []).filter { $0["id"] as? String == id }
         guard calls.count == 1, results.filter({ $0["toolCallId"] as? String == id }).count == 1,
               let value = result["result"]
