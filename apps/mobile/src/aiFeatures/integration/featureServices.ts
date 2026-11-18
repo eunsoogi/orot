@@ -1,3 +1,4 @@
+import { inheritConversationReadOperation } from './conversationReadOperation';
 import { createColdConversationServices } from './coldConversationServices';
 import { operationRunId } from './featureRunIdentity';
 import { publicMedicalQueryConsent } from '../../agent/execution/publicMedicalQueryConsent';
@@ -24,7 +25,6 @@ import { conversationGeneratedTools } from './conversationGeneratedTools';
 import { retainLiteratureResults } from './researchRetention';
 import { createResearchInputTracker } from './researchInputTracker';
 import type { AiFeatureServiceDependencies } from './featureServiceDependencies';
-export type { AiFeatureServiceDependencies } from './featureServiceDependencies';
 import {
   annotatePublicSearchLimit,
   budgetAfterPublicSearch,
@@ -36,7 +36,7 @@ import { createVisitQuestionFeatureServices } from './visitQuestionFeatureServic
 import { createDailyReportFeature } from './dailyReportFeature';
 import { createDailyReportSourceResolver } from './dailyReportSources';
 import type { AiFeatureServices } from './featureServiceTypes';
-export type { AiFeatureServices } from './featureServiceTypes';
+export type { AiFeatureServiceDependencies, AiFeatureServices };
 const DISEASE_REQUEST =
   '현재 앱 기록에서 검토할 수 있는 질환 가능성을 찾아 주세요. 확진하지 말고, 지지·반대 근거와 불확실성 및 더 필요한 자료를 모두 밝혀 주세요.';
 /** Connects selected AI, durable conversation sessions and revalidated local citations to feature screens. */
@@ -56,6 +56,7 @@ export function createAiFeatureServices(
     let wrapped = localDataCache.get(data);
     if (!wrapped) {
       wrapped = { ...data, rag: createPrivateEvidenceRag(data.rag, registry) };
+      inheritConversationReadOperation(data, wrapped);
       localDataCache.set(data, wrapped);
     }
     return wrapped;
