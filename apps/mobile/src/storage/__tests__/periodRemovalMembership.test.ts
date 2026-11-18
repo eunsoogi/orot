@@ -1,3 +1,6 @@
+import { localQueryTimestampKey } from '@orot/storage';
+import { healthPeriodDeletionGuards } from '../healthPeriodContributorGuards';
+import { previousHealthPeriodGuards } from '../testSupport/previousHealthPeriodGuards';
 import {
   ensurePeriodRemovalIndexes,
   periodRecordKinds,
@@ -79,14 +82,39 @@ test.each(['source_deletion_tombstones', 'agent_memory_removed_sources'])(
       const old = `SELECT h.id FROM health_observations h WHERE EXISTS(SELECT 1 FROM ${marker} m WHERE ${periodRowReferences('m.source_id', marker, 'health_observation')})`;
       const current = `SELECT h.id FROM health_observations h WHERE ${periodRemovalMembership(marker, 'health_observation')}`;
       const split = periodRemovalQuery('health_observations', marker, '1', '1');
-      const bindings = ['measurements', 'a', 'z'];
+      const bindings = [
+        'measurements',
+        localQueryTimestampKey('2026-10-01T00:00:00Z'),
+        localQueryTimestampKey('2026-10-05T00:00:00Z'),
+      ];
+      const full = periodRemovalQuery(
+        'health_observations',
+        marker,
+        previousHealthPeriodGuards().health_observations,
+        '1',
+      );
+      const specialized = periodRemovalQuery(
+        'health_observations',
+        marker,
+        healthPeriodDeletionGuards('measurements').health_observations,
+        '1',
+      );
       for (const [id, provenance, removed, kind, matches] of cases) {
         await f.database.execute('DELETE FROM health_observations');
         await f.database.execute(`DELETE FROM ${marker}`);
         await f.database.execute('DELETE FROM typed_deletion_markers');
         await f.database.execute(
-          'INSERT INTO health_observations(id,payload_json) VALUES (?,?)',
-          [id, JSON.stringify({ provenance })],
+          'INSERT INTO health_observations(id,payload_json,effective_at) VALUES (?,?,?)',
+          [
+            id,
+            JSON.stringify({
+              provenance,
+              observationKind: 'measurement',
+              concept: 'heart_rate',
+              value: { kind: 'quantity', amount: 72, unit: 'count' },
+            }),
+            '2026-10-02T00:00:00Z',
+          ],
         );
         expect((await f.database.execute(current)).rows).toEqual([]);
         // Marker insertion is observed by the same statement, not a separately cached empty-set precheck.
@@ -102,6 +130,12 @@ test.each(['source_deletion_tombstones', 'agent_memory_removed_sources'])(
         expect((await f.database.execute(split, bindings)).rows).toEqual(
           (await f.database.execute(old)).rows,
         );
+        expect((await f.database.execute(specialized, bindings)).rows).toEqual(
+          (await f.database.execute(full, bindings)).rows,
+        );
+        expect(
+          (await f.database.execute(specialized, bindings)).rows.length,
+        ).toBe(matches ? 1 : 0);
         expect((await f.database.execute(current)).rows.length).toBe(
           matches ? 1 : 0,
         );
