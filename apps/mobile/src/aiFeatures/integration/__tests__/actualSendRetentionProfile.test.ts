@@ -156,6 +156,9 @@ test.each([
     expect([...(counts.get('retention')?.values() ?? [])]).toEqual(
       variant === 'distinct-three' ? [2, 2, 2, 2, 1, 1] : [1, 1],
     );
+    expect([...(counts.get('save')?.values() ?? [])]).toEqual(
+      variant === 'distinct-three' ? Array(6).fill(1) : [1, 1],
+    );
     phase = 'replay';
     const saved = await f.storage.read('saved-answer');
     expect(saved?.answer).toContain('Synthetic current answer');
