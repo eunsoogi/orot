@@ -1,10 +1,12 @@
+import { createLocalEvidenceData } from '../../../healthEvidence/localEvidenceData';
 import { sharedAncestryProfileFixture } from '../testSupport/sharedAncestryProfileFixture';
 import { conversationHistoryPageOption } from '../conversationHistoryPageOption';
 import { registerConversationReadOperation } from '../conversationReadOperation';
 import { createSummaryArtifactDiscovery } from '../summaryArtifactDiscovery';
 import { createSymptomSummaryStorage } from '../../../storage/symptomSummaryStorage';
 
-/** Synthetic SQLite with the real production reader capability, not generic data opt-out. */
+/** Exercise the shipping local-data surface, not a directly injected reader that
+ * can conceal ownership lost by an adapter wrapper. */
 test.each([
   [1, false],
   [3, false],
@@ -13,6 +15,9 @@ test.each([
   const f = await sharedAncestryProfileFixture(count, dag);
   const transaction = f.database.transaction.bind(f.database);
   const data = await f.input.loadLocalData();
+  data.readHealthContext = createLocalEvidenceData(
+    f.database,
+  ).readHealthContext!;
   registerConversationReadOperation(data, async (scoped, registry) =>
     createSummaryArtifactDiscovery({
       database: f.database,

@@ -98,10 +98,10 @@ export function createLocalEvidenceData(
       });
       return window;
     },
-    async readHealthContext(window, topics, signal, trace) {
-      await prepare();
-      return readHealthContext(window, topics, signal, trace);
-    },
+    // The reader already prepares private temporary storage and generation guards.
+    // Keep its factory identity so history operations can share reports without
+    // treating arbitrary wrappers as trusted owners or caching source validity.
+    readHealthContext,
     async readCandidates(query, signal, scope) {
       await prepare();
       return readEvidenceCandidates(database, query, signal, scope);
