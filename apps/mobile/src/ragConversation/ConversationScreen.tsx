@@ -1,8 +1,7 @@
+import { ConversationScreenHeader } from './ConversationScreenHeader';
 import { conversationHistoryRecoveryProps } from './conversationHistoryRecoveryProps';
 import { conversationComposerDisabled } from './conversationComposerDisabled';
 import { useConversationPresentationSnapshot } from './useConversationPresentationSnapshot';
-import { ConversationBackButton } from './ConversationBackButton';
-import { AppText as Text } from '../layout/AppText';
 import { useMemo } from 'react';
 import { useContinuousConversationEntry } from './useContinuousConversationEntry';
 import { useConversationSessions } from './ConversationSessionsContext';
@@ -25,7 +24,6 @@ import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurfa
 import { t } from '../i18n';
 import { ConversationQuickChoices } from './ConversationQuickChoices';
 import * as ConversationTasks from './ConversationTaskPanels';
-/** Presents app-owned sessions as a transcript above a persistent composer. */
 export function ConversationScreen({
   isEntryCurrent,
   entryContext,
@@ -103,13 +101,14 @@ export function ConversationScreen({
   );
   const coldResumeBusy = busy || session.restoring || session.retryingSave;
   const header = (
-    <View style={styles.header}>
-      {!navigationRouteKey && <ConversationBackButton onBack={onBack} />}
-      {providerSelection ? (
-        <View style={styles.provider}>{providerSelection}</View>
-      ) : null}
-      <Text style={styles.disclaimer}>{copy.transmissionNotice}</Text>
-    </View>
+    <ConversationScreenHeader
+      archive={store.archive}
+      active={isEntryCurrent?.() ?? true}
+      routeKey={navigationRouteKey}
+      onBack={onBack}
+      provider={providerSelection}
+      notice={copy.transmissionNotice}
+    />
   );
   return (
     <KeyboardAvoidingView

@@ -1,3 +1,4 @@
+import { withConversationArchive } from './conversationArchive';
 import { invalidateTasks } from './invalidateConversationTaskRefresh';
 import { conversationPhotoSurface } from './conversationPhotoSurface';
 import { prepareConversationSend } from './conversationSendPreflight';
@@ -25,7 +26,6 @@ import { createConversationTasks } from './createConversationTasks';
 export type ConversationSender = S.ConversationSender;
 export type ConversationSession = S.ConversationSession;
 export type ConversationSessions = S.ConversationSessions;
-/** The app owns session state across routes and may provide durable retention. */
 export function createConversationSessions(
   options: S.ConversationSessionOptions = {},
 ) {
@@ -246,5 +246,5 @@ export function createConversationSessions(
     current: id => !disposed && snapshot.activeId === id,
   });
   bindSender = policy.bindSender;
-  return policy;
+  return withConversationArchive(policy, options);
 }
