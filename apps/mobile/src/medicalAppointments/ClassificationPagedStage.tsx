@@ -59,6 +59,7 @@ export function ClassificationPagedStage(props: Props) {
   const requiresExpansion = cannotFitLine && !frame.expanded;
   const naturalHeight =
     lines?.reduce((sum, line) => sum + line.height, 0) ?? available;
+  const viewportHeight = cannotFitLine ? 0 : Math.min(available, naturalHeight);
   const previous = () => {
     if (page > 0) setPageIndex(page - 1);
     else {
@@ -89,10 +90,12 @@ export function ClassificationPagedStage(props: Props) {
       >
         <View style={styles.group}>
           <View
-            style={{
-              height: cannotFitLine ? 0 : Math.min(available, naturalHeight),
-              overflow: 'hidden',
-            }}
+            style={[
+              styles.viewport,
+              {
+                height: viewportHeight,
+              },
+            ]}
             testID="classification-text-viewport"
           >
             <Text
@@ -183,6 +186,7 @@ const styles = StyleSheet.create({
   fill: { flex: 1, minHeight: 0, justifyContent: 'center' },
   group: { width: '100%', gap: 12 },
   reader: { flex: 1, justifyContent: 'center' },
+  viewport: { overflow: 'hidden' },
   text: { fontSize: 18, lineHeight: 26, textAlign: 'center' },
   measurement: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0 },
   footer: { gap: 8 },
