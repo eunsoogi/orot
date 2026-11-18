@@ -14,17 +14,16 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
             XCUIDevice.shared.orientation = .portrait
             app.terminate()
         }
-        launch(app, probe: "medical-appointment-classification")
-        tap(app, "medical-appointment-import")
-        DisclosureLayoutUITestObservations.waitForAndAssertControlsFitModal(app, in: self)
-        tap(app, "inference-disclosure-expand")
-        let preview = node(app, "inference-disclosure-message-1")
-        XCTAssertTrue(preview.exists)
-        // Payload privacy is covered at the production request and disclosure receivers;
-        // this journey keeps the native expansion and rotation interaction.
-        DisclosureLayoutUITestObservations.cancelDisclosure(app, in: self)
+        let fixture = ClassificationConsentUITestSupport.launch(app)
+        defer { ClassificationConsentUITestSupport.cleanup(app, fixture: fixture, testCase: self) }
+        DisclosureLayoutUITestObservations.startClassification(app, in: self)
+        failureNotice(app, reason: "이 요청의 AI 처리 승인이 필요해요.")
+        ClassificationConsentUITestSupport.assertBlocked(app, testCase: self)
+        ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
+        ClassificationConsentUITestSupport.assertSettingsControls(app, testCase: self)
+        tap(app, "provider-selection-cancel")
+        tap(app, "classification-close-settings")
 
-        // Keep retry and confirmation reachable without scrolling through native width changes.
         let page = node(app, "medical-appointment-fullscreen")
         let compactWidth = page.frame.width
         XCUIDevice.shared.orientation = .landscapeLeft
@@ -32,16 +31,20 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         XCTAssertTrue(node(app, "medical-appointment-import").isHittable)
         XCTAssertFalse(node(app, "medical-appointment-manual").exists)
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-actions-after-rotation", testCase: self)
-        DisclosureLayoutUITestObservations.presentAndCancelDisclosure(app, in: self)
+        ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
+        ClassificationConsentUITestSupport.assertSettingsControls(app, testCase: self)
+        tap(app, "provider-selection-confirm")
+        XCTAssertTrue(node(app, "calendar-current-model").waitForAppearance())
+        tap(app, "classification-close-settings")
         let expandedWidth = page.frame.width
         XCUIDevice.shared.orientation = .portrait
         waitForWidthChange(page, from: expandedWidth)
 
         DisclosureLayoutUITestObservations.startClassification(app, in: self)
-        XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
-        tap(app, "inference-disclosure-allow")
         failureNotice(app, reason: "선택한 AI의 응답을 받지 못했어요.")
         UITestConditions.value(node(app, "calendar-classification-synthetic-provider-calls"), equals: "syntheticProviderCalls=1")
+        UITestConditions.value(node(app, "classification-synthetic-payload-privacy"), equals: "syntheticHealthIncluded=true;syntheticIdentifierExcluded=true")
+        XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         XCTAssertFalse(node(app, "calendar-classification-synthetic-calendar-save").exists)
         XCTAssertFalse(node(app, "medical-appointment-save-calendar-candidate-1").exists)
         XCTAssertFalse(node(app, "medical-appointment-manual").exists)
@@ -152,54 +155,36 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         NavigationGeometryUITestConditions.captureScreen(app, name: "manual-appointment-edit-saved", testCase: self)
     }
 
-    /// Decline both rendered appearances; this verifies the actual disclosure without any provider send.
+    /// Real settings disclosure replaces the removed per-request preview modal.
     @MainActor
-    func testDisclosureCollapsedAndExpandedAcrossAppearances() throws {
+    func testSettingsDisclosureAndDeclineAcrossAppearances() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "medical-appointment-classification", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
-        app.launch()
+        let fixture = ClassificationConsentUITestSupport.launch(app, extra: AppearanceUITestConditions.observationArguments)
         var original: AppearanceUITestConditions.Snapshot?
         defer {
             if let original {
                 do { try AppearanceUITestConditions.restore(original, returningTo: app, testCase: self) }
                 catch { XCTFail("Could not restore owned Simulator appearance: \(error)") }
             }
-            app.terminate()
+            ClassificationConsentUITestSupport.cleanup(app, fixture: fixture, testCase: self)
         }
         for dark in [false, true] {
-            // The modal intentionally hides the root accessibility marker; switch appearance before opening it.
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
                 if original == nil {
                     original = $0
                 }
             })
-            let suffix = dark ? "dark" : "light"
+            ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
+            ClassificationConsentUITestSupport.assertSettingsControls(app, testCase: self)
+            let disclosure = node(app, "model-settings-transmission-disclosure")
+            XCTAssertTrue(UITestConditions.text(disclosure).contains("OpenAI API"))
+            XCTAssertFalse(UITestConditions.text(disclosure).contains("SENTINEL_CALENDAR_EVENT_IDENTIFIER"))
+            NavigationGeometryUITestConditions.captureScreen(app, name: dark ? "settings-classification-consent-dark" : "settings-classification-consent-light", testCase: self)
+            tap(app, "provider-selection-cancel")
+            tap(app, "classification-close-settings")
             DisclosureLayoutUITestObservations.startClassification(app, in: self)
-            XCTAssertTrue(node(app, "inference-disclosure-sheet").waitForAppearance())
-            XCTAssertTrue(node(app, "inference-disclosure-allow").isEnabled)
-            // The decisions belong to the same page, so reveal them before measuring their hit regions.
-            let page = node(app, "inference-disclosure-content")
-            FormUITestConditions.reveal(node(app, "inference-disclosure-cancel"), in: app, scroll: page)
-            let presented = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                ["inference-disclosure-allow", "inference-disclosure-cancel"].allSatisfy {
-                    let action = self.node(app, $0)
-                    return action.exists && !action.frame.isEmpty && app.frame.contains(action.frame) && action.isHittable
-                }
-            }, object: nil)
-            XCTAssertEqual(UITestConditions.wait(for: [presented]), .completed)
-            NavigationGeometryUITestConditions.captureScreen(app, name: "transfer-consent-collapsed-\(suffix)", testCase: self)
-            tap(app, "inference-disclosure-expand")
-            let preview = node(app, "inference-disclosure-message-1")
-            XCTAssertTrue(preview.waitForAppearance())
-            let content = UITestConditions.text(preview)
-            XCTAssertTrue(content.contains("SENTINEL_HEALTH_VALUE"))
-            XCTAssertFalse(content.contains("SENTINEL_CALENDAR_EVENT_IDENTIFIER"))
-            UITestConditions.scrollTo(preview, in: app)
-            XCTAssertTrue(preview.isHittable)
-            NavigationGeometryUITestConditions.captureScreen(app, name: "transfer-consent-expanded-\(suffix)", testCase: self)
-            tap(app, "inference-disclosure-cancel")
-            UITestConditions.value(node(app, "calendar-classification-synthetic-provider-calls"), equals: "syntheticProviderCalls=0")
-            XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
+            failureNotice(app, reason: "이 요청의 AI 처리 승인이 필요해요.")
+            ClassificationConsentUITestSupport.assertBlocked(app, testCase: self)
         }
     }
 

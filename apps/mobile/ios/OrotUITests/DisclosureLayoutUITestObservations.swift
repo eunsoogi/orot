@@ -1,58 +1,8 @@
 import XCTest
 
-/// Measures the native disclosure window and preserves its existing decline assertions.
+/// Shared classification pagination and retry observations.
 @MainActor
 enum DisclosureLayoutUITestObservations {
-    /// Waits for the real Modal surface before comparing its bounds with the consent controls.
-    static func waitForAndAssertControlsFitModal(
-        _ app: XCUIApplication,
-        in testCase: AppointmentConsentUITests,
-    ) {
-        XCTAssertTrue(testCase.node(app, "inference-disclosure-sheet").waitForAppearance())
-        assertControlsFitModal(app, in: testCase)
-    }
-
-    /// Uses the Modal-owned frame so caller-screen width cannot make clipped consent controls appear valid.
-    static func assertControlsFitModal(
-        _ app: XCUIApplication,
-        in testCase: AppointmentConsentUITests,
-    ) {
-        let modal = testCase.node(app, "inference-disclosure-sheet")
-        XCTAssertTrue(modal.frame.width > 0 && modal.frame.height > 0, modal.debugDescription)
-        let controls = [
-            testCase.node(app, "inference-disclosure-recipient"),
-            testCase.node(app, "inference-disclosure-scope"),
-            testCase.node(app, "inference-disclosure-allow"),
-            testCase.node(app, "inference-disclosure-cancel"),
-        ]
-        let page = testCase.node(app, "inference-disclosure-content")
-        for control in controls {
-            XCTAssertTrue(control.exists, control.debugDescription)
-            FormUITestConditions.reveal(control, in: app, scroll: page)
-            XCTAssertFalse(control.frame.isEmpty, control.debugDescription)
-            XCTAssertTrue(modal.frame.contains(control.frame), control.debugDescription)
-            XCTAssertTrue(control.isHittable, control.debugDescription)
-        }
-        XCTAssertFalse(
-            controls[2].frame.intersects(controls[3].frame),
-            "Allow and decline actions must retain separate measured hit regions",
-        )
-    }
-
-    /// Verifies that the presented layout still declines without reaching the synthetic provider.
-    static func cancelDisclosure(
-        _ app: XCUIApplication,
-        in testCase: AppointmentConsentUITests,
-    ) {
-        assertControlsFitModal(app, in: testCase)
-        testCase.tap(app, "inference-disclosure-cancel")
-        testCase.failureNotice(app, reason: "이 요청의 AI 처리 승인이 필요해요.")
-        UITestConditions.value(
-            testCase.node(app, "calendar-classification-synthetic-provider-calls"),
-            equals: "syntheticProviderCalls=0",
-        )
-    }
-
     /// Reads the actual paged text; inline paragraphs are not separate UIKit accessibility elements.
     static func assertClassificationText(_ app: XCUIApplication, contains expected: String, in testCase: AppointmentConsentUITests) {
         let page = testCase.node(app, "classification-page-text")
@@ -80,14 +30,67 @@ enum DisclosureLayoutUITestObservations {
         }
         testCase.tap(app, "medical-appointment-import")
     }
+}
 
-    /// Opens the same consent dialog after rotation, then checks its actual frame and decline behavior.
-    static func presentAndCancelDisclosure(
-        _ app: XCUIApplication,
-        in testCase: AppointmentConsentUITests,
-    ) {
-        startClassification(app, in: testCase)
-        XCTAssertTrue(testCase.node(app, "inference-disclosure-sheet").waitForAppearance())
-        cancelDisclosure(app, in: testCase)
+/// Actual settings controls and isolated protected grants, never a preapproved execution port.
+@MainActor
+enum ClassificationConsentUITestSupport {
+    static func launch(_ app: XCUIApplication, extra: [String] = []) -> String {
+        let fixture = "test-settings-consent-\(UUID().uuidString.lowercased())"
+        app.launchArguments = arguments(fixture, phase: "create") + extra
+        app.launch()
+        XCTAssertTrue(UITestConditions.element(app, "calendar-classification-synthetic-provider-calls").waitForAppearance())
+        return fixture
+    }
+
+    static func cleanup(_ app: XCUIApplication, fixture: String, testCase: AppointmentConsentUITests) {
+        app.terminate()
+        app.launchArguments = arguments(fixture, phase: "cleanup")
+        app.launch()
+        UITestConditions.value(testCase.node(app, "classification-consent-setup"), equals: "synthetic-cleanup-complete")
+        app.terminate()
+    }
+
+    private static func arguments(_ fixture: String, phase: String) -> [String] {
+        ["-OROT_TEST_PROFILE", "core", "-OROT_E2E_PROBE", "medical-appointment-classification",
+         "-OROT_SETTINGS_CONSENT_FIXTURE", fixture, "-OROT_SETTINGS_CONSENT_PHASE", phase,
+         "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+    }
+
+    static func assertBlocked(_ app: XCUIApplication, testCase: AppointmentConsentUITests) {
+        UITestConditions.value(testCase.node(app, "calendar-classification-synthetic-provider-calls"), equals: "syntheticProviderCalls=0")
+        XCTAssertFalse(testCase.node(app, "calendar-classification-synthetic-calendar-save").exists)
+        XCTAssertFalse(testCase.node(app, "inference-disclosure-sheet").exists)
+        XCTAssertFalse(testCase.node(app, "medical-appointment-manual").exists)
+    }
+
+    static func openSettingsChoice(_ app: XCUIApplication, testCase: AppointmentConsentUITests) {
+        testCase.tap(app, "medical-appointment-select-provider")
+        testCase.tap(app, "calendar-model-refresh")
+        testCase.tap(app, "provider-option-0")
+        XCTAssertTrue(testCase.node(app, "provider-selection-confirmation").waitForAppearance())
+    }
+
+    static func assertSettingsControls(_ app: XCUIApplication, testCase: AppointmentConsentUITests) {
+        let page = testCase.node(app, "classification-consent-scroll")
+        for identifier in ["model-settings-transmission-disclosure", "provider-selection-confirm", "provider-selection-cancel"] {
+            let control = testCase.node(app, identifier)
+            XCTAssertTrue(control.exists)
+            FormUITestConditions.reveal(control, in: app, scroll: page)
+            XCTAssertFalse(control.frame.isEmpty)
+            XCTAssertTrue(app.frame.contains(control.frame))
+            XCTAssertTrue(control.isHittable)
+        }
+        // Measure both actions together after revealing the final settings decision.
+        let allow = testCase.node(app, "provider-selection-confirm")
+        let decline = testCase.node(app, "provider-selection-cancel")
+        // Do not reveal again: both decisions must remain reachable at the same scroll position.
+        for action in [allow, decline] {
+            XCTAssertTrue(action.exists)
+            XCTAssertFalse(action.frame.isEmpty)
+            XCTAssertTrue(app.frame.contains(action.frame))
+            XCTAssertTrue(action.isHittable)
+        }
+        XCTAssertFalse(allow.frame.intersects(decline.frame))
     }
 }

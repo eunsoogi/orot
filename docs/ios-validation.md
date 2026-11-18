@@ -455,7 +455,7 @@ Duo 측정 영역, 큰 글씨에서 중앙 정렬·원형 진행률·결과 페�
 44pt 동작 영역을 담지 못하면 시작/재시작을 비활성화하고 닫기를 유지합니다.
 이때 창 확대·회전 안내는 accessibilityLabel 전용이며 시각적 안내 문구는 없습니다. 이 극단적 치수는 지원 완료로 보고하지 않으며 native 최소 지원 치수는
 아직 측정하지 않았습니다. 전체 창의 기본 동작은 Modal dismiss 완료 뒤에만 실행하여
-전송 동의 Modal과 겹치지 않게 합니다. 닫기, unmount, 문서 또는 callback 변경은 예약된
+다음 화면 전환과 겹치지 않게 합니다. 닫기, unmount, 문서 또는 callback 변경은 예약된
 동작을 취소합니다. 이 경계는 합성 컴포넌트 회귀로 확인했으며 iOS 실제 dismiss 순서와
 VoiceOver, compact/Duo/큰 글씨에서는 별도 수용 검증이 필요합니다.
 
@@ -464,19 +464,35 @@ VoiceOver, compact/Duo/큰 글씨에서는 별도 수용 검증이 필요합니�
 `medical-appointment-classification` 테스트 전용 probe에
 `-OROT_TEST_CLASSIFICATION_STAGES YES`를 함께 지정하면 합성 일정 9건과 수동 응답
 해제 gate만 사용합니다. 실제 Calendar, HealthKit 또는 외부 모델은 호출하지 않습니다.
-플래그가 없으면 기존 실패 응답/동의 거부 검증 시나리오를 그대로 유지합니다.
+플래그가 없으면 실패 응답/설정 승인 거부 검증 시나리오를 유지합니다.
+추가로 `-OROT_SETTINGS_CONSENT_FIXTURE test-settings-consent-<UUID>`와
+`-OROT_SETTINGS_CONSENT_PHASE create`가 필요합니다. AI 선택자에서 실제 달력 모델
+설정 화면을 열어 합성 원격 모델을 선택하고 전송 범위 설명을 확인한 뒤 승인합니다.
+자동 승인이나 반복 전송 동의 Modal은 없습니다. 같은 UUID의 `cleanup` 단계로
+격리 SQLCipher/Keychain 자료를 제거합니다. 일반 제품 계정이나 설정 저장소는 열지 않습니다.
+설정 읽기 Context는 원래 소유자·catalog·recipient·credential epoch·authority generation·
+현재성 검증을 그대로 사용하며 임의 authorized 포트로 대체하지 않습니다.
+
+cloud 합성 회귀는 실제 설정 취소 후 provider 0, 승인 후 식별자 제거 payload,
+실패 저장 0, 실제 8+1 배치와 저장 gate를 검증합니다. owner/readGrant 대기 중 Context
+교체(A→B→A 포함), 언마운트, 보존된 SQL 행이 있는 철회도 이전 요청을 다시 승인하지
+못합니다. null 서비스·소유자·grant 및 잘못된 recipient는 차단합니다.
+기존 접기/펼치기 전송 Modal 대신 실제 설정 설명·확인/취소 컨트롤의 화면 경계,
+회전, appearance를 측정하고 개인정보 제거는 합성 provider 수신 payload로 확인합니다.
+이 native 테스트 소스는 아직 실행하지 않았으며 통과로 보고하지 않습니다.
 
 - 시작 전 설명·AI 선택자·시작 동작의 중앙 정렬을 확인하고, 승인 전 provider 호출 0을 확인합니다.
-- 시작 및 필요한 합성 전송 동의 뒤 `classification-release-response`의 model gate를
+- 설정에서 명시적으로 승인한 뒤 시작하여 `classification-release-response`의 model gate를
   해제하기 전에는 완료 0/9로 0%, 첫 배치 해제 뒤에는 실제 완료 8/9로 88%여야 합니다.
   분류 중 결과 일정은 나타나지 않아야 합니다. 두 번째 model gate를 해제하면 완료 9/9가 됩니다.
 - 최초 저장을 save gate에서 보류하여 100%와 저장 중 상태를 함께 관찰한 뒤 해제합니다.
   완료 결과는 합성 의료 일정 9건만 표시하며, 첫 일정의 긴 원문도 이전/다음으로 끝까지 접근해야 합니다.
 - compact iPhone/가로, Duo wide, XXXL 각각 3단계의 fade, Reduce Motion, 44pt 동작과
   화면 경계, 긴 본문·페이지 전환·VoiceOver를 확인합니다. gate 제어는 fixture 전용이며
+  44pt gate와 진단 문구가 실제 stage 높이를 줄이므로 측정 영역을 함께 기록하고,
   실제 제품 레이아웃 수용은 App-navigation probe에서도 별도로 확인합니다.
 - 한 줄을 담지 못하는 route에서는 reader 확대/닫기/회전 복구를 확인합니다. reader dismiss
-  완료 전에 consent가 겹치지 않아야 하며, 취소·unmount·문서 또는 callback 변경 후 예약 동작이
+  완료 전에 다음 동작이 실행되지 않아야 하며, 취소·unmount·문서 또는 callback 변경 후 예약 동작이
   실행되지 않아야 합니다. 전체 창도 한 줄을 못 담는 극단 치수는 위의 미지원 경계를 유지합니다.
 - 각 수용 시나리오는 새로 실행합니다. effect cleanup/setup 재생 시 이전 model/save 응답은
   generation으로 폐기되며, 합성 회귀에서 이 경계를 확인합니다. 이는 native 수용 완료 증거가 아닙니다.

@@ -1,184 +1,90 @@
-// LangGraph reads ReadableStream during module initialization on Hermes.
+// Polyfills precede the real classification workflow on Hermes.
 import '../src/agent/polyfills';
 import 'react-native-get-random-values';
-import { useEffect, useMemo, useState } from 'react';
-import {
-  AppRegistry,
-  NativeModules,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { providerFailure } from '@orot/model-runtime';
-import type { LanguageModelProvider } from '@orot/model-runtime';
-import type { AppointmentRepository } from '@orot/storage';
-import {
-  classificationStageEvents,
-  createClassificationStageScenario,
-} from './classificationStageScenario';
+import { useEffect, useState } from 'react';
+import { AppRegistry, NativeModules, Text, StyleSheet } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
-import MedicalAppointmentClassificationScreen from '../src/medicalAppointments/MedicalAppointmentClassificationScreen';
-import type { CalendarAutoSyncState } from '../src/calendar/calendarAutoSync';
-import type { CalendarBridge, CalendarEvent } from '../src/calendar/types';
-import type { ProviderSelectionOption } from '../src/providers/selection/types';
+import {
+  openSettingsConsentNativeStore,
+  consentFixtureIdentity,
+} from './settingsConsentNativeStore';
+import { createSettingsConsentUiServices } from './settingsConsentUiServices';
+import { ModelSettingsServicesContext } from '../src/agent/execution/ModelSettingsServices';
+import { SettingsConsentReadServicesContext } from '../src/agent/execution/SettingsConsentReadServices';
+import { ClassificationProbeScreen } from './ClassificationProbeScreen';
 
-// This fixture uses synthetic Calendar and provider responses without EventKit permissions or network access.
-const syntheticEvent: CalendarEvent = {
-  calendarEventIdentifier: 'SENTINEL_CALENDAR_EVENT_IDENTIFIER',
-  effectiveAt: '2035-06-02T00:00:00.000Z',
-  endsAt: '2035-06-02T01:00:00.000Z',
-  calendarEventSnapshot: {
-    title: 'SENTINEL_HEALTH_VALUE: synthetic blood pressure 120/80 follow-up',
-    timeZoneIdentifier: 'Asia/Seoul',
-    isAllDay: false,
-    occurrenceDate: null,
-    isDetached: false,
-    recurrenceRules: [],
-  },
-};
+type Input = ReturnType<typeof createSettingsConsentUiServices>;
 
-const settings = NativeModules?.SettingsManager;
-const staged =
-  (settings?.settings ?? settings?.getConstants?.().settings ?? {})
-    .OROT_TEST_CLASSIFICATION_STAGES === 'YES';
-const events = staged ? classificationStageEvents() : [syntheticEvent];
-
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  gate: { minHeight: 44, justifyContent: 'center' },
-});
-
+/** This explicit test entry never opens normal account/store singletons. A UUID
+ * owns its SQLCipher and Keychain lifecycle; approval is only through settings UI. */
 function MedicalAppointmentClassificationProbeEntry() {
-  const [waiting, setWaiting] = useState<'model' | 'save' | null>(null);
-  const scenario = useMemo(
-    () => createClassificationStageScenario(setWaiting),
-    [],
-  );
+  const [input, setInput] = useState<Input | null>(null);
+  const [status, setStatus] = useState('preparing-synthetic-classification');
+  const [reads, setReads] = useState<ReturnType<
+    Input['fixture']['authorizationServices']
+  > | null>(null);
   useEffect(() => {
-    scenario.activate();
-    return () => scenario.dispose();
-  }, [scenario]);
-  const [providerCalls, setProviderCalls] = useState(0);
-  const [saved, setSaved] = useState(false);
-  const bridge = useMemo<CalendarBridge>(
-    () => ({
-      requestAccessAndListUpcomingEvents: async () => ({
-        access: 'fullAccess',
-        events: [...events],
-      }),
-      findEvent: async identifier => ({
-        access: 'fullAccess',
-        event:
-          events.find(value => value.calendarEventIdentifier === identifier) ??
-          null,
-      }),
-      addEventStoreListener: () => ({ remove: () => undefined }),
-    }),
-    [],
-  );
-  const calendarSync = useMemo<CalendarAutoSyncState>(
-    () => ({
-      access: 'fullAccess',
-      events,
-      query: {
-        fromInclusive: '2035-01-01T00:00:00.000Z',
-        toExclusive: '2036-01-01T00:00:00.000Z',
-        horizonYears: 1,
-        resultLimit: null,
-        complete: true,
-        omittedEventCount: 0,
-      },
-      loading: false,
-      error: false,
-      updatedAt: '2035-01-01T00:00:00.000Z',
-    }),
-    [],
-  );
-  const repository = useMemo(
-    () =>
-      ({
-        list: async () => [],
-        create: async () => undefined,
-        confirmCalendarEvent: async () => {
-          if (staged) await scenario.waitForSave();
-          setSaved(true);
-          return undefined;
-        },
-        reconfirmCalendarEvent: async () => undefined,
-        update: async () => undefined,
-        cancel: async () => undefined,
-      }) as unknown as AppointmentRepository,
-    [scenario],
-  );
-  const provider = useMemo<LanguageModelProvider>(
-    () => ({
-      kind: 'language-model',
-      id: 'synthetic-classification-provider',
-      displayName: 'Synthetic classification provider',
-      capabilities: {
-        inputTypes: ['text'],
-        streaming: false,
-        structuredOutput: false,
-        toolCalling: false,
-      },
-      generate: async (request, options) => {
-        setProviderCalls(current => current + 1);
-        if (staged) return scenario.generate(request, options);
-        return providerFailure({
-          code: 'provider_unavailable',
-          message: 'Synthetic provider failure for local manual review.',
-          retryable: false,
-        });
-      },
-    }),
-    [scenario],
-  );
-  const selectedProvider = useMemo<ProviderSelectionOption>(
-    () => ({
-      provider,
-      modelId: 'synthetic-model',
-      displayName: 'Synthetic classification model',
-      privacyBoundary: 'selected-context-remote',
-      availability: { status: 'available' },
-    }),
-    [provider],
-  );
-
+    let current = true;
+    let close: (() => void) | undefined;
+    const prepare = async () => {
+      const manager = NativeModules.SettingsManager;
+      const launch =
+        manager?.settings ?? manager?.getConstants?.().settings ?? {};
+      if (
+        launch.OROT_E2E_PROBE !== 'medical-appointment-classification' ||
+        !NativeModules.OrotTestControl
+      )
+        throw new Error('Explicit synthetic classification host required');
+      const identifier = consentFixtureIdentity(
+        launch.OROT_SETTINGS_CONSENT_FIXTURE,
+      );
+      const phase = launch.OROT_SETTINGS_CONSENT_PHASE;
+      if (!['create', 'reopen', 'cleanup'].includes(phase))
+        throw new Error('Unknown synthetic phase');
+      const store = await openSettingsConsentNativeStore(
+        identifier,
+        phase === 'create',
+      );
+      if (phase === 'cleanup') {
+        await store.remove();
+        if (current) setStatus('synthetic-cleanup-complete');
+        return;
+      }
+      close = () => store.close();
+      if (!current) {
+        close();
+        return;
+      }
+      const prepared = createSettingsConsentUiServices(store);
+      setReads(prepared.fixture.authorizationServices('calendar'));
+      setInput(prepared);
+    };
+    prepare().catch(() => {
+      if (current) setStatus('synthetic-preparation-failed');
+    });
+    return () => {
+      current = false;
+      close?.();
+    };
+  }, []);
   return (
-    <View style={styles.root}>
-      <Text testID="calendar-classification-synthetic-provider-calls">
-        syntheticProviderCalls={providerCalls}
-      </Text>
-      {saved ? (
-        <Text testID="calendar-classification-synthetic-calendar-save">
-          syntheticCalendarSave=confirmed
-        </Text>
-      ) : null}
-      {staged ? (
-        <Pressable
-          testID="classification-release-response"
-          accessibilityRole="button"
-          accessibilityLabel={`Release synthetic ${waiting ?? 'idle'}`}
-          disabled={!waiting}
-          accessibilityState={{ disabled: !waiting }}
-          onPress={scenario.release}
-          style={styles.gate}
-        >
-          <Text>{`Synthetic gate: ${waiting ?? 'idle'}`}</Text>
-        </Pressable>
-      ) : null}
-      <MedicalAppointmentClassificationScreen
-        bridge={bridge}
-        calendarSync={calendarSync}
-        repository={repository}
-        selectedProvider={selectedProvider}
-        recipient="synthetic-recipient"
-      />
-    </View>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.root}>
+        {input && reads ? (
+          <ModelSettingsServicesContext.Provider value={input.services}>
+            <SettingsConsentReadServicesContext.Provider value={reads}>
+              <ClassificationProbeScreen input={input} />
+            </SettingsConsentReadServicesContext.Provider>
+          </ModelSettingsServicesContext.Provider>
+        ) : (
+          <Text testID="classification-consent-setup">{status}</Text>
+        )}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
-
+const styles = StyleSheet.create({ root: { flex: 1 } });
 AppRegistry.registerComponent(
   appName,
   () => MedicalAppointmentClassificationProbeEntry,

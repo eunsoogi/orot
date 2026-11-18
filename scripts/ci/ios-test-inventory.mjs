@@ -123,7 +123,7 @@ export const fixtureTests = [
   'OrotUITests/PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe',
   'OrotUITests/HealthImportUITests/testDisplayOnlyBloodPressureCompletionCounts',
   'OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification',
-  'OrotUITests/AppointmentConsentUITests/testDisclosureCollapsedAndExpandedAcrossAppearances',
+  'OrotUITests/AppointmentConsentUITests/testSettingsDisclosureAndDeclineAcrossAppearances',
   'OrotUITests/AppointmentConsentUITests/testClassificationReturnsThroughScheduleToHome',
   'OrotUITests/VisitQuestionConsentUITests/testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable',
   'OrotUITests/VisitQuestionConsentUITests/testPublicSearchShowsConsentBeforeSyntheticSearch',
