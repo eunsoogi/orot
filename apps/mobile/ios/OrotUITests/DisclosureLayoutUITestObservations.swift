@@ -200,7 +200,7 @@ enum ClassificationFailureNoticeUITestSupport {
             let query = app.descendants(matching: .any).matching(identifier: id)
             let targets: [[String: Any]] = query.allElementsBoundByIndex.prefix(2).compactMap { target in
                 guard let snapshot = try? target.snapshot() else { return nil }
-                return ["type": String(describing: snapshot.elementType), "frame": NSStringFromCGRect(snapshot.frame),
+                return ["type": String(describing: snapshot.elementType), "frame": NSCoder.string(for: snapshot.frame),
                         "exists": target.exists, "enabled": snapshot.isEnabled, "hittable": target.isHittable,
                         "label": String(snapshot.label.prefix(2048)), "value": String((snapshot.value as? String ?? "").prefix(2048))]
             }
