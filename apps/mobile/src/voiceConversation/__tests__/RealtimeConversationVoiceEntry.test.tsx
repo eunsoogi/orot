@@ -6,7 +6,10 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { Alert, AppState } from 'react-native';
-import { mockNative, realtimeEvents } from '../testSupport/realtimeNativeEventsFixture';
+import {
+  mockNative,
+  realtimeEvents,
+} from '../testSupport/realtimeNativeEventsFixture';
 import { RealtimeConversationVoiceEntry } from '../RealtimeConversationVoiceEntry';
 import type { ConversationSessions } from '../../ragConversation/conversationSessionTypes';
 
