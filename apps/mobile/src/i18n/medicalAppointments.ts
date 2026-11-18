@@ -3,6 +3,10 @@
  * The feature adapter resolves it with `t()` so keys and placeholders stay typed.
  */
 export const medicalAppointmentsKo = {
+  'medicalAppointments.readerTooSmall':
+    '화면을 세로로 돌리거나 창을 키워 주세요',
+  'medicalAppointments.expandReader': '전체 화면으로 내용 보기',
+  'medicalAppointments.closeReader': '확대 화면 닫기',
   'medicalAppointments.startShort': '시작',
   'medicalAppointments.restartShort': '다시',
   'medicalAppointments.confirmClassification': '캘린더 일정을 분류할까요?',

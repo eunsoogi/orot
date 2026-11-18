@@ -2,6 +2,10 @@ import { useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
+import {
+  ClassificationReaderFrame,
+  useClassificationReaderFrame,
+} from './ClassificationReaderFrame';
 import { ClassificationPagingActions } from './ClassificationPagingActions';
 import {
   paginateClassificationLines,
@@ -24,6 +28,7 @@ interface Props {
 /** A measured, non-scrolling reader keeps even one long event reachable without shrinking Dynamic Type. */
 export function ClassificationPagedStage(props: Props) {
   const { fontScale } = useWindowDimensions();
+  const frame = useClassificationReaderFrame(props.onAction, props.documents);
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
   const [footerHeight, setFooterHeight] = useState(0);
   const [documentIndex, setDocumentIndex] = useState(0);
@@ -50,6 +55,8 @@ export function ClassificationPagedStage(props: Props) {
       ? paginateClassificationLines(lines, available)
       : [text];
   const page = Math.min(pageIndex, Math.max(0, pages.length - 1));
+  const cannotFitLine = Boolean(lines?.some(line => line.height > available));
+  const requiresExpansion = cannotFitLine && !frame.expanded;
   const naturalHeight =
     lines?.reduce((sum, line) => sum + line.height, 0) ?? available;
   const previous = () => {
@@ -67,84 +74,109 @@ export function ClassificationPagedStage(props: Props) {
     }
   };
   return (
-    <View
-      style={styles.fill}
-      testID={props.testID}
-      onLayout={event => {
-        const { width, height } = event.nativeEvent.layout;
-        setBounds(old =>
-          old.width === width && old.height === height
-            ? old
-            : { width, height },
-        );
-      }}
-    >
-      <View style={styles.group}>
-        <View
-          style={{ height: Math.min(available, naturalHeight) }}
-          testID="classification-text-viewport"
-        >
-          <Text
-            key={identity}
-            style={[styles.text, styles.measurement]}
-            accessible={false}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            testID="classification-text-measurement"
-            onTextLayout={event => {
-              if (latestIdentity.current !== identity) return;
-              setMeasurement({ key: identity, lines: event.nativeEvent.lines });
+    <ClassificationReaderFrame {...frame}>
+      <View
+        style={styles.fill}
+        testID={props.testID}
+        onLayout={event => {
+          const { width, height } = event.nativeEvent.layout;
+          setBounds(old =>
+            old.width === width && old.height === height
+              ? old
+              : { width, height },
+          );
+        }}
+      >
+        <View style={styles.group}>
+          <View
+            style={{
+              height: cannotFitLine ? 0 : Math.min(available, naturalHeight),
+              overflow: 'hidden',
             }}
+            testID="classification-text-viewport"
           >
-            {text}
-          </Text>
-          <View style={styles.reader}>
             <Text
-              style={styles.text}
-              testID="classification-page-text"
-              accessibilityLiveRegion="polite"
-              accessibilityHint={t('medicalAppointments.resultPosition', {
-                current: page + 1,
-                total: pages.length,
-              })}
-              // Before native metrics arrive this bounded first frame cannot paint over the actions.
-              numberOfLines={
-                lines
-                  ? undefined
-                  : Math.max(1, Math.floor(available / (26 * fontScale)))
-              }
+              key={identity}
+              style={[styles.text, styles.measurement]}
+              accessible={false}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              testID="classification-text-measurement"
+              onTextLayout={event => {
+                if (latestIdentity.current !== identity) return;
+                setMeasurement({
+                  key: identity,
+                  lines: event.nativeEvent.lines,
+                });
+              }}
             >
-              {pages[page]?.split('\n\n').map((paragraph, item, all) => (
-                <Text key={item}>
-                  {paragraph}
-                  {item < all.length - 1 ? '\n\n' : ''}
-                </Text>
-              ))}
+              {text}
             </Text>
+            {!cannotFitLine ? (
+              <View style={styles.reader}>
+                <Text
+                  style={styles.text}
+                  testID="classification-page-text"
+                  accessibilityLiveRegion="polite"
+                  accessibilityHint={t('medicalAppointments.resultPosition', {
+                    current: page + 1,
+                    total: pages.length,
+                  })}
+                  // Before native metrics arrive this bounded first frame cannot paint over the actions.
+                  numberOfLines={
+                    lines
+                      ? undefined
+                      : Math.max(1, Math.floor(available / (26 * fontScale)))
+                  }
+                >
+                  {pages[page]?.split('\n\n').map((paragraph, item, all) => (
+                    <Text key={item}>
+                      {paragraph}
+                      {item < all.length - 1 ? '\n\n' : ''}
+                    </Text>
+                  ))}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <View
+            testID="classification-stage-footer"
+            style={styles.footer}
+            onLayout={event => setFooterHeight(event.nativeEvent.layout.height)}
+          >
+            <ClassificationPagingActions
+              previousDisabled={cannotFitLine || (index === 0 && page === 0)}
+              nextDisabled={
+                cannotFitLine ||
+                (index === props.documents.length - 1 &&
+                  page === pages.length - 1)
+              }
+              onPrevious={previous}
+              onNext={next}
+              compact={compactActions || cannotFitLine}
+              actionTitle={
+                requiresExpansion
+                  ? t('medicalAppointments.expandReader')
+                  : props.actionTitle
+              }
+              actionLabel={
+                requiresExpansion
+                  ? t('medicalAppointments.expandReader')
+                  : cannotFitLine
+                    ? t('medicalAppointments.readerTooSmall')
+                    : props.actionLabel
+              }
+              onAction={requiresExpansion ? frame.expand : frame.execute}
+              disabled={
+                frame.closing ||
+                (!requiresExpansion && (cannotFitLine || props.disabled))
+              }
+              supplementaryAction={props.supplementaryAction}
+            />
           </View>
         </View>
-        <View
-          testID="classification-stage-footer"
-          style={styles.footer}
-          onLayout={event => setFooterHeight(event.nativeEvent.layout.height)}
-        >
-          <ClassificationPagingActions
-            previousDisabled={index === 0 && page === 0}
-            nextDisabled={
-              index === props.documents.length - 1 && page === pages.length - 1
-            }
-            onPrevious={previous}
-            onNext={next}
-            compact={compactActions}
-            actionTitle={props.actionTitle}
-            actionLabel={props.actionLabel}
-            onAction={props.onAction}
-            disabled={props.disabled}
-            supplementaryAction={props.supplementaryAction}
-          />
-        </View>
       </View>
-    </View>
+    </ClassificationReaderFrame>
   );
 }
 const styles = StyleSheet.create({
