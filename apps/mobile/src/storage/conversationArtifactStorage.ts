@@ -1,3 +1,4 @@
+import { withWritePeriodCalculations } from './writePeriodCalculationScope';
 import { registerConversationStrictReaders } from './conversationStrictReadOwner';
 import { appendConversationSourceRows } from './conversationArtifactSourceRows';
 import { enqueueStatementMemory } from './userStatementMemoryJobs';
@@ -157,7 +158,15 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
           sessions.rows[0]?.version !== expectedSessionVersion
         )
           throw new Error('Conversation session was removed.');
-        await assertConversationArtifactCurrent(tx, database, decoded, true);
+        await withWritePeriodCalculations(tx, validate =>
+          assertConversationArtifactCurrent(
+            tx,
+            database,
+            decoded,
+            true,
+            validate,
+          ),
+        );
         assertConversationNotCancelled(signal);
         const existing = await tx.execute(
           'SELECT result_json FROM conversation_artifacts WHERE id = ?',
