@@ -14,13 +14,12 @@ import type {
   HealthQuantitySeries,
 } from './types';
 
-/** Materialize the selected period once, applying an optional ingestion cutoff before selecting sensor series.
- * Joining raw observations to both days and selected series made SQLite repeatedly expand JSON/time expressions.
- * Sweep bound calendar starts together with observations: each sample gets its local day
- * without rescanning/parsing the entire JSON calendar. healthContextDays supplies
- * chronologically ordered, nonoverlapping days, so running maxima carry their boundaries. Boundaries sort before samples
- * at the same exact key; the exclusive end check preserves the caller's clipped partial-day boundaries.
- * Every sensor series remains separate and is returned; ranking changes order, not inclusion.
+/** Seek each bound, nonoverlapping local-day interval using the exact timestamp index.
+ * This avoids sorting every observation together with calendar boundary events.
+ * healthContextDays owns timezone/DST and clipped half-open boundaries; no samples
+ * or days are capped. Keep both ranking orders and daily aggregation unchanged so
+ * floating-point totals and oldest/newest timestamp spellings remain stable.
+ * Sensor ranking changes result order, never inclusion.
  */
 export async function readHealthQuantityContext(
   executor: SqlExecutor,
@@ -54,7 +53,7 @@ export async function readHealthQuantityContext(
     `SELECT * FROM (
       WITH days(date, from_key, to_key) AS (${healthContextCalendarSql}),
       observations AS MATERIALIZED (
-        SELECT r.id, r.effective_at AS at, ${at} AS at_key,
+        SELECT d.date, r.id, r.effective_at AS at, ${at} AS at_key,
           CASE lower(json_extract(r.payload_json, '$.concept'))
             WHEN 'blood_pressure_systolic' THEN 'blood pressure systolic'
             WHEN 'blood_pressure_diastolic' THEN 'blood pressure diastolic'
@@ -66,8 +65,9 @@ export async function readHealthQuantityContext(
                    json_extract(r.payload_json, '$.provenance.origin')) || ':' ||
           COALESCE(json_extract(r.payload_json, '$.provenance.source.productType'),
                    json_extract(r.payload_json, '$.provenance.source.device.model'), '') AS sensor
-        FROM health_observations r
-        WHERE json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
+        FROM days d CROSS JOIN health_observations r
+        WHERE ${at} >= d.from_key AND ${at} < d.to_key
+          AND json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
           AND (json_extract(r.payload_json, '$.observationKind') = 'measurement' OR ${concept} = 'workout_duration')
           ${familyFilter}
           AND ${currentEvidenceCondition('health_observation')}
@@ -76,22 +76,8 @@ export async function readHealthQuantityContext(
           AND json_extract(r.payload_json, '$.value.kind') = 'quantity'
           AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
           AND json_type(r.payload_json, '$.value.unit') = 'text'
-      ), calendar_events AS (
-        SELECT o.*, NULL AS calendar_date, NULL AS calendar_to, 1 AS sample
-        FROM observations o
-        UNION ALL
-        SELECT NULL, NULL, from_key, NULL, NULL, NULL, NULL, date, to_key, 0
-        FROM days
-      ), calendar_sweep AS (
-        SELECT *, max(calendar_date) OVER calendar_order AS date,
-          max(calendar_to) OVER calendar_order AS day_to
-        FROM calendar_events
-        WINDOW calendar_order AS (
-          ORDER BY at_key, sample ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        )
       ), dated AS MATERIALIZED (
-        SELECT id, at, at_key, concept, unit, amount, sensor, date
-        FROM calendar_sweep WHERE sample = 1 AND at_key < day_to
+        SELECT id, at, at_key, concept, unit, amount, sensor, date FROM observations
       ), ranked AS (
         SELECT d.*, row_number() OVER (
           PARTITION BY d.date, d.concept, d.unit, d.sensor ORDER BY d.at_key DESC, d.id

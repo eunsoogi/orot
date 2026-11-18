@@ -3,9 +3,10 @@ import { healthObservation } from '../../../../../../packages/storage/__tests__/
 import { createHealthEvidenceTestDatabase } from '../../localEvidenceTestSupport';
 import { readHealthQuantityContext } from '../quantityQuery';
 import { healthContextDays } from '../window';
+import { calendarSweepQuery } from '../testSupport/calendarSweepQuery';
 
 // Calendar boundaries come from the caller's zone, never from fixed 24-hour bins.
-test('calendar sweep retains DST, offset, exact partial boundaries, freshness and sensor separation', async () => {
+test('indexed calendar retains DST, offset, exact partial boundaries, freshness and sensor separation', async () => {
   const { database, close } = createHealthEvidenceTestDatabase();
   try {
     await runMigrations(database);
@@ -70,7 +71,7 @@ test('calendar sweep retains DST, offset, exact partial boundaries, freshness an
       {
         execute: (sql, parameters) =>
           database.execute(
-            sql.replace(
+            calendarSweepQuery(sql).replace(
               /, calendar_events AS \([\s\S]*?\), ranked AS \(/u,
               `, dated AS MATERIALIZED (
           SELECT o.*, (SELECT d.date FROM days d
