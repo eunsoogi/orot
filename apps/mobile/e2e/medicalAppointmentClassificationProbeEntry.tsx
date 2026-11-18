@@ -32,7 +32,6 @@ const styles = StyleSheet.create({ root: { flex: 1 } });
 function MedicalAppointmentClassificationProbeEntry() {
   const [providerCalls, setProviderCalls] = useState(0);
   const [saved, setSaved] = useState(false);
-  const [manualRequested, setManualRequested] = useState(false);
   const bridge = useMemo<CalendarBridge>(
     () => ({
       requestAccessAndListUpcomingEvents: async () => ({
@@ -120,18 +119,12 @@ function MedicalAppointmentClassificationProbeEntry() {
           syntheticCalendarSave=confirmed
         </Text>
       ) : null}
-      {manualRequested ? (
-        <Text testID="calendar-classification-synthetic-manual-entry">
-          manualEntry=requested
-        </Text>
-      ) : null}
       <MedicalAppointmentClassificationScreen
         bridge={bridge}
         calendarSync={calendarSync}
         repository={repository}
         selectedProvider={selectedProvider}
         recipient="synthetic-recipient"
-        onOpenManual={() => setManualRequested(true)}
       />
     </View>
   );

@@ -53,12 +53,40 @@ enum DisclosureLayoutUITestObservations {
         )
     }
 
+    /// Reads the actual paged text; inline paragraphs are not separate UIKit accessibility elements.
+    static func assertClassificationText(_ app: XCUIApplication, contains expected: String, in testCase: AppointmentConsentUITests) {
+        let page = testCase.node(app, "classification-page-text")
+        XCTAssertTrue(page.waitForAppearance())
+        var visited = Set<String>()
+        while !UITestConditions.text(page).contains(expected) {
+            let text = UITestConditions.text(page)
+            guard visited.insert(text).inserted else { break }
+            let next = testCase.node(app, "medical-appointment-next-result")
+            guard next.isEnabled else { break }
+            testCase.tap(app, "medical-appointment-next-result")
+            let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                UITestConditions.text(page) != text
+            }, object: nil)
+            XCTAssertEqual(UITestConditions.wait(for: [changed]), .completed)
+        }
+        XCTAssertTrue(UITestConditions.text(page).contains(expected), app.debugDescription)
+    }
+
+    /// A retry returns to confirmation before another explicit start can request consent.
+    static func startClassification(_ app: XCUIApplication, in testCase: AppointmentConsentUITests) {
+        if testCase.node(app, "medical-appointment-results").exists {
+            testCase.tap(app, "medical-appointment-import")
+            XCTAssertTrue(testCase.node(app, "medical-appointment-confirmation").waitForAppearance())
+        }
+        testCase.tap(app, "medical-appointment-import")
+    }
+
     /// Opens the same consent dialog after rotation, then checks its actual frame and decline behavior.
     static func presentAndCancelDisclosure(
         _ app: XCUIApplication,
         in testCase: AppointmentConsentUITests,
     ) {
-        testCase.tap(app, "medical-appointment-import")
+        startClassification(app, in: testCase)
         XCTAssertTrue(testCase.node(app, "inference-disclosure-sheet").waitForAppearance())
         cancelDisclosure(app, in: testCase)
     }

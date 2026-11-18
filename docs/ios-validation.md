@@ -122,7 +122,7 @@ The table preserves all 55 declarations and their original requirement descripti
 | N024 | [local-query-probe.e2e.js:6](https://github.com/eunsoogi/orot/blob/08a3c63950f2db7ecddcb37cba719b58a3443076/apps/mobile/e2e/local-query-probe.e2e.js#L6): reads synthetic source-linked records from encrypted storage and removes its fixtures | HermesDomainIntegrationTests/testSourceLinkedLocalQueriesRemoveTheirSyntheticFixtures | Hosted baseline passed (release); final candidate pending. |
 | N025 | [localE5Embedding.e2e.js:28](https://github.com/eunsoogi/orot/blob/08a3c63950f2db7ecddcb37cba719b58a3443076/apps/mobile/e2e/localE5Embedding.e2e.js#L28): measures Korean retrieval and memory, cancels a native batch, and reads the persisted index after relaunch | LocalModelIntegrationTests/testFreshE5RetrievalMeasurementsAndInferenceCancellation + testE5IndexAndKoreanRetrievalSurviveProcessRestart | Hosted baseline passed (release); final candidate pending. |
 | N026 | [medicalAppointmentClassification.test.js:6](https://github.com/eunsoogi/orot/blob/08a3c63950f2db7ecddcb37cba719b58a3443076/apps/mobile/e2e/medicalAppointmentClassification.test.js#L6): shows the synthetic request, blocks its provider until approval, and preserves manual entry without saving failed classifications | AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification | Hosted baseline passed (release); final candidate pending. |
-| N027 | [medicalAppointmentNavigation.test.js:6](https://github.com/eunsoogi/orot/blob/08a3c63950f2db7ecddcb37cba719b58a3443076/apps/mobile/e2e/medicalAppointmentNavigation.test.js#L6): opens the manual page and returns through classification and Schedule to Home | AppointmentConsentUITests/testManualPageReturnsThroughClassificationAndScheduleToHome | Hosted baseline passed (release); final candidate pending. |
+| N027 | [medicalAppointmentNavigation.test.js:6](https://github.com/eunsoogi/orot/blob/08a3c63950f2db7ecddcb37cba719b58a3443076/apps/mobile/e2e/medicalAppointmentNavigation.test.js#L6): opens the manual page and returns through classification and Schedule to Home | AppointmentConsentUITests/testClassificationReturnsThroughScheduleToHome | Updated classification-only navigation contract; new native run pending. Legacy manual edit/guard assertions remain in the direct retained-route fixture. |
 | N028 | [navigation-glass.e2e.js:20](https://github.com/eunsoogi/orot/blob/08a3c63950f2db7ecddcb37cba719b58a3443076/apps/mobile/e2e/navigation-glass.e2e.js#L20): visits every root tab, keeps Home clear, and opens Records from the tab bar | NavigationLayoutIntegrationTests/testProductionRootTabSymbolsAndLabelsFitTheirUIKitTouchTargets + RootNavigationUITests/testBackRemainsReachableWithoutHomeButton | Hosted baseline passed (release); final candidate pending. |
 | N029 | [navigation-glass.e2e.js:87](https://github.com/eunsoogi/orot/blob/08a3c63950f2db7ecddcb37cba719b58a3443076/apps/mobile/e2e/navigation-glass.e2e.js#L87): keeps root tabs and recording actions reachable with XXXL text | RootNavigationUITests/testLargeTextKeepsRootTabsAndRecordingActionsReachable | Hosted baseline passed (release); final candidate pending. |
 | N030 | [navigation-glass.e2e.js:135](https://github.com/eunsoogi/orot/blob/08a3c63950f2db7ecddcb37cba719b58a3443076/apps/mobile/e2e/navigation-glass.e2e.js#L135): shows native actions and handles edge-back on an AI feature route | RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack | Hosted baseline passed (release); final candidate pending. |
@@ -422,3 +422,30 @@ still expected the inventory before the six new lifecycle tests. Exact totals we
 increased by six, preserving all existing inventory and security checks. A new
 identity-level regression requires all six fade cases exactly once; the affected
 policy selection passed 50 tests. Product/native source was unchanged by this fix.
+
+
+### 일정 분류 3단계 화면 검증 경계
+
+시작 확인, 실제 분류 완료 일정 수에 따른 원형 진행률, 완료 결과의 세 화면을
+별도로 렌더링하고 각 화면 전환은 fade-out/fade-in으로 처리합니다. Reduce Motion은
+즉시 전환합니다. 전체 화면에서 스크롤 대신 이전/다음으로 모든 의료 일정을 확인합니다.
+확인 설명과 개별 결과의 긴 제목·분류 이유도 실제 native Text 줄 높이와 가용 높이로
+나누며, 짧은 가로/큰 글씨 화면에서는 44pt 의미 있는 아이콘 동작을 유지합니다. 분류 도중 후보는 표시하지 않으며 저장이 진행 중인 100%는 별도 저장
+상태로 구분합니다.
+
+직접 입력 진입 제거에 따른 기존 검증 매핑:
+- 분류 화면의 수동 입력 노출/이동 검증은 버튼 부재와 AI 선택/Back 복구 검증으로
+  교체했습니다. 분류 전송 동의, 거부 후 provider 미호출, 실패 후 미저장은 유지합니다.
+- 중복 제목 예약 두 건의 저장과 날짜 확인은 그대로 유지하며 화면 확인만 결과의
+  다음/이전 페이지를 통해 수행합니다.
+- import dock 검증은 중앙 확인 버튼과 같은 readiness 조건을 확인하도록 변경합니다.
+- 기존 수동 편집의 저장 중 이탈 차단, 취소, 초안 보존 및 회전 검증은
+  `RetainedAppointmentRouteFixture`에서 동일한 production route와 navigation shell로
+  유지합니다. 이 fixture는 제품에 삭제한 진입 버튼을 다시 추가하지 않습니다.
+- 펼침식 결과 카드의 제목·시각·분류·이유·불확실성·저장 상태는 내용 페이지에
+  모두 포함합니다. 펼침 버튼만 제거하고 줄 단위 이전/다음 접근을 검증합니다.
+- 기존 App 분류→Schedule→Home/Back 복구와 native 자식 경계 측정은 유지합니다.
+
+컴포넌트 검증은 native 기하·접근성 실제 실행을 대신하지 않습니다. 일반 iPhone,
+Duo 측정 영역, 큰 글씨에서 중앙 정렬·원형 진행률·결과 페이지의 실제 접근성 및
+스크롤 없는 도달 가능성은 별도 native 검증 전에는 완료로 간주하지 않습니다.

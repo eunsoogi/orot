@@ -174,7 +174,6 @@ function App({
                   onOpenCalendarSettings={() =>
                     appNavigation.push('settings-sync-status')
                   }
-                  onOpenManual={() => actions.push('medical-manual')}
                   onOpenProviderSelection={() =>
                     actions.push('settings-provider')
                   }

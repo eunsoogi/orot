@@ -13,7 +13,7 @@ test('Read-only child boundaries keep their original and Duo destinations', () =
       'core',
     ],
     [
-      'OrotUITests/AppointmentConsentUITests/testManualPageReturnsThroughClassificationAndScheduleToHome',
+      'OrotUITests/AppointmentConsentUITests/testClassificationReturnsThroughScheduleToHome',
       'fixtures',
     ],
   ];
