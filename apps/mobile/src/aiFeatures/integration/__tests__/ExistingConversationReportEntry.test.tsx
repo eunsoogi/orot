@@ -162,6 +162,7 @@ test('a single report-choice tap starts the consent-aware report adapter without
     expect.any(Object),
     { kind: 'reuse_or_generate' },
     expect.objectContaining({ onTaskStreamEvent: expect.any(Function) }),
+    expect.any(AbortSignal),
   );
   expect(await screen.findByTestId('rag-conversation-error')).toBeTruthy();
   expect(screen.getAllByTestId('conversation-user-message')).toHaveLength(1);
