@@ -1,7 +1,8 @@
 import { render, screen, within } from '@testing-library/react-native';
 import { t } from '../../i18n';
 import type { OpenAIAccountSummary } from '../../providers/openai';
-import { SettingsRoute } from '../SettingsRoute';
+import { Text, View } from 'react-native';
+import { useSettingsRouteSummaries } from '../SettingsRouteAccountSummaries';
 import { settingsRouteResolverOptions } from '../settingsRouteTestSupport';
 
 let mockFocused = true;
@@ -13,20 +14,34 @@ jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
 }));
 
+function SummaryProbe({
+  options,
+  provider,
+}: {
+  options: ReturnType<typeof settingsRouteResolverOptions>;
+  provider: string;
+}) {
+  const { selectedAiSummary, accountsSummary } = useSettingsRouteSummaries(
+    options,
+    provider,
+  );
+  return (
+    <View>
+      <Text>{selectedAiSummary}</Text>
+      <View testID="settings-open-accounts">
+        <Text>{accountsSummary}</Text>
+      </View>
+    </View>
+  );
+}
 function settingsScreen(
   selectedAiResolverOptions: ReturnType<typeof settingsRouteResolverOptions>,
   selectedProvider = '',
 ) {
   return (
-    <SettingsRoute
-      selectedProvider={selectedProvider}
-      selectedAiResolverOptions={selectedAiResolverOptions}
-      onOpenProviderSettings={jest.fn()}
-      onOpenAccounts={jest.fn()}
-      onOpenPrivacy={jest.fn()}
-      onOpenBackup={jest.fn()}
-      onOpenHealthData={jest.fn()}
-      onOpenSyncStatus={jest.fn()}
+    <SummaryProbe
+      options={selectedAiResolverOptions}
+      provider={selectedProvider}
     />
   );
 }
