@@ -20,15 +20,29 @@ type SessionRestoreInput = {
   readonly boundCaptureOwner?: ConversationCaptureOwner;
 };
 
-export function restoreConversationSessionPage(input: SessionRestoreInput) {
-  return withConversationReadOperation(
-    input.data,
-    data => restore({ ...input, data }),
-    input.signal,
-  );
+export async function restoreConversationSessionPage(
+  input: SessionRestoreInput,
+) {
+  const operation = input.storage.beginReadOperation?.(input.signal);
+  try {
+    return await withConversationReadOperation(
+      input.data,
+      data => restore({ ...input, data, reads: operation ?? input.storage }),
+      input.signal,
+    );
+  } finally {
+    operation?.dispose();
+  }
 }
 
-async function restore(input: SessionRestoreInput) {
+async function restore(
+  input: SessionRestoreInput & {
+    reads: Pick<
+      SessionRestoreInput['storage'],
+      'readMany' | 'readManyWithAncestry'
+    >;
+  },
+) {
   if (input.signal.aborted)
     throw new Error('Conversation restoration was cancelled.');
   const page = await input.storage.list(
@@ -44,7 +58,7 @@ async function restore(input: SessionRestoreInput) {
   const unavailableItems: { id: string; createdAt: string }[] = [];
   // One transaction shares identical period calculations while still checking each
   // root's deletion, parent, policy and source guards independently.
-  const snapshots = await input.storage.readManyWithAncestry(
+  const snapshots = await input.reads.readManyWithAncestry(
     page.items.map(item => item.id),
   );
   const hydrate = createConversationPageHydration(input, snapshots.ancestry);
@@ -62,7 +76,7 @@ async function restore(input: SessionRestoreInput) {
     else unavailableItems.push({ id: item.id, createdAt: item.createdAt });
   }
   // Recheck the entire page in one transaction against a consistent source snapshot.
-  const saved = await input.storage.readMany(items.map(item => item.id));
+  const saved = await input.reads.readMany(items.map(item => item.id));
   for (let index = items.length - 1; index >= 0; index--) {
     if (!saved[index] || fingerprint(saved[index]) !== items[index]!.revision) {
       // A stable withheld row can become a notice, but mid-read changes cancel publication.

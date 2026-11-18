@@ -12,6 +12,7 @@ export type ReadOnlyPeriodValidation = (
 /** Create only inside an explicitly read-only batch. Never reuse across writes or transactions. */
 export function createReadOnlyPeriodValidation(
   snapshot: SqlExecutor,
+  calculate: ReadOnlyPeriodValidation = assertSummaryPeriodCurrent,
 ): ReadOnlyPeriodValidation {
   const validated = new Map<string, string>();
   const generation = async () =>
@@ -33,7 +34,7 @@ export function createReadOnlyPeriodValidation(
     const before = await generation();
     if (validated.get(key) === before) return;
     validated.delete(key);
-    await assertSummaryPeriodCurrent(tx, source, requireGeneration);
+    await calculate(tx, source, requireGeneration);
     const after = await generation();
     // Only a successful, generation-stable calculation may be reused. Failures are retried.
     // Root and quarantine checks remain separate and run on every validation.
