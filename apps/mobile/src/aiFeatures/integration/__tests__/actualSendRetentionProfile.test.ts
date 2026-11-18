@@ -151,15 +151,10 @@ test.each([
       'SYNTHETIC_ACTUAL_SEND_RETENTION',
       JSON.stringify({ variant, phases, diagnostics, phaseDiagnostics, marks }),
     );
-    // Two strict parent fences remain; distinct periods also need uncached
-    // original source reads. Nested generated and bound groups each retain
-    // their two fences, independent of the number of sibling aliases.
+    // Every strict fence remains; only its committed period calculation is reused.
+    // Distinct original source callbacks retain their independent strict reads.
     expect([...(counts.get('retention')?.values() ?? [])]).toEqual(
-      variant === 'distinct-three'
-        ? [3, 3, 3, 3, 2, 2]
-        : variant.startsWith('nested')
-          ? [4, 4]
-          : [2, 2],
+      variant === 'distinct-three' ? [2, 2, 2, 2, 1, 1] : [1, 1],
     );
     phase = 'replay';
     const saved = await f.storage.read('saved-answer');
