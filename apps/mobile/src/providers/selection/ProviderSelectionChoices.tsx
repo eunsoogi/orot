@@ -97,7 +97,6 @@ export function ProviderSelectionChoices({
       <Text accessibilityRole="header" style={styles.heading}>
         ChatGPT
       </Text>
-      <Text>{t('modelSettings.subscriptionNotice')}</Text>
       <View style={styles.account}>
         {chatGPTSetup ? <ProviderCatalogAccount setup={chatGPTSetup} /> : null}
         {cards(false)}
