@@ -1,5 +1,11 @@
 import { compareTimestamps, TimestampSchema } from '@orot/domain';
-import { dateKey, dayFormatter, dayStart, shiftDate } from './calendarDate';
+import {
+  civilDateTime,
+  dateKey,
+  dayFormatter,
+  dayStart,
+  shiftDate,
+} from './calendarDate';
 import type { HealthContextDay, HealthContextWindow } from './types';
 
 /** Preserve the caller-selected local-calendar period without an arbitrary day ceiling. */
@@ -25,10 +31,11 @@ export function healthContextDays(
     compareTimestamps(window.toExclusive, exactMidnight) === 0
       ? shiftDate(endDate, -1)
       : endDate;
+  const lastCivilTime = civilDateTime(lastDate);
   const days: HealthContextDay[] = [];
   for (
     let date = dateKey(formatter, from);
-    date <= lastDate;
+    civilDateTime(date) <= lastCivilTime;
     date = shiftDate(date, 1)
   ) {
     const start = new Date(dayStart(date, formatter)).toISOString();
