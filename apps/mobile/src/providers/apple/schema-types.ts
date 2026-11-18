@@ -33,6 +33,7 @@ export type AppleNativeSchema =
     };
 
 export interface AppleNativeRequest {
+  readonly modelRoute?: 'private-cloud-compute';
   readonly profile?: 'recap-transformation';
   readonly instructions: string;
   readonly prompt: string;

@@ -1,4 +1,5 @@
 import { t } from '../../i18n';
+import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { AppText as Text } from '../../layout/AppText';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppButton as Button } from '../../layout/AppButton';
@@ -48,7 +49,9 @@ export default function ProviderSelectionConfirmation({
         >
           {local
             ? providerSelectionText.onDevicePrivacy
-            : providerSelectionText.remotePrivacy}
+            : option.provider.id === APPLE_PCC_PROVIDER_ID
+              ? t('provider.pcc.privacy')
+              : providerSelectionText.remotePrivacy}
         </Text>
       </View>
       {option.provider.id === 'openai-api-decisions' ? (

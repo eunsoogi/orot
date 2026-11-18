@@ -41,6 +41,47 @@ final class AppleNativeToolLifecycleTests: AppleNativeToolLifecycleTestCase {
         } catch {}
     }
 
+    func testPrivateCloudToolResultResumesOnlyItsMatchingProducer() async throws {
+        let registry = AppleNativeToolRegistry()
+        let response = try await registry.run(["modelRoute": "private-cloud-compute"], requestId: "pcc-first") { generation in
+            let result = try await generation.invoke(name: "search", arguments: [:])
+            XCTAssertEqual(result, "{\"sourceIds\":[\"synthetic-source\"]}")
+            return ["text": "acknowledged"]
+        }
+        let call = try XCTUnwrap((response["toolCalls"] as? [[String: Any]])?.first)
+        let id = try XCTUnwrap(call["id"] as? String)
+        let next = try await registry.run([
+            "modelRoute": "private-cloud-compute", "nativeToolCalls": [call],
+            "nativeToolResults": [["toolCallId": id, "result": ["sourceIds": ["synthetic-source"]]]],
+        ], requestId: "pcc-next") { _ in ["text": "fresh PCC answer"] }
+        XCTAssertEqual(next["text"] as? String, "fresh PCC answer")
+    }
+
+    func testToolResultsCannotCrossModelRoutes() async throws {
+        // Synthetic producers prove ownership only, not PCC inference or entitlement access.
+        for (original, incoming) in [("on-device", "private-cloud-compute"), ("private-cloud-compute", "on-device")] {
+            let registry = AppleNativeToolRegistry()
+            let response = try await registry.run(["modelRoute": original], requestId: original) { generation in
+                _ = try await generation.invoke(name: "search", arguments: [:])
+                XCTFail("A different model must not receive the callback result")
+                return [:]
+            }
+            let call = try XCTUnwrap((response["toolCalls"] as? [[String: Any]])?.first)
+            let id = try XCTUnwrap(call["id"] as? String)
+            do {
+                _ = try await registry.run(["modelRoute": incoming, "nativeToolCalls": [call], "nativeToolResults": [
+                    ["toolCallId": id, "result": ["synthetic": true]],
+                ]], requestId: incoming) { _ in
+                    XCTFail("A mismatched route must not start another generation"); return [:]
+                }
+                XCTFail("Expected model ownership rejection")
+            } catch {
+                XCTAssertTrue(error.localizedDescription.contains("model route"))
+            }
+            registry.cancelAll()
+        }
+    }
+
     func testCancellationReleasesWaitingCallback() async throws {
         let registry = AppleNativeToolRegistry()
         let first = try await registry.run([:], requestId: "cancelled") { generation in

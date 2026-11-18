@@ -21,7 +21,8 @@ test('offers explicit start and keeps stop reachable during active phases', asyn
   );
   expect(onStart).not.toHaveBeenCalled();
   expect(
-    screen.getByRole('button', { name: props.startLabel }).props.onAction,
+    screen.getByRole('button', { name: props.startLabel }).props
+      .onGlassIconPress,
   ).toEqual(expect.any(Function));
   expect(screen.getByRole('button', { name: props.startLabel })).toHaveStyle({
     width: 44,

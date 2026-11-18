@@ -14,7 +14,7 @@ test('photo selection and removal are explicit actions, independent of send', as
     />,
   );
   expect(
-    screen.getByRole('button', { name: '사진 첨부' }).props.onAction,
+    screen.getByRole('button', { name: '사진 첨부' }).props.onGlassIconPress,
   ).toEqual(expect.any(Function));
   expect(screen.getByRole('button', { name: '사진 첨부' })).toHaveStyle({
     width: 44,

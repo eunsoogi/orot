@@ -1,6 +1,7 @@
 export {
   APPLE_PROVIDER_CAPABILITIES,
   APPLE_PROVIDER_ID,
+  APPLE_PCC_PROVIDER_ID,
   AppleFoundationModelsProvider,
 } from './provider';
 export type {

@@ -26,6 +26,7 @@ import {
 import { AppleToolLifetime } from './toolLifetime';
 
 export const APPLE_PROVIDER_ID = 'apple-foundation-models';
+export const APPLE_PCC_PROVIDER_ID = 'apple-private-cloud-compute';
 
 export const APPLE_PROVIDER_CAPABILITIES: LanguageModelCapabilities = {
   inputTypes: ['text'],
@@ -37,14 +38,20 @@ export const APPLE_PROVIDER_CAPABILITIES: LanguageModelCapabilities = {
 };
 
 let requestSequence = 0;
-
 export class AppleFoundationModelsProvider implements LanguageModelProvider {
   readonly kind = 'language-model' as const;
-  readonly id = APPLE_PROVIDER_ID;
-  readonly displayName = 'Apple Foundation Models';
+  readonly id: string;
+  readonly displayName: string;
   readonly capabilities = APPLE_PROVIDER_CAPABILITIES;
   private readonly toolLifetime: AppleToolLifetime;
-  constructor(private readonly native: AppleFoundationModelsNativeBridge) {
+  constructor(
+    private readonly native: AppleFoundationModelsNativeBridge,
+    route: 'on-device' | 'private-cloud-compute' = 'on-device',
+  ) {
+    // Model identities never share persisted selection or native tool continuations.
+    this.id = route === 'on-device' ? APPLE_PROVIDER_ID : APPLE_PCC_PROVIDER_ID;
+    this.displayName =
+      route === 'on-device' ? 'Apple Foundation Models' : 'Apple Intelligence · PCC';
     this.toolLifetime = new AppleToolLifetime((id) => native.cancel(id));
   }
 
@@ -222,7 +229,7 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
 
   private nextRequestId(): string {
     requestSequence += 1;
-    return APPLE_PROVIDER_ID + '-' + requestSequence;
+    return this.id + '-' + requestSequence;
   }
 }
 
