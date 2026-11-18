@@ -36,14 +36,56 @@ final class DailyReportLocalRecoveryUITests: OrotFailFastTestCase {
         }
     }
 
+    /// The actual recovery component and feature actions, not the standalone storage buttons.
     @MainActor
-    private func launch(_ app: XCUIApplication, _ identifier: String, _ phase: String) {
+    func testActualRecoveryConsumerRestartsWithoutAutomaticSaveAndSavesOnceExplicitly() {
+        let app = XCUIApplication()
+        let identifier = "test-settings-consent-\(UUID().uuidString.lowercased())"
+        defer { app.terminate() }
+        launch(app, identifier, "create", consumer: true)
+        expect(app, ["\"pendingCount\":1", "\"savedStatus\":\"missing\""])
+        app.terminate()
+        launch(app, identifier, "reopen", consumer: true)
+        expect(app, ["\"pendingCount\":1", "\"savedStatus\":\"missing\""])
+        let resume = app.buttons.matching(identifier: "2035-01-01 보고서 저장 재개").firstMatch
+        XCTAssertTrue(wait { resume.exists && resume.isEnabled && resume.isHittable })
+        let route = app.buttons.matching(identifier: "Toggle recovery route").firstMatch
+        XCTAssertTrue(wait { route.exists && route.isEnabled && route.isHittable })
+        route.tap()
+        XCTAssertTrue(wait { !resume.exists })
+        route.tap()
+        XCTAssertTrue(wait { resume.exists && resume.isEnabled && resume.isHittable })
+        let inspect = app.buttons.matching(identifier: "Inspect local metadata").firstMatch
+        XCTAssertTrue(wait { inspect.exists && inspect.isEnabled && inspect.isHittable })
+        inspect.tap()
+        let result = app.staticTexts.matching(identifier: "daily-recovery-consumer-status").firstMatch
+        XCTAssertTrue(wait { UITestConditions.text(result).contains("\"savedStatus\":\"missing\"") })
+        resume.tap()
+        XCTAssertTrue(wait {
+            let text = UITestConditions.text(result)
+            return text.contains("\"savedRevision\":1") && text.contains("\"pendingCount\":0")
+        })
+        XCTAssertTrue(wait { !resume.exists })
+        app.terminate()
+        launch(app, identifier, "reopen", consumer: true)
+        expect(app, ["\"savedRevision\":1", "\"pendingCount\":0"])
+        XCTAssertFalse(resume.exists)
+        app.terminate()
+        launch(app, identifier, "cleanup")
+        XCTAssertTrue(wait { UITestConditions.text(self.status(app)).contains("cleanup-complete") })
+    }
+
+    @MainActor
+    private func launch(_ app: XCUIApplication, _ identifier: String, _ phase: String, consumer: Bool = false) {
         app.launchArguments = [
             "-OROT_TEST_SCENARIO", "daily-report-visual",
             "-OROT_DAILY_RECOVERY", "synthetic",
             "-OROT_DAILY_RECOVERY_FIXTURE", identifier,
             "-OROT_DAILY_RECOVERY_PHASE", phase,
         ]
+        if consumer {
+            app.launchArguments += ["-OROT_DAILY_RECOVERY_UI", "consumer"]
+        }
         app.launch()
         XCTAssertTrue(UITestConditions.exists(status(app)))
     }
