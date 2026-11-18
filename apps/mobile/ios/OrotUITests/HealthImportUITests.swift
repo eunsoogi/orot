@@ -69,7 +69,11 @@ final class HealthImportUITests: OrotFailFastTestCase {
 
     @MainActor
     private func launch(_ app: XCUIApplication, scenario: String, updated: Bool = false) {
-        app.launchArguments = ["-OROT_TEST_SCENARIO", scenario]
+        // This journey tests health import, not first-run appearance onboarding.
+        app.launchArguments = [
+            "-OROT_TEST_SCENARIO", scenario,
+            "-OROT_HEALTH_IMPORT_APPEARANCE", "synthetic",
+        ]
         if updated {
             app.launchArguments.append("-OROT_HEALTH_FIXTURE_UPDATED")
         }
