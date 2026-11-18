@@ -63,7 +63,7 @@ export function openOpSqliteFileQueue() {
   const source = fs.readFileSync(
     path.join(
       __dirname,
-      '../../../../node_modules/@op-engineering/op-sqlite/src/functions.ts',
+      '../node_modules/@op-engineering/op-sqlite/src/functions.ts',
     ),
     'utf8',
   );
