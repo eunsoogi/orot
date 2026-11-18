@@ -44,6 +44,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         app.launchArguments = launchArguments
         app.launch()
         defer { app.terminate() }
+        NavigationForegroundUITestConditions.prepareFreshAppearance(app)
 
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "rag-conversation-screen")))
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])

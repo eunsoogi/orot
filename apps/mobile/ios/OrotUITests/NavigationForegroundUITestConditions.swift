@@ -3,6 +3,19 @@ import XCTest
 /// Exercises the OS lifecycle without relaunching the app or replacing its retained route.
 @MainActor
 enum NavigationForegroundUITestConditions {
+    /// Fresh owned fixtures must finish the real appearance gate before the retained-route journey.
+    /// This neutral selection uses the production save action; it grants no model or data permission.
+    static func prepareFreshAppearance(_ app: XCUIApplication) {
+        let star = UITestConditions.element(app, "별")
+        XCTAssertTrue(UITestConditions.exists(star), app.debugDescription)
+        XCTAssertTrue(star.isHittable)
+        star.tap()
+        let save = app.buttons["assistant-appearance-save"]
+        guard FormUITestConditions.reveal(save, in: app, scrollID: "assistant-appearance-scroll") != nil else { return }
+        XCTAssertTrue(save.isHittable && save.isEnabled)
+        save.tap()
+    }
+
     static func restoreEditableDraft(_ app: XCUIApplication, draft: String, citation: XCUIElement) throws {
         let input = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertEqual(input.value as? String, draft)
