@@ -24,6 +24,7 @@ export function ConversationEdgeGradient({
   const background =
     appColorPalettes[scheme === 'dark' ? 'dark' : 'light'].background;
   const [opaque, setOpaque] = useState(true);
+  const [size, setSize] = useState<{ width: number; height: number }>();
   useEffect(() => {
     let current = true;
     let notified = false;
@@ -52,6 +53,16 @@ export function ConversationEdgeGradient({
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID={testID}
+      onLayout={event => {
+        const { width, height } = event.nativeEvent.layout;
+        if (!Number.isFinite(width) || !Number.isFinite(height)) return;
+        if (width < 0 || height < 0) return;
+        setSize(previous =>
+          previous?.width === width && previous.height === height
+            ? previous
+            : { width, height },
+        );
+      }}
     >
       {opaque ? (
         <View
@@ -73,9 +84,11 @@ export function ConversationEdgeGradient({
               <Stop offset="1" stopColor={background} stopOpacity={0} />
             </LinearGradient>
           </Defs>
+          {/* Native SVG caches percentage paths; explicit panel dimensions invalidate
+              the Rect path on resize without remounting identity or transcript state. */}
           <Rect
-            width="100%"
-            height="100%"
+            width={size?.width ?? '100%'}
+            height={size?.height ?? '100%'}
             fill={`url(#${edge}-conversation-fade)`}
           />
         </Svg>

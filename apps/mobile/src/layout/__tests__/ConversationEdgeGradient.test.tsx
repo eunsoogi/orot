@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { AccessibilityInfo, StyleSheet } from 'react-native';
 import * as Native from 'react-native';
 import { ConversationEdgeGradient } from '../ConversationEdgeGradient';
@@ -104,4 +104,71 @@ test('does not obscure history when reduced transparency changes before the init
   ).toBe(0);
   await view.unmount();
   expect(remove).toHaveBeenCalledTimes(1);
+});
+
+test.each(['top', 'bottom'] as const)(
+  'updates the %s native drawing geometry on repeated panel resizes without remounting',
+  async edge => {
+    jest
+      .spyOn(AccessibilityInfo, 'isReduceTransparencyEnabled')
+      .mockResolvedValue(false);
+    const view = await render(
+      <ConversationEdgeGradient edge={edge} testID="edge" fadeOverlap={16} />,
+    );
+    const root = view.getByTestId('edge', { includeHiddenElements: true });
+    const drawing = view.getByTestId('Rect', { includeHiddenElements: true });
+    for (const [width, height] of [
+      [320, 120],
+      [760, 120],
+      [760, 96],
+      [0, 0],
+      [320, 120],
+      [320, 120],
+    ]) {
+      await fireEvent(root, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width, height } },
+      });
+      const current = view.getByTestId('Rect', { includeHiddenElements: true });
+      expect(current).toBe(drawing);
+      expect(current.props).toMatchObject({ width, height });
+      expect(root.props.pointerEvents).toBe('none');
+    }
+    await fireEvent(root, 'layout', {
+      nativeEvent: { layout: { width: NaN, height: 96 } },
+    });
+    expect(drawing.props).toMatchObject({ width: 320, height: 120 });
+  },
+);
+
+test('retains the latest panel size while reduced transparency hides the SVG', async () => {
+  let change!: (value: boolean) => void;
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceTransparencyEnabled')
+    .mockResolvedValue(true);
+  jest
+    .spyOn(AccessibilityInfo, 'addEventListener')
+    .mockImplementation((_name, callback) => {
+      change = callback as (value: boolean) => void;
+      return { remove: jest.fn() };
+    });
+  const view = await render(
+    <ConversationEdgeGradient edge="top" testID="edge" />,
+  );
+  const root = view.getByTestId('edge', { includeHiddenElements: true });
+  await fireEvent(root, 'layout', {
+    nativeEvent: { layout: { width: 760, height: 128 } },
+  });
+  expect(view.queryByTestId('Svg', { includeHiddenElements: true })).toBeNull();
+  await act(async () => change(false));
+  expect(
+    view.getByTestId('Rect', { includeHiddenElements: true }).props,
+  ).toMatchObject({ width: 760, height: 128 });
+  await act(async () => change(true));
+  await fireEvent(root, 'layout', {
+    nativeEvent: { layout: { width: 320, height: 96 } },
+  });
+  await act(async () => change(false));
+  expect(
+    view.getByTestId('Rect', { includeHiddenElements: true }).props,
+  ).toMatchObject({ width: 320, height: 96 });
 });
