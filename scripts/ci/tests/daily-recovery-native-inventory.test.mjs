@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import { iosTestCohortTasks } from '../ios-test-cohorts.mjs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 
 test('daily recovery has a separate real-restart acceptance case, not consent-grant evidence', () => {
   const id =
     'OrotUITests/DailyReportLocalRecoveryUITests/testPublishedFinalOutputRestartsAndOnlyExplicitCurrentResumeSaves';
   assert.equal(iosTestInventory('provider-selection').filter((value) => value === id).length, 1);
+  const scheduled = ['release', 'speech', 'debug']
+    .flatMap(iosTestCohortTasks)
+    .flatMap((task) => task.identifiers);
+  assert.equal(scheduled.filter((value) => value === id).length, 1);
   const swift = readFileSync(
     'apps/mobile/ios/OrotUITests/DailyReportLocalRecoveryUITests.swift',
     'utf8',
