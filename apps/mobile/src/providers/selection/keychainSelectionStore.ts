@@ -1,3 +1,4 @@
+import { createCredentialMutationOwner } from '../../agent/execution/credentialMutation';
 import {
   ACCESSIBLE,
   getGenericPassword,
@@ -8,6 +9,18 @@ import type { ProviderSelection, ProviderSelectionStore } from './types';
 
 const KEYCHAIN_SERVICE = 'com.orot.mobile.provider-selection.v1';
 const KEYCHAIN_ACCOUNT = 'provider-selection';
+const owners = new Map<
+  string,
+  ReturnType<typeof createCredentialMutationOwner>
+>();
+function selectionOwner(service: string) {
+  let owner = owners.get(service);
+  if (!owner) {
+    owner = createCredentialMutationOwner();
+    owners.set(service, owner);
+  }
+  return owner;
+}
 
 function isIdentifier(value: unknown): value is string {
   return (
@@ -57,23 +70,40 @@ export class KeychainProviderSelectionStore implements ProviderSelectionStore {
     return credentials === false ? null : parseSelection(credentials.password);
   }
 
+  subscribeChanges(listener: () => void) {
+    return selectionOwner(this.service).subscribe(listener);
+  }
+  liveWitness() {
+    return selectionOwner(this.service).capture();
+  }
+
   async save(value: ProviderSelection): Promise<void> {
     const selection = requireSelection(value);
-    const saved = await setGenericPassword(
-      KEYCHAIN_ACCOUNT,
-      JSON.stringify(selection),
-      {
-        service: this.service,
-        accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-      },
-    );
-    if (saved === false) {
-      throw new Error('The provider selection could not be saved.');
+    const finish = selectionOwner(this.service).begin();
+    try {
+      const saved = await setGenericPassword(
+        KEYCHAIN_ACCOUNT,
+        JSON.stringify(selection),
+        {
+          service: this.service,
+          accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+        },
+      );
+      if (saved === false) {
+        throw new Error('The provider selection could not be saved.');
+      }
+    } finally {
+      finish();
     }
   }
 
   async clear(): Promise<void> {
-    await resetGenericPassword({ service: this.service });
+    const finish = selectionOwner(this.service).begin();
+    try {
+      await resetGenericPassword({ service: this.service });
+    } finally {
+      finish();
+    }
   }
 }
 

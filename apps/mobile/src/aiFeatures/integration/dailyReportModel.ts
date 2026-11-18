@@ -1,3 +1,4 @@
+import { dailyReportConsentRequest } from './dailyReportConsentRequest';
 import * as reportAuth from './dailyReportAuthorizationWait';
 import { dailyReportModelPrompt } from './dailyReportModelPrompt';
 import {
@@ -6,7 +7,11 @@ import {
   type ReportModelContext,
   type ReportModelAnalysis,
 } from './dailyReportModelAnalysis';
-import { invokeProductionRequest } from '@orot/agent-runtime';
+import {
+  guardProviderAuthorization,
+  invokeProductionRequest,
+  isExecutionConsentCurrent,
+} from '@orot/agent-runtime';
 import type {
   ConsentDecision,
   ExecutionConsentPort,
@@ -99,6 +104,16 @@ export async function selectDailyReportFacts(input: {
           );
       }),
     ]);
+  const outbound = dailyReportConsentRequest(
+    input.selected,
+    input.runId,
+    input.includesSystemCalendar === true,
+    request,
+    controller.signal,
+  );
+  const consentCurrent = () =>
+    !input.selected.remoteProcessing ||
+    isExecutionConsentCurrent(input.consent, outbound);
   try {
     // Capacity belongs to the selected provider; exact-payload consent and source
     // revalidation still precede dispatch regardless of request size.
@@ -109,26 +124,7 @@ export async function selectDailyReportFacts(input: {
         decision = await wait(
           reportAuth
             .reportConsent(input.consent, input.deadlineContext)
-            .authorize({
-              operationRunId: input.runId,
-              providerId: input.selected.provider.id,
-              modelId: input.selected.modelId,
-              recipient: input.selected.recipient,
-              remoteProcessing: true,
-              consentScope: {
-                purpose: 'daily_report',
-                dataCategories: [
-                  'health_records',
-                  ...(input.includesSystemCalendar ? ['calendar_plans'] : []),
-                ],
-                policyVersion: input.includesSystemCalendar
-                  ? 'daily-report-calendar-analysis-v2'
-                  : 'daily-report-analysis-v2',
-              },
-              allowedScope: { sourceKinds: ['personal_record'] },
-              payload: request,
-              signal: controller.signal,
-            }),
+            .authorize(outbound),
         );
       } catch {
         if (controller.signal.aborted) return cancelled();
@@ -152,7 +148,7 @@ export async function selectDailyReportFacts(input: {
     }
     if (!current) return { status: 'failed', code: 'source_revision_changed' };
     if (controller.signal.aborted) return cancelled();
-    if (stableJson(request) !== original)
+    if (stableJson(request) !== original || !consentCurrent())
       return { status: 'failed', code: 'consent_required' };
     let sawEvent = false;
     let completed = false;
@@ -178,13 +174,25 @@ export async function selectDailyReportFacts(input: {
           }
         : {}),
     };
+    const guarded = guardProviderAuthorization(
+      observed,
+      () =>
+        !controller.signal.aborted &&
+        stableJson(request) === original &&
+        consentCurrent(),
+      listener =>
+        input.consent.subscribeAuthorizationInvalidation?.(
+          outbound,
+          listener,
+        ) ?? (() => {}),
+    );
     let response;
     input.deadlineContext.stage = 'provider';
     providerDiagnostic('daily_report', 'provider_error', 'started');
     try {
       response = await wait(
         invokeProductionRequest(
-          observed,
+          guarded.provider,
           request,
           controller.signal,
           Boolean(provider.capabilities.streaming && provider.stream),
@@ -193,6 +201,8 @@ export async function selectDailyReportFacts(input: {
       providerDiagnostic('daily_report', 'provider_error', 'completed');
     } catch (error) {
       if (controller.signal.aborted) return cancelled();
+      if (guarded.wasDenied())
+        return { status: 'failed', code: 'consent_required' };
       providerDiagnostic('daily_report', 'provider_error', 'failed');
       reportProviderException('daily_report', error);
       return {

@@ -1,3 +1,10 @@
+// View persistence boundary; actual settings grant activation is covered with SQLite service tests.
+jest.mock('../../agent/execution/saveModelSettingsConsent', () => ({
+  saveModelSettingsConsent: async (input: {
+    store: { save(value: unknown): Promise<void> };
+    selection: unknown;
+  }) => input.store.save(input.selection),
+}));
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Button, Text, View, StyleSheet } from 'react-native';
 import { ModelSelectionTabs } from '../../providers/selection/ModelSelectionTabs';

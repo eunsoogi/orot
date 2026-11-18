@@ -105,7 +105,9 @@ export function registerCapabilityTestEntry(
       require('./settingsAccountsLayoutProbeEntry');
       break;
     case 'settings-provider-layout':
-      require('./settingsProviderLayoutProbeEntry');
+      if (settings.OROT_SETTINGS_CONSENT === 'synthetic')
+        require('./settingsConsentNativeProbeEntry');
+      else require('./settingsProviderLayoutProbeEntry');
       break;
     case 'visit-questions':
       require('./visitQuestionsProbeEntry');

@@ -1,3 +1,4 @@
+import { waitForRefreshEnabled } from '../testSupport/voiceSettingsViewFixture';
 import { hasRealtimeVoiceRuntime } from '../voiceRuntimeCapability';
 import {
   act,
@@ -8,6 +9,13 @@ import {
 } from '@testing-library/react-native';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { voiceSettingsStore } from '../voiceSettingsStore';
+// Native account/grant coordination has SQLite service tests; retain this view's original persistence assertions.
+jest.mock('../../agent/execution/saveModelSettingsConsent', () => ({
+  saveModelSettingsConsent: async (input: {
+    store: { save(value: unknown): Promise<void> };
+    selection: unknown;
+  }) => input.store.save(input.selection),
+}));
 jest.mock('../voiceSettingsStore', () => ({
   voiceSettingsStore: {
     load: jest.fn(),
@@ -40,11 +48,7 @@ beforeEach(() => {
 it('does not present a static catalog or credentials and refreshes only explicitly', async () => {
   const accounts = jest.fn();
   const view = await render(<VoiceSettingsPanel onOpenAccounts={accounts} />);
-  await waitFor(() =>
-    expect(
-      view.getByTestId('voice-model-refresh').props.accessibilityState.disabled,
-    ).toBe(false),
-  );
+  await waitForRefreshEnabled(view);
   expect(view.queryByTestId('voice-api-key')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-realtime-2.1-mini')).toBeNull();
   expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
@@ -78,11 +82,7 @@ it('does not present a static catalog or credentials and refreshes only explicit
 });
 it('marks retained results stale and disables API selection after a failed refresh', async () => {
   const view = await render(<VoiceSettingsPanel />);
-  await waitFor(() =>
-    expect(
-      view.getByTestId('voice-model-refresh').props.accessibilityState.disabled,
-    ).toBe(false),
-  );
+  await waitForRefreshEnabled(view);
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await waitFor(() =>
     expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy(),
@@ -138,11 +138,7 @@ it('shows an empty discovered catalog honestly without static fallback', async (
     .mocked(voiceSettingsStore.discoverModels)
     .mockResolvedValue({ revision: 1, ids: [] });
   const view = await render(<VoiceSettingsPanel />);
-  await waitFor(() =>
-    expect(
-      view.getByTestId('voice-model-refresh').props.accessibilityState.disabled,
-    ).toBe(false),
-  );
+  await waitForRefreshEnabled(view);
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await waitFor(() =>
     expect(
@@ -150,6 +146,9 @@ it('shows an empty discovered catalog honestly without static fallback', async (
     ).toBeTruthy(),
   );
   expect(view.queryByTestId('voice-model-gpt-realtime-2.1')).toBeNull();
+  expect(
+    view.queryByTestId('model-settings-transmission-disclosure'),
+  ).toBeNull();
   expect(JSON.stringify(view.toJSON())).not.toContain('·');
 });
 it('ignores a late catalog response after disconnection', async () => {
@@ -165,11 +164,7 @@ it('ignores a late catalog response after disconnection', async () => {
     }),
   );
   const view = await render(<VoiceSettingsPanel />);
-  await waitFor(() =>
-    expect(
-      view.getByTestId('voice-model-refresh').props.accessibilityState.disabled,
-    ).toBe(false),
-  );
+  await waitForRefreshEnabled(view);
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   jest
     .mocked(voiceSettingsStore.accountStatus)
@@ -188,11 +183,7 @@ it('ignores a late catalog response after disconnection', async () => {
 it('keeps settings quiet without starting a call or granting runtime consent', async () => {
   jest.mocked(hasRealtimeVoiceRuntime).mockReturnValue(true);
   const view = await render(<VoiceSettingsPanel />);
-  await waitFor(() =>
-    expect(
-      view.getByTestId('voice-model-refresh').props.accessibilityState.disabled,
-    ).toBe(false),
-  );
+  await waitForRefreshEnabled(view);
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await waitFor(() =>
     expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy(),
@@ -203,7 +194,12 @@ it('keeps settings quiet without starting a call or granting runtime consent', a
   expect(view.queryByText(/이 API 계정의 모델 목록을 새로고침/)).toBeNull();
   expect(view.queryByText(/기기 내 처리:/)).toBeNull();
   expect(voiceSettingsStore.save).not.toHaveBeenCalled();
-  expect(JSON.stringify(view.toJSON())).not.toContain('·');
+  expect(
+    view.getByTestId('model-settings-transmission-disclosure'),
+  ).toHaveTextContent(/OpenAI Realtime API/);
+  expect(
+    view.getByTestId('model-settings-transmission-disclosure'),
+  ).toHaveTextContent(/별도 API 사용료/);
 });
 it('reports failed persistence without claiming the selected model was saved', async () => {
   jest.mocked(voiceSettingsStore.save).mockRejectedValue(new Error('locked'));

@@ -1,3 +1,19 @@
+// This view fixture controls the separately persisted settings decision; real grant/transport guards have service tests.
+const mockSettingsAuthorize = jest.fn(
+  async () => 'authorized' as 'authorized' | 'renewal_required',
+);
+jest.mock('../../agent/execution/useInferenceConsent', () => ({
+  useInferenceConsent: () => ({
+    consent: {
+      authorize: mockSettingsAuthorize,
+      isAuthorizationCurrent: () => true,
+    },
+    disclosureSheet: null,
+  }),
+}));
+beforeEach(() => {
+  mockSettingsAuthorize.mockReset().mockResolvedValue('authorized');
+});
 import { fireEvent, screen, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { renderWithRootSafeArea } from '../../../test-support/safeAreaTestProviders';
@@ -56,10 +72,7 @@ test('keeps guidance compact and results with their full selected source in one 
   );
   expect(service.search).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  expect(service.search).not.toHaveBeenCalled();
-  await fireEvent.press(
-    await screen.findByTestId('inference-disclosure-allow'),
-  );
+  expect(screen.queryByTestId('inference-disclosure-allow')).toBeNull();
   const flow = within(
     screen.getByTestId('external-medical-evidence-columns-primary'),
   );
@@ -114,9 +127,7 @@ test('keeps loading exclusive and retries failure in place without dropping the 
   const query = screen.getByTestId('external-evidence-query');
   await fireEvent.changeText(query, 'retained query');
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  await fireEvent.press(
-    await screen.findByTestId('inference-disclosure-allow'),
-  );
+  expect(screen.queryByTestId('inference-disclosure-allow')).toBeNull();
   expect(screen.getByTestId('external-evidence-search')).toBeDisabled();
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
   expect(search).toHaveBeenCalledTimes(1);
@@ -159,8 +170,6 @@ test('shows an error when the provider is unavailable', async () => {
     'query',
   );
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  await fireEvent.press(
-    await screen.findByTestId('inference-disclosure-allow'),
-  );
+  expect(screen.queryByTestId('inference-disclosure-allow')).toBeNull();
   expect(await screen.findByText(/외부 자료를 불러오지 못했어요/)).toBeTruthy();
 });

@@ -1,3 +1,6 @@
+import type { CalendarModelSettingsPanelProps } from './CalendarModelSettingsPanel.types';
+import { refreshCalendarModels } from './refreshCalendarModels';
+import { useModelConsentSave } from '../agent/execution/useModelConsentSave';
 import { useEffect, useRef, useState } from 'react';
 import { useCalendarModelActions } from './useCalendarModelActions';
 import { View } from 'react-native';
@@ -7,7 +10,6 @@ import { ApiCatalogAccount } from '../providers/selection/ApiCatalogAccount';
 import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
 import { t } from '../i18n';
 import type {
-  ChatGPTAccountSetup,
   ProviderSelection,
   ProviderSelectionOption,
 } from '../providers/selection/types';
@@ -15,10 +17,7 @@ import { ProviderSelectionChoices } from '../providers/selection/ProviderSelecti
 import ProviderSelectionOptionCard from '../providers/selection/ProviderSelectionOptionCard';
 import ProviderSelectionConfirmation from '../providers/selection/ProviderSelectionConfirmation';
 import { resolveProviderSelection } from '../providers/selection/providerSelection';
-import { calendarModelStore } from './calendarModelStore';
-import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
-import { createCalendarDecisionsOption } from './decisionsProvider';
-
+import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
 const requirements = { inputTypes: ['text'] } as const;
 /** All three destinations share a separate selection, never the conversation store. */
 export function CalendarModelSettingsPanel({
@@ -26,15 +25,10 @@ export function CalendarModelSettingsPanel({
   chatGPTSetup,
   onBusyChange,
   onStateChange,
-}: {
-  readonly options: readonly ProviderSelectionOption[];
-  readonly chatGPTSetup?: ChatGPTAccountSetup;
-  readonly onStateChange?: (
-    state: { hasPendingSelection: boolean; isSavingSelection: boolean },
-    inputChanged?: boolean,
-  ) => void;
-  readonly onBusyChange: (busy: boolean) => void;
-}) {
+}: CalendarModelSettingsPanelProps) {
+  const services = useModelSettingsServices();
+  const { calendar: calendarModelStore, voice: voiceSettingsStore } = services;
+  const saveConsent = useModelConsentSave('calendar', calendarModelStore);
   const [connected, setConnected] = useState(false);
   const [saved, setSaved] = useState<ProviderSelection | null>(null);
   const [pending, setPending] = useState<ProviderSelectionOption | null>(null);
@@ -49,6 +43,17 @@ export function CalendarModelSettingsPanel({
   const [message, setMessage] = useState('');
   useEffect(() => {
     let active = true;
+    // A replacement owner cannot inherit the old account's catalog or draft.
+    accountRevision.current = null;
+    setSaved(null);
+    setPending(null);
+    setApiOptions([]);
+    setLoading(true);
+    setLoadError(false);
+    setConnected(false);
+    setRefreshing(false);
+    setSaving(false);
+    setMessage('');
     calendarModelStore
       .load()
       .then(value => {
@@ -87,13 +92,16 @@ export function CalendarModelSettingsPanel({
         value?.provider.id === 'openai-api-decisions' ? null : value,
       );
     });
-    return () => {
-      active = false;
+    const invalidate = () => {
       generation.current += 1;
       controller.current?.abort();
+    };
+    return () => {
+      active = false;
+      invalidate();
       unsubscribe();
     };
-  }, []);
+  }, [services, calendarModelStore, voiceSettingsStore]);
   useEffect(() => {
     onBusyChange(pending !== null || saving);
     onStateChange?.(
@@ -116,52 +124,45 @@ export function CalendarModelSettingsPanel({
     : null;
   async function refresh() {
     if (refreshing || !connected) return;
-    const request = ++generation.current;
-    controller.current?.abort();
-    setRefreshing(true);
-    setApiOptions([]);
-    const abort = new AbortController();
-    controller.current = abort;
-    const timeout = setTimeout(() => abort.abort(), 15000);
-    try {
-      const result = await voiceSettingsStore.discoverModels(abort.signal);
-      if (request !== generation.current || abort.signal.aborted) return;
-      accountRevision.current = result.revision;
-      const supported = result.ids.filter(id => id === 'gpt-6-luna');
-      setApiOptions(
-        supported.map(id => createCalendarDecisionsOption(id, result.revision)),
-      );
-      setMessage(supported.length ? '' : t('modelSettings.noDecisionModels'));
-    } catch {
-      if (request === generation.current)
-        setMessage(t('modelSettings.modelLoadFailed'));
-    } finally {
-      clearTimeout(timeout);
-      if (request === generation.current) setRefreshing(false);
-    }
+    await refreshCalendarModels({
+      services,
+      generation,
+      controller,
+      accountRevision,
+      setRefreshing,
+      setApiOptions,
+      setMessage,
+    });
   }
   async function confirm() {
     if (!pending || !current || resolution?.ok !== true || saving || loadError)
       return;
+    const owner = generation.current;
     setSaving(true);
     try {
       if (current.provider.id === 'openai-api-decisions') {
         const account = await voiceSettingsStore.accountStatus();
-        if (!account.connected || account.revision !== accountRevision.current)
+        if (
+          owner !== generation.current ||
+          !account.connected ||
+          account.revision !== accountRevision.current
+        )
           throw new Error('Account unavailable');
       }
       const selection = {
         providerId: current.provider.id,
         modelId: current.modelId,
       };
-      await calendarModelStore.save(selection);
+      await saveConsent(current);
+      if (owner !== generation.current) return;
       setSaved(selection);
       setPending(null);
       setMessage('');
     } catch {
-      setMessage(t('modelSettings.accountReadFailed'));
+      if (owner === generation.current)
+        setMessage(t('modelSettings.accountReadFailed'));
     } finally {
-      setSaving(false);
+      if (owner === generation.current) setSaving(false);
     }
   }
   const hasDock = useCalendarModelActions(
@@ -223,6 +224,7 @@ export function CalendarModelSettingsPanel({
       {message ? <Text accessibilityRole="alert">{message}</Text> : null}
       {pending ? (
         <ProviderSelectionConfirmation
+          consentSlot="calendar"
           hasActionDock={hasDock}
           option={current ?? pending}
           blockedMessage={

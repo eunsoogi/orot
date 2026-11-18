@@ -29,7 +29,7 @@ export const visitQuestionsKo = {
   'visitQuestions.workflow.providerUnavailable':
     '선택한 AI 제공자를 사용할 수 없어요.',
   'visitQuestions.workflow.consent.accountRequired':
-    '선택한 계정을 확인한 뒤 외부 AI 전송 동의를 받을 수 있어요.',
+    '선택한 계정을 확인한 뒤 설정에서 외부 AI 전송을 허용해 주세요.',
   'visitQuestions.workflow.insufficientEvidenceBudget':
     '추가로 확인할 자료를 위한 여유가 부족해요. 자료를 다시 준비해 주세요.',
   'visitQuestions.workflowResults.failure.needsClarification':
@@ -43,7 +43,7 @@ export const visitQuestionsKo = {
   'visitQuestions.workflowResults.failure.unavailable':
     '선택한 AI 제공자에서 질문을 준비하지 못했어요. 연결 상태를 확인하고 다시 시도해 주세요.',
   'visitQuestions.workflowResults.consentRequired':
-    '선택한 외부 AI 제공자에게 예약 맥락과 근거를 보내려면 먼저 동의가 필요해요.',
+    '예약 맥락과 근거를 보내려면 설정에서 선택한 외부 AI 제공자의 전송을 허용해 주세요.',
   'visitQuestions.presentation.noEvidence':
     '질문 근거를 다시 확인할 수 없어 제안을 새로 준비해야 해요.',
   'visitQuestions.presentation.staleEvidence':
@@ -89,7 +89,7 @@ export const visitQuestionsKo = {
   'visitQuestions.recap.status.pending':
     '진료 요약 처리를 기다리거나 진행 중이에요.',
   'visitQuestions.recap.status.consentRequired':
-    '진료 요약을 위한 전송 동의가 필요해요.',
+    '진료 요약을 위해 설정에서 외부 AI 전송을 허용해 주세요.',
   'visitQuestions.recap.status.noQuestions':
     '준비된 질문이 없어 요약하지 않았어요.',
   'visitQuestions.recap.status.failed': '진료 요약을 완료하지 못했어요.',
