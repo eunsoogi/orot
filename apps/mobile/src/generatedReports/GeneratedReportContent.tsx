@@ -6,6 +6,7 @@ import { DailyReportCoverageCard } from '../aiFeatures/integration/DailyReportCo
 import { OMITTED_SUMMARY_CONTENT_NOTE } from '../diseaseHypotheses/summaryPartialValidation';
 import { INCOMPLETE_SUMMARY_EVIDENCE_NOTE } from '../diseaseHypotheses/summaryPartialEvidence';
 import type { GeneratedReportDetail } from './types';
+import { SavedSummaryReviewWarnings } from '../diseaseHypotheses/SavedSummaryReviewWarnings';
 
 /** Preserve every saved narrative field and coverage warning without inventing live evidence links. */
 export function GeneratedReportContent({
@@ -22,6 +23,7 @@ export function GeneratedReportContent({
       {detail.analysis?.incompleteEvidence ? (
         <AppText>{INCOMPLETE_SUMMARY_EVIDENCE_NOTE}</AppText>
       ) : null}
+      <SavedSummaryReviewWarnings current={detail.analysis?.savedSummary} />
       {detail.paragraphs.map((text, index) => (
         <AiResponseText key={index}>{text}</AiResponseText>
       ))}
