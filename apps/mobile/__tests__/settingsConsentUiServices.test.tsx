@@ -59,6 +59,9 @@ test('native probe mounts real tabs with isolated services and no model invocati
       ).toBe(false),
     );
     await fireEvent.press(view.getByTestId('provider-option-0'));
+    expect(
+      view.getByTestId('model-settings-transmission-disclosure'),
+    ).toHaveTextContent(/^전송받는 곳: 선택한 ChatGPT 계정\s/);
     await fireEvent.press(view.getByTestId('provider-selection-confirm'));
     await waitFor(() =>
       expect(states.get('conversation')?.status).toBe('active'),
@@ -75,6 +78,9 @@ test('native probe mounts real tabs with isolated services and no model invocati
       expect(view.getByTestId('provider-option-1')).toBeTruthy(),
     );
     await fireEvent.press(view.getByTestId('provider-option-1'));
+    expect(
+      view.getByTestId('model-settings-transmission-disclosure'),
+    ).toHaveTextContent(/^전송받는 곳: OpenAI API\s/);
     await fireEvent.press(view.getByTestId('provider-selection-confirm'));
     await waitFor(() => expect(states.get('calendar')?.status).toBe('active'));
     await fireEvent.press(view.getByTestId('model-tab-voice'));
@@ -92,7 +98,7 @@ test('native probe mounts real tabs with isolated services and no model invocati
     );
     expect(
       view.getByTestId('model-settings-transmission-disclosure'),
-    ).toHaveTextContent(/OpenAI Realtime API/);
+    ).toHaveTextContent(/^전송받는 곳: OpenAI Realtime API\s/);
     await fireEvent.press(view.getByTestId('voice-settings-save'));
     await waitFor(() => expect(states.get('voice')?.status).toBe('active'));
     expect((await input.fixture.inspect()).observations.voice).toBe(
