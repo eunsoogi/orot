@@ -17,7 +17,7 @@ test.each([
   const data = await f.input.loadLocalData();
   data.readHealthContext = createLocalEvidenceData(
     f.database,
-  ).readHealthContext;
+  ).readHealthContext!;
   registerConversationReadOperation(data, async (scoped, registry) =>
     createSummaryArtifactDiscovery({
       database: f.database,
