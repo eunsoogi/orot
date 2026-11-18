@@ -1,10 +1,13 @@
+import {
+  resetSyntheticSignInReturn,
+  syntheticChatGPTServices,
+  syntheticSuccessfulChatGPTServices,
+  syntheticMissingScopeChatGPTServices,
+} from './providerSelectionAuthServices';
 import { useState } from 'react';
 import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { providerSuccess } from '@orot/model-runtime';
-import type { OpenAIAccountSummary } from '../src/providers/openai';
 import ProviderSelectionFlow from '../src/providers/selection/ProviderSelectionFlow';
 import ProviderSelectionScreen from '../src/providers/selection/ProviderSelectionScreen';
-import type { ChatGPTSelectionServices } from '../src/providers/selection/chatGPTServices';
 import {
   createAppleSelectionOption,
   createChatGPTSelectionOptions,
@@ -13,7 +16,6 @@ import {
 import { providerSelectionStore } from '../src/providers/selection/keychainSelectionStore';
 import { t } from '../src/i18n';
 import {
-  completeSyntheticAuthReturn,
   prepareSyntheticSignOutLifecycle,
   probeSyntheticAuthSessionCancellation,
   removeSyntheticSignOutFixture,
@@ -118,8 +120,7 @@ export function ProviderSelectionProbe() {
         />
         <Button
           onPress={() => {
-            syntheticSignInCompleted = false;
-            syntheticReturnedAccount = null;
+            resetSyntheticSignInReturn();
             setAuthFlow('success');
           }}
           testID="provider-selection-auth-success"
@@ -163,8 +164,7 @@ export function ProviderSelectionProbe() {
               providerSelectionStore.clear(),
               removeSyntheticSignOutFixture(),
             ]).then(() => {
-              syntheticSignInCompleted = false;
-              syntheticReturnedAccount = null;
+              resetSyntheticSignInReturn();
               setSignOutResponseState('idle');
               setSummary(
                 'selectionCallback=not-called-on-load; synthetic=cleared; realAccount=unverified',
@@ -188,61 +188,6 @@ export function ProviderSelectionProbe() {
     </View>
   );
 }
-
-let rejectPendingSignIn: ((reason: unknown) => void) | null = null;
-
-const syntheticChatGPTServices: ChatGPTSelectionServices = {
-  listAccounts: async () => [],
-  listModels: async () => providerSuccess([]),
-  signIn: () =>
-    new Promise<OpenAIAccountSummary>((_resolve, reject) => {
-      rejectPendingSignIn = reject;
-    }),
-  signOut: async () => 'localCredentialsCleared',
-  cancelSignIn: () => {
-    rejectPendingSignIn?.(
-      Object.assign(new Error('Synthetic ChatGPT login cancelled.'), {
-        code: 'CHATGPT_AUTH_CANCELLED',
-      }),
-    );
-    rejectPendingSignIn = null;
-  },
-};
-
-// This fixture refreshes real native account summaries only after the system session returns.
-let syntheticSignInCompleted = false;
-let syntheticReturnedAccount: OpenAIAccountSummary | null = null;
-
-const syntheticSuccessfulChatGPTServices: ChatGPTSelectionServices = {
-  listAccounts: async () =>
-    syntheticSignInCompleted && syntheticReturnedAccount
-      ? [syntheticReturnedAccount]
-      : [],
-  listModels: async () => providerSuccess([]),
-  signIn: async () => {
-    const account = await completeSyntheticAuthReturn();
-    syntheticReturnedAccount = account;
-    syntheticSignInCompleted = true;
-    return account;
-  },
-  signOut: async () => 'localCredentialsCleared',
-  cancelSignIn: () => undefined,
-};
-
-const syntheticMissingScopeAccount: OpenAIAccountSummary = {
-  issuedClientID: 'synthetic-missing-scope-account',
-  requiresSignIn: false,
-  hasDirectPlanAccess: false,
-};
-
-// This layout fixture supplies a not-ready account without reading or changing Keychain state.
-const syntheticMissingScopeChatGPTServices: ChatGPTSelectionServices = {
-  listAccounts: async () => [syntheticMissingScopeAccount],
-  listModels: async () => providerSuccess([]),
-  signIn: async () => syntheticMissingScopeAccount,
-  signOut: async () => 'localCredentialsCleared',
-  cancelSignIn: () => undefined,
-};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f7f8fa' },
