@@ -6,7 +6,6 @@ import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { SelectedAiResolverOptions } from '../aiFeatures/integration/provider';
-import { useSettingsRouteSummaries } from './SettingsRouteAccountSummaries';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { SettingsRouteAppInfo, SettingsRouteRow } from './SettingsRouteRows';
 import { SettingsDailyReminderSection } from './SettingsDailyReminderSection';
@@ -24,10 +23,8 @@ interface SettingsRouteProps {
   readonly onOpenSyncStatus: () => void;
 }
 
-/** Re-reads persisted AI and account state while grouping Settings root destinations. */
+/** Root rows are navigation only; model and account status belong to their detail screens. */
 export function SettingsRoute({
-  selectedProvider,
-  selectedAiResolverOptions,
   onOpenProviderSettings,
   onOpenAccounts,
   onOpenPrivacy,
@@ -43,10 +40,6 @@ export function SettingsRoute({
     revision: 0,
     inputRevision: 0,
   });
-  const { selectedAiSummary, accountsSummary } = useSettingsRouteSummaries(
-    selectedAiResolverOptions,
-    selectedProvider,
-  );
   const version = (
     NativeModules.OrotAppMetadata as { version?: string } | undefined
   )?.version;
@@ -73,7 +66,6 @@ export function SettingsRoute({
                   symbol="sparkles"
                   tone="purple"
                   onPress={onOpenProviderSettings}
-                  summary={selectedAiSummary || undefined}
                   testID="settings-open-provider"
                   title={t('settings.provider')}
                 />
@@ -82,7 +74,6 @@ export function SettingsRoute({
                   symbol="person"
                   tone="purple"
                   onPress={onOpenAccounts}
-                  summary={accountsSummary}
                   testID="settings-open-accounts"
                   title={t('settings.accounts')}
                 />

@@ -93,6 +93,19 @@ test('groups destinations and preserves every Settings action', async () => {
   ).toBeTruthy();
   expect(screen.getByText('AI 제공자와 모델')).toBeTruthy();
   expect(screen.getByText('연결된 계정')).toBeTruthy();
+  // These destinations keep their actions but no longer expose loading/account subtitles.
+  expect(screen.getByTestId('settings-open-provider')).toHaveTextContent(
+    /^AI 제공자와 모델$/,
+  );
+  expect(screen.getByTestId('settings-open-accounts')).toHaveTextContent(
+    /^연결된 계정$/,
+  );
+  expect(screen.queryByText(t('provider.selection.rowLoading'))).toBeNull();
+  expect(
+    screen.queryByText(
+      t('provider.selection.chatGPTAccountsConnected', { count: 1 }),
+    ),
+  ).toBeNull();
   expect(screen.getByText('개인정보 및 권한')).toBeTruthy();
   expect(screen.getByText('백업과 복구')).toBeTruthy();
   expect(
