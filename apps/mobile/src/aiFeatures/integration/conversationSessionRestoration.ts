@@ -31,7 +31,13 @@ export async function restoreConversationSessionPage(
   try {
     return await withConversationReadOperation(
       input.data,
-      data => restore({ ...input, data, reads: operation ?? input.storage }),
+      data =>
+        restore({
+          ...input,
+          data,
+          ownerData: input.data,
+          reads: operation ?? input.storage,
+        }),
       input.signal,
       operation?.healthContextReportScope,
     );
@@ -42,6 +48,7 @@ export async function restoreConversationSessionPage(
 
 async function restore(
   input: SessionRestoreInput & {
+    ownerData: AiFeatureLocalData;
     reads: Pick<
       SessionRestoreInput['storage'],
       'readMany' | 'readManyWithAncestry'
@@ -66,7 +73,14 @@ async function restore(
   const snapshots = await input.reads.readManyWithAncestry(
     page.items.map(item => item.id),
   );
-  const hydrate = createConversationPageHydration(input, snapshots.ancestry);
+  const hydrate = createConversationPageHydration(
+    input,
+    snapshots.ancestry,
+    {
+      read: async id => (await input.reads.readMany([id]))[0] ?? null,
+    },
+    input.ownerData,
+  );
   for (const [index, item] of page.items.entries()) {
     if (input.signal.aborted)
       throw new Error('Conversation restoration was cancelled.');
