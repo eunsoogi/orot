@@ -1,4 +1,7 @@
-import { prepareCaptureSources } from './evidenceCaptureBatch';
+import {
+  hasConversationToolCapture,
+  prepareCaptureSources,
+} from './evidenceCaptureBatch';
 import { stableEvidenceReference } from './stableEvidenceReference';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
@@ -15,7 +18,12 @@ export async function captureConversationSources(
 ) {
   const prepared = await prepareCaptureSources(
     registry,
-    references.filter(ref => ref.sourceKind === 'generated_artifact'),
+    references.filter(
+      ref =>
+        ref.sourceKind === 'generated_artifact' ||
+        (ref.sourceKind !== 'external_medical' &&
+          hasConversationToolCapture(registry, ref)),
+    ),
     signal,
   );
   const generated = prepared.results;
@@ -57,7 +65,10 @@ export async function captureConversationSources(
       continue;
     }
     if (ref.sourceKind !== 'generated_artifact') {
-      const captured = await captureEvidenceSources([ref], registry, signal);
+      const captured = await captureEvidenceSources([ref], registry, signal, {
+        registry,
+        results: generated,
+      });
       sources.push(...captured.sources);
       mapping.set(key, captured.mapping.get(key)!);
       continue;
