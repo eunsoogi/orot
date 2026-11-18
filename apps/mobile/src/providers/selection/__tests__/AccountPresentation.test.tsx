@@ -89,8 +89,8 @@ test('keeps refresh centered on the model selection lane when details expand', a
   expect(lane().position).toBeUndefined();
   expect(lane().top).toBeUndefined();
   expect(
-    StyleSheet.flatten(providerSettingsStyles.catalogAccount).padding,
-  ).toBeUndefined();
+    StyleSheet.flatten(providerSettingsStyles.catalogAccount),
+  ).not.toHaveProperty('padding');
   await fireEvent.press(view.getByTestId('chatgpt-account-details'));
   expect(lane()).toMatchObject({ marginRight: -13, width: 44 });
   await fireEvent.press(view.getByTestId('chatgpt-account-action'));
