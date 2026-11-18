@@ -158,6 +158,17 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
     @MainActor
     private func tap(_ app: XCUIApplication, _ id: String) {
         let target = node(app, id)
+        // Only the fixture's bounded control panel owns these actions. Catalog and
+        // in-flow controls must retain their existing production scroll/ready paths.
+        switch id {
+        case "provider-selection-auth-session-cancel", "provider-selection-auth-cancel",
+             "provider-selection-account-missing-scope", "provider-selection-auth-success",
+             "provider-selection-sign-out-start", "provider-selection-sign-out-reopen",
+             "provider-selection-probe-reset":
+            guard FormUITestConditions.reveal(target, in: app, scrollID: "provider-selection-fixture-controls") != nil else { return }
+        default:
+            break
+        }
         // The native auth callback can arrive while its system sheet is still dismissing. Wait for the actual first touch to be possible, without repeating it.
         let ready = NSPredicate { _, _ in target.exists && target.isHittable && !target.frame.isEmpty && app.frame.contains(target.frame) }
         if !ready.evaluate(with: nil) {
