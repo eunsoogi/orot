@@ -74,14 +74,26 @@ export async function assertHealthPeriodCurrent(
     throw new Error('The cited health period changed before saving.');
 }
 
-/** Reinstall app-authored period triggers on every schema opening, including old backups.
- * IF NOT EXISTS alone would silently retain obsolete contributor rules. */
+/** Check the actual definition inside every caller-owned setup transaction.
+ * Only exact stored SQL can avoid recompilation; missing or old backup guards
+ * still upgrade. Never cache schema readiness or normalize trigger bodies. */
 export async function replaceHealthPeriodTrigger(tx: SqlExecutor, sql: string) {
   const name =
     /^CREATE TRIGGER(?: IF NOT EXISTS)? ([a-zA-Z_][a-zA-Z0-9_]*)\s/u.exec(
       sql,
     )?.[1];
   if (!name) throw new Error('Invalid app health-period trigger definition.');
+  // SQLite omits this optional header clause from sqlite_master.sql.
+  // Preserve all body whitespace and string literals, including meaningful spaces.
+  const expected = sql.replace(
+    /^CREATE TRIGGER IF NOT EXISTS /u,
+    'CREATE TRIGGER ',
+  );
+  const current = await tx.execute(
+    "SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = ?",
+    [name],
+  );
+  if (current.rows.length === 1 && current.rows[0]?.sql === expected) return;
   await tx.execute(`DROP TRIGGER IF EXISTS ${name}`);
   await tx.execute(sql);
 }
