@@ -1,3 +1,7 @@
+import {
+  observeReportAggregateSql,
+  reportCacheDecision,
+} from './reportCalculationDiagnostic';
 import { healthContextReportCacheKey } from './reportCacheKey';
 import { immutableReportSnapshot } from './committedReportScope';
 import { registerHealthContextReadOwner } from './healthContextReadOperation';
@@ -39,7 +43,9 @@ export async function readHealthContextReport(
   topics: readonly HealthContextTopic[],
   signal?: AbortSignal,
   trace?: HealthContextTrace,
+  diagnosticOwner?: object,
 ): Promise<HealthContextReport> {
+  executor = observeReportAggregateSql(executor, diagnosticOwner);
   if (signal?.aborted) throw new Error('Health context was cancelled.');
   if (
     !topics.length ||
@@ -151,6 +157,13 @@ export function createHealthContextReader(
       );
       const cached = cache.get(key);
       if (signal?.aborted) throw new Error('Health context was cancelled.');
+      reportCacheDecision(
+        cached && sameGeneration(cached, current)
+          ? 'committed_hit'
+          : cached
+            ? 'generation_miss'
+            : 'new_key',
+      );
       if (cached && sameGeneration(cached, current)) return cached;
       let report: HealthContextReport | undefined;
       let failure: { error: unknown } | undefined;
@@ -171,6 +184,7 @@ export function createHealthContextReader(
               topics,
               signal,
               trace,
+              cache,
             );
             const after = await readHealthContextGeneration(tx);
             if (signal?.aborted)
