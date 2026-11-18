@@ -1,3 +1,4 @@
+import { removeOrphanSummaries } from './summaryOrphanMaintenance';
 import { readSavedSummaryStatus } from './savedSummaryReadStatus';
 import {
   setupLegacySummaryPeriodQuarantine,
@@ -122,12 +123,7 @@ export function createSymptomSummaryStorage(
         manual_history: 'manual_history_entries',
         reviewed_memory: 'agent_memory_records',
       };
-      for (const [kind, table] of Object.entries(sourceTables)) {
-        await tx.execute(
-          `DELETE FROM symptom_summary_runs WHERE ${completeSummaryDeletion} AND id IN (SELECT s.summary_id FROM symptom_summary_sources s WHERE s.record_kind = ? AND NOT EXISTS (SELECT 1 FROM ${table} source WHERE source.id = s.record_id))`,
-          [kind],
-        );
-      }
+      await removeOrphanSummaries(tx, sourceTables);
       await setupLegacySummaryPeriodQuarantine(tx);
     });
   }
