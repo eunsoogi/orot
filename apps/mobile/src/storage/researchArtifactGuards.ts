@@ -1,3 +1,4 @@
+import { replaceHealthPeriodTrigger } from './healthPeriodDependencies';
 import type { SqlExecutor } from '@orot/storage';
 import { completeSummaryDeletion } from './summaryDeletionPolicy';
 
@@ -47,12 +48,13 @@ export async function setupResearchArtifactGuards(tx: SqlExecutor) {
     : '';
   for (const event of ['DELETE', 'UPDATE'] as const) {
     const name = `research_artifact_${event.toLowerCase()}_descendants`;
-    await tx.execute(`DROP TRIGGER IF EXISTS ${name}`);
     const when =
       event === 'UPDATE'
         ? 'WHEN OLD.id IS NOT NEW.id OR OLD.snapshot_json IS NOT NEW.snapshot_json'
         : '';
-    await tx.execute(`CREATE TRIGGER ${name} AFTER ${event} ON research_artifacts ${when} BEGIN
+    await replaceHealthPeriodTrigger(
+      tx,
+      `CREATE TRIGGER ${name} AFTER ${event} ON research_artifacts ${when} BEGIN
       ${event === 'UPDATE' ? 'INSERT INTO research_artifact_invalid (id) SELECT OLD.id WHERE NOT EXISTS (SELECT 1 FROM research_artifact_invalid WHERE id = OLD.id);' : ''}
       DELETE FROM research_artifact_affected WHERE root_id = OLD.id;
       INSERT INTO research_artifact_affected (root_id, kind, id)
@@ -65,6 +67,7 @@ export async function setupResearchArtifactGuards(tx: SqlExecutor) {
       ${present.has('research_artifact_sources') ? "DELETE FROM research_artifact_sources WHERE artifact_id IN (SELECT CAST(substr(id, 10) AS INTEGER) FROM research_artifact_affected WHERE root_id = OLD.id AND kind = 'generated_research');" : ''}
       ${present.has('research_artifact_periods') ? "DELETE FROM research_artifact_periods WHERE artifact_id IN (SELECT CAST(substr(id, 10) AS INTEGER) FROM research_artifact_affected WHERE root_id = OLD.id AND kind = 'generated_research');" : ''}
       DELETE FROM research_artifact_affected WHERE root_id = OLD.id;
-    END`);
+    END`,
+    );
   }
 }
