@@ -64,12 +64,16 @@ test('native resource names and cleanup remain within the exact synthetic UUID',
   await created
     .selection('conversation')
     .save({ providerId: 'synthetic', modelId: 'synthetic' });
+  await created.recoveryCredential.write('synthetic-recovery-epoch');
   created.close();
   const reopened = await openSettingsConsentNativeStore(id, false);
   expect(await reopened.selection('conversation').load()).toEqual({
     providerId: 'synthetic',
     modelId: 'synthetic',
   });
+  expect(await reopened.recoveryCredential.read()).toBe(
+    'synthetic-recovery-epoch',
+  );
   expect(jest.mocked(open).mock.calls[0][0]).toEqual(
     jest.mocked(open).mock.calls[1][0],
   );
@@ -78,7 +82,27 @@ test('native resource names and cleanup remain within the exact synthetic UUID',
     expect(options?.service).toMatch(
       new RegExp(`^com\\.orot\\.test\\.${id}\\.`),
     );
-  expect(resetGenericPassword).toHaveBeenCalledTimes(7);
+  // The additional recovery epoch is owned by this UUID, not an app credential.
+  expect(
+    jest
+      .mocked(resetGenericPassword)
+      .mock.calls.map(([options]) => options?.service)
+      .sort(),
+  ).toEqual(
+    [
+      'authority-conversation',
+      'selection-conversation',
+      'authority-calendar',
+      'selection-calendar',
+      'authority-voice',
+      'selection-voice',
+      'recovery-credential',
+      'database-key',
+    ]
+      .map(suffix => `com.orot.test.${id}.${suffix}`)
+      .sort(),
+  );
+  expect(resetGenericPassword).toHaveBeenCalledTimes(8);
   expect(jest.mocked(open).mock.results[1].value.delete).toHaveBeenCalledTimes(
     1,
   );
