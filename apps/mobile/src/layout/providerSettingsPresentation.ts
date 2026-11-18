@@ -17,6 +17,12 @@ export const providerSettingsStyles = StyleSheet.create({
     borderWidth: 0,
     backgroundColor: appColors.surface,
   },
+  // Catalog children own their 16pt inset; do not double-pad nested models.
+  catalogAccount: {
+    gap: 8,
+    borderRadius: 20,
+    backgroundColor: appColors.surface,
+  },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   icon: {
     width: 48,
