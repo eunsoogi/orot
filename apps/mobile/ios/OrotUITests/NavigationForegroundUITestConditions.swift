@@ -44,5 +44,18 @@ enum NavigationForegroundUITestConditions {
         attachment.name = "retained-content-after-foreground"
         attachment.lifetime = .keepAlways
         XCTContext.runActivity(named: "Foreground retained draft and visible content") { $0.add(attachment) }
+        // Compare final navigation with the original keyboard-free root after proving real editing.
+        // A real prose tap uses the history scroll view's normal unhandled-tap dismissal, not a test API.
+        let prose = app.staticTexts["rag-conversation-answer-body"]
+        XCTAssertTrue(prose.exists && prose.isHittable)
+        prose.tap()
+        let keyboardHidden = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            !app.keyboards.firstMatch.exists
+                && UITestConditions.element(app, "ai-feature-visit-questions-keyboard-hidden").exists
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [keyboardHidden], timeout: 10), .completed,
+                       "Native keyboard and fixture keyboard event must agree before root geometry comparison")
+        XCTAssertEqual(input.value as? String, draft)
+        XCTAssertTrue(citation.exists)
     }
 }
