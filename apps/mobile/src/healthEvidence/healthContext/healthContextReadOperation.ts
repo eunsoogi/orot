@@ -85,3 +85,29 @@ export function beginHealthContextReadOperation(
 ): Operation | undefined {
   return owners.get(reader)?.(signal, shared);
 }
+
+/** Capture-only issuance pins the factory registration, not a mutable reader lookup.
+ * Re-registration revokes both unopened and already-open calculation leases. */
+export function capturedHealthContextReadOwner(reader: HealthContextReader) {
+  const owner = owners.get(reader);
+  if (!owner) return undefined;
+  return {
+    key: owner as object,
+    current: () => owners.get(reader) === owner,
+    open(signal: AbortSignal): Operation | undefined {
+      if (signal.aborted || owners.get(reader) !== owner) return undefined;
+      const operation = owner(signal);
+      let active = true;
+      return {
+        read: (...args) =>
+          active && owners.get(reader) === owner
+            ? operation.read(...args)
+            : reader(...args),
+        dispose() {
+          active = false;
+          operation.dispose();
+        },
+      };
+    },
+  };
+}

@@ -1,3 +1,4 @@
+import { createCapturePeriodReads } from './conversationPeriodReadLease';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import { ownsConversationStrictReaders } from '../../storage/conversationStrictReadOwner';
 
@@ -7,10 +8,13 @@ type Operation = NonNullable<ReturnType<Storage['beginReadOperation']>>;
 /** One capture owns committed calculations, not a transaction or source validity.
  * Original strict failures still roll back; cancellation cannot undo native deletes. */
 export function createConversationCaptureReadScope(signal: AbortSignal) {
+  const periods = createCapturePeriodReads(signal);
+  const disposePeriods = periods.dispose;
   const operations = new Map<object, Operation>();
   let active = true;
   const dispose = () => {
     active = false;
+    disposePeriods();
     for (const operation of operations.values()) operation.dispose();
     operations.clear();
     signal.removeEventListener('abort', dispose);
@@ -18,6 +22,7 @@ export function createConversationCaptureReadScope(signal: AbortSignal) {
   if (signal.aborted) dispose();
   else signal.addEventListener('abort', dispose, { once: true });
   return {
+    periods,
     forStorage(storage: object): Operation | undefined {
       const candidate = storage as Partial<Storage>;
       if (
