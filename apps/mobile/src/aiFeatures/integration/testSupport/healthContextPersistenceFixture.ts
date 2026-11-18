@@ -18,8 +18,12 @@ export const window = {
 };
 export const signal = new AbortController().signal;
 
-export async function healthContextFixture(sourceId?: string) {
-  const connection = createHealthEvidenceTestDatabase();
+// Optional file backing lets lifecycle tests close the actual SQLite connection.
+export async function healthContextFixture(
+  sourceId?: string,
+  databasePath = ':memory:',
+) {
+  const connection = createHealthEvidenceTestDatabase(databasePath);
   await runMigrations(connection.database);
   await connection.database.execute('PRAGMA foreign_keys = ON');
   const repository = createRecordRepository(connection.database);
