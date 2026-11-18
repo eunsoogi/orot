@@ -10,7 +10,7 @@ import {
 } from '../src/agent/execution/SettingsConsentReadServices';
 import { settingsPermissionsForFeature } from '../src/agent/execution/settingsConsentCatalog';
 import { consentFixtureDestinations } from '../e2e/settingsConsentPersistenceFixture';
-import { classificationConsentFixture } from './classificationConsentFixture';
+import { classificationConsentFixture } from '../test-support/classificationConsentFixture';
 
 let port: ExecutionConsentPort;
 function Harness() {

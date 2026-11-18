@@ -2,7 +2,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { ClassificationProbeScreen } from '../e2e/ClassificationProbeScreen';
 import { ModelSettingsServicesContext } from '../src/agent/execution/ModelSettingsServices';
 import { SettingsConsentReadServicesContext } from '../src/agent/execution/SettingsConsentReadServices';
-import { classificationConsentFixture } from './classificationConsentFixture';
+import { classificationConsentFixture } from '../test-support/classificationConsentFixture';
 import { calendarModelStore } from '../src/calendarModelSettings/calendarModelStore';
 import { voiceSettingsStore } from '../src/voiceSettings/voiceSettingsStore';
 import * as productionOwner from '../src/agent/execution/settingsConsentOwner';
