@@ -16,6 +16,29 @@ enum NavigationForegroundUITestConditions {
         save.tap()
     }
 
+    /// Avoid XCTest's invalid child scroll hit point while preserving actual native action geometry.
+    static func tapVisibleCitation(_ app: XCUIApplication, citation: XCUIElement, testCase: XCTestCase) {
+        XCTAssertTrue(citation.exists && citation.isEnabled && citation.isHittable)
+        let frame = citation.frame, window = app.frame
+        let history = UITestConditions.element(app, "rag-conversation-history")
+        XCTAssertTrue(history.exists)
+        let viewport = history.frame
+        let input = UITestConditions.element(app, "rag-conversation-input").frame
+        let keyboard = app.keyboards.firstMatch
+        let keyboardFrame = keyboard.exists ? keyboard.frame : .null
+        let attachment = XCTAttachment(string: "citation=\(frame), window=\(window), history=\(viewport), input=\(input), keyboard=\(keyboardFrame)")
+        attachment.name = "citation-native-hit-frames"
+        attachment.lifetime = .keepAlways
+        testCase.add(attachment)
+        XCTAssertTrue([frame.minX, frame.minY, frame.width, frame.height].allSatisfy(\.isFinite))
+        XCTAssertGreaterThanOrEqual(frame.width, 44)
+        XCTAssertGreaterThanOrEqual(frame.height, 44)
+        XCTAssertTrue(window.contains(frame) && viewport.contains(frame))
+        XCTAssertFalse(frame.intersects(input) || frame.intersects(keyboardFrame))
+        let offset = CGVector(dx: frame.midX - window.minX, dy: frame.midY - window.minY)
+        app.coordinate(withNormalizedOffset: .zero).withOffset(offset).tap()
+    }
+
     static func restoreEditableDraft(_ app: XCUIApplication, draft: String, citation: XCUIElement) throws {
         let input = UITestConditions.element(app, "rag-conversation-input")
         XCTAssertEqual(input.value as? String, draft)

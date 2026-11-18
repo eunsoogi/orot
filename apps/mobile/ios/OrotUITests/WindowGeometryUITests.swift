@@ -74,7 +74,7 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         question.typeText(draft)
         XCTAssertEqual(question.value as? String, draft)
         XCTAssertTrue(source.exists && source.isHittable)
-        source.tap()
+        NavigationForegroundUITestConditions.tapVisibleCitation(app, citation: source, testCase: self)
         // The opt-in saved fixture exercises the integrated source route without user records.
         let sourceDetail = UITestConditions.element(app, "ai-feature-source-detail")
         XCTAssertTrue(UITestConditions.exists(sourceDetail))
