@@ -62,7 +62,11 @@ final class WindowGeometryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(question) && question.isHittable)
         question.tap()
         question.typeText("source")
-        NavigationWindowGeometryUITestConditions.tap(app, "rag-conversation-send")
+        // The glass host shares this identifier; only its actual UIButton is the send hit target.
+        let send = app.buttons["rag-conversation-send"]
+        XCTAssertTrue(UITestConditions.exists(send))
+        XCTAssertTrue(send.isHittable && send.isEnabled)
+        send.tap()
         let source = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "원문 근거 열기")).firstMatch
         XCTAssertTrue(UITestConditions.exists(source))
         let draft = "draft retained"
