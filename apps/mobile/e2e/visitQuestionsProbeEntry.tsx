@@ -1,3 +1,4 @@
+import { syntheticCitationTestID } from './visitQuestionsProbeCitationIdentity';
 // LangGraph dependencies read the stream and encoding shims during module load.
 import '../src/agent/polyfills';
 import { useState } from 'react';
@@ -194,6 +195,7 @@ function VisitQuestionsProbeEntry() {
           ) : null}
           {/* This screen probe stops before durable saving; persistence is exercised separately. */}
           <VisitQuestionReview
+            citationTestID={syntheticMode ? syntheticCitationTestID : undefined}
             appointmentLabel="합성 외래 방문 · 2035년 6월 2일"
             memoryStatus="no_matching_current_memory"
             message={message}

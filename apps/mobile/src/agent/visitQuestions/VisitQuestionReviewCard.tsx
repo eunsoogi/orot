@@ -5,6 +5,11 @@ import { visitQuestionReviewStyles as styles } from './VisitQuestionReview.style
 
 export interface VisitQuestionReviewCardProps {
   readonly question: VisitQuestionCandidate;
+  /** Optional test-surface identity; ordinary review screens do not supply it. */
+  readonly citationTestID?: (
+    question: VisitQuestionCandidate,
+    citation: VisitQuestionCandidate['citations'][number],
+  ) => string | undefined;
   readonly index: number;
   readonly count: number;
   readonly saving: boolean;
@@ -18,6 +23,7 @@ export interface VisitQuestionReviewCardProps {
 /** Renders one editable question while the parent owns order and evidence remains read-only. */
 export function VisitQuestionReviewCard({
   question,
+  citationTestID,
   index,
   count,
   saving,
@@ -148,7 +154,12 @@ export function VisitQuestionReviewCard({
               : t('visitQuestions.review.evidence.source.personalRecord')}
             {citation.effectiveTime ? ` · ${citation.effectiveTime}` : ''}
           </Text>
-          <Text style={styles.evidenceContent}>{citation.content}</Text>
+          <Text
+            style={styles.evidenceContent}
+            testID={citationTestID?.(question, citation)}
+          >
+            {citation.content}
+          </Text>
         </View>
       ))}
     </View>

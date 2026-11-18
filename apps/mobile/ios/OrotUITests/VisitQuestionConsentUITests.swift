@@ -43,20 +43,18 @@ final class VisitQuestionConsentUITests: OrotFailFastTestCase {
         XCTAssertEqual(UITestConditions.wait(for: [finished]), .completed, app.debugDescription)
         XCTAssertTrue(metrics.exists, failure.exists ? UITestConditions.text(failure) : app.debugDescription)
         // Provider counts and opaque aliases are checked at the workflow boundary; this run retains native citation and OCR evidence.
-        let citations = node(app, "visit-question-probe-scroll").descendants(matching: .staticText).matching(NSPredicate(format: "label == %@", "이 프로브에만 쓰는 합성 검사 기록입니다."))
-        // Fabric exposes both a text wrapper and its UILabel. Count distinct rendered citations, rather than selecting a duplicate of an earlier card.
-        var rendered: [XCUIElement] = []
-        for candidate in citations.allElementsBoundByIndex where !candidate.frame.isEmpty {
-            if !rendered.contains(where: { $0.frame == candidate.frame }) {
-                rendered.append(candidate)
-            }
+        // Fixture semantic IDs identify the original questions, not whichever card now occupies an ordinal.
+        var citationFrames: [CGRect] = []
+        for identity in ["first", "second", "third"] {
+            let citation = node(app, "visit-question-probe-citation-\(identity)")
+            XCTAssertTrue(citation.exists)
+            XCTAssertEqual(citation.label, "이 프로브에만 쓰는 합성 검사 기록입니다.")
+            let frame = citation.frame
+            XCTAssertFalse(frame.isEmpty)
+            XCTAssertFalse(citationFrames.contains(frame))
+            citationFrames.append(frame)
         }
-        rendered.sort { $0.frame.minY < $1.frame.minY }
-        guard rendered.count >= 3 else {
-            XCTFail("Expected three distinct rendered citations; \(app.debugDescription)")
-            return
-        }
-        let third = rendered[2]
+        let third = node(app, "visit-question-probe-citation-third")
         reveal(third, in: app)
         XCTAssertTrue(third.isHittable)
         let priority = node(app, "visit-question-priority-2")

@@ -3,10 +3,12 @@ import { Pressable, Text, View } from 'react-native';
 import { t } from '../../i18n';
 import type { VisitQuestionCandidate } from './taskContract';
 import { visitQuestionReviewStyles as styles } from './VisitQuestionReview.styles';
+import type { VisitQuestionReviewCardProps } from './VisitQuestionReviewCard';
 import { VisitQuestionReviewCard } from './VisitQuestionReviewCard';
 
 export interface VisitQuestionReviewProps {
   readonly appointmentLabel: string;
+  readonly citationTestID?: VisitQuestionReviewCardProps['citationTestID'];
   readonly questions: readonly VisitQuestionCandidate[];
   readonly memoryStatus?:
     'available' | 'no_matching_current_memory' | 'local_memory_unavailable';
@@ -70,6 +72,7 @@ function memoryMessage(
 /** Holds editable draft state until confirmation; app-owned review copy comes from the Korean catalog. */
 export function VisitQuestionReview({
   appointmentLabel,
+  citationTestID,
   questions,
   memoryStatus,
   message,
@@ -115,6 +118,7 @@ export function VisitQuestionReview({
         <VisitQuestionReviewCard
           key={`${index}:${question.citations.map(citation => citation.evidenceId).join(',')}`}
           question={question}
+          citationTestID={citationTestID}
           index={index}
           count={drafts.length}
           saving={saving}
