@@ -195,6 +195,9 @@ test.each(cases)('residual actual send retention: %s', async variant => {
       1,
     ]);
     expect(phaseDiagnostics.retention?.report_sql_unscoped ?? 0).toBe(0);
+    expect([...(counts.get('save')?.values() ?? [])]).toEqual(
+      Array(count * 2).fill(1),
+    );
     phase = 'replay';
     const saved = await f.storage.read('saved-answer');
     expect(saved?.answer).toContain('Synthetic current answer');
