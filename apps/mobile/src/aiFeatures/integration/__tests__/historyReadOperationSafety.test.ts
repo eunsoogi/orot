@@ -111,3 +111,37 @@ test('custom discovery and escaped or replaced methods do not retain operation a
     f.close();
   }
 });
+
+/** Tool snapshot capability never upgrades a foreign owner or survives the history call. */
+test('history tool snapshots preserve foreign, replaced and escaped owner boundaries', async () => {
+  const f = await quarantinedHistoryFixture();
+  const signal = new AbortController().signal;
+  const original = f.storage.readToolTurnsSnapshot;
+  let escaped!: typeof f.storage;
+  try {
+    await withConversationHistoryReadOperation(
+      f.discovery,
+      signal,
+      async (_, context) => {
+        expect(context).toBeDefined();
+        const foreign = { ...f.storage };
+        expect(context!.storage(foreign)).toBe(foreign);
+        escaped = context!.storage(f.storage);
+        expect(escaped).not.toBe(f.storage);
+        await escaped.readToolTurnsSnapshot('session');
+        const replaced = jest.fn(original);
+        f.storage.readToolTurnsSnapshot = replaced;
+        await escaped.readToolTurnsSnapshot('session');
+        expect(replaced).toHaveBeenCalledTimes(1);
+        f.storage.readToolTurnsSnapshot = original;
+      },
+    );
+    const afterDispose = jest.fn(original);
+    f.storage.readToolTurnsSnapshot = afterDispose;
+    await escaped.readToolTurnsSnapshot('session');
+    expect(afterDispose).toHaveBeenCalledTimes(1);
+  } finally {
+    f.storage.readToolTurnsSnapshot = original;
+    f.close();
+  }
+});

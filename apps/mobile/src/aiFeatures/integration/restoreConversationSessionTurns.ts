@@ -1,3 +1,4 @@
+import { withConversationReadOperation } from './conversationReadOperation';
 import { withConversationHistoryReadOperation } from './conversationHistoryReadOperation';
 import { restoreConversationSessionTurnsOwned } from './restoreConversationSessionTurnsOwned';
 
@@ -14,15 +15,27 @@ export async function restoreConversationSessionTurns(
   const data = await input.loadLocalData();
   const discovery = await data.conversationArtifactDiscovery?.(input.registry);
   if (!discovery) throw new Error('Conversation restoration is unavailable.');
-  return withConversationHistoryReadOperation(discovery, signal, scoped =>
-    restoreConversationSessionTurnsOwned(
-      input,
-      openStorage,
-      sessionId,
-      signal,
-      selection,
-      data,
-      scoped,
-    ),
+  return withConversationHistoryReadOperation(
+    discovery,
+    signal,
+    (scoped, context) => {
+      const restore = (scopedData: typeof data) =>
+        restoreConversationSessionTurnsOwned(
+          input,
+          async () => {
+            const storage = await openStorage();
+            return context?.storage(storage) ?? storage;
+          },
+          sessionId,
+          signal,
+          selection,
+          scopedData,
+          scoped,
+        );
+      const shared = context?.healthContextReportScope;
+      return shared
+        ? withConversationReadOperation(data, restore, signal, shared)
+        : restore(data);
+    },
   );
 }

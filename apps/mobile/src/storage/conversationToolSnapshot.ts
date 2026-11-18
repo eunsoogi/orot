@@ -1,4 +1,9 @@
-import type { SqlDatabase } from '@orot/storage';
+import type { SqlDatabase, SqlExecutor } from '@orot/storage';
+import type { committedPeriodReadOperation } from './committedPeriodReadOperation';
+import {
+  createReadOnlyPeriodValidation,
+  type ReadOnlyPeriodValidation,
+} from './readOnlyPeriodValidation';
 import {
   mergeConversationToolEvents,
   projectConversationToolEvent,
@@ -17,6 +22,7 @@ import type { StoredConversationToolTurn } from './conversationToolEventStorage'
 export function conversationToolSnapshotReader(
   database: SqlDatabase,
   ensure: () => Promise<void>,
+  operation?: ReturnType<typeof committedPeriodReadOperation>,
 ) {
   return async (
     sessionId: string,
@@ -32,7 +38,15 @@ export function conversationToolSnapshotReader(
       createdAt: string;
       reason: 'source_unavailable' | 'unverifiable_legacy_period';
     }[] = [];
-    await database.transaction(async tx => {
+    const work = async (
+      tx: SqlExecutor,
+      calculate?: ReadOnlyPeriodValidation,
+    ) => {
+      // Share calculated values only inside an owned history operation. Strict/live
+      // reads keep their existing independent source validation and rollback path.
+      const validatePeriod = calculate
+        ? createReadOnlyPeriodValidation(tx, calculate)
+        : undefined;
       // An empty event list must still prove that the session lease is live.
       if (expectedVersion !== undefined) {
         const lease = await tx.execute(
@@ -86,7 +100,7 @@ export function conversationToolSnapshotReader(
       // Strict callers still throw the original error and roll back the outer transaction.
       for (const { row, event, lineage } of candidates) {
         try {
-          await assertToolLineage(tx, database, lineage, false);
+          await assertToolLineage(tx, database, lineage, false, validatePeriod);
         } catch (error) {
           if (strictSources || !(error instanceof RetainedSourceInvalidError))
             throw error;
@@ -116,7 +130,10 @@ export function conversationToolSnapshotReader(
           ],
         });
       }
-    });
+    };
+    if (operation?.active && !strictSources)
+      await operation.run(work, { rollbackOnFailure: true });
+    else await database.transaction(work);
     // One unavailable call withholds its whole turn; no sibling payload can leak via that notice.
     return {
       items: [...turns.values()].filter(
