@@ -6,9 +6,24 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { Alert, AppState } from 'react-native';
-import type { RealtimeTranscript } from '../nativeRealtimeVoice';
+import {
+  mockNative,
+  realtimeEvents,
+} from '../testSupport/realtimeNativeEventsFixture';
 import { RealtimeConversationVoiceEntry } from '../RealtimeConversationVoiceEntry';
 import type { ConversationSessions } from '../../ragConversation/conversationSessionTypes';
+
+// Settings authorization is tested with real ownership separately; this component fixture controls its asynchronous boundary.
+import {
+  mockAuthorize,
+  mockPermission,
+} from '../testSupport/realtimeSettingsPermissionFixture';
+jest.mock('../useRealtimeSettingsPermission', () => ({
+  useRealtimeSettingsPermission: () => mockPermission,
+}));
+beforeEach(() => {
+  mockAuthorize.mockReset().mockResolvedValue(true);
+});
 
 jest.mock(
   'react-native-safe-area-context',
@@ -27,30 +42,11 @@ jest.mock('../../voiceSettings/voiceSettingsStore', () => ({
     subscribe: () => () => {},
   },
 }));
-let mockTranscript: (event: RealtimeTranscript) => void = () => {};
-let mockSystemCall = (_id: string, _active: boolean) => {};
-const mockNative = {
-  open: jest.fn(async (_id: string) => {}),
-  stop: jest.fn(async () => {}),
-  pause: jest.fn(async () => {}),
-  resume: jest.fn(async () => {}),
-  interrupt: jest.fn(async () => {}),
-  onSystemCall: (listener: typeof mockSystemCall) => {
-    mockSystemCall = listener;
-    return () => {};
-  },
-  onState: jest.fn(() => () => {}),
-  onTranscript: jest.fn((listener: (event: RealtimeTranscript) => void) => {
-    mockTranscript = listener;
-    return () => {};
-  }),
-  onInterrupted: jest.fn(() => () => {}),
-};
 jest.mock('../nativeRealtimeVoice', () => ({
   nativeRealtimeVoice: () => mockNative,
 }));
 
-it('requires remote audio and cost consent, preserves drafts, never calls the selected text model', async () => {
+it('uses settings audio approval without a repeated modal, preserves drafts and never calls the selected text model', async () => {
   Object.defineProperty(AppState, 'currentState', {
     configurable: true,
     value: 'active',
@@ -88,16 +84,11 @@ it('requires remote audio and cost consent, preserves drafts, never calls the se
     />,
   );
   await fireEvent.press(screen.getByRole('button', { name: '음성 대화 시작' }));
-  expect(alert).toHaveBeenCalledWith(
-    'OpenAI Realtime로 통화할까요?',
-    expect.stringContaining('별도 API 사용료'),
-    expect.any(Array),
+  expect(mockAuthorize).toHaveBeenCalledWith(
+    'gpt-realtime-2.1',
+    expect.any(Function),
   );
-  expect(mockNative.open).not.toHaveBeenCalled();
-  expect(mockCredentials).not.toHaveBeenCalled();
-  await act(async () => {
-    alert.mock.calls[0][2]![1].onPress?.();
-  });
+  expect(alert).not.toHaveBeenCalled();
   await waitFor(() => expect(mockNative.open).toHaveBeenCalledTimes(1));
   await act(async () => {
     Object.defineProperty(AppState, 'currentState', {
@@ -117,7 +108,7 @@ it('requires remote audio and cost consent, preserves drafts, never calls the se
   expect(screen.queryByTestId('voice-call-finish')).toBeNull();
   const id = mockNative.open.mock.calls[0][0];
   await act(async () => {
-    mockSystemCall(id, true);
+    realtimeEvents.systemCall(id, true);
     Object.defineProperty(AppState, 'currentState', {
       configurable: true,
       value: 'background',
@@ -126,7 +117,7 @@ it('requires remote audio and cost consent, preserves drafts, never calls the se
   });
   expect(mockNative.stop).not.toHaveBeenCalled();
   await act(async () => {
-    mockSystemCall(id, false);
+    realtimeEvents.systemCall(id, false);
   });
   await waitFor(() => expect(mockNative.stop).toHaveBeenCalledTimes(1));
 
@@ -163,14 +154,21 @@ it('does not reuse pending consent for a different conversation with the same mo
   const view = await render(
     <RealtimeConversationVoiceEntry {...props} sessionId={1} />,
   );
+  let complete!: (value: boolean) => void;
+  mockAuthorize.mockImplementationOnce(
+    () =>
+      new Promise(resolve => {
+        complete = resolve;
+      }),
+  );
   await fireEvent.press(screen.getByRole('button', { name: '음성 대화 시작' }));
-  const accept = alert.mock.calls[0][2]![1].onPress;
+  expect(mockNative.open).not.toHaveBeenCalled();
   snapshot.activeId = 2;
   await view.rerender(
     <RealtimeConversationVoiceEntry {...props} sessionId={2} />,
   );
   await act(async () => {
-    accept?.();
+    complete(true);
   });
   expect(mockCredentials).not.toHaveBeenCalled();
   expect(mockNative.open).not.toHaveBeenCalled();
@@ -209,9 +207,8 @@ it.each(['session', 'model'] as const)(
     await fireEvent.press(
       screen.getByRole('button', { name: '음성 대화 시작' }),
     );
-    await act(() => alert.mock.calls[0][2]![1].onPress?.());
     await waitFor(() => expect(mockNative.open).toHaveBeenCalledTimes(1));
-    const old = mockTranscript;
+    const old = realtimeEvents.transcript;
     const callId = mockNative.open.mock.calls[0][0];
     await act(() =>
       old({

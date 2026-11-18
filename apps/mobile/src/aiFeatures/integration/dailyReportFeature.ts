@@ -1,3 +1,4 @@
+import { createDailyReportRecoveryActions } from './dailyReportRecoveryActions';
 import { createDailyReportIdentity } from '@orot/domain';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import type { SqlDatabase } from '@orot/storage';
@@ -138,6 +139,7 @@ export function createDailyReportFeature(
   });
   return {
     ...requests,
+    ...createDailyReportRecoveryActions({ database, currentIdentity }),
     preview: (
       identity: Parameters<typeof previewDailyReport>[0]['identity'],
       signal: AbortSignal,

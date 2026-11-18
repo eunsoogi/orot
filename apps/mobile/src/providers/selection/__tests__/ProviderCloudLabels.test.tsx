@@ -10,7 +10,13 @@ import { voiceSettingsStore } from '../../../voiceSettings/voiceSettingsStore';
 import { t } from '../../../i18n';
 
 jest.mock('../../../calendarModelSettings/calendarModelStore', () => ({
-  calendarModelStore: { load: jest.fn(async () => null), save: jest.fn() },
+  calendarModelStore: {
+    ...jest
+      .requireActual(
+        '../../../agent/execution/testSupport/modelSettingsServiceFixture',
+      )
+      .modelSettingsSelectionFixture(),
+  },
 }));
 jest.mock('../../../voiceSettings/voiceSettingsStore', () => ({
   voiceSettingsStore: {

@@ -1,3 +1,19 @@
+// This view fixture controls the separately persisted settings decision; real grant/transport guards have service tests.
+const mockSettingsAuthorize = jest.fn(
+  async () => 'authorized' as 'authorized' | 'renewal_required',
+);
+jest.mock('../../agent/execution/useInferenceConsent', () => ({
+  useInferenceConsent: () => ({
+    consent: {
+      authorize: mockSettingsAuthorize,
+      isAuthorizationCurrent: () => true,
+    },
+    disclosureSheet: null,
+  }),
+}));
+beforeEach(() => {
+  mockSettingsAuthorize.mockReset().mockResolvedValue('authorized');
+});
 import { fireEvent, screen, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { renderWithRootSafeArea } from '../../../test-support/safeAreaTestProviders';
@@ -31,7 +47,8 @@ const secondPublication: ExternalMedicalPublication = {
   originalUrl: 'https://europepmc.org/article/MED/67890',
 };
 
-test('retains the query after disclosure denial and sends it only after later consent', async () => {
+test('retains the query when settings approval is missing and sends only after separate settings approval', async () => {
+  mockSettingsAuthorize.mockResolvedValueOnce('renewal_required');
   const service: EuropePmcMedicalEvidenceService = {
     search: jest.fn(async () => ({ status: 'empty' as const })),
   };
@@ -55,9 +72,7 @@ test('retains the query after disclosure denial and sends it only after later co
   );
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
   expect(service.search).not.toHaveBeenCalled();
-  await fireEvent.press(
-    await screen.findByTestId('inference-disclosure-cancel'),
-  );
+  expect(screen.queryByTestId('inference-disclosure-cancel')).toBeNull();
   expect(service.search).not.toHaveBeenCalled();
   expect(
     await screen.findByText(getExternalMedicalEvidenceCopy().consentRequired),
@@ -66,11 +81,9 @@ test('retains the query after disclosure denial and sends it only after later co
     'synthetic query',
   );
 
-  // Denial must preserve the draft without sending it until a new disclosure is accepted.
+  // A later search can use the newly approved settings scope without another transmission modal.
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  const allow = await screen.findByTestId('inference-disclosure-allow');
-  expect(service.search).not.toHaveBeenCalled();
-  await fireEvent.press(allow);
+  expect(screen.queryByTestId('inference-disclosure-allow')).toBeNull();
   expect(service.search).toHaveBeenCalledTimes(1);
   expect(service.search).toHaveBeenCalledWith('synthetic query', {
     externalQueryConsented: true,
@@ -121,9 +134,7 @@ test('requires query consent and presents provenance and dates', async () => {
   expect(service.search).not.toHaveBeenCalled();
 
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  await fireEvent.press(
-    await screen.findByTestId('inference-disclosure-allow'),
-  );
+  expect(screen.queryByTestId('inference-disclosure-allow')).toBeNull();
   expect(service.search).toHaveBeenCalledWith('sleep and blood pressure', {
     externalQueryConsented: true,
     signal: expect.any(AbortSignal),
@@ -193,9 +204,7 @@ test('shows a localized fallback when publication authors are absent', async () 
     'query',
   );
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  await fireEvent.press(
-    await screen.findByTestId('inference-disclosure-allow'),
-  );
+  expect(screen.queryByTestId('inference-disclosure-allow')).toBeNull();
 
   expect(await screen.findByText('저자 정보를 확인할 수 없어요.')).toBeTruthy();
 });
@@ -222,9 +231,7 @@ test('shows loading and empty-result states', async () => {
     'query',
   );
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  await fireEvent.press(
-    await screen.findByTestId('inference-disclosure-allow'),
-  );
+  expect(screen.queryByTestId('inference-disclosure-allow')).toBeNull();
   expect(screen.getByTestId('external-evidence-loading')).toBeTruthy();
   expect(
     screen.getByTestId('external-evidence-search').props.accessibilityState,

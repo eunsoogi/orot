@@ -60,6 +60,8 @@ test.each([
               query.startsWith(
                 'INSERT OR IGNORE INTO daily_report_pending VALUES',
               )) ||
+              (when === 'final stage read' &&
+                query.startsWith('SELECT candidate_json, owner_json')) ||
               (when === 'during save' &&
                 query.startsWith('INSERT INTO symptom_summary_runs')))
           ) {
@@ -70,22 +72,7 @@ test.each([
         },
         'unused',
       );
-      const wrapped = {
-        ...database,
-        execute: async (
-          sql: string,
-          parameters?: Parameters<typeof database.execute>[1],
-        ) => {
-          const result = await database.execute(sql, parameters);
-          if (
-            when === 'final stage read' &&
-            sql.startsWith('SELECT candidate_json, owner_json')
-          )
-            native.revoke();
-          return result;
-        },
-      };
-      const recovery = createDailyReportLocalRecovery(wrapped, native.read);
+      const recovery = createDailyReportLocalRecovery(database, native.read);
       const signal = new AbortController().signal;
       expect(await recovery.stage(bound, witness, signal)).toEqual({
         status:

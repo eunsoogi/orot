@@ -1,10 +1,10 @@
+import { runSettingsConsentTestOperation } from './settingsConsentTestOperation';
 import { runStorageProbe } from '../src/storage/e2eProbe';
 import { runAgentMemoryTestOperation } from './agentMemoryTestOperation';
 import { runGraphIntegrationProbe } from './graphIntegrationProbe';
 import { withMockAppleModel } from './appleModelMockBridge';
 import { appleModelMockScript } from './appleModelMockFixtures';
 import { runEncounterTestOperation } from './encounterTestOperations';
-
 /** Each operation keeps its original domain assertions; no UI status is treated as a native result. */
 export async function runDomainTestOperation(
   operation: string,
@@ -15,10 +15,7 @@ export async function runDomainTestOperation(
     typeof parameters.fixtureIdentifier !== 'string'
   )
     throw new Error('A memory fixture identifier must be a string');
-  const memoryIdentifier =
-    typeof parameters.fixtureIdentifier === 'string'
-      ? parameters.fixtureIdentifier
-      : undefined;
+  const memoryIdentifier = parameters.fixtureIdentifier;
   const storageIdentifier =
     typeof parameters.storageIdentifier === 'string'
       ? parameters.storageIdentifier
@@ -29,6 +26,8 @@ export async function runDomainTestOperation(
     return runStorePersistenceOperation(operation, memoryIdentifier);
   }
   switch (operation) {
+    case 'settings-consent-persistence':
+      return runSettingsConsentTestOperation(parameters);
     case 'encounter-review-persistence':
     case 'encounter-persistence':
       return runEncounterTestOperation(operation, parameters);

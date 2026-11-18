@@ -1,3 +1,4 @@
+import { createDailyReportRecoveryBridge } from './dailyReportRecoveryBridge';
 import { conversationConsentScope } from './conversationBackgroundProvider';
 import { createLocalEvidenceData } from '../../healthEvidence/localEvidenceData';
 import { createDailyReportStorage } from '../../storage/dailyReportStorage';
@@ -38,6 +39,10 @@ export function createDailyReportService(
             data,
             storage,
             deadlineContext,
+            stageRecovery: createDailyReportRecoveryBridge(
+              input.database,
+              input.calendarReader,
+            ),
           },
           { ...request, signal },
         ),

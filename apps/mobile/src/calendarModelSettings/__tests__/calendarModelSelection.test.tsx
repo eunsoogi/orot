@@ -6,36 +6,36 @@ import { createAppleSelectionOption } from '../../providers/selection/options';
 import { resolveCalendarModel } from '../resolveCalendarModel';
 import { resolveSelectedAiProvider } from '../../aiFeatures/integration/provider';
 
-jest.mock('../../layout/AppButton', () => ({
-  AppButton: ({
-    onPress,
-    title,
-    ...props
-  }: {
-    onPress?: () => unknown;
-    title: string;
-    testID?: string;
-    disabled?: boolean;
-  }) => {
-    const { Pressable, Text } = require('react-native');
-    return (
-      <Pressable
-        {...props}
-        onPress={() => {
-          onPress?.();
-        }}
-      >
-        <Text>{title}</Text>
-      </Pressable>
-    );
-  },
+// View-only boundary: SQLite grant activation and credential races have dedicated service tests.
+jest.mock('../../agent/execution/saveModelSettingsConsent', () => ({
+  saveModelSettingsConsent: async (input: {
+    store: { save(value: unknown): Promise<void> };
+    selection: unknown;
+  }) => input.store.save(input.selection),
 }));
+jest.mock(
+  '../../layout/AppButton',
+  () => require('../testSupport/calendarButtonFixture').calendarButtonFixture,
+);
 
 jest.mock('../calendarModelStore', () => ({
-  calendarModelStore: { load: jest.fn(), save: jest.fn() },
+  calendarModelStore: {
+    ...jest
+      .requireActual(
+        '../../agent/execution/testSupport/modelSettingsServiceFixture',
+      )
+      .modelSettingsSelectionFixture(),
+    load: jest.fn(),
+    save: jest.fn(),
+  },
 }));
 jest.mock('../../voiceSettings/voiceSettingsStore', () => ({
   voiceSettingsStore: {
+    ...jest
+      .requireActual(
+        '../../agent/execution/testSupport/modelSettingsServiceFixture',
+      )
+      .modelSettingsVoiceFixture(),
     subscribe: jest.fn(() => () => {}),
     accountStatus: jest.fn(),
     discoverModels: jest.fn(),

@@ -18,6 +18,7 @@ export function openOpSqliteFileQueue() {
   const handle = new DatabaseSync(path.join(directory, 'synthetic.sqlite'));
   const events: { event: string; at: number }[] = [];
   const mark = (event: string) => events.push({ event, at: performance.now() });
+  let afterCommit: (() => void) | undefined;
   let afterSubmit: ((query: string) => void) | undefined;
   let tail = Promise.resolve();
   function executeSync(query: string, bindings: SqlValue[] = []): SqlResult {
@@ -29,7 +30,9 @@ export function openOpSqliteFileQueue() {
   const native = {
     executeSync(query: string, bindings?: SqlValue[]) {
       if (/^(BEGIN|COMMIT|ROLLBACK)/.test(query)) mark(query);
-      return executeSync(query, bindings);
+      const result = executeSync(query, bindings);
+      if (/^COMMIT(?:;|$)/.test(query)) afterCommit?.();
+      return result;
     },
     execute(query: string, bindings?: SqlValue[]) {
       const aggregate = query.includes('WITH days(date, from_key, to_key)');
@@ -91,6 +94,9 @@ export function openOpSqliteFileQueue() {
     mark,
     observeSubmit(callback?: (query: string) => void) {
       afterSubmit = callback;
+    },
+    observeCommit(callback?: () => void) {
+      afterCommit = callback;
     },
     async close() {
       await tail;

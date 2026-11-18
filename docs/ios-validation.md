@@ -422,3 +422,36 @@ still expected the inventory before the six new lifecycle tests. Exact totals we
 increased by six, preserving all existing inventory and security checks. A new
 identity-level regression requires all six fade cases exactly once; the affected
 policy selection passed 50 tests. Product/native source was unchanged by this fix.
+
+### Validated daily-report local-save recovery
+
+`DailyReportLocalRecoveryUITests.testPublishedFinalOutputRestartsAndOnlyExplicitCurrentResumeSaves`
+uses a distinct UUID namespace with real Keychain protection and SQLCipher. The
+synthetic entry does not start the normal application or configure a provider or
+an authorization port. It binds isolated protected stores to the same read-only
+owner implementation and uses production pending publication and local resume.
+The synthetic final candidate is validated; it is not an actual model response.
+
+The maintained acceptance contract is: create an unpublished/safely published
+final candidate without saving a report, terminate the app, reopen to metadata
+only, explicitly resume once, and reject a second resume without another report
+revision. Separate UUID cases cancel, delete the synthetic source, or revoke the
+protected authority before another process restart; all must refuse resume.
+Only closed status/count metadata is rendered. Each UUID is explicitly cleaned
+up after its case. The existing settings-consent native journey does not prove
+this recovery contract.
+
+Cloud SQLite tests exercise the identical fixture session with synthetic
+protected-store ports, plus the existing owner, scope, publication and producer
+regressions. They do not prove Keychain, SQLCipher, UIKit or actual process
+restart. This new native case has not yet been executed; its acceptance remains
+behind the dependency's consent validation and allocated performance/native
+slot. Local on-device selection recovery and OS interruption before a completed
+model result remain outside this fixture and are not claimed as solved.
+
+The native entry uses test buttons calling the fixture session and production
+local-recovery storage. It does not render the production
+`DailyReportLocalRecovery` component or exercise its feature actions. Those
+consumer bindings remain covered separately by the cloud
+`DailyReportLocalRecovery.test.tsx` and `dailyReportRecoveryConsumer.test.ts`
+regressions; native acceptance of the actual consumer UI remains unverified.

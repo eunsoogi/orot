@@ -1,3 +1,4 @@
+import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import { observeVisitPreflight } from './visitPreflightDiagnostics';
 import {
   prepareVisitRouteContext,
@@ -54,6 +55,7 @@ export interface VisitQuestionRouteGenerationInput {
   readonly isCurrentOwner?: () => boolean;
   readonly request?: string;
   readonly selectedAi: ReadySelection;
+  readonly consent?: ExecutionConsentPort;
   readonly confirmConsent: (
     request: OutboundProcessingRequest,
   ) => Promise<boolean>;
@@ -110,6 +112,7 @@ async function generate(
     visitQuestionPublicSearch({
       selected: input.selectedAi,
       confirm: input.confirmConsent,
+      consent: input.consent,
       query: context.query,
       signal: input.signal,
     }),
@@ -186,6 +189,7 @@ async function generate(
     recipient: input.selectedAi.recipient,
     // Selection does not imply permission to transmit the resulting health context.
     confirmConsent: input.confirmConsent,
+    consent: input.consent,
     reservedPublicSearchCall: publicSearch.spentModelCall,
     signal: input.signal,
     ...(input.observer ? { observer: input.observer } : {}),

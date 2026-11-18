@@ -1,108 +1,57 @@
-import { executionNeedsDecision } from './executionDecisionObserver';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import type { ReactElement } from 'react';
-import type {
-  ExecutionConsentPort,
-  OutboundProcessingRequest,
-} from '@orot/agent-runtime';
-import { createExecutionConsentRegistry } from './consentRegistry';
-import InferenceDisclosureSheet from './InferenceDisclosureSheet';
-import { createRememberedInferenceConfirmation } from './rememberedInferenceConsent';
-import { fingerprintConsentSnapshot } from './consentFingerprint';
-import { inferenceConsentReceipts } from '../../storage/inferenceConsentStorage';
-import { consentPermissionKey } from './consentPermissionKey';
-
-interface PendingConfirmation {
-  readonly request: OutboundProcessingRequest;
-  readonly resolve: (approved: boolean) => void;
-  readonly onAbort: () => void;
-}
+import type { ExecutionConsentPort } from '@orot/agent-runtime';
+import { createSettingsConsentAuthorization } from './settingsConsentAuthorization';
+import { resolveSettingsConsentOwner } from './settingsConsentOwner';
+import { SETTINGS_CONSENT_CATALOG_VERSION } from './settingsConsentCatalog';
+import { settingsConsentRepository } from '../../storage/settingsConsentRepository';
 
 export interface InferenceConsentController {
   readonly consent: ExecutionConsentPort;
   readonly disclosureSheet: ReactElement | null;
 }
 
-/** Binds the shared registry to one visible, fail-closed remote-request prompt. */
+/** Conversation execution never displays a recurring transmission prompt. Missing,
+ * expired or changed settings permission returns renewal_required; it does not send.
+ * Settings owns the explicit disclosure and source validation still runs per request. */
 export function useInferenceConsent(): InferenceConsentController {
-  const [pendingRequest, setPendingRequest] =
-    useState<OutboundProcessingRequest | null>(null);
-  const pending = useRef<PendingConfirmation | null>(null);
-  const mounted = useRef(false);
-  const [canRemember, setCanRemember] = useState(true);
-
-  const finish = useCallback((approved: boolean) => {
-    const current = pending.current;
-    if (!current) return;
-
-    pending.current = null;
-    current.request.signal.removeEventListener('abort', current.onAbort);
-    if (mounted.current) setPendingRequest(null);
-    current.resolve(approved && !current.request.signal.aborted);
-  }, []);
-
-  const confirm = useCallback(
-    (request: OutboundProcessingRequest) =>
-      new Promise<boolean>(resolve => {
-        if (!mounted.current || request.signal.aborted || pending.current) {
-          resolve(false);
-          return;
-        }
-
-        const onAbort = () => finish(false);
-        pending.current = { request, resolve, onAbort };
-        request.signal.addEventListener('abort', onAbort, { once: true });
-        // A second check closes the race between the initial check and listener registration.
-        if (request.signal.aborted) {
-          finish(false);
-          return;
-        }
-        executionNeedsDecision(request.signal);
-        if (!request.signal.aborted) setPendingRequest(request);
-      }),
-    [finish],
-  );
-
+  const active = useRef(false);
+  const listeners = useRef(new Set<() => void>());
   useEffect(() => {
-    mounted.current = true;
+    active.current = true;
+    const ownedListeners = listeners.current;
     return () => {
-      mounted.current = false;
-      const current = pending.current;
-      if (!current) return;
-      pending.current = null;
-      current.request.signal.removeEventListener('abort', current.onAbort);
-      // An unmounted disclosure surface cannot grant permission to send its request.
-      current.resolve(false);
+      active.current = false;
+      for (const notify of ownedListeners) notify();
+      ownedListeners.clear();
     };
   }, []);
-
   const consent = useMemo(
     () =>
-      createExecutionConsentRegistry(
-        createRememberedInferenceConfirmation(confirm, {
-          receipts: inferenceConsentReceipts,
-          digest: async snapshot => {
-            const digest = await fingerprintConsentSnapshot(snapshot);
-            if (mounted.current) setCanRemember(true);
-            return digest;
-          },
-          onUnavailable: () => {
-            if (mounted.current) setCanRemember(false);
-          },
-        }),
-      ),
-    [confirm],
+      createSettingsConsentAuthorization({
+        catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
+        resolveOwner: async request => {
+          if (!active.current) return null;
+          const owner = await resolveSettingsConsentOwner(request);
+          if (!owner || !active.current) return null;
+          return {
+            ...owner,
+            isCurrent: () => active.current && owner.isCurrent(),
+            subscribeInvalidation: listener => {
+              listeners.current.add(listener);
+              const stop =
+                owner.subscribeInvalidation?.(listener) ?? (() => {});
+              return () => {
+                listeners.current.delete(listener);
+                stop();
+              };
+            },
+          };
+        },
+        readGrant: async (slot, domain) =>
+          (await settingsConsentRepository()).read(slot, domain),
+      }),
+    [],
   );
-  const disclosureSheet = (
-    <InferenceDisclosureSheet
-      request={pendingRequest}
-      onDecision={finish}
-      canRemember={
-        canRemember &&
-        Boolean(pendingRequest && consentPermissionKey(pendingRequest))
-      }
-    />
-  );
-
-  return { consent, disclosureSheet };
+  return { consent, disclosureSheet: null };
 }

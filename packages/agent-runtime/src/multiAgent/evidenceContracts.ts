@@ -129,6 +129,14 @@ export type ConsentDecision = 'authorized' | 'renewal_required';
 
 export interface ExecutionConsentPort {
   authorize(request: OutboundProcessingRequest): Promise<ConsentDecision>;
+  /** Optional live settings/credential fence. Check the SAME approved request at dispatch,
+   * synchronously, after every intervening await. Legacy per-call ports may omit it. */
+  isAuthorizationCurrent?(request: OutboundProcessingRequest): boolean;
+  /** Invocation-local cancellation subscription; unsubscribe when provider work ends. */
+  subscribeAuthorizationInvalidation?(
+    request: OutboundProcessingRequest,
+    invalidated: () => void,
+  ): () => void;
 }
 
 /** Explicit photo approval covers the exact model payload, including on-device processing. */
@@ -151,6 +159,11 @@ export type ExternalMedicalQueryConsentDecision = 'authorized' | 'denied';
 
 // Query consent is separate from model-payload consent because this port crosses the network itself.
 export interface ExternalMedicalQueryConsentPort {
+  isAuthorizationCurrent?(request: ExternalMedicalQueryConsentRequest): boolean;
+  subscribeAuthorizationInvalidation?(
+    request: ExternalMedicalQueryConsentRequest,
+    listener: () => void,
+  ): () => void;
   authorize(
     request: ExternalMedicalQueryConsentRequest,
   ): Promise<ExternalMedicalQueryConsentDecision>;

@@ -1,3 +1,4 @@
+import { retainedVisitConsent } from './retainedVisitConsent';
 import type { NextVisitQuestionsRouteProps } from './NextVisitQuestionsRoute.types';
 import { defaultVisitQuestionRouteOperations as defaults } from './visitQuestionsRouteOperations';
 
@@ -7,6 +8,10 @@ export function retainedVisitInputs(
 ): NextVisitQuestionsRouteProps {
   return {
     ...read(),
+    // Do not turn a captured approval into permission from a replacement route/port.
+    ...(read().consent
+      ? { consent: retainedVisitConsent(() => read().consent) }
+      : {}),
     onBack: () => read().onBack(),
     onOpenProviderSelection: () => read().onOpenProviderSelection(),
     onOpenSource: reference => read().onOpenSource(reference),

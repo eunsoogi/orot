@@ -1,3 +1,4 @@
+import { conversationToolCapture } from './conversationToolCaptureBatch';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -45,6 +46,7 @@ export function bindConversationToolSource(input: {
   };
   return input.registry.add({
     reference: original,
+    capture: conversationToolCapture(input),
     content: '',
     readSource,
     validate: async signal => (await readSource(signal)).status === 'available',

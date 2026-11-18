@@ -57,6 +57,9 @@ export type DailyReportRunInput = Omit<DailyReportServiceInput, 'database'> & {
   readonly data: LocalEvidenceData;
   readonly storage: ReturnType<typeof createDailyReportStorage>;
   readonly deadlineContext: DailyReportDeadlineContext;
+  readonly stageRecovery?: ReturnType<
+    typeof import('./dailyReportRecoveryBridge').createDailyReportRecoveryBridge
+  >;
 };
 
 export interface DailyReportServiceRequest {

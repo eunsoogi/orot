@@ -1,3 +1,4 @@
+import { useModelConsentSave } from '../../agent/execution/useModelConsentSave';
 import { t } from '../../i18n';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { ModelSelectionTabs } from './ModelSelectionTabs';
@@ -33,6 +34,11 @@ export default function ProviderSelectionScreen({
   onNavigationStateChange,
 }: ProviderSelectionScreenProps) {
   const navigationInset = useNavigationContentInset();
+  const [searchChoices, setSearchChoices] = useState({
+    web: false,
+    medical: false,
+  });
+  const saveConsent = useModelConsentSave('conversation', selectionStore);
   const [savedSelection, setSavedSelection] =
     useState<ProviderSelection | null>(null);
   const [pendingOption, setPendingOption] =
@@ -107,7 +113,11 @@ export default function ProviderSelectionScreen({
     setSaveError(false);
     let selectionSaved = false;
     try {
-      await selectionStore.save(selection);
+      await saveConsent(pendingOption, {
+        ...searchChoices,
+        web:
+          searchChoices.web && Boolean(pendingOption.provider.searchPublicWeb),
+      });
       setSavedSelection(selection);
       setPendingOption(null);
       selectionSaved = true;
@@ -190,6 +200,7 @@ export default function ProviderSelectionScreen({
                   { hasPendingSelection: true, isSavingSelection: false },
                   true,
                 );
+                setSearchChoices({ web: false, medical: false });
                 setPendingOption(option);
                 setSaveError(false);
               }}
@@ -203,6 +214,8 @@ export default function ProviderSelectionScreen({
           ) : null}
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionFooter
+              searchChoices={searchChoices}
+              onSearchChoices={setSearchChoices}
               message={selectionMessage}
               saveError={saveError}
               remoteAvailable={options.some(

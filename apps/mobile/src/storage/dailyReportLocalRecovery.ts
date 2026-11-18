@@ -1,3 +1,7 @@
+import {
+  publishDailyReportPending,
+  cancelDailyReportPending,
+} from './dailyReportPendingPublication';
 import { parseDailyRecoveryCandidate as parseCandidate } from './dailyReportRecoveryCandidate';
 import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
@@ -37,10 +41,7 @@ export function createDailyReportLocalRecovery(
   }
   async function cancel(runId: string) {
     await ensure();
-    await database.execute(
-      "INSERT INTO daily_report_pending VALUES (?, '', NULL, '{}') ON CONFLICT(run_id) DO UPDATE SET candidate_json = NULL",
-      [runId],
-    );
+    await cancelDailyReportPending(database, runId);
   }
   function matches(
     candidate: DailyReportSave,
@@ -76,6 +77,13 @@ export function createDailyReportLocalRecovery(
       signal,
     );
     if (!guard) return unavailable;
+    let cancellation: Promise<void> | undefined;
+    const invalidate = () => {
+      cancellation ??= cancelDailyReportPending(database, candidate.runId);
+      cancellation.catch(() => {}); // Observed again in finally; no unhandled rejection.
+    };
+    signal.addEventListener('abort', invalidate, { once: true });
+    if (signal.aborted) invalidate();
     try {
       if (
         !(await guard.revalidate(signal)) ||
@@ -138,25 +146,23 @@ export function createDailyReportLocalRecovery(
         await cancel(candidate.runId);
         return unavailable;
       }
-      const row = (
-        await database.execute(
-          'SELECT candidate_json, owner_json FROM daily_report_pending WHERE run_id = ?',
-          [candidate.runId],
-        )
-      ).rows[0];
+      const published = await publishDailyReportPending(
+        database,
+        candidate,
+        witness.identity,
+        () => current(witness, signal) && guard.isCurrent(),
+      );
       if (!current(witness, signal) || !guard.isCurrent()) {
         await cancel(candidate.runId);
         return unavailable;
       }
-      return row?.candidate_json === JSON.stringify(candidate) &&
-        row.owner_json === stableJson(witness.identity) &&
-        current(witness, signal)
-        ? { status: 'staged' as const }
-        : unavailable;
+      return published ? { status: 'staged' as const } : unavailable;
     } catch {
       return unavailable;
     } finally {
+      signal.removeEventListener('abort', invalidate);
       guard.dispose();
+      await cancellation;
     }
   }
   async function stage(
@@ -185,7 +191,7 @@ export function createDailyReportLocalRecovery(
     await ensure();
     const row = (
       await database.execute(
-        'SELECT candidate_json, owner_json FROM daily_report_pending WHERE run_id = ?',
+        'SELECT candidate_json, owner_json FROM daily_report_pending JOIN daily_report_pending_publication USING(run_id) WHERE run_id = ?',
         [runId],
       )
     ).rows[0];

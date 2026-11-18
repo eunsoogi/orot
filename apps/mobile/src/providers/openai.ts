@@ -1,4 +1,8 @@
 import {
+  cancelPendingChatGPTConsentSignIn,
+  mutateChatGPTConsentCredential,
+} from './chatGPTConsentIdentity';
+import {
   isNativeEnvelope,
   isPacket,
   type NativeOpenAIProviderEvent,
@@ -159,12 +163,17 @@ export async function signInToOpenAI(
   ) {
     throw invalidAccountSummary();
   }
-  return readAccountSummary(
-    await nativeModule.signIn(existingIssuedClientID ?? null),
+  return mutateChatGPTConsentCredential(
+    async () =>
+      readAccountSummary(
+        await nativeModule.signIn(existingIssuedClientID ?? null),
+      ),
+    false,
   );
 }
 
 export function cancelOpenAISignIn(): void {
+  cancelPendingChatGPTConsentSignIn();
   nativeModule?.cancelSignIn();
 }
 
@@ -173,7 +182,10 @@ export async function signOutFromOpenAI(
 ): Promise<OpenAISignOutResult> {
   if (!nativeModule?.signOut) throw bridgeUnavailable();
   if (!isIssuedClientID(issuedClientID)) throw invalidAccountSummary();
-  const result = await nativeModule.signOut(issuedClientID);
+  const result = await mutateChatGPTConsentCredential(
+    () => nativeModule.signOut(issuedClientID),
+    true,
+  );
   if (result !== 'revoked' && result !== 'localCredentialsCleared') {
     throw invalidAccountSummary();
   }

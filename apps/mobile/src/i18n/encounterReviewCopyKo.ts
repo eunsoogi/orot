@@ -30,7 +30,7 @@ export const encounterReviewCopyKo = {
     '설정에서 사용할 AI를 먼저 선택해 주세요.',
   'encounterReview.no-transcript': '후보를 찾으려면 이 녹음에 전사가 필요해요.',
   'encounterReview.consent-denied':
-    '전송에 동의하지 않아 후보를 찾지 않았어요.',
+    '녹음 전사문 전송이 허용되지 않아 후보를 찾지 않았어요. 모델 설정에서 전송 범위를 확인해 주세요.',
   'candidateDisplay.medication': '약물 언급',
   'candidateDisplay.plan': '계획',
   'candidateDisplay.unknownSpeaker': '화자 알 수 없음',

@@ -23,7 +23,11 @@ jest.mock(
 afterEach(() => jest.restoreAllMocks());
 
 test('the explicit visit action shows prepared questions in chat and keeps ordinary follow-up separate', async () => {
-  const services = createAiFeatureServices({ authorize: jest.fn() });
+  const consent = {
+    authorize: jest.fn(),
+    isAuthorizationCurrent: jest.fn(() => false),
+  };
+  const services = createAiFeatureServices(consent);
   const review = createInlineVisitReview(
     'owner-1',
     [],
@@ -87,6 +91,7 @@ test('the explicit visit action shows prepared questions in chat and keeps ordin
         onOpenSource={jest.fn()}
         resolveSelectedAi={async () => ({ status: 'selection-required' })}
         confirmConsent={jest.fn()}
+        consent={consent}
         selectedAiRevision={0}
         services={{
           ...services,
@@ -108,6 +113,7 @@ test('the explicit visit action shows prepared questions in chat and keeps ordin
   expect(prepare).toHaveBeenCalledWith(
     expect.objectContaining({
       question: conversationIntentRequests['visit-questions'],
+      consent,
       context: expect.objectContaining({ intent: 'visit-questions' }),
     }),
   );

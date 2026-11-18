@@ -1,3 +1,12 @@
+// Component boundary: encrypted grant/credential transactions are covered by SQLite/service tests.
+jest.mock('../../../agent/execution/saveModelSettingsConsent', () => ({
+  saveModelSettingsConsent: jest.fn(
+    async (input: {
+      store: { save(value: unknown): Promise<void> };
+      selection: unknown;
+    }) => input.store.save(input.selection),
+  ),
+}));
 import {
   fireEvent,
   render,

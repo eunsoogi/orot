@@ -1,3 +1,4 @@
+import { isExecutionConsentCurrent } from '../multiAgent/consentCurrentness';
 import {
   RecapInputSchema,
   RecapResultSchema,
@@ -178,6 +179,9 @@ export async function extractTranscriptRecap(
       request,
       execution,
       {
+        subscribeAuthorizationInvalidation: (outbound, listener) =>
+          options.consent.subscribeAuthorizationInvalidation?.(outbound, listener) ?? (() => {}),
+        isAuthorizationCurrent: (outbound) => isExecutionConsentCurrent(options.consent, outbound),
         authorize: async (outbound) => {
           const authorized = await options.consent.authorize(outbound);
           // A long consent interaction must not send a deleted/corrected source after approval.

@@ -30,6 +30,12 @@ export interface StoredConversationToolTurn {
   }[];
 }
 
+// Only factory-created strict readers may grant batched capture authority.
+const strictReaders = new WeakSet<object>();
+export function isOwnedConversationToolReader(reader: unknown): boolean {
+  return typeof reader === 'function' && strictReaders.has(reader);
+}
+
 /** Tool calls share the encrypted conversation session lease and deletion lifecycle. */
 export function createConversationToolEventStorage(
   database: SqlDatabase,
@@ -40,7 +46,7 @@ export function createConversationToolEventStorage(
     await setupToolPeriodPolicy(database);
   };
   const readSnapshot = conversationToolSnapshotReader(database, ensure);
-  return {
+  const storage = {
     readUnavailableToolMetadata: unavailableToolMetadata(database, ensure),
     /** A source that cannot be retained must not leave a permanently running call. */
     async discardToolEvent(input: {
@@ -186,4 +192,6 @@ export function createConversationToolEventStorage(
         .items;
     },
   };
+  strictReaders.add(storage.readToolTurns);
+  return storage;
 }

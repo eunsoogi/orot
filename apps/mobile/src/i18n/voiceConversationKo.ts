@@ -18,6 +18,8 @@ export const voiceConversationKo = {
   'ragConversation.voice.processing': '답변을 준비하고 있어요.',
   'ragConversation.voice.speaking': '답변을 읽고 있어요.',
   'ragConversation.voice.cleaning': '음성 대화를 정리하고 있어요.',
+  'ragConversation.voice.settingsConsentRequired':
+    '모델 설정에서 선택한 AI의 전송 범위에 동의한 뒤 음성 대화를 시작해 주세요.',
   'ragConversation.voice.error':
     '음성 대화를 이어갈 수 없어요. 다시 시도하거나 글로 입력해 주세요.',
   'ragConversation.voice.photo':

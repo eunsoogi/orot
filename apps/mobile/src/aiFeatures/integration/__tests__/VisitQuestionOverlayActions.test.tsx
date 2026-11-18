@@ -1,3 +1,9 @@
+// Native authority persistence is isolated; the real suspend/selection sequence remains.
+jest.mock('../../../storage/settingsConsentAuthority', () =>
+  jest.requireActual(
+    '../../../agent/execution/testSupport/syntheticConsentAuthority',
+  ),
+);
 import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 import type { VisitQuestionRouteGeneration } from '../visitQuestionsRouteOperations';
 import {

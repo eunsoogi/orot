@@ -11,7 +11,7 @@ test('review copy retains safety and consent boundaries', () => {
     '이 질문은 진단이 아니며, 의학적 판단을 대신하지 않아요. 정확한 답변은 의료진과 상담하세요.',
   );
   expect(nextVisitQuestionsCopy.generation.consentRequired).toBe(
-    '외부 제공자에게 자료를 보내려면 먼저 동의가 필요해요.',
+    '모델 설정에서 선택한 제공자의 전송 범위를 확인하고 동의해 주세요.',
   );
   expect(reviewCopy.boundary).toBe(
     '전사를 검토해 저장하는 기록이에요. 현재 복용 중인 약이나 의사가 발행한 처방으로 확인하지 않으며, 화자는 알 수 없어요.',

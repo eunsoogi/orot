@@ -185,6 +185,7 @@ export function AiFeatureFlow({
               onOpenProviderSelection={openProviderSelection}
               onOpenSource={openSource}
               resolveSelectedAi={resolveSelectedAiForRoute}
+              consent={consent}
               confirmConsent={async request =>
                 (await consent.authorize(request)) === 'authorized'
               }
