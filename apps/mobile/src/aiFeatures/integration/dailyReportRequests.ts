@@ -1,3 +1,4 @@
+import { dailyReportExecutionObservers } from './dailyReportExecutionObservers';
 import { dailyReportReceiptObservers } from './dailyReportReceiptObservers';
 import type { DailyReportIdentity } from '@orot/domain';
 import type { createDailyReportService } from './dailyReportService';
@@ -22,6 +23,7 @@ export function createDailyReportRequests(input: {
   const active = new Map<
     string,
     {
+      execution: ReturnType<typeof dailyReportExecutionObservers>;
       receipts: ReturnType<typeof dailyReportReceiptObservers>;
       mode: string;
       controller: AbortController;
@@ -70,6 +72,7 @@ export function createDailyReportRequests(input: {
       if (existing) {
         if (existing.mode !== modeKey) return { status: 'busy' as const };
         existing.receipts.join(observer, observerSignal);
+        existing.execution.join(observer, observerSignal);
         return {
           status: 'started' as const,
           result: existing.result,
@@ -79,16 +82,30 @@ export function createDailyReportRequests(input: {
       const controller = new AbortController();
       const receipts = dailyReportReceiptObservers(controller.signal);
       receipts.join(observer, observerSignal);
-      // Keep every non-receipt callback owned by the original request.
-      const observing = { ...observer, onProviderReceipt: receipts.observe };
+      const execution = dailyReportExecutionObservers(controller.signal);
+      execution.join(observer, observerSignal);
+      // Only closed receipt/execution observations are shared. Task, consent, retention
+      // and durable pause-controller callbacks remain owned by the original request.
+      const observing = {
+        ...observer,
+        onProviderReceipt: receipts.observe,
+        onExecutionState: execution.observe,
+      };
       const result = Promise.resolve()
         .then(() => input.run(identity, mode, controller.signal, observing))
         .finally(() => {
           receipts.dispose();
+          execution.dispose();
           if (active.get(identity.key)?.controller === controller)
             active.delete(identity.key);
         });
-      active.set(identity.key, { mode: modeKey, controller, result, receipts });
+      active.set(identity.key, {
+        mode: modeKey,
+        controller,
+        result,
+        receipts,
+        execution,
+      });
       return {
         status: 'started' as const,
         result,
