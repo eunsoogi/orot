@@ -58,7 +58,13 @@ test('reuses bounded reports only until a real mutation and fences even numerica
     expect((await database.execute('PRAGMA temp_store')).rows[0]).toEqual({
       temp_store: 2,
     });
-    expect(await read(window, ['measurements'])).toBe(first);
+    const trace = jest.fn();
+    const cached = await read(window, ['measurements'], undefined, trace);
+    // The cache owns an immutable copy, not the caller's first returned object.
+    expect(cached).toEqual(first);
+    expect(cached).not.toBe(first);
+    expect(trace).not.toHaveBeenCalledWith('quantities', 'started');
+    expect(await read(window, ['measurements'])).toBe(cached);
     await records.put(
       'health_observation',
       healthObservation('one', 'heart_rate', '2026-10-01T01:00:00Z'),

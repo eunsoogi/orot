@@ -95,9 +95,9 @@ test.each([1, 4, 10])(
         ),
       );
       // Session discovery computes the period once across its storage fences.
-      // Full history keeps two additional independent revalidateSession reads.
+      // Full history preserves both revalidation fences while sharing committed reports.
       expect(result.discoveryPage!.reportReads).toBe(1);
-      expect(result.historyPage!.reportReads).toBe(3);
+      expect(result.historyPage!.reportReads).toBe(1);
       console.info(
         'SYNTHETIC_STARTUP_PROFILE',
         JSON.stringify({ turns: count, ...result }),

@@ -1,3 +1,4 @@
+import type { CommittedReportScope } from '../../healthEvidence/healthContext/committedReportScope';
 import { beginHealthContextReadOperation } from '../../healthEvidence/healthContext/healthContextReadOperation';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -35,6 +36,7 @@ export async function withConversationReadOperation<T>(
   data: AiFeatureLocalData,
   work: (scoped: AiFeatureLocalData) => Promise<T>,
   signal?: AbortSignal,
+  shared?: CommittedReportScope,
 ): Promise<T> {
   const owner = owners.get(data);
   if (
@@ -44,7 +46,7 @@ export async function withConversationReadOperation<T>(
     owner.summary !== data.summaryArtifactDiscovery
   )
     return work(data);
-  const operation = beginHealthContextReadOperation(owner.read, signal);
+  const operation = beginHealthContextReadOperation(owner.read, signal, shared);
   if (!operation) return work(data);
   let active = true;
   const scoped: AiFeatureLocalData = new Proxy(data, {

@@ -121,16 +121,18 @@ test.each([false, true])(
           }
           expect(reads).toHaveLength(63);
           const expected =
-            cacheState === 'warm'
-              ? enabled
-                ? [26, 3]
-                : [36, 8]
-              : mode === 'capture' && !enabled
-                ? [46, 13]
-                : [36, 8];
-          // Session reads additionally share committed reports between their two
-          // storage fences; capture still has its original strict lifetime.
-          if (mode === 'session') expected[0]! -= 12;
+            enabled && mode === 'session'
+              ? // Five warm committed base entries now seed storage and hydration alike.
+                [cacheState === 'warm' ? 2 : 12, 2]
+              : cacheState === 'warm'
+                ? enabled
+                  ? [26, 3]
+                  : [36, 8]
+                : mode === 'capture' && !enabled
+                  ? [46, 13]
+                  : [36, 8];
+          // Custom sources retain the original strict hydration path; capture is unchanged.
+          if (mode === 'session' && !enabled) expected[0]! -= 12;
           expect([aggregates, transactions]).toEqual(expected);
           console.info(
             JSON.stringify({

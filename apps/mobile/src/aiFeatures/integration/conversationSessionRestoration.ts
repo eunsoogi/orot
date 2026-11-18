@@ -17,21 +17,26 @@ type SessionRestoreInput = {
   readonly data: AiFeatureLocalData;
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly signal: AbortSignal;
+  readonly readOperation?: ReturnType<
+    SessionRestoreInput['storage']['beginReadOperation']
+  >;
   readonly boundCaptureOwner?: ConversationCaptureOwner;
 };
 
 export async function restoreConversationSessionPage(
   input: SessionRestoreInput,
 ) {
-  const operation = input.storage.beginReadOperation?.(input.signal);
+  const operation =
+    input.readOperation ?? input.storage.beginReadOperation?.(input.signal);
   try {
     return await withConversationReadOperation(
       input.data,
       data => restore({ ...input, data, reads: operation ?? input.storage }),
       input.signal,
+      operation?.healthContextReportScope,
     );
   } finally {
-    operation?.dispose();
+    if (!input.readOperation) operation?.dispose();
   }
 }
 

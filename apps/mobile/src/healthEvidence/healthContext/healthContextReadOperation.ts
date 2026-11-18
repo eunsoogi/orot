@@ -1,22 +1,29 @@
+import type { SqlDatabase } from '@orot/storage';
+import {
+  committedReportCache,
+  type CommittedReportScope,
+} from './committedReportScope';
 import type { HealthContextReader } from './reader';
 import type { HealthContextReport } from './types';
 
 type Operation = { readonly read: HealthContextReader; dispose(): void };
 const owners = new WeakMap<
   HealthContextReader,
-  (signal?: AbortSignal) => Operation
+  (signal?: AbortSignal, shared?: CommittedReportScope) => Operation
 >();
 
 /** Only the production database reader installs this capability. Generic readers
  * and aliases must retain their original validation and native ownership. */
 export function registerHealthContextReadOwner(
   reader: HealthContextReader,
+  database: SqlDatabase,
   readWithCache: (
     cache: Map<string, HealthContextReport>,
   ) => HealthContextReader,
 ) {
-  owners.set(reader, operationSignal => {
-    const cache = new Map<string, HealthContextReport>();
+  owners.set(reader, (operationSignal, shared) => {
+    const sharedCache = committedReportCache(shared, database);
+    const cache = sharedCache ?? new Map<string, HealthContextReport>();
     const scoped = readWithCache(cache);
     let disposed = false;
     return {
@@ -37,12 +44,12 @@ export function registerHealthContextReadOwner(
           for (const signal of signals)
             signal.removeEventListener('abort', cancel);
           // Disposal can overlap a queued transaction. Never retain its late result.
-          if (disposed) cache.clear();
+          if (disposed && !sharedCache) cache.clear();
         }
       },
       dispose() {
         disposed = true;
-        cache.clear();
+        if (!sharedCache) cache.clear();
       },
     };
   });
@@ -53,6 +60,7 @@ export function registerHealthContextReadOwner(
 export function beginHealthContextReadOperation(
   reader: HealthContextReader,
   signal?: AbortSignal,
+  shared?: CommittedReportScope,
 ): Operation | undefined {
-  return owners.get(reader)?.(signal);
+  return owners.get(reader)?.(signal, shared);
 }
