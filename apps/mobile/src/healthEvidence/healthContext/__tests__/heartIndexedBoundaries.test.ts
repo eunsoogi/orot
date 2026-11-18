@@ -115,7 +115,7 @@ test.each([true, false])(
           expect(
             plan.rows.some(row =>
               String(row.detail).includes(
-                'SEARCH r USING INDEX health_context_quantity_time (<expr>=? AND <expr>>? AND <expr><?)',
+                'SEARCH r USING COVERING INDEX health_context_heart_covering (<expr>=? AND <expr>>? AND <expr><?)',
               ),
             ),
           ).toBe(true);

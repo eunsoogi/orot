@@ -56,8 +56,8 @@ test('dense and sparse calendars preserve all samples without the calendar sort'
             const details = plan.rows.map(r => String(r.detail));
             expect(
               details.some(d =>
-                d.includes(
-                  'SEARCH r USING INDEX health_context_observation_time',
+                /SEARCH r USING (?:COVERING )?INDEX health_context_observation_(?:time|covering)/.test(
+                  d,
                 ),
               ),
             ).toBe(true);
