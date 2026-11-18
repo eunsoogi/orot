@@ -1,3 +1,5 @@
+import { prepareCaptureSources } from './evidenceCaptureBatch';
+import { stableEvidenceReference } from './stableEvidenceReference';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationArtifactSource } from '../../ragConversation/conversationArtifactSources';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -11,6 +13,12 @@ export async function captureConversationSources(
   registry: LocalEvidenceReferenceRegistry,
   signal: AbortSignal,
 ) {
+  const prepared = await prepareCaptureSources(
+    registry,
+    references.filter(ref => ref.sourceKind === 'generated_artifact'),
+    signal,
+  );
+  const generated = prepared.results;
   const mapping = new Map<string, EvidenceReference>();
   const sources: ConversationArtifactSource[] = [];
   for (const ref of references) {
@@ -55,7 +63,7 @@ export async function captureConversationSources(
       continue;
     }
     const originalGenerated = registry.resolve(ref);
-    const current = await registry.readSource(ref, signal);
+    const current = generated.get(stableEvidenceReference(ref))!;
     if (
       !originalGenerated ||
       current.status === 'missing' ||
@@ -102,6 +110,10 @@ export async function captureConversationSources(
     });
     mapping.set(key, originalGenerated);
   }
+  if (!(await prepared.finish()))
+    throw new RetainedSourceInvalidError(
+      'A generated parent changed during capture.',
+    );
   if (signal.aborted) throw new Error('Saving was cancelled.');
   // Multiple dialogue turns can share the same original input; retain it once.
   return {

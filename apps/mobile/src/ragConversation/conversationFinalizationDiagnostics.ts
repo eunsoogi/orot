@@ -9,6 +9,8 @@ type Boundary =
   | 'conversation_activity_flush'
   | 'conversation_stop_fence'
   | 'conversation_lifetime_settle'
+  | 'conversation_final_history_validation'
+  | 'conversation_retention_capture'
   | 'conversation_save';
 
 /** Fixed opt-in boundaries contain no identifiers, content, values or exception text.

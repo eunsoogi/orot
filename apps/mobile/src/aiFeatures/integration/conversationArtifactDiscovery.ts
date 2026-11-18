@@ -1,3 +1,5 @@
+import { createBoundConversationCaptureOwner } from './boundConversationCapture';
+import { createConversationCaptureOwner } from './conversationCaptureBatch';
 import type { SqlDatabase } from '@orot/storage';
 import type {
   ArtifactDiscovery,
@@ -38,8 +40,14 @@ export function createConversationArtifactDiscovery(input: {
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly data: AiFeatureLocalData;
 }) {
+  const boundCaptureOwner = createBoundConversationCaptureOwner(input);
   const read = async (id: string, signal = new AbortController().signal) => {
-    const saved = await restoreConversationArtifact({ ...input, id, signal });
+    const saved = await restoreConversationArtifact({
+      ...input,
+      id,
+      signal,
+      boundCaptureOwner,
+    });
     if (!saved) return null;
     const metadata: Metadata = {
       type: 'conversation_turn',
@@ -61,7 +69,16 @@ export function createConversationArtifactDiscovery(input: {
       sourceStatus: saved.sourceStatus,
     };
   };
+  const capture: {
+    readonly captureOwner?: ReturnType<typeof createConversationCaptureOwner>;
+  } = {
+    captureOwner: createConversationCaptureOwner({
+      ...input,
+      boundCaptureOwner,
+    }),
+  };
   return {
+    ...capture,
     read,
     async revalidatePage(
       items: readonly { readonly id: string; readonly revision: string }[],
@@ -103,7 +120,12 @@ export function createConversationArtifactDiscovery(input: {
       readonly limit?: number;
       readonly ids?: readonly string[];
       readonly signal: AbortSignal;
-    }) => restoreConversationSessionPage({ ...input, ...request }),
+    }) =>
+      restoreConversationSessionPage({
+        ...input,
+        ...request,
+        boundCaptureOwner,
+      }),
     async search({
       query,
       cursor: next,

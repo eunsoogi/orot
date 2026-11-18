@@ -20,7 +20,7 @@ final class OrotProviderDiagnostics: NSObject {
                "conversation_dispatch", "conversation_run", "tool_capture_personal", "tool_capture_memory", "tool_capture_generated", "tool_capture_external",
                "tool_event_adapter", "tool_event_discard", "tool_event_capture", "tool_event_write", "tool_event_bind",
                "opening_generate", "opening_validate", "opening_review", "opening_consent",
-               "opening_delivery", "opening_preflight", "opening_display", "stop_native", "stop_js", "stop_abort", "stop_settlement", "conversation_photo_flush", "conversation_preview_flush", "conversation_activity_flush", "conversation_stop_fence", "conversation_lifetime_settle", "conversation_save",
+               "opening_delivery", "opening_preflight", "opening_display", "stop_native", "stop_js", "stop_abort", "stop_settlement", "conversation_photo_flush", "conversation_preview_flush", "conversation_activity_flush", "conversation_stop_fence", "conversation_lifetime_settle", "conversation_save", "conversation_final_history_validation", "conversation_retention_capture",
                "saved_memory_modules", "saved_memory_open", "saved_memory_read", "saved_memory_wait",
                "database_transaction", "database_transaction_wait", "sql_schema", "sql_generation",
                "sql_aggregate", "sql_vector", "sql_health_records", "sql_artifact", "sql_other",

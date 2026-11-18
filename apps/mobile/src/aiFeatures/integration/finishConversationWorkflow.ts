@@ -1,3 +1,4 @@
+import { observeConversationFinalization as finalize } from '../../ragConversation/conversationFinalizationDiagnostics';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { conversationGeneratedTools } from './conversationGeneratedTools';
 import { conversationFallbackOutcome } from './conversationFallbackOutcome';
@@ -13,7 +14,11 @@ export async function finishConversationWorkflow(
   },
 ): ReturnType<typeof finishRagConversation> {
   if (input.signal.aborted) return { status: 'failure', kind: 'cancelled' };
-  if (!(await input.historyIsCurrent()))
+  if (
+    !(await finalize('conversation_final_history_validation', () =>
+      input.historyIsCurrent(),
+    ))
+  )
     return { status: 'failure', kind: 'retrieval_failed' };
   const continuation = input.generated.choose(input.outcome);
   input.observer?.onArtifactContinuation?.(continuation);

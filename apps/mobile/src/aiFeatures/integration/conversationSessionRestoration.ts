@@ -1,3 +1,4 @@
+import type { ConversationCaptureOwner } from './evidenceCaptureBatch';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -15,6 +16,7 @@ export async function restoreConversationSessionPage(input: {
   readonly data: AiFeatureLocalData;
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly signal: AbortSignal;
+  readonly boundCaptureOwner?: ConversationCaptureOwner;
 }) {
   if (input.signal.aborted)
     throw new Error('Conversation restoration was cancelled.');

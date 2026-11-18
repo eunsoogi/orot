@@ -1,3 +1,4 @@
+import { validateCaptureHistory } from './evidenceCaptureBatch';
 import { readSelectedConversationHistory } from './readSelectedConversationHistory';
 import { ConversationHistoryFailure } from './conversationHistoryFailure';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -35,9 +36,8 @@ export function conversationHistoryIsCurrent(
   references: readonly EvidenceReference[],
   signal: AbortSignal,
 ) {
-  return (
-    references.length === 0 || registry.revalidateEvidence(references, signal)
-  );
+  if (!references.length) return true;
+  return validateCaptureHistory(registry, references, signal);
 }
 
 /** Prepare the same validated reports for model dispatch and durable retention. */
@@ -154,6 +154,12 @@ export async function conversationHistorySources(input: {
           reviewState: 'unreviewed',
         },
         content: '',
+        capture: discovery.captureOwner
+          ? {
+              owner: discovery.captureOwner,
+              identity: { id: turn.id, revision: turn.revision, session },
+            }
+          : undefined,
         readSource,
         validate: async signal =>
           (await readSource(signal)).status === 'available',

@@ -72,6 +72,12 @@ export async function restoreConversationParentSource(
       registry.add({
         reference: source.reference,
         content: '',
+        capture: discovery.captureOwner
+          ? {
+              owner: discovery.captureOwner,
+              identity: { id: source.id, revision: source.revision },
+            }
+          : undefined,
         readSource,
         validate: async current =>
           (await readSource(current)).status === 'available',

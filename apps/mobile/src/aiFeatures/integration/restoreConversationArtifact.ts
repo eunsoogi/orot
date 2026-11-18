@@ -1,3 +1,4 @@
+import type { ConversationCaptureOwner } from './evidenceCaptureBatch';
 import type { ConversationArtifact } from '../../storage/conversationArtifactCodec';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { AiFeatureLocalData } from './localData';
@@ -29,6 +30,7 @@ export type RestoreInput = {
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly data: AiFeatureLocalData;
   readonly signal: AbortSignal;
+  readonly boundCaptureOwner?: ConversationCaptureOwner;
 };
 
 export async function restoreConversationArtifact(input: RestoreInput) {
@@ -174,6 +176,7 @@ async function hydrate(
     citations: sourceAliases as NonNullable<(typeof sourceAliases)[number]>[],
     parentId: saved.id,
     parentRevision: fingerprint(saved),
+    captureOwner: input.boundCaptureOwner,
     storage: input.storage,
     registry: input.registry,
   });
