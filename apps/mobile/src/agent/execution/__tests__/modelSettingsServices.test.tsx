@@ -128,3 +128,42 @@ test.each([
   expect(nextSave).not.toHaveBeenCalled();
   if (kind !== 'unmount') await act(() => view.unmount());
 });
+
+test('a repeated save while the first is pending cannot issue a second grant mutation', async () => {
+  let finish!: () => void;
+  const waiting = new Promise<void>(resolve => {
+    finish = resolve;
+  });
+  const persist = jest.fn(async () => {
+    await waiting;
+  });
+  const owner = services(persist);
+  const hook = await renderHook(
+    () => useModelConsentSave('conversation', owner.calendar),
+    {
+      wrapper: ({ children }) => (
+        <ModelSettingsServicesContext.Provider value={owner}>
+          {children}
+        </ModelSettingsServicesContext.Provider>
+      ),
+    },
+  );
+  const option = {
+    provider: { id: 'openai-api-decisions' },
+    modelId: 'synthetic',
+    privacyBoundary: 'selected-context-remote' as const,
+  };
+  let first!: Promise<void>;
+  await act(async () => {
+    first = hook.result.current(option);
+  });
+  await expect(hook.result.current(option)).rejects.toThrow(
+    'Settings save unavailable',
+  );
+  expect(persist).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    finish();
+    await first;
+  });
+  await act(() => hook.unmount());
+});

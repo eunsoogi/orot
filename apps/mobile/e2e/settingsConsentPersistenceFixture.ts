@@ -47,6 +47,7 @@ export function createSettingsConsentPersistenceFixture(input: {
   authority(slot: SettingsConsentSlot): ConsentAuthorityPersistence;
   selection(slot: SettingsConsentSlot): ProviderSelectionStore;
   generation?: () => string;
+  credentialEpoch?: (slot: SettingsConsentSlot) => Promise<string | null>;
 }) {
   const grants = createSettingsConsentStorage(input.database);
   const owners = Object.fromEntries(
@@ -58,11 +59,44 @@ export function createSettingsConsentPersistenceFixture(input: {
       ),
     ]),
   ) as Record<SettingsConsentSlot, ReturnType<typeof createConsentAuthority>>;
-  const identity = (slot: SettingsConsentSlot, generation: string) => ({
+  const credentialEpoch =
+    input.credentialEpoch ??
+    (async (slot: SettingsConsentSlot) => `synthetic-${slot}-credential`);
+  const identity = (
+    slot: SettingsConsentSlot,
+    generation: string,
+    epoch: string,
+  ) => ({
     ...consentFixtureDestinations[slot],
     authorityGeneration: generation,
-    credentialEpoch: `synthetic-${slot}-credential`,
+    credentialEpoch: epoch,
   });
+  const authorization = (slot: SettingsConsentSlot) => {
+    return createSettingsConsentAuthorization({
+      catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
+      readGrant: (selectedSlot, domain) => grants.read(selectedSlot, domain),
+      async resolveOwner() {
+        const authority = await owners[slot].current();
+        const epoch = await credentialEpoch(slot);
+        const selected = await input.selection(slot).load();
+        const expected = consentFixtureDestinations[slot];
+        if (
+          !authority ||
+          !epoch ||
+          selected?.providerId !== expected.providerId ||
+          selected.modelId !== expected.modelId
+        )
+          return null;
+        return {
+          slot,
+          domain: 'model',
+          identity: identity(slot, authority.generation, epoch),
+          isCurrent: owners[slot].witness(authority.generation),
+          subscribeInvalidation: listener => owners[slot].subscribe(listener),
+        };
+      },
+    });
+  };
   const inspect = async () => {
     const observations: Record<string, string> = {};
     for (const slot of slots) {
@@ -86,28 +120,7 @@ export function createSettingsConsentPersistenceFixture(input: {
         },
         signal,
       };
-      const port = createSettingsConsentAuthorization({
-        catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
-        readGrant: (selectedSlot, domain) => grants.read(selectedSlot, domain),
-        async resolveOwner() {
-          const authority = await owners[slot].current();
-          const selected = await input.selection(slot).load();
-          const expected = consentFixtureDestinations[slot];
-          if (
-            !authority ||
-            selected?.providerId !== expected.providerId ||
-            selected.modelId !== expected.modelId
-          )
-            return null;
-          return {
-            slot,
-            domain: 'model',
-            identity: identity(slot, authority.generation),
-            isCurrent: owners[slot].witness(authority.generation),
-            subscribeInvalidation: listener => owners[slot].subscribe(listener),
-          };
-        },
-      });
+      const port = authorization(slot);
       observations[slot] = await port.authorize(outbound);
     }
     return {
@@ -130,6 +143,8 @@ export function createSettingsConsentPersistenceFixture(input: {
       decision.search?.medical
     )
       throw new Error('Unsupported synthetic UI selection');
+    const epoch = await credentialEpoch(slot);
+    if (!epoch) throw new Error('Synthetic credential unavailable');
     const previous = await selection.load();
     const matches = async (expected: typeof previous) => {
       const value = await selection.load();
@@ -145,18 +160,19 @@ export function createSettingsConsentPersistenceFixture(input: {
       makeGrant: generation => ({
         version: 1,
         catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
-        identity: identity(slot, generation),
+        identity: identity(slot, generation, epoch),
         permissions: settingsPermissionsForFeature(slot),
       }),
       saveSelection: () => selection.save(chosen),
       isSelectionCurrent: () => matches(chosen),
       isPreviousSelectionCurrent: () => matches(previous),
-      isCredentialCurrent: async () => true,
+      isCredentialCurrent: async () => (await credentialEpoch(slot)) === epoch,
       isRequestCurrent: decision.isCurrent,
       signal: decision.signal,
     });
   };
   return {
+    authorization,
     inspect,
     saveConsent,
     async approve(slot: SettingsConsentSlot) {

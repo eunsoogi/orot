@@ -4,9 +4,26 @@ import React
 /// Native-only audio and network ownership. JavaScript receives status and transcripts, never PCM.
 @objc(VoiceRealtimeModule)
 final class VoiceRealtimeModule: RCTEventEmitter {
-    private lazy var call = RealtimeVoiceCall(systemCall: VoiceSystemCallLifecycle.shared) { [weak self] event, body in
-        self?.sendEvent(withName: event, body: body)
-    }
+    private lazy var call: RealtimeVoiceCall = {
+        let emit: (String, [String: Any]) -> Void = { [weak self] event, body in
+            self?.sendEvent(withName: event, body: body)
+        }
+        #if OROT_TESTS && targetEnvironment(simulator)
+            if SettingsConsentRealtimeFixture.requested {
+                return SettingsConsentRealtimeFixture.makeCall(emit: emit)
+            }
+        #endif
+        return RealtimeVoiceCall(systemCall: VoiceSystemCallLifecycle.shared, emit: emit)
+    }()
+
+    #if OROT_TESTS && targetEnvironment(simulator)
+        @objc(settingsConsentSnapshot:resolver:rejecter:)
+        func settingsConsentSnapshot(_ lateEvent: Bool, resolver resolve: @escaping RCTPromiseResolveBlock,
+                                     rejecter _: @escaping RCTPromiseRejectBlock)
+        {
+            DispatchQueue.main.async { resolve(SettingsConsentRealtimeFixture.snapshot(lateEvent: lateEvent)) }
+        }
+    #endif
 
     private var active: String?
     override static func requiresMainQueueSetup() -> Bool {

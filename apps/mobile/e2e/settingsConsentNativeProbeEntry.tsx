@@ -1,4 +1,5 @@
 import '../src/agent/polyfills';
+import { SettingsConsentBoundaryEntry } from './SettingsConsentBoundaryEntry';
 import { useEffect, useState } from 'react';
 import { AppRegistry, NativeModules, StyleSheet, Text } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -72,4 +73,14 @@ function SettingsConsentNativeEntry() {
   );
 }
 const styles = StyleSheet.create({ root: { flex: 1 } });
-AppRegistry.registerComponent(appName, () => SettingsConsentNativeEntry);
+AppRegistry.registerComponent(appName, () => {
+  const manager = NativeModules.SettingsManager;
+  const launch = manager?.settings ?? manager?.getConstants?.().settings ?? {};
+  // Presence, not truthiness: malformed boundary opt-in cannot enter the normal fixture.
+  return Object.prototype.hasOwnProperty.call(
+    launch,
+    'OROT_SETTINGS_CONSENT_BOUNDARIES',
+  )
+    ? SettingsConsentBoundaryEntry
+    : SettingsConsentNativeEntry;
+});
