@@ -22,6 +22,7 @@ RCT_EXTERN_METHOD(resolveRealtimeToolCall : (NSString *)identifier toolCallId : 
 RCT_EXTERN_METHOD(cancelRealtimeTools : (NSString *)identifier resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 #if defined(OROT_TESTS) && TARGET_OS_SIMULATOR
-RCT_EXTERN_METHOD(settingsConsentSnapshot : (BOOL)lateEvent resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(settingsConsentSnapshot : (BOOL)lateEvent resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 #endif
 @end
