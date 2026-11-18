@@ -84,7 +84,9 @@ export function committedPeriodReadOperation(
           const key = healthContextReportCacheKey(source.scope.window, [
             source.scope.topic,
           ]);
-          const cached = reports.get(key);
+          // Pending reports belong only to this transaction. Reuse calculation,
+          // not validity: every source still checks live generations and revision.
+          const cached = pending.get(key) ?? reports.get(key);
           const report =
             cached && same(cached, before)
               ? cached
