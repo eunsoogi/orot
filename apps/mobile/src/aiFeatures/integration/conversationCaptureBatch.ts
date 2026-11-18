@@ -1,3 +1,4 @@
+import { withConversationReadOperation } from './conversationReadOperation';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -60,10 +61,7 @@ export function createConversationCaptureOwner(input: {
       const snapshots = await input.storage.readManyWithAncestry(
         requests.map(item => item.id),
       );
-      const hydrate = createConversationPageHydration(
-        { ...input, signal },
-        snapshots.ancestry,
-      );
+
       const results: EvidenceSourceReadResult[] = [];
       // If any native-owned ancestor occurs, avoid inferring its freshness from a DB snapshot.
       const strict = [...snapshots.ancestry.values()].some(
@@ -74,46 +72,57 @@ export function createConversationCaptureOwner(input: {
             source => 'kind' in source && source.kind === 'conversation_photo',
           ),
       );
-      for (const [index, request] of requests.entries()) {
-        if (signal.aborted) throw new Error('Capture cancelled.');
-        const saved = snapshots.items[index];
-        if (!saved) {
-          results.push({ status: 'missing' });
-          continue;
-        }
-        if (
-          fingerprint(saved) !== request.revision ||
-          (request.session && saved.sessionId !== request.session.id)
-        ) {
-          results.push({ status: 'changed' });
-          continue;
-        }
-        if (
-          fingerprint(snapshots.ancestry.get(request.id)) !== fingerprint(saved)
-        )
-          throw new Error('Conversation ancestry changed.');
-        if (strict) {
-          results.push({ status: 'unavailable' });
-          continue;
-        }
-        const restored = await hydrate(request.id).then(value =>
-          value ? conversationCaptureDetail(value) : null,
-        );
-        results.push(
-          restored && restored.metadata.revision === request.revision
-            ? {
-                status: 'available',
-                document: {
-                  sourceKind: 'generated_artifact',
-                  metadata: restored.metadata,
-                  conversation: restored.content,
-                  sources: restored.sources,
-                  sourceStatus: restored.sourceStatus,
-                },
-              }
-            : { status: 'unavailable' },
-        );
-      }
+      await withConversationReadOperation(
+        input.data,
+        async data => {
+          const hydrate = createConversationPageHydration(
+            { ...input, data, signal },
+            snapshots.ancestry,
+          );
+          for (const [index, request] of requests.entries()) {
+            if (signal.aborted) throw new Error('Capture cancelled.');
+            const saved = snapshots.items[index];
+            if (!saved) {
+              results.push({ status: 'missing' });
+              continue;
+            }
+            if (
+              fingerprint(saved) !== request.revision ||
+              (request.session && saved.sessionId !== request.session.id)
+            ) {
+              results.push({ status: 'changed' });
+              continue;
+            }
+            if (
+              fingerprint(snapshots.ancestry.get(request.id)) !==
+              fingerprint(saved)
+            )
+              throw new Error('Conversation ancestry changed.');
+            if (strict) {
+              results.push({ status: 'unavailable' });
+              continue;
+            }
+            const restored = await hydrate(request.id).then(value =>
+              value ? conversationCaptureDetail(value) : null,
+            );
+            results.push(
+              restored && restored.metadata.revision === request.revision
+                ? {
+                    status: 'available',
+                    document: {
+                      sourceKind: 'generated_artifact',
+                      metadata: restored.metadata,
+                      conversation: restored.content,
+                      sources: restored.sources,
+                      sourceStatus: restored.sourceStatus,
+                    },
+                  }
+                : { status: 'unavailable' },
+            );
+          }
+        },
+        signal,
+      );
       return {
         results,
         strict: strict ? requests.map((_, index) => index) : undefined,

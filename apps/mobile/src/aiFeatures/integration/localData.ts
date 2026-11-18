@@ -1,3 +1,4 @@
+import { registerConversationReadOperation } from './conversationReadOperation';
 import {
   withStatementMemory,
   scheduleStatementMemory,
@@ -91,6 +92,24 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     LocalEvidenceReferenceRegistry,
     Promise<ReturnType<typeof createConversationArtifactDiscovery>>
   >();
+  const summaryDiscovery = async (
+    scoped: AiFeatureLocalData,
+    registry: LocalEvidenceReferenceRegistry,
+  ) => {
+    const [
+      { createSummaryArtifactDiscovery },
+      { createSymptomSummaryStorage },
+    ] = await Promise.all([
+      import('./summaryArtifactDiscovery'),
+      import('../../storage/symptomSummaryStorage'),
+    ]);
+    return createSummaryArtifactDiscovery({
+      database,
+      storage: createSymptomSummaryStorage(database),
+      data: scoped,
+      registry,
+    });
+  };
   const data: AiFeatureLocalData = {
     repository,
     async saveConversationHistory(input, signal) {
@@ -114,21 +133,7 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     memoryStorage,
     ...createLocalEvidenceData(database),
     loadMemoryRecords: () => memoryStorage.listRecords(),
-    async summaryArtifactDiscovery(registry) {
-      const [
-        { createSummaryArtifactDiscovery },
-        { createSymptomSummaryStorage },
-      ] = await Promise.all([
-        import('./summaryArtifactDiscovery'),
-        import('../../storage/symptomSummaryStorage'),
-      ]);
-      return createSummaryArtifactDiscovery({
-        database,
-        storage: createSymptomSummaryStorage(database),
-        data,
-        registry,
-      });
-    },
+    summaryArtifactDiscovery: registry => summaryDiscovery(data, registry),
     async conversationArtifactDiscovery(registry) {
       let discovery = conversationDiscoveries.get(registry);
       if (!discovery) {
@@ -211,5 +216,6 @@ async function openDefault(): Promise<AiFeatureLocalData> {
       );
     },
   };
+  registerConversationReadOperation(data, summaryDiscovery);
   return data;
 }
