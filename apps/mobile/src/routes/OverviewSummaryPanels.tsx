@@ -110,7 +110,7 @@ export function NextVisitPanel({
             size="compact"
             style={styles.preparationAction}
             testID="overview-prepare-visit"
-            title={t('overview.prepareVisit')}
+            title={t('visitDayQuestions.open')}
           />
         </View>
       ) : appointmentState === 'ready' ? (

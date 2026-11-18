@@ -1,10 +1,11 @@
+import { AppointmentQuestionRoutes } from './AppointmentQuestionRoutes';
+import { useVisitDayQuestionsEntry } from './useVisitDayQuestionsEntry';
 import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
 import { SavedMemoryDetail } from '../memory/SavedMemoryDetail';
 import { useRecordSourceNavigation } from './RecordSourceNavigation';
 import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
 import { useOverviewReportEntry } from './useOverviewReportEntry';
 import { useIsFocused } from '@react-navigation/native';
-import { AppointmentPreparationRoute } from '../appointmentReminders/AppointmentPreparationRoute';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
 import RecordingScreen from '../recording/RecordingScreen';
 import { transcriptEvidenceService } from '../transcription/transcriptEvidenceService';
@@ -59,10 +60,11 @@ export function AppRouteContent({
     active && activeTab === 'overview' && actions.route.name === 'root',
     () => selectTab('conversation'),
   );
-  function openOverviewPreparation() {
-    // Reuse the retained tab session; a preparation shortcut must not create a detail conversation.
-    selectTab('conversation');
-  }
+  const openOverviewPreparation = useVisitDayQuestionsEntry(
+    active,
+    nextAppointment,
+    actions,
+  );
   if (actions.route.name === 'root') {
     switch (activeTab) {
       case 'overview':
@@ -143,14 +145,11 @@ export function AppRouteContent({
     }
   }
   switch (actions.route.name) {
+    case 'visit-day-questions':
     case 'appointment-preparation':
       return (
-        <AppointmentPreparationRoute
-          routeKey={actions.route.key}
-          loadSavedQuestions={loadSavedVisitQuestions}
-          onOpenSchedule={async () => {
-            if (await actions.onHome()) selectTab('schedule');
-          }}
+        <AppointmentQuestionRoutes
+          {...{ actions, selectTab, loadSavedVisitQuestions }}
         />
       );
     case 'unified-import':

@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import {
   fireEvent,
   render,
@@ -10,6 +11,10 @@ import { defaultVisitQuestionRouteOperations } from '../src/aiFeatures/integrati
 import { createAppleSelectionOption } from '../src/providers/selection/options';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 import { savedOverviewQuestions } from '../test-helpers/overviewFixtures';
+
+beforeEach(() => {
+  AppState.currentState = 'active';
+});
 
 const mockLoadQuestions = jest.fn(async (id: string) =>
   savedOverviewQuestions(id, ['예약별 합성 질문: ' + id]),
@@ -42,11 +47,7 @@ test('a visit canceled after Home loads never falls back to another future Calen
   await store.repository.cancel(shown.id);
   mockLoadQuestions.mockClear();
   await fireEvent.press(screen.getByTestId('overview-prepare-visit'));
-  expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
-  expect(screen.getByTestId('navigation-tab-conversation')).toHaveProp(
-    'accessibilityState',
-    expect.objectContaining({ selected: true }),
-  );
+  expect(await screen.findByTestId('visit-day-questions-retry')).toBeTruthy();
   expect(screen.queryByTestId('appointment-preparation')).toBeNull();
   expect(screen.queryByText(other.clinicLabel!)).toBeNull();
   expect(mockLoadQuestions).not.toHaveBeenCalled();
@@ -96,7 +97,7 @@ function appointment(
 
 /** Use the production App controller and destination, rather than only observing a button callback. */
 test.each(['manual', 'ongoing-calendar'] as const)(
-  'opens the existing tab for a displayed %s visit without selecting another appointment',
+  'opens read-only questions for a displayed %s visit without selecting another appointment',
   async kind => {
     const shown =
       kind === 'manual'
@@ -118,29 +119,27 @@ test.each(['manual', 'ongoing-calendar'] as const)(
       ),
     ).toBeTruthy();
     await fireEvent.press(screen.getByTestId('overview-prepare-visit'));
-    expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
-    expect(screen.getByTestId('navigation-tab-conversation')).toHaveProp(
-      'accessibilityState',
-      expect.objectContaining({ selected: true }),
-    );
+    expect(
+      await screen.findByText('예약별 합성 질문: ' + shown.id),
+    ).toBeTruthy();
+    expect(screen.getByTestId('visit-day-questions')).toBeTruthy();
     expect(screen.queryByTestId('appointment-preparation')).toBeNull();
     expect(screen.queryByTestId('conversation-visit-prepare')).toBeNull();
     expect(mockLoadQuestions).not.toHaveBeenCalledWith(other.id);
-    await fireEvent.press(screen.getByTestId('navigation-tab-overview'));
+    await fireEvent.press(screen.getByTestId('navigation-back'));
     expect(
       within(await screen.findByTestId('overview-next-appointment')).getByText(
         shown.clinicLabel!,
       ),
     ).toBeTruthy();
     await fireEvent.press(screen.getByTestId('overview-prepare-visit'));
-    expect(screen.getByTestId('navigation-tab-conversation')).toHaveProp(
-      'accessibilityState',
-      expect.objectContaining({ selected: true }),
-    );
+    expect(
+      await screen.findByText('예약별 합성 질문: ' + shown.id),
+    ).toBeTruthy();
   },
 );
 
-test('a future Calendar visit selects the existing conversation without generation', async () => {
+test('a future Calendar visit opens its saved questions without generation', async () => {
   const shown = appointment('생성할 Calendar 예약', 3_600_000, true);
   const store = createAppointmentStore([shown]);
   const option = createAppleSelectionOption('available');
@@ -169,16 +168,10 @@ test('a future Calendar visit selects the existing conversation without generati
     );
     await fireEvent.press(screen.getByTestId('navigation-tab-overview'));
     await fireEvent.press(await screen.findByTestId('overview-prepare-visit'));
-    expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
-    expect(screen.getByTestId('rag-conversation-input')).toHaveProp(
-      'value',
-      '',
-    );
+    expect(
+      await screen.findByText('예약별 합성 질문: ' + shown.id),
+    ).toBeTruthy();
     expect(screen.queryByTestId('conversation-visit-prepare')).toBeNull();
-    expect(screen.getByTestId('navigation-tab-conversation')).toHaveProp(
-      'accessibilityState',
-      expect.objectContaining({ selected: true }),
-    );
     expect(screen.queryByTestId('next-visit-generate')).toBeNull();
     expect(query).not.toHaveBeenCalled();
   } finally {
