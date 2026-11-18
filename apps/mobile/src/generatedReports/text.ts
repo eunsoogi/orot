@@ -1,6 +1,10 @@
 /** Korean presentation copy for the saved-output browser, separate from stored content. */
 export const generatedReportCopy = {
   title: '생성한 보고서와 진료 질문',
+  evidenceCounts: (title: string, supporting: number, contrary: number) =>
+    `${title}: 뒷받침 근거 ${supporting}개 · 반대 근거 ${contrary}개`,
+  sourceNavigationUnavailable:
+    '이 화면은 저장된 결과를 열람하는 화면이에요. 근거의 원문 링크는 제공하지 않아요.',
   open: '보고서·진료 질문 보기',
   description:
     '저장한 결과를 확인해요. 목록에서는 보고서 내용을 미리 표시하지 않아요.',

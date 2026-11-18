@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { generatedReportCopy as copy } from './text';
 import { AppText } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
 import { DailyReportCoverageCard } from '../aiFeatures/integration/DailyReportCoverageCard';
@@ -25,9 +26,13 @@ export function GeneratedReportContent({
         <AiResponseText key={index}>{text}</AiResponseText>
       ))}
       {detail.analysis?.hypotheses.map((h, index) => (
-        <AppText
-          key={index}
-        >{`${h.title}: 뒷받침 근거 ${h.supportingEvidence.length}개 · 반대 근거 ${h.contraryEvidence.length}개`}</AppText>
+        <AppText key={index}>
+          {copy.evidenceCounts(
+            h.title,
+            h.supportingEvidence.length,
+            h.contraryEvidence.length,
+          )}
+        </AppText>
       ))}
       {detail.daily?.coverage.map((item, index) => (
         <DailyReportCoverageCard
@@ -37,10 +42,7 @@ export function GeneratedReportContent({
         />
       ))}
       {detail.analysis || detail.daily ? (
-        <AppText>
-          이 화면은 저장된 결과를 열람하는 화면이에요. 근거의 원문 링크는
-          제공하지 않아요.
-        </AppText>
+        <AppText>{copy.sourceNavigationUnavailable}</AppText>
       ) : null}
     </View>
   );
