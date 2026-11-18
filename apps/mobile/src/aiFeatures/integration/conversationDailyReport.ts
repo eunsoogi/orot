@@ -35,11 +35,18 @@ export function createConversationDailyReport(input: {
           : prior.status === 'deleted'
             ? { kind: 'revise' as const, expectedRunId: null }
             : { kind: 'reuse_or_generate' as const };
-      const operation = input.feature.start(identity, mode, observer);
+      const operation = input.feature.start(identity, mode, observer, signal);
       if (operation.status !== 'started')
         return { status: 'failure', kind: 'unavailable' };
       cancel = () => operation.cancel();
       signal.addEventListener('abort', cancel, { once: true });
+      // Joining can replay an observed receipt synchronously; its owner may cancel in that callback.
+      if (signal.aborted) {
+        cancel();
+        // The departed caller must still consume a later rejection from the shared run.
+        operation.result.catch(() => {});
+        return { status: 'failure', kind: 'cancelled' };
+      }
       const generated = await operation.result;
       if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
       if (generated.status === 'failed')

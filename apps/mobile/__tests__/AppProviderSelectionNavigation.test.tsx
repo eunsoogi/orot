@@ -1,3 +1,9 @@
+// Native authority persistence is isolated; the real suspend/selection sequence remains.
+jest.mock('../src/storage/settingsConsentAuthority', () =>
+  jest.requireActual(
+    '../src/agent/execution/testSupport/syntheticConsentAuthority',
+  ),
+);
 import {
   act,
   fireEvent,

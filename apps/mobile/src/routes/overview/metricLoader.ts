@@ -5,7 +5,7 @@ import {
 } from '@orot/storage';
 import type { SqlDatabase } from '@orot/storage';
 import { currentEvidenceCondition } from '../../healthEvidence/evidenceCandidateScope';
-import { ensureHealthContextGeneration } from '../../healthEvidence/healthContext/generation';
+import { readOverviewMetricSnapshot } from './metricReadCancellation';
 import { readHealthContextReport } from '../../healthEvidence/healthContext/reader';
 import { overviewMetrics, type OverviewMetric } from './metricSelection';
 import {
@@ -29,17 +29,18 @@ export function overviewMetricWindow(now: Date) {
 export async function loadOverviewMetrics(
   database: SqlDatabase,
   now = new Date(),
+  signal?: AbortSignal,
 ): Promise<{
   metrics: Partial<Record<OverviewMetric, OverviewMetricProjection>>;
   quantityTruncated: boolean;
 }> {
+  if (signal?.aborted) throw new Error('Overview metric read was cancelled.');
   const window = overviewMetricWindow(now);
   const results: Partial<Record<OverviewMetric, OverviewMetricProjection>> = {};
   let quantityTruncated = false;
   // Prevent SQLite from writing derived health aggregates into temporary files.
   await database.execute('PRAGMA temp_store = MEMORY');
-  await database.transaction(async tx => {
-    await ensureHealthContextGeneration(tx);
+  await readOverviewMetricSnapshot(database, signal, async tx => {
     const report = await readHealthContextReport(tx, window, [
       'measurements',
       'activity',
