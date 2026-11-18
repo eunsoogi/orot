@@ -1,3 +1,4 @@
+import RestoreIndicator from './ConversationRestoreIndicator';
 import { conversationHistoryScrollEvents } from './conversationHistoryScrollEvents';
 import { useConversationReadingPosition } from './useConversationReadingPosition';
 import { useConversationTranscriptWindow } from './useConversationTranscriptWindow';
@@ -38,6 +39,7 @@ export function ConversationHistory({
   retryingSave = false,
   onRetrySave,
   restoring = false,
+  restoringHistory = false,
   restoreFailed = false,
   onRetryRestore,
   sessionId,
@@ -181,6 +183,7 @@ export function ConversationHistory({
             reading.container(event.nativeEvent.layout.y);
           }}
         >
+          <RestoreIndicator {...{ restoringHistory, restoreFailed }} />
           <ConversationTranscriptMessages
             onReadingLayout={reading.row}
             messages={window.messages}
