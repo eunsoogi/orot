@@ -154,7 +154,7 @@ export async function prepareCaptureSources(
     if (signal.aborted) break;
     results.set(
       stableEvidenceReference(reference),
-      await registry.readSource(reference, signal),
+      await registry.readSource(reference, signal, options?.reads?.periods),
     );
   }
   return {
@@ -163,7 +163,11 @@ export async function prepareCaptureSources(
       // Native-owned groups opt out of snapshot hydration. Re-run their exact live
       // registration after all other input awaits, before the final database fence.
       for (const reference of strictFinal) {
-        const latest = await registry.readSource(reference, signal);
+        const latest = await registry.readSource(
+          reference,
+          signal,
+          options?.reads?.periods,
+        );
         const key = stableEvidenceReference(reference);
         const previous = results.get(key);
         const unchanged =

@@ -173,14 +173,17 @@ test.each([
         ownerPhases,
       }),
     );
-    // Group fences share calculations; original strict inner source callbacks
-    // remain unscoped, so distinct windows can still require extra reads.
+    // Group fences and exact owned period callbacks share calculation leases;
+    // callback validity/final fences still run for every source.
     expect([...(counts.get('retention')?.values() ?? [])]).toEqual(
       variant === 'nested-distinct-six'
-        ? Array(12).fill(3)
+        ? [...Array(10).fill(2), 1, 1]
         : variant === 'nested-distinct-three'
           ? [2, 2, 2, 2, 1, 1]
           : [2, 2, 1, 1],
+    );
+    expect([...(counts.get('save')?.values() ?? [])]).toEqual(
+      Array(variant.includes('topics') ? 4 : count * 2).fill(1),
     );
     phase = 'replay';
     const saved = await f.storage.read('saved-answer');

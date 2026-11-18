@@ -69,6 +69,7 @@ export const providerSelectionTests = [
   'OrotUITests/ProviderCatalogAccountUITests/testLongKoreanPermissionGuidanceWrapsBeforeTheRefreshAction',
   'OrotUITests/SettingsConsentUITests/testExplicitThreeTabGrantsAndRevocationSurviveProcessRestart',
   'OrotUITests/DailyReportLocalRecoveryUITests/testPublishedFinalOutputRestartsAndOnlyExplicitCurrentResumeSaves',
+  'OrotUITests/DailyReportLocalRecoveryUITests/testActualRecoveryConsumerRestartsWithoutAutomaticSaveAndSavesOnceExplicitly',
 ];
 export const fixtureTests = [
   'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',

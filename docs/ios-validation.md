@@ -561,3 +561,27 @@ App-navigation 제품 geometry 또는 실제 VoiceOver 구동의 대체 증거�
 새 case는 그 근거 원문 접근도 확인하되, 긴 자유서술 reason을 provider에 주입해 wire 검증을
 우회하지 않습니다. 장문 reason native 증거가 필요하면 별도 저장결과/reader fixture로
 검증해야 하며 현재 성공 배치 case가 그 경계를 증명한다고 주장하지 않습니다.
+
+### 일일보고서 실제 저장 재개 소비자 후속 수용 계약
+
+기존 보호 저장소 수용 case는 테스트 버튼에서 실제 readonly owner와 storage를
+호출한다. 이 증거를 실제 `DailyReportLocalRecovery` UI 수용으로 확대하지 않는다.
+후속 isolated entry의 `OROT_DAILY_RECOVERY_UI=consumer`는 동일 synthetic UUID
+Keychain/SQLCipher namespace와 실제 feature recovery actions 및 컴포넌트를 연결한다.
+일반 앱 export는 원래 protected-store owner singleton에 고정되어 있으며, pending
+metadata나 일반 feature 호출자는 다른 owner를 선택할 수 없다.
+
+클라우드 회귀는 실제 컴포넌트에서 메타데이터 조회만으로 저장하지 않음, 명시 버튼
+선택 한 번만 저장함, 연속 선택 중복 방지, SQL 대기 중 취소와 route unmount,
+새 session의 취소된 publication 비복원을 검증한다. 합성 protected ports와 실제
+SQLite 증거이며 native Keychain 또는 process restart 증거는 아니다.
+
+별도 승인된 native 슬롯에서 수행할 후속 계약은 UUID store를 준비한 뒤 종료하고,
+consumer mode로 재시작하여 saved missing/pending 1을 확인하고, route를 나갔다 돌아와도
+자동 저장이 없음을 확인한 뒤 실제 한국어 저장 재개 버튼을 선택하는 것이다.
+저장 revision 1과 pending 0, 다시 재시작한 뒤 같은 revision과 재개 버튼 부재를
+확인하고 UUID 소유 자료만 정리한다. `DailyReportLocalRecoveryUITests.testActualRecoveryConsumerRestartsWithoutAutomaticSaveAndSavesOnceExplicitly`
+case는 별도로 정확 한 번 등록된다. 실제 native 실행과 수용은 아직 미완료이며
+이 entry 준비나 클라우드 검증을 native 통과로 표시하지 않는다. 기존 standalone 저장소
+case와 assertion은 유지한다. 원격 provider, authorize, 자동 재전송 및 실제 사용자
+자료는 이 수용에 포함하지 않는다. 생성 결과가 오기 전 OS 중단은 별도 문제다.

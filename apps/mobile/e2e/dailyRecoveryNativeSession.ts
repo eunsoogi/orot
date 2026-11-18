@@ -1,3 +1,4 @@
+import { createDailyReportRecoveryActionsReader } from '../src/aiFeatures/integration/dailyReportRecoveryActionsReader';
 import { createRecordRepository, type SqlDatabase } from '@orot/storage';
 import { createConsentGeneration } from '../src/agent/execution/consentGeneration';
 import { createConsentAuthority } from '../src/agent/execution/consentAuthority';
@@ -95,6 +96,13 @@ export function createDailyRecoveryNativeSession(
   };
   return {
     inspect,
+    // The actual feature actions receive only this UUID protected-store reader.
+    // No alternate storage implementation or permissive witness is supplied.
+    recoveryActions: createDailyReportRecoveryActionsReader(reader)({
+      database: async () => store.database,
+      currentIdentity: () => window.context.identity,
+    }),
+    identity: window.context.identity,
     async stage() {
       const candidate = await createNativeDailyRecoveryCandidate(
         store.database,
