@@ -16,6 +16,13 @@ import type {
   ProviderSelectionPresentation,
 } from '../types';
 
+// View-only boundary: SQLite grant activation and credential races have dedicated service tests.
+jest.mock('../../../agent/execution/saveModelSettingsConsent', () => ({
+  saveModelSettingsConsent: async (input: {
+    store: { save(value: unknown): Promise<void> };
+    selection: unknown;
+  }) => input.store.save(input.selection),
+}));
 jest.mock('../../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
 jest.mock('../../../navigation/useNavigationContentInset', () => ({
   useNavigationContentInset: () => ({ paddingBottom: 91 }),

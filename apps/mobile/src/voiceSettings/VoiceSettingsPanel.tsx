@@ -1,3 +1,4 @@
+import { ModelSettingsConsentDisclosure } from '../agent/execution/ModelSettingsConsentDisclosure';
 import ProviderSelectionOptionCard from '../providers/selection/ProviderSelectionOptionCard';
 import { applePrivateCloudComputeProvider } from '../providers/apple';
 import { APPLE_PCC_MODEL_ID } from '../providers/selection/privateCloudCompute';
@@ -66,6 +67,12 @@ export function VoiceSettingsPanel({
       ));
   return (
     <View testID="voice-settings-panel">
+      {mode === 'openai-api' ? (
+        <ModelSettingsConsentDisclosure
+          slot="voice"
+          recipient="OpenAI Realtime API"
+        />
+      ) : null}
       <View style={styles.section} testID="voice-model-group-local">
         <Text accessibilityRole="header" style={styles.heading}>
           Apple

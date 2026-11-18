@@ -1,3 +1,4 @@
+import { createDailyReportRecoveryActions } from '../dailyReportRecoveryActions';
 import {
   fireEvent,
   render,
@@ -100,6 +101,10 @@ test('viewing app and reminder routes does not dispatch; explicit generation cro
     // Compose the actual route, request coordinator, preview, service and SQLite store at their public ports.
     const feature = {
       ...requests,
+      ...createDailyReportRecoveryActions({
+        database: async () => connection.database,
+        currentIdentity: () => identity,
+      }),
       preview: (requested: typeof identity, signal: AbortSignal) =>
         previewDailyReport({
           identity: requested,

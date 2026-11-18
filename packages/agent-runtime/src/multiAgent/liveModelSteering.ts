@@ -70,7 +70,7 @@ export function liveModelSteering<TResult>(
     budget!.used = true;
     reportTaskStreamEvent(context, { type: 'steering_availability', mode: 'limit_reached' });
     submitted = row.id;
-    if (!active || context.signal.aborted) {
+    if (!active || context.signal.aborted || !grant.isCurrent()) {
       await store!.settleLive!(operationId, row.id, 'failed');
       return;
     }

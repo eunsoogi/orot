@@ -8,6 +8,16 @@ import {
   selectedProvider,
 } from '../MedicalAppointmentClassificationScreenTestFixtures';
 
+import { resolveSettingsConsentOwner } from '../../agent/execution/settingsConsentOwner';
+import { settingsConsentRepository } from '../../storage/settingsConsentRepository';
+import { settingsPermissionsForFeature } from '../../agent/execution/settingsConsentCatalog';
+jest.mock('../../agent/execution/settingsConsentOwner', () => ({
+  resolveSettingsConsentOwner: jest.fn(),
+}));
+jest.mock('../../storage/settingsConsentRepository', () => ({
+  settingsConsentRepository: jest.fn(),
+}));
+
 const importAction = () => screen.getByTestId('medical-appointment-import');
 
 test('opens model selection from the displayed classification model', async () => {
@@ -32,14 +42,45 @@ test('keeps the unselected model action concise without enabling classification'
   expect(onOpenProviderSelection).toHaveBeenCalledTimes(1);
 });
 
-test.each(['allow', 'cancel'] as const)(
-  'requires actual-request approval without offering manual entry after %s',
-  async decision => {
+test.each(['approved', 'missing', 'revoked', 'wrong-recipient'] as const)(
+  'checks settings permission without a repeated modal or manual entry: %s',
+  async state => {
     const selected = selectedProvider();
     const remote = {
       ...selected,
       privacyBoundary: 'selected-context-remote' as const,
     };
+    const identity = {
+      providerId: remote.provider.id,
+      modelId: remote.modelId,
+      recipient: 'selected-account',
+      authorityGeneration: 'synthetic-generation',
+      credentialEpoch: 'synthetic-credential',
+    };
+    jest.mocked(resolveSettingsConsentOwner).mockResolvedValue({
+      slot: 'calendar',
+      domain: 'model',
+      identity,
+      isCurrent: () => state !== 'revoked',
+    });
+    jest.mocked(settingsConsentRepository).mockResolvedValue({
+      read: jest.fn(async () =>
+        state === 'missing'
+          ? null
+          : {
+              version: 1,
+              catalogVersion: 'model-settings-v1',
+              identity: {
+                ...identity,
+                recipient:
+                  state === 'wrong-recipient'
+                    ? 'Other account'
+                    : identity.recipient,
+              },
+              permissions: settingsPermissionsForFeature('calendar'),
+            },
+      ),
+    } as never);
     const appointments = repository();
     const { bridge, onOpenManual } = await renderScreen(
       [[event('private-calendar-id', '치과 진료', '2035-06-02')]],
@@ -47,27 +88,28 @@ test.each(['allow', 'cancel'] as const)(
       remote,
     );
     await fireEvent.press(importAction());
-    expect(await screen.findByText('외부 전송 동의')).toBeTruthy();
-    await fireEvent.press(screen.getByTestId('inference-disclosure-expand'));
-    expect(screen.getByText(/"title":"치과 진료"/)).toBeTruthy();
+    expect(screen.queryByTestId('inference-disclosure-sheet')).toBeNull();
     expect(screen.queryByText(/private-calendar-id/)).toBeNull();
-    expect(selected.provider.generate).not.toHaveBeenCalled();
     expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
-    expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
-    await fireEvent.press(
-      screen.getByTestId(`inference-disclosure-${decision}`),
-    );
     await waitFor(() => expect(importAction()).not.toBeDisabled());
     expect(
       screen.getByText(
-        decision === 'allow'
+        state === 'approved'
           ? /선택한 AI의 응답을 받지 못했어요/
           : /이 요청의 AI 처리 승인이 필요해요/,
       ),
     ).toBeTruthy();
     expect(selected.provider.generate).toHaveBeenCalledTimes(
-      decision === 'allow' ? 1 : 0,
+      state === 'approved' ? 1 : 0,
     );
+    if (state === 'approved') {
+      // The former expanded disclosure assertion now checks the actual admitted payload.
+      const payload = JSON.stringify(
+        jest.mocked(selected.provider.generate).mock.calls[0]![0],
+      );
+      expect(payload).toContain('치과 진료');
+      expect(payload).not.toContain('private-calendar-id');
+    }
     expect(
       screen.queryByTestId('medical-appointment-save-calendar-candidate-1'),
     ).toBeNull();

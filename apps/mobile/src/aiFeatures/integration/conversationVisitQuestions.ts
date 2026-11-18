@@ -1,3 +1,4 @@
+import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import { createPreparedOpeningConsent } from './preparedOpeningConsent';
 import { observeVisitPreflight } from './visitPreflightDiagnostics';
 import { conversationConsentScope } from './conversationBackgroundProvider';
@@ -23,6 +24,7 @@ export async function generateConversationVisitQuestions(input: {
   readonly loadSaved: AiFeatureServices['loadSavedVisitQuestions'];
   readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
   readonly generatedArtifactTools?: AiFeatureServices['generatedArtifactTools'];
+  readonly consent?: ExecutionConsentPort;
   readonly confirmConsent: (
     request: OutboundProcessingRequest,
   ) => Promise<boolean>;
@@ -31,10 +33,18 @@ export async function generateConversationVisitQuestions(input: {
   readonly observer?: AiWorkflowObserver;
   readonly registerToolSource?: AiFeatureServices['registerVisitQuestionSource'];
 }) {
-  const confirmConsent = conversationConsentScope(
-    { authorize: input.confirmConsent },
+  // Keep the actual authorization port and its exact-request live fences intact.
+  const consent = conversationConsentScope(
+    input.consent ?? {
+      authorize: async request =>
+        (await input.confirmConsent(request))
+          ? ('authorized' as const)
+          : ('renewal_required' as const),
+    },
     input.observer,
-  ).authorize;
+  );
+  const confirmConsent = async (request: OutboundProcessingRequest) =>
+    (await consent.authorize(request)) === 'authorized';
   const current = () => !input.signal.aborted && input.isCurrentOwner();
   if (!current()) return { status: 'cancelled' as const };
   // The generic next-visit action resolves the upcoming confirmed appointment.
@@ -64,13 +74,7 @@ export async function generateConversationVisitQuestions(input: {
     return { status: 'provider_unavailable' as const };
   let opening:
     ReturnType<typeof startContextualConversationOpening> | undefined;
-  const gate = createPreparedOpeningConsent(
-    {
-      authorize: async request =>
-        (await confirmConsent(request)) ? 'authorized' : 'renewal_required',
-    },
-    'visit',
-  );
+  const gate = createPreparedOpeningConsent(consent, 'visit');
   try {
     const outcome = await generateInlineVisitReview({
       ownerKey: input.ownerKey,
@@ -108,6 +112,7 @@ export async function generateConversationVisitQuestions(input: {
           selectedAi,
           signal: input.signal,
           confirmConsent,
+          consent,
           generatedArtifactTools: input.generatedArtifactTools,
           observer: input.observer,
           registerToolSource: input.registerToolSource,

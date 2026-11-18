@@ -1,3 +1,6 @@
+import { SettingsSearchConsentChoices } from '../../agent/execution/SettingsSearchConsentChoices';
+import type { SettingsSearchChoices } from '../../agent/execution/settingsSearchGrants';
+import { settingsConsentRecipient } from '../../agent/execution/settingsConsentRecipient';
 import { t } from '../../i18n';
 import { ModelSelectionSummary } from '../../layout/ModelSelectionSummary';
 import { View } from 'react-native';
@@ -25,6 +28,8 @@ export function ProviderSelectionFooter({
   remoteAvailable,
   onConfirm,
   onCancel,
+  searchChoices,
+  onSearchChoices,
 }: {
   readonly option: ProviderSelectionOption | null | undefined;
   readonly resolution: ProviderSelectionResolution | null;
@@ -32,6 +37,8 @@ export function ProviderSelectionFooter({
   readonly message: string;
   readonly saveError: boolean;
   readonly remoteAvailable: boolean;
+  readonly searchChoices?: SettingsSearchChoices;
+  readonly onSearchChoices?: (value: SettingsSearchChoices) => void;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
 }) {
@@ -70,6 +77,23 @@ export function ProviderSelectionFooter({
       {option ? (
         <ProviderSelectionConfirmation
           option={option}
+          consentChoices={
+            searchChoices && onSearchChoices ? (
+              <SettingsSearchConsentChoices
+                value={searchChoices}
+                onChange={onSearchChoices}
+                disabled={saving}
+                webRecipient={
+                  option.provider.searchPublicWeb
+                    ? t('externalMedicalEvidence.publicSearchRecipient', {
+                        recipient:
+                          settingsConsentRecipient(option.provider.id) ?? '',
+                      })
+                    : undefined
+                }
+              />
+            ) : null
+          }
           blockedMessage={resolutionMessage(resolution)}
           canConfirm={resolution?.ok === true}
           saving={saving}

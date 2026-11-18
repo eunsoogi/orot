@@ -1,3 +1,6 @@
+import type { ReactNode } from 'react';
+import { ModelSettingsConsentDisclosure } from '../../agent/execution/ModelSettingsConsentDisclosure';
+import { settingsConsentRecipient } from '../../agent/execution/settingsConsentRecipient';
 import { t } from '../../i18n';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { AppText as Text } from '../../layout/AppText';
@@ -16,6 +19,8 @@ interface ProviderSelectionConfirmationProps {
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
   readonly hasActionDock?: boolean;
+  readonly consentChoices?: ReactNode;
+  readonly consentSlot?: 'conversation' | 'calendar';
 }
 
 export default function ProviderSelectionConfirmation({
@@ -26,6 +31,8 @@ export default function ProviderSelectionConfirmation({
   onConfirm,
   onCancel,
   hasActionDock = false,
+  consentSlot = 'conversation',
+  consentChoices,
 }: ProviderSelectionConfirmationProps) {
   const local = option.privacyBoundary === 'on-device';
   const summary = (
@@ -54,6 +61,13 @@ export default function ProviderSelectionConfirmation({
               : providerSelectionText.remotePrivacy}
         </Text>
       </View>
+      {!local && settingsConsentRecipient(option.provider.id) ? (
+        <ModelSettingsConsentDisclosure
+          slot={consentSlot}
+          recipient={settingsConsentRecipient(option.provider.id)!}
+        />
+      ) : null}
+      {consentChoices}
       {option.provider.id === 'openai-api-decisions' ? (
         <Text style={styles.usageCost}>{t('modelSettings.apiUsageCost')}</Text>
       ) : null}
