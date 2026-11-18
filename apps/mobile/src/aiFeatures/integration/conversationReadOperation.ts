@@ -1,3 +1,5 @@
+import { registerConversationPeriodReadLease } from './conversationPeriodReadLease';
+import { capturedHealthContextReadOwner } from '../../healthEvidence/healthContext/healthContextReadOperation';
 import type { CommittedReportScope } from '../../healthEvidence/healthContext/committedReportScope';
 import { beginHealthContextReadOperation } from '../../healthEvidence/healthContext/healthContextReadOperation';
 import type { AiFeatureLocalData } from './localData';
@@ -89,15 +91,27 @@ export async function withConversationReadOperation<T>(
         owned() &&
         key === 'readHealthContext' &&
         target.readHealthContext === owner!.read
-      )
-        return (
-          ...args: Parameters<
-            NonNullable<AiFeatureLocalData['readHealthContext']>
-          >
+      ) {
+        const proxy: NonNullable<AiFeatureLocalData['readHealthContext']> = (
+          ...args
         ) =>
           active && owned()
             ? operation.read(...args)
             : target.readHealthContext!(...args);
+        const issuance = capturedHealthContextReadOwner(owner!.read!);
+        registerConversationPeriodReadLease(
+          proxy,
+          owner!,
+          () => !active && owned() && Boolean(issuance?.current()),
+          captureSignal => {
+            // Share only a fresh calculation operation for this exact data owner.
+            // Each caller's proxy gate is checked separately by the capture scope.
+            if (active || !owned()) return undefined;
+            return issuance?.open(captureSignal);
+          },
+        );
+        return proxy;
+      }
       if (
         active &&
         owned() &&
