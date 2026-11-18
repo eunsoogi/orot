@@ -1,10 +1,15 @@
 import {
+  createHealthContextCalendarScope,
+  type HealthContextCalendarScope,
+} from './calendarReadScope';
+import {
   startReportCalculationDiagnostic,
   endReportCalculationDiagnostic,
 } from './reportCalculationDiagnostic';
 import type { SqlDatabase } from '@orot/storage';
 import {
   committedReportCache,
+  committedReportCalendar,
   type CommittedReportScope,
 } from './committedReportScope';
 import type { HealthContextReader } from './reader';
@@ -23,16 +28,21 @@ export function registerHealthContextReadOwner(
   database: SqlDatabase,
   readWithCache: (
     cache: Map<string, HealthContextReport>,
+    calendar: HealthContextCalendarScope,
   ) => HealthContextReader,
 ) {
   owners.set(reader, (operationSignal, shared) => {
     const sharedCache = committedReportCache(shared, database);
     const cache = sharedCache ?? new Map<string, HealthContextReport>();
     if (!sharedCache) startReportCalculationDiagnostic(cache);
-    const scoped = readWithCache(cache);
+    const sharedCalendar = committedReportCalendar(shared, database);
+    const calendar = sharedCalendar ?? createHealthContextCalendarScope();
+    const scoped = readWithCache(cache, calendar);
     const clearDiagnostic = () => {
       if (!sharedCache) endReportCalculationDiagnostic(cache);
+      if (!sharedCalendar) calendar.dispose();
     };
+    if (operationSignal?.aborted) clearDiagnostic();
     operationSignal?.addEventListener('abort', clearDiagnostic, { once: true });
     let disposed = false;
     return {

@@ -8,7 +8,8 @@ const maximumWindows = 32;
 
 /** Repeated scope parsing need not allocate a calendar it immediately discards.
  * A cold key still runs the complete original enumeration, including extreme-date
- * failures. Actual report readers always enumerate independently. Snapshot the
+ * failures. Report readers own their separate operation calendars; this cache
+ * never supplies calendar rows or report facts. Snapshot the
  * primitive fields rather than trusting a caller's mutable object identity.
  */
 export function validateHealthContextCalendar(
