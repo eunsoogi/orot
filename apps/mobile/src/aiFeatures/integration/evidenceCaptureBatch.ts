@@ -12,6 +12,7 @@ export interface ConversationCaptureIdentity {
     readonly parentRevision: string;
     readonly reference: EvidenceReference;
   };
+  readonly tool?: { readonly reference: EvidenceReference };
   readonly session?: { readonly id: string; readonly version: number };
 }
 export interface ConversationCaptureOwner {
@@ -42,8 +43,9 @@ export function registerConversationCapture(
   capability?: ConversationCaptureCapability,
 ) {
   if (!capability || capability.owner.registry !== registry) return;
-  if (capability.identity.bound) {
-    const inner = capability.identity.bound.reference;
+  if (capability.identity.bound || capability.identity.tool) {
+    const inner = (capability.identity.bound ?? capability.identity.tool)!
+      .reference;
     // Bound aliases can only point to an already issued alias in this registry.
     // Strictly decreasing issuance order excludes self/cycles without a depth cap.
     const ordinal = (value: EvidenceReference) =>
@@ -59,6 +61,17 @@ export function registerConversationCapture(
     ) as ConversationCaptureIdentity,
   });
   capabilities.set(registry, entries);
+}
+
+/** Presence is not validity: the owner still checks its exact callbacks and fences. */
+export function hasConversationToolCapture(
+  registry: LocalEvidenceReferenceRegistry,
+  reference: EvidenceReference,
+) {
+  return Boolean(
+    capabilities.get(registry)?.get(stableEvidenceReference(reference))
+      ?.identity.tool,
+  );
 }
 
 /** Operation-local reads only. Normal clicked-source/live validators stay strict. */
