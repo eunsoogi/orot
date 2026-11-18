@@ -1,3 +1,8 @@
+import {
+  createConversationCaptureReadScope,
+  type ConversationCaptureReadScope,
+} from './conversationCaptureReadScope';
+import { ownsBoundCaptureAuthority } from './boundCaptureAuthority';
 import { stableJson } from './evidenceUtils';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -20,6 +25,7 @@ export interface ConversationCaptureOwner {
   prepare(
     requests: readonly ConversationCaptureIdentity[],
     signal: AbortSignal,
+    reads?: ConversationCaptureReadScope,
   ): Promise<{
     readonly results: readonly EvidenceSourceReadResult[];
     readonly strict?: readonly number[];
@@ -74,12 +80,28 @@ export function hasConversationToolCapture(
   );
 }
 
+/** Bound personal sources require a discovery-issued, currently exact reader pair. */
+export function hasOwnedBoundConversationCapture(
+  registry: LocalEvidenceReferenceRegistry,
+  reference: EvidenceReference,
+) {
+  const capability = capabilities
+    .get(registry)
+    ?.get(stableEvidenceReference(reference));
+  return Boolean(
+    capability?.identity.bound && ownsBoundCaptureAuthority(capability.owner),
+  );
+}
+
 /** Operation-local reads only. Normal clicked-source/live validators stay strict. */
 export async function prepareCaptureSources(
   registry: LocalEvidenceReferenceRegistry,
   references: readonly EvidenceReference[],
   signal: AbortSignal,
-  options?: { readonly recheckFallback?: boolean },
+  options?: {
+    readonly recheckFallback?: boolean;
+    readonly reads?: ConversationCaptureReadScope;
+  },
 ) {
   const results = new Map<string, EvidenceSourceReadResult>();
   const groups = new Map<
@@ -110,6 +132,7 @@ export async function prepareCaptureSources(
       const prepared = await owner.prepare(
         group.map(item => item.identity),
         signal,
+        options?.reads,
       );
       if (prepared.results.length !== group.length)
         throw new Error('Invalid capture batch.');
@@ -193,8 +216,18 @@ export async function validateCaptureHistory(
       : fallback
     ).push(reference);
   }
-  const prepared = await prepareCaptureSources(registry, eligible, signal);
-  if (fallback.length && !(await registry.revalidateEvidence(fallback, signal)))
-    return false;
-  return prepared.finish();
+  const reads = createConversationCaptureReadScope(signal);
+  try {
+    const prepared = await prepareCaptureSources(registry, eligible, signal, {
+      reads,
+    });
+    if (
+      fallback.length &&
+      !(await registry.revalidateEvidence(fallback, signal))
+    )
+      return false;
+    return await prepared.finish();
+  } finally {
+    reads.dispose();
+  }
 }

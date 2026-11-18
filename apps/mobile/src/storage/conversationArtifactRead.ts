@@ -23,6 +23,7 @@ export function createConversationArtifactReader(
     lease?: { readonly sessionId: string; readonly version: number },
     collectValidated?: (artifact: ConversationArtifact) => void,
     operation?: ReturnType<typeof committedPeriodReadOperation>,
+    rollbackOnFailure = false,
   ): Promise<(ConversationArtifact | null)[]> => {
     await ensure();
     const output: (ConversationArtifact | null)[] = [];
@@ -74,15 +75,22 @@ export function createConversationArtifactReader(
         }
       }
     };
-    if (operation?.active) await operation.run(work);
+    if (operation?.active) await operation.run(work, { rollbackOnFailure });
     else await database.transaction(work);
     return output;
   };
   const methods = (
     operation?: ReturnType<typeof committedPeriodReadOperation>,
+    rollbackOnFailure = false,
   ) => {
     const readMany = (ids: readonly string[]) =>
-      readManyWithLease(ids, undefined, undefined, operation);
+      readManyWithLease(
+        ids,
+        undefined,
+        undefined,
+        operation,
+        rollbackOnFailure,
+      );
     return {
       readMany,
       async readManyWithAncestry(ids: readonly string[]) {
@@ -101,6 +109,7 @@ export function createConversationArtifactReader(
             ancestry.set(artifact.id, artifact);
           },
           operation,
+          rollbackOnFailure,
         );
         return {
           items,
@@ -118,6 +127,7 @@ export function createConversationArtifactReader(
           { sessionId, version },
           undefined,
           operation,
+          rollbackOnFailure,
         );
       },
       async read(id: string) {
@@ -132,9 +142,12 @@ export function createConversationArtifactReader(
     beginReadOperation(
       this: typeof base & {
         readToolTurnsSnapshot: typeof readToolTurnsSnapshot;
+        beginReadOperation?: unknown;
       },
       signal?: AbortSignal,
+      options?: { readonly rollbackOnFailure?: boolean },
     ) {
+      const entry = this?.beginReadOperation;
       // A wrapper replacing any read boundary must retain its strict custom path,
       // including replacements made while an operation is awaiting hydration.
       const owned = () =>
@@ -144,11 +157,12 @@ export function createConversationArtifactReader(
           this.readManyWithAncestry === base.readManyWithAncestry &&
           this.readSessionMany === base.readSessionMany &&
           this.read === base.read &&
-          this.readToolTurnsSnapshot === readToolTurnsSnapshot,
+          this.readToolTurnsSnapshot === readToolTurnsSnapshot &&
+          this.beginReadOperation === entry,
         );
       if (!owned()) return undefined;
       const operation = committedPeriodReadOperation(database, signal);
-      const scoped = methods(operation);
+      const scoped = methods(operation, options?.rollbackOnFailure);
       const toolSnapshot = conversationToolSnapshotReader(
         database,
         ensure,

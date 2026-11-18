@@ -43,7 +43,7 @@ export function createConversationCaptureOwner(input: {
 }): ConversationCaptureOwner {
   return {
     registry: input.registry,
-    async prepare(requests, signal) {
+    async prepare(requests, signal, reads) {
       if (requests.some(request => request.bound))
         throw new Error('Unexpected bound authority.');
       const sessionsCurrent = async () => {
@@ -58,9 +58,9 @@ export function createConversationCaptureOwner(input: {
       };
       if (!(await sessionsCurrent()))
         throw new Error('Conversation session changed.');
-      const snapshots = await input.storage.readManyWithAncestry(
-        requests.map(item => item.id),
-      );
+      const snapshots = await (
+        reads?.forStorage(input.storage) ?? input.storage
+      ).readManyWithAncestry(requests.map(item => item.id));
 
       const results: EvidenceSourceReadResult[] = [];
       // If any native-owned ancestor occurs, avoid inferring its freshness from a DB snapshot.
@@ -122,15 +122,16 @@ export function createConversationCaptureOwner(input: {
           }
         },
         signal,
+        reads?.forStorage(input.storage)?.healthContextReportScope,
       );
       return {
         results,
         strict: strict ? requests.map((_, index) => index) : undefined,
         finish: async () => {
           if (signal.aborted || !(await sessionsCurrent())) return false;
-          const latest = await input.storage.readMany(
-            requests.map(item => item.id),
-          );
+          const latest = await (
+            reads?.forStorage(input.storage) ?? input.storage
+          ).readMany(requests.map(item => item.id));
           return (
             !signal.aborted &&
             latest.every((row, index) =>

@@ -43,20 +43,72 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
         let cleanup = node(app, "settings-consent-native-setup")
         XCTAssertTrue(UITestConditions.exists(cleanup))
         XCTAssertTrue(wait { UITestConditions.text(cleanup).contains("synthetic-cleanup-complete") })
+        verifyNativeBoundaries(app)
     }
 
     @MainActor
-    private func launch(_ app: XCUIApplication, _ identifier: String, _ phase: String) {
+    private func launch(_ app: XCUIApplication, _ identifier: String, _ phase: String, boundaries: Bool = false) {
         app.launchArguments = [
             "-OROT_TEST_SCENARIO", "settings-provider-layout",
             "-OROT_SETTINGS_CONSENT", "synthetic",
             "-OROT_SETTINGS_CONSENT_FIXTURE", identifier,
             "-OROT_SETTINGS_CONSENT_PHASE", phase,
         ]
+        if boundaries {
+            app.launchArguments += ["-OROT_TEST_HOST", "-OROT_SETTINGS_CONSENT_BOUNDARIES", "synthetic"]
+        }
         app.launch()
-        if phase != "cleanup" {
+        if boundaries {
+            XCTAssertTrue(UITestConditions.exists(node(app, "settings-boundary-status")))
+        } else if phase != "cleanup" {
             XCTAssertTrue(UITestConditions.exists(node(app, "settings-consent-native-inspect")))
         }
+    }
+
+    /// Separate UUIDs keep credential mutation and bridge cancellation independent.
+    @MainActor
+    private func verifyNativeBoundaries(_ app: XCUIApplication) {
+        let credential = "test-settings-consent-\(UUID().uuidString.lowercased())"
+        app.terminate()
+        launch(app, credential, "create", boundaries: true)
+        boundaryStatus(app, "\"voice\":\"authorized\"")
+        tap(app, "settings-boundary-replace")
+        boundaryStatus(app, "\"voice\":\"renewal_required\"")
+        app.terminate()
+        launch(app, credential, "reopen", boundaries: true)
+        boundaryStatus(app, "\"voice\":\"renewal_required\"")
+        tap(app, "settings-boundary-approve")
+        boundaryStatus(app, "\"voice\":\"authorized\"")
+        tap(app, "settings-boundary-remove")
+        boundaryStatus(app, "\"voice\":\"renewal_required\"")
+        app.terminate()
+        launch(app, credential, "reopen", boundaries: true)
+        boundaryStatus(app, "\"voice\":\"renewal_required\"")
+        app.terminate()
+        launch(app, credential, "cleanup", boundaries: true)
+        boundaryStatus(app, "synthetic-cleanup-complete")
+        app.terminate()
+        let bridge = "test-settings-consent-\(UUID().uuidString.lowercased())"
+        launch(app, bridge, "create", boundaries: true)
+        boundaryStatus(app, "\"voice\":\"authorized\"")
+        tap(app, "settings-boundary-open")
+        boundaryStatus(app, "\"opens\":1")
+        boundaryStatus(app, "\"audioStarts\":1")
+        boundaryStatus(app, "\"readyEvents\":1")
+        tap(app, "settings-boundary-revoke")
+        boundaryStatus(app, "\"closes\":1")
+        boundaryStatus(app, "\"audioStops\":1")
+        boundaryStatus(app, "\"audioStarts\":1")
+        boundaryStatus(app, "\"readyEvents\":1")
+        boundaryStatus(app, "\"transport\":\"in-memory\"")
+        app.terminate()
+        launch(app, bridge, "cleanup", boundaries: true)
+        boundaryStatus(app, "synthetic-cleanup-complete")
+    }
+
+    @MainActor
+    private func boundaryStatus(_ app: XCUIApplication, _ expected: String) {
+        XCTAssertTrue(wait { UITestConditions.text(self.node(app, "settings-boundary-status")).contains(expected) })
     }
 
     @MainActor

@@ -1,3 +1,4 @@
+import { registerEvidenceRegistryReaders } from './evidenceRegistryReadOwner';
 import {
   validationContext,
   type EvidenceValidationContext,
@@ -243,3 +244,5 @@ export class LocalEvidenceReferenceRegistry {
     return true;
   }
 }
+
+registerEvidenceRegistryReaders(LocalEvidenceReferenceRegistry.prototype);
