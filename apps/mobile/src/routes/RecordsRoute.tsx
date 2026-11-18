@@ -1,3 +1,4 @@
+import { GeneratedReportBrowser } from '../generatedReports/GeneratedReportBrowser';
 import { useRecordsDetailVisibility } from './RecordsHubSection';
 import { NavigationInlineTransition } from '../navigation/NavigationInlineTransition';
 import { useEffect } from 'react';
@@ -178,6 +179,9 @@ export function RecordsRoute({
                 </Text>
               ) : null}
             </View>
+          ) : null}
+          {!showAllRecent ? (
+            <GeneratedReportBrowser active={memoryActive} />
           ) : null}
           {!showAllRecent ? <LegacySymptomData /> : null}
           <RecordsRecentSources
