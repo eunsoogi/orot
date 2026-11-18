@@ -25,10 +25,10 @@ const styles = StyleSheet.create({
   divider: {
     marginBottom: 8,
     // This marks the restored-history boundary, not a decorative card edge.
-    // A full point and the supporting-text token remain legible on both canvases.
+    // Match the wide conversation pane and composer divider through the shared token.
     height: 1,
     flexShrink: 0,
     alignSelf: 'stretch',
-    backgroundColor: appColors.secondary,
+    backgroundColor: appColors.border,
   },
 });
