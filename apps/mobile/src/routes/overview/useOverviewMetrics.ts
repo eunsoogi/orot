@@ -85,6 +85,7 @@ export function useOverviewMetrics() {
   useEffect(() => {
     if (!focused) return;
     let active = true;
+    const controller = new AbortController();
     const selectionReadGeneration = selectionGeneration.current;
     const currentLoadGeneration = loadGeneration.current;
     setState(hasSnapshot.current ? 'refreshing' : 'loading');
@@ -95,7 +96,9 @@ export function useOverviewMetrics() {
           storage.openLocalStorage().then(loadOverviewMetricSelection),
           storage
             .openLocalAgentMemoryDatabase()
-            .then(database => loadOverviewMetrics(database)),
+            .then(database =>
+              loadOverviewMetrics(database, undefined, controller.signal),
+            ),
         ]);
       })
       .then(([nextSelection, nextMetrics]) => {
@@ -114,6 +117,8 @@ export function useOverviewMetrics() {
       });
     return () => {
       active = false;
+      // Discard queued work and stop only this read at safe SQL boundaries.
+      controller.abort();
     };
   }, [focused, attempt]);
   const save = useCallback(async (next: readonly OverviewMetric[]) => {
