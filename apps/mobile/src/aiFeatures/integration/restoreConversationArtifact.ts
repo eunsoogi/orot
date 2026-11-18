@@ -14,11 +14,19 @@ import {
   isConversationPhotoSource,
 } from '../../ragConversation/conversationArtifactSources';
 import { restoreConversationSummarySource } from './restoreConversationSummarySource';
-import { restoreConversationParentSource } from './restoreConversationParentSource';
+import {
+  restoreConversationParentSource,
+  type ParentSnapshot,
+} from './restoreConversationParentSource';
 import { restoreResearchSource } from './restoreResearchSource';
 import { rebindConversationVisitCandidates } from './rebindConversationVisitCandidates';
 import { registerConversationPhotoEvidence } from './conversationPhotoEvidence';
 import { referenceOnly } from '../../diseaseHypotheses/resultValidation';
+
+type ParentHydration = (
+  id: string,
+  discovery: Parameters<ParentSnapshot>[0],
+) => ReturnType<ParentSnapshot>;
 
 /** Restore opaque source links only while the saved result and every local input remain current. */
 export type RestoreInput = {
@@ -33,9 +41,20 @@ export type RestoreInput = {
   readonly boundCaptureOwner?: ConversationCaptureOwner;
 };
 
-export async function restoreConversationArtifact(input: RestoreInput) {
+export async function restoreConversationArtifact(
+  input: RestoreInput,
+  reads = input.storage,
+  parentSnapshot?: Parameters<typeof restoreConversationArtifactSnapshot>[2],
+) {
   if (input.signal.aborted) return null;
-  return hydrate(input, await input.storage.read(input.id), true);
+  // Initial page hydration may borrow report calculations, never live alias authority.
+  return hydrate(
+    input,
+    await reads.read(input.id),
+    true,
+    parentSnapshot,
+    reads,
+  );
 }
 
 /** Only the page reader may hydrate an already validated batch snapshot. Its final
@@ -44,14 +63,7 @@ export async function restoreConversationArtifact(input: RestoreInput) {
 export function restoreConversationArtifactSnapshot(
   input: RestoreInput,
   saved: ConversationArtifact | null,
-  parentSnapshot?: (id: string) => Promise<
-    | {
-        revision: string;
-        sourceStatus: 'current' | 'unknown';
-      }
-    | null
-    | undefined
-  >,
+  parentSnapshot?: ParentHydration,
 ) {
   return hydrate(input, saved, false, parentSnapshot);
 }
@@ -60,14 +72,8 @@ async function hydrate(
   input: RestoreInput,
   saved: ConversationArtifact | null,
   recheck: boolean,
-  parentSnapshot?: (id: string) => Promise<
-    | {
-        revision: string;
-        sourceStatus: 'current' | 'unknown';
-      }
-    | null
-    | undefined
-  >,
+  parentSnapshot?: ParentHydration,
+  reads = input.storage,
 ) {
   if (
     !saved ||
@@ -146,7 +152,9 @@ async function hydrate(
             input.registry,
             input.data,
             input.signal,
-            parentSnapshot ? () => parentSnapshot(source.id) : undefined,
+            parentSnapshot
+              ? discovery => parentSnapshot(source.id, discovery)
+              : undefined,
           );
     if (!current) return null;
     inheritedSourceUnknown ||= current.sourceStatus === 'unknown';
@@ -165,7 +173,7 @@ async function hydrate(
     ))
   )
     return null;
-  const latest = recheck ? await input.storage.read(input.id) : saved;
+  const latest = recheck ? await reads.read(input.id) : saved;
   if (
     !latest ||
     fingerprint(latest) !== fingerprint(saved) ||
