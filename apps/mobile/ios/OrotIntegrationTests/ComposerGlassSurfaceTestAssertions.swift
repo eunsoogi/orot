@@ -32,7 +32,7 @@ enum GlassIconButtonTestAssertions {
             control.actionHint = "실제 음성을 시작하지 않는 검사"
             control.actionTestID = "synthetic-native-glass-button"
             var calls = 0
-            control.onAction = { _ in calls += 1 }
+            control.onGlassIconPress = { _ in calls += 1 }
             host.addSubview(control)
             control.layoutIfNeeded()
             XCTAssertEqual(control.bounds.size, CGSize(width: size, height: size))

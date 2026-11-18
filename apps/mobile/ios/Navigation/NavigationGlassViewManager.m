@@ -91,5 +91,6 @@ RCT_EXPORT_VIEW_PROPERTY(actionHint, NSString)
 RCT_EXPORT_VIEW_PROPERTY(actionTestID, NSString)
 RCT_EXPORT_VIEW_PROPERTY(disabled, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(busy, BOOL)
-RCT_EXPORT_VIEW_PROPERTY(onAction, RCTDirectEventBlock)
+// Native event names share one registry; do not collide with navigation's bubbling onAction.
+RCT_EXPORT_VIEW_PROPERTY(onGlassIconPress, RCTDirectEventBlock)
 @end
