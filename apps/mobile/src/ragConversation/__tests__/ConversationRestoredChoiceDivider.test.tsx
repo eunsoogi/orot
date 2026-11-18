@@ -74,7 +74,7 @@ test('keeps a visible divider between hydrated history and all four choices thro
     height: 1,
     flexShrink: 0,
     alignSelf: 'stretch',
-    backgroundColor: appColors.secondary,
+    backgroundColor: appColors.border,
   });
   expect(divider.props.pointerEvents).toBe('none');
   expect(divider.props.accessible).toBe(false);
