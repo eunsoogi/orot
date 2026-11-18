@@ -106,6 +106,10 @@ export function selectChecksForPaths(changedPaths, policies = null, { runtimeRoo
     if (lower.startsWith('apps/mobile/src/') && lower.endsWith('.tsx')) {
       selection.policy_tests = true;
     }
+    // Upstream resources and metadata also belong to the pinned native dependency.
+    if (lower.startsWith('vendor/onnxruntime-swift-package-manager/')) {
+      return selectAll('vendored-native-dependency-change');
+    }
     if (extname(path).toLowerCase() === '.md') {
       // Markdown is outside the formatter; CI guidance changes retain policy regression checks.
       selection.policy_tests = true;
