@@ -12,6 +12,8 @@ test('host regressions retain every migrated test outside the iOS inventory', ()
       'testReplayExpansionAndErrorsPreserveCheckpointInvariants',
     ],
     AppleNativeToolLifecycleTests: [
+      'testPrivateCloudToolResultResumesOnlyItsMatchingProducer',
+      'testToolResultsCannotCrossModelRoutes',
       'testCallbackResultDrainsBeforeFreshGeneration',
       'testCancellationReleasesWaitingCallback',
       'testDrainFailureDoesNotStartFreshGeneration',

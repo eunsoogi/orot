@@ -50,6 +50,10 @@ export function nativeFailure(error: unknown): ProviderError {
   if (code === 'APPLE_MODEL_UNAVAILABLE' && isAvailabilityStatus(status)) {
     return unavailableFailure(status);
   }
+  if (code === 'PCC_QUOTA_EXCEEDED') return { code: 'rate_limited', message, retryable: false };
+  if (code === 'PCC_NETWORK_UNAVAILABLE' || code === 'PCC_SERVICE_UNAVAILABLE') {
+    return { code: 'provider_unavailable', message, retryable: true };
+  }
   // Native safety decisions are distinct from unsupported modalities or malformed app requests.
   if (code === 'SAFETY_REFUSAL') return { code: 'safety_refusal', message, retryable: false };
   if (code === 'UNSUPPORTED_INPUT') return { code: 'unsupported_input', message, retryable: false };
@@ -76,6 +80,9 @@ function isAvailabilityStatus(value: unknown): value is AppleAvailabilityStatus 
     value === 'modelNotReady' ||
     value === 'unavailable' ||
     value === 'unsupportedDevice' ||
-    value === 'unsupportedLanguage'
+    value === 'unsupportedLanguage' ||
+    value === 'unsupportedOS' ||
+    value === 'entitlementRequired' ||
+    value === 'quotaExceeded'
   );
 }

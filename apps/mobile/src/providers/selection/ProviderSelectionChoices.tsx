@@ -1,4 +1,5 @@
 import { t } from '../../i18n';
+import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { providerSettingsStyles as styles } from '../../layout/providerSettingsPresentation';
@@ -39,7 +40,8 @@ export function ProviderSelectionChoices({
   const selected = pendingOption ?? selectedOption;
   const cards = (local: boolean) =>
     options.map((option, index) =>
-      (option.privacyBoundary === 'on-device') === local ? (
+      (option.privacyBoundary === 'on-device' ||
+        option.provider.id === APPLE_PCC_PROVIDER_ID) === local ? (
         <ProviderSelectionOptionCard
           key={`${option.provider.id}:${option.modelId}`}
           disabled={loading || saving}
@@ -71,11 +73,18 @@ export function ProviderSelectionChoices({
         Apple
       </Text>
       {cards(true)}
+      {options.some(option => option.provider.id === APPLE_PCC_PROVIDER_ID) ? (
+        <Text>{t('provider.pcc.privacy')}</Text>
+      ) : null}
     </View>
   );
   const showConnectedPanel =
     chatGPTSetup !== undefined ||
-    options.some(option => option.privacyBoundary !== 'on-device');
+    options.some(
+      option =>
+        option.privacyBoundary !== 'on-device' &&
+        option.provider.id !== APPLE_PCC_PROVIDER_ID,
+    );
   const connectedPanel = showConnectedPanel ? (
     <View
       style={styles.section}

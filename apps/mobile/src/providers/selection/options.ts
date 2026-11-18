@@ -1,6 +1,9 @@
 import type { AppleAvailabilityStatus } from '@orot/provider-apple';
 import type { ChatGPTPlanModelDescriptor } from '@orot/provider-openai';
-import { appleFoundationModelsProvider } from '../apple';
+import {
+  appleFoundationModelsProvider,
+  appleAvailabilityMessage,
+} from '../apple';
 import { createOpenAIPlanProvider } from '../openai';
 import { providerSelectionText } from './text';
 import type { ProviderSelectionOption } from './types';
@@ -76,6 +79,10 @@ function appleUnavailableMessage(
   status: AppleAvailabilityStatus,
 ): string | null {
   switch (status) {
+    case 'unsupportedOS':
+    case 'entitlementRequired':
+    case 'quotaExceeded':
+      return appleAvailabilityMessage(status);
     case 'available':
       return null;
     case 'disabled':

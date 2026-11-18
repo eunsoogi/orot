@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { loadPrivateCloudComputeOption } from './privateCloudCompute';
 import { ProviderSelectionFlowShell } from './ProviderSelectionFlowShell';
 import ProviderSelectionScreen from './ProviderSelectionScreen';
 import type { ProviderSelectionScreenNavigationState } from './providerSelectionNavigationState';
@@ -66,6 +67,18 @@ export default function ProviderSelectionFlow({
   onSelectionCommitted,
   onNavigationStateChange,
 }: ProviderSelectionFlowProps) {
+  const [pccOption, setPccOption] = useState<ProviderSelectionOption | null>(
+    null,
+  );
+  useEffect(() => {
+    let active = true;
+    loadPrivateCloudComputeOption().then(option => {
+      if (active) setPccOption(option);
+    });
+    return () => {
+      active = false;
+    };
+  }, [accountRefreshKey]);
   const {
     appleOption,
     options,
@@ -198,7 +211,7 @@ export default function ProviderSelectionFlow({
         onBack={onBack}
         onNavigationStateChange={reportSelectionState}
         onSelectionCommitted={onSelectionCommitted}
-        options={options}
+        options={pccOption ? [...options, pccOption] : options}
         requirements={visitRecommendationRequirements}
         selectionStore={selectionStore}
       />

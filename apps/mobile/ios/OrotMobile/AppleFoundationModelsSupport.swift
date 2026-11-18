@@ -32,6 +32,17 @@ func appleFoundationModelsNativeFailure(_ error: Error) -> NSError {
     // Simulator tests use the mock call boundary, so classify SDK-specific refusals only in production.
     // Preserve native safety refusals separately from app input errors and missing records.
     #if canImport(FoundationModels) && !(OROT_TESTS && targetEnvironment(simulator))
+        if #available(iOS 27.0, *), let cloudError = error as? PrivateCloudComputeLanguageModel.Error {
+            switch cloudError {
+            case .quotaLimitReached:
+                return appleFoundationModelsFailure("PCC_QUOTA_EXCEEDED", "Apple's daily PCC quota has been reached.", "quotaExceeded")
+            case .networkFailure:
+                return appleFoundationModelsFailure("PCC_NETWORK_UNAVAILABLE", "Private Cloud Compute could not be reached.", nil)
+            case .serviceUnavailable:
+                return appleFoundationModelsFailure("PCC_SERVICE_UNAVAILABLE", "Private Cloud Compute is temporarily unavailable.", "unavailable")
+            @unknown default: break
+            }
+        }
         if #available(iOS 27.0, *), let modelError = error as? LanguageModelError {
             switch modelError {
             case .refusal, .guardrailViolation:

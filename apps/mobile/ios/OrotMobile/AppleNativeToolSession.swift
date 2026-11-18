@@ -32,8 +32,17 @@ import Foundation
             let instructions: String
             let generation: AppleNativeToolGeneration
             let required: Bool
+            let privateCloud: Bool
 
             var body: some LanguageModelSession.DynamicProfile {
+                if privateCloud {
+                    content.model(PrivateCloudComputeLanguageModel())
+                } else {
+                    content
+                }
+            }
+
+            private var content: some LanguageModelSession.DynamicProfile {
                 Profile {
                     Instructions(instructions)
                     tools
@@ -50,6 +59,7 @@ import Foundation
         static func respond(_ request: [String: Any], generation: AppleNativeToolGeneration,
                             snapshot: ((String) -> Bool)?) async throws -> [String: Any]
         {
+            try AppleFoundationModelsSession.validateRoute(request)
             let definitions = request["nativeTools"] as? [[String: Any]] ?? []
             let tools = try definitions.map { definition -> BridgeTool in
                 guard let name = definition["name"] as? String,
@@ -73,6 +83,7 @@ import Foundation
             if #available(iOS 27.0, macOS 27.0, *) {
                 session = LanguageModelSession(profile: CallbackProfile(
                     tools: tools, instructions: instructions, generation: generation, required: required,
+                    privateCloud: request["modelRoute"] as? String == "private-cloud-compute",
                 ))
                 // Per-request options must not override the profile's dynamic exit condition.
                 options.toolCallingMode = nil

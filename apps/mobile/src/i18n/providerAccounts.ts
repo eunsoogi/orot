@@ -1,5 +1,15 @@
 /** Korean catalog entries for provider selection and account management. */
 export const providerAccountsKo = {
+  'provider.pcc.unsupportedOS': 'PCC는 iOS 27 이상에서 사용할 수 있어요.',
+  'provider.pcc.entitlementRequired':
+    '이 빌드는 PCC 사용 승인과 설정이 필요해요.',
+  'provider.pcc.quotaExceeded':
+    'Apple의 일일 PCC 사용 한도에 도달했어요. 한도가 초기화된 후 다시 시도해 주세요.',
+  'provider.pcc.unavailable':
+    'Apple PCC를 현재 사용할 수 없어요. 다른 AI로 자동 전환하지 않아요.',
+  'provider.pcc.privacy':
+    '질문과 선택한 기록이 Apple의 Private Cloud Compute 서버로 전송돼 처리돼요. 기기 내 처리가 아니며 인터넷 연결과 Apple의 사용 한도가 적용돼요. 전송할 내용을 확인한 뒤 선택해 주세요.',
+  'provider.pcc.recipient': 'Apple Private Cloud Compute',
   'provider.apple.available':
     '이 기기에서 Apple Intelligence를 사용할 수 있어요.',
   'provider.apple.disabled': '설정에서 Apple Intelligence를 켜 주세요.',

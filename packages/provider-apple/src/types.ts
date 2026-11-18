@@ -6,7 +6,10 @@ export type AppleAvailabilityStatus =
   | 'modelNotReady'
   | 'unavailable'
   | 'unsupportedDevice'
-  | 'unsupportedLanguage';
+  | 'unsupportedLanguage'
+  | 'unsupportedOS'
+  | 'entitlementRequired'
+  | 'quotaExceeded';
 
 export interface AppleModelAvailability {
   readonly status: AppleAvailabilityStatus;

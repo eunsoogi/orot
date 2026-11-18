@@ -22,13 +22,20 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
         resolve(availability())
     }
 
+    @objc(getPrivateCloudComputeAvailability:rejecter:)
+    public func getPrivateCloudComputeAvailability(_ resolve: @escaping RCTPromiseResolveBlock,
+                                                   rejecter _: @escaping RCTPromiseRejectBlock)
+    {
+        resolve(availability(["modelRoute": "private-cloud-compute"]))
+    }
+
     @objc(generate:requestId:resolver:rejecter:)
     public func generate(_ payload: NSDictionary, requestId: String, resolver resolve: @escaping RCTPromiseResolveBlock,
                          rejecter reject: @escaping RCTPromiseRejectBlock)
     {
         #if canImport(FoundationModels)
             guard #available(iOS 26.0, *) else { rejectApplePromise(reject, appleFoundationModelsFailure("APPLE_MODEL_UNAVAILABLE", "Foundation Models requires iOS 26.", "unsupportedDevice")); return }
-            let status = availability()["status"] as? String ?? "unsupportedDevice"
+            let status = availability(payload)["status"] as? String ?? "unsupportedDevice"
             guard status == "available" else { rejectApplePromise(reject, appleFoundationModelsFailure("APPLE_MODEL_UNAVAILABLE", "Apple Foundation Models is unavailable.", status)); return }
             let completion: (NSDictionary?, NSError?) -> Void = { value, error in
                 if let error {
@@ -68,7 +75,7 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
         }
         #if canImport(FoundationModels)
             guard #available(iOS 26.0, *) else { event(appleFoundationModelsPacket("error", "APPLE_MODEL_UNAVAILABLE", "Foundation Models requires iOS 26.", "unsupportedDevice")); return }
-            let status = availability()["status"] as? String ?? "unsupportedDevice"
+            let status = availability(payload)["status"] as? String ?? "unsupportedDevice"
             guard status == "available" else { event(appleFoundationModelsPacket("error", "APPLE_MODEL_UNAVAILABLE", "Apple Foundation Models is unavailable.", status)); return }
             guard let slot = register(requestId, nil, event) else { event(appleFoundationModelsPacket("error", "INVALID_REQUEST", "Duplicate request id.", nil)); return }
             let task = Task { [weak self] in
@@ -114,13 +121,16 @@ public final class AppleFoundationModelsModule: RCTEventEmitter {
         super.invalidate()
     }
 
-    private func availability() -> [String: Any] {
+    private func availability(_ request: NSDictionary = [:]) -> [String: Any] {
         #if canImport(FoundationModels)
             if #available(iOS 26.0, *) {
+                if request["modelRoute"] as? String == "private-cloud-compute" {
+                    return AppleFoundationModelsSession.privateCloudAvailability()
+                }
                 return AppleFoundationModelsSession.availability()
             }
         #endif
-        return ["status": "unsupportedDevice"]
+        return ["status": request["modelRoute"] as? String == "private-cloud-compute" ? "unsupportedOS" : "unsupportedDevice"]
     }
 
     #if canImport(FoundationModels)

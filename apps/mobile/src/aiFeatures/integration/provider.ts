@@ -1,4 +1,8 @@
 import { t } from '../../i18n';
+import {
+  APPLE_PCC_PROVIDER_ID,
+  loadPrivateCloudComputeOption,
+} from '../../providers/selection/privateCloudCompute';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import {
   createChatGPTSelectionOptions,
@@ -32,6 +36,7 @@ export interface SelectedAiResolverOptions {
   readonly selectionStore?: ProviderSelectionStore;
   readonly chatGPTServices?: ChatGPTSelectionServices;
   readonly loadAppleOption?: typeof loadAppleSelectionOption;
+  readonly loadPccOption?: typeof loadPrivateCloudComputeOption;
 }
 
 const CHATGPT_PROVIDER_PREFIX = 'chatgpt-plan:';
@@ -50,6 +55,17 @@ export async function resolveSelectedAiProvider(
     return { status: 'unavailable' };
   }
   if (!selection) return { status: 'selection-required' };
+
+  // Resolve PCC independently from ChatGPT credentials and local model availability.
+  if (selection.providerId === APPLE_PCC_PROVIDER_ID) {
+    try {
+      return readySelection(selection, [
+        await (options.loadPccOption ?? loadPrivateCloudComputeOption)(),
+      ]);
+    } catch {
+      return { status: 'unavailable' };
+    }
+  }
 
   let appleOption: ProviderSelectionOption;
   try {
@@ -126,7 +142,9 @@ function readySelection(
     recipient:
       selected.privacyBoundary === 'on-device'
         ? t('nextVisit.recipient.onDevice')
-        : t('nextVisit.recipient.chatgpt'),
+        : selected.provider.id === APPLE_PCC_PROVIDER_ID
+          ? t('provider.pcc.recipient')
+          : t('nextVisit.recipient.chatgpt'),
     remoteProcessing: selected.privacyBoundary === 'selected-context-remote',
   };
 }

@@ -5,6 +5,12 @@ export function appleAvailabilityMessage(
   status: AppleAvailabilityStatus,
 ): string {
   switch (status) {
+    case 'unsupportedOS':
+      return t('provider.pcc.unsupportedOS');
+    case 'entitlementRequired':
+      return t('provider.pcc.entitlementRequired');
+    case 'quotaExceeded':
+      return t('provider.pcc.quotaExceeded');
     case 'available':
       return t('provider.apple.available');
     case 'disabled':
