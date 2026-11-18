@@ -4,7 +4,7 @@ import type {
   HealthContextWindow,
 } from './types';
 import { HEALTH_CONTEXT_TOPICS } from './types';
-import { healthContextDays } from './window';
+import { validateHealthContextCalendar } from './calendarValidation';
 import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 
 export interface HealthContextScope {
@@ -56,7 +56,7 @@ export function parseHealthContextScope(
   )
     return undefined;
   try {
-    healthContextDays(w as unknown as HealthContextWindow);
+    validateHealthContextCalendar(w as unknown as HealthContextWindow);
     if (w.doseHistory !== undefined) {
       const d = w.doseHistory as Record<string, unknown>;
       if (
