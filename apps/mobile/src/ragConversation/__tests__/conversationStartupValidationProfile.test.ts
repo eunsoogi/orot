@@ -94,8 +94,10 @@ test.each([1, 4, 10])(
           new AbortController().signal,
         ),
       );
-      expect(result.discoveryPage!.reportReads).toBe(2);
-      expect(result.historyPage!.reportReads).toBe(4);
+      // Session discovery computes the period once across its storage fences.
+      // Full history keeps two additional independent revalidateSession reads.
+      expect(result.discoveryPage!.reportReads).toBe(1);
+      expect(result.historyPage!.reportReads).toBe(3);
       console.info(
         'SYNTHETIC_STARTUP_PROFILE',
         JSON.stringify({ turns: count, ...result }),
