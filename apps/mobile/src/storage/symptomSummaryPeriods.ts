@@ -1,3 +1,4 @@
+import type { HealthContextReport } from '../healthEvidence/healthContext/types';
 import { setupHealthPeriodMarkerGuards } from './healthPeriodMarkerGuards';
 import { localQueryTimestampKey, type SqlExecutor } from '@orot/storage';
 import type { SavedPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
@@ -46,6 +47,15 @@ export async function assertSummaryPeriodCurrent(
   const report = await readHealthContextReport(tx, source.scope.window, [
     source.scope.topic,
   ]);
+  assertSummaryPeriodReport(source, report, requireGeneration);
+}
+
+/** Compare every retained source against the exact report, never a cached validity token. */
+export function assertSummaryPeriodReport(
+  source: SavedPeriodSummarySource,
+  report: HealthContextReport,
+  requireGeneration: boolean,
+) {
   if (
     (requireGeneration &&
       report.deletionGeneration !== source.deletionGeneration) ||

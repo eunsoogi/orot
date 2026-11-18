@@ -1,3 +1,6 @@
+import { committedPeriodReadOperation } from './committedPeriodReadOperation';
+import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
+import type { SqlExecutor } from '@orot/storage';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { createReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
@@ -17,12 +20,17 @@ export function createConversationArtifactReader(
     ids: readonly string[],
     lease?: { readonly sessionId: string; readonly version: number },
     collectValidated?: (artifact: ConversationArtifact) => void,
+    operation?: ReturnType<typeof committedPeriodReadOperation>,
   ): Promise<(ConversationArtifact | null)[]> => {
     await ensure();
     const output: (ConversationArtifact | null)[] = [];
-    await database.transaction(async tx => {
-      // This batch performs no writes; only identical period recalculations are shared.
-      const validatePeriod = createReadOnlyPeriodValidation(tx);
+    const work = async (
+      tx: SqlExecutor,
+      calculate?: ReadOnlyPeriodValidation,
+    ) => {
+      // Source validation may record non-destructive quarantine audit state.
+      // Only identical period calculations, never that policy authority, are shared.
+      const validatePeriod = createReadOnlyPeriodValidation(tx, calculate);
       if (lease) {
         const session = await tx.execute(
           'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ?',
@@ -63,37 +71,89 @@ export function createConversationArtifactReader(
           output.push(null);
         }
       }
-    });
+    };
+    if (operation?.active) await operation.run(work);
+    else await database.transaction(work);
     return output;
   };
-  const readMany = (ids: readonly string[]) => readManyWithLease(ids);
+  const methods = (
+    operation?: ReturnType<typeof committedPeriodReadOperation>,
+  ) => {
+    const readMany = (ids: readonly string[]) =>
+      readManyWithLease(ids, undefined, undefined, operation);
+    return {
+      readMany,
+      async readManyWithAncestry(ids: readonly string[]) {
+        // Publish the graph only after the protected transaction commits. This is
+        // a page-local snapshot, never authority for live source reads or later requests.
+        const ancestry = new Map<string, ConversationArtifact>();
+        const items = await readManyWithLease(
+          ids,
+          undefined,
+          artifact => {
+            const existing = ancestry.get(artifact.id);
+            if (existing && fingerprint(existing) !== fingerprint(artifact))
+              throw new Error(
+                'Conversation ancestry changed inside its snapshot.',
+              );
+            ancestry.set(artifact.id, artifact);
+          },
+          operation,
+        );
+        return {
+          items,
+          ancestry: ancestry as ReadonlyMap<string, ConversationArtifact>,
+        };
+      },
+      // Lease and content must share one snapshot, including when the page is empty.
+      readSessionMany(
+        sessionId: string,
+        version: number,
+        ids: readonly string[],
+      ) {
+        return readManyWithLease(
+          ids,
+          { sessionId, version },
+          undefined,
+          operation,
+        );
+      },
+      async read(id: string) {
+        return (await readMany([id]))[0] ?? null;
+      },
+    };
+  };
+  const base = methods();
   return {
-    readMany,
-    async readManyWithAncestry(ids: readonly string[]) {
-      // Publish the graph only after the protected transaction commits. This is
-      // a page-local snapshot, never authority for live source reads or later requests.
-      const ancestry = new Map<string, ConversationArtifact>();
-      const items = await readManyWithLease(ids, undefined, artifact => {
-        const existing = ancestry.get(artifact.id);
-        if (existing && fingerprint(existing) !== fingerprint(artifact))
-          throw new Error('Conversation ancestry changed inside its snapshot.');
-        ancestry.set(artifact.id, artifact);
-      });
+    ...base,
+    /** Explicit read-only operation; escaped methods revert to strict after disposal. */
+    beginReadOperation(this: typeof base, signal?: AbortSignal) {
+      // A wrapper replacing any read boundary must retain its strict custom path,
+      // including replacements made while an operation is awaiting hydration.
+      const owned = () =>
+        Boolean(
+          this &&
+          this.readMany === base.readMany &&
+          this.readManyWithAncestry === base.readManyWithAncestry &&
+          this.readSessionMany === base.readSessionMany &&
+          this.read === base.read,
+        );
+      if (!owned()) return undefined;
+      const operation = committedPeriodReadOperation(database, signal);
+      const scoped = methods(operation);
       return {
-        items,
-        ancestry: ancestry as ReadonlyMap<string, ConversationArtifact>,
+        readMany: (ids: readonly string[]) =>
+          (owned() ? scoped : this).readMany(ids),
+        readManyWithAncestry: (ids: readonly string[]) =>
+          (owned() ? scoped : this).readManyWithAncestry(ids),
+        readSessionMany: (
+          id: string,
+          version: number,
+          ids: readonly string[],
+        ) => (owned() ? scoped : this).readSessionMany(id, version, ids),
+        read: (id: string) => (owned() ? scoped : this).read(id),
+        dispose: operation.dispose,
       };
-    },
-    // Lease and content must share one snapshot, including when the page is empty.
-    readSessionMany(
-      sessionId: string,
-      version: number,
-      ids: readonly string[],
-    ) {
-      return readManyWithLease(ids, { sessionId, version });
-    },
-    async read(id: string) {
-      return (await readMany([id]))[0] ?? null;
     },
   };
 }

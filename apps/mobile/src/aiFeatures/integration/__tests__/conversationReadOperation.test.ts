@@ -128,8 +128,9 @@ test.each([false, true])(
               : mode === 'capture' && !enabled
                 ? [46, 13]
                 : [36, 8];
-          // Pin the whole-operation negative result too: cold session fences
-          // still recalculate all periods; the report-only scope does not fix it.
+          // Session reads additionally share committed reports between their two
+          // storage fences; capture still has its original strict lifetime.
+          if (mode === 'session') expected[0]! -= 12;
           expect([aggregates, transactions]).toEqual(expected);
           console.info(
             JSON.stringify({
