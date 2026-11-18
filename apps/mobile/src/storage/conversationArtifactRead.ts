@@ -1,3 +1,4 @@
+import { conversationToolSnapshotReader } from './conversationToolSnapshot';
 import { committedPeriodReadOperation } from './committedPeriodReadOperation';
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import type { SqlExecutor } from '@orot/storage';
@@ -15,6 +16,7 @@ import { assertConversationArtifactCurrent } from './conversationArtifactFreshne
 export function createConversationArtifactReader(
   database: SqlDatabase,
   ensure: () => Promise<void>,
+  readToolTurnsSnapshot: ReturnType<typeof conversationToolSnapshotReader>,
 ) {
   const readManyWithLease = async (
     ids: readonly string[],
@@ -127,7 +129,12 @@ export function createConversationArtifactReader(
   return {
     ...base,
     /** Explicit read-only operation; escaped methods revert to strict after disposal. */
-    beginReadOperation(this: typeof base, signal?: AbortSignal) {
+    beginReadOperation(
+      this: typeof base & {
+        readToolTurnsSnapshot: typeof readToolTurnsSnapshot;
+      },
+      signal?: AbortSignal,
+    ) {
       // A wrapper replacing any read boundary must retain its strict custom path,
       // including replacements made while an operation is awaiting hydration.
       const owned = () =>
@@ -136,17 +143,29 @@ export function createConversationArtifactReader(
           this.readMany === base.readMany &&
           this.readManyWithAncestry === base.readManyWithAncestry &&
           this.readSessionMany === base.readSessionMany &&
-          this.read === base.read,
+          this.read === base.read &&
+          this.readToolTurnsSnapshot === readToolTurnsSnapshot,
         );
       if (!owned()) return undefined;
       const operation = committedPeriodReadOperation(database, signal);
       const scoped = methods(operation);
+      const toolSnapshot = conversationToolSnapshotReader(
+        database,
+        ensure,
+        operation,
+      );
       return {
         get healthContextReportScope() {
           return owned() && operation.active
             ? operation.reportScope
             : undefined;
         },
+        readToolTurnsSnapshot: (
+          ...args: Parameters<typeof readToolTurnsSnapshot>
+        ) =>
+          (owned() && operation.active
+            ? toolSnapshot
+            : this.readToolTurnsSnapshot)(...args),
         readMany: (ids: readonly string[]) =>
           (owned() ? scoped : this).readMany(ids),
         readManyWithAncestry: (ids: readonly string[]) =>

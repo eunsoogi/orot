@@ -1,3 +1,4 @@
+import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import type { ConversationToolEvent } from '@orot/agent-runtime';
 import {
   localQueryTimestampKey,
@@ -156,6 +157,7 @@ export async function assertToolLineage(
   database: SqlDatabase,
   lineage: ReturnType<typeof decodeToolLineage>,
   requireGeneration: boolean,
+  validatePeriod?: ReadOnlyPeriodValidation,
 ) {
   const regular = lineage.sources.flatMap(source =>
     isExternalToolResearch(source)
@@ -169,6 +171,7 @@ export async function assertToolLineage(
     database,
     { ...lineage, sources: regular },
     requireGeneration,
+    validatePeriod,
   );
   for (const source of lineage.sources)
     if ('kind' in source && source.kind === 'filtered_medication_period')

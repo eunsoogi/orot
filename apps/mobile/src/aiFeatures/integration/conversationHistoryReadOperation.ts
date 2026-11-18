@@ -1,8 +1,20 @@
+import type { CommittedReportScope } from '../../healthEvidence/healthContext/committedReportScope';
+import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { createConversationArtifactDiscovery } from './conversationArtifactDiscovery';
 
 type Discovery = ReturnType<typeof createConversationArtifactDiscovery>;
 type Methods = Pick<Discovery, 'readSession' | 'revalidateSession'>;
-type Operation = Methods & { dispose(): void };
+type Storage = ReturnType<typeof createConversationArtifactStorage>;
+type Operation = Methods & {
+  readonly healthContextReportScope?: CommittedReportScope;
+  readonly storage?: Storage;
+  readonly readToolTurnsSnapshot?: Storage['readToolTurnsSnapshot'];
+  dispose(): void;
+};
+type HistoryContext = {
+  readonly healthContextReportScope?: CommittedReportScope;
+  storage(value: Storage): Storage;
+};
 const owners = new WeakMap<
   Discovery,
   {
@@ -32,7 +44,7 @@ export function registerConversationHistoryReadOwner(
 export async function withConversationHistoryReadOperation<T>(
   discovery: Discovery,
   signal: AbortSignal,
-  work: (scoped: Discovery) => Promise<T>,
+  work: (scoped: Discovery, context?: HistoryContext) => Promise<T>,
 ) {
   const owner = owners.get(discovery);
   const owned = () =>
@@ -59,8 +71,33 @@ export async function withConversationHistoryReadOperation<T>(
       return Reflect.get(target, key, receiver);
     },
   });
+  // Only the factory's exact storage can borrow its report calculation scope.
+  // The original snapshot callback remains the fallback after replacement/disposal;
+  // live tool source reads are never wrapped or granted history validity authority.
+  const originalSnapshot = operation.storage?.readToolTurnsSnapshot;
+  const context: HistoryContext = {
+    get healthContextReportScope() {
+      return active && owned() ? operation.healthContextReportScope : undefined;
+    },
+    storage(value) {
+      if (value !== operation.storage || !operation.readToolTurnsSnapshot)
+        return value;
+      return new Proxy(value, {
+        get(target, key, receiver) {
+          if (key === 'readToolTurnsSnapshot')
+            return (...args: Parameters<Storage['readToolTurnsSnapshot']>) =>
+              (active &&
+                owned() &&
+                target.readToolTurnsSnapshot === originalSnapshot
+                ? operation.readToolTurnsSnapshot!
+                : target.readToolTurnsSnapshot)(...args);
+          return Reflect.get(target, key, receiver);
+        },
+      });
+    },
+  };
   try {
-    return await work(scoped);
+    return await work(scoped, context);
   } finally {
     active = false;
     operation.dispose();

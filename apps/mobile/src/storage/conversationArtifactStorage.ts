@@ -52,6 +52,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         ready = undefined;
         throw error;
       }));
+  const tools = createConversationToolEventStorage(database, ensure);
   return {
     listTimeline: conversationTimelinePages(database, ensure),
     continuousSession: continuousConversationStorage(database, ensure),
@@ -60,10 +61,14 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
     ...createConversationPreviewStorage(database, ensure),
     ...createConversationRequestStorage(database, ensure),
     ...createConversationTaskCardStorage(database, ensure),
-    ...createConversationToolEventStorage(database, ensure),
+    ...tools,
     ...createFilteredToolPeriodStorage(database, ensure),
     ...createConversationSessionVisibility(database, ensure),
-    ...createConversationArtifactReader(database, ensure),
+    ...createConversationArtifactReader(
+      database,
+      ensure,
+      tools.readToolTurnsSnapshot,
+    ),
     readCommittedCompletion: createConversationCompletionReader(
       database,
       ensure,

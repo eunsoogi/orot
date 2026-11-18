@@ -12,6 +12,9 @@ import {
 } from './symptomSummaryPeriods';
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 
+/** Scope invalidation must not undo unrelated native writes on this connection. */
+class ReadScopeInvalidated extends Error {}
+
 type Pair = Awaited<ReturnType<typeof readHealthContextGeneration>>;
 const same = (a: Pair, b: Pair) =>
   a.mutationGeneration === b.mutationGeneration &&
@@ -34,7 +37,8 @@ export function committedPeriodReadOperation(
   };
   signal?.addEventListener('abort', cancel, { once: true });
   const check = () => {
-    if (signal?.aborted) throw new Error('Conversation read was cancelled.');
+    if (signal?.aborted)
+      throw new ReadScopeInvalidated('Conversation read was cancelled.');
   };
   return {
     reportScope: reportScope.token,
@@ -47,11 +51,23 @@ export function committedPeriodReadOperation(
         tx: SqlExecutor,
         validate: ReadOnlyPeriodValidation,
       ) => Promise<void>,
+      options: { rollbackOnFailure?: boolean } = {},
     ) {
       check();
       const pending = new Map<string, HealthContextReport>();
       let failure: { error: unknown } | undefined;
       await database.transaction(async tx => {
+        // Check cancellation at every query boundary without converting operational
+        // SQL errors into cancellation. The report's generic abort errors must not
+        // accidentally select rollback and resurrect an interleaved native delete.
+        const reportExecutor: SqlExecutor = {
+          execute: async (...args) => {
+            check();
+            const result = await tx.execute(...args);
+            check();
+            return result;
+          },
+        };
         const validate: ReadOnlyPeriodValidation = async (
           executor,
           source,
@@ -73,15 +89,16 @@ export function committedPeriodReadOperation(
             cached && same(cached, before)
               ? cached
               : await readHealthContextReport(
-                  tx,
+                  reportExecutor,
                   source.scope.window,
                   [source.scope.topic],
-                  signal,
                 );
           const after = await readHealthContextGeneration(tx);
           check();
           if (!same(before, report) || !same(after, report))
-            throw new Error('Health context changed during validation.');
+            throw new ReadScopeInvalidated(
+              'Health context changed during validation.',
+            );
           assertSummaryPeriodReport(source, report, required);
           pending.set(key, report);
         };
@@ -89,9 +106,15 @@ export function committedPeriodReadOperation(
           await work(tx, validate);
           check();
         } catch (error) {
-          // Read validation can observe native direct writes on this connection.
-          // Do not roll them back merely because the read fails or is cancelled.
-          // Existing non-destructive quarantine audit writes also remain intact.
+          // Tool snapshots explicitly retain their existing rollback contract.
+          if (
+            options.rollbackOnFailure &&
+            !(error instanceof ReadScopeInvalidated)
+          )
+            throw error;
+          // Other read callers can observe native direct writes on this connection.
+          // Keep their established behavior: do not roll back those writes or
+          // non-destructive quarantine audit state merely because the read fails.
           failure = { error };
         }
       });

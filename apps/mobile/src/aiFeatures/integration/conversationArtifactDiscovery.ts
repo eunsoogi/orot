@@ -207,6 +207,11 @@ export function createConversationArtifactDiscovery(input: {
     const operation = input.storage.beginReadOperation?.(signal);
     if (!operation) return undefined;
     return {
+      storage: input.storage,
+      get healthContextReportScope() {
+        return operation.healthContextReportScope;
+      },
+      readToolTurnsSnapshot: operation.readToolTurnsSnapshot,
       readSession: request =>
         restoreConversationSessionPage({
           ...input,
