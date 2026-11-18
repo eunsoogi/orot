@@ -1,5 +1,9 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, AppState } from 'react-native';
+
+beforeEach(() => {
+  AppState.currentState = 'active';
+});
 import {
   futureOverviewVisit,
   renderOverviewGenerator,
@@ -37,6 +41,9 @@ function captureConversationSends() {
 
 async function enterHomeConversation() {
   await fireEvent.press(await screen.findByTestId('overview-prepare-visit'));
+  expect(await screen.findByTestId('visit-day-questions')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  await fireEvent.press(screen.getByTestId('navigation-tab-conversation'));
   expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
   expect(screen.queryByTestId('conversation-visit-prepare')).toBeNull();
   expect(screen.getByTestId('navigation-tab-conversation')).toHaveProp(
