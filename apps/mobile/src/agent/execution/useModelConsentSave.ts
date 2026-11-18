@@ -5,7 +5,7 @@ import type {
   ProviderSelectionStore,
 } from '../../providers/selection/types';
 import type { SettingsConsentSlot } from '../../storage/settingsConsentStorage';
-import { saveModelSettingsConsent } from './saveModelSettingsConsent';
+import { useModelSettingsServices } from './ModelSettingsServices';
 import { settingsConsentRecipient } from './settingsConsentRecipient';
 
 /** Route-owned save: hidden/unmounted settings cannot finish a late grant or emit success. */
@@ -13,6 +13,8 @@ export function useModelConsentSave(
   slot: SettingsConsentSlot,
   store: ProviderSelectionStore,
 ) {
+  const services = useModelSettingsServices();
+  const { saveConsent } = services;
   const mounted = useRef(false);
   const pending = useRef<AbortController | null>(null);
   useEffect(() => {
@@ -21,7 +23,7 @@ export function useModelConsentSave(
       mounted.current = false;
       pending.current?.abort();
     };
-  }, []);
+  }, [services, slot, store]);
   return async (
     option: Pick<ProviderSelectionOption, 'modelId' | 'privacyBoundary'> & {
       provider: { readonly id: string };
@@ -37,7 +39,7 @@ export function useModelConsentSave(
     try {
       if (remote && !recipient)
         throw new Error('Unknown transmission recipient');
-      await saveModelSettingsConsent({
+      await saveConsent({
         slot,
         search,
         store,
@@ -45,7 +47,10 @@ export function useModelConsentSave(
         recipient: recipient ?? '',
         selection: { providerId: option.provider.id, modelId: option.modelId },
         signal: controller.signal,
-        isCurrent: () => mounted.current && pending.current === controller,
+        isCurrent: () =>
+          mounted.current &&
+          !controller.signal.aborted &&
+          pending.current === controller,
       });
       if (!mounted.current || controller.signal.aborted)
         throw new Error('Settings save cancelled');

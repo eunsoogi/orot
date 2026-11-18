@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
 import { useModelConsentSave } from '../agent/execution/useModelConsentSave';
-import { voiceSettingsStore, type VoiceMode } from './voiceSettingsStore';
+import type { VoiceMode } from './voiceSettingsStore';
+import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
 
 /** Adapt the existing voice selection writer, never its credential or audio transport. */
 export function useVoiceConsentSave(accountRevision: number | null) {
+  const { voice: voiceSettingsStore } = useModelSettingsServices();
   const store = useMemo(
     () => ({
       async load() {
@@ -35,7 +37,7 @@ export function useVoiceConsentSave(accountRevision: number | null) {
         throw new Error('Voice selection cannot be cleared implicitly');
       },
     }),
-    [accountRevision],
+    [accountRevision, voiceSettingsStore],
   );
   const save = useModelConsentSave('voice', store);
   return (mode: VoiceMode, model: string) =>

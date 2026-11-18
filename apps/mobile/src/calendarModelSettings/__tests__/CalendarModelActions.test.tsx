@@ -17,12 +17,22 @@ jest.mock('../../agent/execution/saveModelSettingsConsent', () => ({
 }));
 jest.mock('../calendarModelStore', () => ({
   calendarModelStore: {
+    ...jest
+      .requireActual(
+        '../../agent/execution/testSupport/modelSettingsServiceFixture',
+      )
+      .modelSettingsSelectionFixture(),
     load: jest.fn(async () => null),
     save: jest.fn(async () => {}),
   },
 }));
 jest.mock('../../voiceSettings/voiceSettingsStore', () => ({
   voiceSettingsStore: {
+    ...jest
+      .requireActual(
+        '../../agent/execution/testSupport/modelSettingsServiceFixture',
+      )
+      .modelSettingsVoiceFixture(),
     accountStatus: jest.fn(async () => ({ connected: false, revision: 1 })),
     subscribe: () => () => {},
   },

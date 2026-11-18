@@ -19,10 +19,23 @@ jest.mock(
 );
 
 jest.mock('../calendarModelStore', () => ({
-  calendarModelStore: { load: jest.fn(), save: jest.fn() },
+  calendarModelStore: {
+    ...jest
+      .requireActual(
+        '../../agent/execution/testSupport/modelSettingsServiceFixture',
+      )
+      .modelSettingsSelectionFixture(),
+    load: jest.fn(),
+    save: jest.fn(),
+  },
 }));
 jest.mock('../../voiceSettings/voiceSettingsStore', () => ({
   voiceSettingsStore: {
+    ...jest
+      .requireActual(
+        '../../agent/execution/testSupport/modelSettingsServiceFixture',
+      )
+      .modelSettingsVoiceFixture(),
     subscribe: jest.fn(() => () => {}),
     accountStatus: jest.fn(),
     discoverModels: jest.fn(),
