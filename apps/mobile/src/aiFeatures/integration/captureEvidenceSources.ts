@@ -1,3 +1,5 @@
+import { stableEvidenceReference } from './stableEvidenceReference';
+import type { EvidenceSourceReadResult } from './evidenceSourceDocument';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type {
   SavedRecordSummarySource,
@@ -14,6 +16,10 @@ export async function captureEvidenceSources(
   references: readonly EvidenceReference[],
   registry: LocalEvidenceReferenceRegistry,
   signal: AbortSignal,
+  prepared?: {
+    readonly registry: LocalEvidenceReferenceRegistry;
+    readonly results: ReadonlyMap<string, EvidenceSourceReadResult>;
+  },
 ) {
   const mapping = new Map<string, EvidenceReference>();
   const sources: SavedSummarySource[] = [];
@@ -27,7 +33,13 @@ export async function captureEvidenceSources(
       continue;
     }
     const original = registry.resolve(ref);
-    const read = await registry.readSource(ref, signal);
+    // Only the surrounding capture operation supplies these already-validated
+    // results; all summary/daily/research callers retain their strict default.
+    const ready =
+      prepared?.registry === registry
+        ? prepared.results.get(stableEvidenceReference(ref))
+        : undefined;
+    const read = ready ?? (await registry.readSource(ref, signal));
     if (!original || read.status === 'missing' || read.status === 'changed')
       throw new RetainedSourceInvalidError(
         'The cited source changed before saving.',
