@@ -1,3 +1,4 @@
+import { withConversationReadOperation } from './conversationReadOperation';
 import type { ConversationCaptureOwner } from './evidenceCaptureBatch';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { AiFeatureLocalData } from './localData';
@@ -7,7 +8,7 @@ import { fingerprint } from './evidenceUtils';
 import { createConversationPageHydration } from './conversationPageHydration';
 
 /** Restore each turn with fresh source aliases, and withhold stale or unavailable results. */
-export async function restoreConversationSessionPage(input: {
+type SessionRestoreInput = {
   readonly sessionId: string;
   readonly cursor?: { readonly createdAt: string; readonly id: string };
   readonly limit?: number;
@@ -17,7 +18,17 @@ export async function restoreConversationSessionPage(input: {
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly signal: AbortSignal;
   readonly boundCaptureOwner?: ConversationCaptureOwner;
-}) {
+};
+
+export function restoreConversationSessionPage(input: SessionRestoreInput) {
+  return withConversationReadOperation(
+    input.data,
+    data => restore({ ...input, data }),
+    input.signal,
+  );
+}
+
+async function restore(input: SessionRestoreInput) {
   if (input.signal.aborted)
     throw new Error('Conversation restoration was cancelled.');
   const page = await input.storage.list(

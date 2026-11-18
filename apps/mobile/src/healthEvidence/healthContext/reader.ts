@@ -1,3 +1,4 @@
+import { registerHealthContextReadOwner } from './healthContextReadOperation';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import {
   readHealthContextGeneration,
@@ -124,51 +125,99 @@ export function createHealthContextReader(
   database: SqlDatabase,
 ): HealthContextReader {
   let ready: Promise<void> | undefined;
-  const cache = new Map<string, HealthContextReport>();
-  return async (window, topics, signal, trace) => {
-    trace?.('preparation', 'started');
-    ready ??= database
-      // Standalone source restoration must preserve the same privacy boundary as the local evidence adapter.
-      .execute('PRAGMA temp_store = MEMORY')
-      .then(() => database.transaction(ensureHealthContextGeneration))
-      .catch(error => {
-        ready = undefined;
-        throw error;
-      });
-    await ready;
-    trace?.('preparation', 'completed');
-    if (signal?.aborted) throw new Error('Health context was cancelled.');
-    const key = JSON.stringify([window, [...new Set(topics)].sort()]);
-    const current = await traceHealthContext(trace, 'generation', () =>
-      readHealthContextGeneration(database),
-    );
-    const cached = cache.get(key);
-    if (cached?.mutationGeneration === current.mutationGeneration)
-      return cached;
-    let report: HealthContextReport | undefined;
-    // The native adapter queues transactions; distinguish that wait from the report queries.
-    trace?.('transaction_wait', 'started');
-    const stopProbe = traceHealthContextScheduler(trace);
-    try {
-      await database.transaction(async tx => {
+  const createRead =
+    (
+      cache: Map<string, HealthContextReport>,
+      maxEntries?: number,
+    ): HealthContextReader =>
+    async (window, topics, signal, trace) => {
+      trace?.('preparation', 'started');
+      ready ??= database
+        // Standalone source restoration must preserve the same privacy boundary as the local evidence adapter.
+        .execute('PRAGMA temp_store = MEMORY')
+        .then(() => database.transaction(ensureHealthContextGeneration))
+        .catch(error => {
+          ready = undefined;
+          throw error;
+        });
+      await ready;
+      trace?.('preparation', 'completed');
+      if (signal?.aborted) throw new Error('Health context was cancelled.');
+      const key = JSON.stringify([window, [...new Set(topics)].sort()]);
+      const current = await traceHealthContext(trace, 'generation', () =>
+        readHealthContextGeneration(database),
+      );
+      const cached = cache.get(key);
+      if (signal?.aborted) throw new Error('Health context was cancelled.');
+      if (cached && sameGeneration(cached, current)) return cached;
+      let report: HealthContextReport | undefined;
+      let failure: { error: unknown } | undefined;
+      // The native adapter queues transactions; distinguish that wait from the report queries.
+      trace?.('transaction_wait', 'started');
+      const stopProbe = traceHealthContextScheduler(trace);
+      try {
+        await database.transaction(async tx => {
+          stopProbe();
+          trace?.('transaction_wait', 'completed');
+          try {
+            const before = await readHealthContextGeneration(tx);
+            if (signal?.aborted)
+              throw new Error('Health context was cancelled.');
+            report = await readHealthContextReport(
+              tx,
+              window,
+              topics,
+              signal,
+              trace,
+            );
+            const after = await readHealthContextGeneration(tx);
+            if (signal?.aborted)
+              throw new Error('Health context was cancelled.');
+            if (
+              !sameGeneration(before, report) ||
+              !sameGeneration(after, report)
+            )
+              throw new Error('Health context changed during aggregation.');
+          } catch (error) {
+            // These queries are read-only. Report invalidation after commit so a
+            // same-connection write interleaved by the native adapter is not undone.
+            failure = { error };
+          }
+        });
+      } finally {
         stopProbe();
-        trace?.('transaction_wait', 'completed');
-        report = await readHealthContextReport(
-          tx,
-          window,
-          topics,
-          signal,
-          trace,
-        );
-      });
-    } finally {
-      stopProbe();
-    }
-    if (!report) throw new Error('Health context could not be read.');
-    cache.delete(key);
-    cache.set(key, report);
-    if (cache.size > HEALTH_CONTEXT_TOPICS.length)
-      cache.delete(cache.keys().next().value!);
-    return report;
-  };
+      }
+      if (failure) throw failure.error;
+      if (!report) throw new Error('Health context could not be read.');
+      // A rolled-back transaction must never publish a cache entry. The adapter
+      // resolves only after commit; recheck outside it before reuse/publication.
+      const committed = await readHealthContextGeneration(database);
+      if (signal?.aborted) throw new Error('Health context was cancelled.');
+      if (!sameGeneration(report, committed))
+        throw new Error('Health context changed before publication.');
+      cache.delete(key);
+      cache.set(key, report);
+      if (maxEntries !== undefined && cache.size > maxEntries)
+        cache.delete(cache.keys().next().value!);
+      return report;
+    };
+  const baseCache = new Map<string, HealthContextReport>();
+  const reader = createRead(baseCache, HEALTH_CONTEXT_TOPICS.length);
+  registerHealthContextReadOwner(reader, cache => {
+    // Copy only committed bounded entries. Each scoped hit still checks live
+    // generations and cancellation; scoped results never flow back to baseCache.
+    for (const [key, report] of baseCache) cache.set(key, report);
+    return createRead(cache);
+  });
+  return reader;
+}
+
+function sameGeneration(
+  left: { mutationGeneration: number; deletionGeneration: number },
+  right: { mutationGeneration: number; deletionGeneration: number },
+) {
+  return (
+    left.mutationGeneration === right.mutationGeneration &&
+    left.deletionGeneration === right.deletionGeneration
+  );
 }
