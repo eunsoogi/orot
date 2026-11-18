@@ -1,3 +1,4 @@
+import { routesGeneratedRecordsEnabled } from './routesGeneratedRecordsSelection';
 import type { TestRoute } from './testRoute';
 import { retainedVisitObservationEnabled } from './retainedVisitObservation';
 
@@ -60,7 +61,9 @@ export function registerCapabilityTestEntry(
       break;
     case 'ai-feature-visit-questions':
       // Keep the observer bound to the real retained editor only for this opt-in scenario.
-      if (retainedVisitObservationEnabled(settings))
+      if (routesGeneratedRecordsEnabled(settings))
+        require('./routesGeneratedRecordsProbeEntry');
+      else if (retainedVisitObservationEnabled(settings))
         require('./nextVisitQuestionsProbeEntry');
       else require('./aiFeatureVisitQuestionsProbeEntry');
       break;
