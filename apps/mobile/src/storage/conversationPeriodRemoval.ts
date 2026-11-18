@@ -51,7 +51,9 @@ export async function assertPeriodNotRemoved(
     localQueryTimestampKey(source.scope.window.fromInclusive),
     localQueryTimestampKey(source.scope.window.toExclusive),
   ];
-  for (const [table, guard] of Object.entries(healthPeriodDeletionGuards())) {
+  for (const [table, guard] of Object.entries(
+    healthPeriodDeletionGuards(source.scope.topic),
+  )) {
     // These are the exact topic discriminants in the shared contributor guards,
     // not observed-empty data or cached availability assumptions.
     if (!topicTables[source.scope.topic].includes(table)) continue;
