@@ -19,7 +19,7 @@ interface NativeProps extends ViewProps {
   actionTestID: string;
   disabled: boolean;
   busy: boolean;
-  onAction: () => void;
+  onGlassIconPress: () => void;
 }
 const NativeButton =
   Platform.OS === 'ios'
@@ -65,7 +65,7 @@ export function GlassIconButton({
       actionTestID={testID}
       disabled={disabled}
       busy={accessibilityState?.busy ?? false}
-      onAction={invoke}
+      onGlassIconPress={invoke}
       // Let UIKit shape and render its effect without a second React mask.
       style={[style, styles.native]}
       // actionTestID belongs to UIButton; a React testID also labels its Fabric wrapper.

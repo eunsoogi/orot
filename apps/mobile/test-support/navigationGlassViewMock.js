@@ -25,7 +25,7 @@ jest.mock('react-native/Libraries/ReactNative/requireNativeComponent', () => {
             accessibilityLabel: props.actionLabel,
             accessibilityHint: props.actionHint,
             accessibilityState: { disabled: props.disabled, busy: props.busy },
-            onPress: props.onAction,
+            onPress: props.onGlassIconPress,
           });
         };
       }

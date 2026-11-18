@@ -38,8 +38,9 @@ test('bridges native activation, label, hint and busy state without a passive ma
     overflow: 'visible',
   });
   // Direct native event, not the adapter's simulated press, verifies the production bridge callback.
-  await fireEvent(action, 'action');
+  await fireEvent(action, 'glassIconPress');
   expect(onPress).toHaveBeenCalledTimes(1);
+  expect(action.props.onAction).toBeUndefined();
   await view.rerender(
     <GlassIconButton
       symbolName="waveform"
@@ -50,7 +51,7 @@ test('bridges native activation, label, hint and busy state without a passive ma
     />,
   );
   action = screen.getByTestId('native-action');
-  await fireEvent(action, 'action');
+  await fireEvent(action, 'glassIconPress');
   expect(onPress).toHaveBeenCalledTimes(1);
   expect(action.props.disabled).toBe(true);
 });

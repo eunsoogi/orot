@@ -41,7 +41,7 @@ final class GlassIconButton: UIButton {
         didSet { accessibilityValue = busy ? NSLocalizedString("action.busy", tableName: "NativeInterfaceCopy", comment: "Accessible busy state") : nil }
     }
 
-    @objc var onAction: RCTDirectEventBlock?
+    @objc var onGlassIconPress: RCTDirectEventBlock?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -49,7 +49,7 @@ final class GlassIconButton: UIButton {
         isAccessibilityElement = true
         addAction(UIAction { [weak self] _ in
             guard let self, isEnabled else { return }
-            onAction?([:])
+            onGlassIconPress?([:])
         }, for: .touchUpInside)
         configure()
         NotificationCenter.default.addObserver(self, selector: #selector(configure),
