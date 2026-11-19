@@ -21,6 +21,12 @@ func decision(_ target: CGRect) -> LiteratureActionGeometry.Decision? {
 }
 precondition(decision(CGRect(x: 30, y: 640, width: 200, height: 44)) == .visible)
 precondition(decision(CGRect(x: 30, y: 641, width: 200, height: 44)) == .up)
+// Even a reported hittable control must be moved if its frame overlaps the dock.
+let reportedHittable = true
+let overlapped = CGRect(x: 30, y: 690, width: 200, height: 44)
+precondition(reportedHittable && overlapped.intersects(dock))
+precondition(decision(overlapped) == .up)
+precondition(decision(CGRect(x: 30, y: 640, width: 200, height: 44)) == .visible)
 precondition(decision(CGRect(x: 30, y: 30, width: 200, height: 44)) == .down)
 precondition(decision(CGRect(x: 0, y: 200, width: 420, height: 44)) == nil)
 precondition(LiteratureActionGeometry.decide(window: window, scroll: scroll, dock: dock, target: nil) == .up)

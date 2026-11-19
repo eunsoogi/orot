@@ -104,8 +104,14 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(node(app, "external-evidence-selected-source")))
             XCTAssertTrue(UITestConditions.exists(app.staticTexts["합성 문헌: 운동과 수면의 질"]))
             let open = node(app, "external-evidence-open-selected-source")
-            UITestConditions.scrollTo(open, in: app)
+            let search = node(app, "external-evidence-search")
+            // Hittability alone can leave the article under the floating search dock.
+            // Require the same measured clearance at ordinary and accessibility text sizes.
+            try LiteratureActionReveal.reveal(open, in: app, dock: search)
+            XCTAssertTrue(app.frame.contains(open.frame))
+            XCTAssertLessThanOrEqual(open.frame.maxY, search.frame.minY - 16)
             XCTAssertTrue(open.isHittable, open.debugDescription)
+            XCTAssertGreaterThanOrEqual(open.frame.height, 44)
             if !dark {
                 open.tap()
                 XCTAssertTrue(UITestConditions.exists(node(app, "synthetic-article-opened")))
