@@ -66,6 +66,10 @@ test.each([
       ).rows;
       expect(heads).toHaveLength(change === 'outside insert' ? 1 : 0);
       if (change === 'included edit') {
+        expect(result).toEqual({
+          status: 'failed',
+          code: 'source_unconfirmed_after_dispatch',
+        });
         const row = await repository.get(
           'health_observation',
           reportObservation.id,

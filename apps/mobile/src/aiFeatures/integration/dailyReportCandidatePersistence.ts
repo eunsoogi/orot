@@ -7,7 +7,8 @@ import type {
 import { providerDiagnostic } from '../../providers/diagnostics';
 
 /** Preserve the ordinary final save fences. Only a persistence error can stage an
- * already validated result; stale/deleted/cancelled outputs are never recoverable. */
+ * already validated result; stale/deleted/cancelled outputs are never recoverable.
+ * A stale save happens after model dispatch and requires a new explicit request. */
 export async function persistDailyReportCandidate(
   input: DailyReportRunInput,
   candidate: DailyReportSave,
@@ -45,7 +46,7 @@ export async function persistDailyReportCandidate(
     signal.aborted || saved.status === 'cancelled'
       ? 'cancelled'
       : saved.status === 'stale'
-        ? 'source_revision_changed'
+        ? 'source_unconfirmed_after_dispatch'
         : saved.status === 'deleted'
           ? 'source_unavailable'
           : 'persistence_failed';
