@@ -84,12 +84,16 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             XCTAssertFalse(node(app, "external-evidence-search").isEnabled)
             XCTAssertEqual(node(app, "external-medical-evidence-screen").scrollViews.count, 1)
             query(app, "sleep synthetic")
+            LiteratureSearchObservation.capture(app, phase: "initial-before", testCase: self)
             node(app, "external-evidence-search").tap()
+            LiteratureSearchObservation.capture(app, phase: "initial-after", testCase: self)
             if !dark {
                 // The first tap must reach the denied state before explicit settings approval.
                 try LiteratureConsentUITestConditions.approve(app)
                 query(app, "sleep synthetic")
+                LiteratureSearchObservation.capture(app, phase: "approved-before", testCase: self)
                 node(app, "external-evidence-search").tap()
+                LiteratureSearchObservation.capture(app, phase: "approved-after", testCase: self)
             }
             let title = app.staticTexts["합성 문헌: 활동과 수면 기록 해석"]
             XCTAssertTrue(UITestConditions.exists(title))
