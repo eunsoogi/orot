@@ -48,7 +48,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         input.typeText("test")
         XCTAssertTrue(String(describing: input.value ?? "").contains("test"))
         input.typeText("\n")
-        try RoutesVisibleContentUITestConditions.composer(send, in: app)
+        try RoutesVisibleContentUITestConditions.composer(send, in: app, observationSession: observationSession, testCase: self)
         ConversationHitUITestObservation.assertSendReady(app, send: send, session: observationSession, testCase: self)
         let sendSample = ConversationHitUITestObservation.sample(send)
         if sendSample.enabled, sendSample.hittable {

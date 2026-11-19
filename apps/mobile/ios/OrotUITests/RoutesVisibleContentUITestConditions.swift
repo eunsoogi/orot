@@ -3,7 +3,7 @@ import XCTest
 /// Route-specific observations preserve the floating composer's and long report's real native geometry.
 @MainActor
 enum RoutesVisibleContentUITestConditions {
-    static func composer(_ control: XCUIElement, in app: XCUIApplication) throws {
+    static func composer(_ control: XCUIElement, in app: XCUIApplication, observationSession: String? = nil, testCase: XCTestCase? = nil) throws {
         let dock = UITestConditions.element(app, "rag-conversation-composer")
         let history = UITestConditions.element(app, "rag-conversation-history")
         XCTAssertTrue(UITestConditions.exists(control))
@@ -13,7 +13,20 @@ enum RoutesVisibleContentUITestConditions {
         XCTAssertTrue(dock.frame.contains(control.frame), "Control: \(control.frame), dock: \(dock.frame)")
         let keyboard = app.keyboards.firstMatch
         if keyboard.exists {
-            XCTAssertLessThanOrEqual(control.frame.maxY, keyboard.frame.minY + 1)
+            // Preserve the failed observation before sampling diagnostics; no later layout can change the assertion.
+            let startedAt = Date().timeIntervalSince1970 * 1000
+            let controlFrame = control.frame
+            let keyboardFrame = keyboard.frame
+            let endedAt = Date().timeIntervalSince1970 * 1000
+            if controlFrame.maxY > keyboardFrame.minY + 1, let observationSession, let testCase {
+                let geometry = XCTAttachment(string: "startedAtMs=\(startedAt) endedAtMs=\(endedAt) control=\(controlFrame) keyboard=\(keyboardFrame) nativeAndAXSamples=subsequent")
+                geometry.name = "conversation-keyboard-boundary-observation"
+                geometry.lifetime = .keepAlways
+                testCase.add(geometry)
+                let sample = ConversationHitUITestObservation.sample(control)
+                ConversationHitUITestObservation.capture(app, send: control, initial: sample, session: observationSession, testCase: testCase)
+            }
+            XCTAssertLessThanOrEqual(controlFrame.maxY, keyboardFrame.minY + 1)
         }
         let back = UITestConditions.element(app, "navigation-back")
         if back.exists {
