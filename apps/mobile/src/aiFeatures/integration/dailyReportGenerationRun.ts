@@ -1,3 +1,4 @@
+import { persistDailyReportCandidate } from './dailyReportCandidatePersistence';
 import { conversationReceiptSelection as observeSelection } from './conversationReceiptSelection';
 import { withDailyReportOpening as openingFor } from './dailyReportOpening';
 import { hasSevereReportBloodPressure } from './dailyReportGuidance';
@@ -198,47 +199,23 @@ export async function generateDailyReportWithCalendar(
   if (request.signal.aborted) return fail('cancelled');
   input.deadlineContext.stage = 'save';
   providerDiagnostic('daily_report', 'persistence', 'started');
-  let saved: Awaited<ReturnType<typeof input.storage.save>>;
-  try {
-    saved = await input.storage.save(
-      {
-        runId,
-        context,
-        result,
-        lineage: snapshot.lineage,
-        mode:
-          request.mode.kind === 'revise' ? request.mode : { kind: 'initial' },
-      },
-      request.signal,
-    );
-  } catch {
-    input.deadlineContext.stage = 'workflow';
-    if (!input.deadlineContext.timedOut)
-      providerDiagnostic(
-        'daily_report',
-        'persistence',
-        request.signal.aborted ? 'cancelled' : 'failed',
-      );
-    return fail(request.signal.aborted ? 'cancelled' : 'persistence_failed');
-  }
-  input.deadlineContext.stage = 'workflow';
-  if (saved.status !== 'saved' && saved.status !== 'reused') {
-    if (!input.deadlineContext.timedOut)
-      providerDiagnostic(
-        'daily_report',
-        'persistence',
-        saved.status === 'cancelled' ? 'cancelled' : 'failed',
-      );
-    return fail(
-      saved.status === 'cancelled'
-        ? 'cancelled'
-        : saved.status === 'stale'
-          ? 'source_revision_changed'
-          : saved.status === 'deleted'
-            ? 'source_unavailable'
-            : 'persistence_failed',
-    );
-  }
+  const candidate = {
+    runId,
+    context,
+    result,
+    lineage: snapshot.lineage,
+    mode:
+      request.mode.kind === 'revise'
+        ? request.mode
+        : { kind: 'initial' as const },
+  };
+  const saved = await persistDailyReportCandidate(
+    input,
+    candidate,
+    calendar.context,
+    request.signal,
+  );
+  if (saved.status === 'failed') return fail(saved.code);
   if (external && !(await external.snapshot.revalidate())) {
     await input.storage.lookup(context.identity);
     return fail('source_revision_changed');

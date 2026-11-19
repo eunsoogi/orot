@@ -14,6 +14,7 @@ import type { SqlDatabase } from '@orot/storage';
 /** Count actual production SQL, including private reader closures. No real data. */
 function observe(database: SqlDatabase) {
   const stats = { aggregateSql: 0, transactions: 0, sql: 0 };
+  const artifactReads: number[] = [];
   const count = (sql: string) => {
     stats.sql++;
     if (/WITH days\(/.test(sql)) stats.aggregateSql++;
@@ -27,19 +28,28 @@ function observe(database: SqlDatabase) {
   database.transaction = async operation =>
     transaction(async tx => {
       stats.transactions++;
+      const index = artifactReads.push(0) - 1;
       const execute = tx.execute.bind(tx);
       tx.execute = async (...args) => {
         count(args[0]);
+        if (
+          args[0].startsWith(
+            'SELECT a.id, a.session_id, a.created_at, a.result_json',
+          )
+        )
+          artifactReads[index]!++;
         return execute(...args);
       };
       await operation(tx);
     });
   return {
     stats,
+    artifactReads,
     reset() {
       stats.aggregateSql = 0;
       stats.transactions = 0;
       stats.sql = 0;
+      artifactReads.length = 0;
     },
     restore() {
       database.execute = direct;
@@ -107,8 +117,12 @@ test.each([
             signal,
           ),
         ).toBe(true);
-        expect(observation.stats.aggregateSql).toBe(count * 4);
+        // Each distinct window calculates its two SQL statements once; both strict
+        // read fences still execute and reread artifacts in separate transactions.
+        expect(observation.stats.aggregateSql).toBe(count * 2);
         expect(observation.stats.transactions).toBe(2);
+        expect(observation.artifactReads).toHaveLength(2);
+        expect(observation.artifactReads.every(reads => reads > 0)).toBe(true);
         console.info(
           'POST_RESULT_HISTORY_CURRENT',
           JSON.stringify({ count, nested, ...observation.stats }),
@@ -120,8 +134,10 @@ test.each([
           signal,
         );
         expect(admitted.sources.length).toBeGreaterThan(0);
-        expect(observation.stats.aggregateSql).toBe(nested ? 20 : count * 4);
+        expect(observation.stats.aggregateSql).toBe(count * 2);
         expect(observation.stats.transactions).toBe(nested ? 4 : 2);
+        expect(observation.artifactReads).toHaveLength(nested ? 4 : 2);
+        expect(observation.artifactReads.every(reads => reads > 0)).toBe(true);
         console.info(
           'POST_RESULT_ADMITTED_SOURCES',
           JSON.stringify({ count, nested, ...observation.stats }),
@@ -134,8 +150,10 @@ test.each([
           signal,
         );
         expect(captured.sources).toHaveLength(count);
-        expect(observation.stats.aggregateSql).toBe(count * 4);
+        expect(observation.stats.aggregateSql).toBe(count * 2);
         expect(observation.stats.transactions).toBe(2);
+        expect(observation.artifactReads).toHaveLength(2);
+        expect(observation.artifactReads.every(reads => reads > 0)).toBe(true);
         console.info(
           'POST_RESULT_CAPTURE',
           JSON.stringify({

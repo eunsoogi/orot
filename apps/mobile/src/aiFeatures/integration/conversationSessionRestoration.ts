@@ -1,3 +1,4 @@
+import { observeConversationHistory } from '../../providers/conversationHistoryDiagnostic';
 import { withConversationReadOperation } from './conversationReadOperation';
 import type { ConversationCaptureOwner } from './evidenceCaptureBatch';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
@@ -70,8 +71,10 @@ async function restore(
   const unavailableItems: { id: string; createdAt: string }[] = [];
   // One transaction shares identical period calculations while still checking each
   // root's deletion, parent, policy and source guards independently.
-  const snapshots = await input.reads.readManyWithAncestry(
-    page.items.map(item => item.id),
+  const snapshots = await observeConversationHistory(
+    'artifact_initial_validation',
+    () => input.reads.readManyWithAncestry(page.items.map(item => item.id)),
+    input.signal,
   );
   const hydrate = createConversationPageHydration(
     input,
@@ -90,12 +93,22 @@ async function restore(
       fingerprint(snapshots.ancestry.get(item.id)) !== fingerprint(snapshot)
     )
       throw new Error('Conversation ancestry changed during restoration.');
-    const result = snapshot ? await hydrate(item.id) : null;
+    const result = snapshot
+      ? await observeConversationHistory(
+          'artifact_source_hydration',
+          () => hydrate(item.id),
+          input.signal,
+        )
+      : null;
     if (result?.sessionId === input.sessionId) items.push(result);
     else unavailableItems.push({ id: item.id, createdAt: item.createdAt });
   }
   // Recheck the entire page in one transaction against a consistent source snapshot.
-  const saved = await input.reads.readMany(items.map(item => item.id));
+  const saved = await observeConversationHistory(
+    'artifact_final_validation',
+    () => input.reads.readMany(items.map(item => item.id)),
+    input.signal,
+  );
   for (let index = items.length - 1; index >= 0; index--) {
     if (!saved[index] || fingerprint(saved[index]) !== items[index]!.revision) {
       // A stable withheld row can become a notice, but mid-read changes cancel publication.

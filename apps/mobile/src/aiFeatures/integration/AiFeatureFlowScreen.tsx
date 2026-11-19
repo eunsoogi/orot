@@ -39,6 +39,7 @@ export function AiFeatureFlowScreen({
   onOpenSource,
   resolveSelectedAi,
   confirmConsent,
+  consent,
   selectedAiRevision,
   services,
 }: AiFeatureFlowScreenProps) {
@@ -156,6 +157,7 @@ export function AiFeatureFlowScreen({
                 observer,
                 resolveSelectedAi,
                 confirmConsent,
+                consent,
               })
           : undefined
       }
@@ -189,6 +191,7 @@ export function AiFeatureFlowScreen({
             onRouteStateChange,
             resolveSelectedAi,
             confirmConsent,
+            consent,
             resolveSource: services.resolveSource,
             generatedArtifactTools: services.generatedArtifactTools,
             registerVisitQuestionSource: services.registerVisitQuestionSource,

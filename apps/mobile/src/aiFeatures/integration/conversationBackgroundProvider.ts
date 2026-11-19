@@ -59,12 +59,28 @@ export function conversationConsentScope<
   Request extends { readonly signal: AbortSignal },
   Result,
 >(
-  port: { authorize(request: Request): Promise<Result> },
+  port: {
+    authorize(request: Request): Promise<Result>;
+    isAuthorizationCurrent?: (request: Request) => boolean;
+    subscribeAuthorizationInvalidation?: (
+      request: Request,
+      listener: () => void,
+    ) => () => void;
+  },
   observer?: RagConversationObserver,
 ) {
   // Preserve the original port when no background lifetime is being observed.
   if (!observer?.onExecutionState) return port;
   return {
+    ...(port.subscribeAuthorizationInvalidation
+      ? {
+          subscribeAuthorizationInvalidation:
+            port.subscribeAuthorizationInvalidation.bind(port),
+        }
+      : {}),
+    ...(port.isAuthorizationCurrent
+      ? { isAuthorizationCurrent: port.isAuthorizationCurrent.bind(port) }
+      : {}),
     async authorize(request: Request): Promise<Result> {
       const stop = observeExecutionDecision(request.signal, () =>
         observer?.onExecutionState?.('decision'),

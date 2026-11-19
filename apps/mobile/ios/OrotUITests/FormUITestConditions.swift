@@ -17,7 +17,7 @@ enum FormUITestConditions {
 
     /// Nested footer content has a smaller native ScrollView than its tagged outer container. Callers can supply that observed viewport without changing existing tagged-scroll callers.
     @discardableResult
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil, scrollObservation: FormScrollObservation? = nil) -> CGRect? {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil, scrollObservation: FormScrollObservation? = nil, windowResolver: (() -> XCUIElement?)? = nil) -> CGRect? {
         XCTAssertTrue(UITestConditions.exists(scroll))
         var lastObservation = ""
         // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
@@ -25,7 +25,7 @@ enum FormUITestConditions {
             // Read-only stages can skip this global AX snapshot when no action can present a keyboard.
             let keyboard = keyboardMayBeVisible ? app.keyboards.firstMatch : nil
             // AX queries are independent. Read each frame once and fail before synthesizing an invalid gesture.
-            guard let window = FormWindowOwnership.resolve(app, scroll: scroll, target: target) else { return nil }
+            guard let window = windowResolver == nil ? FormWindowOwnership.resolve(app, scroll: scroll, target: target) : windowResolver?() else { return nil }
             let applicationFrame = window.frame
             let scrollFrame = scroll.frame
             let keyboardFrame = keyboard?.exists == true ? keyboard?.frame : nil

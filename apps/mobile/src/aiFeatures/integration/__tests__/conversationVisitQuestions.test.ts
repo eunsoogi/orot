@@ -10,6 +10,10 @@ import type { VisitQuestionRouteOperations } from '../visitQuestionsRouteOperati
 const selected = { status: 'ready' } as SelectedAiResolution;
 
 test('uses the selected visit and submitted request when creating a review', async () => {
+  const consent = {
+    authorize: jest.fn(async () => 'authorized' as const),
+    isAuthorizationCurrent: jest.fn(() => false),
+  };
   const validateSource = jest.fn(async () => true);
   const loadAppointment = jest.fn(async () => appointment);
   const generate = jest.fn(async () => ({
@@ -36,6 +40,7 @@ test('uses the selected visit and submitted request when creating a review', asy
     loadSaved,
     resolveSelectedAi: async () => selected,
     confirmConsent: async () => true,
+    consent,
     isCurrentOwner: () => true,
     signal: new AbortController().signal,
   });
@@ -48,6 +53,7 @@ test('uses the selected visit and submitted request when creating a review', asy
       appointment,
       request: '편집한 요청',
       selectedAi: selected,
+      consent,
     }),
   );
   expect(result.status).toBe('ready');

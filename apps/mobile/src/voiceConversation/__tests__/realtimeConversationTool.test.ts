@@ -1,4 +1,7 @@
-import type { OutboundProcessingRequest } from '@orot/agent-runtime';
+import type {
+  ExecutionConsentPort,
+  OutboundProcessingRequest,
+} from '@orot/agent-runtime';
 import { AppState } from 'react-native';
 import { createRealtimeConversationTool } from '../realtimeConversationTool';
 import type { ConversationVoiceProps } from '../conversationVoiceDependencies';
@@ -12,7 +15,7 @@ const request = {
   toolCallId: 'tool',
   inputItemId: 'input',
 };
-function fixture() {
+function fixture(resultConsent?: ExecutionConsentPort) {
   Object.defineProperty(AppState, 'currentState', {
     configurable: true,
     value: 'active',
@@ -61,6 +64,7 @@ function fixture() {
   const owned = jest.fn();
   const execute = createRealtimeConversationTool({
     latest,
+    resultConsent,
     model: 'gpt-realtime-2.1',
     current: () => true,
     ownsRequest: owned,
@@ -93,7 +97,11 @@ test('confirms exact recognized speech and routes only a committed answer throug
   expect(approval.providerId).toBe('openai-realtime');
   expect(approval.recipient).toBe('OpenAI Realtime API');
   expect(approval.remoteProcessing).toBe(true);
-  expect(approval.consentScope).toBeUndefined();
+  expect(approval.consentScope).toEqual({
+    purpose: 'realtime_result',
+    policyVersion: 'selected-result-relay-v1',
+    dataCategories: ['generated_answer'],
+  });
   expect(approval.payload.messages[0].content).toBe(result);
   expect(result).toBe('{"status":"completed","answer":"합성 답변"}');
   expect(f.owned.mock.calls).toEqual([[9], [null, 9]]);
@@ -186,4 +194,26 @@ test('rechecks the cancellation lease after protected completion revalidation', 
     await f.execute('합성 질문', request, f.controller.signal),
   ).toBeUndefined();
   expect(f.send).toHaveBeenCalledTimes(1);
+});
+
+test('settings result approval is rechecked after source validation without replacing the explicit tool action approval', async () => {
+  let current = true;
+  let authorized: OutboundProcessingRequest | undefined;
+  const f = fixture({
+    authorize: async outbound => {
+      authorized = outbound;
+      return 'authorized';
+    },
+    isAuthorizationCurrent: outbound => current && outbound === authorized,
+  });
+  f.readCurrentCompletion.mockImplementation(async () => {
+    current = false;
+    return '합성 답변';
+  });
+  expect(
+    await f.execute('합성 질문', request, f.controller.signal),
+  ).toBeUndefined();
+  expect(f.confirm).toHaveBeenCalledTimes(1);
+  expect(f.confirmResult).not.toHaveBeenCalled();
+  expect(f.readCurrentCompletion).toHaveBeenCalledTimes(1);
 });

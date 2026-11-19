@@ -4,18 +4,68 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useInferenceConsent } from '../../../agent/execution/useInferenceConsent';
 import { createPublicWebEvidence } from '../publicWebEvidence';
 import { runDefaultPublicSearch } from '../defaultPublicSearch';
+import { resolveSettingsConsentOwner } from '../../../agent/execution/settingsConsentOwner';
+import { settingsConsentRepository } from '../../../storage/settingsConsentRepository';
+import { publicSearchSettingsPermissions } from '../../../agent/execution/settingsConsentCatalog';
+import { t } from '../../../i18n';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
 
-test.each([false, true])(
-  'public search sends only after the consent screen is allowed: %s',
-  async allow => {
+jest.mock('../../../agent/execution/settingsConsentOwner', () => ({
+  resolveSettingsConsentOwner: jest.fn(),
+}));
+jest.mock('../../../storage/settingsConsentRepository', () => ({
+  settingsConsentRepository: jest.fn(),
+}));
+
+test.each(['missing', 'approved', 'wrong-recipient', 'revoked'] as const)(
+  'public search uses the settings grant without a chat modal: %s',
+  async state => {
     const fixture = publicEvidenceFixture();
     const onResult = jest.fn();
+    let live = true;
+    const identity = {
+      providerId: fixture.selected.provider.id,
+      modelId: fixture.selected.modelId,
+      recipient: t('externalMedicalEvidence.publicSearchRecipient', {
+        recipient: fixture.selected.recipient,
+      }),
+      authorityGeneration: 'synthetic-generation',
+      credentialEpoch: 'synthetic-credential',
+    };
+    // Only protected persistence/selected-owner I/O is synthetic; authorization and dispatch stay real.
+    jest.mocked(resolveSettingsConsentOwner).mockResolvedValue({
+      slot: 'conversation',
+      domain: 'public-web',
+      identity,
+      isCurrent: () => live,
+    });
+    jest.mocked(settingsConsentRepository).mockResolvedValue({
+      read: jest.fn(async () =>
+        state === 'missing'
+          ? null
+          : {
+              version: 1,
+              catalogVersion: 'model-settings-v1',
+              identity: {
+                ...identity,
+                recipient:
+                  state === 'wrong-recipient'
+                    ? 'Other recipient'
+                    : identity.recipient,
+              },
+              permissions: [publicSearchSettingsPermissions.web],
+            },
+      ),
+    } as never);
     function Harness() {
       const { consent, disclosureSheet } = useInferenceConsent();
       const web = createPublicWebEvidence({
         selected: fixture.selected,
         consent,
+        beforeDispatch: async () => {
+          if (state === 'revoked') live = false;
+          return true;
+        },
       });
       function start() {
         // Leave the screen interactive while its consent decision is pending.
@@ -44,30 +94,28 @@ test.each([false, true])(
       </SafeAreaProvider>,
     );
     await fireEvent.press(view.getByTestId('search'));
-    expect(await view.findByTestId('inference-disclosure-sheet')).toBeTruthy();
-    expect(fixture.search).not.toHaveBeenCalled();
-    expect(
-      await view.findByText(
-        'General public health information about: blood pressure. Guidelines, associations, possible explanations and limitations.',
-      ),
-    ).toBeTruthy();
+    expect(view.queryByTestId('inference-disclosure-sheet')).toBeNull();
     expect(view.queryByText(/김테스트|170\/100/)).toBeNull();
-    await fireEvent.press(
-      view.getByTestId(
-        allow ? 'inference-disclosure-allow' : 'inference-disclosure-cancel',
-      ),
-    );
     await waitFor(() =>
       expect(onResult).toHaveBeenCalledWith(
         expect.objectContaining({
-          status: allow ? 'success' : 'consent_required',
+          status:
+            state === 'approved'
+              ? 'success'
+              : state === 'revoked'
+                ? 'unavailable'
+                : 'consent_required',
         }),
       ),
     );
-    expect(fixture.search).toHaveBeenCalledTimes(allow ? 1 : 0);
-    if (allow)
+    expect(fixture.search).toHaveBeenCalledTimes(state === 'approved' ? 1 : 0);
+    if (state === 'approved') {
+      expect(fixture.search.mock.calls[0]![0].query).toBe(
+        'General public health information about: blood pressure. Guidelines, associations, possible explanations and limitations.',
+      );
       expect(fixture.search.mock.calls[0]![0].query).not.toMatch(
         /김테스트|170\/100/,
       );
+    }
   },
 );

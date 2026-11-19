@@ -1,4 +1,3 @@
-import { t } from '../../i18n';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
@@ -49,10 +48,6 @@ export function ProviderSelectionChoices({
           onPress={() => onChoose(option)}
           option={option}
           requirements={requirements}
-          showCapabilities={
-            presentation === 'feature' ||
-            (presentation === 'settings-provider' && !local)
-          }
           selected={
             selected?.provider.id === option.provider.id &&
             selected.modelId === option.modelId
@@ -73,9 +68,6 @@ export function ProviderSelectionChoices({
         Apple
       </Text>
       {cards(true)}
-      {options.some(option => option.provider.id === APPLE_PCC_PROVIDER_ID) ? (
-        <Text>{t('provider.pcc.privacy')}</Text>
-      ) : null}
     </View>
   );
   const showConnectedPanel =
@@ -97,8 +89,7 @@ export function ProviderSelectionChoices({
       <Text accessibilityRole="header" style={styles.heading}>
         ChatGPT
       </Text>
-      <Text>{t('modelSettings.subscriptionNotice')}</Text>
-      <View style={styles.account}>
+      <View style={styles.catalogAccount}>
         {chatGPTSetup ? <ProviderCatalogAccount setup={chatGPTSetup} /> : null}
         {cards(false)}
       </View>

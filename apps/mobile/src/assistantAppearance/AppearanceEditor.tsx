@@ -112,6 +112,7 @@ export function AppearanceEditor({
           {avatarIds.map(id => (
             <Pressable
               key={id}
+              testID={`assistant-appearance-avatar-${id}`}
               accessibilityRole="radio"
               accessibilityLabel={avatars[id].label}
               accessibilityState={{ checked: avatar === id }}

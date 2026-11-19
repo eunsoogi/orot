@@ -1,3 +1,4 @@
+import { isExecutionConsentCurrent } from './consentCurrentness';
 import {
   reportInitialReply,
   type InitialReplyObserver,
@@ -59,6 +60,9 @@ export async function generateContextualInitialReply(input: {
     return observed.kind === 'value' && observed.value && !controller.signal.aborted;
   };
   const consent: ExecutionConsentPort = {
+    subscribeAuthorizationInvalidation: (request, listener) =>
+      input.consent.subscribeAuthorizationInvalidation?.(request, listener) ?? (() => {}),
+    isAuthorizationCurrent: (request) => isExecutionConsentCurrent(input.consent, request),
     authorize: async (request) => {
       deadline.pause();
       report('opening_consent', 'started');

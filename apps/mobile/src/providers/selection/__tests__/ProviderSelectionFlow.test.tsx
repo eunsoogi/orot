@@ -83,10 +83,10 @@ describe('ProviderSelectionFlow', () => {
       screen.getByText(providerSelectionText.chatGPTModelsUnavailable),
     ).toBeTruthy();
     expect(
-      screen.getByText(providerSelectionText.unavailableSelection, {
+      screen.queryByText(providerSelectionText.unavailableSelection, {
         exact: false,
       }),
-    ).toBeTruthy();
+    ).toBeNull();
     expect(selectionStore.save).not.toHaveBeenCalled();
     expect(onSelectionCommitted).not.toHaveBeenCalled();
   });
@@ -142,10 +142,10 @@ describe('ProviderSelectionFlow', () => {
       screen.queryByText(providerSelectionText.chatGPTReauthorize),
     ).toBeNull();
     expect(
-      screen.getByText(providerSelectionText.unavailableSelection, {
+      screen.queryByText(providerSelectionText.unavailableSelection, {
         exact: false,
       }),
-    ).toBeTruthy();
+    ).toBeNull();
 
     await fireEvent.press(screen.getByTestId('chatgpt-account-action'));
     await waitFor(() => expect(signInToOpenAI).toHaveBeenCalledWith(accountID));

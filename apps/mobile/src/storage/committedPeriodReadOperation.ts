@@ -1,7 +1,13 @@
+import {
+  reportCacheDecision,
+  endReportCalculationDiagnostic,
+} from '../healthEvidence/healthContext/reportCalculationDiagnostic';
 import { healthContextReportCacheKey } from '../healthEvidence/healthContext/reportCacheKey';
 import {
   createCommittedReportScope,
   committedReportCache,
+  committedReportCalendar,
+  immutableReportSnapshot,
 } from '../healthEvidence/healthContext/committedReportScope';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import type { HealthContextReport } from '../healthEvidence/healthContext/types';
@@ -29,13 +35,19 @@ export function committedPeriodReadOperation(
 ) {
   const reportScope = createCommittedReportScope(database);
   const reports = committedReportCache(reportScope.token, database)!;
+  const calendar = committedReportCalendar(reportScope.token, database)!;
   let disposed = false;
-  const cancel = () => reports.clear();
+  const cancel = () => {
+    calendar.dispose();
+    reports.clear();
+    endReportCalculationDiagnostic(reports);
+  };
   const dispose = () => {
     disposed = true;
     reportScope.dispose();
     signal?.removeEventListener('abort', cancel);
   };
+  if (signal?.aborted) cancel();
   signal?.addEventListener('abort', cancel, { once: true });
   const check = () => {
     if (signal?.aborted)
@@ -87,13 +99,30 @@ export function committedPeriodReadOperation(
           // Pending reports belong only to this transaction. Reuse calculation,
           // not validity: every source still checks live generations and revision.
           const cached = pending.get(key) ?? reports.get(key);
+          reportCacheDecision(
+            cached && same(cached, before)
+              ? pending.has(key)
+                ? 'pending_hit'
+                : 'committed_hit'
+              : cached
+                ? 'generation_miss'
+                : 'new_key',
+          );
+          // The transaction owns this immutable snapshot. Freeze before the
+          // first comparison so later checks can reuse the same pure digest.
           const report =
             cached && same(cached, before)
               ? cached
-              : await readHealthContextReport(
-                  reportExecutor,
-                  source.scope.window,
-                  [source.scope.topic],
+              : immutableReportSnapshot(
+                  await readHealthContextReport(
+                    reportExecutor,
+                    source.scope.window,
+                    [source.scope.topic],
+                    undefined,
+                    undefined,
+                    reports,
+                    calendar,
+                  ),
                 );
           const after = await readHealthContextGeneration(tx);
           check();

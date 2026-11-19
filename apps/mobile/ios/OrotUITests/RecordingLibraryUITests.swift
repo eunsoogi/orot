@@ -185,7 +185,7 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
         XCTAssertTrue(app.staticTexts["전사 전"].exists)
         XCTAssertTrue(app.staticTexts["00:02"].exists)
         if suffix == "320pt" {
-            XCTAssertEqual(UITestConditions.element(app, "recording-controls-scroll").frame.width, 320, accuracy: 0.5)
+            XCTAssertEqual(UITestConditions.element(app, "recording-review-scroll").frame.width, 320, accuracy: 0.5)
         }
         capture(app, "recording-library-list-\(suffix)")
         row.tap()
@@ -218,7 +218,7 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
         if editTranscript {
             reveal(app, "transcript-edit-0").tap()
             let input = FormUITestConditions.multilineInput(app, identifier: "transcript-input-0")
-            FormUITestConditions.replace(input, with: "수정됨", in: app, scrollID: "recording-controls-scroll")
+            FormUITestConditions.replace(input, with: "수정됨", in: app, scrollID: "recording-review-scroll")
             XCTAssertTrue(app.keyboards.firstMatch.waitForAppearance())
             capture(app, "recording-transcript-editor-\(suffix)")
             let save = UITestConditions.element(app, "transcript-save-0")
@@ -226,7 +226,7 @@ final class RecordingLibraryUITests: OrotFailFastTestCase {
             FormUITestConditions.reveal(
                 save,
                 in: app,
-                scrollID: "recording-controls-scroll",
+                scrollID: "recording-review-scroll",
                 horizontalPosition: 0.9,
             )
             save.tap()

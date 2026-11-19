@@ -27,6 +27,8 @@ test('explicit preparation preserves configured state and uses real choice, enab
   for (const expected of [
     'conversation.exists || onboarding.exists',
     'if !conversation.exists {',
+    'UITestConditions.element(app, "assistant-appearance-avatar-star")',
+    'XCTAssertEqual(star.label, "별")',
     'star.tap()',
     'guard save.isEnabled, save.isHittable',
     'save.tap()',

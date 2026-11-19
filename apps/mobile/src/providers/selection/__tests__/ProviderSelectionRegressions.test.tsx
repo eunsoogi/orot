@@ -1,3 +1,10 @@
+// View-only boundary; actual grant persistence and revocation use dedicated SQLite service tests.
+jest.mock('../../../agent/execution/saveModelSettingsConsent', () => ({
+  saveModelSettingsConsent: async (input: {
+    store: { save(value: unknown): Promise<void> };
+    selection: unknown;
+  }) => input.store.save(input.selection),
+}));
 import {
   act,
   fireEvent,

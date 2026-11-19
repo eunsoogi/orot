@@ -2202,7 +2202,7 @@ SPEC CHECKSUMS:
   fmt: ba0886e864ebb21d14c98b2e12e164b8002f5b93
   glog: 3cf7cb46f743c4bc758ae3e6d9c15bd1b4cfd6d4
   hermes-engine: fb9c515dfe1a835a0d2affdab9d2e1910f2af4c1
-  op-sqlite: 7b9af960b6f6500bc446ddfec8905f39f4ed5ee4
+  op-sqlite: 09f19aa27f74d1be3c75a4771b9c416e32b55ddf
   OpenSSL-Universal: ecee7b138fa75a74ecf00d7ffd248fb584739b9e
   RCT-Folly: 82921e585c0400eda46fac1068297aa9dfb035e4
   RCTDeprecation: 5cc865306ce4974b7a57ddbc575fd1f3fef41957

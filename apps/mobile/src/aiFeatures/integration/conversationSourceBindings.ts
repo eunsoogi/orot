@@ -1,3 +1,4 @@
+import { canBindBoundCapture } from './boundCaptureAuthority';
 import type { ConversationCaptureOwner } from './evidenceCaptureBatch';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
@@ -43,20 +44,22 @@ export function bindConversationSources(input: {
         input.registry.add({
           reference: referenceOnly(original),
           content: '',
-          capture: input.captureOwner
-            ? {
-                owner: input.captureOwner,
-                identity: {
-                  id: original.sourceId,
-                  revision: original.sourceRevision,
-                  bound: {
-                    parentId: input.parentId,
-                    parentRevision: input.parentRevision,
-                    reference: referenceOnly(citation),
+          capture:
+            input.captureOwner &&
+            canBindBoundCapture(input.captureOwner, input.storage)
+              ? {
+                  owner: input.captureOwner,
+                  identity: {
+                    id: original.sourceId,
+                    revision: original.sourceRevision,
+                    bound: {
+                      parentId: input.parentId,
+                      parentRevision: input.parentRevision,
+                      reference: referenceOnly(citation),
+                    },
                   },
-                },
-              }
-            : undefined,
+                }
+              : undefined,
           readSource,
           validate: async signal =>
             (await readSource(signal)).status === 'available',

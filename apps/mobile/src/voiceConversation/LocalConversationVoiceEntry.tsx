@@ -3,7 +3,7 @@ import { voiceStatus } from './voiceStatus';
 import { canActivateVoiceModel } from '../voiceSettings/voiceActivation';
 import { voiceSettingsStore } from '../voiceSettings/voiceSettingsStore';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, AppState } from 'react-native';
+import { AppState } from 'react-native';
 import { t } from '../i18n';
 import { VoiceCallIdentity } from './VoiceCallIdentity';
 import type { ConversationSessions } from '../ragConversation/conversationSessionTypes';
@@ -18,7 +18,8 @@ import { nativeVoiceConversation } from './nativeVoiceConversation';
 import { createVoiceSession, resumeVoice } from './voiceSession';
 import { initialVoiceState, type VoiceState } from './voiceTurn';
 let nextTurn = 0;
-/** Binds explicit voice consent and request ownership to the currently visible conversation. */
+/** The explicit start action owns local speech; OS microphone permissions remain native.
+ * Subsequent external model requests require the separately saved settings grant. */
 export function LocalConversationVoiceEntry(
   props: ConversationVoiceProps & {
     readonly onStatusChange?: (status: string) => void;
@@ -123,7 +124,6 @@ export function LocalConversationVoiceEntry(
     starting.current = true;
     setPreparing(true);
     setError(false);
-    let dialogOpen = false;
     try {
       if (!(await canActivateVoiceModel())) return;
       const result = await live.resolveSelectedAi();
@@ -135,66 +135,32 @@ export function LocalConversationVoiceEntry(
         if (mounted.current && run === attempt.current) setError(true);
         return;
       }
-      dialogOpen = true;
-      Alert.alert(
-        t('ragConversation.voice.consentTitle'),
-        t('ragConversation.voice.consentMessage', {
-          recipient: result.recipient,
-        }),
-        [
-          {
-            text: t('ragConversation.voice.consentCancel'),
-            style: 'cancel',
-            onPress: () => {
-              starting.current = false;
-              setPreparing(false);
-            },
-          },
-          {
-            text: t('ragConversation.voice.consentAccept'),
-            onPress: () => {
-              starting.current = false;
-              if (
-                run !== attempt.current ||
-                !mounted.current ||
-                latest.current.busy ||
-                latest.current.photoPending ||
-                !(latest.current.isEntryCurrent?.() ?? true) ||
-                AppState.currentState !== 'active'
-              ) {
-                if (mounted.current) setPreparing(false);
-                return;
-              }
-              selected.current = {
-                value: result,
-                revision: live.selectionRevision,
-                sessionId: live.sessionId,
-              };
-              clear();
-              setVisible(true);
-              session.current?.start({
-                sessionId: live.sessionId,
-                providerId: result.provider.id,
-                turnId: `voice-${Date.now()}-${++nextTurn}`,
-              });
-              setPreparing(false);
-            },
-          },
-        ],
-        {
-          onDismiss: () => {
-            starting.current = false;
-            if (mounted.current) setPreparing(false);
-          },
-        },
-      );
+      if (
+        run !== attempt.current ||
+        !mounted.current ||
+        latest.current.busy ||
+        latest.current.photoPending ||
+        !(latest.current.isEntryCurrent?.() ?? true) ||
+        AppState.currentState !== 'active'
+      )
+        return;
+      selected.current = {
+        value: result,
+        revision: live.selectionRevision,
+        sessionId: live.sessionId,
+      };
+      clear();
+      setVisible(true);
+      session.current?.start({
+        sessionId: live.sessionId,
+        providerId: result.provider.id,
+        turnId: `voice-${Date.now()}-${++nextTurn}`,
+      });
     } catch {
       if (mounted.current && run === attempt.current) setError(true);
     } finally {
-      if (!dialogOpen) {
-        starting.current = false;
-        if (mounted.current) setPreparing(false);
-      }
+      starting.current = false;
+      if (mounted.current) setPreparing(false);
     }
   };
   const status = voiceStatus(props.photoPending, error, preparing, state);

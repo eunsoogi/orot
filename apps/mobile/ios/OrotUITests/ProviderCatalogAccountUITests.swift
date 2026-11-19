@@ -20,6 +20,7 @@ final class ProviderCatalogAccountUITests: OrotFailFastTestCase {
 
         let syntheticLogin = UITestConditions.element(app, "provider-selection-auth-cancel")
         XCTAssertTrue(syntheticLogin.waitForAppearance(), app.debugDescription)
+        guard FormUITestConditions.reveal(syntheticLogin, in: app, scrollID: "provider-selection-fixture-controls") != nil else { return }
         syntheticLogin.tap()
 
         let screen = UITestConditions.element(app, "provider-selection-screen")
@@ -58,6 +59,9 @@ final class ProviderCatalogAccountUITests: OrotFailFastTestCase {
             "provider-selection-account-missing-scope",
         )
         XCTAssertTrue(missingScope.waitForAppearance(), app.debugDescription)
+        // Large text can put this synthetic setup control below the viewport.
+        // Reveal only its fixture scroller; keep the production card assertions unchanged.
+        guard FormUITestConditions.reveal(missingScope, in: app, scrollID: "provider-selection-fixture-controls") != nil else { return }
         let ready = NSPredicate { _, _ in missingScope.exists && missingScope.isHittable }
         XCTAssertEqual(
             UITestConditions.wait(for: [XCTNSPredicateExpectation(predicate: ready, object: nil)]),

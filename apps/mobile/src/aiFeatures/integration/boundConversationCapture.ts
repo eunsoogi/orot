@@ -1,3 +1,4 @@
+import { boundCaptureAuthorityUnchanged } from './boundCaptureAuthority';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import {
@@ -17,20 +18,22 @@ export function createBoundConversationCaptureOwner(input: {
   >;
   registry: LocalEvidenceReferenceRegistry;
 }): ConversationCaptureOwner {
-  return {
+  const owner: ConversationCaptureOwner = {
     registry: input.registry,
-    async prepare(requests, signal) {
+    async prepare(requests, signal, reads) {
       const bindings = requests.map(request => {
         if (!request.bound) throw new Error('Missing bound capture authority.');
         return request.bound;
       });
       const current = async () => {
-        if (signal.aborted) return false;
-        const rows = await input.storage.readMany(
-          bindings.map(binding => binding.parentId),
-        );
+        if (signal.aborted || !boundCaptureAuthorityUnchanged(owner))
+          return false;
+        const rows = await (
+          reads?.forStorage(input.storage) ?? input.storage
+        ).readMany(bindings.map(binding => binding.parentId));
         return (
           !signal.aborted &&
+          boundCaptureAuthorityUnchanged(owner) &&
           rows.length === bindings.length &&
           rows.every((row, index) =>
             Boolean(
@@ -45,7 +48,7 @@ export function createBoundConversationCaptureOwner(input: {
         input.registry,
         bindings.map(binding => binding.reference),
         signal,
-        { recheckFallback: true },
+        { recheckFallback: true, reads },
       );
       return {
         results: bindings.map(
@@ -62,4 +65,5 @@ export function createBoundConversationCaptureOwner(input: {
       };
     },
   };
+  return owner;
 }

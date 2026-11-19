@@ -5,7 +5,11 @@ import type {
 } from './types';
 import { HEALTH_CONTEXT_TOPICS } from './types';
 import { validateHealthContextCalendar } from './calendarValidation';
-import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
+import {
+  fingerprint,
+  stableJson,
+} from '../../aiFeatures/integration/evidenceUtils';
+import { isImmutableReportSnapshot } from './committedReportScope';
 
 export interface HealthContextScope {
   readonly kind: 'health_context_period';
@@ -98,12 +102,24 @@ export function parseHealthContextScope(
   }
 }
 
-/** Unrelated out-of-period deletions must not change a historical data revision. */
+const revisions = new WeakMap<
+  HealthContextReport,
+  { scopeKey: string; revision: string }
+>();
+
+/** Exclude out-of-period deletions from the historical digest. Reuse one pure
+ * digest per immutable report and exact scope; live generation checks belong to
+ * the reader and its callers. */
 export function healthContextRevision(
   scope: HealthContextScope,
   report: HealthContextReport,
 ): string {
-  return fingerprint({
+  const scopeKey = isImmutableReportSnapshot(report)
+    ? stableJson(scope)
+    : undefined;
+  const cached = scopeKey === undefined ? undefined : revisions.get(report);
+  if (cached && cached.scopeKey === scopeKey) return cached.revision;
+  const revision = fingerprint({
     scope,
     facts: {
       window: report.window,
@@ -116,4 +132,6 @@ export function healthContextRevision(
       limitations: report.limitations,
     },
   });
+  if (scopeKey !== undefined) revisions.set(report, { scopeKey, revision });
+  return revision;
 }

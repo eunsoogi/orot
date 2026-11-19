@@ -27,6 +27,7 @@ export function useNextVisitQuestionsRoute(
 ) {
   const {
     confirmConsent,
+    consent,
     loadSavedVisitQuestions,
     onOpenProviderSelection,
     resolveSelectedAi,
@@ -89,11 +90,9 @@ export function useNextVisitQuestionsRoute(
         setAppointment({ status: 'error', message: copy.appointment.error });
     }
   }, [operations]);
-
   useEffect(() => {
     refreshAppointment().catch(() => undefined);
   }, [refreshAppointment]);
-
   const appointmentId =
     appointment.status === 'ready' ? appointment.appointment.id : null;
   useEffect(() => {
@@ -122,7 +121,6 @@ export function useNextVisitQuestionsRoute(
       active = false;
     };
   }, [appointmentId, loadSavedVisitQuestions, savedRetry]);
-
   const onGenerate = useCallback(
     async (
       currentAppointment: Appointment,
@@ -159,6 +157,7 @@ export function useNextVisitQuestionsRoute(
             appointment: currentAppointment,
             selectedAi: resolved,
             confirmConsent,
+            consent,
             signal: activeSignal,
             ...(generatedArtifactTools ? { generatedArtifactTools } : {}),
             ...(observer ? { observer } : {}),
@@ -190,6 +189,7 @@ export function useNextVisitQuestionsRoute(
       operations,
       generatedArtifactTools,
       confirmConsent,
+      consent,
       rememberValidator,
       resolveSelectedAi,
       refreshAppointment,

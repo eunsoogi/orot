@@ -18,7 +18,8 @@ export function resolutionMessage(
       return providerSelectionText.unsupportedCapabilities;
     case 'selection-required':
     case 'selection-unavailable':
-      return providerSelectionText.unavailableSelection;
+      // Selection failure still blocks confirmation; the owner removed this repeated notice.
+      return null;
   }
 }
 
@@ -37,10 +38,8 @@ export function selectionSummaryMessage(input: {
     return `${providerSelectionText.selectedPrefix} ${input.displayName ?? ''}`;
   if (!input.savedModelId) return providerSelectionText.selectPrompt;
   const identity = `${providerSelectionText.selectedPrefix} ${input.savedModelId}`;
-  // Feature entry still needs its unavailable-selection recovery feedback.
-  return input.presentation === 'settings-provider'
-    ? identity
-    : `${identity}\n${providerSelectionText.unavailableSelection}`;
+  // Keep saved identity in every entry surface without duplicating availability warnings.
+  return identity;
 }
 
 export const providerSelectionScreenStyles = StyleSheet.create({

@@ -67,7 +67,7 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
         _ = try AppearanceUITestConditions.select(false, returningTo: app, testCase: self, captureOriginal: { appearance = $0 })
         _ = try RecordingFixtureUITestConditions.select(app, testCase: self)
         let whole = app.buttons["녹음 전체 듣기"]
-        FormUITestConditions.reveal(whole, in: app, scrollID: "recording-controls-scroll")
+        FormUITestConditions.reveal(whole, in: app, scrollID: "recording-review-scroll")
         whole.tap()
         let error = node(app, "recording-playback-error")
         XCTAssertTrue(UITestConditions.exists(error))
@@ -94,7 +94,7 @@ final class RecordingPlaybackUITests: OrotFailFastTestCase {
     @MainActor
     private func savedRow(_ app: XCUIApplication) -> XCUIElement {
         let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Synthetic transcription test recording")).firstMatch
-        FormUITestConditions.reveal(row, in: app, scrollID: "recording-controls-scroll")
+        FormUITestConditions.reveal(row, in: app, scrollID: "recording-review-scroll")
         return row
     }
 
