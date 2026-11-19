@@ -2,7 +2,9 @@ const dayMilliseconds = 86_400_000;
 const formatters = new Map<string, Intl.DateTimeFormat>();
 const starts = new WeakMap<Intl.DateTimeFormat, Map<string, number>>();
 const maximumZones = 4;
-const maximumDates = 128;
+// Scope decoding and report calculation overlap on multi-year histories.
+// Keep only on-demand civil midnights, bounded independently per cached zone.
+const maximumDates = 4096;
 
 /** Format instants into the caller's explicit civil timezone. */
 export function dayFormatter(timeZone: string): Intl.DateTimeFormat {
@@ -27,21 +29,26 @@ export function dayFormatter(timeZone: string): Intl.DateTimeFormat {
   return formatter;
 }
 
-export function dateKey(
-  formatter: Intl.DateTimeFormat,
-  instant: number,
-): string {
-  const parts = formatter.formatToParts(new Date(instant));
+function localDateParts(formatter: Intl.DateTimeFormat, instant: number) {
+  const parts = formatter.formatToParts(instant);
   const part = (type: string) =>
     parts.find(value => value.type === type)!.value;
   // Intl uses era years; ISO uses astronomical years (1 BC is year 0000).
   const year =
     part('era') === 'BC' ? 1 - Number(part('year')) : Number(part('year'));
+  return { year, month: part('month'), day: part('day') };
+}
+
+export function dateKey(
+  formatter: Intl.DateTimeFormat,
+  instant: number,
+): string {
+  const { year, month, day } = localDateParts(formatter, instant);
   const isoYear =
     year >= 0 && year <= 9999
       ? String(year).padStart(4, '0')
       : `${year < 0 ? '-' : '+'}${String(Math.abs(year)).padStart(6, '0')}`;
-  return `${isoYear}-${part('month')}-${part('day')}`;
+  return `${isoYear}-${month}-${day}`;
 }
 
 /** Numeric civil ordering also works across ISO expanded-year and era boundaries. */
@@ -68,11 +75,20 @@ export function dayStart(date: string, formatter: Intl.DateTimeFormat): number {
     return cached;
   }
   const nominal = civilDateTime(date);
+  const utc = new Date(nominal);
+  // Compare Gregorian triples directly. The signed year remains the primary
+  // key across eras, without formatting and reparsing ISO in every probe.
+  const target =
+    utc.getUTCFullYear() * 10000 +
+    (utc.getUTCMonth() + 1) * 100 +
+    utc.getUTCDate();
   let low = nominal - 36 * 3_600_000;
   let high = nominal + 36 * 3_600_000;
   while (low < high) {
     const middle = low + Math.floor((high - low) / 2);
-    if (civilDateTime(dateKey(formatter, middle)) < nominal) low = middle + 1;
+    const { year, month, day } = localDateParts(formatter, middle);
+    if (year * 10000 + Number(month) * 100 + Number(day) < target)
+      low = middle + 1;
     else high = middle;
   }
   // Adjacent days and separate health topics share midnight boundaries. Keep the

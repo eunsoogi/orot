@@ -23,7 +23,7 @@ test('bounds retained zones and dates and isolates civil timezones', () => {
   const first = dayFormatter('Pacific/Honolulu');
   const format = jest.spyOn(first, 'formatToParts');
   const original = dayStart('2025-01-01', first);
-  for (let n = 1; n <= 128; n++) dayStart(shiftDate('2025-01-01', n), first);
+  for (let n = 1; n <= 4096; n++) dayStart(shiftDate('2025-01-01', n), first);
   format.mockClear();
   expect(dayStart('2025-01-01', first)).toBe(original);
   expect(format).toHaveBeenCalled();

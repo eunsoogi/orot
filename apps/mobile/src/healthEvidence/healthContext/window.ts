@@ -39,29 +39,25 @@ export function healthContextDays(
       : endDate;
   const lastCivilTime = civilDateTime(lastDate);
   const days: HealthContextDay[] = [];
-  for (
-    let date = dateKey(formatter, from);
-    civilDateTime(date) <= lastCivilTime;
-    date = shiftDate(date, 1)
-  ) {
-    const start = new Date(dayStart(date, formatter)).toISOString();
-    const end = new Date(dayStart(shiftDate(date, 1), formatter)).toISOString();
+  let date = dateKey(formatter, from);
+  let start = new Date(dayStart(date, formatter)).toISOString();
+  while (civilDateTime(date) <= lastCivilTime) {
+    const next = shiftDate(date, 1);
+    const end = new Date(dayStart(next, formatter)).toISOString();
     // Preserve the caller's exact endpoints for SQL's precision-preserving timestamp keys.
-    const clippedFrom =
-      compareTimestamps(window.fromInclusive, start) > 0
-        ? window.fromInclusive
-        : start;
-    const clippedTo =
-      compareTimestamps(window.toExclusive, end) < 0 ? window.toExclusive : end;
+    const partialStart = compareTimestamps(window.fromInclusive, start) > 0;
+    const partialEnd = compareTimestamps(window.toExclusive, end) < 0;
+    const clippedFrom = partialStart ? window.fromInclusive : start;
+    const clippedTo = partialEnd ? window.toExclusive : end;
     if (compareTimestamps(clippedFrom, clippedTo) < 0)
       days.push({
         date,
         fromInclusive: clippedFrom,
         toExclusive: clippedTo,
-        partial:
-          compareTimestamps(clippedFrom, start) !== 0 ||
-          compareTimestamps(clippedTo, end) !== 0,
+        partial: partialStart || partialEnd,
       });
+    date = next;
+    start = end;
   }
   return days;
 }

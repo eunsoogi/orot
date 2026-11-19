@@ -21,6 +21,8 @@ import type {
  * Exact half-open keys preserve DST, partial days and fractional endpoints without
  * sorting all samples together with calendar boundaries. No sample or day is capped.
  * A sorted timeline carries the maximum prior workout end, avoiding a workout scan per sample.
+ * Heart candidates have one consumer, so stream them into the timeline without
+ * copying every sample into a second temporary table.
  * At a shared instant, interval ends sort before workout starts and point samples after them:
  * [start, end) intervals exclude an adjacent workout, while points include a workout's start.
  * Workouts can include pauses; unmatched samples do not establish rest or inactivity.
@@ -61,7 +63,7 @@ export async function addHeartRateActivityContext(
         AND json_extract(r.payload_json, '$.concept') = 'workout_duration'
         AND ${currentEvidenceCondition('health_observation')}
         AND ${at} < ? AND ${end} > ? AND ${end} > ${at} ${cutoff}
-    ), heart AS MATERIALIZED (
+    ), heart AS NOT MATERIALIZED (
       SELECT ${at} AS start_key, ${end} AS end_key,
         json_extract(r.payload_json, '$.value.unit') AS unit,
         json_extract(r.payload_json, '$.value.amount') AS amount,
@@ -84,7 +86,7 @@ export async function addHeartRateActivityContext(
       UNION ALL
       SELECT NULL, NULL, NULL, NULL, NULL, NULL, start_key, 1, end_key FROM workouts
     ), timeline AS (
-      SELECT e.*, max(workout_end) OVER (
+      SELECT start_key, end_key, unit, amount, sensor, date, event_order, max(workout_end) OVER (
         ORDER BY event_key, event_order ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
       ) AS latest_workout_end FROM events e
     ), classified AS (
