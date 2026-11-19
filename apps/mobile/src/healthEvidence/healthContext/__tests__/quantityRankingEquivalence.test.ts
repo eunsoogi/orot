@@ -48,6 +48,24 @@ test('quantity aggregation avoids the second time sort without changing any orde
         value: { kind: 'quantity', amount, unit: 'count/min' },
       });
     }
+    // These IDs precede the admitted endpoint IDs when the timestamp matches.
+    // A second endpoint lookup must still honor ingestion and live deletion.
+    const staleId = '0-stale-first';
+    for (const [id, at, ingestedAt] of [
+      [staleId, samples[0][1], '2026-10-02T00:00:00.000Z'],
+      ['0-late-last', samples[6][1], '2027-01-01T00:00:00.0001Z'],
+    ] as const) {
+      await repository.put('health_observation', {
+        ...healthObservation(id, 'heart_rate', at),
+        ingestedAt,
+      });
+    }
+    await f.database.execute(
+      `INSERT INTO transcript_artifact_staleness
+        (transcript_id,artifact_kind,artifact_id,superseded_segment_id,current_segment_id,invalidated_at)
+        VALUES ('t','health_observation',?,'prior','current','2026-10-02T00:00:00.000Z')`,
+      [staleId],
+    );
     // The measurements-only history predicate must exclude these stored rows
     // exactly as the full admission expression does, including workout casing.
     for (const [id, concept, observationKind] of [

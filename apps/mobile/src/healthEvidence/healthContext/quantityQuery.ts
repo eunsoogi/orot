@@ -89,34 +89,42 @@ export async function readHealthQuantityContext(
           min(at_key || hex(id) || '"' || at) AS first_row
         FROM ranked GROUP BY date, concept, unit, sensor
       )`;
-  // SUM and AVG use the same SQLite accumulator. Keep its original newest-first
-  // input order, then seek only the last sample for each finished daily group.
+  // Keep SUM's original newest-first input order. A second pass seeks only
+  // each group's endpoint keys, so the aggregate carries no raw timestamp or
+  // per-sample encoded ID. Both seeks repeat the exact admission and cutoff
+  // predicates because several excluded samples can share an endpoint key.
+  const endpoint = (
+    value: 'id' | 'effective_at',
+    key: 'first_key' | 'last_key',
+  ) =>
+    `(SELECT r.${value} FROM health_observations r
+          WHERE ${at} = t.${key} AND (${normalizedConcept}) = t.concept
+            AND ${unit} = t.unit AND (${sensor}) = t.sensor
+            AND ${admitted} ${ingestionFilter}
+          ORDER BY r.id LIMIT 1)`;
   const indexedDaily = `totals AS (
         SELECT date, concept, unit, sensor, count(*) AS samples,
           min(amount) AS minimum, max(amount) AS maximum,
           sum(amount ORDER BY at_key DESC, id) AS total,
           max(at_key) AS last_key,
-          min(at_key || hex(id) || '"' || at) AS first_row
+          min(at_key) AS first_key
         FROM observations GROUP BY date, concept, unit, sensor
       ), picked AS MATERIALIZED (
-        SELECT t.*, (SELECT r.id FROM health_observations r
-          WHERE ${at} = t.last_key AND (${normalizedConcept}) = t.concept
-            AND ${unit} = t.unit AND (${sensor}) = t.sensor
-            AND ${admitted} ${ingestionFilter}
-          ORDER BY r.id LIMIT 1) AS last_id
+        SELECT t.*, ${endpoint('effective_at', 'first_key')} AS first_at,
+          ${endpoint('id', 'last_key')} AS last_id
         FROM totals t
       ), daily AS MATERIALIZED (
         SELECT d.*, CAST(d.total AS REAL) / d.samples AS mean,
           ${amount} AS latest, r.effective_at AS last_at
         FROM picked d JOIN health_observations r ON r.id = d.last_id
       )`;
-  // The timestamp terminator and hex ID retain binary tie order. The quote
-  // sorts before Hex digits so a prefix ID comes before its longer neighbor.
+  // The legacy packed key also retains binary tie order: the quote sorts
+  // before hex digits, including when one ID is the prefix of another.
   const result = await executor.execute(
     `SELECT * FROM (
       WITH days(date, from_key, to_key) AS (${healthContextCalendarSql}),
       observations AS MATERIALIZED (
-        SELECT d.date, r.id, r.effective_at AS at, ${at} AS at_key,
+        SELECT d.date, r.id, ${indexedLatest ? '' : 'r.effective_at AS at, '}${at} AS at_key,
           ${normalizedConcept} AS concept, ${unit} AS unit, ${amount} AS amount,
           ${sensor} AS sensor
         FROM days d CROSS JOIN health_observations r
@@ -138,7 +146,7 @@ export async function readHealthQuantityContext(
       )
       SELECT d.date, d.concept, d.unit, d.sensor, d.samples,
         d.minimum, d.maximum, d.mean, d.total, d.latest, d.last_at,
-        substr(d.first_row, instr(d.first_row, '"') + 1) AS first_at, s.selected_rank
+        ${indexedLatest ? 'd.first_at' : `substr(d.first_row, instr(d.first_row, '"') + 1) AS first_at`}, s.selected_rank
       FROM daily d JOIN selected s USING (concept, unit, sensor)
       ORDER BY s.selected_rank, d.date
     )`,
