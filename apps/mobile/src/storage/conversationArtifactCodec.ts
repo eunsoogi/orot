@@ -3,6 +3,7 @@ import { validConversationReportTarget } from './conversationReportTarget';
 import { validConversationPhotoArtifactSource } from './conversationPhotoArtifactValidation';
 import { isRecordKind } from '@orot/storage';
 import { parseHealthContextScope } from '../healthEvidence/healthContext/scope';
+import { hasConversationCitationReferences } from './conversationCitationMembership';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { parseHealthSummaryReference } from '../ragConversation/healthSummary';
 import { parseConversationVisitQuestionReference } from '../ragConversation/conversationVisitQuestionReference';
@@ -214,12 +215,7 @@ export function decodeConversationArtifact(
     if (
       value.citations !== undefined &&
       (!Array.isArray(value.citations) ||
-        value.citations.some(
-          citation =>
-            !sources.some(
-              source => stableJson(source.reference) === stableJson(citation),
-            ),
-        ))
+        !hasConversationCitationReferences(sources, value.citations))
     )
       return null;
     // Bad optional receipts must not make a valid answer impossible to save.
