@@ -85,3 +85,25 @@ test('original Recording contextual rail and Back guards remain independent of t
   ])
     assert.ok(rail.includes(value), value);
 });
+
+test('Recording boundary waits for the actual fullscreen route without weakening geometry', () => {
+  const geometry = readFileSync(
+    'apps/mobile/ios/OrotUITests/NavigationGeometryUITestConditions.swift',
+    'utf8',
+  );
+  const helper = geometry.slice(
+    geometry.indexOf('static func captureRecordingBoundary'),
+    geometry.indexOf('/// Measure child viewports'),
+  );
+  const product = readFileSync('apps/mobile/src/recording/RecordingControls.tsx', 'utf8');
+  assert.ok(product.includes('testID="recording-controls-fullscreen"'));
+  assert.ok(helper.includes('route(app, markers: ["recording-controls-fullscreen"])'));
+  assert.ok(
+    helper.includes(
+      'return try captureBoundary(app, navigationID: "navigation-back", name: "recording-content-boundary", testCase: testCase)',
+    ),
+  );
+  assert.ok(!helper.includes('recording-controls-scroll'));
+  assert.ok(!helper.includes('timeout'));
+  assert.equal((journey.match(/captureRecordingBoundary\(app, testCase: self\)/g) ?? []).length, 2);
+});

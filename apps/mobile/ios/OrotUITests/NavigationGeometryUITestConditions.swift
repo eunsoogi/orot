@@ -194,7 +194,8 @@ enum NavigationGeometryUITestConditions {
     /// Returns the recording route's measured UIWindow frame after checking its content and actions.
     @discardableResult
     static func captureRecordingBoundary(_ app: XCUIApplication, testCase: XCTestCase) throws -> CGRect {
-        NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
+        // Recording capture is fullscreen; the removed scroll container is not a route-ready signal.
+        NavigationUITestConditions.route(app, markers: ["recording-controls-fullscreen"])
         return try captureBoundary(app, navigationID: "navigation-back", name: "recording-content-boundary", testCase: testCase)
     }
 
