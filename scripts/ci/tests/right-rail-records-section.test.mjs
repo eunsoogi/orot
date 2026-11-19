@@ -55,7 +55,7 @@ test('Schedule retains Records selection and measured boundary, then returns thr
   assert.doesNotMatch(section, /navigation-back|navigation-tab-schedule|sleep\(|timeout:/);
   assert.ok(
     source.includes(
-      'verifyScheduleSectionBoundary(app, rootFrame: try XCTUnwrap(homeFrame), testCase: testCase)',
+      'verifyScheduleSectionBoundary(app, rootFrame: XCTUnwrap(homeFrame), testCase: testCase)',
     ),
   );
   const project = readFileSync('apps/mobile/ios/OrotMobile.xcodeproj/project.pbxproj', 'utf8');

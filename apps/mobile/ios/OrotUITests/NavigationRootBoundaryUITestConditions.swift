@@ -17,7 +17,7 @@ extension NavigationGeometryUITestConditions {
                 homeFrame = measuredFrame
             }
         }
-        try verifyScheduleSectionBoundary(app, rootFrame: try XCTUnwrap(homeFrame), testCase: testCase)
+        try verifyScheduleSectionBoundary(app, rootFrame: XCTUnwrap(homeFrame), testCase: testCase)
         try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         return try XCTUnwrap(homeFrame)
     }

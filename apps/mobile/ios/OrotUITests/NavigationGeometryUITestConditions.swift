@@ -222,5 +222,4 @@ enum NavigationGeometryUITestConditions {
         attachment.lifetime = .keepAlways
         testCase.add(attachment)
     }
-
 }
