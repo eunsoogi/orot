@@ -61,12 +61,43 @@ import UIKit
                     }
                 }
             }
+            let receipt = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("orot-active-tab-\(run.uuidString.lowercased()).log")
+            let sql = try? String(contentsOf: receipt, encoding: .utf8)
+            var timebase = mach_timebase_info_data_t()
+            guard mach_timebase_info(&timebase) == KERN_SUCCESS else { return "{\"status\":\"unavailable\"}" }
             let value: [String: Any] = ["run": run.uuidString, "events": events, "overflow": overflow,
                                         "sampleTick": mach_absolute_time(), "visible": ready,
-                                        "truncated": !pending.isEmpty]
+                                        "truncated": !pending.isEmpty, "sql": sql as Any? ?? NSNull(),
+                                        "timebaseNumer": timebase.numer, "timebaseDenom": timebase.denom]
             guard let data = try? JSONSerialization.data(withJSONObject: value),
                   let result = String(data: data, encoding: .utf8) else { return "{\"status\":\"unavailable\"}" }
             return result
+        }
+
+        private func scrollRoute(_ scroll: UIScrollView?) -> String {
+            guard let scroll else { return "unavailable" }
+            let targets = ["overview-screen", "records-layout", "appointments-scroll"]
+            var pending: [UIView] = [scroll]
+            var matches: Set<String> = []
+            var ancestor: UIView? = scroll
+            var depth = 0
+            while let view = ancestor, depth < 64 {
+                if let id = view.accessibilityIdentifier, targets.contains(id) {
+                    matches.insert(id)
+                }
+                ancestor = view.superview
+                depth += 1
+            }
+            var visited = 0
+            while visited < 2048, let view = pending.popLast() {
+                visited += 1
+                pending.append(contentsOf: view.subviews)
+                if let id = view.accessibilityIdentifier, targets.contains(id) {
+                    matches.insert(id)
+                }
+            }
+            return pending.isEmpty && ancestor == nil && matches.count == 1 ? matches.first! : "unavailable"
         }
 
         override func sendEvent(_ event: UIEvent) {
@@ -75,16 +106,26 @@ import UIKit
                     guard [.began, .moved, .ended].contains(touch.phase) else { continue }
                     var node = touch.view
                     var kind = "other"
+                    var scrollTarget = "unavailable"
                     var scroll: UIScrollView?
                     while let view = node {
-                        if let id = view.accessibilityIdentifier,
+                        if scroll == nil {
+                            scroll = view as? UIScrollView
+                        }
+                        if let id = view.accessibilityIdentifier, kind == "other",
                            ["navigation-tab-overview", "navigation-tab-records", "records-section-schedule",
-                            "schedule-open-appointments", "appointments-scroll"].contains(id)
+                            "schedule-open-appointments"].contains(id)
                         {
                             kind = id
                         }
-                        if scroll == nil {
-                            scroll = view as? UIScrollView
+                        if let id = view.accessibilityIdentifier,
+                           ["appointments-scroll", "navigation-route-scroll"].contains(id)
+                        {
+                            let owners = (view as? UIScrollView).map { [$0] } ??
+                                view.subviews.compactMap { $0 as? UIScrollView }
+                            if owners.count == 1, owners.first === scroll {
+                                scrollTarget = id
+                            }
                         }
                         node = view.superview
                     }
@@ -110,7 +151,8 @@ import UIKit
                     }
                     if events.count < 1024 {
                         events.append(["sequence": sequence, "tick": mach_absolute_time(), "phase": touch.phase.rawValue,
-                                       "target": kind, "touch": touchID, "scroll": scrollID, "offset": offset])
+                                       "target": kind, "touch": touchID, "scroll": scrollID, "offset": offset,
+                                       "scrollRoute": scrollRoute(scroll), "scrollTarget": scrollTarget])
                     } else {
                         overflow = true
                     }

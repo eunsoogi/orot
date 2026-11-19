@@ -72,6 +72,11 @@ export const providerSelectionTests = [
   'OrotUITests/DailyReportLocalRecoveryUITests/testActualRecoveryConsumerRestartsWithoutAutomaticSaveAndSavesOnceExplicitly',
 ];
 export const fixtureTests = [
+  'OrotUITests/ActiveTabResponsivenessUITests/testRecordsDuringActiveTool',
+  'OrotUITests/ActiveTabResponsivenessUITests/testOverviewDuringActiveTool',
+  'OrotUITests/ActiveTabResponsivenessUITests/testAppointmentsDuringActiveTool',
+  'OrotUITests/ActiveTabResponsivenessUITests/testPostSQLInputDoesNotCountAsOverlap',
+  'OrotUITests/ActiveTabResponsivenessUITests/testAppointmentsScrollDuringActiveTool',
   'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
   'OrotUITests/SummaryAndLiteratureUITests/testLiteratureConsentSearchRecoveryAndCancelledReadAcrossAppearances',
   'OrotUITests/AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',

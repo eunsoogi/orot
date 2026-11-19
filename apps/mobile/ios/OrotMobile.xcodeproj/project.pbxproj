@@ -320,6 +320,7 @@
 		E19800000000000000000002 /* ExportDismissalGeometryRegression.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19800000000000000000004 /* ExportDismissalGeometryRegression.swift */; };
 		A7C87A6DBF7A4A8FA2D86B11 /* OverviewMetricGeometryConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C87A6DBF7A4A8FA2D86B12 /* OverviewMetricGeometryConditions.swift */; };
 		FA6E3C21B77B41D198C04A31 /* OverviewDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */; };
+		FA6E3C21B77B41D198C04A33 /* ActiveTabResponsivenessUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A34 /* ActiveTabResponsivenessUITests.swift */; };
 		195917C9C1387243AC8FDFDD /* ChartConsumerAcceptanceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */; };
 		F933D6D520F547F18E488B09 /* HealthImportDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */; };
 		7217B3F63921437EA941492F /* DiseaseHypothesesDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */; };
@@ -578,6 +579,7 @@
 		CA48CD63B8574397A72A3267 /* NavigationGeometryReservedRegionMatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationGeometryReservedRegionMatcher.swift; sourceTree = "<group>"; };
 		A7C87A6DBF7A4A8FA2D86B12 /* OverviewMetricGeometryConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverviewMetricGeometryConditions.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverviewDuoUITests.swift; sourceTree = "<group>"; };
+		FA6E3C21B77B41D198C04A34 /* ActiveTabResponsivenessUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActiveTabResponsivenessUITests.swift; sourceTree = "<group>"; };
 		1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChartConsumerAcceptanceUITests.swift; sourceTree = "<group>"; };
 		0E09FAE9ED8C4367AE90F117 /* HealthImportDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HealthImportDuoUITests.swift; sourceTree = "<group>"; };
 		F733F58FE3F4411E8A9EC207 /* DiseaseHypothesesDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DiseaseHypothesesDuoUITests.swift; sourceTree = "<group>"; };
@@ -1186,6 +1188,7 @@
 				D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */,
 				AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */,
 				FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */,
+				FA6E3C21B77B41D198C04A34 /* ActiveTabResponsivenessUITests.swift */,
 				1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */,
 				A7C87A6DBF7A4A8FA2D86B12 /* OverviewMetricGeometryConditions.swift */,
 				D4687A5C9F8E4A2B913C7602 /* OverviewMetricScrollGeometry.swift */,
@@ -1768,6 +1771,7 @@
 				D3A73F6214CB458BAE72EAD1 /* NavigationGeometryUITestConditions.swift in Sources */,
 				AC917F6214CB458BAE72EAD1 /* NavigationMeasuredReservation.swift in Sources */,
 				FA6E3C21B77B41D198C04A31 /* OverviewDuoUITests.swift in Sources */,
+				FA6E3C21B77B41D198C04A33 /* ActiveTabResponsivenessUITests.swift in Sources */,
 				195917C9C1387243AC8FDFDD /* ChartConsumerAcceptanceUITests.swift in Sources */,
 				A7C87A6DBF7A4A8FA2D86B11 /* OverviewMetricGeometryConditions.swift in Sources */,
 				F933D6D520F547F18E488B09 /* HealthImportDuoUITests.swift in Sources */,

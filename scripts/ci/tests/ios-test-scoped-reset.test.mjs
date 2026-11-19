@@ -101,6 +101,11 @@ test('fresh creation, visit preparation, migration, document import, backup and 
   );
   // Stateful journeys, including symptom recovery and appointment input replacement, require a fresh local store.
   assert.deepEqual(full, [
+    'OrotUITests/ActiveTabResponsivenessUITests/testRecordsDuringActiveTool',
+    'OrotUITests/ActiveTabResponsivenessUITests/testOverviewDuringActiveTool',
+    'OrotUITests/ActiveTabResponsivenessUITests/testAppointmentsDuringActiveTool',
+    'OrotUITests/ActiveTabResponsivenessUITests/testPostSQLInputDoesNotCountAsOverlap',
+    'OrotUITests/ActiveTabResponsivenessUITests/testAppointmentsScrollDuringActiveTool',
     'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
     'OrotUITests/SummaryAndLiteratureUITests/testLiteratureConsentSearchRecoveryAndCancelledReadAcrossAppearances',
     'OrotUITests/OverviewDuoUITests/testOverviewSummariesReflowAndVisitPreparationRemainsReachable',

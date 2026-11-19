@@ -15,6 +15,7 @@ export interface ActiveTabOverlapSample {
   readonly scrollFinished: number;
   readonly scrollOwnerBefore: string;
   readonly scrollOwnerAfter: string;
+  readonly scrollOwnerMatchesWrapper: boolean;
   readonly touchID: string;
   readonly scrollGesture: string;
   readonly scrollTouchBefore: string;
@@ -49,6 +50,7 @@ export function observedActiveTabOverlap(
     sample.scrollOwnerBefore.length > 0 &&
     sample.scrollOwnerBefore !== '0' &&
     sample.scrollOwnerBefore === sample.scrollOwnerAfter &&
+    sample.scrollOwnerMatchesWrapper &&
     sample.touchID.length > 0 &&
     sample.scrollGesture.length > 0 &&
     sample.scrollGesture !== sample.touchID &&
@@ -58,10 +60,8 @@ export function observedActiveTabOverlap(
     sample.sqlStarted < sample.touch &&
     sample.touch < sample.sqlFinished &&
     sample.visible >= sample.touch &&
-    sample.visible < sample.sqlFinished &&
     sample.scrollStarted >= sample.visible &&
     sample.scrollStarted < sample.scrollFinished &&
-    sample.scrollFinished < sample.sqlFinished &&
     sample.scrollAfter !== sample.scrollBefore
   );
 }

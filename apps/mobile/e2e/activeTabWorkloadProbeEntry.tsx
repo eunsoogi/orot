@@ -1,6 +1,6 @@
 import '../src/agent/polyfills';
 import 'react-native-get-random-values';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AppRegistry,
   Button,
@@ -31,6 +31,7 @@ function recordWorkloadEvent(event: string) {
  * The shared app singleton keeps the tool and actual routes on one connection. */
 function ActiveTabWorkloadProbe() {
   const [state, setState] = useState('preparing');
+  const release = useRef<(() => void) | undefined>(undefined);
   const [database, setDatabase] =
     useState<
       Awaited<
@@ -107,6 +108,9 @@ function ActiveTabWorkloadProbe() {
   if (!database) return <Text testID="active-tab-workload-state">{state}</Text>;
   const start = () => {
     const end = new Date();
+    const manager = NativeModules.SettingsManager;
+    const settings =
+      manager?.settings ?? manager?.getConstants?.().settings ?? {};
     setState('running');
     recordWorkloadEvent('tool-requested');
     runActiveTabHealthWorkload(
@@ -119,7 +123,18 @@ function ActiveTabWorkloadProbe() {
       new AbortController().signal,
       recordWorkloadEvent,
     )
-      .then(count => setState(count === 30000 ? 'finished' : 'failed'))
+      .then(async count => {
+        if (count !== 30000)
+          throw new Error('Synthetic workload is incomplete.');
+        if (settings.OROT_WORKLOAD_HOLD_SETTLEMENT === 'YES') {
+          setState('sql-complete');
+          await new Promise<void>(resolve => {
+            release.current = resolve;
+          });
+          release.current = undefined;
+        }
+        setState('finished');
+      })
       .catch(() => setState('failed'))
       .finally(() => recordWorkloadEvent('tool-settled'));
   };
@@ -133,6 +148,13 @@ function ActiveTabWorkloadProbe() {
           disabled={state === 'running'}
         />
         <Text testID="active-tab-workload-state">{state}</Text>
+        {state === 'sql-complete' && (
+          <Button
+            title="Release settlement"
+            testID="active-tab-workload-release"
+            onPress={() => release.current?.()}
+          />
+        )}
       </View>
       <View style={styles.fill}>
         <App calendarBridge={calendarBridge} />

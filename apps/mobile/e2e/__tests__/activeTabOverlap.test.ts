@@ -18,6 +18,7 @@ const overlap = {
   scrollFinished: 180,
   scrollOwnerBefore: 'scroll-1',
   scrollOwnerAfter: 'scroll-1',
+  scrollOwnerMatchesWrapper: true,
   touchID: 'touch-1',
   scrollGesture: 'touch-2',
   scrollTouchBefore: 'touch-2',
@@ -39,7 +40,7 @@ test('requires an actual touch during SQL and a visible scroll change', () => {
   );
   expect(observedActiveTabOverlap({ ...overlap, statement: '' })).toBe(false);
   expect(observedActiveTabOverlap({ ...overlap, scrollFinished: 250 })).toBe(
-    false,
+    true,
   );
   expect(
     observedActiveTabOverlap({ ...overlap, scrollOwnerAfter: 'scroll-2' }),
@@ -70,7 +71,17 @@ test('requires an actual touch during SQL and a visible scroll change', () => {
     false,
   );
   expect(observedActiveTabOverlap({ ...overlap, result: 'error' })).toBe(false);
-  expect(observedActiveTabOverlap({ ...overlap, visible: 5000 })).toBe(false);
+  expect(
+    observedActiveTabOverlap({ ...overlap, scrollOwnerMatchesWrapper: false }),
+  ).toBe(false);
+  expect(
+    observedActiveTabOverlap({
+      ...overlap,
+      visible: 5000,
+      scrollStarted: 5001,
+      scrollFinished: 5002,
+    }),
+  ).toBe(true);
 });
 
 test('selects the workload only by the explicit test scenario', () => {

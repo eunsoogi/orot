@@ -73,8 +73,10 @@ export async function runActiveTabHealthWorkload(
   const report = JSON.parse(content.slice('health_context: '.length)) as {
     quantities: { concept: string; sampleCount: number }[];
   };
-  return (
+  const count =
     report.quantities.find(quantity => quantity.concept === 'heart_rate')
-      ?.sampleCount ?? 0
-  );
+      ?.sampleCount ?? 0;
+  // A native-only terminal record makes an incomplete trace fail closed.
+  await database.execute('/* orot-synthetic-active-tab-complete */SELECT 1');
+  return count;
 }

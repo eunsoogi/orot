@@ -1,4 +1,4 @@
-import { runMigrations } from '@orot/storage';
+import { runMigrations, type SqlDatabase } from '@orot/storage';
 import { openOpSqliteWorker } from '../../test-support/opSqliteWorkerFixture';
 import { runActiveTabHealthWorkload } from '../activeTabHealthWorkload';
 import { healthObservation } from '../../../../packages/storage/__tests__/localQueryTestSupport';
@@ -34,6 +34,39 @@ test('runs the real local health tool on an isolated database and honours cancel
        FROM json_each(?)`,
       [JSON.stringify(rows)],
     );
+    let compared = false;
+    const database: SqlDatabase = {
+      execute: fixture.database.execute,
+      transaction: operation =>
+        fixture.database.transaction(tx =>
+          operation({
+            ...tx,
+            async execute(sql, bindings) {
+              const marker = '/* orot-synthetic-active-tab */';
+              if (!compared && sql.startsWith(marker)) {
+                compared = true;
+                const original = sql.slice(marker.length);
+                const before = await tx.execute(
+                  `EXPLAIN QUERY PLAN ${original}`,
+                  bindings,
+                );
+                const after = await tx.execute(
+                  `EXPLAIN QUERY PLAN ${sql}`,
+                  bindings,
+                );
+                expect(after.rows.map(row => row.detail)).toEqual(
+                  before.rows.map(row => row.detail),
+                );
+                const expected = await tx.execute(original, bindings);
+                const observed = await tx.execute(sql, bindings);
+                expect(observed).toEqual(expected);
+                return observed;
+              }
+              return tx.execute(sql, bindings);
+            },
+          }),
+        ),
+    };
     let aggregates = 0;
     fixture.observe(event => {
       if (event.kind === 'aggregate' && event.phase === 'start') aggregates++;
@@ -41,12 +74,13 @@ test('runs the real local health tool on an isolated database and honours cancel
     const events: string[] = [];
     expect(
       await runActiveTabHealthWorkload(
-        fixture.database,
+        database,
         window,
         new AbortController().signal,
         event => events.push(event),
       ),
     ).toBe(1000);
+    expect(compared).toBe(true);
     expect(aggregates).toBeGreaterThan(0);
     expect(events).toEqual(
       expect.arrayContaining([
