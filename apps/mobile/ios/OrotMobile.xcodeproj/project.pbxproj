@@ -321,6 +321,7 @@
 		A7C87A6DBF7A4A8FA2D86B11 /* OverviewMetricGeometryConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C87A6DBF7A4A8FA2D86B12 /* OverviewMetricGeometryConditions.swift */; };
 		FA6E3C21B77B41D198C04A31 /* OverviewDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */; };
 		FA6E3C21B77B41D198C04A33 /* ActiveTabResponsivenessUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A34 /* ActiveTabResponsivenessUITests.swift */; };
+		FA6E3C21B77B41D198C04A39 /* ActiveTabReadFailureUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A40 /* ActiveTabReadFailureUITests.swift */; };
 		FA6E3C21B77B41D198C04A35 /* ActiveTabReadiness.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A36 /* ActiveTabReadiness.swift */; };
 		FA6E3C21B77B41D198C04A37 /* ActiveTabReadinessUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A38 /* ActiveTabReadinessUITestConditions.swift */; };
 		195917C9C1387243AC8FDFDD /* ChartConsumerAcceptanceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */; };
@@ -582,6 +583,7 @@
 		A7C87A6DBF7A4A8FA2D86B12 /* OverviewMetricGeometryConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverviewMetricGeometryConditions.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverviewDuoUITests.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A34 /* ActiveTabResponsivenessUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActiveTabResponsivenessUITests.swift; sourceTree = "<group>"; };
+		FA6E3C21B77B41D198C04A40 /* ActiveTabReadFailureUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActiveTabReadFailureUITests.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A36 /* ActiveTabReadiness.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActiveTabReadiness.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A38 /* ActiveTabReadinessUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActiveTabReadinessUITestConditions.swift; sourceTree = "<group>"; };
 		1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChartConsumerAcceptanceUITests.swift; sourceTree = "<group>"; };
@@ -1193,6 +1195,7 @@
 				AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */,
 				FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */,
 				FA6E3C21B77B41D198C04A34 /* ActiveTabResponsivenessUITests.swift */,
+				FA6E3C21B77B41D198C04A40 /* ActiveTabReadFailureUITests.swift */,
 				FA6E3C21B77B41D198C04A36 /* ActiveTabReadiness.swift */,
 				FA6E3C21B77B41D198C04A38 /* ActiveTabReadinessUITestConditions.swift */,
 				1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */,
@@ -1778,6 +1781,7 @@
 				AC917F6214CB458BAE72EAD1 /* NavigationMeasuredReservation.swift in Sources */,
 				FA6E3C21B77B41D198C04A31 /* OverviewDuoUITests.swift in Sources */,
 				FA6E3C21B77B41D198C04A33 /* ActiveTabResponsivenessUITests.swift in Sources */,
+				FA6E3C21B77B41D198C04A39 /* ActiveTabReadFailureUITests.swift in Sources */,
 				FA6E3C21B77B41D198C04A35 /* ActiveTabReadiness.swift in Sources */,
 				FA6E3C21B77B41D198C04A37 /* ActiveTabReadinessUITestConditions.swift in Sources */,
 				195917C9C1387243AC8FDFDD /* ChartConsumerAcceptanceUITests.swift in Sources */,

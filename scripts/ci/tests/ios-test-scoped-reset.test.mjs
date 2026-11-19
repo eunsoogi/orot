@@ -106,6 +106,7 @@ test('fresh creation, visit preparation, migration, document import, backup and 
     'OrotUITests/ActiveTabResponsivenessUITests/testAppointmentsDuringActiveTool',
     'OrotUITests/ActiveTabResponsivenessUITests/testPostSQLInputDoesNotCountAsOverlap',
     'OrotUITests/ActiveTabResponsivenessUITests/testAppointmentsScrollDuringActiveTool',
+    'OrotUITests/ActiveTabResponsivenessUITests/testRecordsReadFailureDoesNotPassReadiness',
     'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
     'OrotUITests/SummaryAndLiteratureUITests/testLiteratureConsentSearchRecoveryAndCancelledReadAcrossAppearances',
     'OrotUITests/OverviewDuoUITests/testOverviewSummariesReflowAndVisitPreparationRemainsReachable',

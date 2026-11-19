@@ -81,6 +81,7 @@ const cohorts = {
       'ActiveTabResponsivenessUITests/testAppointmentsDuringActiveTool',
       'ActiveTabResponsivenessUITests/testPostSQLInputDoesNotCountAsOverlap',
       'ActiveTabResponsivenessUITests/testAppointmentsScrollDuringActiveTool',
+    'ActiveTabResponsivenessUITests/testRecordsReadFailureDoesNotPassReadiness',
       'PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe',
       'RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
     ],

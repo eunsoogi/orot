@@ -13,6 +13,7 @@ import App from '../App';
 import { name as appName } from '../app.json';
 import { runActiveTabHealthWorkload } from './activeTabHealthWorkload';
 import type { CalendarBridge } from '../src/calendar/types';
+import { loadRecordingSummaries } from '../src/recording/loadRecordingSummaries';
 
 const calendarBridge: CalendarBridge = {
   requestAccessAndListUpcomingEvents: async () => ({
@@ -23,6 +24,10 @@ const calendarBridge: CalendarBridge = {
   addEventStoreListener: () => ({ remove: () => undefined }),
 };
 
+async function failRecordingRead(): Promise<never> {
+  throw new Error('Synthetic recordings read failure.');
+}
+
 function recordWorkloadEvent(event: string) {
   console.info('OROT_ACTIVE_TAB_EVENT', event, Date.now(), performance.now());
 }
@@ -31,6 +36,14 @@ function recordWorkloadEvent(event: string) {
  * The shared app singleton keeps the tool and actual routes on one connection. */
 function ActiveTabWorkloadProbe() {
   const [state, setState] = useState('preparing');
+  const fixtureManager = NativeModules.SettingsManager;
+  const fixtureSettings =
+    fixtureManager?.settings ?? fixtureManager?.getConstants?.().settings ?? {};
+  // This opt-in affects only the fixture's injected reader, never production storage.
+  const loadRecordings =
+    fixtureSettings.OROT_WORKLOAD_FAIL_ROUTE === 'records'
+      ? failRecordingRead
+      : loadRecordingSummaries;
   const release = useRef<(() => void) | undefined>(undefined);
   const [database, setDatabase] =
     useState<
@@ -157,7 +170,7 @@ function ActiveTabWorkloadProbe() {
         )}
       </View>
       <View style={styles.fill}>
-        <App calendarBridge={calendarBridge} />
+        <App calendarBridge={calendarBridge} loadRecordings={loadRecordings} />
       </View>
     </View>
   );
