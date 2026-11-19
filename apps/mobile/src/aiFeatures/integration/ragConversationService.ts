@@ -21,6 +21,7 @@ import * as voiceSelection from './conversationVoiceSelection';
 import { prepareConversationPhoto as preparePhoto } from './conversationPhotoService';
 import * as targets from './conversationEntryTargets';
 import { conversationExternalEvidence } from './conversationExternalEvidence';
+const cancelled = { status: 'failure', kind: 'cancelled' } as const;
 export function createRagConversationService({
   consent: consentPort,
   queryConsent: queryConsentPort,
@@ -96,7 +97,7 @@ export function createRagConversationService({
         registry,
         signal,
       });
-      const { history, historyIsCurrent, researchInputs } =
+      const { history, historyIsCurrent, researchInputs, guardHistory } =
         await prepareConversationHistory(
           {
             messages: previousMessages,
@@ -107,6 +108,7 @@ export function createRagConversationService({
             signal,
           },
           report,
+          { entry: entryContext, hasPhoto: !!photo },
         );
       const external = conversationExternalEvidence({
         selected,
@@ -116,12 +118,10 @@ export function createRagConversationService({
         loadLocalData,
         observer,
         researchInputs,
+        owner: history.recoveredOwnerIsCurrent,
       });
-      // A failed local preflight must not flash an authorization prompt then dispose it.
-      opening.ready();
-      // Finish the reviewed opening before any external tool dispatch.
-      await opening?.done;
-      // Preserve the live getter rather than copying its preflight value with object rest.
+      opening[history.recoveredOwnerIsCurrent ? 'dispose' : 'ready']();
+      await opening.done;
       const searchPlan = await planSearch({
         external,
         observer,
@@ -148,8 +148,7 @@ export function createRagConversationService({
           }),
         ),
       });
-      if (searchPlan.eager.status === 'cancelled')
-        return { status: 'failure', kind: 'cancelled' };
+      if (searchPlan.eager.status === 'cancelled') return cancelled;
       const { tools, generated, localRetrievalFailed } =
         createConversationToolBundle({
           data,
@@ -213,7 +212,7 @@ export function createRagConversationService({
             ...run.conversationRunWorkflow(
               execution,
               historyIsCurrent,
-              !!history.references.length || !!report,
+              guardHistory,
               searchPlan.eager,
               searchPlan.chargeEagerSearch,
             ),
@@ -230,6 +229,7 @@ export function createRagConversationService({
       );
       return await finishConversationWorkflow({
         outcome,
+        priorDialogueOmitted: history.omitted,
         observer,
         generated,
         localRetrievalFailed,
