@@ -24,6 +24,7 @@ test('the opt-in structural observation records the send callback without draft 
     const view = await render(
       <ConversationComposer
         value="synthetic private text"
+        busy={false}
         onChangeText={jest.fn()}
         onSend={onSend}
         onCancel={jest.fn()}
