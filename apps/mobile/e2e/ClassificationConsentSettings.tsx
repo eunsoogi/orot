@@ -21,22 +21,23 @@ export function ClassificationConsentSettings({
         disabled={busy}
         onPress={onClose}
       />
-      <Button
-        testID="classification-revoke-consent"
-        title="Revoke synthetic permission"
-        disabled={busy}
-        onPress={() => {
-          setBusy(true);
-          input.fixture
-            .revoke(true)
-            .then(() => setStatus('synthetic-permission-revoked'))
-            .catch(() => setStatus('synthetic-revocation-failed'))
-            .finally(() => setBusy(false));
-        }}
-      />
-      <Text testID="classification-consent-status">{status}</Text>
       <ScrollView testID="classification-consent-scroll">
         <CalendarModelSettingsPanel options={[]} onBusyChange={setBusy} />
+        {/* Keep fixture-only controls from reserving space above the model panel. */}
+        <Button
+          testID="classification-revoke-consent"
+          title="Revoke synthetic permission"
+          disabled={busy}
+          onPress={() => {
+            setBusy(true);
+            input.fixture
+              .revoke(true)
+              .then(() => setStatus('synthetic-permission-revoked'))
+              .catch(() => setStatus('synthetic-revocation-failed'))
+              .finally(() => setBusy(false));
+          }}
+        />
+        <Text testID="classification-consent-status">{status}</Text>
       </ScrollView>
     </View>
   );
