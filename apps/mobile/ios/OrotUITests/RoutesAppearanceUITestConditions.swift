@@ -15,8 +15,10 @@ enum RoutesAppearanceUITestConditions {
             throw PreparationFailure.interrupted
         }
         if !conversation.exists {
-            let star = UITestConditions.element(app, "별")
+            // The stable identifier lets reveal prove the owning AX window even when multiple windows exist.
+            let star = UITestConditions.element(app, "assistant-appearance-avatar-star")
             _ = try XCTUnwrap(FormUITestConditions.reveal(star, in: app, scrollID: "assistant-appearance-scroll"))
+            XCTAssertEqual(star.label, "별")
             guard star.isHittable else { throw PreparationFailure.unreachable }
             star.tap()
             let save = app.buttons["assistant-appearance-save"]

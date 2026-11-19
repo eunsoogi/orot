@@ -8,7 +8,10 @@ enum GeneratedRecordsRoutesUITestConditions {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         let browser = UITestConditions.element(app, "generated-report-browser")
         XCTAssertTrue(UITestConditions.exists(browser))
-        try tap(app.buttons["보고서·진료 질문 보기"], in: app)
+        // Resolve the control by identifier so reveal can match its actual owning window.
+        let open = app.buttons["generated-report-open"]
+        XCTAssertEqual(open.label, "보고서·진료 질문 보기")
+        try tap(open, in: app)
         let reports = [
             ("summary:synthetic-routes-possibilities", "합성 기록에서 살펴볼 가능성이에요."),
             ("summary:synthetic-routes-health-summary", "합성 건강 정보 요약이에요."),
@@ -33,7 +36,7 @@ enum GeneratedRecordsRoutesUITestConditions {
         }
         RecordingFixtureUITestConditions.capture(app, "records-report-list-\(suffix)", testCase: testCase)
         try tap(app.buttons["닫기"], in: app, towardTop: true)
-        XCTAssertTrue(UITestConditions.exists(app.buttons["보고서·진료 질문 보기"]))
+        XCTAssertTrue(UITestConditions.exists(app.buttons["generated-report-open"]))
         try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         try tap(UITestConditions.element(app, "overview-prepare-visit"), in: app)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "visit-day-questions")))
