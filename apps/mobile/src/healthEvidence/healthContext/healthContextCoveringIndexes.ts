@@ -4,6 +4,7 @@ import {
 } from '@orot/storage';
 
 const concept = "json_extract(payload_json, '$.concept')";
+const normalizedConcept = `lower(${concept})`;
 const time = localQueryTimestampKeyExpression('effective_at');
 const ingestion = localQueryTimestampKeyExpression('ingested_at');
 const kind = "json_extract(payload_json, '$.observationKind')";
@@ -33,7 +34,7 @@ export async function ensureHealthContextCoveringIndexes(
     time,
     ingestion,
     kind,
-    `lower(${concept})`,
+    normalizedConcept,
     ...valueChecks,
     unit,
     amount,
@@ -55,6 +56,15 @@ export async function ensureHealthContextCoveringIndexes(
   ];
   await executor.execute(
     `CREATE INDEX IF NOT EXISTS health_context_observation_covering ON health_observations (${quantities.join(', ')})`,
+  );
+  // The activity family needs concept first for its IN seeks. Limit the
+  // covering copy to the same case-normalized concepts admitted by that query.
+  const activity = [
+    normalizedConcept,
+    ...quantities.filter(column => column !== normalizedConcept),
+  ];
+  await executor.execute(
+    `CREATE INDEX IF NOT EXISTS health_context_activity_covering ON health_observations (${activity.join(', ')}) WHERE ${normalizedConcept} IN ('step_count', 'workout_duration')`,
   );
   await executor.execute(
     `CREATE INDEX IF NOT EXISTS health_context_heart_covering ON health_observations (${heart.join(', ')})`,

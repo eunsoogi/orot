@@ -3,6 +3,7 @@ import type { SqlExecutor } from '@orot/storage';
 import { readHealthContextGeneration } from './generation';
 import { readHealthQuantityContext } from './quantityQuery';
 import { addHeartRateActivityContext } from './heartRateActivity';
+import type { AcquireHeartWorkoutPrefix } from './heartWorkoutPrefix';
 import { readHealthMedicationContext } from './medicationQuery';
 import { readDoseHistory } from './doseHistoryQuery';
 import { readHealthSleepContext } from './sleepQuery';
@@ -14,6 +15,7 @@ import type {
 } from './types';
 import { HEALTH_CONTEXT_TOPICS } from './types';
 import { traceHealthContext, type HealthContextTrace } from './trace';
+import type { measureHistoryValidationCost } from '../../providers/conversationHistoryDiagnostic';
 
 import {
   withHealthContextCalendar,
@@ -28,6 +30,10 @@ export async function readHealthContextReport(
   trace?: HealthContextTrace,
   diagnosticOwner?: object,
   calendarScope?: HealthContextCalendarScope,
+  restorationWorkspace?: {
+    acquireHeartPrefix: AcquireHeartWorkoutPrefix;
+    measureCost?: typeof measureHistoryValidationCost;
+  },
 ): Promise<HealthContextReport> {
   return withHealthContextCalendar(calendarScope, async calendar => {
     executor = observeReportAggregateSql(executor, diagnosticOwner);
@@ -38,7 +44,11 @@ export async function readHealthContextReport(
     )
       throw new RangeError('Invalid health context topics.');
     trace?.('calendar', 'started');
-    const days = calendar.read(window);
+    const days = restorationWorkspace?.measureCost
+      ? restorationWorkspace.measureCost('artifact_report_calendar', () =>
+          calendar.read(window),
+        )
+      : calendar.read(window);
     trace?.('calendar', 'completed');
     const selected = new Set(topics);
     const quantities =
@@ -54,6 +64,7 @@ export async function readHealthContextReport(
                   ? 'activity'
                   : 'measurements',
               window.dataAvailableThrough,
+              Boolean(restorationWorkspace),
             );
             return {
               ...result,
@@ -63,6 +74,7 @@ export async function readHealthContextReport(
                 result.series,
                 signal,
                 window.dataAvailableThrough,
+                restorationWorkspace?.acquireHeartPrefix,
               ),
             };
           })

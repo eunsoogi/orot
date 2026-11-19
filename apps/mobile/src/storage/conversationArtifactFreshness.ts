@@ -21,6 +21,10 @@ import { validateDailyReportArtifact } from './dailyReportArtifactValidation';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
 import { assertTreatmentAttribution } from '../treatmentContext/attribution';
 import { assertConversationRequestSource } from './conversationRequestSources';
+import {
+  measureHistoryValidationCost,
+  startHistoryValidationCost,
+} from '../providers/conversationHistoryDiagnostic';
 
 /** Validate a bounded ancestry in one transaction, rejecting cycles and unavailable parents. */
 export async function assertConversationArtifactCurrent(
@@ -30,6 +34,7 @@ export async function assertConversationArtifactCurrent(
   requireGeneration: boolean,
   validatePeriod?: ReadOnlyPeriodValidation,
   collectValidated?: (artifact: ConversationArtifact) => void,
+  profileHistoryValidation = false,
 ) {
   const history = createManualHistoryRepository(database);
   // New report-bound turns must still belong to the active revision at commit.
@@ -46,6 +51,9 @@ export async function assertConversationArtifactCurrent(
       );
   }
   const path = new Set<string>();
+  const measureCost = profileHistoryValidation
+    ? measureHistoryValidationCost
+    : undefined;
   let visited = 0;
   const visit = async (current: ConversationArtifact): Promise<void> => {
     if (path.has(current.id) || path.size >= 16 || ++visited > 128)
@@ -53,8 +61,17 @@ export async function assertConversationArtifactCurrent(
         'Conversation ancestry is cyclic or too large.',
       );
     path.add(current.id);
-    await assertConversationRequestSource(tx, current);
-    await assertConversationSourcesNotRemoved(tx, current);
+    const finishAuthority = profileHistoryValidation
+      ? startHistoryValidationCost('artifact_source_authority')
+      : undefined;
+    try {
+      await assertConversationRequestSource(tx, current);
+      await assertConversationSourcesNotRemoved(tx, current);
+      finishAuthority?.('completed');
+    } catch (error) {
+      finishAuthority?.('failed');
+      throw error;
+    }
     for (const source of current.sources) {
       if (isConversationPhotoSource(source)) {
         // The protected request/source join above is the authority for this photo.
@@ -65,6 +82,7 @@ export async function assertConversationArtifactCurrent(
           database,
           source,
           validatePeriod,
+          measureCost,
         );
       } else if (isGeneratedConversationSource(source)) {
         const result = await tx.execute(
@@ -75,14 +93,22 @@ export async function assertConversationArtifactCurrent(
           [source.id],
         );
         const row = result.rows[0];
-        const parent = decodeConversationArtifact(row?.result_json);
+        const parent = measureCost
+          ? measureCost('artifact_parent_decode', () =>
+              decodeConversationArtifact(row?.result_json),
+            )
+          : decodeConversationArtifact(row?.result_json);
         if (
           !parent ||
           parent.id !== row?.id ||
           parent.sessionId !== row.session_id ||
           parent.createdAt !== row.created_at ||
           parent.citations === undefined ||
-          fingerprint(parent) !== source.revision
+          (measureCost
+            ? measureCost('artifact_parent_fingerprint', () =>
+                fingerprint(parent),
+              )
+            : fingerprint(parent)) !== source.revision
         )
           throw new RetainedSourceInvalidError(
             'The generated conversation changed or was removed.',

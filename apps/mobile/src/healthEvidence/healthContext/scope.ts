@@ -7,9 +7,11 @@ import { HEALTH_CONTEXT_TOPICS } from './types';
 import { validateHealthContextCalendar } from './calendarValidation';
 import {
   fingerprint,
+  fingerprintText,
   stableJson,
 } from '../../aiFeatures/integration/evidenceUtils';
 import { isImmutableReportSnapshot } from './committedReportScope';
+import { immutableReportJson } from './immutableReportJson';
 
 export interface HealthContextScope {
   readonly kind: 'health_context_period';
@@ -119,19 +121,23 @@ export function healthContextRevision(
     : undefined;
   const cached = scopeKey === undefined ? undefined : revisions.get(report);
   if (cached && cached.scopeKey === scopeKey) return cached.revision;
-  const revision = fingerprint({
-    scope,
-    facts: {
-      window: report.window,
-      days: report.days,
-      quantities: report.quantities,
-      medications: report.medications,
-      ...(report.doseHistory ? { doseHistory: report.doseHistory } : {}),
-      sleep: report.sleep,
-      symptoms: report.symptoms,
-      limitations: report.limitations,
-    },
-  });
+  const facts = {
+    window: report.window,
+    days: report.days,
+    quantities: report.quantities,
+    medications: report.medications,
+    ...(report.doseHistory ? { doseHistory: report.doseHistory } : {}),
+    sleep: report.sleep,
+    symptoms: report.symptoms,
+    limitations: report.limitations,
+  };
+  // Keep the persisted facts-before-scope order and the original scope encoding.
+  const revision =
+    scopeKey === undefined
+      ? fingerprint({ scope, facts })
+      : fingerprintText(
+          `{"facts":${immutableReportJson(facts)},"scope":${scopeKey}}`,
+        );
   if (scopeKey !== undefined) revisions.set(report, { scopeKey, revision });
   return revision;
 }
