@@ -50,16 +50,14 @@ export function ConversationEdgeGradient({
   }, []);
   const top = opaque || fadeOverlap === 0 ? 0 : -fadeOverlap;
   const solidFade = edge === 'top' ? Math.max(0, solidFadeLength) : 0;
+  const bottom = opaque ? 0 : -solidFade;
   const solidEnd = size?.height
     ? Math.max(0, (size.height - solidFade) / size.height)
     : 1;
   return (
     <View
       pointerEvents="none"
-      style={[
-        StyleSheet.absoluteFill,
-        { top, bottom: opaque ? 0 : -solidFade },
-      ]}
+      style={[StyleSheet.absoluteFill, { top, bottom }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID={testID}
