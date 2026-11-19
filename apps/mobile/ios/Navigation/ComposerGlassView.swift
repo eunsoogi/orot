@@ -118,6 +118,12 @@ final class ComposerGlassActionView: UIView {
         ])
         button.addAction(UIAction { [weak self] _ in
             guard let self else { return }
+            #if OROT_TESTS
+                // The opted-in test timeline records only this native boundary and a session nonce.
+                if let session = UserDefaults.standard.string(forKey: "OROT_TEST_CONVERSATION_HIT_OBSERVATION"), UUID(uuidString: session) != nil {
+                    TestLifecycleObservation.record("conversation-action-native-press", fields: ["session": session, "busy": busy, "eventHandlerAvailable": onComposerPress != nil])
+                }
+            #endif
             // Record only a fixed native delivery boundary; no prompt, label or view identifier.
             if busy, !disabled {
                 OrotProviderDiagnostics().report("rag", stage: "stop_native", outcome: "started")

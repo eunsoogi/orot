@@ -7,6 +7,7 @@ import {
 import { AccessibilityInfo, Dimensions, StyleSheet } from 'react-native';
 import { ConversationComposer } from '../ConversationComposer';
 import { ConversationScreen } from '../ConversationScreen';
+import { registerNavigationTestObserver } from '../../navigation/navigationTestObservation';
 
 const originalDimensions = Dimensions.get('window');
 // The 44pt baseline is the standard text-size contract, not Jest's default 2x font scale.
@@ -14,6 +15,51 @@ beforeEach(() =>
   Dimensions.set({ window: { ...originalDimensions, fontScale: 1 } }),
 );
 afterEach(() => Dimensions.set({ window: originalDimensions }));
+
+test('the opt-in structural observation records the send callback without draft text', async () => {
+  const events: Array<Record<string, unknown>> = [];
+  const stop = registerNavigationTestObserver(event => events.push(event));
+  const onSend = jest.fn();
+  try {
+    const view = await render(
+      <ConversationComposer
+        value="synthetic private text"
+        onChangeText={jest.fn()}
+        onSend={onSend}
+        onCancel={jest.fn()}
+      />,
+    );
+    await fireEvent(
+      screen.getByTestId('rag-conversation-send'),
+      'composerPress',
+    );
+    expect(onSend).toHaveBeenCalledTimes(1);
+    expect(events).toEqual([
+      expect.objectContaining({ event: 'conversation-action', stage: 'send' }),
+    ]);
+    expect(JSON.stringify(events)).not.toContain('synthetic private text');
+    await view.rerender(
+      <ConversationComposer
+        value="synthetic private text"
+        busy
+        cancelling
+        onChangeText={jest.fn()}
+        onSend={onSend}
+        onCancel={jest.fn()}
+      />,
+    );
+    screen.getByTestId('rag-conversation-cancel').props.onComposerPress();
+    expect(onSend).toHaveBeenCalledTimes(1);
+    expect(events[1]).toEqual(
+      expect.objectContaining({
+        event: 'conversation-action',
+        stage: 'guarded',
+      }),
+    );
+  } finally {
+    stop();
+  }
+});
 
 test('keeps the borderless Glass field and one native action for Send and Stop', async () => {
   const props = {

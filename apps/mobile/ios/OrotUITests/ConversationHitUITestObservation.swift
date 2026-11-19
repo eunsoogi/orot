@@ -5,6 +5,19 @@ import XCTest
 @MainActor
 enum ConversationHitUITestObservation {
     private static var dockGenerations: [String: String] = [:]
+
+    /// A single stale or missing marker is unavailable; it cannot establish absence of an asynchronous JS event.
+    static func capturePostTap(_ app: XCUIApplication, tapReturnedAt: Double, testCase: XCTestCase) {
+        let snapshot = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "conversation-send-after-tap")
+        let route = snapshot?["routeState"] as? [String: Any]
+        let started = route?["startedAtMs"] as? Double
+        let fresh = started.map { $0.isFinite && $0 >= tapReturnedAt } ?? false
+        let attachment = XCTAttachment(string: fresh ? "fresh marker; JS receipt may still be in flight" : "unavailable: marker missing or predates tap")
+        attachment.name = "conversation-send-observation-freshness"
+        attachment.lifetime = .keepAlways
+        testCase.add(attachment)
+    }
+
     struct Initial {
         let startedAtMs: Double
         let endedAtMs: Double

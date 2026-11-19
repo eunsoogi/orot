@@ -41,7 +41,9 @@ enum GeneratedRecordsRoutesUITestConditions {
         XCTAssertEqual(close.label, "닫기")
         try tap(close, in: app, towardTop: true)
         XCTAssertTrue(UITestConditions.exists(app.buttons["generated-report-open"]))
-        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
+        // The saved scroll offset can leave the title above the viewport at XXXL.
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title", "overview-next-appointment-clinic"])
+        try revealOverviewTitle(app)
         try tap(UITestConditions.element(app, "overview-prepare-visit"), in: app)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "visit-day-questions")))
         let question = app.staticTexts["visit-day-question-synthetic-routes-question"]
@@ -53,9 +55,17 @@ enum GeneratedRecordsRoutesUITestConditions {
         _ = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         RecordingFixtureUITestConditions.capture(app, "visit-day-saved-questions-\(suffix)", testCase: testCase)
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["overview-title"])
+        try revealOverviewTitle(app)
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         XCTAssertFalse(UITestConditions.element(app, "rag-conversation-sessions-toggle").exists)
+    }
+
+    private static func revealOverviewTitle(_ app: XCUIApplication) throws {
+        let selected = try NavigationUITestConditions.navigationAction(app, "navigation-tab-overview").control
+        XCTAssertTrue(selected.isSelected)
+        let title = UITestConditions.element(app, "overview-title")
+        _ = try XCTUnwrap(FormUITestConditions.reveal(title, in: app, scrollID: "navigation-route-scroll", towardTop: true))
+        NavigationUITestConditions.route(app, markers: ["overview-title"])
     }
 
     private static func tap(_ target: XCUIElement, in app: XCUIApplication, towardTop: Bool = false) throws {
