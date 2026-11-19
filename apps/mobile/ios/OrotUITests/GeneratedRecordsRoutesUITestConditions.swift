@@ -23,7 +23,8 @@ enum GeneratedRecordsRoutesUITestConditions {
             XCTAssertTrue(UITestConditions.exists(row), app.debugDescription)
             try tap(row, in: app)
             XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "generated-report-detail")))
-            let prose = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+            // Match the saved prose itself so the owning window and visible text are both checked.
+            let prose = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "generated-report-paragraph-", text)).firstMatch
             XCTAssertTrue(UITestConditions.exists(prose), app.debugDescription)
             _ = try XCTUnwrap(FormUITestConditions.reveal(prose, in: app, scrollID: "navigation-route-scroll"))
             XCTAssertTrue(prose.isHittable)

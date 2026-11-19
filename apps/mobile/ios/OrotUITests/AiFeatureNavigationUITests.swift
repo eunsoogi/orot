@@ -25,7 +25,9 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         let recording = node(app, "records-new-recording")
         FormUITestConditions.reveal(recording, in: app, scrollID: "navigation-route-scroll", towardTop: true)
         recording.tap()
-        XCTAssertTrue(UITestConditions.exists(node(app, "recording-controls-scroll")))
+        // Capture uses a full-screen layout; the scroll identifier belongs to the separate export probe.
+        XCTAssertTrue(UITestConditions.exists(node(app, "recording-controls-fullscreen")))
+        XCTAssertTrue(UITestConditions.exists(node(app, "recording-session-panel")))
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
