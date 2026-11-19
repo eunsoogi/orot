@@ -67,19 +67,18 @@ export async function resolveSelectedAiProvider(
     }
   }
 
-  let appleOption: ProviderSelectionOption;
-  try {
-    appleOption = await (options.loadAppleOption ?? loadAppleSelectionOption)();
-  } catch {
-    return { status: 'unavailable' };
-  }
-
-  if (selection.providerId === appleOption.provider.id) {
-    return readySelection(selection, [appleOption]);
-  }
-
   const accountId = selectedChatGPTAccountId(selection);
-  if (!accountId) return { status: 'unavailable' };
+  // A saved ChatGPT choice depends on its own account/catalog, not the unrelated
+  // local Apple availability bridge. Keep exact model validation in both paths.
+  if (!accountId) {
+    try {
+      return readySelection(selection, [
+        await (options.loadAppleOption ?? loadAppleSelectionOption)(),
+      ]);
+    } catch {
+      return { status: 'unavailable' };
+    }
+  }
 
   try {
     const accounts = await chatGPTServices.listAccounts();
@@ -93,7 +92,6 @@ export async function resolveSelectedAiProvider(
     const models = await chatGPTServices.listModels(accountId);
     if (!models.ok) return { status: 'unavailable' };
     return readySelection(selection, [
-      appleOption,
       ...createChatGPTSelectionOptions(accountId, models.value),
     ]);
   } catch {
