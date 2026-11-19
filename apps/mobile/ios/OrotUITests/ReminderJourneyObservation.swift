@@ -29,6 +29,20 @@ enum ReminderJourneyObservation {
         XCTAssertFalse(onboarding.exists)
     }
 
+    /// Pure formatter assertions run before the real picker; they do not substitute for its available options.
+    static func verifyDailyWheelOptions() throws {
+        XCTAssertEqual(try DailyReminderWheelText.optionValue(for: "4 minutes", number: 4), "04")
+        XCTAssertEqual(try DailyReminderWheelText.optionValue(for: "04분", number: 0), "00")
+        XCTAssertEqual(try DailyReminderWheelText.optionValue(for: "59분", number: 59), "59")
+        XCTAssertEqual(try DailyReminderWheelText.optionValue(for: "4시", number: 4), "4")
+        XCTAssertEqual(try DailyReminderWheelText.optionValue(for: "12 o’clock", number: 12), "12")
+        for value in ["4", "4시 5분", "4시 minutes"] {
+            XCTAssertThrowsError(try DailyReminderWheelText.optionValue(for: value, number: 4))
+        }
+        XCTAssertThrowsError(try DailyReminderWheelText.optionValue(for: "4분", number: 60))
+        XCTAssertThrowsError(try DailyReminderWheelText.optionValue(for: "4시", number: 0))
+    }
+
     struct Request: Decodable {
         let identifier: String
         let appointmentId: String

@@ -1,7 +1,7 @@
 import XCTest
 
 /// The picker can expose Korean labels alongside English VoiceOver time units.
-private enum DailyReminderWheelText {
+enum DailyReminderWheelText {
     static func isHour(_ value: String) -> Bool {
         value.contains("시") || value.lowercased().contains("o’clock") || value.lowercased().contains("o'clock")
     }
@@ -10,14 +10,17 @@ private enum DailyReminderWheelText {
         value.contains("분") || value.lowercased().contains("minute")
     }
 
-    /// XCTest selects numeric options even when the visible wheel value includes a localized unit.
+    /// UIKit minute options are zero-padded (00...59); 12-hour options are not.
     static func optionValue(for value: String, number: Int) throws -> String {
         let expression = try NSRegularExpression(pattern: "[0-9]+")
         let matches = expression.matches(in: value, range: NSRange(value.startIndex..., in: value))
-        guard matches.count == 1 else {
+        let minute = isMinute(value)
+        guard matches.count == 1, isHour(value) != minute,
+              (minute ? 0 ... 59 : 1 ... 12).contains(number)
+        else {
             throw NSError(domain: "DailyReminderSetup", code: 4, userInfo: [NSLocalizedDescriptionKey: "Unrecognized time wheel: \(value)"])
         }
-        return String(number)
+        return minute ? String(format: "%02d", number) : String(number)
     }
 }
 
@@ -34,6 +37,7 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         guard mode == "warm" || mode == "cold" else { return }
 
         continueAfterFailure = false
+        try ReminderJourneyObservation.verifyDailyWheelOptions()
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"]
         app.launch()
@@ -174,6 +178,9 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         let targetHour = try XCTUnwrap(components.hour)
         let targetMinute = try XCTUnwrap(components.minute)
         let periodValue = try XCTUnwrap(period.value as? String)
+        guard periodValue.contains("오전") != periodValue.contains("오후") else {
+            throw NSError(domain: "DailyReminderSetup", code: 6)
+        }
         let desiredPeriod = targetHour < 12 ? "오전" : "오후"
         let selectedPeriod = periodValue.replacingOccurrences(of: targetHour < 12 ? "오후" : "오전", with: desiredPeriod)
         if selectedPeriod != periodValue {

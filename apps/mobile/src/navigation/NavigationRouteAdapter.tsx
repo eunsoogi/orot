@@ -65,10 +65,8 @@ export function NavigationRouteAdapter<Name extends string>({
   const snapshot = useNavigationSnapshot(controller);
   const reduceMotion = useNavigationReduceMotion();
   const primary = useNavigationPrimaryActionHost(snapshot.currentRoute.key);
-  const { getLeaveStateSource, registerLeaveState } = useRegisteredLeaveStates(
-    controller,
-    leaveState,
-  );
+  const { getLeaveStateSource, getLeaveStateOwner, registerLeaveState } =
+    useRegisteredLeaveStates(controller, leaveState);
   useNavigationEntryAvailability(
     controller,
     snapshot.currentRoute.key,
@@ -152,7 +150,8 @@ export function NavigationRouteAdapter<Name extends string>({
             active={active}
             childHandlesSafeArea={routeHandlesSafeArea}
             controller={controller}
-            getLeaveStateSource={() => getLeaveStateSource(route.key)}
+            getLeaveStateSource={getLeaveStateSource}
+            leaveStateOwner={getLeaveStateOwner(route.key)}
             key={route.key}
             primaryActionHost={primary.host}
             registerLeaveStateForRoute={registerLeaveState}
@@ -172,6 +171,7 @@ export function NavigationRouteAdapter<Name extends string>({
       contentLayoutOwner,
       controller,
       getLeaveStateSource,
+      getLeaveStateOwner,
       primary.host,
       primary.actions,
       primary.routeBackAction,

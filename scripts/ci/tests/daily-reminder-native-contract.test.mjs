@@ -80,3 +80,12 @@ test('daily reminder preparation completes visible onboarding without persistenc
     assert.ok(helper.includes(token), token);
   assert.doesNotMatch(source, /OROT_TEST_ASSISTANT_APPEARANCE|reset\(|preseed\(/u);
 });
+
+// Source contract only: Swift assertions below still require their native/host execution.
+test('wheel options pad minutes without changing hour or calendar semantics', () => {
+  assert.match(source, /minute \? String\(format: "%02d", number\) : String\(number\)/u);
+  assert.match(source, /isHour\(value\) != minute/u);
+  assert.match(source, /periodValue\.contains\("오전"\) != periodValue\.contains\("오후"\)/u);
+  assert.ok(source.includes('Date().addingTimeInterval(180)'));
+  assert.ok(source.includes('Calendar.current.dateComponents([.hour, .minute], from: target)'));
+});
