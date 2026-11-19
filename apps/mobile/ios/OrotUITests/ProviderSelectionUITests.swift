@@ -62,7 +62,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         summary(app, "selectionCallback=called; synthetic=provider-selection; realAccount=unverified")
         app.terminate()
         app.launch()
-        try message(app, "현재 선택: Synthetic ChatGPT model")
+        try selectionSummary(app, "현재 선택: Synthetic ChatGPT model")
         XCTAssertTrue(UITestConditions.text(node(app, "provider-selection-probe-summary")).contains("selectionCallback=not-called-on-load"))
         reset(app)
         capture(app, "synthetic-explicit-selection-restored-from-keychain")
@@ -85,7 +85,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         value(app, "provider-selection-sign-out-response", "failed:authentication_required")
         try message(app, "ChatGPT 계정 1의 앱 저장 인증 정보를 삭제했고 갱신 토큰 폐기를 확인했어요. 브라우저 세션 상태는 확인되지 않아요.")
         let unavailable = "이전에 선택한 AI를 사용할 수 없어요. 자동으로 다른 AI를 고르지 않았습니다."
-        try message(app, unavailable)
+        try selectionSummary(app, "현재 선택: gpt-synthetic " + unavailable)
         // Preserve the original stable observation window after the open response is cancelled.
         try await Task.sleep(for: .milliseconds(500))
         value(app, "provider-selection-sign-out-response", "failed:authentication_required")
@@ -98,7 +98,7 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         FormUITestConditions.reveal(node(app, "chatgpt-account-details"), in: app, scroll: node(app, "provider-selection-screen"))
         tap(app, "chatgpt-account-details")
         XCTAssertTrue(UITestConditions.exists(node(app, "chatgpt-account-status")))
-        try message(app, unavailable)
+        try selectionSummary(app, "현재 선택: gpt-synthetic " + unavailable)
         tap(app, "chatgpt-account-action")
         try message(app, "로그인을 확인했어요. 모델 목록을 확인하려면 다시 눌러 주세요.")
         XCTAssertTrue(UITestConditions.exists(node(app, "chatgpt-account-sign-out")))
@@ -237,6 +237,20 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         } else {
             try RenderedTextUITestConditions.verify(target, equals: text, in: app, testCase: self)
         }
+    }
+
+    @MainActor
+    private func selectionSummary(_ app: XCUIApplication, _ expected: String) throws {
+        // The native summary combines its title, model and status with layout newlines into one accessible label.
+        let scroll = selectionPage(app)
+        let summary = scroll.descendants(matching: .any).matching(identifier: "provider-selection-current").firstMatch
+        XCTAssertTrue(UITestConditions.exists(summary), app.debugDescription)
+        FormUITestConditions.reveal(summary, in: app, scroll: scroll, requireHittable: false, windowResolver: {
+            FormWindowOwnership.resolve(app, scroll: self.node(app, "provider-selection-screen"), target: summary)
+        })
+        let actual = UITestConditions.text(summary)
+        XCTAssertEqual(actual.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " "), expected)
+        try RenderedTextUITestConditions.verify(summary, equals: actual, in: app, testCase: self)
     }
 
     @MainActor
