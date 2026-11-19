@@ -2,12 +2,14 @@ import { observeConversationFinalization as finalize } from '../../ragConversati
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { conversationGeneratedTools } from './conversationGeneratedTools';
 import { conversationFallbackOutcome } from './conversationFallbackOutcome';
+import { t } from '../../i18n';
 import { finishRagConversation } from './finishRagConversation';
 
 /** Both live and reconstructed workflows preserve final freshness, paging and retention gates. */
 export async function finishConversationWorkflow(
   input: Omit<Parameters<typeof finishRagConversation>[0], 'continuation'> & {
     observer?: RagConversationObserver;
+    priorDialogueOmitted?: boolean;
     generated: ReturnType<typeof conversationGeneratedTools>;
     localRetrievalFailed(): boolean;
     historyIsCurrent(): Promise<boolean>;
@@ -29,6 +31,16 @@ export async function finishConversationWorkflow(
   );
   return (
     fallback ??
-    finishRagConversation({ ...input, continuation: Boolean(continuation) })
+    finishRagConversation({
+      ...input,
+      outcome:
+        input.outcome.status === 'answer' && input.priorDialogueOmitted
+          ? {
+              ...input.outcome,
+              answer: `${input.outcome.answer}\n\n${t('ragConversation.conversation.priorDialogueOmitted')}`,
+            }
+          : input.outcome,
+      continuation: Boolean(continuation),
+    })
   );
 }
