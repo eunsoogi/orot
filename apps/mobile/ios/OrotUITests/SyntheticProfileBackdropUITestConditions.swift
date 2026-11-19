@@ -64,21 +64,38 @@ enum SyntheticProfileBackdropUITestConditions {
             _ = try NavigationRotationUITestConditions.rotateObservedScene(app, session: session, landscape: true, scrollID: "rag-conversation-history")
             XCTAssertTrue(history.exists && profile.exists && rail.exists)
             XCTAssertGreaterThan(abs(history.frame.width - beforeWidth), 0.5, "The transcript viewport must actually resize")
+            // Rotation can reset the transcript position; move content underneath the profile before capturing it.
+            history.swipeUp()
+            let overlappingAnswers = (markers + [lastAnswer]).filter {
+                $0.exists && $0.frame.intersects(profile.frame)
+            }
+            let overlapFrames = overlappingAnswers.map { "\($0.label.prefix(24)): \($0.frame)" }.joined(separator: "\n")
             let geometry = XCTAttachment(string: "profile=\(profile.frame), history=\(history.frame), rail=\(rail.frame), app=\(app.frame)")
             geometry.name = "synthetic-profile-after-resize-frames"
             geometry.lifetime = .keepAlways
             testCase.add(geometry)
-            let image = XCTAttachment(screenshot: app.screenshot())
+            let overlap = XCTAttachment(string: overlapFrames)
+            overlap.name = "synthetic-profile-after-resize-overlap"
+            overlap.lifetime = .keepAlways
+            testCase.add(overlap)
+            // The app screenshot can retain portrait dimensions after a scene resize; capture the display too.
+            let image = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
             image.name = "synthetic-profile-after-resize"
             image.lifetime = .keepAlways
             testCase.add(image)
+            XCTAssertFalse(overlappingAnswers.isEmpty, "An answer must cross the profile backdrop in the resized scene")
             return
         }
         XCUIDevice.shared.press(.home)
         let background = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             app.state == .runningBackground || app.state == .runningBackgroundSuspended
         }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [background], timeout: 10), .completed)
+        let backgroundResult = XCTWaiter.wait(for: [background], timeout: 10)
+        let backgroundState = XCTAttachment(string: "applicationState=\(app.state.rawValue), waitResult=\(backgroundResult.rawValue)")
+        backgroundState.name = "synthetic-profile-background-state"
+        backgroundState.lifetime = .keepAlways
+        testCase.add(backgroundState)
+        XCTAssertEqual(backgroundResult, .completed)
         app.activate()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
         XCTAssertTrue(history.exists && profile.exists && rail.exists)
