@@ -2,6 +2,7 @@ import { reportConversationException } from '../../providers/conversationFailure
 import { reportConversationPreparationFailure } from './conversationHistoryFailure';
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import { AiProviderSelectionError } from './provider';
+import { observeConversationRequest } from '../../ragConversation/conversationRequestObservation';
 
 /** Preserve the failed boundary without exposing provider error details. */
 export function ragConversationFailure(
@@ -14,7 +15,9 @@ export function ragConversationFailure(
   else reportConversationException('conversation_dispatch', error);
   if (signal.aborted || (error instanceof Error && error.name === 'AbortError'))
     return { status: 'failure', kind: 'cancelled' };
-  if (error instanceof AiProviderSelectionError)
+  if (error instanceof AiProviderSelectionError) {
+    if (error.status === 'selection-required')
+      observeConversationRequest('selection-required');
     return {
       status: 'failure',
       kind:
@@ -22,6 +25,7 @@ export function ragConversationFailure(
           ? 'provider_configuration'
           : 'provider_unavailable',
     };
+  }
   return {
     status: 'failure',
     kind:

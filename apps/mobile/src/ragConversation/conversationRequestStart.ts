@@ -1,4 +1,5 @@
 import { getRagConversationCopy } from './copy';
+import { observeConversationRequest } from './conversationRequestObservation';
 import { t } from '../i18n';
 import type {
   ConversationSession,
@@ -22,8 +23,12 @@ export function prepareConversationRequest(
     (session.restoreAfterRetry && Boolean(session.unsavedCount)) ||
     session.restoreFailed ||
     session.quarantined
-  )
+  ) {
+    observeConversationRequest('request-rejected');
     return null;
+  }
+
+  observeConversationRequest('request-accepted');
 
   const copy = getRagConversationCopy();
   const request: PendingTurn = {

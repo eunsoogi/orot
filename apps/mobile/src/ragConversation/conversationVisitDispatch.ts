@@ -5,6 +5,7 @@ import type { ConversationSession } from './conversationSessionTypes';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import { entryIntentSender } from './entryIntentSender';
 import type { TreatmentConversationSender } from '../treatmentContext/treatmentConversationSender';
+import { observeConversationRequest } from './conversationRequestObservation';
 
 const pendingVisits = new WeakMap<
   ConversationSessions,
@@ -119,6 +120,7 @@ export function sendConversationMessage(
   onSend: ConversationScreenProps['onSend'],
   prepare?: ConversationScreenProps['prepareVisitQuestions'],
 ) {
+  observeConversationRequest('dispatch');
   const session = store.getSnapshot().sessions.find(item => item.id === id);
   const sendEntry = entryIntentSender(store, id, onSend);
   return store.send(id, (question, history, signal, observer) => {

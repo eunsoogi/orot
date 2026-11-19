@@ -58,6 +58,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
             // Retain the native center and AX activation-point hit targets before the actual tap.
             ConversationHitUITestObservation.capture(app, send: send, initial: sendSample, session: observationSession, testCase: self)
         }
+        let tapStartedAt = Date().timeIntervalSince1970 * 1000
         send.tap()
         let tapReturnedAt = Date().timeIntervalSince1970 * 1000
         // Record only whether the fixed synthetic draft is still present; never retain its text.
@@ -67,6 +68,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         postTapDraft.lifetime = .keepAlways
         add(postTapDraft)
         ConversationHitUITestObservation.capturePostTap(app, tapReturnedAt: tapReturnedAt, testCase: self)
+        ConversationHitUITestObservation.captureRequestStages(app, tapStartedAt: tapStartedAt, tapReturnedAt: tapReturnedAt, testCase: self)
         let failures = node(app, "rag-conversation-history").staticTexts.matching(NSPredicate(format: "label == %@", "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요."))
         XCTAssertTrue(UITestConditions.exists(failures.firstMatch), app.debugDescription)
         XCTAssertEqual(failures.count, 1)

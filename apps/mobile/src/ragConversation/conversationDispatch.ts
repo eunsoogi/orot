@@ -1,5 +1,6 @@
 import { t } from '../i18n';
 import { startOwnedConversationRequest } from './conversationOwnedRequest';
+import { observeConversationRequest } from './conversationRequestObservation';
 import type { createConversationSessionRequests } from './conversationSessionRequests';
 import type { createConversationPhotoImport } from './conversationPhotoImport';
 import type {
@@ -41,8 +42,10 @@ export function conversationDispatch(input: {
       session.busy ||
       session.quarantined ||
       preparing.has(id)
-    )
+    ) {
+      observeConversationRequest('dispatch-rejected');
       return;
+    }
     // Noncontinuous callers have no protected preflight and keep their synchronous start contract.
     if (!input.beforeSend) {
       await input.requests.send(
@@ -75,13 +78,21 @@ export function conversationDispatch(input: {
     controller.signal.addEventListener('abort', release, { once: true });
     let dispatched = false;
     try {
+      observeConversationRequest('preflight-started');
       input.update(id, { preparingSend: true, error: '' });
-      if (!current()) return;
+      if (!current()) {
+        observeConversationRequest('preflight-stopped');
+        return;
+      }
       const ready = await Promise.race([
         input.beforeSend?.(id, controller.signal) ?? Promise.resolve(true),
         cancelled,
       ]);
-      if (!ready || !current()) return;
+      if (!ready || !current()) {
+        observeConversationRequest('preflight-stopped');
+        return;
+      }
+      observeConversationRequest('preflight-ready');
       // The same owner transitions synchronously into requests.send before another tap can enter.
       dispatched = true;
       const sending = input.requests.send(
@@ -98,6 +109,7 @@ export function conversationDispatch(input: {
       await sending;
     } catch (error) {
       if (dispatched) throw error;
+      observeConversationRequest('preflight-error');
       if (current())
         input.update(id, { error: t('ragConversation.preflight.failed') });
     } finally {

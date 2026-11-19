@@ -3,6 +3,10 @@ import CoreGraphics
 @main
 enum RoutesVisibleIntervalRegression {
     static func main() {
+        let prior: [String: Any] = ["event": "synthetic-conversation-request", "stage": "provider-configuration", "receivedAtMs": 99.0]
+        let current: [String: Any] = ["event": "synthetic-conversation-request", "stage": "dispatch", "receivedAtMs": 101.0]
+        let stages = ConversationRequestStageFilter.stages([prior, current], since: 100)
+        precondition(stages == ["dispatch"] && !stages.contains(where: ConversationRequestStageFilter.terminal.contains))
         let baseline = CGRect(x: 0, y: 62, width: 402, height: 812)
         let keyboard = CGRect(x: 0, y: 546, width: 402, height: 328)
         let keyboardAX = CGRect(x: 0, y: 590, width: 402, height: 226)
