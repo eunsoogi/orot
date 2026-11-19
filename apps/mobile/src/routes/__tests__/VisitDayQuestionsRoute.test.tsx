@@ -44,6 +44,9 @@ test('reads the exact visit and refreshes safely after a source deletion', async
   const f = fixture();
   await render(f.view());
   expect(await screen.findByText('Synthetic question')).toBeTruthy();
+  expect(
+    screen.getByTestId('visit-day-question-synthetic-0'),
+  ).toHaveTextContent('Synthetic question');
   expect(f.load).toHaveBeenCalledWith('visit');
   f.load.mockResolvedValue(savedOverviewQuestions('visit'));
   await act(() => notifyLocalSourceDeleted());

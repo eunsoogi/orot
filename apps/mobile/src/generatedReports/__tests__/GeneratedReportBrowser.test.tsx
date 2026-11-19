@@ -49,6 +49,9 @@ test('metadata first, explicit selected read, and unavailable result never inven
   expect(read).not.toHaveBeenCalled();
   await fireEvent.press(ui.getByTestId('generated-report-a'));
   await waitFor(() => expect(ui.getByText(/이전 버전이거나/)).toBeTruthy());
+  expect(ui.getByTestId('generated-report-back')).toHaveTextContent('목록으로');
+  await fireEvent.press(ui.getByTestId('generated-report-back'));
+  expect(ui.getByTestId('generated-report-close')).toHaveTextContent('닫기');
   expect(read).toHaveBeenCalledTimes(1);
 });
 

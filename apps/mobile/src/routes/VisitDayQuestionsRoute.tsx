@@ -127,7 +127,11 @@ export function VisitDayQuestionsRoute({
             {visible.saved.questions.length ? (
               visible.saved.questions.map(question => (
                 <View key={question.identity.id} style={styles.question}>
-                  <AppText>{question.questionText}</AppText>
+                  <AppText
+                    testID={`visit-day-question-${question.identity.id}`}
+                  >
+                    {question.questionText}
+                  </AppText>
                   <AppText>{question.rationale}</AppText>
                 </View>
               ))

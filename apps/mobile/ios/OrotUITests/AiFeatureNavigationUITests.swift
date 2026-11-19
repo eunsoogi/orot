@@ -30,11 +30,13 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "recording-session-panel")))
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
+        let schedule = node(app, "records-section-schedule")
+        XCTAssertTrue(UITestConditions.exists(schedule))
+        XCTAssertEqual(schedule.label, "일정")
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         XCTAssertFalse(node(app, "ai-features-screen").exists)
         XCTAssertFalse(node(app, "external-evidence-search").exists)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
-        XCTAssertEqual(try NavigationUITestConditions.navigationAction(app, "navigation-tab-schedule").control.label, "일정 탭")
         // The material host shares the identifier; only the native UIButton dispatches Send.
         let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
         XCTAssertTrue(UITestConditions.exists(send))
@@ -64,7 +66,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         message(app, "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.")
         XCTAssertFalse(app.alerts["저장하지 않은 내용이 있어요"].exists)
-        try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
+        try openSchedule(app)
         XCTAssertTrue(node(app, "schedule-open-appointments").exists)
         UITestConditions.value(node(app, "calendar-title"), equals: "일정")
         XCTAssertFalse(node(app, "calendar-connect").exists)
@@ -100,7 +102,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
             try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
             try captureAppearance(app, "conversation-empty-\(suffix)")
             try GeneratedRecordsRoutesUITestConditions.inspect(app, suffix: suffix, testCase: self)
-            try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
+            try openSchedule(app)
             let classification = node(app, "open-medical-appointments")
             UITestConditions.scrollTo(classification, in: app)
             classification.tap()
@@ -177,6 +179,18 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
                 XCTAssertTrue(UITestConditions.exists(node(app, "evidence-visual-picker")))
             }
         }
+    }
+
+    /// Schedule is a Records section; exercise its native control before checking the calendar route.
+    @MainActor
+    private func openSchedule(_ app: XCUIApplication) throws {
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        let schedule = node(app, "records-section-schedule")
+        XCTAssertTrue(UITestConditions.exists(schedule), app.debugDescription)
+        XCTAssertEqual(schedule.label, "일정")
+        XCTAssertTrue(schedule.isEnabled && schedule.isHittable && app.frame.contains(schedule.frame))
+        schedule.tap()
+        NavigationUITestConditions.route(app, markers: ["calendar-title"])
     }
 
     @MainActor

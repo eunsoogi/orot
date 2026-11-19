@@ -31,18 +31,23 @@ enum GeneratedRecordsRoutesUITestConditions {
             assertReadOnly(app)
             _ = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records")
             RecordingFixtureUITestConditions.capture(app, "records-\(key.replacingOccurrences(of: ":", with: "-"))-\(suffix)", testCase: testCase)
-            try tap(app.buttons["목록으로"], in: app, towardTop: true)
+            let back = app.buttons["generated-report-back"]
+            XCTAssertEqual(back.label, "목록으로")
+            try tap(back, in: app, towardTop: true)
             XCTAssertFalse(UITestConditions.element(app, "generated-report-detail").exists)
             XCTAssertTrue(UITestConditions.exists(row))
         }
         RecordingFixtureUITestConditions.capture(app, "records-report-list-\(suffix)", testCase: testCase)
-        try tap(app.buttons["닫기"], in: app, towardTop: true)
+        let close = app.buttons["generated-report-close"]
+        XCTAssertEqual(close.label, "닫기")
+        try tap(close, in: app, towardTop: true)
         XCTAssertTrue(UITestConditions.exists(app.buttons["generated-report-open"]))
         try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         try tap(UITestConditions.element(app, "overview-prepare-visit"), in: app)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "visit-day-questions")))
-        let question = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "합성 건강 기록을 진료에서 확인할까요?")).firstMatch
+        let question = app.staticTexts["visit-day-question-synthetic-routes-question"]
         XCTAssertTrue(UITestConditions.exists(question), app.debugDescription)
+        XCTAssertTrue(question.label.contains("합성 건강 기록을 진료에서 확인할까요?"))
         _ = try XCTUnwrap(FormUITestConditions.reveal(question, in: app, scrollID: "navigation-route-scroll"))
         XCTAssertTrue(question.isHittable)
         assertReadOnly(app)
