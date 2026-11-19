@@ -18,6 +18,8 @@ import type {
 import type { ChatGPTSelectionServices } from '../../providers/selection/chatGPTServices';
 import { nativeChatGPTSelectionServices } from '../../providers/selection/chatGPTServices';
 import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
+import { observeHistoryStartup } from '../../providers/conversationHistoryDiagnostic';
+import { chatGPTCredentialMutation } from '../../providers/chatGPTConsentIdentity';
 
 export type SelectedAiResolution =
   | {
@@ -39,18 +41,28 @@ export interface SelectedAiResolverOptions {
   readonly loadPccOption?: typeof loadPrivateCloudComputeOption;
 }
 
+export type SelectedAiResolver = (
+  historyStartup?: boolean,
+) => Promise<Extract<SelectedAiResolution, { status: 'ready' }>>;
+
 const CHATGPT_PROVIDER_PREFIX = 'chatgpt-plan:';
 
 /** Resolves only the saved provider/model pair; catalog or account failure never selects a substitute. */
 export async function resolveSelectedAiProvider(
   options: SelectedAiResolverOptions = {},
+  historyStartup = false,
 ): Promise<SelectedAiResolution> {
   const selectionStore = options.selectionStore ?? providerSelectionStore;
   const chatGPTServices =
     options.chatGPTServices ?? nativeChatGPTSelectionServices;
+  const observe: typeof observeHistoryStartup = historyStartup
+    ? observeHistoryStartup
+    : (_stage, work) => work();
   let selection: ProviderSelection | null;
   try {
-    selection = await selectionStore.load();
+    selection = await observe('history_startup_saved_selection_read', () =>
+      selectionStore.load(),
+    );
   } catch {
     return { status: 'unavailable' };
   }
@@ -60,16 +72,49 @@ export async function resolveSelectedAiProvider(
   if (selection.providerId === APPLE_PCC_PROVIDER_ID) {
     try {
       return readySelection(selection, [
-        await (options.loadPccOption ?? loadPrivateCloudComputeOption)(),
+        await observe(
+          'history_startup_model_availability',
+          options.loadPccOption ?? loadPrivateCloudComputeOption,
+        ),
       ]);
     } catch {
       return { status: 'unavailable' };
     }
   }
 
+  const mayOverlap =
+    historyStartup &&
+    selectionStore === providerSelectionStore &&
+    chatGPTServices === nativeChatGPTSelectionServices;
+  const selectionCurrent = mayOverlap
+    ? providerSelectionStore.liveWitness()
+    : null;
+  const previousAccountId = mayOverlap
+    ? selectedChatGPTAccountId(selection)
+    : undefined;
+  const credentialsCurrent = previousAccountId
+    ? chatGPTCredentialMutation.capture()
+    : null;
+  const loadAccounts = () =>
+    observe('history_startup_account_eligibility', () =>
+      chatGPTServices.listAccounts(),
+    );
+  type Accounts = Awaited<ReturnType<typeof loadAccounts>>;
+  let pendingAccounts: Promise<Accounts | undefined> | undefined;
   let appleOption: ProviderSelectionOption;
   try {
-    appleOption = await (options.loadAppleOption ?? loadAppleSelectionOption)();
+    const pendingApple = observe(
+      'history_startup_model_availability',
+      options.loadAppleOption ?? loadAppleSelectionOption,
+    );
+    // After the exact stored selection is known, Apple availability and the
+    // local account list can run together. Neither authorizes catalog access.
+    // Consume an early account failure even if the Apple probe fails first.
+    if (selectionCurrent && credentialsCurrent)
+      pendingAccounts = Promise.resolve()
+        .then(loadAccounts)
+        .catch(() => undefined);
+    appleOption = await pendingApple;
   } catch {
     return { status: 'unavailable' };
   }
@@ -82,15 +127,28 @@ export async function resolveSelectedAiProvider(
   if (!accountId) return { status: 'unavailable' };
 
   try {
-    const accounts = await chatGPTServices.listAccounts();
-    const account = accounts.find(
-      candidate => candidate.issuedClientID === accountId,
-    );
-    if (!account || account.requiresSignIn || !account.hasDirectPlanAccess) {
+    const eligible = (accounts: Accounts | undefined) => {
+      const account = accounts?.find(
+        candidate => candidate.issuedClientID === accountId,
+      );
+      return account && !account.requiresSignIn && account.hasDirectPlanAccess;
+    };
+    const earlyAccounts = pendingAccounts ? await pendingAccounts : undefined;
+    // Reuse only a positive observation from the same local owner and revision.
+    // A changed or failed early read falls back to the original serial check.
+    const earlyReady =
+      previousAccountId === accountId &&
+      selectionCurrent?.() &&
+      credentialsCurrent?.() &&
+      eligible(earlyAccounts);
+    if (!earlyReady && !eligible(await loadAccounts()))
       return { status: 'unavailable' };
-    }
 
-    const models = await chatGPTServices.listModels(accountId);
+    // The native catalog reader still checks the exact account and current
+    // direct-plan grant under its credential owner before the metadata request.
+    const models = await observe('history_startup_model_catalog', () =>
+      chatGPTServices.listModels(accountId),
+    );
     if (!models.ok) return { status: 'unavailable' };
     return readySelection(selection, [
       appleOption,

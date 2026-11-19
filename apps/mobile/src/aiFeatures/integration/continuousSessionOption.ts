@@ -1,12 +1,12 @@
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
-import type { requireSelectedAi } from './provider';
+import type { SelectedAiResolver } from './provider';
 import type { createConversationSessionStorage } from './conversationSessionStorage';
 import { createConversationDurableIdentity } from '../../ragConversation/conversationDurableIdentity';
 import { observeHistoryStartup } from '../../providers/conversationHistoryDiagnostic';
 
 /** Reuse the validated saved selection, not a label, refresh counter, credential or health payload. */
 export function continuousSessionOption(
-  selectedAi: (() => Promise<ReturnType<typeof requireSelectedAi>>) | undefined,
+  selectedAi: SelectedAiResolver | undefined,
   openStorage: ReturnType<typeof createConversationSessionStorage>,
 ): Pick<ConversationSessionOptions, 'continuousSession'> {
   if (!selectedAi) return {};
@@ -14,7 +14,7 @@ export function continuousSessionOption(
     continuousSession: async signal => {
       const selected = await observeHistoryStartup(
         'history_startup_model_selection',
-        selectedAi,
+        () => selectedAi(true),
       );
       if (signal.aborted) throw new Error('Conversation selection cancelled.');
       const model = {

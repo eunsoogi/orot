@@ -75,9 +75,9 @@ export function createAiFeatureServices(
     data: privateLocalData,
     storage: dependencies.summaryStorage,
   });
-  async function selectedAi() {
+  async function selectedAi(historyStartup = false) {
     return requireSelectedAi(
-      await resolveSelectedAiProvider(dependencies.selectedAi),
+      await resolveSelectedAiProvider(dependencies.selectedAi, historyStartup),
     );
   }
   async function analyze(

@@ -20,6 +20,10 @@ type HistoryStartupWork =
   | 'history_startup_session_recovery'
   | 'history_startup_session_lease'
   | 'history_startup_model_selection'
+  | 'history_startup_saved_selection_read'
+  | 'history_startup_model_availability'
+  | 'history_startup_account_eligibility'
+  | 'history_startup_model_catalog'
   | 'history_startup_continuous_session'
   | 'history_startup_session_attachment';
 

@@ -47,6 +47,8 @@ final class OrotProviderDiagnostics: NSObject {
                "history_startup_period_guards", "history_startup_summary_setup", "history_startup_conversation_storage",
                "history_startup_session_recovery", "history_startup_session_lease",
                "history_startup_model_selection", "history_startup_continuous_session", "history_startup_session_attachment",
+               "history_startup_saved_selection_read", "history_startup_model_availability",
+               "history_startup_account_eligibility", "history_startup_model_catalog",
                "history_timeline", "history_turns", "history_artifacts", "history_tool_read",
                "history_tool_restore", "history_tasks", "history_recheck", "history_transcript_layout", "conversation_model_preflight", "conversation_history_preflight",
                "conversation_dispatch", "conversation_run", "tool_capture_personal", "tool_capture_memory", "tool_capture_generated", "tool_capture_external",
