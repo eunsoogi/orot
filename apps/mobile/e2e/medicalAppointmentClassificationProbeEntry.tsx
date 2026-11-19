@@ -14,11 +14,18 @@ import { ModelSettingsServicesContext } from '../src/agent/execution/ModelSettin
 import { SettingsConsentReadServicesContext } from '../src/agent/execution/SettingsConsentReadServices';
 import { ClassificationProbeScreen } from './ClassificationProbeScreen';
 
+import {
+  NavigationMotionContext,
+  useNavigationReduceMotion,
+} from '../src/navigation/NavigationMotionContext';
+
 type Input = ReturnType<typeof createSettingsConsentUiServices>;
 
 /** This explicit test entry never opens normal account/store singletons. A UUID
  * owns its SQLCipher and Keychain lifecycle; approval is only through settings UI. */
 function MedicalAppointmentClassificationProbeEntry() {
+  // Mirror the app boundary using the real OS subscription, never a forced test preference.
+  const reduceMotion = useNavigationReduceMotion();
   const [input, setInput] = useState<Input | null>(null);
   const [status, setStatus] = useState('preparing-synthetic-classification');
   const [reads, setReads] = useState<ReturnType<
@@ -69,19 +76,21 @@ function MedicalAppointmentClassificationProbeEntry() {
     };
   }, []);
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.root}>
-        {input && reads ? (
-          <ModelSettingsServicesContext.Provider value={input.services}>
-            <SettingsConsentReadServicesContext.Provider value={reads}>
-              <ClassificationProbeScreen input={input} />
-            </SettingsConsentReadServicesContext.Provider>
-          </ModelSettingsServicesContext.Provider>
-        ) : (
-          <Text testID="classification-consent-setup">{status}</Text>
-        )}
-      </SafeAreaView>
-    </SafeAreaProvider>
+    <NavigationMotionContext.Provider value={reduceMotion}>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.root}>
+          {input && reads ? (
+            <ModelSettingsServicesContext.Provider value={input.services}>
+              <SettingsConsentReadServicesContext.Provider value={reads}>
+                <ClassificationProbeScreen input={input} />
+              </SettingsConsentReadServicesContext.Provider>
+            </ModelSettingsServicesContext.Provider>
+          ) : (
+            <Text testID="classification-consent-setup">{status}</Text>
+          )}
+        </SafeAreaView>
+      </SafeAreaProvider>
+    </NavigationMotionContext.Provider>
   );
 }
 const styles = StyleSheet.create({ root: { flex: 1 } });
