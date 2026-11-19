@@ -39,23 +39,25 @@ enum ProviderAuthUITestDiagnostics {
 
     /// Keeps the existing synthetic callback on screen while the app window reports a measured Duo reflow.
     static func continueLocalConsentDuringDuoReflow(_ app: XCUIApplication, testCase: XCTestCase) throws {
-        let originalOrientation = XCUIDevice.shared.orientation
+        // A fresh Simulator may report unknown; establish a measurable portrait baseline before consent.
+        XCUIDevice.shared.orientation = .portrait
+        let portrait = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.frame.width < app.frame.height }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [portrait]), .completed, app.debugDescription)
         let originalFrame = app.frame
-        let shouldBeLandscape = originalFrame.width <= originalFrame.height
         let callbackResult = app.staticTexts["로그인을 확인했어요. 모델 목록을 확인하려면 다시 눌러 주세요."]
         try continueLocalConsent(app, stage: .secondNativeReturn, testCase: testCase) {
-            defer { XCUIDevice.shared.orientation = originalOrientation }
-            XCUIDevice.shared.orientation = shouldBeLandscape ? .landscapeLeft : .portrait
+            defer { XCUIDevice.shared.orientation = .portrait }
+            XCUIDevice.shared.orientation = .landscapeLeft
             // The callback and width change may finish in either order; both must be visible before this path continues.
             let returnedDuringReflow = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 let frame = app.frame
                 return abs(frame.width - originalFrame.width) > 0.5
-                    && (frame.width > frame.height) == shouldBeLandscape
+                    && frame.width > frame.height
                     && callbackResult.exists
             }, object: nil)
             XCTAssertEqual(UITestConditions.wait(for: [returnedDuringReflow]), .completed, app.debugDescription)
 
-            XCUIDevice.shared.orientation = originalOrientation
+            XCUIDevice.shared.orientation = .portrait
             let restored = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 let frame = app.frame
                 return abs(frame.width - originalFrame.width) <= 0.5
