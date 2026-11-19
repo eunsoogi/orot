@@ -137,6 +137,11 @@ test('passes actual dose events and a known absent schedule through SQLite, the 
     expect(
       await registry.revalidateEvidence([item], new AbortController().signal),
     ).toBe(true);
+    // A previously issued period alias must reject a changed dose history.
+    await f.records.delete('dose_event', 'second-taken');
+    expect(
+      await registry.revalidateEvidence([item], new AbortController().signal),
+    ).toBe(false);
   } finally {
     f.close();
   }
