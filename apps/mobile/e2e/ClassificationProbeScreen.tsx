@@ -37,7 +37,9 @@ const defaultStaged =
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  gate: { minHeight: 44, justifyContent: 'center' },
+  // Synthetic control only: 1pt headroom avoids AX Float32 underflow at the strict 44pt oracle.
+  // This reserves 1pt more fixture space; product viewport ownership and minimum targets are unchanged.
+  gate: { minHeight: 45, justifyContent: 'center' },
 });
 
 export function ClassificationProbeScreen({

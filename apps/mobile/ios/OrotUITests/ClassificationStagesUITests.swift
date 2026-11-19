@@ -73,7 +73,7 @@ extension AppointmentConsentUITests {
         XCTAssertGreaterThanOrEqual(gate.frame.height, 44)
         XCTAssertTrue(gate.isHittable)
         try captureStageLayout(app, stage: "progress-\(percent)")
-        // Evidence includes fixture controls: their 44pt gate and diagnostic text reduce the product stage height.
+        // Evidence includes fixture controls: their 45pt gate and diagnostic text reduce the product stage height.
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-progress-\(percent)", testCase: self)
     }
 

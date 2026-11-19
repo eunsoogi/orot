@@ -489,7 +489,7 @@ cloud 합성 회귀는 실제 설정 취소 후 provider 0, 승인 후 식별자
   완료 결과는 합성 의료 일정 9건만 표시하며, 첫 일정의 긴 원문도 이전/다음으로 끝까지 접근해야 합니다.
 - compact iPhone/가로, Duo wide, XXXL 각각 3단계의 fade, Reduce Motion, 44pt 동작과
   화면 경계, 긴 본문·페이지 전환·VoiceOver를 확인합니다. gate 제어는 fixture 전용이며
-  44pt gate와 진단 문구가 실제 stage 높이를 줄이므로 측정 영역을 함께 기록하고,
+  45pt gate와 진단 문구가 실제 stage 높이를 줄이므로 측정 영역을 함께 기록하고,
   실제 제품 레이아웃 수용은 App-navigation probe에서도 별도로 확인합니다.
 - 한 줄을 담지 못하는 route에서는 reader 확대/닫기/회전 복구를 확인합니다. reader dismiss
   완료 전에 다음 동작이 실행되지 않아야 하며, 취소·unmount·문서 또는 callback 변경 후 예약 동작이
@@ -545,7 +545,7 @@ UUID 격리 저장소에서 실제 설정 UI 승인 후에만 합성 remote prov
 
 이 case 소스/등록 및 cloud 회귀는 native 성공 증거가 아닙니다. 아직 컴파일/실행 전이며
 실행자는 progress AX label/value와 원문 pagination의 실제 UIKit 결과를 보존해야 합니다.
-fixture gate 44pt와 진단 텍스트가 차감된 화면을 스크린샷에 함께 남깁니다. 이것은
+fixture gate 45pt와 진단 텍스트가 차감된 화면을 스크린샷에 함께 남깁니다. 이것은
 App-navigation 제품 geometry 또는 실제 VoiceOver 구동의 대체 증거가 아닙니다.
 
 최소 후속 수용 순서는 iPhone 기본 크기의 새 case, 기존 disclosure 거부/실패 case,
@@ -586,7 +586,6 @@ case는 별도로 정확 한 번 등록된다. 실제 native 실행과 수용은
 case와 assertion은 유지한다. 원격 provider, authorize, 자동 재전송 및 실제 사용자
 자료는 이 수용에 포함하지 않는다. 생성 결과가 오기 전 OS 중단은 별도 문제다.
 
-
 #### 실패 문서 pagination oracle 후속
 
 정확 `9708ad5d`의 staged 성공 case 1회 통과와 별도로, 기존 disclosure case는
@@ -610,7 +609,6 @@ next까지 순서대로 읽으며 첫 previous disabled, 비어 있지 않은 �
 변경하지 않는다. 새 oracle의 Swift 컴파일과 실제 실패 case는 독립 검토 뒤
 정확 revision으로 재실행해야 하며, 이전 native 차단 결과를 성공으로 바꾸지 않는다.
 
-
 ### 실패 reader의 AX 계층 후속 교정
 
 `5816b15f`의 hosted CI는 모두 성공했지만 원래 disclosure native case는 results 존재 확인 뒤 previous target의 descendant 조회에서 실패했다. 첫 페이지 enabled 검증과 전체 문서 검증에는 도달하지 못했다. fail-fast 설정 때문에 defer attachment도 남지 않았으므로 실제 AX flattening이나 target type을 원인으로 확정하지 않는다. 원래 staged PASS와 이 실패는 별도 증거로 유지한다.
@@ -618,3 +616,7 @@ next까지 순서대로 읽으며 첫 previous disabled, 비어 있지 않은 �
 기존 staged PASS와 같은 app-global 식별자 조회를 사용하되 results/page/viewport/footer/이전/다음의 유일성, confirmation/progress 부재, app→results→viewport/footer 및 viewport→text/footer→44pt actions의 실제 frame 포함을 요구한다. 단순 global 첫 일치로 안전 검증을 줄이지 않는다. 첫 이전 버튼 disabled, 마지막 다음 버튼 disabled, 페이지 누락/반복 거부, 전체 batch/숫자/reason/suffix 검증과 provider/privacy/save/회전 assertions는 유지한다.
 
 합성 scenario/UUID 인자 확인 후 첫 대기 전후와 각 페이지/전환 뒤, assertion보다 먼저 한정된 8개 식별자의 global/descendant 수와 최대 2개 target의 type/frame/exists/enabled/hittable 및 2,048자 이하 label/value를 즉시 attachment로 저장한다. 전체 앱 AX나 사용자 콘텐츠는 수집하지 않는다. 이번 Node 회귀는 native 소스 계약과 실제 TypeScript pagination 의미 검증이며 Swift/UIKit 실행은 아니다. 다음 컴파일/원래 case 수용 전 실제 AX 계약 적합성은 미검증이다.
+
+합성 분류 release gate는 AX의 44pt 경계 표현 오차를 피하도록 최소 45pt로 예약합니다.
+기존 fixture보다 stage 가용 높이가 1pt 줄 수 있으며, 이 차이를 실제 layout receipt와 함께 해석합니다.
+native gate 및 제품 동작의 최소 44pt assertion은 완화하지 않습니다. 이 변경은 제품 화면의 geometry 검증 통과를 뜻하지 않습니다.
