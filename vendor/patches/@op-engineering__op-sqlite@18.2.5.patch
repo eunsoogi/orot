@@ -117,7 +117,7 @@ index 23da58eae5dd260b6848ea37b23e86cea66d7a7f..3062fdc7134d7ef9f661739f75c012d4
  
  #ifdef OP_SQLITE_USE_LIBSQL
 diff --git a/cpp/OPDatabase.hpp b/cpp/OPDatabase.hpp
-index 9e387a6b8b7545bdadf7fdb2f70aafda4d45b069..2f0ccad2534cceb29143e19185f811dd3558be0b 100644
+index 9e387a6b8b7545bdadf7fdb2f70aafda4d45b069..52433cfff29dfa6f9cb7930a784d77cf1caaf382 100644
 --- a/cpp/OPDatabase.hpp
 +++ b/cpp/OPDatabase.hpp
 @@ -41,6 +41,8 @@ struct ReactiveQuery {
@@ -129,7 +129,17 @@ index 9e387a6b8b7545bdadf7fdb2f70aafda4d45b069..2f0ccad2534cceb29143e19185f811dd
  class JSI_EXPORT OPDatabase
      : public jsi::NativeState,
        public std::enable_shared_from_this<OPDatabase> {
-@@ -101,6 +103,9 @@ private:
+@@ -80,6 +82,9 @@ public:
+   ~OPDatabase() override;
+ 
+ private:
++#if defined(OROT_TESTS)
++  friend struct OrotNativeCacheTestAccess;
++#endif
+   std::set<std::shared_ptr<ReactiveQuery>> pending_reactive_queries;
+   void sync_update_hook_registration();
+   void release_hooks();
+@@ -101,6 +106,9 @@ private:
    std::shared_ptr<react::CallInvoker> invoker = opsqlite::invoker;
    std::shared_ptr<std::atomic<bool>> alive = opsqlite::generation_alive;
    std::shared_ptr<ThreadPool> thread_pool;

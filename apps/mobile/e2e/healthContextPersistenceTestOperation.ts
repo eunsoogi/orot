@@ -20,6 +20,11 @@ export async function runHealthContextPersistenceTestOperation(
   identifier: unknown,
   mode?: unknown,
 ) {
+  if (mode === 'native-owner-lifecycle') {
+    const { runNativeCacheOwnerOperation } =
+      await import('./nativeCacheOwnerOperation');
+    return runNativeCacheOwnerOperation();
+  }
   if (mode === 'native-statement-cache') {
     const { runNativePeriodCacheOperation } =
       await import('./nativePeriodCacheOperation');

@@ -177,6 +177,14 @@ final class HermesDomainIntegrationTests: OrotFailFastTestCase {
         }
     }
 
+    /// Requires actual step-entry, SQLITE_INTERRUPT and an empty native handle set at owner close.
+    func testNativePeriodCacheInterruptsAndInvalidatesActualOwner() async throws {
+        let result = try await operation("health-context-persistence", parameters: ["mode": "native-owner-lifecycle"])
+        for key in ["synthetic", "encrypted", "cacheReuseObserved", "activeInterruptObserved", "ownerInvalidationObserved", "noStatementsAtClose", "recoveredAfterInterrupt", "reopenedAfterInvalidation"] {
+            XCTAssertEqual(result[key] as? Bool, true, key)
+        }
+    }
+
     private func operation(_ name: String, parameters: [String: Any] = [:]) async throws -> [String: Any] {
         let result = try await TestOperationBroker.shared.request(name, parameters: parameters)
         XCTAssertEqual(result["platform"] as? String, "ios")

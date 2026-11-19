@@ -106,7 +106,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@op-engineering/op-sqlite@18.2.5': 47ae96d57f1708edf7583e325a7b4b2eb439b9b900421767c0dbad0693785fe7
+  '@op-engineering/op-sqlite@18.2.5': cc4059479f1144114ccaea37aa3ba6412747809185aea0dd5d218f1772c085d8
   '@react-native-community/datetimepicker@9.2.2': 6726e947391651aa07ae94ede13f0c46ea8c9a1a9343cbe151742ccce67bcebc
   '@react-native-community/slider@5.2.2': a74dd7dd9af47af05d7ac0376ae6ac1853bd63b445451983e4cbc1cb88295b9e
   '@react-native/codegen@0.87.1': cde811a3eac5b68d52071dbd54d492f7f714b86235a4a13437474013c938521e
@@ -151,7 +151,7 @@ importers:
         version: 1.2.14(ws@7.5.13)
       '@op-engineering/op-sqlite':
         specifier: 18.2.5
-        version: 18.2.5(patch_hash=47ae96d57f1708edf7583e325a7b4b2eb439b9b900421767c0dbad0693785fe7)(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
+        version: 18.2.5(patch_hash=cc4059479f1144114ccaea37aa3ba6412747809185aea0dd5d218f1772c085d8)(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)
       '@orot/agent-memory':
         specifier: workspace:*
         version: link:../../packages/agent-memory
@@ -5302,7 +5302,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.3
 
-  '@op-engineering/op-sqlite@18.2.5(patch_hash=47ae96d57f1708edf7583e325a7b4b2eb439b9b900421767c0dbad0693785fe7)(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)':
+  '@op-engineering/op-sqlite@18.2.5(patch_hash=cc4059479f1144114ccaea37aa3ba6412747809185aea0dd5d218f1772c085d8)(react-native@0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1))(react@19.2.3)':
     dependencies:
       react: 19.2.3
       react-native: 0.87.1(patch_hash=a8be2c227fabec1f3c140f24a16a562976ee4042633c52564d8286558fc8518a)(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(supports-color@8.1.1)(typescript@6.0.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.2.3)(supports-color@8.1.1)
