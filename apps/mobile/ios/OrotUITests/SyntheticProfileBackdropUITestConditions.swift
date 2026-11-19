@@ -3,16 +3,16 @@ import XCTest
 /// Uses restored synthetic turns to observe independent foreground and real-scene resize boundaries.
 @MainActor
 enum SyntheticProfileBackdropUITestConditions {
-    static func run(_ testCase: XCTestCase, rotation: Bool) throws {
+    static func run(_ testCase: XCTestCase, rotation: Bool, portraitCapture: Bool = false) throws {
         let session = UUID().uuidString
         let app = XCUIApplication()
         let originalOrientation = XCUIDevice.shared.orientation
         defer {
-            if rotation {
+            if rotation || portraitCapture {
                 XCUIDevice.shared.orientation = originalOrientation
             }
         }
-        if rotation {
+        if rotation || portraitCapture {
             XCUIDevice.shared.orientation = .portrait
         }
         app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-OROT_TEST_LONG_CONVERSATION_VISUAL", "YES", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"]
@@ -59,6 +59,61 @@ enum SyntheticProfileBackdropUITestConditions {
         screenshot.name = "synthetic-scrolled-profile"
         screenshot.lifetime = .keepAlways
         testCase.add(screenshot)
+        if portraitCapture {
+            // Match the painted body to its synthetic answer; text bounds alone do not describe its edge.
+            let bodies = app.otherElements.matching(identifier: "conversation-message-body")
+            func card(for number: Int) -> XCUIElement? {
+                let answerText = "합성 답변 \(number):"
+                return bodies.allElementsBoundByIndex.first {
+                    $0.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", answerText)).firstMatch.exists
+                }
+            }
+            let profileFrame = profile.frame
+            let historyFrame = history.frame
+            let start = CGPoint(x: historyFrame.minX + 40, y: min(historyFrame.maxY - 100, profileFrame.maxY + 190))
+            let maxDistance = start.y - (historyFrame.minY + 20)
+            let candidates = bodies.allElementsBoundByIndex.compactMap { body -> (Int, CGRect)? in
+                let label = body.staticTexts.allElementsBoundByIndex.map(\.label).first { $0.hasPrefix("합성 답변 ") }
+                guard let label,
+                      let prefix = label.split(separator: ":", maxSplits: 1).first,
+                      let number = Int(prefix.dropFirst("합성 답변 ".count)), (1 ... 24).contains(number) else { return nil }
+                let frame = body.frame
+                guard frame.minY > profileFrame.maxY, frame.intersects(historyFrame),
+                      frame.minY - (profileFrame.maxY - 12) <= maxDistance else { return nil }
+                return (number, frame)
+            }
+            let candidatesEvidence = XCTAttachment(string: "profile=\(profileFrame), history=\(historyFrame), app=\(app.frame), candidates=\(candidates)")
+            candidatesEvidence.name = "synthetic-profile-portrait-candidates"
+            candidatesEvidence.lifetime = .keepAlways
+            testCase.add(candidatesEvidence)
+            let beforeImage = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            beforeImage.name = "synthetic-profile-portrait-before-drag"
+            beforeImage.lifetime = .keepAlways
+            testCase.add(beforeImage)
+            let candidate = try XCTUnwrap(candidates.min { $0.1.minY < $1.1.minY }, "A painted answer below the profile must be exposed in the accessibility tree")
+            let (answerNumber, beforeBody) = candidate
+            let distance = max(0, beforeBody.minY - (profileFrame.maxY - 12))
+            let end = CGPoint(x: start.x, y: max(historyFrame.minY + 20, start.y - distance))
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            origin.withOffset(CGVector(dx: start.x - app.frame.minX, dy: start.y - app.frame.minY))
+                .press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: end.x - app.frame.minX, dy: end.y - app.frame.minY)), withVelocity: .slow, thenHoldForDuration: 0.1)
+            let image = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            image.name = "synthetic-profile-portrait-card"
+            image.lifetime = .keepAlways
+            testCase.add(image)
+            let afterBody = try XCTUnwrap(card(for: answerNumber), "The same synthetic answer must remain identifiable after the drag").frame
+            let afterProfile = profile.frame
+            let evidence = XCTAttachment(string: "answer=\(answerNumber), profileBefore=\(profileFrame), profileAfter=\(afterProfile), history=\(historyFrame), app=\(app.frame), bodyBefore=\(beforeBody), bodyAfter=\(afterBody), dragStart=\(start), dragEnd=\(end)")
+            evidence.name = "synthetic-profile-portrait-card-frames"
+            evidence.lifetime = .keepAlways
+            testCase.add(evidence)
+            XCTAssertGreaterThan(app.frame.height, app.frame.width, "The captured viewport must be portrait")
+            XCTAssertTrue(historyFrame.contains(start) && app.frame.contains(start))
+            XCTAssertGreaterThan(start.y, end.y)
+            XCTAssertLessThan(afterBody.minY, beforeBody.minY)
+            XCTAssertTrue(afterBody.intersects(afterProfile), "The actual painted card must cross the profile backdrop")
+            return
+        }
         if rotation {
             let beforeWidth = history.frame.width
             _ = try NavigationRotationUITestConditions.rotateObservedScene(app, session: session, landscape: true, scrollID: "rag-conversation-history")

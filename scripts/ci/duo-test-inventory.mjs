@@ -30,6 +30,7 @@ export const duoTests = [
   'OrotUITests/FeatureEntryDuoUITests/testPortraitConversationActionsOpenHistoryAndStartNewSession',
   'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
   'OrotUITests/ConversationHistoryDuoUITests/testSyntheticLongConversationProfileForeground',
+  'OrotUITests/ConversationHistoryDuoUITests/testSyntheticLongConversationProfilePortrait',
   'OrotUITests/ConversationHistoryDuoUITests/testSyntheticLongConversationProfileResize',
   'OrotUITests/WindowGeometryUITests/testDuoPortraitGeometryRetainsQuestionDraftAcrossSourceNavigation',
   'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',

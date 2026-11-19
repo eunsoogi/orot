@@ -2,6 +2,12 @@ import XCTest
 
 /// Verifies saved-result routes and Duo history layout, including a native landscape transition.
 final class ConversationHistoryDuoUITests: OrotFailFastTestCase {
+    /// Capture the painted synthetic card and profile in the same portrait viewport.
+    @MainActor
+    func testSyntheticLongConversationProfilePortrait() throws {
+        try SyntheticProfileBackdropUITestConditions.run(self, rotation: false, portraitCapture: true)
+    }
+
     /// Observe foreground independently so a rotation failure cannot hide its result.
     @MainActor
     func testSyntheticLongConversationProfileForeground() throws {
