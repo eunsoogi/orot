@@ -23,6 +23,8 @@ precondition(decision(CGRect(x: 30, y: 640, width: 200, height: 44)) == .visible
 precondition(decision(CGRect(x: 30, y: 641, width: 200, height: 44)) == .up)
 precondition(decision(CGRect(x: 30, y: 30, width: 200, height: 44)) == .down)
 precondition(decision(CGRect(x: 0, y: 200, width: 420, height: 44)) == nil)
+precondition(LiteratureActionGeometry.decide(window: window, scroll: scroll, dock: dock, target: nil) == .up)
+precondition(LiteratureActionGeometry.decide(window: window, scroll: scroll, dock: dock, target: .zero) == .up)
 precondition(LiteratureActionGeometry.decide(window: .zero, scroll: scroll, dock: dock, target: scroll) == nil)
 precondition(LiteratureActionGeometry.decide(window: window, scroll: scroll, dock: .zero, target: scroll) == nil)
 `,
@@ -42,6 +44,11 @@ precondition(LiteratureActionGeometry.decide(window: window, scroll: scroll, doc
     'apps/mobile/ios/OrotUITests/SummaryAndLiteratureUITests.swift',
     'utf8',
   );
+  const reveal = readFileSync('apps/mobile/ios/OrotUITests/LiteratureActionReveal.swift', 'utf8');
+  assert.doesNotMatch(reveal, /UITestConditions\.exists\(action\)/);
+  assert.match(reveal, /for attempt in 0 \.\.\. 20/);
+  assert.match(reveal, /FormWindowOwnership\.resolve\(app, scroll: screen, target: action\)/);
+  assert.match(reveal, /action\.exists \? action\.frame : nil/);
   assert.match(source, /LiteratureActionReveal\.reveal\(open, in: app, dock: search\)/);
   assert.doesNotMatch(source, /scrollToBottom\(app, "external-medical-evidence-screen"\)/);
   for (const assertion of [
