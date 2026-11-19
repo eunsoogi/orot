@@ -18,7 +18,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     ) -> Bool {
         self.launchOptions = launchOptions
 
+        #if OROT_TESTS && !targetEnvironment(simulator)
+            if UserDefaults.standard.string(forKey: "OROT_TEST_SCENARIO") == "active-tab-workload" {
+                return true
+            }
+        #endif
         #if OROT_TESTS && targetEnvironment(simulator)
+            if UserDefaults.standard.string(forKey: "OROT_TEST_SCENARIO") == "active-tab-workload" {
+                guard let token = UserDefaults.standard.string(forKey: "OROT_WORKLOAD_SESSION") else { return true }
+                do {
+                    try TestFixtureState.requireEmptyWorkloadStore(token)
+                } catch {
+                    NSLog("OROT_WORKLOAD_FIXTURE_UNAVAILABLE")
+                    return true
+                }
+            }
             if TestFixtureCommand.runIfRequested() {
                 return true
             }
@@ -76,13 +90,27 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         options.urlContexts.forEach { RootURLInbox.shared.receive($0.url) }
         let window: UIWindow
         #if OROT_TESTS
-            if let run = VisitQuestionInputGate.session() {
-                window = VisitQuestionInputObservationWindow(windowScene: windowScene, run: run)
-            } else if let run = EncounterInputGate.session() {
-                window = EncounterInputObservationWindow(windowScene: windowScene, run: run)
-            } else {
-                window = UIWindow(windowScene: windowScene)
-            }
+            #if targetEnvironment(simulator)
+                if UserDefaults.standard.string(forKey: "OROT_TEST_SCENARIO") == "active-tab-workload",
+                   let run = UserDefaults.standard.string(forKey: "OROT_WORKLOAD_SESSION").flatMap(UUID.init(uuidString:))
+                {
+                    window = ActiveTabObservationWindow(windowScene: windowScene, run: run)
+                } else if let run = VisitQuestionInputGate.session() {
+                    window = VisitQuestionInputObservationWindow(windowScene: windowScene, run: run)
+                } else if let run = EncounterInputGate.session() {
+                    window = EncounterInputObservationWindow(windowScene: windowScene, run: run)
+                } else {
+                    window = UIWindow(windowScene: windowScene)
+                }
+            #else
+                if let run = VisitQuestionInputGate.session() {
+                    window = VisitQuestionInputObservationWindow(windowScene: windowScene, run: run)
+                } else if let run = EncounterInputGate.session() {
+                    window = EncounterInputObservationWindow(windowScene: windowScene, run: run)
+                } else {
+                    window = UIWindow(windowScene: windowScene)
+                }
+            #endif
         #else
             window = UIWindow(windowScene: windowScene)
         #endif

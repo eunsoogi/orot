@@ -368,6 +368,7 @@
 		D60FF57E88DCFD19A245577A /* EncounterInputTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CC3F5B2AACFC717C874D500 /* EncounterInputTrace.swift */; };
 		2A485CA6142E56619E9E3BF0 /* EncounterInputObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F3BBF69737C643D24C3D8F /* EncounterInputObservation.swift */; };
 		A21C943F3620C9640A2BA285 /* EncounterInputObservationWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FBA5CF1F52655B5FCBEC22C /* EncounterInputObservationWindow.swift */; };
+		A66C943F3620C9640A2BA285 /* ActiveTabObservationWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FBA5CF1F52655B5FCBEC226 /* ActiveTabObservationWindow.swift */; };
 		074959A5631EC90A8EA8D999 /* EncounterInputObservation.m in Sources */ = {isa = PBXBuildFile; fileRef = C3EE3BE523BD582B1201B757 /* EncounterInputObservation.m */; };
 		BBD39ED4CA5C1F73E2C05D80 /* EncounterInputObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4537E8AD8A8E77AE3DA54672 /* EncounterInputObservation.swift */; };
 		09748877AD3642DCA2AE5EE29131280C /* VisitQuestionInputGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48234CD5062B454DB27EE2CB6489F06B /* VisitQuestionInputGate.swift */; };
@@ -773,6 +774,7 @@
 		5CC3F5B2AACFC717C874D500 /* EncounterInputTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EncounterInputTrace.swift; path = OrotMobile/EncounterInputTrace.swift; sourceTree = "<group>"; };
 		F2F3BBF69737C643D24C3D8F /* EncounterInputObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EncounterInputObservation.swift; path = OrotMobile/EncounterInputObservation.swift; sourceTree = "<group>"; };
 		1FBA5CF1F52655B5FCBEC22C /* EncounterInputObservationWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EncounterInputObservationWindow.swift; path = OrotMobile/EncounterInputObservationWindow.swift; sourceTree = "<group>"; };
+		1FBA5CF1F52655B5FCBEC226 /* ActiveTabObservationWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActiveTabObservationWindow.swift; path = OrotMobile/ActiveTabObservationWindow.swift; sourceTree = "<group>"; };
 		C3EE3BE523BD582B1201B757 /* EncounterInputObservation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EncounterInputObservation.m; path = OrotMobile/EncounterInputObservation.m; sourceTree = "<group>"; };
 		4537E8AD8A8E77AE3DA54672 /* EncounterInputObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EncounterInputObservation.swift; path = EncounterInputObservation.swift; sourceTree = "<group>"; };
 		48234CD5062B454DB27EE2CB6489F06B /* VisitQuestionInputGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VisitQuestionInputGate.swift; path = OrotMobile/VisitQuestionInputGate.swift; sourceTree = "<group>"; };
@@ -1000,6 +1002,7 @@
 				E7D4A0000000000000000002 /* NavigationRotationProbe.swift */,
 				C3EE3BE523BD582B1201B757 /* EncounterInputObservation.m */,
 				1FBA5CF1F52655B5FCBEC22C /* EncounterInputObservationWindow.swift */,
+				1FBA5CF1F52655B5FCBEC226 /* ActiveTabObservationWindow.swift */,
 				F2F3BBF69737C643D24C3D8F /* EncounterInputObservation.swift */,
 				5CC3F5B2AACFC717C874D500 /* EncounterInputTrace.swift */,
 				48234CD5062B454DB27EE2CB6489F06B /* VisitQuestionInputGate.swift */,
@@ -1733,6 +1736,7 @@
 				9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */,
 				074959A5631EC90A8EA8D999 /* EncounterInputObservation.m in Sources */,
 				A21C943F3620C9640A2BA285 /* EncounterInputObservationWindow.swift in Sources */,
+				A66C943F3620C9640A2BA285 /* ActiveTabObservationWindow.swift in Sources */,
 				2A485CA6142E56619E9E3BF0 /* EncounterInputObservation.swift in Sources */,
 				D60FF57E88DCFD19A245577A /* EncounterInputTrace.swift in Sources */,
 				09748877AD3642DCA2AE5EE29131280C /* VisitQuestionInputGate.swift in Sources */,

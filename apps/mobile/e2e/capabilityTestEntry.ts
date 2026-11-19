@@ -81,6 +81,9 @@ export function registerCapabilityTestEntry(
     case 'conversation-lease-release':
       require('./conversationLeaseReleaseProbeEntry');
       break;
+    case 'active-tab-workload':
+      require('./activeTabWorkloadProbeEntry');
+      break;
     case 'conversation-failure-visual':
       require('./conversationVisualProbeEntry').registerConversationVisualProbe(
         true,

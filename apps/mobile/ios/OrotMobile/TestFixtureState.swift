@@ -109,6 +109,14 @@
             ]
         }
 
+        /// A workload probe may only seed a fresh owned Simulator store.
+        static func requireEmptyWorkloadStore(_ token: String) throws {
+            try validate(token)
+            guard ["database", "wal", "shm"].allSatisfy({ !manager.fileExists(atPath: paths[$0]!.path) }),
+                  try services.allSatisfy({ try keyData($0) == nil })
+            else { throw NSError(domain: "OrotFixtureState", code: 4) }
+        }
+
         /// The host has terminated the prior process; no open SQL handle or in-memory authorization survives this command.
         static func reset(_ token: String) throws {
             try validate(token)
