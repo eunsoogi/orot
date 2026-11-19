@@ -92,21 +92,17 @@ test.each(['dismissal locked', 'read locked', 'unlocked'] as const)(
     controller.registerLeaveGuard(home.key, async () => true);
     const view = await render(
       <AppointmentReminderProvider runtime={runtime}>
-        <AppointmentReminderDeliveryHost controller={controller} />
+        <AppointmentReminderDeliveryHost
+          controller={controller}
+          openConversationRoot={key => controller.commitApprovedRoot(key)}
+        />
       </AppointmentReminderProvider>,
     );
     await waitFor(() =>
-      expect(controller.getSnapshot().currentRoute.name).toBe('daily-report'),
-    );
-    const daily = controller.getSnapshot().currentRoute;
-    controller.registerLeaveGuard(daily.key, async () => true);
-    await act(async () => {
-      await controller.requestBack();
-    });
-    await waitFor(() =>
       expect(dailyReminderIntentStore.write).toHaveBeenCalledTimes(1),
     );
-    expect(runtime.dailyReportTargets.has(daily.key)).toBe(true);
+    expect(runtime.dailyReportTargets.size).toBe(0);
+    expect(saved.active).toBe(true);
     releaseConversation();
     let finishGuard!: (allowed: boolean) => void;
     const guard = jest
@@ -149,7 +145,7 @@ test.each(['dismissal locked', 'read locked', 'unlocked'] as const)(
       });
       expect(guard).toHaveBeenCalledTimes(1);
       expect(dailyReminderIntentStore.write).toHaveBeenCalledTimes(2);
-      expect(runtime.dailyReportTargets.has(daily.key)).toBe(true);
+      expect(runtime.dailyReportTargets.size).toBe(0);
       expect(controller.getSnapshot().currentRoute.key).toBe(home.key);
     } else {
       await waitFor(() => expect(saved.active).toBe(false));

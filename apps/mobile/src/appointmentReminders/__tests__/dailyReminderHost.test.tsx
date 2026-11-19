@@ -14,7 +14,6 @@ import {
   consumeAppointmentReminderTarget,
   acknowledgeDailyReminderTarget,
 } from '../nativeReminderBridge';
-
 jest.mock('../nativeReminderBridge', () => ({
   appointmentReminderPort: {
     readSelection: jest.fn(async () => null),
@@ -32,7 +31,6 @@ jest.mock('../dailyReminderIntentStore', () => ({
     write: jest.fn(async () => undefined),
   },
 }));
-
 test('the app host hands a cold-start daily tap to the registered destination after the leave guard', async () => {
   const store = createAppointmentStore([]);
   const runtime = createAppointmentReminderRuntime(
@@ -53,7 +51,10 @@ test('the app host hands a cold-start daily tap to the registered destination af
   });
   const view = await render(
     <AppointmentReminderProvider runtime={runtime}>
-      <AppointmentReminderDeliveryHost controller={controller} />
+      <AppointmentReminderDeliveryHost
+        controller={controller}
+        openConversationRoot={key => controller.commitApprovedRoot(key)}
+      />
     </AppointmentReminderProvider>,
   );
   await waitFor(() =>
@@ -69,11 +70,11 @@ test('the app host hands a cold-start daily tap to the registered destination af
       }),
     }),
   );
-  expect(controller.getSnapshot().currentRoute.name).toBe('daily-report');
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
+  expect(controller.getSnapshot().routes).toHaveLength(1);
   expect(acknowledgeDailyReminderTarget).toHaveBeenCalledWith('1700000000');
   await view.unmount();
 });
-
 test('the app host retains the tap when durable intent cannot be saved', async () => {
   jest.clearAllMocks();
   const store = createAppointmentStore([]);
@@ -98,7 +99,10 @@ test('the app host retains the tap when durable intent cannot be saved', async (
   });
   const view = await render(
     <AppointmentReminderProvider runtime={runtime}>
-      <AppointmentReminderDeliveryHost controller={controller} />
+      <AppointmentReminderDeliveryHost
+        controller={controller}
+        openConversationRoot={key => controller.commitApprovedRoot(key)}
+      />
     </AppointmentReminderProvider>,
   );
   await waitFor(() =>
@@ -108,7 +112,6 @@ test('the app host retains the tap when durable intent cannot be saved', async (
   expect(acknowledgeDailyReminderTarget).not.toHaveBeenCalled();
   await view.unmount();
 });
-
 test('retries an acknowledged durable intent after a busy navigation transition', async () => {
   jest.clearAllMocks();
   const entry = parseDailyReminderEntry(
@@ -140,7 +143,10 @@ test('retries an acknowledged durable intent after a busy navigation transition'
   const transition = controller.requestTabSwitch();
   const view = await render(
     <AppointmentReminderProvider runtime={runtime}>
-      <AppointmentReminderDeliveryHost controller={controller} />
+      <AppointmentReminderDeliveryHost
+        controller={controller}
+        openConversationRoot={key => controller.commitApprovedRoot(key)}
+      />
     </AppointmentReminderProvider>,
   );
   await waitFor(() => expect(dailyReminderIntentStore.read).toHaveBeenCalled());
@@ -150,14 +156,15 @@ test('retries an acknowledged durable intent after a busy navigation transition'
     await transition;
   });
   await waitFor(() =>
-    expect(controller.getSnapshot().currentRoute.name).toBe('daily-report'),
+    expect(dailyReminderIntentStore.write).toHaveBeenCalledWith({
+      entry,
+      active: false,
+    }),
   );
-  expect(
-    runtime.dailyReportTargets.get(controller.getSnapshot().currentRoute.key),
-  ).toEqual(entry);
+  expect(controller.getSnapshot().routes).toHaveLength(1);
+  expect(runtime.dailyReportTargets.size).toBe(0);
   await view.unmount();
 });
-
 test('a stalled daily intent store does not prevent the appointment inbox from draining', async () => {
   jest.clearAllMocks();
   jest
@@ -170,7 +177,10 @@ test('a stalled daily intent store does not prevent the appointment inbox from d
   const controller = createNavigationController<AppNavigationRoute>('root');
   const view = await render(
     <AppointmentReminderProvider runtime={runtime}>
-      <AppointmentReminderDeliveryHost controller={controller} />
+      <AppointmentReminderDeliveryHost
+        controller={controller}
+        openConversationRoot={key => controller.commitApprovedRoot(key)}
+      />
     </AppointmentReminderProvider>,
   );
   await waitFor(() =>
@@ -178,7 +188,6 @@ test('a stalled daily intent store does not prevent the appointment inbox from d
   );
   await view.unmount();
 });
-
 test('checks the current route only after the daily intent is durable', async () => {
   jest.clearAllMocks();
   jest.mocked(dailyReminderIntentStore.read).mockResolvedValue(null);
@@ -211,7 +220,10 @@ test('checks the current route only after the daily intent is durable', async ()
   );
   const view = await render(
     <AppointmentReminderProvider runtime={runtime}>
-      <AppointmentReminderDeliveryHost controller={controller} />
+      <AppointmentReminderDeliveryHost
+        controller={controller}
+        openConversationRoot={key => controller.commitApprovedRoot(key)}
+      />
     </AppointmentReminderProvider>,
   );
   await waitFor(() =>

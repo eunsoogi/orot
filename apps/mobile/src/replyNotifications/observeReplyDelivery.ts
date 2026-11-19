@@ -26,6 +26,7 @@ export function observeReplyDelivery(input: {
   execute?: ReplyEntryExecutor;
   subscribeReady?: (listener: () => void) => () => void;
   onReplyOpened?: () => void;
+  openConversationRoot?: (routeKey: string) => boolean;
 }) {
   if (!input.retention || !input.execute) return () => {};
   const execute = input.execute;

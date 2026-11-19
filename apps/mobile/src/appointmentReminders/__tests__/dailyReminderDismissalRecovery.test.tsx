@@ -27,7 +27,7 @@ jest.mock('../dailyReminderIntentStore', () => ({
 }));
 
 test.each(['foreground', 'host restart'] as const)(
-  'retries a failed dismissal after %s without reopening it',
+  'retries a failed intent consumption after %s without reopening it',
   async trigger => {
     jest.clearAllMocks();
     const entry = parseDailyReminderEntry(
@@ -62,22 +62,18 @@ test.each(['foreground', 'host restart'] as const)(
     );
     let view = await render(
       <AppointmentReminderProvider runtime={runtime}>
-        <AppointmentReminderDeliveryHost controller={controller} />
+        <AppointmentReminderDeliveryHost
+          controller={controller}
+          openConversationRoot={key => controller.commitApprovedRoot(key)}
+        />
       </AppointmentReminderProvider>,
     );
-    await waitFor(() =>
-      expect(controller.getSnapshot().currentRoute.name).toBe('daily-report'),
-    );
-    const route = controller.getSnapshot().currentRoute;
-    controller.registerLeaveGuard(route.key, async () => true);
-    await act(async () => {
-      await controller.requestBack();
-    });
     await waitFor(() =>
       expect(dailyReminderIntentStore.write).toHaveBeenCalledTimes(1),
     );
     expect(saved.active).toBe(true);
-    expect(runtime.dailyReportTargets.has(route.key)).toBe(true);
+    expect(controller.getSnapshot().routes).toHaveLength(1);
+    expect(runtime.dailyReportTargets.size).toBe(0);
     if (trigger === 'foreground') {
       await act(async () => {
         foreground?.('active');
@@ -86,18 +82,24 @@ test.each(['foreground', 'host restart'] as const)(
       await view.unmount();
       view = await render(
         <AppointmentReminderProvider runtime={runtime}>
-          <AppointmentReminderDeliveryHost controller={controller} />
+          <AppointmentReminderDeliveryHost
+            controller={controller}
+            openConversationRoot={key => controller.commitApprovedRoot(key)}
+          />
         </AppointmentReminderProvider>,
       );
     }
     await waitFor(() => expect(saved.active).toBe(false));
-    expect(runtime.dailyReportTargets.has(route.key)).toBe(false);
+    expect(runtime.dailyReportTargets.size).toBe(0);
     expect(controller.getSnapshot().currentRoute.name).toBe('root');
     await view.unmount();
     jest.mocked(dailyReminderIntentStore.read).mockClear();
     const restarted = await render(
       <AppointmentReminderProvider runtime={runtime}>
-        <AppointmentReminderDeliveryHost controller={controller} />
+        <AppointmentReminderDeliveryHost
+          controller={controller}
+          openConversationRoot={key => controller.commitApprovedRoot(key)}
+        />
       </AppointmentReminderProvider>,
     );
     await waitFor(() =>

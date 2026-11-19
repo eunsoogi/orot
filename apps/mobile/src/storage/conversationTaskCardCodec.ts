@@ -8,6 +8,8 @@ export type ConversationTaskCard =
   | {
       readonly kind: 'daily_report';
       readonly identity: DailyReportIdentity;
+      /** A delivered reminder keeps its historical lookup rather than implying a new request. */
+      readonly reminder?: true;
       readonly report?: NonNullable<ConversationEntryContext['dailyReport']>;
     }
   | {
@@ -33,14 +35,18 @@ export function parseTask(value: unknown): ConversationTaskCard | null {
       : null;
   if (
     v.kind !== 'daily_report' ||
-    !['identity,kind', 'identity,kind,report'].includes(
-      Object.keys(v).sort().join(','),
-    )
+    ![
+      'identity,kind',
+      'identity,kind,report',
+      'identity,kind,reminder',
+      'identity,kind,reminder,report',
+    ].includes(Object.keys(v).sort().join(','))
   )
     return null;
   const identity = DailyReportIdentitySchema.safeParse(v.identity);
   if (
     !identity.success ||
+    ('reminder' in v && v.reminder !== true) ||
     (v.report !== undefined &&
       (!validConversationReportTarget(v.report) ||
         (v.report as NonNullable<ConversationEntryContext['dailyReport']>)

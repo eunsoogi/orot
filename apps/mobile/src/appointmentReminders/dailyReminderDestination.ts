@@ -20,8 +20,21 @@ export function createDailyReminderDestination(port: {
     | 'declined'
     | Promise<'opened' | 'busy' | 'unavailable' | 'declined'>;
   canOpen?: (entry: DailyReminderEntry) => boolean;
+  /** A retained conversation card replaces route-lifetime ownership of the intent. */
+  consumeOnOpened?: boolean;
+  onConsumed?: () => void;
 }) {
   let queue = Promise.resolve();
+  const consumed = new Set<string>();
+  const consume = async (entryKey: string) => {
+    consumed.add(entryKey);
+    // Opening can persist a session binding; never overwrite it with the pre-open copy.
+    const latest = await port.read();
+    if (latest?.entry.entryKey === entryKey)
+      await port.write({ ...latest, active: false });
+    consumed.delete(entryKey);
+    port.onConsumed?.();
+  };
   const serial = <T>(work: () => Promise<T>): Promise<T> => {
     const next = queue.then(work);
     queue = next.then(
@@ -36,6 +49,10 @@ export function createDailyReminderDestination(port: {
         const previous = await port.read();
         if (previous?.entry.entryKey === entry.entryKey && !previous.active)
           return 'opened' as const;
+        if (consumed.has(entry.entryKey)) {
+          await consume(entry.entryKey);
+          return 'opened' as const;
+        }
         // Keep a second tap in the native inbox while an earlier report route is active.
         if (port.canOpen && !port.canOpen(entry)) return 'busy' as const;
         // Save before navigation: a crash before inbox acknowledgement can restore this intent.
@@ -44,7 +61,9 @@ export function createDailyReminderDestination(port: {
         const result = await port.open(
           previous?.entry.entryKey === entry.entryKey ? previous.entry : entry,
         );
-        if (result === 'declined') {
+        if (result === 'opened' && port.consumeOnOpened) {
+          await consume(entry.entryKey);
+        } else if (result === 'declined') {
           await port.write({
             entry:
               previous?.entry.entryKey === entry.entryKey
@@ -60,8 +79,14 @@ export function createDailyReminderDestination(port: {
       serial(async () => {
         const previous = await port.read();
         if (!previous?.active) return 'opened' as const;
+        if (consumed.has(previous.entry.entryKey)) {
+          await consume(previous.entry.entryKey);
+          return 'opened' as const;
+        }
         const decision = await port.open(previous.entry);
-        if (decision === 'declined') {
+        if (decision === 'opened' && port.consumeOnOpened) {
+          await consume(previous.entry.entryKey);
+        } else if (decision === 'declined') {
           await port.write({ ...previous, active: false });
           return decision;
         }

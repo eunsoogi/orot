@@ -4,6 +4,7 @@ import type { NavigationController } from '../navigation/navigationController';
 import type { AppNavigationRoute } from '../routes/appNavigationRoute';
 import type { ReplyIdentity } from './replyNotificationCoordinator';
 import { replyFocus } from './replyFocus';
+import { validConversationReportTarget } from '../storage/conversationReportTarget';
 import type { createReplyReadiness } from './replyReadiness';
 
 /** Resolve the exact protected reply before selecting a session; no send operation is involved. */
@@ -16,6 +17,7 @@ export function createReplyOpen(input: {
   isCurrent?(): boolean;
   signal?: AbortSignal;
   onReplyOpened?: () => void;
+  openConversationRoot?: (routeKey: string) => boolean;
   readiness?: ReturnType<typeof createReplyReadiness>;
   confirm(
     routeKey: string,
@@ -81,17 +83,14 @@ export function createReplyOpen(input: {
       if (session?.busy || session?.restoring || session?.restoreFailed) {
         return 'deferred';
       }
-      if (
-        !session?.messages.some(
-          message =>
-            message.role === 'assistant' &&
-            (identity.purpose === 'interruption'
-              ? message.incomplete &&
-                message.toolMessageId === identity.messageId
-              : message.retainedTurnId === identity.messageId),
-        )
-      )
-        return 'missing';
+      const message = session?.messages.find(
+        message =>
+          message.role === 'assistant' &&
+          (identity.purpose === 'interruption'
+            ? message.incomplete && message.toolMessageId === identity.messageId
+            : message.retainedTurnId === identity.messageId),
+      );
+      if (!message) return 'missing';
       const latest = await input.read(identity);
       if (!currentOwner() || !input.canEnter()) return 'deferred';
       if (!latest) return 'missing';
@@ -113,7 +112,14 @@ export function createReplyOpen(input: {
         current.currentRoute.key !== before.currentRoute.key
       )
         return 'deferred';
-      if (
+      // Only validated restored metadata identifies a daily completion, never notification text.
+      const dailyCompletion =
+        identity.purpose !== 'interruption' &&
+        validConversationReportTarget(message.dailyReport);
+      if (dailyCompletion) {
+        if (!input.openConversationRoot?.(before.currentRoute.key))
+          return 'deferred';
+      } else if (
         current.currentRoute.name !== 'rag-conversation' &&
         !input.controller.push('rag-conversation')
       )

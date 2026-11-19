@@ -47,6 +47,8 @@ export function ReminderGate({
   canEnter?: () => boolean;
   selectTab: (tab: AppRootTab) => void;
 } & Pick<ReplyDeliverySettings, 'retention' | 'loadLocalData'>) {
+  const selectTabRef = useRef(selectTab);
+  selectTabRef.current = selectTab;
   const readyRef = useRef(ready);
   readyRef.current = ready;
   const canEnterRef = useRef(canEnter);
@@ -134,6 +136,10 @@ export function ReminderGate({
         allowed() && (currentRun.current?.() ?? false)
           ? controller.replace(name)
           : null,
+      commitApprovedRoot: routeKey =>
+        allowed() && (currentRun.current?.() ?? false)
+          ? controller.commitApprovedRoot(routeKey)
+          : false,
       requestTabSwitchDecision: async () => {
         if (!allowed() || !(currentRun.current?.() ?? false)) return 'busy';
         const result = await controller.requestTabSwitchDecision();
@@ -143,6 +149,25 @@ export function ReminderGate({
       },
     }),
     [allowed, controller, listeners],
+  );
+  const openConversationRoot = useMemo(
+    () => (routeKey: string) => {
+      const owner = currentRun.current;
+      if (!allowed() || !owner?.() || !guarded.commitApprovedRoot(routeKey))
+        return false;
+      // Root publication can synchronously replace the entry owner or close the lock gate.
+      if (
+        !allowed() ||
+        currentRun.current !== owner ||
+        !owner() ||
+        controller.getSnapshot().routes.length !== 1 ||
+        controller.getSnapshot().currentRoute.name !== 'root'
+      )
+        return false;
+      selectTabRef.current('conversation');
+      return allowed() && currentRun.current === owner && owner();
+    },
+    [allowed, controller, guarded],
   );
   useEffect(() => {
     if (ready) listeners.forEach(listener => listener());
@@ -161,6 +186,7 @@ export function ReminderGate({
       />
       <AppointmentReminderDeliveryHost
         controller={guarded}
+        openConversationRoot={openConversationRoot}
         retention={retention}
         loadLocalData={loadLocalData}
         canEnterReply={canEnterReply}
