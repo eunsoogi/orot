@@ -69,14 +69,16 @@ enum SyntheticProfileBackdropUITestConditions {
             let profileFrame = profile.frame
             let firstAnswerBefore = markers[0].frame
             let start = CGPoint(x: historyFrame.minX + 40, y: min(historyFrame.maxY - 100, profileFrame.maxY + 190))
-            let end = CGPoint(x: start.x, y: profileFrame.maxY - 30)
+            // Aim the first answer just inside the profile, without the momentum of the default swipe.
+            let distance = max(0, firstAnswerBefore.minY - (profileFrame.maxY - 12))
+            let end = CGPoint(x: start.x, y: max(historyFrame.minY + 20, start.y - distance))
             let dragFrames = XCTAttachment(string: "history=\(historyFrame), profile=\(profileFrame), firstAnswerBefore=\(firstAnswerBefore), dragStart=\(start), dragEnd=\(end)")
             dragFrames.name = "synthetic-profile-after-resize-drag"
             dragFrames.lifetime = .keepAlways
             testCase.add(dragFrames)
             let origin = app.coordinate(withNormalizedOffset: .zero)
             origin.withOffset(CGVector(dx: start.x - app.frame.minX, dy: start.y - app.frame.minY))
-                .press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: end.x - app.frame.minX, dy: end.y - app.frame.minY)))
+                .press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: end.x - app.frame.minX, dy: end.y - app.frame.minY)), withVelocity: .slow, thenHoldForDuration: 0.1)
             let overlappingAnswers = (markers + [lastAnswer]).filter {
                 $0.exists && $0.frame.intersects(profile.frame)
             }
@@ -94,6 +96,9 @@ enum SyntheticProfileBackdropUITestConditions {
             image.name = "synthetic-profile-after-resize"
             image.lifetime = .keepAlways
             testCase.add(image)
+            XCTAssertTrue(historyFrame.contains(start) && app.frame.contains(start), "The drag must start inside the visible history")
+            XCTAssertGreaterThan(start.y, end.y, "The drag must move toward the profile")
+            XCTAssertLessThan(markers[0].frame.minY, firstAnswerBefore.minY, "The drag must move the observed answer upward")
             XCTAssertFalse(overlappingAnswers.isEmpty, "An answer must cross the profile backdrop in the resized scene")
             return
         }
