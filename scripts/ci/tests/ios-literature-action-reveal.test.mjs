@@ -49,6 +49,23 @@ precondition(LiteratureActionGeometry.decide(window: window, scroll: scroll, doc
   assert.match(reveal, /for attempt in 0 \.\.\. 20/);
   assert.match(reveal, /FormWindowOwnership\.resolve\(app, scroll: screen, target: action\)/);
   assert.match(reveal, /action\.exists \? action\.frame : nil/);
+  const consent = readFileSync(
+    'apps/mobile/ios/OrotUITests/LiteratureConsentUITestConditions.swift',
+    'utf8',
+  );
+  const settings = readFileSync('apps/mobile/e2e/LiteratureSettingsProbe.tsx', 'utf8');
+  const fixture = readFileSync('apps/mobile/e2e/literatureVisualFixtures.ts', 'utf8');
+  for (const required of [
+    'settings-consent-medical',
+    'provider-selection-cancel',
+    'provider-selection-confirm',
+    'synthetic-literature-search-count',
+    'sleep synthetic',
+  ]) {
+    assert.ok(consent.includes(required), required);
+  }
+  assert.match(settings, /selectionStore=\{providerSelectionStore\}/);
+  assert.match(fixture, /setCount\(value => value \+ 1\)/);
   assert.match(source, /LiteratureActionReveal\.reveal\(open, in: app, dock: search\)/);
   assert.doesNotMatch(source, /scrollToBottom\(app, "external-medical-evidence-screen"\)/);
   for (const assertion of [
@@ -56,7 +73,7 @@ precondition(LiteratureActionGeometry.decide(window: window, scroll: scroll, doc
     'open.isHittable',
     'open.frame.height, 44',
     'synthetic-article-opened',
-    'inference-disclosure-cancel',
+    'LiteratureConsentUITestConditions.approve(app)',
     'literature-recovered-',
     'literature-cancelled-',
   ]) {

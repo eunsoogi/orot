@@ -86,14 +86,10 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             query(app, "sleep synthetic")
             node(app, "external-evidence-search").tap()
             if !dark {
-                // Assert after the real tap/idleness, rather than masking a consumed tap with a second one.
-                XCTAssertTrue(node(app, "inference-disclosure-sheet").exists, app.debugDescription)
-                capture(app, "literature-query-consent-\(suffix)")
-                node(app, "inference-disclosure-cancel").tap()
-                XCTAssertTrue(UITestConditions.exists(app.staticTexts["검색어 전송에 동의한 뒤 검색할 수 있어요."]))
+                // The first tap must reach the denied state before explicit settings approval.
+                try LiteratureConsentUITestConditions.approve(app)
+                query(app, "sleep synthetic")
                 node(app, "external-evidence-search").tap()
-                XCTAssertTrue(UITestConditions.exists(node(app, "inference-disclosure-sheet")))
-                node(app, "inference-disclosure-allow").tap()
             }
             let title = app.staticTexts["합성 문헌: 활동과 수면 기록 해석"]
             XCTAssertTrue(UITestConditions.exists(title))

@@ -1,4 +1,23 @@
 import type { EuropePmcMedicalEvidenceService } from '../src/externalMedicalEvidence/europePmc';
+import { useMemo, useState } from 'react';
+
+/** Count only calls crossing the synthetic transport boundary, never denied authorization. */
+export function useLiteratureSearchObservation() {
+  const [count, setCount] = useState(0);
+  const service = useMemo(
+    () => ({
+      ...syntheticLiteratureService,
+      search: (
+        ...args: Parameters<typeof syntheticLiteratureService.search>
+      ) => {
+        setCount(value => value + 1);
+        return syntheticLiteratureService.search(...args);
+      },
+    }),
+    [],
+  );
+  return { count, service };
+}
 
 export const syntheticPublication = {
   provider: 'Europe PMC' as const,
