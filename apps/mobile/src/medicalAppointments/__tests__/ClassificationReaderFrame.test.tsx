@@ -105,3 +105,64 @@ test.each(['cancel', 'unmount', 'action', 'documents'] as const)(
     expect(replacement).not.toHaveBeenCalled();
   },
 );
+
+// Exercise the rendered Modal callbacks, not the hook harness: incorrect prop wiring must fail.
+test.each(['primary', 'close', 'requestClose'] as const)(
+  'rendered reader waits for dismissal and respects %s',
+  async intent => {
+    const action = jest.fn();
+    await render(
+      <ClassificationPagedStage
+        documents={['One large line']}
+        testID="stage"
+        actionTitle="시작"
+        actionLabel="분류 시작"
+        onAction={action}
+      />,
+    );
+    const measure = async (height: number) => {
+      await fireEvent(screen.getByTestId('stage'), 'layout', {
+        nativeEvent: { layout: { width: 272, height } },
+      });
+      await fireEvent(
+        screen.getByTestId('classification-stage-footer'),
+        'layout',
+        {
+          nativeEvent: { layout: { height: 44 } },
+        },
+      );
+      await fireEvent(
+        screen.getByTestId('classification-text-measurement', {
+          includeHiddenElements: true,
+        }),
+        'textLayout',
+        {
+          nativeEvent: { lines: [{ text: 'One large line', height: 100 }] },
+        },
+      );
+    };
+    await measure(110);
+    await fireEvent.press(screen.getByTestId('medical-appointment-import'));
+    await measure(480);
+    const modal = screen.getByTestId('classification-expanded-reader');
+    expect(modal).toHaveProp('visible', true);
+    const dismiss = modal.props.onDismiss;
+    expect(action).not.toHaveBeenCalled();
+    if (intent === 'primary') {
+      await fireEvent.press(screen.getByTestId('medical-appointment-import'));
+    } else if (intent === 'close') {
+      await fireEvent.press(screen.getByTestId('classification-close-reader'));
+    } else {
+      await fireEvent(modal, 'requestClose');
+    }
+    expect(action).not.toHaveBeenCalled();
+    // Native timing is not simulated here; only production callback wiring and ordering are proved.
+    // RN's Jest Modal removes its host once visible=false; retain the actual registered callback.
+    expect(screen.queryByTestId('classification-expanded-reader')).toBeNull();
+    await act(async () => {
+      dismiss();
+      dismiss();
+    });
+    expect(action).toHaveBeenCalledTimes(intent === 'primary' ? 1 : 0);
+  },
+);
