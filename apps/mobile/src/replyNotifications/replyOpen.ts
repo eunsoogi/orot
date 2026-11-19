@@ -84,11 +84,12 @@ export function createReplyOpen(input: {
         return 'deferred';
       }
       const message = session?.messages.find(
-        message =>
-          message.role === 'assistant' &&
+        candidate =>
+          candidate.role === 'assistant' &&
           (identity.purpose === 'interruption'
-            ? message.incomplete && message.toolMessageId === identity.messageId
-            : message.retainedTurnId === identity.messageId),
+            ? candidate.incomplete &&
+              candidate.toolMessageId === identity.messageId
+            : candidate.retainedTurnId === identity.messageId),
       );
       if (!message) return 'missing';
       const latest = await input.read(identity);
