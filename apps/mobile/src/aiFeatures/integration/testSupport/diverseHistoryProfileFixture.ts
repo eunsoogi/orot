@@ -9,15 +9,36 @@ import type { ConversationArtifact } from '../../../storage/conversationArtifact
 export async function diverseHistoryProfileFixture(
   count: number,
   nested: boolean,
+  fromInclusive = '2026-10-01T00:00:00Z',
 ) {
   const f = await quarantinedHistoryFixture();
   const summaries = createSymptomSummaryStorage(f.database);
   const template = (await f.storage.read('older'))!;
   await f.database.execute('DELETE FROM conversation_artifacts');
+  // Spread synthetic readings across long histories so the projection visits
+  // reported days as well as dates with no sample. Keep the original fixture unchanged.
+  if (fromInclusive < '2026-10-01T00:00:00Z') {
+    const start = Date.parse(fromInclusive);
+    const records = Array.from({ length: 520 }, (_, index) => {
+      const at = new Date(start + index * 2 * 86400000).toISOString();
+      return {
+        ...f.inside,
+        id: `synthetic-period-${index}`,
+        effectiveAt: at,
+        ingestedAt: at,
+        recordedAt: at,
+      };
+    });
+    await f.database.execute(
+      `INSERT INTO health_observations (id,effective_at,recorded_at,ingested_at,payload_json)
+       SELECT json_extract(value,'$.id'),json_extract(value,'$.effectiveAt'),json_extract(value,'$.recordedAt'),json_extract(value,'$.ingestedAt'),value FROM json_each(?)`,
+      [JSON.stringify(records)],
+    );
+  }
   let parent: ConversationArtifact | undefined;
   for (let index = 0; index < count; index++) {
     const window = {
-      fromInclusive: '2026-10-01T00:00:00Z',
+      fromInclusive,
       toExclusive: new Date(Date.UTC(2026, 9, index + 2)).toISOString(),
       timeZone: 'UTC',
     };

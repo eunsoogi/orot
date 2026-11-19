@@ -20,6 +20,12 @@ class ScopedReports extends Map<string, HealthContextReport> {
   }
 }
 const snapshots = new WeakSet<HealthContextReport>();
+
+/** A shallow freeze or an arbitrary reader's report does not prove deep immutability. */
+export function isImmutableReportSnapshot(value: HealthContextReport): boolean {
+  return snapshots.has(value);
+}
+
 /** Keep caller-visible mutable objects out of both bounded and operation caches. */
 export function immutableReportSnapshot(
   value: HealthContextReport,
