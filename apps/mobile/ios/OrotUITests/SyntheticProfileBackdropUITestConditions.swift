@@ -64,12 +64,23 @@ enum SyntheticProfileBackdropUITestConditions {
             _ = try NavigationRotationUITestConditions.rotateObservedScene(app, session: session, landscape: true, scrollID: "rag-conversation-history")
             XCTAssertTrue(history.exists && profile.exists && rail.exists)
             XCTAssertGreaterThan(abs(history.frame.width - beforeWidth), 0.5, "The transcript viewport must actually resize")
-            // Rotation can reset the transcript position; move content underneath the profile before capturing it.
-            history.swipeUp()
+            // Start within the transcript below the profile and drag toward its opaque region.
+            let historyFrame = history.frame
+            let profileFrame = profile.frame
+            let firstAnswerBefore = markers[0].frame
+            let start = CGPoint(x: historyFrame.minX + 40, y: min(historyFrame.maxY - 100, profileFrame.maxY + 190))
+            let end = CGPoint(x: start.x, y: profileFrame.maxY - 30)
+            let dragFrames = XCTAttachment(string: "history=\(historyFrame), profile=\(profileFrame), firstAnswerBefore=\(firstAnswerBefore), dragStart=\(start), dragEnd=\(end)")
+            dragFrames.name = "synthetic-profile-after-resize-drag"
+            dragFrames.lifetime = .keepAlways
+            testCase.add(dragFrames)
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            origin.withOffset(CGVector(dx: start.x - app.frame.minX, dy: start.y - app.frame.minY))
+                .press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: end.x - app.frame.minX, dy: end.y - app.frame.minY)))
             let overlappingAnswers = (markers + [lastAnswer]).filter {
                 $0.exists && $0.frame.intersects(profile.frame)
             }
-            let overlapFrames = overlappingAnswers.map { "\($0.label.prefix(24)): \($0.frame)" }.joined(separator: "\n")
+            let overlapFrames = "firstAnswerAfter=\(markers[0].frame)\n" + overlappingAnswers.map { "\($0.label.prefix(24)): \($0.frame)" }.joined(separator: "\n")
             let geometry = XCTAttachment(string: "profile=\(profile.frame), history=\(history.frame), rail=\(rail.frame), app=\(app.frame)")
             geometry.name = "synthetic-profile-after-resize-frames"
             geometry.lifetime = .keepAlways
