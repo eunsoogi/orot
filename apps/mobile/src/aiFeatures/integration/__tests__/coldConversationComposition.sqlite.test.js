@@ -1,13 +1,52 @@
+import { readFileSync } from 'node:fs';
+import { dirname, relative, resolve } from 'node:path';
+import { performance } from 'node:perf_hooks';
+import { runInNewContext } from 'node:vm';
+import { transformSync } from '@babel/core';
 import { openLocalAgentMemoryDatabase } from '../../../storage/secureDatabase';
 import { createConversationSessions } from '../../../ragConversation/conversationSessions';
 import { conversationComposerDisabled } from '../../../ragConversation/conversationComposerDisabled';
 import * as diagnostics from '../../../providers/diagnostics';
 import { createAiFeatureServices } from '../featureServices';
 import { consent } from '../featureServiceFixtures';
-import type { AiFeatureLocalData } from '../localData';
-import { loadProductionLocalData } from '../testSupport/loadProductionLocalData';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { diverseHistoryProfileFixture } from '../testSupport/diverseHistoryProfileFixture';
+
+/** Jest leaves Metro's lazy imports intact. Transform the two entry modules
+ * while preserving production factory code and using Jest's actual dependencies. */
+function loadProductionLocalData() {
+  const load = (filename, overrides = {}) => {
+    const transformed = transformSync(readFileSync(filename, 'utf8'), {
+      filename,
+      babelrc: false,
+      configFile: false,
+      presets: ['module:@react-native/babel-preset'],
+      plugins: [
+        require.resolve('@babel/plugin-transform-dynamic-import', {
+          paths: [require.resolve('@babel/preset-env')],
+        }),
+      ],
+    });
+    const loaded = { exports: {} };
+    runInNewContext(transformed.code, {
+      module: loaded,
+      exports: loaded.exports,
+      require: name =>
+        overrides[name] ??
+        require(
+          name.startsWith('.')
+            ? './' + relative(__dirname, resolve(dirname(filename), name))
+            : name,
+        ),
+    });
+    return loaded.exports;
+  };
+  return load(require.resolve('../localData'), {
+    './conversationLocalAccess': load(
+      require.resolve('../conversationLocalAccess'),
+    ),
+  }).openAiFeatureLocalData;
+}
 
 jest.mock('../../../storage/secureDatabase', () => ({
   openLocalAgentMemoryDatabase: jest.fn(),
@@ -18,8 +57,7 @@ jest.mock('../../../storage/secureDatabase', () => ({
 test('cold restore reuses summary storage setup across discovery owners and revalidates deletion', async () => {
   const f = await diverseHistoryProfileFixture(3, true);
   jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue(f.database);
-  const openAiFeatureLocalData: () => Promise<AiFeatureLocalData> =
-    loadProductionLocalData();
+  const openAiFeatureLocalData = loadProductionLocalData();
   const options = createAiFeatureServices(consent, {
     loadLocalData: openAiFeatureLocalData,
   }).conversationSessionOptions();
@@ -51,11 +89,11 @@ test('cold restore reuses summary storage setup across discovery owners and reva
     queue = pending.catch(() => {});
     return pending;
   };
-  const stages: Record<string, number> = {};
-  const hydrationStarts: number[] = [];
+  const stages = {};
+  const hydrationStarts = [];
   let hydrationMs = 0;
   let start = 0;
-  const record = (stage: string) => {
+  const record = stage => {
     stages[stage] ??= performance.now() - start;
   };
   const diagnostic = jest
@@ -69,12 +107,12 @@ test('cold restore reuses summary storage setup across discovery owners and reva
       if (stage === 'artifact_source_hydration' && outcome === 'started')
         hydrationStarts.push(performance.now());
       if (stage === 'artifact_source_hydration' && outcome === 'completed')
-        hydrationMs += performance.now() - hydrationStarts.pop()!;
+        hydrationMs += performance.now() - hydrationStarts.pop();
     });
   try {
     const data = await openAiFeatureLocalData();
     const discovery = () =>
-      data.summaryArtifactDiscovery!(new LocalEvidenceReferenceRegistry());
+      data.summaryArtifactDiscovery(new LocalEvidenceReferenceRegistry());
     const failed = await discovery();
     await expect(failed.read('summary-0')).rejects.toThrow(
       'Synthetic setup failure',
@@ -83,7 +121,7 @@ test('cold restore reuses summary storage setup across discovery owners and reva
     const [left, right] = await Promise.all([discovery(), discovery()]);
     const cancelled = new AbortController();
     cancelled.abort();
-    const version = (await f.storage.activeSessionVersion('session'))!;
+    const version = await f.storage.activeSessionVersion('session');
     const stop = sessions.subscribe(() => {
       const snapshot = sessions.getSnapshot();
       const selected = snapshot.sessions.find(
@@ -110,7 +148,7 @@ test('cold restore reuses summary storage setup across discovery owners and reva
     expect(second?.sourceStatus).toBe('current');
     const selected = sessions
       .getSnapshot()
-      .sessions.find(item => item.id === id)!;
+      .sessions.find(item => item.id === id);
     expect(
       selected.messages.filter(item => item.role === 'assistant'),
     ).toHaveLength(3);
