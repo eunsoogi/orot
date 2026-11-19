@@ -39,6 +39,7 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         continueAfterFailure = false
         try ReminderJourneyObservation.verifyDailyWheelOptions()
         let app = XCUIApplication()
+        try ReminderJourneyObservation.configureDailyDiagnostic(app)
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }

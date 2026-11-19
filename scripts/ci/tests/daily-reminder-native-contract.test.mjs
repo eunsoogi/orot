@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { validateReminderDiagnosticTrace } from '../ios-test-reminder-trace.mjs';
 import { iosAcceptanceDiagnosticTests } from '../ios-acceptance-diagnostic-inventory.mjs';
 
 const source = readFileSync(
@@ -88,4 +89,61 @@ test('wheel options pad minutes without changing hour or calendar semantics', ()
   assert.match(source, /periodValue\.contains\("오전"\) != periodValue\.contains\("오후"\)/u);
   assert.ok(source.includes('Date().addingTimeInterval(180)'));
   assert.ok(source.includes('Calendar.current.dateComponents([.hour, .minute], from: target)'));
+});
+
+test('daily diagnostics observe one real add and preserve explicit rollback branches', () => {
+  const native = readFileSync(
+    new URL(
+      '../../../apps/mobile/ios/OrotMobile/DailyReminderNotifications.swift',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const module = readFileSync(
+    new URL('../../../apps/mobile/ios/OrotMobile/DailyReminderModule.swift', import.meta.url),
+    'utf8',
+  );
+  assert.match(
+    native,
+    /#if OROT_TESTS\s+try await DailyReminderDiagnostic\.aroundAdd \{ try await center\.add\(request\) \}\s+#else\s+try await center\.add\(request\)\s+#endif/u,
+  );
+  assert.match(
+    native,
+    /recordDailyReminderDiagnostic\(\.dailyRollback, error: error\)[\s\S]*cancel\(\)[\s\S]*return \["status": "error"/u,
+  );
+  for (const branch of ['dailyInvalidPreference', 'dailyDisabled', 'dailyAuthorizationRejected'])
+    assert.ok(native.includes(`recordDailyReminderDiagnostic(.${branch})`));
+  assert.match(
+    module,
+    /OROT_TEST_DAILY_REMINDER_DIAGNOSTICS[\s\S]*AppointmentReminderDiagnosticTrace.enabledRunID != nil/u,
+  );
+  assert.doesNotMatch(module, /localizedDescription|JSONEncoder|userInfo\[/u);
+});
+
+test('daily rollback export accepts only existing closed error domains and rejects payload fields', () => {
+  const runID = '9ae30a38-2911-4555-b5a3-948a6ec879d9';
+  const event = {
+    runID,
+    processID: 1,
+    callSequence: 1,
+    monotonicNanoseconds: '1',
+    stage: 'daily-rollback-reject',
+    errorDomain: 'other',
+    errorCode: 47,
+    ownErrorCase: 'other',
+  };
+  const line = (value) =>
+    JSON.stringify(
+      Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b))),
+    ) + '\n';
+  assert.equal(validateReminderDiagnosticTrace(line(event), runID).events, 1);
+  for (const extra of [
+    { errorDomain: 'private-domain' },
+    { userInfo: {} },
+    { localizedDescription: 'private' },
+    { selectedTime: '23:28' },
+    { endpoint: 'private' },
+  ]) {
+    assert.throws(() => validateReminderDiagnosticTrace(line({ ...event, ...extra }), runID));
+  }
 });

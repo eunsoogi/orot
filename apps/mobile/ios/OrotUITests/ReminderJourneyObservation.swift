@@ -43,6 +43,20 @@ enum ReminderJourneyObservation {
         XCTAssertThrowsError(try DailyReminderWheelText.optionValue(for: "4시", number: 0))
     }
 
+    /// Only the named owned daily journey forwards its explicitly admitted diagnostic UUID.
+    static func configureDailyDiagnostic(_ app: XCUIApplication) throws {
+        let env = ProcessInfo.processInfo.environment
+        let flag = env["OROT_DAILY_REMINDER_DIAGNOSTICS"]
+        let runID = env["OROT_DAILY_REMINDER_DIAGNOSTIC_RUN_ID"]
+        guard flag != nil || runID != nil else { return }
+        guard flag == "YES", let runID, UUID(uuidString: runID) != nil else {
+            throw NSError(domain: "DailyReminderDiagnosticAdmission", code: 1)
+        }
+        app.launchEnvironment["OROT_TEST_DAILY_REMINDER_DIAGNOSTICS"] = "YES"
+        app.launchEnvironment["OROT_TEST_REMINDER_DIAGNOSTICS"] = "YES"
+        app.launchEnvironment["OROT_TEST_REMINDER_DIAGNOSTIC_RUN_ID"] = runID
+    }
+
     struct Request: Decodable {
         let identifier: String
         let appointmentId: String
