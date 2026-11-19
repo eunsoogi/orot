@@ -5,7 +5,8 @@ extension AppointmentConsentUITests {
     @MainActor
     func testApprovedBatchesExposeMeasuredProgressAndAllResultPages() throws {
         let app = XCUIApplication()
-        let fixture = ClassificationConsentUITestSupport.launch(app, extra: ["-OROT_TEST_CLASSIFICATION_STAGES", "YES", "-OROT_TEST_CLASSIFICATION_LAYOUT", "YES"])
+        // The existing test-only identity opt-in supplies UIKit window traits and sampling times.
+        let fixture = ClassificationConsentUITestSupport.launch(app, extra: ["-OROT_TEST_CLASSIFICATION_STAGES", "YES", "-OROT_TEST_CLASSIFICATION_LAYOUT", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES"])
         defer { ClassificationConsentUITestSupport.cleanup(app, fixture: fixture, testCase: self) }
         ClassificationConsentUITestSupport.assertBlocked(app, testCase: self)
         XCTAssertTrue(node(app, "medical-appointment-confirmation").exists)

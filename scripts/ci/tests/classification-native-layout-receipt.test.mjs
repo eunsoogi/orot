@@ -64,3 +64,36 @@ test('missing observations remain missing, never assumed Duo or XXXL', () => {
     {},
   );
 });
+
+test('staged receipt opts into the existing identity-gated native window traits', () => {
+  const bridge = readFileSync('apps/mobile/ios/OrotMobile/TestControl.swift', 'utf8');
+  const native = readFileSync(
+    'apps/mobile/ios/OrotMobile/NavigationGeometryTestObservation.swift',
+    'utf8',
+  );
+  const flag = bridge.match(
+    /NavigationGeometryTestObservation\.snapshot\(identity: UserDefaults\.standard\.string\(forKey: "([^"]+)"\) == "YES"/,
+  )[1];
+  assert.equal(flag, 'OROT_TEST_NAVIGATION_FOCUS_OBSERVATION');
+  assert.ok(native.includes('guard let identity else { return geometrySnapshot(identity: nil) }'));
+  assert.ok(native.includes('result["dockControls"] ='));
+  const launch = swift.slice(
+    swift.indexOf('let fixture = ClassificationConsentUITestSupport.launch'),
+    swift.indexOf('defer { ClassificationConsentUITestSupport.cleanup'),
+  );
+  assert.ok(
+    launch.includes(`"-${flag}", "YES"`),
+    'the scalar receipt requires the existing native identity opt-in',
+  );
+  const support = readFileSync(
+    'apps/mobile/ios/OrotUITests/DisclosureLayoutUITestObservations.swift',
+    'utf8',
+  );
+  assert.ok(!support.includes(flag), 'do not enable this opt-in for unrelated fixture launches');
+  for (const guard of [
+    'XCTUnwrap(report["dockSampleStartedAtMs"] as? Double)',
+    'XCTAssertGreaterThanOrEqual(dockStarted, ended)',
+    'XCTAssertEqual(report["visibleKeyWindowCount"] as? Int, 1)',
+  ])
+    assert.ok(swift.includes(guard));
+});
