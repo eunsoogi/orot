@@ -26,8 +26,7 @@ enum GeneratedRecordsRoutesUITestConditions {
             // Match the saved prose itself so the owning window and visible text are both checked.
             let prose = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "generated-report-paragraph-", text)).firstMatch
             XCTAssertTrue(UITestConditions.exists(prose), app.debugDescription)
-            _ = try XCTUnwrap(FormUITestConditions.reveal(prose, in: app, scrollID: "navigation-route-scroll"))
-            XCTAssertTrue(prose.isHittable)
+            try RoutesVisibleContentUITestConditions.prose(prose, expected: text, in: app)
             assertReadOnly(app)
             _ = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records")
             RecordingFixtureUITestConditions.capture(app, "records-\(key.replacingOccurrences(of: ":", with: "-"))-\(suffix)", testCase: testCase)

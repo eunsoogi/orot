@@ -53,6 +53,8 @@
 		062044E1CF9785EE1624BF5D /* AppearanceUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */; };
 		06A9F32CD67B3D539A7D4511 /* RoutesAppearanceUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06A9F32CD67B3D539A7D4512 /* RoutesAppearanceUITestConditions.swift */; };
 		06A9F32CD67B3D539A7D4521 /* GeneratedRecordsRoutesUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06A9F32CD67B3D539A7D4522 /* GeneratedRecordsRoutesUITestConditions.swift */; };
+		06A9F32CD67B3D539A7D4523 /* RoutesVisibleContentUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06A9F32CD67B3D539A7D4524 /* RoutesVisibleContentUITestConditions.swift */; };
+		06A9F32CD67B3D539A7D4525 /* RoutesVisibleInterval.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06A9F32CD67B3D539A7D4526 /* RoutesVisibleInterval.swift */; };
 		06960A3893E8BA0656A77B3C /* synthetic-korean.json in Resources */ = {isa = PBXBuildFile; fileRef = 418ED459FC663BD5BF8F8725 /* synthetic-korean.json */; };
 		075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */; };
 		33A558BEDCD0FEDDD2F84E4E /* RecordingBackgroundRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D0958D88C7DACC50305B2F /* RecordingBackgroundRecoveryUITests.swift */; };
@@ -522,6 +524,8 @@
 		95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceUITestConditions.swift; sourceTree = "<group>"; };
 		06A9F32CD67B3D539A7D4512 /* RoutesAppearanceUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoutesAppearanceUITestConditions.swift; sourceTree = "<group>"; };
 		06A9F32CD67B3D539A7D4522 /* GeneratedRecordsRoutesUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GeneratedRecordsRoutesUITestConditions.swift; sourceTree = "<group>"; };
+		06A9F32CD67B3D539A7D4524 /* RoutesVisibleContentUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoutesVisibleContentUITestConditions.swift; sourceTree = "<group>"; };
+		06A9F32CD67B3D539A7D4526 /* RoutesVisibleInterval.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoutesVisibleInterval.swift; sourceTree = "<group>"; };
 		9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackupPersistenceUITests.swift; sourceTree = "<group>"; };
 		9D1F2599E8536B0460BD0C9B /* DebugUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DebugUITestConditions.swift; sourceTree = "<group>"; };
 		9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationUITestConditions.swift; sourceTree = "<group>"; };
@@ -1255,6 +1259,8 @@
 				95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */,
 				06A9F32CD67B3D539A7D4512 /* RoutesAppearanceUITestConditions.swift */,
 				06A9F32CD67B3D539A7D4522 /* GeneratedRecordsRoutesUITestConditions.swift */,
+				06A9F32CD67B3D539A7D4524 /* RoutesVisibleContentUITestConditions.swift */,
+				06A9F32CD67B3D539A7D4526 /* RoutesVisibleInterval.swift */,
 				FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */,
 				0F162445FF500226AAD110A3 /* ProviderSelectionUITests.swift */,
 				CC24DE4F53CE4174A29DA548 /* ProviderCatalogAccountUITests.swift */,
@@ -1817,6 +1823,8 @@
 				062044E1CF9785EE1624BF5D /* AppearanceUITestConditions.swift in Sources */,
 				06A9F32CD67B3D539A7D4511 /* RoutesAppearanceUITestConditions.swift in Sources */,
 				06A9F32CD67B3D539A7D4521 /* GeneratedRecordsRoutesUITestConditions.swift in Sources */,
+				06A9F32CD67B3D539A7D4523 /* RoutesVisibleContentUITestConditions.swift in Sources */,
+				06A9F32CD67B3D539A7D4525 /* RoutesVisibleInterval.swift in Sources */,
 				FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */,
 				12D0939BEAED8755996F1E07 /* ProviderSelectionUITests.swift in Sources */,
 				E13656A33677412D8092CE83 /* ProviderCatalogAccountUITests.swift in Sources */,

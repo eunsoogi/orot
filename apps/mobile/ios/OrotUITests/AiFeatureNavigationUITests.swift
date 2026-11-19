@@ -43,14 +43,19 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         message(app, "필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.")
         let input = node(app, "rag-conversation-input")
         // This no-provider case needs only nonempty input to enable Send; keep native character entry short.
-        ConversationComposerDockUITestConditions.assertReachable(input, in: app)
+        try RoutesVisibleContentUITestConditions.composer(input, in: app)
         input.tap()
         input.typeText("test")
+        XCTAssertTrue(String(describing: input.value ?? "").contains("test"))
         input.typeText("\n")
-        ConversationComposerDockUITestConditions.assertReachable(send, in: app)
+        try RoutesVisibleContentUITestConditions.composer(send, in: app)
         ConversationHitUITestObservation.assertSendReady(app, send: send, session: observationSession, testCase: self)
         send.tap()
-        message(app, "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.")
+        let failures = node(app, "rag-conversation-history").staticTexts.matching(NSPredicate(format: "label == %@", "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요."))
+        XCTAssertTrue(UITestConditions.exists(failures.firstMatch), app.debugDescription)
+        XCTAssertEqual(failures.count, 1)
+        let failure = failures.firstMatch
+        try RoutesVisibleContentUITestConditions.lastMessage(failure, in: app)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         // Switching away from the root conversation keeps the failed request without a leave prompt.
         XCTAssertFalse(app.alerts["저장하지 않은 내용이 있어요"].exists)
