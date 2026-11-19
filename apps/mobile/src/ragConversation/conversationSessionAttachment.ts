@@ -5,6 +5,7 @@ import type {
 } from './conversationSessionTypes';
 import type { createConversationSessionRestoreState } from './conversationSessionRestoreState';
 import { addConversation } from './conversationSessionTransitions';
+import { observeHistoryStartup } from '../providers/conversationHistoryDiagnostic';
 
 /** Attach an existing durable identity before exposing its freshly restored transcript. */
 export function createConversationSessionAttachment(input: {
@@ -30,7 +31,10 @@ export function createConversationSessionAttachment(input: {
     if (!Number.isFinite(Date.parse(updatedAt)))
       throw new Error('Conversation session date is invalid.');
     const session = input.empty();
-    await input.retention.attachExisting(session.id, durableId, version, valid);
+    const retention = input.retention;
+    await observeHistoryStartup('history_startup_session_attachment', () =>
+      retention.attachExisting(session.id, durableId, version, valid),
+    );
     if (!valid() || input.retention.activeIdentity(session.id) !== durableId) {
       input.retention.discardUnpublished?.(session.id, durableId, version);
       throw new Error('Conversation restoration was cancelled.');

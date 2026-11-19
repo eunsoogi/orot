@@ -18,7 +18,10 @@ type HistoryStartupWork =
   | 'history_startup_summary_setup'
   | 'history_startup_conversation_storage'
   | 'history_startup_session_recovery'
-  | 'history_startup_session_lease';
+  | 'history_startup_session_lease'
+  | 'history_startup_model_selection'
+  | 'history_startup_continuous_session'
+  | 'history_startup_session_attachment';
 
 /** Each token names a local read boundary, never an ID, record type or error message. */
 export type ConversationHistoryStage =
