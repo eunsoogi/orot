@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText } from '../layout/AppText';
@@ -18,6 +19,17 @@ export function ConversationRestartAction({
   session: ConversationSession;
   onRestart?: (question: string) => void;
 }) {
+  const response = session.messages.at(-1);
+  const lifetime = useRef<object | null>(null);
+  useLayoutEffect(() => {
+    // Each committed owner receives a fresh token. Cleanup is terminal even if an
+    // earlier session/response returns (or StrictMode runs setup again).
+    const token = {};
+    lifetime.current = token;
+    return () => {
+      if (lifetime.current === token) lifetime.current = null;
+    };
+  }, [store, session.id, response]);
   const recovery = conversationRecoveryDraft(session);
   if (!recovery || !onRestart) return null;
   if (recovery.attachment)
@@ -29,7 +41,9 @@ export function ConversationRestartAction({
       size="compact"
       style={styles.action}
       onPress={() => {
-        const response = session.messages.at(-1);
+        const token = lifetime.current;
+        if (!token) return;
+        let settled = false;
         Alert.alert(
           t('conversationInterruption.restartTitle'),
           t('conversationInterruption.restartWarning'),
@@ -37,10 +51,15 @@ export function ConversationRestartAction({
             {
               text: t('conversationInterruption.cancelRestart'),
               style: 'cancel',
+              onPress: () => {
+                settled = true;
+              },
             },
             {
               text: t('conversationInterruption.restartAction'),
               onPress: () => {
+                if (settled || lifetime.current !== token) return;
+                settled = true;
                 const current = store
                   .getSnapshot()
                   .sessions.find(value => value.id === session.id);
