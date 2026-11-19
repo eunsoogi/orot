@@ -81,7 +81,7 @@ export async function addHeartRateActivityContext(
         AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
         AND json_type(r.payload_json, '$.value.unit') = 'text'
     `;
-  const releasePrefix = await acquirePrefix?.();
+  const releasePrefix = acquirePrefix ? await acquirePrefix() : undefined;
   const result = releasePrefix
     ? await readHeartWithWorkoutPrefix(executor, releasePrefix, {
         calendarSql: healthContextCalendarSql,

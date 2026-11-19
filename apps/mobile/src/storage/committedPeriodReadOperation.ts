@@ -33,6 +33,7 @@ const same = (a: Pair, b: Pair) =>
 export function committedPeriodReadOperation(
   database: SqlDatabase,
   signal?: AbortSignal,
+  historyPage = false,
 ) {
   const reportScope = createCommittedReportScope(database);
   const reports = committedReportCache(reportScope.token, database)!;
@@ -82,9 +83,11 @@ export function committedPeriodReadOperation(
             return result;
           },
         };
-        const restorationWorkspace = {
-          acquireHeartPrefix: nativeHeartWorkoutPrefix(reportExecutor, tx),
-        };
+        // Keep the send/capture and its strict fallback on the same aggregate
+        // shape. Only the explicit user-visible page borrows this workspace.
+        const restorationWorkspace = historyPage
+          ? { acquireHeartPrefix: nativeHeartWorkoutPrefix(reportExecutor, tx) }
+          : undefined;
         const validate: ReadOnlyPeriodValidation = async (
           executor,
           source,

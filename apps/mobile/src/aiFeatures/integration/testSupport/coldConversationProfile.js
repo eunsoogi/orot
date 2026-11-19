@@ -90,9 +90,10 @@ export function coldConversationProfile(database) {
               ? 'activity'
               : 'measurement'
             : 'other';
-        const entry = (sql[group] ??= { calls: 0, ms: 0 });
+        const entry = (sql[group] ??= { calls: 0, ms: 0, indexedLatest: 0 });
         entry.calls++;
         entry.ms += performance.now() - start;
+        if (query.includes('picked AS MATERIALIZED')) entry.indexedLatest++;
         return result;
       };
       await work(tx);

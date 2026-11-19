@@ -213,7 +213,9 @@ test('profiles revision and presentation work after committed report reuse', asy
     const stats = profile.read();
     expect(stats.timelineToRecheckMs).toBeGreaterThan(0);
     expect(stats.sql.activity.calls).toBe(2);
+    expect(stats.sql.activity.indexedLatest).toBe(2);
     expect(stats.sql.measurement.calls).toBe(3);
+    expect(stats.sql.measurement.indexedLatest).toBe(3);
     expect(stats.sql.heart.calls).toBe(3);
     expect(stats.revisionCalls).toBe(15);
     // A retained parent can appear in several roots, but the validated report
