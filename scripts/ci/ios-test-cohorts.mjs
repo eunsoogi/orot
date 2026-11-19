@@ -83,6 +83,7 @@ const cohorts = {
       'ActiveTabResponsivenessUITests/testAppointmentsScrollDuringActiveTool',
     'ActiveTabResponsivenessUITests/testRecordsReadFailureDoesNotPassReadiness',
     'ActiveTabResponsivenessUITests/testOverviewReadFailureDoesNotPassReadiness',
+    'ActiveTabResponsivenessUITests/testAppointmentsReadFailureDoesNotPassReadiness',
       'PagedHealthRecordsUITests/testSecondPageValueAndShortThenCompleteBackSwipe',
       'RootNavigationUITests/testAiFeatureSafeAreaActionsAndCancelledThenCompletedEdgeBack',
     ],

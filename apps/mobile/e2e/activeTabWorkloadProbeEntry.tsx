@@ -15,6 +15,7 @@ import { runActiveTabHealthWorkload } from './activeTabHealthWorkload';
 import {
   finishOverviewSnapshot,
   observeOverviewSnapshot,
+  observeDirectRead,
 } from './activeTabFixtureObservation';
 import type { CalendarBridge } from '../src/calendar/types';
 import type { SqlDatabase } from '@orot/storage';
@@ -30,6 +31,10 @@ const calendarBridge: CalendarBridge = {
 };
 
 type FixtureGlobal = typeof globalThis & {
+  __orotActiveTabDirect?: <T>(
+    route: 'appointments',
+    read: () => Promise<T>,
+  ) => Promise<T>;
   __orotActiveTabOverview?: (database: SqlDatabase) => SqlDatabase;
   __orotActiveTabOverviewFinish?: (
     database: SqlDatabase,
@@ -51,6 +56,13 @@ function installOverviewObservation() {
   const manager = NativeModules.SettingsManager;
   const settings =
     manager?.settings ?? manager?.getConstants?.().settings ?? {};
+  (globalThis as FixtureGlobal).__orotActiveTabDirect = (route, read) =>
+    observeDirectRead(
+      route,
+      read,
+      event,
+      settings.OROT_WORKLOAD_FAIL_ROUTE === route,
+    );
   (globalThis as FixtureGlobal).__orotActiveTabOverviewFinish =
     finishOverviewSnapshot;
   (globalThis as FixtureGlobal).__orotActiveTabOverview = database =>
@@ -59,6 +71,14 @@ function installOverviewObservation() {
       event,
       settings.OROT_WORKLOAD_FAIL_ROUTE === 'overview',
     );
+}
+
+function recordBoundary(name: string) {
+  try {
+    NativeModules.OrotTestControl.activeTabEvent(name);
+  } catch {
+    // A missing receipt fails native verification without changing the reader outcome.
+  }
 }
 
 async function failRecordingRead(): Promise<never> {
@@ -77,10 +97,16 @@ function ActiveTabWorkloadProbe() {
   const fixtureSettings =
     fixtureManager?.settings ?? fixtureManager?.getConstants?.().settings ?? {};
   // This opt-in affects only the fixture's injected reader, never production storage.
-  const loadRecordings =
-    fixtureSettings.OROT_WORKLOAD_FAIL_ROUTE === 'records'
-      ? failRecordingRead
-      : loadRecordingSummaries;
+  const loadRecordings = useRef(() =>
+    observeDirectRead(
+      'records',
+      fixtureSettings.OROT_WORKLOAD_FAIL_ROUTE === 'records'
+        ? failRecordingRead
+        : loadRecordingSummaries,
+      recordBoundary,
+      false,
+    ),
+  ).current;
   const release = useRef<(() => void) | undefined>(undefined);
   const [database, setDatabase] =
     useState<
@@ -154,6 +180,7 @@ function ActiveTabWorkloadProbe() {
       .catch(() => active && setState('failed'));
     return () => {
       active = false;
+      delete (globalThis as FixtureGlobal).__orotActiveTabDirect;
       delete (globalThis as FixtureGlobal).__orotActiveTabOverview;
       delete (globalThis as FixtureGlobal).__orotActiveTabOverviewFinish;
     };

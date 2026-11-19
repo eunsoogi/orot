@@ -41,7 +41,7 @@ test('cohort tasks preserve the complete registered inventory, including every f
     ...profiles.flatMap((profile) => iosTestInventory(profile)),
     ...iosTestInventory('speech', 'preparation'),
   ]);
-  assert.equal(actual.size, 267);
+  assert.equal(actual.size, 268);
   // Both native cache cases must execute exactly once in Core integration.
   for (const identifier of [
     'OrotIntegrationTests/HermesDomainIntegrationTests/testNativePeriodStatementCachePreservesOwnerBoundaries',
@@ -113,7 +113,7 @@ test('two Release destinations partition the original work exactly once and pres
   // Appointment and photo selection stay inside Calendar and expand only Release UI.
   assert.deepEqual(
     names.map((name) => iosTestCohortTasks(name).flatMap((task) => task.identifiers).length),
-    [176, 56],
+    [176, 57],
   );
   assert.deepEqual(iosTestCohortTasks('release-core').map(key), [
     'core/shared-persistence',

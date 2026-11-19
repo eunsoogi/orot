@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Appointment, AppointmentRepository } from '@orot/storage';
 import { t } from '../i18n';
+import { activeTabAppointmentRead } from '../routes/overview/activeTabFixtureBoundary';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationLeaveState } from '../navigation';
 import { selectNextAppointment } from '../routes/nextAppointment';
@@ -62,7 +63,9 @@ export function useAppointmentsScreenState({
       setLoading(true);
       setReadError(false);
       try {
-        const nextAppointments = await repository.list();
+        const nextAppointments = await activeTabAppointmentRead(() =>
+          repository.list(),
+        );
         // A refocus or mutation can start a newer read before this one finishes.
         if (generation !== readGeneration.current) return;
         setAppointments(nextAppointments);

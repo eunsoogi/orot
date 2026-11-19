@@ -67,4 +67,26 @@ enum ActiveTabReadinessUITestConditions {
               zip(matching, matching.dropFirst()).allSatisfy({ $0.0.2 <= $0.1.2 })
         else { throw Failure.fixtureFailure }
     }
+
+    /// Records may be preloaded; appointment evidence must start after the route tap.
+    static func directReceipt(_ snapshot: [String: Any], run: String, route: String, after: UInt64?, before: UInt64, injectedFailure: Bool = false) throws {
+        guard let receipt = snapshot["boundaries"] as? [String: Any], receipt["overflow"] as? Bool == false,
+              let events = receipt["events"] as? [[String: String]],
+              events.allSatisfy({ $0["run"]?.lowercased() == run.lowercased() })
+        else { throw Failure.fixtureFailure }
+        let name = "\(route)-direct-requested"
+        let candidates = events.filter { event in
+            guard event["event"] == name, let tick = event["tick"].flatMap(UInt64.init) else { return false }
+            return tick <= before && (after.map { tick > $0 } ?? true)
+        }
+        let complete = candidates.filter { candidate in
+            let matched = events.filter { $0["operation"] == candidate["operation"] && ($0["event"]?.hasPrefix("\(route)-direct-") ?? false) }
+            let expected = [name] + (injectedFailure ? ["\(route)-direct-injected-failure", "\(route)-direct-settled-failed"] : ["\(route)-direct-settled-ok"])
+            guard matched.compactMap({ $0["event"] }) == expected,
+                  let first = matched.first?["tick"].flatMap(UInt64.init),
+                  let last = matched.last?["tick"].flatMap(UInt64.init) else { return false }
+            return first <= last && last <= before
+        }
+        guard !complete.isEmpty, after == nil || complete.count == 1 else { throw Failure.fixtureFailure }
+    }
 }

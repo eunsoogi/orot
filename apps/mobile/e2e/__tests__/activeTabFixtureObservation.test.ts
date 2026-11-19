@@ -91,3 +91,38 @@ test('keeps overlapping failed and admitted snapshots separate', async () => {
   expect(events).toContain(`overview-settled-ok:${secondID}`);
   expect(events).not.toContain(`overview-settled-ok:${firstID}`);
 });
+
+test('labels direct reads and preserves injected failures', async () => {
+  const events: string[] = [];
+  const { observeDirectRead } = await import('../activeTabFixtureObservation');
+  await expect(
+    observeDirectRead(
+      'appointments',
+      async () => 42,
+      event => events.push(event),
+      false,
+    ),
+  ).resolves.toBe(42);
+  const requested = events[0].split(':')[1];
+  expect(events).toEqual([
+    `appointments-direct-requested:${requested}`,
+    `appointments-direct-settled-ok:${requested}`,
+  ]);
+  events.length = 0;
+  const reader = jest.fn();
+  await expect(
+    observeDirectRead(
+      'appointments',
+      reader,
+      event => events.push(event),
+      true,
+    ),
+  ).rejects.toThrow('Synthetic direct read failure.');
+  const failed = events[0].split(':')[1];
+  expect(reader).not.toHaveBeenCalled();
+  expect(events).toEqual([
+    `appointments-direct-requested:${failed}`,
+    `appointments-direct-injected-failure:${failed}`,
+    `appointments-direct-settled-failed:${failed}`,
+  ]);
+});

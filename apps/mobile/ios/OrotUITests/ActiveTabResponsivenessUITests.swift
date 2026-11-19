@@ -155,6 +155,10 @@ final class ActiveTabResponsivenessUITests: OrotFailFastTestCase {
         let result = try overlap(final, readiness: readiness, target: target, destination: destination, expectedScroll: scrollID)
         if destination == "overview-screen" {
             try ActiveTabReadinessUITestConditions.overviewReceipt(final, run: run, after: result.touch, before: result.visible)
+        } else {
+            let route = destination == "records-layout" ? "records" : "appointments"
+            let after = route == "records" ? nil : result.touch
+            try ActiveTabReadinessUITestConditions.directReceipt(final, run: run, route: route, after: after, before: result.visible)
         }
         let timing = XCTAttachment(string: "touch=\(result.touch) visible=\(result.visible) scroll=\(result.scroll) lastSQL=\(result.lastSQL)")
         timing.name = "Synthetic active tab timing ticks"

@@ -50,3 +50,26 @@ export function observeOverviewSnapshot(
   );
   return observed;
 }
+
+/** Marks a caller-owned reader as direct: this wrapper never starts a transaction. */
+export async function observeDirectRead<T>(
+  route: 'records' | 'appointments',
+  read: () => Promise<T>,
+  event: (name: string) => void,
+  failRead: boolean,
+): Promise<T> {
+  const id = ++nextOperation;
+  event(`${route}-direct-requested:${id}`);
+  try {
+    if (failRead) {
+      event(`${route}-direct-injected-failure:${id}`);
+      throw new Error('Synthetic direct read failure.');
+    }
+    const result = await read();
+    event(`${route}-direct-settled-ok:${id}`);
+    return result;
+  } catch (error) {
+    event(`${route}-direct-settled-failed:${id}`);
+    throw error;
+  }
+}

@@ -10,8 +10,8 @@ import Foundation
             "overview-read-requested", "overview-direct-requested", "overview-direct-settled",
             "overview-requested", "overview-admitted", "overview-settled-ok", "overview-settled-failed",
             "overview-load-ok", "overview-load-failed", "overview-injected-failure",
-            "records-direct-requested", "records-direct-settled",
-            "appointments-direct-requested", "appointments-direct-settled",
+            "records-direct-requested", "records-direct-settled-ok", "records-direct-settled-failed", "records-direct-injected-failure",
+            "appointments-direct-requested", "appointments-direct-settled-ok", "appointments-direct-settled-failed", "appointments-direct-injected-failure",
         ]
 
         static func record(_ event: String) -> String {
