@@ -1,7 +1,16 @@
 import { providerDiagnostic } from './diagnostics';
 import { NativeModules } from 'react-native';
 
-type HistoryValidationCost =
+export type HistoryValidationCost =
+  | 'artifact_read_admission'
+  | 'artifact_read_settlement'
+  | 'artifact_read_setup'
+  | 'artifact_session_lease'
+  | 'artifact_root_row'
+  | 'artifact_root_decode'
+  | 'artifact_parent_row'
+  | 'artifact_retained_source'
+  | 'artifact_summary_parent'
   | 'artifact_source_authority'
   | 'artifact_parent_decode'
   | 'artifact_parent_fingerprint'

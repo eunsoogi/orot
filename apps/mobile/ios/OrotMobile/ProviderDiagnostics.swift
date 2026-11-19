@@ -24,6 +24,7 @@ final class OrotProviderDiagnostics: NSObject {
                "report_cache_pending_hit", "report_cache_committed_hit", "report_cache_new_key", "report_cache_generation_miss",
                "report_query_quantity", "report_query_heart_rate", "report_query_sleep", "report_query_symptom", "report_query_other",
                "artifact_initial_validation", "artifact_source_hydration", "artifact_final_validation",
+               "artifact_read_admission", "artifact_read_settlement", "artifact_read_setup", "artifact_session_lease", "artifact_root_row", "artifact_root_decode", "artifact_parent_row", "artifact_retained_source", "artifact_summary_parent",
                "artifact_source_authority", "artifact_parent_decode", "artifact_parent_fingerprint",
                "artifact_report_calendar", "artifact_report_snapshot", "artifact_report_fingerprint",
                "history_timeline", "history_turns", "history_artifacts", "history_tool_read",
