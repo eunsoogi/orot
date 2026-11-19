@@ -1,9 +1,12 @@
+import type { ParentSnapshot } from './restoreConversationParentSource';
+import { ownsConversationParentRead } from './conversationParentReadOwner';
 import type { ConversationArtifact } from '../../storage/conversationArtifactCodec';
 import {
   isGeneratedConversationSource,
   isConversationPhotoSource,
 } from '../../ragConversation/conversationArtifactSources';
 import {
+  restoreConversationArtifact,
   restoreConversationArtifactSnapshot,
   type RestoreInput,
 } from './restoreConversationArtifact';
@@ -14,6 +17,8 @@ import {
 export function createConversationPageHydration(
   input: Omit<RestoreInput, 'id'>,
   ancestry: ReadonlyMap<string, ConversationArtifact>,
+  strictReads?: RestoreInput['storage'],
+  ownerData = input.data,
 ) {
   const active = new Set<string>();
   // Native ownership cannot be proved by the database graph. Keep the entire
@@ -36,23 +41,39 @@ export function createConversationPageHydration(
     return result;
   };
   type Result = Awaited<ReturnType<typeof restoreConversationArtifactSnapshot>>;
-  const restore = async (id: string): Promise<Result> => {
+  const restore = async (id: string, strict = false): Promise<Result> => {
     if (input.signal.aborted) return null;
     if (active.has(id)) throw new Error('Conversation ancestry is cyclic.');
     active.add(id);
     try {
-      return await restoreConversationArtifactSnapshot(
-        { ...input, id },
-        ancestry.get(id) ?? null,
-        async parentId => {
-          // undefined selects the original strict discovery path, not a failed proof.
-          if (!eligible(parentId)) return undefined;
-          const parent = await restore(parentId);
-          return parent
-            ? { revision: parent.revision, sourceStatus: parent.sourceStatus }
-            : null;
-        },
-      );
+      const parentSnapshot = async (
+        parentId: string,
+        discovery: Parameters<ParentSnapshot>[0],
+      ) => {
+        // undefined selects the original strict discovery path, not a failed proof.
+        const strictParent = !eligible(parentId);
+        const owned = () =>
+          ownsConversationParentRead(discovery, input.storage, ownerData);
+        if (strictParent && (!strictReads || !owned())) return undefined;
+        // Native parents still perform both original and DB checks. Only report
+        // calculation uses this page's owner; live aliases retain original storage.
+        const parent = await restore(parentId, strictParent);
+        if (strictParent && !owned()) return undefined;
+        return parent
+          ? { revision: parent.revision, sourceStatus: parent.sourceStatus }
+          : null;
+      };
+      return strict
+        ? await restoreConversationArtifact(
+            { ...input, id },
+            strictReads,
+            parentSnapshot,
+          )
+        : await restoreConversationArtifactSnapshot(
+            { ...input, id },
+            ancestry.get(id) ?? null,
+            parentSnapshot,
+          );
     } finally {
       active.delete(id);
     }

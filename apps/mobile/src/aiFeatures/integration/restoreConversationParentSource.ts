@@ -5,20 +5,19 @@ import type { AiFeatureLocalData } from './localData';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { EvidenceSourceReadResult } from './evidenceSourceDocument';
 
+export type ParentSnapshot = (discovery: {
+  readonly read: unknown;
+}) => Promise<
+  { revision: string; sourceStatus: 'current' | 'unknown' } | null | undefined
+>;
+
 /** Restore a generated conversation parent through the same validated catalog as discovery. */
 export async function restoreConversationParentSource(
   source: SavedGeneratedConversationSource,
   registry: LocalEvidenceReferenceRegistry,
   data: AiFeatureLocalData,
   signal: AbortSignal,
-  initialSnapshot?: () => Promise<
-    | {
-        revision: string;
-        sourceStatus: 'current' | 'unknown';
-      }
-    | null
-    | undefined
-  >,
+  initialSnapshot?: ParentSnapshot,
 ): Promise<
   | {
       reference: EvidenceReference;
@@ -49,7 +48,9 @@ export async function restoreConversationParentSource(
   };
   // A page may supply a fully hydrated transaction-validated ancestor only for
   // registration. Neither this callback nor its snapshot enters the live resolver.
-  const snapshot = initialSnapshot ? await initialSnapshot() : undefined;
+  const snapshot = initialSnapshot
+    ? await initialSnapshot(discovery)
+    : undefined;
   let sourceStatus: 'current' | 'unknown';
   if (snapshot !== undefined) {
     if (!snapshot || snapshot.revision !== source.revision || signal.aborted)

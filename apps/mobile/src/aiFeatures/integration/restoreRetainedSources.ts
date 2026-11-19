@@ -78,9 +78,11 @@ export async function restoreRetainedSources(
       const report = read
         ? await read(source.scope.window, [source.scope.topic])
         : undefined;
-      sourceChanged ||=
-        !report ||
-        healthContextRevision(source.scope, report) !== source.revision;
+      // Reuse the comparison within this source even for a custom mutable reader.
+      const matches =
+        report &&
+        healthContextRevision(source.scope, report) === source.revision;
+      sourceChanged ||= !matches;
       const current =
         report && read
           ? registerHealthContextEvidence({
@@ -97,10 +99,7 @@ export async function restoreRetainedSources(
               validate: async () => false,
               readSource: async () => ({ status: 'unavailable' }),
             });
-      if (
-        report &&
-        healthContextRevision(source.scope, report) === source.revision
-      )
+      if (report && matches)
         reviewEvidence.push({
           ...source.reference,
           content: healthContextContent(source.scope, report),

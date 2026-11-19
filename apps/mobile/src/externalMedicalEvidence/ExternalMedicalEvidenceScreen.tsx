@@ -1,5 +1,5 @@
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
-import { publicMedicalQueryConsent } from '../agent/execution/publicMedicalQueryConsent';
+import { searchConsentedMedicalEvidence } from './searchConsentedMedicalEvidence';
 import type { ReactNode } from 'react';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
@@ -42,7 +42,6 @@ export function ExternalMedicalEvidenceScreen({
   const [query, setQuery] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
   const { consent, disclosureSheet } = useInferenceConsent();
-  const queryConsent = publicMedicalQueryConsent(consent);
   const [state, setState] = useState<ExternalMedicalEvidenceSearchState>({
     status: 'idle',
   });
@@ -81,25 +80,17 @@ export function ExternalMedicalEvidenceScreen({
     operationController.current = controller;
     setState({ status: 'loading' });
     try {
-      const decision = await queryConsent.authorize({
-        operationRunId: 'manual-medical-search',
-        operationKey: 'search',
-        sourceId: 'europe-pmc',
-        query: submittedQuery,
-        signal: controller.signal,
-      });
+      const result = await searchConsentedMedicalEvidence(
+        consent,
+        service,
+        submittedQuery,
+        controller.signal,
+      );
       if (controller.signal.aborted) return;
-      if (decision !== 'authorized') {
+      if (result === 'consent_required') {
         setState({ status: 'consent_required' });
         return;
       }
-      const result: EuropePmcSearchResult = await service.search(
-        submittedQuery,
-        {
-          externalQueryConsented: true,
-          signal: controller.signal,
-        },
-      );
       if (controller.signal.aborted) return;
       setState(searchResultState(result));
     } catch {

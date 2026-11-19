@@ -3,6 +3,18 @@ export type { Outcome } from './diagnosticOutcomes';
 /** Closed diagnostic tokens only; native code independently enforces this boundary. */
 export type Feature = 'rag' | 'disease' | 'visit' | 'daily_report' | 'storage';
 export type Stage =
+  | 'report_sql_first'
+  | 'report_sql_repeat'
+  | 'report_sql_unscoped'
+  | 'report_cache_pending_hit'
+  | 'report_cache_committed_hit'
+  | 'report_cache_new_key'
+  | 'report_cache_generation_miss'
+  | 'report_query_quantity'
+  | 'report_query_heart_rate'
+  | 'report_query_sleep'
+  | 'report_query_symptom'
+  | 'report_query_other'
   | ConversationHistoryStage
   | 'conversation_model_preflight'
   | 'conversation_history_preflight'

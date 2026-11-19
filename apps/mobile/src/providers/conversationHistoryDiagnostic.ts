@@ -5,10 +5,24 @@ export type ConversationHistoryStage =
   | 'history_timeline'
   | 'history_turns'
   | 'history_artifacts'
+  | 'artifact_initial_validation'
+  | 'artifact_source_hydration'
+  | 'artifact_final_validation'
   | 'history_tool_read'
   | 'history_tool_restore'
   | 'history_tasks'
-  | 'history_recheck';
+  | 'history_recheck'
+  | 'history_transcript_layout';
+
+/** Native row layout observes presentation after validation. Hit testing and
+ * request preflight have separate boundaries and are not inferred from layout. */
+export function reportRestoredTranscriptLayout() {
+  try {
+    providerDiagnostic('rag', 'history_transcript_layout', 'completed');
+  } catch {
+    // Diagnostics must not alter transcript layout or reading position.
+  }
+}
 
 /** Optional diagnostics cannot change protected-read results or the exact original error. */
 export async function observeConversationHistory<T>(

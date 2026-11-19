@@ -1,5 +1,8 @@
+import { DailyReportHeading } from './DailyReportHeading';
+import { DailyReportLocalRecovery } from './DailyReportLocalRecovery';
+import { dailyReportRouteStyles as styles } from './dailyReportRouteStyles';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { createDailyReportIdentity } from '@orot/domain';
 import { todayIdentity } from './dailyReportTodayIdentity';
 import type { DailyReportRouteProps } from './DailyReportRouteProps';
@@ -39,6 +42,7 @@ export function DailyReportRoute({
   onTaskResult,
   taskRevision,
 }: DailyReportRouteProps) {
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
   const navigationInset = useNavigationContentInset();
   const initialDate = initialIdentity?.localDate;
   const initialZone = initialIdentity?.timeZone;
@@ -66,7 +70,7 @@ export function DailyReportRoute({
     {
       hasUnsavedChanges: false,
       isRecording: false,
-      hasOngoingOperation: state.busy,
+      hasOngoingOperation: state.busy || recoveryBusy,
     },
     0,
     onNavigationStateChange,
@@ -128,17 +132,7 @@ export function DailyReportRoute({
           onPress={onBack}
         />
       ) : null}
-      <AppText accessibilityRole="header" style={styles.heading}>
-        {t('dailyReport.title')}
-      </AppText>
-      {identity ? (
-        <AppText testID="daily-report-date">
-          {t('dailyReport.date', {
-            date: identity.localDate,
-            zone: identity.timeZone,
-          })}
-        </AppText>
-      ) : null}
+      <DailyReportHeading identity={identity} />
       {reminder && !chosenToday ? (
         <AppText>{t('dailyReport.reminderZone')}</AppText>
       ) : null}
@@ -218,7 +212,18 @@ export function DailyReportRoute({
           {dailyReportFailureMessage(state.failure, Boolean(saved))}
         </AppText>
       ) : null}
-      {canGenerate && !state.busy ? (
+      <DailyReportLocalRecovery
+        feature={feature}
+        identity={identity}
+        busy={state.busy}
+        revision={state.failure}
+        onBusy={setRecoveryBusy}
+        onSaved={runId => {
+          state.refresh();
+          if (identity) state.retainResult(identity, runId);
+        }}
+      />
+      {canGenerate && !state.busy && !recoveryBusy ? (
         <AppButton
           title={t(
             saved || revisionChanged || state.lookup?.status === 'stale'
@@ -243,8 +248,3 @@ export function DailyReportRoute({
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  content: { padding: 20, gap: 16 },
-  heading: { fontSize: 26, fontWeight: '700' },
-});

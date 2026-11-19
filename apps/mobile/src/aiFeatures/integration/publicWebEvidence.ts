@@ -1,4 +1,7 @@
+import { withLiveConsentSignal } from '../../agent/execution/withLiveConsentSignal';
 import { t } from '../../i18n';
+import { isExecutionConsentCurrent } from '@orot/agent-runtime';
+import { publicWebConsentRequest } from './publicWebConsentRequest';
 import {
   protectedExternalReferences,
   type ProtectedExternalReferences,
@@ -16,7 +19,6 @@ import {
   PUBLIC_WEB_SOURCE_ID,
   publicWebSources,
 } from '../../externalMedicalEvidence/publicWebSources';
-import { publicWebSearchConsentScope } from '../../agent/execution/inferenceConsentScopes';
 import {
   boundedPublicWebRequest,
   PublicWebSearchTimeoutError,
@@ -103,23 +105,13 @@ export function createPublicWebEvidence(input: {
         });
       const original = identity();
       if (request.signal.aborted) return { status: 'consent_required' };
-      const approved = await consent.authorize({
-        operationRunId: request.operationRunId,
-        providerId: selected.provider.id,
-        modelId: selected.modelId,
-        // Preserve the exact recipient identity and serialized Korean suffix.
-        recipient: t('externalMedicalEvidence.publicSearchRecipient', {
-          recipient: selected.recipient,
-        }),
-        remoteProcessing: true,
-        consentScope: publicWebSearchConsentScope,
-        allowedScope: {
-          sourceKinds: ['external_medical'],
-          sourceIds: [PUBLIC_WEB_SOURCE_ID],
-        },
-        payload: { messages: [{ role: 'user', content: query }] },
-        signal: request.signal,
-      });
+      const outbound = publicWebConsentRequest(
+        selected,
+        request.operationRunId,
+        query,
+        request.signal,
+      );
+      const approved = await consent.authorize(outbound);
       if (approved !== 'authorized' || request.signal.aborted || !scoped())
         return { status: 'consent_required' };
       let consumed = false;
@@ -143,14 +135,18 @@ export function createPublicWebEvidence(input: {
             );
           if (request.signal.aborted)
             throw new Error('Public web search was cancelled.');
+          if (!isExecutionConsentCurrent(consent, outbound))
+            throw new Error('Public search permission changed.');
           // Reserve before external dispatch so an exhausted restored counter cannot repeat an identity.
           const sequence = references.nextSequence();
           let result;
           try {
-            result = await boundedPublicWebRequest(
-              search.bind(selected.provider),
-              query,
-              request.signal,
+            result = await withLiveConsentSignal(consent, outbound, signal =>
+              boundedPublicWebRequest(
+                search.bind(selected.provider),
+                query,
+                signal,
+              ),
             );
           } catch (error) {
             // Never recover cancellation, unexpected adapter errors, or provenance/storage failures.

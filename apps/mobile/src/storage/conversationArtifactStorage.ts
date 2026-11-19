@@ -1,3 +1,5 @@
+import { withWritePeriodCalculations } from './writePeriodCalculationScope';
+import { registerConversationStrictReaders } from './conversationStrictReadOwner';
 import { appendConversationSourceRows } from './conversationArtifactSourceRows';
 import { enqueueStatementMemory } from './userStatementMemoryJobs';
 import { conversationTimelinePages } from './conversationTimelinePages';
@@ -53,7 +55,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   const tools = createConversationToolEventStorage(database, ensure);
-  return {
+  const storage = {
     listTimeline: conversationTimelinePages(database, ensure),
     continuousSession: continuousConversationStorage(database, ensure),
     readSteeringHistory: conversationSteeringHistory(database, ensure),
@@ -156,7 +158,15 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
           sessions.rows[0]?.version !== expectedSessionVersion
         )
           throw new Error('Conversation session was removed.');
-        await assertConversationArtifactCurrent(tx, database, decoded, true);
+        await withWritePeriodCalculations(tx, validate =>
+          assertConversationArtifactCurrent(
+            tx,
+            database,
+            decoded,
+            true,
+            validate,
+          ),
+        );
         assertConversationNotCancelled(signal);
         const existing = await tx.execute(
           'SELECT result_json FROM conversation_artifacts WHERE id = ?',
@@ -205,4 +215,6 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       );
     },
   };
+  registerConversationStrictReaders(storage);
+  return storage;
 }

@@ -1,3 +1,4 @@
+import { isExecutionConsentCurrent } from './consentCurrentness';
 import { observeModelStage } from './modelStageDiagnostics';
 import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { LanguageModelStreamEvent } from '@orot/model-runtime';
@@ -5,7 +6,7 @@ import { referencesFromBatch } from './evidence';
 import { observeUntilAbort } from './modelCall';
 import { journaledModelCall } from './journaledModelCall';
 import type { ModelCallOutcome } from './modelCall';
-import type { ExecutionConsentPort } from './contracts';
+import type { ExecutionConsentPort, OutboundProcessingRequest } from './contracts';
 import { canceled, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 
@@ -59,7 +60,31 @@ export async function callModelWithEvidenceFreshness<TResult>(
     revalidateCurrentEvidence(context, providerStop);
 
   let staleAfterConsent = false;
+  const photoApprovals = new WeakMap<LanguageModelRequest, OutboundProcessingRequest>();
   const consent: ExecutionConsentPort = {
+    subscribeAuthorizationInvalidation: (request, listener) => {
+      const stops: (() => void)[] = [];
+      if (request.remoteProcessing)
+        stops.push(
+          options.consent.subscribeAuthorizationInvalidation?.(request, listener) ?? (() => {}),
+        );
+      const photo = photoApprovals.get(request.payload);
+      if (photo && options.photoInput)
+        stops.push(
+          options.photoInput.consent.subscribeAuthorizationInvalidation?.(photo, listener) ??
+            (() => {}),
+        );
+      return () => {
+        for (const unsubscribe of stops) unsubscribe();
+      };
+    },
+    isAuthorizationCurrent: (request) => {
+      if (request.remoteProcessing && !isExecutionConsentCurrent(options.consent, request))
+        return false;
+      if (!options.photoInput) return true;
+      const photo = photoApprovals.get(request.payload);
+      return photo !== undefined && isExecutionConsentCurrent(options.photoInput.consent, photo);
+    },
     authorize: async (outbound) => {
       const decision = await observeModelStage(options.onModelStage, 'consent_wait', () =>
         options.consent.authorize(outbound),
@@ -87,22 +112,20 @@ export async function callModelWithEvidenceFreshness<TResult>(
       } catch {
         return { status: 'consent_required' };
       }
+      const photoRequest: OutboundProcessingRequest = {
+        operationRunId: options.execution.operationRunId,
+        providerId: options.execution.providerId,
+        modelId: options.execution.modelId,
+        recipient: options.execution.recipient,
+        remoteProcessing: options.execution.remoteProcessing,
+        ...(options.execution.consentScope ? { consentScope: options.execution.consentScope } : {}),
+        allowedScope: options.execution.allowedScope,
+        payload: request,
+        signal,
+      };
+      photoApprovals.set(request, photoRequest);
       const approval = await observeUntilAbort(
-        deferEvidenceAdapter(signal, () =>
-          options.photoInput!.consent.authorize({
-            operationRunId: options.execution.operationRunId,
-            providerId: options.execution.providerId,
-            modelId: options.execution.modelId,
-            recipient: options.execution.recipient,
-            remoteProcessing: options.execution.remoteProcessing,
-            ...(options.execution.consentScope
-              ? { consentScope: options.execution.consentScope }
-              : {}),
-            allowedScope: options.execution.allowedScope,
-            payload: request,
-            signal,
-          }),
-        ),
+        deferEvidenceAdapter(signal, () => options.photoInput!.consent.authorize(photoRequest)),
         signal,
       );
       if (approval.kind === 'cancelled') {

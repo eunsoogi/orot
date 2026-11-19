@@ -1,6 +1,15 @@
+import {
+  createHealthContextCalendarScope,
+  type HealthContextCalendarScope,
+} from './calendarReadScope';
+import {
+  startReportCalculationDiagnostic,
+  endReportCalculationDiagnostic,
+} from './reportCalculationDiagnostic';
 import type { SqlDatabase } from '@orot/storage';
 import {
   committedReportCache,
+  committedReportCalendar,
   type CommittedReportScope,
 } from './committedReportScope';
 import type { HealthContextReader } from './reader';
@@ -19,12 +28,22 @@ export function registerHealthContextReadOwner(
   database: SqlDatabase,
   readWithCache: (
     cache: Map<string, HealthContextReport>,
+    calendar: HealthContextCalendarScope,
   ) => HealthContextReader,
 ) {
   owners.set(reader, (operationSignal, shared) => {
     const sharedCache = committedReportCache(shared, database);
     const cache = sharedCache ?? new Map<string, HealthContextReport>();
-    const scoped = readWithCache(cache);
+    if (!sharedCache) startReportCalculationDiagnostic(cache);
+    const sharedCalendar = committedReportCalendar(shared, database);
+    const calendar = sharedCalendar ?? createHealthContextCalendarScope();
+    const scoped = readWithCache(cache, calendar);
+    const clearDiagnostic = () => {
+      if (!sharedCache) endReportCalculationDiagnostic(cache);
+      if (!sharedCalendar) calendar.dispose();
+    };
+    if (operationSignal?.aborted) clearDiagnostic();
+    operationSignal?.addEventListener('abort', clearDiagnostic, { once: true });
     let disposed = false;
     return {
       read: async (...args) => {
@@ -49,6 +68,8 @@ export function registerHealthContextReadOwner(
       },
       dispose() {
         disposed = true;
+        clearDiagnostic();
+        operationSignal?.removeEventListener('abort', clearDiagnostic);
         if (!sharedCache) cache.clear();
       },
     };
@@ -63,4 +84,30 @@ export function beginHealthContextReadOperation(
   shared?: CommittedReportScope,
 ): Operation | undefined {
   return owners.get(reader)?.(signal, shared);
+}
+
+/** Capture-only issuance pins the factory registration, not a mutable reader lookup.
+ * Re-registration revokes both unopened and already-open calculation leases. */
+export function capturedHealthContextReadOwner(reader: HealthContextReader) {
+  const owner = owners.get(reader);
+  if (!owner) return undefined;
+  return {
+    key: owner as object,
+    current: () => owners.get(reader) === owner,
+    open(signal: AbortSignal): Operation | undefined {
+      if (signal.aborted || owners.get(reader) !== owner) return undefined;
+      const operation = owner(signal);
+      let active = true;
+      return {
+        read: (...args) =>
+          active && owners.get(reader) === owner
+            ? operation.read(...args)
+            : reader(...args),
+        dispose() {
+          active = false;
+          operation.dispose();
+        },
+      };
+    },
+  };
 }

@@ -10,6 +10,16 @@ function queuedConsent(
   let tail: Promise<unknown> = Promise.resolve();
   let waiting = 0;
   return {
+    // Preserve a settings-issued live dispatch fence through this wait adapter.
+    ...(consent.subscribeAuthorizationInvalidation
+      ? {
+          subscribeAuthorizationInvalidation:
+            consent.subscribeAuthorizationInvalidation.bind(consent),
+        }
+      : {}),
+    ...(consent.isAuthorizationCurrent
+      ? { isAuthorizationCurrent: consent.isAuthorizationCurrent.bind(consent) }
+      : {}),
     authorize(request) {
       waiting++;
       deadline.pause();

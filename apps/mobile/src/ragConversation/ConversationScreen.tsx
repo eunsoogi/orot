@@ -1,3 +1,4 @@
+import { entryIntentSender } from './entryIntentSender';
 import { ConversationScreenHeader } from './ConversationScreenHeader';
 import { conversationHistoryRecoveryProps } from './conversationHistoryRecoveryProps';
 import { conversationComposerDisabled } from './conversationComposerDisabled';
@@ -67,6 +68,9 @@ export function ConversationScreen({
     !isEntryCurrent || isEntryCurrent(),
   );
   const { id, messages, pendingMessage, busy, error } = session;
+  // Confirmed retries retain feature scope instead of becoming ordinary chat.
+  const restart = (question: string) =>
+    store.sendPrompt(id, question, entryIntentSender(store, id, onSend));
   const { photo, focus, quickChoices, ...composer } =
     useConversationScreenControls(
       store,
@@ -228,7 +232,7 @@ export function ConversationScreen({
             footer={
               <>
                 <ConversationTasks.ConversationStoredTaskCards
-                  onRestart={question => store.sendPrompt(id, question, onSend)}
+                  onRestart={restart}
                   store={store}
                   session={session}
                   onOpenSource={onOpenSource}

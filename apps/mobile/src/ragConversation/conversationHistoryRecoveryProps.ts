@@ -9,10 +9,25 @@ export function conversationHistoryRecoveryProps(
   store: Pick<
     ConversationSessions,
     'loadOlderHistory' | 'synchronizeModel' | 'retryRestore'
-  >,
+  > &
+    Partial<Pick<ConversationSessions, 'toolSourceSessionId'>>,
   active = true,
 ) {
+  // Initial canonical lookup has no durable session yet. A send-time model
+  // refresh on an already attached conversation is not history loading.
+  const resolvingInitialHistory =
+    session.modelSelectionPending &&
+    store.toolSourceSessionId?.(session.id) === null &&
+    !session.preparingSend;
   return {
+    // Blocking/quarantine and send/save activity are not history restoration.
+    restoringHistory: Boolean(
+      active &&
+      !session.quarantined &&
+      !session.restoreFailed &&
+      !session.modelSelectionFailed &&
+      (session.restoring || resolvingInitialHistory),
+    ),
     restoring:
       !active ||
       session.restoring ||

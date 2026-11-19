@@ -1,12 +1,20 @@
+import { isExecutionConsentCurrent } from './consentCurrentness';
 import { executionLimit } from './executionLimits';
 import type { LanguageModelRequest } from '@orot/model-runtime';
-import type { ExecutionConsentPort, MultiAgentExecutionIdentity } from './contracts';
+import type {
+  ExecutionConsentPort,
+  MultiAgentExecutionIdentity,
+  OutboundProcessingRequest,
+} from './contracts';
 import { observeUntilAbort } from './operationObservation';
 import { utf8ByteLength } from './protocol';
 
 /** A grant is a live capability, never a checkpoint value or a reusable approval decision. */
 export interface ModelAuthorizationGrant {
   readonly status: 'authorized';
+  /** Rechecks the live boundary after adapter awaits; never creates a second grant. */
+  isCurrent(): boolean;
+  subscribeInvalidation(listener: () => void): () => void;
   consume(
     request: LanguageModelRequest,
     execution: MultiAgentExecutionIdentity,
@@ -53,22 +61,20 @@ export async function authorizeModelCall(
     utf8ByteLength(payload) > limit
   )
     return { status: 'budget_exceeded' };
+  const outbound: OutboundProcessingRequest = {
+    operationRunId: execution.operationRunId,
+    providerId: execution.providerId,
+    modelId: execution.modelId,
+    recipient: execution.recipient,
+    remoteProcessing: execution.remoteProcessing,
+    ...(execution.consentScope ? { consentScope: execution.consentScope } : {}),
+    allowedScope: execution.allowedScope,
+    payload: request,
+    signal,
+  };
   if (execution.remoteProcessing) {
     try {
-      const approval = await observeUntilAbort(
-        consent.authorize({
-          operationRunId: execution.operationRunId,
-          providerId: execution.providerId,
-          modelId: execution.modelId,
-          recipient: execution.recipient,
-          remoteProcessing: true,
-          ...(execution.consentScope ? { consentScope: execution.consentScope } : {}),
-          allowedScope: execution.allowedScope,
-          payload: request,
-          signal,
-        }),
-        signal,
-      );
+      const approval = await observeUntilAbort(consent.authorize(outbound), signal);
       if (approval.kind === 'cancelled')
         return { status: 'cancelled', providerStop: 'not_started' };
       if (approval.kind !== 'value' || approval.value !== 'authorized') {
@@ -83,19 +89,42 @@ export async function authorizeModelCall(
     return { status: 'consent_required' };
   }
   let consumed = false;
+  let invalid = false;
+  const current = () => {
+    if (invalid) return false;
+    const valid =
+      !signal.aborted &&
+      snapshot(request) === payload &&
+      snapshot(execution) === identity &&
+      isExecutionConsentCurrent(consent, outbound);
+    if (!valid) invalid = true;
+    return valid;
+  };
   return {
     status: 'authorized',
+    isCurrent: current,
+    subscribeInvalidation(listener) {
+      try {
+        const stop = consent.subscribeAuthorizationInvalidation?.(outbound, listener) ?? (() => {});
+        if (!current()) listener();
+        return stop;
+      } catch {
+        listener();
+        return () => {};
+      }
+    },
     consume: (currentRequest, currentExecution, currentSignal) => {
       const available = !consumed;
       consumed = true;
-      return (
+      const valid =
         available &&
-        !signal.aborted &&
-        !currentSignal.aborted &&
         currentSignal === signal &&
+        !currentSignal.aborted &&
         snapshot(currentRequest) === payload &&
-        snapshot(currentExecution) === identity
-      );
+        snapshot(currentExecution) === identity &&
+        current();
+      if (!valid) invalid = true;
+      return valid;
     },
   };
 }

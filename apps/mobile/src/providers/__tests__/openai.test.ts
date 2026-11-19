@@ -1,3 +1,15 @@
+jest.mock('react-native-keychain', () => {
+  let password: string | null = null;
+  return {
+    ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'device' },
+    getGenericPassword: jest.fn(async () => (password ? { password } : false)),
+    setGenericPassword: jest.fn(async (_name: string, value: string) => {
+      password = value;
+      return { service: 'synthetic' };
+    }),
+  };
+});
+
 const baseAccount = {
   issuedClientID: 'oaiapp_synthetic_account_1',
   requiresSignIn: false,

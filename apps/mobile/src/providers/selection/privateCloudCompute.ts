@@ -33,7 +33,7 @@ export async function loadPrivateCloudComputeOption(): Promise<ProviderSelection
   return {
     provider: applePrivateCloudComputeProvider,
     modelId: APPLE_PCC_MODEL_ID,
-    displayName: 'Apple Intelligence · PCC',
+    displayName: 'Apple Intelligence',
     privacyBoundary: 'selected-context-remote',
     availability: message
       ? { status: 'unavailable', message }

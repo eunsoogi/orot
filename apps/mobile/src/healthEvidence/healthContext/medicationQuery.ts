@@ -8,7 +8,10 @@ import {
 } from '@orot/storage';
 import type { SqlExecutor, SqlValue } from '@orot/storage';
 import { currentEvidenceCondition } from '../evidenceCandidateScope';
-import { healthContextDays } from './window';
+import {
+  readHealthContextCalendar,
+  type HealthContextCalendarScope,
+} from './calendarReadScope';
 import type { HealthContextWindow, HealthMedicationProfile } from './types';
 
 /** Current registrations use ingestion cutoff; dose history uses actual occurrence time. */
@@ -16,6 +19,7 @@ export async function readHealthMedicationContext(
   executor: SqlExecutor,
   window: HealthContextWindow,
   signal?: AbortSignal,
+  calendar?: HealthContextCalendarScope,
 ): Promise<{
   medications: readonly HealthMedicationProfile[];
   truncated: boolean;
@@ -32,20 +36,19 @@ export async function readHealthMedicationContext(
   const doseIngestionFilter = hasCutoff
     ? `AND ${localQueryTimestampKeyExpression('d.ingested_at')} <= ?`
     : '';
-  const days = healthContextDays(window);
+  const days = readHealthContextCalendar(calendar, window);
   const parameters: SqlValue[] = [healthContextCalendarParameter(days)];
   if (window.dataAvailableThrough)
     parameters.push(localQueryTimestampKey(window.dataAvailableThrough));
   parameters.push(localQueryTimestampKey(window.toExclusive));
   if (window.dataAvailableThrough)
     parameters.push(localQueryTimestampKey(window.dataAvailableThrough));
-  parameters.push(
-    localQueryTimestampKey(window.fromInclusive),
-    localQueryTimestampKey(window.fromInclusive),
-    localQueryTimestampKey(window.toExclusive),
-  );
+  parameters.push(localQueryTimestampKey(window.fromInclusive));
   if (window.dataAvailableThrough)
     parameters.push(localQueryTimestampKey(window.dataAvailableThrough));
+  // Each local-day interval is already clipped to the exact report window.
+  // Lead with the calendar so the dose-time index seeks each interval once.
+  // Repeating the whole-window bounds can make SQLite use those for every day.
   const result = await executor.execute(
     `SELECT * FROM (
     WITH days(date, from_key, to_key) AS (${healthContextCalendarSql}), catalog AS (
@@ -71,10 +74,9 @@ export async function readHealthMedicationContext(
         json_extract(d.payload_json, '$.eventKind') AS event,
         json_extract(d.payload_json, '$.observationStatus') AS status,
         d.effective_at AS occurred_at, ${at} AS time_key, day.date AS date
-      FROM dose_events d JOIN days day ON ${at} >= day.from_key AND ${at} < day.to_key
-      WHERE ${at} >= ? AND ${at} < ?
+      FROM days day CROSS JOIN dose_events d ON ${at} >= day.from_key AND ${at} < day.to_key
+      WHERE ${currentEvidenceCondition('dose_event').replaceAll('r.id', 'd.id')}
         ${doseIngestionFilter}
-        AND ${currentEvidenceCondition('dose_event').replaceAll('r.id', 'd.id')}
     ), ordered_doses AS (
       SELECT *, row_number() OVER (PARTITION BY medication ORDER BY time_key, occurred_at) AS oldest,
         row_number() OVER (PARTITION BY medication ORDER BY time_key DESC, occurred_at) AS newest

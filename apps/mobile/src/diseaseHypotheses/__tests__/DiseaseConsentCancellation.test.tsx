@@ -45,7 +45,7 @@ test.each(['summary', 'assessment'] as const)(
     expect(
       await screen.findByTestId('disease-hypotheses-consent-required'),
     ).toHaveTextContent(
-      '외부 전송이 허용되지 않아 요청을 중단했어요. 다시 시도하면 전송 내용을 확인할 수 있어요.',
+      '외부 전송이 허용되지 않아 요청을 중단했어요. 모델 설정에서 선택한 AI의 전송 범위를 확인하고 동의해 주세요.',
     );
     const copy = getDiseaseHypothesisCopy();
     expect(screen.queryByText(copy.summaryError)).toBeNull();

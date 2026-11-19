@@ -1,3 +1,4 @@
+import { useRealtimeSettingsPermission } from './useRealtimeSettingsPermission';
 import { RealtimeVoiceSurface } from './RealtimeVoiceSurface';
 import { useVoiceApprovalHandoff } from './useVoiceApprovalHandoff';
 import { useRealtimeToolConfirmation } from './useRealtimeToolConfirmation';
@@ -23,6 +24,7 @@ export function RealtimeConversationVoiceEntry(
     onStatusChange?: (status: string) => void;
   },
 ) {
+  const permission = useRealtimeSettingsPermission();
   const consentRevision = useRef(0);
   const ownedToolRequest = useRef<number | null>(null);
   const { confirm: confirmTool, node: toolConfirmation } =
@@ -80,13 +82,14 @@ export function RealtimeConversationVoiceEntry(
       model: props.model,
       sessionId: props.sessionId,
       credentials: () => voiceSettingsStore.realtimeCredentials(props.model),
-      isCurrent: current,
+      isCurrent: () => current() && permission.current(),
       toolsCurrent: () => AppState.currentState === 'active',
       executeTool: latest.current.confirmRealtimeResult
         ? async (text, request, signal) =>
             (await runTool(signal, ownedSignal =>
               createRealtimeConversationTool({
                 latest,
+                resultConsent: permission.consent,
                 model: props.model,
                 current,
                 ownsRequest: (id, expected) => {
@@ -138,7 +141,7 @@ export function RealtimeConversationVoiceEntry(
       settings();
       app.remove();
     };
-  }, [props.model, props.sessionId, confirmTool, runTool]);
+  }, [props.model, props.sessionId, confirmTool, runTool, permission]);
   useEffect(() => {
     owner.current?.cancelTools();
   }, [props.selectionRevision]);
@@ -155,13 +158,17 @@ export function RealtimeConversationVoiceEntry(
     onStatusChange?.(status);
     return () => onStatusChange?.('');
   }, [onStatusChange, status]);
-  const start = () => {
+  const start = async () => {
     if (AppState.currentState !== 'active' || !current() || !owner.current)
       return;
     const model = props.model;
     const sessionId = props.sessionId;
     const consentingOwner = owner.current;
     const revision = consentRevision.current;
+    if (!(await permission.authorize(model, () => owner.current?.stop()))) {
+      setState({ ...initialVoiceState, phase: 'error', error: 'consent' });
+      return;
+    }
     const canUseTools =
       props.confirmRealtimeResult && consentingOwner.supportsTools();
     const accept = (tools = false) => {
@@ -178,12 +185,19 @@ export function RealtimeConversationVoiceEntry(
       setVisible(true);
       consentingOwner.start(tools);
     };
+    if (!canUseTools) {
+      accept();
+      return;
+    }
     Alert.alert(
-      t('realtimeDisplay.consentTitle'),
-      t('realtimeDisplay.consentBody', { model }) +
-        (canUseTools ? '\n\n' + t('realtimeToolConsent.explanation') : ''),
+      t('realtimeToolConsent.title'),
+      t('realtimeToolConsent.explanation'),
       [
-        { text: t('realtimeDisplay.cancel'), style: 'cancel' },
+        {
+          text: t('realtimeDisplay.cancel'),
+          style: 'cancel',
+          onPress: permission.stop,
+        },
         {
           text: t('realtimeDisplay.agree'),
           onPress: () => accept(),
@@ -200,6 +214,7 @@ export function RealtimeConversationVoiceEntry(
     );
   };
   const stop = () => {
+    permission.stop();
     owner.current?.stop();
     setVisible(false);
     setTranscripts([]);

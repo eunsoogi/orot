@@ -1,3 +1,4 @@
+import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import type {
   RagConversationObserver,
@@ -31,6 +32,7 @@ export function createConversationVisitTurn(deps: {
     readonly signal: AbortSignal;
     readonly observer?: RagConversationObserver;
     readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
+    readonly consent?: ExecutionConsentPort;
     readonly confirmConsent: (
       request: OutboundProcessingRequest,
     ) => Promise<boolean>;
@@ -45,6 +47,7 @@ export function createConversationVisitTurn(deps: {
       resolveSelectedAi: input.resolveSelectedAi,
       generatedArtifactTools: deps.generatedArtifactTools,
       confirmConsent: input.confirmConsent,
+      consent: input.consent,
       isCurrentOwner: () => !input.signal.aborted,
       signal: input.signal,
       registerToolSource: createConversationVisitToolSource(

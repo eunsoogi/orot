@@ -3,6 +3,7 @@ import type {
   EvidenceBatch,
   EvidenceSearchRequest,
   ExternalMedicalQueryConsentPort,
+  ExternalMedicalQueryConsentRequest,
   PreparedEvidenceSearch,
 } from './evidenceContracts';
 import type {
@@ -31,14 +32,25 @@ export function createExternalMedicalAuthorization(options: {
     const query = parsed.query as string;
     const signal = request.signal;
     const identity = JSON.stringify({ ...request, signal: undefined });
+    const outbound: ExternalMedicalQueryConsentRequest = {
+      operationRunId: request.operationRunId,
+      operationKey: request.operationKey,
+      sourceId: EUROPE_PMC_SOURCE_ID,
+      query,
+      signal: request.signal,
+    };
+    const current = () => {
+      try {
+        return (
+          options.consent.isAuthorizationCurrent === undefined ||
+          options.consent.isAuthorizationCurrent(outbound) === true
+        );
+      } catch {
+        return false;
+      }
+    };
     try {
-      const decision = await options.consent.authorize({
-        operationRunId: request.operationRunId,
-        operationKey: request.operationKey,
-        sourceId: EUROPE_PMC_SOURCE_ID,
-        query,
-        signal: request.signal,
-      });
+      const decision = await options.consent.authorize(outbound);
       if (decision !== 'authorized' || signal.aborted || request.signal !== signal)
         return { status: 'consent_required' };
     } catch {
@@ -52,20 +64,35 @@ export function createExternalMedicalAuthorization(options: {
         consumed = true;
         if (
           !available ||
+          !current() ||
           signal.aborted ||
           request.signal !== signal ||
           JSON.stringify({ ...request, signal: undefined }) !== identity
         ) {
           return { status: 'consent_required' };
         }
-        const result = await options.service.search(query, {
-          externalQueryConsented: true,
-          signal,
-          toolCall: { operationRunId: request.operationRunId, callId: request.operationKey },
-        });
-        if (result.status === 'consent_required') return { status: 'consent_required' };
-        if (result.status === 'unavailable') throw new Error('The external query was unavailable.');
-        return options.toBatch(result.status === 'available' ? result.publications : [], limit);
+        const controller = new AbortController();
+        const abort = () => controller.abort();
+        signal.addEventListener('abort', abort, { once: true });
+        let stop = () => {};
+        try {
+          stop = options.consent.subscribeAuthorizationInvalidation?.(outbound, abort) ?? stop;
+          if (signal.aborted || controller.signal.aborted || !current())
+            return { status: 'consent_required' };
+          const result = await options.service.search(query, {
+            externalQueryConsented: true,
+            signal: controller.signal,
+            toolCall: { operationRunId: request.operationRunId, callId: request.operationKey },
+          });
+          if (controller.signal.aborted || !current() || result.status === 'consent_required')
+            return { status: 'consent_required' };
+          if (result.status === 'unavailable')
+            throw new Error('The external query was unavailable.');
+          return options.toBatch(result.status === 'available' ? result.publications : [], limit);
+        } finally {
+          signal.removeEventListener('abort', abort);
+          stop();
+        }
       },
     };
   };

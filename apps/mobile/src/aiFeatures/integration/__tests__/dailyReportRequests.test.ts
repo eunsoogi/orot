@@ -49,7 +49,9 @@ test('concurrent entries share a run and cancellation; incompatible revisions st
   ).toEqual({ status: 'busy' });
   await Promise.resolve();
   expect(run).toHaveBeenCalledTimes(1);
-  expect(run.mock.calls[0][3]).toBe(observer);
+  expect(run.mock.calls[0][3].onTaskStreamEvent).toBe(
+    observer.onTaskStreamEvent,
+  );
   expect(laterObserver.onTaskStreamEvent).not.toHaveBeenCalled();
   second.cancel();
   expect(run.mock.calls[0][2].aborted).toBe(true);

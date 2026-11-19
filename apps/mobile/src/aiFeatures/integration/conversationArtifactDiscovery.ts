@@ -1,3 +1,5 @@
+import { registerBoundCaptureAuthority } from './boundCaptureAuthority';
+import { registerConversationParentReadOwner } from './conversationParentReadOwner';
 import { registerConversationHistoryReadOwner } from './conversationHistoryReadOperation';
 import { createBoundConversationCaptureOwner } from './boundConversationCapture';
 import { createConversationCaptureOwner } from './conversationCaptureBatch';
@@ -223,5 +225,12 @@ export function createConversationArtifactDiscovery(input: {
       dispose: operation.dispose,
     };
   });
+  registerConversationParentReadOwner(discovery, input.storage, input.data);
+  registerBoundCaptureAuthority(
+    boundCaptureOwner,
+    discovery,
+    input.storage,
+    input.registry,
+  );
   return discovery;
 }
