@@ -20,7 +20,7 @@ final class OrotProviderDiagnostics: NSObject {
                "report_query_quantity", "report_query_heart_rate", "report_query_sleep", "report_query_symptom", "report_query_other",
                "artifact_initial_validation", "artifact_source_hydration", "artifact_final_validation",
                "history_timeline", "history_turns", "history_artifacts", "history_tool_read",
-               "history_tool_restore", "history_tasks", "history_recheck", "conversation_model_preflight", "conversation_history_preflight",
+               "history_tool_restore", "history_tasks", "history_recheck", "history_transcript_layout", "conversation_model_preflight", "conversation_history_preflight",
                "conversation_dispatch", "conversation_run", "tool_capture_personal", "tool_capture_memory", "tool_capture_generated", "tool_capture_external",
                "tool_event_adapter", "tool_event_discard", "tool_event_capture", "tool_event_write", "tool_event_bind",
                "opening_generate", "opening_validate", "opening_review", "opening_consent",

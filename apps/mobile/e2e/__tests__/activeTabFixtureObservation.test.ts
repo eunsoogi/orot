@@ -1,5 +1,18 @@
-import type { SqlDatabase } from '@orot/storage';
-import { observeOverviewSnapshot } from '../activeTabFixtureObservation';
+import type { SqlDatabase, SqlTransaction } from '@orot/storage';
+import {
+  observeDirectRead,
+  observeOverviewSnapshot,
+} from '../activeTabFixtureObservation';
+
+/** Admission tests model the driver's transaction surface, not a database cast.
+ * Commit/rollback are inert here because SQLite outcomes have separate tests. */
+function admittedTransaction(database: SqlDatabase): SqlTransaction {
+  return {
+    execute: database.execute,
+    commit: () => ({ rows: [] }),
+    rollback: () => ({ rows: [] }),
+  };
+}
 
 test('records actual callback admission and keeps driver errors distinct', async () => {
   const events: string[] = [];
@@ -10,7 +23,7 @@ test('records actual callback admission and keeps driver errors distinct', async
       new Promise<void>((resolve, reject) => {
         admit = () =>
           Promise.resolve()
-            .then(() => operation(database))
+            .then(() => operation(admittedTransaction(database)))
             .then(resolve, reject);
       }),
   };
@@ -61,7 +74,7 @@ test('keeps overlapping failed and admitted snapshots separate', async () => {
       new Promise<void>((resolve, reject) => {
         callbacks.push(() =>
           Promise.resolve()
-            .then(() => operation(database))
+            .then(() => operation(admittedTransaction(database)))
             .then(resolve, reject),
         );
       }),
@@ -92,9 +105,10 @@ test('keeps overlapping failed and admitted snapshots separate', async () => {
   expect(events).not.toContain(`overview-settled-ok:${firstID}`);
 });
 
+// Use the same static module instance as the snapshot tests; this fixture has
+// no lazy-load contract and Jest's CJS runner does not enable VM ESM imports.
 test('labels direct reads and preserves injected failures', async () => {
   const events: string[] = [];
-  const { observeDirectRead } = await import('../activeTabFixtureObservation');
   await expect(
     observeDirectRead(
       'appointments',

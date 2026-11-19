@@ -17,8 +17,8 @@ import type {
 /** Seek each bound, nonoverlapping local-day interval using the exact timestamp index.
  * This avoids sorting every observation together with calendar boundary events.
  * healthContextDays owns timezone/DST and clipped half-open boundaries; no samples
- * or days are capped. Keep both ranking orders and daily aggregation unchanged so
- * floating-point totals and oldest/newest timestamp spellings remain stable.
+ * or days are capped. Keep newest-first aggregation order for floating-point
+ * totals. The earliest row uses the same timestamp and binary ID ordering.
  * Sensor ranking changes result order, never inclusion.
  */
 export async function readHealthQuantityContext(
@@ -49,6 +49,9 @@ export async function readHealthQuantityContext(
   parameters.push(from, to);
   if (dataAvailableThrough)
     parameters.push(localQueryTimestampKey(dataAvailableThrough));
+  // The timestamp key has its own terminator. Hex encodes the binary ID
+  // order, and the quote sorts before every hex digit so prefix IDs sort
+  // first. Unpacking the selected row preserves its original timestamp text.
   const result = await executor.execute(
     `SELECT * FROM (
       WITH days(date, from_key, to_key) AS (${healthContextCalendarSql}),
@@ -76,20 +79,18 @@ export async function readHealthQuantityContext(
           AND json_extract(r.payload_json, '$.value.kind') = 'quantity'
           AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
           AND json_type(r.payload_json, '$.value.unit') = 'text'
-      ), dated AS MATERIALIZED (
+      ), dated AS (
         SELECT id, at, at_key, concept, unit, amount, sensor, date FROM observations
       ), ranked AS (
         SELECT d.*, row_number() OVER (
           PARTITION BY d.date, d.concept, d.unit, d.sensor ORDER BY d.at_key DESC, d.id
-        ) AS newest, row_number() OVER (
-          PARTITION BY d.date, d.concept, d.unit, d.sensor ORDER BY d.at_key ASC, d.id
-        ) AS oldest FROM dated d
+        ) AS newest FROM dated d
       ), daily AS MATERIALIZED (
         SELECT date, concept, unit, sensor, count(*) AS samples,
           min(amount) AS minimum, max(amount) AS maximum, avg(amount) AS mean,
           sum(amount) AS total, max(CASE WHEN newest = 1 THEN amount END) AS latest,
           min(CASE WHEN newest = 1 THEN at END) AS last_at,
-          min(CASE WHEN oldest = 1 THEN at END) AS first_at
+          min(at_key || hex(id) || '"' || at) AS first_row
         FROM ranked GROUP BY date, concept, unit, sensor
       ), sensor_counts AS (
         SELECT concept, unit, sensor, sum(samples) AS n,
@@ -105,7 +106,10 @@ export async function readHealthQuantityContext(
           WHEN 'heart_rate' THEN 2 WHEN 'body_mass' THEN 3 WHEN 'step_count' THEN 4 ELSE 5 END,
           concept, unit, sensor
       )
-      SELECT d.*, s.selected_rank FROM daily d JOIN selected s USING (concept, unit, sensor)
+      SELECT d.date, d.concept, d.unit, d.sensor, d.samples,
+        d.minimum, d.maximum, d.mean, d.total, d.latest, d.last_at,
+        substr(d.first_row, instr(d.first_row, '"') + 1) AS first_at, s.selected_rank
+      FROM daily d JOIN selected s USING (concept, unit, sensor)
       ORDER BY s.selected_rank, d.date
     )`,
     parameters,

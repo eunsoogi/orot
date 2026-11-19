@@ -4,6 +4,8 @@ import { ConversationHistory } from '../ConversationHistory';
 import { openConversationReadingPosition } from '../openConversationReadingPosition';
 import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import type { ConversationReadingPosition } from '../../storage/conversationReadingPositionStorage';
+import type { DisplayMessage } from '../conversationDisplayMessage';
+import * as diagnostics from '../../providers/diagnostics';
 
 jest.mock('../openConversationReadingPosition', () => ({
   openConversationReadingPosition: jest.fn(),
@@ -54,6 +56,34 @@ beforeEach(() => {
   });
 });
 afterEach(() => jest.restoreAllMocks());
+
+test('samples a validated restored row once after layout without sending its contents', async () => {
+  open.mockResolvedValue({
+    read: jest.fn(async () => null),
+    write: jest.fn(),
+  });
+  const report = jest.spyOn(diagnostics, 'providerDiagnostic');
+  const restored: readonly DisplayMessage[] = [
+    { ...messages[0]!, restoredHistory: true, historyUnavailable: true },
+    { ...messages[1]!, restoredHistory: true },
+  ];
+  const view = await render(
+    <ConversationHistory {...props} messages={restored} restoring />,
+  );
+  await layout();
+  expect(report).not.toHaveBeenCalled();
+  await view.rerender(<ConversationHistory {...props} messages={restored} />);
+  const rows = screen.getAllByTestId(/^conversation-reading-row-/);
+  const frame = { nativeEvent: { layout: { y: 40, height: 200 } } };
+  await fireEvent(rows[0]!, 'layout', frame);
+  expect(report).not.toHaveBeenCalled();
+  await fireEvent(rows[1]!, 'layout', frame);
+  await fireEvent(rows[1]!, 'layout', frame);
+  expect(report.mock.calls).toEqual([
+    ['rag', 'history_transcript_layout', 'completed'],
+  ]);
+});
+
 test('reopened history restores the read row and preserves actual partial content without a duplicate notice', async () => {
   let position: ConversationReadingPosition | null = null;
   const write = jest.fn(async (_id, _version, value) => {
