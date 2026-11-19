@@ -7,6 +7,7 @@ import {
   createCommittedReportScope,
   committedReportCache,
   committedReportCalendar,
+  immutableReportSnapshot,
 } from '../healthEvidence/healthContext/committedReportScope';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import type { HealthContextReport } from '../healthEvidence/healthContext/types';
@@ -17,6 +18,11 @@ import {
   assertSummaryPeriodCurrent,
 } from './symptomSummaryPeriods';
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
+import { nativeHeartWorkoutPrefix } from '../healthEvidence/healthContext/heartWorkoutPrefix';
+import {
+  historyValidationCostEnabled,
+  measureHistoryValidationCost,
+} from '../providers/conversationHistoryDiagnostic';
 
 /** Scope invalidation must not undo unrelated native writes on this connection. */
 class ReadScopeInvalidated extends Error {}
@@ -31,10 +37,13 @@ const same = (a: Pair, b: Pair) =>
 export function committedPeriodReadOperation(
   database: SqlDatabase,
   signal?: AbortSignal,
+  historyPage = false,
 ) {
   const reportScope = createCommittedReportScope(database);
   const reports = committedReportCache(reportScope.token, database)!;
   const calendar = committedReportCalendar(reportScope.token, database)!;
+  const profileHistoryValidation =
+    historyPage && historyValidationCostEnabled();
   let disposed = false;
   const cancel = () => {
     calendar.dispose();
@@ -54,6 +63,7 @@ export function committedPeriodReadOperation(
   };
   return {
     reportScope: reportScope.token,
+    profileHistoryValidation,
     dispose,
     get active() {
       return !disposed;
@@ -80,6 +90,17 @@ export function committedPeriodReadOperation(
             return result;
           },
         };
+        // Keep the send/capture and its strict fallback on the same aggregate
+        // shape. Only the explicit user-visible page borrows this workspace.
+        const measureCost = profileHistoryValidation
+          ? measureHistoryValidationCost
+          : undefined;
+        const restorationWorkspace = historyPage
+          ? {
+              acquireHeartPrefix: nativeHeartWorkoutPrefix(reportExecutor, tx),
+              measureCost,
+            }
+          : undefined;
         const validate: ReadOnlyPeriodValidation = async (
           executor,
           source,
@@ -107,25 +128,38 @@ export function committedPeriodReadOperation(
                 ? 'generation_miss'
                 : 'new_key',
           );
-          const report =
-            cached && same(cached, before)
-              ? cached
-              : await readHealthContextReport(
-                  reportExecutor,
-                  source.scope.window,
-                  [source.scope.topic],
-                  undefined,
-                  undefined,
-                  reports,
-                  calendar,
-                );
+          // The transaction owns this immutable snapshot. Freeze before the
+          // first comparison so later checks can reuse the same pure digest.
+          let report = cached && same(cached, before) ? cached : undefined;
+          if (!report) {
+            const calculated = await readHealthContextReport(
+              reportExecutor,
+              source.scope.window,
+              [source.scope.topic],
+              undefined,
+              undefined,
+              reports,
+              calendar,
+              restorationWorkspace,
+            );
+            report = measureCost
+              ? measureCost('artifact_report_snapshot', () =>
+                  immutableReportSnapshot(calculated),
+                )
+              : immutableReportSnapshot(calculated);
+          }
           const after = await readHealthContextGeneration(tx);
           check();
           if (!same(before, report) || !same(after, report))
             throw new ReadScopeInvalidated(
               'Health context changed during validation.',
             );
-          assertSummaryPeriodReport(source, report, required);
+          if (measureCost) {
+            const current = report;
+            measureCost('artifact_report_fingerprint', () =>
+              assertSummaryPeriodReport(source, current, required),
+            );
+          } else assertSummaryPeriodReport(source, report, required);
           pending.set(key, report);
         };
         try {

@@ -1,7 +1,7 @@
 import { persistDailyReportCandidate } from './dailyReportCandidatePersistence';
 import { conversationReceiptSelection as observeSelection } from './conversationReceiptSelection';
 import { withDailyReportOpening as openingFor } from './dailyReportOpening';
-import { hasSevereReportBloodPressure } from './dailyReportGuidance';
+import { selectCurrentDailyReportFacts } from './dailyReportCurrentSelection';
 import { reportModelClaims } from './dailyReportModelAnalysis';
 import { prepareDailyReportFacts } from './dailyReportPreparedFacts';
 import type { prepareReportCalendar } from './dailyReportSystemCalendar';
@@ -15,9 +15,7 @@ import {
 } from './provider';
 import { dailyReportFacts } from './dailyReportFacts';
 import { dailyReportAnalysis } from './dailyReportAnalysis';
-import { selectDailyReportFacts } from './dailyReportModel';
-import { stableJson } from './evidenceUtils';
-import { dailyReportProviderFacts } from './dailyReportProjection';
+import { fingerprint } from './evidenceUtils';
 import { reportFailureOutcome as failureOutcome } from './dailyReportFailureDiagnostics';
 import type {
   DailyReportFailureCode,
@@ -66,7 +64,9 @@ export async function generateDailyReportWithCalendar(
   >;
   let snapshot: Snapshot;
   let facts: ReturnType<typeof dailyReportFacts>;
-  let providerFacts: Awaited<ReturnType<typeof dailyReportProviderFacts>>;
+  let providerFacts: Awaited<
+    ReturnType<typeof prepareDailyReportFacts>
+  >['providerFacts'];
   let sourceSnapshot: Snapshot['sourceSnapshot'];
   let required: number[];
   let factSourceIndexes: number[][];
@@ -107,7 +107,7 @@ export async function generateDailyReportWithCalendar(
   }
   providerDiagnostic('daily_report', 'data', 'completed');
   input.deadlineContext.stage = 'workflow';
-  const context = createDailyReportContext(
+  let context = createDailyReportContext(
     calendar.context,
     sourceSnapshot,
     {
@@ -117,55 +117,69 @@ export async function generateDailyReportWithCalendar(
     external?.binding,
   );
   const runId = input.createRunId();
-  const selection = await openingFor(
+  const currentSelection = await openingFor(
     input,
     request,
     selected,
     !!external?.facts.length,
     consent =>
-      selectDailyReportFacts({
+      selectCurrentDailyReportFacts(
+        { ...input, consent },
+        request,
         selected,
-        consent,
+        calendar,
         runId,
-        facts: providerFacts,
-        allowAnalysis: !hasSevereReportBloodPressure(snapshot.values),
-        reportContext: {
-          localDate: calendar.context.identity.localDate,
-          timeZone: calendar.context.identity.timeZone,
-          generationCutoff: calendar.context.generationCutoff,
-          coverage: sourceSnapshot.coverage,
+        snapshot,
+        {
+          required,
+          factSourceIndexes,
+          sourceSnapshot,
+          facts,
+          providerFacts,
+          baselineFacts,
+          sleepFacts,
         },
-        includesSystemCalendar: !!external?.facts.length,
-        signal: request.signal,
-        timeoutMs: input.timeoutMs ?? null,
-        deadlineContext: input.deadlineContext,
-        revalidate: async signal => {
-          input.deadlineContext.stage = 'source_read';
-          providerDiagnostic('daily_report', 'data', 'started');
-          let current: Snapshot;
-          try {
-            current = await input.data.readDailyReportSnapshot!(
-              calendar.context,
-              request.scope,
-              signal,
-            );
-          } catch (error) {
-            if (!signal.aborted)
-              providerDiagnostic('daily_report', 'data', 'failed');
-            throw error;
-          }
-          providerDiagnostic('daily_report', 'data', 'completed');
-          input.deadlineContext.stage = 'workflow';
-          return (
-            (external ? await external.snapshot.revalidate() : true) &&
-            stableJson(current.sourceSnapshot) ===
-              stableJson(snapshot.sourceSnapshot)
-          );
-        },
-      }),
+        external,
+      ),
   );
   input.deadlineContext.stage = 'workflow';
-  if (selection.status === 'failed') return fail(selection.code);
+  if (currentSelection.status === 'failed') return fail(currentSelection.code);
+  const { selection, refresh } = currentSelection;
+  snapshot = currentSelection.snapshot;
+  ({
+    required,
+    factSourceIndexes,
+    sourceSnapshot,
+    facts,
+    providerFacts,
+    baselineFacts,
+    sleepFacts,
+  } = currentSelection.prepared);
+  let proven = currentSelection.proven;
+  if (refresh) {
+    const latest = await refresh(request.signal);
+    if (!latest || (external && !(await external.snapshot.revalidate())))
+      return fail(
+        request.signal.aborted ? 'cancelled' : 'source_revision_changed',
+      );
+    proven = latest;
+  }
+  if (!currentSelection.currentOwner()) return fail('cancelled');
+  context = createDailyReportContext(
+    calendar.context,
+    {
+      ...sourceSnapshot,
+      mutationGeneration: proven.sourceSnapshot.mutationGeneration,
+      revision: external
+        ? fingerprint({
+            local: proven.sourceSnapshot.revision,
+            systemCalendar: external.binding,
+          })
+        : proven.sourceSnapshot.revision,
+    },
+    context.provider,
+    external?.binding,
+  );
   const report = {
     schemaVersion: 1 as const,
     identity: context.identity,

@@ -20,14 +20,14 @@ const owners = new WeakMap<
   {
     methods: Methods;
     version: Discovery['activeSessionVersion'];
-    begin(signal: AbortSignal): Operation | undefined;
+    begin(signal: AbortSignal, historyPage: boolean): Operation | undefined;
   }
 >();
 
 /** Only the actual discovery factory installs its original storage capability. */
 export function registerConversationHistoryReadOwner(
   discovery: Discovery,
-  begin: (signal: AbortSignal) => Operation | undefined,
+  begin: (signal: AbortSignal, historyPage: boolean) => Operation | undefined,
 ) {
   owners.set(discovery, {
     methods: {
@@ -45,6 +45,7 @@ export async function withConversationHistoryReadOperation<T>(
   discovery: Discovery,
   signal: AbortSignal,
   work: (scoped: Discovery, context?: HistoryContext) => Promise<T>,
+  historyPage = false,
 ) {
   const owner = owners.get(discovery);
   const owned = () =>
@@ -53,7 +54,7 @@ export async function withConversationHistoryReadOperation<T>(
     discovery.revalidateSession === owner.methods.revalidateSession &&
     discovery.activeSessionVersion === owner.version;
   if (!owned()) return work(discovery);
-  const operation = owner!.begin(signal);
+  const operation = owner!.begin(signal, historyPage);
   if (!operation) return work(discovery);
   let active = true;
   const scoped = new Proxy(discovery, {

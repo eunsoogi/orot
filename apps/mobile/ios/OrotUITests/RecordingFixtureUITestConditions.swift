@@ -2,10 +2,11 @@ import XCTest
 
 @MainActor
 enum RecordingFixtureUITestConditions {
+    /// The standalone fixture keeps saved rows in the review scroller, not the non-scrolling capture frame.
     /// Select only the disposable synthetic source; the verified host removes this independent case's app container after success or failure.
     static func select(_ app: XCUIApplication, testCase: XCTestCase) throws -> XCUIElement {
         let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Synthetic transcription test recording")).firstMatch
-        FormUITestConditions.reveal(row, in: app, scrollID: "recording-controls-scroll")
+        FormUITestConditions.reveal(row, in: app, scrollID: "recording-review-scroll")
         let prefix = "recording-details-"
         XCTAssertTrue(row.identifier.hasPrefix(prefix), row.debugDescription)
         let source = String(row.identifier.dropFirst(prefix.count))
@@ -27,7 +28,7 @@ enum RecordingFixtureUITestConditions {
     /// Read-only stages before editor activation can omit the global keyboard snapshot while retaining measured scrolling.
     static func reveal(_ app: XCUIApplication, _ identifier: String, towardTop: Bool = false, maximumScrollFraction: CGFloat = 0.45, keyboardMayBeVisible: Bool = true) -> XCUIElement {
         let target = UITestConditions.element(app, identifier)
-        FormUITestConditions.reveal(target, in: app, scrollID: "recording-controls-scroll", towardTop: towardTop, maximumScrollFraction: maximumScrollFraction, keyboardMayBeVisible: keyboardMayBeVisible)
+        FormUITestConditions.reveal(target, in: app, scrollID: "recording-review-scroll", towardTop: towardTop, maximumScrollFraction: maximumScrollFraction, keyboardMayBeVisible: keyboardMayBeVisible)
         return target
     }
 

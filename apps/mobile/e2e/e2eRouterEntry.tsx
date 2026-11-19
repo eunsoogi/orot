@@ -26,7 +26,12 @@ switch (selectEntryRoute(launchSettings)) {
     break;
   case 'medical-appointment-classification':
     // Keep calendar classification consent checks on synthetic Calendar and provider data.
-    require('./medicalAppointmentClassificationProbeEntry');
+    if (
+      launchSettings.OROT_TEST_CLASSIFICATION_READER_GEOMETRY === 'YES' &&
+      NativeModules.OrotTestControl
+    )
+      require('./classificationReaderGeometryEntry');
+    else require('./medicalAppointmentClassificationProbeEntry');
     break;
   case 'medical-appointment-app-navigation':
     // Exercise #108 through App with deterministic local fixtures and no provider inference.

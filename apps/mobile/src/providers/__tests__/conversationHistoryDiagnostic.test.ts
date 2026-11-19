@@ -1,11 +1,48 @@
 import { NativeModules } from 'react-native';
-import { observeConversationHistory } from '../conversationHistoryDiagnostic';
+import {
+  historyValidationCostEnabled,
+  measureHistoryValidationCost,
+  observeConversationHistory,
+} from '../conversationHistoryDiagnostic';
 
 jest.mock('react-native', () => ({
   NativeModules: { OrotProviderDiagnostics: { report: jest.fn() } },
 }));
 const report = NativeModules.OrotProviderDiagnostics.report;
 beforeEach(() => report.mockReset());
+
+test('cost detail requires the native opt-in', () => {
+  const sink = NativeModules.OrotProviderDiagnostics;
+  expect(historyValidationCostEnabled()).toBe(false);
+  sink.enabled = true;
+  try {
+    expect(historyValidationCostEnabled()).toBe(false);
+    sink.historyValidationCostEnabled = true;
+    expect(historyValidationCostEnabled()).toBe(true);
+  } finally {
+    delete sink.enabled;
+    delete sink.historyValidationCostEnabled;
+  }
+});
+
+test('synchronous report spans expose only fixed tokens and preserve failures', () => {
+  const result = { days: ['synthetic private value'] };
+  const error = new Error('synthetic private reconciliation error');
+  expect(
+    measureHistoryValidationCost('artifact_report_calendar', () => result),
+  ).toBe(result);
+  expect(() =>
+    measureHistoryValidationCost('artifact_report_fingerprint', () => {
+      throw error;
+    }),
+  ).toThrow(error);
+  expect(report.mock.calls).toEqual([
+    ['rag', 'artifact_report_calendar', 'started'],
+    ['rag', 'artifact_report_calendar', 'completed'],
+    ['rag', 'artifact_report_fingerprint', 'started'],
+    ['rag', 'artifact_report_fingerprint', 'failed'],
+  ]);
+});
 
 test('reports fixed boundary tokens without serializing protected read results', async () => {
   const result = {

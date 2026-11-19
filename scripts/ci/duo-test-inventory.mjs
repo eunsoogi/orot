@@ -38,6 +38,7 @@ export const duoTests = [
   'OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification',
   'OrotUITests/AppointmentConsentUITests/testClassificationReturnsThroughScheduleToHome',
   'OrotUITests/AppointmentConsentUITests/testApprovedBatchesExposeMeasuredProgressAndAllResultPages',
+  'OrotUITests/AppointmentConsentUITests/testWideLargeTextReaderPreservesContentAndNativeDismissal',
   'OrotUITests/AppointmentConsentUITests/testManualAppointmentRetainsDraftAcrossDuoReflow',
   'OrotUITests/ManualHistoryUITests/testContextualBackAndHomeHonorDepartureConfirmationInRightRail',
   'OrotUITests/ManualHistoryUITests/testRouteOpenFailureRetryAndBackAfterDuoReflow',

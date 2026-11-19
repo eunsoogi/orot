@@ -1,10 +1,13 @@
+import {
+  resetSyntheticSignInReturn,
+  syntheticChatGPTServices,
+  syntheticSuccessfulChatGPTServices,
+  syntheticMissingScopeChatGPTServices,
+} from './providerSelectionAuthServices';
 import { useState } from 'react';
-import { Button, StyleSheet, Text, View } from 'react-native';
-import { providerSuccess } from '@orot/model-runtime';
-import type { OpenAIAccountSummary } from '../src/providers/openai';
+import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ProviderSelectionFlow from '../src/providers/selection/ProviderSelectionFlow';
 import ProviderSelectionScreen from '../src/providers/selection/ProviderSelectionScreen';
-import type { ChatGPTSelectionServices } from '../src/providers/selection/chatGPTServices';
 import {
   createAppleSelectionOption,
   createChatGPTSelectionOptions,
@@ -13,7 +16,6 @@ import {
 import { providerSelectionStore } from '../src/providers/selection/keychainSelectionStore';
 import { t } from '../src/i18n';
 import {
-  completeSyntheticAuthReturn,
   prepareSyntheticSignOutLifecycle,
   probeSyntheticAuthSessionCancellation,
   removeSyntheticSignOutFixture,
@@ -82,92 +84,98 @@ export function ProviderSelectionProbe() {
 
   return (
     <View style={styles.container}>
-      <Text testID="provider-selection-probe-summary">{summary}</Text>
-      <Button
-        onPress={() =>
-          probeSyntheticAuthSessionCancellation()
-            .then(verified =>
-              setSummary(
-                `authSessionCancellation=${verified ? 'verified' : 'failed'}; realAccount=unverified`,
-              ),
-            )
-            .catch(() =>
-              setSummary(
-                'authSessionCancellation=failed; realAccount=unverified',
-              ),
-            )
-        }
-        testID="provider-selection-auth-session-cancel"
-        title={t('probe.provider.sessionCancel')}
-      />
-      <Button
-        onPress={() => setAuthFlow('cancel')}
-        testID="provider-selection-auth-cancel"
-        title={t('probe.provider.loginCancel')}
-      />
-      <Button
-        onPress={() => setAuthFlow('missingScope')}
-        testID="provider-selection-account-missing-scope"
-        title="Show synthetic account permission guidance"
-      />
-      <Button
-        onPress={() => {
-          syntheticSignInCompleted = false;
-          syntheticReturnedAccount = null;
-          setAuthFlow('success');
-        }}
-        testID="provider-selection-auth-success"
-        title={t('probe.provider.loginReturn')}
-      />
-      <Button
-        onPress={() =>
-          prepareSyntheticSignOutLifecycle()
-            .then(() => {
+      {/* Fixture controls must scroll independently at accessibility text sizes;
+          the production model catalog retains its own viewport below. */}
+      <ScrollView
+        style={styles.fixtureControls}
+        testID="provider-selection-fixture-controls"
+      >
+        <Text testID="provider-selection-probe-summary">{summary}</Text>
+        <Button
+          onPress={() =>
+            probeSyntheticAuthSessionCancellation()
+              .then(verified =>
+                setSummary(
+                  `authSessionCancellation=${verified ? 'verified' : 'failed'}; realAccount=unverified`,
+                ),
+              )
+              .catch(() =>
+                setSummary(
+                  'authSessionCancellation=failed; realAccount=unverified',
+                ),
+              )
+          }
+          testID="provider-selection-auth-session-cancel"
+          title={t('probe.provider.sessionCancel')}
+        />
+        <Button
+          onPress={() => setAuthFlow('cancel')}
+          testID="provider-selection-auth-cancel"
+          title={t('probe.provider.loginCancel')}
+        />
+        <Button
+          onPress={() => setAuthFlow('missingScope')}
+          testID="provider-selection-account-missing-scope"
+          // Keep the fixture label short so large text can fit the measured viewport.
+          title="Missing scope"
+        />
+        <Button
+          onPress={() => {
+            resetSyntheticSignInReturn();
+            setAuthFlow('success');
+          }}
+          testID="provider-selection-auth-success"
+          title={t('probe.provider.loginReturn')}
+        />
+        <Button
+          onPress={() =>
+            prepareSyntheticSignOutLifecycle()
+              .then(() => {
+                setSignOutResponseState('idle');
+                setAuthFlow('signOutLifecycle');
+              })
+              .catch(() =>
+                setSummary(
+                  'syntheticSignOutFixture=failed; realAccount=unverified',
+                ),
+              )
+          }
+          testID="provider-selection-sign-out-start"
+          title={t('probe.provider.signOutStart')}
+        />
+        <Button
+          onPress={() =>
+            prepareSyntheticSignOutLifecycle()
+              .then(() => {
+                setSignOutResponseState('idle');
+                setAuthFlow('signOutLifecycle');
+              })
+              .catch(() =>
+                setSummary(
+                  'syntheticSignOutFixture=failed; realAccount=unverified',
+                ),
+              )
+          }
+          testID="provider-selection-sign-out-reopen"
+          title={t('probe.provider.signOutReopen')}
+        />
+        <Button
+          onPress={() =>
+            Promise.all([
+              providerSelectionStore.clear(),
+              removeSyntheticSignOutFixture(),
+            ]).then(() => {
+              resetSyntheticSignInReturn();
               setSignOutResponseState('idle');
-              setAuthFlow('signOutLifecycle');
-            })
-            .catch(() =>
               setSummary(
-                'syntheticSignOutFixture=failed; realAccount=unverified',
-              ),
-            )
-        }
-        testID="provider-selection-sign-out-start"
-        title={t('probe.provider.signOutStart')}
-      />
-      <Button
-        onPress={() =>
-          prepareSyntheticSignOutLifecycle()
-            .then(() => {
-              setSignOutResponseState('idle');
-              setAuthFlow('signOutLifecycle');
+                'selectionCallback=not-called-on-load; synthetic=cleared; realAccount=unverified',
+              );
             })
-            .catch(() =>
-              setSummary(
-                'syntheticSignOutFixture=failed; realAccount=unverified',
-              ),
-            )
-        }
-        testID="provider-selection-sign-out-reopen"
-        title={t('probe.provider.signOutReopen')}
-      />
-      <Button
-        onPress={() =>
-          Promise.all([
-            providerSelectionStore.clear(),
-            removeSyntheticSignOutFixture(),
-          ]).then(() => {
-            syntheticSignInCompleted = false;
-            syntheticReturnedAccount = null;
-            setSignOutResponseState('idle');
-            setSummary(
-              'selectionCallback=not-called-on-load; synthetic=cleared; realAccount=unverified',
-            );
-          })
-        }
-        testID="provider-selection-probe-reset"
-        title={t('probe.provider.reset')}
-      />
+          }
+          testID="provider-selection-probe-reset"
+          title={t('probe.provider.reset')}
+        />
+      </ScrollView>
       <ProviderSelectionScreen
         options={options}
         requirements={visitRecommendationRequirements}
@@ -182,63 +190,9 @@ export function ProviderSelectionProbe() {
   );
 }
 
-let rejectPendingSignIn: ((reason: unknown) => void) | null = null;
-
-const syntheticChatGPTServices: ChatGPTSelectionServices = {
-  listAccounts: async () => [],
-  listModels: async () => providerSuccess([]),
-  signIn: () =>
-    new Promise<OpenAIAccountSummary>((_resolve, reject) => {
-      rejectPendingSignIn = reject;
-    }),
-  signOut: async () => 'localCredentialsCleared',
-  cancelSignIn: () => {
-    rejectPendingSignIn?.(
-      Object.assign(new Error('Synthetic ChatGPT login cancelled.'), {
-        code: 'CHATGPT_AUTH_CANCELLED',
-      }),
-    );
-    rejectPendingSignIn = null;
-  },
-};
-
-// This fixture refreshes real native account summaries only after the system session returns.
-let syntheticSignInCompleted = false;
-let syntheticReturnedAccount: OpenAIAccountSummary | null = null;
-
-const syntheticSuccessfulChatGPTServices: ChatGPTSelectionServices = {
-  listAccounts: async () =>
-    syntheticSignInCompleted && syntheticReturnedAccount
-      ? [syntheticReturnedAccount]
-      : [],
-  listModels: async () => providerSuccess([]),
-  signIn: async () => {
-    const account = await completeSyntheticAuthReturn();
-    syntheticReturnedAccount = account;
-    syntheticSignInCompleted = true;
-    return account;
-  },
-  signOut: async () => 'localCredentialsCleared',
-  cancelSignIn: () => undefined,
-};
-
-const syntheticMissingScopeAccount: OpenAIAccountSummary = {
-  issuedClientID: 'synthetic-missing-scope-account',
-  requiresSignIn: false,
-  hasDirectPlanAccess: false,
-};
-
-// This layout fixture supplies a not-ready account without reading or changing Keychain state.
-const syntheticMissingScopeChatGPTServices: ChatGPTSelectionServices = {
-  listAccounts: async () => [syntheticMissingScopeAccount],
-  listModels: async () => providerSuccess([]),
-  signIn: async () => syntheticMissingScopeAccount,
-  signOut: async () => 'localCredentialsCleared',
-  cancelSignIn: () => undefined,
-};
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f7f8fa' },
+  fixtureControls: { flexGrow: 0, maxHeight: '50%' },
   probeControls: { paddingHorizontal: 16, paddingTop: 8 },
   flow: { flex: 1 },
 });

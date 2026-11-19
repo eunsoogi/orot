@@ -205,8 +205,10 @@ export function createConversationArtifactDiscovery(input: {
       };
     },
   };
-  registerConversationHistoryReadOwner(discovery, signal => {
-    const operation = input.storage.beginReadOperation?.(signal);
+  registerConversationHistoryReadOwner(discovery, (signal, historyPage) => {
+    const operation = input.storage.beginReadOperation?.(signal, {
+      historyPage,
+    });
     if (!operation) return undefined;
     return {
       storage: input.storage,

@@ -5,6 +5,7 @@ import { beginHealthContextReadOperation } from '../healthContextReadOperation';
 import { HEALTH_CONTEXT_TOPICS } from '../types';
 import * as calendar from '../window';
 import { dayFormatter } from '../calendarDate';
+import { observeCalendarProbes } from '../testSupport/observeCalendarProbes';
 import { healthContextRevision } from '../scope';
 
 /** Synthetic empty protected-store profile isolates calendar construction from
@@ -23,16 +24,16 @@ test.each([90, 365, 1461])(
     ])
       dayFormatter(zone);
     const formatter = dayFormatter('UTC');
-    const format = jest.spyOn(formatter, 'formatToParts');
+    const probes = observeCalendarProbes(formatter);
     const dayCalls = jest
       .spyOn(calendar, 'healthContextDays')
       .mockImplementation(window => {
-        const before = format.mock.calls.length;
+        const before = probes.count;
         const start = performance.now();
         const result = original(window);
         measurements.push({
           ms: performance.now() - start,
-          intl: format.mock.calls.length - before,
+          intl: probes.count - before,
         });
         return result;
       });
@@ -101,7 +102,7 @@ test.each([90, 365, 1461])(
       }
     } finally {
       dayCalls.mockRestore();
-      format.mockRestore();
+      probes.dispose();
       f.close();
     }
   },

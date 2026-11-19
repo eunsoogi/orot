@@ -66,6 +66,7 @@ export function createConversationArtifactReader(
             false,
             validatePeriod,
             collectValidated,
+            operation?.active && operation.profileHistoryValidation,
           );
           output.push(value);
         } catch (error) {
@@ -145,7 +146,10 @@ export function createConversationArtifactReader(
         beginReadOperation?: unknown;
       },
       signal?: AbortSignal,
-      options?: { readonly rollbackOnFailure?: boolean },
+      options?: {
+        readonly rollbackOnFailure?: boolean;
+        readonly historyPage?: boolean;
+      },
     ) {
       const entry = this?.beginReadOperation;
       // A wrapper replacing any read boundary must retain its strict custom path,
@@ -161,7 +165,11 @@ export function createConversationArtifactReader(
           this.beginReadOperation === entry,
         );
       if (!owned()) return undefined;
-      const operation = committedPeriodReadOperation(database, signal);
+      const operation = committedPeriodReadOperation(
+        database,
+        signal,
+        options?.historyPage,
+      );
       const scoped = methods(operation, options?.rollbackOnFailure);
       const toolSnapshot = conversationToolSnapshotReader(
         database,

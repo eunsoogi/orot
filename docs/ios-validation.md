@@ -620,3 +620,29 @@ next까지 순서대로 읽으며 첫 previous disabled, 비어 있지 않은 �
 합성 분류 release gate는 AX의 44pt 경계 표현 오차를 피하도록 최소 45pt로 예약합니다.
 기존 fixture보다 stage 가용 높이가 1pt 줄 수 있으며, 이 차이를 실제 layout receipt와 함께 해석합니다.
 native gate 및 제품 동작의 최소 44pt assertion은 완화하지 않습니다. 이 변경은 제품 화면의 geometry 검증 통과를 뜻하지 않습니다.
+
+### Direct classification reader geometry probe (pending native acceptance)
+
+`testWideLargeTextReaderPreservesContentAndNativeDismissal` uses the existing
+classification probe route with an explicit reader-geometry opt-in and the test
+bridge. It directly hosts the product reader with two indexed synthetic title
+and reason documents; it does not open accounts, stores, models or consent.
+The natural phase requires measured UIKit width greater than height and native
+Accessibility XXXL, with a separate 45pt fixture control bar. The second phase
+explicitly constrains only the test lane to 64pt to trigger the full-window
+reader. It is not evidence that a natural window has that height. Native text
+layout and Modal dismissal are never invoked by the fixture.
+
+The bounded single journey requires all text in order, reverse navigation,
+44pt footer controls, viewport containment, close/restoration without action,
+and an explicit action once after native dismissal. Node/component checks prove
+only opt-in/host wiring. Real VoiceOver, Reduce Motion/fade timing and extreme
+full-screen geometry that cannot hold one line remain separate unmet OS gates.
+
+The reader-only scene adapter starts in measured portrait after the host mounts,
+then calls the existing test bridge with a UUID for `start`, one `request`, and
+one bounded `read`. It retains the armed scene/window/generation and requires a
+matching settled delegate event plus actual AX wide geometry and native XXXL.
+A denied, foreign-owner or unsettled receipt fails; no mask, constraint, frame
+or production scene policy is changed. The original 466x678 native failure is
+preserved and this local prototype has not been compiled or rerun natively.

@@ -22,6 +22,9 @@ const result = spawn(
     '--',
     'xcodebuild',
     'build-for-testing',
+    // Exact-source acceptance must fail on incompatible pins, not silently resolve newer packages.
+    '-disableAutomaticPackageResolution',
+    '-onlyUsePackageVersionsFromResolvedFile',
     '-quiet',
     '-jobs',
     '3',

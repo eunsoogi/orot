@@ -37,5 +37,8 @@ export async function restoreConversationSessionTurns(
         ? withConversationReadOperation(data, restore, signal, shared)
         : restore(data);
     },
+    // Only the selected visible timeline page uses its specialized SQL. Full
+    // compatibility and send-retention reads keep identical strict aggregates.
+    selection !== undefined,
   );
 }
