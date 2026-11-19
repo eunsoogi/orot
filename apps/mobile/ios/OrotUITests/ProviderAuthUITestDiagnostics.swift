@@ -3,6 +3,19 @@ import XCTest
 /// Preserves the original consent oracle while retaining only secret-free state on failure.
 @MainActor
 enum ProviderAuthUITestDiagnostics {
+    /// The native summary combines title, model, and status with layout newlines in one accessible label.
+    static func selectionSummary(_ app: XCUIApplication, scroll: XCUIElement, expected: String, testCase: XCTestCase) throws {
+        let summary = scroll.descendants(matching: .any).matching(identifier: "provider-selection-current").firstMatch
+        XCTAssertTrue(UITestConditions.exists(summary), app.debugDescription)
+        FormUITestConditions.reveal(summary, in: app, scroll: scroll, requireHittable: false, windowResolver: {
+            let page = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "provider-selection-screen")).firstMatch
+            return FormWindowOwnership.resolve(app, scroll: page, target: summary)
+        })
+        let actual = UITestConditions.text(summary)
+        XCTAssertEqual(actual.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " "), expected)
+        try RenderedTextUITestConditions.verify(summary, equals: actual, in: app, testCase: testCase)
+    }
+
     /// Prove the tagged page and the exact message share one window before every measured gesture.
     static func selectionMessageWindow(_ app: XCUIApplication, text: String, role: XCUIElement.ElementType?) -> XCUIElement? {
         let windows = app.windows.allElementsBoundByIndex.filter(\.exists)
