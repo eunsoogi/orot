@@ -66,8 +66,24 @@ enum ClassificationConsentUITestSupport {
 
     static func openSettingsChoice(_ app: XCUIApplication, testCase: AppointmentConsentUITests) {
         testCase.tap(app, "medical-appointment-select-provider")
-        testCase.tap(app, "calendar-model-refresh")
-        testCase.tap(app, "provider-option-0")
+        // The tagged React Native wrapper owns the AX window; its native child owns scrolling.
+        let pages = app.descendants(matching: .any).matching(identifier: "classification-consent-scroll")
+        guard pages.firstMatch.waitForAppearance(), pages.count == 1 else { XCTFail("Expected one classification settings scroll host"); return }
+        let page = pages.firstMatch
+        let scroll = page.elementType == .scrollView ? page : page.scrollViews.firstMatch
+        guard page.elementType == .scrollView || page.scrollViews.count == 1, scroll.exists,
+              scroll.scrollViews.count == 0 else { XCTFail("Expected one native classification settings ScrollView"); return }
+        for identifier in ["calendar-model-refresh", "provider-option-0"] {
+            let matches = scroll.descendants(matching: .any).matching(identifier: identifier)
+            let target = matches.firstMatch
+            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in matches.count == 1 && target.exists && target.isEnabled }, object: nil)
+            guard UITestConditions.wait(for: [ready]) == .completed else { XCTFail("Expected one enabled settings control: \(identifier)"); return }
+            guard FormUITestConditions.reveal(target, in: app, scroll: scroll, windowResolver: {
+                FormWindowOwnership.resolve(app, scroll: page, target: target)
+            }) != nil else { return }
+            guard target.exists, target.isEnabled, target.isHittable else { XCTFail("Settings control is not tappable: \(identifier)"); return }
+            target.tap()
+        }
         XCTAssertTrue(testCase.node(app, "provider-selection-confirmation").waitForAppearance())
     }
 
