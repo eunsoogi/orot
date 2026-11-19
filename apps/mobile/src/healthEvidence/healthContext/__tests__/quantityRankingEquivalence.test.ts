@@ -82,6 +82,18 @@ test('quantity aggregation avoids the second time sort without changing any orde
       lastAt: samples[7][1],
       latest: samples[7][2],
     });
+    // The scoped seek must match both historic rankings, including their
+    // newest-first floating-point accumulation and exact offset spellings.
+    await expect(
+      readHealthQuantityContext(
+        f.database,
+        days,
+        undefined,
+        'measurements',
+        '2027-01-01T00:00:00Z',
+        true,
+      ),
+    ).resolves.toEqual(result);
   } finally {
     f.close();
   }

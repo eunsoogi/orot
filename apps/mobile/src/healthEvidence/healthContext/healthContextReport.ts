@@ -3,6 +3,7 @@ import type { SqlExecutor } from '@orot/storage';
 import { readHealthContextGeneration } from './generation';
 import { readHealthQuantityContext } from './quantityQuery';
 import { addHeartRateActivityContext } from './heartRateActivity';
+import type { AcquireHeartWorkoutPrefix } from './heartWorkoutPrefix';
 import { readHealthMedicationContext } from './medicationQuery';
 import { readDoseHistory } from './doseHistoryQuery';
 import { readHealthSleepContext } from './sleepQuery';
@@ -28,6 +29,7 @@ export async function readHealthContextReport(
   trace?: HealthContextTrace,
   diagnosticOwner?: object,
   calendarScope?: HealthContextCalendarScope,
+  restorationWorkspace?: { acquireHeartPrefix: AcquireHeartWorkoutPrefix },
 ): Promise<HealthContextReport> {
   return withHealthContextCalendar(calendarScope, async calendar => {
     executor = observeReportAggregateSql(executor, diagnosticOwner);
@@ -54,6 +56,7 @@ export async function readHealthContextReport(
                   ? 'activity'
                   : 'measurements',
               window.dataAvailableThrough,
+              Boolean(restorationWorkspace),
             );
             return {
               ...result,
@@ -63,6 +66,7 @@ export async function readHealthContextReport(
                 result.series,
                 signal,
                 window.dataAvailableThrough,
+                restorationWorkspace?.acquireHeartPrefix,
               ),
             };
           })

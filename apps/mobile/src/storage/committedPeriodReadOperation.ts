@@ -18,6 +18,7 @@ import {
   assertSummaryPeriodCurrent,
 } from './symptomSummaryPeriods';
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
+import { nativeHeartWorkoutPrefix } from '../healthEvidence/healthContext/heartWorkoutPrefix';
 
 /** Scope invalidation must not undo unrelated native writes on this connection. */
 class ReadScopeInvalidated extends Error {}
@@ -81,6 +82,9 @@ export function committedPeriodReadOperation(
             return result;
           },
         };
+        const restorationWorkspace = {
+          acquireHeartPrefix: nativeHeartWorkoutPrefix(reportExecutor, tx),
+        };
         const validate: ReadOnlyPeriodValidation = async (
           executor,
           source,
@@ -122,6 +126,7 @@ export function committedPeriodReadOperation(
                     undefined,
                     reports,
                     calendar,
+                    restorationWorkspace,
                   ),
                 );
           const after = await readHealthContextGeneration(tx);

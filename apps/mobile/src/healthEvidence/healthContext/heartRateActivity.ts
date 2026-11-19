@@ -8,6 +8,10 @@ import {
 } from '@orot/storage';
 import type { SqlExecutor, SqlValue } from '@orot/storage';
 import { currentEvidenceCondition } from '../evidenceCandidateScope';
+import {
+  readHeartWithWorkoutPrefix,
+  type AcquireHeartWorkoutPrefix,
+} from './heartWorkoutPrefix';
 import type {
   HealthContextDay,
   HealthQuantitySeries,
@@ -33,6 +37,7 @@ export async function addHeartRateActivityContext(
   series: readonly HealthQuantitySeries[],
   signal?: AbortSignal,
   dataAvailableThrough?: string,
+  acquirePrefix?: AcquireHeartWorkoutPrefix,
 ): Promise<readonly HealthQuantitySeries[]> {
   if (!series.some(item => item.concept === 'heart_rate')) return series;
   if (!days.length) throw new RangeError('Invalid health context days.');
@@ -45,25 +50,21 @@ export async function addHeartRateActivityContext(
   );
   const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
   const cutoff = dataAvailableThrough ? `AND ${ingestion} <= ?` : '';
-  const parameters: SqlValue[] = [healthContextCalendarParameter(days)];
-  parameters.push(to, from);
-  if (dataAvailableThrough)
-    parameters.push(localQueryTimestampKey(dataAvailableThrough));
-  parameters.push(from, to);
-  if (dataAvailableThrough)
-    parameters.push(localQueryTimestampKey(dataAvailableThrough));
-  parameters.push(to);
-  const result = await executor.execute(
-    `SELECT * FROM (
-    WITH days(date, from_key, to_key) AS MATERIALIZED (${healthContextCalendarSql}),
-    workouts AS MATERIALIZED (
+  const calendar = healthContextCalendarParameter(days);
+  const through: SqlValue[] = dataAvailableThrough
+    ? [localQueryTimestampKey(dataAvailableThrough)]
+    : [];
+  const workoutBindings = [to, from, ...through];
+  const heartBindings = [from, to, ...through];
+  const workoutsSql = `
       SELECT ${at} AS start_key, ${end} AS end_key
       FROM health_observations r
       WHERE json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
         AND json_extract(r.payload_json, '$.concept') = 'workout_duration'
         AND ${currentEvidenceCondition('health_observation')}
         AND ${at} < ? AND ${end} > ? AND ${end} > ${at} ${cutoff}
-    ), heart AS NOT MATERIALIZED (
+    `;
+  const heartSql = `
       SELECT ${at} AS start_key, ${end} AS end_key,
         json_extract(r.payload_json, '$.value.unit') AS unit,
         json_extract(r.payload_json, '$.value.amount') AS amount,
@@ -79,7 +80,23 @@ export async function addHeartRateActivityContext(
         AND json_extract(r.payload_json, '$.value.kind') = 'quantity'
         AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
         AND json_type(r.payload_json, '$.value.unit') = 'text'
-    ), events AS (
+    `;
+  const releasePrefix = await acquirePrefix?.();
+  const result = releasePrefix
+    ? await readHeartWithWorkoutPrefix(executor, releasePrefix, {
+        calendarSql: healthContextCalendarSql,
+        calendar,
+        workoutsSql,
+        workoutBindings,
+        heartSql,
+        heartBindings,
+        to,
+      })
+    : await executor.execute(
+        `SELECT * FROM (
+    WITH days(date, from_key, to_key) AS MATERIALIZED (${healthContextCalendarSql}),
+    workouts AS MATERIALIZED (${workoutsSql}),
+    heart AS NOT MATERIALIZED (${heartSql}), events AS (
       SELECT h.*, CASE WHEN h.end_key > h.start_key THEN h.end_key ELSE h.start_key END AS event_key,
         CASE WHEN h.end_key > h.start_key THEN 0 ELSE 2 END AS event_order,
         NULL AS workout_end FROM heart h
@@ -101,8 +118,8 @@ export async function addHeartRateActivityContext(
       min(amount) AS minimum, max(amount) AS maximum
     FROM classified GROUP BY date, unit, sensor, context
   )`,
-    parameters,
-  );
+        [calendar, ...workoutBindings, ...heartBindings, to],
+      );
   if (signal?.aborted) throw new Error('Health context was cancelled.');
   const groups = new Map<string, HeartRateActivityGroup[]>();
   for (const row of result.rows) {
