@@ -3,9 +3,9 @@ import XCTest
 /// Real settings approval and manually released synthetic batches expose stable native stage boundaries.
 extension AppointmentConsentUITests {
     @MainActor
-    func testApprovedBatchesExposeMeasuredProgressAndAllResultPages() {
+    func testApprovedBatchesExposeMeasuredProgressAndAllResultPages() throws {
         let app = XCUIApplication()
-        let fixture = ClassificationConsentUITestSupport.launch(app, extra: ["-OROT_TEST_CLASSIFICATION_STAGES", "YES"])
+        let fixture = ClassificationConsentUITestSupport.launch(app, extra: ["-OROT_TEST_CLASSIFICATION_STAGES", "YES", "-OROT_TEST_CLASSIFICATION_LAYOUT", "YES"])
         defer { ClassificationConsentUITestSupport.cleanup(app, fixture: fixture, testCase: self) }
         ClassificationConsentUITestSupport.assertBlocked(app, testCase: self)
         XCTAssertTrue(node(app, "medical-appointment-confirmation").exists)
@@ -15,19 +15,20 @@ extension AppointmentConsentUITests {
         XCTAssertTrue(node(app, "calendar-current-model").waitForAppearance())
         tap(app, "classification-close-settings")
         assertStageActions(app)
+        try captureStageLayout(app, stage: "confirmation")
         DisclosureLayoutUITestObservations.startClassification(app, in: self)
 
-        assertHeldProgress(app, percent: 0, calls: 1, saving: false)
+        try assertHeldProgress(app, percent: 0, calls: 1, saving: false)
         tap(app, "classification-release-response")
-        assertHeldProgress(app, percent: 88, calls: 2, saving: false)
+        try assertHeldProgress(app, percent: 88, calls: 2, saving: false)
         tap(app, "classification-release-response")
-        assertHeldProgress(app, percent: 100, calls: 2, saving: true)
+        try assertHeldProgress(app, percent: 100, calls: 2, saving: true)
         tap(app, "classification-release-response")
         XCTAssertTrue(node(app, "medical-appointment-results").waitForAppearance())
         UITestConditions.value(node(app, "calendar-classification-synthetic-calendar-save"), equals: "syntheticCalendarSave=confirmed")
         XCTAssertFalse(node(app, "medical-appointment-progress").exists)
         XCTAssertFalse(node(app, "medical-appointment-confirmation").exists)
-        let pages = readAllResultPages(app)
+        let pages = try readAllResultPages(app)
         let readable = pages.joined().filter { !$0.isWhitespace }
         // Indexed segments make loss/repetition observable even when native line breaks split a long title.
         let title = (1 ... 30).map { "합성 긴 진료 예약 \($0)" }.joined(separator: " ").filter { !$0.isWhitespace }
@@ -50,7 +51,7 @@ extension AppointmentConsentUITests {
     }
 
     @MainActor
-    private func assertHeldProgress(_ app: XCUIApplication, percent: Int, calls: Int, saving: Bool) {
+    private func assertHeldProgress(_ app: XCUIApplication, percent: Int, calls: Int, saving: Bool) throws {
         let phase = saving ? "save" : "model"
         let gate = node(app, "classification-release-response")
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
@@ -70,12 +71,13 @@ extension AppointmentConsentUITests {
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         XCTAssertGreaterThanOrEqual(gate.frame.height, 44)
         XCTAssertTrue(gate.isHittable)
+        try captureStageLayout(app, stage: "progress-\(percent)")
         // Evidence includes fixture controls: their 44pt gate and diagnostic text reduce the product stage height.
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-progress-\(percent)", testCase: self)
     }
 
     @MainActor
-    private func readAllResultPages(_ app: XCUIApplication) -> [String] {
+    private func readAllResultPages(_ app: XCUIApplication) throws -> [String] {
         var pages: [String] = []
         for _ in 0 ..< 256 {
             let page = node(app, "classification-page-text")
@@ -85,6 +87,7 @@ extension AppointmentConsentUITests {
             let viewport = node(app, "classification-text-viewport")
             XCTAssertTrue(viewport.frame.insetBy(dx: -1, dy: -1).contains(page.frame), app.debugDescription)
             assertStageActions(app)
+            try captureStageLayout(app, stage: "result-\(pages.count)")
             pages.append(text)
             let next = node(app, "medical-appointment-next-result")
             if !next.isEnabled {
@@ -114,6 +117,65 @@ extension AppointmentConsentUITests {
                 XCTAssertTrue(action.isHittable)
             }
         }
+    }
+
+    /// UIKit window traits and XCUI stage rectangles are observations, not assumed Duo/XXXL values.
+    @MainActor
+    private func captureStageLayout(_ app: XCUIApplication, stage: String) throws {
+        let marker = node(app, "classification-layout-receipt")
+        let previous = UITestConditions.text(marker)
+        let requested = Date().timeIntervalSince1970 * 1000
+        let counter = node(app, "calendar-classification-synthetic-provider-calls")
+        XCTAssertTrue(counter.isHittable)
+        counter.tap()
+        let fresh = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            marker.exists && UITestConditions.text(marker) != previous
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [fresh]), .completed)
+        let data = Data(UITestConditions.text(marker).utf8)
+        let report = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(report["requestedAtMs"] as? Double), requested)
+        let started = try XCTUnwrap(report["sampleStartedAtMs"] as? Double)
+        let ended = try XCTUnwrap(report["sampleEndedAtMs"] as? Double)
+        XCTAssertTrue(started.isFinite && ended.isFinite)
+        XCTAssertGreaterThanOrEqual(started, try XCTUnwrap(report["requestedAtMs"] as? Double))
+        XCTAssertGreaterThanOrEqual(ended, started)
+        XCTAssertLessThanOrEqual(ended, Date().timeIntervalSince1970 * 1000)
+        let dockStarted = try XCTUnwrap(report["dockSampleStartedAtMs"] as? Double)
+        let dockEnded = try XCTUnwrap(report["dockSampleEndedAtMs"] as? Double)
+        XCTAssertTrue(dockStarted.isFinite && dockEnded.isFinite)
+        XCTAssertGreaterThanOrEqual(dockStarted, ended)
+        XCTAssertGreaterThanOrEqual(dockEnded, dockStarted)
+        XCTAssertLessThanOrEqual(dockEnded, Date().timeIntervalSince1970 * 1000)
+        XCTAssertEqual(report["visibleKeyWindowCount"] as? Int, 1)
+        let category = try XCTUnwrap(report["contentSizeCategory"] as? String)
+        XCTAssertFalse(category.isEmpty)
+        let insets = try XCTUnwrap(report["safeAreaInsets"] as? [String: Double])
+        for key in ["top", "right", "bottom", "left"] {
+            XCTAssertGreaterThanOrEqual(try XCTUnwrap(insets[key]), 0)
+        }
+        let native = try XCTUnwrap(report["windowFrameInScreen"] as? [String: Double])
+        let window = app.windows.firstMatch.frame
+        XCTAssertEqual(app.windows.count, 1)
+        for (key, value) in [("x", window.minX), ("y", window.minY), ("width", window.width), ("height", window.height)] {
+            XCTAssertEqual(try XCTUnwrap(native[key]), Double(value), accuracy: 1)
+        }
+        var receipt = report
+        var frames = ["window": ViewportObservation.rect(window)]
+        for id in ["medical-appointment-fullscreen", "classification-stage-footer", "classification-text-viewport"] {
+            let element = node(app, id)
+            if element.exists {
+                XCTAssertFalse(element.frame.isEmpty)
+                XCTAssertTrue(window.insetBy(dx: -1, dy: -1).contains(element.frame))
+                frames[id] = ViewportObservation.rect(element.frame)
+            }
+        }
+        receipt["stage"] = stage
+        receipt["xcuiFrames"] = frames
+        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: receipt), uniformTypeIdentifier: "public.json")
+        attachment.name = "classification-layout-\(stage)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor

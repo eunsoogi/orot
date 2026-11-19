@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useClassificationLayoutReceipt } from './classificationLayoutReceipt';
 import { ClassificationConsentSettings } from './ClassificationConsentSettings';
 import type { createSettingsConsentUiServices } from './settingsConsentUiServices';
 import { NativeModules, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -46,6 +47,7 @@ export function ClassificationProbeScreen({
   input: ReturnType<typeof createSettingsConsentUiServices>;
   staged?: boolean;
 }) {
+  const layout = useClassificationLayoutReceipt(staged);
   const events = useMemo(
     () => (staged ? classificationStageEvents() : [syntheticEvent]),
     [staged],
@@ -160,7 +162,11 @@ export function ClassificationProbeScreen({
     );
   return (
     <View style={styles.root}>
-      <Text testID="calendar-classification-synthetic-provider-calls">
+      {layout.marker}
+      <Text
+        testID="calendar-classification-synthetic-provider-calls"
+        onPress={layout.request}
+      >
         syntheticProviderCalls={providerCalls}
       </Text>
       <Text testID="classification-synthetic-payload-privacy">
