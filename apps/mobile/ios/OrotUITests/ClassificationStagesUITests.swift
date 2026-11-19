@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 
 /// Real settings approval and manually released synthetic batches expose stable native stage boundaries.
@@ -5,11 +6,32 @@ extension AppointmentConsentUITests {
     @MainActor
     func testApprovedBatchesExposeMeasuredProgressAndAllResultPages() throws {
         let app = XCUIApplication()
+        let sceneSession = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_WIDE_STAGE_VALIDATION"] == "YES" ? UUID().uuidString : nil
+        let device = XCUIDevice.shared
+        let priorOrientation = device.orientation
+        if sceneSession != nil {
+            device.orientation = .portrait
+        }
+        defer {
+            if sceneSession != nil {
+                switch priorOrientation {
+                case .landscapeLeft, .landscapeRight, .portrait, .portraitUpsideDown:
+                    device.orientation = priorOrientation
+                default:
+                    device.orientation = .portrait
+                }
+            }
+        }
         // The existing test-only identity opt-in supplies UIKit window traits and sampling times.
-        let fixture = ClassificationConsentUITestSupport.launch(app, extra: ["-OROT_TEST_CLASSIFICATION_STAGES", "YES", "-OROT_TEST_CLASSIFICATION_LAYOUT", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES"])
+        let fixture = ClassificationConsentUITestSupport.launch(app, extra: [
+            "-OROT_TEST_CLASSIFICATION_STAGES", "YES", "-OROT_TEST_CLASSIFICATION_LAYOUT", "YES", "-OROT_TEST_NAVIGATION_FOCUS_OBSERVATION", "YES",
+        ] + (sceneSession.map { ["-OROT_TEST_CLASSIFICATION_STAGE_SCENE", "YES", "-OROT_TEST_ROTATION_GEOMETRY_SESSION", $0] } ?? []))
         defer { ClassificationConsentUITestSupport.cleanup(app, fixture: fixture, testCase: self) }
         ClassificationConsentUITestSupport.assertBlocked(app, testCase: self)
         XCTAssertTrue(node(app, "medical-appointment-confirmation").exists)
+        if let sceneSession {
+            try settleReaderScene(app, session: sceneSession, hostID: "medical-appointment-fullscreen")
+        }
         ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
         ClassificationConsentUITestSupport.assertSettingsControls(app, testCase: self)
         tap(app, "provider-selection-confirm")
@@ -177,6 +199,11 @@ extension AppointmentConsentUITests {
         attachment.name = "classification-layout-\(stage)"
         attachment.lifetime = .keepAlways
         add(attachment)
+        // Settings and stage changes must not silently fall back to a narrow window or smaller text.
+        if app.launchArguments.contains("-OROT_TEST_CLASSIFICATION_STAGE_SCENE") {
+            XCTAssertGreaterThan(window.width, window.height, "Expected an actual wide stage: \(stage)")
+            XCTAssertEqual(category, UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue)
+        }
     }
 
     @MainActor

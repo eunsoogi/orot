@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useClassificationLayoutReceipt } from './classificationLayoutReceipt';
 import { ClassificationConsentSettings } from './ClassificationConsentSettings';
+import { ClassificationReaderSceneControl } from './ClassificationReaderSceneControl';
 import type { createSettingsConsentUiServices } from './settingsConsentUiServices';
 import { NativeModules, Pressable, StyleSheet, Text, View } from 'react-native';
 import { providerFailure } from '@orot/model-runtime';
@@ -31,9 +32,11 @@ const syntheticEvent: CalendarEvent = {
 };
 
 const settings = NativeModules?.SettingsManager;
-const defaultStaged =
-  (settings?.settings ?? settings?.getConstants?.().settings ?? {})
-    .OROT_TEST_CLASSIFICATION_STAGES === 'YES';
+const launch = settings?.settings ?? settings?.getConstants?.().settings ?? {};
+const defaultStaged = launch.OROT_TEST_CLASSIFICATION_STAGES === 'YES';
+const defaultWideStage =
+  launch.OROT_TEST_CLASSIFICATION_STAGE_SCENE === 'YES' &&
+  typeof launch.OROT_TEST_ROTATION_GEOMETRY_SESSION === 'string';
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
@@ -55,6 +58,7 @@ export function ClassificationProbeScreen({
     [staged],
   );
   const [showSettings, setShowSettings] = useState(false);
+  const [scenePreparationEnded, setScenePreparationEnded] = useState(false);
   const [waiting, setWaiting] = useState<'model' | 'save' | null>(null);
   const scenario = useMemo(
     () => createClassificationStageScenario(setWaiting),
@@ -179,7 +183,10 @@ export function ClassificationProbeScreen({
           syntheticCalendarSave=confirmed
         </Text>
       ) : null}
-      {staged ? (
+      {/* Reuse the idle fixture gate's slot until Settings opens. */}
+      {staged && defaultWideStage && !scenePreparationEnded ? (
+        <ClassificationReaderSceneControl />
+      ) : staged ? (
         <Pressable
           testID="classification-release-response"
           accessibilityRole="button"
@@ -198,7 +205,10 @@ export function ClassificationProbeScreen({
         repository={repository}
         selectedProvider={selectedProvider}
         recipient="OpenAI API"
-        onOpenProviderSelection={() => setShowSettings(true)}
+        onOpenProviderSelection={() => {
+          if (staged && defaultWideStage) setScenePreparationEnded(true);
+          setShowSettings(true);
+        }}
       />
     </View>
   );

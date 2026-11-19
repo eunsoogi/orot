@@ -20,6 +20,18 @@ test('existing staged journey samples actual geometry without replacing its orac
   ])
     assert.ok(swift.includes(oracle));
   assert.match(swift, /contentSizeCategory/);
+  const scene = swift.indexOf(
+    'try settleReaderScene(app, session: sceneSession, hostID: "medical-appointment-fullscreen")',
+  );
+  assert.ok(
+    scene > 0 && scene < swift.indexOf('ClassificationConsentUITestSupport.openSettingsChoice'),
+  );
+  assert.match(swift, /environment\["OROT_CLASSIFICATION_WIDE_STAGE_VALIDATION"\] == "YES"/);
+  assert.match(swift, /XCTAssertGreaterThan\(window.width, window.height/);
+  assert.match(swift, /UIContentSizeCategory\.accessibilityExtraExtraExtraLarge\.rawValue/);
+  assert.match(entry, /staged && defaultWideStage && !scenePreparationEnded/);
+  assert.match(entry, /<ClassificationReaderSceneControl \/>/);
+  assert.match(entry, /if \(staged && defaultWideStage\) setScenePreparationEnded\(true\)/);
   assert.match(swift, /safeAreaInsets/);
   assert.doesNotMatch(swift, /UICTContentSizeCategory|preferredContentSizeCategory|simctl|sleep\(/);
 });

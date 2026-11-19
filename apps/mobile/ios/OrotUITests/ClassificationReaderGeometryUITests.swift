@@ -61,9 +61,9 @@ extension AppointmentConsentUITests {
 
     /// Arm the mounted owner before one supported request; a missing/denied scene event remains a failure.
     @MainActor
-    private func settleReaderScene(_ app: XCUIApplication, session: String) throws {
+    func settleReaderScene(_ app: XCUIApplication, session: String, hostID: String = "classification-geometry-host") throws {
         let control = node(app, "classification-reader-scene")
-        let host = node(app, "classification-geometry-host")
+        let host = node(app, hostID)
         XCTAssertEqual(app.windows.count, 1)
         let owner = app.windows.firstMatch
         XCTAssertTrue(owner.frame.contains(host.frame) && owner.frame.contains(control.frame))
