@@ -6,7 +6,12 @@
 #include <functional>
 #include <string>
 #include <thread>
-#include "../../node_modules/@op-engineering/op-sqlite/cpp/sqlcipher/sqlite3.h"
+// The test runner supplies a per-file SQLCipher search path. OPTypes.hpp must
+// resolve this same declaration set, never a second SDK SQLite header.
+#if !defined(OP_SQLITE_USE_SQLCIPHER)
+#error "Native owner tests require the SQLCipher fixture compiler setting"
+#endif
+#include <sqlite3.h>
 
 namespace orot_test {
 // Only an internally allocated fixture database registers this callback. It never

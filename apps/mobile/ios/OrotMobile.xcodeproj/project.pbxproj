@@ -383,9 +383,9 @@
 		1113A6544E30C3384BCBC06B /* RealtimeVoiceCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E7E1C0677D54DE47D10208 /* RealtimeVoiceCall.swift */; };
 		0755E89CA4DAFDA2A7697E13 /* VoiceRealtimeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 6DE51D3EDD32E9F459E0BC75 /* VoiceRealtimeModule.m */; };
 		F93400000000000000000001 /* NavigationFadeIntegrationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F93400000000000000000002 /* NavigationFadeIntegrationTests.m */; };
-		115BE8D311B5487645581E58 /* NativeCacheOwnerFixture.mm in Sources */ = {isa = PBXBuildFile; fileRef = AC540315FC86070B3EED130F /* NativeCacheOwnerFixture.mm */; };
-		FCADB0A344821DB7B348EBA4 /* NativeCacheTestModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = 136472DC5955340616F350CF /* NativeCacheTestModule.mm */; };
-		FCFD0CB5F28B331D01263D28 /* NativeCacheFixtureSetup.mm in Sources */ = {isa = PBXBuildFile; fileRef = A70BE2369868577CD6D9AA6D /* NativeCacheFixtureSetup.mm */; };
+		115BE8D311B5487645581E58 /* NativeCacheOwnerFixture.mm in Sources */ = {isa = PBXBuildFile; fileRef = AC540315FC86070B3EED130F /* NativeCacheOwnerFixture.mm */; settings = {COMPILER_FLAGS = "$(OROT_NATIVE_CACHE_TEST_FLAGS)"; }; };
+		FCADB0A344821DB7B348EBA4 /* NativeCacheTestModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = 136472DC5955340616F350CF /* NativeCacheTestModule.mm */; settings = {COMPILER_FLAGS = "$(OROT_NATIVE_CACHE_TEST_FLAGS)"; }; };
+		FCFD0CB5F28B331D01263D28 /* NativeCacheFixtureSetup.mm in Sources */ = {isa = PBXBuildFile; fileRef = A70BE2369868577CD6D9AA6D /* NativeCacheFixtureSetup.mm */; settings = {COMPILER_FLAGS = "$(OROT_NATIVE_CACHE_TEST_FLAGS)"; }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
