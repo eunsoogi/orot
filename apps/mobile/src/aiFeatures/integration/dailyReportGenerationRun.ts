@@ -160,7 +160,9 @@ export async function generateDailyReportWithCalendar(
     const latest = await refresh(request.signal);
     if (!latest || (external && !(await external.snapshot.revalidate())))
       return fail(
-        request.signal.aborted ? 'cancelled' : 'source_revision_changed',
+        request.signal.aborted
+          ? 'cancelled'
+          : 'source_unconfirmed_after_dispatch',
       );
     proven = latest;
   }
@@ -232,7 +234,8 @@ export async function generateDailyReportWithCalendar(
   if (saved.status === 'failed') return fail(saved.code);
   if (external && !(await external.snapshot.revalidate())) {
     await input.storage.lookup(context.identity);
-    return fail('source_revision_changed');
+    // Persistence already ran; the route must recheck saved content even if Stop raced this lookup.
+    return fail('source_unconfirmed_after_dispatch');
   }
   providerDiagnostic('daily_report', 'persistence', 'completed');
   providerDiagnostic('daily_report', 'workflow', 'result');
