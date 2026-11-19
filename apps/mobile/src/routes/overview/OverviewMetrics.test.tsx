@@ -183,3 +183,20 @@ test('prevents changing or cancelling a draft while its save is pending', async 
   await press;
   expect(screen.queryByRole('button', { name: '취소' })).toBeNull();
 });
+
+test.each(['failed', 'stale'] as const)(
+  'exposes the unavailable state when metrics are %s',
+  async state => {
+    mocked.mockReturnValue({
+      selection: ['sleep', 'heartRate'],
+      metrics: {},
+      quantityTruncated: false,
+      state,
+      retry: jest.fn(),
+      save: jest.fn(),
+    });
+    await render(<OverviewMetrics />);
+    expect(screen.getByTestId('overview-metrics-unavailable')).toBeTruthy();
+    expect(screen.getByTestId('overview-metrics-edit')).toBeDisabled();
+  },
+);

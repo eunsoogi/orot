@@ -111,13 +111,17 @@ export function OverviewMetrics() {
         </View>
         {data.state === 'failed' ? (
           <>
-            <Text accessibilityRole="alert">{t('overview.metricError')}</Text>
+            <Text accessibilityRole="alert" testID="overview-metrics-unavailable">
+              {t('overview.metricError')}
+            </Text>
             <AppButton title={t('appointments.retry')} onPress={data.retry} />
           </>
         ) : null}
         {data.state === 'stale' && (
           <>
-            <Text accessibilityRole="alert">{t('overview.metricStale')}</Text>
+            <Text accessibilityRole="alert" testID="overview-metrics-unavailable">
+              {t('overview.metricStale')}
+            </Text>
             <AppButton title={t('appointments.retry')} onPress={data.retry} />
           </>
         )}

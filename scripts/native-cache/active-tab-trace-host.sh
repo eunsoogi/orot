@@ -48,3 +48,7 @@ if rg -q OROT_ACTIVE_TAB_NATIVE_STEP "$work/excluded-strings"; then
   printf 'Unexpected observer in an excluded build boundary\n' >&2
   exit 1
 fi
+# Exercise the same failure precedence used by both XCTest route waits.
+swiftc apps/mobile/ios/OrotUITests/ActiveTabReadiness.swift \
+  scripts/native-cache/activeTabReadiness.test.swift -o "$work/readiness"
+"$work/readiness"

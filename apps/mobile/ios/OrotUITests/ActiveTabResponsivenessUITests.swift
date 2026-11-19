@@ -134,24 +134,7 @@ final class ActiveTabResponsivenessUITests: OrotFailFastTestCase {
         } else {
             UITestConditions.element(app, target).tap()
         }
-        let content = UITestConditions.element(app, destination)
-        XCTAssertTrue(UITestConditions.exists(content) && content.isHittable)
-        let readyID: String
-        switch destination {
-        case "records-layout": readyID = "records-new-recording"
-        case "overview-screen": readyID = "overview-metrics-edit"
-        case "appointments-scroll": readyID = "appointments-list"
-        default: throw NSError(domain: "ActiveTabTrace", code: 2)
-        }
-        let usable = UITestConditions.element(app, readyID)
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            let state = UITestConditions.element(app, "active-tab-workload-state")
-            let failed = state.exists && [state.label, state.value as? String ?? ""].contains { ["failed", "unavailable"].contains($0) }
-            let routeError = destination == "records-layout" && UITestConditions.element(app, "records-recent-sources-error").exists
-            return failed || routeError || (usable.exists && usable.isHittable && (destination != "overview-screen" || usable.isEnabled))
-        }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
-        XCTAssertTrue(usable.exists && usable.isHittable && (destination != "overview-screen" || usable.isEnabled))
+        try ActiveTabReadinessUITestConditions.wait(app, destination: destination)
         let readiness = try snapshot(app)
         let scrollID = destination == "appointments-scroll" ? destination : "navigation-route-scroll"
         let scroll = UITestConditions.element(app, scrollID)
@@ -211,8 +194,7 @@ final class ActiveTabResponsivenessUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.tapNavigation(app, "navigation-tab-records")
         UITestConditions.element(app, "records-section-schedule").tap()
         UITestConditions.element(app, "schedule-open-appointments").tap()
-        let content = UITestConditions.element(app, "appointments-list")
-        XCTAssertTrue(UITestConditions.exists(content))
+        try ActiveTabReadinessUITestConditions.wait(app, destination: "appointments-scroll")
         let scroll = UITestConditions.element(app, "appointments-scroll")
         XCTAssertTrue(scroll.isHittable)
         let ready = try snapshot(app)
