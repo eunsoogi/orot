@@ -20,7 +20,7 @@ enum LiteratureActionReveal {
             guard let viewport = LiteratureActionGeometry.viewport(window: windowFrame, scroll: scrollFrame, dock: dockFrame),
                   let decision = LiteratureActionGeometry.decide(window: windowFrame, scroll: scrollFrame, dock: dockFrame, target: actionFrame)
             else {
-                throw NSError(domain: "LiteratureActionReveal", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid measured literature geometry: window=\(windowFrame), scroll=\(scrollFrame), dock=\(dockFrame), action=\(actionFrame)"])
+                throw NSError(domain: "LiteratureActionReveal", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid measured literature geometry: window=\(windowFrame), scroll=\(scrollFrame), dock=\(dockFrame), action=\(String(describing: actionFrame))"])
             }
             if decision == .visible {
                 return
