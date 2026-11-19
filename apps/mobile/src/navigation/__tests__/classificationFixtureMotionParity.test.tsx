@@ -2,36 +2,34 @@ import { act, render, screen } from '@testing-library/react-native';
 import type { ComponentType } from 'react';
 import { AccessibilityInfo, AppRegistry, NativeModules } from 'react-native';
 
-jest.mock('../../src/agent/polyfills', () => ({}));
+jest.mock('../../agent/polyfills', () => ({}));
 jest.mock('react-native-get-random-values', () => ({}));
 jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 const mockClose = jest.fn();
-jest.mock('../settingsConsentNativeStore', () => ({
+jest.mock('../../../e2e/settingsConsentNativeStore', () => ({
   consentFixtureIdentity: (value: string) => value,
   openSettingsConsentNativeStore: jest.fn(async () => ({ close: mockClose })),
 }));
-jest.mock('../settingsConsentUiServices', () => ({
+jest.mock('../../../e2e/settingsConsentUiServices', () => ({
   createSettingsConsentUiServices: () => ({
     services: {},
     fixture: { authorizationServices: () => ({}) },
   }),
 }));
 // Consent service internals are outside this motion wiring contract.
-jest.mock('../../src/agent/execution/ModelSettingsServices', () => ({
+jest.mock('../../agent/execution/ModelSettingsServices', () => ({
   ModelSettingsServicesContext: require('react').createContext(null),
 }));
-jest.mock('../../src/agent/execution/SettingsConsentReadServices', () => ({
+jest.mock('../../agent/execution/SettingsConsentReadServices', () => ({
   SettingsConsentReadServicesContext: require('react').createContext(null),
 }));
-jest.mock('../ClassificationProbeScreen', () => {
+jest.mock('../../../e2e/ClassificationProbeScreen', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  const {
-    NavigationMotionContext,
-  } = require('../../src/navigation/NavigationMotionContext');
+  const { NavigationMotionContext } = require('../NavigationMotionContext');
   return {
     ClassificationProbeScreen: () => (
       <Text>
@@ -65,7 +63,7 @@ test('classification fixture propagates the system snapshot and subsequent chang
   const register = jest.spyOn(AppRegistry, 'registerComponent');
   let view: Awaited<ReturnType<typeof render>> | undefined;
   try {
-    require('../medicalAppointmentClassificationProbeEntry');
+    require('../../../e2e/medicalAppointmentClassificationProbeEntry');
     const factory = register.mock.calls.at(-1)?.[1];
     if (!factory) throw new Error('Classification entry was not registered');
     const Entry = factory() as ComponentType;
