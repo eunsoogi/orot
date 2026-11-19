@@ -111,8 +111,8 @@ enum NavigationForegroundUITestConditions {
         let initialReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             answerPoint() != nil && inputIsReady() && !keyboard.exists
         }, object: nil)
-        guard XCTWaiter.wait(for: [initialReady], timeout: 15) == .completed,
-              answerPoint() != nil, inputIsReady(), !keyboard.exists else {
+        let initialSettled = XCTWaiter.wait(for: [initialReady], timeout: 15) == .completed
+        guard initialSettled, answerPoint() != nil, inputIsReady(), !keyboard.exists else {
             XCTFail("The fresh synthetic answer and editor must be unobscured")
             return
         }
@@ -180,8 +180,8 @@ enum NavigationForegroundUITestConditions {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             answerPoint() != nil && inputIsReady() && (input.value as? String) == draft
         }, object: nil)
-        guard XCTWaiter.wait(for: [ready], timeout: 15) == .completed,
-              answerPoint() != nil, inputIsReady(), input.value as? String == draft else {
+        let settled = XCTWaiter.wait(for: [ready], timeout: 15) == .completed
+        guard settled, answerPoint() != nil, inputIsReady(), input.value as? String == draft else {
             XCTFail("The same restored answer and unsent editor must be usable after the native boundary")
             return
         }
