@@ -16,6 +16,10 @@ export function iosTestConfig(profile) {
     appName: 'Orot.app',
     compilerFlags: '$(inherited) -DOROT_TESTS -DOROT_SPEECH_TRANSCRIPTION_SIMULATOR_TEST',
     preprocessorFlags: '$(inherited) OROT_TESTS=1',
+    // Only the three guarded owner-fixture translation units consume this setting.
+    // OPTypes also includes <sqlite3.h>; use the same SQLCipher header as the pod.
+    nativeCacheTestFlags:
+      '-DOP_SQLITE_USE_SQLCIPHER=1 -I"$(SRCROOT)/../node_modules/@op-engineering/op-sqlite/cpp/sqlcipher"',
     testability: 'YES',
   };
   if (profile === 'duo') {

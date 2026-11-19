@@ -383,6 +383,9 @@
 		1113A6544E30C3384BCBC06B /* RealtimeVoiceCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E7E1C0677D54DE47D10208 /* RealtimeVoiceCall.swift */; };
 		0755E89CA4DAFDA2A7697E13 /* VoiceRealtimeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 6DE51D3EDD32E9F459E0BC75 /* VoiceRealtimeModule.m */; };
 		F93400000000000000000001 /* NavigationFadeIntegrationTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F93400000000000000000002 /* NavigationFadeIntegrationTests.m */; };
+		115BE8D311B5487645581E58 /* NativeCacheOwnerFixture.mm in Sources */ = {isa = PBXBuildFile; fileRef = AC540315FC86070B3EED130F /* NativeCacheOwnerFixture.mm */; settings = {COMPILER_FLAGS = "$(OROT_NATIVE_CACHE_TEST_FLAGS)"; }; };
+		FCADB0A344821DB7B348EBA4 /* NativeCacheTestModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = 136472DC5955340616F350CF /* NativeCacheTestModule.mm */; settings = {COMPILER_FLAGS = "$(OROT_NATIVE_CACHE_TEST_FLAGS)"; }; };
+		FCFD0CB5F28B331D01263D28 /* NativeCacheFixtureSetup.mm in Sources */ = {isa = PBXBuildFile; fileRef = A70BE2369868577CD6D9AA6D /* NativeCacheFixtureSetup.mm */; settings = {COMPILER_FLAGS = "$(OROT_NATIVE_CACHE_TEST_FLAGS)"; }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -785,6 +788,12 @@
 		BF536F275C819E8584C568C6 /* RealtimeVoiceLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceLifecycleTests.swift; sourceTree = "<group>"; };
 		AA7479A548CDF9306903EC3C /* RealtimeVoiceSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RealtimeVoiceSocket.swift; path = OrotMobile/RealtimeVoiceSocket.swift; sourceTree = "<group>"; };
 		F93400000000000000000002 /* NavigationFadeIntegrationTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = NavigationFadeIntegrationTests.m; sourceTree = "<group>"; };
+		8935FA0A1F37279A2C349EC0 /* NativeCacheOwnerFixture.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.h; name = NativeCacheOwnerFixture.h; path = OrotMobile/NativeCacheOwnerFixture.h; sourceTree = "<group>"; };
+		A708929395F2D9B2A1A5BFED /* NativeCacheTestTrace.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.h; name = NativeCacheTestTrace.h; path = OrotMobile/NativeCacheTestTrace.h; sourceTree = "<group>"; };
+		AC540315FC86070B3EED130F /* NativeCacheOwnerFixture.mm */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.objcpp; name = NativeCacheOwnerFixture.mm; path = OrotMobile/NativeCacheOwnerFixture.mm; sourceTree = "<group>"; };
+		136472DC5955340616F350CF /* NativeCacheTestModule.mm */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.objcpp; name = NativeCacheTestModule.mm; path = OrotMobile/NativeCacheTestModule.mm; sourceTree = "<group>"; };
+		44892EC51C723DE614851E5E /* NativeCacheFixtureState.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.h; name = NativeCacheFixtureState.h; path = OrotMobile/NativeCacheFixtureState.h; sourceTree = "<group>"; };
+		A70BE2369868577CD6D9AA6D /* NativeCacheFixtureSetup.mm */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.objcpp; name = NativeCacheFixtureSetup.mm; path = OrotMobile/NativeCacheFixtureSetup.mm; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -975,6 +984,12 @@
 				B11200000000000000000006 /* ManualHistoryDateCopy.strings */,
 				722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */,
 				A989C53E0100000000000032 /* TestControlReplyFixture.swift */,
+				8935FA0A1F37279A2C349EC0 /* NativeCacheOwnerFixture.h */,
+				A708929395F2D9B2A1A5BFED /* NativeCacheTestTrace.h */,
+				AC540315FC86070B3EED130F /* NativeCacheOwnerFixture.mm */,
+				136472DC5955340616F350CF /* NativeCacheTestModule.mm */,
+				44892EC51C723DE614851E5E /* NativeCacheFixtureState.h */,
+				A70BE2369868577CD6D9AA6D /* NativeCacheFixtureSetup.mm */,
 				9422961FF39A9392CEC9AE63 /* TestControl.swift */,
 				F94600000000000000000002 /* MenuPresentationTestObservation.swift */,
 				F26700000000000000000003 /* NavigationGeometryTestObservation.swift */,
@@ -1712,6 +1727,9 @@
 				E14B00000000000000000008 /* SpeechTranscriptionTypes.swift in Sources */,
 				88CFAD138276632F0E8E5BCC /* TestOperationBroker.swift in Sources */,
 				A989C53E0100000000000031 /* TestControlReplyFixture.swift in Sources */,
+				115BE8D311B5487645581E58 /* NativeCacheOwnerFixture.mm in Sources */,
+				FCADB0A344821DB7B348EBA4 /* NativeCacheTestModule.mm in Sources */,
+				FCFD0CB5F28B331D01263D28 /* NativeCacheFixtureSetup.mm in Sources */,
 				9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */,
 				074959A5631EC90A8EA8D999 /* EncounterInputObservation.m in Sources */,
 				A21C943F3620C9640A2BA285 /* EncounterInputObservationWindow.swift in Sources */,
