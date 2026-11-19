@@ -11,10 +11,23 @@ index f9a76cc58b2084094e45627426c95128cb2c6d0d..42a92d377e4463922212bf718a8db61b
  )
  
 diff --git a/cpp/OPBridge.cpp b/cpp/OPBridge.cpp
-index 23505cd4b6b5ffe0973f617fd9acc9728480c32d..8773a336ec924af73ba3eb3dd4cba4de462f0d3e 100644
+index 23505cd4b6b5ffe0973f617fd9acc9728480c32d..ab20ef0eeb6e8c7a62d56b5f49467155e43920b7 100644
 --- a/cpp/OPBridge.cpp
 +++ b/cpp/OPBridge.cpp
-@@ -91,7 +91,6 @@ sqlite3 *opsqlite_open(std::string const &name, std::string const &path,
+@@ -15,6 +15,12 @@
+ #include <stdexcept>
+ #include <unordered_map>
+ #include <variant>
++#if defined(OROT_TESTS) && defined(__APPLE__)
++#include <TargetConditionals.h>
++#if TARGET_OS_SIMULATOR
++#include "OrotActiveTabTrace.hpp"
++#endif
++#endif
+ 
+ #ifdef TOKENIZERS_HEADER_PATH
+ #include TOKENIZERS_HEADER_PATH
+@@ -91,7 +97,6 @@ sqlite3 *opsqlite_open(std::string const &name, std::string const &path,
                         bool readOnly, bool failOnCreate) {
  #endif
    std::string final_path = opsqlite_get_db_path(name, path);
@@ -22,7 +35,7 @@ index 23505cd4b6b5ffe0973f617fd9acc9728480c32d..8773a336ec924af73ba3eb3dd4cba4de
    sqlite3 *db;
  
    int flags = SQLITE_OPEN_FULLMUTEX;
-@@ -210,7 +209,8 @@ BridgeResult opsqlite_execute_prepared_statement(
+@@ -210,7 +215,8 @@ BridgeResult opsqlite_execute_prepared_statement(
      sqlite3 *db, sqlite3_stmt *statement, std::vector<DumbHostObject> *results,
      std::shared_ptr<std::vector<SmartHostObject>> &metadatas) {
  
@@ -32,7 +45,31 @@ index 23505cd4b6b5ffe0973f617fd9acc9728480c32d..8773a336ec924af73ba3eb3dd4cba4de
  
    bool isConsuming = true;
    bool isFailed = false;
-@@ -500,7 +500,8 @@ BridgeResult opsqlite_execute_host_objects(
+@@ -357,6 +363,9 @@ void opsqlite_finalize_statement(sqlite3_stmt *statement) {
+ 
+ BridgeResult opsqlite_execute(sqlite3 *db, std::string const &query,
+                               const std::vector<JSVariant> *params) {
++#if defined(OROT_TESTS) && defined(__APPLE__) && TARGET_OS_SIMULATOR
++  orot_active_tab::TraceScope traceScope;
++#endif
+   sqlite3_stmt *statement;
+   const char *errorMessage = nullptr;
+   const char *remainingStatement = nullptr;
+@@ -410,7 +419,13 @@ BridgeResult opsqlite_execute(sqlite3 *db, std::string const &query,
+     const char *string_value;
+ 
+     while (is_consuming_rows) {
++#if defined(OROT_TESTS) && defined(__APPLE__) && TARGET_OS_SIMULATOR
++      const auto trace = orot_active_tab::begin(query);
++#endif
+       status = sqlite3_step(statement);
++#if defined(OROT_TESTS) && defined(__APPLE__) && TARGET_OS_SIMULATOR
++      orot_active_tab::end(traceScope, trace, status);
++#endif
+ 
+       switch (status) {
+       case SQLITE_DONE:
+@@ -500,7 +515,8 @@ BridgeResult opsqlite_execute_host_objects(
      std::shared_ptr<std::vector<SmartHostObject>> &metadatas) {
  
    sqlite3_stmt *statement;
@@ -42,7 +79,7 @@ index 23505cd4b6b5ffe0973f617fd9acc9728480c32d..8773a336ec924af73ba3eb3dd4cba4de
    const char *remainingStatement = nullptr;
  
    bool isConsuming = true;
-@@ -658,7 +659,8 @@ opsqlite_execute_raw(sqlite3 *db, std::string const &query,
+@@ -658,7 +674,8 @@ opsqlite_execute_raw(sqlite3 *db, std::string const &query,
                       const std::vector<JSVariant> *params,
                       std::vector<std::vector<JSVariant>> *results) {
    sqlite3_stmt *statement;
@@ -149,6 +186,109 @@ index 9e387a6b8b7545bdadf7fdb2f70aafda4d45b069..52433cfff29dfa6f9cb7930a784d77cf
    std::string db_name;
    std::string delete_db_name;
    std::shared_ptr<jsi::Value> update_hook_callback;
+diff --git a/cpp/OrotActiveTabTrace.hpp b/cpp/OrotActiveTabTrace.hpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..d399d9b926bd3ccd0791eac864a0fe8edcb18cbb
+--- /dev/null
++++ b/cpp/OrotActiveTabTrace.hpp
+@@ -0,0 +1,97 @@
++#pragma once
++#if defined(OROT_TESTS) && defined(__APPLE__)
++#include <TargetConditionals.h>
++#if TARGET_OS_SIMULATOR
++#include <atomic>
++#include <array>
++#include <cstdio>
++#include <cstring>
++#include <mach/mach_time.h>
++#include <memory>
++#include <new>
++#include <crt_externs.h>
++#include <string>
++
++namespace orot_active_tab {
++inline const char *session() {
++  const int count = *_NSGetArgc();
++  const char *const *arguments = *_NSGetArgv();
++  bool enabled = false;
++  const char *run = nullptr;
++  for (int i = 0; i + 1 < count; ++i) {
++    if (std::strcmp(arguments[i], "-OROT_TEST_SCENARIO") == 0 &&
++        std::strcmp(arguments[i + 1], "active-tab-workload") == 0)
++      enabled = true;
++    if (std::strcmp(arguments[i], "-OROT_WORKLOAD_SESSION") == 0)
++      run = arguments[i + 1];
++  }
++  if (!enabled || !run || std::strlen(run) != 36) return nullptr;
++  for (int i = 0; i < 36; ++i) {
++    const char value = run[i];
++    const bool separator = i == 8 || i == 13 || i == 18 || i == 23;
++    const bool hex = (value >= '0' && value <= '9') ||
++                     (value >= 'a' && value <= 'f') ||
++                     (value >= 'A' && value <= 'F');
++    if (separator ? value != '-' : !hex) return nullptr;
++  }
++  return run;
++}
++struct Step {
++  unsigned long long sequence;
++  unsigned long long started;
++  std::array<char, 37> run;
++};
++struct Record {
++  Step step;
++  unsigned long long finished;
++  int status;
++};
++struct TraceScope {
++  std::unique_ptr<Record[]> records;
++  unsigned count = 0;
++  bool overflow = false;
++  void append(Step step, int status) {
++    const auto finished = mach_absolute_time();
++    if (!records) records.reset(new (std::nothrow) Record[1024]);
++    if (!records) {
++      overflow = true;
++      return;
++    }
++    if (count == 1024) {
++      overflow = true;
++      return;
++    }
++    records[count++] = {step, finished, status};
++  }
++  ~TraceScope() {
++    for (unsigned i = 0; i < count; ++i) {
++      const auto &record = records[i];
++      const char *result = record.status == SQLITE_ROW ? "row" :
++                           record.status == SQLITE_DONE ? "done" : "error";
++      std::fprintf(stderr, "OROT_ACTIVE_TAB_NATIVE_STEP %s %llu %llu %llu %s\n",
++                   record.step.run.data(), record.step.sequence, record.step.started,
++                   record.finished, result);
++    }
++    if (overflow) std::fprintf(stderr, "OROT_ACTIVE_TAB_NATIVE_OVERFLOW\n");
++  }
++};
++inline Step begin(const std::string &query) {
++  static std::atomic<unsigned long long> sequence{0};
++  constexpr const char *marker = "/* orot-synthetic-active-tab */";
++  if (query.compare(0, std::strlen(marker), marker) != 0)
++    return {};
++  const char *run = session();
++  if (!run)
++    return {};
++  Step step{++sequence, mach_absolute_time(), {}};
++  std::memcpy(step.run.data(), run, step.run.size());
++  return step;
++}
++inline void end(TraceScope &scope, Step step, int status) {
++  if (!step.sequence) return;
++  // The fixed event carries no SQL text, paths, keys, bindings or result data.
++  scope.append(step, status);
++}
++} // namespace orot_active_tab
++#endif
++#endif
 diff --git a/cpp/OrotCachedExecute.cpp b/cpp/OrotCachedExecute.cpp
 new file mode 100644
 index 0000000000000000000000000000000000000000..55b8ae69a3ed44e4a12cb12a76b64263c78b2f6a
