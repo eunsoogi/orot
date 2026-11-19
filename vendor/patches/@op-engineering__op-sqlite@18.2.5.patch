@@ -188,10 +188,10 @@ index 9e387a6b8b7545bdadf7fdb2f70aafda4d45b069..52433cfff29dfa6f9cb7930a784d77cf
    std::shared_ptr<jsi::Value> update_hook_callback;
 diff --git a/cpp/OrotActiveTabTrace.hpp b/cpp/OrotActiveTabTrace.hpp
 new file mode 100644
-index 0000000000000000000000000000000000000000..d399d9b926bd3ccd0791eac864a0fe8edcb18cbb
+index 0000000000000000000000000000000000000000..b3018b86a6a7e91b9c17676eb75534ffc160f2e5
 --- /dev/null
 +++ b/cpp/OrotActiveTabTrace.hpp
-@@ -0,0 +1,97 @@
+@@ -0,0 +1,121 @@
 +#pragma once
 +#if defined(OROT_TESTS) && defined(__APPLE__)
 +#include <TargetConditionals.h>
@@ -199,6 +199,7 @@ index 0000000000000000000000000000000000000000..d399d9b926bd3ccd0791eac864a0fe8e
 +#include <atomic>
 +#include <array>
 +#include <cstdio>
++#include <cstdlib>
 +#include <cstring>
 +#include <mach/mach_time.h>
 +#include <memory>
@@ -234,6 +235,7 @@ index 0000000000000000000000000000000000000000..d399d9b926bd3ccd0791eac864a0fe8e
 +  unsigned long long sequence;
 +  unsigned long long started;
 +  std::array<char, 37> run;
++  bool terminal;
 +};
 +struct Record {
 +  Step step;
@@ -258,27 +260,49 @@ index 0000000000000000000000000000000000000000..d399d9b926bd3ccd0791eac864a0fe8e
 +    records[count++] = {step, finished, status};
 +  }
 +  ~TraceScope() {
++    FILE *receipt = nullptr;
++    if (count) {
++      const char *temporary = std::getenv("TMPDIR");
++      if (temporary) {
++        const std::string path = std::string(temporary) + "/orot-active-tab-" +
++                                 records[0].step.run.data() + ".log";
++        receipt = std::fopen(path.c_str(), "a");
++      }
++    }
 +    for (unsigned i = 0; i < count; ++i) {
 +      const auto &record = records[i];
-+      const char *result = record.status == SQLITE_ROW ? "row" :
++      const char *result = record.step.terminal && record.status == SQLITE_DONE ? "terminal" :
++                           record.step.terminal && record.status == SQLITE_ROW ? "terminal-row" :
++                           record.status == SQLITE_ROW ? "row" :
 +                           record.status == SQLITE_DONE ? "done" : "error";
 +      std::fprintf(stderr, "OROT_ACTIVE_TAB_NATIVE_STEP %s %llu %llu %llu %s\n",
 +                   record.step.run.data(), record.step.sequence, record.step.started,
 +                   record.finished, result);
++      if (receipt)
++        std::fprintf(receipt, "%llu %llu %llu %s\n", record.step.sequence,
++                     record.step.started, record.finished, result);
 +    }
-+    if (overflow) std::fprintf(stderr, "OROT_ACTIVE_TAB_NATIVE_OVERFLOW\n");
++    if (overflow) {
++      std::fprintf(stderr, "OROT_ACTIVE_TAB_NATIVE_OVERFLOW\n");
++      if (receipt) std::fprintf(receipt, "overflow\n");
++    }
++    if (receipt) std::fclose(receipt);
 +  }
 +};
 +inline Step begin(const std::string &query) {
 +  static std::atomic<unsigned long long> sequence{0};
 +  constexpr const char *marker = "/* orot-synthetic-active-tab */";
-+  if (query.compare(0, std::strlen(marker), marker) != 0)
++  constexpr const char *terminal = "/* orot-synthetic-active-tab-complete */SELECT 1";
++  const bool isTerminal = query == terminal;
++  if (!isTerminal && query.compare(0, std::strlen(marker), marker) != 0)
 +    return {};
 +  const char *run = session();
 +  if (!run)
 +    return {};
-+  Step step{++sequence, mach_absolute_time(), {}};
++  Step step{++sequence, mach_absolute_time(), {}, isTerminal};
 +  std::memcpy(step.run.data(), run, step.run.size());
++  for (char &value : step.run)
++    if (value >= 'A' && value <= 'F') value += 'a' - 'A';
 +  return step;
 +}
 +inline void end(TraceScope &scope, Step step, int status) {

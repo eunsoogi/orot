@@ -35,6 +35,9 @@ int main() {
         assert(std::get<double>(plain.rows[index][0]) == static_cast<double>(index + 1));
         assert(std::get<double>(tagged.rows[index][0]) == std::get<double>(plain.rows[index][0]));
     }
+    // The final marker makes a truncated query receipt distinguishable from completion.
+    const auto terminal = opsqlite_execute(database, "/* orot-synthetic-active-tab-complete */SELECT 1", nullptr);
+    assert(terminal.rows.size() == 1);
     assert(sqlite3_close(database) == SQLITE_OK);
     std::cout << "PASS: tagged query preserves rows and order\n";
 }
