@@ -223,3 +223,36 @@ test('an interrupted incoming fade uncovers the mounted destination', async () =
     screen.getByTestId('navigation-content-transition').props.pointerEvents,
   ).toBe('auto');
 });
+
+// React Native may report an unfinished animation synchronously from stop().
+test('ignores a synchronous interrupted exit callback while switching destinations', async () => {
+  const view = await render(transition('home', 'Home'));
+  await view.rerender(transition('records', 'Records'));
+
+  const obsoleteExit = pendingAnimations[0]!;
+  obsoleteExit.stop.mockImplementationOnce(() =>
+    obsoleteExit.complete({ finished: false }),
+  );
+  const root = () =>
+    screen.getByTestId('navigation-content-transition', {
+      includeHiddenElements: true,
+    });
+  const hidden = { includeHiddenElements: true };
+
+  await view.rerender(transition('schedule', 'Schedule'));
+  expect(obsoleteExit.stop).toHaveBeenCalledTimes(1);
+  expect(pendingAnimations).toHaveLength(2);
+  expect(screen.getByText('Home', hidden)).toBeTruthy();
+  expect(screen.queryByText('Records', hidden)).toBeNull();
+  expect(screen.queryByText('Schedule', hidden)).toBeNull();
+  expect(root().props.pointerEvents).toBe('none');
+
+  await act(() => pendingAnimations[1]!.complete({ finished: true }));
+  expect(pendingAnimations).toHaveLength(3);
+  expect(screen.getByText('Schedule', hidden)).toBeTruthy();
+  expect(root().props.pointerEvents).toBe('none');
+
+  await act(() => pendingAnimations[2]!.complete({ finished: true }));
+  expect(screen.getByText('Schedule')).toBeVisible();
+  expect(root().props.pointerEvents).toBe('auto');
+});
