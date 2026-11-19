@@ -61,7 +61,10 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         tap(app, "별")
         tap(app, "assistant-appearance-save")
         XCTAssertTrue(node(app, "rag-conversation-screen").waitForAppearance())
-        try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
+        // Schedule is a section of Records, so enter through the visible root tab first.
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        tap(app, "records-section-schedule")
+        NavigationUITestConditions.route(app, markers: ["calendar-title"])
         tap(app, "open-medical-appointments")
         DisclosureLayoutUITestObservations.assertClassificationText(app, contains: "기기 안에서 분류해요.", in: self)
         // Measure real child viewports separately from the route and Back recovery assertions.
