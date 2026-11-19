@@ -48,6 +48,19 @@ test('quantity aggregation avoids the second time sort without changing any orde
         value: { kind: 'quantity', amount, unit: 'count/min' },
       });
     }
+    // The measurements-only history predicate must exclude these stored rows
+    // exactly as the full admission expression does, including workout casing.
+    for (const [id, concept, observationKind] of [
+      ['activity', 'step_count', 'measurement'],
+      ['workout', 'WORKOUT_DURATION', 'other'],
+      ['other-quantity', 'heart_rate', 'other'],
+      ['clinical-quantity', 'heart_rate', 'diagnosis'],
+    ] as const) {
+      await repository.put('health_observation', {
+        ...healthObservation(id, concept, '2026-03-08T05:12:00Z'),
+        observationKind,
+      });
+    }
     const days = healthContextDays({
       fromInclusive: '2026-03-08T00:00:00-05:00',
       toExclusive: '2026-03-09T00:00:00-04:00',
@@ -82,6 +95,7 @@ test('quantity aggregation avoids the second time sort without changing any orde
       lastAt: samples[7][1],
       latest: samples[7][2],
     });
+    expect(result.series).toHaveLength(1);
     // The scoped seek must match both historic rankings, including their
     // newest-first floating-point accumulation and exact offset spellings.
     await expect(

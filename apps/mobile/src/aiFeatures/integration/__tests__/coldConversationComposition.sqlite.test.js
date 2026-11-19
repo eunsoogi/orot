@@ -7,6 +7,7 @@ import { openLocalAgentMemoryDatabase } from '../../../storage/secureDatabase';
 import { createConversationSessions } from '../../../ragConversation/conversationSessions';
 import { conversationComposerDisabled } from '../../../ragConversation/conversationComposerDisabled';
 import * as diagnostics from '../../../providers/diagnostics';
+import * as historyDiagnostic from '../../../providers/conversationHistoryDiagnostic';
 import { createAiFeatureServices } from '../featureServices';
 import { consent } from '../featureServiceFixtures';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
@@ -191,6 +192,9 @@ test('profiles revision and presentation work after committed report reuse', asy
     loadLocalData,
   }).conversationSessionOptions();
   const profile = coldConversationProfile(f.database);
+  const costDetail = jest
+    .spyOn(historyDiagnostic, 'historyValidationCostEnabled')
+    .mockReturnValue(true);
   try {
     const fullStart = performance.now();
     const cpuStart = process.cpuUsage();
@@ -211,6 +215,15 @@ test('profiles revision and presentation work after committed report reuse', asy
       1, 2, 2, 2, 2,
     ]);
     const stats = profile.read();
+    for (const stage of [
+      'artifact_source_authority',
+      'artifact_parent_decode',
+      'artifact_parent_fingerprint',
+      'artifact_report_calendar',
+      'artifact_report_snapshot',
+      'artifact_report_fingerprint',
+    ])
+      expect(stats.initialValidationCosts[stage]?.calls).toBeGreaterThan(0);
     expect(stats.timelineToRecheckMs).toBeGreaterThan(0);
     expect(stats.sql.activity.calls).toBe(2);
     expect(stats.sql.activity.indexedLatest).toBe(2);
@@ -228,6 +241,7 @@ test('profiles revision and presentation work after committed report reuse', asy
       transcriptRevision: fingerprint(page),
     });
   } finally {
+    costDetail.mockRestore();
     profile.dispose();
     await drain();
     f.close();

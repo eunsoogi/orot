@@ -43,13 +43,17 @@ export function fingerprint(value: unknown): string {
 
 /** Hash the exact canonical text of a saved snapshot using UTF-16 code units. */
 export function fingerprintText(text: string): string {
-  const multiply = Math.imul;
   let first = 0x811c9dc5;
   let second = 0x9e3779b9;
   for (let index = 0; index < text.length; index += 1) {
     const code = text.charCodeAt(index);
-    first = multiply(first ^ code, 0x01000193);
-    second = multiply(second ^ code, 0x85ebca6b);
+    const firstWord = first ^ code;
+    const secondWord = second ^ code;
+    // Split 0x01000193 and 0x85ebca6b into low products and shifted high
+    // products. Each intermediate integer fits exactly in a JS number.
+    // Keeping only the low 32 bits gives the original Math.imul result.
+    first = (firstWord * 0x0193 + (firstWord << 24)) | 0;
+    second = (secondWord * 0xca6b + ((secondWord * 0x85eb) << 16)) | 0;
   }
   return `${(first >>> 0).toString(16)}${(second >>> 0).toString(16)}`;
 }

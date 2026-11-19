@@ -15,6 +15,7 @@ import type {
 } from './types';
 import { HEALTH_CONTEXT_TOPICS } from './types';
 import { traceHealthContext, type HealthContextTrace } from './trace';
+import type { measureHistoryValidationCost } from '../../providers/conversationHistoryDiagnostic';
 
 import {
   withHealthContextCalendar,
@@ -29,7 +30,10 @@ export async function readHealthContextReport(
   trace?: HealthContextTrace,
   diagnosticOwner?: object,
   calendarScope?: HealthContextCalendarScope,
-  restorationWorkspace?: { acquireHeartPrefix: AcquireHeartWorkoutPrefix },
+  restorationWorkspace?: {
+    acquireHeartPrefix: AcquireHeartWorkoutPrefix;
+    measureCost?: typeof measureHistoryValidationCost;
+  },
 ): Promise<HealthContextReport> {
   return withHealthContextCalendar(calendarScope, async calendar => {
     executor = observeReportAggregateSql(executor, diagnosticOwner);
@@ -40,7 +44,11 @@ export async function readHealthContextReport(
     )
       throw new RangeError('Invalid health context topics.');
     trace?.('calendar', 'started');
-    const days = calendar.read(window);
+    const days = restorationWorkspace?.measureCost
+      ? restorationWorkspace.measureCost('artifact_report_calendar', () =>
+          calendar.read(window),
+        )
+      : calendar.read(window);
     trace?.('calendar', 'completed');
     const selected = new Set(topics);
     const quantities =

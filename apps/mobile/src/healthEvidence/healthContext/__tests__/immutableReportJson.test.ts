@@ -54,3 +54,22 @@ test('bounds temporary quote reuse without dropping facts from a long report', (
 test('retains the persisted UTF-16 hash for surrogate pairs and lone surrogates', () => {
   expect(fingerprintText('ASCII 서울 😀 \ud800')).toBe('f5249451d600579d');
 });
+
+test('keeps the saved fingerprint over all UTF-16 code units', () => {
+  const compare = (text: string) => {
+    /* eslint-disable no-bitwise -- Compare against the original persisted hash. */
+    let first = 0x811c9dc5;
+    let second = 0x9e3779b9;
+    for (let index = 0; index < text.length; index++) {
+      first = Math.imul(first ^ text.charCodeAt(index), 0x01000193);
+      second = Math.imul(second ^ text.charCodeAt(index), 0x85ebca6b);
+    }
+    const original = (first >>> 0).toString(16) + (second >>> 0).toString(16);
+    /* eslint-enable no-bitwise */
+    expect(fingerprintText(text)).toBe(original);
+  };
+  const all = Array.from({ length: 65536 }, (_, i) => String.fromCharCode(i));
+  compare('');
+  compare(all.join(''));
+  compare(all.reverse().join(''));
+});

@@ -61,8 +61,15 @@ export async function readHealthQuantityContext(
                    json_extract(r.payload_json, '$.provenance.origin')) || ':' ||
           COALESCE(json_extract(r.payload_json, '$.provenance.source.productType'),
                    json_extract(r.payload_json, '$.provenance.source.device.model'), '')`;
-  const admitted = `json_extract(r.payload_json, '$.observationKind') NOT IN ('diagnosis', 'allergy', 'procedure')
-          AND (json_extract(r.payload_json, '$.observationKind') = 'measurement' OR ${concept} = 'workout_duration')
+  const kind = "json_extract(r.payload_json, '$.observationKind')";
+  // A measurements-only history read already excludes workout_duration.
+  // There, the equivalent kind equality also rejects the clinical kinds.
+  const admittedKind =
+    indexedLatest && family === 'measurements'
+      ? `${kind} = 'measurement'`
+      : `${kind} NOT IN ('diagnosis', 'allergy', 'procedure')
+          AND (${kind} = 'measurement' OR ${concept} = 'workout_duration')`;
+  const admitted = `${admittedKind}
           ${familyFilter}
           AND ${currentEvidenceCondition('health_observation')}
           AND json_extract(r.payload_json, '$.value.kind') = 'quantity'

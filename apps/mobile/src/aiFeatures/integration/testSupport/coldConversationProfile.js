@@ -8,6 +8,7 @@ import {
   shiftDate,
 } from '../../../healthEvidence/healthContext/calendarDate';
 import { validateHealthContextCalendar } from '../../../healthEvidence/healthContext/calendarValidation';
+import { observeCalendarProbes } from '../../../healthEvidence/healthContext/testSupport/observeCalendarProbes';
 
 /** Use the production restore path and measure real SQLite calls without logging
  * query bindings, result rows, identifiers or source payloads. */
@@ -24,15 +25,10 @@ export function coldConversationProfile(database) {
   }
   for (const zone of ['UTC', 'Asia/Tokyo', 'Pacific/Apia', 'Europe/London'])
     dayFormatter(zone);
-  const formatter = dayFormatter('Asia/Seoul');
-  const format = formatter.formatToParts;
-  let intlCalls = 0;
-  formatter.formatToParts = instant => {
-    intlCalls++;
-    return format.call(formatter, instant);
-  };
+  const probes = observeCalendarProbes(dayFormatter('Asia/Seoul'));
   const started = new Map();
   const stages = {};
+  const initialValidationCosts = {};
   const sql = {};
   const stats = {
     revisionMs: 0,
@@ -53,8 +49,19 @@ export function coldConversationProfile(database) {
       }
       if (outcome !== 'completed' || !started.has(stage)) return;
       const entry = (stages[stage] ??= { calls: 0, ms: 0 });
+      const elapsed = now - started.get(stage);
       entry.calls++;
-      entry.ms += now - started.get(stage);
+      entry.ms += elapsed;
+      if (
+        started.has('artifact_initial_validation') &&
+        (stage.startsWith('artifact_report_') ||
+          stage.startsWith('artifact_parent_') ||
+          stage === 'artifact_source_authority')
+      ) {
+        const cost = (initialValidationCosts[stage] ??= { calls: 0, ms: 0 });
+        cost.calls++;
+        cost.ms += elapsed;
+      }
       started.delete(stage);
       if (stage === 'history_recheck')
         timelineToRecheckMs = now - timelineStart;
@@ -102,8 +109,9 @@ export function coldConversationProfile(database) {
     read() {
       return {
         ...stats,
-        intlCalls,
+        intlCalls: probes.count,
         stages,
+        initialValidationCosts,
         timelineToRecheckMs,
         sql,
       };
@@ -112,7 +120,7 @@ export function coldConversationProfile(database) {
       diagnostic.mockRestore();
       revision.mockRestore();
       project.mockRestore();
-      formatter.formatToParts = format;
+      probes.dispose();
       database.transaction = transaction;
     },
   };

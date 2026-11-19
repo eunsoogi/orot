@@ -66,6 +66,7 @@ export function createConversationArtifactReader(
             false,
             validatePeriod,
             collectValidated,
+            operation?.active && operation.profileHistoryValidation,
           );
           output.push(value);
         } catch (error) {

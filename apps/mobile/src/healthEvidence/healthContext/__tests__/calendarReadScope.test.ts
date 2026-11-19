@@ -4,6 +4,7 @@ import {
 } from '../calendarReadScope';
 import * as calendar from '../window';
 import { dayFormatter } from '../calendarDate';
+import { observeCalendarProbes } from '../testSupport/observeCalendarProbes';
 import {
   committedReportCalendar,
   createCommittedReportScope,
@@ -148,17 +149,17 @@ test('overlapping long windows reuse civil midnights while retaining distinct cl
   // Evict the expected-value formatter before measuring a cold first pass.
   for (const zone of ['UTC', 'Asia/Seoul', 'Pacific/Apia', 'Europe/London'])
     dayFormatter(zone);
-  const format = jest.spyOn(dayFormatter(first.timeZone), 'formatToParts');
+  const probes = observeCalendarProbes(dayFormatter(first.timeZone));
   try {
     // A decoded period enumerates the same civil boundaries before scoped reads.
     calendar.healthContextDays(first);
-    expect(format.mock.calls.length).toBeGreaterThan(100);
-    format.mockClear();
+    expect(probes.count).toBeGreaterThan(100);
+    probes.reset();
     expect(scope.read(next)).toEqual(expected);
     // Across the DST transitions only newly exposed boundaries need an Intl search.
-    expect(format.mock.calls.length).toBeLessThan(100);
+    expect(probes.count).toBeLessThan(100);
   } finally {
     scope.dispose();
-    format.mockRestore();
+    probes.dispose();
   }
 });

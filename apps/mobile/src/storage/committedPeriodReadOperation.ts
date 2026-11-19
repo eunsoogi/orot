@@ -19,6 +19,10 @@ import {
 } from './symptomSummaryPeriods';
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import { nativeHeartWorkoutPrefix } from '../healthEvidence/healthContext/heartWorkoutPrefix';
+import {
+  historyValidationCostEnabled,
+  measureHistoryValidationCost,
+} from '../providers/conversationHistoryDiagnostic';
 
 /** Scope invalidation must not undo unrelated native writes on this connection. */
 class ReadScopeInvalidated extends Error {}
@@ -38,6 +42,8 @@ export function committedPeriodReadOperation(
   const reportScope = createCommittedReportScope(database);
   const reports = committedReportCache(reportScope.token, database)!;
   const calendar = committedReportCalendar(reportScope.token, database)!;
+  const profileHistoryValidation =
+    historyPage && historyValidationCostEnabled();
   let disposed = false;
   const cancel = () => {
     calendar.dispose();
@@ -57,6 +63,7 @@ export function committedPeriodReadOperation(
   };
   return {
     reportScope: reportScope.token,
+    profileHistoryValidation,
     dispose,
     get active() {
       return !disposed;
@@ -85,8 +92,14 @@ export function committedPeriodReadOperation(
         };
         // Keep the send/capture and its strict fallback on the same aggregate
         // shape. Only the explicit user-visible page borrows this workspace.
+        const measureCost = profileHistoryValidation
+          ? measureHistoryValidationCost
+          : undefined;
         const restorationWorkspace = historyPage
-          ? { acquireHeartPrefix: nativeHeartWorkoutPrefix(reportExecutor, tx) }
+          ? {
+              acquireHeartPrefix: nativeHeartWorkoutPrefix(reportExecutor, tx),
+              measureCost,
+            }
           : undefined;
         const validate: ReadOnlyPeriodValidation = async (
           executor,
@@ -117,28 +130,36 @@ export function committedPeriodReadOperation(
           );
           // The transaction owns this immutable snapshot. Freeze before the
           // first comparison so later checks can reuse the same pure digest.
-          const report =
-            cached && same(cached, before)
-              ? cached
-              : immutableReportSnapshot(
-                  await readHealthContextReport(
-                    reportExecutor,
-                    source.scope.window,
-                    [source.scope.topic],
-                    undefined,
-                    undefined,
-                    reports,
-                    calendar,
-                    restorationWorkspace,
-                  ),
-                );
+          let report = cached && same(cached, before) ? cached : undefined;
+          if (!report) {
+            const calculated = await readHealthContextReport(
+              reportExecutor,
+              source.scope.window,
+              [source.scope.topic],
+              undefined,
+              undefined,
+              reports,
+              calendar,
+              restorationWorkspace,
+            );
+            report = measureCost
+              ? measureCost('artifact_report_snapshot', () =>
+                  immutableReportSnapshot(calculated),
+                )
+              : immutableReportSnapshot(calculated);
+          }
           const after = await readHealthContextGeneration(tx);
           check();
           if (!same(before, report) || !same(after, report))
             throw new ReadScopeInvalidated(
               'Health context changed during validation.',
             );
-          assertSummaryPeriodReport(source, report, required);
+          if (measureCost) {
+            const current = report;
+            measureCost('artifact_report_fingerprint', () =>
+              assertSummaryPeriodReport(source, current, required),
+            );
+          } else assertSummaryPeriodReport(source, report, required);
           pending.set(key, report);
         };
         try {
