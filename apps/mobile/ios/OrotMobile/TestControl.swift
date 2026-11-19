@@ -82,6 +82,14 @@
             TestLifecycleObservation.record(event, fields: observation)
         }
 
+        #if targetEnvironment(simulator)
+            /// Synchronous receipt bounds bridge delay at the actual JS transaction boundary.
+            @objc(activeTabEvent:)
+            func activeTabEvent(_ event: String) -> NSString {
+                ActiveTabBoundaryObservation.record(event) as NSString
+            }
+        #endif
+
         @objc(speechSnapshot:rejecter:)
         func speechSnapshot(_ resolve: @escaping RCTPromiseResolveBlock, rejecter _: @escaping RCTPromiseRejectBlock) {
             resolve(TestSpeechObservation.snapshot())

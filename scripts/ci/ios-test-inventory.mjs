@@ -78,6 +78,7 @@ export const fixtureTests = [
   'OrotUITests/ActiveTabResponsivenessUITests/testPostSQLInputDoesNotCountAsOverlap',
   'OrotUITests/ActiveTabResponsivenessUITests/testAppointmentsScrollDuringActiveTool',
   'OrotUITests/ActiveTabResponsivenessUITests/testRecordsReadFailureDoesNotPassReadiness',
+  'OrotUITests/ActiveTabResponsivenessUITests/testOverviewReadFailureDoesNotPassReadiness',
   'OrotUITests/SummaryAndLiteratureUITests/testSavedSummaryRestoresAfterRelaunchAndHistoryReadRecoversAcrossAppearances',
   'OrotUITests/SummaryAndLiteratureUITests/testLiteratureConsentSearchRecoveryAndCancelledReadAcrossAppearances',
   'OrotUITests/AiFeatureNavigationUITests/testRootFeatureRoutesKeepTheirClearanceAndRecoverWhenNoProviderIsSelected',

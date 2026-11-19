@@ -153,6 +153,9 @@ final class ActiveTabResponsivenessUITests: OrotFailFastTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
         let result = try overlap(final, readiness: readiness, target: target, destination: destination, expectedScroll: scrollID)
+        if destination == "overview-screen" {
+            try ActiveTabReadinessUITestConditions.overviewReceipt(final, run: run, after: result.touch, before: result.visible)
+        }
         let timing = XCTAttachment(string: "touch=\(result.touch) visible=\(result.visible) scroll=\(result.scroll) lastSQL=\(result.lastSQL)")
         timing.name = "Synthetic active tab timing ticks"
         timing.lifetime = .keepAlways

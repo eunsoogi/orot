@@ -12,7 +12,12 @@ import {
 import App from '../App';
 import { name as appName } from '../app.json';
 import { runActiveTabHealthWorkload } from './activeTabHealthWorkload';
+import {
+  finishOverviewSnapshot,
+  observeOverviewSnapshot,
+} from './activeTabFixtureObservation';
 import type { CalendarBridge } from '../src/calendar/types';
+import type { SqlDatabase } from '@orot/storage';
 import { loadRecordingSummaries } from '../src/recording/loadRecordingSummaries';
 
 const calendarBridge: CalendarBridge = {
@@ -23,6 +28,38 @@ const calendarBridge: CalendarBridge = {
   findEvent: async () => ({ access: 'fullAccess', event: null }),
   addEventStoreListener: () => ({ remove: () => undefined }),
 };
+
+type FixtureGlobal = typeof globalThis & {
+  __orotActiveTabOverview?: (database: SqlDatabase) => SqlDatabase;
+  __orotActiveTabOverviewFinish?: (
+    database: SqlDatabase,
+    success: boolean,
+  ) => void;
+};
+
+/** A synchronous simulator-only receipt marks JS admission on the native monotonic clock. */
+function installOverviewObservation() {
+  const native = NativeModules.OrotTestControl;
+  const event = (name: string) => {
+    try {
+      // Missing receipts fail the XCTest; observation must not replace a database error.
+      native.activeTabEvent(name);
+    } catch {
+      // The real query and rollback retain their original outcome.
+    }
+  };
+  const manager = NativeModules.SettingsManager;
+  const settings =
+    manager?.settings ?? manager?.getConstants?.().settings ?? {};
+  (globalThis as FixtureGlobal).__orotActiveTabOverviewFinish =
+    finishOverviewSnapshot;
+  (globalThis as FixtureGlobal).__orotActiveTabOverview = database =>
+    observeOverviewSnapshot(
+      database,
+      event,
+      settings.OROT_WORKLOAD_FAIL_ROUTE === 'overview',
+    );
+}
 
 async function failRecordingRead(): Promise<never> {
   throw new Error('Synthetic recordings read failure.');
@@ -109,6 +146,7 @@ function ActiveTabWorkloadProbe() {
           });
         }
         if (active) {
+          installOverviewObservation();
           setDatabase(connection);
           setState('ready');
         }
@@ -116,6 +154,8 @@ function ActiveTabWorkloadProbe() {
       .catch(() => active && setState('failed'));
     return () => {
       active = false;
+      delete (globalThis as FixtureGlobal).__orotActiveTabOverview;
+      delete (globalThis as FixtureGlobal).__orotActiveTabOverviewFinish;
     };
   }, []);
   if (!database) return <Text testID="active-tab-workload-state">{state}</Text>;

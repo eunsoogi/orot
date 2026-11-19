@@ -69,7 +69,8 @@ import UIKit
             let value: [String: Any] = ["run": run.uuidString, "events": events, "overflow": overflow,
                                         "sampleTick": mach_absolute_time(), "visible": ready,
                                         "truncated": !pending.isEmpty, "sql": sql as Any? ?? NSNull(),
-                                        "timebaseNumer": timebase.numer, "timebaseDenom": timebase.denom]
+                                        "timebaseNumer": timebase.numer, "timebaseDenom": timebase.denom,
+                                        "boundaries": ActiveTabBoundaryObservation.snapshot()]
             guard let data = try? JSONSerialization.data(withJSONObject: value),
                   let result = String(data: data, encoding: .utf8) else { return "{\"status\":\"unavailable\"}" }
             return result

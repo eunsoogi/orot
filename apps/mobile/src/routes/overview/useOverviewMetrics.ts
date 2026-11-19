@@ -7,6 +7,7 @@ import {
   subscribeLocalSourceDeletion,
 } from '../../storage/localDataClearEvents';
 import { loadOverviewMetrics } from './metricLoader';
+import { activeTabFixtureLoad } from './activeTabFixtureBoundary';
 import {
   defaultOverviewMetrics,
   loadOverviewMetricSelection,
@@ -97,7 +98,9 @@ export function useOverviewMetrics() {
           storage
             .openLocalAgentMemoryDatabase()
             .then(database =>
-              loadOverviewMetrics(database, undefined, controller.signal),
+              activeTabFixtureLoad(database, observed =>
+                loadOverviewMetrics(observed, undefined, controller.signal),
+              ),
             ),
         ]);
       })

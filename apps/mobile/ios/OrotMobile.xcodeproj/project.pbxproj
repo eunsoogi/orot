@@ -321,6 +321,7 @@
 		A7C87A6DBF7A4A8FA2D86B11 /* OverviewMetricGeometryConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C87A6DBF7A4A8FA2D86B12 /* OverviewMetricGeometryConditions.swift */; };
 		FA6E3C21B77B41D198C04A31 /* OverviewDuoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */; };
 		FA6E3C21B77B41D198C04A33 /* ActiveTabResponsivenessUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A34 /* ActiveTabResponsivenessUITests.swift */; };
+		FA6E3C21B77B41D198C04A41 /* ActiveTabBoundaryObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A42 /* ActiveTabBoundaryObservation.swift */; };
 		FA6E3C21B77B41D198C04A39 /* ActiveTabReadFailureUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A40 /* ActiveTabReadFailureUITests.swift */; };
 		FA6E3C21B77B41D198C04A35 /* ActiveTabReadiness.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A36 /* ActiveTabReadiness.swift */; };
 		FA6E3C21B77B41D198C04A37 /* ActiveTabReadinessUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6E3C21B77B41D198C04A38 /* ActiveTabReadinessUITestConditions.swift */; };
@@ -583,6 +584,7 @@
 		A7C87A6DBF7A4A8FA2D86B12 /* OverviewMetricGeometryConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverviewMetricGeometryConditions.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverviewDuoUITests.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A34 /* ActiveTabResponsivenessUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActiveTabResponsivenessUITests.swift; sourceTree = "<group>"; };
+		FA6E3C21B77B41D198C04A42 /* ActiveTabBoundaryObservation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActiveTabBoundaryObservation.swift; path = OrotMobile/ActiveTabBoundaryObservation.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A40 /* ActiveTabReadFailureUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActiveTabReadFailureUITests.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A36 /* ActiveTabReadiness.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActiveTabReadiness.swift; sourceTree = "<group>"; };
 		FA6E3C21B77B41D198C04A38 /* ActiveTabReadinessUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActiveTabReadinessUITestConditions.swift; sourceTree = "<group>"; };
@@ -1011,6 +1013,7 @@
 				C3EE3BE523BD582B1201B757 /* EncounterInputObservation.m */,
 				1FBA5CF1F52655B5FCBEC22C /* EncounterInputObservationWindow.swift */,
 				1FBA5CF1F52655B5FCBEC226 /* ActiveTabObservationWindow.swift */,
+				FA6E3C21B77B41D198C04A42 /* ActiveTabBoundaryObservation.swift */,
 				F2F3BBF69737C643D24C3D8F /* EncounterInputObservation.swift */,
 				5CC3F5B2AACFC717C874D500 /* EncounterInputTrace.swift */,
 				48234CD5062B454DB27EE2CB6489F06B /* VisitQuestionInputGate.swift */,
@@ -1749,6 +1752,7 @@
 				074959A5631EC90A8EA8D999 /* EncounterInputObservation.m in Sources */,
 				A21C943F3620C9640A2BA285 /* EncounterInputObservationWindow.swift in Sources */,
 				A66C943F3620C9640A2BA285 /* ActiveTabObservationWindow.swift in Sources */,
+				FA6E3C21B77B41D198C04A41 /* ActiveTabBoundaryObservation.swift in Sources */,
 				2A485CA6142E56619E9E3BF0 /* EncounterInputObservation.swift in Sources */,
 				D60FF57E88DCFD19A245577A /* EncounterInputTrace.swift in Sources */,
 				09748877AD3642DCA2AE5EE29131280C /* VisitQuestionInputGate.swift in Sources */,

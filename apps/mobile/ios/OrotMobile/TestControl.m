@@ -1,4 +1,5 @@
 #if OROT_TESTS
+#import <TargetConditionals.h>
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
 
@@ -11,6 +12,9 @@ RCT_EXTERN_METHOD(fail : (NSString *)identifier message : (NSString *)message)
 RCT_EXTERN_METHOD(enqueueSyntheticReply : (NSDictionary *)input resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(recordObservation : (NSDictionary *)observation)
+#if TARGET_OS_SIMULATOR
+RCT_EXTERN__BLOCKING_SYNCHRONOUS_METHOD(activeTabEvent : (NSString *)event)
+#endif
 RCT_EXTERN_METHOD(speechSnapshot : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(refreshAppearance : (RCTPromiseResolveBlock)
