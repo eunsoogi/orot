@@ -116,7 +116,8 @@ export function ProviderSelectionProbe() {
         <Button
           onPress={() => setAuthFlow('missingScope')}
           testID="provider-selection-account-missing-scope"
-          title="Show synthetic account permission guidance"
+          // Keep the fixture label short so large text can fit the measured viewport.
+          title="Missing scope"
         />
         <Button
           onPress={() => {
