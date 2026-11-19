@@ -53,18 +53,33 @@ enum RoutesVisibleContentUITestConditions {
             }
             return visible
         }
-        if text.frame.height <= viewport().height {
-            _ = try XCTUnwrap(FormUITestConditions.reveal(text, in: app, scroll: scroll))
-            XCTAssertTrue(text.isHittable)
-            XCTAssertTrue(viewport().contains(text.frame), "Text: \(text.frame), viewport: \(viewport())")
-            return
-        }
-        func drag(up: Bool, within visible: CGRect) {
+        func drag(up: Bool, within visible: CGRect, distance: CGFloat? = nil) {
             let origin = window.coordinate(withNormalizedOffset: .zero)
             let x = visible.midX - window.frame.minX
-            let y1 = visible.minY + visible.height * (up ? 0.75 : 0.35) - window.frame.minY
-            let y2 = visible.minY + visible.height * (up ? 0.35 : 0.75) - window.frame.minY
-            origin.withOffset(CGVector(dx: x, dy: y1)).press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: x, dy: y2)))
+            let delta = distance ?? visible.height * 0.4
+            let y1 = visible.midY + (up ? delta / 2 : -delta / 2) - window.frame.minY
+            let y2 = visible.midY + (up ? -delta / 2 : delta / 2) - window.frame.minY
+            origin.withOffset(CGVector(dx: x, dy: y1)).press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: x, dy: y2)), withVelocity: .slow, thenHoldForDuration: 0)
+        }
+        if text.frame.height <= viewport().height {
+            // The shared reveal frame does not include the route's floating navigation overlay.
+            for attempt in 0 ... 16 {
+                let frame = text.frame
+                let visible = viewport()
+                if visible.contains(frame) {
+                    XCTAssertTrue(text.isHittable, text.debugDescription)
+                    return
+                }
+                if attempt == 16 {
+                    break
+                }
+                let up = frame.maxY > visible.maxY
+                let overflow = up ? frame.maxY - visible.maxY : visible.minY - frame.minY
+                let distance = RoutesVisibleInterval.revealDistance(overflow: overflow, slack: visible.height - frame.height, viewportHeight: visible.height)
+                drag(up: up, within: visible, distance: distance)
+            }
+            XCTFail("Report text did not enter its unobstructed viewport: text=\(text.frame), viewport=\(viewport())")
+            throw ObservationFailure.incompleteText
         }
         // The first observation may start above or below the text; expose its top before measuring coverage.
         for _ in 0 ..< 16 {

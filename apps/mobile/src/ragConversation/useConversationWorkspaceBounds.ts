@@ -66,11 +66,23 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
   }, [measure]);
   useEffect(measure, [measure, geometry, shared, width, height, fontScale]);
   const fallback = shared?.availableContentFrame ?? geometry?.safeAreaFrame;
-  const hostBounds = bounds ?? {
+  const measuredBounds = bounds ?? {
     x: fallback?.x ?? 0,
     y: fallback?.y ?? 0,
     width: fallback?.width ?? width,
     height: fallback?.height ?? height,
+  };
+  // The shell contracts before asynchronous measureInWindow callbacks return. Never
+  // let the last measured host carry a floating composer below its current viewport.
+  const sharedBottom = shared
+    ? shared.availableContentFrame.y + shared.availableContentFrame.height
+    : Infinity;
+  const hostBounds = {
+    ...measuredBounds,
+    height: Math.max(
+      0,
+      Math.min(measuredBounds.height, sharedBottom - measuredBounds.y),
+    ),
   };
   const plan = conversationHingeLayout(
     geometry,
