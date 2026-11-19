@@ -44,10 +44,13 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         let input = node(app, "rag-conversation-input")
         // This no-provider case needs only nonempty input to enable Send; keep native character entry short.
         try RoutesVisibleContentUITestConditions.composer(input, in: app)
+        let workspaceBeforeKeyboard = node(app, "conversation-workspace-host").frame
+        let focusedAt = Date().timeIntervalSince1970 * 1000
         input.tap()
         input.typeText("test")
         XCTAssertTrue(String(describing: input.value ?? "").contains("test"))
         input.typeText("\n")
+        try RoutesVisibleContentUITestConditions.keyboardReady(app, baseline: workspaceBeforeKeyboard, focusedAt: focusedAt)
         try RoutesVisibleContentUITestConditions.composer(send, in: app, observationSession: observationSession, testCase: self)
         ConversationHitUITestObservation.assertSendReady(app, send: send, session: observationSession, testCase: self)
         let sendSample = ConversationHitUITestObservation.sample(send)

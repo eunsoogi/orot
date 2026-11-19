@@ -3,6 +3,49 @@ import XCTest
 /// Route-specific observations preserve the floating composer's and long report's real native geometry.
 @MainActor
 enum RoutesVisibleContentUITestConditions {
+    /// Observe keyboardDidShow and two matching UIKit workspace layouts; never wait for Send to clear.
+    static func keyboardReady(_ app: XCUIApplication, baseline: CGRect, focusedAt: Double) throws {
+        let keyboard = app.keyboards.firstMatch
+        let eventMarker = UITestConditions.element(app, "ai-feature-visit-questions-keyboard-visible")
+        let navigationMarker = UITestConditions.element(app, "navigation-test-observation")
+        let host = UITestConditions.element(app, "conversation-workspace-host")
+        let workspace = UITestConditions.element(app, "conversation-workspace")
+        var previous: [CGRect]?
+        var last = "No complete keyboard and workspace observation"
+        // Each attempt is a real snapshot; an unresolved transition fails after this fixed budget.
+        for _ in 0 ..< 8 {
+            guard keyboard.exists, eventMarker.exists, navigationMarker.exists, host.exists, workspace.exists,
+                  let window = FormWindowOwnership.resolve(app, scroll: host, target: workspace, reportFailure: false)
+            else { previous = nil; continue }
+            let parts = eventMarker.label.split(separator: ":")
+            guard parts.count == 3, parts[0] == "keyboard-visible", let y = Double(parts[1]), let height = Double(parts[2]),
+                  let report = try? JSONSerialization.jsonObject(with: Data(UITestConditions.text(navigationMarker).utf8)) as? [String: Any],
+                  let events = report["lifecycle"] as? [[String: Any]],
+                  let latest = events.last(where: { $0["event"] as? String == "navigation-content-frame" }),
+                  let at = latest["atMs"] as? Double, at >= focusedAt,
+                  let json = latest["frame"] as? String,
+                  let data = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any],
+                  let shared = data["availableContentFrame"] as? [String: Double],
+                  let sx = shared["x"], let sy = shared["y"], let sw = shared["width"], let sh = shared["height"]
+            else { previous = nil; continue }
+            let windowFrame = window.frame
+            let keyboardEvent = CGRect(x: windowFrame.minX, y: y, width: windowFrame.width, height: height)
+            let keyboardAX = keyboard.frame
+            let sharedFrame = CGRect(x: windowFrame.minX + sx, y: windowFrame.minY + sy, width: sw, height: sh)
+            let hostFrame = host.frame
+            let workspaceFrame = workspace.frame
+            let current = [keyboardEvent, keyboardAX, sharedFrame, hostFrame, workspaceFrame]
+            last = "keyboardEvent=\(keyboardEvent), keyboardAX=\(keyboardAX), baseline=\(baseline), shared=\(sharedFrame), host=\(hostFrame), workspace=\(workspaceFrame)"
+            guard RoutesKeyboardReadiness.ready(keyboardEvent: keyboardEvent, keyboardAX: keyboardAX, baseline: baseline, shared: sharedFrame, host: hostFrame, workspace: workspaceFrame) else { previous = nil; continue }
+            if let previous, zip(previous, current).allSatisfy({ $0.0.equalTo($0.1) }) {
+                return
+            }
+            previous = current
+        }
+        XCTFail("Keyboard and workspace did not converge: \(last)")
+        throw ObservationFailure.keyboardNotReady
+    }
+
     static func composer(_ control: XCUIElement, in app: XCUIApplication, observationSession: String? = nil, testCase: XCTestCase? = nil) throws {
         let dock = UITestConditions.element(app, "rag-conversation-composer")
         let history = UITestConditions.element(app, "rag-conversation-history")
@@ -130,5 +173,5 @@ enum RoutesVisibleContentUITestConditions {
         throw ObservationFailure.incompleteText
     }
 
-    private enum ObservationFailure: Error { case missingWindow, incompleteText }
+    private enum ObservationFailure: Error { case missingWindow, incompleteText, keyboardNotReady }
 }
