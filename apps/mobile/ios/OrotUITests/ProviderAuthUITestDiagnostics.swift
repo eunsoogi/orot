@@ -3,6 +3,35 @@ import XCTest
 /// Preserves the original consent oracle while retaining only secret-free state on failure.
 @MainActor
 enum ProviderAuthUITestDiagnostics {
+    /// Prove the tagged page and the exact message share one window before every measured gesture.
+    static func selectionMessageWindow(_ app: XCUIApplication, text: String, role: XCUIElement.ElementType?) -> XCUIElement? {
+        let windows = app.windows.allElementsBoundByIndex.filter(\.exists)
+        let predicate = NSPredicate(format: "label == %@", text)
+        func leaves(_ root: XCUIElement) -> [XCUIElement] {
+            root.descendants(matching: role ?? .any).matching(predicate).allElementsBoundByIndex.filter {
+                $0.descendants(matching: role ?? .any).matching(predicate).count == 0
+            }
+        }
+        let pagePredicate = NSPredicate(format: "identifier == %@", "provider-selection-screen")
+        let pageCounts = windows.map { $0.descendants(matching: .any).matching(pagePredicate).count }
+        guard let owner = FormScrollGeometry.uniqueOwnerIndex(pageCounts) else {
+            XCTFail("Provider page window is not unique: \(pageCounts)")
+            return nil
+        }
+        let page = windows[owner].descendants(matching: .any).matching(pagePredicate).firstMatch
+        let scrolls = page.scrollViews
+        let targetCounts = windows.map { leaves($0).count }
+        guard scrolls.count == 1, scrolls.firstMatch.scrollViews.count == 0,
+              scrolls.firstMatch.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "provider-selection-footer")).count == 1,
+              FormScrollGeometry.uniqueOwnerIndex(targetCounts) == owner,
+              leaves(scrolls.firstMatch).count == 1
+        else {
+            XCTFail("Provider message ownership is ambiguous: page=\(pageCounts), target=\(targetCounts)")
+            return nil
+        }
+        return windows[owner]
+    }
+
     enum Stage: String {
         case firstNativeCancellation = "first-native-cancellation"
         case secondNativeReturn = "second-native-return"

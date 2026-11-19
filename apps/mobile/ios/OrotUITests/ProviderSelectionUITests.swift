@@ -53,8 +53,9 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
         tap(app, "provider-option-1")
         XCTAssertTrue(UITestConditions.exists(node(app, "provider-option-12")))
         DebugUITestConditions.dismissWarningToast(app)
-        let confirm = node(app, "provider-selection-confirm")
-        FormUITestConditions.reveal(confirm, in: app, scroll: selectionPage(app))
+        let scroll = selectionPage(app)
+        let confirm = scroll.descendants(matching: .any).matching(NSPredicate(format: "identifier == %@", "provider-selection-confirm")).firstMatch
+        FormUITestConditions.reveal(confirm, in: app, scroll: scroll, windowResolver: { _ = self.selectionPage(app); return FormWindowOwnership.resolve(app, scroll: self.node(app, "provider-selection-screen"), target: confirm) })
         XCTAssertTrue(node(app, "provider-selection-confirmation-privacy").isHittable)
         XCTAssertTrue(confirm.isHittable)
         confirm.tap()
@@ -203,8 +204,10 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
     private func selectionPage(_ app: XCUIApplication) -> XCUIElement {
         let footer = node(app, "provider-selection-footer")
         XCTAssertTrue(UITestConditions.exists(footer) && !footer.frame.isEmpty)
-        // Confirmation belongs to the catalog's page, so drag its actual viewport rather than a footer-sized region.
-        let scroll = app.scrollViews.matching(identifier: "provider-selection-screen").firstMatch
+        // React Native exposes the tagged page as an outer element around its actual scroll viewport.
+        let page = node(app, "provider-selection-screen")
+        XCTAssertEqual(page.scrollViews.count, 1, app.debugDescription)
+        let scroll = page.scrollViews.firstMatch
         XCTAssertTrue(UITestConditions.exists(scroll) && !scroll.frame.isEmpty, app.debugDescription)
         XCTAssertEqual(scroll.scrollViews.count, 0, app.debugDescription)
         XCTAssertTrue(scroll.descendants(matching: .any).matching(identifier: "provider-selection-footer").firstMatch.exists, app.debugDescription)
@@ -215,16 +218,17 @@ final class ProviderSelectionUITests: OrotFailFastTestCase {
     private func message(_ app: XCUIApplication, _ text: String, role: XCUIElement.ElementType? = nil) throws {
         // Use the observed native role for slow post-consent status text; unspecified messages retain the broad role fallback.
         // After native consent, the app AX window can be transient; find the required result before the optional toast check.
-        let target = app.descendants(matching: role ?? .any)
+        XCTAssertTrue(UITestConditions.exists(app.descendants(matching: role ?? .any).matching(NSPredicate(format: "label == %@", text)).firstMatch), app.debugDescription)
+        let scroll = selectionPage(app)
+        let target = scroll.descendants(matching: role ?? .any)
             .matching(NSPredicate(format: "label == %@", text)).firstMatch
         XCTAssertTrue(UITestConditions.exists(target), app.debugDescription)
         DebugUITestConditions.dismissWarningToast(app)
         if let role {
             XCTAssertEqual(target.elementType, role)
         }
-        let scroll = selectionPage(app)
         // Preserve the original visible-message requirement with real scrolling and rendered pixels; static text need not provide a touch activation point.
-        FormUITestConditions.reveal(target, in: app, scroll: scroll, requireHittable: false)
+        FormUITestConditions.reveal(target, in: app, scroll: scroll, requireHittable: false, windowResolver: { ProviderAuthUITestDiagnostics.selectionMessageWindow(app, text: text, role: role) })
         if target.elementType == .button {
             // A button has a native activation point; its adjacent symbol is not part of the title's text oracle.
             XCTAssertTrue(target.isHittable && app.frame.contains(target.frame), app.debugDescription)
