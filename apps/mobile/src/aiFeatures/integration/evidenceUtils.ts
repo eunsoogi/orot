@@ -38,12 +38,18 @@ export function stableJson(value: unknown): string {
 
 /* eslint-disable no-bitwise -- Local fingerprints detect changed snapshots without exporting source data. */
 export function fingerprint(value: unknown): string {
-  const text = stableJson(value);
+  return fingerprintText(stableJson(value));
+}
+
+/** Hash the exact canonical text of a saved snapshot using UTF-16 code units. */
+export function fingerprintText(text: string): string {
+  const multiply = Math.imul;
   let first = 0x811c9dc5;
   let second = 0x9e3779b9;
   for (let index = 0; index < text.length; index += 1) {
-    first = Math.imul(first ^ text.charCodeAt(index), 0x01000193);
-    second = Math.imul(second ^ text.charCodeAt(index), 0x85ebca6b);
+    const code = text.charCodeAt(index);
+    first = multiply(first ^ code, 0x01000193);
+    second = multiply(second ^ code, 0x85ebca6b);
   }
   return `${(first >>> 0).toString(16)}${(second >>> 0).toString(16)}`;
 }
