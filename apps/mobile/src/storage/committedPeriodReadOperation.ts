@@ -7,6 +7,7 @@ import {
   createCommittedReportScope,
   committedReportCache,
   committedReportCalendar,
+  immutableReportSnapshot,
 } from '../healthEvidence/healthContext/committedReportScope';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import type { HealthContextReport } from '../healthEvidence/healthContext/types';
@@ -107,17 +108,21 @@ export function committedPeriodReadOperation(
                 ? 'generation_miss'
                 : 'new_key',
           );
+          // The transaction owns this immutable snapshot. Freeze before the
+          // first comparison so later checks can reuse the same pure digest.
           const report =
             cached && same(cached, before)
               ? cached
-              : await readHealthContextReport(
-                  reportExecutor,
-                  source.scope.window,
-                  [source.scope.topic],
-                  undefined,
-                  undefined,
-                  reports,
-                  calendar,
+              : immutableReportSnapshot(
+                  await readHealthContextReport(
+                    reportExecutor,
+                    source.scope.window,
+                    [source.scope.topic],
+                    undefined,
+                    undefined,
+                    reports,
+                    calendar,
+                  ),
                 );
           const after = await readHealthContextGeneration(tx);
           check();

@@ -11,7 +11,8 @@ import { createAiFeatureServices } from '../featureServices';
 import { consent } from '../featureServiceFixtures';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { diverseHistoryProfileFixture } from '../testSupport/diverseHistoryProfileFixture';
-
+import * as projection from '../../../healthEvidence/healthContext/projection';
+import * as revisions from '../../../healthEvidence/healthContext/scope';
 /** Jest leaves Metro's lazy imports intact. Transform the two entry modules
  * while preserving production factory code and using Jest's actual dependencies. */
 function loadProductionLocalData() {
@@ -47,11 +48,20 @@ function loadProductionLocalData() {
     ),
   }).openAiFeatureLocalData;
 }
-
 jest.mock('../../../storage/secureDatabase', () => ({
   openLocalAgentMemoryDatabase: jest.fn(),
 }));
-
+/** Model the native adapter's admission order on the synchronous SQLite host. */
+function serializeTransactions(database) {
+  const transaction = database.transaction.bind(database);
+  let idle = Promise.resolve();
+  database.transaction = work => {
+    const pending = idle.then(() => transaction(work));
+    idle = pending.catch(() => {});
+    return pending;
+  };
+  return () => idle;
+}
 /** The production composition over synthetic SQLite shares initialization only.
  * A failed setup retries, while concurrent discovery owners still get live reads. */
 test('cold restore reuses summary storage setup across discovery owners and revalidates deletion', async () => {
@@ -63,32 +73,27 @@ test('cold restore reuses summary storage setup across discovery owners and reva
   }).conversationSessionOptions();
   const sessions = createConversationSessions(options);
   const database = f.database;
+  const drain = serializeTransactions(database);
   const transaction = database.transaction.bind(database);
   const direct = database.execute.bind(database);
-  let queue = Promise.resolve();
   let setupAttempts = 0;
   let failSetup = true;
-  database.transaction = work => {
-    const pending = queue.then(() =>
-      transaction(async tx => {
-        const execute = tx.execute.bind(tx);
-        tx.execute = async (...args) => {
-          if (
-            args[0].startsWith(
-              'CREATE INDEX IF NOT EXISTS symptom_summary_order ',
-            )
-          ) {
-            setupAttempts++;
-            if (failSetup) throw new Error('Synthetic setup failure');
-          }
-          return execute(...args);
-        };
-        await work(tx);
-      }),
-    );
-    queue = pending.catch(() => {});
-    return pending;
-  };
+  database.transaction = work =>
+    transaction(async tx => {
+      const execute = tx.execute.bind(tx);
+      tx.execute = async (...args) => {
+        if (
+          args[0].startsWith(
+            'CREATE INDEX IF NOT EXISTS symptom_summary_order ',
+          )
+        ) {
+          setupAttempts++;
+          if (failSetup) throw new Error('Synthetic setup failure');
+        }
+        return execute(...args);
+      };
+      await work(tx);
+    });
   const stages = {};
   const hydrationStarts = [];
   let hydrationMs = 0;
@@ -172,7 +177,71 @@ test('cold restore reuses summary storage setup across discovery owners and reva
   } finally {
     diagnostic.mockRestore();
     sessions.dispose();
-    await queue;
+    await drain();
     f.close();
   }
 });
+/** Profile CPU within the production hydration stage on five long retained turns. */
+test('profiles revision and presentation work after committed report reuse', async () => {
+  const f = await diverseHistoryProfileFixture(5, true, '2022-10-01T00:00:00Z');
+  const drain = serializeTransactions(f.database);
+  jest.mocked(openLocalAgentMemoryDatabase).mockResolvedValue(f.database);
+  const loadLocalData = loadProductionLocalData();
+  const options = createAiFeatureServices(consent, {
+    loadLocalData,
+  }).conversationSessionOptions();
+  const stats = {
+    hydrationMs: 0,
+    revisionMs: 0,
+    projectionMs: 0,
+    revisionCalls: 0,
+    projectionCalls: 0,
+  };
+  let start = null;
+  const diagnostic = jest
+    .spyOn(diagnostics, 'providerDiagnostic')
+    .mockImplementation((_feature, stage, outcome) => {
+      if (stage !== 'artifact_source_hydration') return;
+      if (outcome === 'started') start = performance.now();
+      else if (start !== null) {
+        stats.hydrationMs += performance.now() - start;
+        start = null;
+      }
+    });
+  const observe = (module, name, key) => {
+    const work = module[name];
+    return jest.spyOn(module, name).mockImplementation((...args) => {
+      if (start === null) return work(...args);
+      const before = performance.now();
+      try {
+        return work(...args);
+      } finally {
+        stats[key + 'Ms'] += performance.now() - before;
+        stats[key + 'Calls']++;
+      }
+    });
+  };
+  const revision = observe(revisions, 'healthContextRevision', 'revision');
+  const project = observe(projection, 'projectHealthContext', 'projection');
+  try {
+    const fullStart = performance.now();
+    const page = await options.restoreSessionPage(
+      'session',
+      new AbortController().signal,
+    );
+    expect(page.turns).toHaveLength(5);
+    expect(page.turns.filter(turn => turn.historyUnavailable)).toEqual([]);
+    expect(page.turns.every(turn => turn.citations.length)).toBe(true);
+    expect(stats.revisionCalls).toBe(15);
+    console.info('SYNTHETIC_LONG_SOURCE_HYDRATION', {
+      ...stats,
+      fullMs: performance.now() - fullStart,
+    });
+  } finally {
+    diagnostic.mockRestore();
+    revision.mockRestore();
+    project.mockRestore();
+    await drain();
+    f.close();
+  }
+}, 60000);

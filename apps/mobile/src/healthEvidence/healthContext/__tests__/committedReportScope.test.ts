@@ -5,8 +5,10 @@ import { healthContextFixture } from '../../../aiFeatures/integration/testSuppor
 import {
   createCommittedReportScope,
   committedReportCache,
+  immutableReportSnapshot,
 } from '../committedReportScope';
 import { healthContextRevision } from '../scope';
+import * as revisions from '../../../aiFeatures/integration/evidenceUtils';
 
 // The report is actually computed in SQLite; the shared cache is not validity authority.
 test('publishes isolated immutable values without freezing or changing caller-owned reports', async () => {
@@ -126,6 +128,46 @@ test('caller mutation before scope creation cannot poison the committed base-cac
     operation.dispose();
     owner.dispose();
   } finally {
+    f.close();
+  }
+});
+
+/** Reuse only the digest of an owned immutable value and an exact source scope. */
+test('period digests reuse immutable facts while caller mutation and scope changes are observed', async () => {
+  const f = await healthContextFixture();
+  const hash = jest.spyOn(revisions, 'fingerprint');
+  try {
+    const scope = {
+      kind: 'health_context_period' as const,
+      version: 1 as const,
+      topic: 'measurements' as const,
+      window: f.report.window,
+    };
+    const snapshot = immutableReportSnapshot(f.report);
+    const expected = healthContextRevision(scope, f.report);
+    hash.mockClear();
+    expect(healthContextRevision(scope, snapshot)).toBe(expected);
+    expect(
+      healthContextRevision(
+        { ...scope, window: { ...scope.window } },
+        snapshot,
+      ),
+    ).toBe(expected);
+    expect(hash).toHaveBeenCalledTimes(1);
+    const cutoff = {
+      ...scope,
+      window: {
+        ...scope.window,
+        dataAvailableThrough: scope.window.toExclusive,
+      },
+    };
+    expect(healthContextRevision(cutoff, snapshot)).not.toBe(expected);
+    expect(hash).toHaveBeenCalledTimes(2);
+    Reflect.set(f.report.days[0]!, 'partial', true);
+    expect(healthContextRevision(scope, f.report)).not.toBe(expected);
+    expect(healthContextRevision(scope, snapshot)).toBe(expected);
+  } finally {
+    hash.mockRestore();
     f.close();
   }
 });
