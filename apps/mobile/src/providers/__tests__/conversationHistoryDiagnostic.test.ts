@@ -1,3 +1,4 @@
+import { createHistoryFenceDiagnostics } from '../../aiFeatures/integration/conversationHistoryFenceDiagnostics';
 import { NativeModules } from 'react-native';
 import {
   historyValidationCostEnabled,
@@ -92,4 +93,99 @@ test('optional diagnostic sink failure cannot break a local read', async () => {
   expect(
     await observeConversationHistory('history_recheck', async () => true),
   ).toBe(true);
+});
+
+// Every new fence keeps result/error identity and emits only closed tokens.
+test.each([
+  'history_session_recheck_before_assembly',
+  'history_session_recheck_after_assembly',
+  'history_tool_recheck_before_assembly',
+  'history_tool_recheck_final',
+  'history_cold_previews',
+] as const)('fence diagnostics preserve %s outcomes', async stage => {
+  const value = { privateValue: 'not exported' };
+  expect(await observeConversationHistory(stage, async () => value)).toBe(
+    value,
+  );
+  const error = new Error('private failure');
+  await expect(
+    observeConversationHistory(stage, async () => {
+      throw error;
+    }),
+  ).rejects.toBe(error);
+  const controller = new AbortController();
+  controller.abort();
+  expect(
+    await observeConversationHistory(
+      stage,
+      async () => value,
+      controller.signal,
+    ),
+  ).toBe(value);
+  expect(report.mock.calls).toEqual([
+    ['rag', stage, 'started'],
+    ['rag', stage, 'completed'],
+    ['rag', stage, 'started'],
+    ['rag', stage, 'failed'],
+    ['rag', stage, 'started'],
+    ['rag', stage, 'cancelled'],
+  ]);
+  report.mockImplementationOnce(() => {
+    throw new Error('sink unavailable');
+  });
+  expect(await observeConversationHistory(stage, async () => value)).toBe(
+    value,
+  );
+});
+
+test('fence observers retain live method ownership, argument identity and order', async () => {
+  const calls: string[] = [];
+  const turns: unknown[] = [];
+  const signal = new AbortController().signal;
+  const discovery = {
+    revalidateSession: jest.fn(function (this: unknown, ...args: unknown[]) {
+      expect(this).toBe(discovery);
+      expect(args[2]).toBe(turns);
+      calls.push('session');
+      return Promise.resolve(true);
+    }),
+  };
+  const storage = {
+    readToolTurnsSnapshot: jest.fn(function (
+      this: unknown,
+      ...args: unknown[]
+    ) {
+      expect(args).toHaveLength(3);
+      expect(this).toBe(storage);
+      calls.push('tools');
+      return Promise.resolve({ items: [] });
+    }),
+  };
+  const selection: { ids: readonly string[] | undefined } = { ids: undefined };
+  const fences = createHistoryFenceDiagnostics(
+    discovery as never,
+    storage as never,
+    ['session', 1, turns, signal] as never,
+    () => ['session', 1, selection.ids],
+  );
+  await fences.sessionBefore();
+  await fences.toolsBefore();
+  const error = new Error('replacement');
+  discovery.revalidateSession = jest.fn(() => {
+    throw error;
+  });
+  await expect(fences.sessionAfter()).rejects.toBe(error);
+  selection.ids = ['late'];
+  const result = { items: [] };
+  storage.readToolTurnsSnapshot = jest.fn(function (
+    this: unknown,
+    ...args: unknown[]
+  ) {
+    expect(this).toBe(storage);
+    expect(args[2]).toBe(selection.ids);
+    calls.push('replacement');
+    return Promise.resolve(result);
+  });
+  expect(await fences.toolsFinal()).toBe(result);
+  expect(calls).toEqual(['session', 'tools', 'replacement']);
 });

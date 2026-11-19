@@ -20,6 +20,11 @@ export type ConversationHistoryStage =
   | HistoryValidationCost
   | 'history_tool_read'
   | 'history_tool_restore'
+  | 'history_session_recheck_before_assembly'
+  | 'history_session_recheck_after_assembly'
+  | 'history_tool_recheck_before_assembly'
+  | 'history_tool_recheck_final'
+  | 'history_cold_previews'
   | 'history_tasks'
   | 'history_recheck'
   | 'history_transcript_layout';
