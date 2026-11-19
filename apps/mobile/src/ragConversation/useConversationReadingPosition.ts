@@ -1,4 +1,5 @@
 import { saveConversationReadingPosition } from './saveConversationReadingPosition';
+import { reportRestoredTranscriptLayout } from '../providers/conversationHistoryDiagnostic';
 import {
   useEffect,
   useReducer,
@@ -55,6 +56,7 @@ export function useConversationReadingPosition(input: {
     };
   }
   const state = owner.current;
+  const measuredSession = useRef<string | undefined>(undefined);
   const latest = useRef(input);
   latest.current = input;
   const current = () =>
@@ -217,6 +219,18 @@ export function useConversationReadingPosition(input: {
     row(id: number, y: number, height: number) {
       if (Number.isFinite(y) && Number.isFinite(height) && height > 0) {
         state.rows.set(id, { y, height });
+        if (state.id && measuredSession.current !== state.id && current()) {
+          const message = latest.current.messages.find(item => item.id === id);
+          if (
+            message?.restoredHistory &&
+            !message.historyUnavailable &&
+            !message.failed &&
+            message.content.trim()
+          ) {
+            measuredSession.current = state.id;
+            reportRestoredTranscriptLayout();
+          }
+        }
         reveal();
       }
     },
