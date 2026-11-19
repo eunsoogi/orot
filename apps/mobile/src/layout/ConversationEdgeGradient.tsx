@@ -13,11 +13,14 @@ export function ConversationEdgeGradient({
   edge,
   testID,
   fadeOverlap = 0,
+  solidFadeLength = 0,
 }: {
   readonly edge: 'top' | 'bottom';
   readonly testID: string;
   /** Stay within the scroll content gutter; opaque accessibility fallbacks never overlap content. */
   readonly fadeOverlap?: number;
+  /** Extend the profile backdrop below its identity before fading to transparent. */
+  readonly solidFadeLength?: number;
 }) {
   const scheme = useColorScheme();
   // SVG gradient stops require resolved strings, not UIKit dynamic-color objects.
@@ -46,10 +49,17 @@ export function ConversationEdgeGradient({
     };
   }, []);
   const top = opaque || fadeOverlap === 0 ? 0 : -fadeOverlap;
+  const solidFade = edge === 'top' ? Math.max(0, solidFadeLength) : 0;
+  const solidEnd = size?.height
+    ? Math.max(0, (size.height - solidFade) / size.height)
+    : 1;
   return (
     <View
       pointerEvents="none"
-      style={[StyleSheet.absoluteFill, { top }]}
+      style={[
+        StyleSheet.absoluteFill,
+        { top, bottom: opaque ? 0 : -solidFade },
+      ]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID={testID}
@@ -79,8 +89,16 @@ export function ConversationEdgeGradient({
               x2="0"
               y2={edge === 'top' ? '1' : '0'}
             >
-              <Stop offset="0" stopColor={background} stopOpacity={0.98} />
-              <Stop offset="0.6" stopColor={background} stopOpacity={0.78} />
+              <Stop
+                offset="0"
+                stopColor={background}
+                stopOpacity={solidFade ? 1 : 0.98}
+              />
+              <Stop
+                offset={solidFade ? String(solidEnd) : '0.6'}
+                stopColor={background}
+                stopOpacity={solidFade ? 1 : 0.78}
+              />
               <Stop offset="1" stopColor={background} stopOpacity={0} />
             </LinearGradient>
           </Defs>

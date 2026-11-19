@@ -2,6 +2,18 @@ import XCTest
 
 /// Verifies saved-result routes and Duo history layout, including a native landscape transition.
 final class ConversationHistoryDuoUITests: OrotFailFastTestCase {
+    /// Observe foreground independently so a rotation failure cannot hide its result.
+    @MainActor
+    func testSyntheticLongConversationProfileForeground() throws {
+        try SyntheticProfileBackdropUITestConditions.run(self, rotation: false)
+    }
+
+    /// Require a correlated native scene event and actual transcript width change.
+    @MainActor
+    func testSyntheticLongConversationProfileResize() throws {
+        try SyntheticProfileBackdropUITestConditions.run(self, rotation: true)
+    }
+
     /// Checks actual titles, button hit targets, and saved-route navigation without starting a provider or rotating.
     @MainActor
     func testSavedOutputActionsOpenAndReturnFromHistory() throws {

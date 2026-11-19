@@ -21,6 +21,32 @@ jest.mock('react-native-svg', () => {
 
 afterEach(() => jest.restoreAllMocks());
 
+test('keeps the profile opaque through its measured height and fades below it', async () => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceTransparencyEnabled')
+    .mockResolvedValue(false);
+  const view = await render(
+    <ConversationEdgeGradient
+      edge="top"
+      testID="profile"
+      solidFadeLength={32}
+    />,
+  );
+  const root = view.getByTestId('profile', { includeHiddenElements: true });
+  await fireEvent(root, 'layout', {
+    nativeEvent: { layout: { width: 382, height: 148 } },
+  });
+  const stops = view.getAllByTestId('Stop', { includeHiddenElements: true });
+  expect(stops.map(s => [s.props.offset, s.props.stopOpacity])).toEqual([
+    ['0', 1],
+    [String(116 / 148), 1],
+    ['1', 0],
+  ]);
+  expect(StyleSheet.flatten(root.props.style).bottom).toBe(-32);
+  expect(root.props.pointerEvents).toBe('none');
+  expect(root.props.accessibilityElementsHidden).toBe(true);
+});
+
 test.each(['light', 'dark'] as const)(
   'shares stronger resolved %s stops and mirrors the composer fade',
   async scheme => {

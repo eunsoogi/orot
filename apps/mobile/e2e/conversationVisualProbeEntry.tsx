@@ -21,6 +21,8 @@ import {
   sendSyntheticConversation,
 } from './conversationVisualFixture';
 import { conversationVisitPreparationVisualProps } from './conversationVisitPreparationVisualFixture';
+import { longVisualSessionOptions } from './conversationLongVisualFixture';
+import { AssistantAppearanceProvider } from '../src/assistantAppearance/AssistantAppearanceProvider';
 
 const settingsManager = (
   NativeModules as unknown as {
@@ -34,9 +36,12 @@ const launchSettings =
   settingsManager?.settings ?? settingsManager?.getConstants?.().settings ?? {};
 const historySavedOutputLayoutEnabled =
   launchSettings.OROT_TEST_HISTORY_SAVED_OUTPUT_LAYOUT === 'YES';
+const longConversationVisual =
+  launchSettings.OROT_TEST_LONG_CONVERSATION_VISUAL === 'YES';
 // The provider creates its store once, so opt into retained identity before the source journey mounts.
-const visualSessionOptions =
-  launchSettings.OROT_TEST_CONVERSATION_TOOL_SOURCE === 'YES'
+const visualSessionOptions = longConversationVisual
+  ? longVisualSessionOptions()
+  : launchSettings.OROT_TEST_CONVERSATION_TOOL_SOURCE === 'YES'
     ? conversationVisualToolSourceSessionOptions
     : conversationVisualSessionOptions;
 const visitPreparationProps =
@@ -65,7 +70,15 @@ function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
   );
   return (
     <ConversationSessionsProvider options={visualSessionOptions}>
-      <NavigationRouteAdapter controller={controller} leaveState={leaveState}>
+      <NavigationRouteAdapter
+        controller={controller}
+        leaveState={leaveState}
+        rootTabs={
+          longConversationVisual
+            ? { activeTab: 'conversation', onSelect: () => {} }
+            : undefined
+        }
+      >
         {navigation => {
           const onBack = () => {
             navigation.onBack();
@@ -116,7 +129,7 @@ function ConversationVisualProbe({ failure }: { readonly failure: boolean }) {
               }}
               resolveToolSource={resolveConversationVisualToolSource}
               onSend={
-                failure
+                failure || longConversationVisual
                   ? async () => ({ status: 'unavailable' })
                   : sendSyntheticConversation
               }
@@ -135,7 +148,15 @@ function keepHistoryLayoutMounted() {
 
 /** Select the synthetic outcome before interaction, independent of keyboard text correction. */
 export function registerConversationVisualProbe(failure: boolean) {
-  AppRegistry.registerComponent(appName, () => () => (
-    <ConversationVisualProbe failure={failure} />
-  ));
+  AppRegistry.registerComponent(
+    appName,
+    () => () =>
+      longConversationVisual ? (
+        <AssistantAppearanceProvider>
+          <ConversationVisualProbe failure={failure} />
+        </AssistantAppearanceProvider>
+      ) : (
+        <ConversationVisualProbe failure={failure} />
+      ),
+  );
 }

@@ -1,12 +1,12 @@
 import UIKit
 import XCTest
 
-/// Correlates native scene rotation with the history page and its actual AX window owner.
+/// Correlates native scene rotation with the selected scroll surface and its actual AX window owner.
 @MainActor
 enum NavigationRotationUITestConditions {
     /// A changed app frame alone is not rotation proof; retain the native scene event and matching AX window.
-    static func rotateObservedScene(_ app: XCUIApplication, session: String, landscape: Bool) throws -> [String: Any] {
-        let scroll = UITestConditions.element(app, "conversation-history-page")
+    static func rotateObservedScene(_ app: XCUIApplication, session: String, landscape: Bool, scrollID: String = "conversation-history-page") throws -> [String: Any] {
+        let scroll = UITestConditions.element(app, scrollID)
         let control = UITestConditions.element(app, "rotation-transition-request")
 
         func command(_ mode: String, timeout: TimeInterval = 15) throws -> [String: Any] {
@@ -51,7 +51,7 @@ enum NavigationRotationUITestConditions {
         let requested = try command(landscape ? "request" : "portrait")
         XCTAssertEqual(requested["status"] as? String, "sampled")
 
-        // Wait for the actual history window to reflow before the probe's single read command.
+        // Wait for the actual owning window to reflow before the probe's single read command.
         let reflowed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             guard scroll.exists, control.exists,
                   let owner = owningWindow(app, scroll: scroll, target: control, reportFailure: false) else { return false }

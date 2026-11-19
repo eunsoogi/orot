@@ -29,6 +29,8 @@ export const duoTests = [
   'OrotUITests/FeatureEntryDuoUITests/testFeatureEntryActionsStayWithinContentLaneAfterOrientationChange',
   'OrotUITests/FeatureEntryDuoUITests/testPortraitConversationActionsOpenHistoryAndStartNewSession',
   'OrotUITests/WindowGeometryUITests/testDuoGeometryEventsMatchUIKitAndRetainQuestionDraftAcrossSourceNavigation',
+  'OrotUITests/ConversationHistoryDuoUITests/testSyntheticLongConversationProfileForeground',
+  'OrotUITests/ConversationHistoryDuoUITests/testSyntheticLongConversationProfileResize',
   'OrotUITests/WindowGeometryUITests/testDuoPortraitGeometryRetainsQuestionDraftAcrossSourceNavigation',
   'OrotUITests/OrientationPresentationAnchorUITests/testLandscapeTransitionRetainsQuestionDraftAndSourceRoute',
   'OrotUITests/ScheduleCalendarUITests/testSelectedAppointmentSurvivesDarkLandscapeReflowAndConfirmation',
