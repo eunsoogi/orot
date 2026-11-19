@@ -40,10 +40,10 @@ test('clips stale native host measurements to the keyboard-contracted shell and 
   } as HostInstance;
   await act(() => result.current.measure());
   height = 500;
-  await rerender();
+  await rerender(undefined);
   expect(result.current.plan.height).toBe(500);
   height = 800;
-  await rerender();
+  await rerender(undefined);
   expect(result.current.plan.height).toBe(800);
 });
 jest.mock('../../navigation/NavigationGeometryProvider', () => ({
