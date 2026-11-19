@@ -163,7 +163,7 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
         XCTAssertGreaterThan(row.frame.height, defaultTitleHeight)
         let open = node(app, "external-evidence-open-selected-source")
         // The bottom article action must clear the actual XXXL dock, not only the scroll viewport.
-        try NavigationUITestConditions.scrollToBottom(app, "external-medical-evidence-screen")
+        try LiteratureActionReveal.reveal(open, in: app, dock: search)
         XCTAssertTrue(app.frame.contains(open.frame))
         XCTAssertLessThanOrEqual(open.frame.maxY, search.frame.minY - 16)
         XCTAssertTrue(open.isHittable)
