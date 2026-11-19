@@ -12,6 +12,7 @@ import { consent } from '../featureServiceFixtures';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { diverseHistoryProfileFixture } from '../testSupport/diverseHistoryProfileFixture';
 import { coldConversationProfile } from '../testSupport/coldConversationProfile';
+import { fingerprint } from '../evidenceUtils';
 /** Jest leaves Metro's lazy imports intact. Transform the two entry modules
  * while preserving production factory code and using Jest's actual dependencies. */
 function loadProductionLocalData() {
@@ -199,7 +200,16 @@ test('profiles revision and presentation work after committed report reuse', asy
     );
     expect(page.turns).toHaveLength(5);
     expect(page.turns.filter(turn => turn.historyUnavailable)).toEqual([]);
-    expect(page.turns.every(turn => turn.citations.length)).toBe(true);
+    expect(page.turns.map(turn => turn.toolMessageId)).toEqual([
+      'turn-0',
+      'turn-1',
+      'turn-2',
+      'turn-3',
+      'turn-4',
+    ]);
+    expect(page.turns.map(turn => turn.citations.length)).toEqual([
+      1, 2, 2, 2, 2,
+    ]);
     const stats = profile.read();
     expect(stats.timelineToRecheckMs).toBeGreaterThan(0);
     expect(stats.sql.activity.calls).toBe(2);
@@ -213,6 +223,7 @@ test('profiles revision and presentation work after committed report reuse', asy
       ...stats,
       fullMs: performance.now() - fullStart,
       cpu: process.cpuUsage(cpuStart),
+      transcriptRevision: fingerprint(page),
     });
   } finally {
     profile.dispose();
