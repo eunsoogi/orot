@@ -7,7 +7,9 @@
 
 // No class, module registration, or global binding exists in production or on
 // a physical device. The factory takes no external paths, keys, or DB handles.
-@interface OrotNativeCacheTest : NSObject <RCTBridgeModule, RCTTurboModuleWithJSIBindings>
+// React Native uses RCTTurboModule conformance to select the binding installation path.
+@interface OrotNativeCacheTest
+    : NSObject <RCTBridgeModule, RCTTurboModule, RCTTurboModuleWithJSIBindings>
 @end
 @implementation OrotNativeCacheTest
 RCT_EXPORT_MODULE(OrotNativeCacheTest)

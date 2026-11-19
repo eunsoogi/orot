@@ -19,6 +19,15 @@ test('owner helper, module and trace are absent outside test Simulator compilati
     assert.match(app(name), /#if defined\(OROT_TESTS\) && TARGET_OS_SIMULATOR/);
   const module = app('NativeCacheTestModule.mm');
   assert.ok(module.indexOf('#if defined(OROT_TESTS)') < module.indexOf('RCT_EXPORT_MODULE'));
+  // React Native classifies TurboModules by protocol conformance before installing JSI bindings.
+  assert.match(
+    module,
+    /@interface OrotNativeCacheTest\s*:\s*NSObject\s*<[^>]*\bRCTTurboModule\b[^>]*>/s,
+  );
+  assert.match(
+    module,
+    /getTurboModule:[\s\S]*?make_shared<facebook::react::ObjCTurboModule>\(params\)/,
+  );
   assert.match(module, /count != 0/);
   assert.doesNotMatch(module, /RCT_EXPORT_METHOD|RCT_EXTERN_METHOD/);
 });
