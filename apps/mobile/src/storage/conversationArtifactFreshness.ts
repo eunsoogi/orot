@@ -1,3 +1,4 @@
+import { assertBatchedHistoryRecords } from './batchedHistoryRecords';
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import {
   createManualHistoryRepository,
@@ -35,6 +36,7 @@ export async function assertConversationArtifactCurrent(
   validatePeriod?: ReadOnlyPeriodValidation,
   collectValidated?: (artifact: ConversationArtifact) => void,
   profileHistoryValidation = false,
+  canBatchOrdinary?: () => boolean,
 ) {
   const history = createManualHistoryRepository(database);
   // New report-bound turns must still belong to the active revision at commit.
@@ -71,6 +73,15 @@ export async function assertConversationArtifactCurrent(
     } catch (error) {
       finishAuthority?.('failed');
       throw error;
+    }
+    const batched =
+      !requireGeneration && path.size === 1 && canBatchOrdinary?.()
+        ? await assertBatchedHistoryRecords(tx, current, canBatchOrdinary)
+        : false;
+    if (batched) {
+      path.delete(current.id);
+      collectValidated?.(current);
+      return;
     }
     for (const source of current.sources) {
       if (isConversationPhotoSource(source)) {

@@ -24,6 +24,7 @@ export function createConversationArtifactReader(
     collectValidated?: (artifact: ConversationArtifact) => void,
     operation?: ReturnType<typeof committedPeriodReadOperation>,
     rollbackOnFailure = false,
+    canBatchOrdinary?: () => boolean,
   ): Promise<(ConversationArtifact | null)[]> => {
     await ensure();
     const output: (ConversationArtifact | null)[] = [];
@@ -67,6 +68,7 @@ export function createConversationArtifactReader(
             validatePeriod,
             collectValidated,
             operation?.active && operation.profileHistoryValidation,
+            !lease && operation?.active ? canBatchOrdinary : undefined,
           );
           output.push(value);
         } catch (error) {
@@ -83,6 +85,7 @@ export function createConversationArtifactReader(
   const methods = (
     operation?: ReturnType<typeof committedPeriodReadOperation>,
     rollbackOnFailure = false,
+    canBatchOrdinary?: () => boolean,
   ) => {
     const readMany = (ids: readonly string[]) =>
       readManyWithLease(
@@ -111,6 +114,7 @@ export function createConversationArtifactReader(
           },
           operation,
           rollbackOnFailure,
+          canBatchOrdinary,
         );
         return {
           items,
@@ -170,7 +174,14 @@ export function createConversationArtifactReader(
         signal,
         options?.historyPage,
       );
-      const scoped = methods(operation, options?.rollbackOnFailure);
+      const canBatchOrdinary = options?.historyPage
+        ? () => operation.active && owned()
+        : undefined;
+      const scoped = methods(
+        operation,
+        options?.rollbackOnFailure,
+        canBatchOrdinary,
+      );
       const toolSnapshot = conversationToolSnapshotReader(
         database,
         ensure,
@@ -192,6 +203,17 @@ export function createConversationArtifactReader(
           (owned() ? scoped : this).readMany(ids),
         readManyWithAncestry: (ids: readonly string[]) =>
           (owned() ? scoped : this).readManyWithAncestry(ids),
+        readManyFinalFence: (ids: readonly string[]) =>
+          canBatchOrdinary?.()
+            ? readManyWithLease(
+                ids,
+                undefined,
+                undefined,
+                operation,
+                options?.rollbackOnFailure,
+                canBatchOrdinary,
+              )
+            : (owned() ? scoped : this).readMany(ids),
         readSessionMany: (
           id: string,
           version: number,

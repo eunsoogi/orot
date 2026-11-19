@@ -53,7 +53,9 @@ async function restore(
     reads: Pick<
       SessionRestoreInput['storage'],
       'readMany' | 'readManyWithAncestry'
-    >;
+    > & {
+      readManyFinalFence?: SessionRestoreInput['storage']['readMany'];
+    };
   },
 ) {
   if (input.signal.aborted)
@@ -106,7 +108,12 @@ async function restore(
   // Recheck the entire page in one transaction against a consistent source snapshot.
   const saved = await observeConversationHistory(
     'artifact_final_validation',
-    () => input.reads.readMany(items.map(item => item.id)),
+    () => {
+      const ids = items.map(item => item.id);
+      return input.reads.readManyFinalFence
+        ? input.reads.readManyFinalFence(ids)
+        : input.reads.readMany(ids);
+    },
     input.signal,
   );
   for (let index = items.length - 1; index >= 0; index--) {
