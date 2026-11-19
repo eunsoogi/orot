@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { dailyReportCalendarInterval } from '@orot/domain';
 import { t } from '../../../i18n';
 import { DailyReportRoute } from '../DailyReportRoute';
 import { todayIdentity } from '../dailyReportTodayIdentity';
@@ -12,6 +13,7 @@ import type { createDailyReportFeature } from '../dailyReportFeature';
 
 type Feature = ReturnType<typeof createDailyReportFeature>;
 type Lookup = Awaited<ReturnType<Feature['lookup']>>;
+type Saved = Extract<Lookup, { status: 'saved' }>;
 type Result = Awaited<
   Extract<ReturnType<Feature['start']>, { status: 'started' }>['result']
 >;
@@ -28,19 +30,72 @@ test.each(['attached', 'explicit', 'cancelled'] as const)(
   'preserves the exact saved revision after a %s report operation',
   async path => {
     const identity = todayIdentity()!;
-    const saved = {
+    const interval = dailyReportCalendarInterval(
+      identity.localDate,
+      identity.timeZone,
+    );
+    if (!interval) throw new Error('Expected the current civil day to exist.');
+    const generationCutoff = new Date(
+      Date.parse(interval.fromInclusive) + 120_000,
+    ).toISOString();
+    const generatedAt = new Date(
+      Date.parse(generationCutoff) + 60_000,
+    ).toISOString();
+    const reference = {
+      source: 'health_observation',
+      recordId: 'synthetic-source',
+    };
+    const revision = 'synthetic-record-revision';
+    const saved: Saved = {
       status: 'saved',
       runId: 'previous',
       revision: 3,
-      context: { identity, generationCutoff: '2026-11-09T03:00:00Z' },
+      context: {
+        kind: 'daily_report_context',
+        schemaVersion: 1,
+        identity,
+        interval,
+        generationCutoff,
+        effectiveCutoff: generationCutoff,
+        sourceSnapshot: {
+          revision: 'synthetic-snapshot-revision',
+          mutationGeneration: 1,
+          deletionGeneration: 0,
+          records: [
+            {
+              ...reference,
+              revision,
+              occurrence: { startInclusive: interval.fromInclusive },
+              ingestedAt: interval.fromInclusive,
+            },
+          ],
+          coverage: [],
+        },
+        provider: {
+          providerId: 'synthetic-provider',
+          modelId: 'synthetic-model',
+        },
+      },
+      lineage: [
+        {
+          ...reference,
+          kind: 'health_observation',
+          localId: reference.recordId,
+          revision,
+        },
+      ],
       report: {
-        generatedAt: '2026-11-09T03:01:00Z',
-        observations: [{ text: '보존된 합성 기록' }],
+        schemaVersion: 1,
+        identity,
+        generatedAt,
+        observations: [
+          { text: '보존된 합성 기록', sourceReferences: [reference] },
+        ],
         supportedContext: [],
         followUpQuestions: [],
         coverage: [],
       },
-    } as Lookup;
+    };
     const result = deferred<Result>();
     const recheck = deferred<Lookup>();
     const operation = {
