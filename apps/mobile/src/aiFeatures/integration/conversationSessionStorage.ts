@@ -1,4 +1,5 @@
 import type { AiFeatureLocalData } from './localData';
+import { observeHistoryStartup } from '../../providers/conversationHistoryDiagnostic';
 
 /** Recover interrupted work once before this app owner can dispatch a new request. */
 export function createConversationSessionStorage(
@@ -10,10 +11,13 @@ export function createConversationSessionStorage(
     if (!data.openConversationArtifactStorage)
       throw new Error('Conversation storage is unavailable.');
     const storage = await data.openConversationArtifactStorage();
-    await (recovered ??= (async () => {
-      await storage.recoverInterruptedToolEvents();
-      await storage.interruptRecoveredRequests();
-    })().catch(error => {
+    await (recovered ??= observeHistoryStartup(
+      'history_startup_session_recovery',
+      async () => {
+        await storage.recoverInterruptedToolEvents();
+        await storage.interruptRecoveredRequests();
+      },
+    ).catch(error => {
       recovered = undefined;
       throw error;
     }));

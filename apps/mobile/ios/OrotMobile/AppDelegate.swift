@@ -16,6 +16,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         _: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil,
     ) -> Bool {
+        OrotProviderDiagnostics.reportHistoryStartupMilestone(.nativeLaunch)
         self.launchOptions = launchOptions
 
         #if OROT_TESTS && targetEnvironment(simulator)
@@ -89,6 +90,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         self.window = window
         appDelegate.window = window
 
+        OrotProviderDiagnostics.reportHistoryStartupMilestone(.reactNativeStart)
         factory.startReactNative(
             withModuleName: "Orot",
             in: window,

@@ -5,7 +5,6 @@ import {
   getGenericPassword,
   setGenericPassword,
 } from 'react-native-keychain';
-import { NativeModules } from 'react-native';
 import {
   createAppointmentRepository,
   openEncryptedStorage,
@@ -22,30 +21,20 @@ import {
   isDatabaseKeyBackupEligible,
   migrateDatabaseKeyForBackup,
 } from '../backup/nativeBackupMigration';
-import { formatStorageOpenDiagnostic } from './storageDiagnostics';
+import {
+  formatStorageOpenDiagnostic,
+  shouldLogStorageDiagnostics,
+} from './storageDiagnostics';
 import { setupVisitQuestionPeriods } from './visitQuestionPeriods';
 import { agentMemoryDatabaseFacade } from './agentMemoryDatabaseFacade';
 import { createSymptomSummaryStorage } from './symptomSummaryStorage';
+import { observeHistoryStartup } from '../providers/conversationHistoryDiagnostic';
 
 const DATABASE_NAME = 'orot-secure.db';
 const KEYCHAIN_SERVICE = 'com.orot.mobile.database-encryption-key.v1';
 const KEYCHAIN_ACCOUNT = 'database';
 const INITIALIZATION_SERVICE = 'com.orot.mobile.database-initialization.v1';
 const INITIALIZATION_ACCOUNT = 'state';
-
-function shouldLogStorageDiagnostics(): boolean {
-  const settingsManager = (
-    NativeModules as unknown as {
-      SettingsManager?: {
-        settings?: Record<string, unknown>;
-        getConstants?: () => { settings?: Record<string, unknown> };
-      };
-    }
-  ).SettingsManager;
-  const settings =
-    settingsManager?.settings ?? settingsManager?.getConstants?.().settings;
-  return settings?.OROT_STORAGE_DIAGNOSTICS === 'enabled';
-}
 
 const keyStore = {
   async getSecret() {
@@ -109,33 +98,46 @@ export function openLocalStorage(): Promise<RecordRepository> {
     opening = (async () => {
       // If eligibility migration fails, retain the existing key path so the current device can still read its database.
       try {
-        await migrateDatabaseKeyForBackup();
+        await observeHistoryStartup(
+          'history_startup_backup_key',
+          migrateDatabaseKeyForBackup,
+        );
       } catch {
         // BackupStatusRecovery retries and reports this without rotating the SQLCipher key.
       }
-      const records = await openEncryptedStorage({
-        name: DATABASE_NAME,
-        keyStore,
-        randomBytes: fillSecureRandomBytes,
-        databaseFileState: () =>
-          getDatabaseFileState(DATABASE_NAME, IOS_LIBRARY_PATH),
-        openDatabase(name, encryptionKey, allowCreate = true) {
-          database = observeSharedDatabase(
-            open({
-              name,
-              location: IOS_LIBRARY_PATH,
-              encryptionKey,
-              failOnCreate: !allowCreate,
-            }),
-          );
-          return database;
-        },
-      });
+      const records = await observeHistoryStartup(
+        'history_startup_encrypted_open',
+        () =>
+          openEncryptedStorage({
+            name: DATABASE_NAME,
+            keyStore,
+            randomBytes: fillSecureRandomBytes,
+            databaseFileState: () =>
+              getDatabaseFileState(DATABASE_NAME, IOS_LIBRARY_PATH),
+            openDatabase(name, encryptionKey, allowCreate = true) {
+              database = observeSharedDatabase(
+                open({
+                  name,
+                  location: IOS_LIBRARY_PATH,
+                  encryptionKey,
+                  failOnCreate: !allowCreate,
+                }),
+              );
+              return database;
+            },
+          }),
+      );
       // Install derived-period deletion guards before any caller receives a writer, including after restore.
-      if (!database) throw new Error('The encrypted database is not open.');
-      await database.transaction(setupVisitQuestionPeriods);
+      const protectedDatabase = database;
+      if (!protectedDatabase)
+        throw new Error('The encrypted database is not open.');
+      await observeHistoryStartup('history_startup_period_guards', () =>
+        protectedDatabase.transaction(setupVisitQuestionPeriods),
+      );
       // Upgrade retained-summary deletion guards before any repository can remove a source.
-      await createSymptomSummaryStorage(database).list();
+      await observeHistoryStartup('history_startup_summary_setup', () =>
+        createSymptomSummaryStorage(protectedDatabase).list(),
+      );
       return records;
     })().catch(error => {
       // The smoke probe opts in so a storage failure is diagnosable without exposing details in normal app launches.

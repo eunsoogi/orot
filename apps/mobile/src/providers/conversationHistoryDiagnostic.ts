@@ -9,6 +9,17 @@ type HistoryValidationCost =
   | 'artifact_report_snapshot'
   | 'artifact_report_fingerprint';
 
+type HistoryStartupMilestone =
+  'history_startup_js_registered' | 'history_startup_page_requested';
+type HistoryStartupWork =
+  | 'history_startup_backup_key'
+  | 'history_startup_encrypted_open'
+  | 'history_startup_period_guards'
+  | 'history_startup_summary_setup'
+  | 'history_startup_conversation_storage'
+  | 'history_startup_session_recovery'
+  | 'history_startup_session_lease';
+
 /** Each token names a local read boundary, never an ID, record type or error message. */
 export type ConversationHistoryStage =
   | 'history_timeline'
@@ -18,6 +29,8 @@ export type ConversationHistoryStage =
   | 'artifact_source_hydration'
   | 'artifact_final_validation'
   | HistoryValidationCost
+  | HistoryStartupMilestone
+  | HistoryStartupWork
   | 'history_tool_read'
   | 'history_tool_restore'
   | 'history_tasks'
@@ -44,6 +57,21 @@ function reportHistory(
   } catch {
     // An unavailable opt-in sink must not break a protected local read.
   }
+}
+
+/** Detailed startup tokens distinguish registration and page admission without exposing data. */
+export function reportHistoryStartupMilestone(stage: HistoryStartupMilestone) {
+  if (historyValidationCostEnabled()) reportHistory(stage, 'completed');
+}
+
+/** Profile startup only during the separate detailed run. Normal callers keep their original promise. */
+export function observeHistoryStartup<T>(
+  stage: HistoryStartupWork,
+  work: () => Promise<T>,
+): Promise<T> {
+  return historyValidationCostEnabled()
+    ? observeConversationHistory(stage, work)
+    : work();
 }
 
 /** Start a closed span in an opt-in history read without wrapping awaited queries. */

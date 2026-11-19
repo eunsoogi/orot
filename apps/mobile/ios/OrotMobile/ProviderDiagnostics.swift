@@ -3,6 +3,22 @@ import Foundation
 /// Closed diagnostic tokens preserve failure boundaries without logging health or task content.
 @objc(OrotProviderDiagnostics)
 final class OrotProviderDiagnostics: NSObject {
+    enum HistoryStartupMilestone: String {
+        case nativeLaunch = "history_startup_native_launch"
+        case reactNativeStart = "history_startup_react_native_start"
+    }
+
+    private static var detailedHistoryEnabled: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") && arguments.contains("-OROT_HISTORY_VALIDATION_COST")
+    }
+
+    /// Start-of-process milestones precede a usable JavaScript diagnostics bridge.
+    static func reportHistoryStartupMilestone(_ stage: HistoryStartupMilestone) {
+        guard detailedHistoryEnabled else { return }
+        OrotProviderDiagnostics().report("rag", stage: stage.rawValue, outcome: "completed")
+    }
+
     @objc static func requiresMainQueueSetup() -> Bool {
         false
     }
@@ -13,7 +29,7 @@ final class OrotProviderDiagnostics: NSObject {
         let enabled = arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
         return [
             "enabled": enabled,
-            "historyValidationCostEnabled": enabled && arguments.contains("-OROT_HISTORY_VALIDATION_COST"),
+            "historyValidationCostEnabled": Self.detailedHistoryEnabled,
         ]
     }
 
@@ -26,6 +42,10 @@ final class OrotProviderDiagnostics: NSObject {
                "artifact_initial_validation", "artifact_source_hydration", "artifact_final_validation",
                "artifact_source_authority", "artifact_parent_decode", "artifact_parent_fingerprint",
                "artifact_report_calendar", "artifact_report_snapshot", "artifact_report_fingerprint",
+               "history_startup_native_launch", "history_startup_react_native_start", "history_startup_js_registered",
+               "history_startup_page_requested", "history_startup_backup_key", "history_startup_encrypted_open",
+               "history_startup_period_guards", "history_startup_summary_setup", "history_startup_conversation_storage",
+               "history_startup_session_recovery", "history_startup_session_lease",
                "history_timeline", "history_turns", "history_artifacts", "history_tool_read",
                "history_tool_restore", "history_tasks", "history_recheck", "history_transcript_layout", "conversation_model_preflight", "conversation_history_preflight",
                "conversation_dispatch", "conversation_run", "tool_capture_personal", "tool_capture_memory", "tool_capture_generated", "tool_capture_external",

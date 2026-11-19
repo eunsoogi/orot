@@ -3,6 +3,8 @@ import {
   historyValidationCostEnabled,
   measureHistoryValidationCost,
   observeConversationHistory,
+  observeHistoryStartup,
+  reportHistoryStartupMilestone,
 } from '../conversationHistoryDiagnostic';
 
 jest.mock('react-native', () => ({
@@ -21,6 +23,30 @@ test('cost detail requires the native opt-in', () => {
     expect(historyValidationCostEnabled()).toBe(true);
   } finally {
     delete sink.enabled;
+    delete sink.historyValidationCostEnabled;
+  }
+});
+
+test('startup detail leaves the original promise on ordinary launches', async () => {
+  const work = Promise.resolve(7);
+  expect(
+    observeHistoryStartup('history_startup_session_lease', () => work),
+  ).toBe(work);
+  reportHistoryStartupMilestone('history_startup_page_requested');
+  expect(report).not.toHaveBeenCalled();
+  const sink = NativeModules.OrotProviderDiagnostics;
+  sink.historyValidationCostEnabled = true;
+  try {
+    reportHistoryStartupMilestone('history_startup_page_requested');
+    await expect(
+      observeHistoryStartup('history_startup_session_lease', () => work),
+    ).resolves.toBe(7);
+    expect(report.mock.calls).toEqual([
+      ['rag', 'history_startup_page_requested', 'completed'],
+      ['rag', 'history_startup_session_lease', 'started'],
+      ['rag', 'history_startup_session_lease', 'completed'],
+    ]);
+  } finally {
     delete sink.historyValidationCostEnabled;
   }
 });

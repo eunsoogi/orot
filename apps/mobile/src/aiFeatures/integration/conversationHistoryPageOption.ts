@@ -1,4 +1,8 @@
-import { observeConversationHistory as observe } from '../../providers/conversationHistoryDiagnostic';
+import {
+  observeConversationHistory as observe,
+  observeHistoryStartup,
+  reportHistoryStartupMilestone,
+} from '../../providers/conversationHistoryDiagnostic';
 import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
 import type { createConversationSessionStorage } from './conversationSessionStorage';
 import type { ReadConversationHistoryPage } from '../../ragConversation/conversationHistoryPage';
@@ -14,8 +18,15 @@ export function conversationHistoryPageOption(
   return async (sessionId, signal, cursor) => {
     if (signal.aborted)
       throw new Error('Conversation restoration was cancelled.');
-    const storage = await openStorage();
-    const version = await storage.activeSessionVersion(sessionId);
+    reportHistoryStartupMilestone('history_startup_page_requested');
+    const storage = await observeHistoryStartup(
+      'history_startup_conversation_storage',
+      openStorage,
+    );
+    const version = await observeHistoryStartup(
+      'history_startup_session_lease',
+      () => storage.activeSessionVersion(sessionId),
+    );
     if (version === null) throw new Error('Conversation is unavailable.');
     const page = await observe(
       'history_timeline',
