@@ -38,6 +38,7 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
+        try ReminderJourneyObservation.prepareAppearance(app)
         // A previous reminder tap can restore a detail; unwind it without resetting saved state.
         let settingsTab = app.buttons.matching(identifier: "navigation-tab-settings").firstMatch
         let backAction = app.buttons.matching(identifier: "navigation-back").firstMatch
@@ -98,7 +99,35 @@ final class DailyReminderDeliveryUITests: XCTestCase {
         // Reminder taps open the report task inside the AI conversation; its date is visible before explicit generation.
         let reportDate = UITestConditions.element(app, "daily-report-date")
         XCTAssertTrue(UITestConditions.exists(reportDate), app.debugDescription)
+        let displayedIdentity = UITestConditions.text(reportDate)
+        XCTAssertFalse(displayedIdentity.isEmpty, app.debugDescription)
+        try assertConversationRoot(app)
         attach(app, name: "daily-reminder-preparation")
+        // A real foreground return must preserve the same displayed identity and canonical root.
+        // This is not a duplicate notification, a historical-day receipt, or a provider-call counter.
+        XCUIDevice.shared.press(.home)
+        let suspended = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            app.state == .runningBackground || app.state == .runningBackgroundSuspended
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [suspended]), .completed, app.debugDescription)
+        app.activate()
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.state == .runningForeground }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [returned]), .completed, app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(reportDate), app.debugDescription)
+        XCTAssertEqual(UITestConditions.text(reportDate), displayedIdentity)
+        try assertConversationRoot(app)
+        attach(app, name: "daily-reminder-conversation-return")
+    }
+
+    /// Native selected state and the missing contextual Back distinguish the root from a pushed report pane.
+    private func assertConversationRoot(_ app: XCUIApplication) throws {
+        let conversation = try NavigationUITestConditions.navigationAction(app, "navigation-tab-conversation")
+        XCTAssertTrue(conversation.control.isSelected, app.debugDescription)
+        XCTAssertTrue(conversation.control.isHittable, app.debugDescription)
+        XCTAssertFalse(app.buttons["navigation-back"].exists, app.debugDescription)
+        let screens = app.descendants(matching: .any).matching(identifier: "rag-conversation-screen")
+        XCTAssertEqual(screens.count, 1, app.debugDescription)
+        XCTAssertTrue(UITestConditions.exists(screens.firstMatch), app.debugDescription)
     }
 
     /// Use observed localized picker values; unknown AX wheels fail rather than select a guessed control.

@@ -3,6 +3,32 @@ import XCTest
 /// Native OS receipts verify shared reminder copy and safe payloads during real delivery and tap flows.
 @MainActor
 enum ReminderJourneyObservation {
+    /// Fresh core installs use the same visible form as the rail journey; existing saved state is never reset.
+    /// Completing appearance is app-local setup, separate from the later explicit OS notification permission.
+    static func prepareAppearance(_ app: XCUIApplication) throws {
+        let onboarding = UITestConditions.element(app, "assistant-appearance-scroll")
+        let settings = app.buttons.matching(identifier: "navigation-tab-settings").firstMatch
+        let back = app.buttons.matching(identifier: "navigation-back").firstMatch
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            onboarding.exists || settings.exists || back.exists
+        }, object: nil)
+        guard UITestConditions.wait(for: [ready]) == .completed else {
+            throw NSError(domain: "ReminderAppearancePreparation", code: 1)
+        }
+        // The editor marker is shared with Settings; never overwrite a restored edit route.
+        guard !settings.exists, !back.exists, onboarding.exists else { return }
+        // The production radio has a Korean label rather than a stable accessibility identifier.
+        let star = app.descendants(matching: .any).matching(identifier: "별").firstMatch
+        let save = app.buttons["assistant-appearance-save"]
+        guard star.exists, star.isHittable else { throw NSError(domain: "ReminderAppearancePreparation", code: 2) }
+        star.tap()
+        guard FormUITestConditions.reveal(save, in: app, scrollID: "assistant-appearance-scroll") != nil,
+              save.isEnabled, save.isHittable else { throw NSError(domain: "ReminderAppearancePreparation", code: 3) }
+        save.tap()
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
+        XCTAssertFalse(onboarding.exists)
+    }
+
     struct Request: Decodable {
         let identifier: String
         let appointmentId: String
