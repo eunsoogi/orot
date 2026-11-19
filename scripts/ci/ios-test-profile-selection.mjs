@@ -18,7 +18,32 @@ export function resolveIosTestProfileSelection(
   rotationControl,
   rotationCalibration,
   duoPhotoValidation,
+  conversationLifecycle = {
+    requested: process.env.TEST_RUNNER_OROT_CONVERSATION_LIFECYCLE_PHASE,
+    unscoped: process.env.OROT_CONVERSATION_LIFECYCLE_PHASE,
+  },
 ) {
+  const { requested, unscoped } = conversationLifecycle;
+  if (requested !== undefined || unscoped !== undefined) {
+    const name =
+      requested === 'foreground'
+        ? 'testSyntheticLongConversationProfileForeground'
+        : requested === 'resize'
+          ? 'testSyntheticLongConversationProfileResize'
+          : null;
+    if (
+      unscoped !== undefined ||
+      profile !== 'duo' ||
+      name === null ||
+      tests.length !== 1 ||
+      tests[0] !== `OrotUITests/ConversationHistoryDuoUITests/${name}` ||
+      preparationPhase !== undefined ||
+      rotationControl !== undefined ||
+      rotationCalibration !== undefined ||
+      duoPhotoValidation !== undefined
+    )
+      throw new Error('Conversation lifecycle requires its matching single Duo journey');
+  }
   // The real Photos picker requires a host-seeded synthetic image on one owned Duo.
   if (duoPhotoValidation !== undefined) {
     if (

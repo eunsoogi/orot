@@ -37,6 +37,16 @@ enum SyntheticProfileBackdropUITestConditions {
             app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "합성 답변 \(number):")).firstMatch
         }
         XCTAssertTrue(UITestConditions.exists(lastAnswer) && lastAnswer.isHittable)
+        // The host runner admits this opt-in only for its matching single Duo selector.
+        let focusedPhase = ProcessInfo.processInfo.environment["OROT_CONVERSATION_LIFECYCLE_PHASE"]
+        if let focusedPhase {
+            guard !portraitCapture, focusedPhase == (rotation ? "resize" : "foreground") else {
+                XCTFail("Unexpected focused conversation lifecycle phase")
+                return
+            }
+            try NavigationForegroundUITestConditions.verifySyntheticLifecycle(app, history: history, answer: lastAnswer, session: session, phase: focusedPhase, testCase: testCase)
+            return
+        }
         let before = lastAnswer.frame
         let visibleBefore = markers.map { $0.exists && $0.isHittable }
         let beforeImage = XCTAttachment(screenshot: app.screenshot())

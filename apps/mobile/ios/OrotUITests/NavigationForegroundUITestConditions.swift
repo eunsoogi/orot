@@ -81,4 +81,119 @@ enum NavigationForegroundUITestConditions {
         XCTAssertEqual(input.value as? String, draft)
         XCTAssertTrue(citation.exists)
     }
+
+    /// Verify the same restored answer and unsent native draft without testing card overlap.
+    static func verifySyntheticLifecycle(
+        _ app: XCUIApplication, history: XCUIElement, answer: XCUIElement, session: String,
+        phase: String, testCase: XCTestCase,
+    ) throws {
+        let input = UITestConditions.element(app, "rag-conversation-input")
+        let keyboard = app.keyboards.firstMatch
+        let label = answer.label
+        func unobscuredCenter(_ element: XCUIElement, inside region: CGRect) -> CGPoint? {
+            guard element.exists, element.isHittable else { return nil }
+            let frame = element.frame
+            let center = CGPoint(x: frame.midX, y: frame.midY)
+            guard frame.width > 0, frame.height > 0, region.contains(center), app.frame.contains(center),
+                  !keyboard.exists || !keyboard.frame.contains(center) else { return nil }
+            return center
+        }
+
+        func answerPoint() -> CGPoint? {
+            guard history.exists, answer.exists, answer.label == label else { return nil }
+            return unobscuredCenter(answer, inside: history.frame)
+        }
+
+        func inputIsReady() -> Bool {
+            unobscuredCenter(input, inside: app.frame) != nil && input.isEnabled
+        }
+
+        let initialReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            answerPoint() != nil && inputIsReady() && !keyboard.exists
+        }, object: nil)
+        guard XCTWaiter.wait(for: [initialReady], timeout: 15) == .completed,
+              answerPoint() != nil, inputIsReady(), !keyboard.exists else {
+            XCTFail("The fresh synthetic answer and editor must be unobscured")
+            return
+        }
+        let initial = input.value as? String
+        guard initial == nil || initial == "" || initial == input.placeholderValue else {
+            XCTFail("Only a fresh synthetic field may be edited")
+            return
+        }
+        let draft = "synthetic lifecycle draft"
+        input.tap()
+        input.typeText(draft)
+        guard input.value as? String == draft else {
+            XCTFail("Could not seed the unsent synthetic draft")
+            return
+        }
+        if keyboard.exists {
+            // The keyboard can shift the transcript. Never tap stale, clipped, or covered text.
+            let dismissible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                !keyboard.exists || answerPoint() != nil
+            }, object: nil)
+            guard XCTWaiter.wait(for: [dismissible], timeout: 10) == .completed else {
+                XCTFail("No unobscured synthetic answer became available to dismiss the keyboard")
+                return
+            }
+            if keyboard.exists {
+                guard let point = answerPoint() else {
+                    XCTFail("The synthetic answer became obscured before the dismiss tap")
+                    return
+                }
+                let frame = app.frame
+                app.coordinate(withNormalizedOffset: .zero)
+                    .withOffset(CGVector(dx: point.x - frame.minX, dy: point.y - frame.minY)).tap()
+            }
+            let keyboardHidden = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                !keyboard.exists
+            }, object: nil)
+            guard XCTWaiter.wait(for: [keyboardHidden], timeout: 10) == .completed else {
+                XCTFail("The native keyboard did not dismiss before the lifecycle boundary")
+                return
+            }
+        }
+        guard answerPoint() != nil, inputIsReady(), !keyboard.exists, input.value as? String == draft else {
+            XCTFail("The same answer and unsent editor must be ready before the lifecycle boundary")
+            return
+        }
+        if phase == "resize" {
+            let beforeWidth = history.frame.width
+            _ = try NavigationRotationUITestConditions.rotateObservedScene(app, session: session, landscape: true, scrollID: "rag-conversation-history")
+            XCTAssertGreaterThan(abs(history.frame.width - beforeWidth), 0.5, "The transcript must actually resize")
+        } else {
+            XCUIDevice.shared.press(.home)
+            let suspended = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                app.state == .runningBackground || app.state == .runningBackgroundSuspended
+            }, object: nil)
+            guard XCTWaiter.wait(for: [suspended], timeout: 10) == .completed else {
+                XCTFail("The app did not enter the OS background")
+                return
+            }
+            app.activate()
+            guard app.wait(for: .runningForeground, timeout: 10) else {
+                XCTFail("The app did not return to the OS foreground")
+                return
+            }
+        }
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            answerPoint() != nil && inputIsReady() && (input.value as? String) == draft
+        }, object: nil)
+        guard XCTWaiter.wait(for: [ready], timeout: 15) == .completed,
+              answerPoint() != nil, inputIsReady(), input.value as? String == draft else {
+            XCTFail("The same restored answer and unsent editor must be usable after the native boundary")
+            return
+        }
+        let evidence = XCTAttachment(screenshot: app.screenshot())
+        evidence.name = "synthetic-conversation-\(phase)-retained"
+        evidence.lifetime = .keepAlways
+        testCase.add(evidence)
+        // Mutating then undoing the native field catches a veil even if its child remains in the AX tree.
+        input.tap()
+        input.typeText("!")
+        XCTAssertEqual(input.value as? String, draft + "!")
+        input.typeText(XCUIKeyboardKey.delete.rawValue)
+        XCTAssertEqual(input.value as? String, draft)
+    }
 }
