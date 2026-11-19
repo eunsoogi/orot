@@ -21,6 +21,35 @@ const sender = () =>
   }));
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
+test('only the first route selection uses cold history preparation', async () => {
+  const f = await setup();
+  const continuousSession = jest.fn(
+    (signal: AbortSignal, _historyStartup?: true) =>
+      f.options.continuousSession(signal),
+  );
+  const store = createConversationSessions({ ...f.options, continuousSession });
+  try {
+    await store.synchronizeModel(true, 'entry');
+    const id = store.getSnapshot().activeId;
+    const send = sender();
+    store.setDraft(id, 'Synthetic current input');
+    await store.send(id, send);
+    expect(send).toHaveBeenCalledTimes(1);
+    await store.synchronizeModel(true);
+    await store.synchronizeModel(true, 'entry');
+    expect(continuousSession.mock.calls).toEqual([
+      [expect.any(AbortSignal), true],
+      [expect.any(AbortSignal)],
+      [expect.any(AbortSignal)],
+      [expect.any(AbortSignal)],
+    ]);
+  } finally {
+    store.dispose();
+    f.store.dispose();
+    f.close();
+  }
+});
+
 test('eight metadata-only unavailable notices do not satisfy context or retrieve steering receipts', async () => {
   const f = await setup();
   const read = jest

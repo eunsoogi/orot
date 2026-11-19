@@ -11,27 +11,28 @@ export function continuousSessionOption(
 ): Pick<ConversationSessionOptions, 'continuousSession'> {
   if (!selectedAi) return {};
   return {
-    continuousSession: async signal => {
-      const selected = await observeHistoryStartup(
-        'history_startup_model_selection',
-        () => selectedAi(true),
-      );
+    continuousSession: async (signal, historyStartup) => {
+      const selected = await (historyStartup
+        ? observeHistoryStartup('history_startup_model_selection', () =>
+            selectedAi(true),
+          )
+        : selectedAi());
       if (signal.aborted) throw new Error('Conversation selection cancelled.');
       const model = {
         providerId: selected.provider.id,
         modelId: selected.modelId,
       };
       const storage = await openStorage();
-      const lease = await observeHistoryStartup(
-        'history_startup_continuous_session',
-        () =>
-          storage.continuousSession(
-            { providerId: selected.provider.id, modelId: selected.modelId },
-            createConversationDurableIdentity(),
-            new Date().toISOString(),
-            signal,
-          ),
-      );
+      const readLease = () =>
+        storage.continuousSession(
+          model,
+          createConversationDurableIdentity(),
+          new Date().toISOString(),
+          signal,
+        );
+      const lease = await (historyStartup
+        ? observeHistoryStartup('history_startup_continuous_session', readLease)
+        : readLease());
       return { ...lease, model };
     },
   };

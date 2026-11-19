@@ -18,7 +18,10 @@ type Retention = ReturnType<typeof createConversationSessionRetention>;
 export interface ConversationSessionOptions {
   readonly restoreSessionPage?: import('./conversationHistoryPage').ReadConversationHistoryPage;
   /** Resolve the saved model and its protected conversation lease without inference. */
-  readonly continuousSession?: (signal: AbortSignal) => Promise<{
+  readonly continuousSession?: (
+    signal: AbortSignal,
+    historyStartup?: true,
+  ) => Promise<{
     id: string;
     version: number;
     updatedAt: string;

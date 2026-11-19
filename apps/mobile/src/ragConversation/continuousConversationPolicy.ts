@@ -47,10 +47,18 @@ export function continuousConversationPolicy<T extends Store>(
   let controller: AbortController | undefined;
   let epoch = 0;
   let disposed = false;
+  let selectionStarted = false;
   const enabled = Boolean(options.continuousSession);
-  const synchronizeModel = (refresh = false): Promise<void> => {
+  const synchronizeModel = (
+    refresh = false,
+    intent?: 'entry',
+  ): Promise<void> => {
     if (!enabled || disposed) return Promise.resolve();
     if (pending && !refresh) return pending;
+    // A retained store can receive several route entries. Only its first
+    // selection can use the cold history preparation path.
+    const historyStartup = !selectionStarted && intent === 'entry';
+    selectionStarted = true;
     controller?.abort();
     const signal = (controller = new AbortController()).signal;
     const version = ++epoch;
@@ -59,7 +67,9 @@ export function continuousConversationPolicy<T extends Store>(
     update(activeId, { modelSelectionPending: true });
     const run = async () => {
       try {
-        const target = await options.continuousSession!(signal);
+        const target = await (historyStartup
+          ? options.continuousSession!(signal, true)
+          : options.continuousSession!(signal));
         if (!current()) return;
         model = target.model;
         const existing = store

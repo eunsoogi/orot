@@ -15,7 +15,7 @@ export function useContinuousConversationEntry(
   current: boolean,
 ) {
   useEffect(() => {
-    if (current) store.synchronizeModel(true).catch(() => {});
+    if (current) store.synchronizeModel(true, 'entry').catch(() => {});
   }, [store, revision, current]);
   useConversationEntryIntent(
     store,
