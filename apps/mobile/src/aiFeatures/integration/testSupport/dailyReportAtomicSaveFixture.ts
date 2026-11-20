@@ -1,3 +1,5 @@
+// Register the synthetic native fingerprint before loading production Calendar consumers.
+import { calendarFixture } from './dailyReportCalendarTestFixture';
 import { createRecordRepository } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createCredentialMutationOwner } from '../../../agent/execution/credentialMutation';
@@ -6,7 +8,6 @@ import { readDailyReportSnapshot } from '../../../healthEvidence/healthContext/d
 import { createDailyReportStorage } from '../../../storage/dailyReportStorage';
 import * as recovery from '../dailyReportRecoveryBridge';
 import { stableJson } from '../evidenceUtils';
-import { calendarFixture } from './dailyReportCalendarTestFixture';
 import {
   atomicReportService,
   edited,
@@ -18,7 +19,6 @@ import {
   reportProvider,
   reportRequest,
 } from './dailyReportFailureStageFixtures';
-
 export const previous = 'previous-run';
 export const candidate = 'synthetic-run';
 export const competing = 'competing-run';
@@ -43,12 +43,12 @@ type Scenario =
   | 'no selection witness'
   | 'selection after commit'
   | 'stop after commit';
-
 /** Inject only between genuine SQLite checkpoints; no personal/provider data or writes outside memory. */
 export async function runAtomicSaveRace(scenario: Scenario) {
   const connection = openSqliteTestDatabase(':memory:');
   const controller = new AbortController();
   const native = scenario.includes('calendar') ? calendarFixture() : undefined;
+  const listEvents = native && jest.spyOn(native.bridge, 'listEventsInRange');
   const remote = scenario === 'remote' || scenario === 'refused';
   const hasPrior = [
     'repeated drift',
@@ -133,8 +133,8 @@ export async function runAtomicSaveRace(scenario: Scenario) {
         }),
       ).toEqual({ status: 'saved' });
     };
-
     const late = async () => {
+      if (native) expect(native.listeners.size).toBeGreaterThan(0);
       switch (scenario) {
         case 'repeated drift':
           await repository.put('health_observation', outside('outside-second'));
@@ -219,6 +219,7 @@ export async function runAtomicSaveRace(scenario: Scenario) {
         ? { mode: { kind: 'revise' as const, expectedRunId: previous } }
         : {}),
     });
+    if (listEvents) expect(listEvents).toHaveBeenCalled();
     const heads = (
       await connection.database.execute(
         'SELECT active_run_id FROM daily_report_heads',
