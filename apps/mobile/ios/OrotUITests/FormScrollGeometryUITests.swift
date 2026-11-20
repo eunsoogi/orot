@@ -47,7 +47,8 @@ final class FormScrollGeometryUITests: XCTestCase {
         func classify(_ label: String = Action.startLabel, button: Bool = true, enabled: Bool = true,
                       hittable: Bool = true, global: Int = 1, owned: Int = 1,
                       frame: CGRect = CGRect(x: 290, y: 400, width: 90, height: 44),
-                      expanded: Bool = false) -> Action? {
+                      expanded: Bool = false) -> Action?
+        {
             Action.resolve(label: label, isButton: button, enabled: enabled, hittable: hittable,
                            global: global, owned: owned, frame: frame, footer: footer, owner: owner,
                            inExpandedReader: expanded)
@@ -205,10 +206,10 @@ extension AppointmentConsentUITests {
                 label: label, isButton: button, enabled: enabled, hittable: hittable,
                 global: global, owned: owned, frame: target.frame,
                 footer: scoped(footerID).firstMatch.frame, owner: owner.frame,
-                inExpandedReader: inExpandedReader
+                inExpandedReader: inExpandedReader,
             ) else {
                 XCTFail("Classification invalid action: startLabel=\(label == Action.startLabel), expandLabel=\(label == Action.expandLabel), "
-                        + "button=\(button), enabled=\(enabled), hittable=\(hittable), global=\(global), owned=\(owned)")
+                    + "button=\(button), enabled=\(enabled), hittable=\(hittable), global=\(global), owned=\(owned)")
                 throw ActivationError.unproven
             }
             return (action, target)

@@ -96,8 +96,8 @@ extension AppointmentConsentUITests {
             let modal = node(app, "classification-close-reader").exists
             let releasePhaseMatches = release && gate.label == "Release synthetic \(phase)"
             XCTFail("Classification gate not reached: expectedPercent=\(percent), expectedCalls=\(calls), saving=\(saving), "
-                    + "calls=\(observedCalls), confirmation=\(confirmation), progress=\(progress), results=\(results), "
-                    + "modal=\(modal), release=\(release), releasePhaseMatches=\(releasePhaseMatches)")
+                + "calls=\(observedCalls), confirmation=\(confirmation), progress=\(progress), results=\(results), "
+                + "modal=\(modal), release=\(release), releasePhaseMatches=\(releasePhaseMatches)")
             throw ActivationError.unproven
         }
         let label = saving ? "분류한 일정을 저장하고 있어요." : "일정 분류 중"
