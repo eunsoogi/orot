@@ -86,5 +86,59 @@ enum RoutesVisibleContentUITestConditions {
         throw ObservationFailure.incompleteText
     }
 
+    /// This root route intentionally floats the composer over the padded ScrollView.
+    private static func conversationBounds(_ app: XCUIApplication) throws -> (dock: CGRect, overlay: CGRect, viewport: CGRect, keyboard: CGRect?) {
+        let history = UITestConditions.element(app, "rag-conversation-history")
+        let composer = UITestConditions.element(app, "rag-conversation-composer")
+        let floating = UITestConditions.element(app, "conversation-floating-composer-overlay")
+        guard UITestConditions.exists(history), UITestConditions.exists(composer),
+              UITestConditions.exists(floating),
+              let window = FormWindowOwnership.resolve(app, scroll: history, target: floating),
+              app.descendants(matching: .any).matching(identifier: composer.identifier).count == 1,
+              window.descendants(matching: .any).matching(identifier: composer.identifier).count == 1
+        else { throw ObservationFailure.missingWindow }
+        let windowFrame = window.frame
+        let historyFrame = history.frame
+        let overlay = floating.frame
+        let dock = composer.frame
+        let keyboard = app.keyboards.firstMatch
+        let keyboardFrame = keyboard.exists ? keyboard.frame : nil
+        guard [historyFrame, overlay, dock].allSatisfy(FormScrollGeometry.valid),
+              keyboardFrame.map(FormScrollGeometry.valid) ?? true,
+              windowFrame.insetBy(dx: -1, dy: -1).contains(overlay),
+              overlay.insetBy(dx: -1, dy: -1).contains(dock)
+        else { throw ObservationFailure.missingWindow }
+
+        let clipping = [overlay, keyboardFrame].compactMap(\.self)
+        let viewport = FormScrollGeometry.unobstructedScrollFrame(historyFrame.intersection(windowFrame), target: nil, controls: clipping)
+        guard FormScrollGeometry.valid(viewport), viewport.maxY <= overlay.minY + 1 else { throw ObservationFailure.incompleteText }
+        return (dock, overlay, viewport, keyboardFrame)
+    }
+
+    static func conversationControl(_ control: XCUIElement, in app: XCUIApplication) throws {
+        let bounds = try conversationBounds(app)
+        XCTAssertTrue(UITestConditions.exists(control) && control.isEnabled && control.isHittable)
+        let frame = control.frame
+        XCTAssertTrue(FormScrollGeometry.valid(frame) && bounds.dock.contains(frame) && bounds.overlay.contains(frame))
+        XCTAssertLessThanOrEqual(bounds.viewport.maxY, frame.minY + 1)
+        if let keyboard = bounds.keyboard {
+            XCTAssertLessThanOrEqual(frame.maxY, keyboard.minY + 1)
+        }
+        let back = UITestConditions.element(app, "navigation-back")
+        if back.exists {
+            XCTAssertFalse(frame.intersects(back.frame))
+        }
+    }
+
+    static func conversationMessage(_ expected: String, in app: XCUIApplication) throws {
+        let matches = app.staticTexts.matching(NSPredicate(format: "label == %@", expected))
+        let text = matches.firstMatch
+        XCTAssertTrue(UITestConditions.exists(text))
+        let bounds = try conversationBounds(app)
+        XCTAssertEqual(matches.count, 1)
+        XCTAssertTrue(text.isHittable && FormScrollGeometry.valid(text.frame))
+        XCTAssertTrue(bounds.viewport.insetBy(dx: -1, dy: -1).contains(text.frame), "Exact response must fit the unobstructed history viewport")
+    }
+
     private enum ObservationFailure: Error { case missingWindow, incompleteText }
 }

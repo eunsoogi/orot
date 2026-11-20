@@ -66,3 +66,28 @@ test('first Routes case reaches Send through current Records surfaces and preser
   assert.ok(body.indexOf('try openSchedule(app)') > retainedFailure);
   assert.match(body, /XCTAssertFalse\(node\(app, "calendar-connect"\).exists\)/);
 });
+
+test('only the first Routes journey checks native composer and failure text against the floating dock', () => {
+  const body = read('OrotUITests/AiFeatureNavigationUITests.swift').split('    func test')[1];
+  assert.equal(
+    (body.match(/RoutesVisibleContentUITestConditions\.conversationControl/g) ?? []).length,
+    2,
+  );
+  assert.equal(
+    (body.match(/RoutesVisibleContentUITestConditions\.conversationMessage/g) ?? []).length,
+    2,
+  );
+  assert.doesNotMatch(body, /ConversationComposerDockUITestConditions\.assertReachable/);
+  const helper = read('OrotUITests/RoutesVisibleContentUITestConditions.swift');
+  const dock = helper.slice(helper.indexOf('private static func conversationBounds'));
+  assert.match(dock, /FormWindowOwnership.resolve\(app, scroll: history, target: floating\)/);
+  assert.match(
+    dock,
+    /unobstructedScrollFrame\(historyFrame.intersection\(windowFrame\).*controls: clipping\)/,
+  );
+  assert.match(dock, /\[overlay, keyboardFrame\]/);
+  assert.match(dock, /bounds\.viewport\.insetBy\(dx: -1, dy: -1\)\.contains\(text\.frame\)/);
+  assert.match(dock, /control\.isEnabled && control\.isHittable/);
+  assert.match(dock, /frame\.maxY, keyboard\.minY/);
+  assert.match(dock, /frame\.intersects\(back\.frame\)/);
+});
