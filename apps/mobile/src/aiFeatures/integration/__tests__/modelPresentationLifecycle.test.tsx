@@ -186,7 +186,7 @@ test('PCC needs protected data for its saved name and stays unavailable when app
       provider: { ...option.provider, id: pcc.providerId },
       modelId: pcc.modelId,
       privacyBoundary: 'selected-context-remote',
-      availability: { status: 'unavailable' },
+      availability: { status: 'unavailable', message: 'Approval denied' },
     }),
   );
   expect(shownName()).toBeNull();
