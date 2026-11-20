@@ -15,12 +15,23 @@ import {
   type EvidenceSourceReadResult,
 } from './evidenceRegistry';
 import { fingerprint } from './evidenceUtils';
+import { isImmutableReportSnapshot } from '../../healthEvidence/healthContext/committedReportScope';
+
+const summaryContent = new WeakMap<
+  HealthContextReport,
+  { topic: HealthContextScope['topic']; content: string }
+>();
 
 export function healthContextContent(
   scope: HealthContextScope,
   report: HealthContextReport,
   detail: HealthContextDetail = 'summary',
 ) {
+  // Restoring aliases and reviewing saved prose use the same summary. Share
+  // that pure projection only for an immutable report, never source validity.
+  const reusable = detail === 'summary' && isImmutableReportSnapshot(report);
+  const cached = reusable ? summaryContent.get(report) : undefined;
+  if (cached?.topic === scope.topic) return cached.content;
   const projected = projectHealthContext(report, detail);
   const { period, calendarDays, partialDates, limitations } = projected;
   const facts =
@@ -29,7 +40,7 @@ export function healthContextContent(
       : scope.topic === 'medications' && projected.doseHistory
         ? {}
         : { [scope.topic]: projected[scope.topic] };
-  return (
+  const content =
     'health_context: ' +
     JSON.stringify({
       topic: scope.topic,
@@ -73,8 +84,9 @@ export function healthContextContent(
                 }
               : undefined,
       limitations,
-    })
-  );
+    });
+  if (reusable) summaryContent.set(report, { topic: scope.topic, content });
+  return content;
 }
 
 /** Register a typed computed source: the original period is re-read, never reconstructed from model prose. */

@@ -39,6 +39,6 @@ test('routes #108 through App and includes its probe in the required Release sui
   assert.ok(router.includes("require('./medicalAppointmentNavigationProbeEntry')"));
   assert.match(
     integrationInventory,
-    /AppointmentConsentUITests\/testManualPageReturnsThroughClassificationAndScheduleToHome/,
+    /AppointmentConsentUITests\/testClassificationReturnsThroughScheduleToHome/,
   );
 });

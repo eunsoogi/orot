@@ -135,7 +135,7 @@ test('caller mutation before scope creation cannot poison the committed base-cac
 /** Reuse only the digest of an owned immutable value and an exact source scope. */
 test('period digests reuse immutable facts while caller mutation and scope changes are observed', async () => {
   const f = await healthContextFixture();
-  const hash = jest.spyOn(revisions, 'fingerprint');
+  const hash = jest.spyOn(revisions, 'fingerprintText');
   try {
     const scope = {
       kind: 'health_context_period' as const,

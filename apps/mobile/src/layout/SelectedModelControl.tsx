@@ -5,6 +5,8 @@ import { appColors } from './appColors';
 
 interface Props {
   readonly name: string;
+  /** Optional visual bound; the complete model name remains in the accessible label. */
+  readonly nameNumberOfLines?: number;
   readonly local: boolean;
   readonly label?: string;
   readonly hint?: string;
@@ -16,6 +18,7 @@ interface Props {
 /** Shared mockup model line; read-only uses no button role or disclosure affordance. */
 export function SelectedModelControl({
   name,
+  nameNumberOfLines,
   local,
   label,
   hint,
@@ -29,7 +32,9 @@ export function SelectedModelControl({
         name={local ? 'apple.logo' : 'sparkles'}
         color={appColors.primaryText}
       />
-      <AppText style={styles.name}>{name}</AppText>
+      <AppText style={styles.name} numberOfLines={nameNumberOfLines}>
+        {name}
+      </AppText>
       {onPress ? (
         <AppSymbol name="chevron.down" size={12} color={appColors.secondary} />
       ) : null}

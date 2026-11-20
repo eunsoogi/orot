@@ -1,3 +1,4 @@
+import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
@@ -27,7 +28,6 @@ interface MedicalAppointmentRouteProps {
   readonly bridge: CalendarBridge;
   readonly calendarSync: CalendarAutoSyncState;
   readonly manual: boolean;
-  readonly onOpenManual: () => void;
   readonly onOpenCalendarSettings: () => void;
   readonly onOpenProviderSelection?: () => void;
   readonly loadAppointments: () => Promise<AppointmentRepository>;
@@ -35,6 +35,7 @@ interface MedicalAppointmentRouteProps {
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   status: {
     flexGrow: 1,
     // Loading and recoverable errors follow the same top-aligned route shell as the working screen.
@@ -47,12 +48,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, fontWeight: '700' },
 });
 
-/** Boots local appointments and selected AI independently so provider failure cannot hide manual entry. */
+/** Boots local appointments and selected AI independently; classification never depends on a manual-entry fallback. */
 export default function MedicalAppointmentRoute({
   bridge,
   calendarSync,
   manual,
-  onOpenManual,
   onOpenCalendarSettings,
   onOpenProviderSelection,
   loadAppointments,
@@ -169,11 +169,6 @@ export default function MedicalAppointmentRoute({
             {copy.title}
           </Text>
           <Text>{copy.providerResolving}</Text>
-          <Button
-            onPress={onOpenManual}
-            testID="medical-appointment-manual"
-            title={copy.manual}
-          />
         </>
       </MedicalAppointmentStatus>
     );
@@ -192,7 +187,6 @@ export default function MedicalAppointmentRoute({
         selectedProviderUnavailable={selectedAi.status === 'unavailable'}
         onOpenCalendarSettings={onOpenCalendarSettings}
         onOpenProviderSelection={onOpenProviderSelection}
-        onOpenManual={onOpenManual}
       />
     </>
   );
@@ -206,7 +200,19 @@ function MedicalAppointmentStatus({
   readonly manual: boolean;
   readonly children: ReactNode;
 }) {
+  const inset = useNavigationContentInset();
   const status = <View style={styles.status}>{children}</View>;
+  // Boot/failure states respect the same no-scroll classification surface; legacy editing retains its form scroller.
+  if (!manual)
+    return (
+      <View style={[styles.fill, inset]}>
+        <AdaptiveColumns
+          primary={status}
+          routeKey="medical"
+          testID="medical-appointment-status-columns"
+        />
+      </View>
+    );
   return (
     <NavigationRouteScrollView>
       <AdaptiveColumns

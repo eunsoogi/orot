@@ -1,3 +1,4 @@
+import { createDailyReportSnapshotRefresh } from './dailyReportSnapshotRefresh';
 import { createDailyReportRecoveryBridge } from './dailyReportRecoveryBridge';
 import { conversationConsentScope } from './conversationBackgroundProvider';
 import { createLocalEvidenceData } from '../../healthEvidence/localEvidenceData';
@@ -37,6 +38,13 @@ export function createDailyReportService(
             ...input,
             consent: conversationConsentScope(input.consent, request.observer),
             data,
+            prepareSnapshotRefresh: (original, calendar, scope) =>
+              createDailyReportSnapshotRefresh(
+                input.database,
+                original,
+                calendar,
+                scope,
+              ),
             storage,
             deadlineContext,
             stageRecovery: createDailyReportRecoveryBridge(

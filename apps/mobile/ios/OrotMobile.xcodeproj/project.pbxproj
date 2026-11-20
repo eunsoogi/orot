@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B8A130BD6D51CFCE98120001 /* ClassificationReaderGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */; };
 		CE1131000000000000000003 /* RealtimeVoiceSystemLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */; };
 		CB1180000000000000000005 /* RealtimeVoiceToolLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */; };
 		CE1178000000000000000003 /* VoiceDuplexSystemLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1178000000000000000004 /* VoiceDuplexSystemLifecycleTests.swift */; };
@@ -52,6 +53,9 @@
 		A93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93E427ED19243FBA3080EDE /* ReminderJourneyDiagnostic.swift */; };
 		062044E1CF9785EE1624BF5D /* AppearanceUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */; };
 		06A9F32CD67B3D539A7D4511 /* RoutesAppearanceUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06A9F32CD67B3D539A7D4512 /* RoutesAppearanceUITestConditions.swift */; };
+		06A9F32CD67B3D539A7D4521 /* GeneratedRecordsRoutesUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06A9F32CD67B3D539A7D4522 /* GeneratedRecordsRoutesUITestConditions.swift */; };
+		06A9F32CD67B3D539A7D4523 /* RoutesVisibleContentUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06A9F32CD67B3D539A7D4524 /* RoutesVisibleContentUITestConditions.swift */; };
+		06A9F32CD67B3D539A7D4525 /* RoutesVisibleInterval.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06A9F32CD67B3D539A7D4526 /* RoutesVisibleInterval.swift */; };
 		06960A3893E8BA0656A77B3C /* synthetic-korean.json in Resources */ = {isa = PBXBuildFile; fileRef = 418ED459FC663BD5BF8F8725 /* synthetic-korean.json */; };
 		075691B923F74861CF38AF97 /* RecordingPlaybackUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56193BCDFC252774044F643A /* RecordingPlaybackUITests.swift */; };
 		33A558BEDCD0FEDDD2F84E4E /* RecordingBackgroundRecoveryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D0958D88C7DACC50305B2F /* RecordingBackgroundRecoveryUITests.swift */; };
@@ -136,6 +140,7 @@
 		9352FF95C6EAF9A0517D5B83 /* TestControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9422961FF39A9392CEC9AE63 /* TestControl.swift */; };
 		93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */; };
 		D3A73F6214CB458BAE72EAD1 /* NavigationGeometryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */; };
+		AD8B9A20E1624C5FB92C7211 /* NavigationRootBoundaryUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD8B9A20E1624C5FB92C7212 /* NavigationRootBoundaryUITestConditions.swift */; };
 		AC917F6214CB458BAE72EAD1 /* NavigationMeasuredReservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */; };
 		9D81887FE75E296A4E9C2AAE /* FormScrollGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4E6EEE5DED3CC062795F9A /* FormScrollGeometry.swift */; };
 		A77400000000000000000005 /* FormWindowOwnership.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77400000000000000000006 /* FormWindowOwnership.swift */; };
@@ -146,6 +151,7 @@
 		44AEB747A2594CF8970EA120 /* NavigationViewportFrameIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC3A1946F0241E5AD043C87 /* NavigationViewportFrameIntegrationTests.swift */; };
 		9F3DBEE914E1BB9ECE8C8B62 /* AppointmentConsentUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */; };
 		C5E2D6BA892C46F386A24093 /* DisclosureLayoutUITestObservations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 828EFA035C434AB29FEA60DF /* DisclosureLayoutUITestObservations.swift */; };
+		34A69ED6EC6B659BBF1B7EA0 /* ClassificationStagesUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A35E167B46BBA7094ECA91C2 /* ClassificationStagesUITests.swift */; };
 		A1011000A1011000A1011001 /* NavigationGlassView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011001 /* NavigationGlassView.swift */; };
 		A1011000A1011000A1011002 /* NavigationGlassViewManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011002 /* NavigationGlassViewManager.m */; };
 		A1011000A1011000A1011003 /* AppSymbolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1011000B1011000B1011003 /* AppSymbolView.swift */; };
@@ -407,6 +413,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClassificationReaderGeometryUITests.swift; sourceTree = "<group>"; };
 		CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceSystemLifecycleTests.swift; sourceTree = "<group>"; };
 		CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceToolLifecycleTests.swift; sourceTree = "<group>"; };
 		CE1178000000000000000004 /* VoiceDuplexSystemLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDuplexSystemLifecycleTests.swift; sourceTree = "<group>"; };
@@ -506,6 +513,7 @@
 		5F69C9C65A939AE1485CBAFD /* TestHostConnectionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestHostConnectionTests.swift; sourceTree = "<group>"; };
 		703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppointmentConsentUITests.swift; sourceTree = "<group>"; };
 		828EFA035C434AB29FEA60DF /* DisclosureLayoutUITestObservations.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DisclosureLayoutUITestObservations.swift; sourceTree = "<group>"; };
+		A35E167B46BBA7094ECA91C2 /* ClassificationStagesUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClassificationStagesUITests.swift; sourceTree = "<group>"; };
 		71F2218A88CE60CEA2812898 /* SpeechIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SpeechIntegrationTests.swift; sourceTree = "<group>"; };
 		722AAED194D1FE37E62E7EFC /* TestOperationBroker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestOperationBroker.swift; path = OrotMobile/TestOperationBroker.swift; sourceTree = "<group>"; };
 		75895AA92B389B7625D33D96 /* StorageMigrationUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StorageMigrationUITests.swift; sourceTree = "<group>"; };
@@ -528,10 +536,14 @@
 		9422961FF39A9392CEC9AE63 /* TestControl.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TestControl.swift; path = OrotMobile/TestControl.swift; sourceTree = "<group>"; };
 		95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceUITestConditions.swift; sourceTree = "<group>"; };
 		06A9F32CD67B3D539A7D4512 /* RoutesAppearanceUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoutesAppearanceUITestConditions.swift; sourceTree = "<group>"; };
+		06A9F32CD67B3D539A7D4522 /* GeneratedRecordsRoutesUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GeneratedRecordsRoutesUITestConditions.swift; sourceTree = "<group>"; };
+		06A9F32CD67B3D539A7D4524 /* RoutesVisibleContentUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoutesVisibleContentUITestConditions.swift; sourceTree = "<group>"; };
+		06A9F32CD67B3D539A7D4526 /* RoutesVisibleInterval.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoutesVisibleInterval.swift; sourceTree = "<group>"; };
 		9840C21D343A6892D0D28121 /* BackupPersistenceUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackupPersistenceUITests.swift; sourceTree = "<group>"; };
 		9D1F2599E8536B0460BD0C9B /* DebugUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DebugUITestConditions.swift; sourceTree = "<group>"; };
 		9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationUITestConditions.swift; sourceTree = "<group>"; };
 		D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationGeometryUITestConditions.swift; sourceTree = "<group>"; };
+		AD8B9A20E1624C5FB92C7212 /* NavigationRootBoundaryUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationRootBoundaryUITestConditions.swift; sourceTree = "<group>"; };
 		AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationMeasuredReservation.swift; sourceTree = "<group>"; };
 		A079CA3E1A684C048B1FC9FC /* AuthConsentWait.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AuthConsentWait.swift; sourceTree = "<group>"; };
 		A20100000000000000000002 /* KeychainAuthenticationIntegrationTests.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = KeychainAuthenticationIntegrationTests.m; sourceTree = "<group>"; };
@@ -1183,6 +1195,7 @@
 				4537E8AD8A8E77AE3DA54672 /* EncounterInputObservation.swift */,
 				9EF88F1E409293D4CBB0D0F3 /* NavigationUITestConditions.swift */,
 				D3A73F6214CB458BAE72EAD2 /* NavigationGeometryUITestConditions.swift */,
+				AD8B9A20E1624C5FB92C7212 /* NavigationRootBoundaryUITestConditions.swift */,
 				AC917F6214CB458BAE72EAD2 /* NavigationMeasuredReservation.swift */,
 				FA6E3C21B77B41D198C04A32 /* OverviewDuoUITests.swift */,
 				1A191250E0A19F17B4F69E2E /* ChartConsumerAcceptanceUITests.swift */,
@@ -1252,6 +1265,8 @@
 				B7C259AAC16CCD6C7552AA96 /* UnifiedImportUITests.swift */,
 				703671F9B1FDE75159699BF7 /* AppointmentConsentUITests.swift */,
 				828EFA035C434AB29FEA60DF /* DisclosureLayoutUITestObservations.swift */,
+				A35E167B46BBA7094ECA91C2 /* ClassificationStagesUITests.swift */,
+				B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */,
 				A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */,
 				DA117E000000000000000002 /* DailyReportEntryUITests.swift */,
 				DA117E000000000000000004 /* DailyReportLoadingUITests.swift */,
@@ -1274,6 +1289,9 @@
 				FF6446E6093512FA197B75C6 /* KeyboardSafeAreaUITests.swift */,
 				95CF6C7473278808A9F1E511 /* AppearanceUITestConditions.swift */,
 				06A9F32CD67B3D539A7D4512 /* RoutesAppearanceUITestConditions.swift */,
+				06A9F32CD67B3D539A7D4522 /* GeneratedRecordsRoutesUITestConditions.swift */,
+				06A9F32CD67B3D539A7D4524 /* RoutesVisibleContentUITestConditions.swift */,
+				06A9F32CD67B3D539A7D4526 /* RoutesVisibleInterval.swift */,
 				FFFC0126BBDBB73F12A72691 /* NextVisitReviewUITests.swift */,
 				0F162445FF500226AAD110A3 /* ProviderSelectionUITests.swift */,
 				AEF784FA4D244CFEB17D4068 /* SettingsConsentUITests.swift */,
@@ -1765,6 +1783,7 @@
 				BBD39ED4CA5C1F73E2C05D80 /* EncounterInputObservation.swift in Sources */,
 				93F8311434907E588FD371E4 /* NavigationUITestConditions.swift in Sources */,
 				D3A73F6214CB458BAE72EAD1 /* NavigationGeometryUITestConditions.swift in Sources */,
+				AD8B9A20E1624C5FB92C7211 /* NavigationRootBoundaryUITestConditions.swift in Sources */,
 				AC917F6214CB458BAE72EAD1 /* NavigationMeasuredReservation.swift in Sources */,
 				FA6E3C21B77B41D198C04A31 /* OverviewDuoUITests.swift in Sources */,
 				195917C9C1387243AC8FDFDD /* ChartConsumerAcceptanceUITests.swift in Sources */,
@@ -1819,6 +1838,8 @@
 				2617EEBD123782A50D4560DE /* UnifiedImportUITests.swift in Sources */,
 				9F3DBEE914E1BB9ECE8C8B62 /* AppointmentConsentUITests.swift in Sources */,
 				C5E2D6BA892C46F386A24093 /* DisclosureLayoutUITestObservations.swift in Sources */,
+				34A69ED6EC6B659BBF1B7EA0 /* ClassificationStagesUITests.swift in Sources */,
+				B8A130BD6D51CFCE98120001 /* ClassificationReaderGeometryUITests.swift in Sources */,
 				BE13CE7E8348A6F82963409C /* VisitQuestionConsentUITests.swift in Sources */,
 				DA117E000000000000000001 /* DailyReportEntryUITests.swift in Sources */,
 				DA117E000000000000000003 /* DailyReportLoadingUITests.swift in Sources */,
@@ -1841,6 +1862,9 @@
 				8F8F6C104A42FB5DDB18E1CD /* KeyboardSafeAreaUITests.swift in Sources */,
 				062044E1CF9785EE1624BF5D /* AppearanceUITestConditions.swift in Sources */,
 				06A9F32CD67B3D539A7D4511 /* RoutesAppearanceUITestConditions.swift in Sources */,
+				06A9F32CD67B3D539A7D4521 /* GeneratedRecordsRoutesUITestConditions.swift in Sources */,
+				06A9F32CD67B3D539A7D4523 /* RoutesVisibleContentUITestConditions.swift in Sources */,
+				06A9F32CD67B3D539A7D4525 /* RoutesVisibleInterval.swift in Sources */,
 				FFCBD7CE26AD205C3F9D7048 /* NextVisitReviewUITests.swift in Sources */,
 				12D0939BEAED8755996F1E07 /* ProviderSelectionUITests.swift in Sources */,
 				AEF784FA4D244CFEB17D4067 /* SettingsConsentUITests.swift in Sources */,

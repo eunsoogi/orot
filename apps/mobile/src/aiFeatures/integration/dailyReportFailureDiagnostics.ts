@@ -14,6 +14,7 @@ export function reportFailureOutcome(code: DailyReportFailureCode): Outcome {
       return 'consent_required';
     case 'source_revision_changed':
     case 'source_stale':
+    case 'source_unconfirmed_after_dispatch':
       return 'stale_evidence';
     case 'malformed_output':
       return 'invalid_output';

@@ -48,6 +48,7 @@ export function getRagConversationFailureCopy(
     consent_required: 'ragConversation.failureConsentRequired',
     cancelled: 'ragConversation.failureCancelled',
     retrieval_failed: 'ragConversation.failureRetrieval',
+    daily_report_retry_current: 'dailyReport.failure.retryCurrent',
     daily_report_sources_unavailable: 'dailyReport.failure.sourceUnavailable',
     validation_failed: 'ragConversation.failureValidation',
     stale_evidence: 'ragConversation.failureStaleEvidence',

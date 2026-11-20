@@ -8,7 +8,10 @@ import type {
 import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
 import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import type { AiFeatureServices } from './featureServices';
-import type { SelectedAiResolution } from './provider';
+import type {
+  ResolveConversationModelDisplay,
+  SelectedAiResolution,
+} from './provider';
 import type { FeatureScreenRoute } from './aiFeatureNavigation';
 import type { AiFeatureNavigationStateChange } from './useAiFeatureNavigationState';
 import type { ConversationEntryContext } from './conversationIntent';
@@ -73,7 +76,7 @@ export interface AiFeatureFlowScreenProps {
     reference: EvidenceReference,
     owner?: import('./coldConversationSourceResolvers').ColdConversationSourceOwner,
   ) => void;
-  readonly resolveSelectedAi: () => Promise<SelectedAiResolution>;
+  readonly resolveSelectedAi: ResolveConversationModelDisplay;
   readonly consent?: ExecutionConsentPort;
   readonly confirmConsent: (
     request: OutboundProcessingRequest,

@@ -71,8 +71,10 @@ export function createSettingsConsentPersistenceFixture(input: {
     authorityGeneration: generation,
     credentialEpoch: epoch,
   });
-  const authorization = (slot: SettingsConsentSlot) => {
-    return createSettingsConsentAuthorization({
+  const authorizationServices = (
+    slot: SettingsConsentSlot,
+  ): Parameters<typeof createSettingsConsentAuthorization>[0] => {
+    return {
       catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
       readGrant: (selectedSlot, domain) => grants.read(selectedSlot, domain),
       async resolveOwner() {
@@ -95,8 +97,10 @@ export function createSettingsConsentPersistenceFixture(input: {
           subscribeInvalidation: listener => owners[slot].subscribe(listener),
         };
       },
-    });
+    };
   };
+  const authorization = (slot: SettingsConsentSlot) =>
+    createSettingsConsentAuthorization(authorizationServices(slot));
   const inspect = async () => {
     const observations: Record<string, string> = {};
     for (const slot of slots) {
@@ -173,6 +177,7 @@ export function createSettingsConsentPersistenceFixture(input: {
   };
   return {
     authorization,
+    authorizationServices,
     inspect,
     saveConsent,
     async approve(slot: SettingsConsentSlot) {

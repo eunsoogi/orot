@@ -46,3 +46,23 @@ test('explicit preparation preserves configured state and uses real choice, enab
   const project = read('OrotMobile.xcodeproj/project.pbxproj');
   assert.equal((project.match(/RoutesAppearanceUITestConditions.swift/g) ?? []).length, 6);
 });
+
+test('first Routes case reaches Send through current Records surfaces and preserves recovery', () => {
+  const source = read('OrotUITests/AiFeatureNavigationUITests.swift');
+  const body = source.split('    func test')[1];
+  assert.match(body, /recording-controls-fullscreen/);
+  assert.match(body, /recording-session-panel/);
+  assert.match(body, /records-section-schedule/);
+  assert.match(body, /XCTAssertFalse\(node\(app, "navigation-tab-schedule"\).exists\)/);
+  assert.doesNotMatch(
+    body,
+    /navigationAction\(app, "navigation-tab-schedule"|openTab\(app, "schedule"|recording-controls-scroll/,
+  );
+  const send = body.indexOf('send.tap()');
+  const failure = '선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.';
+  const firstFailure = body.indexOf(failure);
+  const retainedFailure = body.indexOf(failure, firstFailure + failure.length);
+  assert.ok(send >= 0 && firstFailure > send && retainedFailure > firstFailure);
+  assert.ok(body.indexOf('try openSchedule(app)') > retainedFailure);
+  assert.match(body, /XCTAssertFalse\(node\(app, "calendar-connect"\).exists\)/);
+});

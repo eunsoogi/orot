@@ -88,6 +88,7 @@ export function ConversationSavedReportMessage({
     <ConversationMessage
       message={{
         id: 0,
+        restoredHistory: true,
         role: 'assistant',
         content,
         dailyReport: target,

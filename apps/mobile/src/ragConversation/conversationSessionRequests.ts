@@ -9,7 +9,7 @@ import type { ConversationTurnActivity } from './conversationTurnActivity';
 import type { ConversationActivityTracker } from './conversationActivity';
 import {
   activityNotifier,
-  createConversationActivity,
+  createConversationActivity as createActivity,
 } from './conversationActivity';
 import { createConversationRequestDisposal } from './conversationRequestDisposal';
 import {
@@ -110,7 +110,7 @@ export function createConversationSessionRequests(
       const fail = failureReporter(find, update, request, retainPartial, id);
       const history = conversationHistoryPayload(session.messages, question);
       const controller = new AbortController();
-      const snapshot = createConversationActivity(id, responseId);
+      const snapshot = createActivity(id, responseId, userMessageId);
       snapshots.set(id, snapshot);
       controllers.set(id, controller);
       pendingTurns.set(id, request);

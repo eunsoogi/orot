@@ -33,6 +33,7 @@ function requireCacheInWorkflow(relativePath, expectedCount) {
     'utf8',
   );
 
+  assert.equal(installs.length, expectedCount, `${relativePath} install count`);
   assert.equal(cacheSteps.length, expectedCount, `${relativePath} cache step count`);
   for (const install of installs) {
     const cache = cacheSteps.filter((index) => index < install).at(-1);
@@ -67,7 +68,14 @@ test('caches pnpm policy verification in each independent dependency-install job
       readFileSync(`.github/actions/${name}/action.yml`, 'utf8'),
       /uses: \.\/\.github\/actions\/ios-native-toolchain/,
     );
-  requireCacheInWorkflow('.github/workflows/unit-test.yml', 2);
+  const unitWorkflow = '.github/workflows/unit-test.yml';
+  const unitLane = '.github/workflows/unit-test-lane.yml';
+  requireCacheInWorkflow(unitWorkflow, 1);
+  requireCacheInWorkflow(unitLane, 1);
+  const unit = readFileSync(join(repositoryRoot, unitWorkflow), 'utf8');
+  assert.equal(unit.split('uses: ./' + unitLane).length - 1, 4);
+  for (const lane of ['mobile-1', 'mobile-2', 'mobile-3', 'packages'])
+    assert.equal(unit.split(`lane: ${lane}`).length - 1, 1);
   requireCacheInWorkflow('.github/workflows/policy-check.yml', 1);
 
   const codeQuality = readFileSync(
