@@ -19,6 +19,11 @@ import type { ChatGPTSelectionServices } from '../../providers/selection/chatGPT
 import { nativeChatGPTSelectionServices } from '../../providers/selection/chatGPTServices';
 import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
 
+export interface OnDeviceSelectionWitness {
+  isCurrent(): boolean;
+  subscribe(listener: () => void): () => void;
+}
+
 export type SelectedAiResolution =
   | {
       readonly status: 'ready';
@@ -29,6 +34,7 @@ export type SelectedAiResolution =
       readonly modelId: string;
       readonly recipient: string;
       readonly remoteProcessing: boolean;
+      readonly onDeviceSelectionWitness?: OnDeviceSelectionWitness;
     }
   | { readonly status: 'selection-required' | 'unavailable' };
 
@@ -46,6 +52,9 @@ export async function resolveSelectedAiProvider(
   options: SelectedAiResolverOptions = {},
 ): Promise<SelectedAiResolution> {
   const selectionStore = options.selectionStore ?? providerSelectionStore;
+  const selectionWitness = options.selectionStore
+    ? null
+    : providerSelectionStore.liveWitness();
   const chatGPTServices =
     options.chatGPTServices ?? nativeChatGPTSelectionServices;
   let selection: ProviderSelection | null;
@@ -72,9 +81,24 @@ export async function resolveSelectedAiProvider(
   // local Apple availability bridge. Keep exact model validation in both paths.
   if (!accountId) {
     try {
-      return readySelection(selection, [
+      const ready = readySelection(selection, [
         await (options.loadAppleOption ?? loadAppleSelectionOption)(),
       ]);
+      // This witness is tied to the selection read above and never reissues after a change.
+      if (
+        ready.status === 'ready' &&
+        !ready.remoteProcessing &&
+        selectionWitness?.() === true
+      )
+        return {
+          ...ready,
+          onDeviceSelectionWitness: {
+            isCurrent: selectionWitness,
+            subscribe: listener =>
+              providerSelectionStore.subscribeChanges(listener),
+          },
+        };
+      return ready;
     } catch {
       return { status: 'unavailable' };
     }
