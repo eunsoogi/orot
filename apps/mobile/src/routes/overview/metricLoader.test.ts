@@ -1,7 +1,12 @@
-import { createRecordRepository, runMigrations } from '@orot/storage';
+import {
+  createRecordRepository,
+  runMigrations,
+  type SqlDatabase,
+} from '@orot/storage';
 import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
+import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createHealthEvidenceTestDatabase } from '../../healthEvidence/localEvidenceTestSupport';
-import { loadOverviewMetrics } from './metricLoader';
+import { loadOverviewMetrics, overviewMetricWindow } from './metricLoader';
 import { seedOverviewHealth } from '../../../e2e/overviewFixture';
 
 test('projects real local samples with original source names and leaves absent days empty', async () => {
@@ -127,6 +132,107 @@ test('suppresses a sleep comparison when contributing sources differ between win
     expect(metrics.sleep?.comparison).toBeNull();
     expect(metrics.sleep?.source).toContain('watch');
     expect(metrics.sleep?.source).toContain('phone');
+  } finally {
+    close();
+  }
+});
+
+test('deduplicates quantity source metadata without ranking each sample and keeps source eligibility', async () => {
+  const { database, close } = openSqliteTestDatabase(':memory:');
+  const now = new Date('2026-10-15T12:00:00Z');
+  const previous = overviewMetricWindow(now).fromInclusive;
+  const recent = new Date(now.getTime() - 86400000).toISOString();
+  const atStart = Date.parse(previous);
+  const plans: string[][] = [];
+  const observed: SqlDatabase = {
+    ...database,
+    transaction: operation =>
+      database.transaction(tx =>
+        operation({
+          ...tx,
+          async execute(sql, bindings) {
+            if (
+              sql.includes(
+                'PARTITION BY concept, unit, sensor, name, identifier',
+              )
+            ) {
+              const plan = await tx.execute(
+                `EXPLAIN QUERY PLAN ${sql}`,
+                bindings,
+              );
+              plans.push(plan.rows.map(row => String(row.detail)));
+            }
+            return tx.execute(sql, bindings);
+          },
+        }),
+      ),
+  };
+  try {
+    await runMigrations(database);
+    const records = createRecordRepository(database);
+    for (const [id, at, name, unit] of [
+      ['previous', previous, 'Original Watch', 'count/min'],
+      ['recent', recent, 'Renamed Watch', 'count/min'],
+      ['duplicate', recent, 'Renamed Watch', 'count/min'],
+      [
+        'before',
+        new Date(atStart - 1).toISOString(),
+        'Before window',
+        'count/min',
+      ],
+      ['exclusive', now.toISOString(), 'After window', 'count/min'],
+      ['conflict', recent, 'Incompatible unit', 'count/s'],
+      ['stale', recent, 'Superseded Watch', 'count/min'],
+    ] as const) {
+      const sample = healthObservation(id, 'heart_rate', at);
+      await records.put('health_observation', {
+        ...sample,
+        ingestedAt: now.toISOString(),
+        value: { kind: 'quantity', amount: 72, unit },
+        provenance: {
+          ...sample.provenance,
+          source: {
+            system: 'healthkit',
+            sourceIdentifier: 'synthetic-watch',
+            sourceName: name,
+          },
+        },
+      });
+    }
+    await database.execute(
+      'INSERT INTO transcript_artifact_staleness (transcript_id, artifact_kind, artifact_id, superseded_segment_id, current_segment_id, invalidated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        'transcript',
+        'health_observation',
+        'stale',
+        'old',
+        'current',
+        now.toISOString(),
+      ],
+    );
+
+    const before = await loadOverviewMetrics(observed, now);
+    expect(before.metrics.heartRate).toMatchObject({
+      source: 'Original Watch, Renamed Watch',
+      measuredAt: recent,
+      comparison: null,
+    });
+    await records.delete('health_observation', 'conflict');
+    const after = await loadOverviewMetrics(observed, now);
+    expect(after.metrics.heartRate).toMatchObject({
+      source: 'Original Watch, Renamed Watch',
+      comparison: { previous: 72, recent: 72 },
+    });
+    expect(plans).toHaveLength(2);
+    for (const plan of plans) {
+      expect(plan).toContain('USE TEMP B-TREE FOR DISTINCT');
+      expect(plan).toContain('USE TEMP B-TREE FOR ORDER BY');
+      expect(plan).toContainEqual(
+        expect.stringMatching(
+          /SEARCH r USING INDEX health_context_\w+ \(<expr>=\? AND <expr>>\? AND <expr><\?\)/,
+        ),
+      );
+    }
   } finally {
     close();
   }
