@@ -1,3 +1,4 @@
+import { conversationSessionErrorState } from './conversationSessionErrorState';
 import { invalidateTasks } from './invalidateConversationTaskRefresh';
 import { conversationPhotoSurface } from './conversationPhotoSurface';
 import { prepareConversationSend } from './conversationSendPreflight';
@@ -49,12 +50,7 @@ export function createConversationSessions(
     stream = false,
   ) => {
     if (disposed) return;
-    snapshot = {
-      ...snapshot,
-      sessions: snapshot.sessions.map(session =>
-        session.id === id ? { ...session, ...change } : session,
-      ),
-    };
+    snapshot = conversationSessionErrorState.update(snapshot, id, change);
     if (stream) listeners.emitStream();
     else listeners.emit();
   };
@@ -157,7 +153,8 @@ export function createConversationSessions(
     loadOlderHistory: restoration.loadOlder,
     subscribe: listeners.subscribe,
     getSnapshot: () => snapshot,
-    setDraft: (id: number, draft: string) => update(id, { draft }),
+    setDraft: (id: number, draft: string) =>
+      update(id, conversationSessionErrorState.editDraft(find(id), draft)),
     setEntryPrompt: (id: number, entryPrompt?: string) =>
       update(id, { entryPrompt }),
     prepareEntry: taskState.prepareEntry,

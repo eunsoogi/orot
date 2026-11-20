@@ -31,6 +31,7 @@ export function ConversationComposer({
   photo,
   trailingAction,
   status = '',
+  preflightError = '',
   cancelling = false,
   steeringControls,
   onSteer,
@@ -53,6 +54,7 @@ export function ConversationComposer({
   /** A separately owned action may occupy the trailing composer slot. */
   readonly trailingAction?: ReactNode;
   readonly status?: string;
+  readonly preflightError?: string;
   readonly photo?: {
     readonly status: 'empty' | 'preparing' | 'ready' | 'transferring' | 'error';
     readonly previewData?: string;
@@ -191,6 +193,15 @@ export function ConversationComposer({
         </Text>
       ) : null}
       {steeringControls}
+      {preflightError ? (
+        <Text
+          accessibilityRole="alert"
+          style={[styles.error, styles.composerRecovery]}
+          testID="rag-conversation-error"
+        >
+          {preflightError}
+        </Text>
+      ) : null}
       <View style={styles.composer}>
         {photo ? (
           <ConversationPhotoAttachment {...photo} disabled={disabled || busy}>

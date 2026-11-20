@@ -86,5 +86,95 @@ enum RoutesVisibleContentUITestConditions {
         throw ObservationFailure.incompleteText
     }
 
-    private enum ObservationFailure: Error { case missingWindow, incompleteText }
+    /// This root route intentionally floats the composer over the padded ScrollView.
+    private static func conversationBounds(_ app: XCUIApplication) throws -> (dock: CGRect, overlay: CGRect, viewport: CGRect, keyboard: CGRect?) {
+        let history = UITestConditions.element(app, "rag-conversation-history")
+        let composer = UITestConditions.element(app, "rag-conversation-composer")
+        let floating = UITestConditions.element(app, "conversation-floating-composer-overlay")
+        guard UITestConditions.exists(history), UITestConditions.exists(composer),
+              UITestConditions.exists(floating),
+              let window = FormWindowOwnership.resolve(app, scroll: history, target: floating),
+              app.descendants(matching: .any).matching(identifier: composer.identifier).count == 1,
+              window.descendants(matching: .any).matching(identifier: composer.identifier).count == 1
+        else { throw ObservationFailure.missingWindow }
+        let windowFrame = window.frame
+        let historyFrame = history.frame
+        let overlay = floating.frame
+        let dock = composer.frame
+        let keyboard = app.keyboards.firstMatch
+        let keyboardFrame = keyboard.exists ? keyboard.frame : nil
+        guard [historyFrame, overlay, dock].allSatisfy(FormScrollGeometry.valid),
+              keyboardFrame.map(FormScrollGeometry.valid) ?? true,
+              windowFrame.insetBy(dx: -1, dy: -1).contains(overlay),
+              overlay.insetBy(dx: -1, dy: -1).contains(dock)
+        else { throw ObservationFailure.missingWindow }
+
+        let clipping = [overlay, keyboardFrame].compactMap(\.self)
+        let viewport = FormScrollGeometry.unobstructedScrollFrame(historyFrame.intersection(windowFrame), target: nil, controls: clipping)
+        guard FormScrollGeometry.valid(viewport), viewport.maxY <= overlay.minY + 1 else { throw ObservationFailure.incompleteText }
+        return (dock, overlay, viewport, keyboardFrame)
+    }
+
+    static func conversationControl(_ control: XCUIElement, in app: XCUIApplication) throws {
+        let bounds = try conversationBounds(app)
+        XCTAssertTrue(UITestConditions.exists(control) && control.isEnabled && control.isHittable)
+        let frame = control.frame
+        XCTAssertTrue(FormScrollGeometry.valid(frame) && bounds.dock.contains(frame) && bounds.overlay.contains(frame))
+        XCTAssertLessThanOrEqual(bounds.viewport.maxY, frame.minY + 1)
+        if let keyboard = bounds.keyboard {
+            XCTAssertLessThanOrEqual(frame.maxY, keyboard.minY + 1)
+        }
+        let back = UITestConditions.element(app, "navigation-back")
+        if back.exists {
+            XCTAssertFalse(frame.intersects(back.frame))
+        }
+    }
+
+    /// Match the local preflight alert in the measured composer, above the actual keyboard.
+    static func conversationMessage(identifier: String, expected: String, in app: XCUIApplication) throws {
+        let matches = app.descendants(matching: .any).matching(identifier: identifier)
+        let text = matches.firstMatch
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard matches.count == 1, let snapshot = try? text.snapshot() else { return false }
+            return snapshot.label == expected || snapshot.value as? String == expected
+        }, object: nil)
+        guard XCTWaiter.wait(for: [ready], timeout: 12) == .completed else {
+            XCTFail("Expected local conversation recovery alert did not reach a unique native node.")
+            throw ObservationFailure.incompleteText
+        }
+        let bounds = try conversationBounds(app)
+        XCTAssertEqual(matches.count, 1)
+        XCTAssertTrue(text.isHittable && FormScrollGeometry.valid(text.frame))
+        let frame = text.frame
+        XCTAssertTrue(bounds.dock.contains(frame) && bounds.overlay.contains(frame), "Local recovery must fit the measured composer.")
+        XCTAssertLessThanOrEqual(bounds.viewport.maxY, frame.minY + 1)
+        if let keyboard = bounds.keyboard {
+            XCTAssertLessThanOrEqual(frame.maxY, keyboard.minY + 1)
+        }
+    }
+
+    /// Settings restores its scroll position; the provider row, not the offscreen title, identifies the returned root.
+    static func settingsRootAfterProviderBack(in app: XCUIApplication) throws {
+        let rows = app.buttons.matching(identifier: "settings-open-provider")
+        let tabs = app.buttons.matching(identifier: "navigation-tab-settings")
+        let childScreens = app.descendants(matching: .any).matching(identifier: "settings-provider-screen")
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let viewport = app.frame
+            func visible(_ element: XCUIElement) -> Bool {
+                guard element.exists, element.isHittable else { return false }
+                let frame = element.frame
+                return FormScrollGeometry.valid(frame) && viewport.intersects(frame)
+            }
+            let visibleRows = rows.allElementsBoundByIndex.filter(visible)
+            let selectedTabs = tabs.allElementsBoundByIndex.filter { visible($0) && $0.isSelected }
+            return visibleRows.count == 1 && selectedTabs.count == 1 &&
+                !childScreens.allElementsBoundByIndex.contains(where: visible)
+        }, object: nil)
+        guard XCTWaiter.wait(for: [ready], timeout: 12) == .completed else {
+            XCTFail("Provider Back must return to the selected Settings root with its provider row visible and the provider page hidden.")
+            throw ObservationFailure.incompleteRoute
+        }
+    }
+
+    private enum ObservationFailure: Error { case missingWindow, incompleteText, incompleteRoute }
 }
