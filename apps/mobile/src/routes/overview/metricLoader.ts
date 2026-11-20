@@ -90,10 +90,18 @@ export async function loadOverviewMetrics(
       ],
     );
     const complete = report.days.filter(day => !day.partial);
+    const previous = complete.slice(-14, -7);
+    const recent = complete.slice(-7);
+    const asleepDates = new Set(
+      report.sleep.filter(day => day.asleepSeconds > 0).map(day => day.date),
+    );
     let sleepSourcesCompatible = false;
-    if (complete.length >= 14) {
-      const previous = complete.slice(-14, -7);
-      const recent = complete.slice(-7);
+    // Source compatibility can affect only a comparison with sleep in both weeks.
+    if (
+      complete.length >= 14 &&
+      previous.some(day => asleepDates.has(day.date)) &&
+      recent.some(day => asleepDates.has(day.date))
+    ) {
       const sources = await tx.execute(
         `SELECT DISTINCT w.period, json_extract(r.payload_json, '$.provenance.source.sourceIdentifier') AS identifier,
           COALESCE(json_extract(r.payload_json, '$.provenance.source.productType'), json_extract(r.payload_json, '$.provenance.source.device.model'), '') AS device
