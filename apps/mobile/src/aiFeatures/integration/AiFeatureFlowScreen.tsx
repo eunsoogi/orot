@@ -1,4 +1,5 @@
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
+import { DailyReportSourceResolverContext } from './DailyReportSourceLinks';
 import { DailyReportFlowScreen } from './DailyReportFlowScreen';
 import { ConversationSavedReportMessage } from './ConversationSavedReportMessage';
 import { ConversationReportTask } from './ConversationReportTask';
@@ -58,7 +59,7 @@ export function AiFeatureFlowScreen({
   );
   const colorScheme = useColorScheme();
   // Navigation prepares a request; only an explicit Send can start inference or consent.
-  const conversation = (
+  const conversationScreen = (
     <ConversationScreen
       isEntryCurrent={isEntryCurrent}
       entryContext={{
@@ -174,6 +175,13 @@ export function AiFeatureFlowScreen({
         />
       )}
     />
+  );
+  const conversation = (
+    <DailyReportSourceResolverContext.Provider
+      value={services.dailyReportSources}
+    >
+      {conversationScreen}
+    </DailyReportSourceResolverContext.Provider>
   );
   if (intent !== null) return conversation;
 

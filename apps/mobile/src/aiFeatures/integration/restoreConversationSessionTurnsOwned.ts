@@ -13,7 +13,10 @@ import type { RestoredTurn } from '../../ragConversation/conversationRestoredTur
 import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
 import { restoreColdConversationPreviews } from './restoreColdConversationEligibility';
 import { restoreHistoryToolTurns } from './restoreHistoryToolTurns';
-import { observeConversationHistory } from '../../providers/conversationHistoryDiagnostic';
+import {
+  observeConversationHistory,
+  observeOptInConversationHistory,
+} from '../../providers/conversationHistoryDiagnostic';
 import { fingerprint } from './evidenceUtils';
 import { restoreConversationVisitQuestions } from './restoreConversationVisitQuestions';
 import { healthSourceDependencies } from '../../ragConversation/conversationHealthDeletion';
@@ -98,8 +101,6 @@ export async function restoreConversationSessionTurnsOwned(
     [sessionId, version, turns, signal],
     () => [sessionId, version, selection?.ids],
   );
-  // Closed diagnostic spans distinguish strict fences from aggregate work;
-  // they never include identifiers or change source validation or error handling.
   // Content and tool events must not outlive a session deletion or source change during restoration.
   if (
     !(await fences.sessionBefore()) ||
@@ -220,7 +221,7 @@ export async function restoreConversationSessionTurnsOwned(
     ...toolTurns.map(turn => [turn.messageId, turn.createdAt] as const),
     ...interrupted.map(request => [request.id, request.createdAt] as const),
   ]);
-  const output = await observeConversationHistory(
+  const output = await observeOptInConversationHistory(
     'history_cold_previews',
     () =>
       restoreColdConversationPreviews(

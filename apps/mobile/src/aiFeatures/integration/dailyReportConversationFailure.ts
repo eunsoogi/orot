@@ -10,6 +10,8 @@ export function dailyReportConversationFailure(
       return { status: 'failure', kind: 'cancelled' };
     case 'consent_required':
       return { status: 'failure', kind: 'consent_required' };
+    case 'source_unconfirmed_after_dispatch':
+      return { status: 'failure', kind: 'daily_report_retry_current' };
     case 'source_stale':
     case 'source_revision_changed':
       return { status: 'failure', kind: 'stale_evidence' };

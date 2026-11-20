@@ -18,6 +18,7 @@ export type DailyReportFailureCode =
   | 'source_unavailable'
   | 'source_stale'
   | 'source_revision_changed'
+  | 'source_unconfirmed_after_dispatch'
   | 'report_read_failed'
   | 'provider_unavailable'
   | 'consent_required'

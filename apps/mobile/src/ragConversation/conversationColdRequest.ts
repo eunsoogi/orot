@@ -93,7 +93,7 @@ export function createConversationColdRequest(
     let turn: Turn | undefined;
     let activity: Activity | undefined;
     let paused = false;
-    const snapshot = createConversationActivity(id, bubble.id);
+    const snapshot = createConversationActivity(id, bubble.id, user.id);
     // A protected-storage wait must acknowledge Stop before its durable fence settles.
     input.snapshots.set(id, snapshot);
     const requestActivity = snapshot.getSnapshot();

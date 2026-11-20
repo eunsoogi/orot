@@ -134,7 +134,7 @@ test('rejects a source correction made while the provider is generating', async 
     });
     expect(await service(request())).toEqual({
       status: 'failed',
-      code: 'source_revision_changed',
+      code: 'source_unconfirmed_after_dispatch',
     });
     expect(
       (

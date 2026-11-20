@@ -1,8 +1,14 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { providerSelectionStore } from '../../../providers/selection/keychainSelectionStore';
 import { createAppleSelectionOption } from '../../../providers/selection/options';
 import type { ChatGPTSelectionServices } from '../../../providers/selection/chatGPTServices';
+import * as nativeExecution from '../../../ragConversation/conversationExecutionNative';
+import type { ConversationExecutionEvent } from '../../../ragConversation/conversationExecutionLease';
 import { AiProviderSelectorRow } from '../AiProviderSelectorRow';
-import { resolveSelectedAiProvider } from '../provider';
+import {
+  resolveSelectedAiProvider,
+  type ResolveConversationModelDisplay,
+} from '../provider';
 
 jest.mock('../../../layout/AppSymbol', () => ({
   AppSymbol: () => null,
@@ -96,4 +102,96 @@ test('verified Conversation label waits for its own catalog, never an unrelated 
   expect(screen.getByText('Synthetic verified model')).toBeTruthy();
   expect(control().props.accessibilityState.busy).toBe(false);
   await view.unmount();
+});
+
+function protectedForegroundFixture() {
+  let listener: (event: ConversationExecutionEvent) => void = () => {};
+  const protectedDataAvailable = jest.fn(async () => true);
+  jest.spyOn(nativeExecution, 'conversationExecutionNative').mockReturnValue({
+    bridgeAvailable: true,
+    currentPhase: () => 'active',
+    begin: async () => true,
+    end() {},
+    isActive: async () => true,
+    protectedDataAvailable,
+    subscribe(value) {
+      listener = value;
+      return () => {};
+    },
+  });
+  return {
+    emit: (event: ConversationExecutionEvent) => listener(event),
+    protectedDataAvailable,
+  };
+}
+
+test('shows the exact bundled saved name before native readiness, then clears it on invalidation', async () => {
+  protectedForegroundFixture();
+  const option = createAppleSelectionOption('available');
+  const availability = deferred<typeof option>();
+  const local = deferred<{ providerId: string; modelId: string }>();
+  let current = true;
+  let invalidate: () => void = () => {};
+  const unsubscribe = jest.fn();
+  const load = jest
+    .spyOn(providerSelectionStore, 'load')
+    .mockReturnValue(local.promise);
+  jest
+    .spyOn(providerSelectionStore, 'liveWitness')
+    .mockImplementation(() => () => current);
+  jest
+    .spyOn(providerSelectionStore, 'subscribeChanges')
+    .mockImplementation(listener => {
+      invalidate = listener;
+      return unsubscribe;
+    });
+  const loadAppleOption = jest.fn(() => availability.promise);
+  const resolveSelectedAi: ResolveConversationModelDisplay = observer =>
+    resolveSelectedAiProvider({ loadAppleOption }, observer);
+  try {
+    const view = await render(
+      <AiProviderSelectorRow
+        onPress={jest.fn()}
+        resolveSelectedAi={resolveSelectedAi}
+        revision={0}
+      />,
+    );
+    const row = () => screen.getByTestId('ai-feature-select-provider');
+    expect(row().props.accessibilityState.busy).toBe(true);
+    expect(screen.queryByText(option.displayName)).toBeNull();
+    await act(async () =>
+      local.resolve({
+        providerId: option.provider.id,
+        modelId: option.modelId,
+      }),
+    );
+    expect(screen.getByText(option.displayName)).toBeTruthy();
+    expect(row().props.accessibilityState.busy).toBe(true);
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(loadAppleOption).toHaveBeenCalledTimes(1);
+
+    await act(() => {
+      current = false;
+      invalidate();
+    });
+    expect(screen.queryByText(option.displayName)).toBeNull();
+    await act(async () => availability.resolve(option));
+    expect(screen.queryByText(option.displayName)).toBeNull();
+
+    // A clean revision uses its own witness and only native availability clears busy.
+    current = true;
+    await view.rerender(
+      <AiProviderSelectorRow
+        onPress={jest.fn()}
+        resolveSelectedAi={resolveSelectedAi}
+        revision={1}
+      />,
+    );
+    expect(screen.getByText(option.displayName)).toBeTruthy();
+    expect(row().props.accessibilityState.busy).toBe(false);
+    await view.unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(2);
+  } finally {
+    jest.restoreAllMocks();
+  }
 });

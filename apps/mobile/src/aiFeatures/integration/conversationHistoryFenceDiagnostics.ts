@@ -1,4 +1,4 @@
-import { observeConversationHistory } from '../../providers/conversationHistoryDiagnostic';
+import { observeOptInConversationHistory } from '../../providers/conversationHistoryDiagnostic';
 import type { createConversationArtifactDiscovery } from './conversationArtifactDiscovery';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 
@@ -24,7 +24,7 @@ export function createHistoryFenceDiagnostics(
       | 'history_session_recheck_before_assembly'
       | 'history_session_recheck_after_assembly',
   ) =>
-    observeConversationHistory(
+    observeOptInConversationHistory(
       stage,
       () => discovery.revalidateSession(...sessionArgs),
       signal,
@@ -33,7 +33,7 @@ export function createHistoryFenceDiagnostics(
     stage:
       'history_tool_recheck_before_assembly' | 'history_tool_recheck_final',
   ) =>
-    observeConversationHistory(
+    observeOptInConversationHistory(
       stage,
       () => storage.readToolTurnsSnapshot(...toolArgs()),
       signal,

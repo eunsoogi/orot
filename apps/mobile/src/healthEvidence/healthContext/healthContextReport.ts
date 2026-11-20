@@ -34,6 +34,10 @@ export async function readHealthContextReport(
     acquireHeartPrefix: AcquireHeartWorkoutPrefix;
     measureCost?: typeof measureHistoryValidationCost;
   },
+  preparedCalendar?: {
+    readonly days: HealthContextReport['days'];
+    readonly timestampKeys: string;
+  },
 ): Promise<HealthContextReport> {
   return withHealthContextCalendar(calendarScope, async calendar => {
     executor = observeReportAggregateSql(executor, diagnosticOwner);
@@ -43,13 +47,15 @@ export async function readHealthContextReport(
       topics.some(topic => !HEALTH_CONTEXT_TOPICS.includes(topic))
     )
       throw new RangeError('Invalid health context topics.');
-    trace?.('calendar', 'started');
-    const days = restorationWorkspace?.measureCost
-      ? restorationWorkspace.measureCost('artifact_report_calendar', () =>
-          calendar.read(window),
-        )
-      : calendar.read(window);
-    trace?.('calendar', 'completed');
+    if (!preparedCalendar) trace?.('calendar', 'started');
+    const days =
+      preparedCalendar?.days ??
+      (restorationWorkspace?.measureCost
+        ? restorationWorkspace.measureCost('artifact_report_calendar', () =>
+            calendar.read(window),
+          )
+        : calendar.read(window));
+    if (!preparedCalendar) trace?.('calendar', 'completed');
     const selected = new Set(topics);
     const quantities =
       selected.has('measurements') || selected.has('activity')
@@ -65,6 +71,7 @@ export async function readHealthContextReport(
                   : 'measurements',
               window.dataAvailableThrough,
               Boolean(restorationWorkspace),
+              preparedCalendar?.timestampKeys,
             );
             return {
               ...result,
@@ -75,6 +82,7 @@ export async function readHealthContextReport(
                 signal,
                 window.dataAvailableThrough,
                 restorationWorkspace?.acquireHeartPrefix,
+                preparedCalendar?.timestampKeys,
               ),
             };
           })

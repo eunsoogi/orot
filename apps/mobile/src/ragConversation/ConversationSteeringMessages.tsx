@@ -1,4 +1,6 @@
 import { View, StyleSheet } from 'react-native';
+import { ConversationBubbleEntrance } from './ConversationBubbleEntrance';
+import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
@@ -7,8 +9,10 @@ import type { StoredSteeringInstruction } from '../storage/conversationSteeringS
 /** Local enqueue/write is not a receipt. Read means provider application, not claimed comprehension. */
 export function ConversationSteeringMessages({
   instructions = [],
+  restored,
 }: {
   readonly instructions?: readonly StoredSteeringInstruction[];
+  readonly restored?: boolean;
 }) {
   return (
     <>
@@ -50,11 +54,15 @@ export function ConversationSteeringMessages({
             style={receiptStyles.row}
             testID="conversation-steering-message"
           >
-            <View style={styles.userMessage}>
+            <ConversationBubbleEntrance
+              entranceKey={conversationBubbleKey('steering', row.id)}
+              restored={restored}
+              style={styles.userMessage}
+            >
               <AppText selectable style={[styles.messageText, styles.userText]}>
                 {row.text}
               </AppText>
-            </View>
+            </ConversationBubbleEntrance>
             {receiptText ? (
               <AppText
                 accessibilityLiveRegion="polite"

@@ -19,10 +19,17 @@ test('vendor and each native host harness surface select required unit execution
 });
 
 test('required unit job executes installed native source and fails without its runner', () => {
-  const workflow = readFileSync('.github/workflows/unit-test.yml', 'utf8');
+  const caller = readFileSync('.github/workflows/unit-test.yml', 'utf8');
+  assert.match(
+    caller,
+    / {2}unit_packages:[\s\S]*?uses: \.\/\.github\/workflows\/unit-test-lane\.yml\n\s+with:\n\s+lane: packages/,
+  );
+  assert.match(caller, /name: Unit and component tests\n\s+needs: \[[^\n]*unit_packages\]/);
+  const workflow = readFileSync('.github/workflows/unit-test-lane.yml', 'utf8');
+  assert.equal((workflow.match(/scripts\/native-cache\/run-tests\.sh/g) ?? []).length, 1);
   assert.match(
     workflow,
-    /- name: Run installed native cache host regressions\n\s+run: scripts\/ci\/run-command\.sh native-cache artifacts\/unit\/native-cache\.log -- bash scripts\/native-cache\/run-tests\.sh/,
+    /- name: Run installed native cache host regressions\n\s+if: \$\{\{ inputs\.lane == 'packages' \}\}\n\s+run: scripts\/ci\/run-command\.sh native-cache artifacts\/unit\/native-cache\.log -- bash scripts\/native-cache\/run-tests\.sh/,
   );
   const runner = readFileSync('scripts/native-cache/run-tests.sh', 'utf8');
   assert.match(runner, /set -euo pipefail/);
@@ -37,4 +44,16 @@ test('native patch retains valid unified-diff file prefixes including newly adde
   const headers = patch.split('\n').filter((line) => line.startsWith('diff --git '));
   assert.ok(headers.length >= 7);
   for (const header of headers) assert.match(header, /^diff --git a\/(\S+) b\/\1$/);
+});
+
+test('Unit Test reusable lane selects the same required checks as its caller', () => {
+  const lane = selectChecksForPaths(['.github/workflows/unit-test-lane.yml']);
+  const caller = selectChecksForPaths(['.github/workflows/unit-test.yml']);
+  assert.equal(lane.typecheck, true);
+  assert.equal(lane.unit_tests, true);
+  assert.equal(lane.policy_tests, true);
+  assert.equal(lane.yaml, true);
+  assert.equal(lane.ios_build, false);
+  assert.equal(lane.ios_tests, false);
+  assert.deepEqual(lane, { ...caller, paths: lane.paths });
 });

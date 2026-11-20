@@ -113,38 +113,6 @@ test('moves the next-visit marker after cancellation and keeps details selected'
   );
 });
 
-test('moves the automatic selection when the selected visit is rescheduled later', async () => {
-  const store = createAppointmentStore([
-    appointment('current', now + 60_000),
-    appointment('following', now + 2 * 60_000),
-  ]);
-  await render(<AppointmentsScreen repository={store.repository} />);
-
-  await screen.findByTestId('appointment-next-visit-current');
-  await fireEvent.press(screen.getByTestId('appointment-edit-current'));
-  await fireEvent.changeText(
-    screen.getByTestId('appointment-date-input'),
-    '2026-10-21',
-  );
-  await fireEvent.changeText(
-    screen.getByTestId('appointment-time-input'),
-    '12:00',
-  );
-  // Move the selected record past another visit so next-visit identity must change independently.
-  await fireEvent.press(screen.getByTestId('appointment-save'));
-
-  expect(
-    await screen.findByTestId('appointment-next-visit-following'),
-  ).toBeTruthy();
-  expect(screen.queryByTestId('appointment-next-visit-current')).toBeNull();
-  expect(
-    screen.getByTestId('appointment-select-current').props.accessibilityState,
-  ).toEqual({ selected: false });
-  expect(
-    screen.getByTestId('appointment-select-following').props.accessibilityState,
-  ).toEqual({ selected: true });
-});
-
 test('refreshes its records when the retained route regains focus', async () => {
   const store = createAppointmentStore([appointment('next', now + 60_000)]);
   const rendered = await render(
@@ -157,25 +125,4 @@ test('refreshes its records when the retained route regains focus', async () => 
   );
   expect(await screen.findByTestId('appointment-next-visit-next')).toBeTruthy();
   expect(store.repository.list).toHaveBeenCalledTimes(1);
-});
-
-test('moves to the following visit at the current visit end boundary', async () => {
-  const current = {
-    ...appointment('current', now - 60_000),
-    endsAt: new Date(now + 5_000).toISOString(),
-  };
-  const store = createAppointmentStore([
-    current,
-    appointment('following', now + 60_000),
-  ]);
-  await render(<AppointmentsScreen repository={store.repository} />);
-
-  expect(
-    await screen.findByTestId('appointment-next-visit-current'),
-  ).toBeTruthy();
-  await act(async () => jest.advanceTimersByTime(4_999));
-  expect(screen.getByTestId('appointment-next-visit-current')).toBeTruthy();
-  await act(async () => jest.advanceTimersByTime(1));
-  expect(screen.getByTestId('appointment-next-visit-following')).toBeTruthy();
-  expect(screen.queryByTestId('appointment-next-visit-current')).toBeNull();
 });

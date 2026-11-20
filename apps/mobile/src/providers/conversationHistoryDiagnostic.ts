@@ -108,3 +108,18 @@ export async function observeConversationHistory<T>(
     throw error;
   }
 }
+
+/** New fence-only spans must not add promise hops or bridge calls on normal restores. */
+export function observeOptInConversationHistory<T>(
+  stage: ConversationHistoryStage,
+  work: () => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  let enabled = false;
+  try {
+    enabled = NativeModules?.OrotProviderDiagnostics?.enabled === true;
+  } catch {
+    // If the bridge is inaccessible, leave the original operation untouched.
+  }
+  return enabled ? observeConversationHistory(stage, work, signal) : work();
+}

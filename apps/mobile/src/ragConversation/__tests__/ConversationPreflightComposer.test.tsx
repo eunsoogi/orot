@@ -5,7 +5,7 @@ import { createEmptyConversation } from '../conversationEmptySession';
 import type { ConversationSessions } from '../conversationSessionTypes';
 
 /** Preflight retains the draft, so Stop must not accidentally become a steering action. */
-test('preparation shows status and an enabled Stop even with draft and pending model', async () => {
+test('preparation keeps an enabled Stop without a status banner', async () => {
   const cancel = jest.fn();
   const steer = jest.fn();
   await render(
@@ -23,7 +23,7 @@ test('preparation shows status and an enabled Stop even with draft and pending m
       onCancel={cancel}
     />,
   );
-  expect(screen.getByTestId('conversation-preflight-status')).toBeTruthy();
+  expect(screen.queryByTestId('conversation-preflight-status')).toBeNull();
   expect(screen.getByTestId('rag-conversation-input').props.value).toBe(
     'Synthetic draft',
   );
