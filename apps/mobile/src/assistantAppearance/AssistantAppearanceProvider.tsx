@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
@@ -67,6 +75,17 @@ export function AssistantAppearanceProvider({
       current = false;
     };
   }, [revision]);
+  const ready = state.status === 'configured';
+  const visibleValue =
+    state.status === 'configured' ? state.value : lastConfigured;
+  const canEnter = useCallback(() => readyRef.current, []);
+  const edit = useCallback(() => setEditing(true), []);
+  // Editor visibility is local UI state: do not republish the active appearance until it changes.
+  const appearance = useMemo<ContextValue | null>(
+    () =>
+      visibleValue ? { value: visibleValue, ready, canEnter, edit } : null,
+    [visibleValue, ready, canEnter, edit],
+  );
   if (state.status === 'loading')
     return (
       <SafeAreaLayout>
@@ -92,25 +111,10 @@ export function AssistantAppearanceProvider({
         </View>
       </SafeAreaLayout>
     );
-  const configured = state.status === 'configured';
-  const ready = configured;
-  const visibleValue =
-    state.status === 'configured' ? state.value : lastConfigured;
   return (
-    <Context.Provider
-      value={
-        visibleValue
-          ? {
-              value: visibleValue,
-              ready,
-              canEnter: () => readyRef.current,
-              edit: () => setEditing(true),
-            }
-          : null
-      }
-    >
+    <Context.Provider value={appearance}>
       {visibleValue ? children : null}
-      {!configured ? (
+      {!ready ? (
         <AppearanceEditor
           onSave={value => {
             readyRef.current = true;

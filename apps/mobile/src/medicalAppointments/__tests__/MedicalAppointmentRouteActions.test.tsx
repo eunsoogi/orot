@@ -6,7 +6,7 @@ import {
 } from '../../navigation/useNavigationPrimaryAction';
 import { MedicalAppointmentReviewView } from '../MedicalAppointmentReviewView';
 
-test('moves the existing calendar import and preserves its readiness guard', async () => {
+test('keeps the confirmation button centered instead of docking it and preserves readiness', async () => {
   const onImport = jest.fn(async () => undefined);
   function Fixture({ ready }: { ready: boolean }) {
     const { host, actions } = useNavigationPrimaryActionHost('medical');
@@ -28,7 +28,6 @@ test('moves the existing calendar import and preserves its readiness guard', asy
           savingId={null}
           savedIds={new Set()}
           onImport={onImport}
-          onOpenManual={jest.fn()}
         />
         <View>
           {actions.map(action => (
@@ -47,9 +46,9 @@ test('moves the existing calendar import and preserves its readiness guard', asy
     );
   }
   const view = await render(<Fixture ready={false} />);
-  expect(screen.getByTestId('dock-import-medical-appointments')).toBeDisabled();
-  expect(screen.queryByTestId('medical-appointment-import')).toBeNull();
+  expect(screen.getByTestId('medical-appointment-import')).toBeDisabled();
+  expect(screen.queryByTestId('dock-import-medical-appointments')).toBeNull();
   await view.rerender(<Fixture ready />);
-  await fireEvent.press(screen.getByTestId('dock-import-medical-appointments'));
+  await fireEvent.press(screen.getByTestId('medical-appointment-import'));
   expect(onImport).toHaveBeenCalledTimes(1);
 });

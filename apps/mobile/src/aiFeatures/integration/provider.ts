@@ -5,6 +5,7 @@ import {
 } from '../../providers/selection/privateCloudCompute';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import {
+  createAppleSelectionOption,
   createChatGPTSelectionOptions,
   loadAppleSelectionOption,
   resolveProviderSelection,
@@ -19,6 +20,22 @@ import type { ChatGPTSelectionServices } from '../../providers/selection/chatGPT
 import { nativeChatGPTSelectionServices } from '../../providers/selection/chatGPTServices';
 import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
 
+export interface OnDeviceSelectionWitness {
+  isCurrent(): boolean;
+  subscribe(listener: () => void): () => void;
+}
+
+/** UI-only observations never grant selection, provider capability, or dispatch. */
+export interface ConversationModelDisplayObserver {
+  readonly onDeviceRefreshOnly?: boolean;
+  selection(witness: OnDeviceSelectionWitness | null): void;
+  savedOnDeviceName(name: string): void;
+}
+
+export type ResolveConversationModelDisplay = (
+  observer?: ConversationModelDisplayObserver,
+) => Promise<SelectedAiResolution>;
+
 export type SelectedAiResolution =
   | {
       readonly status: 'ready';
@@ -29,6 +46,7 @@ export type SelectedAiResolution =
       readonly modelId: string;
       readonly recipient: string;
       readonly remoteProcessing: boolean;
+      readonly onDeviceSelectionWitness?: OnDeviceSelectionWitness;
     }
   | { readonly status: 'selection-required' | 'unavailable' };
 
@@ -44,8 +62,20 @@ const CHATGPT_PROVIDER_PREFIX = 'chatgpt-plan:';
 /** Resolves only the saved provider/model pair; catalog or account failure never selects a substitute. */
 export async function resolveSelectedAiProvider(
   options: SelectedAiResolverOptions = {},
+  display?: ConversationModelDisplayObserver,
 ): Promise<SelectedAiResolution> {
   const selectionStore = options.selectionStore ?? providerSelectionStore;
+  const selectionWitness = options.selectionStore
+    ? null
+    : providerSelectionStore.liveWitness();
+  if (display && !options.selectionStore)
+    display.selection(
+      selectionWitness && {
+        isCurrent: selectionWitness,
+        subscribe: listener =>
+          providerSelectionStore.subscribeChanges(listener),
+      },
+    );
   const chatGPTServices =
     options.chatGPTServices ?? nativeChatGPTSelectionServices;
   let selection: ProviderSelection | null;
@@ -55,6 +85,20 @@ export async function resolveSelectedAiProvider(
     return { status: 'unavailable' };
   }
   if (!selection) return { status: 'selection-required' };
+
+  if (display) {
+    const saved = createAppleSelectionOption('unavailable');
+    const onDevice =
+      selection.providerId === saved.provider.id &&
+      selection.modelId === saved.modelId;
+    // A foreground refresh may check the previous local choice again, but a
+    // different current choice never causes a new PCC/ChatGPT request here.
+    if (display.onDeviceRefreshOnly && !onDevice)
+      return { status: 'unavailable' };
+    // Only the bundled on-device title is known without provider verification.
+    if (onDevice && selectionWitness?.())
+      display.savedOnDeviceName(saved.displayName);
+  }
 
   // Resolve PCC independently from ChatGPT credentials and local model availability.
   if (selection.providerId === APPLE_PCC_PROVIDER_ID) {
@@ -72,9 +116,24 @@ export async function resolveSelectedAiProvider(
   // local Apple availability bridge. Keep exact model validation in both paths.
   if (!accountId) {
     try {
-      return readySelection(selection, [
+      const ready = readySelection(selection, [
         await (options.loadAppleOption ?? loadAppleSelectionOption)(),
       ]);
+      // This witness is tied to the selection read above and never reissues after a change.
+      if (
+        ready.status === 'ready' &&
+        !ready.remoteProcessing &&
+        selectionWitness?.() === true
+      )
+        return {
+          ...ready,
+          onDeviceSelectionWitness: {
+            isCurrent: selectionWitness,
+            subscribe: listener =>
+              providerSelectionStore.subscribeChanges(listener),
+          },
+        };
+      return ready;
     } catch {
       return { status: 'unavailable' };
     }

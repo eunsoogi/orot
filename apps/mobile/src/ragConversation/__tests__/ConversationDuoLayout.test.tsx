@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react-native';
-import { Dimensions, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Dimensions, StyleSheet } from 'react-native';
 import { ConversationScreen } from '../ConversationScreen';
 import type { RagConversationOutcome } from '../service';
 
@@ -35,6 +35,13 @@ function panelAxis(): string | undefined {
   )?.flexDirection;
 }
 
+beforeEach(() => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
+});
+afterEach(() => jest.restoreAllMocks());
+
 test('keeps the request, draft, and exact citations through adaptive reflow', async () => {
   let finish!: (outcome: RagConversationOutcome) => void;
   let requestSignal: AbortSignal | undefined;
@@ -42,8 +49,9 @@ test('keeps the request, draft, and exact citations through adaptive reflow', as
     ReturnType<React.ComponentProps<typeof ConversationScreen>['onSend']>,
     Parameters<React.ComponentProps<typeof ConversationScreen>['onSend']>
   >();
-  onSend.mockImplementation((_question, _history, signal) => {
+  onSend.mockImplementation((_question, _history, signal, observer) => {
     requestSignal = signal;
+    observer?.onProviderReceipt?.('response_started');
     return new Promise(resolve => {
       finish = resolve;
     });

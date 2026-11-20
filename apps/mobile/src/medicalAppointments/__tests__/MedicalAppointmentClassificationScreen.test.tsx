@@ -43,7 +43,7 @@ test('keeps the unselected model action concise without enabling classification'
 });
 
 test.each(['approved', 'missing', 'revoked', 'wrong-recipient'] as const)(
-  'checks settings permission without a repeated modal and keeps manual entry: %s',
+  'checks settings permission without a repeated modal or manual entry: %s',
   async state => {
     const selected = selectedProvider();
     const remote = {
@@ -116,13 +116,13 @@ test.each(['approved', 'missing', 'revoked', 'wrong-recipient'] as const)(
     expect(screen.queryByText('치과 진료')).toBeNull();
     expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
     expect(appointments.reconfirmCalendarEvent).not.toHaveBeenCalled();
-    await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
-    expect(onOpenManual).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('medical-appointment-manual')).toBeNull();
+    expect(onOpenManual).not.toHaveBeenCalled();
   },
   30000,
 );
 
-test('keeps manual entry when Calendar permission is denied without invoking AI or saving', async () => {
+test('keeps Calendar settings but removes manual entry when Calendar permission is denied without invoking AI or saving', async () => {
   const appointments = repository();
   const selected = selectedProvider();
   const { bridge, onOpenManual, onOpenCalendarSettings } = await renderScreen(
@@ -136,8 +136,8 @@ test('keeps manual entry when Calendar permission is denied without invoking AI 
   await fireEvent.press(
     screen.getByTestId('medical-appointment-calendar-settings'),
   );
-  await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
-  expect(onOpenManual).toHaveBeenCalledTimes(1);
+  expect(screen.queryByTestId('medical-appointment-manual')).toBeNull();
+  expect(onOpenManual).not.toHaveBeenCalled();
   expect(onOpenCalendarSettings).toHaveBeenCalledTimes(1);
   expect(bridge.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
   expect(selected.provider.generate).not.toHaveBeenCalled();
@@ -157,6 +157,6 @@ test('does not save unclassified events when no AI has been selected', async () 
   expect(importAction()).toBeDisabled();
   expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
   expect(screen.queryByText('진료')).toBeNull();
-  await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
-  expect(onOpenManual).toHaveBeenCalledTimes(1);
+  expect(screen.queryByTestId('medical-appointment-manual')).toBeNull();
+  expect(onOpenManual).not.toHaveBeenCalled();
 });

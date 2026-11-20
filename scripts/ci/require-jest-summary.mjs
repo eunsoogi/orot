@@ -1,8 +1,13 @@
 import { readFileSync } from 'node:fs';
 
-const [logPath, suiteName, extra] = process.argv.slice(2);
-if (!logPath || suiteName !== 'unit' || extra)
-  throw new Error('Usage: require-jest-summary.mjs <log-path> unit');
+const [logPath, suiteName, expectedRuns, extra] = process.argv.slice(2);
+if (
+  !logPath ||
+  suiteName !== 'unit' ||
+  extra ||
+  (expectedRuns !== undefined && !/^[1-9]\d*$/.test(expectedRuns))
+)
+  throw new Error('Usage: require-jest-summary.mjs <log-path> unit [expected-runs]');
 
 // Every workspace Jest invocation must discover and pass tests. iOS validation reads xcresult instead of accepting a textual Jest substitute.
 const log = readFileSync(logPath, 'utf8').replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '');
@@ -10,6 +15,9 @@ const tests = [...log.matchAll(/^Tests:\s*([^\r\n]+)$/gm)].map((match) => match[
 const suites = [...log.matchAll(/^Test Suites:\s*([^\r\n]+)$/gm)].map((match) => match[1]);
 if (!tests.length || tests.length !== suites.length)
   throw new Error('unit: Jest did not produce a matching test and suite summary for every run');
+
+if (expectedRuns !== undefined && tests.length !== Number(expectedRuns))
+  throw new Error(`unit: expected ${expectedRuns} Jest summaries, found ${tests.length}`);
 
 function count(summary, label) {
   return Number(summary.match(new RegExp(`(\\d+) ${label}\\b`, 'i'))?.[1] ?? 0);

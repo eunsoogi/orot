@@ -1,3 +1,6 @@
+import { ConversationActivityBubble } from './ConversationActivityBubble';
+import { ConversationTranscriptEntranceScope } from './ConversationTranscriptEntranceScope';
+import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { ConversationMessageReceipt } from './ConversationMessageReceipt';
 import { Fragment, type ComponentProps, type ReactNode } from 'react';
 import {
@@ -11,6 +14,9 @@ import type { ConversationHistoryProps } from './ConversationHistoryProps';
 /** Receipts belong to their response, never to whichever turn happens to be last later. */
 export function ConversationTranscriptMessages({
   messages,
+  availableMessages = messages,
+  sessionId,
+  showPendingBubble,
   entryChoices,
   pendingId,
   instructions,
@@ -24,6 +30,9 @@ export function ConversationTranscriptMessages({
   readonly onReadingLayout?: (id: number, y: number, height: number) => void;
   readonly entryChoices?: ReactNode;
   readonly messages: readonly DisplayMessage[];
+  readonly availableMessages?: readonly DisplayMessage[];
+  readonly sessionId?: number;
+  readonly showPendingBubble?: boolean;
   readonly anchorId?: number;
   readonly onAnchorLayout?: (y: number) => void;
   readonly pendingId?: number;
@@ -56,6 +65,9 @@ export function ConversationTranscriptMessages({
       onPosition={message.id === anchorId ? onAnchorLayout : undefined}
     >
       <ConversationSteeringMessages
+        restored={
+          message.id <= 0 || (message !== target && message.restoredHistory)
+        }
         instructions={
           message === target ? instructions : message.steeringInstructions
         }
@@ -78,11 +90,30 @@ export function ConversationTranscriptMessages({
       <Fragment key="conversation-entry-choices">{entryChoices}</Fragment>,
     );
   return (
-    <>
+    <ConversationTranscriptEntranceScope
+      availableMessages={availableMessages}
+      instructions={instructions}
+      pendingId={pendingId}
+      showPendingBubble={showPendingBubble}
+      presentation={messageProps}
+      sessionId={sessionId}
+    >
       {rows}
       {!target ? (
-        <ConversationSteeringMessages instructions={instructions} />
+        <ConversationSteeringMessages
+          instructions={instructions}
+          restored={pendingId === undefined || pendingId <= 0}
+        />
       ) : null}
-    </>
+      {showPendingBubble ? (
+        <ConversationActivityBubble
+          entranceKey={
+            pendingId === undefined || pendingId <= 0
+              ? undefined
+              : conversationBubbleKey('pending', pendingId)
+          }
+        />
+      ) : null}
+    </ConversationTranscriptEntranceScope>
   );
 }

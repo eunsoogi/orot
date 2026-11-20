@@ -88,21 +88,42 @@ export async function assertConversationArtifactCurrent(
         // The protected request/source join above is the authority for this photo.
         continue;
       } else if (isGeneratedSummarySource(source)) {
-        await assertConversationSummaryParent(
-          tx,
-          database,
-          source,
-          validatePeriod,
-          measureCost,
-        );
+        // Observe this original await without adding a promise or changing its owner.
+        const finishRead = profileHistoryValidation
+          ? startHistoryValidationCost('artifact_summary_parent')
+          : undefined;
+        try {
+          await assertConversationSummaryParent(
+            tx,
+            database,
+            source,
+            validatePeriod,
+            measureCost,
+          );
+          finishRead?.('completed');
+        } catch (error) {
+          finishRead?.('failed');
+          throw error;
+        }
       } else if (isGeneratedConversationSource(source)) {
-        const result = await tx.execute(
-          `SELECT a.result_json, a.id, a.session_id, a.created_at FROM conversation_artifacts a
+        // Observe this original await without adding a promise or changing its owner.
+        const finishRead = profileHistoryValidation
+          ? startHistoryValidationCost('artifact_parent_row')
+          : undefined;
+        let result;
+        try {
+          result = await tx.execute(
+            `SELECT a.result_json, a.id, a.session_id, a.created_at FROM conversation_artifacts a
           JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0
           JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
           WHERE a.id = ? AND NOT EXISTS (SELECT 1 FROM conversation_invalid_parents i WHERE i.id = a.id) AND NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id = a.id)`,
-          [source.id],
-        );
+            [source.id],
+          );
+          finishRead?.('completed');
+        } catch (error) {
+          finishRead?.('failed');
+          throw error;
+        }
         const row = result.rows[0];
         const parent = measureCost
           ? measureCost('artifact_parent_decode', () =>
@@ -127,14 +148,24 @@ export async function assertConversationArtifactCurrent(
         await visit(parent);
       } else {
         // Existing parents keep scoped deletion guards rather than a new turn's global lease.
-        await assertRetainedEvidenceCurrent(
-          tx,
-          [source],
-          history,
-          requireGeneration && path.size === 1,
-          undefined,
-          validatePeriod,
-        );
+        // Observe this original await without adding a promise or changing its owner.
+        const finishRead = profileHistoryValidation
+          ? startHistoryValidationCost('artifact_retained_source')
+          : undefined;
+        try {
+          await assertRetainedEvidenceCurrent(
+            tx,
+            [source],
+            history,
+            requireGeneration && path.size === 1,
+            undefined,
+            validatePeriod,
+          );
+          finishRead?.('completed');
+        } catch (error) {
+          finishRead?.('failed');
+          throw error;
+        }
       }
     }
     if (current.treatmentContext)

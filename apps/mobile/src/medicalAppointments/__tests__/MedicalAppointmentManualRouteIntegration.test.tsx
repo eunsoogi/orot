@@ -137,7 +137,6 @@ async function renderProductionManualRoute() {
             bridge={{} as CalendarBridge}
             calendarSync={{} as CalendarAutoSyncState}
             manual
-            onOpenManual={jest.fn()}
             onOpenCalendarSettings={jest.fn()}
             loadAppointments={loadAppointments}
           />

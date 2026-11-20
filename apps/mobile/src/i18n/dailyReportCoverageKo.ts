@@ -1,4 +1,6 @@
 export const dailyReportCoverageKo = {
+  'dailyReport.statisticCitation': '통계 출처 {number} · 근거 원본 {count}건',
+  'dailyReport.otherBackingSources': '그 외 근거 원본 {count}건',
   'dailyReport.coverage.recordedScope': '기록된 기간 기준',
   'dailyReport.coverage.count': '불러온 원본 기록 {count}건',
   'dailyReport.coverage.countUnknown': '입력 기록 수 미확인',

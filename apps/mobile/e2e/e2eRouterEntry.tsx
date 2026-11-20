@@ -1,4 +1,5 @@
 import 'react-native-get-random-values';
+import { routesGeneratedRecordsEnabled } from './routesGeneratedRecordsSelection';
 import { NativeModules } from 'react-native';
 import { selectEntryRoute } from './selectEntryRoute';
 import { retainedVisitObservationEnabled } from './retainedVisitObservation';
@@ -26,7 +27,12 @@ switch (selectEntryRoute(launchSettings)) {
     break;
   case 'medical-appointment-classification':
     // Keep calendar classification consent checks on synthetic Calendar and provider data.
-    require('./medicalAppointmentClassificationProbeEntry');
+    if (
+      launchSettings.OROT_TEST_CLASSIFICATION_READER_GEOMETRY === 'YES' &&
+      NativeModules.OrotTestControl
+    )
+      require('./classificationReaderGeometryEntry');
+    else require('./medicalAppointmentClassificationProbeEntry');
     break;
   case 'medical-appointment-app-navigation':
     // Exercise #108 through App with deterministic local fixtures and no provider inference.
@@ -59,7 +65,9 @@ switch (selectEntryRoute(launchSettings)) {
     break;
   case 'ai-feature-visit-questions':
     // The diagnostic opt-in mounts the retained editor under the existing UIKit observation gate.
-    if (retainedVisitObservationEnabled(launchSettings))
+    if (routesGeneratedRecordsEnabled(launchSettings))
+      require('./routesGeneratedRecordsProbeEntry');
+    else if (retainedVisitObservationEnabled(launchSettings))
       require('./nextVisitQuestionsProbeEntry');
     else require('./aiFeatureVisitQuestionsProbeEntry');
     break;

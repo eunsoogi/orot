@@ -12,6 +12,8 @@ import type {
   HealthContextReport,
   HealthContextTopic,
   HealthContextWindow,
+  HealthQuantityDay,
+  HealthQuantitySeries,
 } from './types';
 import { HEALTH_CONTEXT_TOPICS } from './types';
 import { traceHealthContext, type HealthContextTrace } from './trace';
@@ -21,8 +23,16 @@ import {
   withHealthContextCalendar,
   type HealthContextCalendarScope,
 } from './calendarReadScope';
-/** Reusable inside an existing transaction: no nested transactions, raw history transfer or implicit native reads. */
-export async function readHealthContextReport(
+type ChartQuantitySeries = Omit<HealthQuantitySeries, 'days'> & {
+  readonly days: readonly Omit<HealthQuantityDay, 'activityContext'>[];
+};
+
+export type OverviewChartHealthContext = Pick<
+  HealthContextReport,
+  'window' | 'days' | 'sleep' | 'limitations'
+> & { readonly quantities: readonly ChartQuantitySeries[] };
+
+type ReportInputs = [
   executor: SqlExecutor,
   window: HealthContextWindow,
   topics: readonly HealthContextTopic[],
@@ -34,6 +44,45 @@ export async function readHealthContextReport(
     acquireHeartPrefix: AcquireHeartWorkoutPrefix;
     measureCost?: typeof measureHistoryValidationCost;
   },
+  preparedCalendar?: {
+    readonly days: HealthContextReport['days'];
+    readonly timestampKeys: string;
+  },
+];
+
+/** Local chart values do not display per-sample workout-overlap groups. Read them
+ * from the same aggregate snapshot without calculating that AI-only context. */
+export function readOverviewChartHealthContext(
+  executor: SqlExecutor,
+  window: HealthContextWindow,
+): Promise<OverviewChartHealthContext> {
+  return readHealthContext('overviewCharts', executor, window, [
+    'measurements',
+    'activity',
+    'sleep',
+  ]);
+}
+
+/** Reusable inside an existing transaction: no nested transactions, raw history transfer or implicit native reads. */
+export function readHealthContextReport(
+  ...inputs: ReportInputs
+): Promise<HealthContextReport> {
+  return readHealthContext('full', ...inputs);
+}
+
+async function readHealthContext(
+  purpose: 'full' | 'overviewCharts',
+  ...[
+    executor,
+    window,
+    topics,
+    signal,
+    trace,
+    diagnosticOwner,
+    calendarScope,
+    restorationWorkspace,
+    preparedCalendar,
+  ]: ReportInputs
 ): Promise<HealthContextReport> {
   return withHealthContextCalendar(calendarScope, async calendar => {
     executor = observeReportAggregateSql(executor, diagnosticOwner);
@@ -43,13 +92,15 @@ export async function readHealthContextReport(
       topics.some(topic => !HEALTH_CONTEXT_TOPICS.includes(topic))
     )
       throw new RangeError('Invalid health context topics.');
-    trace?.('calendar', 'started');
-    const days = restorationWorkspace?.measureCost
-      ? restorationWorkspace.measureCost('artifact_report_calendar', () =>
-          calendar.read(window),
-        )
-      : calendar.read(window);
-    trace?.('calendar', 'completed');
+    if (!preparedCalendar) trace?.('calendar', 'started');
+    const days =
+      preparedCalendar?.days ??
+      (restorationWorkspace?.measureCost
+        ? restorationWorkspace.measureCost('artifact_report_calendar', () =>
+            calendar.read(window),
+          )
+        : calendar.read(window));
+    if (!preparedCalendar) trace?.('calendar', 'completed');
     const selected = new Set(topics);
     const quantities =
       selected.has('measurements') || selected.has('activity')
@@ -65,7 +116,9 @@ export async function readHealthContextReport(
                   : 'measurements',
               window.dataAvailableThrough,
               Boolean(restorationWorkspace),
+              preparedCalendar?.timestampKeys,
             );
+            if (purpose === 'overviewCharts') return result;
             return {
               ...result,
               series: await addHeartRateActivityContext(
@@ -75,6 +128,7 @@ export async function readHealthContextReport(
                 signal,
                 window.dataAvailableThrough,
                 restorationWorkspace?.acquireHeartPrefix,
+                preparedCalendar?.timestampKeys,
               ),
             };
           })

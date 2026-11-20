@@ -78,3 +78,13 @@ test('default mobile Jest discovery includes every suite and excludes fixture en
     [],
   );
 });
+
+test('three mobile CI shards partition the default Jest inventory without omissions or overlap', () => {
+  const command = ['--filter', '@orot/mobile', 'test:unit', '--listTests'];
+  const all = listJestSuites(command);
+  const shards = [1, 2, 3].map((id) => listJestSuites([...command, `--shard=${id}/3`]));
+  assert.ok(shards.every((shard) => shard.length > 0));
+  const combined = shards.flat().sort();
+  assert.equal(new Set(combined).size, combined.length);
+  assert.deepEqual(combined, all);
+});
