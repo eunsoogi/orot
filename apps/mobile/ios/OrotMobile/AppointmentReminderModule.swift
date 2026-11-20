@@ -30,6 +30,10 @@ enum AppointmentReminderDiagnosticStage: String, Codable {
     case centerAddResolve = "center-add-resolve"
     case centerAddReject = "center-add-reject"
     case cancel
+    case dailyInvalidPreference = "daily-invalid-preference"
+    case dailyDisabled = "daily-disabled"
+    case dailyAuthorizationRejected = "daily-authorization-rejected"
+    case dailyRollback = "daily-rollback-reject"
 }
 
 enum AppointmentReminderDiagnosticAuthorization: String, Codable {

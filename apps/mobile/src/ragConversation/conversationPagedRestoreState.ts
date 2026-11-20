@@ -3,23 +3,12 @@ import type {
   ConversationSessionOptions,
 } from './conversationSessionTypes';
 import type {
-  ConversationHistoryCursor,
+  ConversationHistoryReaderOwner,
   ReadConversationHistoryPage,
 } from './conversationHistoryPage';
 import { conversationRestoredMessages } from './conversationRestoredMessages';
 import { getRagConversationCopy } from './copy';
 import { t } from '../i18n';
-
-type PageOwner = {
-  durableId: string;
-  cursor?: ConversationHistoryCursor;
-  initialized: boolean;
-  exhausted: boolean;
-  nextId: number;
-  controller?: AbortController;
-  flight?: Promise<void>;
-};
-
 /** Each page keeps the lease and owner fence; failed pages never advance the cursor. */
 export function createConversationPagedRestoreState(input: {
   read: ReadConversationHistoryPage;
@@ -27,14 +16,23 @@ export function createConversationPagedRestoreState(input: {
   find: (id: number) => ConversationSession | undefined;
   update: (id: number, change: Partial<ConversationSession>) => void;
 }) {
-  const owners = new Map<number, PageOwner>();
+  const owners = new Map<number, ConversationHistoryReaderOwner>();
   const forget = (id: number) => {
     owners.get(id)?.controller?.abort();
     owners.delete(id);
   };
-  const load = (id: number, signal?: AbortSignal): Promise<void> => {
+  const load = (
+    id: number,
+    signal?: AbortSignal,
+    initialId?: string,
+  ): Promise<void> => {
     const owner = owners.get(id);
     if (!owner || owner.exhausted || signal?.aborted) return Promise.resolve();
+    if (
+      initialId !== undefined &&
+      (owner.initialized || owner.durableId !== initialId)
+    )
+      return Promise.resolve();
     if (owner.flight) {
       // Joining cancellation releases this wait, never the scroll reader's ownership.
       const flight = owner.flight;
@@ -197,6 +195,8 @@ export function createConversationPagedRestoreState(input: {
       owner.flight = undefined;
       input.update(id, { historyLoading: false, historyLoadFailed: true });
     },
+    retryInitial: (id: number, durableId: string, signal: AbortSignal) =>
+      load(id, signal, durableId),
     retry: load,
     loadOlder: load,
     /** Retry a failed read once per explicit send, never dispatch with unvalidated history. */

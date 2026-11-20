@@ -1,3 +1,4 @@
+import { createDailyReportIdentity } from '@orot/domain';
 import { todayIdentity } from './dailyReportTodayIdentity';
 import { useConversationSessions } from '../../ragConversation/ConversationSessionsContext';
 import { startConversationReportTurn } from '../../ragConversation/startConversationReportTurn';
@@ -10,12 +11,17 @@ import { ConversationSavedReportMessage } from './ConversationSavedReportMessage
 import type { ComponentProps } from 'react';
 import { DailyReportRoute } from './DailyReportRoute';
 
-/** Restored cards expose only the committed report as an assistant message; they never restart work. */
+/** Restored cards show committed reports; reminders first read their delivered day, never auto-start work. */
 export function ConversationReportTask({
   card,
   sessionId,
   services,
   onOpenSource,
+  onChat,
+  onTaskIdentity,
+  onTaskResult,
+  onBack,
+  ownsOperation,
 }: {
   card: RetainedConversationTask;
   sessionId: number;
@@ -27,6 +33,31 @@ export function ConversationReportTask({
 >) {
   const store = useConversationSessions();
   if (card.task.kind !== 'daily_report') return null;
+  // Reminder entry is a read of the delivered day, not authority to start today's generation.
+  if (card.task.reminder && services.dailyReport)
+    return (
+      <DailyReportRoute
+        feature={services.dailyReport}
+        initialIdentity={card.task.identity}
+        expectedReport={card.task.report}
+        taskRevision={card.revision}
+        reminder
+        inline
+        providerSelection={null}
+        onTaskIdentity={onTaskIdentity}
+        onTaskResult={onTaskResult}
+        onSelectToday={async request => {
+          await onTaskIdentity?.(
+            createDailyReportIdentity(request.localDate, request.timeZone),
+          );
+        }}
+        onChat={onChat}
+        onBack={onBack}
+        ownsOperation={ownsOperation}
+        resolveSources={services.dailyReportSources}
+        onOpenSource={onOpenSource}
+      />
+    );
   if (!card.task.report)
     return (
       <AppButton

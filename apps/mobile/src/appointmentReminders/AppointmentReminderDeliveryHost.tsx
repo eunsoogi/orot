@@ -1,4 +1,7 @@
+import { claimDailyReminderPrompt } from './dailyReminderPromptReceipt';
 import { useEffect } from 'react';
+import { useConversationSessions } from '../ragConversation/ConversationSessionsContext';
+import { createDailyReminderConversation } from './dailyReminderConversation';
 import { AppState } from 'react-native';
 import type { NavigationController } from '../navigation/navigationController';
 import type { AppNavigationRoute } from '../routes/appNavigationRoute';
@@ -38,6 +41,8 @@ export function AppointmentReminderDeliveryHost(
     readonly executeReminderEntry?: (
       work: () => Promise<void>,
     ) => Promise<void>;
+    readonly promptAllowed?: () => boolean;
+    readonly capturePromptRoot?: () => () => boolean;
     readonly canRestoreEntry?: () => Promise<boolean>;
     readonly onExplicitReminderOpened?: () => void;
   } & ReplyDeliverySettings,
@@ -46,12 +51,18 @@ export function AppointmentReminderDeliveryHost(
     controller,
     executeReminderEntry,
     canRestoreEntry,
+    promptAllowed,
+    capturePromptRoot,
     onExplicitReminderOpened,
+    openConversationRoot,
   } = props;
   const runtime = useAppointmentReminderRuntime();
+  const sessions = useConversationSessions();
   useReplyDeliveryFromHost(props);
   useEffect(() => {
     if (!runtime) return;
+    let active = true;
+    const lifetime = new AbortController();
     let retryWhenNavigationAvailable = false;
     const retryNavigation = () => {
       retryWhenNavigationAvailable = true;
@@ -63,38 +74,21 @@ export function AppointmentReminderDeliveryHost(
     );
     const destination = createDailyReminderDestination({
       ...dailyReminderIntentStore,
-      canOpen: entry =>
-        ![...runtime.dailyReportTargets.values()].some(
-          value => value.entryKey !== entry.entryKey,
-        ),
-      open: async entry => {
-        const snapshot = controller.getSnapshot();
-        if (
-          [...runtime.dailyReportTargets.entries()].some(
-            ([key, value]) =>
-              value.entryKey === entry.entryKey &&
-              snapshot.routes.some(route => route.key === key),
-          )
-        )
-          return 'opened';
-        const decision = await navigationDecisions.daily(
-          snapshot.currentRoute.key,
-        );
-        if (decision !== 'approved') return decision;
-        const current = controller.getSnapshot();
-        if (
-          current.isTransitioning ||
-          current.currentRoute.key !== snapshot.currentRoute.key ||
-          [...runtime.dailyReportTargets.values()].some(
-            value => value.entryKey !== entry.entryKey,
-          )
-        )
-          return 'busy';
-        const route = controller.push('daily-report');
-        if (!route) return 'busy';
-        runtime.dailyReportTargets.set(route.key, entry);
-        return 'opened';
-      },
+      consumeOnOpened: true,
+      onConsumed: () => drainConversation(),
+      open: createDailyReminderConversation({
+        controller,
+        sessions,
+        confirm: navigationDecisions.daily,
+        openRoot: openConversationRoot,
+        canEnter: props.canEnterReply,
+        isCurrent: () => active,
+        retention: props.retention,
+        signal: lifetime.signal,
+        claimPrompt: claimDailyReminderPrompt,
+        promptAllowed,
+        capturePromptRoot,
+      }),
     });
     runtime.dailyReportSelection.selectReminder = destination.select;
     const unregisterDaily = registerDailyReminderConsumer(destination.accept);
@@ -148,6 +142,8 @@ export function AppointmentReminderDeliveryHost(
             if (canRestoreEntry && !(await canRestoreEntry())) {
               return;
             }
+            // A pending reminder owns the daily entry until its durable handoff finishes.
+            if ((await dailyReminderIntentStore.read())?.active) return;
             const result = await restoreDailyReportConversation({
               controller,
               runtime,
@@ -225,6 +221,8 @@ export function AppointmentReminderDeliveryHost(
     reconcile().catch(() => undefined);
     drain();
     return () => {
+      active = false;
+      lifetime.abort();
       if (runtime.dailyReportSelection.selectReminder === destination.select)
         runtime.dailyReportSelection.selectReminder = null;
       unregisterDaily();
@@ -237,7 +235,13 @@ export function AppointmentReminderDeliveryHost(
     runtime,
     executeReminderEntry,
     canRestoreEntry,
+    promptAllowed,
+    capturePromptRoot,
     onExplicitReminderOpened,
+    sessions,
+    openConversationRoot,
+    props.canEnterReply,
+    props.retention,
   ]);
   return null;
 }

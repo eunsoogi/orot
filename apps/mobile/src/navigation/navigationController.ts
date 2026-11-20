@@ -1,52 +1,13 @@
-export type NavigationIntent = 'back' | 'home' | 'tab';
+import type {
+  NavigationController,
+  NavigationIntent,
+  NavigationLeaveGuard,
+  NavigationRoute,
+  NavigationSnapshot,
+} from './navigationControllerTypes';
+export type * from './navigationControllerTypes';
 
-export interface NavigationRoute<Name extends string> {
-  readonly key: string;
-  readonly name: Name;
-}
-
-export interface NavigationTransition<Name extends string> {
-  readonly intent: NavigationIntent;
-  readonly from: NavigationRoute<Name>;
-  readonly to: NavigationRoute<Name>;
-}
-
-export type NavigationLeaveGuard<Name extends string> = (
-  transition: NavigationTransition<Name>,
-  onExplicitDecline?: () => void,
-) => boolean | Promise<boolean>;
-
-export interface NavigationSnapshot<Name extends string> {
-  readonly routes: readonly NavigationRoute<Name>[];
-  readonly currentRoute: NavigationRoute<Name>;
-  readonly canGoBack: boolean;
-  readonly isTransitioning: boolean;
-}
-
-export interface NavigationController<Name extends string> {
-  getSnapshot: () => NavigationSnapshot<Name>;
-  subscribe: (listener: () => void) => () => void;
-  subscribeEntryAvailability: (listener: () => void) => () => void;
-  setLeaveStateAvailability: (routeKey: string, available: boolean) => void;
-  push: (name: Name) => NavigationRoute<Name> | null;
-  replace: (name: Name) => NavigationRoute<Name> | null;
-  registerLeaveGuard: (
-    routeKey: string,
-    guard: NavigationLeaveGuard<Name>,
-  ) => () => void;
-  requestBack: () => Promise<boolean>;
-  reconcileNativeBack: (routeKey: string) => boolean;
-  requestHome: () => Promise<boolean>;
-  requestTabSwitch: (commitApprovedTab?: () => void) => Promise<boolean>;
-  requestTabSwitchDecision: () => Promise<
-    'approved' | 'declined' | 'unavailable' | 'busy'
-  >;
-}
-
-function createRoute<Name extends string>(
-  name: Name,
-  sequence: number,
-): NavigationRoute<Name> {
+function createRoute<Name extends string>(name: Name, sequence: number) {
   return { key: 'route-' + sequence, name };
 }
 
@@ -78,6 +39,13 @@ export function createNavigationController<Name extends string>(
   ];
   let isTransitioning = false;
   let snapshot = createSnapshot(routes, isTransitioning);
+  let approvalRevision = 0;
+  let approvedRoot: { key: string; revision: number } | null = null;
+  // Guard/state changes invalidate even when the route key stays unchanged.
+  function invalidateApproval() {
+    approvalRevision += 1;
+    approvedRoot = null;
+  }
   let availabilityKey = '';
   let availabilityScheduled = false;
 
@@ -105,6 +73,7 @@ export function createNavigationController<Name extends string>(
 
   function addRoute(name: Name, replaceCurrent: boolean) {
     if (isTransitioning) return null;
+    invalidateApproval();
     sequence += 1;
     const route = createRoute(name, sequence);
     if (replaceCurrent) {
@@ -126,6 +95,7 @@ export function createNavigationController<Name extends string>(
     const to = intent === 'home' ? root : routes[routes.length - 2];
     if (!from || !to) return false;
 
+    invalidateApproval();
     isTransitioning = true;
     publish();
     try {
@@ -156,6 +126,7 @@ export function createNavigationController<Name extends string>(
     const root = routes[0];
     if (!from || !root) return false;
 
+    invalidateApproval();
     isTransitioning = true;
     publish();
     try {
@@ -182,6 +153,8 @@ export function createNavigationController<Name extends string>(
     const from = routes[routes.length - 1];
     const root = routes[0];
     if (!from || !root) return 'unavailable';
+    invalidateApproval();
+    const decisionRevision = approvalRevision;
     isTransitioning = true;
     publish();
     try {
@@ -191,6 +164,9 @@ export function createNavigationController<Name extends string>(
       const allowed = await guard({ intent: 'tab', from, to: root }, () => {
         declined = true;
       });
+      if (!allowed && declined) return 'declined';
+      if (decisionRevision !== approvalRevision) return 'unavailable';
+      if (allowed) approvedRoot = { key: from.key, revision: decisionRevision };
       return allowed ? 'approved' : declined ? 'declined' : 'unavailable';
     } catch {
       return 'unavailable';
@@ -212,6 +188,7 @@ export function createNavigationController<Name extends string>(
     },
     setLeaveStateAvailability: (routeKey, available) => {
       if (leaveStateAvailability.get(routeKey) === available) return;
+      invalidateApproval();
       leaveStateAvailability.set(routeKey, available);
       if (!available && availabilityKey === routeKey) availabilityKey = '';
       updateAvailability();
@@ -220,10 +197,12 @@ export function createNavigationController<Name extends string>(
     replace: name => addRoute(name, true),
     registerLeaveGuard: (routeKey, guard) => {
       if (!routes.some(route => route.key === routeKey)) return () => {};
+      invalidateApproval();
       leaveGuards.set(routeKey, guard);
       updateAvailability();
       return () => {
         if (leaveGuards.get(routeKey) === guard) {
+          invalidateApproval();
           leaveGuards.delete(routeKey);
           updateAvailability();
         }
@@ -237,8 +216,29 @@ export function createNavigationController<Name extends string>(
         snapshot.currentRoute.key !== routeKey
       )
         return false;
+      invalidateApproval();
       routes = routes.slice(0, -1);
       leaveGuards.delete(routeKey);
+      publish();
+      return true;
+    },
+    commitApprovedRoot: expectedRouteKey => {
+      const approval = approvedRoot;
+      approvedRoot = null;
+      if (
+        isTransitioning ||
+        !approval ||
+        approval.key !== expectedRouteKey ||
+        approval.revision !== approvalRevision ||
+        snapshot.currentRoute.key !== expectedRouteKey
+      )
+        return false;
+      invalidateApproval();
+      routes.slice(1).forEach(route => {
+        leaveGuards.delete(route.key);
+        leaveStateAvailability.delete(route.key);
+      });
+      routes = [routes[0]!];
       publish();
       return true;
     },

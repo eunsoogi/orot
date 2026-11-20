@@ -4,7 +4,8 @@ import {
 } from './src/appointmentReminders/AppointmentReminderContext';
 import { GatedReminderDeliveryHost } from './src/assistantAppearance/GatedReminderDeliveryHost';
 import { RecordSourceNavigationProvider } from './src/routes/RecordSourceNavigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAppRootTab } from './src/routes/useAppRootTab';
+import { useEffect, useMemo, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { useRecapRecovery } from './src/transcription/useRecapRecovery';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
@@ -26,10 +27,7 @@ import {
   appContentLayoutOwner,
   appRouteIsScrollable,
 } from './src/navigation/appContentLayoutPolicy';
-import {
-  createNavigationRootTabs,
-  type AppRootTab,
-} from './src/navigation/rootTabs';
+import { createNavigationRootTabs } from './src/navigation/rootTabs';
 import type { AppNavigationRoute } from './src/routes/AppRouteContent';
 import * as overview from './src/routes/AppOverviewDataBoundary';
 import type { AppProps } from './src/routes/AppEntryProps';
@@ -81,12 +79,8 @@ function App({
     [ai.services],
   );
   const calendarSync = useCalendarAutoSync(calendarBridge);
-  const [activeTab, setActiveTab] = useState<AppRootTab>('conversation');
-  const activeTabRef = useRef(activeTab);
-  const selectActiveTab = (tab: AppRootTab) => {
-    activeTabRef.current = tab;
-    setActiveTab(tab);
-  };
+  const { activeTab, activeTabRef, selectActiveTab, capturePromptTab } =
+    useAppRootTab();
   const [selectedProvider, setSelectedProvider] = useState('');
   const [healthRecordDetailSelection, setHealthRecordDetailSelection] =
     useState<HealthRecordsDetailSelection | null>(null);
@@ -227,6 +221,7 @@ function App({
             retention={conversationSessionOptions.retention}
             loadLocalData={aiFeatureServiceDependencies?.loadLocalData}
             selectTab={selectActiveTab}
+            capturePromptTab={capturePromptTab}
           />
           {ai.disclosureSheet}
         </AiFeatureSharedNavigationStateProvider>

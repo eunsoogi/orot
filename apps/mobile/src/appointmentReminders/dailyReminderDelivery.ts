@@ -11,6 +11,12 @@ export interface DailyReminderEntry {
   readonly deliveryTimeZone: 'unknown';
   /** An explicit later selection does not rewrite the notification's observed delivery date. */
   readonly selectedRequest?: DailyReportContextRequest;
+  /** Protected session lease bound before the first retained card write. */
+  readonly conversationOwner?: {
+    readonly id: string;
+    readonly version: number;
+    readonly createdAt: string;
+  };
 }
 
 /**

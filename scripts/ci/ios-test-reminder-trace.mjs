@@ -40,6 +40,10 @@ const stages = new Set([
   'center-add-resolve',
   'center-add-reject',
   'cancel',
+  'daily-invalid-preference',
+  'daily-disabled',
+  'daily-authorization-rejected',
+  'daily-rollback-reject',
 ]);
 const authorizationStates = new Set(['authorized', 'notDetermined', 'denied', 'unknown']);
 const ownErrorCases = new Set(['invalidInput', 'permissionDenied', 'expired', 'other']);

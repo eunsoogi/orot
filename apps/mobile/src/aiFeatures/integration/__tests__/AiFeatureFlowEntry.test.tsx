@@ -64,8 +64,10 @@ test('old literature links enter conversation without performing a public search
   expect(screen.queryByTestId('external-medical-evidence-screen')).toBeNull();
   expect(screen.queryByTestId('external-evidence-search')).toBeNull();
   expect(
-    screen.getByText('필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.'),
-  ).toBeTruthy();
+    screen.queryByText(
+      '필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.',
+    ),
+  ).toBeNull();
   expect(search).not.toHaveBeenCalled();
   expect(authorize).not.toHaveBeenCalled();
 });

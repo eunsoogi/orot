@@ -12,4 +12,5 @@ export interface ReplyDeliverySettings {
   readonly executeReplyEntry?: ReplyEntryExecutor;
   readonly subscribeReplyEntryReady?: (listener: () => void) => () => void;
   readonly onReplyOpened?: () => void;
+  openConversationRoot?: (routeKey: string) => boolean;
 }

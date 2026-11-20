@@ -27,6 +27,15 @@ export function conversationRecoveryActions(input: {
         : taskRefresh.has(id)
           ? taskRefresh.retry(id)
           : restoration.retry(id, signal),
+    // Route re-entry targets the cancelled first page, never a task-only retry.
+    retryInitialRestore: (
+      id: number,
+      durableId: string,
+      signal: AbortSignal,
+    ) =>
+      disposed()
+        ? Promise.resolve()
+        : restoration.retryInitial(id, durableId, signal),
     async refreshLease(
       id: number,
       lease: { id: string; version: number },
