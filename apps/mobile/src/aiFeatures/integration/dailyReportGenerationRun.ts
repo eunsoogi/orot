@@ -1,6 +1,7 @@
+import { persistDailyReportCandidate } from './dailyReportCandidatePersistence';
 import { conversationReceiptSelection as observeSelection } from './conversationReceiptSelection';
 import { withDailyReportOpening as openingFor } from './dailyReportOpening';
-import { hasSevereReportBloodPressure } from './dailyReportGuidance';
+import { selectCurrentDailyReportFacts } from './dailyReportCurrentSelection';
 import { reportModelClaims } from './dailyReportModelAnalysis';
 import { prepareDailyReportFacts } from './dailyReportPreparedFacts';
 import type { prepareReportCalendar } from './dailyReportSystemCalendar';
@@ -14,9 +15,7 @@ import {
 } from './provider';
 import { dailyReportFacts } from './dailyReportFacts';
 import { dailyReportAnalysis } from './dailyReportAnalysis';
-import { selectDailyReportFacts } from './dailyReportModel';
-import { stableJson } from './evidenceUtils';
-import { dailyReportProviderFacts } from './dailyReportProjection';
+import { fingerprint } from './evidenceUtils';
 import { reportFailureOutcome as failureOutcome } from './dailyReportFailureDiagnostics';
 import type {
   DailyReportFailureCode,
@@ -65,7 +64,9 @@ export async function generateDailyReportWithCalendar(
   >;
   let snapshot: Snapshot;
   let facts: ReturnType<typeof dailyReportFacts>;
-  let providerFacts: Awaited<ReturnType<typeof dailyReportProviderFacts>>;
+  let providerFacts: Awaited<
+    ReturnType<typeof prepareDailyReportFacts>
+  >['providerFacts'];
   let sourceSnapshot: Snapshot['sourceSnapshot'];
   let required: number[];
   let factSourceIndexes: number[][];
@@ -106,7 +107,7 @@ export async function generateDailyReportWithCalendar(
   }
   providerDiagnostic('daily_report', 'data', 'completed');
   input.deadlineContext.stage = 'workflow';
-  const context = createDailyReportContext(
+  let context = createDailyReportContext(
     calendar.context,
     sourceSnapshot,
     {
@@ -116,55 +117,71 @@ export async function generateDailyReportWithCalendar(
     external?.binding,
   );
   const runId = input.createRunId();
-  const selection = await openingFor(
+  const currentSelection = await openingFor(
     input,
     request,
     selected,
     !!external?.facts.length,
     consent =>
-      selectDailyReportFacts({
+      selectCurrentDailyReportFacts(
+        { ...input, consent },
+        request,
         selected,
-        consent,
+        calendar,
         runId,
-        facts: providerFacts,
-        allowAnalysis: !hasSevereReportBloodPressure(snapshot.values),
-        reportContext: {
-          localDate: calendar.context.identity.localDate,
-          timeZone: calendar.context.identity.timeZone,
-          generationCutoff: calendar.context.generationCutoff,
-          coverage: sourceSnapshot.coverage,
+        snapshot,
+        {
+          required,
+          factSourceIndexes,
+          sourceSnapshot,
+          facts,
+          providerFacts,
+          baselineFacts,
+          sleepFacts,
         },
-        includesSystemCalendar: !!external?.facts.length,
-        signal: request.signal,
-        timeoutMs: input.timeoutMs ?? null,
-        deadlineContext: input.deadlineContext,
-        revalidate: async signal => {
-          input.deadlineContext.stage = 'source_read';
-          providerDiagnostic('daily_report', 'data', 'started');
-          let current: Snapshot;
-          try {
-            current = await input.data.readDailyReportSnapshot!(
-              calendar.context,
-              request.scope,
-              signal,
-            );
-          } catch (error) {
-            if (!signal.aborted)
-              providerDiagnostic('daily_report', 'data', 'failed');
-            throw error;
-          }
-          providerDiagnostic('daily_report', 'data', 'completed');
-          input.deadlineContext.stage = 'workflow';
-          return (
-            (external ? await external.snapshot.revalidate() : true) &&
-            stableJson(current.sourceSnapshot) ===
-              stableJson(snapshot.sourceSnapshot)
-          );
-        },
-      }),
+        external,
+      ),
   );
   input.deadlineContext.stage = 'workflow';
-  if (selection.status === 'failed') return fail(selection.code);
+  if (currentSelection.status === 'failed') return fail(currentSelection.code);
+  const { selection, refresh } = currentSelection;
+  snapshot = currentSelection.snapshot;
+  ({
+    required,
+    factSourceIndexes,
+    sourceSnapshot,
+    facts,
+    providerFacts,
+    baselineFacts,
+    sleepFacts,
+  } = currentSelection.prepared);
+  let proven = currentSelection.proven;
+  if (refresh) {
+    const latest = await refresh(request.signal);
+    if (!latest || (external && !(await external.snapshot.revalidate())))
+      return fail(
+        request.signal.aborted
+          ? 'cancelled'
+          : 'source_unconfirmed_after_dispatch',
+      );
+    proven = latest;
+  }
+  if (!currentSelection.currentOwner()) return fail('cancelled');
+  context = createDailyReportContext(
+    calendar.context,
+    {
+      ...sourceSnapshot,
+      mutationGeneration: proven.sourceSnapshot.mutationGeneration,
+      revision: external
+        ? fingerprint({
+            local: proven.sourceSnapshot.revision,
+            systemCalendar: external.binding,
+          })
+        : proven.sourceSnapshot.revision,
+    },
+    context.provider,
+    external?.binding,
+  );
   const report = {
     schemaVersion: 1 as const,
     identity: context.identity,
@@ -198,52 +215,35 @@ export async function generateDailyReportWithCalendar(
   if (request.signal.aborted) return fail('cancelled');
   input.deadlineContext.stage = 'save';
   providerDiagnostic('daily_report', 'persistence', 'started');
-  let saved: Awaited<ReturnType<typeof input.storage.save>>;
-  try {
-    saved = await input.storage.save(
-      {
-        runId,
-        context,
-        result,
-        lineage: snapshot.lineage,
-        mode:
-          request.mode.kind === 'revise' ? request.mode : { kind: 'initial' },
-      },
-      request.signal,
-    );
-  } catch {
-    input.deadlineContext.stage = 'workflow';
-    if (!input.deadlineContext.timedOut)
-      providerDiagnostic(
-        'daily_report',
-        'persistence',
-        request.signal.aborted ? 'cancelled' : 'failed',
-      );
-    return fail(request.signal.aborted ? 'cancelled' : 'persistence_failed');
-  }
-  input.deadlineContext.stage = 'workflow';
-  if (saved.status !== 'saved' && saved.status !== 'reused') {
-    if (!input.deadlineContext.timedOut)
-      providerDiagnostic(
-        'daily_report',
-        'persistence',
-        saved.status === 'cancelled' ? 'cancelled' : 'failed',
-      );
-    return fail(
-      saved.status === 'cancelled'
-        ? 'cancelled'
-        : saved.status === 'stale'
-          ? 'source_revision_changed'
-          : saved.status === 'deleted'
-            ? 'source_unavailable'
-            : 'persistence_failed',
-    );
-  }
+  const { mode } = request;
+  const candidate = {
+    runId,
+    context,
+    result,
+    lineage: snapshot.lineage,
+    mode: mode.kind === 'revise' ? mode : { kind: 'initial' as const },
+  };
+  const saved = await persistDailyReportCandidate(
+    input,
+    candidate,
+    calendar.context,
+    request.signal,
+    {
+      selected,
+      refresh,
+      current: currentSelection.currentOwner,
+      calendarCurrent: external?.snapshot.revalidate,
+    },
+  );
+  if (saved.status === 'failed') return fail(saved.code);
   if (external && !(await external.snapshot.revalidate())) {
-    await input.storage.lookup(context.identity);
-    return fail('source_revision_changed');
+    await input.storage.lookup(saved.context.identity);
+    // Persistence already ran; the route must recheck saved content even if Stop raced this lookup.
+    return fail('source_unconfirmed_after_dispatch');
   }
+  // A committed report remains in local history, but a superseded run must not emit it live.
+  if (saved.liveAfterReproof?.() === false) return fail('cancelled');
   providerDiagnostic('daily_report', 'persistence', 'completed');
   providerDiagnostic('daily_report', 'workflow', 'result');
-  return { status: 'completed' as const, runId, context, report };
+  return { ...result, runId, context: saved.context };
 }

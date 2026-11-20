@@ -1,3 +1,4 @@
+import { ensureHealthContextCoveringIndexes } from './healthContextCoveringIndexes';
 import { ensurePeriodRemovalIndexes } from '../../storage/periodRemovalIndexes';
 import type { SqlExecutor } from '@orot/storage';
 import { localQueryTimestampKeyExpression } from '@orot/storage';
@@ -53,6 +54,7 @@ export async function ensureHealthContextGeneration(
   await executor.execute(
     `CREATE INDEX IF NOT EXISTS health_context_registration_time ON medication_definitions (${localQueryTimestampKeyExpression('coalesce(effective_at, ingested_at)')})`,
   );
+  await ensureHealthContextCoveringIndexes(executor);
   await ensurePeriodRemovalIndexes(executor);
   for (const table of tables) {
     for (const event of ['INSERT', 'UPDATE', 'DELETE'] as const) {

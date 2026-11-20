@@ -40,6 +40,7 @@ it('reuses the existing protected credential without migration or duplicate copi
     mode: 'openai-api',
     model: 'gpt-realtime-2.1',
     apiKey: 'synthetic-new',
+    credentialEpoch: expect.stringMatching(/^[a-f0-9]{64}$/),
   });
   await voiceSettingsStore.setAccountKey('');
   expect(await voiceSettingsStore.load()).toEqual({
@@ -164,4 +165,30 @@ it('rejects redirected responses and cancels before contacting the provider', as
     'account-changed',
   );
   expect(fetchMock).not.toHaveBeenCalled();
+});
+
+it('creates a legacy credential epoch only after explicit settings initialization', async () => {
+  expect(await voiceSettingsStore.consentAccountEpoch()).toBeNull();
+  expect(setGenericPassword).not.toHaveBeenCalled();
+  const epoch = await voiceSettingsStore.consentAccountEpoch(true);
+  expect(epoch).toMatch(/^[a-f0-9]{64}$/);
+  expect(JSON.parse(saved).apiKey).toBe('synthetic-old');
+  expect(await voiceSettingsStore.consentAccountEpoch()).toBe(epoch);
+  expect(await voiceSettingsStore.load()).not.toHaveProperty('credentialEpoch');
+  expect(await voiceSettingsStore.load()).not.toHaveProperty('apiKey');
+  await voiceSettingsStore.setAccountKey('synthetic-new');
+  expect(await voiceSettingsStore.consentAccountEpoch()).not.toBe(epoch);
+  await voiceSettingsStore.setAccountKey('');
+  expect(await voiceSettingsStore.consentAccountEpoch()).toBeNull();
+});
+
+it('failed replacement preserves the old key and epoch in the same protected item', async () => {
+  const epoch = await voiceSettingsStore.consentAccountEpoch(true);
+  const original = saved;
+  jest.mocked(setGenericPassword).mockResolvedValueOnce(false);
+  await expect(
+    voiceSettingsStore.setAccountKey('synthetic-replacement'),
+  ).rejects.toThrow();
+  expect(saved).toBe(original);
+  expect(await voiceSettingsStore.consentAccountEpoch()).toBe(epoch);
 });

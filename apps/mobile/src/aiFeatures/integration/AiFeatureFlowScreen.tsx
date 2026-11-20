@@ -1,4 +1,5 @@
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
+import { DailyReportSourceResolverContext } from './DailyReportSourceLinks';
 import { DailyReportFlowScreen } from './DailyReportFlowScreen';
 import { ConversationSavedReportMessage } from './ConversationSavedReportMessage';
 import { ConversationReportTask } from './ConversationReportTask';
@@ -39,6 +40,7 @@ export function AiFeatureFlowScreen({
   onOpenSource,
   resolveSelectedAi,
   confirmConsent,
+  consent,
   selectedAiRevision,
   services,
 }: AiFeatureFlowScreenProps) {
@@ -57,7 +59,7 @@ export function AiFeatureFlowScreen({
   );
   const colorScheme = useColorScheme();
   // Navigation prepares a request; only an explicit Send can start inference or consent.
-  const conversation = (
+  const conversationScreen = (
     <ConversationScreen
       isEntryCurrent={isEntryCurrent}
       entryContext={{
@@ -156,6 +158,7 @@ export function AiFeatureFlowScreen({
                 observer,
                 resolveSelectedAi,
                 confirmConsent,
+                consent,
               })
           : undefined
       }
@@ -173,6 +176,13 @@ export function AiFeatureFlowScreen({
       )}
     />
   );
+  const conversation = (
+    <DailyReportSourceResolverContext.Provider
+      value={services.dailyReportSources}
+    >
+      {conversationScreen}
+    </DailyReportSourceResolverContext.Provider>
+  );
   if (intent !== null) return conversation;
 
   switch (route) {
@@ -189,6 +199,7 @@ export function AiFeatureFlowScreen({
             onRouteStateChange,
             resolveSelectedAi,
             confirmConsent,
+            consent,
             resolveSource: services.resolveSource,
             generatedArtifactTools: services.generatedArtifactTools,
             registerVisitQuestionSource: services.registerVisitQuestionSource,

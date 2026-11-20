@@ -5,41 +5,6 @@ import XCTest
 @MainActor
 enum ConversationHitUITestObservation {
     private static var dockGenerations: [String: String] = [:]
-
-    /// Collect only allowlisted synthetic stages; absence or a stale marker is unavailable, never a negative receipt.
-    static func captureRequestStages(_ app: XCUIApplication, tapStartedAt: Double, tapReturnedAt: Double, testCase: XCTestCase) {
-        let marker = UITestConditions.element(app, "navigation-test-observation")
-        var stages: [String] = []
-        var complete = false
-        for _ in 0 ..< 8 {
-            guard marker.exists,
-                  let snapshot = try? JSONSerialization.jsonObject(with: Data(UITestConditions.text(marker).utf8)) as? [String: Any],
-                  let route = snapshot["routeState"] as? [String: Any],
-                  let started = route["startedAtMs"] as? Double, started >= tapReturnedAt,
-                  let lifecycle = snapshot["lifecycle"] as? [[String: Any]] else { continue }
-            stages = ConversationRequestStageFilter.stages(lifecycle, since: tapStartedAt)
-            if stages.contains(where: ConversationRequestStageFilter.terminal.contains) {
-                complete = true; break
-            }
-        }
-        let attachment = XCTAttachment(string: "status=\(complete ? "terminal" : "unavailable") stages=\(stages.joined(separator: ","))")
-        attachment.name = "synthetic-conversation-request-stages"
-        attachment.lifetime = .keepAlways
-        testCase.add(attachment)
-    }
-
-    /// A single stale or missing marker is unavailable; it cannot establish absence of an asynchronous JS event.
-    static func capturePostTap(_ app: XCUIApplication, tapReturnedAt: Double, testCase: XCTestCase) {
-        let snapshot = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "conversation-send-after-tap")
-        let route = snapshot?["routeState"] as? [String: Any]
-        let started = route?["startedAtMs"] as? Double
-        let fresh = started.map { $0.isFinite && $0 >= tapReturnedAt } ?? false
-        let attachment = XCTAttachment(string: fresh ? "fresh marker; JS receipt may still be in flight" : "unavailable: marker missing or predates tap")
-        attachment.name = "conversation-send-observation-freshness"
-        attachment.lifetime = .keepAlways
-        testCase.add(attachment)
-    }
-
     struct Initial {
         let startedAtMs: Double
         let endedAtMs: Double

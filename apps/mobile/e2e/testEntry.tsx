@@ -29,8 +29,6 @@ import { AppearanceTestObservation } from './AppearanceTestObservation';
 import { compactNavigationObservation } from './compactNavigationObservation';
 import { ReminderTestObservation } from './ReminderTestObservation';
 import { RotationGeometryRequest } from './RotationGeometryRequest';
-import { conversationRequestObservationEnabled } from './conversationRequestObservationGate';
-import { registerConversationRequestObservation } from '../src/ragConversation/conversationRequestObservation';
 import {
   readInitialTestEntrySettings,
   type TestEntrySettingsManager,
@@ -132,16 +130,6 @@ function GeometryTestWrapper({ children }: PropsWithChildren) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const navigationMarker = useRef<ComponentRef<typeof Text>>(null);
   const gestureMarker = useRef<ComponentRef<typeof Text>>(null);
-  useEffect(() => {
-    if (!conversationRequestObservationEnabled(settings)) return;
-    // The test bridge receives fixed stage names only and the sink ends with this wrapper.
-    return registerConversationRequestObservation(stage =>
-      NativeModules.OrotTestControl.recordObservation({
-        event: 'synthetic-conversation-request',
-        stage,
-      }),
-    );
-  }, []);
   useEffect(() => {
     if (!lifecycleObservation) return;
     let active = true;

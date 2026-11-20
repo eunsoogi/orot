@@ -58,9 +58,10 @@ test.each([
             `EXPLAIN QUERY PLAN ${sql}`,
             bindings,
           );
+          // Both covering and table-backed indexes retain bounded candidate seeks.
           expect(
             plan.rows.filter(row =>
-              /SEARCH r USING INDEX/.test(String(row.detail)),
+              /SEARCH r USING (?:COVERING )?INDEX/.test(String(row.detail)),
             ),
           ).toHaveLength(5);
           return result;
@@ -184,10 +185,12 @@ test('case-normalized activity uses candidate index without changing statistics 
     ]);
     expect(
       plans.some(p =>
-        /health_context_activity_time.*<expr>=\?.*<expr>>\?.*<expr><\?/.test(p),
+        /COVERING INDEX health_context_activity_covering.*<expr>=\?.*<expr>>\?.*<expr><\?/.test(
+          p,
+        ),
       ),
     ).toBe(true);
-    await f.database.execute('DROP INDEX health_context_activity_time');
+    await f.database.execute('DROP INDEX health_context_activity_covering');
     expect(
       await readHealthQuantityContext(f.database, days, undefined, 'activity'),
     ).toEqual(indexed);

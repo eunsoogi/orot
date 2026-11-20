@@ -24,11 +24,10 @@ env:
   EXPECTED_PNPM_VERSION: '12.3.4'
 
 jobs:
-  # Keep typecheck and unit results separate; policy contracts run in Policy Check.
-  typecheck:
-    name: TypeScript typecheck
+  selection:
+    name: Select Unit Test scope
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 5
     outputs:
       selection_complete: ${{ steps.select.outputs.selection_complete }}
       typecheck: ${{ steps.select.outputs.typecheck }}
@@ -39,41 +38,67 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+      - name: Select checks for changed paths
+        id: select
+        run: node scripts/ci/select-changed-paths.mjs
+
+  # Keep typecheck and unit results separate; policy contracts run in Policy Check.
+  typecheck:
+    name: TypeScript typecheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    needs: selection
+    if: ${{ always() }}
+    steps:
+      - name: Require a valid typecheck selection
+        env:
+          SELECTION_RESULT: ${{ needs.selection.result }}
+          SELECTION_COMPLETE: ${{ needs.selection.outputs.selection_complete }}
+          TYPECHECK_SELECTED: ${{ needs.selection.outputs.typecheck }}
+        run: |
+          [[ "$SELECTION_RESULT" == 'success' && "$SELECTION_COMPLETE" == 'true' ]]
+          [[ "$TYPECHECK_SELECTED" == 'true' || "$TYPECHECK_SELECTED" == 'false' ]]
+      - name: Check out source
+        if: ${{ needs.selection.outputs.typecheck == 'true' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Set up pnpm
+        if: ${{ needs.selection.outputs.typecheck == 'true' }}
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
         with:
           version: 12.3.4
           run_install: false
 
       - name: Set up Node.js
+        if: ${{ needs.selection.outputs.typecheck == 'true' }}
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      # Keep selector errors in a required check before dependency installation.
-      - name: Select checks for changed paths
-        id: select
-        run: node scripts/ci/select-changed-paths.mjs
-
       - name: Cache pnpm lockfile verification
-        if: ${{ steps.select.outputs.typecheck == 'true' }}
+        if: ${{ needs.selection.outputs.typecheck == 'true' }}
         uses: ./.github/actions/pnpm-lockfile-verification
         with:
           pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
 
       - name: Install frozen workspace dependencies
-        if: ${{ steps.select.outputs.typecheck == 'true' }}
+        if: ${{ needs.selection.outputs.typecheck == 'true' }}
         run: scripts/ci/run-command.sh install artifacts/typecheck/install.log -- pnpm install --frozen-lockfile
 
       - name: Type check workspace
-        if: ${{ steps.select.outputs.typecheck == 'true' }}
+        if: ${{ needs.selection.outputs.typecheck == 'true' }}
         run: scripts/ci/run-command.sh typecheck artifacts/typecheck/typecheck.log -- pnpm typecheck
 
       - name: Upload typecheck logs
-        if: ${{ always() && steps.select.outputs.typecheck == 'true' }}
+        if: ${{ always() && needs.selection.outputs.typecheck == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ci-typecheck-${{ github.run_id }}-${{ github.run_attempt }}
@@ -81,51 +106,54 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  mobile_shard_1:
+    needs: selection
+    if: ${{ needs.selection.outputs.selection_complete == 'true' && needs.selection.outputs.unit_tests == 'true' }}
+    uses: ./.github/workflows/unit-test-lane.yml
+    with:
+      lane: mobile-1
+
+  mobile_shard_2:
+    needs: selection
+    if: ${{ needs.selection.outputs.selection_complete == 'true' && needs.selection.outputs.unit_tests == 'true' }}
+    uses: ./.github/workflows/unit-test-lane.yml
+    with:
+      lane: mobile-2
+
+  mobile_shard_3:
+    needs: selection
+    if: ${{ needs.selection.outputs.selection_complete == 'true' && needs.selection.outputs.unit_tests == 'true' }}
+    uses: ./.github/workflows/unit-test-lane.yml
+    with:
+      lane: mobile-3
+
+  unit_packages:
+    needs: selection
+    if: ${{ needs.selection.outputs.selection_complete == 'true' && needs.selection.outputs.unit_tests == 'true' }}
+    uses: ./.github/workflows/unit-test-lane.yml
+    with:
+      lane: packages
+
   unit_tests:
     name: Unit and component tests
-    needs: typecheck
-    # A selector failure must not turn this dependent required check into a skip.
-    if: ${{ always() && !cancelled() && (needs.typecheck.outputs.selection_complete != 'true' || needs.typecheck.outputs.unit_tests == 'true') }}
+    needs: [selection, mobile_shard_1, mobile_shard_2, mobile_shard_3, unit_packages]
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 5
     steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-        with:
-          version: 12.3.4
-          run_install: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Cache pnpm lockfile verification
-        uses: ./.github/actions/pnpm-lockfile-verification
-        with:
-          pnpm-version: ${{ env.EXPECTED_PNPM_VERSION }}
-
-      - name: Install frozen workspace dependencies
-        run: scripts/ci/run-command.sh install artifacts/unit/install.log -- pnpm install --frozen-lockfile
-
-      - name: Run unit and component tests
-        run: scripts/ci/run-test-suite.sh unit artifacts/unit
-
-      - name: Upload unit test logs and results
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: ci-unit-component-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/unit/
-          if-no-files-found: error
-          retention-days: 14
+      - name: Require selected Unit Test results
+        env:
+          SELECTION_RESULT: ${{ needs.selection.result }}
+          SELECTION_COMPLETE: ${{ needs.selection.outputs.selection_complete }}
+          UNIT_SELECTED: ${{ needs.selection.outputs.unit_tests }}
+          MOBILE_SHARD_1: ${{ needs.mobile_shard_1.result }}
+          MOBILE_SHARD_2: ${{ needs.mobile_shard_2.result }}
+          MOBILE_SHARD_3: ${{ needs.mobile_shard_3.result }}
+          UNIT_PACKAGES: ${{ needs.unit_packages.result }}
+        run: bash scripts/ci/require-unit-lanes.sh
 
   # Pure Swift unit regressions use a Mac runner, not a separate test level.
   host_regressions:

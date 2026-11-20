@@ -1,7 +1,6 @@
 import type { ConversationSessions } from './conversationSessions';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { ConversationSender } from './conversationSessionTypes';
-import { observeConversationRequest } from './conversationRequestObservation';
 import {
   conversationEntryForSession,
   consumeConversationEntryForSession,
@@ -45,15 +44,9 @@ export function entryIntentSender(
         observer?.onSummarySaveSettled?.(value);
       },
     };
-    observeConversationRequest('sender-invoked');
     const outcome = context
       ? await send(question, history, signal, scopedObserver, context)
       : await send(question, history, signal, scopedObserver);
-    observeConversationRequest(
-      outcome.status === 'failure' && outcome.kind === 'provider_configuration'
-        ? 'provider-configuration'
-        : 'other-outcome',
-    );
     if (
       (!signal?.aborted || committed) &&
       outcome.status !== 'failure' &&

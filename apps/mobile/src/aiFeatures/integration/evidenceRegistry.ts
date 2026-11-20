@@ -1,3 +1,6 @@
+import { readRegistrySource } from './readRegistrySource';
+import type { CapturePeriodReads } from './conversationPeriodReadLease';
+import { registerEvidenceRegistryReaders } from './evidenceRegistryReadOwner';
 import {
   validationContext,
   type EvidenceValidationContext,
@@ -206,23 +209,14 @@ export class LocalEvidenceReferenceRegistry {
   async readSource(
     reference: EvidenceReference,
     signal: AbortSignal,
+    periodReads?: CapturePeriodReads,
   ): Promise<EvidenceSourceReadResult> {
-    const entry = this.entries.get(stableReference(reference));
-    if (!entry || signal.aborted) return { status: 'unavailable' };
-    try {
-      const current = await entry.readSource(signal);
-      if (current.status !== 'available') return current;
-      if (signal.aborted) return { status: 'unavailable' };
-      if (!(await entry.validate(signal, validationContext()))) {
-        const latest = await entry.readSource(signal);
-        return latest.status === 'missing' || latest.status === 'unavailable'
-          ? latest
-          : { status: 'changed' };
-      }
-      return current;
-    } catch {
-      return { status: 'unavailable' };
-    }
+    return readRegistrySource(
+      this,
+      this.entries.get(stableReference(reference)),
+      signal,
+      periodReads,
+    );
   }
   async revalidateEvidence(
     references: readonly EvidenceReference[],
@@ -243,3 +237,5 @@ export class LocalEvidenceReferenceRegistry {
     return true;
   }
 }
+
+registerEvidenceRegistryReaders(LocalEvidenceReferenceRegistry.prototype);

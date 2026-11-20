@@ -56,7 +56,8 @@ export function createDailyReportStorage(
   async function save(
     input: DailyReportSave,
     signal?: AbortSignal,
-  ): Promise<{ status: DailyReportSaveStatus }> {
+    options?: { mutationReproof: true },
+  ): Promise<{ status: DailyReportSaveStatus; mutationOnly?: true }> {
     const checked = validateDailyReportSave(input);
     if (!checked) return { status: 'error' as const };
     const stored = JSON.stringify({
@@ -73,6 +74,7 @@ export function createDailyReportStorage(
     try {
       await ensure();
       let status: 'saved' | 'reused' | 'stale' | 'deleted' = 'stale';
+      let mutationOnly = false;
       await database.transaction(async tx => {
         checkDailyReportSaveCancellation(signal);
         const invalid = await tx.execute(
@@ -119,12 +121,27 @@ export function createDailyReportStorage(
         }
         const generation = await readHealthContextGeneration(tx);
         if (
-          generation.mutationGeneration !==
-            checked.context.sourceSnapshot.mutationGeneration ||
           generation.deletionGeneration !==
-            checked.context.sourceSnapshot.deletionGeneration
+          checked.context.sourceSnapshot.deletionGeneration
         )
           return;
+        if (
+          generation.mutationGeneration !==
+          checked.context.sourceSnapshot.mutationGeneration
+        ) {
+          // Only identify an advanced mutation before a write when the expected head still matches.
+          checkDailyReportSaveCancellation(signal);
+          mutationOnly =
+            options?.mutationReproof === true &&
+            generation.mutationGeneration >
+              checked.context.sourceSnapshot.mutationGeneration &&
+            (input.mode.kind === 'initial'
+              ? !head
+              : !!head &&
+                head.deleted !== 1 &&
+                (head.active_run_id ?? null) === input.mode.expectedRunId);
+          return;
+        }
         if (input.mode.kind === 'initial' && head) {
           status = head.deleted === 1 ? 'deleted' : 'stale';
           return;
@@ -167,7 +184,10 @@ export function createDailyReportStorage(
         await invalidateDailyReportRun(database, input.runId);
         return { status: 'stale' };
       }
-      return { status };
+      return {
+        status,
+        ...(mutationOnly ? { mutationOnly: true as const } : {}),
+      };
     } catch (error) {
       return { status: dailyReportSaveFailure(error) };
     } finally {

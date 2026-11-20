@@ -1,3 +1,4 @@
+import { APIAccountActions } from './APIAccountActions';
 import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
@@ -12,8 +13,10 @@ import { voiceSettingsStore } from './voiceSettingsStore';
 
 /** Manage the one OpenAI API credential independently from ChatGPT subscription
  * accounts. Stored secrets never enter the view, and replacement is atomic.
+ * A connected account stays collapsed until explicit editing; cancel only discards the draft.
  */
 export function OpenAIAccountPanel() {
+  const [editing, setEditing] = useState(false);
   const [key, setKey] = useState('');
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(true);
@@ -42,7 +45,7 @@ export function OpenAIAccountPanel() {
     };
   }, []);
   const save = async (remove = false) => {
-    if (locked.current || failed || (!remove && !key.trim())) return;
+    if (locked.current || busy || failed || (!remove && !key.trim())) return;
     locked.current = true;
     setBusy(true);
     try {
@@ -50,6 +53,7 @@ export function OpenAIAccountPanel() {
       if (!alive.current) return;
       setConnected(!remove);
       setKey('');
+      setEditing(false);
       setMessage(
         remove
           ? t('modelSettings.apiDisconnected')
@@ -64,67 +68,88 @@ export function OpenAIAccountPanel() {
   };
   return (
     <View testID="openai-api-account" style={styles.section}>
+      <Text accessibilityRole="header" style={providerSettingsStyles.heading}>
+        OpenAI API
+      </Text>
       <View style={styles.panel}>
         <View style={providerSettingsStyles.header}>
           <View style={providerSettingsStyles.icon}>
             <OpenAIProviderMark />
           </View>
           <View style={providerSettingsStyles.copy}>
-            <Text
-              accessibilityRole="header"
-              style={providerSettingsStyles.title}
-            >
-              OpenAI API
-            </Text>
             <Text style={providerSettingsStyles.secondary}>
               {connected
                 ? t('modelSettings.keyConnected')
                 : t('modelSettings.keyDisconnected')}
             </Text>
           </View>
+          {connected ? (
+            <APIAccountActions
+              disabled={busy || failed}
+              busy={busy}
+              editing={editing}
+              onEdit={() => {
+                if (!busy && !failed && !locked.current) {
+                  setKey('');
+                  setEditing(true);
+                  setMessage('');
+                }
+              }}
+              onRemove={() => {
+                save(true);
+              }}
+            />
+          ) : null}
         </View>
-        <View style={styles.field}>
-          <Text style={styles.label}>{t('modelSettings.apiKey')}</Text>
-          <TextInput
-            accessibilityLabel={t('modelSettings.apiKey')}
-            testID="openai-api-key"
-            value={key}
-            onChangeText={setKey}
-            editable={!busy && !failed}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="off"
-            textContentType="none"
-            maxLength={4096}
-            placeholder={
-              connected
-                ? t('modelSettings.replaceKey')
-                : t('modelSettings.enterKey')
-            }
-            placeholderTextColor={appColors.secondary}
-            style={styles.input}
-          />
-        </View>
-        <Button
-          title={t('modelSettings.saveKey')}
-          busy={busy}
-          testID="openai-api-key-save"
-          disabled={busy || failed || !key.trim()}
-          onPress={() => {
-            save();
-          }}
-        />
-        {connected ? (
-          <Button
-            title={t('modelSettings.disconnectApi')}
-            variant="destructive"
-            testID="openai-api-key-remove"
-            disabled={busy || failed}
-            onPress={() => {
-              save(true);
-            }}
-          />
+        {!connected || editing ? (
+          <>
+            <View style={styles.field}>
+              <Text style={styles.label}>{t('modelSettings.apiKey')}</Text>
+              <TextInput
+                accessibilityLabel={t('modelSettings.apiKey')}
+                testID="openai-api-key"
+                value={key}
+                onChangeText={setKey}
+                editable={!busy && !failed}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="off"
+                textContentType="none"
+                maxLength={4096}
+                placeholder={
+                  connected
+                    ? t('modelSettings.replaceKey')
+                    : t('modelSettings.enterKey')
+                }
+                placeholderTextColor={appColors.secondary}
+                style={styles.input}
+              />
+            </View>
+            <Button
+              title={t('modelSettings.saveKey')}
+              busy={busy}
+              testID="openai-api-key-save"
+              disabled={busy || failed || !key.trim()}
+              onPress={() => {
+                save();
+              }}
+            />
+            {connected ? (
+              <Button
+                title={t('modelSettings.cancel')}
+                testID="openai-api-key-cancel"
+                disabled={busy || failed}
+                onPress={() => {
+                  if (!busy && !locked.current) {
+                    setKey('');
+                    setEditing(false);
+                    setMessage('');
+                  }
+                }}
+              />
+            ) : null}
+          </>
         ) : null}
 
         {message ? <Text accessibilityRole="alert">{message}</Text> : null}

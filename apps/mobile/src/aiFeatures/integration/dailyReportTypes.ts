@@ -18,6 +18,7 @@ export type DailyReportFailureCode =
   | 'source_unavailable'
   | 'source_stale'
   | 'source_revision_changed'
+  | 'source_unconfirmed_after_dispatch'
   | 'report_read_failed'
   | 'provider_unavailable'
   | 'consent_required'
@@ -55,8 +56,21 @@ export interface DailyReportServiceInput {
 /** Prepared dependencies shared by the lookup and generation stages. */
 export type DailyReportRunInput = Omit<DailyReportServiceInput, 'database'> & {
   readonly data: LocalEvidenceData;
+  /** DB-owned, generation-local proof refresh; custom readers remain strict. */
+  readonly prepareSnapshotRefresh?: (
+    ...args: Parameters<
+      typeof import('./dailyReportSnapshotRefresh').createDailyReportSnapshotRefresh
+    > extends [unknown, ...infer A]
+      ? A
+      : never
+  ) => ReturnType<
+    typeof import('./dailyReportSnapshotRefresh').createDailyReportSnapshotRefresh
+  >;
   readonly storage: ReturnType<typeof createDailyReportStorage>;
   readonly deadlineContext: DailyReportDeadlineContext;
+  readonly stageRecovery?: ReturnType<
+    typeof import('./dailyReportRecoveryBridge').createDailyReportRecoveryBridge
+  >;
 };
 
 export interface DailyReportServiceRequest {

@@ -10,7 +10,6 @@ import { AppText as Text } from '../layout/AppText';
 import { ConversationEdgeGradient } from '../layout/ConversationEdgeGradient';
 import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import { observeNavigationTest } from '../navigation/navigationTestObservation';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
 import { ConversationGlassAction } from './ConversationGlassAction';
 import { ConversationPhotoAttachment } from './ConversationPhotoAttachment';
@@ -157,17 +156,9 @@ export function ConversationComposer({
         }
         onPress={() => {
           // Guard the current callback as well as the native disabled state.
-          if (stopping || (steering && steeringDisabled)) {
-            observeNavigationTest('conversation-action', { stage: 'guarded' });
-            return;
-          }
+          if (stopping || (steering && steeringDisabled)) return;
           if (steering) onSteer?.();
-          else {
-            observeNavigationTest('conversation-action', {
-              stage: busy ? 'cancel' : 'send',
-            });
-            (busy ? onCancel : onSend)();
-          }
+          else (busy ? onCancel : onSend)();
         }}
       />
     </View>

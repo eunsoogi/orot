@@ -194,7 +194,8 @@ enum NavigationGeometryUITestConditions {
     /// Returns the recording route's measured UIWindow frame after checking its content and actions.
     @discardableResult
     static func captureRecordingBoundary(_ app: XCUIApplication, testCase: XCTestCase) throws -> CGRect {
-        NavigationUITestConditions.route(app, markers: ["recording-controls-scroll"])
+        // Recording capture is fullscreen; the removed scroll container is not a route-ready signal.
+        NavigationUITestConditions.route(app, markers: ["recording-controls-fullscreen"])
         return try captureBoundary(app, navigationID: "navigation-back", name: "recording-content-boundary", testCase: testCase)
     }
 
@@ -221,30 +222,5 @@ enum NavigationGeometryUITestConditions {
         attachment.name = name
         attachment.lifetime = .keepAlways
         testCase.add(attachment)
-    }
-
-    /// Verifies each root and returns Home's measured UIWindow frame for contextual comparison.
-    static func verifyRootBoundaries(_ app: XCUIApplication, testCase: XCTestCase) throws -> CGRect {
-        _ = NavigationUITestConditions.observationSnapshot(app, testCase: testCase, attachmentName: "right-rail-native-geometry")
-        let roots = [("conversation", ["rag-conversation-screen"]), ("overview", ["overview-title"]),
-                     ("records", ["records-title"]), ("schedule", ["calendar-title", "schedule-retry"]),
-                     ("settings", ["settings-title"])]
-        var homeFrame: CGRect?
-        for (tab, markers) in roots {
-            try NavigationUITestConditions.openTab(app, tab, markers: markers)
-            let selected = try NavigationUITestConditions.navigationAction(app, "navigation-tab-\(tab)").control
-            XCTAssertTrue(selected.isSelected)
-            let indicator = UITestConditions.element(app, "navigation-root-selection-indicator").frame
-            XCTAssertEqual(indicator.width, indicator.height, accuracy: 0.5)
-            XCTAssertEqual(indicator.midX, selected.frame.midX, accuracy: 0.5)
-            XCTAssertEqual(indicator.midY, selected.frame.midY, accuracy: 0.5)
-            try NavigationUITestConditions.panelSnapshot(app, frames: ["selection": indicator, "selectedControl": selected.frame], testCase: testCase)
-            let measuredFrame = try captureBoundary(app, navigationID: "navigation-tab-\(tab)", name: "duo-root-\(tab)-boundary", testCase: testCase)
-            if tab == "overview" {
-                homeFrame = measuredFrame
-            }
-        }
-        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
-        return try XCTUnwrap(homeFrame)
     }
 }

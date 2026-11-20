@@ -34,6 +34,8 @@ export function dailyReportFailureMessage(
       return t('dailyReport.cancelled');
     case 'source_stale':
       return t('dailyReport.stale');
+    case 'source_unconfirmed_after_dispatch':
+      return t('dailyReport.failure.retryCurrent');
     case 'source_revision_changed':
       return t('dailyReport.sourceError');
     default:

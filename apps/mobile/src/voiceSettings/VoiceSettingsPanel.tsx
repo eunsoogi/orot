@@ -1,3 +1,7 @@
+import { ModelSettingsConsentDisclosure } from '../agent/execution/ModelSettingsConsentDisclosure';
+import ProviderSelectionOptionCard from '../providers/selection/ProviderSelectionOptionCard';
+import { applePrivateCloudComputeProvider } from '../providers/apple';
+import { APPLE_PCC_MODEL_ID } from '../providers/selection/privateCloudCompute';
 import { t } from '../i18n';
 import { ModelSelectionSummary } from '../layout/ModelSelectionSummary';
 import { View } from 'react-native';
@@ -63,17 +67,41 @@ export function VoiceSettingsPanel({
       ));
   return (
     <View testID="voice-settings-panel">
+      {mode === 'openai-api' ? (
+        <ModelSettingsConsentDisclosure
+          slot="voice"
+          recipient="OpenAI Realtime API"
+        />
+      ) : null}
       <View style={styles.section} testID="voice-model-group-local">
         <Text accessibilityRole="header" style={styles.heading}>
           Apple
         </Text>
         {choices('local')}
+        {/* Display-only: PCC has no voice runtime and must never enter voiceModels or save. */}
+        <ProviderSelectionOptionCard
+          option={{
+            provider: applePrivateCloudComputeProvider,
+            modelId: APPLE_PCC_MODEL_ID,
+            displayName: 'Apple Intelligence',
+            privacyBoundary: 'selected-context-remote',
+            availability: {
+              status: 'unavailable',
+              message: t('provider.pcc.entitlementRequired'),
+            },
+          }}
+          requirements={{ inputTypes: ['text'] }}
+          disabled
+          selected={false}
+          index={0}
+          onPress={() => undefined}
+        />
       </View>
       <View style={styles.section} testID="voice-model-group-openai-api">
         <Text accessibilityRole="header" style={styles.heading}>
           OpenAI API
         </Text>
-        <View style={styles.account}>
+        <View style={styles.catalogAccount}>
           <VoiceCatalogAccount
             catalog={catalog}
             onOpenAccounts={onOpenAccounts}

@@ -119,7 +119,11 @@ export function useDailyReportRoute(
         if (result.status === 'failed') {
           setFailure(result.code);
           // This failure means the previously saved source snapshot may no longer be safe to show.
-          if (result.code === 'source_revision_changed') refresh();
+          if (
+            result.code === 'source_revision_changed' ||
+            result.code === 'source_unconfirmed_after_dispatch'
+          )
+            refresh();
         } else refresh();
       },
       () => {
@@ -211,7 +215,11 @@ export function useDailyReportRoute(
         if (result.status === 'failed') {
           setFailure(result.code);
           // Provider and consent failures leave the prior report intact; source changes require a fresh lookup.
-          if (result.code === 'source_revision_changed') refresh();
+          if (
+            result.code === 'source_revision_changed' ||
+            result.code === 'source_unconfirmed_after_dispatch'
+          )
+            refresh();
         } else refresh();
       },
       () => {

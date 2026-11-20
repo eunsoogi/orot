@@ -1,3 +1,19 @@
+// This view fixture controls the separately persisted settings decision; real grant/transport guards have service tests.
+const mockSettingsAuthorize = jest.fn(
+  async () => 'authorized' as 'authorized' | 'renewal_required',
+);
+jest.mock('../../agent/execution/useInferenceConsent', () => ({
+  useInferenceConsent: () => ({
+    consent: {
+      authorize: mockSettingsAuthorize,
+      isAuthorizationCurrent: () => true,
+    },
+    disclosureSheet: null,
+  }),
+}));
+beforeEach(() => {
+  mockSettingsAuthorize.mockReset().mockResolvedValue('authorized');
+});
 import {
   act,
   fireEvent,
@@ -163,9 +179,7 @@ test('uses the production route policy and retains literature selection through 
     'sleep',
   );
   await fireEvent.press(screen.getByTestId('external-evidence-search'));
-  await fireEvent.press(
-    await screen.findByTestId('inference-disclosure-allow'),
-  );
+  expect(screen.queryByTestId('inference-disclosure-allow')).toBeNull();
   expect(service.search).toHaveBeenCalledWith('sleep', {
     externalQueryConsented: true,
     signal: expect.any(AbortSignal),

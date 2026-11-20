@@ -1,3 +1,4 @@
+import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import type { EvidenceCaveat } from '../../nextVisitQuestions/types';
 import type { SelectedAiResolution } from './provider';
@@ -8,13 +9,14 @@ import { runDefaultPublicSearch } from './defaultPublicSearch';
 /** Search only controlled public topics; visit questions retain their local-only citation contract. */
 export async function visitQuestionPublicSearch(input: {
   selected: Extract<SelectedAiResolution, { status: 'ready' }>;
+  consent?: ExecutionConsentPort;
   confirm: (request: OutboundProcessingRequest) => Promise<boolean>;
   query: string;
   signal: AbortSignal;
 }) {
   const web = createPublicWebEvidence({
     selected: input.selected,
-    consent: {
+    consent: input.consent ?? {
       authorize: async request => {
         try {
           return (await input.confirm(request))

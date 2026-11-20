@@ -1,6 +1,6 @@
 import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
-import { voiceSettingsStore } from './voiceSettingsStore';
+import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
 import { voiceModels } from './voiceModels';
 
 const errors: Record<string, string> = {
@@ -13,6 +13,7 @@ const errors: Record<string, string> = {
  * never contacts the provider. A failed refresh retains an explicitly stale list.
  */
 export function useVoiceCatalog() {
+  const { voice: voiceSettingsStore } = useModelSettingsServices();
   const [connected, setConnected] = useState(false);
   const [ids, setIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -23,6 +24,11 @@ export function useVoiceCatalog() {
   const controller = useRef<AbortController | null>(null);
   useEffect(() => {
     let alive = true;
+    // Equal numeric revisions from a different service owner are not the same account.
+    revision.current = null;
+    setConnected(false);
+    setFresh(false);
+    setIds([]);
     const load = async () => {
       const request = ++generation.current;
       controller.current?.abort();
@@ -64,7 +70,7 @@ export function useVoiceCatalog() {
       invalidate();
       unsubscribe();
     };
-  }, []);
+  }, [voiceSettingsStore]);
   const refresh = async () => {
     if (busy || !connected) return;
     const request = ++generation.current;

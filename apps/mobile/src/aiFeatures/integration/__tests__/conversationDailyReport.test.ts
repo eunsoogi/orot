@@ -2,6 +2,10 @@ import { createDailyReportIdentity } from '@orot/domain';
 import { createConversationDailyReport } from '../conversationDailyReport';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 
+type Start = Parameters<
+  typeof createConversationDailyReport
+>[0]['feature']['start'];
+
 const identity = createDailyReportIdentity('2035-01-01', 'UTC')!;
 function setup() {
   const release = jest.fn();
@@ -24,7 +28,10 @@ function setup() {
   };
   const feature = {
     retain: jest.fn(() => release),
-    start: jest.fn(() => ({
+    start: jest.fn<
+      { status: string; cancel: () => void; result: Promise<unknown> },
+      Parameters<Start>
+    >(() => ({
       status: 'started',
       cancel,
       result: Promise.resolve({
@@ -52,16 +59,13 @@ test('report uses the shared observer and retains its exact revision as an assis
   const observer = {
     onRetentionCandidate: jest.fn().mockResolvedValue(undefined),
   };
-  const result = await run(
-    'Synthetic request',
-    identity,
-    new AbortController().signal,
-    observer,
-  );
+  const signal = new AbortController().signal;
+  const result = await run('Synthetic request', identity, signal, observer);
   expect(feature.start).toHaveBeenCalledWith(
     identity,
     { kind: 'reuse_or_generate' },
     observer,
+    signal,
   );
   expect(result).toMatchObject({
     status: 'answer',
@@ -155,4 +159,41 @@ test('a failed turn save is reported without rerunning the report', async () => 
   ).toMatchObject({ status: 'answer' });
   expect(observer.onRetentionFailure).toHaveBeenCalledTimes(1);
   expect(feature.start).toHaveBeenCalledTimes(1);
+});
+
+test('cancellation during synchronous late-join receipt cancels without waiting for the shared result', async () => {
+  const { run, feature, cancel, release } = setup();
+  const controller = new AbortController();
+  feature.start.mockImplementation((_identity, _mode, observer) => {
+    observer?.onProviderReceipt?.('response_started');
+    return { status: 'started', result: new Promise(() => {}), cancel };
+  });
+  const result = await run('Synthetic request', identity, controller.signal, {
+    onProviderReceipt: () => controller.abort(),
+  });
+  expect(result).toEqual({ status: 'failure', kind: 'cancelled' });
+  expect(cancel).toHaveBeenCalledTimes(1);
+  expect(release).toHaveBeenCalledTimes(1);
+});
+
+test('a late shared rejection after receipt-triggered cancellation remains observed', async () => {
+  const { run, feature, cancel } = setup();
+  const controller = new AbortController();
+  let reject!: (error: Error) => void;
+  const result = new Promise<never>((_resolve, fail) => {
+    reject = fail;
+  });
+  const consumed = jest.spyOn(result, 'catch');
+  feature.start.mockImplementation((_identity, _mode, observer) => {
+    observer?.onProviderReceipt?.('response_started');
+    return { status: 'started', result, cancel };
+  });
+  expect(
+    await run('Synthetic request', identity, controller.signal, {
+      onProviderReceipt: () => controller.abort(),
+    }),
+  ).toEqual({ status: 'failure', kind: 'cancelled' });
+  expect(consumed).toHaveBeenCalledTimes(1);
+  reject(new Error('synthetic late cancellation'));
+  await Promise.resolve();
 });

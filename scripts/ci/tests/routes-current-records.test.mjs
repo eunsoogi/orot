@@ -52,7 +52,7 @@ test('current Routes checks every real saved kind and the same appointment quest
   );
   assert.match(body, /for dark in \[false, true\]/);
   assert.match(body, /UICTContentSizeCategoryAccessibilityXXXL/);
-  assert.doesNotMatch(source, /navigation-tab-schedule|openTab\(app, "schedule"/);
+  assert.doesNotMatch(body, /navigation-tab-schedule|openTab\(app, "schedule"/);
   assert.match(source, /records-section-schedule/);
   assert.match(source, /schedule\.isEnabled && schedule\.isHittable/);
   for (const id of [

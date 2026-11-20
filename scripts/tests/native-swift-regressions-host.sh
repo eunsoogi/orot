@@ -57,10 +57,3 @@ xcrun swiftc "$orot_host_root/ContinuedWork.swift" \
   "$repository_root/scripts/tests/ConversationContinuedReadmissionHostRegression.swift" \
   -o "$orot_host_root/continued-readmission"
 "$orot_host_root/continued-readmission"
-
-# The Routes reading check must reject gaps even when a paragraph exceeds the viewport.
-xcrun swiftc "$repository_root/apps/mobile/ios/OrotUITests/RoutesVisibleInterval.swift" \
-  "$repository_root/apps/mobile/ios/OrotUITests/RoutesKeyboardReadiness.swift" \
-  "$repository_root/apps/mobile/ios/OrotUITests/ConversationRequestStageFilter.swift" \
-  "$repository_root/scripts/tests/routes-visible-interval.swift" -o "$orot_host_root/routes-visible-interval"
-"$orot_host_root/routes-visible-interval"

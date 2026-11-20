@@ -7,16 +7,29 @@ final class OrotProviderDiagnostics: NSObject {
         false
     }
 
-    /// Export only opt-in state so normal launches do not wrap database operations.
+    /// Keep the detailed spans separate from the flag used for matched restore timings.
     @objc func constantsToExport() -> [AnyHashable: Any] {
-        ["enabled": ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")]
+        let arguments = ProcessInfo.processInfo.arguments
+        let enabled = arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
+        return [
+            "enabled": enabled,
+            "historyValidationCostEnabled": enabled && arguments.contains("-OROT_HISTORY_VALIDATION_COST"),
+        ]
     }
 
     @objc func report(_ feature: String, stage: String, outcome: String) {
         guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
               ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
-              ["history_timeline", "history_turns", "history_artifacts", "history_tool_read",
-               "history_tool_restore", "history_tasks", "history_recheck", "conversation_model_preflight", "conversation_history_preflight",
+              ["report_sql_first", "report_sql_repeat", "report_sql_unscoped",
+               "report_cache_pending_hit", "report_cache_committed_hit", "report_cache_new_key", "report_cache_generation_miss",
+               "report_query_quantity", "report_query_heart_rate", "report_query_sleep", "report_query_symptom", "report_query_other",
+               "artifact_initial_validation", "artifact_source_hydration", "artifact_final_validation",
+               "artifact_read_admission", "artifact_read_settlement", "artifact_read_setup", "artifact_session_lease", "artifact_root_row", "artifact_root_decode", "artifact_parent_row", "artifact_retained_source", "artifact_summary_parent",
+               "artifact_source_authority", "artifact_parent_decode", "artifact_parent_fingerprint",
+               "artifact_report_calendar", "artifact_report_snapshot", "artifact_report_fingerprint",
+               "history_timeline", "history_turns", "history_artifacts", "history_tool_read",
+               "history_tool_restore", "history_tasks",
+               "history_session_recheck_before_assembly", "history_session_recheck_after_assembly", "history_tool_recheck_before_assembly", "history_tool_recheck_final", "history_cold_previews", "history_recheck", "history_transcript_layout", "conversation_model_preflight", "conversation_history_preflight",
                "conversation_dispatch", "conversation_run", "tool_capture_personal", "tool_capture_memory", "tool_capture_generated", "tool_capture_external",
                "tool_event_adapter", "tool_event_discard", "tool_event_capture", "tool_event_write", "tool_event_bind",
                "opening_generate", "opening_validate", "opening_review", "opening_consent",

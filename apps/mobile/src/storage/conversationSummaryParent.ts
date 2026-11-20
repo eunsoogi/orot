@@ -11,6 +11,7 @@ import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSo
 import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
 import { validateDailyReportArtifact } from './dailyReportArtifactValidation';
+import type { measureHistoryValidationCost } from '../providers/conversationHistoryDiagnostic';
 
 /** A generated parent is usable only at its exact revision with every input still current. */
 export async function assertConversationSummaryParent(
@@ -18,6 +19,7 @@ export async function assertConversationSummaryParent(
   database: SqlDatabase,
   source: SavedGeneratedSummarySource,
   validatePeriod?: ReadOnlyPeriodValidation,
+  measureCost?: typeof measureHistoryValidationCost,
 ) {
   if (
     (source.reference.locator as { type?: unknown }).type === 'daily_report'
@@ -41,7 +43,12 @@ export async function assertConversationSummaryParent(
     'SELECT result_json FROM symptom_summary_runs WHERE id = ?',
     [source.id],
   );
-  const summary = decodeSavedSymptomSummary(rows.rows[0]?.result_json);
+  const raw = rows.rows[0]?.result_json;
+  const summary = measureCost
+    ? measureCost('artifact_parent_decode', () =>
+        decodeSavedSymptomSummary(raw),
+      )
+    : decodeSavedSymptomSummary(raw);
   const expectedType =
     summary?.analysis.presentation === 'symptom_summary'
       ? 'symptom_summary'
@@ -50,7 +57,9 @@ export async function assertConversationSummaryParent(
     deleted.rows.length ||
     !summary ||
     summary.inputLineage !== 'complete' ||
-    fingerprint(summary) !== source.revision ||
+    (measureCost
+      ? measureCost('artifact_parent_fingerprint', () => fingerprint(summary))
+      : fingerprint(summary)) !== source.revision ||
     (source.reference.locator as { type?: unknown }).type !== expectedType
   )
     throw new RetainedSourceInvalidError(

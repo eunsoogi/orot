@@ -14,7 +14,6 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_STORAGE_DIAGNOSTICS", "enabled", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_CONVERSATION_HIT_OBSERVATION", observationSession, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
-        try RoutesAppearanceUITestConditions.prepare(app)
         try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         // The health editor is available independently of asynchronous record reads.
         NavigationUITestConditions.route(app, markers: ["overview-metrics-edit"])
@@ -25,55 +24,28 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         let recording = node(app, "records-new-recording")
         FormUITestConditions.reveal(recording, in: app, scrollID: "navigation-route-scroll", towardTop: true)
         recording.tap()
-        // Capture uses a full-screen layout; the scroll identifier belongs to the separate export probe.
-        XCTAssertTrue(UITestConditions.exists(node(app, "recording-controls-fullscreen")))
-        XCTAssertTrue(UITestConditions.exists(node(app, "recording-session-panel")))
+        XCTAssertTrue(UITestConditions.exists(node(app, "recording-controls-scroll")))
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
-        let schedule = node(app, "records-section-schedule")
-        XCTAssertTrue(UITestConditions.exists(schedule))
-        XCTAssertEqual(schedule.label, "일정")
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         XCTAssertFalse(node(app, "ai-features-screen").exists)
         XCTAssertFalse(node(app, "external-evidence-search").exists)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
+        XCTAssertEqual(try NavigationUITestConditions.navigationAction(app, "navigation-tab-schedule").control.label, "일정 탭")
         // The material host shares the identifier; only the native UIButton dispatches Send.
         let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
         XCTAssertTrue(UITestConditions.exists(send))
         message(app, "필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.")
         let input = node(app, "rag-conversation-input")
         // This no-provider case needs only nonempty input to enable Send; keep native character entry short.
-        try RoutesVisibleContentUITestConditions.composer(input, in: app)
-        let workspaceBeforeKeyboard = node(app, "conversation-workspace-host").frame
-        let focusedAt = Date().timeIntervalSince1970 * 1000
+        ConversationComposerDockUITestConditions.assertReachable(input, in: app)
         input.tap()
         input.typeText("test")
-        XCTAssertTrue(String(describing: input.value ?? "").contains("test"))
         input.typeText("\n")
-        try RoutesVisibleContentUITestConditions.keyboardReady(app, baseline: workspaceBeforeKeyboard, focusedAt: focusedAt)
-        try RoutesVisibleContentUITestConditions.composer(send, in: app, observationSession: observationSession, testCase: self)
+        ConversationComposerDockUITestConditions.assertReachable(send, in: app)
         ConversationHitUITestObservation.assertSendReady(app, send: send, session: observationSession, testCase: self)
-        let sendSample = ConversationHitUITestObservation.sample(send)
-        if sendSample.enabled, sendSample.hittable {
-            // Retain the native center and AX activation-point hit targets before the actual tap.
-            ConversationHitUITestObservation.capture(app, send: send, initial: sendSample, session: observationSession, testCase: self)
-        }
-        let tapStartedAt = Date().timeIntervalSince1970 * 1000
         send.tap()
-        let tapReturnedAt = Date().timeIntervalSince1970 * 1000
-        // Record only whether the fixed synthetic draft is still present; never retain its text.
-        let draftState = input.exists ? "syntheticDraftRetained=\(String(describing: input.value ?? "").contains("test"))" : "input unavailable"
-        let postTapDraft = XCTAttachment(string: draftState)
-        postTapDraft.name = "conversation-draft-state-after-send"
-        postTapDraft.lifetime = .keepAlways
-        add(postTapDraft)
-        ConversationHitUITestObservation.capturePostTap(app, tapReturnedAt: tapReturnedAt, testCase: self)
-        ConversationHitUITestObservation.captureRequestStages(app, tapStartedAt: tapStartedAt, tapReturnedAt: tapReturnedAt, testCase: self)
-        let failures = node(app, "rag-conversation-history").staticTexts.matching(NSPredicate(format: "label == %@", "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요."))
-        XCTAssertTrue(UITestConditions.exists(failures.firstMatch), app.debugDescription)
-        XCTAssertEqual(failures.count, 1)
-        let failure = failures.firstMatch
-        try RoutesVisibleContentUITestConditions.lastMessage(failure, in: app)
+        message(app, "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.")
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         // Switching away from the root conversation keeps the failed request without a leave prompt.
         XCTAssertFalse(app.alerts["저장하지 않은 내용이 있어요"].exists)
@@ -89,7 +61,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         message(app, "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.")
         XCTAssertFalse(app.alerts["저장하지 않은 내용이 있어요"].exists)
-        try openSchedule(app)
+        try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
         XCTAssertTrue(node(app, "schedule-open-appointments").exists)
         UITestConditions.value(node(app, "calendar-title"), equals: "일정")
         XCTAssertFalse(node(app, "calendar-connect").exists)

@@ -1,3 +1,4 @@
+import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import { visitConsentScope } from '../execution/inferenceConsentScopes';
 import { runMultiAgentWorkflow } from '@orot/agent-runtime';
 import { EVIDENCE_WORKFLOW_BUDGET } from '../evidenceWorkflowBudget';
@@ -42,6 +43,7 @@ export async function runVisitQuestionWorkflow(input: {
   readonly selection: ProviderSelection | null;
   readonly providerOptions: readonly ProviderSelectionOption[];
   readonly recipient?: string;
+  readonly consent?: ExecutionConsentPort;
   readonly confirmConsent?: (
     request: OutboundProcessingRequest,
   ) => Promise<boolean>;
@@ -124,7 +126,7 @@ export async function runVisitQuestionWorkflow(input: {
   });
   // Durable tool events need a fresh identity even after the app process restarts.
   const operationRunId = createQuestionIdentity();
-  const consent = createExecutionConsentRegistry(
+  const legacyConsent = createExecutionConsentRegistry(
     input.confirmConsent ?? (async () => false),
   );
   const options: MultiAgentWorkflowOptions<VisitQuestionTaskResult> = {
@@ -169,7 +171,8 @@ export async function runVisitQuestionWorkflow(input: {
     initialEvidence: aliases.batch,
     tools,
     ...(input.prepared.store ? { store: input.prepared.store } : {}),
-    consent,
+    // Production supplies the live port; legacy callback-only callers keep their snapshot registry.
+    consent: input.consent ?? legacyConsent,
     async revalidateEvidence(references, signal) {
       if (signal.aborted) return false;
       const current = [];
@@ -219,6 +222,6 @@ export async function runVisitQuestionWorkflow(input: {
     throw error;
   } finally {
     // A later recommendation must start with a new consent snapshot.
-    consent.clear(operationRunId);
+    legacyConsent.clear(operationRunId);
   }
 }

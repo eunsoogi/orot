@@ -93,7 +93,7 @@ export const nextVisitCopyKo = {
   'nextVisit.generation.providerUnavailable':
     '선택한 AI를 사용할 수 없어요. 다른 AI를 직접 선택해 주세요.',
   'nextVisit.generation.consentRequired':
-    '외부 제공자에게 자료를 보내려면 먼저 동의가 필요해요.',
+    '모델 설정에서 선택한 제공자의 전송 범위를 확인하고 동의해 주세요.',
   'nextVisit.generation.unavailable': '질문 추천을 사용할 수 없어요.',
   'nextVisit.generation.cancelled': '질문 생성을 취소했어요.',
   'nextVisit.generation.providerChanged':

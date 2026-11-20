@@ -16,6 +16,15 @@ export function createPreparedOpeningConsent(
     settle = resolve;
   });
   const port: ExecutionConsentPort = {
+    ...(consent.subscribeAuthorizationInvalidation
+      ? {
+          subscribeAuthorizationInvalidation:
+            consent.subscribeAuthorizationInvalidation.bind(consent),
+        }
+      : {}),
+    ...(consent.isAuthorizationCurrent
+      ? { isAuthorizationCurrent: consent.isAuthorizationCurrent.bind(consent) }
+      : {}),
     async authorize(request) {
       if (!(await ready) || request.signal.aborted) return 'renewal_required';
       return consent.authorize(request);

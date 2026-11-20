@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { ScrollView, Text } from 'react-native';
 import { ConversationHistory } from '../ConversationHistory';
 import type { DisplayMessage } from '../ConversationMessage';
@@ -95,6 +101,7 @@ test('only a user top-edge scroll fetches a database page and prepends preserve 
   expect(screen.getByText('Synthetic question 0')).toBeTruthy();
   expect(screen.getAllByText('Synthetic boundary choices')).toHaveLength(1);
   expect(screen.getByTestId('conversation-earlier-messages')).toBeDisabled();
+  expect(screen.getByLabelText('이전 대화를 모두 표시했어요')).toBeTruthy();
 });
 
 test('a failed older page offers an accessible retry without automatic retry loops', async () => {
@@ -121,4 +128,63 @@ test('a failed older page offers an accessible retry without automatic retry loo
   expect(loadOlder).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('conversation-earlier-messages'));
   expect(loadOlder).toHaveBeenCalledTimes(1);
+});
+
+test('numbered history remains ordered across automatic loading, retry, and manual exhaustion', async () => {
+  const all = turns(30);
+  const loadOlder = jest.fn(async () => {});
+  const props = { ...base, sessionId: 1, onLoadOlderHistory: loadOlder };
+  const view = await render(
+    <ConversationHistory {...props} messages={all.slice(40)} historyHasMore />,
+  );
+  expect(screen.getByText('Synthetic question 20')).toBeTruthy();
+  expect(screen.queryByText('Synthetic question 19')).toBeNull();
+  const history = screen.getByTestId('rag-conversation-history');
+  const top = {
+    nativeEvent: {
+      contentOffset: { y: 0 },
+      contentSize: { height: 1200 },
+      layoutMeasurement: { height: 600 },
+    },
+  };
+  await fireEvent(history, 'scrollBeginDrag');
+  await fireEvent.scroll(history, top);
+  expect(loadOlder).toHaveBeenCalledTimes(1);
+  await view.rerender(
+    <ConversationHistory
+      {...props}
+      messages={all.slice(40)}
+      historyHasMore
+      historyLoadFailed
+    />,
+  );
+  expect(
+    screen.getByLabelText('이전 대화를 못 불러왔어요. 다시 시도'),
+  ).toBeTruthy();
+  await fireEvent(history, 'scrollBeginDrag');
+  await fireEvent.scroll(history, top);
+  expect(loadOlder).toHaveBeenCalledTimes(1);
+  expect(screen.getByText('Synthetic question 20')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('conversation-earlier-messages'));
+  expect(loadOlder).toHaveBeenCalledTimes(2);
+  await view.rerender(
+    <ConversationHistory {...props} messages={all.slice(20)} historyHasMore />,
+  );
+  expect(screen.getByText('Synthetic question 10')).toBeTruthy();
+  expect(screen.queryByText('Synthetic question 9')).toBeNull();
+  await fireEvent.press(screen.getByTestId('conversation-earlier-messages'));
+  expect(loadOlder).toHaveBeenCalledTimes(3);
+  await view.rerender(
+    <ConversationHistory {...props} messages={all} historyHasMore={false} />,
+  );
+  const rows = screen.getAllByTestId('conversation-user-message');
+  expect(rows).toHaveLength(30);
+  rows.forEach((row, index) => {
+    expect(within(row).getByText(`Synthetic question ${index}`)).toBeTruthy();
+  });
+  for (let index = 0; index < 30; index++) {
+    expect(screen.getAllByText(`Synthetic question ${index}`)).toHaveLength(1);
+    expect(screen.getAllByText(`Synthetic answer ${index}`)).toHaveLength(1);
+  }
+  expect(screen.getByTestId('conversation-earlier-messages')).toBeDisabled();
 });

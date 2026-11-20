@@ -1,3 +1,8 @@
+import {
+  createConversationCaptureReadScope,
+  type ConversationCaptureReadScope,
+} from './conversationCaptureReadScope';
+import { ownsBoundCaptureAuthority } from './boundCaptureAuthority';
 import { stableJson } from './evidenceUtils';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -12,6 +17,7 @@ export interface ConversationCaptureIdentity {
     readonly parentRevision: string;
     readonly reference: EvidenceReference;
   };
+  readonly tool?: { readonly reference: EvidenceReference };
   readonly session?: { readonly id: string; readonly version: number };
 }
 export interface ConversationCaptureOwner {
@@ -19,6 +25,7 @@ export interface ConversationCaptureOwner {
   prepare(
     requests: readonly ConversationCaptureIdentity[],
     signal: AbortSignal,
+    reads?: ConversationCaptureReadScope,
   ): Promise<{
     readonly results: readonly EvidenceSourceReadResult[];
     readonly strict?: readonly number[];
@@ -42,8 +49,9 @@ export function registerConversationCapture(
   capability?: ConversationCaptureCapability,
 ) {
   if (!capability || capability.owner.registry !== registry) return;
-  if (capability.identity.bound) {
-    const inner = capability.identity.bound.reference;
+  if (capability.identity.bound || capability.identity.tool) {
+    const inner = (capability.identity.bound ?? capability.identity.tool)!
+      .reference;
     // Bound aliases can only point to an already issued alias in this registry.
     // Strictly decreasing issuance order excludes self/cycles without a depth cap.
     const ordinal = (value: EvidenceReference) =>
@@ -61,12 +69,39 @@ export function registerConversationCapture(
   capabilities.set(registry, entries);
 }
 
+/** Presence is not validity: the owner still checks its exact callbacks and fences. */
+export function hasConversationToolCapture(
+  registry: LocalEvidenceReferenceRegistry,
+  reference: EvidenceReference,
+) {
+  return Boolean(
+    capabilities.get(registry)?.get(stableEvidenceReference(reference))
+      ?.identity.tool,
+  );
+}
+
+/** Bound personal sources require a discovery-issued, currently exact reader pair. */
+export function hasOwnedBoundConversationCapture(
+  registry: LocalEvidenceReferenceRegistry,
+  reference: EvidenceReference,
+) {
+  const capability = capabilities
+    .get(registry)
+    ?.get(stableEvidenceReference(reference));
+  return Boolean(
+    capability?.identity.bound && ownsBoundCaptureAuthority(capability.owner),
+  );
+}
+
 /** Operation-local reads only. Normal clicked-source/live validators stay strict. */
 export async function prepareCaptureSources(
   registry: LocalEvidenceReferenceRegistry,
   references: readonly EvidenceReference[],
   signal: AbortSignal,
-  options?: { readonly recheckFallback?: boolean },
+  options?: {
+    readonly recheckFallback?: boolean;
+    readonly reads?: ConversationCaptureReadScope;
+  },
 ) {
   const results = new Map<string, EvidenceSourceReadResult>();
   const groups = new Map<
@@ -97,6 +132,7 @@ export async function prepareCaptureSources(
       const prepared = await owner.prepare(
         group.map(item => item.identity),
         signal,
+        options?.reads,
       );
       if (prepared.results.length !== group.length)
         throw new Error('Invalid capture batch.');
@@ -118,7 +154,7 @@ export async function prepareCaptureSources(
     if (signal.aborted) break;
     results.set(
       stableEvidenceReference(reference),
-      await registry.readSource(reference, signal),
+      await registry.readSource(reference, signal, options?.reads?.periods),
     );
   }
   return {
@@ -127,7 +163,11 @@ export async function prepareCaptureSources(
       // Native-owned groups opt out of snapshot hydration. Re-run their exact live
       // registration after all other input awaits, before the final database fence.
       for (const reference of strictFinal) {
-        const latest = await registry.readSource(reference, signal);
+        const latest = await registry.readSource(
+          reference,
+          signal,
+          options?.reads?.periods,
+        );
         const key = stableEvidenceReference(reference);
         const previous = results.get(key);
         const unchanged =
@@ -180,8 +220,18 @@ export async function validateCaptureHistory(
       : fallback
     ).push(reference);
   }
-  const prepared = await prepareCaptureSources(registry, eligible, signal);
-  if (fallback.length && !(await registry.revalidateEvidence(fallback, signal)))
-    return false;
-  return prepared.finish();
+  const reads = createConversationCaptureReadScope(signal);
+  try {
+    const prepared = await prepareCaptureSources(registry, eligible, signal, {
+      reads,
+    });
+    if (
+      fallback.length &&
+      !(await registry.revalidateEvidence(fallback, signal))
+    )
+      return false;
+    return await prepared.finish();
+  } finally {
+    reads.dispose();
+  }
 }

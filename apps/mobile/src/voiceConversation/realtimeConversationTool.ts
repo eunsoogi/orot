@@ -1,6 +1,10 @@
 import { AppState } from 'react-native';
 import type { RefObject } from 'react';
-import type { OutboundProcessingRequest } from '@orot/agent-runtime';
+import { isExecutionConsentCurrent } from '@orot/agent-runtime';
+import type {
+  ExecutionConsentPort,
+  OutboundProcessingRequest,
+} from '@orot/agent-runtime';
 import type { ConversationVoiceProps } from './conversationVoiceDependencies';
 import type { RealtimeToolRequest } from './realtimeToolRequests';
 import { entryIntentSender } from '../ragConversation/entryIntentSender';
@@ -9,6 +13,7 @@ let nextApproval = 0;
 /** Delegate only confirmed original speech, then separately authorize its exact result to the voice recipient. */
 export function createRealtimeConversationTool(input: {
   latest: RefObject<ConversationVoiceProps>;
+  resultConsent?: ExecutionConsentPort;
   model: string;
   current: () => boolean;
   ownsRequest: (requestId: number | null, expected?: number | null) => void;
@@ -37,7 +42,7 @@ export function createRealtimeConversationTool(input: {
       !current() ||
       !question.trim() ||
       question.length > 1000 ||
-      !initial.confirmRealtimeResult ||
+      (!initial.confirmRealtimeResult && !input.resultConsent) ||
       initial.store.getSnapshot().sessions.find(item => item.id === sessionId)
         ?.busy
     )
@@ -105,16 +110,24 @@ export function createRealtimeConversationTool(input: {
         modelId: input.model,
         recipient: 'OpenAI Realtime API',
         remoteProcessing: true,
+        consentScope: {
+          purpose: 'realtime_result',
+          policyVersion: 'selected-result-relay-v1',
+          dataCategories: ['generated_answer'],
+        },
         allowedScope: {
           sourceKinds: ['personal_record', 'generated_artifact'],
         },
         payload: { messages: [{ role: 'user', content: output }] },
         signal,
       };
-      // No consentScope: a saved purpose permission must not approve this new recipient/payload automatically.
+      // Realtime result transfer has its own declared recipient and settings scope.
       const snapshot = JSON.stringify(authorization);
       if (
-        !(await live.confirmRealtimeResult!(authorization)) ||
+        !(input.resultConsent
+          ? (await input.resultConsent.authorize(authorization)) ===
+            'authorized'
+          : await live.confirmRealtimeResult!(authorization)) ||
         !current() ||
         JSON.stringify(authorization) !== snapshot
       )
@@ -126,6 +139,9 @@ export function createRealtimeConversationTool(input: {
       if (
         typeof handle.readCurrentCompletion !== 'function' ||
         (await handle.readCurrentCompletion()) !== result.answer ||
+        (input.resultConsent &&
+          !isExecutionConsentCurrent(input.resultConsent, authorization)) ||
+        JSON.stringify(authorization) !== snapshot ||
         !current()
       )
         return;

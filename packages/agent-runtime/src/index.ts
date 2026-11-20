@@ -156,3 +156,6 @@ export type { LocalActionTool } from './multiAgent/actionContracts';
 export { preparePendingActionRecovery } from './multiAgent/pendingActionRecoveryOptions';
 
 export type { CoverageDiagnosticCode } from './multiAgent/coverageDiagnostics';
+
+export { isExecutionConsentCurrent } from './multiAgent/consentCurrentness';
+export { guardProviderAuthorization } from './multiAgent/authorizedProvider';

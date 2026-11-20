@@ -5,7 +5,7 @@ import {
 } from '@orot/storage';
 import type { SqlDatabase } from '@orot/storage';
 import { currentEvidenceCondition } from '../../healthEvidence/evidenceCandidateScope';
-import { ensureHealthContextGeneration } from '../../healthEvidence/healthContext/generation';
+import { readOverviewMetricSnapshot } from './metricReadCancellation';
 import { readHealthContextReport } from '../../healthEvidence/healthContext/reader';
 import { overviewMetrics, type OverviewMetric } from './metricSelection';
 import {
@@ -29,17 +29,18 @@ export function overviewMetricWindow(now: Date) {
 export async function loadOverviewMetrics(
   database: SqlDatabase,
   now = new Date(),
+  signal?: AbortSignal,
 ): Promise<{
   metrics: Partial<Record<OverviewMetric, OverviewMetricProjection>>;
   quantityTruncated: boolean;
 }> {
+  if (signal?.aborted) throw new Error('Overview metric read was cancelled.');
   const window = overviewMetricWindow(now);
   const results: Partial<Record<OverviewMetric, OverviewMetricProjection>> = {};
   let quantityTruncated = false;
   // Prevent SQLite from writing derived health aggregates into temporary files.
   await database.execute('PRAGMA temp_store = MEMORY');
-  await database.transaction(async tx => {
-    await ensureHealthContextGeneration(tx);
+  await readOverviewMetricSnapshot(database, signal, async tx => {
     const report = await readHealthContextReport(tx, window, [
       'measurements',
       'activity',
@@ -52,22 +53,39 @@ export async function loadOverviewMetrics(
     const end = localQueryTimestampKeyExpression(
       "json_extract(r.payload_json, '$.endedAt')",
     );
-    const names = await tx.execute(
-      `SELECT * FROM (WITH candidates AS (SELECT lower(json_extract(r.payload_json, '$.concept')) AS concept,
+    const sourceFields = `lower(json_extract(r.payload_json, '$.concept')) AS concept,
       json_extract(r.payload_json, '$.value.unit') AS unit,
       COALESCE(json_extract(r.payload_json, '$.provenance.source.sourceIdentifier'), json_extract(r.payload_json, '$.provenance.origin')) || ':' ||
         COALESCE(json_extract(r.payload_json, '$.provenance.source.productType'), json_extract(r.payload_json, '$.provenance.source.device.model'), '') AS sensor,
       json_extract(r.payload_json, '$.provenance.source.sourceName') AS name,
-      json_extract(r.payload_json, '$.provenance.source.sourceIdentifier') AS identifier,
-      r.effective_at AS measured_at, ${at} AS at_key
-      FROM health_observations r WHERE ${currentEvidenceCondition('health_observation')}
-      AND ((json_extract(r.payload_json, '$.concept') IN ('heart_rate', 'body_mass', 'weight', 'step_count', 'workout_duration') AND ${at} >= ? AND ${at} < ?
-      AND json_extract(r.payload_json, '$.value.kind') = 'quantity' AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real'))
-      OR (json_extract(r.payload_json, '$.concept') IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep') AND ${at} < ? AND ${end} > ?
-      AND julianday(json_extract(r.payload_json, '$.endedAt')) > julianday(r.effective_at)
-      AND json_extract(r.payload_json, '$.value.text') IN ('1','3','4','5','asleepUnspecified','asleepCore','asleepDeep','asleepREM')))),
-      ranked AS (SELECT *, row_number() OVER (PARTITION BY concept, unit, sensor, name, identifier ORDER BY at_key DESC) AS rank FROM candidates)
-      SELECT concept, unit, sensor, name, identifier, measured_at FROM ranked WHERE rank = 1)`,
+      json_extract(r.payload_json, '$.provenance.source.sourceIdentifier') AS identifier`;
+    const current = currentEvidenceCondition('health_observation');
+    // Quantity timestamps come from the aggregate. Deduplicate only the fields
+    // used for source labels and compatibility so dense samples need no ranking.
+    // Sleep still needs the latest original timestamp for each source.
+    const names = await tx.execute(
+      `SELECT * FROM (
+      WITH quantity_sources AS (
+        SELECT DISTINCT ${sourceFields}
+        FROM health_observations r WHERE ${current}
+          AND json_extract(r.payload_json, '$.concept') IN ('heart_rate', 'body_mass', 'weight', 'step_count', 'workout_duration')
+          AND ${at} >= ? AND ${at} < ?
+          AND json_extract(r.payload_json, '$.value.kind') = 'quantity'
+          AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
+      ), sleep_candidates AS (
+        SELECT ${sourceFields}, r.effective_at AS measured_at, ${at} AS at_key
+        FROM health_observations r WHERE ${current}
+          AND json_extract(r.payload_json, '$.concept') IN ('HKCategoryTypeIdentifierSleepAnalysis', 'sleep')
+          AND ${at} < ? AND ${end} > ?
+          AND julianday(json_extract(r.payload_json, '$.endedAt')) > julianday(r.effective_at)
+          AND json_extract(r.payload_json, '$.value.text') IN ('1','3','4','5','asleepUnspecified','asleepCore','asleepDeep','asleepREM')
+      ), ranked_sleep AS (
+        SELECT *, row_number() OVER (PARTITION BY concept, unit, sensor, name, identifier ORDER BY at_key DESC) AS rank
+        FROM sleep_candidates
+      )
+      SELECT concept, unit, sensor, name, identifier, measured_at FROM ranked_sleep WHERE rank = 1
+      UNION ALL
+      SELECT concept, unit, sensor, name, identifier, NULL AS measured_at FROM quantity_sources)`,
       [
         localQueryTimestampKey(window.fromInclusive),
         localQueryTimestampKey(window.toExclusive),

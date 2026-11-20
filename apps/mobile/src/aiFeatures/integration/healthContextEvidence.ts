@@ -1,3 +1,4 @@
+import { registerPeriodCaptureReaders } from './periodCaptureReaders';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { HealthContextReader } from '../../healthEvidence/healthContext/reader';
 import type { HealthContextReport } from '../../healthEvidence/healthContext/types';
@@ -14,12 +15,23 @@ import {
   type EvidenceSourceReadResult,
 } from './evidenceRegistry';
 import { fingerprint } from './evidenceUtils';
+import { isImmutableReportSnapshot } from '../../healthEvidence/healthContext/committedReportScope';
+
+const summaryContent = new WeakMap<
+  HealthContextReport,
+  { topic: HealthContextScope['topic']; content: string }
+>();
 
 export function healthContextContent(
   scope: HealthContextScope,
   report: HealthContextReport,
   detail: HealthContextDetail = 'summary',
 ) {
+  // Restoring aliases and reviewing saved prose use the same summary. Share
+  // that pure projection only for an immutable report, never source validity.
+  const reusable = detail === 'summary' && isImmutableReportSnapshot(report);
+  const cached = reusable ? summaryContent.get(report) : undefined;
+  if (cached?.topic === scope.topic) return cached.content;
   const projected = projectHealthContext(report, detail);
   const { period, calendarDays, partialDates, limitations } = projected;
   const facts =
@@ -28,7 +40,7 @@ export function healthContextContent(
       : scope.topic === 'medications' && projected.doseHistory
         ? {}
         : { [scope.topic]: projected[scope.topic] };
-  return (
+  const content =
     'health_context: ' +
     JSON.stringify({
       topic: scope.topic,
@@ -72,8 +84,9 @@ export function healthContextContent(
                 }
               : undefined,
       limitations,
-    })
-  );
+    });
+  if (reusable) summaryContent.set(report, { topic: scope.topic, content });
+  return content;
 }
 
 /** Register a typed computed source: the original period is re-read, never reconstructed from model prose. */
@@ -90,27 +103,54 @@ export function registerHealthContextEvidence(input: {
   const revision =
     input.expectedRevision ?? healthContextRevision(scope, report);
   const id = `health-context-${fingerprint(scope)}`;
-  const current = async (signal: AbortSignal) =>
-    input.read(scope.window, [scope.topic], signal);
-  const matches = (value: HealthContextReport) =>
-    healthContextRevision(scope, value) === revision;
-  const readSource = async (
-    signal: AbortSignal,
-  ): Promise<EvidenceSourceReadResult> => {
-    if (signal.aborted) return { status: 'unavailable' };
-    const value = await current(signal);
-    return matches(value)
-      ? {
-          status: 'available',
-          document: {
-            sourceKind: 'health_context_period',
-            scope,
-            report: value,
-          },
-        }
-      : { status: 'changed' };
-  };
   const key = {};
+  const createReaders = (read: HealthContextReader) => {
+    const current = async (signal: AbortSignal) =>
+      read(scope.window, [scope.topic], signal);
+    const matches = (value: HealthContextReport) =>
+      healthContextRevision(scope, value) === revision;
+    const readSource = async (
+      signal: AbortSignal,
+    ): Promise<EvidenceSourceReadResult> => {
+      if (signal.aborted) return { status: 'unavailable' };
+      const value = await current(signal);
+      return matches(value)
+        ? {
+            status: 'available',
+            document: {
+              sourceKind: 'health_context_period',
+              scope,
+              report: value,
+            },
+          }
+        : { status: 'changed' };
+    };
+    return {
+      readSource,
+      validate: async (
+        signal: AbortSignal,
+        context: import('./evidenceValidationContext').EvidenceValidationContext,
+      ) => {
+        const value = await context.once(key, () => current(signal));
+        return (
+          !signal.aborted &&
+          value.deletionGeneration === report.deletionGeneration &&
+          matches(value)
+        );
+      },
+    };
+  };
+  const issuedRead = input.read;
+  const originalRead: HealthContextReader = (...args) => input.read(...args);
+  const readers = createReaders(originalRead);
+  registerPeriodCaptureReaders(
+    readers,
+    input.registry,
+    issuedRead,
+    createReaders,
+    () => input.read === issuedRead,
+    originalRead,
+  );
   return input.registry.add({
     reference: input.original ?? {
       sourceKind: 'personal_record',
@@ -124,14 +164,6 @@ export function registerHealthContextEvidence(input: {
       reviewState: 'unknown',
     },
     content: healthContextContent(scope, report, input.detail),
-    readSource,
-    validate: async (signal, context) => {
-      const value = await context.once(key, () => current(signal));
-      return (
-        !signal.aborted &&
-        value.deletionGeneration === report.deletionGeneration &&
-        matches(value)
-      );
-    },
+    ...readers,
   });
 }

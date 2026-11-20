@@ -9,6 +9,7 @@ export function selectWorkflowPath(path, selection) {
       markAllQuality(selection);
       return true;
     case 'unit-test.yml':
+    case 'unit-test-lane.yml':
       selection.typecheck = true;
       selection.unit_tests = true;
       return true;

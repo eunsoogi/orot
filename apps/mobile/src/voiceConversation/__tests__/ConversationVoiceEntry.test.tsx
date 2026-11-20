@@ -49,7 +49,7 @@ jest.mock('../nativeVoiceConversation', () => ({
   nativeVoiceConversation: () => mockNative,
 }));
 
-test('explicit consent binds one voice turn while preserving the text draft', async () => {
+test('explicit local voice start preserves the draft without repeating model settings consent', async () => {
   Object.defineProperty(AppState, 'currentState', {
     configurable: true,
     value: 'active',
@@ -111,12 +111,7 @@ test('explicit consent binds one voice turn while preserving the text draft', as
   expect(mockNative.start).not.toHaveBeenCalled();
   alert.mockClear();
   await fireEvent.press(screen.getByRole('button', { name: '음성 대화 시작' }));
-  await waitFor(() => expect(alert).toHaveBeenCalled());
-  expect(mockNative.start).not.toHaveBeenCalled();
-  const buttons = alert.mock.calls[0][2]!;
-  await act(async () => {
-    buttons[1].onPress?.();
-  });
+  expect(alert).not.toHaveBeenCalled();
   await waitFor(() => expect(mockNative.start).toHaveBeenCalledTimes(1));
   // The dedicated non-interactive call identity replaces the editable header.
   expect(mockIdentity).toHaveBeenCalled();

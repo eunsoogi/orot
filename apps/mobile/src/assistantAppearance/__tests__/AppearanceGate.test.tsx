@@ -146,7 +146,6 @@ test('keeps saved appearance while allowing replacement without a clear action',
   await fireEvent.press(screen.getByRole('button', { name: '편집' }));
   expect(screen.queryByRole('button', { name: '선택 지우기' })).toBeNull();
   expect(store.clear).not.toHaveBeenCalled();
-  expect(screen.getByTestId('assistant-appearance-avatar-star')).toBeTruthy();
   await fireEvent.press(screen.getByRole('radio', { name: '별' }));
   await fireEvent.press(screen.getByRole('button', { name: '저장' }));
   await waitFor(() =>

@@ -1,3 +1,4 @@
+import { registerBoundCaptureAuthority } from './boundCaptureAuthority';
 import { registerConversationParentReadOwner } from './conversationParentReadOwner';
 import { registerConversationHistoryReadOwner } from './conversationHistoryReadOperation';
 import { createBoundConversationCaptureOwner } from './boundConversationCapture';
@@ -204,8 +205,10 @@ export function createConversationArtifactDiscovery(input: {
       };
     },
   };
-  registerConversationHistoryReadOwner(discovery, signal => {
-    const operation = input.storage.beginReadOperation?.(signal);
+  registerConversationHistoryReadOwner(discovery, (signal, historyPage) => {
+    const operation = input.storage.beginReadOperation?.(signal, {
+      historyPage,
+    });
     if (!operation) return undefined;
     return {
       storage: input.storage,
@@ -225,5 +228,11 @@ export function createConversationArtifactDiscovery(input: {
     };
   });
   registerConversationParentReadOwner(discovery, input.storage, input.data);
+  registerBoundCaptureAuthority(
+    boundCaptureOwner,
+    discovery,
+    input.storage,
+    input.registry,
+  );
   return discovery;
 }

@@ -37,7 +37,7 @@ final class RootNavigationUITests: OrotFailFastTestCase {
 
     @MainActor
     func testRightRailKeepsAccessibleRootAndContextualNavigation() throws {
-        let app = launch(["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"])
+        let app = try launchRightRailWithAppearance()
         defer { app.terminate() }
         let home = try NavigationUITestConditions.navigationAction(app, "navigation-tab-overview")
         XCTAssertTrue(home.control.isSelected)
@@ -60,6 +60,39 @@ final class RootNavigationUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
         capture(app, "accessible-right-navigation")
+    }
+
+    /// The original rail journey must complete real onboarding, not bypass the persisted appearance gate.
+    @MainActor
+    private func launchRightRailWithAppearance() throws -> XCUIApplication {
+        let app = XCUIApplication()
+        // Register before preparation so assertions or throws cannot bypass the caller's later defer.
+        addTeardownBlock { app.terminate() }
+        app.launchArguments = ["-OROT_TEST_PROFILE", "core", "-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES"]
+        app.launch()
+        let conversation = UITestConditions.element(app, "rag-conversation-screen")
+        let onboarding = UITestConditions.element(app, "assistant-appearance-scroll")
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            conversation.exists || onboarding.exists
+        }, object: nil)
+        guard UITestConditions.wait(for: [ready]) == .completed else {
+            throw NSError(domain: "RightRailAppearancePreparation", code: 1)
+        }
+        if !conversation.exists {
+            // The existing product exposes this radio by its Korean label, not a stable identifier.
+            // Require a visible hit target directly; do not guess an anonymous element's window for scrolling.
+            let star = app.descendants(matching: .any).matching(identifier: "별").firstMatch
+            let save = app.buttons["assistant-appearance-save"]
+            guard star.exists, star.isHittable else { throw NSError(domain: "RightRailAppearancePreparation", code: 2) }
+            star.tap()
+            guard FormUITestConditions.reveal(save, in: app, scrollID: "assistant-appearance-scroll") != nil,
+                  save.isEnabled, save.isHittable else { throw NSError(domain: "RightRailAppearancePreparation", code: 3) }
+            save.tap()
+        }
+        NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
+        XCTAssertFalse(onboarding.exists)
+        try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
+        return app
     }
 
     @MainActor

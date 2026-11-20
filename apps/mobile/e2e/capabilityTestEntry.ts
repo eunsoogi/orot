@@ -93,7 +93,9 @@ export function registerCapabilityTestEntry(
       require('./summaryVisualProbeEntry');
       break;
     case 'daily-report-visual':
-      require('./dailyReportVisualProbeEntry');
+      if (settings.OROT_DAILY_RECOVERY === 'synthetic')
+        require('./dailyRecoveryNativeProbeEntry');
+      else require('./dailyReportVisualProbeEntry');
       break;
     case 'local-e5':
       require('./localE5EmbeddingProbeEntry');
@@ -108,7 +110,9 @@ export function registerCapabilityTestEntry(
       require('./settingsAccountsLayoutProbeEntry');
       break;
     case 'settings-provider-layout':
-      require('./settingsProviderLayoutProbeEntry');
+      if (settings.OROT_SETTINGS_CONSENT === 'synthetic')
+        require('./settingsConsentNativeProbeEntry');
+      else require('./settingsProviderLayoutProbeEntry');
       break;
     case 'visit-questions':
       require('./visitQuestionsProbeEntry');

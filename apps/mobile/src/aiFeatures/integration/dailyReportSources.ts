@@ -4,6 +4,8 @@ import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { createDailyReportFeature } from './dailyReportFeature';
 import { stableJson } from './evidenceUtils';
 
+import { dailyReportCitationPresentation } from './dailyReportCitationPresentation';
+
 type Feature = ReturnType<typeof createDailyReportFeature>;
 type Lookup = Awaited<ReturnType<Feature['lookup']>>;
 type DailyReportSourceStatus = 'current' | 'stale' | 'deleted' | 'unavailable';
@@ -35,6 +37,7 @@ export function createDailyReportSourceResolver(input: {
     runId: string,
     revision: number,
     signal: AbortSignal,
+    mode?: 'presentation',
   ) => {
     const target = { identity, runId, revision };
     const before = await input.report.lookup(identity);
@@ -65,11 +68,24 @@ export function createDailyReportSourceResolver(input: {
     const links = cited.map(source => available.get(stableJson(source)));
     if (links.some(source => !source))
       return { status: 'unavailable' as const };
-    return {
-      status: 'current' as const,
-      sources: [
-        ...new Map(links.map(source => [stableJson(source), source!])).values(),
-      ],
-    };
+    const sources = [
+      ...new Map(links.map(source => [stableJson(source), source!])).values(),
+    ];
+    if (mode !== 'presentation') return { status: 'current' as const, sources };
+    if (after.status !== 'saved') return { status: 'unavailable' as const };
+    const presentation = await dailyReportCitationPresentation(
+      after.report,
+      sources,
+      input.registry,
+      signal,
+    );
+    const finalStatus = lookupStatus(
+      await input.report.lookup(identity),
+      target,
+    );
+    if (signal.aborted) return { status: 'unavailable' as const };
+    if (finalStatus !== 'current') return { status: finalStatus };
+    if (!presentation) return { status: 'unavailable' as const };
+    return { status: 'current' as const, sources, presentation };
   };
 }

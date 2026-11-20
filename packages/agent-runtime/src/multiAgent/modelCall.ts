@@ -1,3 +1,4 @@
+import { guardProviderAuthorization } from './authorizedProvider';
 import { observeModelStage, type ModelStageObserver } from './modelStageDiagnostics';
 import { invokeProductionRequest } from '../langchain/production';
 import { NativeChatModelError } from '../langchain/chatModel';
@@ -158,7 +159,12 @@ export async function dispatchAuthorizedModelCall(
       ? { status: 'cancelled', providerStop: 'not_started' }
       : { status: 'consent_required' };
   }
-  return observeModelStage(onModelStage, 'provider_wait', async () => {
+  const guarded = guardProviderAuthorization(
+    provider,
+    () => authorization.isCurrent(),
+    (listener) => authorization.subscribeInvalidation(listener),
+  );
+  return observeModelStage(onModelStage, 'provider_wait', async (): Promise<ModelCallOutcome> => {
     const guided = request.responseFormat !== undefined || Boolean(request.tools?.length);
     const canStreamGuidedResponse =
       provider.capabilities.structuredOutputStreaming !== false &&
@@ -171,20 +177,25 @@ export async function dispatchAuthorizedModelCall(
       const startedAt = Date.now();
       let result: ProviderCallOutcome;
       try {
-        result = await collectStream(provider, request, signal, onTextEvent);
+        result = await collectStream(guarded.provider, request, signal, onTextEvent);
       } catch {
         result = { status: 'unavailable', errorCode: 'internal_error' };
       }
+      if (guarded.wasDenied()) return { status: 'consent_required' };
       recordTelemetry(telemetry, 'language-model.stream', startedAt, result);
       return result;
     }
     const startedAt = Date.now();
     let result: ProviderCallOutcome;
     try {
-      result = await observeAdapter(invokeProductionRequest(provider, request, signal), signal);
+      result = await observeAdapter(
+        invokeProductionRequest(guarded.provider, request, signal),
+        signal,
+      );
     } catch {
       result = { status: 'unavailable', errorCode: 'internal_error' };
     }
+    if (guarded.wasDenied()) return { status: 'consent_required' };
     recordTelemetry(telemetry, 'language-model.generate', startedAt, result);
     return result;
   });

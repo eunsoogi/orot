@@ -8,7 +8,7 @@ import { ConversationJumpToLatest } from './ConversationJumpToLatest';
 import { useFloatingComposerInset } from './FloatingComposerSurface';
 import { followConversationLatest } from './followConversationLatest';
 import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
-import { transcriptMessageVisible } from './conversationWorkspaceLayout';
+import { projectTranscript } from './conversationBubblePaint';
 import { useFloatingIdentityInset } from '../assistantAppearance/FloatingIdentityInset';
 import { useEffect, useRef, type ComponentRef } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -16,7 +16,6 @@ import { styles } from './ConversationScreen.styles';
 import { ConversationTranscriptMessages } from './ConversationTranscriptMessages';
 import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
-import { ConversationActivityBubble } from './ConversationActivityBubble';
 import { conversationHistoryActivity } from './conversationHistoryActivity';
 import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserTurn';
 /** Owns transcript scrolling, restoration and reader-directed history loading. */
@@ -113,14 +112,13 @@ export function ConversationHistory({
     expectedOffset,
     geometry: scrollGeometry,
   });
+  const transcript = projectTranscript(visibleMessages, separatedActivity);
   const window = useConversationTranscriptWindow({
     hasMore: historyHasMore,
     loading: historyLoading,
     failed: historyLoadFailed,
     loadOlder: onLoadOlderHistory,
-    messages: visibleMessages.filter(message =>
-      transcriptMessageVisible(message, separatedActivity),
-    ),
+    messages: transcript,
     sessionId,
     focusId: replyFocus?.canReveal() ? replyFocus.messageId : reading.targetId,
     focusGeneration: replyFocus?.generation,
@@ -187,6 +185,8 @@ export function ConversationHistory({
           <ConversationTranscriptMessages
             onReadingLayout={reading.row}
             messages={window.messages}
+            {...{ sessionId, availableMessages: visibleMessages }}
+            showPendingBubble={showActivityBubble}
             entryChoices={entryChoices}
             anchorId={window.anchorId}
             onAnchorLayout={window.onAnchorLayout}
@@ -207,7 +207,6 @@ export function ConversationHistory({
               renderVisitQuestions,
             }}
           />
-          {showActivityBubble ? <ConversationActivityBubble /> : null}
           <ConversationHistoryStatus
             error={conversationHistoryError(
               error,

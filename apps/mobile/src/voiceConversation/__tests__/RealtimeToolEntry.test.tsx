@@ -10,6 +10,22 @@ import { RealtimeConversationVoiceEntry } from '../RealtimeConversationVoiceEntr
 import type { ConversationVoiceProps } from '../conversationVoiceDependencies';
 import type { RealtimeTranscript } from '../nativeRealtimeVoice';
 import type { RealtimeToolRequest } from '../realtimeToolRequests';
+let mockResultApproved = true;
+const mockResultAuthorization = jest.fn(async () =>
+  mockResultApproved ? ('authorized' as const) : ('denied' as const),
+);
+const mockPermission = {
+  authorize: async () => true,
+  current: () => true,
+  stop: jest.fn(),
+  consent: {
+    authorize: mockResultAuthorization,
+    isAuthorizationCurrent: () => mockResultApproved,
+  },
+};
+jest.mock('../useRealtimeSettingsPermission', () => ({
+  useRealtimeSettingsPermission: () => mockPermission,
+}));
 jest.mock('../../navigation/NavigationModal', () => ({
   NavigationModal: (props: object) => {
     const React = require('react');
@@ -76,9 +92,10 @@ jest.mock('../nativeRealtimeVoice', () => ({
 }));
 
 test.each([true, false])(
-  'tool opt-in keeps exact transcript execution and separate result approval: %s',
+  'tool opt-in keeps exact transcript execution and separately scoped settings result approval: %s',
   async approved => {
     jest.clearAllMocks();
+    mockResultApproved = approved;
     Object.defineProperty(AppState, 'currentState', {
       configurable: true,
       value: 'active',
@@ -161,7 +178,10 @@ test.each([true, false])(
     await act(() =>
       screen.getByTestId('realtime-tool-confirmation-modal').props.onDismiss(),
     );
-    await waitFor(() => expect(confirmResult).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mockResultAuthorization).toHaveBeenCalledTimes(1),
+    );
+    expect(confirmResult).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(mockNative.tools.resolveToolCall).toHaveBeenCalledTimes(1),
     );

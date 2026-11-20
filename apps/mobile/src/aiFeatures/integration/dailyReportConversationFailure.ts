@@ -10,6 +10,8 @@ export function dailyReportConversationFailure(
       return { status: 'failure', kind: 'cancelled' };
     case 'consent_required':
       return { status: 'failure', kind: 'consent_required' };
+    case 'source_unconfirmed_after_dispatch':
+      return { status: 'failure', kind: 'daily_report_retry_current' };
     case 'source_stale':
     case 'source_revision_changed':
       return { status: 'failure', kind: 'stale_evidence' };
@@ -19,8 +21,10 @@ export function dailyReportConversationFailure(
       return { status: 'failure', kind: 'provider_unavailable' };
     case 'malformed_output':
       return { status: 'failure', kind: 'validation_failed' };
-    case 'source_read_failed':
+    // Successful lookup without usable day/scope evidence is not a database read error.
     case 'source_unavailable':
+      return { status: 'failure', kind: 'daily_report_sources_unavailable' };
+    case 'source_read_failed':
     case 'report_read_failed':
       return { status: 'failure', kind: 'retrieval_failed' };
     default:
