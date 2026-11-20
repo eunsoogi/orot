@@ -21,7 +21,6 @@ import * as voiceSelection from './conversationVoiceSelection';
 import { prepareConversationPhoto as preparePhoto } from './conversationPhotoService';
 import * as targets from './conversationEntryTargets';
 import { conversationExternalEvidence } from './conversationExternalEvidence';
-const cancelled = { status: 'failure', kind: 'cancelled' } as const;
 export function createRagConversationService({
   consent: consentPort,
   queryConsent: queryConsentPort,
@@ -33,7 +32,7 @@ export function createRagConversationService({
   createOperationRunId,
   resolveDailyReport,
 }: RagConversationServiceDependencies) {
-  return async function sendRagMessage(
+  async function sendRagMessage(
     question: string,
     previousMessages: readonly RagConversationMessage[],
     parentSignal?: AbortSignal,
@@ -148,7 +147,7 @@ export function createRagConversationService({
           }),
         ),
       });
-      if (searchPlan.eager.status === 'cancelled') return cancelled;
+      if (searchPlan.eager.status === 'cancelled') return run.cancelled;
       const { tools, generated, localRetrievalFailed } =
         createConversationToolBundle({
           data,
@@ -194,7 +193,7 @@ export function createRagConversationService({
       stage = 'workflow';
       if (!(await historyIsCurrent()))
         return { status: 'failure', kind: 'retrieval_failed' };
-      const outcome = await ragRunner(
+      const outcome = await run.observeConversationMain(ragRunner)(
         run.conversationRunRequest({
           continuation: searchPlan.continuation,
           onInitialSearchStatus: searchPlan.onInitialSearchStatus,
@@ -246,5 +245,6 @@ export function createRagConversationService({
       opening?.dispose();
       linked.dispose();
     }
-  };
+  }
+  return run.observeConversationReceiptTiming(sendRagMessage);
 }
