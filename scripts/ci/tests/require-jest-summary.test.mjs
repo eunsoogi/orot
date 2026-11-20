@@ -8,7 +8,13 @@ import test from 'node:test';
 
 const guardScript = fileURLToPath(new URL('../require-jest-summary.mjs', import.meta.url));
 
-function runGuard(log, suiteName = 'unit', emitGithubOutputs = false, extraEnv = {}) {
+function runGuard(
+  log,
+  suiteName = 'unit',
+  emitGithubOutputs = false,
+  extraEnv = {},
+  expectedRuns = undefined,
+) {
   const directory = mkdtempSync(join(tmpdir(), 'orot-jest-summary-'));
   const logPath = join(directory, 'jest.log');
   const outputPath = join(directory, 'github-output');
@@ -16,7 +22,13 @@ function runGuard(log, suiteName = 'unit', emitGithubOutputs = false, extraEnv =
     writeFileSync(logPath, log);
     const result = spawnSync(
       process.execPath,
-      [guardScript, logPath, suiteName, ...(emitGithubOutputs ? [outputPath] : [])],
+      [
+        guardScript,
+        logPath,
+        suiteName,
+        ...(emitGithubOutputs ? [outputPath] : []),
+        ...(expectedRuns === undefined ? [] : [expectedRuns]),
+      ],
       { encoding: 'utf8', env: { ...process.env, ...extraEnv } },
     );
     return {
@@ -93,4 +105,14 @@ test('rejects obsolete E2E modes instead of accepting a Jest fallback', () => {
     runGuard('Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n', 'e2e-release').status,
     0,
   );
+});
+
+test('requires the exact number of Jest summaries for a protected lane', () => {
+  const one = 'Test Suites: 1 passed, 1 total\nTests: 1 passed, 1 total\n';
+  assert.equal(runGuard(one, 'unit', false, {}, '1').status, 0);
+  assert.equal(runGuard(one.repeat(9), 'unit', false, {}, '9').status, 0);
+  const missing = runGuard(one.repeat(8), 'unit', false, {}, '9');
+  assert.notEqual(missing.status, 0);
+  assert.match(missing.stderr, /expected 9 Jest summaries, found 8/);
+  assert.notEqual(runGuard(one.repeat(2), 'unit', false, {}, '1').status, 0);
 });

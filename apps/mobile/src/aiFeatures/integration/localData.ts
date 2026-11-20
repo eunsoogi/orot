@@ -12,6 +12,7 @@ import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { createSummaryArtifactDiscovery } from './summaryArtifactDiscovery';
+import type { SymptomSummaryStorage } from '../../diseaseHypotheses/savedSummaries';
 import type { createConversationArtifactDiscovery } from './conversationArtifactDiscovery';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
 import type { createResearchArtifactStorage } from '../../storage/researchArtifactStorage';
@@ -82,6 +83,7 @@ async function openDefault(): Promise<AiFeatureLocalData> {
   const repository = createLocalHealthEvidenceRepository(database);
   const rag = createLocalE5RagService(database);
   const memoryStorage = new SqlCipherAgentMemoryStorage(database);
+  let summaryStorage: SymptomSummaryStorage | undefined;
   const summaryDiscovery = async (
     scoped: AiFeatureLocalData,
     registry: LocalEvidenceReferenceRegistry,
@@ -95,7 +97,9 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     ]);
     return createSummaryArtifactDiscovery({
       database,
-      storage: createSymptomSummaryStorage(database),
+      // Share one lazy schema setup per protected database owner. Each
+      // discovery still reads current rows with its own registry and readers.
+      storage: (summaryStorage ??= createSymptomSummaryStorage(database)),
       data: scoped,
       registry,
     });

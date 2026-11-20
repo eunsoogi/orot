@@ -1,3 +1,6 @@
+import * as periodRemoval from '../../../storage/conversationPeriodRemoval';
+import { previousPeriodNotRemoved } from '../../../storage/testSupport/previousPeriodNotRemoved';
+import { traceSyntheticHealthSql } from '../../../../test-support/traceSyntheticHealthSql';
 import { tracePeriodReaderProvenance } from '../testSupport/tracePeriodReaderProvenance';
 import { appendSyntheticPriorTools } from '../testSupport/appendSyntheticPriorTools';
 import { traceCaptureOwners } from '../testSupport/traceCaptureOwners';
@@ -13,6 +16,12 @@ const cases = profileEnv.OROT_SYNTHETIC_RESIDUAL_CASE
   : ['nested-distinct-three', 'nested-distinct-six', 'nested-distinct-twelve'];
 test.each(cases)('residual actual send retention: %s', async variant => {
   const env = profileEnv;
+  const previousRemoval =
+    env.OROT_SYNTHETIC_PERIOD_QUERY_BASELINE === '1'
+      ? jest
+          .spyOn(periodRemoval, 'assertPeriodNotRemoved')
+          .mockImplementation(previousPeriodNotRemoved)
+      : undefined;
   const readerTrace = tracePeriodReaderProvenance();
   const ownerTrace = traceCaptureOwners();
   const { f, data, count, original } = await actualSendRetentionFixture(
@@ -55,6 +64,10 @@ test.each(cases)('residual actual send retention: %s', async variant => {
     }
   });
   NativeModules.OrotProviderDiagnostics = { enabled: true, report };
+  const healthSql =
+    env.OROT_SYNTHETIC_HEALTH_SQL === '1'
+      ? traceSyntheticHealthSql(f.database, () => phase)
+      : undefined;
   const transaction = f.database.transaction.bind(f.database);
   f.database.transaction = work =>
     transaction(async tx => {
@@ -188,6 +201,8 @@ test.each(cases)('residual actual send retention: %s', async variant => {
         ownerPhases,
       }),
     );
+    if (healthSql)
+      console.info('SYNTHETIC_HEALTH_SQL', JSON.stringify(healthSql.summary()));
     // Exact calculation counts catch loss of reuse in normal CI, not only profiling.
     expect([...(counts.get('retention')?.values() ?? [])]).toEqual([
       ...Array(count * 2 - 2).fill(2),
@@ -209,6 +224,8 @@ test.each(cases)('residual actual send retention: %s', async variant => {
 
     NativeModules.OrotProviderDiagnostics = previousDiagnostic;
     f.database.transaction = transaction;
+    healthSql?.restore();
+    previousRemoval?.mockRestore();
     f.close();
   }
 });

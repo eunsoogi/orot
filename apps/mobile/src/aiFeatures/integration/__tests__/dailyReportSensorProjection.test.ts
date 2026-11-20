@@ -147,18 +147,28 @@ test('summaries replace raw points, preserve narrative/dose facts, and cite ever
   }
 });
 
-test('a summarized member deleted during exact consent prevents provider dispatch', async () => {
+test('a deleted summarized member is excluded before renewed consent and dispatch', async () => {
   const f = await fixture();
   try {
     const run = calendarReportService(f.db.database, f.calendar, async () => {
       await f.records.delete('health_observation', 'sensor-57');
       return 'authorized';
     });
-    expect(await run.run(calendarTestRequest())).toMatchObject({
-      status: 'failed',
-      code: 'source_revision_changed',
-    });
-    expect(run.generate).not.toHaveBeenCalled();
+    const result = await run.run(calendarTestRequest());
+    expect(result.status).toBe('completed');
+    expect(run.generate).toHaveBeenCalledTimes(1);
+    const message = run.generate.mock.calls[0]![0].messages[1]!;
+    if (!('content' in message)) throw new Error('Expected report facts');
+    const payload = JSON.parse(String(message.content));
+    const summary = payload.facts.find((fact: { text: string }) =>
+      fact.text.includes('sensor_period_summary'),
+    );
+    expect(JSON.parse(summary.text)).toMatchObject({ sampleCount: 119 });
+    if (result.status === 'completed')
+      expect(
+        result.context.sourceSnapshot.records.map(record => record.recordId),
+      ).not.toContain('sensor-57');
+    expect(await f.records.get('health_observation', 'sensor-57')).toBeNull();
   } finally {
     f.db.close();
   }

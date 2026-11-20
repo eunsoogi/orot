@@ -95,6 +95,7 @@ export async function runDomainTestOperation(
         await import('./healthContextPersistenceTestOperation');
       return runHealthContextPersistenceTestOperation(
         parameters.fixtureIdentifier,
+        parameters.mode,
       );
     }
     case 'automatic-recap-seed':

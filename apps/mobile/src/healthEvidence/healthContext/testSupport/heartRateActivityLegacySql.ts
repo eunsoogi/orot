@@ -5,7 +5,12 @@ export function previousHeartCalendarSweep(query: string): string {
   const at = localQueryTimestampKeyExpression('r.effective_at');
   const previous = query
     .replace('AS MATERIALIZED (SELECT json_extract', 'AS (SELECT json_extract')
-    .replace('heart AS MATERIALIZED (', 'undated_heart AS MATERIALIZED (')
+    .replace('heart AS NOT MATERIALIZED (', 'undated_heart AS MATERIALIZED (')
+    // The earlier correlated variant attaches its date after the timeline.
+    .replace(
+      'SELECT start_key, end_key, unit, amount, sensor, date, event_order, max(workout_end)',
+      'SELECT e.*, max(workout_end)',
+    )
     .replace(', d.date AS date', '')
     .replace(
       'FROM days d CROSS JOIN health_observations r',

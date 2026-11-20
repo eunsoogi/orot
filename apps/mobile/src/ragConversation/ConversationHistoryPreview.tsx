@@ -3,7 +3,7 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { ConversationMessage } from './ConversationMessage';
-import type { DisplayMessage } from './ConversationMessage';
+import { conversationHistoryActivity } from './conversationHistoryActivity';
 import type { ConversationSession } from './conversationSessions';
 import { t } from '../i18n';
 
@@ -16,12 +16,14 @@ export function ConversationHistoryPreview({
 }: {
   readonly session: ConversationSession | null;
 }) {
-  const visibleMessages: readonly DisplayMessage[] = session?.pendingMessage
-    ? [
-        ...session.messages,
-        { ...session.pendingMessage, role: 'assistant', streaming: true },
-      ]
-    : (session?.messages ?? []);
+  const { visibleMessages } = conversationHistoryActivity(
+    session?.messages ?? [],
+    session?.pendingMessage ?? null,
+    session?.id,
+    session?.requestActivity,
+    false,
+    true,
+  );
 
   return (
     <View style={styles.preview} testID="conversation-history-preview">

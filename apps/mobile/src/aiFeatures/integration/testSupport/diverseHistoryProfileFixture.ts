@@ -9,19 +9,57 @@ import type { ConversationArtifact } from '../../../storage/conversationArtifact
 export async function diverseHistoryProfileFixture(
   count: number,
   nested: boolean,
+  fromInclusive = '2026-10-01T00:00:00Z',
 ) {
   const f = await quarantinedHistoryFixture();
   const summaries = createSymptomSummaryStorage(f.database);
   const template = (await f.storage.read('older'))!;
+  const longHistory = fromInclusive < '2026-10-01T00:00:00Z';
   await f.database.execute('DELETE FROM conversation_artifacts');
+  // Include dense sensor days, gaps and both quantity families in the long
+  // profile. Workouts overlap some synthetic heart samples, including points.
+  if (longHistory) {
+    const start = Date.parse(fromInclusive);
+    const records = Array.from({ length: 7200 }, (_, index) => {
+      const minute = 60 * 1000;
+      const day = 24 * 60 * minute;
+      const timestamp =
+        start + Math.floor(index / 6) * day + (index % 6) * minute;
+      const at = new Date(timestamp).toISOString();
+      const concept = ['heart_rate', 'step_count', 'workout_duration'][
+        index % 6 === 2 && index % 30 === 2 ? 2 : index % 2
+      ];
+      return {
+        ...f.inside,
+        id: `synthetic-period-${index}`,
+        concept,
+        effectiveAt: at,
+        endedAt: new Date(
+          timestamp + (concept === 'workout_duration' ? 30 * minute : 0),
+        ).toISOString(),
+        ingestedAt: new Date(
+          timestamp + (index % 29 === 0 ? 300 * day : 0),
+        ).toISOString(),
+        recordedAt: at,
+      };
+    });
+    await f.database.execute(
+      `INSERT INTO health_observations (id,effective_at,recorded_at,ingested_at,payload_json)
+       SELECT json_extract(value,'$.id'),json_extract(value,'$.effectiveAt'),json_extract(value,'$.recordedAt'),json_extract(value,'$.ingestedAt'),value FROM json_each(?)`,
+      [JSON.stringify(records)],
+    );
+  }
   let parent: ConversationArtifact | undefined;
   for (let index = 0; index < count; index++) {
+    const toExclusive = new Date(Date.UTC(2026, 9, index + 2)).toISOString();
     const window = {
-      fromInclusive: '2026-10-01T00:00:00Z',
-      toExclusive: new Date(Date.UTC(2026, 9, index + 2)).toISOString(),
-      timeZone: 'UTC',
+      fromInclusive,
+      toExclusive,
+      timeZone: longHistory ? 'Asia/Seoul' : 'UTC',
+      ...(longHistory ? { dataAvailableThrough: toExclusive } : {}),
     };
-    const report = await f.read(window, ['measurements']);
+    const topic = longHistory && index % 2 === 1 ? 'activity' : 'measurements';
+    const report = await f.read(window, [topic]);
     const item = registerHealthContextEvidence({
       registry: f.registry,
       read: f.read,
@@ -29,7 +67,7 @@ export async function diverseHistoryProfileFixture(
       scope: {
         kind: 'health_context_period',
         version: 1,
-        topic: 'measurements',
+        topic,
         window,
       },
     });

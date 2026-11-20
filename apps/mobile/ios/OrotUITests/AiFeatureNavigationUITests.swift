@@ -73,6 +73,9 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
     func testAiScreensAndSeparateHistoriesAcrossAppearanceChanges() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + AppearanceUITestConditions.observationArguments
+        let session = try XCTUnwrap(ProcessInfo.processInfo.environment["OROT_IOS_FIXTURE_SESSION"])
+        _ = try XCTUnwrap(UUID(uuidString: session))
+        app.launchArguments += ["-OROT_ROUTES_GENERATED_RECORDS", "synthetic", "-OROT_ROUTES_FIXTURE_SESSION", session]
         app.launch()
         var original: AppearanceUITestConditions.Snapshot?
         defer {
@@ -82,6 +85,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
             }
             UITestConditions.terminateStandaloneApp(app)
         }
+        try RoutesAppearanceUITestConditions.prepare(app)
         XCTAssertTrue(UITestConditions.exists(node(app, "rag-conversation-screen")))
         for dark in [false, true] {
             _ = try AppearanceUITestConditions.select(dark, returningTo: app, testCase: self, captureOriginal: {
@@ -92,35 +96,8 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
             let suffix = dark ? "dark" : "light"
             try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
             try captureAppearance(app, "conversation-empty-\(suffix)")
-            NavigationPageActionUITestConditions.tap(app, id: "rag-conversation-sessions-toggle", label: "대화 목록")
-            NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
-            try captureAppearance(app, "conversation-history-\(suffix)")
-            let savedAnalysis = node(app, "conversation-saved-analysis")
-            FormUITestConditions.reveal(savedAnalysis, in: app, scrollID: "conversation-history-page", towardTop: true)
-            XCTAssertTrue(savedAnalysis.isHittable, app.debugDescription)
-            savedAnalysis.tap()
-            NavigationUITestConditions.route(app, markers: ["disease-hypotheses-screen"])
-            XCTAssertFalse(node(app, "disease-hypotheses-generate").exists)
-            try captureAppearance(app, "symptom-preparation-\(suffix)")
-            NavigationPageActionUITestConditions.tap(app, id: "symptom-summary-history-open", label: "저장된 요약 보기")
-            NavigationUITestConditions.route(app, markers: ["summary-history-screen"])
-            try captureAppearance(app, "summary-history-empty-\(suffix)")
-            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-            NavigationUITestConditions.route(app, markers: ["disease-hypotheses-screen"])
-            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-            NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
-            let savedVisit = node(app, "conversation-saved-visit-questions")
-            FormUITestConditions.reveal(savedVisit, in: app, scrollID: "conversation-history-page", towardTop: true)
-            XCTAssertTrue(savedVisit.isHittable, app.debugDescription)
-            savedVisit.tap()
-            NavigationUITestConditions.route(app, markers: ["saved-visit-questions-screen"])
-            XCTAssertFalse(node(app, "next-visit-generate").exists)
-            try captureAppearance(app, "visit-questions-ready-\(suffix)")
-            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-            NavigationUITestConditions.route(app, markers: ["conversation-history-screen"])
-            try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-            NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
-            try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
+            try GeneratedRecordsRoutesUITestConditions.inspect(app, suffix: suffix, testCase: self)
+            try openSchedule(app)
             let classification = node(app, "open-medical-appointments")
             UITestConditions.scrollTo(classification, in: app)
             classification.tap()
@@ -197,6 +174,18 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
                 XCTAssertTrue(UITestConditions.exists(node(app, "evidence-visual-picker")))
             }
         }
+    }
+
+    /// Schedule is a Records section; exercise its native control before checking the calendar route.
+    @MainActor
+    private func openSchedule(_ app: XCUIApplication) throws {
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        let schedule = node(app, "records-section-schedule")
+        XCTAssertTrue(UITestConditions.exists(schedule), app.debugDescription)
+        XCTAssertEqual(schedule.label, "일정")
+        XCTAssertTrue(schedule.isEnabled && schedule.isHittable && app.frame.contains(schedule.frame))
+        schedule.tap()
+        NavigationUITestConditions.route(app, markers: ["calendar-title"])
     }
 
     @MainActor

@@ -72,10 +72,18 @@ export function projectHealthContext(
   const completeDates = report.days
     .filter(day => !day.partial)
     .map(day => day.date);
-  const weeks = Array.from(
-    { length: Math.ceil(dates.length / 7) },
-    (_, index) => dates.slice(index * 7, index * 7 + 7),
-  );
+  const recentDates = completeDates.slice(-7);
+  const previousDates = completeDates.slice(-14, -7);
+  // Only the two comparison windows need membership checks. Build their date
+  // sets once, without scanning the full calendar for every reported sample day.
+  const recentDateSet = new Set(recentDates);
+  const previousDateSet = new Set(previousDates);
+  const weeks =
+    detail === 'weekly'
+      ? Array.from({ length: Math.ceil(dates.length / 7) }, (_, index) =>
+          dates.slice(index * 7, index * 7 + 7),
+        )
+      : [];
   const asleepDays = report.sleep.filter(day => day.asleepSeconds > 0);
   return {
     period: report.window,
@@ -85,15 +93,8 @@ export function projectHealthContext(
       const step =
         series.concept === 'step_count' ||
         series.concept === 'workout_duration';
-      const complete = series.days.filter(day =>
-        completeDates.includes(day.date),
-      );
-      const recent = complete.filter(day =>
-        completeDates.slice(-7).includes(day.date),
-      );
-      const previous = complete.filter(day =>
-        completeDates.slice(-14, -7).includes(day.date),
-      );
+      const recent = series.days.filter(day => recentDateSet.has(day.date));
+      const previous = series.days.filter(day => previousDateSet.has(day.date));
       const means = (days: readonly HealthQuantityDay[]) =>
         average(days.map(day => (step ? day.sum : day.mean)));
       const before = means(previous),
@@ -109,8 +110,8 @@ export function projectHealthContext(
         missingCalendarDays: dates.length - series.days.length,
         comparison: {
           method: step ? 'mean_of_daily_sample_sums' : 'mean_of_daily_means',
-          previousDates: completeDates.slice(-14, -7),
-          recentDates: completeDates.slice(-7),
+          previousDates: [...previousDates],
+          recentDates: [...recentDates],
           previousRecordedDays: previous.length,
           recentRecordedDays: recent.length,
           previousMean: before,

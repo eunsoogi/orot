@@ -10,7 +10,6 @@ import {
 import { selectE2EPath } from './changed-paths-e2e-rules.mjs';
 import { selectWorkflowPath } from './changed-paths-workflow-rules.mjs';
 import { analyzeRuntimeTestImports, isJestTestOnlyPath } from './runtime-test-imports.mjs';
-
 const IMAGES = new Set([
   '.png',
   '.jpg',
@@ -212,6 +211,7 @@ export function selectChecksForPaths(changedPaths, policies = null, { runtimeRoo
       continue;
     }
     if (lower.startsWith('scripts/')) {
+      if (lower.startsWith('scripts/native-cache/')) selection.unit_tests = true;
       if (!markQualityPath(path, selection, policies)) {
         return selectAll('unknown-script-change');
       }

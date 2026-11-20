@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ScrollView, Text } from 'react-native';
 import { ConversationHistory } from '../ConversationHistory';
+import { ConversationMessage } from '../ConversationMessage';
 
 test('does not follow new content after the reader scrolls away from the bottom', async () => {
   const scrollToEnd = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
@@ -72,11 +73,15 @@ test('follows the latest message before evidence while preserving a reader scrol
 
 test('puts streaming text after its activity in the short reading viewport', async () => {
   await render(
-    <ConversationHistory
+    <ConversationMessage
       compact
-      messages={[]}
-      pendingMessage={{ id: 2, content: '답변 본문', activity: '작성 중' }}
-      error=""
+      message={{
+        id: 2,
+        role: 'assistant',
+        content: '답변 본문',
+        activity: '작성 중',
+        streaming: true,
+      }}
       onOpenSource={jest.fn()}
       onLinkError={jest.fn()}
     />,

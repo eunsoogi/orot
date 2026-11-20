@@ -15,7 +15,7 @@ export function calendarSweepQuery(query: string): string {
       'WHERE',
     )
     .replace(
-      /\), dated AS MATERIALIZED \([\s\S]*?\), ranked AS \(/,
+      /\), dated AS \([\s\S]*?\), ranked AS \(/,
       `), calendar_events AS (
         SELECT o.*, NULL AS calendar_date, NULL AS calendar_to, 1 AS sample FROM observations o
         UNION ALL SELECT NULL, NULL, from_key, NULL, NULL, NULL, NULL, date, to_key, 0 FROM days

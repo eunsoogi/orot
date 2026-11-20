@@ -59,6 +59,16 @@ Do not multiply every business state across every appearance, device, and
 layout. Add a combination only when it observes a distinct requirement or
 failure boundary.
 
+## Linux unit CI
+
+The protected `Unit and component tests` check requires three mobile Jest
+shards and the shared-package lane when Unit Tests are selected. Mobile
+shards run in band and partition the default suite inventory. The package
+lane retains the installed native-cache checks. Each lane must report
+nonempty passing Jest summaries without skips, and a missing, failed,
+or cancelled selected lane fails the protected check. An explicit no-op
+requires successful path selection; missing selection is not a no-op.
+
 ## Preserve coverage when changing tests
 
 Before removing or combining an assertion, map each original assertion to its

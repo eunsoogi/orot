@@ -212,13 +212,13 @@ final class RecordingDeletionRecoveryUITests: OrotFailFastTestCase {
         let row = app.buttons.matching(
             NSPredicate(format: "label CONTAINS %@", "Synthetic transcription test recording"),
         ).firstMatch
-        FormUITestConditions.reveal(row, in: app, scrollID: "recording-controls-scroll")
+        FormUITestConditions.reveal(row, in: app, scrollID: "recording-review-scroll")
         XCTAssertTrue(row.identifier.hasPrefix("recording-details-"), row.debugDescription)
         let sourceId = String(row.identifier.dropFirst("recording-details-".count))
         XCTAssertNotNil(UUID(uuidString: sourceId), row.debugDescription)
 
         let delete = UITestConditions.element(app, "recording-delete-\(sourceId)")
-        FormUITestConditions.reveal(delete, in: app, scrollID: "recording-controls-scroll")
+        FormUITestConditions.reveal(delete, in: app, scrollID: "recording-review-scroll")
         XCTAssertTrue(delete.isHittable, delete.debugDescription)
         delete.tap()
         let confirmation = app.alerts.firstMatch

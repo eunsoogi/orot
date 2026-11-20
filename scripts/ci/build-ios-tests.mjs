@@ -22,6 +22,9 @@ const result = spawn(
     '--',
     'xcodebuild',
     'build-for-testing',
+    // Exact-source acceptance must fail on incompatible pins, not silently resolve newer packages.
+    '-disableAutomaticPackageResolution',
+    '-onlyUsePackageVersionsFromResolvedFile',
     '-quiet',
     '-jobs',
     '3',
@@ -42,6 +45,7 @@ const result = spawn(
     'ENABLE_TESTABILITY=' + spec.testability,
     'OTHER_SWIFT_FLAGS=' + spec.compilerFlags,
     'GCC_PREPROCESSOR_DEFINITIONS=' + spec.preprocessorFlags,
+    'OROT_NATIVE_CACHE_TEST_FLAGS=' + spec.nativeCacheTestFlags,
     'CODE_SIGNING_ALLOWED=' + spec.signing.allowed,
     'CODE_SIGN_IDENTITY=' + spec.signing.identity,
     'DEVELOPMENT_TEAM=' + spec.signing.team,

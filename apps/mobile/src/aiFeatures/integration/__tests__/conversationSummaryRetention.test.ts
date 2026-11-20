@@ -97,6 +97,15 @@ test('retains and reopens a conversation referencing a summary, then removes it 
     });
     const runner = jest.fn(
       async (options: Parameters<typeof runRagConversationTurn>[0]) => {
+        if (options.question === 'Explain the difference in general.') {
+          // No historical prose, source claims or fake continuation success.
+          options.onValidatedEvidence?.([]);
+          return {
+            status: 'answer' as const,
+            answer: 'A general explanation without record claims.',
+            citations: [],
+          };
+        }
         const tool = options.workflow.tools.find(
           item => item.id === 'local-generated-artifacts',
         )!;
@@ -180,14 +189,33 @@ test('retains and reopens a conversation referencing a summary, then removes it 
     expect(followup?.priorDialogue?.[0]?.question).toContain('Find previous');
     expect(followup?.sources).toHaveLength(1);
     await history.delete(entry.id);
+    expect(await summary.read('summary')).toBeNull();
     expect(await storage.read('id-2')).toBeNull();
     expect(await storage.read('id-3')).toBeNull();
     const callsBeforeDeletedHistory = jest.mocked(runner).mock.calls.length;
-    sessions.setDraft(1, 'Continue the discussion');
+    sessions.setDraft(1, 'Explain the difference in general.');
     await sessions.send(1, services.sendRagMessage);
-    expect(jest.mocked(runner).mock.calls).toHaveLength(
-      callsBeforeDeletedHistory,
+    // Inspect the count as a scalar: printing the mock options would invoke the
+    // lazy continuation store getters, which this synthetic runner never opens.
+    const calls = jest.mocked(runner).mock.calls;
+    expect(calls.length).toBe(callsBeforeDeletedHistory + 1);
+    const outbound = calls[callsBeforeDeletedHistory]![0];
+    expect(outbound.question).toBe('Explain the difference in general.');
+    expect(outbound.validatedPriorTurns).toEqual([]);
+    expect(outbound.dailyReportEvidence).toBeUndefined();
+    expect(outbound.priorDialogueOmitted).toBe(true);
+    expect(
+      outbound.previousMessages.filter(message => message.role === 'user'),
+    ).toEqual([]);
+    const fresh = await storage.read('id-4');
+    expect(fresh?.answer).toContain(
+      'A general explanation without record claims.',
     );
+    expect(fresh?.answer).not.toContain('Historical summary');
+    expect(fresh?.priorDialogue).toBeUndefined();
+    expect(fresh?.priorUserReports).toBeUndefined();
+    expect(fresh?.sources).toEqual([]);
+    expect(fresh?.citations).toEqual([]);
     expect(
       (
         await connection.database.execute(
@@ -204,6 +232,10 @@ test('retains and reopens a conversation referencing a summary, then removes it 
     );
     expect(await reopenedStorage.read('id-2')).toBeNull();
     expect(await reopenedStorage.read('id-3')).toBeNull();
+    expect(
+      await createSymptomSummaryStorage(connection.database).read('summary'),
+    ).toBeNull();
+    expect((await reopenedStorage.read('id-4'))?.sources).toEqual([]);
   } finally {
     connection.close();
     rmSync(directory, { recursive: true, force: true });
