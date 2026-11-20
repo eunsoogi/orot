@@ -52,13 +52,11 @@ it.each([
 it.each([{}, { busy: true }, { photoPending: true }])(
   'uses the original voice control without starting a legacy backend (%o)',
   async restrictions => {
-    jest
-      .mocked(voiceSettingsStore.load)
-      .mockResolvedValue({
-        mode: 'openai-api',
-        model: 'gpt-realtime-2.1',
-        hasApiKey: true,
-      });
+    jest.mocked(voiceSettingsStore.load).mockResolvedValue({
+      mode: 'openai-api',
+      model: 'gpt-realtime-2.1',
+      hasApiKey: true,
+    });
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     try {
       await render(<ConversationVoiceEntry {...props} {...restrictions} />);

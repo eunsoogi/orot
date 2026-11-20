@@ -27,13 +27,11 @@ import type { ConversationVoiceProps } from '../conversationVoiceDependencies';
 import { createRealtimeVoiceSession } from '../realtimeVoiceSession';
 
 test('explicit composer start reaches the real Live modal without the discarded caption', async () => {
-  jest
-    .mocked(voiceSettingsStore.load)
-    .mockResolvedValue({
-      mode: 'openai-api',
-      model: 'gpt-live-1.1',
-      hasApiKey: true,
-    });
+  jest.mocked(voiceSettingsStore.load).mockResolvedValue({
+    mode: 'openai-api',
+    model: 'gpt-live-1.1',
+    hasApiKey: true,
+  });
   const previous = AppState.currentState;
   AppState.currentState = 'active';
   const start = jest.fn();
