@@ -1,3 +1,4 @@
+import { registerHistoryRecordRead } from './historyObservationHydrationOwner';
 import { RecordIdSchema } from '@orot/domain';
 import type { RecordKind, RecordMap, SqlDatabase } from '@orot/storage';
 import { STORAGE_TABLES } from '@orot/storage';
@@ -54,7 +55,7 @@ export type {
 export function createLocalHealthEvidenceRepository(
   database: SqlDatabase,
 ): LocalHealthEvidenceRepository {
-  return {
+  const repository: LocalHealthEvidenceRepository = {
     async readInventory(options = {}) {
       const { rowsPerKind, totalRows } = parseHealthEvidenceLimits(options);
       const records: LocalHealthEvidenceRecord[] = [];
@@ -198,6 +199,8 @@ export function createLocalHealthEvidenceRepository(
       };
     },
   };
+  registerHistoryRecordRead(repository.readRecord, database);
+  return repository;
 }
 
 /** Opens the same encrypted database used by local records, transcripts, and agent memory. */

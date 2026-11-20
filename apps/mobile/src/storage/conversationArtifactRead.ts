@@ -1,3 +1,4 @@
+import { registerHistoryRead } from '../healthEvidence/historyObservationHydrationOwner';
 import { createConversationReadDiagnostics } from './conversationReadDiagnostics';
 import { measureHistoryValidationCost } from '../providers/conversationHistoryDiagnostic';
 import { conversationToolSnapshotReader } from './conversationToolSnapshot';
@@ -197,20 +198,16 @@ export function createConversationArtifactReader(
         signal,
         options?.historyPage,
       );
-      const canBatchOrdinary = options?.historyPage
-        ? () => operation.active && owned()
-        : undefined;
-      const scoped = methods(
-        operation,
-        options?.rollbackOnFailure,
-        canBatchOrdinary,
-      );
+      const canBatchOrdinary = () =>
+        Boolean(options?.historyPage && operation.active && owned());
+      const rollback = options?.rollbackOnFailure;
+      const scoped = methods(operation, rollback, canBatchOrdinary);
       const toolSnapshot = conversationToolSnapshotReader(
         database,
         ensure,
         operation,
       );
-      return {
+      const reads = {
         get healthContextReportScope() {
           return owned() && operation.active
             ? operation.reportScope
@@ -233,7 +230,7 @@ export function createConversationArtifactReader(
                 undefined,
                 undefined,
                 operation,
-                options?.rollbackOnFailure,
+                rollback,
                 canBatchOrdinary,
               )
             : (owned() ? scoped : this).readMany(ids),
@@ -245,6 +242,7 @@ export function createConversationArtifactReader(
         read: (id: string) => (owned() ? scoped : this).read(id),
         dispose: operation.dispose,
       };
+      return registerHistoryRead(reads, database, canBatchOrdinary);
     },
   };
 }

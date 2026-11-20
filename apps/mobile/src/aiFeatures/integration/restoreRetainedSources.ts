@@ -27,11 +27,14 @@ import {
   readSavedManualHistorySource,
 } from './manualHistoryEvidence';
 
-/** Rebuild turn-local aliases only after checking each durable source revision. */
+/** Rebuild aliases after checking every durable revision. Only callers reviewing
+ * saved prose need projected review documents; their default remains unchanged. */
 export async function restoreRetainedSources(
   sources: readonly SavedSummarySource[],
   registry: LocalEvidenceReferenceRegistry,
   data: AiFeatureLocalData,
+  review: 'project' | 'omit' = 'project',
+  initial?: ReadonlyMap<SavedSummarySource, EvidenceSourceReadResult>,
 ) {
   const mapping = new Map<string, EvidenceReference>();
   let sourceChanged = false;
@@ -99,7 +102,7 @@ export async function restoreRetainedSources(
               validate: async () => false,
               readSource: async () => ({ status: 'unavailable' }),
             });
-      if (report && matches)
+      if (review === 'project' && report && matches)
         reviewEvidence.push({
           ...source.reference,
           content: healthContextContent(source.scope, report),
@@ -171,10 +174,12 @@ export async function restoreRetainedSources(
             document: { sourceKind: 'personal_record', records },
           };
     };
-    const sourceRead = await readSource(new AbortController().signal);
+    const sourceRead =
+      initial?.get(source) ?? (await readSource(new AbortController().signal));
     sourceChanged ||= sourceRead.status !== 'available';
     // Local-only saved-prose review needs original semantics; this evidence never enters provider requests.
     if (
+      review === 'project' &&
       sourceRead.status === 'available' &&
       sourceRead.document.sourceKind === 'personal_record'
     )
@@ -187,6 +192,7 @@ export async function restoreRetainedSources(
           }),
       });
     if (
+      review === 'project' &&
       sourceRead.status === 'available' &&
       sourceRead.document.sourceKind === 'manual_history'
     )
