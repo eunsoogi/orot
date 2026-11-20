@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, View } from 'react-native';
+import { AccessibilityInfo, Animated } from 'react-native';
+import { ConversationBubbleEntrance } from './ConversationBubbleEntrance';
 import { styles } from './ConversationActivityBubble.styles';
 
 const DOT_OFFSETS = [0, 1, 2] as const;
 const DOT_CYCLE_MS = 1_560;
 
 /** One native-driven timeline animates decorative dots without rerendering the transcript. */
-export function ConversationActivityBubble() {
+export function ConversationActivityBubble({
+  entranceKey,
+}: { readonly entranceKey?: string } = {}) {
   const [reduceMotion, setReduceMotion] = useState(true);
   const reduceMotionRef = useRef(true);
   const phase = useRef(new Animated.Value(0)).current;
@@ -82,7 +85,8 @@ export function ConversationActivityBubble() {
 
   // Waiting dots are presentation only; they do not infer provider receipt or reading.
   return (
-    <View
+    <ConversationBubbleEntrance
+      entranceKey={entranceKey}
       accessible={false}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
@@ -103,6 +107,6 @@ export function ConversationActivityBubble() {
           testID="rag-conversation-activity-dot"
         />
       ))}
-    </View>
+    </ConversationBubbleEntrance>
   );
 }

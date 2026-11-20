@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
+import { ConversationBubbleEntrance } from './ConversationBubbleEntrance';
+import {
+  conversationBubblePaint,
+  type ConversationBubblePresentation,
+} from './conversationBubblePaint';
+import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
 import type { DisplayMessage } from './conversationDisplayMessage';
 import { styles } from './ConversationScreen.styles';
@@ -13,46 +19,15 @@ export function ConversationMessageBubbles({
 }: {
   readonly message: DisplayMessage;
   readonly children: ReactNode;
-  readonly presentation: {
-    readonly showCitations: boolean;
-    readonly showToolActivity: boolean;
-    readonly visitQuestions: ReactNode;
-    readonly canResume: boolean;
-  };
+  readonly presentation: ConversationBubblePresentation;
 }) {
-  const opening =
-    message.role === 'assistant' &&
-    message.initialResponse?.source !== 'receipt'
-      ? message.initialResponse
-      : undefined;
-  // Do not paint an empty answer box while only the reviewed opening is available.
-  const hasAnswer = Boolean(
-    message.content ||
-    message.activity ||
-    (message.incomplete &&
-      message.coldResume &&
-      message.toolMessageId &&
-      presentation.canResume) ||
-    message.previousOutputs?.length ||
-    (presentation.showToolActivity && message.toolEvents?.length) ||
-    message.healthSummary !== undefined ||
-    (presentation.visitQuestions != null &&
-      presentation.visitQuestions !== false) ||
-    message.visitQuestionsUnavailable ||
-    message.dailyReport ||
-    (presentation.showCitations && message.citations?.length),
-  );
-  // Hidden tool activity and unavailable renderers must not create a painted surface.
-  // Keep user messages and the existing delayed receipt lifecycle outside this predicate.
-  if (!opening)
-    return message.role === 'user' ||
-      hasAnswer ||
-      (message.streaming && message.initialResponse?.source === 'receipt')
-      ? children
-      : null;
+  const { opening, showBody } = conversationBubblePaint(message, presentation);
+  if (!opening) return showBody ? children : null;
   return (
     <View style={styles.assistantBubbleSequence}>
-      <View
+      <ConversationBubbleEntrance
+        entranceKey={conversationBubbleKey('opening', message.id)}
+        restored={message.restoredHistory || message.id <= 0}
         testID="conversation-assistant-opening-message"
         style={styles.assistantMessage}
       >
@@ -62,8 +37,8 @@ export function ConversationMessageBubbles({
             response={opening}
           />
         </View>
-      </View>
-      {hasAnswer ? children : null}
+      </ConversationBubbleEntrance>
+      {showBody ? children : null}
     </View>
   );
 }
