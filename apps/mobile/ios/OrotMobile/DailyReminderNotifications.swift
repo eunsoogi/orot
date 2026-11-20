@@ -72,10 +72,15 @@ private struct SystemDailyReminderCenter: DailyReminderCenter {
     }
 
     func add(_ request: UNNotificationRequest) async throws {
-        try await center.add(request)
+        #if OROT_TESTS
+            try await DailyReminderDiagnostic.aroundAdd { try await center.add(request) }
+        #else
+            try await center.add(request)
+        #endif
     }
 
     func cancel(_ identifier: String) {
+        recordDailyReminderDiagnostic(.cancel)
         center.removePendingNotificationRequests(withIdentifiers: [identifier])
         center.removeDeliveredNotifications(withIdentifiers: [identifier])
     }
@@ -101,7 +106,10 @@ actor DailyReminderNotifications {
     }
 
     func save(_ value: [String: Any]) async -> [String: Any] {
-        guard let preference = DailyReminderPreference(value) else { return ["status": "error", "requestIdentifiers": []] }
+        guard let preference = DailyReminderPreference(value) else {
+            recordDailyReminderDiagnostic(.dailyInvalidPreference)
+            return ["status": "error", "requestIdentifiers": []]
+        }
         defaults.set(preference.dictionary, forKey: key)
         return await enqueue(requestPermission: preference.enabled)
     }
@@ -122,6 +130,7 @@ actor DailyReminderNotifications {
 
     private func apply(requestPermission: Bool) async -> [String: Any] {
         guard let value = defaults.dictionary(forKey: key), let preference = DailyReminderPreference(value), preference.enabled else {
+            recordDailyReminderDiagnostic(.dailyDisabled)
             cancel()
             return ["status": "disabled", "requestIdentifiers": []]
         }
@@ -130,7 +139,9 @@ actor DailyReminderNotifications {
                 _ = try await center.requestAuthorization()
             }
             let authorization = await center.authorizationStatus()
+            recordDailyReminderDiagnostic(.authorizationCheck, authorization: .init(status: authorization))
             guard authorization == "authorized" else {
+                recordDailyReminderDiagnostic(.dailyAuthorizationRejected)
                 cancel()
                 return ["status": authorization == "denied" ? "denied" : "error",
                         "authorization": authorization, "requestIdentifiers": []]
@@ -139,6 +150,7 @@ actor DailyReminderNotifications {
             return ["status": "scheduled", "authorization": authorization,
                     "requestIdentifiers": [Self.requestIdentifier]]
         } catch {
+            recordDailyReminderDiagnostic(.dailyRollback, error: error)
             // Do not leave an obsolete time installed after a failed replacement.
             cancel()
             return ["status": "error", "requestIdentifiers": []]

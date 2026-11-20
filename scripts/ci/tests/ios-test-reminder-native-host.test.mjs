@@ -20,6 +20,11 @@ test('native sentinel privacy, same-error propagation, writer gates and terminal
       'apps/mobile/ios/OrotUITests/ReminderJourneyDiagnostic.swift',
       'utf8',
     );
+    const dailyModule = readFileSync(
+      'apps/mobile/ios/OrotMobile/DailyReminderModule.swift',
+      'utf8',
+    );
+    const daily = dailyModule.slice(dailyModule.indexOf('/// Daily observation'));
     const enums = module.slice(
       module.indexOf('enum AppointmentReminderDiagnosticStage'),
       module.indexOf('/// Ordinary products'),
@@ -47,10 +52,24 @@ test('native sentinel privacy, same-error propagation, writer gates and terminal
       `import Foundation
 ${enums}
 ${errors}
+${daily}
 enum Terminal { ${terminal} }
 @main struct Control {
   static func main() async throws {
     let sentinel = NSError(domain: "private-domain", code: 47, userInfo: [NSLocalizedDescriptionKey: "private-health", "appointmentId": "private-visit"])
+    var dailyEvents: [AppointmentReminderDiagnosticStage] = []
+    var calls = 0
+    try await DailyReminderDiagnostic.aroundAdd(enabled: false, emit: { stage, _ in dailyEvents.append(stage) }) { calls += 1 }
+    precondition(calls == 1 && dailyEvents.isEmpty)
+    try await DailyReminderDiagnostic.aroundAdd(enabled: true, emit: { stage, _ in dailyEvents.append(stage) }) { calls += 1 }
+    precondition(calls == 2 && dailyEvents == [.centerAddEnter, .centerAddResolve])
+    dailyEvents.removeAll()
+    do {
+      try await DailyReminderDiagnostic.aroundAdd(enabled: true, emit: { stage, _ in dailyEvents.append(stage) }) { calls += 1; throw sentinel }
+      fatalError("Daily add must reject")
+    } catch { precondition(error as NSError === sentinel) }
+    precondition(calls == 3 && dailyEvents == [.centerAddEnter, .centerAddReject])
+    precondition(!DailyReminderDiagnostic.enabled)
     var events: [AppointmentReminderDiagnosticStage] = []
     var observed: Error?
     do {

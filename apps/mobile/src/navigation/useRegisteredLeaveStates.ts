@@ -22,6 +22,12 @@ export function useRegisteredLeaveStates<Name extends string>(
       registered.current.get(routeKey)?.source ?? fallback.current,
     [],
   );
+  // Committed owner/state registrations revoke approval; unrelated renders do not.
+  const getLeaveStateOwner = useCallback(
+    (routeKey: string) =>
+      registered.current.get(routeKey)?.token ?? fallback.current,
+    [],
+  );
   const registerLeaveState = useCallback(
     (routeKey: string, source: NavigationLeaveStateSource<Name>) => {
       const registration = { token: Symbol('navigation-leave-state'), source };
@@ -41,5 +47,5 @@ export function useRegisteredLeaveStates<Name extends string>(
     },
     [controller],
   );
-  return { getLeaveStateSource, registerLeaveState };
+  return { getLeaveStateSource, getLeaveStateOwner, registerLeaveState };
 }

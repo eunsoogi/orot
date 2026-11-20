@@ -15,10 +15,12 @@ import { useAssistantAppearance } from './AssistantAppearanceProvider';
 export function GatedReminderDeliveryHost({
   controller,
   selectTab,
+  capturePromptTab,
   ...replySettings
 }: {
   controller: NavigationController<AppNavigationRoute>;
   selectTab: (tab: AppRootTab) => void;
+  capturePromptTab?: () => () => boolean;
 } & Pick<ReplyDeliverySettings, 'retention' | 'loadLocalData'>) {
   const appearance = useAssistantAppearance();
   useEffect(reconcileReplyPrivacy, []);
@@ -28,6 +30,7 @@ export function GatedReminderDeliveryHost({
       ready={appearance?.ready === true}
       canEnter={appearance?.canEnter}
       selectTab={selectTab}
+      capturePromptTab={capturePromptTab}
       {...replySettings}
     />
   );
@@ -39,6 +42,7 @@ export function ReminderGate({
   ready,
   canEnter,
   selectTab,
+  capturePromptTab,
   retention,
   loadLocalData,
 }: {
@@ -46,7 +50,21 @@ export function ReminderGate({
   ready: boolean;
   canEnter?: () => boolean;
   selectTab: (tab: AppRootTab) => void;
+  capturePromptTab?: () => () => boolean;
 } & Pick<ReplyDeliverySettings, 'retention' | 'loadLocalData'>) {
+  const lifecycle = useRef(0);
+  useEffect(() => {
+    lifecycle.current += 1;
+    const observer = AppState.addEventListener('change', () => {
+      lifecycle.current += 1;
+    });
+    return () => {
+      lifecycle.current += 1;
+      observer.remove();
+    };
+  }, [ready, canEnter]);
+  const selectTabRef = useRef(selectTab);
+  selectTabRef.current = selectTab;
   const readyRef = useRef(ready);
   readyRef.current = ready;
   const canEnterRef = useRef(canEnter);
@@ -61,6 +79,14 @@ export function ReminderGate({
       (canEnterRef.current?.() ?? true) &&
       AppState.currentState === 'active',
     [],
+  );
+  const capturePromptRoot = useMemo(
+    () => () => {
+      const epoch = lifecycle.current;
+      const tab = capturePromptTab?.();
+      return () => lifecycle.current === epoch && allowed() && tab?.() === true;
+    },
+    [allowed, capturePromptTab],
   );
   const canEnterReply = useMemo(
     () => () => allowed() && (currentRun.current?.() ?? false),
@@ -134,6 +160,10 @@ export function ReminderGate({
         allowed() && (currentRun.current?.() ?? false)
           ? controller.replace(name)
           : null,
+      commitApprovedRoot: routeKey =>
+        allowed() && (currentRun.current?.() ?? false)
+          ? controller.commitApprovedRoot(routeKey)
+          : false,
       requestTabSwitchDecision: async () => {
         if (!allowed() || !(currentRun.current?.() ?? false)) return 'busy';
         const result = await controller.requestTabSwitchDecision();
@@ -143,6 +173,25 @@ export function ReminderGate({
       },
     }),
     [allowed, controller, listeners],
+  );
+  const openConversationRoot = useMemo(
+    () => (routeKey: string) => {
+      const owner = currentRun.current;
+      if (!allowed() || !owner?.() || !guarded.commitApprovedRoot(routeKey))
+        return false;
+      // Root publication can synchronously replace the entry owner or close the lock gate.
+      if (
+        !allowed() ||
+        currentRun.current !== owner ||
+        !owner() ||
+        controller.getSnapshot().routes.length !== 1 ||
+        controller.getSnapshot().currentRoute.name !== 'root'
+      )
+        return false;
+      selectTabRef.current('conversation');
+      return allowed() && currentRun.current === owner && owner();
+    },
+    [allowed, controller, guarded],
   );
   useEffect(() => {
     if (ready) listeners.forEach(listener => listener());
@@ -161,9 +210,12 @@ export function ReminderGate({
       />
       <AppointmentReminderDeliveryHost
         controller={guarded}
+        openConversationRoot={openConversationRoot}
         retention={retention}
         loadLocalData={loadLocalData}
         canEnterReply={canEnterReply}
+        promptAllowed={allowed}
+        capturePromptRoot={capturePromptRoot}
         executeReplyEntry={execute}
         subscribeReplyEntryReady={subscribeReady}
         onReplyOpened={markExplicitEntry}
