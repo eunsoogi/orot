@@ -61,10 +61,10 @@ test('retains a running RAG turn on leave and aborts only through its stop contr
   expect(signal?.aborted).toBe(false);
   await fireEvent.press(route.getByTestId('navigation-back'));
   expect(
-    route.getByTestId('rag-conversation-activity-bubble', {
+    route.queryByTestId('rag-conversation-activity-bubble', {
       includeHiddenElements: true,
     }),
-  ).toBeTruthy();
+  ).toBeNull();
   await fireEvent.press(route.getByTestId('rag-conversation-cancel'));
   expect(signal?.aborted).toBe(true);
 });

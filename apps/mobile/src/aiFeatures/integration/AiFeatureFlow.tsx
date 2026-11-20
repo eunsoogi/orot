@@ -1,3 +1,4 @@
+import { useDailyReminderPrompt } from '../../appointmentReminders/useDailyReminderPrompt';
 import { conversationChoiceActions } from '../../ragConversation/selectConversationChoice';
 import { useCallback, useContext } from 'react';
 import type { ReactElement } from 'react';
@@ -14,7 +15,10 @@ import type {
   AiFeatureServiceDependencies,
   AiFeatureServices,
 } from './featureServices';
-import { resolveSelectedAiProvider as resolveSelectedAi } from './provider';
+import {
+  resolveSelectedAiProvider as resolveSelectedAi,
+  type ResolveConversationModelDisplay,
+} from './provider';
 import { EvidenceSourceDetailScreen } from './EvidenceSourceDetailScreen';
 import type { AiFeatureRouteName } from './aiFeatureNavigation';
 import { AiFeatureFlowScreen } from './AiFeatureFlowScreen';
@@ -24,10 +28,10 @@ import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
 import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
 import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPrimaryAction';
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
-import { startConversationReportTurn } from '../../ragConversation/startConversationReportTurn';
 import { useConversationSessions } from '../../ragConversation/ConversationSessionsContext';
 import { useConversationVisibility } from './useConversationVisibility';
 export interface AiFeatureFlowProps {
+  readonly canonicalConversationRoot?: boolean;
   readonly isEntryCurrent?: () => boolean;
   readonly navigation: NavigationRouteActions<AiFeatureRouteName>;
   readonly consent: ExecutionConsentPort;
@@ -56,6 +60,7 @@ export function AiFeatureFlow({
   serviceDependencies,
   services,
   isEntryCurrent,
+  canonicalConversationRoot,
 }: AiFeatureFlowProps) {
   const conversationStore = useConversationSessions();
   const primaryActionHost = useContext(NavigationPrimaryActionContext);
@@ -84,12 +89,20 @@ export function AiFeatureFlow({
     sourceDetailOpen,
     providerSelectionOpen,
   );
+  const requestDailyReport = useDailyReminderPrompt({
+    canonical: canonicalConversationRoot,
+    rootKey: navigation.route.key,
+    store: conversationStore,
+    isVisible: isConversationVisible,
+    services,
+  });
   const selectedAiDependencies = serviceDependencies?.selectedAi;
   // Provider refreshes follow the explicit selection revision, not render churn.
-  const resolveSelectedAiForRoute = useCallback(
-    () => resolveSelectedAi(selectedAiDependencies),
-    [selectedAiDependencies],
-  );
+  const resolveSelectedAiForRoute =
+    useCallback<ResolveConversationModelDisplay>(
+      display => resolveSelectedAi(selectedAiDependencies, display),
+      [selectedAiDependencies],
+    );
   const requestBack = useCallback(() => {
     navigation.onBack().then(
       () => undefined,
@@ -143,14 +156,7 @@ export function AiFeatureFlow({
                 if (route)
                   reminderRuntime.dailyReportFollowUps.set(route.key, target);
               }}
-              onOpenDailyReport={() => {
-                if (services.dailyReport)
-                  startConversationReportTurn(
-                    conversationStore,
-                    isConversationVisible,
-                    services.sendRagMessage,
-                  );
-              }}
+              onOpenDailyReport={requestDailyReport}
               onOpenConversationHistory={() =>
                 pushFeatureRoute('conversation-history')
               }

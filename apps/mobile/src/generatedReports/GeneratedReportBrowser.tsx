@@ -113,6 +113,7 @@ export function GeneratedReportBrowser({
       </AppText>
       {!expanded ? (
         <AppButton
+          testID="generated-report-open"
           title={copy.open}
           onPress={() => {
             list();
@@ -121,6 +122,9 @@ export function GeneratedReportBrowser({
       ) : (
         <>
           <AppButton
+            testID={
+              selected ? 'generated-report-back' : 'generated-report-close'
+            }
             title={selected ? copy.back : copy.close}
             variant="neutral"
             onPress={() => {

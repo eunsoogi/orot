@@ -15,10 +15,12 @@ import { useAssistantAppearance } from './AssistantAppearanceProvider';
 export function GatedReminderDeliveryHost({
   controller,
   selectTab,
+  capturePromptTab,
   ...replySettings
 }: {
   controller: NavigationController<AppNavigationRoute>;
   selectTab: (tab: AppRootTab) => void;
+  capturePromptTab?: () => () => boolean;
 } & Pick<ReplyDeliverySettings, 'retention' | 'loadLocalData'>) {
   const appearance = useAssistantAppearance();
   useEffect(reconcileReplyPrivacy, []);
@@ -28,6 +30,7 @@ export function GatedReminderDeliveryHost({
       ready={appearance?.ready === true}
       canEnter={appearance?.canEnter}
       selectTab={selectTab}
+      capturePromptTab={capturePromptTab}
       {...replySettings}
     />
   );
@@ -39,6 +42,7 @@ export function ReminderGate({
   ready,
   canEnter,
   selectTab,
+  capturePromptTab,
   retention,
   loadLocalData,
 }: {
@@ -46,7 +50,19 @@ export function ReminderGate({
   ready: boolean;
   canEnter?: () => boolean;
   selectTab: (tab: AppRootTab) => void;
+  capturePromptTab?: () => () => boolean;
 } & Pick<ReplyDeliverySettings, 'retention' | 'loadLocalData'>) {
+  const lifecycle = useRef(0);
+  useEffect(() => {
+    lifecycle.current += 1;
+    const observer = AppState.addEventListener('change', () => {
+      lifecycle.current += 1;
+    });
+    return () => {
+      lifecycle.current += 1;
+      observer.remove();
+    };
+  }, [ready, canEnter]);
   const selectTabRef = useRef(selectTab);
   selectTabRef.current = selectTab;
   const readyRef = useRef(ready);
@@ -63,6 +79,14 @@ export function ReminderGate({
       (canEnterRef.current?.() ?? true) &&
       AppState.currentState === 'active',
     [],
+  );
+  const capturePromptRoot = useMemo(
+    () => () => {
+      const epoch = lifecycle.current;
+      const tab = capturePromptTab?.();
+      return () => lifecycle.current === epoch && allowed() && tab?.() === true;
+    },
+    [allowed, capturePromptTab],
   );
   const canEnterReply = useMemo(
     () => () => allowed() && (currentRun.current?.() ?? false),
@@ -190,6 +214,8 @@ export function ReminderGate({
         retention={retention}
         loadLocalData={loadLocalData}
         canEnterReply={canEnterReply}
+        promptAllowed={allowed}
+        capturePromptRoot={capturePromptRoot}
         executeReplyEntry={execute}
         subscribeReplyEntryReady={subscribeReady}
         onReplyOpened={markExplicitEntry}

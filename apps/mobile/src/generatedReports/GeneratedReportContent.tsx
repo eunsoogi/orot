@@ -25,7 +25,12 @@ export function GeneratedReportContent({
       ) : null}
       <SavedSummaryReviewWarnings current={detail.analysis?.savedSummary} />
       {detail.paragraphs.map((text, index) => (
-        <AiResponseText key={index}>{text}</AiResponseText>
+        <AiResponseText
+          key={index}
+          testID={`generated-report-paragraph-${index}`}
+        >
+          {text}
+        </AiResponseText>
       ))}
       {detail.analysis?.hypotheses.map((h, index) => (
         <AppText key={index}>

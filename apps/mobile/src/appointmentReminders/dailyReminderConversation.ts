@@ -1,3 +1,5 @@
+import { todayIdentity } from '../aiFeatures/integration/dailyReportTodayIdentity';
+import { dailyReminderPromptRendezvous } from './dailyReminderPromptRendezvous';
 import { createDailyReminderConversationOwner } from './dailyReminderConversationOwner';
 import { createDailyReportIdentity } from '@orot/domain';
 import type { ConversationSessions } from '../ragConversation/conversationSessions';
@@ -6,7 +8,7 @@ import type { AppNavigationRoute } from '../routes/appNavigationRoute';
 import type { ConversationSessionOptions } from '../ragConversation/conversationSessionTypes';
 import type { DailyReminderEntry } from './dailyReminderDelivery';
 
-/** Retain the delivered local-day context before consuming the inbox; never generate from a tap. */
+/** Reuse the canonical root; only new current-day entries can offer the normal report action. */
 export function createDailyReminderConversation(input: {
   controller: NavigationController<AppNavigationRoute>;
   sessions: ConversationSessions;
@@ -18,6 +20,9 @@ export function createDailyReminderConversation(input: {
   isCurrent?: () => boolean;
   retention?: ConversationSessionOptions['retention'];
   signal?: AbortSignal;
+  claimPrompt?: (deliveredAt: string) => Promise<boolean>;
+  promptAllowed?: () => boolean;
+  capturePromptRoot?: () => () => boolean;
 }) {
   let currentEntry = () => false;
   const resolveOwner = createDailyReminderConversationOwner({
@@ -26,7 +31,10 @@ export function createDailyReminderConversation(input: {
     isCurrent: () => currentEntry(),
     signal: input.signal ?? new AbortController().signal,
   });
-  return async (entry: DailyReminderEntry) => {
+  return async (
+    entry: DailyReminderEntry,
+    prepareFresh?: (offer: () => void) => void,
+  ) => {
     if (
       !input.openRoot ||
       input.canEnter?.() === false ||
@@ -56,6 +64,21 @@ export function createDailyReminderConversation(input: {
       entry.selectedRequest?.localDate ?? entry.dateInObservedTimeZone,
       entry.selectedRequest?.timeZone ?? entry.observedTimeZone,
     );
+    let fresh = false;
+    if (
+      prepareFresh &&
+      input.capturePromptRoot &&
+      input.promptAllowed?.() &&
+      !entry.selectedRequest &&
+      identity.key === todayIdentity()?.key
+    ) {
+      try {
+        fresh = (await input.claimPrompt?.(entry.deliveredAt)) === true;
+      } catch {
+        // A missing protected receipt denies automation, not the existing manual report route.
+      }
+    }
+    if (!current()) return 'busy' as const;
     const retained = input.sessions
       .getSnapshot()
       .sessions.find(session => session.id === owner)
@@ -64,7 +87,7 @@ export function createDailyReminderConversation(input: {
       return 'unavailable' as const;
     // A user may have explicitly selected another day after a failed inbox acknowledgement.
     // Reopening that same retained card must never overwrite its choice or committed result.
-    if (!retained)
+    if (!retained && !fresh)
       await input.sessions.saveTaskCard(owner, entry.entryKey, {
         kind: 'daily_report',
         identity,
@@ -77,6 +100,26 @@ export function createDailyReminderConversation(input: {
     input.sessions.select(owner);
     if (input.canEnter?.() === false || input.isCurrent?.() === false)
       return 'busy' as const;
+    if (fresh && !retained && prepareFresh) {
+      const root = input.controller.getSnapshot();
+      const rootCurrent = input.capturePromptRoot?.();
+      const stillOwned = () =>
+        !input.signal?.aborted &&
+        input.isCurrent?.() !== false &&
+        rootCurrent?.() === true &&
+        input.controller.getSnapshot() === root &&
+        input.sessions.getSnapshot().activeId === owner &&
+        identity.key === todayIdentity()?.key;
+      prepareFresh(() => {
+        if (input.canEnter?.() !== false && stillOwned()) {
+          dailyReminderPromptRendezvous(input.sessions).offer({
+            sessionId: owner,
+            rootKey: root.currentRoute.key,
+            isCurrent: stillOwned,
+          });
+        }
+      });
+    }
     return 'opened' as const;
   };
 }

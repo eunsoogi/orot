@@ -140,3 +140,24 @@ test('a declined restored tap is acknowledged without prompting again for the sa
   expect(acknowledge).toHaveBeenCalledTimes(1);
   unregister();
 });
+
+test('does not release an automatic continuation unless the accepted entry was durably consumed', async () => {
+  let saved: SavedDailyReminderEntry | null = null;
+  const publish = jest.fn();
+  const write = jest.fn(async (value: SavedDailyReminderEntry) => {
+    saved = value;
+  });
+  const destination = createDailyReminderDestination({
+    read: async () => saved,
+    write,
+    consumeOnOpened: true,
+    open: (_entry, prepareFresh) => {
+      prepareFresh?.(publish);
+      saved = null;
+      return 'opened';
+    },
+  });
+  expect(await destination.accept(entry)).toBe('opened');
+  expect(write).toHaveBeenCalledTimes(1);
+  expect(publish).not.toHaveBeenCalled();
+});

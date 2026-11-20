@@ -1,3 +1,4 @@
+import { createHistoryFenceDiagnostics } from './conversationHistoryFenceDiagnostics';
 import type { AiFeatureLocalData } from './localData';
 import type { createConversationArtifactDiscovery } from './conversationArtifactDiscovery';
 import {
@@ -12,7 +13,10 @@ import type { RestoredTurn } from '../../ragConversation/conversationRestoredTur
 import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
 import { restoreColdConversationPreviews } from './restoreColdConversationEligibility';
 import { restoreHistoryToolTurns } from './restoreHistoryToolTurns';
-import { observeConversationHistory } from '../../providers/conversationHistoryDiagnostic';
+import {
+  observeConversationHistory,
+  observeOptInConversationHistory,
+} from '../../providers/conversationHistoryDiagnostic';
 import { fingerprint } from './evidenceUtils';
 import { restoreConversationVisitQuestions } from './restoreConversationVisitQuestions';
 import { healthSourceDependencies } from '../../ragConversation/conversationHealthDeletion';
@@ -91,12 +95,16 @@ export async function restoreConversationSessionTurnsOwned(
     signal,
   );
   const toolTurns = toolSnapshot.items;
+  const fences = createHistoryFenceDiagnostics(
+    discovery,
+    storage,
+    [sessionId, version, turns, signal],
+    () => [sessionId, version, selection?.ids],
+  );
   // Content and tool events must not outlive a session deletion or source change during restoration.
   if (
-    !(await discovery.revalidateSession(sessionId, version, turns, signal)) ||
-    fingerprint(
-      await storage.readToolTurnsSnapshot(sessionId, version, selection?.ids),
-    ) !== fingerprint(savedToolSnapshot)
+    !(await fences.sessionBefore()) ||
+    fingerprint(await fences.toolsBefore()) !== fingerprint(savedToolSnapshot)
   )
     throw new Error('Conversation content changed during restoration.');
   const restored: (RestoredTurn & { toolMessageId: string })[] =
@@ -185,7 +193,7 @@ export async function restoreConversationSessionTurnsOwned(
   // Visit restoration performs additional reads; recheck the session after those reads too.
   if (
     signal.aborted ||
-    !(await discovery.revalidateSession(sessionId, version, turns, signal)) ||
+    !(await fences.sessionAfter()) ||
     fingerprint(
       await storage.listInterruptedRequests(sessionId, version, selection?.ids),
     ) !== fingerprint(interrupted)
@@ -213,24 +221,27 @@ export async function restoreConversationSessionTurnsOwned(
     ...toolTurns.map(turn => [turn.messageId, turn.createdAt] as const),
     ...interrupted.map(request => [request.id, request.createdAt] as const),
   ]);
-  const output = await restoreColdConversationPreviews(
-    input.coldResume,
+  const output = await observeOptInConversationHistory(
+    'history_cold_previews',
+    () =>
+      restoreColdConversationPreviews(
+        input.coldResume,
+        signal,
+        orderRestoredConversationTurns(restored, times),
+        excludeUnavailableToolRequests(interrupted, [
+          ...unavailable,
+          ...unavailableHistory.map(item => ({ messageId: item.id })),
+        ]),
+        storage,
+        sessionId,
+        version,
+      ),
     signal,
-    orderRestoredConversationTurns(restored, times),
-    excludeUnavailableToolRequests(interrupted, [
-      ...unavailable,
-      ...unavailableHistory.map(item => ({ messageId: item.id })),
-    ]),
-    storage,
-    sessionId,
-    version,
   );
   // Even notices must match the final selected tool snapshot after visit/photo/cold reads.
   if (
     signal.aborted ||
-    fingerprint(
-      await storage.readToolTurnsSnapshot(sessionId, version, selection?.ids),
-    ) !== fingerprint(savedToolSnapshot) ||
+    fingerprint(await fences.toolsFinal()) !== fingerprint(savedToolSnapshot) ||
     signal.aborted
   )
     throw new Error('Conversation content changed during restoration.');

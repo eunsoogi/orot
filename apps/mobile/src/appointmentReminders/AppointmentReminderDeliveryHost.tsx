@@ -1,3 +1,4 @@
+import { claimDailyReminderPrompt } from './dailyReminderPromptReceipt';
 import { useEffect } from 'react';
 import { useConversationSessions } from '../ragConversation/ConversationSessionsContext';
 import { createDailyReminderConversation } from './dailyReminderConversation';
@@ -40,6 +41,8 @@ export function AppointmentReminderDeliveryHost(
     readonly executeReminderEntry?: (
       work: () => Promise<void>,
     ) => Promise<void>;
+    readonly promptAllowed?: () => boolean;
+    readonly capturePromptRoot?: () => () => boolean;
     readonly canRestoreEntry?: () => Promise<boolean>;
     readonly onExplicitReminderOpened?: () => void;
   } & ReplyDeliverySettings,
@@ -48,6 +51,8 @@ export function AppointmentReminderDeliveryHost(
     controller,
     executeReminderEntry,
     canRestoreEntry,
+    promptAllowed,
+    capturePromptRoot,
     onExplicitReminderOpened,
     openConversationRoot,
   } = props;
@@ -80,6 +85,9 @@ export function AppointmentReminderDeliveryHost(
         isCurrent: () => active,
         retention: props.retention,
         signal: lifetime.signal,
+        claimPrompt: claimDailyReminderPrompt,
+        promptAllowed,
+        capturePromptRoot,
       }),
     });
     runtime.dailyReportSelection.selectReminder = destination.select;
@@ -227,6 +235,8 @@ export function AppointmentReminderDeliveryHost(
     runtime,
     executeReminderEntry,
     canRestoreEntry,
+    promptAllowed,
+    capturePromptRoot,
     onExplicitReminderOpened,
     sessions,
     openConversationRoot,

@@ -21,6 +21,10 @@ import { validateDailyReportArtifact } from './dailyReportArtifactValidation';
 import { assertRetainedEvidenceCurrent } from './retainedEvidenceFreshness';
 import { assertTreatmentAttribution } from '../treatmentContext/attribution';
 import { assertConversationRequestSource } from './conversationRequestSources';
+import {
+  measureHistoryValidationCost,
+  startHistoryValidationCost,
+} from '../providers/conversationHistoryDiagnostic';
 
 /** Validate a bounded ancestry in one transaction, rejecting cycles and unavailable parents. */
 export async function assertConversationArtifactCurrent(
@@ -30,6 +34,7 @@ export async function assertConversationArtifactCurrent(
   requireGeneration: boolean,
   validatePeriod?: ReadOnlyPeriodValidation,
   collectValidated?: (artifact: ConversationArtifact) => void,
+  profileHistoryValidation = false,
 ) {
   const history = createManualHistoryRepository(database);
   // New report-bound turns must still belong to the active revision at commit.
@@ -46,6 +51,9 @@ export async function assertConversationArtifactCurrent(
       );
   }
   const path = new Set<string>();
+  const measureCost = profileHistoryValidation
+    ? measureHistoryValidationCost
+    : undefined;
   let visited = 0;
   const visit = async (current: ConversationArtifact): Promise<void> => {
     if (path.has(current.id) || path.size >= 16 || ++visited > 128)
@@ -53,36 +61,75 @@ export async function assertConversationArtifactCurrent(
         'Conversation ancestry is cyclic or too large.',
       );
     path.add(current.id);
-    await assertConversationRequestSource(tx, current);
-    await assertConversationSourcesNotRemoved(tx, current);
+    const finishAuthority = profileHistoryValidation
+      ? startHistoryValidationCost('artifact_source_authority')
+      : undefined;
+    try {
+      await assertConversationRequestSource(tx, current);
+      await assertConversationSourcesNotRemoved(tx, current);
+      finishAuthority?.('completed');
+    } catch (error) {
+      finishAuthority?.('failed');
+      throw error;
+    }
     for (const source of current.sources) {
       if (isConversationPhotoSource(source)) {
         // The protected request/source join above is the authority for this photo.
         continue;
       } else if (isGeneratedSummarySource(source)) {
-        await assertConversationSummaryParent(
-          tx,
-          database,
-          source,
-          validatePeriod,
-        );
+        // Observe this original await without adding a promise or changing its owner.
+        const finishRead = profileHistoryValidation
+          ? startHistoryValidationCost('artifact_summary_parent')
+          : undefined;
+        try {
+          await assertConversationSummaryParent(
+            tx,
+            database,
+            source,
+            validatePeriod,
+            measureCost,
+          );
+          finishRead?.('completed');
+        } catch (error) {
+          finishRead?.('failed');
+          throw error;
+        }
       } else if (isGeneratedConversationSource(source)) {
-        const result = await tx.execute(
-          `SELECT a.result_json, a.id, a.session_id, a.created_at FROM conversation_artifacts a
+        // Observe this original await without adding a promise or changing its owner.
+        const finishRead = profileHistoryValidation
+          ? startHistoryValidationCost('artifact_parent_row')
+          : undefined;
+        let result;
+        try {
+          result = await tx.execute(
+            `SELECT a.result_json, a.id, a.session_id, a.created_at FROM conversation_artifacts a
           JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0
           JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
           WHERE a.id = ? AND NOT EXISTS (SELECT 1 FROM conversation_invalid_parents i WHERE i.id = a.id) AND NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id = a.id)`,
-          [source.id],
-        );
+            [source.id],
+          );
+          finishRead?.('completed');
+        } catch (error) {
+          finishRead?.('failed');
+          throw error;
+        }
         const row = result.rows[0];
-        const parent = decodeConversationArtifact(row?.result_json);
+        const parent = measureCost
+          ? measureCost('artifact_parent_decode', () =>
+              decodeConversationArtifact(row?.result_json),
+            )
+          : decodeConversationArtifact(row?.result_json);
         if (
           !parent ||
           parent.id !== row?.id ||
           parent.sessionId !== row.session_id ||
           parent.createdAt !== row.created_at ||
           parent.citations === undefined ||
-          fingerprint(parent) !== source.revision
+          (measureCost
+            ? measureCost('artifact_parent_fingerprint', () =>
+                fingerprint(parent),
+              )
+            : fingerprint(parent)) !== source.revision
         )
           throw new RetainedSourceInvalidError(
             'The generated conversation changed or was removed.',
@@ -90,14 +137,24 @@ export async function assertConversationArtifactCurrent(
         await visit(parent);
       } else {
         // Existing parents keep scoped deletion guards rather than a new turn's global lease.
-        await assertRetainedEvidenceCurrent(
-          tx,
-          [source],
-          history,
-          requireGeneration && path.size === 1,
-          undefined,
-          validatePeriod,
-        );
+        // Observe this original await without adding a promise or changing its owner.
+        const finishRead = profileHistoryValidation
+          ? startHistoryValidationCost('artifact_retained_source')
+          : undefined;
+        try {
+          await assertRetainedEvidenceCurrent(
+            tx,
+            [source],
+            history,
+            requireGeneration && path.size === 1,
+            undefined,
+            validatePeriod,
+          );
+          finishRead?.('completed');
+        } catch (error) {
+          finishRead?.('failed');
+          throw error;
+        }
       }
     }
     if (current.treatmentContext)

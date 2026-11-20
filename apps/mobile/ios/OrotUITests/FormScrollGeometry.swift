@@ -55,6 +55,83 @@ struct FormScrollGeometry {
         return Self(application: application, scroll: scroll, keyboard: keyboard, reservedKeyboard: reservation)
     }
 
+    /// Match the window owning every unique stage node; unrelated AX windows do not establish ownership.
+    static func stageOwnerIndex(frames: [CGRect], observed: CGRect?, counts: [[Int]]) -> Int? {
+        guard let first = counts.first, let owner = uniqueOwnerIndex(first), frames.indices.contains(owner),
+              counts.allSatisfy({ $0.count == frames.count && uniqueOwnerIndex($0) == owner }),
+              valid(frames[owner]), observed.map({ stableStageFrame(frames[owner], $0) }) ?? true
+        else { return nil }
+        return owner
+    }
+
+    /// A projection not required by the stage is either absent, or unique and held by the same owner.
+    static func acceptsOptionalStageMarker(global: Int, owned: Int) -> Bool {
+        (0 ... 1).contains(global) && global == owned
+    }
+
+    enum ClassificationStartAction: String {
+        case start, expand
+
+        static let startLabel = "선택한 AI로 분류"
+        static let expandLabel = "전체 화면으로 내용 보기"
+        static let closeLabel = "확대 화면 닫기"
+
+        static func resolve(
+            label: String, isButton: Bool, enabled: Bool, hittable: Bool,
+            global: Int, owned: Int, frame: CGRect, footer: CGRect, owner: CGRect,
+            inExpandedReader: Bool,
+        ) -> Self? {
+            guard global == 1, owned == 1, isButton, enabled, hittable,
+                  FormScrollGeometry.valid(frame), frame.width >= 44, frame.height >= 44,
+                  FormScrollGeometry.valid(footer), FormScrollGeometry.valid(owner)
+            else { return nil }
+            let center = CGPoint(x: frame.midX, y: frame.midY)
+            guard footer.contains(center), owner.contains(center) else { return nil }
+            if label == startLabel {
+                return .start
+            }
+            if label == expandLabel, !inExpandedReader {
+                return .expand
+            }
+            return nil
+        }
+    }
+
+    static func stableStageFrame(_ left: CGRect, _ right: CGRect) -> Bool {
+        guard valid(left), valid(right) else { return false }
+        return abs(left.minX - right.minX) <= 1 && abs(left.minY - right.minY) <= 1
+            && abs(left.width - right.width) <= 1 && abs(left.height - right.height) <= 1
+    }
+
+    /// An observation separates passive text edge reach from interactive control containment.
+    struct ReadingObservation {
+        let frame: CGRect
+        let geometry: FormScrollGeometry
+    }
+
+    func readingBounds(_ frame: CGRect, bottom: Bool) -> CGRect {
+        guard Self.valid(frame) else { return .null }
+        guard frame.height > viewport.height else { return frame }
+        let height = min(44, frame.height)
+        return CGRect(x: frame.minX, y: bottom ? frame.maxY - height : frame.minY, width: frame.width, height: height)
+    }
+
+    /// Require stable text and viewport sizes, both whole edge bands, and real relative motion if they cannot fit together.
+    static func provesReadingEdgeReach(top: ReadingObservation, bottom: ReadingObservation) -> Bool {
+        let a = top.geometry
+        let b = bottom.geometry
+        guard abs(top.frame.width - bottom.frame.width) <= 1, abs(top.frame.height - bottom.frame.height) <= 1,
+              abs(a.viewport.width - b.viewport.width) <= 1, abs(a.viewport.height - b.viewport.height) <= 1,
+              a.contains(a.readingBounds(top.frame, bottom: false)), b.contains(b.readingBounds(bottom.frame, bottom: true))
+        else { return false }
+        let advance = (top.frame.minY - a.viewport.minY) - (bottom.frame.minY - b.viewport.minY)
+        return top.frame.height <= a.viewport.height || (advance > 0 && advance + 1 >= top.frame.height - a.viewport.height)
+    }
+
+    func containsAction(_ frame: CGRect) -> Bool {
+        frame.width >= 44 && frame.height >= 44 && contains(frame)
+    }
+
     /// A focused AX frame can contain only the visible slice. Retain the previously observed height as a minimum, not an unproved full extent.
     func contains(_ target: CGRect, referenceSize: CGSize? = nil) -> Bool {
         guard Self.valid(target) else { return false }

@@ -127,10 +127,10 @@ test('omits session actions on a Duo rail without interrupting generation', asyn
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   expect(
-    await screen.findByTestId('rag-conversation-activity-bubble', {
+    screen.queryByTestId('rag-conversation-activity-bubble', {
       includeHiddenElements: true,
     }),
-  ).toBeTruthy();
+  ).toBeNull();
   expect(
     store!.getSnapshot().sessions.find(session => session.id === conversationId)
       ?.busy,

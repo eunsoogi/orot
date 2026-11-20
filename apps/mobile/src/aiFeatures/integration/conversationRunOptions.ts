@@ -1,3 +1,9 @@
+import { NativeModules } from 'react-native';
+import { providerDiagnostic } from '../../providers/diagnostics';
+import type { Stage } from '../../providers/diagnosticTypes';
+import type { ConversationEntryContext } from './conversationIntent';
+import type { RagConversationMessage } from '../../ragConversation/task';
+import type { RagConversationOutcome } from '../../ragConversation/service';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import type { MultiAgentBudget } from '@orot/agent-runtime';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
@@ -97,5 +103,92 @@ export function conversationRunRequest(input: {
     readHistoricalArtifact: (reference, signal) =>
       input.registry.readSource(reference, signal),
     workflow: input.workflow,
+  };
+}
+
+export const cancelled = { status: 'failure', kind: 'cancelled' } as const;
+
+type RagSend = (
+  question: string,
+  previous: readonly RagConversationMessage[],
+  signal?: AbortSignal,
+  observer?: RagConversationObserver,
+  entry?: ConversationEntryContext,
+) => Promise<RagConversationOutcome>;
+
+function receiptDiagnosticsEnabled() {
+  try {
+    return NativeModules.OrotProviderDiagnostics?.enabled === true;
+  } catch {
+    return false;
+  }
+}
+
+type ReceiptStage = Extract<Stage, `conversation_receipt_${string}`>;
+
+/** Native timestamps on fixed stage labels are for isolated, opt-in attempts.
+ * No turn identifiers, payloads, or provider content enter the log. A
+ * response-start marker precedes callback forwarding; it is not a UI receipt
+ * or proof of a second provider start after an opening. */
+function observeReceiptStage(
+  stage: ReceiptStage,
+  outcome: 'started' | 'completed' | 'failed',
+) {
+  try {
+    providerDiagnostic('rag', stage, outcome);
+  } catch {
+    // Diagnostics cannot change a send, consent decision, or receipt.
+  }
+}
+
+export function observeConversationReceiptTiming(send: RagSend): RagSend {
+  if (!receiptDiagnosticsEnabled()) return send;
+  return async (question, previous, signal, observer, entry) => {
+    const onProviderReceipt = observer?.onProviderReceipt;
+    observeReceiptStage('conversation_receipt_attempt', 'started');
+    try {
+      return await send(
+        question,
+        previous,
+        signal,
+        onProviderReceipt
+          ? {
+              ...observer,
+              onProviderReceipt(receipt) {
+                observeReceiptStage(
+                  receipt === 'accepted'
+                    ? 'conversation_receipt_accepted'
+                    : 'conversation_receipt_response_started',
+                  'completed',
+                );
+                onProviderReceipt(receipt);
+              },
+            }
+          : observer,
+        entry,
+      );
+    } finally {
+      // Completed means the attempt settled, even on decline, Stop, or failure.
+      observeReceiptStage('conversation_receipt_attempt', 'completed');
+    }
+  };
+}
+
+/** The final runner excludes opening generation and review, which already
+ * emit their own independently gated spans. A runner return is not a receipt. */
+export function observeConversationMain(
+  run: typeof import('../../ragConversation/service').runRagConversationTurn,
+): typeof run {
+  if (!receiptDiagnosticsEnabled()) return run;
+  return async (options, invocation) => {
+    observeReceiptStage('conversation_receipt_main', 'started');
+    try {
+      const outcome = await run(options, invocation);
+      observeReceiptStage('conversation_receipt_main', 'completed');
+      return outcome;
+    } catch (error) {
+      observeReceiptStage('conversation_receipt_main', 'failed');
+      throw error;
+    }
   };
 }

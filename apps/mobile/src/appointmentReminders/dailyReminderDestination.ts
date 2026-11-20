@@ -13,6 +13,7 @@ export function createDailyReminderDestination(port: {
   write: (value: SavedDailyReminderEntry) => Promise<void>;
   open: (
     entry: DailyReminderEntry,
+    prepareFresh?: (offer: () => void) => void,
   ) =>
     | 'opened'
     | 'busy'
@@ -30,10 +31,11 @@ export function createDailyReminderDestination(port: {
     consumed.add(entryKey);
     // Opening can persist a session binding; never overwrite it with the pre-open copy.
     const latest = await port.read();
-    if (latest?.entry.entryKey === entryKey)
-      await port.write({ ...latest, active: false });
+    const current = latest?.entry.entryKey === entryKey;
+    if (current) await port.write({ ...latest, active: false });
     consumed.delete(entryKey);
     port.onConsumed?.();
+    return current && latest.active;
   };
   const serial = <T>(work: () => Promise<T>): Promise<T> => {
     const next = queue.then(work);
@@ -58,11 +60,19 @@ export function createDailyReminderDestination(port: {
         // Save before navigation: a crash before inbox acknowledgement can restore this intent.
         if (previous?.entry.entryKey !== entry.entryKey)
           await port.write({ entry, active: true });
-        const result = await port.open(
-          previous?.entry.entryKey === entry.entryKey ? previous.entry : entry,
-        );
+        let publish: (() => void) | undefined;
+        const prepareFresh = (offer: () => void) => {
+          publish = offer;
+        };
+        const openedEntry =
+          previous?.entry.entryKey === entry.entryKey ? previous.entry : entry;
+        const result =
+          previous?.entry.entryKey !== entry.entryKey && port.consumeOnOpened
+            ? await port.open(openedEntry, prepareFresh)
+            : await port.open(openedEntry);
         if (result === 'opened' && port.consumeOnOpened) {
-          await consume(entry.entryKey);
+          // At most once: a restart after consumption never synthesizes an offer.
+          if (await consume(entry.entryKey)) publish?.();
         } else if (result === 'declined') {
           await port.write({
             entry:

@@ -21,6 +21,7 @@ export function conversationExternalEvidence(input: {
   observer?: RagConversationObserver;
   researchInputs: ReturnType<typeof createResearchInputTracker>;
   restored?: SelectedExternalEvidenceSnapshot;
+  owner?: () => Promise<boolean>;
 }) {
   const {
     selected,
@@ -30,14 +31,46 @@ export function conversationExternalEvidence(input: {
     loadLocalData,
     observer,
     researchInputs,
+    owner: recoveredOwnerIsCurrent,
   } = input;
+  // An omitted history can leave no references, but never releases the recovered
+  // owner's fence at optional network dispatches.
+  const checkOwner = async (signal?: AbortSignal) => {
+    if (
+      signal?.aborted ||
+      !(await recoveredOwnerIsCurrent?.()) ||
+      signal?.aborted
+    )
+      throw new Error('Conversation research owner is no longer current.');
+  };
+  const provider = selected.provider;
   return createSelectedExternalEvidence({
-    selected,
+    selected:
+      recoveredOwnerIsCurrent && provider.searchPublicWeb
+        ? {
+            ...selected,
+            provider: {
+              ...provider,
+              async searchPublicWeb(request, options) {
+                await checkOwner(options?.signal);
+                return provider.searchPublicWeb!(request, options);
+              },
+            },
+          }
+        : selected,
     consent,
     recoverUnavailable: true,
     restored: input.restored,
     literature: retainLiteratureResults(
-      externalEvidence,
+      recoveredOwnerIsCurrent
+        ? {
+            ...externalEvidence,
+            async search(query, options) {
+              await checkOwner(options.signal);
+              return externalEvidence.search(query, options);
+            },
+          }
+        : externalEvidence,
       loadLocalData,
       'record_conversation',
       observer?.retentionSession,

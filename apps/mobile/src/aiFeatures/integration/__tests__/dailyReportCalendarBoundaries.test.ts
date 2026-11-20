@@ -12,6 +12,15 @@ import {
 } from '../testSupport/dailyReportCalendarTestFixture';
 
 import { createDailyReportStorage } from '../../../storage/dailyReportStorage';
+import { createDailyReportCalendarWindow } from '../../../healthEvidence/healthContext/dailyReportWindow';
+import { createLocalEvidenceData } from '../../../healthEvidence/localEvidenceData';
+import { createDailyReportDeadlineContext } from '../dailyReportDeadline';
+import { generateDailyReportWithCalendar } from '../dailyReportGenerationRun';
+import { prepareReportCalendar } from '../dailyReportSystemCalendar';
+import {
+  reportProvider,
+  selectedReportProvider,
+} from '../testSupport/dailyReportFailureStageFixtures';
 
 test.each(['denied', 'scoped'] as const)(
   'calendar %s never widens authorization or means no plans',
@@ -80,7 +89,7 @@ test('native change during SQLite save cannot return or reopen completed prose',
     const { run } = calendarReportService(database, native);
     expect(await run(calendarTestRequest())).toEqual({
       status: 'failed',
-      code: 'source_revision_changed',
+      code: 'source_unconfirmed_after_dispatch',
     });
     expect(
       (
@@ -92,6 +101,77 @@ test('native change during SQLite save cannot return or reopen completed prose',
     ).toHaveLength(1);
     expect(native.listeners.size).toBe(0);
   } finally {
+    connection.close();
+  }
+});
+
+test('a Stop racing calendar invalidation after saving still requests a fresh lookup', async () => {
+  const connection = openSqliteTestDatabase(':memory:');
+  const database = connection.database;
+  const native = calendarFixture();
+  const controller = new AbortController();
+  const now = () => '2035-01-01T12:00:00Z';
+  const calendar = createDailyReportCalendarWindow({
+    localDate: '2035-01-01',
+    timeZone: 'UTC',
+    requestedAt: now(),
+  });
+  if (calendar.status !== 'ready') throw new Error('Expected calendar');
+  let external: Awaited<ReturnType<typeof prepareReportCalendar>> | undefined;
+  try {
+    await runMigrations(database);
+    await createRecordRepository(database).put(
+      'health_observation',
+      calendarTestObservation,
+    );
+    external = await prepareReportCalendar(
+      calendar.context,
+      native.read,
+      controller.signal,
+    );
+    const storage = createDailyReportStorage(database, native.read);
+    const lookup = jest.spyOn(storage, 'lookup');
+    const model = reportProvider();
+    const generate = jest.spyOn(model, 'generate');
+    const result = await generateDailyReportWithCalendar(
+      {
+        data: createLocalEvidenceData(database),
+        storage: {
+          ...storage,
+          async save(candidate, signal) {
+            const saved = await storage.save(candidate, signal);
+            expect(saved.status).toBe('saved');
+            native.change();
+            controller.abort();
+            return saved;
+          },
+        },
+        consent: { authorize: async () => 'authorized' },
+        now,
+        createRunId: () => 'post-save-stop',
+        resolveSelected: async () => selectedReportProvider(model),
+        deadlineContext: createDailyReportDeadlineContext(),
+      },
+      { ...calendarTestRequest(), signal: controller.signal },
+      calendar,
+      external,
+    );
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      status: 'failed',
+      code: 'source_unconfirmed_after_dispatch',
+    });
+    expect(lookup).toHaveBeenCalledWith(calendar.context.identity);
+    expect(
+      (
+        await connection.database.execute(
+          'SELECT id FROM conversation_invalid_summaries WHERE id = ?',
+          ['post-save-stop'],
+        )
+      ).rows,
+    ).toHaveLength(1);
+  } finally {
+    external?.snapshot.dispose();
     connection.close();
   }
 });
