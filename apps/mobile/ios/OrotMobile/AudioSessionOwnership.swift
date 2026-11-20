@@ -1,4 +1,5 @@
 import AVFoundation
+import Darwin
 import Foundation
 
 /// Process-wide exclusive reservation. Session mutations and token checks share one lock.
@@ -86,12 +87,13 @@ final class AudioSessionOwnership {
 
 /// Main-queue owned, one-shot display receipt for a logical call with started audio.
 final class VoiceConnectedDuration {
-    private let now: () -> ContinuousClock.Instant
-    private var ready: (callID: String, at: ContinuousClock.Instant)?
+    private let nowNanoseconds: () -> UInt64
+    private var ready: (callID: String, atNanoseconds: UInt64)?
     private var terminal: (callID: String, seconds: Int)?
 
-    init(now: @escaping () -> ContinuousClock.Instant = { ContinuousClock.now }) {
-        self.now = now
+    // Darwin's continuous clock is monotonic through sleep and available before iOS 16.
+    init(nowNanoseconds: @escaping () -> UInt64 = { clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW) }) {
+        self.nowNanoseconds = nowNanoseconds
     }
 
     func begin() {
@@ -101,14 +103,16 @@ final class VoiceConnectedDuration {
 
     func markReady(_ callID: String) {
         guard ready == nil, terminal == nil, !callID.isEmpty else { return }
-        ready = (callID, now())
+        ready = (callID, nowNanoseconds())
     }
 
     func markStopped(_ callID: String) {
         guard let started = ready, started.callID == callID else { return }
         ready = nil
-        let elapsed = started.at.duration(to: now())
-        guard elapsed >= .zero, let seconds = Int(exactly: elapsed.components.seconds) else { return }
+        let end = nowNanoseconds()
+        guard end >= started.atNanoseconds else { return }
+        let elapsedNanoseconds = end - started.atNanoseconds
+        guard let seconds = Int(exactly: elapsedNanoseconds / 1_000_000_000) else { return }
         terminal = (callID, seconds)
     }
 
