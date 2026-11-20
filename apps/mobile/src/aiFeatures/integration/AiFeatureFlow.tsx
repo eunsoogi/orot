@@ -14,7 +14,10 @@ import type {
   AiFeatureServiceDependencies,
   AiFeatureServices,
 } from './featureServices';
-import { resolveSelectedAiProvider as resolveSelectedAi } from './provider';
+import {
+  resolveSelectedAiProvider as resolveSelectedAi,
+  type ResolveConversationModelDisplay,
+} from './provider';
 import { EvidenceSourceDetailScreen } from './EvidenceSourceDetailScreen';
 import type { AiFeatureRouteName } from './aiFeatureNavigation';
 import { AiFeatureFlowScreen } from './AiFeatureFlowScreen';
@@ -86,10 +89,11 @@ export function AiFeatureFlow({
   );
   const selectedAiDependencies = serviceDependencies?.selectedAi;
   // Provider refreshes follow the explicit selection revision, not render churn.
-  const resolveSelectedAiForRoute = useCallback(
-    () => resolveSelectedAi(selectedAiDependencies),
-    [selectedAiDependencies],
-  );
+  const resolveSelectedAiForRoute =
+    useCallback<ResolveConversationModelDisplay>(
+      display => resolveSelectedAi(selectedAiDependencies, display),
+      [selectedAiDependencies],
+    );
   const requestBack = useCallback(() => {
     navigation.onBack().then(
       () => undefined,
