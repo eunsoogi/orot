@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { iosTestBuildSpec } from './ios-test-config.mjs';
 import { productContext } from './ios-test-product-context.mjs';
 import { iosTestResourceSampler } from './ios-test-resources.mjs';
+import { verifyIosFabricProvider } from './verify-ios-fabric-registrations.mjs';
 
 const [profile, directory] = process.argv.slice(2);
 if (!directory) throw new Error('Usage: build-ios-tests.mjs <profile> <derived-data>');
@@ -52,13 +53,24 @@ const result = spawn(
   ],
   { stdio: 'inherit', env: { ...process.env, FORCE_BUNDLING: '1', ENTRY_FILE: spec.entry } },
 );
+let status = 1;
 try {
-  const status = await new Promise((resolveStatus, reject) => {
+  const xcodeStatus = await new Promise((resolveStatus, reject) => {
     result.once('error', reject);
     result.once('exit', (code, signal) => resolveStatus(signal ? 1 : (code ?? 1)));
   });
+  // Xcode can regenerate the provider, so only certify the post-build output.
+  if (xcodeStatus === 0) verifyIosFabricProvider();
+  status = xcodeStatus;
+} catch (error) {
+  console.error(error);
+} finally {
+  try {
+    await stopSampling();
+  } catch (error) {
+    console.error(error);
+    if (status === 0) status = 1;
+  }
   console.log(`IOS_BUILD_STAGE elapsed_ms=${Date.now() - started} exit=${status}`);
   process.exitCode = status;
-} finally {
-  await stopSampling();
 }
