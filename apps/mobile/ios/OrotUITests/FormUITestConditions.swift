@@ -17,7 +17,7 @@ enum FormUITestConditions {
 
     /// Nested footer content has a smaller native ScrollView than its tagged outer container. Callers can supply that observed viewport without changing existing tagged-scroll callers.
     @discardableResult
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil, scrollObservation: FormScrollObservation? = nil, windowResolver: (() -> XCUIElement?)? = nil) -> CGRect? {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil, scrollObservation: FormScrollObservation? = nil, windowResolver: (() -> XCUIElement?)? = nil, readingEdgeBottom: Bool? = nil, observeReadingEdge: ((FormScrollGeometry.ReadingObservation) -> Void)? = nil) -> CGRect? {
         XCTAssertTrue(UITestConditions.exists(scroll))
         var lastObservation = ""
         // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
@@ -29,15 +29,21 @@ enum FormUITestConditions {
             let applicationFrame = window.frame
             let scrollFrame = scroll.frame
             let keyboardFrame = keyboard?.exists == true ? keyboard?.frame : nil
-            let targetFrame = target.exists ? target.frame : nil
-            let unobstructedFrame = unobstructedScrollFrame(scrollFrame, target: targetFrame, in: app, excluding: target.exists ? target.identifier : nil)
-            lastObservation = "target=\(String(describing: targetFrame)), scroll=\(scrollFrame), application=\(applicationFrame), keyboard=\(String(describing: keyboardFrame))"
+            let fullTargetFrame = target.exists ? target.frame : nil
+            let unobstructedFrame = unobstructedScrollFrame(scrollFrame, target: fullTargetFrame, in: app, excluding: target.exists ? target.identifier : nil)
+            lastObservation = "target=\(String(describing: fullTargetFrame)), scroll=\(scrollFrame), application=\(applicationFrame), keyboard=\(String(describing: keyboardFrame))"
             guard let geometry = FormScrollGeometry.current(application: applicationFrame, scroll: unobstructedFrame, keyboard: keyboardFrame, input: nil, referenceSize: referenceSize, reservedKeyboard: focusedKeyboardFrame) else {
                 XCTFail("The form has no finite visible viewport: application=\(applicationFrame), scroll=\(scrollFrame), keyboard=\(String(describing: keyboardFrame))")
                 return nil
             }
             lastObservation += ", usableViewport=\(geometry.viewport), focusedViewport=\(String(describing: focusedViewport))"
+            let targetFrame = fullTargetFrame.map { frame in
+                readingEdgeBottom.map { geometry.readingBounds(frame, bottom: $0) } ?? frame
+            }
             if let targetFrame, geometry.contains(targetFrame, referenceSize: referenceSize), !requireHittable || target.isHittable {
+                if readingEdgeBottom != nil, let fullTargetFrame {
+                    observeReadingEdge?(FormScrollGeometry.ReadingObservation(frame: fullTargetFrame, geometry: geometry))
+                }
                 // Reuse this exact successful observation if focus later clips the AX frame.
                 return targetFrame
             }
@@ -88,6 +94,20 @@ enum FormUITestConditions {
         }
         XCTFail("Control did not enter the measured form viewport: \(lastObservation)")
         return nil
+    }
+
+    /// Require both bands of the same passive AX frame; this is not a VoiceOver or visible-copy assertion.
+    static func readingEdgesReachable(_ target: XCUIElement, app: XCUIApplication, page: XCUIElement, scroll: XCUIElement) -> Bool {
+        guard target.exists else { return false }
+        let identifier = target.identifier
+        var samples: [FormScrollGeometry.ReadingObservation] = []
+        for bottom in [false, true] {
+            guard reveal(target, in: app, scroll: scroll, requireHittable: false, windowResolver: {
+                guard scroll.descendants(matching: .any).matching(identifier: identifier).count == 1 else { return nil }
+                return FormWindowOwnership.resolve(app, scroll: page, target: target)
+            }, readingEdgeBottom: bottom, observeReadingEdge: { samples.append($0) }) != nil else { return false }
+        }
+        return samples.count == 2 && FormScrollGeometry.provesReadingEdgeReach(top: samples[0], bottom: samples[1])
     }
 
     /// Return exposure/edit failure so guarded callers stop before another field or a missing keyboard action.

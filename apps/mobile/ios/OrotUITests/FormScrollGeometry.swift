@@ -55,6 +55,35 @@ struct FormScrollGeometry {
         return Self(application: application, scroll: scroll, keyboard: keyboard, reservedKeyboard: reservation)
     }
 
+    /// An observation separates passive text edge reach from interactive control containment.
+    struct ReadingObservation {
+        let frame: CGRect
+        let geometry: FormScrollGeometry
+    }
+
+    func readingBounds(_ frame: CGRect, bottom: Bool) -> CGRect {
+        guard Self.valid(frame) else { return .null }
+        guard frame.height > viewport.height else { return frame }
+        let height = min(44, frame.height)
+        return CGRect(x: frame.minX, y: bottom ? frame.maxY - height : frame.minY, width: frame.width, height: height)
+    }
+
+    /// Require stable text and viewport sizes, both whole edge bands, and real relative motion if they cannot fit together.
+    static func provesReadingEdgeReach(top: ReadingObservation, bottom: ReadingObservation) -> Bool {
+        let a = top.geometry
+        let b = bottom.geometry
+        guard abs(top.frame.width - bottom.frame.width) <= 1, abs(top.frame.height - bottom.frame.height) <= 1,
+              abs(a.viewport.width - b.viewport.width) <= 1, abs(a.viewport.height - b.viewport.height) <= 1,
+              a.contains(a.readingBounds(top.frame, bottom: false)), b.contains(b.readingBounds(bottom.frame, bottom: true))
+        else { return false }
+        let advance = (top.frame.minY - a.viewport.minY) - (bottom.frame.minY - b.viewport.minY)
+        return top.frame.height <= a.viewport.height || (advance > 0 && advance + 1 >= top.frame.height - a.viewport.height)
+    }
+
+    func containsAction(_ frame: CGRect) -> Bool {
+        frame.width >= 44 && frame.height >= 44 && contains(frame)
+    }
+
     /// A focused AX frame can contain only the visible slice. Retain the previously observed height as a minimum, not an unproved full extent.
     func contains(_ target: CGRect, referenceSize: CGSize? = nil) -> Bool {
         guard Self.valid(target) else { return false }

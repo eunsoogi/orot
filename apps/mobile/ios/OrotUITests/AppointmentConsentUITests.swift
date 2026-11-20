@@ -20,7 +20,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         failureNotice(app, reason: "이 요청의 AI 처리 승인이 필요해요.")
         ClassificationConsentUITestSupport.assertBlocked(app, testCase: self)
         ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
-        ClassificationConsentUITestSupport.assertSettingsControls(app, testCase: self)
+        guard ClassificationConsentUITestSupport.assertSettingsControls(app) else { return }
         tap(app, "provider-selection-cancel")
         tap(app, "classification-close-settings")
 
@@ -32,7 +32,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         XCTAssertFalse(node(app, "medical-appointment-manual").exists)
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-actions-after-rotation", testCase: self)
         ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
-        ClassificationConsentUITestSupport.assertSettingsControls(app, testCase: self)
+        guard ClassificationConsentUITestSupport.assertSettingsControls(app) else { return }
         tap(app, "provider-selection-confirm")
         XCTAssertTrue(node(app, "calendar-current-model").waitForAppearance())
         tap(app, "classification-close-settings")
@@ -178,7 +178,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
                 }
             })
             ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
-            ClassificationConsentUITestSupport.assertSettingsControls(app, testCase: self)
+            guard ClassificationConsentUITestSupport.assertSettingsControls(app) else { return }
             let disclosure = node(app, "model-settings-transmission-disclosure")
             XCTAssertTrue(UITestConditions.text(disclosure).contains("OpenAI API"))
             XCTAssertFalse(UITestConditions.text(disclosure).contains("SENTINEL_CALENDAR_EVENT_IDENTIFIER"))

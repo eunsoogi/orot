@@ -33,7 +33,7 @@ extension AppointmentConsentUITests {
             try settleReaderScene(app, session: sceneSession, hostID: "medical-appointment-fullscreen")
         }
         ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
-        ClassificationConsentUITestSupport.assertSettingsControls(app, testCase: self)
+        guard ClassificationConsentUITestSupport.assertSettingsControls(app) else { return }
         tap(app, "provider-selection-confirm")
         XCTAssertTrue(node(app, "calendar-current-model").waitForAppearance())
         tap(app, "classification-close-settings")
@@ -212,5 +212,38 @@ extension AppointmentConsentUITests {
             UITestConditions.text(element) == expected
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [changed]), .completed)
+    }
+}
+
+/// Uses the real disclosure's scoped ScrollView without requiring a long paragraph to fit in one viewport.
+extension ClassificationConsentUITestSupport {
+    static func assertSettingsControls(_ app: XCUIApplication) -> Bool {
+        guard let (page, scroll) = settingsScroll(app) else { return false }
+        let disclosure = scroll.descendants(matching: .any).matching(identifier: "model-settings-transmission-disclosure")
+        guard disclosure.count == 1, FormUITestConditions.readingEdgesReachable(disclosure.firstMatch, app: app, page: page, scroll: scroll)
+        else { XCTFail("Both real disclosure text edges must be reachable"); return false }
+        let actions = ["provider-selection-confirm", "provider-selection-cancel"].compactMap { identifier -> XCUIElement? in
+            let matches = scroll.descendants(matching: .any).matching(identifier: identifier)
+            guard matches.count == 1 else { return nil }
+            let action = matches.firstMatch
+            return FormUITestConditions.reveal(action, in: app, scroll: scroll, windowResolver: {
+                FormWindowOwnership.resolve(app, scroll: page, target: action)
+            }) == nil ? nil : action
+        }
+        guard actions.count == 2, let window = FormWindowOwnership.resolve(app, scroll: page, target: actions[0])
+        else { XCTFail("Expected two reachable settings actions in one window"); return false }
+        let keyboard = app.keyboards.firstMatch
+        let visible = actions.allSatisfy { action in
+            let id = action.exists ? action.identifier : ""
+            guard !id.isEmpty, app.descendants(matching: .any).matching(identifier: id).count == 1,
+                  window.descendants(matching: .any).matching(identifier: id).count == 1
+            else { return false }
+            let viewport = FormUITestConditions.unobstructedScrollFrame(scroll.frame, target: action.frame, in: app, excluding: id)
+            let geometry = FormScrollGeometry(application: window.frame, scroll: viewport, keyboard: keyboard.exists ? keyboard.frame : nil)
+            return action.exists && action.isEnabled && action.isHittable && geometry?.containsAction(action.frame) == true
+        }
+        guard visible, !actions[0].frame.intersects(actions[1].frame)
+        else { XCTFail("Both settings actions must stay distinct and fully reachable in the same window"); return false }
+        return true
     }
 }

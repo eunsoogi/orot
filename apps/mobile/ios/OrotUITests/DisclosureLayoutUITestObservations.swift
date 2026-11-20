@@ -66,13 +66,7 @@ enum ClassificationConsentUITestSupport {
 
     static func openSettingsChoice(_ app: XCUIApplication, testCase: AppointmentConsentUITests) {
         testCase.tap(app, "medical-appointment-select-provider")
-        // The tagged React Native wrapper owns the AX window; its native child owns scrolling.
-        let pages = app.descendants(matching: .any).matching(identifier: "classification-consent-scroll")
-        guard pages.firstMatch.waitForAppearance(), pages.count == 1 else { XCTFail("Expected one classification settings scroll host"); return }
-        let page = pages.firstMatch
-        let scroll = page.elementType == .scrollView ? page : page.scrollViews.firstMatch
-        guard page.elementType == .scrollView || page.scrollViews.count == 1, scroll.exists,
-              scroll.scrollViews.count == 0 else { XCTFail("Expected one native classification settings ScrollView"); return }
+        guard let (page, scroll) = settingsScroll(app) else { return }
         for identifier in ["calendar-model-refresh", "provider-option-0"] {
             let matches = scroll.descendants(matching: .any).matching(identifier: identifier)
             let target = matches.firstMatch
@@ -87,27 +81,15 @@ enum ClassificationConsentUITestSupport {
         XCTAssertTrue(testCase.node(app, "provider-selection-confirmation").waitForAppearance())
     }
 
-    static func assertSettingsControls(_ app: XCUIApplication, testCase: AppointmentConsentUITests) {
-        let page = testCase.node(app, "classification-consent-scroll")
-        for identifier in ["model-settings-transmission-disclosure", "provider-selection-confirm", "provider-selection-cancel"] {
-            let control = testCase.node(app, identifier)
-            XCTAssertTrue(control.exists)
-            FormUITestConditions.reveal(control, in: app, scroll: page)
-            XCTAssertFalse(control.frame.isEmpty)
-            XCTAssertTrue(app.frame.contains(control.frame))
-            XCTAssertTrue(control.isHittable)
-        }
-        // Measure both actions together after revealing the final settings decision.
-        let allow = testCase.node(app, "provider-selection-confirm")
-        let decline = testCase.node(app, "provider-selection-cancel")
-        // Do not reveal again: both decisions must remain reachable at the same scroll position.
-        for action in [allow, decline] {
-            XCTAssertTrue(action.exists)
-            XCTAssertFalse(action.frame.isEmpty)
-            XCTAssertTrue(app.frame.contains(action.frame))
-            XCTAssertTrue(action.isHittable)
-        }
-        XCTAssertFalse(allow.frame.intersects(decline.frame))
+    static func settingsScroll(_ app: XCUIApplication) -> (XCUIElement, XCUIElement)? {
+        // The tagged React Native wrapper owns the AX window; its native child owns scrolling.
+        let pages = app.descendants(matching: .any).matching(identifier: "classification-consent-scroll")
+        guard pages.firstMatch.waitForAppearance(), pages.count == 1 else { XCTFail("Expected one classification settings scroll host"); return nil }
+        let page = pages.firstMatch
+        let scroll = page.elementType == .scrollView ? page : page.scrollViews.firstMatch
+        guard page.elementType == .scrollView || page.scrollViews.count == 1, scroll.exists,
+              scroll.scrollViews.count == 0 else { XCTFail("Expected one native classification settings ScrollView"); return nil }
+        return (page, scroll)
     }
 }
 

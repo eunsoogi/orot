@@ -6,6 +6,7 @@ final class FormScrollGeometryUITests: XCTestCase {
     func testFormGestureBoundaries() throws {
         try FormScrollGeometryRegression.verify()
         try verifyActionDockOcclusion()
+        try verifyDisclosureReadingEdges()
         XCTAssertEqual(FormScrollGeometry.uniqueOwnerIndex([1, 0]), 0)
         XCTAssertEqual(FormScrollGeometry.uniqueOwnerIndex([0, 1]), 1)
         XCTAssertNil(FormScrollGeometry.uniqueOwnerIndex([0, 0]))
@@ -35,6 +36,31 @@ final class FormScrollGeometryUITests: XCTestCase {
         for point in [drag.start, drag.end] {
             XCTAssertTrue(shifted.viewport.contains(CGPoint(x: point.dx + origin.x, y: point.dy + origin.y)))
         }
+    }
+
+    private func verifyDisclosureReadingEdges() throws {
+        let window = CGRect(x: 0, y: 0, width: 678, height: 466)
+        let viewport = CGRect(x: 84, y: 93, width: 594, height: 339)
+        let geometry = try XCTUnwrap(FormScrollGeometry(application: window, scroll: viewport, keyboard: nil))
+        let atTop = CGRect(x: 94, y: 110, width: 574, height: 835)
+        let atBottom = atTop.offsetBy(dx: 0, dy: -520)
+        func observation(_ rect: CGRect, _ geometry: FormScrollGeometry) -> FormScrollGeometry.ReadingObservation {
+            FormScrollGeometry.ReadingObservation(frame: rect, geometry: geometry)
+        }
+        let top = observation(atTop, geometry)
+        XCTAssertFalse(geometry.contains(atTop))
+        XCTAssertTrue(geometry.containsAction(CGRect(x: 94, y: 110, width: 44, height: 44)))
+        XCTAssertFalse(geometry.containsAction(CGRect(x: 94, y: 110, width: 43, height: 44)))
+        XCTAssertFalse(geometry.containsAction(CGRect(x: 94, y: 110, width: 44, height: 43)))
+        XCTAssertFalse(geometry.containsAction(CGRect(x: 94, y: 400, width: 44, height: 44)))
+        XCTAssertTrue(FormScrollGeometry.provesReadingEdgeReach(top: top, bottom: observation(atBottom, geometry)))
+        XCTAssertFalse(FormScrollGeometry.provesReadingEdgeReach(top: top, bottom: top))
+        XCTAssertFalse(FormScrollGeometry.provesReadingEdgeReach(top: top, bottom: observation(atBottom.offsetBy(dx: 20, dy: 0), geometry)))
+        let clippedText = CGRect(x: 94, y: 110, width: 574, height: 100)
+        XCTAssertFalse(FormScrollGeometry.provesReadingEdgeReach(top: top, bottom: observation(clippedText, geometry)))
+        XCTAssertTrue(geometry.readingBounds(.infinite, bottom: false).isNull)
+        XCTAssertTrue(geometry.readingBounds(.zero, bottom: true).isNull)
+        XCTAssertFalse(geometry.contains(geometry.readingBounds(atTop, bottom: true)))
     }
 
     /// Representative synthetic frames reproduce the hosted editor/dock overlap; native hit testing remains separate.
