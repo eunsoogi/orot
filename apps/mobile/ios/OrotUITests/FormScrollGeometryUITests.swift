@@ -68,7 +68,15 @@ final class FormScrollGeometryUITests: XCTestCase {
         XCTAssertNil(classify(frame: CGRect(x: 290, y: 400, width: 90, height: 43)))
     }
 
+    @MainActor
     private func verifyClassificationStageOwner() {
+        XCTAssertTrue(FormWindowOwnership.acceptsIdleClassificationRelease(global: 0, owned: 0, isButton: false, label: "", enabled: false))
+        XCTAssertTrue(FormWindowOwnership.acceptsIdleClassificationRelease(global: 1, owned: 1, isButton: true, label: "Release synthetic idle", enabled: false))
+        XCTAssertFalse(FormWindowOwnership.acceptsIdleClassificationRelease(global: 1, owned: 1, isButton: true, label: "Release synthetic idle", enabled: true))
+        XCTAssertFalse(FormWindowOwnership.acceptsIdleClassificationRelease(global: 1, owned: 1, isButton: true, label: "Release synthetic model", enabled: false))
+        XCTAssertFalse(FormWindowOwnership.acceptsIdleClassificationRelease(global: 1, owned: 0, isButton: true, label: "Release synthetic idle", enabled: false))
+        XCTAssertFalse(FormWindowOwnership.acceptsIdleClassificationRelease(global: 2, owned: 1, isButton: true, label: "Release synthetic idle", enabled: false))
+        XCTAssertFalse(FormWindowOwnership.acceptsIdleClassificationRelease(global: 1, owned: 1, isButton: false, label: "Release synthetic idle", enabled: false))
         let wide = CGRect(x: 0, y: 0, width: 678, height: 466)
         let frames = [wide, wide]
         XCTAssertTrue(FormScrollGeometry.acceptsOptionalStageMarker(global: 0, owned: 0))
@@ -187,11 +195,14 @@ extension AppointmentConsentUITests {
             let close = scoped(closeID).firstMatch
             let modal = close.exists && close.elementType == .button && close.label == Action.closeLabel
                 && close.isEnabled && close.isHittable && owner.frame.contains(close.frame)
+            let releaseIdle = FormWindowOwnership.classificationReleaseIsIdle(app, releaseID: releaseID, counterID: counterID)
+            let progress = node(app, progressID).exists
+            let results = node(app, resultsID).exists
             guard closeCount == (inExpandedReader ? 1 : 0), modal == inExpandedReader,
-                  callsZero, !node(app, releaseID).exists,
-                  !node(app, progressID).exists, !node(app, resultsID).exists
+                  callsZero, releaseIdle, !progress, !results
             else {
-                XCTFail("Classification before Start: expanded=\(inExpandedReader), modal=\(modal), closeCount=\(closeCount), callsZero=\(callsZero)")
+                XCTFail("Classification before Start: expanded=\(inExpandedReader), modal=\(modal), closeCount=\(closeCount), "
+                    + "callsZero=\(callsZero), releaseIdle=\(releaseIdle), progress=\(progress), results=\(results)")
                 throw ActivationError.unproven
             }
 

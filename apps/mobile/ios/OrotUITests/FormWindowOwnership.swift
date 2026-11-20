@@ -53,6 +53,27 @@ enum FormWindowOwnership {
         return windows[owner]
     }
 
+    static func acceptsIdleClassificationRelease(global: Int, owned: Int, isButton: Bool, label: String, enabled: Bool) -> Bool {
+        if global == 0 {
+            return owned == 0
+        }
+        return global == 1 && owned == 1 && isButton && label == "Release synthetic idle" && !enabled
+    }
+
+    /// The fixture gate may project outside the expanded reader. Prove its own AX window through the fixture counter.
+    static func classificationReleaseIsIdle(_ app: XCUIApplication, releaseID: String, counterID: String) -> Bool {
+        let gates = app.descendants(matching: .any).matching(identifier: releaseID)
+        let count = gates.count
+        if count == 0 {
+            return true
+        }
+        guard count == 1, let owner = try? resolveStage(app, observed: nil, required: [counterID, releaseID]) else { return false }
+        let matches = owner.descendants(matching: .any).matching(identifier: releaseID)
+        let gate = matches.firstMatch
+        guard gate.exists else { return false }
+        return acceptsIdleClassificationRelease(global: count, owned: matches.count, isButton: gate.elementType == .button, label: gate.label, enabled: gate.isEnabled)
+    }
+
     private enum StageWindowError: Error {
         case unbounded
         case missingOrAmbiguous
