@@ -190,12 +190,13 @@ extension AppointmentConsentUITests {
             }
 
             let counters = app.descendants(matching: .any).matching(identifier: counterID)
-            let callsZero = counters.count == 1 && UITestConditions.text(counters.firstMatch) == "syntheticProviderCalls=0"
+            let witness = inExpandedReader ? FormWindowOwnership.classificationReaderStartWitness(app, owner: owner) : nil
+            let callsZero = witness?.callsZero ?? (counters.count == 1 && UITestConditions.text(counters.firstMatch) == "syntheticProviderCalls=0")
             let closeCount = app.descendants(matching: .any).matching(identifier: closeID).count
             let close = scoped(closeID).firstMatch
             let modal = close.exists && close.elementType == .button && close.label == Action.closeLabel
                 && close.isEnabled && close.isHittable && owner.frame.contains(close.frame)
-            let releaseIdle = FormWindowOwnership.classificationReleaseIsIdle(app, releaseID: releaseID, counterID: counterID)
+            let releaseIdle = witness?.releaseIdle ?? FormWindowOwnership.classificationReleaseIsIdle(app, releaseID: releaseID, counterID: counterID)
             let progress = node(app, progressID).exists
             let results = node(app, resultsID).exists
             guard closeCount == (inExpandedReader ? 1 : 0), modal == inExpandedReader,
@@ -236,6 +237,7 @@ extension AppointmentConsentUITests {
         let expandedReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             close.exists && close.label == Action.closeLabel && close.isHittable
                 && start.exists && start.label == Action.startLabel && start.isHittable
+                && self.node(app, FormWindowOwnership.classificationReaderStartWitnessID).exists
         }, object: nil)
         guard XCTWaiter.wait(for: [expandedReady], timeout: 8) == .completed else {
             XCTFail("Classification modal Start not reached: closeExists=\(close.exists), startExists=\(start.exists), startLabel=\(start.exists && start.label == Action.startLabel)")

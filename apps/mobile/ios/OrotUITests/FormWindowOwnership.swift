@@ -74,6 +74,18 @@ enum FormWindowOwnership {
         return acceptsIdleClassificationRelease(global: count, owned: matches.count, isButton: gate.elementType == .button, label: gate.label, enabled: gate.isEnabled)
     }
 
+    static let classificationReaderStartWitnessID = "classification-reader-start-witness"
+
+    static func classificationReaderStartWitness(_ app: XCUIApplication, owner: XCUIElement) -> (callsZero: Bool, releaseIdle: Bool) {
+        let id = classificationReaderStartWitnessID
+        let global = app.descendants(matching: .any).matching(identifier: id)
+        let owned = owner.descendants(matching: .any).matching(identifier: id)
+        guard global.count == 1, owned.count == 1, owned.firstMatch.exists else { return (false, false) }
+        let fields = UITestConditions.text(owned.firstMatch).split(separator: ";", omittingEmptySubsequences: false)
+        guard fields.count == 2 else { return (false, false) }
+        return (fields[0] == "syntheticProviderCalls=0", fields[1] == "syntheticRelease=idle")
+    }
+
     private enum StageWindowError: Error {
         case unbounded
         case missingOrAmbiguous

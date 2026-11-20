@@ -1,10 +1,21 @@
-import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { Modal, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { appColors } from '../layout/appColors';
 import { AppSymbol } from '../layout/AppSymbol';
 import { NavigationMotionContext } from '../navigation/NavigationMotionContext';
 import { t } from '../i18n';
+
+/** Optional non-layout reader observation; ordinary app routes provide none. */
+export const ClassificationReaderObservationContext =
+  createContext<ReactNode>(null);
 
 /** Dismiss before invoking the original action so its consent Modal never competes with this reader. */
 export function useClassificationReaderFrame(
@@ -83,6 +94,7 @@ export function ClassificationReaderFrame({
   readonly children: ReactNode;
 }) {
   const reduceMotion = useContext(NavigationMotionContext);
+  const observation = useContext(ClassificationReaderObservationContext);
   return (
     <>
       {!expanded && !closing ? children : null}
@@ -114,6 +126,7 @@ export function ClassificationReaderFrame({
               <AppSymbol name="xmark" size={20} />
             </Pressable>
             {children}
+            {observation}
           </SafeAreaView>
         ) : null}
       </Modal>

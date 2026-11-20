@@ -1,17 +1,24 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { ClassificationPagedStage } from '../ClassificationPagedStage';
-import { useClassificationReaderFrame } from '../ClassificationReaderFrame';
+import {
+  ClassificationReaderObservationContext,
+  useClassificationReaderFrame,
+} from '../ClassificationReaderFrame';
 
 test('offers full-window reading rather than overflowing a line into actions', async () => {
   await render(
-    <ClassificationPagedStage
-      documents={['One large line']}
-      testID="stage"
-      actionTitle="시작"
-      actionLabel="분류 시작"
-      onAction={jest.fn()}
-    />,
+    <ClassificationReaderObservationContext.Provider
+      value={<Text testID="synthetic-reader-observation">fixture only</Text>}
+    >
+      <ClassificationPagedStage
+        documents={['One large line']}
+        testID="stage"
+        actionTitle="시작"
+        actionLabel="분류 시작"
+        onAction={jest.fn()}
+      />
+    </ClassificationReaderObservationContext.Provider>,
   );
   const measure = async (height: number) => {
     await fireEvent(screen.getByTestId('stage'), 'layout', {
@@ -33,12 +40,16 @@ test('offers full-window reading rather than overflowing a line into actions', a
     );
   };
   await measure(110);
+  expect(screen.queryByTestId('synthetic-reader-observation')).toBeNull();
   expect(screen.queryByTestId('classification-page-text')).toBeNull();
   expect(screen.getByTestId('medical-appointment-import')).toHaveProp(
     'accessibilityLabel',
     '전체 화면으로 내용 보기',
   );
   await fireEvent.press(screen.getByTestId('medical-appointment-import'));
+  expect(screen.getByTestId('synthetic-reader-observation')).toHaveTextContent(
+    'fixture only',
+  );
   expect(screen.getByTestId('classification-expanded-reader')).toHaveProp(
     'supportedOrientations',
     ['portrait', 'portrait-upside-down', 'landscape-left', 'landscape-right'],
@@ -148,6 +159,7 @@ test.each(['primary', 'close', 'requestClose'] as const)(
     await measure(110);
     await fireEvent.press(screen.getByTestId('medical-appointment-import'));
     await measure(480);
+    expect(screen.queryByTestId('synthetic-reader-observation')).toBeNull();
     const modal = screen.getByTestId('classification-expanded-reader');
     expect(modal).toHaveProp('visible', true);
     const dismiss = modal.props.onDismiss;

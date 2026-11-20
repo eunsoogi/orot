@@ -11,6 +11,7 @@ import {
   classificationStageEvents,
   createClassificationStageScenario,
 } from './classificationStageScenario';
+import { ClassificationReaderObservationContext } from '../src/medicalAppointments/ClassificationReaderFrame';
 import MedicalAppointmentClassificationScreen from '../src/medicalAppointments/MedicalAppointmentClassificationScreen';
 import type { CalendarAutoSyncState } from '../src/calendar/calendarAutoSync';
 import type { CalendarBridge, CalendarEvent } from '../src/calendar/types';
@@ -43,6 +44,14 @@ const styles = StyleSheet.create({
   // Synthetic control only: 1pt headroom avoids AX Float32 underflow at the strict 44pt oracle.
   // This reserves 1pt more fixture space; product viewport ownership and minimum targets are unchanged.
   gate: { minHeight: 45, justifyContent: 'center' },
+  witness: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    fontSize: 1,
+    bottom: 0,
+    right: 0,
+  },
 });
 
 export function ClassificationProbeScreen({
@@ -159,6 +168,20 @@ export function ClassificationProbeScreen({
     [provider],
   );
 
+  const witness = `syntheticProviderCalls=${providerCalls};syntheticRelease=${waiting ?? 'idle'}`;
+  const readerObservation =
+    staged && launch.OROT_TEST_CLASSIFICATION_LAYOUT === 'YES' ? (
+      <Text
+        accessible
+        pointerEvents="none"
+        style={styles.witness}
+        testID="classification-reader-start-witness"
+        accessibilityLabel={witness}
+      >
+        {witness}
+      </Text>
+    ) : null;
+
   if (showSettings)
     return (
       <ClassificationConsentSettings
@@ -199,17 +222,21 @@ export function ClassificationProbeScreen({
           <Text>{`Synthetic gate: ${waiting ?? 'idle'}`}</Text>
         </Pressable>
       ) : null}
-      <MedicalAppointmentClassificationScreen
-        bridge={bridge}
-        calendarSync={calendarSync}
-        repository={repository}
-        selectedProvider={selectedProvider}
-        recipient="OpenAI API"
-        onOpenProviderSelection={() => {
-          if (staged && defaultWideStage) setScenePreparationEnded(true);
-          setShowSettings(true);
-        }}
-      />
+      <ClassificationReaderObservationContext.Provider
+        value={readerObservation}
+      >
+        <MedicalAppointmentClassificationScreen
+          bridge={bridge}
+          calendarSync={calendarSync}
+          repository={repository}
+          selectedProvider={selectedProvider}
+          recipient="OpenAI API"
+          onOpenProviderSelection={() => {
+            if (staged && defaultWideStage) setScenePreparationEnded(true);
+            setShowSettings(true);
+          }}
+        />
+      </ClassificationReaderObservationContext.Provider>
     </View>
   );
 }
