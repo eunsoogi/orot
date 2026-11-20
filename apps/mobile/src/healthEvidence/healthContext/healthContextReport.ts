@@ -3,6 +3,7 @@ import type { SqlExecutor } from '@orot/storage';
 import { readHealthContextGeneration } from './generation';
 import { readHealthQuantityContext } from './quantityQuery';
 import { addHeartRateActivityContext } from './heartRateActivity';
+import type { AcquireHeartWorkoutPrefix } from './heartWorkoutPrefix';
 import { readHealthMedicationContext } from './medicationQuery';
 import { readDoseHistory } from './doseHistoryQuery';
 import { readHealthSleepContext } from './sleepQuery';
@@ -14,6 +15,7 @@ import type {
 } from './types';
 import { HEALTH_CONTEXT_TOPICS } from './types';
 import { traceHealthContext, type HealthContextTrace } from './trace';
+import type { measureHistoryValidationCost } from '../../providers/conversationHistoryDiagnostic';
 
 import {
   withHealthContextCalendar,
@@ -28,6 +30,14 @@ export async function readHealthContextReport(
   trace?: HealthContextTrace,
   diagnosticOwner?: object,
   calendarScope?: HealthContextCalendarScope,
+  restorationWorkspace?: {
+    acquireHeartPrefix: AcquireHeartWorkoutPrefix;
+    measureCost?: typeof measureHistoryValidationCost;
+  },
+  preparedCalendar?: {
+    readonly days: HealthContextReport['days'];
+    readonly timestampKeys: string;
+  },
 ): Promise<HealthContextReport> {
   return withHealthContextCalendar(calendarScope, async calendar => {
     executor = observeReportAggregateSql(executor, diagnosticOwner);
@@ -37,9 +47,15 @@ export async function readHealthContextReport(
       topics.some(topic => !HEALTH_CONTEXT_TOPICS.includes(topic))
     )
       throw new RangeError('Invalid health context topics.');
-    trace?.('calendar', 'started');
-    const days = calendar.read(window);
-    trace?.('calendar', 'completed');
+    if (!preparedCalendar) trace?.('calendar', 'started');
+    const days =
+      preparedCalendar?.days ??
+      (restorationWorkspace?.measureCost
+        ? restorationWorkspace.measureCost('artifact_report_calendar', () =>
+            calendar.read(window),
+          )
+        : calendar.read(window));
+    if (!preparedCalendar) trace?.('calendar', 'completed');
     const selected = new Set(topics);
     const quantities =
       selected.has('measurements') || selected.has('activity')
@@ -54,6 +70,8 @@ export async function readHealthContextReport(
                   ? 'activity'
                   : 'measurements',
               window.dataAvailableThrough,
+              Boolean(restorationWorkspace),
+              preparedCalendar?.timestampKeys,
             );
             return {
               ...result,
@@ -63,6 +81,8 @@ export async function readHealthContextReport(
                 result.series,
                 signal,
                 window.dataAvailableThrough,
+                restorationWorkspace?.acquireHeartPrefix,
+                preparedCalendar?.timestampKeys,
               ),
             };
           })

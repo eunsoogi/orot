@@ -15,6 +15,8 @@ export type ConversationActivityTracker = ReturnType<
 export type ConversationActivitySnapshot = Readonly<{
   sessionId: number;
   requestId: number;
+  /** The owning user receipt ID; display metadata only. */
+  userMessageId?: number;
   stage: ConversationActivityStage;
   /** Observed provider processing, never a local preparation/dispatch assumption. */
   responseStarted?: true;
@@ -46,10 +48,12 @@ type ToolState = {
 export function createConversationActivity(
   sessionId: number,
   requestId: number,
+  userMessageId?: number,
 ) {
   let snapshot: ConversationActivitySnapshot | null = Object.freeze({
     sessionId,
     requestId,
+    ...(userMessageId === undefined ? {} : { userMessageId }),
     stage: 'preparing',
   });
   let phase: 'preparing' | 'waiting' | 'streaming' = 'preparing';
@@ -84,6 +88,7 @@ export function createConversationActivity(
       snapshot = Object.freeze({
         sessionId,
         requestId,
+        ...(userMessageId === undefined ? {} : { userMessageId }),
         stage,
         ...(responseStarted ? { responseStarted: true as const } : {}),
       });

@@ -5,7 +5,13 @@ import type {
 } from './types';
 import { HEALTH_CONTEXT_TOPICS } from './types';
 import { validateHealthContextCalendar } from './calendarValidation';
-import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
+import {
+  fingerprint,
+  fingerprintText,
+  stableJson,
+} from '../../aiFeatures/integration/evidenceUtils';
+import { isImmutableReportSnapshot } from './committedReportScope';
+import { immutableReportJson } from './immutableReportJson';
 
 export interface HealthContextScope {
   readonly kind: 'health_context_period';
@@ -98,22 +104,40 @@ export function parseHealthContextScope(
   }
 }
 
-/** Unrelated out-of-period deletions must not change a historical data revision. */
+const revisions = new WeakMap<
+  HealthContextReport,
+  { scopeKey: string; revision: string }
+>();
+
+/** Exclude out-of-period deletions from the historical digest. Reuse one pure
+ * digest per immutable report and exact scope; live generation checks belong to
+ * the reader and its callers. */
 export function healthContextRevision(
   scope: HealthContextScope,
   report: HealthContextReport,
 ): string {
-  return fingerprint({
-    scope,
-    facts: {
-      window: report.window,
-      days: report.days,
-      quantities: report.quantities,
-      medications: report.medications,
-      ...(report.doseHistory ? { doseHistory: report.doseHistory } : {}),
-      sleep: report.sleep,
-      symptoms: report.symptoms,
-      limitations: report.limitations,
-    },
-  });
+  const scopeKey = isImmutableReportSnapshot(report)
+    ? stableJson(scope)
+    : undefined;
+  const cached = scopeKey === undefined ? undefined : revisions.get(report);
+  if (cached && cached.scopeKey === scopeKey) return cached.revision;
+  const facts = {
+    window: report.window,
+    days: report.days,
+    quantities: report.quantities,
+    medications: report.medications,
+    ...(report.doseHistory ? { doseHistory: report.doseHistory } : {}),
+    sleep: report.sleep,
+    symptoms: report.symptoms,
+    limitations: report.limitations,
+  };
+  // Keep the persisted facts-before-scope order and the original scope encoding.
+  const revision =
+    scopeKey === undefined
+      ? fingerprint({ scope, facts })
+      : fingerprintText(
+          `{"facts":${immutableReportJson(facts)},"scope":${scopeKey}}`,
+        );
+  if (scopeKey !== undefined) revisions.set(report, { scopeKey, revision });
+  return revision;
 }

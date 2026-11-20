@@ -20,6 +20,18 @@ struct FormScrollGeometry {
         viewport = visible
     }
 
+    /// Exclude actual buttons, not transparent dock gaps, before deciding an input is exposed.
+    static func unobstructedScrollFrame(_ scroll: CGRect, target: CGRect?, controls: [CGRect]) -> CGRect {
+        var usable = scroll
+        for control in controls where control.intersects(scroll) {
+            if let target, control.maxX <= target.minX || control.minX >= target.maxX {
+                continue
+            }
+            usable.size.height = max(0, min(usable.maxY, control.minY) - usable.minY)
+        }
+        return usable
+    }
+
     /// Only one window containing one identified scroll establishes ownership.
     static func uniqueOwnerIndex(_ matchingCounts: [Int]) -> Int? {
         let owners = matchingCounts.indices.filter { matchingCounts[$0] > 0 }

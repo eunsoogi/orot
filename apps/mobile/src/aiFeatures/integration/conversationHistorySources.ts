@@ -67,12 +67,14 @@ export async function conversationHistorySources(input: {
   readonly data: AiFeatureLocalData;
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly signal: AbortSignal;
+  readonly recoverImplicitHistory?: boolean;
 }): Promise<{
   references: readonly EvidenceReference[];
   sources: readonly EvidenceReference[];
   priorTurns: readonly { question: string; answer: string }[];
   omitted: boolean;
   excludedQuestions: readonly string[];
+  recoveredOwnerIsCurrent?: () => Promise<boolean>;
 }> {
   const expected = (input.retainedHistory ?? []).slice().reverse();
   const session = input.session;
@@ -90,34 +92,70 @@ export async function conversationHistorySources(input: {
   // An identified retained turn must be revalidated before its text is sent.
   if (!discovery)
     throw new ConversationHistoryFailure('history_discovery_unavailable');
-  const turns = await readSelectedConversationHistory(
-    discovery,
-    session.id,
-    expected.map(item => item.id),
-    input.signal,
-  );
-  const selected = expected.flatMap(item => {
-    const turn = turns.find(
-      candidate =>
-        candidate.id === item.id && candidate.question === item.question,
-    );
-    return turn ? [turn] : [];
-  });
-  if (input.signal.aborted)
-    throw new ConversationHistoryFailure('history_cancelled');
-  if (selected.length !== expected.length)
-    throw new ConversationHistoryFailure('history_turn_unavailable');
-  if ((await discovery.activeSessionVersion(session.id)) !== session.version)
-    throw new ConversationHistoryFailure('history_session_changed');
-  if (
-    !(await discovery.revalidateSession(
+  const ownerIsCurrent = async () =>
+    !input.signal.aborted &&
+    (await discovery.activeSessionVersion(session.id)) === session.version &&
+    !input.signal.aborted;
+  const select = async (recover: boolean) => {
+    const turns = await readSelectedConversationHistory(
+      discovery,
       session.id,
-      session.version,
-      selected,
+      expected.map(item => item.id),
       input.signal,
-    ))
-  )
-    throw new ConversationHistoryFailure('history_sources_stale');
+      recover,
+    );
+    const selected = expected.flatMap(item => {
+      const turn = turns.find(
+        candidate =>
+          candidate.id === item.id && candidate.question === item.question,
+      );
+      return turn ? [turn] : [];
+    });
+    if (input.signal.aborted)
+      throw new ConversationHistoryFailure('history_cancelled');
+    if (!recover && selected.length !== expected.length)
+      throw new ConversationHistoryFailure('history_turn_unavailable');
+    if (!(await ownerIsCurrent()))
+      throw new ConversationHistoryFailure('history_session_changed');
+    if (
+      selected.length &&
+      !(await discovery.revalidateSession(
+        session.id,
+        session.version,
+        selected,
+        input.signal,
+      ))
+    )
+      throw new ConversationHistoryFailure('history_sources_stale');
+    if (recover && !(await ownerIsCurrent()))
+      throw new ConversationHistoryFailure('history_session_changed');
+    return selected;
+  };
+  let selected;
+  let recovered = false;
+  try {
+    selected = await select(false);
+  } catch (error) {
+    // One local reread can recover an implicit context from current sources. An
+    // unknown read error or changed session never authorizes dropping the fence.
+    if (
+      !input.recoverImplicitHistory ||
+      !(error instanceof ConversationHistoryFailure) ||
+      ![
+        'history_page_unavailable',
+        'history_turn_unavailable',
+        'history_sources_stale',
+      ].includes(error.code) ||
+      !(await ownerIsCurrent())
+    )
+      throw error;
+    selected = await select(true);
+    recovered = true;
+  }
+  const accepted = new Map(selected.map(turn => [turn.id, turn.question]));
+  const excludedQuestions = expected
+    .filter(turn => accepted.get(turn.id) !== turn.question)
+    .map(turn => turn.question);
 
   const references = selected.map(turn => {
     const readSource = async (signal: AbortSignal) => {
@@ -194,7 +232,8 @@ export async function conversationHistorySources(input: {
     references,
     sources,
     priorTurns,
-    omitted: false,
-    excludedQuestions: [],
+    omitted: excludedQuestions.length > 0,
+    excludedQuestions,
+    ...(recovered ? { recoveredOwnerIsCurrent: ownerIsCurrent } : {}),
   };
 }

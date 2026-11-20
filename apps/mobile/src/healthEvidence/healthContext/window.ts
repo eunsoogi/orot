@@ -31,37 +31,52 @@ export function healthContextDays(
 ): HealthContextDay[] {
   const { from, to, formatter } = validateHealthContextWindow(window);
   const endDate = dateKey(formatter, to);
-  const exactMidnight = new Date(dayStart(endDate, formatter)).toISOString();
+  const endDateStart = dayStart(endDate, formatter);
   // Date.parse truncates sub-millisecond digits. Only an exact midnight excludes that local day.
   const lastDate =
-    compareTimestamps(window.toExclusive, exactMidnight) === 0
+    to === endDateStart &&
+    compareTimestamps(
+      window.toExclusive,
+      new Date(endDateStart).toISOString(),
+    ) === 0
       ? shiftDate(endDate, -1)
       : endDate;
   const lastCivilTime = civilDateTime(lastDate);
   const days: HealthContextDay[] = [];
-  for (
-    let date = dateKey(formatter, from);
-    civilDateTime(date) <= lastCivilTime;
-    date = shiftDate(date, 1)
-  ) {
-    const start = new Date(dayStart(date, formatter)).toISOString();
-    const end = new Date(dayStart(shiftDate(date, 1), formatter)).toISOString();
-    // Preserve the caller's exact endpoints for SQL's precision-preserving timestamp keys.
-    const clippedFrom =
-      compareTimestamps(window.fromInclusive, start) > 0
-        ? window.fromInclusive
-        : start;
-    const clippedTo =
-      compareTimestamps(window.toExclusive, end) < 0 ? window.toExclusive : end;
-    if (compareTimestamps(clippedFrom, clippedTo) < 0)
+  let date = dateKey(formatter, from);
+  let startTime = dayStart(date, formatter);
+  let start = new Date(startTime).toISOString();
+  while (civilDateTime(date) <= lastCivilTime) {
+    const next = shiftDate(date, 1);
+    const endTime = dayStart(next, formatter);
+    const end = new Date(endTime).toISOString();
+    // Compare already parsed milliseconds except for ties, which still need
+    // the caller's exact sub-millisecond interval for SQL.
+    const partialStart =
+      from > startTime ||
+      (from === startTime &&
+        compareTimestamps(window.fromInclusive, start) > 0);
+    const partialEnd =
+      to < endTime ||
+      (to === endTime && compareTimestamps(window.toExclusive, end) < 0);
+    const clippedFrom = partialStart ? window.fromInclusive : start;
+    const clippedTo = partialEnd ? window.toExclusive : end;
+    const clippedFromTime = partialStart ? from : startTime;
+    const clippedToTime = partialEnd ? to : endTime;
+    if (
+      clippedFromTime < clippedToTime ||
+      (clippedFromTime === clippedToTime &&
+        compareTimestamps(clippedFrom, clippedTo) < 0)
+    )
       days.push({
         date,
         fromInclusive: clippedFrom,
         toExclusive: clippedTo,
-        partial:
-          compareTimestamps(clippedFrom, start) !== 0 ||
-          compareTimestamps(clippedTo, end) !== 0,
+        partial: partialStart || partialEnd,
       });
+    date = next;
+    startTime = endTime;
+    start = end;
   }
   return days;
 }

@@ -11,6 +11,7 @@ const readRepositoryFile = (path) =>
   readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), 'utf8');
 const e2eWorkflow = readRepositoryFile('.github/workflows/e2e-test.yml');
 const codeWorkflow = readRepositoryFile('.github/workflows/code-quality.yml');
+const unitLaneWorkflow = readRepositoryFile('.github/workflows/unit-test-lane.yml');
 const unitTestWorkflow = readRepositoryFile('.github/workflows/unit-test.yml');
 const policyCheckWorkflow = readRepositoryFile('.github/workflows/policy-check.yml');
 const qualityCli = readRepositoryFile('scripts/quality/quality.mjs');
@@ -103,27 +104,45 @@ test('keeps formatting, unit, and policy checks as independent Linux leaves', ()
   assert.ok(format.includes('mode: format'));
   assert.doesNotMatch(format, /--surface/);
 
-  const unitJobs = [
-    ['typecheck', 'TypeScript typecheck', 'pnpm typecheck'],
-    ['unit_tests', 'Unit and component tests', 'scripts/ci/run-test-suite.sh unit'],
-  ];
-  for (const [jobId, name, command] of unitJobs) {
-    const job = jobBlock(unitTestWorkflow, jobId);
-    assert.ok(job, `missing ${jobId} leaf`);
-    assert.ok(job.includes(`name: ${name}`));
-    assert.match(job, /runs-on: ubuntu-24\.04/);
-    assert.ok(job.includes(command), `${name} command changed`);
-    if (jobId === 'unit_tests') {
-      // Unit tests consume only the selector outputs from typecheck and stay a separate required leaf.
-      assert.match(job, /needs: typecheck/);
-      assert.match(
-        job,
-        /if: \$\{\{ always\(\) && !cancelled\(\)[\s\S]*needs\.typecheck\.outputs\.unit_tests == 'true'/,
-      );
-    } else {
-      assert.doesNotMatch(job, /^\s+needs:/m, `${name} cannot depend on an aggregate job`);
-    }
+  const selection = jobBlock(unitTestWorkflow, 'selection');
+  assert.match(selection, /fetch-depth: 0/);
+  assert.match(selection, /node scripts\/ci\/select-changed-paths\.mjs/);
+  assert.doesNotMatch(selection, /pnpm install|pnpm typecheck/);
+
+  const typecheck = jobBlock(unitTestWorkflow, 'typecheck');
+  assert.match(typecheck, /name: TypeScript typecheck/);
+  assert.match(typecheck, /needs: selection/);
+  assert.match(typecheck, /pnpm typecheck/);
+
+  const lanes = ['mobile_shard_1', 'mobile_shard_2', 'mobile_shard_3', 'unit_packages'];
+  const laneInputs = ['mobile-1', 'mobile-2', 'mobile-3', 'packages'];
+  for (const [index, id] of lanes.entries()) {
+    const job = jobBlock(unitTestWorkflow, id);
+    assert.match(job, /needs: selection/);
+    assert.match(job, /\.\/\.github\/workflows\/unit-test-lane\.yml/);
+    assert.ok(job.includes(`lane: ${laneInputs[index]}`));
   }
+
+  const laneWorkflow = yaml.load(unitLaneWorkflow);
+  assert.ok(laneWorkflow.on.workflow_call.inputs.lane.required);
+  const leaf = laneWorkflow.jobs.test;
+  assert.equal(leaf['runs-on'], 'ubuntu-24.04');
+  const native = leaf.steps.find(
+    (step) => step.name === 'Run installed native cache host regressions',
+  );
+  assert.ok(native?.if.includes("inputs.lane == 'packages'"));
+  assert.ok(native?.run.includes('scripts/native-cache/run-tests.sh'));
+  assert.ok(
+    leaf.steps.some((step) => step.run?.includes('scripts/ci/run-test-suite.sh "$UNIT_LANE"')),
+  );
+
+  const units = jobBlock(unitTestWorkflow, 'unit_tests');
+  assert.match(units, /name: Unit and component tests/);
+  assert.match(units, /runs-on: ubuntu-24\.04/);
+  assert.match(units, /if: \$\{\{ always\(\) \}\}/);
+  assert.ok(units.includes(`needs: [selection, ${lanes.join(', ')}]`));
+  assert.match(units, /scripts\/ci\/require-unit-lanes\.sh/);
+  for (const lane of lanes) assert.ok(units.includes(`needs.${lane}.result`));
 
   const policyJob = jobBlock(policyCheckWorkflow, 'gate_tests');
   assert.ok(policyJob, 'missing policy-test leaf');

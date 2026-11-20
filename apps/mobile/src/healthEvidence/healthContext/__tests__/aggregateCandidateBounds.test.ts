@@ -185,10 +185,12 @@ test('case-normalized activity uses candidate index without changing statistics 
     ]);
     expect(
       plans.some(p =>
-        /health_context_activity_time.*<expr>=\?.*<expr>>\?.*<expr><\?/.test(p),
+        /COVERING INDEX health_context_activity_covering.*<expr>=\?.*<expr>>\?.*<expr><\?/.test(
+          p,
+        ),
       ),
     ).toBe(true);
-    await f.database.execute('DROP INDEX health_context_activity_time');
+    await f.database.execute('DROP INDEX health_context_activity_covering');
     expect(
       await readHealthQuantityContext(f.database, days, undefined, 'activity'),
     ).toEqual(indexed);
