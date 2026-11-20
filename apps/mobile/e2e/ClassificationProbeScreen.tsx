@@ -39,10 +39,10 @@ const defaultWideStage =
   launch.OROT_TEST_CLASSIFICATION_STAGE_SCENE === 'YES' &&
   typeof launch.OROT_TEST_ROTATION_GEOMETRY_SESSION === 'string';
 
+const metricText = { allowFontScaling: false, numberOfLines: 1 } as const;
 const styles = StyleSheet.create({
   root: { flex: 1 },
   // Synthetic control only: 1pt headroom avoids AX Float32 underflow at the strict 44pt oracle.
-  // This reserves 1pt more fixture space; product viewport ownership and minimum targets are unchanged.
   gate: { minHeight: 45, justifyContent: 'center' },
   witness: {
     position: 'absolute',
@@ -193,16 +193,24 @@ export function ClassificationProbeScreen({
     <View style={styles.root}>
       {layout.marker}
       <Text
+        {...metricText}
         testID="calendar-classification-synthetic-provider-calls"
         onPress={layout.request}
       >
         syntheticProviderCalls={providerCalls}
       </Text>
-      <Text testID="classification-synthetic-payload-privacy">
+      <Text
+        {...metricText}
+        testID="classification-synthetic-payload-privacy"
+        accessibilityLabel={payloadPrivacy}
+      >
         {payloadPrivacy}
       </Text>
       {saved ? (
-        <Text testID="calendar-classification-synthetic-calendar-save">
+        <Text
+          {...metricText}
+          testID="calendar-classification-synthetic-calendar-save"
+        >
           syntheticCalendarSave=confirmed
         </Text>
       ) : null}
@@ -219,7 +227,7 @@ export function ClassificationProbeScreen({
           onPress={scenario.release}
           style={styles.gate}
         >
-          <Text>{`Synthetic gate: ${waiting ?? 'idle'}`}</Text>
+          <Text {...metricText}>{`Synthetic gate: ${waiting ?? 'idle'}`}</Text>
         </Pressable>
       ) : null}
       <ClassificationReaderObservationContext.Provider

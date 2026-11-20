@@ -126,6 +126,21 @@ test('approved staged fixture completes actual 8+1 classification batches and ga
       ).toHaveTextContent(/model/),
     );
     expect(f.view.getByTestId('medical-appointment-progress')).toBeTruthy();
+    const privacy = f.view.getByTestId(
+      'classification-synthetic-payload-privacy',
+    );
+    expect(privacy).toHaveProp(
+      'accessibilityLabel',
+      'syntheticHealthIncluded=true;syntheticIdentifierExcluded=true',
+    );
+    for (const diagnostic of [
+      privacy,
+      f.view.getByTestId('calendar-classification-synthetic-provider-calls'),
+      f.view.getByText('Synthetic gate: model'),
+    ]) {
+      expect(diagnostic).toHaveProp('allowFontScaling', false);
+      expect(diagnostic).toHaveProp('numberOfLines', 1);
+    }
     await f.press('classification-release-response');
     await waitFor(() =>
       expect(
@@ -145,6 +160,9 @@ test('approved staged fixture completes actual 8+1 classification batches and ga
     expect(
       f.view.getByTestId('calendar-classification-synthetic-calendar-save'),
     ).toHaveTextContent(/confirmed/);
+    expect(
+      f.view.getByTestId('calendar-classification-synthetic-calendar-save'),
+    ).toHaveProp('numberOfLines', 1);
   } finally {
     await f.close();
   }
