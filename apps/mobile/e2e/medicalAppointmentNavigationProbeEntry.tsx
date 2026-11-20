@@ -12,6 +12,7 @@ import {
   updateAppointment,
 } from '@orot/domain';
 import App from '../App';
+import { RetainedAppointmentRouteFixture } from '../test-helpers/RetainedAppointmentRouteFixture';
 import { name as appName } from '../app.json';
 import type { CalendarBridge, CalendarEvent } from '../src/calendar/types';
 import { createAppleSelectionOption } from '../src/providers/selection/options';
@@ -156,6 +157,11 @@ function MedicalAppointmentNavigationProbeEntry() {
       active = false;
     };
   }, []);
+  // Test-only direct entry preserves legacy edit/guard coverage after removal of its public classification action.
+  if (launchSettings.OROT_TEST_RETAINED_APPOINTMENT_ROUTE === 'YES')
+    return (
+      <RetainedAppointmentRouteFixture repository={appointmentRepository} />
+    );
   if (seedState !== 'ready')
     return <Text testID="home-fixture-seed-state">{seedState}</Text>;
   return (

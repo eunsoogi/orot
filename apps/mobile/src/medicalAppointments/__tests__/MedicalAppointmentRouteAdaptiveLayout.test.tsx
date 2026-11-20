@@ -79,7 +79,6 @@ async function renderRoute(
         bridge={{} as CalendarBridge}
         calendarSync={{} as CalendarAutoSyncState}
         manual={manual}
-        onOpenManual={jest.fn()}
         onOpenCalendarSettings={jest.fn()}
         loadAppointments={loadAppointments}
         selectedAiResolverOptions={selectedAiResolverOptions}
@@ -148,6 +147,6 @@ test('keeps classification-route error content inside one divided usable region'
 test('keeps provider-resolution content inside one divided usable region', async () => {
   await renderClassificationRoute(async () => repository());
 
-  await screen.findByTestId('medical-appointment-manual');
+  await screen.findByText('선택한 AI를 확인하고 있어요.');
   expectStatusPanelToStayInOneUsableRegion();
 });
