@@ -68,6 +68,8 @@ export function ConversationScreen({
     !isEntryCurrent || isEntryCurrent(),
   );
   const { id, messages, pendingMessage, busy, error } = session;
+  const preflightError =
+    session.errorSurface === 'composerPreflight' ? error : '';
   // Confirmed retries retain feature scope instead of becoming ordinary chat.
   const restart = (question: string) =>
     store.sendPrompt(id, question, entryIntentSender(store, id, onSend));
@@ -140,6 +142,7 @@ export function ConversationScreen({
               disabled={conversationComposerDisabled(session, store.continuous)}
               compact={composerLayout.compact}
               maximumInputHeight={composerLayout.maximumInputHeight}
+              preflightError={preflightError}
               onChangeText={value => store.setDraft(id, value)}
               onSend={() =>
                 dispatchConversationMessage(
@@ -172,14 +175,14 @@ export function ConversationScreen({
             steeringInstructions={session.steeringInstructions}
             messages={messages}
             pendingMessage={pendingMessage}
-            error={error}
+            error={preflightError ? '' : error}
             unsavedCount={session.unsavedCount}
             retryingSave={session.retryingSave || busy}
             onRetrySave={() => {
               store.retrySave(id);
             }}
-            onOpenSource={onOpenSource}
-            {...{ resolveToolSource, resolveColdToolSource }}
+            {...sourceActions}
+            resolveColdToolSource={resolveColdToolSource}
             renderVisitQuestions={
               renderVisitQuestions
                 ? message =>
@@ -193,8 +196,6 @@ export function ConversationScreen({
                     )
                 : undefined
             }
-            toolSourceSessionId={toolSourceSessionId}
-            onLinkError={onLinkError}
             beforeMessages={
               <ManualVisitTargetPanels
                 content="recaps"
@@ -230,17 +231,15 @@ export function ConversationScreen({
               </ConversationQuickChoices>
             }
             footer={
-              <>
-                <ConversationTasks.ConversationStoredTaskCards
-                  onRestart={restart}
-                  store={store}
-                  session={session}
-                  onOpenSource={onOpenSource}
-                  routeKey={navigationRouteKey}
-                  durableSessionId={toolSourceSessionId}
-                  renderStoredReportTask={renderStoredReportTask}
-                />
-              </>
+              <ConversationTasks.ConversationStoredTaskCards
+                onRestart={restart}
+                store={store}
+                session={session}
+                onOpenSource={onOpenSource}
+                routeKey={navigationRouteKey}
+                durableSessionId={toolSourceSessionId}
+                renderStoredReportTask={renderStoredReportTask}
+              />
             }
           />
         </ConversationWorkspace>

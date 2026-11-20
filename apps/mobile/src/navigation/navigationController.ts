@@ -37,7 +37,7 @@ export interface NavigationController<Name extends string> {
   requestBack: () => Promise<boolean>;
   reconcileNativeBack: (routeKey: string) => boolean;
   requestHome: () => Promise<boolean>;
-  requestTabSwitch: () => Promise<boolean>;
+  requestTabSwitch: (commitApprovedTab?: () => void) => Promise<boolean>;
   requestTabSwitchDecision: () => Promise<
     'approved' | 'declined' | 'unavailable' | 'busy'
   >;
@@ -148,7 +148,9 @@ export function createNavigationController<Name extends string>(
     }
   }
 
-  async function requestTabSwitch(): Promise<boolean> {
+  async function requestTabSwitch(
+    commitApprovedTab?: () => void,
+  ): Promise<boolean> {
     if (isTransitioning) return false;
     const from = routes[routes.length - 1];
     const root = routes[0];
@@ -159,7 +161,11 @@ export function createNavigationController<Name extends string>(
     try {
       const guard = leaveGuards.get(from.key);
       if (!guard) return false;
-      return await guard({ intent: 'tab', from, to: root });
+      if (!(await guard({ intent: 'tab', from, to: root }))) return false;
+      // Commit the guarded tab selection before exposing the route as settled.
+      // The outgoing root scene must not observe a new entry between those events.
+      commitApprovedTab?.();
+      return true;
     } catch {
       return false;
     } finally {

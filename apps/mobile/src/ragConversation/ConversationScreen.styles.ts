@@ -143,6 +143,7 @@ export const styles = StyleSheet.create({
   },
   compactComposerArea: { paddingTop: 0, gap: 0 },
   composerStatus: { color: appColors.secondary },
+  composerRecovery: { backgroundColor: appColors.background },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',

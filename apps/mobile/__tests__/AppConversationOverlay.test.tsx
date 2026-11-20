@@ -107,7 +107,9 @@ test('App navigation and its shell do not wait for or rerender on held route dat
   const appointments =
     gate<ReturnType<typeof createAppointmentStore>['repository']>();
   const recordings = gate<[]>();
-  const readHistory = jest.fn(() => history.promise);
+  const readHistory = jest.fn(
+    (_id: string, _signal: AbortSignal) => history.promise,
+  );
   const shellRender = jest.spyOn(shellServices, 'useAppAiServices');
   jest
     .spyOn(sessionOptions, 'createConversationSessionOptions')
@@ -138,8 +140,12 @@ test('App navigation and its shell do not wait for or rerender on held route dat
     expect(
       await screen.findByTestId('conversation-history-restoring'),
     ).toBeTruthy();
+    const reader = readHistory.mock.calls.at(-1)?.[1];
+    expect(reader?.aborted).toBe(false);
     await fireEvent.press(screen.getByTestId('navigation-tab-records'));
     expect(await screen.findByTestId('records-title')).toBeTruthy();
+    // The outgoing root must not start a false restore entry before Records commits.
+    expect(reader?.aborted).toBe(false);
     const duringRecords = shellRender.mock.calls.length;
     await act(async () => recordings.resolve([]));
     expect(shellRender).toHaveBeenCalledTimes(duringRecords);

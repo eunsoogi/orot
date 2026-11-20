@@ -177,6 +177,7 @@ export interface ConversationSession {
   readonly preparingSend?: boolean;
   readonly leaseRefreshRequired?: boolean;
   readonly error: string;
+  readonly errorSurface?: 'composerPreflight';
   readonly unsavedCount?: number;
   readonly retryingSave?: boolean;
   readonly restoreFailed?: boolean;

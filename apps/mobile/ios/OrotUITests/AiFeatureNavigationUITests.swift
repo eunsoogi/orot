@@ -14,6 +14,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         app.launchArguments = ["-OROT_TEST_SCENARIO", "ai-feature-visit-questions", "-OROT_STORAGE_DIAGNOSTICS", "enabled", "-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_CONVERSATION_HIT_OBSERVATION", observationSession, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
+        try RoutesAppearanceUITestConditions.prepare(app)
         try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
         // The health editor is available independently of asynchronous record reads.
         NavigationUITestConditions.route(app, markers: ["overview-metrics-edit"])
@@ -24,30 +25,41 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         let recording = node(app, "records-new-recording")
         FormUITestConditions.reveal(recording, in: app, scrollID: "navigation-route-scroll", towardTop: true)
         recording.tap()
-        XCTAssertTrue(UITestConditions.exists(node(app, "recording-controls-scroll")))
+        XCTAssertTrue(UITestConditions.exists(node(app, "recording-controls-fullscreen")))
+        XCTAssertTrue(UITestConditions.exists(node(app, "recording-session-panel")))
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["records-title"])
+        let schedule = node(app, "records-section-schedule")
+        XCTAssertTrue(UITestConditions.exists(schedule), app.debugDescription)
+        XCTAssertEqual(schedule.label, "일정")
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         XCTAssertFalse(node(app, "ai-features-screen").exists)
         XCTAssertFalse(node(app, "external-evidence-search").exists)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
-        XCTAssertEqual(try NavigationUITestConditions.navigationAction(app, "navigation-tab-schedule").control.label, "일정 탭")
+        XCTAssertFalse(node(app, "navigation-tab-schedule").exists)
         // The material host shares the identifier; only the native UIButton dispatches Send.
         let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
         XCTAssertTrue(UITestConditions.exists(send))
         message(app, "필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.")
         let input = node(app, "rag-conversation-input")
         // This no-provider case needs only nonempty input to enable Send; keep native character entry short.
-        ConversationComposerDockUITestConditions.assertReachable(input, in: app)
+        try RoutesVisibleContentUITestConditions.conversationControl(input, in: app)
         input.tap()
         input.typeText("test")
         input.typeText("\n")
-        ConversationComposerDockUITestConditions.assertReachable(send, in: app)
+        let unsentDraft = try XCTUnwrap(input.value as? String)
+        XCTAssertEqual(unsentDraft.trimmingCharacters(in: .whitespacesAndNewlines), "test")
+        try RoutesVisibleContentUITestConditions.conversationControl(send, in: app)
         ConversationHitUITestObservation.assertSendReady(app, send: send, session: observationSession, testCase: self)
+        XCTAssertFalse(node(app, "rag-conversation-error").exists)
         send.tap()
-        message(app, "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.")
+        try RoutesVisibleContentUITestConditions.conversationMessage(
+            identifier: "rag-conversation-error", expected: "대화 기록이나 선택한 AI를 확인하지 못해 전송하지 않았어요. 다시 보내 주세요.", in: app,
+        )
+        XCTAssertEqual(input.value as? String, unsentDraft)
+        XCTAssertFalse(node(app, "conversation-message-body").exists)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
-        // Switching away from the root conversation keeps the failed request without a leave prompt.
+        // Switching away from the root conversation keeps the unsent draft and local recovery notice without a leave prompt.
         XCTAssertFalse(app.alerts["저장하지 않은 내용이 있어요"].exists)
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "settings-app-info", navigationID: "navigation-tab-settings")
@@ -57,11 +69,16 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "settings-provider-screen")))
         _ = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["settings-title"])
+        try RoutesVisibleContentUITestConditions.settingsRootAfterProviderBack(in: app)
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
-        message(app, "선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.")
+        try RoutesVisibleContentUITestConditions.conversationMessage(
+            identifier: "rag-conversation-error", expected: "대화 기록이나 선택한 AI를 확인하지 못해 전송하지 않았어요. 다시 보내 주세요.", in: app,
+        )
+        XCTAssertEqual(input.value as? String, unsentDraft)
+        XCTAssertFalse(node(app, "conversation-message-body").exists)
+        XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         XCTAssertFalse(app.alerts["저장하지 않은 내용이 있어요"].exists)
-        try NavigationUITestConditions.openTab(app, "schedule", markers: ["calendar-title"])
+        try openSchedule(app)
         XCTAssertTrue(node(app, "schedule-open-appointments").exists)
         UITestConditions.value(node(app, "calendar-title"), equals: "일정")
         XCTAssertFalse(node(app, "calendar-connect").exists)

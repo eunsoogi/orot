@@ -38,11 +38,7 @@ export function RootTabActions<Name extends string>({
           onPress={() => {
             if (rootTabs.activeTab === item.id) return;
             settleNavigationRequest(
-              controller
-                .requestTabSwitch()
-                .then(allowed =>
-                  allowed ? rootTabs.onSelect(item.id) : undefined,
-                ),
+              controller.requestTabSwitch(() => rootTabs.onSelect(item.id)),
             );
           }}
           selected={rootTabs.activeTab === item.id}
