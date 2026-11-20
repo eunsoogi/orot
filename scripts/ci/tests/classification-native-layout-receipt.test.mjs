@@ -3,11 +3,12 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { stripTypeScriptTypes } from 'node:module';
 const swift = readFileSync('apps/mobile/ios/OrotUITests/ClassificationStagesUITests.swift', 'utf8');
+const owner = readFileSync('apps/mobile/ios/OrotUITests/FormWindowOwnership.swift', 'utf8');
 const entry = readFileSync('apps/mobile/e2e/ClassificationProbeScreen.tsx', 'utf8');
 test('existing staged journey samples actual geometry without replacing its oracles', () => {
   assert.match(entry, /onPress=\{layout\.request\}/);
   for (const stage of ['confirmation', 'progress-\\(percent)', 'result-\\(pages.count)'])
-    assert.ok(swift.includes(`captureStageLayout(app, stage: "${stage}")`));
+    assert.ok(swift.includes(`captureStageLayout(app, stage: "${stage}", anchor: anchor`));
   for (const oracle of [
     'percent: 0, calls: 1',
     'percent: 88, calls: 2',
@@ -19,7 +20,7 @@ test('existing staged journey samples actual geometry without replacing its orac
     'XCTAssertTrue(action.isHittable)',
   ])
     assert.ok(swift.includes(oracle));
-  assert.match(swift, /contentSizeCategory/);
+  assert.match(owner, /contentSizeCategory/);
   const scene = swift.indexOf(
     'try settleReaderScene(app, session: sceneSession, hostID: "medical-appointment-fullscreen")',
   );
@@ -27,13 +28,36 @@ test('existing staged journey samples actual geometry without replacing its orac
     scene > 0 && scene < swift.indexOf('ClassificationConsentUITestSupport.openSettingsChoice'),
   );
   assert.match(swift, /environment\["OROT_CLASSIFICATION_WIDE_STAGE_VALIDATION"\] == "YES"/);
-  assert.match(swift, /XCTAssertGreaterThan\(window.width, window.height/);
-  assert.match(swift, /UIContentSizeCategory\.accessibilityExtraExtraExtraLarge\.rawValue/);
+  assert.match(owner, /XCTAssertGreaterThan\(frame.width, frame.height/);
+  assert.match(owner, /UIContentSizeCategory\.accessibilityExtraExtraExtraLarge\.rawValue/);
   assert.match(entry, /staged && defaultWideStage && !scenePreparationEnded/);
   assert.match(entry, /<ClassificationReaderSceneControl \/>/);
   assert.match(entry, /if \(staged && defaultWideStage\) setScenePreparationEnded\(true\)/);
-  assert.match(swift, /safeAreaInsets/);
-  assert.doesNotMatch(swift, /UICTContentSizeCategory|preferredContentSizeCategory|simctl|sleep\(/);
+  assert.match(owner, /safeAreaInsets/);
+  assert.doesNotMatch(
+    swift + owner,
+    /UICTContentSizeCategory|preferredContentSizeCategory|simctl|sleep\(/,
+  );
+  const baseline = swift.indexOf(
+    'captureStageLayout(app, stage: "confirmation-before-settings", settled: settled)',
+  );
+  assert.ok(
+    scene < baseline &&
+      baseline < swift.indexOf('ClassificationConsentUITestSupport.openSettingsChoice'),
+  );
+  assert.match(owner, /let scopedIDs = required \+ \[markerID, counterID\]/);
+  const firstOwner = owner.indexOf('required: scopedIDs)');
+  const tap = owner.indexOf('counter.tap()');
+  const responseOwner = owner.indexOf('required: scopedIDs)', firstOwner + 1);
+  const read = owner.indexOf('UITestConditions.text(scoped(owner, markerID))');
+  assert.ok(firstOwner > 0 && firstOwner < tap && tap < responseOwner && responseOwner < read);
+  assert.match(owner, /stableStageFrame\(owner.frame, frame\)/);
+  assert.match(owner, /actions.append\("medical-appointment-select-provider"\)/);
+  assert.match(owner, /XCTAssertEqual\(current.windowID, anchor.windowID\)/);
+  assert.match(owner, /XCTAssertEqual\(current.sceneID, anchor.sceneID\)/);
+  assert.match(owner, /FormScrollGeometry.stableStageFrame\(target.frame, observed\)/);
+  assert.match(owner, /total.allSatisfy\(\{ \$0 == 1 \}\)/);
+  assert.doesNotMatch(owner, /app.windows.firstMatch|XCTAssertEqual\(app.windows.count, 1\)/);
 });
 
 const receiptSource = readFileSync('apps/mobile/e2e/classificationLayoutReceipt.tsx', 'utf8');
@@ -54,6 +78,8 @@ test('receipt preserves actual native dimensions and category but discards unrel
       dockControls: {
         contentSizeCategory: 'UICTContentSizeCategoryAccessibilityXXXL',
         visibleKeyWindowCount: 1,
+        windowID: 'view-12',
+        sceneID: 'view-9',
         windowFrameInScreen: { x: 0, y: 0, width: 429, height: 647 },
         controls: ['private'],
       },
@@ -64,11 +90,18 @@ test('receipt preserves actual native dimensions and category but discards unrel
   assert.equal(result.contentSizeCategory, 'UICTContentSizeCategoryAccessibilityXXXL');
   assert.equal(result.safeAreaInsets.bottom, 34);
   assert.equal(result.sampleStartedAtMs, 101);
+  assert.equal(result.windowID, 'view-12');
+  assert.equal(result.sceneID, 'view-9');
   assert.ok(!JSON.stringify(result).includes('private'));
 });
 test('missing observations remain missing, never assumed Duo or XXXL', () => {
   assert.equal(classificationLayoutFields(undefined).contentSizeCategory, null);
   assert.deepEqual(classificationLayoutFields({}).windowBounds, {});
+  const missing = classificationLayoutFields({
+    windowGeometry: { dockControls: { windowID: 'view-0', sceneID: 'private label' } },
+  });
+  assert.equal(missing.windowID, null);
+  assert.equal(missing.sceneID, null);
   assert.deepEqual(
     classificationLayoutFields({
       windowGeometry: { windowBounds: { width: Infinity, height: '647' } },
@@ -107,5 +140,5 @@ test('staged receipt opts into the existing identity-gated native window traits'
     'XCTAssertGreaterThanOrEqual(dockStarted, ended)',
     'XCTAssertEqual(report["visibleKeyWindowCount"] as? Int, 1)',
   ])
-    assert.ok(swift.includes(guard));
+    assert.ok(owner.includes(guard));
 });

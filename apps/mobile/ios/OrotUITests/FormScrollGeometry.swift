@@ -55,6 +55,21 @@ struct FormScrollGeometry {
         return Self(application: application, scroll: scroll, keyboard: keyboard, reservedKeyboard: reservation)
     }
 
+    /// Match the window owning every unique stage node; unrelated AX windows do not establish ownership.
+    static func stageOwnerIndex(frames: [CGRect], observed: CGRect?, counts: [[Int]]) -> Int? {
+        guard let first = counts.first, let owner = uniqueOwnerIndex(first), frames.indices.contains(owner),
+              counts.allSatisfy({ $0.count == frames.count && uniqueOwnerIndex($0) == owner }),
+              valid(frames[owner]), observed.map({ stableStageFrame(frames[owner], $0) }) ?? true
+        else { return nil }
+        return owner
+    }
+
+    static func stableStageFrame(_ left: CGRect, _ right: CGRect) -> Bool {
+        guard valid(left), valid(right) else { return false }
+        return abs(left.minX - right.minX) <= 1 && abs(left.minY - right.minY) <= 1
+            && abs(left.width - right.width) <= 1 && abs(left.height - right.height) <= 1
+    }
+
     /// An observation separates passive text edge reach from interactive control containment.
     struct ReadingObservation {
         let frame: CGRect

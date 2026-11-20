@@ -7,6 +7,7 @@ final class FormScrollGeometryUITests: XCTestCase {
         try FormScrollGeometryRegression.verify()
         try verifyActionDockOcclusion()
         try verifyDisclosureReadingEdges()
+        verifyClassificationStageOwner()
         XCTAssertEqual(FormScrollGeometry.uniqueOwnerIndex([1, 0]), 0)
         XCTAssertEqual(FormScrollGeometry.uniqueOwnerIndex([0, 1]), 1)
         XCTAssertNil(FormScrollGeometry.uniqueOwnerIndex([0, 0]))
@@ -36,6 +37,24 @@ final class FormScrollGeometryUITests: XCTestCase {
         for point in [drag.start, drag.end] {
             XCTAssertTrue(shifted.viewport.contains(CGPoint(x: point.dx + origin.x, y: point.dy + origin.y)))
         }
+    }
+
+    private func verifyClassificationStageOwner() {
+        let wide = CGRect(x: 0, y: 0, width: 678, height: 466)
+        let frames = [wide, wide]
+        XCTAssertEqual(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: nil, counts: [[1, 0], [1, 0], [1, 0]]), 0)
+        XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: nil, counts: [[1, 0], [1, 0], [0, 1]]))
+        XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: nil, counts: [[1, 0], [1, 1], [1, 0]]))
+        XCTAssertEqual(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: wide, counts: [[1, 0], [1, 0], [1, 0]]), 0)
+        XCTAssertEqual(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: wide, counts: [[0, 1], [0, 1]]), 1)
+        XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: wide, counts: [[1, 1], [1, 0]]))
+        XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: wide, counts: [[1, 0], [1, 1]]))
+        XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: wide, counts: [[1, 0], [0, 1]]))
+        XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: wide, counts: [[1, 0], [2, 0]]))
+        XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: wide, counts: [[1, 0], [0, 0]]))
+        XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: wide, counts: [[1], [1]]))
+        XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: wide.offsetBy(dx: 2, dy: 0), counts: [[1, 0]]))
+        XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: [.null, wide], observed: wide, counts: [[1, 0]]))
     }
 
     private func verifyDisclosureReadingEdges() throws {

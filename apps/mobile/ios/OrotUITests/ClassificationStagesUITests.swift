@@ -29,8 +29,12 @@ extension AppointmentConsentUITests {
         defer { ClassificationConsentUITestSupport.cleanup(app, fixture: fixture, testCase: self) }
         ClassificationConsentUITestSupport.assertBlocked(app, testCase: self)
         XCTAssertTrue(node(app, "medical-appointment-confirmation").exists)
+        let anchor: ClassificationStageWindowAnchor?
         if let sceneSession {
-            try settleReaderScene(app, session: sceneSession, hostID: "medical-appointment-fullscreen")
+            let settled = try settleReaderScene(app, session: sceneSession, hostID: "medical-appointment-fullscreen")
+            anchor = try captureStageLayout(app, stage: "confirmation-before-settings", settled: settled)
+        } else {
+            anchor = nil
         }
         ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
         guard ClassificationConsentUITestSupport.assertSettingsControls(app) else { return }
@@ -38,20 +42,20 @@ extension AppointmentConsentUITests {
         XCTAssertTrue(node(app, "calendar-current-model").waitForAppearance())
         tap(app, "classification-close-settings")
         assertStageActions(app)
-        try captureStageLayout(app, stage: "confirmation")
+        try captureStageLayout(app, stage: "confirmation", anchor: anchor)
         DisclosureLayoutUITestObservations.startClassification(app, in: self)
 
-        try assertHeldProgress(app, percent: 0, calls: 1, saving: false)
+        try assertHeldProgress(app, percent: 0, calls: 1, saving: false, anchor: anchor)
         tap(app, "classification-release-response")
-        try assertHeldProgress(app, percent: 88, calls: 2, saving: false)
+        try assertHeldProgress(app, percent: 88, calls: 2, saving: false, anchor: anchor)
         tap(app, "classification-release-response")
-        try assertHeldProgress(app, percent: 100, calls: 2, saving: true)
+        try assertHeldProgress(app, percent: 100, calls: 2, saving: true, anchor: anchor)
         tap(app, "classification-release-response")
         XCTAssertTrue(node(app, "medical-appointment-results").waitForAppearance())
         UITestConditions.value(node(app, "calendar-classification-synthetic-calendar-save"), equals: "syntheticCalendarSave=confirmed")
         XCTAssertFalse(node(app, "medical-appointment-progress").exists)
         XCTAssertFalse(node(app, "medical-appointment-confirmation").exists)
-        let pages = try readAllResultPages(app)
+        let pages = try readAllResultPages(app, anchor: anchor)
         let readable = pages.joined().filter { !$0.isWhitespace }
         // Indexed segments make loss/repetition observable even when native line breaks split a long title.
         let title = (1 ... 30).map { "합성 긴 진료 예약 \($0)" }.joined(separator: " ").filter { !$0.isWhitespace }
@@ -74,7 +78,7 @@ extension AppointmentConsentUITests {
     }
 
     @MainActor
-    private func assertHeldProgress(_ app: XCUIApplication, percent: Int, calls: Int, saving: Bool) throws {
+    private func assertHeldProgress(_ app: XCUIApplication, percent: Int, calls: Int, saving: Bool, anchor: ClassificationStageWindowAnchor?) throws {
         let phase = saving ? "save" : "model"
         let gate = node(app, "classification-release-response")
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
@@ -83,7 +87,8 @@ extension AppointmentConsentUITests {
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
         let label = saving ? "분류한 일정을 저장하고 있어요." : "일정 분류 중"
-        let progress = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@ AND value == %@", label, "\(percent)%")).firstMatch
+        let predicate = NSPredicate(format: "label == %@ AND value == %@", label, "\(percent)%")
+        let progress = app.descendants(matching: .any).matching(predicate).firstMatch
         XCTAssertTrue(progress.waitForAppearance(), app.debugDescription)
         XCTAssertFalse(progress.frame.isEmpty)
         XCTAssertTrue(app.frame.contains(progress.frame))
@@ -94,13 +99,13 @@ extension AppointmentConsentUITests {
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         XCTAssertGreaterThanOrEqual(gate.frame.height, 44)
         XCTAssertTrue(gate.isHittable)
-        try captureStageLayout(app, stage: "progress-\(percent)")
+        try captureStageLayout(app, stage: "progress-\(percent)", anchor: anchor, measuredProgress: predicate)
         // Evidence includes fixture controls: their 45pt gate and diagnostic text reduce the product stage height.
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-progress-\(percent)", testCase: self)
     }
 
     @MainActor
-    private func readAllResultPages(_ app: XCUIApplication) throws -> [String] {
+    private func readAllResultPages(_ app: XCUIApplication, anchor: ClassificationStageWindowAnchor?) throws -> [String] {
         var pages: [String] = []
         for _ in 0 ..< 256 {
             let page = node(app, "classification-page-text")
@@ -110,7 +115,7 @@ extension AppointmentConsentUITests {
             let viewport = node(app, "classification-text-viewport")
             XCTAssertTrue(viewport.frame.insetBy(dx: -1, dy: -1).contains(page.frame), app.debugDescription)
             assertStageActions(app)
-            try captureStageLayout(app, stage: "result-\(pages.count)")
+            try captureStageLayout(app, stage: "result-\(pages.count)", anchor: anchor)
             pages.append(text)
             let next = node(app, "medical-appointment-next-result")
             if !next.isEnabled {
@@ -139,70 +144,6 @@ extension AppointmentConsentUITests {
             if action.isEnabled {
                 XCTAssertTrue(action.isHittable)
             }
-        }
-    }
-
-    /// UIKit window traits and XCUI stage rectangles are observations, not assumed Duo/XXXL values.
-    @MainActor
-    private func captureStageLayout(_ app: XCUIApplication, stage: String) throws {
-        let marker = node(app, "classification-layout-receipt")
-        let previous = UITestConditions.text(marker)
-        let requested = Date().timeIntervalSince1970 * 1000
-        let counter = node(app, "calendar-classification-synthetic-provider-calls")
-        XCTAssertTrue(counter.isHittable)
-        counter.tap()
-        let fresh = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            marker.exists && UITestConditions.text(marker) != previous
-        }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [fresh]), .completed)
-        let data = Data(UITestConditions.text(marker).utf8)
-        let report = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        XCTAssertGreaterThanOrEqual(try XCTUnwrap(report["requestedAtMs"] as? Double), requested)
-        let started = try XCTUnwrap(report["sampleStartedAtMs"] as? Double)
-        let ended = try XCTUnwrap(report["sampleEndedAtMs"] as? Double)
-        XCTAssertTrue(started.isFinite && ended.isFinite)
-        XCTAssertGreaterThanOrEqual(started, try XCTUnwrap(report["requestedAtMs"] as? Double))
-        XCTAssertGreaterThanOrEqual(ended, started)
-        XCTAssertLessThanOrEqual(ended, Date().timeIntervalSince1970 * 1000)
-        let dockStarted = try XCTUnwrap(report["dockSampleStartedAtMs"] as? Double)
-        let dockEnded = try XCTUnwrap(report["dockSampleEndedAtMs"] as? Double)
-        XCTAssertTrue(dockStarted.isFinite && dockEnded.isFinite)
-        XCTAssertGreaterThanOrEqual(dockStarted, ended)
-        XCTAssertGreaterThanOrEqual(dockEnded, dockStarted)
-        XCTAssertLessThanOrEqual(dockEnded, Date().timeIntervalSince1970 * 1000)
-        XCTAssertEqual(report["visibleKeyWindowCount"] as? Int, 1)
-        let category = try XCTUnwrap(report["contentSizeCategory"] as? String)
-        XCTAssertFalse(category.isEmpty)
-        let insets = try XCTUnwrap(report["safeAreaInsets"] as? [String: Double])
-        for key in ["top", "right", "bottom", "left"] {
-            XCTAssertGreaterThanOrEqual(try XCTUnwrap(insets[key]), 0)
-        }
-        let native = try XCTUnwrap(report["windowFrameInScreen"] as? [String: Double])
-        let window = app.windows.firstMatch.frame
-        XCTAssertEqual(app.windows.count, 1)
-        for (key, value) in [("x", window.minX), ("y", window.minY), ("width", window.width), ("height", window.height)] {
-            XCTAssertEqual(try XCTUnwrap(native[key]), Double(value), accuracy: 1)
-        }
-        var receipt = report
-        var frames = ["window": ViewportObservation.rect(window)]
-        for id in ["medical-appointment-fullscreen", "classification-stage-footer", "classification-text-viewport"] {
-            let element = node(app, id)
-            if element.exists {
-                XCTAssertFalse(element.frame.isEmpty)
-                XCTAssertTrue(window.insetBy(dx: -1, dy: -1).contains(element.frame))
-                frames[id] = ViewportObservation.rect(element.frame)
-            }
-        }
-        receipt["stage"] = stage
-        receipt["xcuiFrames"] = frames
-        let attachment = try XCTAttachment(data: JSONSerialization.data(withJSONObject: receipt), uniformTypeIdentifier: "public.json")
-        attachment.name = "classification-layout-\(stage)"
-        attachment.lifetime = .keepAlways
-        add(attachment)
-        // Settings and stage changes must not silently fall back to a narrow window or smaller text.
-        if app.launchArguments.contains("-OROT_TEST_CLASSIFICATION_STAGE_SCENE") {
-            XCTAssertGreaterThan(window.width, window.height, "Expected an actual wide stage: \(stage)")
-            XCTAssertEqual(category, UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue)
         }
     }
 

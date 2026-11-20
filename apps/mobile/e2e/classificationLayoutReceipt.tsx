@@ -16,7 +16,13 @@ export function classificationLayoutFields(value: unknown) {
       ),
     );
   };
+  const identity = (input: unknown) =>
+    typeof input === 'string' && /^view-[1-9][0-9]{0,9}$/.test(input)
+      ? input
+      : null;
   return {
+    windowID: identity(dock?.windowID),
+    sceneID: identity(dock?.sceneID),
     windowBounds: rect(geometry?.windowBounds, ['x', 'y', 'width', 'height']),
     safeAreaInsets: rect(geometry?.safeAreaInsets, [
       'top',
