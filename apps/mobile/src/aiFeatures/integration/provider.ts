@@ -1,6 +1,8 @@
 import { t } from '../../i18n';
 import {
   APPLE_PCC_PROVIDER_ID,
+  APPLE_PCC_MODEL_ID,
+  APPLE_PCC_DISPLAY_NAME,
   loadPrivateCloudComputeOption,
 } from '../../providers/selection/privateCloudCompute';
 import type { LanguageModelProvider } from '@orot/model-runtime';
@@ -25,11 +27,13 @@ export interface OnDeviceSelectionWitness {
   subscribe(listener: () => void): () => void;
 }
 
+export type SavedPlatformChoice = 'on-device' | 'pcc';
+
 /** UI-only observations never grant selection, provider capability, or dispatch. */
 export interface ConversationModelDisplayObserver {
-  readonly onDeviceRefreshOnly?: boolean;
+  readonly platformRefreshOnly?: SavedPlatformChoice;
   selection(witness: OnDeviceSelectionWitness | null): void;
-  savedOnDeviceName(name: string): void;
+  savedPlatformName(name: string, platform: SavedPlatformChoice): void;
 }
 
 export type ResolveConversationModelDisplay = (
@@ -88,16 +92,23 @@ export async function resolveSelectedAiProvider(
 
   if (display) {
     const saved = createAppleSelectionOption('unavailable');
-    const onDevice =
+    const platform =
       selection.providerId === saved.provider.id &&
-      selection.modelId === saved.modelId;
-    // A foreground refresh may check the previous local choice again, but a
-    // different current choice never causes a new PCC/ChatGPT request here.
-    if (display.onDeviceRefreshOnly && !onDevice)
+      selection.modelId === saved.modelId
+        ? 'on-device'
+        : selection.providerId === APPLE_PCC_PROVIDER_ID &&
+            selection.modelId === APPLE_PCC_MODEL_ID
+          ? 'pcc'
+          : undefined;
+    // A foreground presentation refresh may recheck only the same platform route,
+    // never a different model or a ChatGPT account/catalog.
+    if (display.platformRefreshOnly && platform !== display.platformRefreshOnly)
       return { status: 'unavailable' };
-    // Only the bundled on-device title is known without provider verification.
-    if (onDevice && selectionWitness?.())
-      display.savedOnDeviceName(saved.displayName);
+    if (platform && selectionWitness?.())
+      display.savedPlatformName(
+        platform === 'on-device' ? saved.displayName : APPLE_PCC_DISPLAY_NAME,
+        platform,
+      );
   }
 
   // Resolve PCC independently from ChatGPT credentials and local model availability.

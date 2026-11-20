@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
+import { APPLE_PCC_PROVIDER_ID, APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { StyleSheet, View } from 'react-native';
 import { t } from '../../i18n';
 import { observeConversationModelLifecycle } from './conversationModelDisplayLifecycle';
@@ -7,6 +7,7 @@ import { SelectedModelControl } from '../../layout/SelectedModelControl';
 import type {
   OnDeviceSelectionWitness,
   ResolveConversationModelDisplay,
+  SavedPlatformChoice,
 } from './provider';
 
 interface AiProviderSelectorRowProps {
@@ -45,7 +46,7 @@ export function AiProviderSelectorRow({
 
   useEffect(() => {
     let active = true;
-    let exactLocalChoice = false;
+    let exactPlatform: SavedPlatformChoice | undefined;
     let invalidated = false;
     let fence = 0;
     let launchedFence = 0;
@@ -73,13 +74,24 @@ export function AiProviderSelectorRow({
       if (fenced) {
         fence++;
         waiting = undefined;
-        if (exactLocalChoice) publish(unavailable);
-      } else if (exactLocalChoice) resumeLocal();
+        if (exactPlatform) publish(unavailable);
+      } else if (exactPlatform) resumePlatform();
     });
 
-    function resumeLocal() {
-      if (!current(attempt) || !lifecycle.ready()) return;
-      if (launchedFence !== fence || !launchedForeground) launch(true);
+    const protectedPlatform = () =>
+      exactPlatform !== 'pcc' ||
+      (lifecycle.hasProtectedDataWitness &&
+        ownsSelection?.isCurrent() === true);
+
+    function resumePlatform() {
+      if (
+        !current(attempt) ||
+        !exactPlatform ||
+        !protectedPlatform() ||
+        !lifecycle.ready()
+      )
+        return;
+      if (launchedFence !== fence || !launchedForeground) launch(exactPlatform);
       else if (waiting) {
         const value = waiting;
         waiting = undefined;
@@ -88,16 +100,20 @@ export function AiProviderSelectorRow({
       }
     }
 
-    function localResult(value: Presentation) {
+    function platformResult(value: Presentation) {
+      if (!protectedPlatform()) {
+        publish(unavailable);
+        return;
+      }
       if (launchedFence !== fence || !launchedForeground) {
-        resumeLocal();
+        resumePlatform();
         return;
       }
       if (lifecycle.ready()) publish(value);
       else waiting = value;
     }
 
-    function launch(onDeviceRefreshOnly: boolean) {
+    function launch(platformRefreshOnly?: SavedPlatformChoice) {
       const id = ++attempt;
       launchedFence = fence;
       launchedForeground = lifecycle.foreground();
@@ -107,7 +123,7 @@ export function AiProviderSelectorRow({
       unsubscribe = undefined;
       publish({ status: 'loading' });
       resolveSelectedAi({
-        onDeviceRefreshOnly,
+        platformRefreshOnly,
         selection(witness) {
           if (!current(id)) return;
           if (!witness) {
@@ -118,21 +134,38 @@ export function AiProviderSelectorRow({
           unsubscribe = witness.subscribe(invalidate);
           if (!witness.isCurrent()) invalidate();
         },
-        savedOnDeviceName(name) {
+        savedPlatformName(name, platform) {
           if (!current(id)) return;
-          exactLocalChoice = true;
-          lifecycle.observeLocalChoice();
+          // Classify before protection checks so a late PCC result cannot
+          // escape into generic presentation when native proof is absent.
+          exactPlatform = platform;
+          if (!protectedPlatform()) return;
+          lifecycle.observeSavedPlatform();
           if (launchedFence !== fence || !launchedForeground) {
-            resumeLocal();
+            resumePlatform();
             return;
           }
-          const value = { status: 'saved', name, local: true } as const;
+          const value = {
+            status: 'saved',
+            name,
+            local: platform === 'on-device',
+          } as const;
           if (lifecycle.canShowSavedName()) publish(value);
           else waiting = value;
         },
       }).then(
         result => {
           if (!current(id)) return;
+          // A verified resolver result is not a presentation witness. A
+          // resolver without the exact saved-choice callback cannot expose PCC.
+          if (
+            result.status === 'ready' &&
+            result.selection.providerId === APPLE_PCC_PROVIDER_ID &&
+            exactPlatform !== 'pcc'
+          ) {
+            publish(unavailable);
+            return;
+          }
           const value: Presentation =
             result.status === 'ready'
               ? {
@@ -141,7 +174,7 @@ export function AiProviderSelectorRow({
                   local: result.selection.providerId === APPLE_PROVIDER_ID,
                 }
               : { status: result.status };
-          if (exactLocalChoice) localResult(value);
+          if (exactPlatform) platformResult(value);
           else publish(value);
         },
         () => {
@@ -150,7 +183,7 @@ export function AiProviderSelectorRow({
       );
     }
 
-    launch(false);
+    launch();
     return () => {
       active = false;
       unsubscribe?.();

@@ -1,4 +1,6 @@
 import { act, render, screen } from '@testing-library/react-native';
+import { t } from '../../../i18n';
+import type { ProviderSelectionOption } from '../../../providers/selection/types';
 import { providerSelectionStore } from '../../../providers/selection/keychainSelectionStore';
 import { createAppleSelectionOption } from '../../../providers/selection/options';
 import {
@@ -162,17 +164,34 @@ test('save invalidation before the pending Keychain read prevents name and ready
   await view.unmount();
 });
 
-test('does not expose the shared Apple name on an unverified PCC selection', async () => {
+test('PCC needs protected data for its saved name and stays unavailable when approval fails', async () => {
   const f = fixture();
-  const pending = deferred<typeof option>();
+  const protection = deferred<boolean>();
+  const availability = deferred<ProviderSelectionOption>();
   f.load.mockResolvedValue(pcc);
-  f.loadPccOption.mockReturnValue(pending.promise);
+  f.protectedDataAvailable.mockReturnValueOnce(protection.promise);
+  f.loadPccOption.mockReturnValue(availability.promise);
   const view = await mount(f.resolve);
   expect(f.loadPccOption).toHaveBeenCalledTimes(1);
   expect(f.loadAppleOption).not.toHaveBeenCalled();
-  expect(f.protectedDataAvailable).not.toHaveBeenCalled();
+  expect(f.protectedDataAvailable).toHaveBeenCalledTimes(1);
   expect(shownName()).toBeNull();
   expect(control().props.accessibilityState.busy).toBe(true);
+  await act(() => protection.resolve(true));
+  expect(shownName()).toBeTruthy();
+  expect(control().props.accessibilityState.busy).toBe(true);
+  await act(() =>
+    availability.resolve({
+      ...option,
+      provider: { ...option.provider, id: pcc.providerId },
+      modelId: pcc.modelId,
+      privacyBoundary: 'selected-context-remote',
+      availability: { status: 'unavailable', message: 'Approval denied' },
+    }),
+  );
+  expect(shownName()).toBeNull();
+  expect(screen.getByText(t('provider.selection.rowUnavailable'))).toBeTruthy();
+  expect(control().props.accessibilityState.busy).toBe(false);
   await view.unmount();
 });
 

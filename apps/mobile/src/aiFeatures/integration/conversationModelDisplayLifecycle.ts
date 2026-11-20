@@ -9,7 +9,7 @@ export function observeConversationModelLifecycle(
   let foreground = adapter?.currentPhase?.() === 'active';
   let protectedData: boolean | undefined = nativeProtection ? undefined : true;
   let disposed = false;
-  let selectedLocal = false;
+  let selectedPlatform = false;
   let read = 0;
   const ready = () => foreground && protectedData === true;
   const setProtected = (available: boolean) => {
@@ -18,7 +18,7 @@ export function observeConversationModelLifecycle(
     if (before !== available) changed(!available);
   };
   const snapshot = () => {
-    if (!selectedLocal || !nativeProtection || !foreground) return;
+    if (!selectedPlatform || !nativeProtection || !foreground) return;
     const operation = ++read;
     adapter?.protectedDataAvailable().then(
       value => {
@@ -50,9 +50,10 @@ export function observeConversationModelLifecycle(
   });
   return {
     ready,
-    observeLocalChoice() {
-      if (selectedLocal) return;
-      selectedLocal = true;
+    hasProtectedDataWitness: nativeProtection,
+    observeSavedPlatform() {
+      if (selectedPlatform) return;
+      selectedPlatform = true;
       if (protectedData === undefined) snapshot();
     },
     foreground: () => foreground,

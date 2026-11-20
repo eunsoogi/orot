@@ -4,6 +4,7 @@ import { applePrivateCloudComputeProvider } from '../apple';
 import type { ProviderSelectionOption } from './types';
 
 export const APPLE_PCC_MODEL_ID = 'apple-private-cloud-compute-default';
+export const APPLE_PCC_DISPLAY_NAME = 'Apple Intelligence';
 export { APPLE_PCC_PROVIDER_ID };
 
 /** PCC remains remote even though its platform transport protects request privacy. */
@@ -33,7 +34,7 @@ export async function loadPrivateCloudComputeOption(): Promise<ProviderSelection
   return {
     provider: applePrivateCloudComputeProvider,
     modelId: APPLE_PCC_MODEL_ID,
-    displayName: 'Apple Intelligence',
+    displayName: APPLE_PCC_DISPLAY_NAME,
     privacyBoundary: 'selected-context-remote',
     availability: message
       ? { status: 'unavailable', message }
