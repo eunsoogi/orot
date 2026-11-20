@@ -4,7 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { openSettingsCredentialNativeFixture } from './settingsCredentialNativeFixture';
 import { consentFixtureIdentity } from './settingsConsentNativeStore';
 import { createRealtimeSettingsPermission } from '../src/voiceConversation/createRealtimeSettingsPermission';
-import { nativeRealtimeVoice } from '../src/voiceConversation/nativeRealtimeVoice';
+import { nativeLiveVoice } from '../src/voiceConversation/nativeRealtimeVoice';
 
 type Fixture = Awaited<ReturnType<typeof openSettingsCredentialNativeFixture>>;
 
@@ -19,7 +19,7 @@ export function SettingsConsentBoundaryEntry() {
   const busy = useRef(false);
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState('preparing');
-  const voice = useRef<ReturnType<typeof nativeRealtimeVoice>>(null);
+  const voice = useRef<ReturnType<typeof nativeLiveVoice>>(null);
   useEffect(() => {
     let current = true;
     const prepare = async () => {
@@ -54,7 +54,7 @@ export function SettingsConsentBoundaryEntry() {
         if (current) setStatus('synthetic-cleanup-complete');
         return;
       }
-      voice.current = nativeRealtimeVoice();
+      voice.current = nativeLiveVoice();
       if (!voice.current)
         throw new Error('Synthetic native bridge unavailable');
       const result =
@@ -86,19 +86,22 @@ export function SettingsConsentBoundaryEntry() {
       else if (name === 'approve') result = await owner.approve();
       else if (name === 'remove') result = await owner.removeCredential();
       else if (name === 'open') {
-        lease.current = createRealtimeSettingsPermission(owner.authorization());
-        const allowed = await lease.current.authorize(
-          'gpt-realtime-2.1-mini',
-          () => {
-            stopping.current = voice.current!.stop('settings-consent-boundary');
-          },
+        lease.current = createRealtimeSettingsPermission(
+          owner.authorization(),
+          true,
         );
+        const allowed = await lease.current.authorize('gpt-live-1.1', () => {
+          stopping.current = voice.current!.stop('settings-consent-boundary');
+        });
         if (!allowed) throw new Error('Synthetic grant missing');
         await voice.current!.open(
           'settings-consent-boundary',
-          'gpt-realtime-2.1-mini',
+          'gpt-live-1.1',
           'synthetic-not-a-real-key',
-          'ko-KR',
+          '',
+          false,
+          { schema: 1, language: 'auto', voice: 'default' },
+          () => lease.current?.current() === true,
         );
         result =
           await NativeModules.VoiceRealtimeModule.settingsConsentSnapshot(

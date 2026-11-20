@@ -29,8 +29,9 @@ export function useModelConsentSave(
       provider: { readonly id: string };
     },
     search?: SettingsSearchChoices,
+    isCurrentDraft: () => boolean = () => true,
   ) => {
-    if (!mounted.current || pending.current)
+    if (!mounted.current || pending.current || !isCurrentDraft())
       throw new Error('Settings save unavailable');
     const controller = new AbortController();
     pending.current = controller;
@@ -50,9 +51,10 @@ export function useModelConsentSave(
         isCurrent: () =>
           mounted.current &&
           !controller.signal.aborted &&
-          pending.current === controller,
+          pending.current === controller &&
+          isCurrentDraft(),
       });
-      if (!mounted.current || controller.signal.aborted)
+      if (!mounted.current || controller.signal.aborted || !isCurrentDraft())
         throw new Error('Settings save cancelled');
     } finally {
       if (pending.current === controller) pending.current = null;

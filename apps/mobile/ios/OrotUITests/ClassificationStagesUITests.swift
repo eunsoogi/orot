@@ -39,6 +39,7 @@ extension AppointmentConsentUITests {
         ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
         guard ClassificationConsentUITestSupport.assertSettingsControls(app) else { return }
         tap(app, "provider-selection-confirm")
+        tap(app, "inference-disclosure-allow")
         XCTAssertTrue(node(app, "calendar-current-model").waitForAppearance())
         tap(app, "classification-close-settings")
         assertStageActions(app)
@@ -176,11 +177,20 @@ extension AppointmentConsentUITests {
 
 /// Uses the real disclosure's scoped ScrollView without requiring a long paragraph to fit in one viewport.
 extension ClassificationConsentUITestSupport {
+    static func assertExternalConsentControls(_ app: XCUIApplication) -> Bool {
+        let sheet = UITestConditions.element(app, "inference-disclosure-sheet")
+        let scroll = UITestConditions.element(app, "inference-disclosure-content")
+        let scope = UITestConditions.element(app, "inference-disclosure-scope")
+        guard sheet.waitForAppearance(), scroll.exists, scope.exists,
+              FormUITestConditions.readingEdgesReachable(scope, app: app, page: sheet, scroll: scroll)
+        else { XCTFail("Both shared disclosure text edges must be reachable"); return false }
+        return true
+    }
+
     static func assertSettingsControls(_ app: XCUIApplication) -> Bool {
         guard let (page, scroll) = settingsScroll(app) else { return false }
-        let disclosure = scroll.descendants(matching: .any).matching(identifier: "model-settings-transmission-disclosure")
-        guard disclosure.count == 1, FormUITestConditions.readingEdgesReachable(disclosure.firstMatch, app: app, page: page, scroll: scroll)
-        else { XCTFail("Both real disclosure text edges must be reachable"); return false }
+        guard !UITestConditions.element(app, "model-settings-transmission-disclosure").exists
+        else { XCTFail("Settings must not show inline external transmission disclosure"); return false }
         let actions = ["provider-selection-confirm", "provider-selection-cancel"].compactMap { identifier -> XCUIElement? in
             let matches = scroll.descendants(matching: .any).matching(identifier: identifier)
             guard matches.count == 1 else { return nil }

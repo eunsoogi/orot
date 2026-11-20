@@ -5,7 +5,11 @@ import {
 } from '../voiceSettings/voiceSettingsStore';
 import type { ConversationVoiceProps } from './conversationVoiceDependencies';
 import { LocalConversationVoiceEntry } from './LocalConversationVoiceEntry';
-import { RealtimeConversationVoiceEntry } from './RealtimeConversationVoiceEntry';
+import { LiveConversationVoiceEntry } from './LiveConversationVoiceEntry';
+import { liveModel } from '../voiceSettings/liveVoicePreferences';
+import { Alert } from 'react-native';
+import { t } from '../i18n';
+import { VoiceConversationControl } from './VoiceConversationControl';
 
 /** Model changes unmount the old runtime so local and remote calls never share an audio owner. */
 export function ConversationVoiceEntry(
@@ -37,13 +41,34 @@ export function ConversationVoiceEntry(
     };
   }, []);
   if (!settings) return null;
-  return settings.mode === 'openai-api' ? (
-    <RealtimeConversationVoiceEntry
-      key={`${props.sessionId}:${settings.model}`}
-      {...props}
-      model={settings.model}
-    />
-  ) : (
-    <LocalConversationVoiceEntry {...props} />
-  );
+  if (settings.mode === 'local')
+    return <LocalConversationVoiceEntry {...props} />;
+  if (settings.model !== liveModel)
+    return (
+      <VoiceConversationControl
+        phase="idle"
+        disabled={props.busy || props.photoPending}
+        startLabel={t('ragConversation.voice.start')}
+        stopLabel={t('ragConversation.voice.stop')}
+        finishLabel={t('ragConversation.voice.finish')}
+        recoverLabel={t('ragConversation.voice.retry')}
+        status=""
+        onStart={() => {
+          if (
+            props.busy ||
+            props.photoPending ||
+            props.isEntryCurrent?.() === false
+          )
+            return;
+          Alert.alert(
+            '음성 모델 변경 필요',
+            '음성 설정에서 GPT-Live-1.1을 선택해 주세요.',
+          );
+        }}
+        onStop={() => {}}
+        onFinish={() => {}}
+        onRecover={() => {}}
+      />
+    );
+  return <LiveConversationVoiceEntry key={props.sessionId} {...props} />;
 }

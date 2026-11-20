@@ -1,3 +1,8 @@
+import {
+  liveVoiceAudioPurpose,
+  liveVoiceResultPurpose,
+  voiceSettingsIdentity,
+} from './liveVoiceSettingsIdentity';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import { resolveSelectedAiProvider } from '../../aiFeatures/integration/provider';
 import { resolveCalendarModel } from '../../calendarModelSettings/resolveCalendarModel';
@@ -31,9 +36,31 @@ export async function resolveSettingsConsentOwner(
   const slot: SettingsConsentSlot =
     purpose === 'calendar_classification'
       ? 'calendar'
-      : purpose === 'realtime_audio' || purpose === 'realtime_result'
+      : purpose === 'realtime_audio' ||
+          purpose === 'realtime_result' ||
+          purpose === liveVoiceAudioPurpose ||
+          purpose === liveVoiceResultPurpose
         ? 'voice'
         : 'conversation';
+  return resolveSettingsConsentTarget(slot, domain, request, purpose);
+}
+
+/** Scoped read-only witness for current settings review, without any inference payload. */
+export async function resolveSettingsConsentTarget(
+  slot: SettingsConsentSlot,
+  domain: SettingsConsentDomain,
+  target: Pick<
+    OutboundProcessingRequest,
+    'providerId' | 'modelId' | 'recipient' | 'signal'
+  > & {
+    readonly selected?: {
+      readonly providerId: string;
+      readonly modelId: string;
+    };
+  },
+  purpose?: string,
+): Promise<SettingsConsentOwner | null> {
+  if (target.signal.aborted) return null;
   const selectionCurrent =
     slot === 'voice'
       ? voiceSelectionMutation.capture()
@@ -46,11 +73,11 @@ export async function resolveSettingsConsentOwner(
   if (slot === 'voice') {
     const value = await voiceSettingsStore.load();
     if (value.mode !== 'openai-api' || !value.hasApiKey) return null;
-    selected = {
-      providerId: 'openai-realtime',
-      modelId: value.model,
-      recipient: 'OpenAI Realtime API',
-    };
+    const identity = purpose
+      ? voiceSettingsIdentity(value.model, purpose)
+      : null;
+    if (!identity) return null;
+    selected = identity;
   } else {
     const value = await (slot === 'calendar'
       ? resolveCalendarModel()
@@ -66,6 +93,12 @@ export async function resolveSettingsConsentOwner(
       recipient: value.recipient,
     };
   }
+  if (
+    target.selected &&
+    (target.selected.providerId !== selected.providerId ||
+      target.selected.modelId !== selected.modelId)
+  )
+    return null;
   const credential = await settingsConsentCredential(selected.providerId);
   if (!credential || !selectionCurrent()) return null;
   const expected =
@@ -84,9 +117,9 @@ export async function resolveSettingsConsentOwner(
           }
         : selected;
   if (
-    request.providerId !== expected.providerId ||
-    request.modelId !== expected.modelId ||
-    request.recipient !== expected.recipient
+    target.providerId !== expected.providerId ||
+    target.modelId !== expected.modelId ||
+    target.recipient !== expected.recipient
   )
     return null;
   const owner = settingsConsentAuthority(slot);
@@ -95,7 +128,7 @@ export async function resolveSettingsConsentOwner(
     !state ||
     !credential.isCurrent() ||
     !selectionCurrent() ||
-    request.signal.aborted
+    target.signal.aborted
   )
     return null;
   const authorityCurrent = owner.witness(state.generation);
@@ -124,7 +157,7 @@ export async function resolveSettingsConsentOwner(
       };
     },
     isCurrent: () =>
-      !request.signal.aborted &&
+      !target.signal.aborted &&
       selectionCurrent() &&
       credential.isCurrent() &&
       authorityCurrent(),

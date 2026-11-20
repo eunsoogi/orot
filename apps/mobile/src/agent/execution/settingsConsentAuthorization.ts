@@ -106,6 +106,7 @@ export function createSettingsConsentAuthorization(input: {
               captured.slot,
               captured.domain,
               permission,
+              captured.identity.providerId,
             ),
           ) ||
           !current() ||

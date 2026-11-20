@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
+import { liveModel } from '../voiceSettings/liveVoicePreferences';
 import { VoiceCallIdentity } from './VoiceCallIdentity';
 import { VoiceConversationScreen } from './VoiceConversationScreen';
 import { VoiceConversationControl } from './VoiceConversationControl';
@@ -55,7 +56,9 @@ export function RealtimeVoiceSurface({
         onDismiss={onDismiss}
         phase={state.phase}
         status={status}
-        pipeline={t('realtimeDisplay.pipeline', { model: model })}
+        pipeline={
+          model === liveModel ? null : t('realtimeDisplay.pipeline', { model })
+        }
         transcript={transcripts.map(item => ({
           id: `${item.role}:${item.itemId}`,
           role: item.role,

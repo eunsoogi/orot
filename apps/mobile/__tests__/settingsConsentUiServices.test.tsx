@@ -8,8 +8,18 @@ import { voiceSettingsStore } from '../src/voiceSettings/voiceSettingsStore';
 import { calendarModelStore } from '../src/calendarModelSettings/calendarModelStore';
 import type { SettingsConsentSlot } from '../src/storage/settingsConsentStorage';
 
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
+
+jest.mock('../src/voiceSettings/voiceRuntimeCapability', () => ({
+  ...jest.requireActual('../src/voiceSettings/voiceRuntimeCapability'),
+  hasLiveVoiceRuntime: () => true,
+}));
+
 // The real screen and tab panels use synthetic services, not application singletons.
-test('native probe mounts real tabs with isolated services and no model invocation', async () => {
+test('conversation and calendar Save require shared disclosure before grants and never invoke a provider', async () => {
   const db = openSqliteTestDatabase(':memory:');
   const states = new Map<SettingsConsentSlot, ConsentAuthorityState>();
   const selections = new Map<SettingsConsentSlot, ProviderSelection>();
@@ -60,9 +70,24 @@ test('native probe mounts real tabs with isolated services and no model invocati
     );
     await fireEvent.press(view.getByTestId('provider-option-0'));
     expect(
-      view.getByTestId('model-settings-transmission-disclosure'),
-    ).toHaveTextContent(/^전송받는 곳: 선택한 ChatGPT 계정\s/);
+      view.queryByTestId('model-settings-transmission-disclosure'),
+    ).toBeNull();
+    expect(view.queryByTestId('inference-disclosure-sheet')).toBeNull();
     await fireEvent.press(view.getByTestId('provider-selection-confirm'));
+    expect(
+      await view.findByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent('선택한 ChatGPT 계정');
+    expect(states.get('conversation')).toBeUndefined();
+    expect(view.getByTestId('inference-disclosure-allow')).toHaveProp(
+      'accessibilityLabel',
+      '동의',
+    );
+    await fireEvent.press(view.getByTestId('inference-disclosure-cancel'));
+    expect(states.get('conversation')).toBeUndefined();
+    await fireEvent.press(view.getByTestId('provider-selection-confirm'));
+    await fireEvent.press(
+      await view.findByTestId('inference-disclosure-allow'),
+    );
     await waitFor(() =>
       expect(states.get('conversation')?.status).toBe('active'),
     );
@@ -79,31 +104,38 @@ test('native probe mounts real tabs with isolated services and no model invocati
     );
     await fireEvent.press(view.getByTestId('provider-option-1'));
     expect(
-      view.getByTestId('model-settings-transmission-disclosure'),
-    ).toHaveTextContent(/^전송받는 곳: OpenAI API\s/);
+      view.queryByTestId('model-settings-transmission-disclosure'),
+    ).toBeNull();
+    expect(view.queryByTestId('inference-disclosure-sheet')).toBeNull();
     await fireEvent.press(view.getByTestId('provider-selection-confirm'));
-    await waitFor(() => expect(states.get('calendar')?.status).toBe('active'));
-    await fireEvent.press(view.getByTestId('model-tab-voice'));
-    await waitFor(() =>
-      expect(view.getByTestId('voice-model-refresh')).toBeTruthy(),
-    );
-    await fireEvent.press(view.getByTestId('voice-model-refresh'));
-    await waitFor(() =>
-      expect(
-        view.getByTestId('voice-model-gpt-realtime-2.1-mini'),
-      ).toBeTruthy(),
+    expect(
+      await view.findByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent('OpenAI API');
+    expect(states.get('calendar')).toBeUndefined();
+    expect(view.getByTestId('inference-disclosure-allow')).toHaveProp(
+      'accessibilityLabel',
+      '동의',
     );
     await fireEvent.press(
-      view.getByTestId('voice-model-gpt-realtime-2.1-mini'),
+      await view.findByTestId('inference-disclosure-allow'),
     );
-    expect(
-      view.getByTestId('model-settings-transmission-disclosure'),
-    ).toHaveTextContent(/^전송받는 곳: OpenAI Realtime API\s/);
+    await waitFor(() => expect(states.get('calendar')?.status).toBe('active'));
+    await fireEvent.press(view.getByTestId('model-tab-voice'));
+    await fireEvent.press(await view.findByTestId('voice-model-refresh'));
+    const voice = await view.findByTestId('voice-model-gpt-live-1.1');
+    await fireEvent.press(voice);
+    expect(view.queryByTestId('inference-disclosure-sheet')).toBeNull();
     await fireEvent.press(view.getByTestId('voice-settings-save'));
-    await waitFor(() => expect(states.get('voice')?.status).toBe('active'));
-    expect((await input.fixture.inspect()).observations.voice).toBe(
-      'authorized',
+    expect(
+      await view.findByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent('OpenAI Live API');
+    expect(states.get('voice')).toBeUndefined();
+    expect(view.getByTestId('inference-disclosure-allow')).toHaveProp(
+      'accessibilityLabel',
+      '동의',
     );
+    await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
+    await waitFor(() => expect(states.get('voice')?.status).toBe('active'));
     expect((await input.fixture.inspect()).observations).toEqual({
       conversation: 'authorized',
       calendar: 'authorized',

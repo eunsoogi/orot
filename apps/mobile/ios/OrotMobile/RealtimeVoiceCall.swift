@@ -28,7 +28,12 @@ final class RealtimeVoiceCall {
     var routeSignature = ""
     var ready = false
     var paused = false
-    var awaitingClear = false
+    var liveSocketEpoch: UUID?
+    var liveStartID: String?
+    var liveUnmuteID: String?
+    var liveExpiresAt: Date?
+    var liveSessionID: String?
+    var liveExpiryTimer: Timer?
     var captureEpoch = UUID()
     var lifecycleEpoch = UUID()
     var awaitingInputCommit = false
@@ -44,11 +49,9 @@ final class RealtimeVoiceCall {
         self.audio = audio; self.socket = socket; self.ownership = ownership
         self.permission = permission; self.foreground = foreground; self.systemCall = systemCall
         self.emit = emit
-        socket.failed = { [weak self] in self?.fail() }
-        socket.received = { [weak self] event in self?.receive(event) }
         audio.drained = { [weak self] in
             guard let self else { return }
-            guard response == nil, !paused else { return }
+            guard ready, !paused else { return }
             state("listening")
         }
         observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
@@ -68,7 +71,7 @@ final class RealtimeVoiceCall {
     }
 
     func beginAudio() {
-        guard !ready, !paused, let current = id, let token else { return }
+        guard !ready, !paused, liveIsCurrent(), let current = id, let token else { return }
         if let systemCall, !systemCallActive {
             guard !systemCallPending, foreground() else { return }
             systemCallPending = true
@@ -89,7 +92,14 @@ final class RealtimeVoiceCall {
                     fail()
                 }, muted: { [weak self] in
                     guard let self, id == current, lifecycleEpoch == lifecycle else { return }
-                    do { try pause(current) } catch { fail() }
+                    // Only a successfully released, previously active call is resumable from JS.
+                    guard ready, liveIsCurrent() else { fail(); return }
+                    do {
+                        try pause(current)
+                        if id == current, paused, self.token == nil {
+                            emit("VoiceRealtimePaused", ["callId": current])
+                        }
+                    } catch { fail() }
                 })
             } catch { fail() }
             return
@@ -118,8 +128,8 @@ final class RealtimeVoiceCall {
                 }
                 DispatchQueue.main.async {
                     defer { inputBudget.release(data.count) }
-                    guard self.id == current, self.captureEpoch == epoch, self.ready else { return }
-                    self.socket.send(["type": "input_audio_buffer.append", "audio": data.base64EncodedString()])
+                    guard self.id == current, self.captureEpoch == epoch, self.ready, self.liveIsCurrent() else { return }
+                    self.socket.send(["type": "session.input_audio.append", "audio": data.base64EncodedString()])
                 }
             }, failure: { [weak self] in
                 DispatchQueue.main.async {
@@ -134,15 +144,26 @@ final class RealtimeVoiceCall {
         } catch { fail() }
     }
 
-    func stop(_ identifier: String) throws {
+    func stop(_ identifier: String, graceful: Bool = false) throws {
         guard id == identifier else { return }
-        ready = false; paused = false; awaitingClear = false; captureEpoch = UUID(); lifecycleEpoch = UUID(); pending = nil; timer?.invalidate(); timer = nil
+        let finalSession = graceful && (ready || paused) && liveIsCurrent() ? liveSessionID : nil
+        liveSessionID = nil
+        ready = false; paused = false; liveSocketEpoch = nil; liveStartID = nil; liveUnmuteID = nil; liveExpiresAt = nil;
+        liveExpiryTimer?.invalidate(); liveExpiryTimer = nil; captureEpoch = UUID(); lifecycleEpoch = UUID(); pending = nil; timer?.invalidate(); timer = nil
         cancelTools(); tools.enabled = false
-        socket.close(); audio.stop(); endSystemCall()
-        let callback = opening; opening = nil; callback?(.failure(Failure.stopped))
-        if let token {
-            try ownership.release(token); self.token = nil
+        if finalSession == nil { socket.close() }
+        audio.stop(); endSystemCall()
+        let callback = opening; opening = nil
+        // Let the bridge observe that this owner is cleared before rejecting its open.
+        // If release fails, the retained owner remains available for an explicit stop retry.
+        defer { callback?(.failure(Failure.stopped)) }
+        do {
+            if let token { try ownership.release(token); self.token = nil }
+        } catch {
+            if finalSession != nil { socket.close() }
+            throw error
         }
+        if let finalSession { socket.finishLive(sessionID: finalSession) }
         id = nil; item = nil; response = nil; ignoredResponses.removeAll(); awaitingInputCommit = false
     }
 
@@ -170,7 +191,7 @@ final class RealtimeVoiceCall {
     }
 
     func fail() {
-        guard let id else { return }
+        guard let id else { socket.close(); return }
         emit("VoiceRealtimeInterrupted", ["callId": id])
         try? stop(id)
     }
@@ -178,6 +199,7 @@ final class RealtimeVoiceCall {
     deinit {
         observers.forEach(NotificationCenter.default.removeObserver)
         timer?.invalidate()
+        liveExpiryTimer?.invalidate()
         let audio = audio, socket = socket, owned = token, ownership = ownership, systemCall = systemCall, systemCallOwner = systemCallOwner
         let tool = tools.invalidate(), callID = id, emit = emit
         DispatchQueue.main.async {

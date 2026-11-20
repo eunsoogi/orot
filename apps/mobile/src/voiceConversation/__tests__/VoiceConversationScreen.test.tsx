@@ -4,6 +4,8 @@ jest.mock(
 );
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { VoiceConversationScreen } from '../VoiceConversationScreen';
+import { RealtimeVoiceSurface } from '../RealtimeVoiceSurface';
+import { t } from '../../i18n';
 
 const callbacks = () => ({
   onEnd: jest.fn(),
@@ -36,6 +38,39 @@ test('realtime shows its actual model and does not offer manual finish', async (
   expect(actions.onEnd).toHaveBeenCalledTimes(1);
 });
 
+test('Live call omits the pipeline row without replacing it with Apple copy', async () => {
+  const action = jest.fn();
+  await render(
+    <RealtimeVoiceSurface
+      visible
+      voiceVisible
+      suspended={false}
+      handoffBusy={false}
+      state={{ phase: 'authorizing', identity: null }}
+      status="연결 중"
+      model="gpt-live-1.1"
+      transcripts={[]}
+      toolConfirmation={null}
+      disabled={false}
+      statusExternallyRendered={false}
+      start={action}
+      stop={action}
+      mute={action}
+      resume={action}
+      returnToCall={action}
+      onDismiss={action}
+    />,
+  );
+  expect(screen.getByText('실시간 음성 대화')).toBeTruthy();
+  expect(screen.getByText('연결 중')).toBeTruthy();
+  expect(screen.queryByText(/API 음성 처리/)).toBeNull();
+  expect(
+    screen.queryByText(t('ragConversation.voice.localPipeline')),
+  ).toBeNull();
+  expect(screen.getByTestId('voice-call-end')).toBeTruthy();
+  expect(action).not.toHaveBeenCalled();
+});
+
 test('local mode stays distinct and stopped state offers resume without listening', async () => {
   const actions = callbacks();
   const view = await render(
@@ -47,6 +82,9 @@ test('local mode stays distinct and stopped state offers resume without listenin
     />,
   );
   expect(screen.getByText('기기 음성 대화')).toBeTruthy();
+  expect(
+    screen.getByText(t('ragConversation.voice.localPipeline')),
+  ).toBeTruthy();
   await fireEvent.press(screen.getByTestId('voice-call-finish'));
   expect(actions.onFinish).toHaveBeenCalledTimes(1);
   await view.rerender(

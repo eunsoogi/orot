@@ -25,8 +25,12 @@ jest.mock('../voiceSettingsStore', () => ({
     subscribe: jest.fn(() => () => {}),
   },
 }));
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
 jest.mock('../voiceRuntimeCapability', () => ({
-  hasRealtimeVoiceRuntime: () => false,
+  hasLiveVoiceRuntime: () => true,
 }));
 function Fixture() {
   const { host, actions } = useNavigationPrimaryActionHost('models');
@@ -63,7 +67,7 @@ beforeEach(() => {
     .mockResolvedValue({ connected: true, revision: 3 });
   jest
     .mocked(voiceSettingsStore.discoverModels)
-    .mockResolvedValue({ revision: 3, ids: ['gpt-realtime-2.1-mini'] });
+    .mockResolvedValue({ revision: 3, ids: ['gpt-live-1.1'] });
   jest.mocked(voiceSettingsStore.save).mockResolvedValue();
 });
 it('shares tab and section presentation and routes voice confirmation only while visible', async () => {
@@ -89,22 +93,23 @@ it('shares tab and section presentation and routes voice confirmation only while
   ).toEqual(StyleSheet.flatten(providerSettingsStyles.option));
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await waitFor(() =>
-    expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy(),
+    expect(view.getByTestId('voice-model-gpt-live-1.1')).toBeTruthy(),
   );
-  await fireEvent.press(view.getByTestId('voice-model-gpt-realtime-2.1-mini'));
+  await fireEvent.press(view.getByTestId('voice-model-gpt-live-1.1'));
   await fireEvent.press(view.getByTestId('model-tab-language'));
   expect(view.queryByTestId('dock-confirm-voice-model')).toBeNull();
   expect(voiceSettingsStore.save).not.toHaveBeenCalled();
   await fireEvent.press(view.getByTestId('model-tab-voice'));
   expect(
-    view.getByTestId('voice-model-gpt-realtime-2.1-mini').props
-      .accessibilityState.selected,
+    view.getByTestId('voice-model-gpt-live-1.1').props.accessibilityState
+      .selected,
   ).toBe(true);
   await fireEvent.press(view.getByTestId('dock-confirm-voice-model'));
+  await fireEvent.press(await view.findByTestId('inference-disclosure-allow'));
   await waitFor(() =>
     expect(voiceSettingsStore.save).toHaveBeenCalledWith({
       mode: 'openai-api',
-      model: 'gpt-realtime-2.1-mini',
+      model: 'gpt-live-1.1',
       expectedAccountRevision: 3,
     }),
   );
@@ -125,10 +130,10 @@ it('retains a catalog completion across tabs without registering a hidden action
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await fireEvent.press(view.getByTestId('model-tab-language'));
   await act(async () => {
-    resolve({ revision: 3, ids: ['gpt-realtime-2.1-mini'] });
+    resolve({ revision: 3, ids: ['gpt-live-1.1'] });
   });
   expect(view.queryByTestId('dock-confirm-voice-model')).toBeNull();
   await fireEvent.press(view.getByTestId('model-tab-voice'));
-  expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeEnabled();
+  expect(view.getByTestId('voice-model-gpt-live-1.1')).toBeEnabled();
   expect(voiceSettingsStore.discoverModels).toHaveBeenCalledTimes(1);
 });

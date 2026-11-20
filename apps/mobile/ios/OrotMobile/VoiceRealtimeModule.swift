@@ -31,20 +31,25 @@ final class VoiceRealtimeModule: RCTEventEmitter {
     }
 
     override func supportedEvents() -> [String]! {
-        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall", "VoiceRealtimeToolCall", "VoiceRealtimeToolCancelled"]
+        ["VoiceRealtimeState", "VoiceRealtimeTranscript", "VoiceRealtimeInterrupted", "VoiceRealtimeSystemCall", "VoiceRealtimePaused", "VoiceRealtimeToolCall", "VoiceRealtimeToolCancelled"]
     }
 
-    @objc(openRealtimeCall:model:apiKey:language:enableTools:resolver:rejecter:)
-    func openRealtimeCall(_ identifier: String, model: String, apiKey: String, language: String, enableTools: Bool,
+    @objc(openLiveCall:model:apiKey:options:resolver:rejecter:)
+    func openLiveCall(_ identifier: String, model: String, apiKey: String, options: NSDictionary,
                           resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock)
     {
         DispatchQueue.main.async {
             guard self.active == nil else { reject("VOICE_BUSY", "Voice is already active.", nil); return }
+            guard options.count == 2, let language = options["language"] as? String, let voice = options["voice"] as? String else {
+                reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil); return
+            }
             self.active = identifier
-            self.call.open(identifier, model: model, key: apiKey, language: language, enableTools: enableTools) { result in
+            self.call.open(identifier, model: model, key: apiKey, language: language, voice: voice) { result in
                 switch result {
                 case .success: resolve(nil)
-                case .failure: reject("VOICE_REALTIME_FAILED", "Realtime voice is unavailable.", nil)
+                case .failure:
+                    if self.call.id == nil, self.active == identifier { self.active = nil }
+                    reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil)
                 }
             }
         }
@@ -75,9 +80,18 @@ final class VoiceRealtimeModule: RCTEventEmitter {
 
     @objc(stopRealtimeCall:resolver:rejecter:)
     func stopRealtimeCall(_ identifier: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        stop(identifier, graceful: false, resolve: resolve, reject: reject)
+    }
+
+    @objc(closeLiveCall:resolver:rejecter:)
+    func closeLiveCall(_ identifier: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        stop(identifier, graceful: true, resolve: resolve, reject: reject)
+    }
+
+    private func stop(_ identifier: String, graceful: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         DispatchQueue.main.async {
             do {
-                try self.call.stop(identifier)
+                try self.call.stop(identifier, graceful: graceful)
                 if self.active == identifier {
                     self.active = nil
                 }
@@ -100,7 +114,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
             self.call.resume(identifier) { result in
                 switch result {
                 case .success: resolve(nil)
-                case .failure: reject("VOICE_REALTIME_FAILED", "Realtime voice is unavailable.", nil)
+                case .failure: reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil)
                 }
             }
         }

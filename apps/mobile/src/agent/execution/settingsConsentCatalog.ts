@@ -1,3 +1,9 @@
+import {
+  isLiveVoiceAudioScope,
+  liveVoiceAudioPolicy,
+  liveVoiceAudioPurpose,
+  liveVoiceProviderId,
+} from './liveVoiceSettingsIdentity';
 import type { SettingsConsentPermission } from './settingsConsentGrant';
 
 /** Changing a declared boundary requires explicit settings consent again. This catalog
@@ -112,6 +118,16 @@ const voice = [
   ),
 ];
 
+// Live media settings do not grant result relay or protected context.
+const liveVoice = [
+  permission(
+    liveVoiceAudioPurpose,
+    liveVoiceAudioPolicy,
+    ['live_voice_audio', 'voice_conversation'],
+    [],
+  ),
+];
+
 /** Public search is deliberately separate: approving a text model does not grant
  * either the selected search recipient or Europe PMC access. */
 export const publicSearchSettingsPermissions = {
@@ -131,6 +147,7 @@ export const publicSearchSettingsPermissions = {
 
 export function settingsPermissionsForFeature(
   feature: SettingsConsentFeature,
+  providerId?: string,
 ): readonly SettingsConsentPermission[] {
   const values =
     feature === 'conversation'
@@ -138,7 +155,9 @@ export function settingsPermissionsForFeature(
       : feature === 'calendar'
         ? calendar
         : feature === 'voice'
-          ? voice
+          ? providerId === liveVoiceProviderId
+            ? liveVoice
+            : voice
           : null;
   if (!values) throw new Error('Unknown settings consent feature');
   return values.map(value => ({
@@ -155,13 +174,16 @@ export function isCatalogPermission(value: SettingsConsentPermission): boolean {
     ...conversation,
     ...calendar,
     ...voice,
+    ...liveVoice,
     ...Object.values(publicSearchSettingsPermissions),
   ].some(
     known =>
       known.purpose === value.purpose &&
       known.policyVersion === value.policyVersion &&
       value.dataCategories.length > 0 &&
-      value.sourceKinds.length > 0 &&
+      (isLiveVoiceAudioScope(value.purpose, value.policyVersion)
+        ? value.sourceKinds.length === 0
+        : value.sourceKinds.length > 0) &&
       value.dataCategories.every(category =>
         known.dataCategories.includes(category),
       ) &&
@@ -174,10 +196,11 @@ export function isCatalogDomainPermission(
   feature: SettingsConsentFeature,
   domain: 'model' | 'public-web' | 'medical-search',
   value: SettingsConsentPermission,
+  providerId?: string,
 ): boolean {
   const candidates =
     domain === 'model'
-      ? settingsPermissionsForFeature(feature)
+      ? settingsPermissionsForFeature(feature, providerId)
       : feature !== 'conversation'
         ? []
         : domain === 'public-web'

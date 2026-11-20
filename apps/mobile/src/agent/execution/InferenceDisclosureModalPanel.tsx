@@ -1,3 +1,4 @@
+import type { SettingsDisclosureSummary } from './settingsDisclosureSummary';
 import { inferenceConsentCopy } from './inferenceConsentCopy';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -18,10 +19,11 @@ import {
 } from './InferenceDisclosureStyles';
 
 interface InferenceDisclosureModalPanelProps {
-  readonly request: OutboundProcessingRequest;
+  readonly request?: OutboundProcessingRequest;
   readonly onDecision: (approved: boolean) => void;
   readonly canRemember: boolean;
   readonly calendar: boolean;
+  readonly summary?: SettingsDisclosureSummary;
 }
 
 /** Measures and lays out disclosure content within the native Modal window. */
@@ -30,9 +32,10 @@ export default function InferenceDisclosureModalPanel({
   onDecision,
   canRemember,
   calendar,
+  summary,
 }: InferenceDisclosureModalPanelProps) {
   const realtimeResult =
-    request.providerId === 'openai-realtime' && !request.consentScope;
+    request?.providerId === 'openai-realtime' && !request.consentScope;
   const [expanded, setExpanded] = useState(realtimeResult);
   // Exact Realtime results are one-shot disclosures, never remembered permissions.
   const remember = canRemember && !realtimeResult;
@@ -52,13 +55,17 @@ export default function InferenceDisclosureModalPanel({
       ),
     [request, canRemember, realtimeResult],
   );
-  const complete = request.payload.messages.every(
-    message => previewMessage(message).complete,
-  );
-  const chatGPT = request.providerId.startsWith('chatgpt-plan:');
-  const model =
-    request.modelId === 'gpt-6-luna' ? 'GPT-6-Luna' : request.modelId;
-  const copy = inferenceConsentCopy(request);
+  const complete =
+    summary !== undefined ||
+    !!request?.payload.messages.every(
+      message => previewMessage(message).complete,
+    );
+  const { providerId, modelId, recipient } = summary ?? request!;
+  const chatGPT = providerId.startsWith('chatgpt-plan:');
+  const model = modelId === 'gpt-6-luna' ? 'GPT-6-Luna' : modelId;
+  const copy = summary
+    ? { ...summary, publicSearch: false }
+    : inferenceConsentCopy(request!);
 
   return (
     <View
@@ -117,12 +124,12 @@ export default function InferenceDisclosureModalPanel({
                 style={styles.value}
                 testID="inference-disclosure-recipient"
               >
-                {chatGPT
+                {chatGPT && !summary
                   ? t('medicalAppointments.inferenceDisclosure.account')
-                  : request.recipient}
+                  : recipient}
               </Text>
-              {!chatGPT && !copy.publicSearch ? (
-                <Text style={styles.label}>{request.providerId}</Text>
+              {!summary && !chatGPT && !copy.publicSearch ? (
+                <Text style={styles.label}>{providerId}</Text>
               ) : null}
             </View>
             {!copy.publicSearch ? (
@@ -147,42 +154,52 @@ export default function InferenceDisclosureModalPanel({
             <Text style={styles.value} testID="inference-disclosure-scope">
               {copy.information}
             </Text>
-            <Text style={styles.noticeBody}>
-              {calendar && !realtimeResult
-                ? t('medicalAppointments.inferenceDisclosure.calendarPurpose')
-                : t('medicalAppointments.inferenceDisclosure.reviewHint')}
-            </Text>
+            {!summary ? (
+              <Text style={styles.noticeBody}>
+                {calendar && !realtimeResult
+                  ? t('medicalAppointments.inferenceDisclosure.calendarPurpose')
+                  : t('medicalAppointments.inferenceDisclosure.reviewHint')}
+              </Text>
+            ) : null}
           </View>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded }}
-          onPress={() => setExpanded(value => !value)}
-          style={styles.expand}
-          testID="inference-disclosure-expand"
-        >
-          <Text style={styles.expandText}>
-            {t('medicalAppointments.inferenceDisclosure.expand')}
-          </Text>
-          <AppSymbol
-            name={expanded ? 'chevron.down' : 'chevron.right'}
-            size={16}
-            color={appColors.secondary}
-          />
-        </Pressable>
-        {expanded ? <InferenceDisclosurePreview request={request} /> : null}
+        {!summary ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded }}
+            onPress={() => setExpanded(value => !value)}
+            style={styles.expand}
+            testID="inference-disclosure-expand"
+          >
+            <Text style={styles.expandText}>
+              {t('medicalAppointments.inferenceDisclosure.expand')}
+            </Text>
+            <AppSymbol
+              name={expanded ? 'chevron.down' : 'chevron.right'}
+              size={16}
+              color={appColors.secondary}
+            />
+          </Pressable>
+        ) : null}
+        {request && expanded ? (
+          <InferenceDisclosurePreview request={request} />
+        ) : null}
         <View style={styles.notice}>
-          <Text style={styles.noticeTitle}>
-            {remember
-              ? t('medicalAppointments.inferenceDisclosure.remember')
-              : t('medicalAppointments.inferenceDisclosure.oneTime')}
-          </Text>
+          {!summary ? (
+            <Text style={styles.noticeTitle}>
+              {remember
+                ? t('medicalAppointments.inferenceDisclosure.remember')
+                : t('medicalAppointments.inferenceDisclosure.oneTime')}
+            </Text>
+          ) : null}
           <Text style={styles.noticeBody}>
-            {remember
-              ? t('medicalAppointments.inferenceDisclosure.changes')
-              : t('medicalAppointments.inferenceDisclosure.unavailable')}
+            {summary
+              ? summary.notice
+              : remember
+                ? t('medicalAppointments.inferenceDisclosure.changes')
+                : t('medicalAppointments.inferenceDisclosure.unavailable')}
           </Text>
-          {!realtimeResult ? (
+          {!summary && !realtimeResult ? (
             <Text style={styles.footerNote}>
               {t('medicalAppointments.inferenceDisclosure.settingsHint')}
             </Text>
@@ -205,7 +222,11 @@ export default function InferenceDisclosureModalPanel({
             >
               <AppButton
                 disabled={!complete}
-                title={t('medicalAppointments.inferenceDisclosure.allow')}
+                title={t(
+                  summary
+                    ? 'medicalAppointments.inferenceDisclosure.settingsAgree'
+                    : 'medicalAppointments.inferenceDisclosure.allow',
+                )}
                 onPress={() => onDecision(true)}
                 testID="inference-disclosure-allow"
               />
