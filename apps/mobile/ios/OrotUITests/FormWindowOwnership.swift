@@ -76,12 +76,27 @@ extension AppointmentConsentUITests {
         if phase == 0 {
             actions.append("medical-appointment-select-provider")
         }
-        let required = ["medical-appointment-fullscreen", tokens[phase]] + (phase == 1 ? [] : ["classification-stage-footer", "classification-text-viewport"]) + actions + (phase == 2 ? ["classification-page-text"] : [])
+        let viewportID = "classification-text-viewport"
+        let required = ["medical-appointment-fullscreen", tokens[phase]]
+            + (phase == 1 ? [] : ["classification-stage-footer"]) + actions
+            + (phase == 2 ? [viewportID, "classification-page-text"] : [])
+        /// Confirmation measurement does not require a text viewport AX projection; result pagination does.
+        /// If UIKit does project it, never accept a duplicate or an element outside the scoped owner.
+        func confirmationViewportProjected(in window: XCUIElement) throws -> Bool {
+            guard phase == 0 else { return false }
+            let total = app.descendants(matching: .any).matching(identifier: viewportID).count
+            let owned = window.descendants(matching: .any).matching(identifier: viewportID).count
+            guard FormScrollGeometry.acceptsOptionalStageMarker(global: total, owned: owned) else {
+                throw InvalidConfirmationTextProjection.ambiguous
+            }
+            return total == 1
+        }
         let markerID = "classification-layout-receipt"
         let counterID = "calendar-classification-synthetic-provider-calls"
         let scopedIDs = required + [markerID, counterID]
         let before = try FormWindowOwnership.resolveStage(app, observed: anchor?.frame ?? settled, required: scopedIDs)
         let beforeFrame = before.frame
+        _ = try confirmationViewportProjected(in: before)
         func scoped(_ window: XCUIElement, _ id: String) -> XCUIElement {
             window.descendants(matching: .any).matching(identifier: id).firstMatch
         }
@@ -97,6 +112,7 @@ extension AppointmentConsentUITests {
         XCTAssertEqual(UITestConditions.wait(for: [fresh]), .completed)
         // The invisible receipt establishes ownership only, not an interactive hit rectangle.
         let owner = try FormWindowOwnership.resolveStage(app, observed: beforeFrame, required: scopedIDs)
+        let sawConfirmationViewport = try confirmationViewportProjected(in: owner)
         let value = UITestConditions.text(scoped(owner, markerID))
         XCTAssertNotEqual(value, previous)
         let data = Data(value.utf8)
@@ -137,6 +153,9 @@ extension AppointmentConsentUITests {
         }
         XCTAssertTrue(FormScrollGeometry.stableStageFrame(owner.frame, frame))
         var receipt = report
+        if phase == 0 {
+            receipt["confirmationTextViewportProjected"] = sawConfirmationViewport
+        }
         if let measuredProgress {
             let matches = owner.descendants(matching: .any).matching(measuredProgress)
             XCTAssertEqual(app.descendants(matching: .any).matching(measuredProgress).count, 1)
@@ -147,7 +166,7 @@ extension AppointmentConsentUITests {
         }
         var frames = ["window": ViewportObservation.rect(owner.frame)]
         var stageFrames: [String: CGRect] = [:]
-        for id in required {
+        for id in required + (sawConfirmationViewport ? [viewportID] : []) {
             let target = owner.descendants(matching: .any).matching(identifier: id).firstMatch
             let targetFrame = target.frame
             XCTAssertTrue(target.exists && FormScrollGeometry.valid(targetFrame) && owner.frame.insetBy(dx: -1, dy: -1).contains(targetFrame))
@@ -182,5 +201,9 @@ extension AppointmentConsentUITests {
             XCTAssertEqual(category, UIContentSizeCategory.accessibilityExtraExtraExtraLarge.rawValue)
         }
         return current
+    }
+
+    private enum InvalidConfirmationTextProjection: Error {
+        case ambiguous
     }
 }

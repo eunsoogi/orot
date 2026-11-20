@@ -42,6 +42,11 @@ final class FormScrollGeometryUITests: XCTestCase {
     private func verifyClassificationStageOwner() {
         let wide = CGRect(x: 0, y: 0, width: 678, height: 466)
         let frames = [wide, wide]
+        XCTAssertTrue(FormScrollGeometry.acceptsOptionalStageMarker(global: 0, owned: 0))
+        XCTAssertTrue(FormScrollGeometry.acceptsOptionalStageMarker(global: 1, owned: 1))
+        XCTAssertFalse(FormScrollGeometry.acceptsOptionalStageMarker(global: 1, owned: 0))
+        XCTAssertFalse(FormScrollGeometry.acceptsOptionalStageMarker(global: 0, owned: 1))
+        XCTAssertFalse(FormScrollGeometry.acceptsOptionalStageMarker(global: 2, owned: 2))
         XCTAssertEqual(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: nil, counts: [[1, 0], [1, 0], [1, 0]]), 0)
         XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: nil, counts: [[1, 0], [1, 0], [0, 1]]))
         XCTAssertNil(FormScrollGeometry.stageOwnerIndex(frames: frames, observed: nil, counts: [[1, 0], [1, 1], [1, 0]]))

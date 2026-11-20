@@ -64,6 +64,11 @@ struct FormScrollGeometry {
         return owner
     }
 
+    /// A projection not required by the stage is either absent, or unique and held by the same owner.
+    static func acceptsOptionalStageMarker(global: Int, owned: Int) -> Bool {
+        (0 ... 1).contains(global) && global == owned
+    }
+
     static func stableStageFrame(_ left: CGRect, _ right: CGRect) -> Bool {
         guard valid(left), valid(right) else { return false }
         return abs(left.minX - right.minX) <= 1 && abs(left.minY - right.minY) <= 1

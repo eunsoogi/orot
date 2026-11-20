@@ -52,6 +52,10 @@ test('existing staged journey samples actual geometry without replacing its orac
   const read = owner.indexOf('UITestConditions.text(scoped(owner, markerID))');
   assert.ok(firstOwner > 0 && firstOwner < tap && tap < responseOwner && responseOwner < read);
   assert.match(owner, /stableStageFrame\(owner.frame, frame\)/);
+  assert.match(owner, /phase == 2 \? \[viewportID, "classification-page-text"\]/);
+  assert.match(owner, /guard phase == 0 else \{ return false \}/);
+  assert.match(owner, /acceptsOptionalStageMarker\(global: total, owned: owned\)/);
+  assert.match(owner, /receipt\["confirmationTextViewportProjected"\] = sawConfirmationViewport/);
   assert.match(owner, /actions.append\("medical-appointment-select-provider"\)/);
   assert.match(owner, /XCTAssertEqual\(current.windowID, anchor.windowID\)/);
   assert.match(owner, /XCTAssertEqual\(current.sceneID, anchor.sceneID\)/);
