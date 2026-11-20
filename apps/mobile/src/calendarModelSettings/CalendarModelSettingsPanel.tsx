@@ -1,6 +1,6 @@
 import type { CalendarModelSettingsPanelProps } from './CalendarModelSettingsPanel.types';
 import { refreshCalendarModels } from './refreshCalendarModels';
-import { useModelConsentSave } from '../agent/execution/useModelConsentSave';
+import { useCalendarModelConfirmation } from './useCalendarModelConfirmation';
 import { useEffect, useRef, useState } from 'react';
 import { useCalendarModelActions } from './useCalendarModelActions';
 import { View } from 'react-native';
@@ -28,7 +28,6 @@ export function CalendarModelSettingsPanel({
 }: CalendarModelSettingsPanelProps) {
   const services = useModelSettingsServices();
   const { calendar: calendarModelStore, voice: voiceSettingsStore } = services;
-  const saveConsent = useModelConsentSave('calendar', calendarModelStore);
   const [connected, setConnected] = useState(false);
   const [saved, setSaved] = useState<ProviderSelection | null>(null);
   const [pending, setPending] = useState<ProviderSelectionOption | null>(null);
@@ -134,37 +133,20 @@ export function CalendarModelSettingsPanel({
       setMessage,
     });
   }
-  async function confirm() {
-    if (!pending || !current || resolution?.ok !== true || saving || loadError)
-      return;
-    const owner = generation.current;
-    setSaving(true);
-    try {
-      if (current.provider.id === 'openai-api-decisions') {
-        const account = await voiceSettingsStore.accountStatus();
-        if (
-          owner !== generation.current ||
-          !account.connected ||
-          account.revision !== accountRevision.current
-        )
-          throw new Error('Account unavailable');
-      }
-      const selection = {
-        providerId: current.provider.id,
-        modelId: current.modelId,
-      };
-      await saveConsent(current);
-      if (owner !== generation.current) return;
-      setSaved(selection);
-      setPending(null);
-      setMessage('');
-    } catch {
-      if (owner === generation.current)
-        setMessage(t('modelSettings.accountReadFailed'));
-    } finally {
-      if (owner === generation.current) setSaving(false);
-    }
-  }
+  const { confirm, disclosureSheet } = useCalendarModelConfirmation({
+    services,
+    pending,
+    current,
+    resolution,
+    generation,
+    accountRevision,
+    saving,
+    loadError,
+    setSaving,
+    setSaved,
+    setPending,
+    setMessage,
+  });
   const hasDock = useCalendarModelActions(
     pending !== null,
     saving,
@@ -221,10 +203,11 @@ export function CalendarModelSettingsPanel({
           ))}
         </View>
       </View>
+      {disclosureSheet}
       {message ? <Text accessibilityRole="alert">{message}</Text> : null}
       {pending ? (
         <ProviderSelectionConfirmation
-          consentSlot="calendar"
+          inlineConsent={false}
           hasActionDock={hasDock}
           option={current ?? pending}
           blockedMessage={

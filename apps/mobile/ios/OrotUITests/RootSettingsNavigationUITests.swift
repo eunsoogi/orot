@@ -201,12 +201,12 @@ extension RootNavigationUITests {
         XCTAssertTrue(option.isSelected, "A pending provider choice must survive native reflow")
         _ = try verifyAdaptivePanels(app, prefix: "settings-provider-panels", navigationID: "navigation-back")
         tap(app, "provider-selection-confirm")
+        tap(app, "inference-disclosure-allow")
         NavigationUITestConditions.route(app, markers: ["settings-title"])
         XCTAssertTrue(app.staticTexts["Synthetic settings model (ChatGPT plan)"].exists)
         XCTAssertTrue(try NavigationUITestConditions.navigationAction(app, "navigation-tab-settings").control.isSelected)
     }
 
-    /// Compares rendered Settings panels with each other and the active native navigation surface.
     @MainActor
     func verifySettingsPanels(_ app: XCUIApplication, expectsStacked _: Bool = false) throws {
         let stacked = try verifyAdaptivePanels(app, prefix: "settings-layout", navigationID: "navigation-tab-settings")

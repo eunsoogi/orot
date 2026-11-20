@@ -3,6 +3,7 @@ import type {
   NativeRealtimeVoice,
   RealtimeTranscript,
 } from './nativeRealtimeVoice';
+import type { Preferences } from '../voiceSettings/liveVoicePreferences';
 import { initialVoiceState, type VoiceState } from './voiceTurn';
 
 let nextCall = 0;
@@ -13,8 +14,13 @@ export function createRealtimeVoiceSession(input: {
   toolsCurrent?: () => boolean;
   executeTool?: Parameters<typeof createRealtimeToolRequests>[0]['execute'];
   model: string;
+  liveAudioOnly?: boolean;
   sessionId: number;
-  credentials: () => Promise<{ model: string; apiKey: string }>;
+  credentials: () => Promise<{
+    model: string;
+    apiKey: string;
+    preferences?: Preferences;
+  }>;
   isCurrent: () => boolean;
   changed: (state: VoiceState) => void;
   transcript: (event: RealtimeTranscript) => void;
@@ -31,15 +37,16 @@ export function createRealtimeVoiceSession(input: {
     state = { phase, identity: state.identity, ...(error ? { error } : {}) };
     input.changed(state);
   };
-  const stop = (error?: VoiceState['error']) => {
+  const stop = (error?: VoiceState['error'], graceful = false) => {
     if (!call || cleanup) return;
     systemCallActive = false;
     toolRequests?.cancel();
     ++epoch;
     const id = call;
+    const requestGraceful = graceful && input.liveAudioOnly && valid();
     publish('cleaning');
     cleanup = input.native
-      .stop(id)
+      .stop(id, ...(requestGraceful ? ([true] as const) : []))
       .then(
         () => {
           call = null;
@@ -52,8 +59,17 @@ export function createRealtimeVoiceSession(input: {
       });
   };
   const valid = () => !disposed && input.isCurrent();
+  // Failed cleanup retains the ID only for Stop retry, not for new provider events.
+  const receives = (id: string) =>
+    id === call && !cleanup && !paused && !disposed && state.phase !== 'error';
+  // A new action epoch fences callbacks, but a valid Live pause/resume still owns the same call.
+  const keepCompleted = (id: string, current: number) =>
+    call === id &&
+    valid() &&
+    (current === epoch ||
+      (input.liveAudioOnly && !cleanup && state.phase !== 'error'));
   const toolRequests =
-    input.native.tools && input.executeTool
+    !input.liveAudioOnly && input.native.tools && input.executeTool
       ? createRealtimeToolRequests({
           native: input.native.tools,
           current: id =>
@@ -76,15 +92,29 @@ export function createRealtimeVoiceSession(input: {
       if (!valid()) stop('consent');
     }) ?? (() => {}),
     input.native.onState((id, phase) => {
-      if (call !== id || cleanup || paused) return;
+      if (!receives(id)) return;
       if (!valid()) {
         stop('consent');
         return;
       }
       publish(phase);
     }),
+    input.native.onPaused?.(id => {
+      if (!input.liveAudioOnly || !receives(id)) return;
+      if (!valid()) {
+        stop('capture');
+        return;
+      }
+      if (!['listening', 'processing', 'speaking'].includes(state.phase))
+        return;
+      // Unlike generic state events, this is native's successful system mute receipt.
+      ++epoch;
+      systemCallActive = false;
+      paused = true;
+      publish('stopped');
+    }) ?? (() => {}),
     input.native.onTranscript(event => {
-      if (event.callId === call && !cleanup && !paused && valid()) {
+      if (receives(event.callId) && valid()) {
         toolRequests?.observe(event);
         input.transcript(event);
       }
@@ -95,7 +125,7 @@ export function createRealtimeVoiceSession(input: {
   ];
   const start = (enableTools = false) => {
     if (!valid() || call || cleanup) return;
-    const id = `realtime-${Date.now()}-${++nextCall}`;
+    const id = `${input.liveAudioOnly ? 'live' : 'realtime'}-${Date.now()}-${++nextCall}`;
     call = id;
     toolsEnabled = enableTools && Boolean(toolRequests);
     paused = false;
@@ -104,7 +134,7 @@ export function createRealtimeVoiceSession(input: {
       phase: 'authorizing',
       identity: {
         sessionId: input.sessionId,
-        providerId: 'openai-realtime',
+        providerId: input.liveAudioOnly ? 'openai-live' : 'openai-realtime',
         turnId: id,
       },
     };
@@ -121,16 +151,30 @@ export function createRealtimeVoiceSession(input: {
           stop('consent');
           return;
         }
-        await input.native.open(
-          id,
-          credential.model,
-          credential.apiKey,
-          'ko-KR',
-          ...(toolsEnabled ? ([true] as const) : []),
-        );
+        if (input.liveAudioOnly) {
+          if (!credential.preferences) {
+            stop('consent');
+            return;
+          }
+          await input.native.open(
+            id,
+            credential.model,
+            credential.apiKey,
+            '',
+            false,
+            credential.preferences,
+            () => call === id && current === epoch && valid(),
+          );
+        } else
+          await input.native.open(
+            id,
+            credential.model,
+            credential.apiKey,
+            'ko-KR',
+            ...(toolsEnabled ? ([true] as const) : []),
+          );
         // A late permission/network completion must not revive an ended call.
-        if (call !== id || current !== epoch || !valid())
-          await input.native.stop(id);
+        if (!keepCompleted(id, current)) await input.native.stop(id);
       } catch {
         if (call === id && current === epoch) stop('provider');
       }
@@ -138,7 +182,7 @@ export function createRealtimeVoiceSession(input: {
   };
   return {
     start,
-    stop: () => stop(),
+    stop: (graceful = false) => stop(undefined, graceful),
     mute() {
       if (!call || cleanup || paused) return;
       if (state.phase === 'authorizing') {
@@ -174,8 +218,7 @@ export function createRealtimeVoiceSession(input: {
       input.native
         .resume(id)
         .then(() => {
-          if (call !== id || current !== epoch || !valid())
-            return input.native.stop(id);
+          if (!keepCompleted(id, current)) return input.native.stop(id);
         })
         .catch(() => {
           if (call === id && current === epoch) stop('capture');

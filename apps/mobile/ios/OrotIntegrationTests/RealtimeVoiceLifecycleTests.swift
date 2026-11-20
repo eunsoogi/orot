@@ -8,7 +8,7 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
     func opening(_ call: RealtimeVoiceCall, socket: Socket, key: String = "synthetic-key", id: String = "call") async {
         let opened = expectation(description: "socket requested after synthetic permission")
         socket.opened = { opened.fulfill() }
-        call.open(id, model: "gpt-realtime-2.1", key: key, language: "ko-KR") { _ in }
+        call.open(id, model: "gpt-live-1.1", key: key, language: "auto") { _ in }
         await fulfillment(of: [opened], timeout: 1)
     }
 
@@ -24,53 +24,47 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
         await opening(call, socket: socket)
         XCTAssertEqual(audio.starts, 0)
         XCTAssertEqual(activated, 0)
-        XCTAssertEqual(socket.sent.first?["type"] as? String, "session.update")
-        socket.received?(["type": "session.updated"])
+        XCTAssertEqual(socket.sent.first?["type"] as? String, "session.start")
+        socket.received?(started())
         XCTAssertEqual(audio.starts, 1)
         XCTAssertEqual(activated, 1)
         try call.stop("call")
         XCTAssertEqual(socket.closes, 1)
         XCTAssertEqual(audio.stops, 1)
         XCTAssertEqual(released, 1)
-        socket.received?(["type": "session.updated"])
+        socket.received?(started())
         XCTAssertEqual(audio.starts, 1)
     }
 
-    func testBargeInTruncatesHeardAudioAndDropsLateOutput() async throws {
+    func started(expires: TimeInterval = Date().timeIntervalSince1970 + 120) -> [String: Any] {
+        ["type": "session.started", "session": ["id": "fake-live", "model": "gpt-live-1.1",
+                                                "status": "active", "expires_at": expires]]
+    }
+
+    func testLiveOutputRequiresCurrentUnexpiredStartupAndPreservesPrimaryFrameOrder() async throws {
         let audio = Audio(), socket = Socket()
         let call = fixture(audio, socket)
         await opening(call, socket: socket)
-        socket.received?(["type": "session.updated"])
-        socket.received?(["type": "response.created", "response": ["id": "response-1"]])
-        let delta: [String: Any] = ["type": "response.output_audio.delta", "response_id": "response-1", "item_id": "item-1", "content_index": 0, "delta": Data([0, 0]).base64EncodedString()]
-        socket.received?(delta)
-        XCTAssertEqual(audio.appends, 1)
-        audio.played = 123
-        socket.received?(["type": "input_audio_buffer.speech_started"])
-        let truncate = socket.sent.last { $0["type"] as? String == "conversation.item.truncate" }
-        XCTAssertEqual(truncate?["audio_end_ms"] as? Int, 123)
-        XCTAssertEqual(truncate?["item_id"] as? String, "item-1")
-        socket.received?(delta)
-        XCTAssertEqual(audio.appends, 1)
-        socket.received?(["type": "response.created", "response": ["id": "late"]])
-        XCTAssertEqual(socket.sent.last?["type"] as? String, "response.cancel")
+        let first = socket.received
+        let output = ["type": "session.output_audio.delta", "delta": "AAA="]
+        first?(output)
+        first?(started(expires: 1))
+        first?(["type": "session.updated"])
+        XCTAssertEqual(audio.starts, 0)
+        XCTAssertEqual(audio.appends, 0)
+        first?(started())
+        first?(output)
+        first?(output)
+        XCTAssertEqual(audio.starts, 1)
+        XCTAssertEqual(audio.appends, 2)
+        XCTAssertEqual(socket.sent.first?["type"] as? String, "session.start")
         try call.stop("call")
-    }
-
-    func testAlreadyDrainedResponseReturnsToListening() async throws {
-        let audio = Audio(), socket = Socket()
-        var phases: [String] = []
-        let call = fixture(audio, socket) { name, body in
-            if name == "VoiceRealtimeState", let phase = body["phase"] as? String {
-                phases.append(phase)
-            }
-        }
-        await opening(call, socket: socket)
-        socket.received?(["type": "session.updated"])
-        socket.received?(["type": "response.created", "response": ["id": "response-1"]])
-        socket.received?(["type": "response.done", "response": ["id": "response-1", "status": "completed"]])
-        XCTAssertEqual(phases.last, "listening")
-        try call.stop("call")
+        await opening(call, socket: socket, id: "next")
+        first?(started())
+        first?(output)
+        XCTAssertEqual(audio.starts, 1)
+        XCTAssertEqual(audio.appends, 2)
+        try call.stop("next")
     }
 
     func testReleaseFailureRetainsOwnershipForRetry() async throws {
@@ -83,7 +77,7 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
         })
         let call = RealtimeVoiceCall(audio: audio, socket: socket, ownership: ownership, permission: { $0(true) }, foreground: { true }, emit: { _, _ in })
         await opening(call, socket: socket)
-        socket.received?(["type": "session.updated"])
+        socket.received?(started())
         XCTAssertThrowsError(try call.stop("call"))
         XCTAssertThrowsError(try ownership.reserve())
         shouldFail = false
@@ -96,11 +90,11 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
         let audio = Audio(), socket = Socket()
         let call = fixture(audio, socket)
         await opening(call, socket: socket)
-        socket.received?(["type": "session.updated"])
+        socket.received?(started())
         let oldFailure = audio.failure
         try call.stop("call")
         await opening(call, socket: socket, id: "new-call")
-        socket.received?(["type": "session.updated"])
+        socket.received?(started())
         oldFailure?()
         let delivered = expectation(description: "old callback drained")
         DispatchQueue.main.async { delivered.fulfill() }
@@ -115,17 +109,17 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
         let audio = Audio(), socket = Socket()
         let call = fixture(audio, socket)
         await opening(call, socket: socket)
-        socket.received?(["type": "session.updated"])
+        socket.received?(started())
         // Test the production queue filter without creating a socket or serializing real audio.
         let writes = [RealtimeSocketWrite(text: "in-flight", isInput: true),
-                      RealtimeSocketWrite(text: "session.update", isInput: false),
+                      RealtimeSocketWrite(text: "session.start", isInput: false),
                       RealtimeSocketWrite(text: "unsent-audio", isInput: true),
-                      RealtimeSocketWrite(text: "response.cancel", isInput: false),
-                      RealtimeSocketWrite(text: "conversation.item.truncate", isInput: false)]
+                      RealtimeSocketWrite(text: "session.input_audio.mute", isInput: false),
+                      RealtimeSocketWrite(text: "session.input_audio.unmute", isInput: false)]
         XCTAssertEqual(RealtimeVoiceSocket.retainingControl(writes, sending: true).map(\.text),
-                       ["in-flight", "session.update", "response.cancel", "conversation.item.truncate"])
+                       ["in-flight", "session.start", "session.input_audio.mute", "session.input_audio.unmute"])
         XCTAssertEqual(RealtimeVoiceSocket.retainingControl(writes, sending: false).map(\.text),
-                       ["session.update", "response.cancel", "conversation.item.truncate"])
+                       ["session.start", "session.input_audio.mute", "session.input_audio.unmute"])
         let oldInput = audio.input, oldFailure = audio.failure
         try call.pause("call")
         XCTAssertEqual(socket.inputDiscards, 1)
@@ -133,19 +127,31 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
         XCTAssertEqual(socket.closes, 0)
         let before = socket.sent.count
         oldInput?(Data([0, 0]))
-        socket.received?(["type": "response.output_audio.delta", "response_id": "late", "item_id": "item", "delta": "AAA="])
+        socket.received?(["type": "session.output_audio.delta", "delta": "AAA="])
         let paused = expectation(description: "queued input drained while muted")
         DispatchQueue.main.async { paused.fulfill() }
         await fulfillment(of: [paused], timeout: 1)
         XCTAssertEqual(socket.sent.count, before)
         XCTAssertEqual(audio.appends, 0)
         let resumed = expectation(description: "same call resumed")
+        let requested = expectation(description: "explicit unmute sent")
+        socket.sentEvent = { event in
+            if event["type"] as? String == "session.input_audio.unmute" {
+                requested.fulfill()
+            }
+        }
         call.resume("call") { result in
             if case .failure = result {
                 XCTFail("Resume failed")
             }
             resumed.fulfill()
         }
+        await fulfillment(of: [requested], timeout: 1)
+        XCTAssertEqual(audio.starts, 1)
+        socket.received?(["type": "session.input_audio.unmuted", "client_event_id": "stale"])
+        XCTAssertEqual(audio.starts, 1)
+        let command = try XCTUnwrap(socket.sent.last?["event_id"] as? String)
+        socket.received?(["type": "session.input_audio.unmuted", "client_event_id": command])
         await fulfillment(of: [resumed], timeout: 1)
         XCTAssertEqual(socket.opens, 1)
         XCTAssertEqual(audio.starts, 2)
@@ -154,10 +160,7 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
         DispatchQueue.main.async { stale.fulfill() }
         await fulfillment(of: [stale], timeout: 1)
         XCTAssertEqual(socket.closes, 0)
-        socket.received?(["type": "input_audio_buffer.cleared"])
-        socket.received?(["type": "input_audio_buffer.committed"])
-        socket.received?(["type": "response.created", "response": ["id": "next"]])
-        socket.received?(["type": "response.output_audio.delta", "response_id": "next", "item_id": "item", "delta": "AAA="])
+        socket.received?(["type": "session.output_audio.delta", "delta": "AAA="])
         XCTAssertEqual(audio.appends, 1)
         try call.stop("call")
         XCTAssertEqual(socket.closes, 1)
@@ -195,8 +198,10 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
         var received: (([String: Any]) -> Void)?
         var failed: (() -> Void)?
         var opened: (() -> Void)?
+        var sentEvent: (([String: Any]) -> Void)?
         var sent: [[String: Any]] = []
         var closes = 0, opens = 0, inputDiscards = 0
+        var graceful: ((String) -> Void)?
         func open(model _: String, key _: String) {
             opens += 1
             opened?()
@@ -204,6 +209,11 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
 
         func send(_ event: [String: Any]) {
             sent.append(event)
+            sentEvent?(event)
+        }
+
+        func finishLive(sessionID: String) {
+            graceful?(sessionID)
         }
 
         func discardInput() {

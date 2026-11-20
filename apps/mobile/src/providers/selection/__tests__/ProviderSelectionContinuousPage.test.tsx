@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react-native';
+import { t } from '../../../i18n';
 import { StyleSheet } from 'react-native';
 import { createAppleSelectionOption } from '../options';
 import ProviderSelectionScreen from '../ProviderSelectionScreen';
@@ -16,6 +17,10 @@ import type {
   ProviderSelectionPresentation,
 } from '../types';
 
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
 // View-only boundary: SQLite grant activation and credential races have dedicated service tests.
 jest.mock('../../../agent/execution/saveModelSettingsConsent', () => ({
   saveModelSettingsConsent: async (input: {
@@ -77,6 +82,7 @@ test.each<ProviderSelectionPresentation>([
 ])(
   '%s keeps its account, model and final-action content in one page with one inset',
   async presentation => {
+    const save = jest.fn();
     await render(
       <ProviderSelectionScreen
         chatGPTSetup={accountSetup(presentation)}
@@ -85,7 +91,7 @@ test.each<ProviderSelectionPresentation>([
         requirements={requirements}
         selectionStore={{
           load: async () => saved,
-          save: jest.fn(),
+          save,
           clear: jest.fn(),
         }}
       />,
@@ -108,11 +114,28 @@ test.each<ProviderSelectionPresentation>([
     }
     await fireEvent.press(content.getByTestId('provider-option-1'));
     expect(content.getByTestId('provider-selection-footer')).toBeTruthy();
-    expect(
-      content.getByTestId('provider-selection-confirmation-privacy'),
-    ).toHaveTextContent(providerSelectionText.remotePrivacy);
-    expect(content.getByTestId('provider-selection-confirm')).toBeEnabled();
+    const confirm = content.getByTestId('provider-selection-confirm');
+    expect(confirm).toBeEnabled();
     expect(content.getByTestId('provider-selection-cancel')).toBeTruthy();
+    if (presentation === 'feature') {
+      expect(
+        content.getByTestId('provider-selection-confirmation-privacy'),
+      ).toHaveTextContent(providerSelectionText.remotePrivacy);
+      return;
+    }
+    expect(
+      content.queryByTestId('provider-selection-confirmation-privacy'),
+    ).toBeNull();
+    await fireEvent.press(confirm);
+    const disclosure = within(
+      await screen.findByTestId('inference-disclosure-sheet'),
+    );
+    expect(
+      disclosure.getByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent(t('nextVisit.recipient.chatgpt'));
+    expect(save).not.toHaveBeenCalled();
+    await fireEvent.press(disclosure.getByTestId('inference-disclosure-allow'));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
   },
 );
 

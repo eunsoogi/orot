@@ -7,6 +7,9 @@ import {
   createConsentAuthority,
   type ConsentAuthorityState,
 } from '../consentAuthority';
+import type { OutboundProcessingRequest } from '@orot/agent-runtime';
+import { createSettingsConsentAuthorization } from '../settingsConsentAuthorization';
+import { SETTINGS_CONSENT_CATALOG_VERSION } from '../settingsConsentCatalog';
 import { saveModelSettingsConsent } from '../saveModelSettingsConsent';
 import type { ProviderSelection } from '../../../providers/selection/types';
 
@@ -136,6 +139,84 @@ test('credential mutation during selection save cannot activate any selected rec
     expect(await f.authority.current()).toBeNull();
     for (const domain of ['model', 'medical-search', 'public-web'] as const)
       expect(await f.grants.read('conversation', domain)).toBeNull();
+  } finally {
+    f.connection.close();
+  }
+});
+
+test('explicit Live settings save commits an exact audio-only grant, not result relay', async () => {
+  const f = fixture();
+  const live = {
+    ...f.input,
+    slot: 'voice' as const,
+    selection: { providerId: 'openai-live', modelId: 'gpt-live-1.1' },
+    recipient: 'OpenAI Live API',
+  };
+  try {
+    await expect(
+      saveModelSettingsConsent({ ...live, recipient: 'OpenAI Realtime API' }),
+    ).rejects.toThrow('Invalid Live voice consent scope');
+    expect(f.input.store.save).not.toHaveBeenCalled();
+    expect(await f.grants.read('voice')).toBeNull();
+    await saveModelSettingsConsent(live);
+    const saved = await f.grants.read('voice');
+    expect(saved?.identity).toMatchObject({
+      ...live.selection,
+      recipient: live.recipient,
+    });
+    expect(saved?.identity.authorityGeneration).toBe(
+      (await f.authority.current())?.generation,
+    );
+    expect(saved?.permissions).toEqual([
+      {
+        purpose: 'live_audio',
+        policyVersion: 'selected-live-audio-v1',
+        dataCategories: ['live_voice_audio', 'voice_conversation'],
+        sourceKinds: [],
+      },
+    ]);
+    const authorization = createSettingsConsentAuthorization({
+      catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
+      resolveOwner: async () => ({
+        slot: 'voice',
+        domain: 'model',
+        identity: saved!.identity,
+        isCurrent: () => true,
+      }),
+      readGrant: (slot, domain) => f.grants.read(slot, domain),
+    });
+    const request: OutboundProcessingRequest = {
+      operationRunId: 'synthetic-live',
+      ...live.selection,
+      recipient: live.recipient,
+      remoteProcessing: true,
+      consentScope: {
+        purpose: 'live_audio',
+        policyVersion: 'selected-live-audio-v1',
+        dataCategories: ['live_voice_audio', 'voice_conversation'],
+      },
+      allowedScope: { sourceKinds: [] },
+      payload: { messages: [] },
+      signal: live.signal,
+    };
+    expect(await authorization.authorize(request)).toBe('authorized');
+    expect(authorization.isAuthorizationCurrent?.(request)).toBe(true);
+    const invalidScopes: OutboundProcessingRequest['allowedScope'][] = [
+      { sourceKinds: ['personal_record'] },
+      { sourceKinds: [], sourceIds: ['synthetic-record'] },
+    ];
+    for (const allowedScope of invalidScopes) {
+      expect(await authorization.authorize({ ...request, allowedScope })).toBe(
+        'renewal_required',
+      );
+    }
+    expect(
+      await authorization.authorize({
+        ...request,
+        consentScope: { ...request.consentScope!, purpose: 'live_result' },
+      }),
+    ).toBe('renewal_required');
+    expect(await f.grants.read('conversation')).toBeNull();
   } finally {
     f.connection.close();
   }

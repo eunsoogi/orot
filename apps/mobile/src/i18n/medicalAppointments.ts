@@ -144,6 +144,7 @@ export const medicalAppointmentsKo = {
     '[{type} 첨부 내용을 이 화면에서 확인할 수 없습니다]',
   'medicalAppointments.inferenceDisclosure.blockedAttachment':
     '첨부 내용을 미리 볼 수 없어 전송을 허용할 수 없습니다.',
+  'medicalAppointments.inferenceDisclosure.settingsAgree': '동의',
   'medicalAppointments.inferenceDisclosure.allow': '동의하고 전송',
   'medicalAppointments.inferenceDisclosure.cancel': '취소',
   'medicalAppointments.actions.loadCalendar': '선택한 AI로 분류',

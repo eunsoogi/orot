@@ -8,6 +8,11 @@ import { voiceSettingsStore } from '../src/voiceSettings/voiceSettingsStore';
 import * as productionOwner from '../src/agent/execution/settingsConsentOwner';
 import * as productionGrants from '../src/storage/settingsConsentRepository';
 
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
+
 async function mount(staged = false) {
   const f = classificationConsentFixture();
   const forbidden = () => {
@@ -45,12 +50,18 @@ async function mount(staged = false) {
     );
     await press('provider-option-0');
     expect(
-      view.getByTestId('model-settings-transmission-disclosure'),
-    ).toHaveTextContent(/OpenAI API/);
+      view.queryByTestId('model-settings-transmission-disclosure'),
+    ).toBeNull();
+    expect(view.queryByTestId('inference-disclosure-sheet')).toBeNull();
   };
   const approve = async () => {
     await choose();
     await press('provider-selection-confirm');
+    expect(
+      await view.findByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent('OpenAI API');
+    expect(f.states.get('calendar')).toBeUndefined();
+    await press('inference-disclosure-allow');
     await waitFor(() =>
       expect(f.states.get('calendar')?.status).toBe('active'),
     );
@@ -90,6 +101,11 @@ test('real settings decline blocks send; approval admits only a redacted synthet
     ).toHaveTextContent('syntheticProviderCalls=0');
     expect(f.view.queryByTestId('inference-disclosure-sheet')).toBeNull();
     await f.choose();
+    await f.press('provider-selection-confirm');
+    expect(
+      await f.view.findByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent('OpenAI API');
+    await f.press('inference-disclosure-cancel');
     await f.press('provider-selection-cancel');
     expect(f.states.get('calendar')).toBeUndefined();
     await f.press('classification-close-settings');

@@ -129,3 +129,32 @@ test('old, partial and extra-field records are rejected without migrating approv
     grant.permissions[0].dataCategories,
   );
 });
+
+test('empty evidence kinds are not permitted outside exact Live microphone policy', () => {
+  const empty = { ...grant.permissions[0], sourceKinds: [] };
+  expect(
+    parseSettingsConsentGrant({ ...grant, permissions: [empty] }),
+  ).toBeNull();
+  expect(covers({ ...request(), allowedScope: { sourceKinds: [] } })).toBe(
+    false,
+  );
+  expect(
+    parseSettingsConsentGrant({
+      ...grant,
+      permissions: [{ ...empty, purpose: 'live_audio' }],
+    }),
+  ).toBeNull();
+  expect(
+    parseSettingsConsentGrant({
+      ...grant,
+      permissions: [
+        {
+          ...empty,
+          purpose: 'live_audio',
+          policyVersion: 'selected-live-audio-v1',
+          sourceKinds: ['personal_record'],
+        },
+      ],
+    }),
+  ).toBeNull();
+});

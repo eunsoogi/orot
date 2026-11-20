@@ -3,6 +3,11 @@ import { createConsentGeneration } from '../agent/execution/consentGeneration';
 import { discoverApiModels } from './voiceApiModelCatalog';
 import { localVoiceModel, validVoiceModel } from './voiceModels';
 import {
+  legacyVoiceCredentials,
+  liveVoiceCredentials,
+  readVoiceCallCredentials,
+} from './readVoiceCallCredentials';
+import {
   ACCESSIBLE,
   getGenericPassword,
   setGenericPassword,
@@ -50,6 +55,11 @@ export function createVoiceSettingsStore(input: {
     return parsed;
   }
 
+  const readAfterSettings = async () => {
+    await saving.catch(() => undefined);
+    return read();
+  };
+
   /** Keep credentials out of React state and saved-settings readbacks. No network validation occurs. */
   const store = {
     ...createVoiceConsentIdentity({
@@ -76,31 +86,19 @@ export function createVoiceSettingsStore(input: {
         hasApiKey: Boolean(value.apiKey),
       };
     },
-    /** Exact selected Realtime credentials only; keep this secret out of UI/logs/storage. */
-    async realtimeCredentials(
-      expectedModel: string,
-    ): Promise<{ model: string; apiKey: string }> {
-      try {
-        // A selection write already in flight must settle before choosing its destination.
-        await saving.catch(() => undefined);
-        const value = await read();
-        if (
-          value.mode !== 'openai-api' ||
-          value.model !== expectedModel ||
-          !validVoiceModel('openai-api', expectedModel) ||
-          value.apiKey.length === 0 ||
-          value.apiKey.length > 4096 ||
-          !/^[\x21-\x7e]+$/.test(value.apiKey)
-        ) {
-          throw new Error('Unavailable');
-        }
-        return { model: value.model, apiKey: value.apiKey };
-      } catch {
-        // Native storage errors must not surface credential payloads to the call UI.
-        throw new Error(
-          'Realtime credentials unavailable or selection changed',
-        );
-      }
+    realtimeCredentials(expectedModel: string) {
+      return readVoiceCallCredentials(
+        readAfterSettings,
+        legacyVoiceCredentials(expectedModel),
+        'Realtime',
+      );
+    },
+    liveCredentials() {
+      return readVoiceCallCredentials(
+        readAfterSettings,
+        liveVoiceCredentials,
+        'Live',
+      );
     },
     save(value: {
       mode: VoiceMode;

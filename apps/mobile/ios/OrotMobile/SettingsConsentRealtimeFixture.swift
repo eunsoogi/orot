@@ -35,7 +35,7 @@
         static func snapshot(lateEvent: Bool) -> [String: Any] {
             guard admitted else { return ["denied": true] }
             if lateEvent {
-                socket.received?(["type": "session.updated"])
+                socket.deliverLateStart?()
             }
             return ["synthetic": true, "opens": socket.opens, "closes": socket.closes,
                     "audioStarts": audio.starts, "audioStops": audio.stops, "readyEvents": readyEvents,
@@ -46,13 +46,31 @@
             var received: (([String: Any]) -> Void)?
             var failed: (() -> Void)?
             var opens = 0, closes = 0
-            func open(model _: String, key _: String) {
+            var deliverLateStart: (() -> Void)?
+            func open(model: String, key _: String) {
+                guard admitted, model == "gpt-live-1.1" else { failed?(); return }
                 opens += 1
             }
 
             func send(_ event: [String: Any]) {
-                if event["type"] as? String == "session.update" {
-                    DispatchQueue.main.async { self.received?(["type": "session.updated"]) }
+                guard admitted, let eventID = event["event_id"] as? String,
+                      let currentReceive = received else { return }
+                switch event["type"] as? String {
+                case "session.start":
+                    let message: [String: Any] = [
+                        "type": "session.started", "client_event_id": eventID,
+                        "session": ["id": "synthetic-live", "model": "gpt-live-1.1",
+                                    "status": "active", "expires_at": Date().timeIntervalSince1970 + 180],
+                    ]
+                    // Replay the original callback, never the next call's current observer.
+                    deliverLateStart = { currentReceive(message) }
+                    DispatchQueue.main.async { currentReceive(message) }
+                case "session.input_audio.unmute":
+                    DispatchQueue.main.async {
+                        currentReceive(["type": "session.input_audio.unmuted", "client_event_id": eventID])
+                    }
+                default:
+                    break
                 }
             }
 

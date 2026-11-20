@@ -174,3 +174,25 @@ it('shares the API account with calendar classification independently from voice
     ),
   ).rejects.toThrow('credentials unavailable');
 });
+
+it('never treats an old API selection or an unowned key as a Live call configuration', async () => {
+  await voiceSettingsStore.save({ ...api, replacementKey: 'synthetic-key' });
+  await expect(voiceSettingsStore.liveCredentials()).rejects.toThrow(
+    'Live credentials unavailable',
+  );
+  const live = { mode: api.mode, model: 'gpt-live-1.1' };
+  await voiceSettingsStore.save(live);
+  const configured = await voiceSettingsStore.liveCredentials();
+  expect(configured).toEqual({
+    model: live.model,
+    apiKey: 'synthetic-key',
+    credentialEpoch: expect.stringMatching(/^[a-f0-9]{64}$/),
+  });
+  await expect(
+    voiceSettingsStore.realtimeCredentials(live.model),
+  ).rejects.toThrow('Realtime credentials unavailable');
+  persisted = JSON.stringify({ ...live, apiKey: 'synthetic-key' });
+  await expect(voiceSettingsStore.liveCredentials()).rejects.toThrow(
+    'Live credentials unavailable',
+  );
+});

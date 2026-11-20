@@ -1,13 +1,25 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import { providerSuccess } from '@orot/model-runtime';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import ProviderSelectionScreen from '../ProviderSelectionScreen';
+import { t } from '../../../i18n';
 import { providerSelectionText } from '../text';
 import type {
   ChatGPTAccountSetup,
   ProviderSelectionOption,
   ProviderSelectionStore,
 } from '../types';
+
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
 
 // These in-memory services exercise presentation without live accounts or persistence.
 const requirements = { inputTypes: ['text'] as const, toolCalling: true };
@@ -82,7 +94,10 @@ describe('Settings provider presentation', () => {
     const store = makeStore();
     const onSelectionCommitted = jest.fn();
     const local = makeOption('local', 'on-device');
-    const remote = makeOption('remote', 'selected-context-remote');
+    const remote = makeOption(
+      'openai-api-decisions',
+      'selected-context-remote',
+    );
     await render(
       <ProviderSelectionScreen
         presentation="settings-provider"
@@ -121,7 +136,25 @@ describe('Settings provider presentation', () => {
     expect(
       screen.getByTestId('provider-option-1').props.accessibilityState.selected,
     ).toBe(true);
-    expect(screen.getByText(providerSelectionText.remotePrivacy)).toBeTruthy();
+    expect(screen.queryByTestId('inference-disclosure-sheet')).toBeNull();
+    await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
+    const sheet = within(
+      await screen.findByTestId('inference-disclosure-sheet'),
+    );
+    expect(
+      sheet.getByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent('OpenAI API');
+    expect(sheet.getByTestId('inference-disclosure-scope')).toHaveTextContent(
+      t('modelSettings.consentConversationData'),
+    );
+    expect(sheet.getByText(t('modelSettings.consentContinuing'))).toBeTruthy();
+    expect(store.save).not.toHaveBeenCalled();
+    await fireEvent.press(sheet.getByTestId('inference-disclosure-cancel'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('inference-disclosure-sheet')).toBeNull(),
+    );
+    expect(store.save).not.toHaveBeenCalled();
+    expect(onSelectionCommitted).not.toHaveBeenCalled();
   });
 
   it('uses measured panels and capability summaries in the in-flow feature selector', async () => {

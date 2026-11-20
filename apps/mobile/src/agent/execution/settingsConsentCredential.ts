@@ -1,3 +1,4 @@
+import { liveVoiceProviderId } from './liveVoiceSettingsIdentity';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { APPLE_PCC_PROVIDER_ID } from '../../providers/selection/privateCloudCompute';
 import {
@@ -47,7 +48,8 @@ export async function settingsConsentCredential(
   }
   if (
     providerId === 'openai-api-decisions' ||
-    providerId === 'openai-realtime'
+    providerId === 'openai-realtime' ||
+    providerId === liveVoiceProviderId
   ) {
     const witness = apiCredentialMutation.capture();
     if (!witness) return null;

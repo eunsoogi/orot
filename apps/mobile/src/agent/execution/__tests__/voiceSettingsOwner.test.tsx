@@ -7,6 +7,11 @@ import {
 import { useVoiceCatalog } from '../../../voiceSettings/useVoiceCatalog';
 import { useVoiceSelection } from '../../../voiceSettings/useVoiceSelection';
 import { useVoiceConsentSave } from '../../../voiceSettings/useVoiceConsentSave';
+import { useLiveVoiceSettingsSave } from '../../../voiceSettings/useLiveVoiceSettingsSave';
+import {
+  initialPreferences,
+  liveModel,
+} from '../../../voiceSettings/liveVoicePreferences';
 
 function services(): ModelSettingsServices {
   return {
@@ -107,7 +112,7 @@ test('account revision replacement aborts a pending voice grant with the same se
   let operation!: Promise<void>;
   await act(() => {
     operation = view.result
-      .current('openai-api', 'gpt-realtime-2.1-mini')
+      .current('openai-api', 'gpt-realtime-2.1-mini', () => true)
       .catch(() => {
         rejected = true;
       });
@@ -121,5 +126,77 @@ test('account revision replacement aborts a pending voice grant with the same se
     await operation;
   });
   expect(rejected).toBe(true);
+  await view.unmount();
+});
+
+test('hiding and returning to retained voice tab cannot revive an approved held writer', async () => {
+  let release!: () => void;
+  const held = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  let writerCurrent: (() => boolean) | undefined;
+  const committed = jest.fn();
+  const setPreference = jest.fn(async () => {});
+  const preferences = { load: jest.fn(), save: setPreference };
+  const owner: ModelSettingsServices = {
+    ...services(),
+    saveConsent: async input => {
+      writerCurrent = input.isCurrent;
+      await held;
+      if (!input.isCurrent()) throw new Error('Settings draft expired');
+      committed(input.selection);
+    },
+  };
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <ModelSettingsServicesContext.Provider value={owner}>
+      {children}
+    </ModelSettingsServicesContext.Provider>
+  );
+  const view = await renderHook(
+    ({ active }: { active: boolean }) => {
+      const selection = useVoiceSelection(useVoiceCatalog());
+      return {
+        selection,
+        sheet: useLiveVoiceSettingsSave({
+          active,
+          disabled: selection.busy,
+          canApproveNew: true,
+          mode: selection.mode,
+          model: selection.model,
+          savedModel: selection.savedModel,
+          revision: 1,
+          save: selection.save,
+          store: preferences,
+        }),
+      };
+    },
+    { initialProps: { active: true }, wrapper },
+  );
+  await waitFor(() => expect(view.result.current.selection.busy).toBe(false));
+  await act(async () =>
+    view.result.current.selection.choose('openai-api', liveModel),
+  );
+  await act(async () =>
+    view.result.current.sheet.setPrefs({
+      owner: 'synthetic',
+      preferences: { ...initialPreferences, voice: 'noeul' },
+      dirty: true,
+    }),
+  );
+  await act(async () => {
+    view.result.current.sheet.confirmSave();
+  });
+  await act(async () =>
+    view.result.current.sheet.disclosureSheet?.props.onDecision(true),
+  );
+  await waitFor(() => expect(writerCurrent?.()).toBe(true));
+  await view.rerender({ active: false });
+  expect(writerCurrent?.()).toBe(false);
+  await view.rerender({ active: true });
+  expect(writerCurrent?.()).toBe(false);
+  await act(async () => release());
+  expect(committed).not.toHaveBeenCalled();
+  expect(setPreference).not.toHaveBeenCalled();
+  expect(view.result.current.selection.savedModel).toBe('apple-system-speech');
   await view.unmount();
 });
