@@ -103,16 +103,13 @@ enum NavigationForegroundUITestConditions {
                   !keyboard.exists || !keyboard.frame.contains(center) else { return nil }
             return center
         }
-
         func answerPoint() -> CGPoint? {
             guard history.exists, answer.exists, answer.label == label else { return nil }
             return unobscuredCenter(answer, inside: history.frame)
         }
-
         func inputIsReady() -> Bool {
             unobscuredCenter(input, inside: app.frame) != nil && input.isEnabled
         }
-
         let initialReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             answerPoint() != nil && inputIsReady() && !keyboard.exists
         }, object: nil)
@@ -208,12 +205,15 @@ enum NavigationForegroundUITestConditions {
         evidence.name = "synthetic-conversation-\(phase)-retained"
         evidence.lifetime = .keepAlways
         testCase.add(evidence)
-        // Mutating then undoing the native field catches a veil even if its child remains in the AX tree.
+        // A native tap can put the caret anywhere; only one insertion and its real deletion are allowed.
         input.tap()
         input.typeText("!")
-        XCTAssertEqual(input.value as? String, draft + "!")
+        let edited = try XCTUnwrap(input.value as? String)
+        XCTAssertEqual(edited.filter { $0 == "!" }.count, 1)
+        XCTAssertEqual(edited.filter { $0 != "!" }, draft)
         input.typeText(XCUIKeyboardKey.delete.rawValue)
         XCTAssertEqual(input.value as? String, draft)
+        XCTAssertTrue(answer.exists && answer.label == label)
     }
 
     /// Poll for the first bridge envelope that actually starts after readiness; cached labels are not evidence.
