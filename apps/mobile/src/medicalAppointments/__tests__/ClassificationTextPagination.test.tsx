@@ -98,3 +98,63 @@ test.each(['medical-appointment-confirmation', 'medical-appointment-results'])(
     expect(onAction).toHaveBeenCalledTimes(1);
   },
 );
+
+test('drops only empty pages formed by native paragraph spacers', () => {
+  const lines = [line('Title\n'), line('\n'), line('Coverage'), line(' \t\n')];
+  expect(paginateClassificationLines(lines, 60)).toEqual(['Title', 'Coverage']);
+  expect(paginateClassificationLines(lines.slice(0, 3), 180)).toEqual([
+    'Title\n\nCoverage',
+  ]);
+  expect(paginateClassificationLines([line(' \t\n')], 60)).toEqual([]);
+});
+
+test('moves directly over wide-XXXL paragraph spacers in both directions', async () => {
+  const title = '합성 긴 진료 예약 30';
+  const coverage = '분류 근거와 일정 범위';
+  const onAction = jest.fn();
+  await render(
+    <ClassificationPagedStage
+      documents={[`${title}\n\n${coverage}`, '두 번째 결과']}
+      testID="medical-appointment-results"
+      actionTitle="다시"
+      actionLabel="다시 분류하기"
+      onAction={onAction}
+    />,
+  );
+  await fireEvent(screen.getByTestId('medical-appointment-results'), 'layout', {
+    nativeEvent: { layout: { width: 678, height: 120 } },
+  });
+  await fireEvent(screen.getByTestId('classification-stage-footer'), 'layout', {
+    nativeEvent: { layout: { height: 44 } },
+  });
+  const measure = (texts: readonly string[]) =>
+    fireEvent(
+      screen.getByTestId('classification-text-measurement', {
+        includeHiddenElements: true,
+      }),
+      'textLayout',
+      { nativeEvent: { lines: texts.map(text => line(text)) } },
+    );
+  const page = () => screen.getByTestId('classification-page-text');
+  const next = () => screen.getByTestId('medical-appointment-next-result');
+  const previous = () =>
+    screen.getByTestId('medical-appointment-previous-result');
+
+  await measure([`${title}\n`, '\n', coverage]);
+  expect(page()).toHaveTextContent(title);
+  expect(previous()).toBeDisabled();
+  await fireEvent.press(next());
+  expect(page()).toHaveTextContent(coverage);
+  await fireEvent.press(previous());
+  expect(page()).toHaveTextContent(title);
+  await fireEvent.press(next());
+  await fireEvent.press(next());
+  await measure(['\n']);
+  expect(page()).toHaveTextContent('두 번째 결과');
+  expect(next()).toBeDisabled();
+  await fireEvent.press(previous());
+  await measure([`${title}\n`, '\n', coverage]);
+  expect(page()).toHaveTextContent(coverage);
+  await fireEvent.press(screen.getByTestId('medical-appointment-import'));
+  expect(onAction).toHaveBeenCalledTimes(1);
+});

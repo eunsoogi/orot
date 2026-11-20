@@ -50,10 +50,9 @@ export function ClassificationPagedStage(props: Props) {
   const compactActions =
     bounds.height > 0 && bounds.height < 26 * fontScale * 3 + 100;
   const lines = measurement?.key === identity ? measurement.lines : null;
-  const pages =
-    lines && available > 0
-      ? paginateClassificationLines(lines, available)
-      : [text];
+  const measuredPages =
+    lines && available > 0 ? paginateClassificationLines(lines, available) : [];
+  const pages = measuredPages.length ? measuredPages : [text];
   const page = Math.min(pageIndex, Math.max(0, pages.length - 1));
   const cannotFitLine = Boolean(lines?.some(line => line.height > available));
   const requiresExpansion = cannotFitLine && !frame.expanded;
@@ -127,7 +126,7 @@ export function ClassificationPagedStage(props: Props) {
                   })}
                   // Before native metrics arrive this bounded first frame cannot paint over the actions.
                   numberOfLines={
-                    lines
+                    measuredPages.length
                       ? undefined
                       : Math.max(1, Math.floor(available / (26 * fontScale)))
                   }

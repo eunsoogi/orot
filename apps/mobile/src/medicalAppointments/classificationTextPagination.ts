@@ -21,5 +21,6 @@ export function paginateClassificationLines(
     height += line.height;
   }
   if (current.length) pages.push(current.join('\n'));
-  return pages;
+  // A native paragraph spacer may fill a whole page at larger text sizes.
+  return pages.filter(page => page.trim().length > 0);
 }
