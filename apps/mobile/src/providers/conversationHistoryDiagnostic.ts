@@ -1,7 +1,16 @@
 import { providerDiagnostic } from './diagnostics';
 import { NativeModules } from 'react-native';
 
-type HistoryValidationCost =
+export type HistoryValidationCost =
+  | 'artifact_read_admission'
+  | 'artifact_read_settlement'
+  | 'artifact_read_setup'
+  | 'artifact_session_lease'
+  | 'artifact_root_row'
+  | 'artifact_root_decode'
+  | 'artifact_parent_row'
+  | 'artifact_retained_source'
+  | 'artifact_summary_parent'
   | 'artifact_source_authority'
   | 'artifact_parent_decode'
   | 'artifact_parent_fingerprint'
@@ -20,6 +29,11 @@ export type ConversationHistoryStage =
   | HistoryValidationCost
   | 'history_tool_read'
   | 'history_tool_restore'
+  | 'history_session_recheck_before_assembly'
+  | 'history_session_recheck_after_assembly'
+  | 'history_tool_recheck_before_assembly'
+  | 'history_tool_recheck_final'
+  | 'history_cold_previews'
   | 'history_tasks'
   | 'history_recheck'
   | 'history_transcript_layout';
@@ -93,4 +107,19 @@ export async function observeConversationHistory<T>(
     reportHistory(stage, signal?.aborted ? 'cancelled' : 'failed');
     throw error;
   }
+}
+
+/** New fence-only spans must not add promise hops or bridge calls on normal restores. */
+export function observeOptInConversationHistory<T>(
+  stage: ConversationHistoryStage,
+  work: () => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  let enabled = false;
+  try {
+    enabled = NativeModules?.OrotProviderDiagnostics?.enabled === true;
+  } catch {
+    // If the bridge is inaccessible, leave the original operation untouched.
+  }
+  return enabled ? observeConversationHistory(stage, work, signal) : work();
 }

@@ -1,3 +1,5 @@
+import { createConversationReadDiagnostics } from './conversationReadDiagnostics';
+import { measureHistoryValidationCost } from '../providers/conversationHistoryDiagnostic';
 import { conversationToolSnapshotReader } from './conversationToolSnapshot';
 import { committedPeriodReadOperation } from './committedPeriodReadOperation';
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
@@ -25,60 +27,83 @@ export function createConversationArtifactReader(
     operation?: ReturnType<typeof committedPeriodReadOperation>,
     rollbackOnFailure = false,
   ): Promise<(ConversationArtifact | null)[]> => {
-    await ensure();
-    const output: (ConversationArtifact | null)[] = [];
-    const work = async (
-      tx: SqlExecutor,
-      calculate?: ReadOnlyPeriodValidation,
-    ) => {
-      // Source validation may record non-destructive quarantine audit state.
-      // Only identical period calculations, never that policy authority, are shared.
-      const validatePeriod = createReadOnlyPeriodValidation(tx, calculate);
-      if (lease) {
-        const session = await tx.execute(
-          'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ?',
-          [lease.sessionId, lease.version],
-        );
-        if (!session.rows.length)
-          throw new Error('Conversation is unavailable.');
-      }
-      for (const id of ids) {
-        const row = await tx.execute(
-          'SELECT a.id, a.session_id, a.created_at, a.result_json FROM conversation_artifacts a JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0 JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE a.id = ? AND NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id = a.id)',
-          [id],
-        );
-        const value = decodeConversationArtifact(row.rows[0]?.result_json);
-        if (
-          !value ||
-          value.id !== row.rows[0]?.id ||
-          value.sessionId !== row.rows[0]?.session_id ||
-          value.createdAt !== row.rows[0]?.created_at ||
-          (lease && value.sessionId !== lease.sessionId)
-        ) {
-          output.push(null);
-          continue;
-        }
-        try {
-          await assertConversationArtifactCurrent(
-            tx,
-            database,
-            value,
-            false,
-            validatePeriod,
-            collectValidated,
-            operation?.active && operation.profileHistoryValidation,
+    const diagnostic = createConversationReadDiagnostics(
+      Boolean(operation?.active && operation.profileHistoryValidation),
+    );
+    try {
+      diagnostic.start('artifact_read_setup');
+      await ensure();
+      diagnostic.finish();
+      const output: (ConversationArtifact | null)[] = [];
+      const work = async (
+        tx: SqlExecutor,
+        calculate?: ReadOnlyPeriodValidation,
+      ) => {
+        diagnostic.finish();
+        // Source validation may record non-destructive quarantine audit state.
+        // Only identical period calculations, never that policy authority, are shared.
+        const validatePeriod = createReadOnlyPeriodValidation(tx, calculate);
+        if (lease) {
+          diagnostic.start('artifact_session_lease');
+          const session = await tx.execute(
+            'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ?',
+            [lease.sessionId, lease.version],
           );
-          output.push(value);
-        } catch (error) {
-          // Only proven invalid lineage is unavailable; operational failures remain retryable.
-          if (!(error instanceof RetainedSourceInvalidError)) throw error;
-          output.push(null);
+          diagnostic.finish();
+          if (!session.rows.length)
+            throw new Error('Conversation is unavailable.');
         }
-      }
-    };
-    if (operation?.active) await operation.run(work, { rollbackOnFailure });
-    else await database.transaction(work);
-    return output;
+        for (const id of ids) {
+          diagnostic.start('artifact_root_row');
+          const row = await tx.execute(
+            'SELECT a.id, a.session_id, a.created_at, a.result_json FROM conversation_artifacts a JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0 JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE a.id = ? AND NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id = a.id)',
+            [id],
+          );
+          diagnostic.finish();
+          const value =
+            operation?.active && operation.profileHistoryValidation
+              ? measureHistoryValidationCost('artifact_root_decode', () =>
+                  decodeConversationArtifact(row.rows[0]?.result_json),
+                )
+              : decodeConversationArtifact(row.rows[0]?.result_json);
+          if (
+            !value ||
+            value.id !== row.rows[0]?.id ||
+            value.sessionId !== row.rows[0]?.session_id ||
+            value.createdAt !== row.rows[0]?.created_at ||
+            (lease && value.sessionId !== lease.sessionId)
+          ) {
+            output.push(null);
+            continue;
+          }
+          try {
+            await assertConversationArtifactCurrent(
+              tx,
+              database,
+              value,
+              false,
+              validatePeriod,
+              collectValidated,
+              operation?.active && operation.profileHistoryValidation,
+            );
+            output.push(value);
+          } catch (error) {
+            // Only proven invalid lineage is unavailable; operational failures remain retryable.
+            if (!(error instanceof RetainedSourceInvalidError)) throw error;
+            output.push(null);
+          }
+        }
+        diagnostic.start('artifact_read_settlement');
+      };
+      diagnostic.start('artifact_read_admission');
+      if (operation?.active) await operation.run(work, { rollbackOnFailure });
+      else await database.transaction(work);
+      diagnostic.finish();
+      return output;
+    } catch (error) {
+      diagnostic.finish('failed');
+      throw error;
+    }
   };
   const methods = (
     operation?: ReturnType<typeof committedPeriodReadOperation>,
