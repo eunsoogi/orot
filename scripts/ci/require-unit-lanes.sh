@@ -9,7 +9,10 @@ fi
 case "${UNIT_SELECTED:-}" in
   true) expected=success ;;
   false) expected=skipped ;;
-  *) printf 'Unit test selection must be true or false.\n' >&2; exit 1 ;;
+  *)
+    printf 'Unit test selection must be true or false.\n' >&2
+    exit 1
+    ;;
 esac
 
 for lane in MOBILE_SHARD_1 MOBILE_SHARD_2 MOBILE_SHARD_3 UNIT_PACKAGES; do

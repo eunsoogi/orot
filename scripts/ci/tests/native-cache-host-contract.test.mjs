@@ -22,7 +22,7 @@ test('required unit job executes installed native source and fails without its r
   const caller = readFileSync('.github/workflows/unit-test.yml', 'utf8');
   assert.match(
     caller,
-    /  unit_packages:[\s\S]*?uses: \.\/\.github\/workflows\/unit-test-lane\.yml\n\s+with:\n\s+lane: packages/,
+    / {2}unit_packages:[\s\S]*?uses: \.\/\.github\/workflows\/unit-test-lane\.yml\n\s+with:\n\s+lane: packages/,
   );
   assert.match(caller, /name: Unit and component tests\n\s+needs: \[[^\n]*unit_packages\]/);
   const workflow = readFileSync('.github/workflows/unit-test-lane.yml', 'utf8');

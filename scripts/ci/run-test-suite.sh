@@ -7,10 +7,22 @@ if [[ $# -ne 2 ]]; then
 fi
 
 case "$1" in
-  unit) command=(pnpm test:unit); expected_runs=10 ;;
-  packages) command=(pnpm test:unit:packages); expected_runs=9 ;;
-  mobile-[1-3]) command=(pnpm --filter @orot/mobile test:unit "--shard=${1#mobile-}/3"); expected_runs=1 ;;
-  *) printf 'Unknown unit lane: %s\n' "$1" >&2; exit 2 ;;
+  unit)
+    command=(pnpm test:unit)
+    expected_runs=10
+    ;;
+  packages)
+    command=(pnpm test:unit:packages)
+    expected_runs=9
+    ;;
+  mobile-[1-3])
+    command=(pnpm --filter @orot/mobile test:unit "--shard=${1#mobile-}/3")
+    expected_runs=1
+    ;;
+  *)
+    printf 'Unknown unit lane: %s\n' "$1" >&2
+    exit 2
+    ;;
 esac
 
 artifact_dir="$2"
