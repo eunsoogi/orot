@@ -25,6 +25,7 @@ import {
   captureNavigationTestSnapshot,
   registerNavigationTestObserver,
 } from '../src/navigation/navigationTestObservation';
+import { registerSyntheticTranscriptScrollTrace } from '../src/ragConversation/syntheticTranscriptScrollTrace';
 import { AppearanceTestObservation } from './AppearanceTestObservation';
 import { compactNavigationObservation } from './compactNavigationObservation';
 import { ReminderTestObservation } from './ReminderTestObservation';
@@ -55,6 +56,14 @@ if (lifecycleObservation) {
   registerNavigationTestObserver(value =>
     NativeModules.OrotTestControl.recordObservation(value),
   );
+}
+if (
+  lifecycleObservation &&
+  route === 'conversation-visual' &&
+  settings.OROT_TEST_LONG_CONVERSATION_VISUAL === 'YES' &&
+  settings.OROT_TEST_CONVERSATION_SCROLL_TRACE === 'YES'
+) {
+  registerSyntheticTranscriptScrollTrace();
 }
 
 // XCUITest frames omit UIView.safeAreaInsets. This opt-in listener retains the native event and its measured frame without estimating an inset.

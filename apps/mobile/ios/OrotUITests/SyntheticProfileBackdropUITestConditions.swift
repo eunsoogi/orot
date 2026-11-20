@@ -15,10 +15,15 @@ enum SyntheticProfileBackdropUITestConditions {
         if rotation || portraitCapture {
             XCUIDevice.shared.orientation = .portrait
         }
+        // The host runner admits this opt-in only for its matching single Duo selector.
+        let focusedPhase = ProcessInfo.processInfo.environment["OROT_CONVERSATION_LIFECYCLE_PHASE"]
         app.launchArguments = ["-OROT_TEST_SCENARIO", "conversation-visual", "-OROT_TEST_LONG_CONVERSATION_VISUAL", "YES", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"]
         // Only the resize case mounts the native scene request control; foreground has no probe overlay.
         if rotation {
             app.launchArguments += ["-OROT_TEST_UI_GEOMETRY", "YES", "-OROT_TEST_ROTATION_GEOMETRY_SESSION", session]
+        }
+        if rotation, focusedPhase == "resize" {
+            app.launchArguments += ["-OROT_TEST_NAVIGATION_OBSERVATION", "YES", "-OROT_TEST_CONVERSATION_SCROLL_TRACE", "YES"]
         }
         app.launch()
         defer { UITestConditions.terminateStandaloneApp(app) }
@@ -37,8 +42,6 @@ enum SyntheticProfileBackdropUITestConditions {
             app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "합성 답변 \(number):")).firstMatch
         }
         XCTAssertTrue(UITestConditions.exists(lastAnswer) && lastAnswer.isHittable)
-        // The host runner admits this opt-in only for its matching single Duo selector.
-        let focusedPhase = ProcessInfo.processInfo.environment["OROT_CONVERSATION_LIFECYCLE_PHASE"]
         if let focusedPhase {
             guard !portraitCapture, focusedPhase == (rotation ? "resize" : "foreground") else {
                 XCTFail("Unexpected focused conversation lifecycle phase")

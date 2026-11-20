@@ -1,3 +1,4 @@
+import { syntheticTranscriptScrollTrace } from './syntheticTranscriptScrollTrace';
 import { conversationVisibleOffset } from './conversationVisibleOffset';
 import type React from 'react';
 import type { ScrollView } from 'react-native';
@@ -39,6 +40,14 @@ export function followConversationLatest(input: {
         viewportHeight.current,
         bottomInset,
       );
+      if (historyView.current)
+        syntheticTranscriptScrollTrace()?.(
+          'follow-to-offset',
+          scrollGeometry.current,
+          followsBottom.current,
+          null,
+          expectedOffset.current,
+        );
       historyView.current?.scrollTo({
         y: expectedOffset.current,
         animated: false,
@@ -49,6 +58,14 @@ export function followConversationLatest(input: {
     expectedOffset.current = geometry
       ? Math.max(0, geometry.contentHeight - geometry.height)
       : null;
+    if (historyView.current)
+      syntheticTranscriptScrollTrace()?.(
+        'follow-to-end',
+        scrollGeometry.current,
+        followsBottom.current,
+        null,
+        expectedOffset.current,
+      );
     historyView.current?.scrollToEnd({ animated: false });
   }
 }

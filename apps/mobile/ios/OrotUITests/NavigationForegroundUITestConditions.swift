@@ -87,6 +87,11 @@ enum NavigationForegroundUITestConditions {
         _ app: XCUIApplication, history: XCUIElement, answer: XCUIElement, session: String,
         phase: String, testCase: XCTestCase,
     ) throws {
+        defer {
+            if phase == "resize" {
+                attachSyntheticScrollTrace(app, testCase: testCase, name: "after")
+            }
+        }
         let input = UITestConditions.element(app, "rag-conversation-input")
         let keyboard = app.keyboards.firstMatch
         let label = answer.label
@@ -159,6 +164,7 @@ enum NavigationForegroundUITestConditions {
             return
         }
         if phase == "resize" {
+            attachSyntheticScrollTrace(app, testCase: testCase, name: "before")
             let beforeWidth = history.frame.width
             _ = try NavigationRotationUITestConditions.rotateObservedScene(app, session: session, landscape: true, scrollID: "rag-conversation-history")
             XCTAssertGreaterThan(abs(history.frame.width - beforeWidth), 0.5, "The transcript must actually resize")
@@ -182,6 +188,10 @@ enum NavigationForegroundUITestConditions {
         }, object: nil)
         let settled = XCTWaiter.wait(for: [ready], timeout: 15) == .completed
         guard settled, answerPoint() != nil, inputIsReady(), input.value as? String == draft else {
+            // OrotFailFastTestCase may terminate at XCTFail before the Swift defer runs.
+            if phase == "resize" {
+                attachSyntheticScrollTrace(app, testCase: testCase, name: "readiness-failed")
+            }
             XCTFail("The same restored answer and unsent editor must be usable after the native boundary")
             return
         }
@@ -195,5 +205,19 @@ enum NavigationForegroundUITestConditions {
         XCTAssertEqual(input.value as? String, draft + "!")
         input.typeText(XCUIKeyboardKey.delete.rawValue)
         XCTAssertEqual(input.value as? String, draft)
+    }
+
+    /// Export only the allowlisted synthetic event, not the rest of the navigation snapshot.
+    private static func attachSyntheticScrollTrace(_ app: XCUIApplication, testCase: XCTestCase, name: String) {
+        let marker = UITestConditions.element(app, "navigation-test-observation")
+        let value = marker.exists ? UITestConditions.text(marker) : ""
+        let snapshot = (try? JSONSerialization.jsonObject(with: Data(value.utf8))) as? [String: Any]
+        let events = (snapshot?["lifecycle"] as? [[String: Any]])?.filter { $0["event"] as? String == "synthetic-transcript-scroll" } ?? []
+        let payload: [String: Any] = ["available": snapshot != nil, "events": events]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload) else { return }
+        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+        attachment.name = "synthetic-transcript-scroll-\(name)"
+        attachment.lifetime = .keepAlways
+        testCase.add(attachment)
     }
 }
