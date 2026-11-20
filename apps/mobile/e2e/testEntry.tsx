@@ -57,12 +57,12 @@ if (lifecycleObservation) {
     NativeModules.OrotTestControl.recordObservation(value),
   );
 }
-if (
+const syntheticScrollTrace =
   lifecycleObservation &&
   route === 'conversation-visual' &&
   settings.OROT_TEST_LONG_CONVERSATION_VISUAL === 'YES' &&
-  settings.OROT_TEST_CONVERSATION_SCROLL_TRACE === 'YES'
-) {
+  settings.OROT_TEST_CONVERSATION_SCROLL_TRACE === 'YES';
+if (syntheticScrollTrace) {
   registerSyntheticTranscriptScrollTrace();
 }
 
@@ -167,6 +167,11 @@ function GeometryTestWrapper({ children }: PropsWithChildren) {
       {children}
       <RotationGeometryRequest
         session={settings.OROT_TEST_ROTATION_GEOMETRY_SESSION}
+        syntheticTransitionInsets={
+          syntheticScrollTrace
+            ? (metrics?.insets ?? { top: 0, right: 0 })
+            : undefined
+        }
       />
       {lifecycleObservation ? (
         <View pointerEvents="none" style={styles.geometryMarker}>

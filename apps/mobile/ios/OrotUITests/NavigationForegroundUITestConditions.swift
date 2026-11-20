@@ -89,7 +89,7 @@ enum NavigationForegroundUITestConditions {
     ) throws {
         defer {
             if phase == "resize" {
-                attachSyntheticScrollTrace(app, testCase: testCase, name: "after")
+                NavigationRotationUITestConditions.attachSyntheticScrollTrace(app, testCase: testCase, name: "after")
             }
         }
         let input = UITestConditions.element(app, "rag-conversation-input")
@@ -163,12 +163,17 @@ enum NavigationForegroundUITestConditions {
             XCTFail("The same answer and unsent editor must be ready before the lifecycle boundary")
             return
         }
+        let baseline: NavigationRotationUITestConditions.ScrollTrace?
         if phase == "resize" {
-            attachSyntheticScrollTrace(app, testCase: testCase, name: "before")
+            baseline = try XCTUnwrap(
+                NavigationRotationUITestConditions.attachSyntheticScrollTrace(app, testCase: testCase, name: "before"),
+                "The synthetic transcript scroll trace must be present before tapping the rotation probe",
+            )
             let beforeWidth = history.frame.width
-            _ = try NavigationRotationUITestConditions.rotateObservedScene(app, session: session, landscape: true, scrollID: "rag-conversation-history")
+            _ = try NavigationRotationUITestConditions.rotateObservedScene(app, session: session, landscape: true, scrollID: "rag-conversation-history", syntheticProtectedContent: [answer, input])
             XCTAssertGreaterThan(abs(history.frame.width - beforeWidth), 0.5, "The transcript must actually resize")
         } else {
+            baseline = nil
             XCUIDevice.shared.press(.home)
             let suspended = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 app.state == .runningBackground || app.state == .runningBackgroundSuspended
@@ -187,10 +192,14 @@ enum NavigationForegroundUITestConditions {
             answerPoint() != nil && inputIsReady() && (input.value as? String) == draft
         }, object: nil)
         let settled = XCTWaiter.wait(for: [ready], timeout: 15) == .completed
+        if let baseline {
+            let readinessAtMs = Date().timeIntervalSince1970 * 1000
+            try verifySyntheticScrollTrace(app, from: baseline, after: readinessAtMs, testCase: testCase)
+        }
         guard settled, answerPoint() != nil, inputIsReady(), input.value as? String == draft else {
             // OrotFailFastTestCase may terminate at XCTFail before the Swift defer runs.
             if phase == "resize" {
-                attachSyntheticScrollTrace(app, testCase: testCase, name: "readiness-failed")
+                NavigationRotationUITestConditions.attachSyntheticScrollTrace(app, testCase: testCase, name: "readiness-failed")
             }
             XCTFail("The same restored answer and unsent editor must be usable after the native boundary")
             return
@@ -207,17 +216,35 @@ enum NavigationForegroundUITestConditions {
         XCTAssertEqual(input.value as? String, draft)
     }
 
-    /// Export only the allowlisted synthetic event, not the rest of the navigation snapshot.
-    private static func attachSyntheticScrollTrace(_ app: XCUIApplication, testCase: XCTestCase, name: String) {
-        let marker = UITestConditions.element(app, "navigation-test-observation")
-        let value = marker.exists ? UITestConditions.text(marker) : ""
-        let snapshot = (try? JSONSerialization.jsonObject(with: Data(value.utf8))) as? [String: Any]
-        let events = (snapshot?["lifecycle"] as? [[String: Any]])?.filter { $0["event"] as? String == "synthetic-transcript-scroll" } ?? []
-        let payload: [String: Any] = ["available": snapshot != nil, "events": events]
-        guard let data = try? JSONSerialization.data(withJSONObject: payload) else { return }
-        let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
-        attachment.name = "synthetic-transcript-scroll-\(name)"
-        attachment.lifetime = .keepAlways
-        testCase.add(attachment)
+    /// Poll for the first bridge envelope that actually starts after readiness; cached labels are not evidence.
+    private static func verifySyntheticScrollTrace(
+        _ app: XCUIApplication, from baseline: NavigationRotationUITestConditions.ScrollTrace,
+        after readiness: Double, testCase: XCTestCase,
+    ) throws {
+        var sampled: NavigationRotationUITestConditions.ScrollTrace?
+        let fresh = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard let trace = NavigationRotationUITestConditions.readSyntheticScrollTrace(app), trace.startedAtMs >= readiness else { return false }
+            sampled = trace
+            return true
+        }, object: nil)
+        let result = XCTWaiter.wait(for: [fresh], timeout: 5)
+        let trace = NavigationRotationUITestConditions.attachSyntheticScrollTrace(app, testCase: testCase, name: "after-readiness", trace: sampled)
+        guard result == .completed, let trace, trace.observer == baseline.observer,
+              let order = (baseline.events.last?["order"] as? String).flatMap(Int.init), order > 0, order <= Int.max - trace.events.count,
+              let index = trace.events.firstIndex(where: { ($0["order"] as? String).flatMap(Int.init) == order }),
+              trace.events.count > index + 1
+        else {
+            throw NSError(domain: "SyntheticScrollTraceUnavailable", code: 1)
+        }
+        for (offset, event) in trace.events[index...].enumerated() {
+            guard let actual = (event["order"] as? String).flatMap(Int.init), actual == order + offset,
+                  let boundary = event["boundary"] as? String, !boundary.isEmpty
+            else {
+                throw NSError(domain: "SyntheticScrollTraceDiscontinuous", code: 1)
+            }
+            if offset > 0, boundary == "status-bar-top-completed" {
+                throw NSError(domain: "SyntheticRotationProbeTriggeredStatusBar", code: 1)
+            }
+        }
     }
 }

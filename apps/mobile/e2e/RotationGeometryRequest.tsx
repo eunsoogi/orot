@@ -45,7 +45,13 @@ function orientationPolicy(value: unknown): Record<string, unknown> {
 }
 
 /** Exposes one requested native sample to the isolated rotation diagnostic. */
-export function RotationGeometryRequest({ session }: { session: unknown }) {
+export function RotationGeometryRequest({
+  session,
+  syntheticTransitionInsets,
+}: {
+  session: unknown;
+  syntheticTransitionInsets?: { top: number; right: number };
+}) {
   const [rotationReceipt, setRotationReceipt] = useState('{}');
   const [transitionReceipt, setTransitionReceipt] = useState('{}');
   const [transitionStep, setTransitionStep] = useState(0);
@@ -108,8 +114,20 @@ export function RotationGeometryRequest({ session }: { session: unknown }) {
                 setTransitionStep(current => current + 1);
               });
             }}
-            style={styles.transitionRequest}
-            testID="rotation-transition-request"
+            style={[
+              styles.transitionRequest,
+              syntheticTransitionInsets !== undefined && {
+                // The Duo fixture can report a zero window inset above the status-bar tap band.
+                top: Math.max(64, syntheticTransitionInsets.top) + 8,
+                left: undefined,
+                right: Math.max(12, syntheticTransitionInsets.right + 8),
+              },
+            ]}
+            testID={
+              syntheticTransitionInsets === undefined
+                ? 'rotation-transition-request'
+                : 'synthetic-safe-rotation-transition-request'
+            }
           >
             Transition request
           </Text>
