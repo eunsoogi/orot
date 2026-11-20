@@ -39,6 +39,10 @@ test('offers full-window reading rather than overflowing a line into actions', a
     '전체 화면으로 내용 보기',
   );
   await fireEvent.press(screen.getByTestId('medical-appointment-import'));
+  expect(screen.getByTestId('classification-expanded-reader')).toHaveProp(
+    'supportedOrientations',
+    ['portrait', 'portrait-upside-down', 'landscape-left', 'landscape-right'],
+  );
   expect(screen.getByTestId('classification-close-reader')).toBeEnabled();
   await measure(480);
   expect(screen.getByText('One large line')).toBeTruthy();

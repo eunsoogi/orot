@@ -90,6 +90,12 @@ export function ClassificationReaderFrame({
         visible={expanded}
         animationType={reduceMotion ? 'none' : 'fade'}
         presentationStyle="fullScreen"
+        supportedOrientations={[
+          'portrait',
+          'portrait-upside-down',
+          'landscape-left',
+          'landscape-right',
+        ]}
         onRequestClose={close}
         onDismiss={dismissed}
         testID="classification-expanded-reader"
