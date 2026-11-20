@@ -9,7 +9,7 @@ import {
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ConversationScreen } from '../ConversationScreen';
 import { ConversationSessionsProvider } from '../ConversationSessionsContext';
-import { createAiFeatureServices } from '../../aiFeatures/integration/featureServices';
+import { noProviderFixture } from '../testSupport/noProviderFixture';
 import { t } from '../../i18n';
 
 test('native Send event without a provider retains the unsent draft and visible local recovery across route return', async () => {
@@ -27,18 +27,7 @@ test('native Send event without a provider retains the unsent draft and visible 
     .mockResolvedValueOnce(null)
     .mockReturnValueOnce(cancelledRetry)
     .mockReturnValueOnce(retry);
-  const ragRunner = jest.fn();
-  const authorize = jest.fn();
-  const services = createAiFeatureServices(
-    { authorize },
-    {
-      selectedAi: {
-        selectionStore: { load, clear: jest.fn(), save: jest.fn() },
-      },
-      ragRunner,
-    },
-  );
-  const onSend = jest.fn(services.sendRagMessage);
+  const { services, onSend, ragRunner, authorize } = noProviderFixture(load);
   const options = services.conversationSessionOptions();
   const app = (conversation: boolean) => (
     <ConversationSessionsProvider options={options}>
@@ -176,18 +165,7 @@ test('preflight rejected after editing does not attach the old notice to the new
     .mockResolvedValue(null)
     .mockResolvedValueOnce(null)
     .mockReturnValueOnce(pending);
-  const ragRunner = jest.fn();
-  const authorize = jest.fn();
-  const services = createAiFeatureServices(
-    { authorize },
-    {
-      selectedAi: {
-        selectionStore: { load, clear: jest.fn(), save: jest.fn() },
-      },
-      ragRunner,
-    },
-  );
-  const onSend = jest.fn(services.sendRagMessage);
+  const { services, onSend, ragRunner, authorize } = noProviderFixture(load);
   await render(
     <ConversationSessionsProvider
       options={services.conversationSessionOptions()}

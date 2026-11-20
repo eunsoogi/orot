@@ -69,7 +69,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(node(app, "settings-provider-screen")))
         _ = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["settings-title"])
+        try RoutesVisibleContentUITestConditions.settingsRootAfterProviderBack(in: app)
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         try RoutesVisibleContentUITestConditions.conversationMessage(
             identifier: "rag-conversation-error", expected: "대화 기록이나 선택한 AI를 확인하지 못해 전송하지 않았어요. 다시 보내 주세요.", in: app,

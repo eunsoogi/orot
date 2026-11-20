@@ -153,5 +153,28 @@ enum RoutesVisibleContentUITestConditions {
         }
     }
 
-    private enum ObservationFailure: Error { case missingWindow, incompleteText }
+    /// Settings restores its scroll position; the provider row, not the offscreen title, identifies the returned root.
+    static func settingsRootAfterProviderBack(in app: XCUIApplication) throws {
+        let rows = app.buttons.matching(identifier: "settings-open-provider")
+        let tabs = app.buttons.matching(identifier: "navigation-tab-settings")
+        let childScreens = app.descendants(matching: .any).matching(identifier: "settings-provider-screen")
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let viewport = app.frame
+            func visible(_ element: XCUIElement) -> Bool {
+                guard element.exists, element.isHittable else { return false }
+                let frame = element.frame
+                return FormScrollGeometry.valid(frame) && viewport.intersects(frame)
+            }
+            let visibleRows = rows.allElementsBoundByIndex.filter(visible)
+            let selectedTabs = tabs.allElementsBoundByIndex.filter { visible($0) && $0.isSelected }
+            return visibleRows.count == 1 && selectedTabs.count == 1 &&
+                !childScreens.allElementsBoundByIndex.contains(where: visible)
+        }, object: nil)
+        guard XCTWaiter.wait(for: [ready], timeout: 12) == .completed else {
+            XCTFail("Provider Back must return to the selected Settings root with its provider row visible and the provider page hidden.")
+            throw ObservationFailure.incompleteRoute
+        }
+    }
+
+    private enum ObservationFailure: Error { case missingWindow, incompleteText, incompleteRoute }
 }

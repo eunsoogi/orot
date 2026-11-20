@@ -181,8 +181,8 @@ export function ConversationScreen({
             onRetrySave={() => {
               store.retrySave(id);
             }}
-            onOpenSource={onOpenSource}
-            {...{ resolveToolSource, resolveColdToolSource }}
+            {...sourceActions}
+            resolveColdToolSource={resolveColdToolSource}
             renderVisitQuestions={
               renderVisitQuestions
                 ? message =>
@@ -196,8 +196,6 @@ export function ConversationScreen({
                     )
                 : undefined
             }
-            toolSourceSessionId={toolSourceSessionId}
-            onLinkError={onLinkError}
             beforeMessages={
               <ManualVisitTargetPanels
                 content="recaps"
@@ -233,17 +231,15 @@ export function ConversationScreen({
               </ConversationQuickChoices>
             }
             footer={
-              <>
-                <ConversationTasks.ConversationStoredTaskCards
-                  onRestart={restart}
-                  store={store}
-                  session={session}
-                  onOpenSource={onOpenSource}
-                  routeKey={navigationRouteKey}
-                  durableSessionId={toolSourceSessionId}
-                  renderStoredReportTask={renderStoredReportTask}
-                />
-              </>
+              <ConversationTasks.ConversationStoredTaskCards
+                onRestart={restart}
+                store={store}
+                session={session}
+                onOpenSource={onOpenSource}
+                routeKey={navigationRouteKey}
+                durableSessionId={toolSourceSessionId}
+                renderStoredReportTask={renderStoredReportTask}
+              />
             }
           />
         </ConversationWorkspace>

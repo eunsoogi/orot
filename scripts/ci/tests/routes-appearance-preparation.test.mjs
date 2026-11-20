@@ -105,3 +105,38 @@ test('only the first Routes journey checks native composer and failure text agai
   assert.match(dock, /frame\.intersects\(back\.frame\)/);
   assert.match(dock, /XCTWaiter\.wait\(for: \[ready\], timeout: 12\)/);
 });
+
+test('the Settings return uses the visible root row, selected tab and dismissed child', () => {
+  const body = read('OrotUITests/AiFeatureNavigationUITests.swift').split('    func test')[1];
+  const root = body.indexOf(
+    'try RoutesVisibleContentUITestConditions.settingsRootAfterProviderBack(in: app)',
+  );
+  const back = body.lastIndexOf(
+    'try NavigationUITestConditions.tapNavigation(app, "navigation-back")',
+    root,
+  );
+  const conversation = body.indexOf(
+    'try NavigationUITestConditions.openTab(app, "conversation"',
+    root,
+  );
+  assert.ok(back >= 0 && root > back && conversation > root);
+  assert.match(body.slice(0, back), /openTab\(app, "settings", markers: \["settings-title"\]\)/);
+  assert.doesNotMatch(body.slice(back, root), /"settings-title"/);
+  const helper = read('OrotUITests/RoutesVisibleContentUITestConditions.swift').split(
+    'static func settingsRootAfterProviderBack',
+  )[1];
+  for (const marker of [
+    'settings-open-provider',
+    'navigation-tab-settings',
+    'settings-provider-screen',
+  ]) {
+    assert.ok(helper.includes(marker), marker);
+  }
+  assert.match(helper, /element\.isHittable/);
+  assert.match(helper, /viewport\.intersects\(frame\)/);
+  assert.match(helper, /visibleRows\.count == 1 && selectedTabs\.count == 1/);
+  assert.match(helper, /visible\(\$0\) && \$0\.isSelected/);
+  assert.match(helper, /!childScreens\.allElementsBoundByIndex\.contains\(where: visible\)/);
+  assert.match(helper, /XCTWaiter\.wait\(for: \[ready\], timeout: 12\)/);
+  assert.doesNotMatch(helper, /\.tap\(|\.swipe\w*\(|FormUITestConditions\.reveal/);
+});
