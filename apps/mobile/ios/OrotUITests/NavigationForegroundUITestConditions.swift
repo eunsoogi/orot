@@ -160,7 +160,7 @@ enum NavigationForegroundUITestConditions {
             XCTFail("The same answer and unsent editor must be ready before the lifecycle boundary")
             return
         }
-        let baseline: NavigationRotationUITestConditions.ScrollTrace?
+        var baseline: NavigationRotationUITestConditions.ScrollTrace? = nil
         if phase == "resize" {
             baseline = try XCTUnwrap(
                 NavigationRotationUITestConditions.attachSyntheticScrollTrace(app, testCase: testCase, name: "before"),
@@ -170,13 +170,13 @@ enum NavigationForegroundUITestConditions {
             _ = try NavigationRotationUITestConditions.rotateObservedScene(app, session: session, landscape: true, scrollID: "rag-conversation-history", syntheticProtectedContent: [answer, input])
             XCTAssertGreaterThan(abs(history.frame.width - beforeWidth), 0.5, "The transcript must actually resize")
         } else {
-            baseline = nil
-            XCUIDevice.shared.press(.home)
+            let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+            settings.launch()
             let suspended = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                app.state == .runningBackground || app.state == .runningBackgroundSuspended
+                settings.state == .runningForeground && (app.state == .runningBackground || app.state == .runningBackgroundSuspended)
             }, object: nil)
             guard XCTWaiter.wait(for: [suspended], timeout: 10) == .completed else {
-                XCTFail("The app did not enter the OS background")
+                XCTFail("Settings did not reach the OS foreground with Orot in the OS background")
                 return
             }
             app.activate()
