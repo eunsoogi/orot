@@ -1,6 +1,7 @@
 import { conversationMessageBodyTestID } from './conversationMessageBodyTestID';
 import { View } from 'react-native';
 import type { ReactNode } from 'react';
+import { useConversationMessageEvidence } from './useConversationMessageEvidence';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -8,7 +9,6 @@ import { ConversationMessageText } from './ConversationMessageText';
 import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
 import { ConversationMessageBubbles } from './ConversationMessageBubbles';
-import { ConversationSources } from './ConversationSources';
 import { ConversationToolEvents } from './ConversationToolEvents';
 import { HealthSummaryCard } from './HealthSummaryCard';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
@@ -18,7 +18,7 @@ import type { DisplayMessage } from './conversationDisplayMessage';
 export type { DisplayMessage } from './conversationDisplayMessage';
 /** Keeps transcript citations beside their answer; compact session previews may omit source links. */
 export function ConversationMessage({
-  message,
+  message: suppliedMessage,
   onContinueCold,
   coldResumeBusy,
   onOpenSource,
@@ -47,11 +47,12 @@ export function ConversationMessage({
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
 }) {
-  // Alias identity belongs to this answer, never to whichever run is globally current.
-  const openSource = (reference: EvidenceReference) =>
-    message.sourceOwner
-      ? onOpenSource(reference, message.sourceOwner)
-      : onOpenSource(reference);
+  const { message, openSource, citations } = useConversationMessageEvidence({
+    suppliedMessage,
+    showCitations,
+    onOpenSource,
+    onLinkError,
+  });
   const user = message.role === 'user';
   const visitQuestions =
     !user && message.visitQuestions ? renderVisitQuestions?.(message) : null;
@@ -232,14 +233,7 @@ export function ConversationMessage({
               {visitQuestions}
             </View>
           ) : null}
-          {showCitations ? (
-            <ConversationSources
-              testIDPrefix={`rag-conversation-message-${message.id}`}
-              references={message.citations ?? []}
-              onOpenSource={openSource}
-              onLinkError={onLinkError}
-            />
-          ) : null}
+          {citations}
         </View>
       </View>
     </ConversationMessageBubbles>
