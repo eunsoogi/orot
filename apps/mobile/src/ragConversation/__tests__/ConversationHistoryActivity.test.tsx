@@ -15,7 +15,6 @@ jest.mock('../../layout/AiResponseText', () => {
 import {
   activity,
   history,
-  user,
 } from '../testSupport/conversationHistoryActivityFixture';
 import { conversationToolEventFixtures } from '../testSupport/conversationToolEventFixtures';
 
