@@ -120,7 +120,6 @@ const featureScreens = [
       'ragConversation.send',
       'ragConversation.sessions',
       'ragConversation.newConversation',
-      'ragConversation.transmissionNotice',
       'ragConversation.disclaimer',
       'ragConversation.loading',
       'ragConversation.progressAnswer',
