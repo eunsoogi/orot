@@ -54,7 +54,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         XCTAssertFalse(node(app, "rag-conversation-error").exists)
         send.tap()
         try RoutesVisibleContentUITestConditions.conversationMessage(
-            identifier: "rag-conversation-error", expected: "대화 기록이나 선택한 AI를 확인하지 못해 전송하지 않았어요. 다시 보내 주세요.", in: app
+            identifier: "rag-conversation-error", expected: "대화 기록이나 선택한 AI를 확인하지 못해 전송하지 않았어요. 다시 보내 주세요.", in: app,
         )
         XCTAssertEqual(input.value as? String, unsentDraft)
         XCTAssertFalse(node(app, "conversation-message-body").exists)
@@ -72,7 +72,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         NavigationUITestConditions.route(app, markers: ["settings-title"])
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         try RoutesVisibleContentUITestConditions.conversationMessage(
-            identifier: "rag-conversation-error", expected: "대화 기록이나 선택한 AI를 확인하지 못해 전송하지 않았어요. 다시 보내 주세요.", in: app
+            identifier: "rag-conversation-error", expected: "대화 기록이나 선택한 AI를 확인하지 못해 전송하지 않았어요. 다시 보내 주세요.", in: app,
         )
         XCTAssertEqual(input.value as? String, unsentDraft)
         XCTAssertFalse(node(app, "conversation-message-body").exists)
