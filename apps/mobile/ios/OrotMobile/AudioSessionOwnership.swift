@@ -83,3 +83,48 @@ final class AudioSessionOwnership {
         owner = nil
     }
 }
+
+/// Main-queue owned, one-shot display receipt for a logical call with started audio.
+final class VoiceConnectedDuration {
+    private let now: () -> ContinuousClock.Instant
+    private var ready: (callID: String, at: ContinuousClock.Instant)?
+    private var terminal: (callID: String, seconds: Int)?
+
+    init(now: @escaping () -> ContinuousClock.Instant = { ContinuousClock.now }) {
+        self.now = now
+    }
+
+    func begin() {
+        ready = nil
+        terminal = nil
+    }
+
+    func markReady(_ callID: String) {
+        guard ready == nil, terminal == nil, !callID.isEmpty else { return }
+        ready = (callID, now())
+    }
+
+    func markStopped(_ callID: String) {
+        guard let started = ready, started.callID == callID else { return }
+        ready = nil
+        let elapsed = started.at.duration(to: now())
+        guard elapsed >= .zero, let seconds = Int(exactly: elapsed.components.seconds) else { return }
+        terminal = (callID, seconds)
+    }
+
+    func take(_ callID: String) -> [String: Any]? {
+        guard let receipt = terminal, receipt.callID == callID else { return nil }
+        terminal = nil
+        return ["callId": receipt.callID, "durationSeconds": receipt.seconds]
+    }
+
+    func startDuplex(_ callID: String, audio: VoiceDuplexAudioPort, input: @escaping (AVAudioPCMBuffer) -> Void) throws {
+        try audio.start(input: input)
+        markReady(callID)
+    }
+
+    func stopDuplex(_ callID: String, audio: VoiceDuplexAudioPort) {
+        markStopped(callID)
+        audio.stop()
+    }
+}

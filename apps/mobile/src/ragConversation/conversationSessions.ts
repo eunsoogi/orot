@@ -159,6 +159,7 @@ export function createConversationSessions(
       update(id, { entryPrompt }),
     prepareEntry: taskState.prepareEntry,
     saveTaskCard: taskState.save,
+    captureVoiceEnd: taskState.captureVoiceEnd,
     forgetTaskCard: taskState.forgetTaskCard,
     setError: (id: number, error: string) => update(id, { error }),
     reportTaskOwner: taskState.reportTaskOwner,
@@ -174,7 +175,10 @@ export function createConversationSessions(
       empty,
       disposed: () => disposed,
     }),
-    remove: removal.remove,
+    remove: (id: number) => {
+      taskState.invalidateVoiceEnd(id);
+      return removal.remove(id);
+    },
     undoRemove: removal.undo,
     cancel: (id: number) => {
       dispatch.cancelBeforeSend(id);

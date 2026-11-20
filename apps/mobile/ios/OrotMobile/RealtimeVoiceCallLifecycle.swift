@@ -18,6 +18,7 @@ extension RealtimeVoiceCall {
               !key.isEmpty, !key.contains("\n"), !key.contains("\r") else { completion(.failure(Failure.unavailable)); return }
         do { token = try ownership.reserve() } catch { completion(.failure(error)); return }
         tools.reset(enabled: false)
+        connectedDuration.begin()
         id = identifier; paused = false; opening = completion
         let epoch = UUID(); lifecycleEpoch = epoch
         // The key is retained only while permission/open is pending and by the authenticated socket request.

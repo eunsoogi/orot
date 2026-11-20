@@ -64,7 +64,12 @@ export function conversationHistoryPageOption(
     return {
       turns: chronological.flatMap(item =>
         item.kind === 'turn'
-          ? turns.filter(turn => turn.toolMessageId === item.id)
+          ? turns
+              .filter(turn => turn.toolMessageId === item.id)
+              .map(turn => ({
+                ...turn,
+                voiceTimelineOrder: { createdAt: item.createdAt, id: item.id },
+              }))
           : [],
       ),
       taskCards: chronological.flatMap(item =>

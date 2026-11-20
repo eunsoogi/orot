@@ -101,4 +101,40 @@ final class AudioSessionOwnershipTests: OrotFailFastTestCase {
         }
         XCTAssertEqual(winners, 1)
     }
+
+    func testConnectedVoiceDurationExcludesDialingAndWaitingForReceipt() {
+        var clock = ContinuousClock.now
+        let duration = VoiceConnectedDuration(now: { clock })
+        duration.begin()
+        clock = clock.advanced(by: .seconds(8))
+        duration.markStopped("failed")
+        XCTAssertNil(duration.take("failed"))
+
+        duration.markReady("connected")
+        clock = clock.advanced(by: .seconds(60))
+        duration.markReady("connected")
+        clock = clock.advanced(by: .milliseconds(5599))
+        duration.markStopped("wrong")
+        duration.markStopped("connected")
+        clock = clock.advanced(by: .seconds(20))
+
+        XCTAssertNil(duration.take("wrong"))
+        let end = duration.take("connected")
+        XCTAssertEqual(end?["callId"] as? String, "connected")
+        XCTAssertEqual(end?["durationSeconds"] as? Int, 65)
+        XCTAssertNil(duration.take("connected"))
+    }
+
+    func testNewVoiceOwnerNeverReceivesPreviousReceipt() {
+        let duration = VoiceConnectedDuration()
+        duration.begin()
+        duration.markReady("old")
+        duration.markStopped("old")
+        duration.begin()
+        XCTAssertNil(duration.take("old"))
+        duration.markReady("next")
+        duration.markStopped("next")
+        XCTAssertNil(duration.take("old"))
+        XCTAssertEqual(duration.take("next")?["callId"] as? String, "next")
+    }
 }

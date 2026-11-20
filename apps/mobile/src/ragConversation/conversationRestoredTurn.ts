@@ -2,6 +2,10 @@ import type { ConversationEntryContext } from '../aiFeatures/integration/convers
 import type { EvidenceReference } from '@orot/agent-runtime';
 
 export type RestoredTurn = {
+  readonly voiceTimelineOrder?: {
+    readonly createdAt: string;
+    readonly id: string;
+  };
   /** Metadata-only local notice, not an interrupted or reusable answer. */
   readonly historyUnavailable?: true;
   readonly question: string;
