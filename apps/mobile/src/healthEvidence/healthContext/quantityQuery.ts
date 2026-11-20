@@ -28,10 +28,13 @@ export async function readHealthQuantityContext(
   family: 'all' | 'measurements' | 'activity' = 'all',
   dataAvailableThrough?: string,
   indexedLatest = false,
+  calendarTimestampKeys?: string,
 ): Promise<{ series: readonly HealthQuantitySeries[]; truncated: boolean }> {
   if (!days.length) throw new RangeError('Invalid health context days.');
   if (signal?.aborted) throw new Error('Health context was cancelled.');
-  const parameters: SqlValue[] = [healthContextCalendarParameter(days)];
+  const parameters: SqlValue[] = [
+    calendarTimestampKeys ?? healthContextCalendarParameter(days),
+  ];
   const from = localQueryTimestampKey(days[0]!.fromInclusive);
   const to = localQueryTimestampKey(days[days.length - 1]!.toExclusive);
   const at = localQueryTimestampKeyExpression('r.effective_at');

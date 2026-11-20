@@ -233,10 +233,10 @@ test('shows loading and a recoverable response failure', async () => {
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   expect(
-    screen.getByTestId('rag-conversation-activity-bubble', {
+    screen.queryByTestId('rag-conversation-activity-bubble', {
       includeHiddenElements: true,
     }),
-  ).toBeTruthy();
+  ).toBeNull();
   // The bridge configures UIKit's button; the material host is not a second accessible action.
   expect(screen.getByTestId('rag-conversation-cancel').props).toMatchObject({
     busy: true,

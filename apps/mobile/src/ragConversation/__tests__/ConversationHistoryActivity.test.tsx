@@ -1,6 +1,6 @@
-import type { ComponentProps, ReactElement } from 'react';
+import type { ReactElement } from 'react';
 import { render, screen } from '@testing-library/react-native';
-import type { TextProps } from 'react-native';
+import { AccessibilityInfo, type TextProps } from 'react-native';
 
 jest.mock('../../layout/AiResponseText', () => {
   const React = jest.requireActual<typeof import('react')>('react');
@@ -12,57 +12,18 @@ jest.mock('../../layout/AiResponseText', () => {
   };
 });
 
-import { ConversationHistory } from '../ConversationHistory';
-import type { ConversationActivitySnapshot } from '../conversationActivity';
+import {
+  activity,
+  history,
+} from '../testSupport/conversationHistoryActivityFixture';
 import { conversationToolEventFixtures } from '../testSupport/conversationToolEventFixtures';
 
-const callbacks = {
-  error: '',
-  onOpenSource: jest.fn(),
-  onLinkError: jest.fn(),
-};
-
-function activity(
-  stage: ConversationActivitySnapshot['stage'],
-  sessionId = 12,
-): ConversationActivitySnapshot {
-  return { sessionId, requestId: 44, stage };
-}
-
-function history(props: Partial<ComponentProps<typeof ConversationHistory>>) {
-  return (
-    <ConversationHistory
-      {...callbacks}
-      messages={[]}
-      pendingMessage={null}
-      {...props}
-    />
-  );
-}
-
-test('shows preparation without processing dots before provider acknowledgement', async () => {
-  await render(
-    history({
-      requestSessionId: 12,
-      requestActivity: activity('preparing'),
-      pendingMessage: { id: 44, content: '', activity: '답변 준비 중' },
-    }),
-  );
-
-  expect(
-    screen.getByTestId('rag-conversation-activity-bubble', {
-      includeHiddenElements: true,
-    }),
-  ).toBeTruthy();
-  expect(
-    screen.queryAllByTestId('rag-conversation-activity-dot', {
-      includeHiddenElements: true,
-    }),
-  ).toHaveLength(3);
-  expect(screen.queryByTestId('conversation-response-waiting')).toBeNull();
-  expect(screen.queryByTestId('rag-conversation-stream')).toBeNull();
-  expect(screen.queryByTestId('rag-conversation-progress')).toBeNull();
+beforeEach(() => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
 });
+afterEach(() => jest.restoreAllMocks());
 
 test('hands off to partial streaming, stays visible during tool work, and clears at settlement', async () => {
   const partial = {

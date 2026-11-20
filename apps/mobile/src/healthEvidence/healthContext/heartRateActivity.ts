@@ -38,6 +38,7 @@ export async function addHeartRateActivityContext(
   signal?: AbortSignal,
   dataAvailableThrough?: string,
   acquirePrefix?: AcquireHeartWorkoutPrefix,
+  calendarTimestampKeys?: string,
 ): Promise<readonly HealthQuantitySeries[]> {
   if (!series.some(item => item.concept === 'heart_rate')) return series;
   if (!days.length) throw new RangeError('Invalid health context days.');
@@ -50,7 +51,8 @@ export async function addHeartRateActivityContext(
   );
   const ingestion = localQueryTimestampKeyExpression('r.ingested_at');
   const cutoff = dataAvailableThrough ? `AND ${ingestion} <= ?` : '';
-  const calendar = healthContextCalendarParameter(days);
+  const calendar =
+    calendarTimestampKeys ?? healthContextCalendarParameter(days);
   const through: SqlValue[] = dataAvailableThrough
     ? [localQueryTimestampKey(dataAvailableThrough)]
     : [];
