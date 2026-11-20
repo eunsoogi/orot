@@ -95,3 +95,53 @@ test('standalone source groups retain distinct identities across rerenders', asy
   ).toEqual(ids);
   await view.unmount();
 });
+
+test('unchanged chip text invokes current actions and changed sources refresh labels under the shipped locale fallback', async () => {
+  const first = jest.fn();
+  const current = jest.fn();
+  const onLinkError = jest.fn();
+  const options = Intl.DateTimeFormat().resolvedOptions();
+  const locale = jest.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions');
+  const previous = [{ ...reference, effectiveTime: '2026-03-04T00:00:00Z' }];
+  const updated = {
+    ...previous[0]!,
+    evidenceRevision: 'updated',
+    effectiveTime: '2026-04-05T00:00:00Z',
+  };
+  const group = (references: readonly (typeof updated)[], open = first) => (
+    <ConversationSources
+      references={references}
+      testIDPrefix="current-citation"
+      onOpenSource={open}
+      onLinkError={onLinkError}
+    />
+  );
+  locale.mockReturnValue({ ...options, locale: 'ko-KR' });
+  const view = await render(group(previous));
+  try {
+    const action = () => screen.getByTestId('current-citation-citation-0');
+    const label = action().props.accessibilityLabel;
+    expect(label).toMatch(/원문 근거 열기.*2026-03-04/u);
+
+    // Unsupported device locales still select the same shipped Korean label.
+    locale.mockReturnValue({ ...options, locale: 'fr-FR' });
+    await view.rerender(group(previous, current));
+    expect(action().props.accessibilityLabel).toBe(label);
+    await fireEvent.press(action());
+    expect(first).not.toHaveBeenCalled();
+    expect(current).toHaveBeenLastCalledWith(previous[0]);
+
+    await view.rerender(group([updated], current));
+    expect(action().props.accessibilityLabel).toMatch(
+      /원문 근거 열기.*2026-04-05/u,
+    );
+    await fireEvent.press(action());
+    expect(current).toHaveBeenLastCalledWith(updated);
+
+    await view.rerender(group([], current));
+    expect(screen.queryByTestId('current-citation-citation-0')).toBeNull();
+  } finally {
+    await view.unmount();
+    locale.mockRestore();
+  }
+});
