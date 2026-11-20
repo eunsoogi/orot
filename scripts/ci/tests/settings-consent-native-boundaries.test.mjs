@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 const read = (file) => readFileSync(`apps/mobile/${file}`, 'utf8');
 
-test('synthetic Realtime bridge is compiler gated and cannot select live transport for malformed opt-in', () => {
+test('synthetic GPT-Live bridge is compiler gated and cannot select live transport for malformed opt-in', () => {
   const fixture = read('ios/OrotMobile/SettingsConsentRealtimeFixture.swift');
   assert.match(fixture, /^#if OROT_TESTS && targetEnvironment\(simulator\)/);
   for (const boundary of [
@@ -38,7 +38,8 @@ test('registered journey retains original assertions and adds independent creden
   for (const value of [
     '선택한 ChatGPT 계정',
     'OpenAI API',
-    'OpenAI Realtime API',
+    'OpenAI Live API',
+    'voice-model-gpt-live-1.1',
     'verifyNativeBoundaries(app)',
     'settings-boundary-replace',
     'settings-boundary-remove',
@@ -60,7 +61,12 @@ test('registered journey retains original assertions and adds independent creden
     entry.indexOf('consentFixtureIdentity(') <
       entry.indexOf('await openSettingsCredentialNativeFixture('),
   );
-  assert.ok(entry.includes('createRealtimeSettingsPermission(owner.authorization())'));
+  assert.match(
+    entry,
+    /createRealtimeSettingsPermission\(\s*owner\.authorization\(\),\s*true,?\s*\)/,
+  );
+  assert.ok(entry.includes('nativeLiveVoice()'));
+  assert.ok(!entry.includes('nativeRealtimeVoice()'));
   assert.ok(entry.includes('await stopping.current'));
   assert.ok(entry.includes('settingsConsentSnapshot(true)'));
 });

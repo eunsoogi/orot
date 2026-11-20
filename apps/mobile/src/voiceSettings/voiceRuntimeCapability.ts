@@ -17,3 +17,19 @@ export function hasRealtimeVoiceRuntime(): boolean {
     ].every(name => typeof module[name] === 'function'),
   );
 }
+
+/** A compiled transport seam is not authorization or proof of API compatibility. */
+export function hasLiveVoiceRuntime(): boolean {
+  const module =
+    Platform.OS === 'ios' ? NativeModules.VoiceRealtimeModule : null;
+  return Boolean(
+    module &&
+    [
+      'openLiveCall',
+      'stopRealtimeCall',
+      'interruptRealtimeOutput',
+      'pauseRealtimeCall',
+      'resumeRealtimeCall',
+    ].every(name => typeof module[name] === 'function'),
+  );
+}

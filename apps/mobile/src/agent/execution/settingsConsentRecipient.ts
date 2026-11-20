@@ -1,3 +1,7 @@
+import {
+  liveVoiceProviderId,
+  liveVoiceRecipient,
+} from './liveVoiceSettingsIdentity';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { APPLE_PCC_PROVIDER_ID } from '../../providers/selection/privateCloudCompute';
 import { t } from '../../i18n';
@@ -11,5 +15,6 @@ export function settingsConsentRecipient(providerId: string): string | null {
     return t('nextVisit.recipient.chatgpt');
   if (providerId === 'openai-api-decisions') return 'OpenAI API';
   if (providerId === 'openai-realtime') return 'OpenAI Realtime API';
+  if (providerId === liveVoiceProviderId) return liveVoiceRecipient;
   return null;
 }

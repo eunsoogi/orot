@@ -1,15 +1,15 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { NativeModules } from 'react-native';
 import { SettingsConsentBoundaryEntry } from '../e2e/SettingsConsentBoundaryEntry';
 import { openSettingsCredentialNativeFixture } from '../e2e/settingsCredentialNativeFixture';
-import { nativeRealtimeVoice } from '../src/voiceConversation/nativeRealtimeVoice';
+import { nativeLiveVoice } from '../src/voiceConversation/nativeRealtimeVoice';
 
 jest.mock('@op-engineering/op-sqlite', () => ({}));
 jest.mock('../e2e/settingsCredentialNativeFixture', () => ({
   openSettingsCredentialNativeFixture: jest.fn(),
 }));
 jest.mock('../src/voiceConversation/nativeRealtimeVoice', () => ({
-  nativeRealtimeVoice: jest.fn(),
+  nativeLiveVoice: jest.fn(),
 }));
 jest.mock(
   'react-native-safe-area-context',
@@ -61,7 +61,7 @@ test.each(['flag', 'uuid', 'host', 'bridge'])(
       ),
     );
     expect(openSettingsCredentialNativeFixture).not.toHaveBeenCalled();
-    expect(nativeRealtimeVoice).not.toHaveBeenCalled();
+    expect(nativeLiveVoice).not.toHaveBeenCalled();
     await view.unmount();
   },
 );
@@ -70,9 +70,15 @@ test.each(['flag', 'uuid', 'host', 'bridge'])(
 test('real lease forwards revoke to native stop before inspecting late events', async () => {
   let current = true;
   let invalidated: (() => void) | undefined;
-  const stop = jest.fn(async () => {});
+  let finishNativeStop: (() => void) | undefined;
+  const stop = jest.fn(
+    () =>
+      new Promise<void>(resolve => {
+        finishNativeStop = resolve;
+      }),
+  );
   const open = jest.fn(async () => {});
-  jest.mocked(nativeRealtimeVoice).mockReturnValue({ stop, open } as never);
+  jest.mocked(nativeLiveVoice).mockReturnValue({ stop, open } as never);
   jest.mocked(openSettingsCredentialNativeFixture).mockResolvedValue({
     initializeAndApprove: async () => ({ ready: true }),
     close: jest.fn(),
@@ -98,10 +104,23 @@ test('real lease forwards revoke to native stop before inspecting late events', 
   );
   await fireEvent.press(view.getByTestId('settings-boundary-open'));
   expect(open).toHaveBeenCalledTimes(1);
+  expect(open).toHaveBeenCalledWith(
+    'settings-consent-boundary',
+    'gpt-live-1.1',
+    'synthetic-not-a-real-key',
+    '',
+    false,
+    { schema: 1, language: 'auto', voice: 'default' },
+    expect.any(Function),
+  );
   await fireEvent.press(view.getByTestId('settings-boundary-revoke'));
-  expect(stop).toHaveBeenCalledWith('settings-consent-boundary');
-  expect(
-    NativeModules.VoiceRealtimeModule.settingsConsentSnapshot,
-  ).toHaveBeenLastCalledWith(true);
+  await waitFor(() =>
+    expect(stop).toHaveBeenCalledWith('settings-consent-boundary'),
+  );
+  const snapshot = NativeModules.VoiceRealtimeModule.settingsConsentSnapshot;
+  expect(snapshot).not.toHaveBeenCalledWith(true);
+  await act(async () => finishNativeStop?.());
+  await waitFor(() => expect(snapshot).toHaveBeenLastCalledWith(true));
+  stop.mockResolvedValue(undefined);
   await view.unmount();
 });

@@ -1,4 +1,4 @@
-import { useModelConsentSave } from '../../agent/execution/useModelConsentSave';
+import { useConversationModelConfirmation } from './useConversationModelConfirmation';
 import { t } from '../../i18n';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { ModelSelectionTabs } from './ModelSelectionTabs';
@@ -38,7 +38,6 @@ export default function ProviderSelectionScreen({
     web: false,
     medical: false,
   });
-  const saveConsent = useModelConsentSave('conversation', selectionStore);
   const [savedSelection, setSavedSelection] =
     useState<ProviderSelection | null>(null);
   const [pendingOption, setPendingOption] =
@@ -92,54 +91,24 @@ export default function ProviderSelectionScreen({
       )
     : undefined;
   const confirmationOption = currentPendingOption ?? pendingOption;
-  async function confirmSelection() {
-    if (!pendingOption || saving) return;
-    const selection = {
-      providerId: pendingOption.provider.id,
-      modelId: pendingOption.modelId,
-    };
-    // Revalidate in the handler too so a stale render cannot commit a blocked provider.
-    const currentResolution = resolveProviderSelection(
-      selection,
-      options,
-      requirements,
-    );
-    if (!currentResolution.ok) return;
-    publishNavigationState({
-      hasPendingSelection: true,
-      isSavingSelection: true,
+  const { settings, confirmSelection, disclosureSheet } =
+    useConversationModelConfirmation({
+      presentation,
+      navigationRouteKey,
+      selectionStore,
+      onSelectionCommitted,
+      pendingSelection,
+      pendingResolution,
+      currentPendingOption,
+      confirmationOption,
+      searchChoices,
+      saving,
+      setSaving,
+      setSaveError,
+      setSavedSelection,
+      setPendingOption,
+      publishNavigationState,
     });
-    setSaving(true);
-    setSaveError(false);
-    let selectionSaved = false;
-    try {
-      await saveConsent(pendingOption, {
-        ...searchChoices,
-        web:
-          searchChoices.web && Boolean(pendingOption.provider.searchPublicWeb),
-      });
-      setSavedSelection(selection);
-      setPendingOption(null);
-      selectionSaved = true;
-      publishNavigationState(
-        { hasPendingSelection: false, isSavingSelection: false },
-        true,
-      );
-      setSaving(false);
-      // Loading a saved choice never routes a provider; only explicit confirmation does.
-      onSelectionCommitted?.(selection, currentResolution.provider);
-    } catch {
-      setSaveError(true);
-    } finally {
-      if (!selectionSaved) {
-        publishNavigationState({
-          hasPendingSelection: true,
-          isSavingSelection: false,
-        });
-      }
-      setSaving(false);
-    }
-  }
   const selectionMessage = selectionSummaryMessage({
     loading,
     loadError,
@@ -214,6 +183,7 @@ export default function ProviderSelectionScreen({
           ) : null}
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionFooter
+              inlineConsent={!settings}
               searchChoices={searchChoices}
               onSearchChoices={setSearchChoices}
               message={selectionMessage}
@@ -238,6 +208,7 @@ export default function ProviderSelectionScreen({
           ) : null}
         </ModelSelectionTabs>
       </ScrollView>
+      {disclosureSheet}
     </View>
   );
 }

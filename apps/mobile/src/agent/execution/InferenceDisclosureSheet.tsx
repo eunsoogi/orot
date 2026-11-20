@@ -1,3 +1,4 @@
+import type { SettingsDisclosureSummary } from './settingsDisclosureSummary';
 import { NavigationModal } from '../../navigation/NavigationModal';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import { KeyboardAvoidingView, Platform } from 'react-native';
@@ -5,11 +6,16 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import InferenceDisclosureModalPanel from './InferenceDisclosureModalPanel';
 import { disclosureStyles as styles } from './InferenceDisclosureStyles';
 
-interface InferenceDisclosureSheetProps {
-  readonly request: OutboundProcessingRequest | null;
+type InferenceDisclosureSheetProps = {
   readonly onDecision: (approved: boolean) => void;
   readonly canRemember?: boolean;
-}
+} & (
+  | {
+      readonly request: OutboundProcessingRequest | null;
+      readonly summary?: never;
+    }
+  | { readonly summary: SettingsDisclosureSummary; readonly request?: never }
+);
 
 /** Recognize only the actual calendar request shape; other payloads retain an honest generic label. */
 function isCalendarRequest(request: OutboundProcessingRequest): boolean {
@@ -52,11 +58,13 @@ export default function InferenceDisclosureSheet({
   request,
   onDecision,
   canRemember = true,
+  summary,
 }: InferenceDisclosureSheetProps) {
-  if (!request) return null;
+  if (!request && !summary) return null;
   const calendar =
-    request.consentScope?.purpose === 'calendar_classification' ||
-    isCalendarRequest(request);
+    !!request &&
+    (request.consentScope?.purpose === 'calendar_classification' ||
+      isCalendarRequest(request));
 
   return (
     <NavigationModal
@@ -78,10 +86,11 @@ export default function InferenceDisclosureSheet({
           style={styles.backdrop}
         >
           <InferenceDisclosureModalPanel
-            request={request}
+            request={request ?? undefined}
             onDecision={onDecision}
             canRemember={canRemember}
             calendar={calendar}
+            summary={summary}
           />
         </KeyboardAvoidingView>
       </SafeAreaProvider>

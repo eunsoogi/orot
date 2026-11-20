@@ -21,6 +21,7 @@ interface ProviderSelectionConfirmationProps {
   readonly hasActionDock?: boolean;
   readonly consentChoices?: ReactNode;
   readonly consentSlot?: 'conversation' | 'calendar';
+  readonly inlineConsent?: boolean;
 }
 
 export default function ProviderSelectionConfirmation({
@@ -32,6 +33,7 @@ export default function ProviderSelectionConfirmation({
   onCancel,
   hasActionDock = false,
   consentSlot = 'conversation',
+  inlineConsent = true,
   consentChoices,
 }: ProviderSelectionConfirmationProps) {
   const local = option.privacyBoundary === 'on-device';
@@ -48,20 +50,24 @@ export default function ProviderSelectionConfirmation({
           {blockedMessage}
         </Text>
       ) : null}
-      <View style={styles.privacy}>
-        <AppSymbol name="checkmark.shield.fill" />
-        <Text
-          style={styles.privacyCopy}
-          testID="provider-selection-confirmation-privacy"
-        >
-          {local
-            ? providerSelectionText.onDevicePrivacy
-            : option.provider.id === APPLE_PCC_PROVIDER_ID
-              ? t('provider.pcc.privacy')
-              : providerSelectionText.remotePrivacy}
-        </Text>
-      </View>
-      {!local && settingsConsentRecipient(option.provider.id) ? (
+      {local || inlineConsent ? (
+        <View style={styles.privacy}>
+          <AppSymbol name="checkmark.shield.fill" />
+          <Text
+            style={styles.privacyCopy}
+            testID="provider-selection-confirmation-privacy"
+          >
+            {local
+              ? providerSelectionText.onDevicePrivacy
+              : option.provider.id === APPLE_PCC_PROVIDER_ID
+                ? t('provider.pcc.privacy')
+                : providerSelectionText.remotePrivacy}
+          </Text>
+        </View>
+      ) : null}
+      {inlineConsent &&
+      !local &&
+      settingsConsentRecipient(option.provider.id) ? (
         <ModelSettingsConsentDisclosure
           slot={consentSlot}
           recipient={settingsConsentRecipient(option.provider.id)!}

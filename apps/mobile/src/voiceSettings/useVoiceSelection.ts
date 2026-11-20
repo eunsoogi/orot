@@ -47,20 +47,23 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
       owner.current += 1;
     };
   }, [voiceSettingsStore]);
-  const save = async () => {
-    if (locked.current || failedLoad) return;
+  const save = async (isCurrentDraft: () => boolean = () => true) => {
+    if (locked.current || failedLoad) return false;
     locked.current = true;
     const version = owner.current;
+    const current = () =>
+      mounted.current && version === owner.current && isCurrentDraft();
     setBusy(true);
     setMessage('');
     try {
-      await saveConsent(mode, model);
-      if (!mounted.current || version !== owner.current) return;
+      await saveConsent(mode, model, current);
+      if (!current()) return false;
       setSavedModel(model);
       setMessage(t('modelSettings.voiceSaved'));
+      return true;
     } catch {
-      if (mounted.current && version === owner.current)
-        setMessage(t('modelSettings.voiceSaveFailed'));
+      if (current()) setMessage(t('modelSettings.voiceSaveFailed'));
+      return false;
     } finally {
       locked.current = false;
       if (mounted.current && version === owner.current) setBusy(false);

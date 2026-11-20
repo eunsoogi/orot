@@ -34,6 +34,7 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
         ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
         guard ClassificationConsentUITestSupport.assertSettingsControls(app) else { return }
         tap(app, "provider-selection-confirm")
+        tap(app, "inference-disclosure-allow")
         XCTAssertTrue(node(app, "calendar-current-model").waitForAppearance())
         tap(app, "classification-close-settings")
         let expandedWidth = page.frame.width
@@ -179,10 +180,14 @@ final class AppointmentConsentUITests: OrotFailFastTestCase {
             })
             ClassificationConsentUITestSupport.openSettingsChoice(app, testCase: self)
             guard ClassificationConsentUITestSupport.assertSettingsControls(app) else { return }
-            let disclosure = node(app, "model-settings-transmission-disclosure")
+            tap(app, "provider-selection-confirm")
+            guard ClassificationConsentUITestSupport.assertExternalConsentControls(app) else { return }
+            let disclosure = node(app, "inference-disclosure-recipient")
             XCTAssertTrue(UITestConditions.text(disclosure).contains("OpenAI API"))
-            XCTAssertFalse(UITestConditions.text(disclosure).contains("SENTINEL_CALENDAR_EVENT_IDENTIFIER"))
+            let scope = node(app, "inference-disclosure-scope")
+            XCTAssertFalse(UITestConditions.text(scope).contains("SENTINEL_CALENDAR_EVENT_IDENTIFIER"))
             NavigationGeometryUITestConditions.captureScreen(app, name: dark ? "settings-classification-consent-dark" : "settings-classification-consent-light", testCase: self)
+            tap(app, "inference-disclosure-cancel")
             tap(app, "provider-selection-cancel")
             tap(app, "classification-close-settings")
             DisclosureLayoutUITestObservations.startClassification(app, in: self)
