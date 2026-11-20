@@ -69,6 +69,30 @@ struct FormScrollGeometry {
         (0 ... 1).contains(global) && global == owned
     }
 
+    enum ClassificationStartAction: String {
+        case start, expand
+
+        static let startLabel = "선택한 AI로 분류"
+        static let expandLabel = "전체 화면으로 내용 보기"
+        static let closeLabel = "확대 화면 닫기"
+
+        static func resolve(
+            label: String, isButton: Bool, enabled: Bool, hittable: Bool,
+            global: Int, owned: Int, frame: CGRect, footer: CGRect, owner: CGRect,
+            inExpandedReader: Bool
+        ) -> Self? {
+            guard global == 1, owned == 1, isButton, enabled, hittable,
+                  FormScrollGeometry.valid(frame), frame.width >= 44, frame.height >= 44,
+                  FormScrollGeometry.valid(footer), FormScrollGeometry.valid(owner)
+            else { return nil }
+            let center = CGPoint(x: frame.midX, y: frame.midY)
+            guard footer.contains(center), owner.contains(center) else { return nil }
+            if label == startLabel { return .start }
+            if label == expandLabel, !inExpandedReader { return .expand }
+            return nil
+        }
+    }
+
     static func stableStageFrame(_ left: CGRect, _ right: CGRect) -> Bool {
         guard valid(left), valid(right) else { return false }
         return abs(left.minX - right.minX) <= 1 && abs(left.minY - right.minY) <= 1

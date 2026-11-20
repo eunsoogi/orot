@@ -43,7 +43,7 @@ extension AppointmentConsentUITests {
         tap(app, "classification-close-settings")
         assertStageActions(app)
         try captureStageLayout(app, stage: "confirmation", anchor: anchor)
-        DisclosureLayoutUITestObservations.startClassification(app, in: self)
+        try startMeasuredClassification(app, anchor: anchor)
 
         try assertHeldProgress(app, percent: 0, calls: 1, saving: false, anchor: anchor)
         tap(app, "classification-release-response")
@@ -85,11 +85,29 @@ extension AppointmentConsentUITests {
             gate.exists && gate.isEnabled && gate.label == "Release synthetic \(phase)"
                 && UITestConditions.text(self.node(app, "calendar-classification-synthetic-provider-calls")) == "syntheticProviderCalls=\(calls)"
         }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+        guard XCTWaiter.wait(for: [ready], timeout: 12) == .completed else {
+            let counter = node(app, "calendar-classification-synthetic-provider-calls")
+            let callText = counter.exists ? UITestConditions.text(counter) : ""
+            let observedCalls = (0 ... 2).first { callText == "syntheticProviderCalls=\($0)" } ?? -1
+            let confirmation = node(app, "medical-appointment-confirmation").exists
+            let progress = node(app, "medical-appointment-progress").exists
+            let results = node(app, "medical-appointment-results").exists
+            let release = gate.exists
+            let modal = node(app, "classification-close-reader").exists
+            let releasePhaseMatches = release && gate.label == "Release synthetic \(phase)"
+            XCTFail("Classification gate not reached: expectedPercent=\(percent), expectedCalls=\(calls), saving=\(saving), "
+                    + "calls=\(observedCalls), confirmation=\(confirmation), progress=\(progress), results=\(results), "
+                    + "modal=\(modal), release=\(release), releasePhaseMatches=\(releasePhaseMatches)")
+            throw ActivationError.unproven
+        }
         let label = saving ? "분류한 일정을 저장하고 있어요." : "일정 분류 중"
         let predicate = NSPredicate(format: "label == %@ AND value == %@", label, "\(percent)%")
         let progress = app.descendants(matching: .any).matching(predicate).firstMatch
-        XCTAssertTrue(progress.waitForAppearance(), app.debugDescription)
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in progress.exists }, object: nil)
+        guard XCTWaiter.wait(for: [visible], timeout: 8) == .completed else {
+            XCTFail("Classification progress oracle missing: expectedPercent=\(percent), expectedCalls=\(calls), saving=\(saving)")
+            throw ActivationError.unproven
+        }
         XCTAssertFalse(progress.frame.isEmpty)
         XCTAssertTrue(app.frame.contains(progress.frame))
         XCTAssertFalse(node(app, "medical-appointment-results").exists)

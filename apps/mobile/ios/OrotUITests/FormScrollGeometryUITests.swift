@@ -8,6 +8,7 @@ final class FormScrollGeometryUITests: XCTestCase {
         try verifyActionDockOcclusion()
         try verifyDisclosureReadingEdges()
         verifyClassificationStageOwner()
+        verifyClassificationStartAction()
         XCTAssertEqual(FormScrollGeometry.uniqueOwnerIndex([1, 0]), 0)
         XCTAssertEqual(FormScrollGeometry.uniqueOwnerIndex([0, 1]), 1)
         XCTAssertNil(FormScrollGeometry.uniqueOwnerIndex([0, 0]))
@@ -37,6 +38,33 @@ final class FormScrollGeometryUITests: XCTestCase {
         for point in [drag.start, drag.end] {
             XCTAssertTrue(shifted.viewport.contains(CGPoint(x: point.dx + origin.x, y: point.dy + origin.y)))
         }
+    }
+
+    private func verifyClassificationStartAction() {
+        typealias Action = FormScrollGeometry.ClassificationStartAction
+        let owner = CGRect(x: 0, y: 0, width: 678, height: 466)
+        let footer = CGRect(x: 20, y: 400, width: 638, height: 50)
+        func classify(_ label: String = Action.startLabel, button: Bool = true, enabled: Bool = true,
+                      hittable: Bool = true, global: Int = 1, owned: Int = 1,
+                      frame: CGRect = CGRect(x: 290, y: 400, width: 90, height: 44),
+                      expanded: Bool = false) -> Action? {
+            Action.resolve(label: label, isButton: button, enabled: enabled, hittable: hittable,
+                           global: global, owned: owned, frame: frame, footer: footer, owner: owner,
+                           inExpandedReader: expanded)
+        }
+        XCTAssertEqual(classify(), .start)
+        XCTAssertEqual(classify(Action.expandLabel), .expand)
+        XCTAssertEqual(classify(expanded: true), .start)
+        XCTAssertNil(classify(Action.expandLabel, expanded: true))
+        XCTAssertNil(classify("시작"))
+        XCTAssertNil(classify("화면을 세로로 돌리거나 창을 키워 주세요"))
+        XCTAssertNil(classify(button: false))
+        XCTAssertNil(classify(enabled: false))
+        XCTAssertNil(classify(hittable: false))
+        XCTAssertNil(classify(global: 2))
+        XCTAssertNil(classify(owned: 0))
+        XCTAssertNil(classify(frame: CGRect(x: 290, y: 350, width: 90, height: 44)))
+        XCTAssertNil(classify(frame: CGRect(x: 290, y: 400, width: 90, height: 43)))
     }
 
     private func verifyClassificationStageOwner() {
@@ -121,5 +149,88 @@ final class FormScrollGeometryUITests: XCTestCase {
         let focused = try XCTUnwrap(FormScrollGeometry(application: app, scroll: safe, keyboard: keyboard))
         XCTAssertEqual(focused.viewport.maxY, 590)
         XCTAssertFalse(focused.contains(editor))
+    }
+}
+
+/// Resolves the real native confirmation action independently of the staged journey.
+extension AppointmentConsentUITests {
+    enum ActivationError: Error {
+        case unproven
+    }
+
+    @MainActor
+    func startMeasuredClassification(_ app: XCUIApplication, anchor: ClassificationStageWindowAnchor?) throws {
+        typealias Action = FormScrollGeometry.ClassificationStartAction
+        let actionID = "medical-appointment-import"
+        let closeID = "classification-close-reader"
+        let footerID = "classification-stage-footer"
+        let confirmationID = "medical-appointment-confirmation"
+        let counterID = "calendar-classification-synthetic-provider-calls"
+        let releaseID = "classification-release-response"
+        let progressID = "medical-appointment-progress"
+        let resultsID = "medical-appointment-results"
+
+        func validate(inExpandedReader: Bool) throws -> (action: Action, element: XCUIElement) {
+            // The Modal can project a separate AX window. Its close control, confirmation,
+            // and footer must share the real action owner; the route root can remain outside it.
+            let required = [confirmationID, footerID, actionID]
+                + (inExpandedReader ? [closeID] : ["medical-appointment-fullscreen"])
+            let owner = try FormWindowOwnership.resolveStage(app, observed: anchor?.frame, required: required)
+            func scoped(_ id: String) -> XCUIElementQuery {
+                owner.descendants(matching: .any).matching(identifier: id)
+            }
+
+            let counters = app.descendants(matching: .any).matching(identifier: counterID)
+            let callsZero = counters.count == 1 && UITestConditions.text(counters.firstMatch) == "syntheticProviderCalls=0"
+            let closeCount = app.descendants(matching: .any).matching(identifier: closeID).count
+            let close = scoped(closeID).firstMatch
+            let modal = close.exists && close.elementType == .button && close.label == Action.closeLabel
+                && close.isEnabled && close.isHittable && owner.frame.contains(close.frame)
+            guard closeCount == (inExpandedReader ? 1 : 0), modal == inExpandedReader,
+                  callsZero, !node(app, releaseID).exists,
+                  !node(app, progressID).exists, !node(app, resultsID).exists
+            else {
+                XCTFail("Classification before Start: expanded=\(inExpandedReader), modal=\(modal), closeCount=\(closeCount), callsZero=\(callsZero)")
+                throw ActivationError.unproven
+            }
+
+            let target = scoped(actionID).firstMatch
+            let label = target.label
+            let enabled = target.isEnabled
+            let hittable = target.isHittable
+            let button = target.elementType == .button
+            let global = app.descendants(matching: .any).matching(identifier: actionID).count
+            let owned = scoped(actionID).count
+            guard let action = Action.resolve(
+                label: label, isButton: button, enabled: enabled, hittable: hittable,
+                global: global, owned: owned, frame: target.frame,
+                footer: scoped(footerID).firstMatch.frame, owner: owner.frame,
+                inExpandedReader: inExpandedReader
+            ) else {
+                XCTFail("Classification invalid action: startLabel=\(label == Action.startLabel), expandLabel=\(label == Action.expandLabel), "
+                        + "button=\(button), enabled=\(enabled), hittable=\(hittable), global=\(global), owned=\(owned)")
+                throw ActivationError.unproven
+            }
+            return (action, target)
+        }
+
+        let first = try validate(inExpandedReader: false)
+        XCTContext.runActivity(named: "Classification confirmation action: \(first.action.rawValue)") { _ in }
+        first.element.tap()
+        guard first.action == .expand else { return }
+
+        let close = app.buttons.matching(identifier: closeID).firstMatch
+        let start = app.buttons.matching(identifier: actionID).firstMatch
+        let expandedReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            close.exists && close.label == Action.closeLabel && close.isHittable
+                && start.exists && start.label == Action.startLabel && start.isHittable
+        }, object: nil)
+        guard XCTWaiter.wait(for: [expandedReady], timeout: 8) == .completed else {
+            XCTFail("Classification modal Start not reached: closeExists=\(close.exists), startExists=\(start.exists), startLabel=\(start.exists && start.label == Action.startLabel)")
+            throw ActivationError.unproven
+        }
+        let expanded = try validate(inExpandedReader: true)
+        // The native modal dismisses as a consequence of real Start; never tap Close or retry Start.
+        expanded.element.tap()
     }
 }
