@@ -5,27 +5,28 @@ import {
   runAtomicSaveRace,
 } from '../testSupport/dailyReportAtomicSaveFixture';
 
+// Keep every row the same width so Jest does not inject a done callback.
 test.each([
-  ['equivalent', 2, 2, candidate],
-  ['included edit', 1, 1, null],
-  ['unrelated deletion', 1, 1, null],
-  ['repeated drift', 2, 2, previous],
-  ['competing head', 1, 1, competing],
+  ['equivalent', 2, 2, candidate, null],
+  ['included edit', 1, 1, null, null],
+  ['unrelated deletion', 1, 1, null, null],
+  ['repeated drift', 2, 2, previous, null],
+  ['competing head', 1, 1, competing, null],
   ['stop', 2, 1, null, 'cancelled'],
-  ['read error', 2, 1, null],
-  ['remote', 1, 1, null],
+  ['read error', 2, 1, null, null],
+  ['remote', 1, 1, null, null],
   ['refused', 0, 0, null, 'consent_required'],
-  ['unchanged calendar', 2, 2, candidate],
-  ['calendar drift', 2, 1, null],
-  ['head during reproof', 2, 2, competing],
-  ['edit during reproof', 2, 2, null],
-  ['delete during reproof', 2, 2, null],
+  ['unchanged calendar', 2, 2, candidate, null],
+  ['calendar drift', 2, 1, null, null],
+  ['head during reproof', 2, 2, competing, null],
+  ['edit during reproof', 2, 2, null, null],
+  ['delete during reproof', 2, 2, null, null],
   ['second save error', 2, 2, null, 'persistence_failed'],
-  ['selection during reproof', 2, 1, null],
+  ['selection during reproof', 2, 1, null, null],
   ['selection during save', 2, 2, null, 'cancelled'],
   ['selection after commit', 2, 2, candidate, 'cancelled'],
   ['stop after commit', 2, 2, candidate, 'cancelled'],
-  ['no selection witness', 1, 1, null],
+  ['no selection witness', 1, 1, null, null],
 ] as const)(
   'final atomic report proof: %s',
   async (
@@ -33,7 +34,7 @@ test.each([
     expectedReads,
     expectedAttempts,
     expectedHead,
-    failureCode?: string,
+    failureCode: string | null,
   ) => {
     const attempt = await runAtomicSaveRace(scenario);
     const success = expectedHead === candidate;
