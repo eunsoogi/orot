@@ -61,7 +61,9 @@ export function LiveConversationVoiceEntry(
     );
   };
   useEffect(() => {
-    const native = nativeLiveVoice();
+    const native = nativeLiveVoice(id =>
+      props.store.captureVoiceEnd?.(props.sessionId, id),
+    );
     if (!native) {
       setAvailable(false);
       return;
@@ -116,7 +118,7 @@ export function LiveConversationVoiceEntry(
       app.remove();
     };
     // Current route and session guards are read on each callback from the live ref.
-  }, [props.sessionId, permission]);
+  }, [props.sessionId, props.store, permission]);
   useEffect(() => {
     owner.current?.revalidate();
   });

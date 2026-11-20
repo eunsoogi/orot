@@ -16,6 +16,7 @@ export function conversationRestoredMessages(
         {
           id: nextId(),
           restoredHistory: true as const,
+          voiceTimelineOrder: turn.voiceTimelineOrder,
           historyUnavailable: true as const,
           role: 'assistant' as const,
           content: turn.answer,
@@ -28,6 +29,7 @@ export function conversationRestoredMessages(
             {
               id: nextId(),
               restoredHistory: true as const,
+              voiceTimelineOrder: turn.voiceTimelineOrder,
               role: 'user' as const,
               content: turn.question,
               delivery: turn.delivery,
@@ -44,6 +46,7 @@ export function conversationRestoredMessages(
       {
         id: nextId(),
         restoredHistory: true as const,
+        voiceTimelineOrder: turn.voiceTimelineOrder,
         role: 'assistant' as const,
         steeringInstructions: receipts[index],
         content: turn.preview ?? turn.answer,

@@ -170,8 +170,16 @@ export function createConversationSessionRetention(input: {
         task: import('../storage/conversationTaskCards').ConversationTaskCard;
       },
       signal: AbortSignal,
+      expectedVoiceLease?: { readonly id: string; readonly version: number },
     ) {
+      const owned = (slot: Slot | undefined) =>
+        !expectedVoiceLease ||
+        (slot?.id === expectedVoiceLease.id &&
+          slot.version === expectedVoiceLease.version);
+      if (!owned(slots.get(id)))
+        throw new Error('Voice conversation lease changed.');
       const { storage, current, version } = await ensureSession(id, signal);
+      if (!owned(current)) throw new Error('Voice conversation lease changed.');
       if (card.task.kind === 'treatment' && card.expectedRevision === null) {
         // The treatment producer already committed this card with its artifact.
         const saved = (await storage.readTaskCards(current.id, version)).find(

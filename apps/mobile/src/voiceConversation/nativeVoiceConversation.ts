@@ -1,3 +1,4 @@
+import type { CaptureVoiceEndReceipt } from './voiceStopReceipts';
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import {
   nativeDuplexVoice,
@@ -15,7 +16,7 @@ interface VoiceNativeModule extends Partial<DuplexNativeModule> {
 }
 
 /** Only the native module holds audio buffers; the bridge returns recognized text and status. */
-export function nativeVoiceConversation() {
+export function nativeVoiceConversation(captureEnd?: CaptureVoiceEndReceipt) {
   const module: VoiceNativeModule | undefined =
     Platform.OS === 'ios' ? NativeModules.VoiceConversationModule : undefined;
   if (!module) return null;
@@ -25,6 +26,7 @@ export function nativeVoiceConversation() {
       ? nativeDuplexVoice(
           module as VoiceNativeModule & DuplexNativeModule,
           events,
+          captureEnd,
         )
       : undefined) as NativeDuplexVoice | undefined,
     start: (turnId: string, language: string) => module.start(turnId, language),

@@ -97,7 +97,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                 if self.active == identifier {
                     self.active = nil
                 }
-                resolve(nil)
+                resolve(self.call.connectedDuration.take(identifier))
             } catch { reject("VOICE_CLEANUP_FAILED", "Audio could not be released.", nil) }
         }
     }

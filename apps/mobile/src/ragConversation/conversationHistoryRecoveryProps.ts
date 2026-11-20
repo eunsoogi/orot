@@ -20,6 +20,9 @@ export function conversationHistoryRecoveryProps(
     store.toolSourceSessionId?.(session.id) === null &&
     !session.preparingSend;
   return {
+    voiceEndCards: session.taskCards?.filter(
+      card => card.task.kind === 'voice_end',
+    ),
     // Blocking/quarantine and send/save activity are not history restoration.
     restoringHistory: Boolean(
       active &&

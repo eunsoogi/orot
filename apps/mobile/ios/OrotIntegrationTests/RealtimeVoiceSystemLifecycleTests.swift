@@ -28,6 +28,8 @@ extension RealtimeVoiceLifecycleTests {
         XCTAssertFalse(call.systemCallActive)
         XCTAssertEqual(activations, [false])
         XCTAssertEqual(system.ends, 1)
+        XCTAssertEqual(call.connectedDuration.take("call")?["callId"] as? String, "call")
+        XCTAssertNil(call.connectedDuration.take("call"))
         // The same production lease rejects old cleanup even after the next call owns it.
         staleActivation?()
         XCTAssertEqual(audio.starts, 1)
@@ -156,6 +158,7 @@ extension RealtimeVoiceLifecycleTests {
         XCTAssertEqual(socket.closes, 1)
         XCTAssertTrue(audio.isDrained)
         XCTAssertEqual(audio.cancel(), 0)
+        XCTAssertNil(call.connectedDuration.take("call"))
         staleActivation?()
         XCTAssertFalse(call.systemCallActive)
         XCTAssertEqual(socket.sent.count, writes)

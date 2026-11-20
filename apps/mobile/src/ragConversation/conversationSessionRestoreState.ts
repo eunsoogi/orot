@@ -69,6 +69,9 @@ export function createConversationSessionRestoreState(input: {
         receipts,
         () => --nextId,
       );
+      const firstTaskKind = taskCards.find(
+        card => card.task.kind !== 'voice_end',
+      )?.task.kind;
       input.update(id, {
         messages,
         taskCards,
@@ -81,9 +84,9 @@ export function createConversationSessionRestoreState(input: {
           : undefined,
         title:
           messages[0]?.content.slice(0, 36) ||
-          (taskCards[0]?.task.kind === 'treatment'
+          (firstTaskKind === 'treatment'
             ? t('treatmentSafety.saved')
-            : taskCards.length
+            : firstTaskKind === 'daily_report'
               ? t('dailyReport.title')
               : '') ||
           getRagConversationCopy().newConversation,
