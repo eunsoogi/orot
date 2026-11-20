@@ -1,6 +1,10 @@
 import { conversationMessageBodyTestID } from './conversationMessageBodyTestID';
 import { View } from 'react-native';
-import type { ReactNode } from 'react';
+import { useContext, useState, type ReactNode } from 'react';
+import {
+  DailyReportSourceLinks,
+  DailyReportSourceResolverContext,
+} from '../aiFeatures/integration/DailyReportSourceLinks';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -18,7 +22,7 @@ import type { DisplayMessage } from './conversationDisplayMessage';
 export type { DisplayMessage } from './conversationDisplayMessage';
 /** Keeps transcript citations beside their answer; compact session previews may omit source links. */
 export function ConversationMessage({
-  message,
+  message: suppliedMessage,
   onContinueCold,
   coldResumeBusy,
   onOpenSource,
@@ -47,6 +51,23 @@ export function ConversationMessage({
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
 }) {
+  const resolveDailyReport = useContext(DailyReportSourceResolverContext);
+  const [unavailableReportKey, setUnavailableReportKey] = useState<string>();
+  const target = suppliedMessage.dailyReport;
+  const reportKey = target
+    ? JSON.stringify([target.identity.key, target.runId, target.revision])
+    : undefined;
+  // A confirmed stale revision may remain in the transcript until its owner
+  // refreshes. Suppress only this row's prose and sources immediately.
+  const message: DisplayMessage =
+    reportKey !== undefined && unavailableReportKey === reportKey
+      ? {
+          id: suppliedMessage.id,
+          role: suppliedMessage.role,
+          content: t('dailyReport.sourceError'),
+          restoredHistory: suppliedMessage.restoredHistory,
+        }
+      : suppliedMessage;
   // Alias identity belongs to this answer, never to whichever run is globally current.
   const openSource = (reference: EvidenceReference) =>
     message.sourceOwner
@@ -232,7 +253,19 @@ export function ConversationMessage({
               {visitQuestions}
             </View>
           ) : null}
-          {showCitations ? (
+          {showCitations && message.dailyReport && resolveDailyReport ? (
+            <DailyReportSourceLinks
+              key={reportKey}
+              {...message.dailyReport}
+              resolve={resolveDailyReport}
+              testIDPrefix={`rag-conversation-message-${message.id}-report`}
+              onOpen={onOpenSource}
+              onStale={() => {
+                setUnavailableReportKey(reportKey);
+                onLinkError();
+              }}
+            />
+          ) : showCitations ? (
             <ConversationSources
               testIDPrefix={`rag-conversation-message-${message.id}`}
               references={message.citations ?? []}
