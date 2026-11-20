@@ -69,12 +69,12 @@ export function interleaveDailyReportSave(
               providerReturned &&
               sql.startsWith('INSERT INTO daily_report_heads');
             if (writing) hooks.beforeWrite(saveAttempts);
-            const result = await tx.execute(sql, args);
+            const statementResult = await tx.execute(sql, args);
             if (writing) {
               writes++;
               hooks.didWrite(saveAttempts);
             }
-            return result;
+            return statementResult;
           },
         }),
       );

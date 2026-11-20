@@ -69,9 +69,9 @@ export async function runAtomicSaveRace(scenario: Scenario) {
     .spyOn(recovery, 'createDailyReportRecoveryBridge')
     .mockImplementation((...args) => {
       const actual = baseRecovery(...args);
-      return (...args) => {
+      return (...stageArgs) => {
         pendingStages();
-        return actual(...args);
+        return actual(...stageArgs);
       };
     });
   try {
