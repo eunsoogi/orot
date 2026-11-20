@@ -99,7 +99,7 @@ test('only the first Routes journey checks native composer and failure text agai
     /unobstructedScrollFrame\(historyFrame.intersection\(windowFrame\).*controls: clipping\)/,
   );
   assert.match(dock, /\[overlay, keyboardFrame\]/);
-  assert.match(dock, /bounds\.viewport\.insetBy\(dx: -1, dy: -1\)\.contains\(text\.frame\)/);
+  assert.match(dock, /bounds\.dock\.contains\(frame\) && bounds\.overlay\.contains\(frame\)/);
   assert.match(dock, /control\.isEnabled && control\.isHittable/);
   assert.match(dock, /frame\.maxY, keyboard\.minY/);
   assert.match(dock, /frame\.intersects\(back\.frame\)/);

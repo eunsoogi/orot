@@ -130,7 +130,7 @@ enum RoutesVisibleContentUITestConditions {
         }
     }
 
-    /// Match the actual local recovery alert regardless of its native AX text role.
+    /// Match the local preflight alert in the measured composer, above the actual keyboard.
     static func conversationMessage(identifier: String, expected: String, in app: XCUIApplication) throws {
         let matches = app.descendants(matching: .any).matching(identifier: identifier)
         let text = matches.firstMatch
@@ -145,7 +145,12 @@ enum RoutesVisibleContentUITestConditions {
         let bounds = try conversationBounds(app)
         XCTAssertEqual(matches.count, 1)
         XCTAssertTrue(text.isHittable && FormScrollGeometry.valid(text.frame))
-        XCTAssertTrue(bounds.viewport.insetBy(dx: -1, dy: -1).contains(text.frame), "Exact response must fit the unobstructed history viewport")
+        let frame = text.frame
+        XCTAssertTrue(bounds.dock.contains(frame) && bounds.overlay.contains(frame), "Local recovery must fit the measured composer.")
+        XCTAssertLessThanOrEqual(bounds.viewport.maxY, frame.minY + 1)
+        if let keyboard = bounds.keyboard {
+            XCTAssertLessThanOrEqual(frame.maxY, keyboard.minY + 1)
+        }
     }
 
     private enum ObservationFailure: Error { case missingWindow, incompleteText }

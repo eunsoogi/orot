@@ -52,7 +52,16 @@ export function createConversationSessions(
     snapshot = {
       ...snapshot,
       sessions: snapshot.sessions.map(session =>
-        session.id === id ? { ...session, ...change } : session,
+        session.id === id
+          ? {
+              ...session,
+              // A subsequent ordinary error must not inherit local preflight placement.
+              ...(change.error !== undefined && session.errorSurface
+                ? { errorSurface: undefined }
+                : {}),
+              ...change,
+            }
+          : session,
       ),
     };
     if (stream) listeners.emitStream();
@@ -157,7 +166,17 @@ export function createConversationSessions(
     loadOlderHistory: restoration.loadOlder,
     subscribe: listeners.subscribe,
     getSnapshot: () => snapshot,
-    setDraft: (id: number, draft: string) => update(id, { draft }),
+    setDraft: (id: number, draft: string) => {
+      const session = find(id);
+      update(id, {
+        draft,
+        // The notice describes the rejected draft, not the newly edited text.
+        ...(session?.errorSurface === 'composerPreflight' &&
+        session.draft !== draft
+          ? { error: '' }
+          : {}),
+      });
+    },
     setEntryPrompt: (id: number, entryPrompt?: string) =>
       update(id, { entryPrompt }),
     prepareEntry: taskState.prepareEntry,
