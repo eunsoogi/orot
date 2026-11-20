@@ -23,7 +23,6 @@ interface MedicalAppointmentClassificationScreenProps {
   readonly recipient: string | null;
   /** A failed saved-provider lookup differs from a user who has not selected one yet. */
   readonly selectedProviderUnavailable?: boolean;
-  readonly onOpenManual: () => void;
   readonly onOpenCalendarSettings?: () => void;
   readonly onOpenProviderSelection?: () => void;
 }
@@ -36,7 +35,6 @@ export default function MedicalAppointmentClassificationScreen({
   selectedProvider,
   recipient,
   selectedProviderUnavailable = false,
-  onOpenManual,
   onOpenCalendarSettings,
   onOpenProviderSelection,
 }: MedicalAppointmentClassificationScreenProps) {
@@ -46,6 +44,7 @@ export default function MedicalAppointmentClassificationScreen({
   const [accessAvailable, setAccessAvailable] = useState(false);
   const [queryComplete, setQueryComplete] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const [classifying, setClassifying] = useState(false);
   const [eventCount, setEventCount] = useState(0);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -55,6 +54,10 @@ export default function MedicalAppointmentClassificationScreen({
 
   useEffect(() => {
     setLoading(false);
+    setCompleted(false);
+    setCandidates([]);
+    setEventCount(0);
+    setMessage('');
     setClassifying(false);
     setSavingId(null);
     return () => {
@@ -84,6 +87,7 @@ export default function MedicalAppointmentClassificationScreen({
     activeRun.current = controller;
     const isCurrent = () =>
       activeRun.current === controller && !controller.signal.aborted;
+    setCompleted(false);
     setLoading(true);
     setCandidates([]);
     setEventCount(0);
@@ -180,6 +184,7 @@ export default function MedicalAppointmentClassificationScreen({
     } finally {
       if (isCurrent()) {
         activeRun.current = null;
+        setCompleted(true);
         setLoading(false);
         setClassifying(false);
         setSavingId(null);
@@ -195,6 +200,7 @@ export default function MedicalAppointmentClassificationScreen({
         providerUnavailable={selectedProviderUnavailable}
         providerReady={providerReady}
         loading={loading}
+        completed={completed}
         classifying={classifying}
         accessAvailable={accessAvailable}
         queryComplete={queryComplete}
@@ -204,7 +210,6 @@ export default function MedicalAppointmentClassificationScreen({
         savingId={savingId}
         savedIds={savedIds}
         onImport={importAppointments}
-        onOpenManual={onOpenManual}
         calendarLoading={calendarSync.loading}
         calendarUnavailable={
           !calendarSync.loading &&

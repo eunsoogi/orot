@@ -9,11 +9,15 @@ import { hostConnectionTest } from '../ios-test-preparation-contract.mjs';
 test('Read-only child boundaries keep their original and Duo destinations', () => {
   const journeys = [
     [
+      'OrotUITests/AppointmentConsentUITests/testApprovedBatchesExposeMeasuredProgressAndAllResultPages',
+      'fixtures',
+    ],
+    [
       'OrotUITests/RootNavigationUITests/testSettingsKeepsAccountsBackupAndPrivacyOnTheirOwnRoutes',
       'core',
     ],
     [
-      'OrotUITests/AppointmentConsentUITests/testManualPageReturnsThroughClassificationAndScheduleToHome',
+      'OrotUITests/AppointmentConsentUITests/testClassificationReturnsThroughScheduleToHome',
       'fixtures',
     ],
   ];

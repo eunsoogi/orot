@@ -33,7 +33,7 @@ jest.mock(
 
 const appleOption = createAppleSelectionOption('available');
 
-/** Covers the real App entry, saved-provider wiring, and manual recovery boundary. */
+/** Covers the real App entry, saved-provider wiring, and classification recovery boundary. */
 function repository(): AppointmentRepository {
   return {
     list: jest.fn(async () => []),
@@ -90,7 +90,7 @@ function calendarBridge(event: CalendarEvent): CalendarBridge {
 
 afterEach(() => jest.restoreAllMocks());
 
-it('opens classification with the saved AI and reaches the separate manual page', async () => {
+it('opens classification with the saved AI and returns without manual entry', async () => {
   const event = calendarEvent();
   const appointments = repository();
   const loadSelection = jest.fn(async () => ({
@@ -142,7 +142,7 @@ it('opens classification with the saved AI and reaches the separate manual page'
   ).toBeTruthy();
   expect(classify).not.toHaveBeenCalled();
   expect(calendar.requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
-  await fireEvent.press(screen.getByText(medicalAppointmentCopy.loadCalendar));
+  await fireEvent.press(screen.getByTestId('medical-appointment-import'));
   expect(await screen.findByText('치과 검진')).toBeTruthy();
   await waitFor(() =>
     expect(appointments.confirmCalendarEvent).toHaveBeenCalledWith(event),
@@ -158,23 +158,16 @@ it('opens classification with the saved AI and reaches the separate manual page'
       }),
     ),
   );
-  await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
-  expect(await screen.findByTestId('appointment-add')).toBeTruthy();
-  expect(screen.getByTestId('navigation-back')).toBeEnabled();
-  expect(screen.queryByTestId('appointments-back')).toBeNull();
-  await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(
-    await screen.findByText(medicalAppointmentCopy.localNotice),
-  ).toBeTruthy();
+  expect(screen.queryByTestId('medical-appointment-manual')).toBeNull();
   expect(screen.getByTestId('navigation-back')).toBeEnabled();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(await screen.findByTestId('open-medical-appointments')).toBeTruthy();
-  // Returning to the retained classification scene refreshes the saved model selection.
-  expect(loadSelection).toHaveBeenCalledTimes(3);
+  // Classification resolves the saved selection without introducing a manual route.
+  expect(loadSelection).toHaveBeenCalledTimes(2);
 });
 
-it('keeps manual entry available while the saved AI lookup is pending', async () => {
-  // A stalled provider/account lookup must not hold the local manual route hostage.
+it('allows Back without manual entry while the saved AI lookup is pending', async () => {
+  // A stalled provider/account lookup must not trap the classification route.
   let failSelection!: (error: Error) => void;
   const load = jest.fn(
     () =>
@@ -201,11 +194,7 @@ it('keeps manual entry available while the saved AI lookup is pending', async ()
   await fireEvent.press(await screen.findByTestId('open-medical-appointments'));
   await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
   expect(screen.getByTestId('navigation-back')).toBeEnabled();
-  await fireEvent.press(
-    await screen.findByTestId('medical-appointment-manual'),
-  );
-  expect(await screen.findByTestId('appointment-add')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(screen.queryByTestId('medical-appointment-manual')).toBeNull();
   expect(
     await screen.findByText(medicalAppointmentCopy.providerResolving),
   ).toBeTruthy();
@@ -216,7 +205,7 @@ it('keeps manual entry available while the saved AI lookup is pending', async ()
   await act(async () => failSelection(new Error('AI selection unavailable')));
 });
 
-it('shows the manual fallback when the saved provider lookup fails', async () => {
+it('offers model selection rather than manual fallback when saved provider lookup fails', async () => {
   const store = selectionStore(async () => {
     throw new Error('Saved provider unavailable');
   });
@@ -238,9 +227,10 @@ it('shows the manual fallback when the saved provider lookup fails', async () =>
   expect(
     await screen.findByText(medicalAppointmentCopy.providerUnavailable),
   ).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('medical-appointment-manual'));
-  expect(await screen.findByTestId('appointment-add')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(screen.queryByTestId('medical-appointment-manual')).toBeNull();
+  expect(
+    screen.getByTestId('medical-appointment-select-provider'),
+  ).toBeEnabled();
   expect(
     await screen.findByText(medicalAppointmentCopy.providerUnavailable),
   ).toBeTruthy();

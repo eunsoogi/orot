@@ -17,7 +17,7 @@ enum FormUITestConditions {
 
     /// Nested footer content has a smaller native ScrollView than its tagged outer container. Callers can supply that observed viewport without changing existing tagged-scroll callers.
     @discardableResult
-    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil, scrollObservation: FormScrollObservation? = nil, windowResolver: (() -> XCUIElement?)? = nil) -> CGRect? {
+    static func reveal(_ target: XCUIElement, in app: XCUIApplication, scroll: XCUIElement, towardTop: Bool = false, horizontalPosition: CGFloat = 0.5, requireHittable: Bool = true, maximumScrollFraction: CGFloat = 0.45, focusedKeyboardFrame: CGRect? = nil, focusedViewport: CGRect? = nil, avoidTarget: Bool = false, referenceSize: CGSize? = nil, avoiding: XCUIElement? = nil, keyboardMayBeVisible: Bool = true, observeFocusGesture: ((String, CGRect?) -> Void)? = nil, stopAfterFirstFocusDrag: Bool = false, observeFirstDrag: ((CGRect, CGRect, CGRect?, [CGRect], CGVector, CGVector) -> Void)? = nil, scrollObservation: FormScrollObservation? = nil, windowResolver: (() -> XCUIElement?)? = nil, readingEdgeBottom: Bool? = nil, observeReadingEdge: ((FormScrollGeometry.ReadingObservation) -> Void)? = nil) -> CGRect? {
         XCTAssertTrue(UITestConditions.exists(scroll))
         var lastObservation = ""
         // Observe the last scroll too; otherwise a control revealed by the final allowed gesture is reported missing.
@@ -37,11 +37,17 @@ enum FormUITestConditions {
                 return nil
             }
             lastObservation += ", usableViewport=\(geometry.viewport), focusedViewport=\(String(describing: focusedViewport))"
-            if let targetFrame, geometry.contains(targetFrame, referenceSize: referenceSize), !requireHittable || target.isHittable {
-                // Reuse this exact successful observation if focus later clips the AX frame.
-                return targetFrame
+            let projectedFrame = targetFrame.map { frame in
+                readingEdgeBottom.map { geometry.readingBounds(frame, bottom: $0) } ?? frame
             }
-            scrollObservation?.observed(targetFrame, completedSteps: attempt)
+            if let projectedFrame, geometry.contains(projectedFrame, referenceSize: referenceSize), !requireHittable || target.isHittable {
+                if readingEdgeBottom != nil, let targetFrame {
+                    observeReadingEdge?(FormScrollGeometry.ReadingObservation(frame: targetFrame, geometry: geometry))
+                }
+                // Reuse this exact successful observation if focus later clips the AX frame.
+                return projectedFrame
+            }
+            scrollObservation?.observed(projectedFrame, completedSteps: attempt)
             if attempt == 16 {
                 observeFocusGesture?("reveal-exhausted", focusedKeyboardFrame)
                 break
@@ -54,11 +60,11 @@ enum FormUITestConditions {
                 lastObservation += ", excluded=\(excludedFrame)"
                 position = geometry.horizontalPosition(outside: excludedFrame)
             } else {
-                position = avoidTarget || focusedKeyboardFrame != nil ? targetFrame.flatMap { geometry.horizontalPosition(outside: $0) } : horizontalPosition
+                position = avoidTarget || focusedKeyboardFrame != nil ? projectedFrame.flatMap { geometry.horizontalPosition(outside: $0) } : horizontalPosition
             }
-            let proposed = { position.flatMap { geometry.gesture(target: targetFrame, towardTop: towardTop, horizontalPosition: $0, maximumScrollFraction: maximumScrollFraction, verticalBounds: excludedFrame) } }
+            let proposed = { position.flatMap { geometry.gesture(target: projectedFrame, towardTop: towardTop, horizontalPosition: $0, maximumScrollFraction: maximumScrollFraction, verticalBounds: excludedFrame) } }
             guard let gesture = proposed() else { XCTFail("The form gesture has invalid coordinates"); return nil }
-            let gestureReference = (targetFrame, geometry.viewport)
+            let gestureReference = (projectedFrame, geometry.viewport)
             // Anchor to the observed application window, so XCTest cannot re-resolve a disappearing scroller as the coordinate origin.
             let origin = window.coordinate(withNormalizedOffset: .zero)
             let start = origin.withOffset(gesture.start)
@@ -88,6 +94,20 @@ enum FormUITestConditions {
         }
         XCTFail("Control did not enter the measured form viewport: \(lastObservation)")
         return nil
+    }
+
+    /// Require both bands of the same passive AX frame; this is not a VoiceOver or visible-copy assertion.
+    static func readingEdgesReachable(_ target: XCUIElement, app: XCUIApplication, page: XCUIElement, scroll: XCUIElement) -> Bool {
+        guard target.exists else { return false }
+        let identifier = target.identifier
+        var samples: [FormScrollGeometry.ReadingObservation] = []
+        for bottom in [false, true] {
+            guard reveal(target, in: app, scroll: scroll, requireHittable: false, windowResolver: {
+                guard scroll.descendants(matching: .any).matching(identifier: identifier).count == 1 else { return nil }
+                return FormWindowOwnership.resolve(app, scroll: page, target: target)
+            }, readingEdgeBottom: bottom, observeReadingEdge: { samples.append($0) }) != nil else { return false }
+        }
+        return samples.count == 2 && FormScrollGeometry.provesReadingEdgeReach(top: samples[0], bottom: samples[1])
     }
 
     /// Return exposure/edit failure so guarded callers stop before another field or a missing keyboard action.

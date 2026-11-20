@@ -1,7 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
-import { appColors } from '../../layout/appColors';
 import type { NavigationGeometryPayload } from '../../navigation/navigationGeometry';
 import {
   columnsAxis,
@@ -28,7 +27,7 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-test('uses native usable regions and retains expanded candidate details through reflow', async () => {
+test('uses native usable regions and retains complete result details through reflow', async () => {
   await setWindowSize(390, 1);
   const controller = await renderMedicalRoute();
   const routeKey = controller.getSnapshot().currentRoute.key;
@@ -36,9 +35,6 @@ test('uses native usable regions and retains expanded candidate details through 
     screen.queryByTestId(`navigation-route-columns-${routeKey}`),
   ).toBeNull();
 
-  await fireEvent.press(
-    screen.getByTestId('medical-appointment-details-calendar-candidate-1'),
-  );
   expect(screen.getByText(/분류 근거: Synthetic classification/)).toBeTruthy();
 
   windowBounds.set('medical-appointment-columns-frame-host', {
@@ -80,10 +76,7 @@ test('uses native usable regions and retains expanded candidate details through 
   );
 
   expect(columnsAxis()).toBe('column');
-  expect(
-    screen.getByTestId('medical-appointment-details-calendar-candidate-1').props
-      .accessibilityState.expanded,
-  ).toBe(true);
+  expect(screen.getByTestId('medical-appointment-results')).toBeTruthy();
 
   await setWindowSize(760, 1.5);
   windowBounds.set('medical-appointment-columns-frame-host', {
@@ -119,35 +112,22 @@ test('uses native usable regions and retains expanded candidate details through 
 
   expect(columnsAxis()).toBe('column');
   expect(screen.getByText(/분류 근거: Synthetic classification/)).toBeTruthy();
-  expect(
-    screen.getByTestId('medical-appointment-details-calendar-candidate-1').props
-      .accessibilityState.expanded,
-  ).toBe(true);
+  expect(screen.getByTestId('medical-appointment-results')).toBeTruthy();
 });
 
-it('keeps filled candidate rows and disclosure boundaries without an enclosing outline', async () => {
+it('keeps complete details and explicit paging targets without a scrolling list', async () => {
   await setWindowSize(320, 1.5);
   await renderMedicalRoute();
-  const group = screen.getByTestId('medical-appointment-candidate-group');
-  expect(StyleSheet.flatten(group.props.style)).toMatchObject({
-    borderWidth: 0,
-    borderRadius: 20,
-    overflow: 'hidden',
-  });
-  const details = screen.getByTestId(
-    'medical-appointment-details-calendar-candidate-1',
-  );
-  // The line between occurrences is functional; the surrounding frame is not.
-  expect(StyleSheet.flatten(details.parent?.props.style)).toMatchObject({
-    backgroundColor: appColors.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  });
-  expect(
-    StyleSheet.flatten(details.props.style).minHeight,
-  ).toBeGreaterThanOrEqual(44);
-  expect(details.props.accessibilityRole).toBe('button');
-  expect(details.props.accessibilityState.expanded).toBe(false);
-  await fireEvent.press(details);
+  expect(screen.queryByTestId('medical-appointment-review-scroll')).toBeNull();
   expect(screen.getByText(/분류 근거: Synthetic classification/)).toBeTruthy();
-  expect(details.props.accessibilityState.expanded).toBe(true);
+  for (const id of [
+    'medical-appointment-previous-result',
+    'medical-appointment-next-result',
+  ]) {
+    const action = screen.getByTestId(id);
+    expect(
+      StyleSheet.flatten(action.props.style).minHeight,
+    ).toBeGreaterThanOrEqual(44);
+    expect(action.props.accessibilityRole).toBe('button');
+  }
 });

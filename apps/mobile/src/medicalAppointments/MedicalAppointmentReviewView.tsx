@@ -1,15 +1,16 @@
+import { useState } from 'react';
 import { t } from '../i18n';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { AppButton } from '../layout/AppButton';
+import { StyleSheet, View } from 'react-native';
 import { SelectedModelControl } from '../layout/SelectedModelControl';
-import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import { useNavigationRouteActions } from '../navigation/useNavigationRouteActions';
+import { NavigationContentTransition } from '../navigation/NavigationContentTransition';
 import type { ProviderSelectionOption } from '../providers/selection/types';
 import type { CandidateReview } from './classificationWorkflow';
-import { MedicalAppointmentCandidateCard } from './MedicalAppointmentCandidateCard';
+import { ClassificationPagedStage } from './ClassificationPagedStage';
+import { formatCalendarEventRange } from '../calendar/dateTime';
+import { ClassificationProgress } from './ClassificationProgress';
 import { medicalAppointmentCopy as copy } from './copy.ko';
 import { isConfidentMedical } from './saveCalendarCandidate';
 
@@ -21,6 +22,7 @@ interface Props {
   readonly calendarLoading: boolean;
   readonly calendarUnavailable: boolean;
   readonly classifying: boolean;
+  readonly completed?: boolean;
   readonly accessAvailable: boolean;
   readonly queryComplete: boolean;
   readonly message: string;
@@ -29,188 +31,133 @@ interface Props {
   readonly savingId: string | null;
   readonly savedIds: ReadonlySet<string>;
   readonly onImport: () => Promise<void>;
-  readonly onOpenManual: () => void;
   readonly onOpenCalendarSettings?: () => void;
   readonly onOpenProviderSelection?: () => void;
 }
 
-/** One scroll owner keeps the import flow and its actions in reading order. */
+/** Three full-height stages share one native usable region; only validated results enter the final stage. */
 export function MedicalAppointmentReviewView(props: Props) {
   const inset = useNavigationContentInset();
-  const busy =
-    props.loading ||
-    props.calendarLoading ||
-    props.classifying ||
-    props.savingId !== null;
+  const [confirmAgain, setConfirmAgain] = useState(false);
+  const busy = props.loading || props.classifying || props.savingId !== null;
+  const complete = props.completed ?? props.candidates.length > 0;
+  const stage = busy
+    ? 'progress'
+    : complete && !confirmAgain
+      ? 'results'
+      : 'confirmation';
   const classified = props.candidates.filter(
     item => item.status === 'classified',
   ).length;
+  const medical = props.candidates.filter(isConfidentMedical);
   const unavailable =
     props.providerUnavailable ||
     props.provider?.availability.status === 'unavailable';
-  const importLabel = props.calendarLoading
-    ? copy.calendarSyncing
-    : props.loading
-      ? copy.loading
-      : props.classifying
-        ? copy.classifying
-        : copy.loadCalendar;
-  const hasDock = useNavigationRouteActions([
-    {
-      id: 'import-medical-appointments',
-      label: importLabel,
-      accessibilityLabel: copy.loadCalendar,
-      testID: 'medical-appointment-import',
-      systemImageName: 'calendar.badge.plus',
-      disabled: !props.providerReady || busy || props.calendarUnavailable,
-      busy,
-      onPress: props.onImport,
-    },
-  ]);
+  const start = () => {
+    setConfirmAgain(false);
+    props.onImport();
+  };
+  const content =
+    stage === 'progress' ? (
+      <View style={styles.center}>
+        <ClassificationProgress
+          classified={classified}
+          total={props.eventCount}
+          saving={props.savingId !== null}
+        />
+      </View>
+    ) : stage === 'confirmation' ? (
+      <ClassificationPagedStage
+        key="confirmation"
+        testID="medical-appointment-confirmation"
+        documents={[
+          [
+            t('medicalAppointments.confirmClassification'),
+            copy.description,
+            props.provider?.privacyBoundary === 'on-device'
+              ? copy.localNotice
+              : copy.remoteNotice,
+            unavailable ? copy.providerUnavailable : '',
+            props.message,
+          ]
+            .filter(Boolean)
+            .join('\n\n'),
+        ]}
+        actionTitle={t('medicalAppointments.startShort')}
+        actionLabel={copy.loadCalendar}
+        onAction={start}
+        disabled={
+          !props.providerReady ||
+          props.calendarLoading ||
+          props.calendarUnavailable
+        }
+        supplementaryAction={
+          props.calendarUnavailable && props.onOpenCalendarSettings
+            ? {
+                title: copy.calendarSettings,
+                onPress: props.onOpenCalendarSettings,
+              }
+            : undefined
+        }
+      />
+    ) : (
+      <ClassificationPagedStage
+        key="results"
+        testID="medical-appointment-results"
+        documents={
+          medical.length
+            ? medical.map(candidate =>
+                [
+                  candidate.event.calendarEventSnapshot.title,
+                  formatCalendarEventRange(candidate.event),
+                  copy.labels[candidate.classification!],
+                  candidate.reason ? `${copy.reason}: ${candidate.reason}` : '',
+                  candidate.uncertainty
+                    ? `${copy.uncertainty}: ${copy.labels[candidate.uncertainty]}`
+                    : '',
+                  props.savedIds.has(candidate.candidateId) ? copy.saved : '',
+                  props.message,
+                  !props.queryComplete ? copy.incompleteCalendar : '',
+                  copy.coverage(props.eventCount, classified),
+                ]
+                  .filter(Boolean)
+                  .join('\n\n'),
+              )
+            : [props.message || copy.noMedical]
+        }
+        actionTitle={t('medicalAppointments.restartShort')}
+        actionLabel={t('medicalAppointments.startAgain')}
+        onAction={() => setConfirmAgain(true)}
+      />
+    );
   return (
-    <ScrollView
-      testID="medical-appointment-review-scroll"
-      style={styles.screen}
-      contentContainerStyle={[styles.content, inset]}
-      keyboardShouldPersistTaps="handled"
+    <View
+      testID="medical-appointment-fullscreen"
+      style={[styles.screen, inset]}
     >
       <AdaptiveColumns
+        testID="medical-appointment-columns-frame"
         primary={
-          <View
-            style={styles.overviewPanel}
-            testID="medical-appointment-overview"
-          >
-            <View style={styles.heading}>
-              <Text accessibilityRole="header" style={styles.title}>
-                {copy.title}
-              </Text>
-            </View>
+          <View style={styles.lane} testID="medical-appointment-columns">
             <SelectedModelControl
-              // Keep this action scan-friendly; missing execution details are explanatory status copy.
               name={props.provider?.displayName ?? copy.chooseProvider}
+              nameNumberOfLines={1}
               local={props.provider?.privacyBoundary === 'on-device'}
               onPress={props.onOpenProviderSelection}
-              label={t('medicalAppointments.chooseClassifier')}
+              label={`${t('medicalAppointments.chooseClassifier')}: ${props.provider?.displayName ?? copy.chooseProvider}`}
               testID="medical-appointment-select-provider"
             />
-            <Text style={styles.secondary}>
-              {props.provider?.privacyBoundary === 'on-device'
-                ? copy.localNotice
-                : copy.remoteNotice}
-            </Text>
-            <Text style={styles.description}>{copy.description}</Text>
-            {unavailable ? (
-              <Text accessibilityRole="alert">{copy.providerUnavailable}</Text>
-            ) : null}
-            {props.provider && !unavailable && !props.providerReady ? (
-              <Text>{copy.noProvider}</Text>
-            ) : null}
-            {props.message ? (
-              <Text accessibilityRole="alert">{props.message}</Text>
-            ) : null}
-            <View style={styles.actions}>
-              {!hasDock ? (
-                <AppButton
-                  testID="medical-appointment-import"
-                  disabled={
-                    !props.providerReady || busy || props.calendarUnavailable
-                  }
-                  onPress={() => {
-                    props.onImport();
-                  }}
-                  accessibilityLabel={copy.loadCalendar}
-                  accessibilityState={{ busy }}
-                  title={
-                    props.calendarLoading
-                      ? copy.calendarSyncing
-                      : props.loading
-                        ? copy.loading
-                        : props.classifying
-                          ? copy.classifying
-                          : copy.loadCalendar
-                  }
-                />
-              ) : null}
-              {props.calendarUnavailable && props.onOpenCalendarSettings ? (
-                <AppButton
-                  onPress={props.onOpenCalendarSettings}
-                  testID="medical-appointment-calendar-settings"
-                  title={copy.calendarSettings}
-                  variant="secondary"
-                />
-              ) : null}
-            </View>
+            <NavigationContentTransition transitionKey={stage}>
+              {content}
+            </NavigationContentTransition>
           </View>
         }
-        // Keep this stable subtree mounted so candidate disclosure state survives axis changes.
-        secondary={
-          <View
-            style={styles.resultsPanel}
-            testID="medical-appointment-results"
-          >
-            {props.eventCount > 0 ? (
-              <View style={styles.results}>
-                <Text style={styles.coverage} accessibilityLiveRegion="polite">
-                  {copy.coverage(props.eventCount, classified)}
-                </Text>
-                <View
-                  style={styles.group}
-                  testID="medical-appointment-candidate-group"
-                >
-                  {props.candidates
-                    .filter(isConfidentMedical)
-                    .map(candidate => (
-                      <MedicalAppointmentCandidateCard
-                        key={candidate.candidateId}
-                        candidate={candidate}
-                        isSaved={props.savedIds.has(candidate.candidateId)}
-                        isSaving={props.savingId === candidate.candidateId}
-                      />
-                    ))}
-                </View>
-              </View>
-            ) : props.accessAvailable ? (
-              <Text>{copy.emptyCoverage}</Text>
-            ) : null}
-            <View style={styles.footer}>
-              <Text style={styles.secondary}>{copy.resultNotice}</Text>
-              <AppButton
-                variant="secondary"
-                onPress={props.onOpenManual}
-                testID="medical-appointment-manual"
-                title={copy.manual}
-              />
-              <Text style={styles.limit}>
-                {copy.queryLimit}{' '}
-                {!props.queryComplete ? copy.incompleteCalendar : ''}
-              </Text>
-            </View>
-          </View>
-        }
-        testID="medical-appointment-columns"
       />
-    </ScrollView>
+    </View>
   );
 }
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
-  content: { paddingHorizontal: 24, paddingTop: 20, gap: 24 },
-  overviewPanel: { gap: 24 },
-  resultsPanel: { gap: 24 },
-  heading: { gap: 10 },
-  title: { fontSize: 30, lineHeight: 39, fontWeight: '700' },
-  description: { fontSize: 16, lineHeight: 24, color: appColors.secondary },
-  secondary: { fontSize: 14, lineHeight: 22, color: appColors.secondary },
-  actions: { gap: 8 },
-  results: { gap: 16 },
-  coverage: { fontSize: 16, lineHeight: 24, fontWeight: '600' },
-  group: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    // Candidate fills group the list; row dividers retain separate disclosure targets.
-    borderWidth: 0,
-  },
-  footer: { gap: 12 },
-  limit: { fontSize: 12, lineHeight: 19, color: appColors.secondary },
+  lane: { flex: 1, flexDirection: 'column', paddingHorizontal: 24 },
+  center: { flex: 1, justifyContent: 'center', gap: 16 },
 });
