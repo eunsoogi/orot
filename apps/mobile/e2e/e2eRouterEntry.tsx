@@ -1,4 +1,5 @@
 import 'react-native-get-random-values';
+import { routesGeneratedRecordsEnabled } from './routesGeneratedRecordsSelection';
 import { NativeModules } from 'react-native';
 import { selectEntryRoute } from './selectEntryRoute';
 import { retainedVisitObservationEnabled } from './retainedVisitObservation';
@@ -64,7 +65,9 @@ switch (selectEntryRoute(launchSettings)) {
     break;
   case 'ai-feature-visit-questions':
     // The diagnostic opt-in mounts the retained editor under the existing UIKit observation gate.
-    if (retainedVisitObservationEnabled(launchSettings))
+    if (routesGeneratedRecordsEnabled(launchSettings))
+      require('./routesGeneratedRecordsProbeEntry');
+    else if (retainedVisitObservationEnabled(launchSettings))
       require('./nextVisitQuestionsProbeEntry');
     else require('./aiFeatureVisitQuestionsProbeEntry');
     break;

@@ -43,6 +43,9 @@ test('saved content retains all four review warnings alongside partial and sourc
     expect(ui.getByText(t(key))).toBeTruthy();
   }
   expect(ui.getByText('Synthetic saved report')).toBeTruthy();
+  expect(ui.getByTestId('generated-report-paragraph-0')).toHaveTextContent(
+    'Synthetic saved report',
+  );
   expect(ui.getByText('Synthetic source warning')).toBeTruthy();
   expect(ui.getByText(OMITTED_SUMMARY_CONTENT_NOTE)).toBeTruthy();
   expect(ui.getByText(INCOMPLETE_SUMMARY_EVIDENCE_NOTE)).toBeTruthy();
