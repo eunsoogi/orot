@@ -45,6 +45,8 @@ export const coreTests = [
   'OrotIntegrationTests/AudioSessionOwnershipTests/testConcurrentReservationsHaveExactlyOneWinner',
   'OrotIntegrationTests/AudioSessionOwnershipTests/testSystemCallPreparationDoesNotActivateBeforeTheSystemCallback',
   'OrotIntegrationTests/AudioSessionOwnershipTests/testSystemCallLeaseRejectsDelayedCleanupFromPriorCall',
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testConnectedVoiceDurationExcludesDialingAndWaitingForReceipt',
+  'OrotIntegrationTests/AudioSessionOwnershipTests/testNewVoiceOwnerNeverReceivesPreviousReceipt',
   // Synthetic local ports exercise production coordinator gates without OS capture.
   'OrotIntegrationTests/VoiceDuplexSystemLifecycleTests/testSystemActivationGatesLocalCaptureAndLateActivationCannotRestart',
   'OrotIntegrationTests/VoiceDuplexSystemLifecycleTests/testSystemMuteAndEndReleaseOnlyTheOwnedCall',

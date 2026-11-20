@@ -77,7 +77,7 @@ export async function conversationPreviewSchemaSnapshot(
   tx: SqlExecutor,
 ): Promise<string | null> {
   const result = await tx.execute(
-    "SELECT type, name, sql FROM sqlite_master WHERE type IN ('table', 'trigger', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY type, name",
+    "SELECT type, name, sql FROM sqlite_master WHERE type IN ('table', 'trigger', 'view') AND name NOT LIKE 'sqlite_%' AND name NOT IN ('conversation_voice_end_markers', 'conversation_voice_end_markers_session_removed') ORDER BY type, name",
   );
   const tables = new Set(
     result.rows.filter(row => row.type === 'table').map(row => row.name),

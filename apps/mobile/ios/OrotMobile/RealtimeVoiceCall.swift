@@ -11,6 +11,7 @@ final class RealtimeVoiceCall {
     let ownership: AudioSessionOwnership
     let tools = RealtimeVoiceToolLease()
     let systemCall: VoiceSystemCallPort?
+    let connectedDuration = VoiceConnectedDuration()
     var systemCallOwner: UUID?
     var systemCallPending = false
     var systemCallActive = false
@@ -138,6 +139,7 @@ final class RealtimeVoiceCall {
                     }
                 }
             })
+            connectedDuration.markReady(current)
             routeSignature = currentRoute()
             ready = true; timer?.invalidate(); timer = nil
             let callback = opening; opening = nil; callback?(.success(())); state("listening")
@@ -154,6 +156,7 @@ final class RealtimeVoiceCall {
         if finalSession == nil {
             socket.close()
         }
+        connectedDuration.markStopped(identifier)
         audio.stop(); endSystemCall()
         let callback = opening; opening = nil
         // Let the bridge observe that this owner is cleared before rejecting its open.

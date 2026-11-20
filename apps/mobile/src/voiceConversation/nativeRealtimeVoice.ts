@@ -1,3 +1,7 @@
+import {
+  createVoiceStopReceipts,
+  type CaptureVoiceEndReceipt,
+} from './voiceStopReceipts';
 import type {
   RealtimeToolNative,
   RealtimeToolRequest,
@@ -11,7 +15,7 @@ import {
 } from '../voiceSettings/voiceRuntimeCapability';
 
 // Survives screen disposal: a failed release must be retried before any newer call opens.
-const pendingCleanup = new Set<string>();
+const pendingCleanup = createVoiceStopReceipts();
 const openingCalls = new Map<string, { cancelled: boolean }>();
 
 export interface RealtimeTranscript {
@@ -49,11 +53,16 @@ export function nativeRealtimeVoice(): NativeRealtimeVoice | null {
   return nativeOwnedVoice(false);
 }
 
-export function nativeLiveVoice(): NativeRealtimeVoice | null {
-  return nativeOwnedVoice(true);
+export function nativeLiveVoice(
+  captureEnd?: CaptureVoiceEndReceipt,
+): NativeRealtimeVoice | null {
+  return nativeOwnedVoice(true, captureEnd);
 }
 
-function nativeOwnedVoice(live: boolean): NativeRealtimeVoice | null {
+function nativeOwnedVoice(
+  live: boolean,
+  captureEnd?: CaptureVoiceEndReceipt,
+): NativeRealtimeVoice | null {
   const module =
     Platform.OS === 'ios' ? NativeModules.VoiceRealtimeModule : null;
   if (!(live ? hasLiveVoiceRuntime() : hasRealtimeVoiceRuntime())) return null;
@@ -68,14 +77,21 @@ function nativeOwnedVoice(live: boolean): NativeRealtimeVoice | null {
     });
     return () => sub.remove();
   };
+  let voiceEnd:
+    { id: string; receive: ReturnType<CaptureVoiceEndReceipt> } | undefined;
   const stop = async (id: string, graceful = false) => {
     const opening = openingCalls.get(id);
     if (opening) opening.cancelled = true;
-    pendingCleanup.add(id);
-    if (live && graceful && typeof module.closeLiveCall === 'function')
-      await module.closeLiveCall(id);
-    else await module.stopRealtimeCall(id);
-    pendingCleanup.delete(id);
+    const previous = voiceEnd?.id === id ? voiceEnd : undefined;
+    await pendingCleanup.stop(
+      id,
+      () =>
+        live && graceful && typeof module.closeLiveCall === 'function'
+          ? module.closeLiveCall(id)
+          : module.stopRealtimeCall(id),
+      previous?.receive,
+    );
+    if (voiceEnd === previous) voiceEnd = undefined;
   };
   return {
     open: async (
@@ -90,11 +106,13 @@ function nativeOwnedVoice(live: boolean): NativeRealtimeVoice | null {
       const opening = { cancelled: false };
       openingCalls.set(id, opening);
       try {
-        for (const previous of pendingCleanup) await stop(previous);
+        for (const previous of pendingCleanup.pendingIds())
+          await stop(previous);
         if (opening.cancelled) throw new Error('Voice call cancelled');
         if (live) {
           if (!preferences || enableTools || !isCurrent?.())
             throw new Error('Expected audio-only Live settings');
+          voiceEnd = { id, receive: captureEnd?.(id) };
           await module.openLiveCall(id, model, key, {
             language: 'auto',
             voice: preferences.voice,

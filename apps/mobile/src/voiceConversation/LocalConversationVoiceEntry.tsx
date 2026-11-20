@@ -46,7 +46,10 @@ export function LocalConversationVoiceEntry(
   useEffect(() => {
     const attemptRef = attempt;
     mounted.current = true;
-    const native = nativeVoiceConversation();
+    const native = nativeVoiceConversation(id => {
+      const { store, sessionId } = latest.current;
+      return store.captureVoiceEnd?.(sessionId, id);
+    });
     if (!native)
       return () => {
         mounted.current = false;

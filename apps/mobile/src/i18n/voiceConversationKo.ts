@@ -6,6 +6,7 @@ export const voiceConversationKo = {
   'ragConversation.voice.resume': '다시 듣기',
   'ragConversation.voice.interrupt': '답변 중단하고 말하기',
   'ragConversation.voice.endCall': '음성 대화 종료',
+  'ragConversation.voice.endedDuration': '{minutes}분 {seconds}초',
   'ragConversation.voice.localPipeline':
     '음성은 기기에서 글자로 바꾸고, 선택한 AI의 답변을 기기 음성으로 읽어요.',
   'ragConversation.voice.start': '음성 대화 시작',

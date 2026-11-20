@@ -5,6 +5,10 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 export interface DisplayMessage extends RagConversationMessage {
   /** Display-only origin marker; never a provider-history or persistence permission. */
   readonly restoredHistory?: true;
+  readonly voiceTimelineOrder?: {
+    readonly createdAt: string;
+    readonly id: string;
+  };
   /** Local source-unavailable notice; never model context or a recoverable draft. */
   readonly historyUnavailable?: true;
   readonly delivery?: import('./conversationMessageDelivery').ConversationMessageDelivery;

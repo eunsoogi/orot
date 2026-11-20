@@ -30,7 +30,22 @@ test('a quarantined older parent restores a metadata notice alongside a valid ne
       'older',
       'newer',
     ]);
-    expect(history.turns).toEqual(restored);
+    expect(history.turns).toEqual([
+      {
+        ...restored[0],
+        voiceTimelineOrder: {
+          createdAt: '2026-10-05T00:00:00.000Z',
+          id: 'older',
+        },
+      },
+      {
+        ...restored[1],
+        voiceTimelineOrder: {
+          createdAt: '2026-10-06T00:00:00.000Z',
+          id: 'newer',
+        },
+      },
+    ]);
     expect(restored[0]).toMatchObject({
       question: '',
       historyUnavailable: true,

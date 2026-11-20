@@ -13,6 +13,7 @@ final class VoiceDuplexCallCoordinator {
     private let foreground: () -> Bool
     private let emit: (String, [String: Any]) -> Void
     private let systemCall: VoiceSystemCallPort?
+    let connectedDuration = VoiceConnectedDuration()
     private var systemCallOwner: UUID?
     private(set) var systemCallActive = false
     private var token: AudioSessionOwnership.Token?
@@ -77,6 +78,7 @@ final class VoiceDuplexCallCoordinator {
         guard identifier == nil, !id.isEmpty else { completion(.failure(failure("Voice call is busy"))); return }
         do { token = try ownership.reserve() }
         catch { completion(.failure(error)); return }
+        connectedDuration.begin()
         identifier = id
         generation = 0
         opening = completion
@@ -147,7 +149,7 @@ final class VoiceDuplexCallCoordinator {
                 guard let self, identifier == id else { return }
                 systemInterrupted()
             })
-            try audio.start { [weak self] buffer in self?.recognition.append(buffer) }
+            try connectedDuration.startDuplex(id, audio: audio) { [weak self] buffer in self?.recognition.append(buffer) }
             routeSignature = currentRouteSignature()
             let callback = opening
             opening = nil
@@ -204,7 +206,7 @@ final class VoiceDuplexCallCoordinator {
         let callback = opening
         opening = nil
         playbackGeneration = 0
-        audio.stop()
+        connectedDuration.stopDuplex(id, audio: audio)
         recognition.stop()
         systemCallActive = false
         emit("VoiceCallSystemCall", ["callId": id, "active": false])

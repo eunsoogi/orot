@@ -192,7 +192,7 @@ final class VoiceConversationModule: RCTEventEmitter {
     @objc(stopCall:resolver:rejecter:)
     func stopCall(_ id: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         DispatchQueue.main.async {
-            do { try self.duplex.stop(id); resolve(nil) }
+            do { try self.duplex.stop(id); resolve(self.duplex.connectedDuration.take(id)) }
             catch { reject("VOICE_CLEANUP_FAILED", "Audio could not be released.", error) }
         }
     }

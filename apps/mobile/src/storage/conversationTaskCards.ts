@@ -1,6 +1,11 @@
+import {
+  setupConversationVoiceEndMarkers,
+  writeConversationVoiceEndMarker,
+} from './conversationVoiceEndStorage';
 import { conversationSelectedIds } from './conversationSelectedIds';
 import {
   parseTask,
+  voiceEndTaskIdentityMatches,
   type ConversationTaskCard,
 } from './conversationTaskCardCodec';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
@@ -15,6 +20,7 @@ import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 export type { ConversationTaskCard } from './conversationTaskCardCodec';
 
 export async function setupConversationTaskCards(tx: SqlExecutor) {
+  await setupConversationVoiceEndMarkers(tx);
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_task_cards (session_id TEXT NOT NULL, id TEXT NOT NULL, created_at TEXT NOT NULL, revision INTEGER NOT NULL, task_json TEXT NOT NULL, PRIMARY KEY (session_id, id))',
   );
@@ -92,9 +98,18 @@ export function createConversationTaskCardStorage(
       const encoded = JSON.stringify(input.task);
       const task =
         encoded.length <= 4096 ? parseTask(JSON.parse(encoded)) : null;
-      if (!task) throw new Error('Invalid task card.');
+      if (
+        !task ||
+        !voiceEndTaskIdentityMatches(input.id, task) ||
+        (task.kind === 'voice_end' && input.expectedRevision !== null)
+      )
+        throw new Error('Invalid task card.');
       assertConversationNotCancelled(input.signal);
       await ensure();
+      if (task.kind === 'voice_end')
+        return writeConversationVoiceEndMarker(database, input, task, tx =>
+          requireSession(tx, input.sessionId, input.sessionVersion),
+        );
       let stored = {
         id: input.id,
         createdAt: input.createdAt,
@@ -183,8 +198,15 @@ export function createConversationTaskCardStorage(
       await database.transaction(async tx => {
         await requireSession(tx, sessionId, version);
         const result = await tx.execute(
-          `SELECT id, created_at, revision, task_json FROM conversation_task_cards WHERE session_id = ?${selected.clause} ORDER BY created_at, id`,
-          [sessionId, ...selected.parameters],
+          `SELECT id, created_at, revision, task_json FROM conversation_task_cards WHERE session_id = ?${selected.clause}
+           UNION ALL SELECT id, created_at, 1, json_object('kind', 'voice_end', 'durationSeconds', duration_seconds) FROM conversation_voice_end_markers WHERE session_id = ?${selected.clause}
+           ORDER BY created_at, id`,
+          [
+            sessionId,
+            ...selected.parameters,
+            sessionId,
+            ...selected.parameters,
+          ],
         );
         cards = result.rows.map(row => {
           const task =
@@ -196,6 +218,8 @@ export function createConversationTaskCardStorage(
             typeof row.id !== 'string' ||
             !row.id ||
             row.id.length > 200 ||
+            !voiceEndTaskIdentityMatches(row.id, task) ||
+            (task.kind === 'voice_end' && row.revision !== 1) ||
             typeof row.created_at !== 'string' ||
             !Number.isFinite(Date.parse(row.created_at)) ||
             new Date(row.created_at).toISOString() !== row.created_at ||

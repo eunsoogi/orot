@@ -18,9 +18,9 @@ import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
 import { conversationHistoryActivity } from './conversationHistoryActivity';
 import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserTurn';
-/** Owns transcript scrolling, restoration and reader-directed history loading. */
 export function ConversationHistory({
   messages,
+  voiceEndCards,
   steeringInstructions,
   pendingMessage,
   error,
@@ -131,7 +131,7 @@ export function ConversationHistory({
   const followLatest = () =>
     !reading.pending &&
     followConversationLatest({
-      hasMessages: visibleMessages.length > 0,
+      hasMessages: visibleMessages.length + (voiceEndCards?.length ?? 0) > 0,
       compact,
       focused: Boolean(replyFocus),
       followsBottom,
@@ -185,6 +185,7 @@ export function ConversationHistory({
           <ConversationTranscriptMessages
             onReadingLayout={reading.row}
             messages={window.messages}
+            voiceEndCards={voiceEndCards}
             {...{ sessionId, availableMessages: visibleMessages }}
             showPendingBubble={showActivityBubble}
             entryChoices={entryChoices}

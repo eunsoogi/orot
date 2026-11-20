@@ -1,3 +1,7 @@
+import {
+  createVoiceStopReceipts,
+  type CaptureVoiceEndReceipt,
+} from './voiceStopReceipts';
 import type { NativeEventEmitter } from 'react-native';
 
 export interface DuplexTranscript {
@@ -29,7 +33,7 @@ export interface NativeDuplexVoice {
 }
 export interface DuplexNativeModule {
   openCall(callId: string, language: string): Promise<void>;
-  stopCall(callId: string): Promise<void>;
+  stopCall(callId: string): Promise<unknown>;
   interruptOutput(callId: string): Promise<void>;
   speakCall(
     callId: string,
@@ -44,6 +48,7 @@ export interface DuplexNativeModule {
 export function nativeDuplexVoice(
   module: DuplexNativeModule,
   events: NativeEventEmitter,
+  captureEnd?: CaptureVoiceEndReceipt,
 ): NativeDuplexVoice {
   const subscribe = (
     name: string,
@@ -59,9 +64,19 @@ export function nativeDuplexVoice(
     typeof event.callId === 'string' &&
     Number.isSafeInteger(event.generation) &&
     Number(event.generation) > 0;
+  const cleanup = createVoiceStopReceipts();
+  let voiceEnd:
+    { id: string; receive: ReturnType<CaptureVoiceEndReceipt> } | undefined;
   return {
-    open: (id, language) => module.openCall(id, language),
-    stop: id => module.stopCall(id),
+    open: (id, language) => {
+      voiceEnd = { id, receive: captureEnd?.(id) };
+      return module.openCall(id, language);
+    },
+    async stop(id) {
+      const previous = voiceEnd?.id === id ? voiceEnd : undefined;
+      await cleanup.stop(id, () => module.stopCall(id), previous?.receive);
+      if (voiceEnd === previous) voiceEnd = undefined;
+    },
     interruptOutput: id => module.interruptOutput(id),
     speak: (id, generation, text, language) =>
       module.speakCall(id, generation, text, language),
