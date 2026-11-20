@@ -29,25 +29,25 @@ enum FormUITestConditions {
             let applicationFrame = window.frame
             let scrollFrame = scroll.frame
             let keyboardFrame = keyboard?.exists == true ? keyboard?.frame : nil
-            let fullTargetFrame = target.exists ? target.frame : nil
-            let unobstructedFrame = unobstructedScrollFrame(scrollFrame, target: fullTargetFrame, in: app, excluding: target.exists ? target.identifier : nil)
-            lastObservation = "target=\(String(describing: fullTargetFrame)), scroll=\(scrollFrame), application=\(applicationFrame), keyboard=\(String(describing: keyboardFrame))"
+            let targetFrame = target.exists ? target.frame : nil
+            let unobstructedFrame = unobstructedScrollFrame(scrollFrame, target: targetFrame, in: app, excluding: target.exists ? target.identifier : nil)
+            lastObservation = "target=\(String(describing: targetFrame)), scroll=\(scrollFrame), application=\(applicationFrame), keyboard=\(String(describing: keyboardFrame))"
             guard let geometry = FormScrollGeometry.current(application: applicationFrame, scroll: unobstructedFrame, keyboard: keyboardFrame, input: nil, referenceSize: referenceSize, reservedKeyboard: focusedKeyboardFrame) else {
                 XCTFail("The form has no finite visible viewport: application=\(applicationFrame), scroll=\(scrollFrame), keyboard=\(String(describing: keyboardFrame))")
                 return nil
             }
             lastObservation += ", usableViewport=\(geometry.viewport), focusedViewport=\(String(describing: focusedViewport))"
-            let targetFrame = fullTargetFrame.map { frame in
+            let projectedFrame = targetFrame.map { frame in
                 readingEdgeBottom.map { geometry.readingBounds(frame, bottom: $0) } ?? frame
             }
-            if let targetFrame, geometry.contains(targetFrame, referenceSize: referenceSize), !requireHittable || target.isHittable {
-                if readingEdgeBottom != nil, let fullTargetFrame {
-                    observeReadingEdge?(FormScrollGeometry.ReadingObservation(frame: fullTargetFrame, geometry: geometry))
+            if let projectedFrame, geometry.contains(projectedFrame, referenceSize: referenceSize), !requireHittable || target.isHittable {
+                if readingEdgeBottom != nil, let targetFrame {
+                    observeReadingEdge?(FormScrollGeometry.ReadingObservation(frame: targetFrame, geometry: geometry))
                 }
                 // Reuse this exact successful observation if focus later clips the AX frame.
-                return targetFrame
+                return projectedFrame
             }
-            scrollObservation?.observed(targetFrame, completedSteps: attempt)
+            scrollObservation?.observed(projectedFrame, completedSteps: attempt)
             if attempt == 16 {
                 observeFocusGesture?("reveal-exhausted", focusedKeyboardFrame)
                 break
@@ -60,11 +60,11 @@ enum FormUITestConditions {
                 lastObservation += ", excluded=\(excludedFrame)"
                 position = geometry.horizontalPosition(outside: excludedFrame)
             } else {
-                position = avoidTarget || focusedKeyboardFrame != nil ? targetFrame.flatMap { geometry.horizontalPosition(outside: $0) } : horizontalPosition
+                position = avoidTarget || focusedKeyboardFrame != nil ? projectedFrame.flatMap { geometry.horizontalPosition(outside: $0) } : horizontalPosition
             }
-            let proposed = { position.flatMap { geometry.gesture(target: targetFrame, towardTop: towardTop, horizontalPosition: $0, maximumScrollFraction: maximumScrollFraction, verticalBounds: excludedFrame) } }
+            let proposed = { position.flatMap { geometry.gesture(target: projectedFrame, towardTop: towardTop, horizontalPosition: $0, maximumScrollFraction: maximumScrollFraction, verticalBounds: excludedFrame) } }
             guard let gesture = proposed() else { XCTFail("The form gesture has invalid coordinates"); return nil }
-            let gestureReference = (targetFrame, geometry.viewport)
+            let gestureReference = (projectedFrame, geometry.viewport)
             // Anchor to the observed application window, so XCTest cannot re-resolve a disappearing scroller as the coordinate origin.
             let origin = window.coordinate(withNormalizedOffset: .zero)
             let start = origin.withOffset(gesture.start)
