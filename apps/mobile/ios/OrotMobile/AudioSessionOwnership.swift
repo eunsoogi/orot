@@ -91,7 +91,7 @@ final class VoiceConnectedDuration {
     private var ready: (callID: String, atNanoseconds: UInt64)?
     private var terminal: (callID: String, seconds: Int)?
 
-    // Darwin's continuous clock is monotonic through sleep and available before iOS 16.
+    /// Darwin's continuous clock is monotonic through sleep and available before iOS 16.
     init(nowNanoseconds: @escaping () -> UInt64 = { clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW) }) {
         self.nowNanoseconds = nowNanoseconds
     }
