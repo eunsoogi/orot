@@ -117,8 +117,6 @@ export const healthkitSettingsKo = {
   'dailyReport.limit.other': '자료에 추가 제한이 있어요.',
   'dailyReport.sourceTime': '자료 확인 기준: {time}',
   'dailyReport.sources': '기록 출처 확인',
-  'dailyReport.statisticCitation': '통계 출처 {number} · 근거 원본 {count}건',
-  'dailyReport.otherBackingSources': '그 외 근거 원본 {count}건',
   'dailyReport.sourceLink': '기록 출처 {number} 열기',
   'dailyReport.sourceError':
     '기록이 바뀌었거나 출처를 확인하지 못했어요. 보고서를 다시 확인해 주세요.',
