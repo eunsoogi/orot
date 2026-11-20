@@ -1,11 +1,19 @@
+import { AccessibilityInfo } from 'react-native';
 import { useSyncExternalStore } from 'react';
 import { act, render, screen } from '@testing-library/react-native';
 import { ConversationHistory } from '../ConversationHistory';
 import { createConversationSessions } from '../conversationSessions';
 import type { RagConversationObserver } from '../service';
 
+beforeEach(() => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
+});
+afterEach(() => jest.restoreAllMocks());
+
 /** The same owning request drives receipts and dots; a local wait cannot fabricate AI processing. */
-test('waiting dots do not imply read, a generated opening shows read before final text, Stop fences late signals', async () => {
+test('dots wait for Read, a generated opening shows read before final text, Stop fences late signals', async () => {
   const sessions = createConversationSessions();
   const Harness = () => {
     const state = useSyncExternalStore(
@@ -47,7 +55,7 @@ test('waiting dots do not imply read, a generated opening shows read before fina
     screen.queryAllByTestId('rag-conversation-activity-dot', {
       includeHiddenElements: true,
     }),
-  ).toHaveLength(3);
+  ).toHaveLength(0);
   await act(async () => {
     observer.onTaskStreamEvent!({
       type: 'initial_response',
