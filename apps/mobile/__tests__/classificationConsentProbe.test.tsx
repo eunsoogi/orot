@@ -131,7 +131,7 @@ test('approved staged fixture completes actual 8+1 classification batches and ga
     );
     expect(privacy).toHaveProp(
       'accessibilityLabel',
-      'syntheticHealthIncluded=true;syntheticIdentifierExcluded=true',
+      'syntheticHealthIncluded=false;syntheticIdentifierExcluded=true',
     );
     for (const diagnostic of [
       privacy,
