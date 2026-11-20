@@ -8,6 +8,8 @@ import { AppText as Text } from '../layout/AppText';
 import { ConversationMessageText } from './ConversationMessageText';
 import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
+import { ConversationBubbleEntrance } from './ConversationBubbleEntrance';
+import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { ConversationMessageBubbles } from './ConversationMessageBubbles';
 import { ConversationToolEvents } from './ConversationToolEvents';
 import { HealthSummaryCard } from './HealthSummaryCard';
@@ -83,7 +85,12 @@ export function ConversationMessage({
         canResume: Boolean(onContinueCold),
       }}
     >
-      <View
+      <ConversationBubbleEntrance
+        entranceKey={conversationBubbleKey(
+          user ? 'user' : 'assistant',
+          message.id,
+        )}
+        restored={message.restoredHistory || message.id <= 0}
         testID={
           user ? 'conversation-user-message' : 'conversation-assistant-message'
         }
@@ -235,7 +242,7 @@ export function ConversationMessage({
           ) : null}
           {citations}
         </View>
-      </View>
+      </ConversationBubbleEntrance>
     </ConversationMessageBubbles>
   );
 }
