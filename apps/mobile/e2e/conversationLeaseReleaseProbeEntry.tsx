@@ -1,13 +1,6 @@
 import '../src/agent/polyfills';
 import { useState } from 'react';
-import {
-  AppRegistry,
-  Button,
-  NativeModules,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { AppRegistry, Button, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { name as appName } from '../app.json';
 import { ConversationScreen } from '../src/ragConversation/ConversationScreen';
@@ -24,17 +17,36 @@ import { LeaseProbeOverlay } from './LeaseProbeOverlay';
 import { runSyntheticStages } from './conversationLeaseProbeStage';
 
 // This opt-in test entry uses the app's protected database; only synthetic values enter its counter.
-const options = createConversationSessionOptions({
+const baseOptions = createConversationSessionOptions({
   loadLocalData: openAiFeatureLocalData,
   registry: new LocalEvidenceReferenceRegistry(),
 });
 let release: (() => void) | undefined;
 let publish: ((value: string) => void) | undefined;
 let publishStage: ((value: string) => void) | undefined;
-let observedRequestId: string | undefined;
-const nativeExecution = NativeModules.ConversationExecutionModule as {
-  isActive(id: string): Promise<boolean>;
-};
+let observedLeaseId: string | undefined;
+let acquiredLease: string | undefined;
+let acquisitions = 0;
+const nativeExecution =
+  baseOptions.execution?.bridgeAvailable === true
+    ? baseOptions.execution
+    : undefined;
+const options = nativeExecution
+  ? {
+      ...baseOptions,
+      execution: {
+        ...nativeExecution,
+        async begin(id: string) {
+          const acquired = await nativeExecution.begin(id);
+          if (acquired) {
+            acquiredLease = id;
+            acquisitions += 1;
+          }
+          return acquired;
+        },
+      },
+    }
+  : baseOptions;
 const partial = 'Synthetic partial response';
 const answer = 'Synthetic committed response';
 
@@ -74,16 +86,20 @@ const send: ConversationSender = async (question, _history, signal, observer) =>
           [question],
         )
       ).rows;
-      if (
-        requests.length !== 1 ||
-        typeof requests[0]?.id !== 'string' ||
-        !nativeExecution?.isActive
-      )
-        throw new Error('Unique native request identity unavailable.');
-      observedRequestId = requests[0].id;
+      if (requests.length !== 1 || typeof requests[0]?.id !== 'string')
+        throw new Error('Unique durable request identity unavailable.');
       mark('lease-check');
-      if (!(await nativeExecution.isActive(observedRequestId)))
+      // The fixture owns one request. Its durable row is not the attempt-scoped native lease key.
+      const leaseId = acquiredLease;
+      if (!nativeExecution || !leaseId || acquisitions !== 1)
+        throw new Error('Unique native execution lease unavailable.');
+      if (
+        !(await nativeExecution.isActive(leaseId)) ||
+        acquisitions !== 1 ||
+        signal?.aborted
+      )
         throw new Error('Native execution lease was not acquired.');
+      observedLeaseId = leaseId;
       const waiting = new Promise<void>(resolve => {
         release = resolve;
         signal?.addEventListener('abort', () => resolve(), { once: true });
@@ -122,26 +138,33 @@ async function readProbe() {
     [partial],
   );
   const row = rows.rows[0];
-  // Query the exact request whose native lease was observed active before settlement.
-  const lease = observedRequestId
-    ? (await nativeExecution.isActive(observedRequestId))
-      ? 'active'
-      : 'released'
-    : 'unknown';
+  // Read only the exact lease previously observed active; never infer a key from the row.
+  const leaseId = observedLeaseId;
+  const active =
+    leaseId && nativeExecution && acquisitions === 1
+      ? await nativeExecution.isActive(leaseId)
+      : undefined;
+  const lease =
+    active === undefined || observedLeaseId !== leaseId || acquisitions !== 1
+      ? 'unknown'
+      : active
+        ? 'active'
+        : 'released';
   return `dispatches:${row.dispatches} completions:${row.completions} previews:${row.previews} interrupted:${row.interrupted} lease:${lease}`;
 }
 
 /** Observe the real lease after terminal UI without treating elapsed time as completion. */
 async function waitForLeaseRelease() {
-  const requestId = observedRequestId;
-  if (!requestId) throw new Error('Observed request identity unavailable.');
-  while (await nativeExecution.isActive(requestId)) {
-    if (observedRequestId !== requestId)
-      throw new Error('Observed request identity changed.');
+  const leaseId = observedLeaseId;
+  if (!leaseId || !nativeExecution || acquisitions !== 1)
+    throw new Error('Observed lease identity unavailable.');
+  while (await nativeExecution.isActive(leaseId)) {
+    if (observedLeaseId !== leaseId || acquisitions !== 1)
+      throw new Error('Observed lease identity changed.');
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
   }
-  if (observedRequestId !== requestId)
-    throw new Error('Observed request identity changed.');
+  if (observedLeaseId !== leaseId || acquisitions !== 1)
+    throw new Error('Observed lease identity changed.');
   return readProbe();
 }
 
