@@ -18,7 +18,11 @@ import {
   traceHealthContextScheduler,
   type HealthContextTrace,
 } from './trace';
-import type { HealthContextCalendarScope } from './calendarReadScope';
+import {
+  readHealthContextCalendar,
+  type HealthContextCalendarScope,
+} from './calendarReadScope';
+import { healthContextCalendarParameter } from './calendarSql';
 import { readHealthContextReport as calculateHealthContextReport } from './healthContextReport';
 // Preserve the original exported callable boundary for adapters and diagnostics.
 export const readHealthContextReport = calculateHealthContextReport;
@@ -54,6 +58,19 @@ export function createHealthContextReader(
       await ready;
       trace?.('preparation', 'completed');
       if (signal?.aborted) throw new Error('Health context was cancelled.');
+      // The binding and the later generation-fenced SQL must use the same values,
+      // even if the caller changes its request while the transaction is queued.
+      const prepareMeasurements =
+        topics.length === 1 && topics[0] === 'measurements';
+      if (prepareMeasurements) {
+        window = {
+          ...window,
+          ...(window.doseHistory
+            ? { doseHistory: { ...window.doseHistory } }
+            : {}),
+        };
+        topics = ['measurements'];
+      }
       const key = healthContextReportCacheKey(window, topics);
       const current = await traceHealthContext(trace, 'generation', () =>
         readHealthContextGeneration(database),
@@ -68,6 +85,18 @@ export function createHealthContextReader(
             : 'new_key',
       );
       if (cached && sameGeneration(cached, current)) return cached;
+      // Calendar instants and their bound text do not depend on records or generation.
+      // Keep that pure work out of the shared transaction and reuse the key binding.
+      const preparedCalendar = prepareMeasurements
+        ? (() => {
+            trace?.('calendar', 'started');
+            const days = readHealthContextCalendar(calendar, window);
+            const timestampKeys = healthContextCalendarParameter(days);
+            trace?.('calendar', 'completed');
+            return { days, timestampKeys };
+          })()
+        : undefined;
+      if (signal?.aborted) throw new Error('Health context was cancelled.');
       let report: HealthContextReport | undefined;
       let failure: { error: unknown } | undefined;
       // The native adapter queues transactions; distinguish that wait from the report queries.
@@ -89,6 +118,8 @@ export function createHealthContextReader(
               trace,
               cache,
               calendar,
+              undefined,
+              preparedCalendar,
             );
             const after = await readHealthContextGeneration(tx);
             if (signal?.aborted)
