@@ -146,13 +146,14 @@ test('renders a grounded answer with a source action and reports absent evidence
       onOpenSource={onOpenSource}
     />,
   );
-  // An empty session reserves space for neither introductory copy nor evidence.
   expect(
     screen.queryByText('내 기록을 바탕으로 궁금한 점을 물어보세요.'),
   ).toBeNull();
   expect(
-    screen.getByText(getRagConversationCopy().transmissionNotice),
-  ).toBeTruthy();
+    screen.queryByText(
+      '필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.',
+    ),
+  ).toBeNull();
   expect(screen.queryByTestId('rag-conversation-evidence-panel')).toBeNull();
   const conversationInput = screen.getByTestId('rag-conversation-input');
   expect(conversationInput.props.placeholderTextColor).toBe(

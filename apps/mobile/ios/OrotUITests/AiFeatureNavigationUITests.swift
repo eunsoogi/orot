@@ -40,7 +40,7 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         // The material host shares the identifier; only the native UIButton dispatches Send.
         let send = app.buttons.matching(identifier: "rag-conversation-send").firstMatch
         XCTAssertTrue(UITestConditions.exists(send))
-        message(app, "필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.")
+        XCTAssertFalse(app.staticTexts["필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요."].firstMatch.exists)
         let input = node(app, "rag-conversation-input")
         // This no-provider case needs only nonempty input to enable Send; keep native character entry short.
         try RoutesVisibleContentUITestConditions.conversationControl(input, in: app)
@@ -225,12 +225,5 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
     @MainActor
     private func node(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         UITestConditions.element(app, id)
-    }
-
-    @MainActor
-    private func message(_ app: XCUIApplication, _ text: String) {
-        let message = app.staticTexts.matching(NSPredicate(format: "label == %@", text)).firstMatch
-        XCTAssertTrue(UITestConditions.exists(message), app.debugDescription)
-        XCTAssertTrue(message.isHittable, message.debugDescription)
     }
 }

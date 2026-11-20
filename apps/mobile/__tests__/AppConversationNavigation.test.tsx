@@ -59,8 +59,10 @@ test('opens conversation immediately and returns from provider overlays without 
   expect(screen.queryByTestId('ai-feature-health-review')).toBeNull();
   expect(screen.queryByTestId('external-evidence-search')).toBeNull();
   expect(
-    screen.getByText('필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.'),
-  ).toBeTruthy();
+    screen.queryByText(
+      '필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.',
+    ),
+  ).toBeNull();
   expect(screen.queryByTestId('inference-disclosure-sheet')).toBeNull();
   await fireEvent.changeText(
     screen.getByTestId('rag-conversation-input'),

@@ -11,7 +11,6 @@ export function getRagConversationCopy() {
     cancelling: t('assistantAppearance.cancelling'),
     sessions: t('ragConversation.sessions'),
     newConversation: t('ragConversation.newConversation'),
-    transmissionNotice: t('ragConversation.transmissionNotice'),
     disclaimer: t('ragConversation.disclaimer'),
     loading: t('ragConversation.loading'),
     progressAnswer: t('ragConversation.progressAnswer'),

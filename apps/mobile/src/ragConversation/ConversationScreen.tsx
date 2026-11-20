@@ -111,7 +111,6 @@ export function ConversationScreen({
       routeKey={navigationRouteKey}
       onBack={onBack}
       provider={providerSelection}
-      notice={copy.transmissionNotice}
     />
   );
   return (
