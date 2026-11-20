@@ -59,10 +59,23 @@ test('first Routes case reaches Send through current Records surfaces and preser
     /navigationAction\(app, "navigation-tab-schedule"|openTab\(app, "schedule"|recording-controls-scroll/,
   );
   const send = body.indexOf('send.tap()');
-  const failure = '선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.';
+  const draftCapture = body.indexOf('let unsentDraft =');
+  const clearError = body.indexOf('XCTAssertFalse(node(app, "rag-conversation-error").exists)');
+  assert.ok(draftCapture >= 0 && draftCapture < clearError && clearError < send);
+  const failure = '대화 기록이나 선택한 AI를 확인하지 못해 전송하지 않았어요. 다시 보내 주세요.';
   const firstFailure = body.indexOf(failure);
   const retainedFailure = body.indexOf(failure, firstFailure + failure.length);
   assert.ok(send >= 0 && firstFailure > send && retainedFailure > firstFailure);
+  assert.equal((body.match(/identifier: "rag-conversation-error"/g) ?? []).length, 2);
+  assert.equal(
+    (body.match(/XCTAssertEqual\(input\.value as\? String, unsentDraft\)/g) ?? []).length,
+    2,
+  );
+  assert.equal(
+    (body.match(/XCTAssertFalse\(node\(app, "conversation-message-body"\)\.exists\)/g) ?? [])
+      .length,
+    2,
+  );
   assert.ok(body.indexOf('try openSchedule(app)') > retainedFailure);
   assert.match(body, /XCTAssertFalse\(node\(app, "calendar-connect"\).exists\)/);
 });
@@ -90,4 +103,5 @@ test('only the first Routes journey checks native composer and failure text agai
   assert.match(dock, /control\.isEnabled && control\.isHittable/);
   assert.match(dock, /frame\.maxY, keyboard\.minY/);
   assert.match(dock, /frame\.intersects\(back\.frame\)/);
+  assert.match(dock, /XCTWaiter\.wait\(for: \[ready\], timeout: 12\)/);
 });

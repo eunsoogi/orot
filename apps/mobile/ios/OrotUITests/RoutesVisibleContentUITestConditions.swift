@@ -130,10 +130,18 @@ enum RoutesVisibleContentUITestConditions {
         }
     }
 
-    static func conversationMessage(_ expected: String, in app: XCUIApplication) throws {
-        let matches = app.staticTexts.matching(NSPredicate(format: "label == %@", expected))
+    /// Match the actual local recovery alert regardless of its native AX text role.
+    static func conversationMessage(identifier: String, expected: String, in app: XCUIApplication) throws {
+        let matches = app.descendants(matching: .any).matching(identifier: identifier)
         let text = matches.firstMatch
-        XCTAssertTrue(UITestConditions.exists(text))
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard matches.count == 1, let snapshot = try? text.snapshot() else { return false }
+            return snapshot.label == expected || snapshot.value as? String == expected
+        }, object: nil)
+        guard XCTWaiter.wait(for: [ready], timeout: 12) == .completed else {
+            XCTFail("Expected local conversation recovery alert did not reach a unique native node.")
+            throw ObservationFailure.incompleteText
+        }
         let bounds = try conversationBounds(app)
         XCTAssertEqual(matches.count, 1)
         XCTAssertTrue(text.isHittable && FormScrollGeometry.valid(text.frame))

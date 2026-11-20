@@ -47,12 +47,19 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         input.tap()
         input.typeText("test")
         input.typeText("\n")
+        let unsentDraft = try XCTUnwrap(input.value as? String)
+        XCTAssertEqual(unsentDraft.trimmingCharacters(in: .whitespacesAndNewlines), "test")
         try RoutesVisibleContentUITestConditions.conversationControl(send, in: app)
         ConversationHitUITestObservation.assertSendReady(app, send: send, session: observationSession, testCase: self)
+        XCTAssertFalse(node(app, "rag-conversation-error").exists)
         send.tap()
-        try RoutesVisibleContentUITestConditions.conversationMessage("선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.", in: app)
+        try RoutesVisibleContentUITestConditions.conversationMessage(
+            identifier: "rag-conversation-error", expected: "대화 기록이나 선택한 AI를 확인하지 못해 전송하지 않았어요. 다시 보내 주세요.", in: app
+        )
+        XCTAssertEqual(input.value as? String, unsentDraft)
+        XCTAssertFalse(node(app, "conversation-message-body").exists)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
-        // Switching away from the root conversation keeps the failed request without a leave prompt.
+        // Switching away from the root conversation keeps the unsent draft and local recovery notice without a leave prompt.
         XCTAssertFalse(app.alerts["저장하지 않은 내용이 있어요"].exists)
         try NavigationUITestConditions.openTab(app, "settings", markers: ["settings-title"])
         try NavigationUITestConditions.contentAboveBar(app, scrollID: "navigation-route-scroll", contentID: "settings-app-info", navigationID: "navigation-tab-settings")
@@ -64,7 +71,12 @@ final class AiFeatureNavigationUITests: OrotFailFastTestCase {
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         NavigationUITestConditions.route(app, markers: ["settings-title"])
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
-        try RoutesVisibleContentUITestConditions.conversationMessage("선택한 AI 서비스 설정을 확인하거나 다른 제공자를 선택해 주세요.", in: app)
+        try RoutesVisibleContentUITestConditions.conversationMessage(
+            identifier: "rag-conversation-error", expected: "대화 기록이나 선택한 AI를 확인하지 못해 전송하지 않았어요. 다시 보내 주세요.", in: app
+        )
+        XCTAssertEqual(input.value as? String, unsentDraft)
+        XCTAssertFalse(node(app, "conversation-message-body").exists)
+        XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         XCTAssertFalse(app.alerts["저장하지 않은 내용이 있어요"].exists)
         try openSchedule(app)
         XCTAssertTrue(node(app, "schedule-open-appointments").exists)
