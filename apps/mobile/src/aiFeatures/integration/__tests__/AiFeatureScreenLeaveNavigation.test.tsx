@@ -84,10 +84,10 @@ test('finishes a RAG turn while provider selection is active and shows it once o
   await fireEvent.press(view.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(ragRunner).toHaveBeenCalledTimes(1));
   expect(
-    view.getByTestId('rag-conversation-activity-bubble', {
+    view.queryByTestId('rag-conversation-activity-bubble', {
       includeHiddenElements: true,
     }),
-  ).toBeTruthy();
+  ).toBeNull();
 
   await fireEvent.press(view.getByTestId('ai-feature-select-provider'));
   await waitFor(() =>
