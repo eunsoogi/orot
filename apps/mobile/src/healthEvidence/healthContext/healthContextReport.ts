@@ -12,6 +12,8 @@ import type {
   HealthContextReport,
   HealthContextTopic,
   HealthContextWindow,
+  HealthQuantityDay,
+  HealthQuantitySeries,
 } from './types';
 import { HEALTH_CONTEXT_TOPICS } from './types';
 import { traceHealthContext, type HealthContextTrace } from './trace';
@@ -21,8 +23,16 @@ import {
   withHealthContextCalendar,
   type HealthContextCalendarScope,
 } from './calendarReadScope';
-/** Reusable inside an existing transaction: no nested transactions, raw history transfer or implicit native reads. */
-export async function readHealthContextReport(
+type ChartQuantitySeries = Omit<HealthQuantitySeries, 'days'> & {
+  readonly days: readonly Omit<HealthQuantityDay, 'activityContext'>[];
+};
+
+export type OverviewChartHealthContext = Pick<
+  HealthContextReport,
+  'window' | 'days' | 'sleep' | 'limitations'
+> & { readonly quantities: readonly ChartQuantitySeries[] };
+
+type ReportInputs = [
   executor: SqlExecutor,
   window: HealthContextWindow,
   topics: readonly HealthContextTopic[],
@@ -38,6 +48,41 @@ export async function readHealthContextReport(
     readonly days: HealthContextReport['days'];
     readonly timestampKeys: string;
   },
+];
+
+/** Local chart values do not display per-sample workout-overlap groups. Read them
+ * from the same aggregate snapshot without calculating that AI-only context. */
+export function readOverviewChartHealthContext(
+  executor: SqlExecutor,
+  window: HealthContextWindow,
+): Promise<OverviewChartHealthContext> {
+  return readHealthContext('overviewCharts', executor, window, [
+    'measurements',
+    'activity',
+    'sleep',
+  ]);
+}
+
+/** Reusable inside an existing transaction: no nested transactions, raw history transfer or implicit native reads. */
+export function readHealthContextReport(
+  ...inputs: ReportInputs
+): Promise<HealthContextReport> {
+  return readHealthContext('full', ...inputs);
+}
+
+async function readHealthContext(
+  purpose: 'full' | 'overviewCharts',
+  ...[
+    executor,
+    window,
+    topics,
+    signal,
+    trace,
+    diagnosticOwner,
+    calendarScope,
+    restorationWorkspace,
+    preparedCalendar,
+  ]: ReportInputs
 ): Promise<HealthContextReport> {
   return withHealthContextCalendar(calendarScope, async calendar => {
     executor = observeReportAggregateSql(executor, diagnosticOwner);
@@ -73,6 +118,7 @@ export async function readHealthContextReport(
               Boolean(restorationWorkspace),
               preparedCalendar?.timestampKeys,
             );
+            if (purpose === 'overviewCharts') return result;
             return {
               ...result,
               series: await addHeartRateActivityContext(

@@ -6,7 +6,7 @@ import {
 import type { SqlDatabase } from '@orot/storage';
 import { currentEvidenceCondition } from '../../healthEvidence/evidenceCandidateScope';
 import { readOverviewMetricSnapshot } from './metricReadCancellation';
-import { readHealthContextReport } from '../../healthEvidence/healthContext/reader';
+import { readOverviewChartHealthContext } from '../../healthEvidence/healthContext/healthContextReport';
 import { overviewMetrics, type OverviewMetric } from './metricSelection';
 import {
   projectOverviewMetric,
@@ -41,11 +41,7 @@ export async function loadOverviewMetrics(
   // Prevent SQLite from writing derived health aggregates into temporary files.
   await database.execute('PRAGMA temp_store = MEMORY');
   await readOverviewMetricSnapshot(database, signal, async tx => {
-    const report = await readHealthContextReport(tx, window, [
-      'measurements',
-      'activity',
-      'sleep',
-    ]);
+    const report = await readOverviewChartHealthContext(tx, window);
     quantityTruncated = report.limitations.includes(
       'quantity_sensor_series_limit_reached',
     );
