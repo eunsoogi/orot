@@ -12,7 +12,9 @@ extension RealtimeVoiceLifecycleTests {
                                      permission: { _ in requested += 1 }, foreground: { true }, emit: { _, _ in })
         for (model, tools) in [("gpt-realtime-2.1", false), ("gpt-realtime-2.1-mini", false), ("gpt-live-1.1", true)] {
             call.open("call", model: model, key: "synthetic", language: "auto", enableTools: tools) { result in
-                if case .failure = result { rejected += 1 }
+                if case .failure = result {
+                    rejected += 1
+                }
             }
         }
         XCTAssertEqual(rejected, 3)
@@ -48,7 +50,9 @@ extension RealtimeVoiceLifecycleTests {
             ["type": "response.done", "response": ["id": "legacy", "status": "completed"]],
         ]
         let before = socket.sent.count
-        for event in events + events { socket.received?(event) }
+        for event in events + events {
+            socket.received?(event)
+        }
         XCTAssertFalse(emitted.contains("VoiceRealtimeToolCall"))
         XCTAssertFalse(emitted.contains("VoiceRealtimeTranscript"))
         XCTAssertFalse(call.resolveTool("call", toolCallID: "candidate", responseID: "legacy", output: "synthetic"))
@@ -59,8 +63,8 @@ extension RealtimeVoiceLifecycleTests {
         XCTAssertFalse(call.resolveTool("call", toolCallID: "candidate", responseID: "legacy", output: "synthetic"))
     }
 
-    // Retain original authority guarantees as focused tests of the old inert lease, without
-    // reopening a legacy provider or manufacturing a completed Live source.
+    /// Retain original authority guarantees as focused tests of the old inert lease, without
+    /// reopening a legacy provider or manufacturing a completed Live source.
     func testLegacyLeaseStillRequiresBoundInputCompletedResponseAndOneShotExactIDs() {
         let lease = RealtimeVoiceToolLease()
         lease.reset(enabled: true)

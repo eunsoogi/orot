@@ -36,7 +36,7 @@ final class VoiceRealtimeModule: RCTEventEmitter {
 
     @objc(openLiveCall:model:apiKey:options:resolver:rejecter:)
     func openLiveCall(_ identifier: String, model: String, apiKey: String, options: NSDictionary,
-                          resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock)
+                      resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock)
     {
         DispatchQueue.main.async {
             guard self.active == nil else { reject("VOICE_BUSY", "Voice is already active.", nil); return }
@@ -48,7 +48,9 @@ final class VoiceRealtimeModule: RCTEventEmitter {
                 switch result {
                 case .success: resolve(nil)
                 case .failure:
-                    if self.call.id == nil, self.active == identifier { self.active = nil }
+                    if self.call.id == nil, self.active == identifier {
+                        self.active = nil
+                    }
                     reject("VOICE_LIVE_FAILED", "Live voice is unavailable.", nil)
                 }
             }

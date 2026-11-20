@@ -12,13 +12,15 @@ protocol RealtimeSocketPort: AnyObject {
 }
 
 extension RealtimeSocketPort {
-    func finishLive(sessionID _: String) { close() }
+    func finishLive(sessionID _: String) {
+        close()
+    }
 }
 
 /// A redirect must never carry a user's BYOK credential to a second destination.
 private final class LiveSocketSessionDelegate: NSObject, URLSessionTaskDelegate {
-    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
-                    newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void)
+    func urlSession(_: URLSession, task _: URLSessionTask, willPerformHTTPRedirection _: HTTPURLResponse,
+                    newRequest _: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void)
     {
         completionHandler(nil)
     }
@@ -37,7 +39,9 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
     var failed: (() -> Void)?
 
     func open(model: String, key: String) {
-        if closing != nil { close() }
+        if closing != nil {
+            close()
+        }
         guard model == "gpt-live-1.1", socket == nil else { failed?(); return }
         var request = URLRequest(url: URL(string: "wss://api.openai.com/v1/live/sessions")!)
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
@@ -71,7 +75,11 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                     self.transportFailed(); return
                 }
                 self.bytes -= self.queue.removeFirst().text.utf8.count
-                if self.closing != nil { self.sendClose() } else { self.flush() }
+                if self.closing != nil {
+                    self.sendClose()
+                } else {
+                    self.flush()
+                }
             }
         }
     }
@@ -125,8 +133,8 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         queue = sending ? Array(queue.prefix(1)) : []
         bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
         let timeout = DispatchWorkItem { [weak self] in
-            guard let self, self.epoch == current, self.closing != nil else { return }
-            self.close()
+            guard let self, epoch == current, closing != nil else { return }
+            close()
         }
         closeDeadline = timeout
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2), execute: timeout)
@@ -141,13 +149,19 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
         task.send(.string("{\"type\":\"session.close\",\"event_id\":\"\(closing.command)\"}")) { [weak self] error in
             DispatchQueue.main.async {
                 guard let self, self.epoch == current, self.socket === task, self.closing != nil else { return }
-                if error != nil { self.close() }
+                if error != nil {
+                    self.close()
+                }
             }
         }
     }
 
     private func transportFailed() {
-        if closing != nil { close() } else { failed?() }
+        if closing != nil {
+            close()
+        } else {
+            failed?()
+        }
     }
 
     static func matchesClose(_ event: [String: Any], sessionID: String, command: String) -> Bool {

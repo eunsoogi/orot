@@ -3,7 +3,9 @@ import Foundation
 /// Only an owned, unexpired Live session may activate capture or play media.
 extension RealtimeVoiceCall {
     func liveIsCurrent() -> Bool {
-        if let liveExpiresAt { return liveExpiresAt > Date() }
+        if let liveExpiresAt {
+            return liveExpiresAt > Date()
+        }
         return false
     }
 
@@ -22,8 +24,8 @@ extension RealtimeVoiceCall {
             liveSessionID = sessionID
             liveExpiresAt = Date(timeIntervalSince1970: seconds)
             liveExpiryTimer = Timer.scheduledTimer(withTimeInterval: max(0, seconds - Date().timeIntervalSince1970), repeats: false) { [weak self] _ in
-                guard let self, self.liveSocketEpoch == socketEpoch else { return }
-                self.fail()
+                guard let self, liveSocketEpoch == socketEpoch else { return }
+                fail()
             }
             beginAudio()
         case "error", "session.closed":
@@ -49,6 +51,8 @@ extension RealtimeVoiceCall {
     func interrupt() {
         guard id != nil else { return }
         _ = audio.cancel()
-        if !paused { state("listening") }
+        if !paused {
+            state("listening")
+        }
     }
 }

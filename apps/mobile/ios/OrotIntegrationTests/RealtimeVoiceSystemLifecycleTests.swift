@@ -62,7 +62,9 @@ extension RealtimeVoiceLifecycleTests {
         let call = RealtimeVoiceCall(audio: audio, socket: socket, ownership: ownership,
                                      permission: { $0(false) }, foreground: { true }, emit: { _, _ in })
         call.open("call", model: "gpt-live-1.1", key: "synthetic", language: "auto") { result in
-            if case .success = result { XCTFail("Denied permission admitted the call") }
+            if case .success = result {
+                XCTFail("Denied permission admitted the call")
+            }
             XCTAssertNil(call.id)
             XCTAssertNil(call.token)
             rejected.fulfill()
@@ -136,7 +138,9 @@ extension RealtimeVoiceLifecycleTests {
         var interrupted = false
         let call = RealtimeVoiceCall(audio: audio, socket: socket, ownership: ownership, systemCall: system,
                                      permission: { $0(true) }, foreground: { true }, emit: { event, _ in
-                                         if event == "VoiceRealtimeInterrupted" { interrupted = true }
+                                         if event == "VoiceRealtimeInterrupted" {
+                                             interrupted = true
+                                         }
                                      })
         await opening(call, socket: socket)
         socket.received?(started())
@@ -165,9 +169,11 @@ extension RealtimeVoiceLifecycleTests {
                               userInfo: [NSLocalizedDescriptionKey: "synthetic private description"])
         XCTAssertEqual(VoiceSystemCallLifecycle.requestTransactionDiagnosticCode(allowed), known)
         XCTAssertNil(VoiceSystemCallLifecycle.requestTransactionDiagnosticCode(
-            NSError(domain: "synthetic-sensitive-domain", code: known)))
+            NSError(domain: "synthetic-sensitive-domain", code: known),
+        ))
         XCTAssertNil(VoiceSystemCallLifecycle.requestTransactionDiagnosticCode(
-            NSError(domain: CXErrorDomainRequestTransaction, code: 10_000)))
+            NSError(domain: CXErrorDomainRequestTransaction, code: 10000),
+        ))
     }
 
     func testTerminalMatchingRequiresCurrentSessionAndCorrelatedCommand() {

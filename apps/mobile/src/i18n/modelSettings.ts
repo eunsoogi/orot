@@ -16,6 +16,33 @@ export const modelSettingsKo = {
     '통화 중 말한 음성과 이 통화의 대화만 전송해요.',
   'modelSettings.liveVoiceConsentNotice':
     '같은 계정과 모델로 음성 대화를 시작할 때 다시 묻지 않아요. 모델 설정에서 동의를 변경할 수 있어요.',
+  'modelSettings.liveVoiceProcessing':
+    'OpenAI Live API에서 음성 대화를 처리해요.',
+  'modelSettings.liveVoiceUnselected': '선택',
+  'modelSettings.liveVoicePreferenceLoading': '음성 설정을 불러오는 중이에요.',
+  'modelSettings.liveVoicePreferenceUnavailable':
+    '저장된 음성 설정을 사용할 수 없어요.',
+  'modelSettings.liveVoiceLanguage': '목소리 언어',
+  'modelSettings.liveVoiceName': '목소리',
+  'modelSettings.liveVoiceSavedLabel': '저장된 목소리: {voice}',
+  'modelSettings.liveVoicePreferenceSaveFailed':
+    '음성 설정을 저장하지 못했어요.',
+  'modelSettings.liveVoiceLegacyCurrent': '기존 OpenAI 음성 설정 (전환 필요)',
+  'modelSettings.liveVoiceUnavailableNoFallback':
+    'GPT-Live-1.1로 연결할 수 없어요. 기존 음성 모델로 자동 전환하지 않아요.',
+  'modelSettings.liveVoiceDefaultVoice': '기본값 (Marin)',
+  'modelSettings.liveVoiceNoeul': '노을 · 한국어',
+  'modelSettings.liveVoiceQuartz': 'Quartz · 영어(호주)',
+  'modelSettings.liveVoiceLegacyTitle': '음성 모델 변경 필요',
+  'modelSettings.liveVoiceLegacyAction':
+    '음성 설정에서 GPT-Live-1.1을 선택해 주세요.',
+  'modelSettings.liveVoiceLanguageKorean': '한국어',
+  'modelSettings.liveVoiceLanguageEnglish': '영어',
+  'modelSettings.liveVoiceLanguagePortuguese': '포르투갈어',
+  'modelSettings.liveVoiceLanguageGerman': '독일어',
+  'modelSettings.liveVoiceLanguageFrench': '프랑스어',
+  'modelSettings.liveVoiceLanguageHindi': '힌디어',
+  'modelSettings.liveVoiceLanguageJapanese': '일본어',
   'modelSettings.consentContinuing':
     '모델 선택을 확인하면 이 계정과 모델의 위 전송 범위에 계속 동의합니다. 같은 범위의 새 기록도 포함하며 채팅마다 다시 묻지 않습니다. 모델 설정에서 철회할 수 있고 계정·모델·전송 범위가 바뀌면 다시 동의해야 합니다. 공개 검색의 별도 수신자에게는 이 동의가 적용되지 않습니다.',
 

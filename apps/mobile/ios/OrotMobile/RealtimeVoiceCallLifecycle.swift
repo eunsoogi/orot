@@ -33,12 +33,12 @@ extension RealtimeVoiceCall {
                     liveStartID = startID
                     liveSocketEpoch = epoch
                     socket.received = { [weak self] event in
-                        guard let self, self.liveSocketEpoch == epoch else { return }
-                        self.receive(event)
+                        guard let self, liveSocketEpoch == epoch else { return }
+                        receive(event)
                     }
                     socket.failed = { [weak self] in
-                        guard let self, self.liveSocketEpoch == epoch else { return }
-                        self.fail()
+                        guard let self, liveSocketEpoch == epoch else { return }
+                        fail()
                     }
                     socket.open(model: model, key: key)
                     guard id == identifier, lifecycleEpoch == epoch else { return }
@@ -60,7 +60,7 @@ extension RealtimeVoiceCall {
         }
     }
 
-    // Keep the official Live catalog aligned with the settings domain; default is omitted from the wire.
+    /// Keep the official Live catalog aligned with the settings domain; default is omitted from the wire.
     private static var liveVoices: Set<String> {
         ["default", "marin", "quartz", "ripple", "vesper", "willow", "stone", "gleam", "meridian", "bossa",
          "tempo", "beacon", "delta", "cinder", "nuri", "juni", "flitz", "brise", "sillage", "nira", "harema", "shida", "noeul"]
@@ -68,7 +68,9 @@ extension RealtimeVoiceCall {
 
     static func configuration(model: String, language: String, voice: String = "default") -> [String: Any] {
         var audio: [String: Any] = ["format": ["type": "audio/pcm", "rate": 24000] as [String: Any]]
-        if voice != "default" { audio["output"] = ["voice": voice] }
+        if voice != "default" {
+            audio["output"] = ["voice": voice]
+        }
         let base = "You are Orot, a helpful voice assistant. Speak concisely. Do not claim to access records or perform actions."
         let instructions = switch language {
         case "ko": base + " Prefer Korean in this conversation."

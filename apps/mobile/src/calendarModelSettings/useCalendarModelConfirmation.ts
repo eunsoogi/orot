@@ -99,7 +99,7 @@ export function useCalendarModelConfirmation({
 
   return {
     confirm: () => {
-      void confirm();
+      confirm();
     },
     disclosureSheet: consent.disclosureSheet,
   };

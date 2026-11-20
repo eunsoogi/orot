@@ -15,7 +15,7 @@ export const voiceModels = [
     id: liveModel,
     mode: 'openai-api',
     title: 'GPT-Live-1.1',
-    detail: 'OpenAI Live API에서 음성 대화를 처리해요.',
+    detail: t('modelSettings.liveVoiceProcessing'),
   },
 ] as const;
 export const localVoiceModel = voiceModels[0].id;

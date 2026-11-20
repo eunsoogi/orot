@@ -46,7 +46,7 @@ it('uses a still-current saved Live grant to save only the new voice preference'
     }),
   );
   await act(async () => {
-    void form.result.current.confirmSave();
+    form.result.current.confirmSave();
   });
   expect(mockAuthorize).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -75,7 +75,7 @@ it('does not persist a new grant or preferences when cancelled or ownership chan
     }),
   );
   await act(async () => {
-    void form.result.current.confirmSave();
+    form.result.current.confirmSave();
   });
   expect(form.result.current.disclosureSheet).not.toBeNull();
   const decide = (value: boolean) =>
@@ -84,7 +84,7 @@ it('does not persist a new grant or preferences when cancelled or ownership chan
   expect(input.save).not.toHaveBeenCalled();
   expect(input.store.save).not.toHaveBeenCalled();
   await act(async () => {
-    void form.result.current.confirmSave();
+    form.result.current.confirmSave();
   });
   const stale = form.result.current.disclosureSheet?.props.onDecision;
   await form.rerender({ ...input, revision: 6 });
@@ -105,7 +105,7 @@ it('writes preferences only after an explicit successful model approval', async 
     }),
   );
   await act(async () => {
-    void form.result.current.confirmSave();
+    form.result.current.confirmSave();
   });
   expect(input.save).not.toHaveBeenCalled();
   await act(async () =>

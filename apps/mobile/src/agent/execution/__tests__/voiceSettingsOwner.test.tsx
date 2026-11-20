@@ -184,7 +184,7 @@ test('hiding and returning to retained voice tab cannot revive an approved held 
     }),
   );
   await act(async () => {
-    void view.result.current.sheet.confirmSave();
+    view.result.current.sheet.confirmSave();
   });
   await act(async () =>
     view.result.current.sheet.disclosureSheet?.props.onDecision(true),

@@ -38,7 +38,7 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
 
     func started(expires: TimeInterval = Date().timeIntervalSince1970 + 120) -> [String: Any] {
         ["type": "session.started", "session": ["id": "fake-live", "model": "gpt-live-1.1",
-                                              "status": "active", "expires_at": expires]]
+                                                "status": "active", "expires_at": expires]]
     }
 
     func testLiveOutputRequiresCurrentUnexpiredStartupAndPreservesPrimaryFrameOrder() async throws {
@@ -136,7 +136,9 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
         let resumed = expectation(description: "same call resumed")
         let requested = expectation(description: "explicit unmute sent")
         socket.sentEvent = { event in
-            if event["type"] as? String == "session.input_audio.unmute" { requested.fulfill() }
+            if event["type"] as? String == "session.input_audio.unmute" {
+                requested.fulfill()
+            }
         }
         call.resume("call") { result in
             if case .failure = result {
@@ -210,7 +212,9 @@ final class RealtimeVoiceLifecycleTests: OrotFailFastTestCase {
             sentEvent?(event)
         }
 
-        func finishLive(sessionID: String) { graceful?(sessionID) }
+        func finishLive(sessionID: String) {
+            graceful?(sessionID)
+        }
 
         func discardInput() {
             inputDiscards += 1

@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { providerCatalogContentInset } from '../layout/providerSettingsPresentation';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -23,7 +24,9 @@ export function LiveVoiceCatalogSelect<Key extends string>({
   readonly onSelect: (value: Key) => void;
   readonly testID: string;
 }) {
-  const selected = options.find(([id]) => id === value)?.[1] ?? '선택';
+  const selected =
+    options.find(([id]) => id === value)?.[1] ??
+    t('modelSettings.liveVoiceUnselected');
   return (
     <View style={styles.box}>
       <Pressable

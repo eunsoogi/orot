@@ -159,11 +159,12 @@ export function LiveConversationVoiceEntry(
     setVisible(false);
     setTranscripts([]);
   };
+  const { onStatusChange } = props;
   const status = voiceStatus(props.photoPending, false, false, state);
   useEffect(() => {
-    props.onStatusChange?.(status);
-    return () => props.onStatusChange?.('');
-  }, [status, props.onStatusChange]);
+    onStatusChange?.(status);
+    return () => onStatusChange?.('');
+  }, [status, onStatusChange]);
   return (
     <RealtimeVoiceSurface
       visible={visible}

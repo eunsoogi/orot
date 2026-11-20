@@ -120,7 +120,7 @@ export function useConversationModelConfirmation({
   return {
     settings,
     confirmSelection: () => {
-      void confirmSelection();
+      confirmSelection();
     },
     disclosureSheet: consent.disclosureSheet,
   };

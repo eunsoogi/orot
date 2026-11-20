@@ -65,7 +65,7 @@ export function VoiceSettingsPanel({
     store: livePreferences?.store ?? liveVoicePreferencesKeychain,
   });
   const requestSave = () => {
-    void confirmSave();
+    confirmSave();
   };
   const hasDock = useNavigationRouteActions(
     [
@@ -176,15 +176,14 @@ export function VoiceSettingsPanel({
             label={t('modelSettings.currentSelection')}
             value={
               voiceModels.find(item => item.id === savedModel)?.title ??
-              (savedModel ? '기존 OpenAI 음성 설정 (전환 필요)' : '')
+              (savedModel ? t('modelSettings.liveVoiceLegacyCurrent') : '')
             }
             testID="voice-current-model"
           />
         ) : null}
         {mode === 'openai-api' && (!liveAvailable || model !== liveModel) ? (
           <Text accessibilityRole="alert">
-            GPT-Live-1.1로 연결할 수 없어요. 기존 음성 모델로 자동 전환하지
-            않아요.
+            {t('modelSettings.liveVoiceUnavailableNoFallback')}
           </Text>
         ) : null}
         {!hasDock && active ? (
@@ -196,7 +195,9 @@ export function VoiceSettingsPanel({
           />
         ) : null}
         {prefsFailed ? (
-          <Text accessibilityRole="alert">음성 설정을 저장하지 못했어요.</Text>
+          <Text accessibilityRole="alert">
+            {t('modelSettings.liveVoicePreferenceSaveFailed')}
+          </Text>
         ) : null}
         {message ? <Text accessibilityRole="alert">{message}</Text> : null}
       </View>

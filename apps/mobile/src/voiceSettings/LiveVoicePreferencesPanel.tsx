@@ -1,5 +1,12 @@
+import { t } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Settings, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Animated,
+  Settings,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import {
   LiveVoiceCatalogSelect,
@@ -16,12 +23,14 @@ import {
 import type { LiveVoicePreferenceStore } from './liveVoicePreferenceStore';
 
 function voiceLabel(voice: LiveVoice) {
-  if (voice === 'default') return '기본값 (Marin)';
-  if (voice === 'noeul') return '노을 · 한국어';
-  if (voice === 'quartz') return 'Quartz · 영어(호주)';
+  if (voice === 'default') return t('modelSettings.liveVoiceDefaultVoice');
+  if (voice === 'noeul') return t('modelSettings.liveVoiceNoeul');
+  if (voice === 'quartz') return t('modelSettings.liveVoiceQuartz');
   return voice[0]!.toUpperCase() + voice.slice(1);
 }
-const languages = liveVoiceCatalog.map(([id, label]) => [id, label] as const);
+const languages = liveVoiceCatalog.map(
+  ([id, label]) => [id, t(label)] as const,
+);
 
 function systemVoiceLanguage() {
   try {
@@ -164,12 +173,14 @@ export function LiveVoicePreferencesPanel({
   if (!ready) return null;
   if (!currentLoad)
     return (
-      <Text accessibilityRole="status">음성 설정을 불러오는 중이에요.</Text>
+      <Text accessibilityRole="status">
+        {t('modelSettings.liveVoicePreferenceLoading')}
+      </Text>
     );
   if (currentLoad.kind !== 'ready' || !draft)
     return (
       <Text accessibilityRole="alert">
-        저장된 음성 설정을 사용할 수 없어요.
+        {t('modelSettings.liveVoicePreferenceUnavailable')}
       </Text>
     );
 
@@ -187,16 +198,9 @@ export function LiveVoicePreferencesPanel({
     setOpen(undefined);
   };
   return (
-    <View
-      style={{
-        gap: 8,
-        paddingHorizontal: liveVoiceSelectBoxInset,
-        paddingBottom: 8,
-      }}
-      testID="live-voice-preferences"
-    >
+    <View style={styles.group} testID="live-voice-preferences">
       <LiveVoiceCatalogSelect
-        label="목소리 언어"
+        label={t('modelSettings.liveVoiceLanguage')}
         testID="live-voice-language"
         options={languages}
         value={language}
@@ -208,7 +212,7 @@ export function LiveVoicePreferencesPanel({
       {language ? (
         <Animated.View style={{ opacity }}>
           <LiveVoiceCatalogSelect
-            label="목소리"
+            label={t('modelSettings.liveVoiceName')}
             testID="live-voice-voice"
             options={visibleVoices.map(id => [id, voiceLabel(id)] as const)}
             value={compatible ? draft.voice : undefined}
@@ -221,10 +225,22 @@ export function LiveVoicePreferencesPanel({
             }}
           />
           {!compatible ? (
-            <Text>저장된 목소리: {voiceLabel(draft.voice)}</Text>
+            <Text>
+              {t('modelSettings.liveVoiceSavedLabel', {
+                voice: voiceLabel(draft.voice),
+              })}
+            </Text>
           ) : null}
         </Animated.View>
       ) : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  group: {
+    gap: 8,
+    paddingHorizontal: liveVoiceSelectBoxInset,
+    paddingBottom: 8,
+  },
+});

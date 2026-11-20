@@ -28,10 +28,10 @@ export const liveVoiceIds = [
 
 // These are catalog metadata, not a language constraint for the model.
 export const liveVoiceCatalog = [
-  ['ko', '한국어', ['noeul']],
+  ['ko', 'modelSettings.liveVoiceLanguageKorean', ['noeul']],
   [
     'en',
-    '영어',
+    'modelSettings.liveVoiceLanguageEnglish',
     [
       'quartz',
       'ripple',
@@ -45,11 +45,11 @@ export const liveVoiceCatalog = [
       'cinder',
     ],
   ],
-  ['pt', '포르투갈어', ['bossa', 'tempo']],
-  ['de', '독일어', ['nuri', 'juni', 'flitz']],
-  ['fr', '프랑스어', ['brise', 'sillage']],
-  ['hi', '힌디어', ['nira']],
-  ['ja', '일본어', ['harema', 'shida']],
+  ['pt', 'modelSettings.liveVoiceLanguagePortuguese', ['bossa', 'tempo']],
+  ['de', 'modelSettings.liveVoiceLanguageGerman', ['nuri', 'juni', 'flitz']],
+  ['fr', 'modelSettings.liveVoiceLanguageFrench', ['brise', 'sillage']],
+  ['hi', 'modelSettings.liveVoiceLanguageHindi', ['nira']],
+  ['ja', 'modelSettings.liveVoiceLanguageJapanese', ['harema', 'shida']],
 ] as const;
 export type LiveVoiceLanguage = (typeof liveVoiceCatalog)[number][0];
 export type LiveLanguage = 'auto' | LiveVoiceLanguage;

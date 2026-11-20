@@ -104,7 +104,9 @@ final class RealtimeVoiceAudio: RealtimeAudioPort {
             played = min(frames, max(0, Int(position.sampleTime - (startSample ?? 0))))
         }
         epoch += 1
-        if canStopPlayer { player.stop() }
+        if canStopPlayer {
+            player.stop()
+        }
         queued = 0; frames = 0; startSample = nil
         return played * 1000 / 24000
     }

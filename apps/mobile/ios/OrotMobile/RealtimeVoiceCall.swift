@@ -148,22 +148,30 @@ final class RealtimeVoiceCall {
         guard id == identifier else { return }
         let finalSession = graceful && (ready || paused) && liveIsCurrent() ? liveSessionID : nil
         liveSessionID = nil
-        ready = false; paused = false; liveSocketEpoch = nil; liveStartID = nil; liveUnmuteID = nil; liveExpiresAt = nil;
+        ready = false; paused = false; liveSocketEpoch = nil; liveStartID = nil; liveUnmuteID = nil; liveExpiresAt = nil
         liveExpiryTimer?.invalidate(); liveExpiryTimer = nil; captureEpoch = UUID(); lifecycleEpoch = UUID(); pending = nil; timer?.invalidate(); timer = nil
         cancelTools(); tools.enabled = false
-        if finalSession == nil { socket.close() }
+        if finalSession == nil {
+            socket.close()
+        }
         audio.stop(); endSystemCall()
         let callback = opening; opening = nil
         // Let the bridge observe that this owner is cleared before rejecting its open.
         // If release fails, the retained owner remains available for an explicit stop retry.
         defer { callback?(.failure(Failure.stopped)) }
         do {
-            if let token { try ownership.release(token); self.token = nil }
+            if let token {
+                try ownership.release(token); self.token = nil
+            }
         } catch {
-            if finalSession != nil { socket.close() }
+            if finalSession != nil {
+                socket.close()
+            }
             throw error
         }
-        if let finalSession { socket.finishLive(sessionID: finalSession) }
+        if let finalSession {
+            socket.finishLive(sessionID: finalSession)
+        }
         id = nil; item = nil; response = nil; ignoredResponses.removeAll(); awaitingInputCommit = false
     }
 

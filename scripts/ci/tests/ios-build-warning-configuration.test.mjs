@@ -44,10 +44,10 @@ test('app Info.plist omits the empty unused location usage description', () => {
 test('outgoing CallKit voice declares VoIP without removing background audio', () => {
   const info = readFileSync(resolve('apps/mobile/ios/OrotMobile/Info.plist'), 'utf8');
   const modes = /<key>UIBackgroundModes<\/key>\s*<array>([\s\S]*?)<\/array>/.exec(info)?.[1] ?? '';
-  assert.deepEqual([...modes.matchAll(/<string>([^<]+)<\/string>/g)].map(([, mode]) => mode), [
-    'audio',
-    'voip',
-  ]);
+  assert.deepEqual(
+    [...modes.matchAll(/<string>([^<]+)<\/string>/g)].map(([, mode]) => mode),
+    ['audio', 'voip'],
+  );
 });
 
 test('shared test scheme uses dependency-ordered buildables', () => {

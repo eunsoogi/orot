@@ -61,8 +61,8 @@ export function ConversationVoiceEntry(
           )
             return;
           Alert.alert(
-            '음성 모델 변경 필요',
-            '음성 설정에서 GPT-Live-1.1을 선택해 주세요.',
+            t('modelSettings.liveVoiceLegacyTitle'),
+            t('modelSettings.liveVoiceLegacyAction'),
           );
         }}
         onStop={() => {}}
