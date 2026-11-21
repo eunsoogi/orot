@@ -27,30 +27,35 @@ afterEach(() => Native.Dimensions.set({ window: originalDimensions }));
 test.each([false, true])(
   'keeps the caution legible without a text plate (reduced transparency: %s)',
   async opaque => {
-    const reduced = jest
-      .spyOn(Native.AccessibilityInfo, 'isReduceTransparencyEnabled')
-      .mockResolvedValue(opaque);
-    const gradientId = 'conversation-composer-gradient';
-    try {
-      await render(<ConversationComposer {...props} value="" />);
-      const disclaimer = screen.getByText(getRagConversationCopy().disclaimer);
-      const style = Native.StyleSheet.flatten(disclaimer.props.style);
-      expect(style.backgroundColor).toBeUndefined();
-      expect(style.color).toEqual(appColors.text);
-      const gradient = screen.getByTestId(gradientId, {
-        includeHiddenElements: true,
-      });
-      const solid = screen.queryByTestId(`${gradientId}-opaque`, {
-        includeHiddenElements: true,
-      });
-      expect(Boolean(solid)).toBe(opaque);
-      expect(Native.StyleSheet.flatten(gradient.props.style).top).toBe(
-        opaque ? 0 : -16,
-      );
-      expect(gradient.props.pointerEvents).toBe('none');
-    } finally {
-      reduced.mockRestore();
-    }
+    // The RN preset already supplies a promise-returning mock. Restore its
+    // implementation after this variant without resetting the preset mock.
+    const reduced = jest.mocked(
+      Native.AccessibilityInfo.isReduceTransparencyEnabled,
+    );
+    await reduced.withImplementation(
+      async () => opaque,
+      async () => {
+        const gradientId = 'conversation-composer-gradient';
+        await render(<ConversationComposer {...props} value="" />);
+        const disclaimer = screen.getByText(
+          getRagConversationCopy().disclaimer,
+        );
+        const style = Native.StyleSheet.flatten(disclaimer.props.style);
+        expect(style.backgroundColor).toBeUndefined();
+        expect(style.color).toEqual(appColors.text);
+        const gradient = screen.getByTestId(gradientId, {
+          includeHiddenElements: true,
+        });
+        const solid = screen.queryByTestId(`${gradientId}-opaque`, {
+          includeHiddenElements: true,
+        });
+        expect(Boolean(solid)).toBe(opaque);
+        expect(Native.StyleSheet.flatten(gradient.props.style).top).toBe(
+          opaque ? 0 : -16,
+        );
+        expect(gradient.props.pointerEvents).toBe('none');
+      },
+    );
   },
 );
 
