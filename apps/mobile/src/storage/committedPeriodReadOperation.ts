@@ -22,6 +22,7 @@ import { nativeHeartWorkoutPrefix } from '../healthEvidence/healthContext/heartW
 import {
   historyValidationCostEnabled,
   measureHistoryValidationCost,
+  startHistoryValidationCost,
 } from '../providers/conversationHistoryDiagnostic';
 
 /** Scope invalidation must not undo unrelated native writes on this connection. */
@@ -42,8 +43,8 @@ export function committedPeriodReadOperation(
   const reportScope = createCommittedReportScope(database);
   const reports = committedReportCache(reportScope.token, database)!;
   const calendar = committedReportCalendar(reportScope.token, database)!;
-  const profileHistoryValidation =
-    historyPage && historyValidationCostEnabled();
+  const profilePeriodTransaction = historyValidationCostEnabled();
+  const profileHistoryValidation = historyPage && profilePeriodTransaction;
   let disposed = false;
   const cancel = () => {
     calendar.dispose();
@@ -82,7 +83,15 @@ export function committedPeriodReadOperation(
       check();
       const pending = new Map<string, HealthContextReport>();
       let failure: { error: unknown } | undefined;
-      await database.transaction(async tx => {
+      let endTransaction:
+        ReturnType<typeof startHistoryValidationCost> | undefined;
+      const read = async (tx: SqlExecutor) => {
+        // One aggregate span per owned transaction: after acquisition through
+        // SQLite settlement, before the separate publication-generation check.
+        if (profilePeriodTransaction)
+          endTransaction = startHistoryValidationCost(
+            'artifact_period_transaction',
+          );
         // Check cancellation at every query boundary without converting operational
         // SQL errors into cancellation. The report's generic abort errors must not
         // accidentally select rollback and resurrect an interleaved native delete.
@@ -210,7 +219,14 @@ export function committedPeriodReadOperation(
           // non-destructive quarantine audit state merely because the read fails.
           failure = { error };
         }
-      });
+      };
+      try {
+        await database.transaction(read);
+        endTransaction?.(failure ? 'failed' : 'completed');
+      } catch (error) {
+        endTransaction?.('failed');
+        throw error;
+      }
       if (failure) throw failure.error;
       check();
       const committed = await readHealthContextGeneration(database);

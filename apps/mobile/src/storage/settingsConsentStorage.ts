@@ -37,6 +37,39 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
         ready = undefined;
         throw error;
       }));
+  /** Settings cannot present a damaged protected row as an explicit opt-out. */
+  async function readReviewGrant(
+    slot: SettingsConsentSlot,
+    domain: SettingsConsentDomain,
+  ): Promise<
+    | { status: 'present'; grant: SettingsConsentGrant }
+    | { status: 'unset' | 'unreadable' }
+  > {
+    validSlot(slot);
+    validDomain(domain);
+    await ensure();
+    let result: Awaited<ReturnType<typeof readReviewGrant>> = {
+      status: 'unset',
+    };
+    await database.transaction(async tx => {
+      const rows = await tx.execute(
+        `SELECT grant_json FROM settings_inference_grants
+         WHERE slot = ? AND domain = ? AND state = 'active'`,
+        [slot, domain],
+      );
+      if (!rows.rows.length) return;
+      const raw = rows.rows[0]?.grant_json;
+      result = { status: 'unreadable' };
+      if (rows.rows.length !== 1 || typeof raw !== 'string') return;
+      try {
+        const grant = parseSettingsConsentGrant(JSON.parse(raw));
+        if (grant) result = { status: 'present', grant };
+      } catch {
+        // Legacy runtime readers still fail closed; settings can display unknown.
+      }
+    });
+    return result;
+  }
   return {
     async stage(
       slot: SettingsConsentSlot,
@@ -122,29 +155,11 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
     async read(
       slot: SettingsConsentSlot,
       domain: SettingsConsentDomain = 'model',
-    ): Promise<SettingsConsentGrant | null> {
-      validSlot(slot);
-      validDomain(domain);
-      await ensure();
-      let result: SettingsConsentGrant | null = null;
-      // Queue behind mutations; a raw connection read could observe uncommitted activation.
-      await database.transaction(async tx => {
-        const rows = await tx.execute(
-          `SELECT grant_json FROM settings_inference_grants
-          WHERE slot = ? AND domain = ? AND state = 'active'`,
-          [slot, domain],
-        );
-        if (rows.rows.length !== 1) return;
-        const value = rows.rows[0].grant_json;
-        if (typeof value !== 'string') return;
-        try {
-          result = parseSettingsConsentGrant(JSON.parse(value));
-        } catch {
-          result = null;
-        }
-      });
-      return result;
+    ) {
+      const result = await readReviewGrant(slot, domain);
+      return result.status === 'present' ? result.grant : null;
     },
+    readReviewGrant,
     async clear() {
       await ensure();
       await database.transaction(async tx => {
