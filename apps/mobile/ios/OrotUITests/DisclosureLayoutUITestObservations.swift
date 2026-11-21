@@ -195,7 +195,7 @@ enum ClassificationFailureNoticeUITestSupport {
             return true
         }
         guard controls.allSatisfy({ $0.count == 1 }), footer.exists else { return false }
-        let matchedControls: [XCUIElement] = controls.map { $0.firstMatch }
+        let matchedControls: [XCUIElement] = controls.map(\.firstMatch)
         return matchedControls.allSatisfy { control in
             guard control.elementType == .button, !control.label.isEmpty,
                   control.frame.width >= 44, control.frame.height >= 44 else { return false }
