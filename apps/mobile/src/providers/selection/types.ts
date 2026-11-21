@@ -31,7 +31,23 @@ export interface ProviderSelectionRequirements {
   readonly toolCalling?: boolean;
 }
 
+/** Local display copy only; regular selection reads cannot consume it. */
+export interface SavedSelectionTitle {
+  readonly name: string;
+  readonly epoch: string;
+}
+
 export interface ProviderSelectionStore {
+  subscribeChanges?(listener: () => void): () => void;
+  loadTitle?(
+    selection: ProviderSelection,
+    epoch: string,
+  ): Promise<string | undefined>;
+  rememberTitle?(
+    selection: ProviderSelection,
+    title: SavedSelectionTitle,
+    current: () => boolean,
+  ): Promise<void>;
   load(): Promise<ProviderSelection | null>;
   save(selection: ProviderSelection): Promise<void>;
   clear(): Promise<void>;

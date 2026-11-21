@@ -1,3 +1,4 @@
+import { useSavedChatGPTTitle } from './useSavedChatGPTTitle';
 import { savedModelPresentation } from './savedModelPresentation';
 import { useSavedSearchChoices } from './useSavedSearchChoices';
 import { useConversationModelConfirmation } from './useConversationModelConfirmation';
@@ -75,6 +76,10 @@ export default function ProviderSelectionScreen({
       option.provider.id === savedSelection?.providerId &&
       option.modelId === savedSelection?.modelId,
   );
+  const savedChatGPTTitle = useSavedChatGPTTitle(
+    selectionStore,
+    savedSelection,
+  );
   const pendingSelection = pendingOption
     ? { providerId: pendingOption.provider.id, modelId: pendingOption.modelId }
     : null;
@@ -115,7 +120,12 @@ export default function ProviderSelectionScreen({
     displayName: selectedOption?.displayName,
     storedLabel:
       savedSelection && presentation === 'settings-provider'
-        ? savedModelPresentation(savedSelection, selectedOption)
+        ? savedModelPresentation(
+            savedSelection,
+            selectedOption,
+            undefined,
+            savedChatGPTTitle,
+          )
         : undefined,
     savedModelId: savedSelection?.modelId,
     presentation,
