@@ -1,18 +1,36 @@
 import { registerHistoryRead } from '../healthEvidence/historyObservationHydrationOwner';
-import { createConversationReadDiagnostics } from './conversationReadDiagnostics';
-import { measureHistoryValidationCost } from '../providers/conversationHistoryDiagnostic';
 import { conversationToolSnapshotReader } from './conversationToolSnapshot';
 import { committedPeriodReadOperation } from './committedPeriodReadOperation';
-import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
-import type { SqlDatabase, SqlExecutor } from '@orot/storage';
+import type { SqlDatabase } from '@orot/storage';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
-import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
-import { createReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
-import {
-  decodeConversationArtifact,
-  type ConversationArtifact,
-} from './conversationArtifactCodec';
-import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
+import type { ConversationArtifact } from './conversationArtifactCodec';
+import { createConversationStrictRoots } from './conversationArtifactStrictRoots';
+
+type BoundParentRows = {
+  rows: (ConversationArtifact | null)[];
+  tokens?: readonly (number | undefined)[];
+};
+const boundParentReaders = new WeakMap<
+  object,
+  {
+    storage: object;
+    signal?: AbortSignal;
+    read(ids: readonly string[]): Promise<BoundParentRows | undefined>;
+  }
+>();
+
+/** Only this factory can mint a witness. A replacement scope callback receives no authority. */
+export function readOwnedBoundParentRows(
+  operation: object,
+  storage: object,
+  signal: AbortSignal,
+  ids: readonly string[],
+) {
+  const owner = boundParentReaders.get(operation);
+  return owner?.storage === storage && owner.signal === signal
+    ? owner.read(ids)
+    : undefined;
+}
 
 /** Validate a page in one transaction so hide, clear, or source deletion cannot split its snapshot. */
 export function createConversationArtifactReader(
@@ -20,92 +38,7 @@ export function createConversationArtifactReader(
   ensure: () => Promise<void>,
   readToolTurnsSnapshot: ReturnType<typeof conversationToolSnapshotReader>,
 ) {
-  const readManyWithLease = async (
-    ids: readonly string[],
-    lease?: { readonly sessionId: string; readonly version: number },
-    collectValidated?: (artifact: ConversationArtifact) => void,
-    operation?: ReturnType<typeof committedPeriodReadOperation>,
-    rollbackOnFailure = false,
-    canBatchOrdinary?: () => boolean,
-  ): Promise<(ConversationArtifact | null)[]> => {
-    const diagnostic = createConversationReadDiagnostics(
-      Boolean(operation?.active && operation.profileHistoryValidation),
-    );
-    try {
-      diagnostic.start('artifact_read_setup');
-      await ensure();
-      diagnostic.finish();
-      const output: (ConversationArtifact | null)[] = [];
-      const work = async (
-        tx: SqlExecutor,
-        calculate?: ReadOnlyPeriodValidation,
-      ) => {
-        diagnostic.finish();
-        // Source validation may record non-destructive quarantine audit state.
-        // Only identical period calculations, never that policy authority, are shared.
-        const validatePeriod = createReadOnlyPeriodValidation(tx, calculate);
-        if (lease) {
-          diagnostic.start('artifact_session_lease');
-          const { rows } = await tx.execute(
-            'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ?',
-            [lease.sessionId, lease.version],
-          );
-          diagnostic.finish();
-          if (!rows.length) throw new Error('Conversation is unavailable.');
-        }
-        for (const id of ids) {
-          diagnostic.start('artifact_root_row');
-          const row = await tx.execute(
-            'SELECT a.id, a.session_id, a.created_at, a.result_json FROM conversation_artifacts a JOIN conversation_artifact_sessions s ON s.id = a.session_id AND s.hidden = 0 JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE a.id = ? AND NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id = a.id)',
-            [id],
-          );
-          diagnostic.finish();
-          const value =
-            operation?.active && operation.profileHistoryValidation
-              ? measureHistoryValidationCost('artifact_root_decode', () =>
-                  decodeConversationArtifact(row.rows[0]?.result_json),
-                )
-              : decodeConversationArtifact(row.rows[0]?.result_json);
-          if (
-            !value ||
-            value.id !== row.rows[0]?.id ||
-            value.sessionId !== row.rows[0]?.session_id ||
-            value.createdAt !== row.rows[0]?.created_at ||
-            (lease && value.sessionId !== lease.sessionId)
-          ) {
-            output.push(null);
-            continue;
-          }
-          try {
-            await assertConversationArtifactCurrent(
-              tx,
-              database,
-              value,
-              false,
-              validatePeriod,
-              collectValidated,
-              operation?.active && operation.profileHistoryValidation,
-              !lease && operation?.active ? canBatchOrdinary : undefined,
-            );
-            output.push(value);
-          } catch (error) {
-            // Only proven invalid lineage is unavailable; operational failures remain retryable.
-            if (!(error instanceof RetainedSourceInvalidError)) throw error;
-            output.push(null);
-          }
-        }
-        diagnostic.start('artifact_read_settlement');
-      };
-      diagnostic.start('artifact_read_admission');
-      if (operation?.active) await operation.run(work, { rollbackOnFailure });
-      else await database.transaction(work);
-      diagnostic.finish();
-      return output;
-    } catch (error) {
-      diagnostic.finish('failed');
-      throw error;
-    }
-  };
+  const readManyWithLease = createConversationStrictRoots(database, ensure);
   const methods = (
     operation?: ReturnType<typeof committedPeriodReadOperation>,
     rollbackOnFailure = false,
@@ -242,6 +175,42 @@ export function createConversationArtifactReader(
         read: (id: string) => (owned() ? scoped : this).read(id),
         dispose: operation.dispose,
       };
+      const originalReadMany = reads.readMany;
+      const boundReaderCurrent = () =>
+        owned() && operation.active && reads.readMany === originalReadMany;
+      boundParentReaders.set(reads, {
+        storage: this,
+        signal,
+        async read(ids) {
+          if (!boundReaderCurrent()) return undefined;
+          const tokens: (number | undefined)[] = [];
+          let previous: string | undefined;
+          let sequence = 0;
+          const rows = await readManyWithLease(
+            ids,
+            undefined,
+            undefined,
+            operation,
+            rollback,
+            undefined,
+            raw => {
+              // The token witnesses only exact JSON bytes, never source validity.
+              // Keep at most one prior string; each row still decodes and validates.
+              if (raw !== previous) sequence++;
+              previous = raw;
+              tokens.push(raw === undefined ? undefined : sequence);
+            },
+          );
+          return {
+            rows,
+            get tokens() {
+              return boundReaderCurrent() && tokens.length === rows.length
+                ? tokens
+                : undefined;
+            },
+          };
+        },
+      });
       return registerHistoryRead(reads, database, canBatchOrdinary);
     },
   };

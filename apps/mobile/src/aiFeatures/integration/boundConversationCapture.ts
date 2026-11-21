@@ -1,5 +1,9 @@
-import { boundCaptureAuthorityUnchanged } from './boundCaptureAuthority';
+import {
+  boundCaptureAuthorityUnchanged,
+  ownsBoundCaptureAuthority,
+} from './boundCaptureAuthority';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
+import { readOwnedBoundParentRows } from '../../storage/conversationArtifactRead';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import {
   prepareCaptureSources,
@@ -28,18 +32,36 @@ export function createBoundConversationCaptureOwner(input: {
       const current = async () => {
         if (signal.aborted || !boundCaptureAuthorityUnchanged(owner))
           return false;
-        const rows = await (
-          reads?.forStorage(input.storage) ?? input.storage
-        ).readMany(bindings.map(binding => binding.parentId));
+        const scoped = reads?.forStorage(input.storage);
+        const ids = bindings.map(binding => binding.parentId);
+        const witnessed =
+          scoped && ownsBoundCaptureAuthority(owner)
+            ? await readOwnedBoundParentRows(scoped, input.storage, signal, ids)
+            : undefined;
+        const rows =
+          witnessed?.rows ?? (await (scoped ?? input.storage).readMany(ids));
+        const tokens = witnessed?.tokens;
+        let lastToken: number | undefined;
+        let lastDigest: string | undefined;
         return (
           !signal.aborted &&
           boundCaptureAuthorityUnchanged(owner) &&
           rows.length === bindings.length &&
-          rows.every((row, index) =>
-            Boolean(
-              row && fingerprint(row) === bindings[index]!.parentRevision,
-            ),
-          )
+          rows.every((row, index) => {
+            if (!row) return false;
+            const token = tokens?.[index];
+            // Canonicalization keeps its original post-settlement error and
+            // short-circuit ordering; equality is witnessed only by owned SQL.
+            const digest =
+              token !== undefined && token === lastToken
+                ? lastDigest
+                : fingerprint(row);
+            lastToken = token;
+            lastDigest = digest;
+            return (
+              digest !== undefined && digest === bindings[index]!.parentRevision
+            );
+          })
         );
       };
       if (!(await current()))
