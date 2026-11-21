@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 import { FloatingProfileGradient } from '../FloatingProfileGradient';
 
 test('keeps the backdrop touch-transparent and reacts to transparency preference', async () => {
@@ -20,6 +20,7 @@ test('keeps the backdrop touch-transparent and reacts to transparency preference
   });
   expect(backdrop.props.pointerEvents).toBe('none');
   expect(backdrop.props.accessibilityElementsHidden).toBe(true);
+  expect(StyleSheet.flatten(backdrop.props.style).bottom).toBe(-32);
   expect(
     screen.queryByTestId('assistant-floating-gradient-opaque', {
       includeHiddenElements: true,
@@ -33,6 +34,7 @@ test('keeps the backdrop touch-transparent and reacts to transparency preference
       includeHiddenElements: true,
     }),
   ).toBeTruthy();
+  expect(StyleSheet.flatten(backdrop.props.style).bottom).toBe(0);
   await view.unmount();
   expect(remove).toHaveBeenCalled();
   subscription.mockRestore();
