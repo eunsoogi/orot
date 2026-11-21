@@ -191,7 +191,6 @@ test('enabling Reduce Motion during a jump completes it without animation', asyn
   );
   expect(move).toHaveBeenLastCalledWith({ y: 600, animated: false });
 });
-
 test('status-bar scroll to top cancels an in-flight jump and restores its control', async () => {
   const follow = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
   await render(<ConversationHistory {...props} />);
