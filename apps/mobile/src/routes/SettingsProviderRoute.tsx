@@ -1,7 +1,8 @@
+import { useOptionalAiFeatureSharedNavigationState } from '../aiFeatures/integration/AiFeatureSharedNavigationState';
 import { useIsFocused } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { useRef } from 'react';
-import { ProviderSelectionFlow } from '../providers/selection';
+import ProviderSelectionFlow from '../providers/selection/ProviderSelectionFlow';
 import type {
   ProviderSelection,
   ProviderSelectionOption,
@@ -28,6 +29,7 @@ export function SettingsProviderRoute({
   serviceDependencies,
   onSelectionCommitted,
 }: SettingsProviderRouteProps) {
+  const sharedAi = useOptionalAiFeatureSharedNavigationState();
   const isFocused = useIsFocused();
   const wasFocused = useRef(isFocused);
   const [accountRefreshKey, setAccountRefreshKey] = useState(0);
@@ -79,6 +81,12 @@ export function SettingsProviderRoute({
       onOpenAccounts={() => actions.push('settings-accounts')}
       onNavigationStateChange={setState}
       onSelectionCommitted={async (selection, provider) => {
+        // Settings overlays retain the Conversation scene. Re-read its committed
+        // pair instead of waiting for a remount or painting this event optimistically.
+        sharedAi?.setState(current => ({
+          ...current,
+          selectedAiRevision: current.selectedAiRevision + 1,
+        }));
         onSelectionCommitted(selection, provider);
         setReturnAfterSelection(true);
       }}
