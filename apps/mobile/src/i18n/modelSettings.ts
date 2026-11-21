@@ -5,6 +5,11 @@ export const modelSettingsKo = {
     '저장된 검색 동의를 확인하지 못했어요. 취소한 뒤 다시 시도해 주세요.',
   'modelSettings.consentJointConversationWebTitle':
     '대화 모델 및 공개 웹검색 동의',
+  'modelSettings.consentJointCalendarTitle': '대화 및 일정 분류 AI 동의',
+  'modelSettings.consentJointCalendarWebTitle':
+    '대화·검색 및 일정 분류 AI 동의',
+  'modelSettings.consentJointCalendar':
+    '일정 분류는 {recipient}의 {model}로 처리합니다. 진료 관련성을 분류하기 위해 캘린더 일정 제목과 시간만 전송합니다. 일정 분류를 시작할 때마다 다시 묻지 않습니다.',
   'modelSettings.consentJointWeb':
     '{recipient}에는 앱이 정한 일반 공개 주제의 검색어만 보냅니다. 이 검색 요청에는 건강 기록, 대화 원문, 개인 식별정보를 보내지 않습니다.',
   'modelSettings.consentWeb':

@@ -1,3 +1,8 @@
+import {
+  clearSettingsConsentReceipts,
+  commitSettingsConsentRows,
+  settingsConsentReceiptSchema,
+} from './settingsConsentCommitReceipt';
 import type { SqlDatabase } from '@orot/storage';
 import {
   parseSettingsConsentGrant,
@@ -32,6 +37,7 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
       state TEXT NOT NULL CHECK(state IN ('pending', 'active')), grant_json TEXT NOT NULL)`);
         await tx.execute(`CREATE UNIQUE INDEX IF NOT EXISTS settings_inference_active_slot
       ON settings_inference_grants(slot, domain) WHERE state = 'active'`);
+        await tx.execute(settingsConsentReceiptSchema);
       })
       .catch(error => {
         ready = undefined;
@@ -72,68 +78,77 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
   }
   /** Publish all scopes from one review in a single protected transaction.
    * Pending rows cannot authorize, and the outer owner stays suspended until commit. */
-  async function activateTogether(
-    slot: SettingsConsentSlot,
+  async function activateJointScopes(
     decisions: readonly {
+      readonly slot: SettingsConsentSlot;
       readonly token: string;
       readonly domain: SettingsConsentDomain;
     }[],
     stillValid: () => boolean,
+    sealExplicitly = false,
   ) {
-    validSlot(slot);
-    const entries = decisions.map(({ token, domain }) => {
+    const entries = decisions.map(({ slot, token, domain }) => {
+      validSlot(slot);
       validDomain(domain);
       validToken(token);
-      return { token, domain };
+      return { slot, token, domain };
     });
     if (
       !entries.length ||
-      new Set(entries.map(entry => entry.domain)).size !== entries.length ||
+      new Set(entries.map(entry => `${entry.slot}:${entry.domain}`)).size !==
+        entries.length ||
       new Set(entries.map(entry => entry.token)).size !== entries.length
     )
       throw new Error('Invalid joint permission activation');
     await ensure();
-    await database.transaction(async tx => {
-      for (const { token, domain } of entries) {
-        if (!stillValid()) throw new Error('Settings selection changed');
-        const pending = await tx.execute(
-          `SELECT grant_json FROM settings_inference_grants
+    const receipt = sealExplicitly ? entries[0]!.token : null;
+    await commitSettingsConsentRows(
+      database,
+      async tx => {
+        for (const { slot, token, domain } of entries) {
+          if (!stillValid()) throw new Error('Settings selection changed');
+          const pending = await tx.execute(
+            `SELECT grant_json FROM settings_inference_grants
           WHERE activation_id = ? AND slot = ? AND domain = ? AND state = 'pending'`,
-          [token, slot, domain],
-        );
-        if (pending.rows.length !== 1)
-          throw new Error('Pending permission unavailable');
-        const value = pending.rows[0].grant_json;
-        if (
-          typeof value !== 'string' ||
-          !parseSettingsConsentGrant(JSON.parse(value))
-        )
-          throw new Error('Pending permission invalid');
-        if (!stillValid()) throw new Error('Settings selection changed');
-        await tx.execute(
-          `DELETE FROM settings_inference_grants WHERE slot = ? AND domain = ? AND state = 'active'`,
-          [slot, domain],
-        );
-        const activated = await tx.execute(
-          `UPDATE settings_inference_grants SET state = 'active'
+            [token, slot, domain],
+          );
+          if (pending.rows.length !== 1)
+            throw new Error('Pending permission unavailable');
+          const value = pending.rows[0].grant_json;
+          if (
+            typeof value !== 'string' ||
+            !parseSettingsConsentGrant(JSON.parse(value))
+          )
+            throw new Error('Pending permission invalid');
+          if (!stillValid()) throw new Error('Settings selection changed');
+          await tx.execute(
+            `DELETE FROM settings_inference_grants WHERE slot = ? AND domain = ? AND state = 'active'`,
+            [slot, domain],
+          );
+          const activated = await tx.execute(
+            `UPDATE settings_inference_grants SET state = 'active'
           WHERE activation_id = ? AND slot = ? AND domain = ? AND state = 'pending'`,
-          [token, slot, domain],
-        );
-        if (entries.length > 1) {
-          const updated =
-            activated.rowsAffected ??
-            (
-              await tx.execute(
-                "SELECT activation_id FROM settings_inference_grants WHERE activation_id = ? AND slot = ? AND domain = ? AND state = 'active'",
-                [token, slot, domain],
-              )
-            ).rows.length;
-          if (updated !== 1)
-            throw new Error('Joint permission activation incomplete');
+            [token, slot, domain],
+          );
+          if (entries.length > 1) {
+            const updated =
+              activated.rowsAffected ??
+              (
+                await tx.execute(
+                  "SELECT activation_id FROM settings_inference_grants WHERE activation_id = ? AND slot = ? AND domain = ? AND state = 'active'",
+                  [token, slot, domain],
+                )
+              ).rows.length;
+            if (updated !== 1)
+              throw new Error('Joint permission activation incomplete');
+          }
+          if (!stillValid()) throw new Error('Settings selection changed');
         }
-        if (!stillValid()) throw new Error('Settings selection changed');
-      }
-    });
+      },
+      receipt,
+      stillValid,
+    );
+    if (receipt !== null) return;
     // An owner can invalidate after the callback but before native commit. Do
     // not restore any old authority; undo only entries from this exact decision.
     if (!stillValid()) {
@@ -147,7 +162,21 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
       throw new Error('Settings selection changed after commit');
     }
   }
+  function activateTogether(
+    slot: SettingsConsentSlot,
+    decisions: readonly {
+      readonly token: string;
+      readonly domain: SettingsConsentDomain;
+    }[],
+    stillValid: () => boolean,
+  ) {
+    return activateJointScopes(
+      decisions.map(entry => ({ ...entry, slot })),
+      stillValid,
+    );
+  }
   return {
+    activateJointScopes,
     async stage(
       slot: SettingsConsentSlot,
       token: string,
@@ -200,6 +229,7 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
     async clear() {
       await ensure();
       await database.transaction(async tx => {
+        await tx.execute(clearSettingsConsentReceipts);
         await tx.execute('DELETE FROM settings_inference_grants');
       });
     },
