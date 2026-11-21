@@ -1,3 +1,7 @@
+import {
+  loadFreshConversationDialogue,
+  type FreshConversationHistory,
+} from './freshConversationDialogue';
 import { loadConversationHistory } from './conversationHistorySources';
 import { conversationInputsAreCurrent } from './conversationEntryTargets';
 import { createResearchInputTracker } from './researchInputTracker';
@@ -20,10 +24,9 @@ export async function prepareConversationHistory(
     !route.entry?.appointmentId &&
     !route.entry?.dailyReport &&
     !route.entry?.reportRequest;
-  const history = await loadConversationHistory({
-    ...input,
-    recoverImplicitHistory,
-  });
+  const history: FreshConversationHistory =
+    (await loadFreshConversationDialogue(input, recoverImplicitHistory)) ??
+    (await loadConversationHistory({ ...input, recoverImplicitHistory }));
   const sourcesAreCurrent = conversationInputsAreCurrent(
     input.registry,
     history.references,
@@ -35,11 +38,13 @@ export async function prepareConversationHistory(
     guardHistory: !!(
       history.references.length ||
       history.recoveredOwnerIsCurrent ||
+      history.dialogueOwnerIsCurrent ||
       report
     ),
     historyIsCurrent: async () =>
       (await sourcesAreCurrent()) &&
-      ((await history.recoveredOwnerIsCurrent?.()) ?? true),
+      ((await history.recoveredOwnerIsCurrent?.()) ?? true) &&
+      ((await history.dialogueOwnerIsCurrent?.()) ?? true),
     researchInputs: createResearchInputTracker(
       input.registry,
       input.data,

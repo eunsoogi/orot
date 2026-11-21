@@ -203,37 +203,22 @@ test.each(cases)('residual actual send retention: %s', async variant => {
     );
     if (healthSql)
       console.info('SYNTHETIC_HEALTH_SQL', JSON.stringify(healthSql.summary()));
-    // The two strict readers may select different quantity plans for the same
-    // exact binds. Keep their raw diagnostics and assert per-scope execution.
-    const retained = new Map<string, number>();
-    const quantityPlans = new Set<string>();
-    for (const [query, executions] of counts.get('retention') ?? []) {
-      const [sql, bindings] = JSON.parse(query) as [string, unknown];
-      const ranked = sql.includes('), ranked AS (');
-      const ordered = sql.includes('sum(amount ORDER BY');
-      const key =
-        sql.includes('observations AS MATERIALIZED') && (ranked || ordered)
-          ? JSON.stringify(['quantity', bindings])
-          : query;
-      if (key !== query) {
-        const plan = JSON.stringify([key, ordered]);
-        expect(quantityPlans.has(plan)).toBe(false);
-        quantityPlans.add(plan);
-      }
-      retained.set(key, (retained.get(key) ?? 0) + executions);
-    }
-    expect([...retained.values()]).toEqual([
-      ...Array(count * 2 - 2).fill(2),
-      1,
-      1,
-    ]);
-    expect(phaseDiagnostics.retention?.report_sql_unscoped ?? 0).toBe(0);
-    expect([...(counts.get('save')?.values() ?? [])]).toEqual(
-      Array(count * 2).fill(1),
-    );
+    // History remains dialogue-only across pre-dispatch and terminal checks.
+    expect([...counts.keys()]).toEqual(['current-tool', 'save']);
+    expect([...(counts.get('current-tool')?.values() ?? [])]).toEqual([1, 1]);
+    expect([...(counts.get('save')?.values() ?? [])]).toEqual([1, 1]);
     phase = 'replay';
     const saved = await f.storage.read('saved-answer');
     expect(saved?.answer).toContain('Synthetic current answer');
+    expect(saved?.historicalDialogueParents?.map(parent => parent.id)).toEqual(
+      Array.from({ length: count }, (_, index) => `direct-${index}`),
+    );
+    expect(saved?.citations?.length).toBeGreaterThan(0);
+    expect(
+      saved?.sources.some(
+        source => 'kind' in source && source.kind === 'generated_conversation',
+      ),
+    ).toBe(false);
     await f.repository.delete('health_observation', f.inside.id);
     await expect(f.storage.read('saved-answer')).resolves.toBeNull();
   } finally {

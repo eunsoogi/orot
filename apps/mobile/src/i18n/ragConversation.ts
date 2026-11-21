@@ -150,6 +150,7 @@ export const ragConversationKo = {
   'ragConversation.tool.sourceKind.reviewedMemory': '검토한 메모',
   'ragConversation.tool.sourceKind.generatedArtifact': '저장된 AI 결과',
   'ragConversation.tool.sourceKind.externalMedical': '공개 의학 문헌',
+  'ragConversation.archivedCitation.publicWeb': '공개 웹 출처',
   'ragConversation.sourceKind.healthRecord': '건강 기록',
   'ragConversation.sourceKind.previousAiOutput': '이전 AI 결과',
   'ragConversation.history.today': '오늘',

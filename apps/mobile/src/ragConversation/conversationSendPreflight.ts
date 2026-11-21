@@ -10,6 +10,7 @@ export function prepareConversationSend(input: {
     id: number,
     signal: AbortSignal,
   ) => Promise<boolean | PlainHistoryPlan>;
+  protectedPromptHistory?: boolean;
   find: (id: number) => ConversationSession | undefined;
   current: (id: number) => boolean;
 }) {
@@ -31,7 +32,18 @@ export function prepareConversationSend(input: {
     let prepared: boolean | PlainHistoryPlan = false;
     const ready = await observeConversationPreflight(
       'history',
-      async () => Boolean((prepared = await input.context(id, signal))),
+      async () => {
+        if (input.protectedPromptHistory) {
+          const session = input.find(id);
+          return (prepared = Boolean(
+            session &&
+            !signal.aborted &&
+            !session.quarantined &&
+            !session.leaseRefreshRequired,
+          ));
+        }
+        return Boolean((prepared = await input.context(id, signal)));
+      },
       signal,
     );
     if (signal.aborted || !input.current(id)) return false;

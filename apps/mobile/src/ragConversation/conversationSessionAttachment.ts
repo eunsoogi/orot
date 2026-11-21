@@ -51,7 +51,7 @@ export function createConversationSessionAttachment(input: {
         .sessions.some(item => item.id === session.id && !item.quarantined);
     if (!stillAttached())
       throw new Error('Conversation restoration was cancelled.');
-    await input.restoration.start(session.id, durableId, signal);
+    await input.restoration.start(session.id, durableId, signal, stillAttached);
     if (!stillAttached())
       throw new Error('Conversation restoration was cancelled.');
     return session.id;

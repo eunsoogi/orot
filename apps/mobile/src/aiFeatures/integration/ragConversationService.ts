@@ -1,3 +1,4 @@
+import { historyHasDurableContext } from './freshConversationDialogue';
 import { startPreparedRagOpening as start } from './preparedOpeningConsent';
 import { conversationPublicSearchPlan as planSearch } from './conversationPublicSearchPlan';
 import { prepareLiveRagContinuation as continuationFor } from './liveRagConversationCapture';
@@ -165,9 +166,7 @@ export function createRagConversationService({
         providerId: selected.provider.id,
         modelId: selected.modelId,
         entryContext,
-        priorDialogue: history.priorTurns,
-        priorUserReports: history.reports,
-        ...(history.omitted ? { priorDialogueOmitted: true as const } : {}),
+        ...run.conversationRetentionHistoryOptions(history),
         signal,
       });
       const baseExecution = executionOptions({
@@ -220,7 +219,7 @@ export function createRagConversationService({
         }),
         run.conversationRunInvocation(
           observer,
-          Boolean(history.references.length || report || photo),
+          Boolean(report || photo) || historyHasDurableContext(history),
           registry,
           { providerId: selected.provider.id, modelId: selected.modelId },
           signal,

@@ -1,3 +1,4 @@
+import { createArchivedCitationRouting } from './archivedCitationService';
 import { inheritConversationReadOperation } from './conversationReadOperation';
 import { createColdConversationServices } from './coldConversationServices';
 import { operationRunId } from './featureRunIdentity';
@@ -214,9 +215,7 @@ export function createAiFeatureServices(
   return {
     dailyReport,
     dailyReportSources,
-    readColdConversationSource: coldResume.readColdConversationSource,
-    resolveColdConversationToolSource:
-      coldResume.resolveColdConversationToolSource,
+    ...createArchivedCitationRouting(privateLocalData, coldResume),
     ...createConversationSummaryIntegration({
       consent,
       dependencies,

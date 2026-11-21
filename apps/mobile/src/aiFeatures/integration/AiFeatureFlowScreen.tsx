@@ -1,3 +1,4 @@
+import { ResolveArchivedCitationContext } from '../../ragConversation/useArchivedCitationOpen';
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
 import { DailyReportSourceResolverContext } from './DailyReportSourceLinks';
 import { DailyReportFlowScreen } from './DailyReportFlowScreen';
@@ -180,7 +181,11 @@ export function AiFeatureFlowScreen({
     <DailyReportSourceResolverContext.Provider
       value={services.dailyReportSources}
     >
-      {conversationScreen}
+      <ResolveArchivedCitationContext.Provider
+        value={services.resolveArchivedCitation}
+      >
+        {conversationScreen}
+      </ResolveArchivedCitationContext.Provider>
     </DailyReportSourceResolverContext.Provider>
   );
   if (intent !== null) return conversation;

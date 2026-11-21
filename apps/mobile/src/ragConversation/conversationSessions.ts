@@ -7,7 +7,7 @@ import { conversationRecoveryActions } from './conversationRecoveryActions';
 import { createConversationSessionRequests } from './conversationSessionRequests';
 import { conversationDispatch } from './conversationDispatch';
 import type * as S from './conversationSessionTypes';
-import { createConversationSessionRestoreState } from './conversationSessionRestoreState';
+import { conversationRestorationForOptions } from './conversationSessionRestoreState';
 import { createConversationSessionAttachment } from './conversationSessionAttachment';
 import { createConversationRetrySave } from './conversationRetrySave';
 import { refreshConversationSources } from './conversationSourceRefresh';
@@ -56,7 +56,7 @@ export function createConversationSessions(
   const find = (id: number) => snapshot.sessions.find(item => item.id === id)!;
   const { taskState, taskRefresh } = createConversationTasks({
     options,
-    find: id => snapshot.sessions.find(session => session.id === id),
+    find,
     update,
     valid: () => !disposed,
     activeId: () => snapshot.activeId,
@@ -75,15 +75,7 @@ export function createConversationSessions(
     },
     options.coldResume,
   );
-  const restoration = createConversationSessionRestoreState({
-    read: options.restoreSession,
-    page: options.restoreSessionPage,
-    readPlainContextPage: options.readPlainContextPage,
-    find,
-    readSteering: options.restoreSteering,
-    readTasks: options.restoreTasks,
-    update,
-  });
+  const restoration = conversationRestorationForOptions(options, find, update);
   const attachExisting = createConversationSessionAttachment({
     retention: options.retention,
     restoration,
@@ -101,7 +93,7 @@ export function createConversationSessions(
     disposed: () => disposed,
   });
   const retrySave = createConversationRetrySave({
-    find: id => snapshot.sessions.find(session => session.id === id),
+    find,
     update,
     disposed: () => disposed,
     requests,
@@ -242,6 +234,7 @@ export function createConversationSessions(
   beforeSend = prepareConversationSend({
     select: policy.prepareSend,
     context: restoration.prepareContext,
+    protectedPromptHistory: options.useProtectedPromptHistory,
     find,
     current: id => !disposed && snapshot.activeId === id,
   });

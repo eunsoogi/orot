@@ -9,6 +9,7 @@ import { styles } from './ConversationScreen.styles';
 import { isPublicWebReference } from '../externalMedicalEvidence/publicWebSources';
 import { PublicWebSourceLinks } from '../externalMedicalEvidence/PublicWebSourceLinks';
 import { t } from '../i18n';
+import type { SavedArchivedCitation } from './savedArchivedCitations';
 
 /** Project only static chip text; URLs, action handlers and their ownership are resolved at press time. */
 function citationPresentation(reference: EvidenceReference) {
@@ -45,17 +46,62 @@ function citationPresentation(reference: EvidenceReference) {
   };
 }
 
+function SourceChip({
+  testID,
+  label,
+  hint,
+  caption,
+  icon,
+  onPress,
+}: {
+  readonly testID: string;
+  readonly label: string;
+  readonly hint?: string;
+  readonly caption: string;
+  readonly icon: 'book' | 'doc.text' | 'globe';
+  readonly onPress: () => void;
+}) {
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole={icon === 'globe' ? 'link' : 'button'}
+      accessibilityLabel={label}
+      accessibilityHint={hint}
+      style={styles.source}
+      onPress={onPress}
+    >
+      <AppSymbol name={icon} color={appColors.primaryText} size={18} />
+      <Text numberOfLines={1} style={styles.sourceText}>
+        {caption}
+      </Text>
+    </Pressable>
+  );
+}
+
+const archiveLabels = {
+  personal_record: 'ragConversation.sourceKind.healthRecord',
+  reviewed_memory: 'ragConversation.tool.sourceKind.reviewedMemory',
+  generated_artifact: 'ragConversation.sourceKind.previousAiOutput',
+  external_medical: 'externalMedicalEvidence.source.literatureFallbackTitle',
+  public_web: 'ragConversation.archivedCitation.publicWeb',
+} as const;
+
 /** Compact citations retain access to every actual source and its external provenance. */
 export function ConversationSources({
   references,
   testIDPrefix,
   onOpenSource,
   onLinkError,
+  archived,
 }: {
   readonly testIDPrefix?: string;
   readonly references: readonly EvidenceReference[];
   readonly onOpenSource: (reference: EvidenceReference) => void;
   readonly onLinkError: () => void;
+  readonly archived?: {
+    readonly citations: readonly SavedArchivedCitation[];
+    readonly open: (citation: SavedArchivedCitation) => void;
+  };
 }) {
   const instanceId = useId();
   // Scope repeated citations to their owning answer/section, never to translated labels.
@@ -72,7 +118,8 @@ export function ConversationSources({
     [expanded, references],
   );
   // An empty scroll view still creates a flex gap below the message or progress text.
-  if (references.length === 0) return null;
+  const count = archived?.citations.length ?? references.length;
+  if (!count) return null;
   return (
     <ScrollView
       testID="rag-conversation-sources"
@@ -83,70 +130,83 @@ export function ConversationSources({
       style={styles.sourcesViewport}
       contentContainerStyle={styles.sources}
     >
-      {visible.map(({ reference, text }, index) => {
-        if (!text)
-          return (
-            <PublicWebSourceLinks
-              key={`${reference.evidenceId}:${index}`}
-              reference={reference}
-              linkStyle={styles.source}
-              textStyle={styles.sourceText}
-              onLinkError={onLinkError}
-            />
-          );
-        return (
-          <Pressable
-            key={`${reference.sourceId}:${reference.evidenceId}:${index}`}
-            testID={`${identity}-citation-${index}`}
-            accessibilityRole="button"
-            accessibilityLabel={text.label}
-            accessibilityHint={text.hint}
-            style={styles.source}
-            onPress={() => {
-              if (reference.sourceKind !== 'external_medical') {
-                onOpenSource(reference);
-                return;
-              }
-              const locator = reference.locator as Record<
-                string,
-                unknown
-              > | null;
-              const url =
-                typeof locator?.originalUrl === 'string'
-                  ? locator.originalUrl
-                  : '';
-              if (!isSafeEuropePmcArticleUrl(url)) {
-                onLinkError();
-                return;
-              }
-              Linking.openURL(url).catch(onLinkError);
-            }}
-          >
-            <AppSymbol
-              name={
-                reference.sourceKind === 'external_medical'
-                  ? 'book'
-                  : 'doc.text'
-              }
-              color={appColors.primaryText}
-              size={18}
-            />
-            <Text numberOfLines={1} style={styles.sourceText}>
-              {text.caption}
-            </Text>
-          </Pressable>
-        );
-      })}
-      {!expanded && references.length > 2 ? (
+      {archived
+        ? (expanded ? archived.citations : archived.citations.slice(0, 2)).map(
+            (citation, index) => {
+              const caption = citation.title ?? t(archiveLabels[citation.kind]);
+              return (
+                <SourceChip
+                  key={index}
+                  testID={`${identity}-citation-${index}`}
+                  caption={caption}
+                  label={caption}
+                  icon={
+                    citation.kind === 'public_web'
+                      ? 'globe'
+                      : citation.kind === 'external_medical'
+                        ? 'book'
+                        : 'doc.text'
+                  }
+                  onPress={() => archived.open(citation)}
+                />
+              );
+            },
+          )
+        : visible.map(({ reference, text }, index) => {
+            if (!text)
+              return (
+                <PublicWebSourceLinks
+                  key={`${reference.evidenceId}:${index}`}
+                  reference={reference}
+                  linkStyle={styles.source}
+                  textStyle={styles.sourceText}
+                  onLinkError={onLinkError}
+                />
+              );
+            return (
+              <SourceChip
+                key={`${reference.sourceId}:${reference.evidenceId}:${index}`}
+                testID={`${identity}-citation-${index}`}
+                label={text.label}
+                hint={text.hint}
+                caption={text.caption}
+                icon={
+                  reference.sourceKind === 'external_medical'
+                    ? 'book'
+                    : 'doc.text'
+                }
+                onPress={() => {
+                  if (reference.sourceKind !== 'external_medical') {
+                    onOpenSource(reference);
+                    return;
+                  }
+                  const locator = reference.locator as Record<
+                    string,
+                    unknown
+                  > | null;
+                  const url =
+                    typeof locator?.originalUrl === 'string'
+                      ? locator.originalUrl
+                      : '';
+                  if (!isSafeEuropePmcArticleUrl(url)) {
+                    onLinkError();
+                    return;
+                  }
+                  Linking.openURL(url).catch(onLinkError);
+                }}
+              />
+            );
+          })}
+      {!expanded && count > 2 ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('ragConversation.conversation.moreEvidence', {
-            count: references.length - 2,
+            count: count - 2,
           })}
           onPress={() => setExpanded(true)}
           style={styles.source}
         >
-          <Text style={styles.sourceText}>+{references.length - 2}</Text>
+          <Text style={styles.sourceText}>+{count - 2}</Text>
         </Pressable>
       ) : null}
     </ScrollView>

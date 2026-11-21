@@ -1,3 +1,9 @@
+import { useMemo } from 'react';
+import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserTurn';
+import {
+  savedHistoryTranscript,
+  type SavedHistoryDisplayItem,
+} from './conversationSavedHistoryDisplay';
 import type { DisplayMessage } from './ConversationMessage';
 import type { ConversationActivitySnapshot } from './conversationActivity';
 import type { ConversationSession } from './conversationSessionTypes';
@@ -71,4 +77,36 @@ export function conversationHistoryActivity(
     showActivityBubble,
     processing: Boolean(activity?.responseStarted),
   };
+}
+
+/** Follow-to-bottom observes live turns only. Old prose joins at render time. */
+export function useConversationHistoryPresentation(input: {
+  saved?: readonly SavedHistoryDisplayItem[];
+  messages: readonly DisplayMessage[];
+  pendingMessage: ConversationSession['pendingMessage'];
+  requestSessionId?: number;
+  requestActivity?: ConversationActivitySnapshot | null;
+  separatedActivity: boolean;
+  sessionId?: number;
+  followsBottom: Parameters<typeof useConversationHistoryUserTurnFollow>[2];
+  expectedOffset: Parameters<typeof useConversationHistoryUserTurnFollow>[3];
+}) {
+  const { saved, messages } = input;
+  useConversationHistoryUserTurnFollow(
+    input.sessionId ?? null,
+    messages,
+    input.followsBottom,
+    input.expectedOffset,
+  );
+  const transcript = useMemo(
+    () => savedHistoryTranscript(saved ?? [], messages),
+    [saved, messages],
+  );
+  return conversationHistoryActivity(
+    transcript,
+    input.pendingMessage,
+    input.requestSessionId,
+    input.requestActivity,
+    input.separatedActivity,
+  );
 }

@@ -6,6 +6,8 @@ import type { ConversationVisitQuestionReference } from '../ragConversation/conv
 import type { TreatmentContext } from '../treatmentContext/types';
 import type { ConversationSubmittedInput } from '../ragConversation/conversationSubmittedInput';
 
+import type { HistoricalDialogueParent } from '../ragConversation/conversationRetention';
+
 export interface ConversationArtifact {
   readonly id: string;
   readonly sessionId: string;
@@ -15,6 +17,7 @@ export interface ConversationArtifact {
   readonly entryIntent?: 'possibilities';
   readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
   readonly priorDialogue?: readonly { question: string; answer: string }[];
+  readonly historicalDialogueParents?: readonly HistoricalDialogueParent[];
   readonly priorUserReports?: readonly string[];
   readonly priorDialogueOmitted?: true;
   readonly status: 'complete' | 'partial';
