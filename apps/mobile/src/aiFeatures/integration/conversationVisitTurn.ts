@@ -86,10 +86,10 @@ export function createConversationVisitTurn(deps: {
       },
     });
     if (result.status !== 'ready') {
-      // Valid clarification is not rejected output. Keep provider prose out of UI:
-      // the standard insufficient-evidence response remains app-owned and safe.
+      // Clarification can be about the purpose of the visit even with valid records.
+      // Retain only an app-owned guidance key, never the provider's prose.
       if (result.status === 'needs_clarification')
-        return { status: 'insufficient' };
+        return { status: 'insufficient', guidance: 'visit_goal' };
       const providerKind =
         'providerErrorCode' in result
           ? providerFailureKind(result.providerErrorCode)

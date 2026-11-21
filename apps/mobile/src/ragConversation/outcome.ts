@@ -37,7 +37,7 @@ export type RagConversationOutcome =
       >;
       readonly visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
     }
-  | { readonly status: 'insufficient' }
+  | { readonly status: 'insufficient'; readonly guidance?: 'visit_goal' }
   | {
       readonly status: 'failure';
       readonly kind: RagConversationFailureKind;
