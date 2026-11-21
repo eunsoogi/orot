@@ -137,7 +137,7 @@ export function visibleSavedHistoryDisplay(
     session.restoring ||
     session.restoreFailed ||
     session.leaseRefreshRequired ||
-    session.modelSelectionPending ||
+    (session.modelSelectionPending && !session.modelSelectionKeepsDisplay) ||
     session.modelSelectionFailed
   )
     return undefined;

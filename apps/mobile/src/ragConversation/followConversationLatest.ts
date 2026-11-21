@@ -5,6 +5,7 @@ import type { ScrollView } from 'react-native';
 /** Follow new transcript content only while the user has not taken scroll or reply-focus ownership. */
 export function followConversationLatest(input: {
   hasMessages: boolean;
+  contentHeight?: number;
   bottomInset?: number;
   compact: boolean;
   focused: boolean;
@@ -21,6 +22,7 @@ export function followConversationLatest(input: {
 }) {
   const {
     hasMessages,
+    contentHeight,
     bottomInset = 0,
     compact,
     focused,
@@ -32,23 +34,28 @@ export function followConversationLatest(input: {
     scrollGeometry,
   } = input;
   if (!hasMessages || !followsBottom.current || focused) return;
-  if (compact) {
-    if (messageEnd.current !== null && viewportHeight.current > 0) {
-      expectedOffset.current = conversationVisibleOffset(
-        messageEnd.current,
-        viewportHeight.current,
-        bottomInset,
-      );
-      historyView.current?.scrollTo({
-        y: expectedOffset.current,
-        animated: false,
-      });
-    }
-  } else {
-    const geometry = scrollGeometry.current;
-    expectedOffset.current = geometry
-      ? Math.max(0, geometry.contentHeight - geometry.height)
-      : null;
-    historyView.current?.scrollToEnd({ animated: false });
-  }
+  const geometry = scrollGeometry.current;
+  const height = viewportHeight.current || geometry?.height || 0;
+  const total = contentHeight ?? geometry?.contentHeight;
+  const target = compact
+    ? messageEnd.current !== null && height > 0
+      ? conversationVisibleOffset(messageEnd.current, height, bottomInset)
+      : null
+    : total === undefined || height === 0
+      ? null
+      : Math.max(0, total - height);
+  const previous = expectedOffset.current ?? geometry?.offset;
+  // Native content and row layout can both report the same position. Do not
+  // issue a second scroll at the old offset before a real geometry change.
+  if (
+    target !== null &&
+    previous !== undefined &&
+    Math.abs(target - previous) < 1
+  )
+    return;
+  if (compact && target === null) return;
+  expectedOffset.current = target;
+  if (compact && target !== null)
+    historyView.current?.scrollTo({ y: target, animated: false });
+  else historyView.current?.scrollToEnd({ animated: false });
 }
