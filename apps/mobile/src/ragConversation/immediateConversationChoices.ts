@@ -43,10 +43,12 @@ export function immediateConversationChoices(
       if (
         conversationEntryForSession(store, id)?.intent === 'visit-questions'
       ) {
-        startExplicitVisitPreparation(store, id, prepare)?.catch(() => {});
+        startExplicitVisitPreparation(store, id, prepare, true)?.catch(
+          () => {},
+        );
       } else {
         store
-          .sendPrompt(
+          .sendQuickPrompt(
             id,
             selected.entryPrompt,
             entryIntentSender(store, id, send),
