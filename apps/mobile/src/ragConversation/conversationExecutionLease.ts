@@ -79,6 +79,11 @@ export async function beginConversationExecutionLease(
   let interrupted = false;
   let acquired = false;
   let pauseRequested = false;
+  let sawBackground = adapter.currentPhase?.() === 'background';
+  const lostLease = () =>
+    sawBackground || adapter.currentPhase?.() === 'background'
+      ? 'expired'
+      : 'lease-check-failed';
   const notify = (reason: ConversationInterruptionReason) => {
     if (closed || interrupted) return;
     interrupted = true;
@@ -104,9 +109,12 @@ export async function beginConversationExecutionLease(
         const available = await adapter.protectedDataAvailable();
         if (closed || interrupted) return;
         if (available === false) notify('protected-data');
-        else if (!(await adapter.isActive(requestId))) notify('expired');
+        else if (!(await adapter.isActive(requestId))) notify(lostLease());
         // A passed lease check is not provider progress; late results have no owner.
-        else if (!closed && !interrupted) diagnose('foreground-check-passed');
+        else if (!closed && !interrupted) {
+          sawBackground = adapter.currentPhase?.() === 'background';
+          diagnose('foreground-check-passed');
+        }
       } while (reconcileAgain && !closed && !interrupted);
     } catch {
       notify('lease-check-failed');
@@ -137,8 +145,9 @@ export async function beginConversationExecutionLease(
     if (event.kind === 'foreground') diagnose('foreground');
     if (event.kind === 'phase') {
       diagnose('phase');
-      if (needsDecision() && adapter.currentPhase?.() === 'background')
-        notify('decision-required');
+      const background = adapter.currentPhase?.() === 'background';
+      sawBackground ||= background;
+      if (needsDecision() && background) notify('decision-required');
     }
     // Recheck after foregrounding in case suspension delayed the expiration event.
     if (event.kind === 'foreground' && acquired) reconcile();
@@ -157,7 +166,7 @@ export async function beginConversationExecutionLease(
         );
       else if ((await adapter.protectedDataAvailable()) === false)
         notify('protected-data');
-      else if (!(await adapter.isActive(requestId))) notify('expired');
+      else if (!(await adapter.isActive(requestId))) notify(lostLease());
     }
   } catch {
     notify('lease-check-failed');

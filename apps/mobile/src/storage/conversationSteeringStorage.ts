@@ -32,6 +32,7 @@ export async function createConversationSteeringStorage(input: {
   const { database, requestId, runId } = input;
   await setupConversationSteering(database);
   const keys = [requestId, runId];
+  let finalBoundaryClosed = false;
   const listeners = new Set<() => Promise<void>>();
   const emit = () =>
     Promise.all([...listeners].map(listener => listener().catch(() => {})));
@@ -79,7 +80,7 @@ export async function createConversationSteeringStorage(input: {
       if (!id.trim() || id.length > 128 || !text.trim()) return false;
       let accepted = false;
       await database.transaction(async sql => {
-        if (!(await live(sql))) return;
+        if (finalBoundaryClosed || !(await live(sql))) return;
         const rows = await read(sql);
         const previous = rows.find(row => row.id === id);
         if (previous) {
@@ -98,6 +99,23 @@ export async function createConversationSteeringStorage(input: {
       });
       if (accepted) await emit();
       return accepted;
+    },
+    async pendingAtFinalBoundary(): Promise<boolean> {
+      let pending = false;
+      // The same SQL queue orders this decision against enqueue before the result becomes terminal.
+      await database.transaction(async sql => {
+        if (finalBoundaryClosed) return;
+        if (await live(sql))
+          pending =
+            (
+              await sql.execute(
+                "SELECT 1 FROM conversation_steering WHERE request_id=? AND run_id=? AND status='queued' LIMIT 1",
+                keys,
+              )
+            ).rows.length > 0;
+        if (!pending) finalBoundaryClosed = true;
+      });
+      return pending;
     },
     async list(): Promise<StoredSteeringInstruction[]> {
       let result: StoredSteeringInstruction[] = [];
