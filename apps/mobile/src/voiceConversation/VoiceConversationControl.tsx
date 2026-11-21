@@ -1,4 +1,8 @@
-import { useEffect } from 'react';
+import { useContext, useEffect } from 'react';
+import {
+  ComposerInlineAction,
+  ComposerInlineActionContext,
+} from '../ragConversation/ComposerInlineAction';
 import { AccessibilityInfo, Platform, StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -15,6 +19,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  inline: { flexDirection: 'row', flexShrink: 0 },
   status: { color: appColors.secondary },
 });
 
@@ -46,6 +51,8 @@ export function VoiceConversationControl({
   readonly onFinish: () => void;
   readonly onRecover: () => void;
 }) {
+  const inline = useContext(ComposerInlineActionContext);
+  const Action = inline ? ComposerInlineAction : GlassIconButton;
   useEffect(() => {
     // iOS does not implement accessibilityLiveRegion, so announce real state changes explicitly.
     if (Platform.OS === 'ios' && status)
@@ -62,14 +69,14 @@ export function VoiceConversationControl({
   const label =
     phase === 'error' ? recoverLabel : active ? stopLabel : startLabel;
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, inline && styles.inline]}>
       {status && !statusExternallyRendered ? (
         <AppText accessibilityLiveRegion="polite" style={styles.status}>
           {status}
         </AppText>
       ) : null}
       {phase === 'listening' ? (
-        <GlassIconButton
+        <Action
           accessibilityRole="button"
           accessibilityLabel={finishLabel}
           onPress={onFinish}
@@ -77,7 +84,7 @@ export function VoiceConversationControl({
           symbolName="checkmark"
         />
       ) : null}
-      <GlassIconButton
+      <Action
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityState={{
