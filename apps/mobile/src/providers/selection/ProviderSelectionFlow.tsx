@@ -28,7 +28,6 @@ interface ProviderSelectionFlowProps {
   readonly screenTitle?: string;
   readonly screenIntroduction?: string;
   readonly navigationRouteKey?: string;
-  readonly conversationQuickReview?: boolean;
   readonly accountRefreshKey?: number;
   readonly selectionStore?: ProviderSelectionStore;
   readonly chatGPTServices?: ChatGPTSelectionServices;
@@ -58,7 +57,6 @@ export default function ProviderSelectionFlow({
   screenTitle,
   screenIntroduction,
   navigationRouteKey,
-  conversationQuickReview,
   accountRefreshKey = 0,
   selectionStore = providerSelectionStore,
   chatGPTServices = nativeChatGPTSelectionServices,
@@ -207,7 +205,6 @@ export default function ProviderSelectionFlow({
       <ProviderSelectionScreen
         presentation={presentation}
         navigationRouteKey={navigationRouteKey}
-        conversationQuickReview={conversationQuickReview}
         screenTitle={screenTitle}
         screenIntroduction={screenIntroduction}
         chatGPTSetup={chatGPTSetup}

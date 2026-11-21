@@ -17,7 +17,6 @@ import type {
 export function useConversationModelConfirmation({
   presentation,
   navigationRouteKey,
-  conversationQuickReview = false,
   selectionStore,
   onSelectionCommitted,
   pendingSelection,
@@ -35,7 +34,6 @@ export function useConversationModelConfirmation({
   ProviderSelectionScreenProps,
   | 'presentation'
   | 'navigationRouteKey'
-  | 'conversationQuickReview'
   | 'selectionStore'
   | 'onSelectionCommitted'
 > & {
@@ -54,15 +52,13 @@ export function useConversationModelConfirmation({
   >;
 }) {
   const saveConsent = useModelConsentSave('conversation', selectionStore);
-  const settings = presentation === 'settings-provider';
-  const unifiedReview = settings || conversationQuickReview;
+  const unifiedReview = presentation === 'settings-provider';
   const consent = useModelSettingsReview(
     'conversation',
     unifiedReview,
     selectionStore,
     JSON.stringify([
       presentation,
-      conversationQuickReview,
       navigationRouteKey,
       pendingSelection,
       pendingResolution?.ok,
@@ -96,12 +92,9 @@ export function useConversationModelConfirmation({
       const remote =
         currentPendingOption.privacyBoundary === 'selected-context-remote';
       const search = {
-        // A fresh local quick choice must not enable any external scope.
-        // The shared sheet still discloses search when changing to a remote model.
-        medical:
-          settings ||
-          (conversationQuickReview && remote) ||
-          searchChoices.medical,
+        // Europe PMC permission is separate from on-device inference and is
+        // included only through an applicable explicit settings review.
+        medical: unifiedReview || searchChoices.medical,
         web:
           unifiedReview &&
           remote &&
