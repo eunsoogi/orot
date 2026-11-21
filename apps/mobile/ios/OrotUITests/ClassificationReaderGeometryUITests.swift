@@ -233,7 +233,7 @@ extension AppointmentConsentUITests {
                 tap(app, "medical-appointment-import")
                 XCTAssertTrue(list.waitForAppearance())
             }
-            if !next.exists || !next.isEnabled { break }
+            guard next.exists, next.isEnabled else { break }
             next.tap()
             try geometryWait { rows.firstMatch.exists && rows.firstMatch.label != start }
         }
