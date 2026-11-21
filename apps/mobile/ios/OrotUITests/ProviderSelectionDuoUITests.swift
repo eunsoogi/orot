@@ -1,7 +1,7 @@
 import XCTest
 
 extension RootNavigationUITests {
-    /// Exercises the production provider overlay without fabricating availability or saving a provider choice.
+    /// Exercises the production model settings route without fabricating availability or saving a provider choice.
     @MainActor
     func testProviderSelectionOverlayKeepsUnavailableProviderDisabledAcrossMeasuredDuoReflow() throws {
         let app = XCUIApplication()
@@ -21,7 +21,7 @@ extension RootNavigationUITests {
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         tap(app, "ai-feature-select-provider")
-        NavigationUITestConditions.route(app, markers: ["provider-selection-screen"])
+        NavigationUITestConditions.route(app, markers: ["settings-provider-screen"])
         try verifyProviderSelectionLayout(app)
 
         let portraitWidth = app.frame.width
@@ -31,7 +31,7 @@ extension RootNavigationUITests {
             return frame.width > frame.height && abs(frame.width - portraitWidth) > 0.5
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [landscape]), .completed, app.debugDescription)
-        NavigationUITestConditions.route(app, markers: ["provider-selection-screen"])
+        NavigationUITestConditions.route(app, markers: ["settings-provider-screen"])
         try verifyProviderSelectionLayout(app)
         capture(app, "provider-selection-duo-landscape")
 
@@ -43,15 +43,15 @@ extension RootNavigationUITests {
     /// Keeps both provider groups and the disabled action inside the native content region.
     @MainActor
     private func verifyProviderSelectionLayout(_ app: XCUIApplication) throws {
-        let prefix = "provider-selection-feature-panels"
-        let primary = UITestConditions.element(app, "provider-selection-local-panel")
-        let secondary = UITestConditions.element(app, "provider-selection-connected-panel")
+        let prefix = "settings-provider-panels"
+        let primary = UITestConditions.element(app, "settings-provider-local-panel")
+        let secondary = UITestConditions.element(app, "settings-provider-connected-panel")
         let host = UITestConditions.element(app, "\(prefix)-host")
         XCTAssertTrue(primary.waitForAppearance() && secondary.waitForAppearance() && host.waitForAppearance(), app.debugDescription)
 
         let capabilities = UITestConditions.element(app, "provider-option-0-capabilities")
         XCTAssertTrue(capabilities.waitForAppearance(), app.debugDescription)
-        FormUITestConditions.reveal(capabilities, in: app, scrollID: "provider-selection-screen")
+        FormUITestConditions.reveal(capabilities, in: app, scrollID: "settings-provider-screen")
         XCTAssertTrue(capabilities.isHittable, app.debugDescription)
         let unavailableOption = UITestConditions.element(app, "provider-option-0")
         XCTAssertFalse(unavailableOption.isEnabled, "The core test fixture reports Apple Intelligence as unavailable")
@@ -66,9 +66,9 @@ extension RootNavigationUITests {
         XCTAssertTrue(stacked, "Provider sections must share one vertical page")
 
         let footer = UITestConditions.element(app, "provider-selection-footer")
-        FormUITestConditions.reveal(footer, in: app, scrollID: "provider-selection-screen")
+        FormUITestConditions.reveal(footer, in: app, scrollID: "settings-provider-screen")
         XCTAssertTrue(footer.exists && footer.isHittable, app.debugDescription)
-        let disabledAction = app.buttons["이 AI 사용"]
+        let disabledAction = UITestConditions.element(app, "provider-selection-confirm")
         XCTAssertTrue(disabledAction.exists && !disabledAction.isEnabled, app.debugDescription)
 
         let navigation = try NavigationUITestConditions.navigationAction(app, "navigation-back")

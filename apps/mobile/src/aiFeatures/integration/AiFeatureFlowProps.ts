@@ -14,6 +14,7 @@ import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import type { ReactElement } from 'react';
 export interface AiFeatureFlowProps {
   readonly canonicalConversationRoot?: boolean;
+  readonly onOpenConversationModelSettings?: () => void;
   readonly isEntryCurrent?: () => boolean;
   /** Route ownership excludes app focus, so suspension cannot empty retained rows. */
   readonly isRouteCurrent?: () => boolean;

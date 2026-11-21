@@ -31,6 +31,7 @@ export function AiFeatureFlow({
   isEntryCurrent,
   isRouteCurrent,
   canonicalConversationRoot,
+  onOpenConversationModelSettings,
 }: AiFeatureFlowProps) {
   const conversationStore = useConversationSessions();
   const primaryActionHost = useContext(NavigationPrimaryActionContext);
@@ -170,7 +171,12 @@ export function AiFeatureFlow({
               onOpenExternalEvidence={() =>
                 pushFeatureRoute('external-evidence')
               }
-              onOpenProviderSelection={openProviderSelection}
+              onOpenProviderSelection={
+                screenRoute === 'rag-conversation' &&
+                onOpenConversationModelSettings
+                  ? onOpenConversationModelSettings
+                  : openProviderSelection
+              }
               onOpenSource={openSource}
               resolveSelectedAi={resolveSelectedAiForRoute}
               consent={consent}
@@ -210,7 +216,6 @@ export function AiFeatureFlow({
             <ProviderSelectionFlow
               key={navigation.route.key}
               navigationRouteKey={navigation.route.key}
-              conversationQuickReview={screenRoute === 'rag-conversation'}
               selectionStore={serviceDependencies?.selectedAi?.selectionStore}
               chatGPTServices={serviceDependencies?.selectedAi?.chatGPTServices}
               safeAreaHandledByParent
