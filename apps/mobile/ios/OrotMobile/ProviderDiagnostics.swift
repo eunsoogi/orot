@@ -26,7 +26,7 @@ final class OrotProviderDiagnostics: NSObject {
                "artifact_initial_validation", "artifact_source_hydration", "artifact_final_validation",
                "artifact_read_admission", "artifact_read_settlement", "artifact_read_setup", "artifact_session_lease", "artifact_root_row", "artifact_root_decode", "artifact_parent_row", "artifact_retained_source", "artifact_summary_parent",
                "artifact_source_authority", "artifact_parent_decode", "artifact_parent_fingerprint",
-               "artifact_report_calendar", "artifact_report_snapshot", "artifact_report_fingerprint",
+               "artifact_report_calendar", "artifact_report_snapshot", "artifact_report_fingerprint", "artifact_period_transaction",
                "history_timeline", "history_turns", "history_artifacts", "history_tool_read",
                "history_tool_restore", "history_tasks",
                "history_session_recheck_before_assembly", "history_session_recheck_after_assembly", "history_tool_recheck_before_assembly", "history_tool_recheck_final", "history_cold_previews", "history_recheck", "history_transcript_layout", "conversation_model_preflight", "conversation_history_preflight",
