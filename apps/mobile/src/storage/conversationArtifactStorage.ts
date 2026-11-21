@@ -4,6 +4,7 @@ import { registerConversationStrictReaders } from './conversationStrictReadOwner
 import { appendConversationSourceRows } from './conversationArtifactSourceRows';
 import { enqueueStatementMemory } from './userStatementMemoryJobs';
 import { createPlainConversationContextReader } from './plainConversationContext';
+import { createDirectPhotoReplyWriter } from './conversationDirectPhotoReplies';
 import { conversationTimelinePages } from './conversationTimelinePages';
 import { continuousConversationStorage } from './continuousConversationStorage';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
@@ -59,6 +60,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
   const listTimeline = conversationTimelinePages(database, ensure);
   const storage = {
     listTimeline,
+    writeDirectPhotoReply: createDirectPhotoReplyWriter(database, ensure),
     ...createConversationProjectionReaders(database, ensure),
     readPlainContextPage: createPlainConversationContextReader(
       database,

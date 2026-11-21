@@ -1,3 +1,4 @@
+import { conversationDirectPhotoKo } from './conversationDirectPhotoKo';
 import { conversationHistoryPagingKo } from './conversationHistoryPagingKo';
 import { conversationToolKo } from './conversationToolKo';
 import { voiceConversationKo } from './voiceConversationKo';
@@ -11,6 +12,7 @@ export const ragConversationKo = {
   'ragConversation.title': '기록과 대화',
   'ragConversation.placeholder': '기록에 관해 물어보세요',
   'ragConversation.send': '질문하기',
+  ...conversationDirectPhotoKo,
   'ragConversation.photo.select': '사진 첨부',
   'ragConversation.photo.selectHint': '한 번에 사진 한 장을 선택해요.',
   'ragConversation.photo.remove': '첨부 사진 제거',

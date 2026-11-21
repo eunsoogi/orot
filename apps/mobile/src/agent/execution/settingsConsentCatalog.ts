@@ -1,4 +1,9 @@
 import {
+  directPhotoPermission,
+  isDirectPhotoConsentScope,
+  isExactDirectPhotoPermission,
+} from './directPhotoConsentScope';
+import {
   isLiveVoiceAudioScope,
   liveVoiceAudioPolicy,
   liveVoiceAudioPurpose,
@@ -148,10 +153,13 @@ export const publicSearchSettingsPermissions = {
 export function settingsPermissionsForFeature(
   feature: SettingsConsentFeature,
   providerId?: string,
+  reviewedDirectPhoto = false,
 ): readonly SettingsConsentPermission[] {
   const values =
     feature === 'conversation'
-      ? conversation
+      ? reviewedDirectPhoto && providerId?.startsWith('chatgpt-plan:')
+        ? [...conversation, directPhotoPermission]
+        : conversation
       : feature === 'calendar'
         ? calendar
         : feature === 'voice'
@@ -170,6 +178,8 @@ export function settingsPermissionsForFeature(
 /** A durable row cannot introduce arbitrary purpose/category names under a known
  * catalog version. Exact recipient/account ownership is checked separately. */
 export function isCatalogPermission(value: SettingsConsentPermission): boolean {
+  if (isDirectPhotoConsentScope(value.purpose, value.policyVersion))
+    return isExactDirectPhotoPermission(value);
   return [
     ...conversation,
     ...calendar,
@@ -200,7 +210,7 @@ export function isCatalogDomainPermission(
 ): boolean {
   const candidates =
     domain === 'model'
-      ? settingsPermissionsForFeature(feature, providerId)
+      ? settingsPermissionsForFeature(feature, providerId, true)
       : feature !== 'conversation'
         ? []
         : domain === 'public-web'

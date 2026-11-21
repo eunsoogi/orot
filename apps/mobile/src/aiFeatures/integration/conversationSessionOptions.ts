@@ -23,6 +23,8 @@ export function createConversationSessionOptions(
   return {
     ...photo,
     useProtectedPromptHistory: true,
+    writeDirectPhotoReply: async (...args) =>
+      (await openStorage()).writeDirectPhotoReply(...args),
     readSavedHistoryDisplay: conversationSavedHistoryDisplayOption(openStorage),
     readPlainContextPage: async (...args) =>
       (await openStorage()).readPlainContextPage(...args),

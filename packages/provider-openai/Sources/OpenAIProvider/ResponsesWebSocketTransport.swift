@@ -66,6 +66,9 @@ struct URLSessionResponsesWebSocket: ResponsesWebSocketConnection {
 public extension ChatGPTOAuthClient {
     /// Refresh and scope checks match SSE. No response.create can be sent until the upgrade is confirmed.
     func steerableResponse(_ request: ChatGPTResponsesRequest, forIssuedClientID issuedClientID: String) async throws -> ChatGPTSteerableResponse {
+        guard !request.containsDirectPhoto else {
+            throw ChatGPTResponsesError.unsupportedCapability("direct photo requires protected HTTP transport")
+        }
         guard ChatGPTSteerableResponse.supportsModel(request.model), request.publicWebQuery == nil else {
             throw ChatGPTResponsesError.unsupportedCapability("mid-turn steering")
         }

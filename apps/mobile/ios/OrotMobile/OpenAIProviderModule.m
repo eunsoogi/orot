@@ -14,6 +14,8 @@ RCT_EXTERN_METHOD(signOut : (NSString *)issuedClientID resolver : (RCTPromiseRes
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(startResponse : (NSDictionary *)request requestId : (NSString *)
                       requestId issuedClientID : (NSString *)issuedClientID)
+RCT_EXTERN_METHOD(startPhotoResponse : (NSDictionary *)request requestId : (NSString *)
+                      requestId issuedClientID : (NSString *)issuedClientID)
 RCT_EXTERN_METHOD(startSteerableResponse : (NSDictionary *)request requestId : (NSString *)
                       requestId issuedClientID : (NSString *)issuedClientID)
 RCT_EXTERN_METHOD(steerResponse : (NSString *)requestId submissionId : (NSString *)

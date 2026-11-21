@@ -58,15 +58,15 @@ jest.mock('../../../aiFeatures/integration/provider', () => ({
   ...jest.requireActual('../../../aiFeatures/integration/provider'),
   resolveSelectedAiProvider: jest.fn(),
 }));
-
 jest.mock('../../../calendarModelSettings/resolveCalendarModel', () => ({
   resolveCalendarModel: jest.fn(),
 }));
-
-export function openSavedWebSettingsFixture() {
+export function openSavedWebSettingsFixture(
+  modelOverride?: ReturnType<typeof publicEvidenceFixture>['selected'],
+) {
   const sql = openMigrationSqlite(':memory:');
   const execution = publicEvidenceFixture();
-  const model = execution.selected;
+  const model = modelOverride ?? execution.selected;
   const selection = { providerId: model.provider.id, modelId: model.modelId };
   const recipient = settingsConsentRecipient(selection.providerId)!;
   const option = {
@@ -119,10 +119,7 @@ export function openSavedWebSettingsFixture() {
   };
   jest.mocked(resolveCalendarModel).mockImplementation(async () => {
     const savedCalendar = await calendarModelStore.load();
-    if (
-      !savedCalendar ||
-      savedCalendar.providerId !== calendarChoice.providerId
-    )
+    if (savedCalendar?.providerId !== calendarChoice.providerId)
       return { status: 'selection-required' };
     return {
       status: 'ready',
@@ -146,8 +143,8 @@ export function openSavedWebSettingsFixture() {
   }));
   const passwords = new Map<string, string>();
   jest.mocked(getGenericPassword).mockImplementation(async settings => {
-    const service = settings?.service ?? '';
-    const password = passwords.get(service);
+    const service = settings?.service ?? '',
+      password = passwords.get(service);
     return password
       ? {
           password,
@@ -171,9 +168,10 @@ export function openSavedWebSettingsFixture() {
         ? selected
         : { status: 'selection-required' },
     );
-  const selectionView = () => (
+  const selectionView = (quick = false) => (
     <ProviderSelectionScreen
-      presentation="settings-provider"
+      presentation={quick ? 'feature' : 'settings-provider'}
+      conversationQuickReview={quick}
       options={[option]}
       requirements={{ inputTypes: ['text'], toolCalling: true }}
       selectionStore={providerSelectionStore}

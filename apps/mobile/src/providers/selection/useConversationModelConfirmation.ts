@@ -71,6 +71,7 @@ export function useConversationModelConfirmation({
       searchChoices,
     ]),
     selectionStore,
+    settings,
   );
   async function confirmSelection() {
     if (
@@ -110,7 +111,8 @@ export function useConversationModelConfirmation({
       const saved = await consent.review(
         currentPendingOption,
         search,
-        isCurrent => saveConsent(currentPendingOption, search, isCurrent),
+        (isCurrent, reviewedPhoto) =>
+          saveConsent(currentPendingOption, search, isCurrent, reviewedPhoto),
       );
       if (!saved) return;
       // Capture the selected row only after explicit confirmation, under the

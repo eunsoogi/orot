@@ -200,6 +200,7 @@ export function createConversationPagedRestoreState(
     },
     retryInitial: (id: number, durableId: string, signal: AbortSignal) =>
       load(id, signal, durableId),
+    publishDirectPhoto: display?.publishDirectPhoto,
     retry: load,
     loadOlder: load,
     async prepareContext(id: number, signal?: AbortSignal) {

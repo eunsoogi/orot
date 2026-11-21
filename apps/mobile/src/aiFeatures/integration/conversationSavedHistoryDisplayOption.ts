@@ -13,7 +13,13 @@ export function conversationSavedHistoryDisplayOption(
     };
     assertCurrent();
     const storage = await openStorage();
-    const page = await storage.listTimeline(sessionId, version, cursor);
+    const page = await storage.listTimeline(
+      sessionId,
+      version,
+      cursor,
+      undefined,
+      true,
+    );
     assertCurrent();
     const taskIds = page.items
       .filter(item => item.kind === 'task')
@@ -32,8 +38,9 @@ export function conversationSavedHistoryDisplayOption(
     // Fence deletes and pending lease changes between timeline selection and row reading.
     if (
       saved.length !== turns.length ||
-      fingerprint(await storage.listTimeline(sessionId, version, cursor)) !==
-        fingerprint(page)
+      fingerprint(
+        await storage.listTimeline(sessionId, version, cursor, undefined, true),
+      ) !== fingerprint(page)
     )
       throw new Error('Conversation content changed during restoration.');
     assertCurrent();
@@ -72,6 +79,7 @@ export function conversationSavedHistoryDisplayOption(
               createdAt: row.createdAt,
               question: row.question,
               answer: row.answer,
+              ...(row.directPhoto ? { directPhoto: true } : {}),
               ...(row.delivery ? { delivery: row.delivery } : {}),
               ...(row.initialResponse
                 ? { initialResponse: row.initialResponse }

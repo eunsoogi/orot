@@ -24,6 +24,7 @@ export async function listConversationSessionPage(
      FROM conversation_artifact_sessions s
      JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
      JOIN (SELECT session_id, created_at FROM conversation_artifacts
+       UNION ALL SELECT session_id, created_at FROM conversation_direct_photo_replies
        UNION ALL SELECT session_id, created_at FROM conversation_tool_events
        UNION ALL SELECT session_id, created_at FROM conversation_task_cards
        UNION ALL SELECT session_id, created_at FROM conversation_voice_end_markers INDEXED BY conversation_voice_end_markers_timeline

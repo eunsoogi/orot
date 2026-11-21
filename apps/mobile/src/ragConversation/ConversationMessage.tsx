@@ -73,7 +73,6 @@ export function ConversationMessage({
       {message.activity}
     </Text>
   ) : null;
-  // Keep the last streamed line at the end of a short reading viewport.
   const activityBeforeText = compact && message.streaming;
   return (
     <ConversationMessageBubbles
@@ -200,6 +199,7 @@ export function ConversationMessage({
               user={user}
               staticText={message.savedHistoryDisplayOnly}
               allowReport={
+                !message.directPhotoReply &&
                 !message.streaming &&
                 !message.incomplete &&
                 !message.historyUnavailable

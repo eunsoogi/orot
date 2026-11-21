@@ -20,6 +20,7 @@ import {
 } from './typedDeletionMarkers';
 import { setupConversationTaskCards } from './conversationTaskCards';
 import { setupConversationRequests } from './conversationRequestSchema';
+import { setupDirectPhotoReplies } from './conversationDirectPhotoReplies';
 import { setupConversationPreviewSchema } from './conversationPreviewSchema';
 
 /** Install dependency cleanup in the same encrypted store as records and retained output. */
@@ -89,6 +90,7 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_deleted_artifacts (id TEXT PRIMARY KEY NOT NULL)',
   );
+  await setupDirectPhotoReplies(tx);
   // Keep edges until the recursive query has selected every descendant, even when recursive triggers are disabled.
   const descendants = `WITH RECURSIVE descendants(id) AS (
     SELECT artifact_id FROM conversation_artifact_sources WHERE record_kind = 'generated_conversation' AND record_id = OLD.id
