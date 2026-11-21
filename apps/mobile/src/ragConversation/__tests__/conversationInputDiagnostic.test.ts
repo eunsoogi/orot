@@ -68,9 +68,10 @@ test.each([false, true])(
       get: () => ({ status: 'empty' }),
     } as unknown as Parameters<typeof conversationDispatch>[0]['photoDrafts'];
     const dispatch = conversationDispatch({
-      requests: { send } as unknown as Parameters<
-        typeof conversationDispatch
-      >[0]['requests'],
+      requests: {
+        send,
+        reserveUserMessageId: () => 17,
+      } as unknown as Parameters<typeof conversationDispatch>[0]['requests'],
       photoDrafts,
       retention: undefined,
       disposed: () => false,
@@ -85,7 +86,7 @@ test.each([false, true])(
     const store = {
       getSnapshot: () => ({ activeId: 1, sessions: [session] }),
       photoDrafts,
-      sendPrompt: dispatch.sendPrompt,
+      sendQuickPrompt: dispatch.sendQuickPrompt,
     } as unknown as ConversationSessions;
     const choose = () => {
       order.push('choice-selected');
@@ -113,9 +114,11 @@ test.each([false, true])(
       'before-send',
     ]);
     expect(session.preparingSend).toBe(true);
+    expect(session.preparingQuickChoice?.id).toBe(17);
     expect(send).not.toHaveBeenCalled();
     dispatch.cancelBeforeSend(1);
     expect(session.preparingSend).toBe(false);
+    expect(session.preparingQuickChoice).toBeUndefined();
     await Promise.resolve();
     expect(send).not.toHaveBeenCalled();
   },
