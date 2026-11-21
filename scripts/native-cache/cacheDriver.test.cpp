@@ -58,7 +58,8 @@ int main() {
              "transcript_segments(id TEXT, payload_json TEXT); CREATE INDEX "
              "transcript_segments_recording_idx ON transcript_segments ("
              "json_extract(payload_json, '$.recordingSourceId'), "
-             "json_extract(payload_json, '$.segmentOrdinal'), json_extract(payload_json, '$.revision'))");
+             "json_extract(payload_json, '$.segmentOrdinal'), "
+             "json_extract(payload_json, '$.revision'))");
 
     {
         OrotStatementCache cache(db, orotCacheEligible);
