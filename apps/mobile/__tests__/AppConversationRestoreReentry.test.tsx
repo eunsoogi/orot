@@ -150,7 +150,7 @@ test.each([
           expect(firstSignal.aborted).toBe(false);
           await act(async () => {
             credentialEpoch++;
-            void refresh();
+            refresh().catch(() => {});
           });
         }
       } else {

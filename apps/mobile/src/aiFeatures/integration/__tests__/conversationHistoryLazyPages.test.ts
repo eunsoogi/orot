@@ -204,7 +204,7 @@ test.each(['unchanged', 'deleted', 'owner-changed'] as const)(
         admission,
       );
       const settled = jest.fn();
-      void read.then(settled, settled);
+      read.then(settled, settled);
       await atAdmission;
       expect(settled).not.toHaveBeenCalled();
       if (state === 'deleted') await storage.deleteSession('saved');

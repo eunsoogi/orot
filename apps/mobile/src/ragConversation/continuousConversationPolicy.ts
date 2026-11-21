@@ -194,7 +194,7 @@ export function continuousConversationPolicy<
       rootRestore.setVisible(visible);
       // A leave and return can land in one React batch without a scene effect.
       if (visible)
-        void (
+        (
           resumeRootRestore() ??
           (interrupted && !pending ? restartInitial() : undefined)
         )?.catch(() => {});
@@ -210,7 +210,7 @@ export function continuousConversationPolicy<
     refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
       const deferReloadId = abandonInitial(true);
       store.refreshAfterSourceDeletion(event, deferReloadId);
-      if (interrupted && rootRestore.visible) void restartInitial();
+      if (interrupted && rootRestore.visible) restartInitial().catch(() => {});
     },
     // Route intent may update the current conversation, but cannot create a parallel chat.
     create: () => {

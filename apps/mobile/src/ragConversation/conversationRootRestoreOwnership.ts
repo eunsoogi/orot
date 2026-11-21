@@ -52,8 +52,8 @@ export function createConversationRootRestoreOwnership() {
       if (!visible) owner.release = admission.hold();
       return {
         admission: {
-          async wait(signal: AbortSignal) {
-            const assertAdmitted = await admission.wait(signal);
+          async wait(readSignal: AbortSignal) {
+            const assertAdmitted = await admission.wait(readSignal);
             const assertCurrent = () => {
               assertAdmitted();
               if (
@@ -124,7 +124,7 @@ export function createConversationRootRestoreOwnership() {
         }
       })();
       check = { controller, work };
-      void work
+      work
         .finally(() => {
           if (check?.controller === controller) check = undefined;
         })
