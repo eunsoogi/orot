@@ -29,6 +29,7 @@ export function ProviderSelectionFooter({
   onConfirm,
   onCancel,
   searchChoices,
+  searchReviewStatus = 'ready',
   inlineConsent = true,
   onSearchChoices,
 }: {
@@ -39,6 +40,7 @@ export function ProviderSelectionFooter({
   readonly saveError: boolean;
   readonly remoteAvailable: boolean;
   readonly searchChoices?: SettingsSearchChoices;
+  readonly searchReviewStatus?: 'ready' | 'loading' | 'unreadable';
   readonly inlineConsent?: boolean;
   readonly onSearchChoices?: (value: SettingsSearchChoices) => void;
   readonly onConfirm: () => void;
@@ -51,7 +53,11 @@ export function ProviderSelectionFooter({
       accessibilityLabel: t('modelSettings.confirmLanguage'),
       testID: 'provider-selection-confirm',
       systemImageName: 'checkmark',
-      disabled: saving || !option || resolution?.ok !== true,
+      disabled:
+        saving ||
+        !option ||
+        resolution?.ok !== true ||
+        searchReviewStatus !== 'ready',
       busy: saving,
       onPress: onConfirm,
     },
@@ -76,6 +82,19 @@ export function ProviderSelectionFooter({
           {providerSelectionText.storageSaveError}
         </Text>
       ) : null}
+      {option && searchReviewStatus !== 'ready' ? (
+        <Text
+          accessibilityRole={
+            searchReviewStatus === 'unreadable' ? 'alert' : 'progressbar'
+          }
+        >
+          {t(
+            searchReviewStatus === 'unreadable'
+              ? 'modelSettings.searchConsentUnavailable'
+              : 'modelSettings.searchConsentLoading',
+          )}
+        </Text>
+      ) : null}
       {option ? (
         <ProviderSelectionConfirmation
           option={option}
@@ -85,7 +104,7 @@ export function ProviderSelectionFooter({
               <SettingsSearchConsentChoices
                 value={searchChoices}
                 onChange={onSearchChoices}
-                disabled={saving}
+                disabled={saving || searchReviewStatus !== 'ready'}
                 webRecipient={
                   option.provider.searchPublicWeb
                     ? t('externalMedicalEvidence.publicSearchRecipient', {
@@ -98,7 +117,7 @@ export function ProviderSelectionFooter({
             ) : null
           }
           blockedMessage={resolutionMessage(resolution)}
-          canConfirm={resolution?.ok === true}
+          canConfirm={resolution?.ok === true && searchReviewStatus === 'ready'}
           saving={saving}
           hasActionDock={hasDock}
           onConfirm={onConfirm}

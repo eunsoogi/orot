@@ -79,6 +79,27 @@ export function createConsentAuthority(
       observedGeneration = state.generation;
       return state;
     },
+    /** Review-only proof of denied authority. A failed read/mutation is not an
+     * unchecked setting, and this witness cannot authorize provider dispatch. */
+    async reviewInactive(): Promise<(() => boolean) | null> {
+      const pending = tail;
+      const captured = revision;
+      try {
+        await pending;
+        if (pending !== tail || captured !== revision) return null;
+        const state = parse(await persistence.read());
+        if (
+          pending !== tail ||
+          captured !== revision ||
+          !state ||
+          state.status === 'active'
+        )
+          return null;
+        return () => pending === tail && captured === revision;
+      } catch {
+        return null;
+      }
+    },
     /** Synchronous dispatch fence issued only after current() read the durable owner.
      * Any queued mutation invalidates it immediately, before native storage awaits. */
     witness(generation: string): () => boolean {

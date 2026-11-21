@@ -2,7 +2,6 @@ import { conversationSessionErrorState } from './conversationSessionErrorState';
 import { invalidateTasks } from './invalidateConversationTaskRefresh';
 import { conversationPhotoSurface } from './conversationPhotoSurface';
 import { prepareConversationSend } from './conversationSendPreflight';
-import type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 import { continuousConversationPolicy } from './continuousConversationPolicy';
 import { conversationRecoveryActions } from './conversationRecoveryActions';
 import { createConversationSessionRequests } from './conversationSessionRequests';
@@ -79,6 +78,7 @@ export function createConversationSessions(
   const restoration = createConversationSessionRestoreState({
     read: options.restoreSession,
     page: options.restoreSessionPage,
+    readPlainContextPage: options.readPlainContextPage,
     find,
     readSteering: options.restoreSteering,
     readTasks: options.restoreTasks,
@@ -185,7 +185,7 @@ export function createConversationSessions(
       if (!disposed) requests.cancel(id);
     },
     retrySave,
-    refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
+    refreshAfterSourceDeletion(...event: S.SourceDeletionEvent) {
       if (disposed) return;
       const retryIds = invalidateTasks(snapshot, taskState, taskRefresh);
       refreshConversationSources({

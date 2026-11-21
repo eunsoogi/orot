@@ -7,6 +7,7 @@ import { t } from '../i18n';
 
 /** Rebuild displayed turns with freshly validated sources, and keep failures retryable. */
 export function createConversationSessionRestoreState(input: {
+  readPlainContextPage?: import('./conversationSessionTypes').ConversationSessionOptions['readPlainContextPage'];
   page?: import('./conversationHistoryPage').ReadConversationHistoryPage;
   find?: (id: number) => ConversationSession | undefined;
   read?: (id: string, signal: AbortSignal) => Promise<readonly RestoredTurn[]>;
