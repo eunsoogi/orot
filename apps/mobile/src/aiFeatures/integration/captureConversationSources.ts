@@ -74,6 +74,7 @@ export async function captureConversationSources(
         const captured = await captureEvidenceSources([ref], registry, signal, {
           registry,
           results: generated,
+          periodReads: reads.periods,
         });
         sources.push(...captured.sources);
         mapping.set(key, captured.mapping.get(key)!);
