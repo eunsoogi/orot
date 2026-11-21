@@ -25,10 +25,12 @@ export type PublicToolSourceSheetState = {
 /** The sheet opens before I/O and never displays an unverified URL. */
 export function PublicToolSourceSheet({
   state,
+  destination,
   close,
   open,
 }: {
   readonly state: PublicToolSourceSheetState | null;
+  readonly destination: string;
   readonly close: () => void;
   readonly open: (choice: PublicToolSourceChoice) => void;
 }) {
@@ -43,7 +45,7 @@ export function PublicToolSourceSheet({
       {state ? (
         <ScrollView contentContainerStyle={styles.content}>
           <AppText accessibilityRole="header" style={styles.title}>
-            {t('ragConversation.tool.sources')}
+            {destination} · {t('ragConversation.tool.sources')}
           </AppText>
           {state.failed ? (
             <AppText accessibilityRole="alert">

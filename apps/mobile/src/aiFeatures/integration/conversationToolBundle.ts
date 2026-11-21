@@ -1,3 +1,4 @@
+import { europePmcConversationTool } from './explicitConversationLiteratureRoute';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
@@ -15,6 +16,7 @@ export function createConversationToolBundle(input: {
   readonly researchInputs: ReturnType<typeof createResearchInputTracker>;
   readonly external: ReturnType<typeof conversationExternalEvidence>;
   readonly publicSearchSucceeded: boolean;
+  readonly literatureOnly?: boolean;
   readonly artifactPaging?: unknown;
   readonly researchPaging?: { snapshot: unknown; operationRunId: string };
 }) {
@@ -36,9 +38,13 @@ export function createConversationToolBundle(input: {
         failed = true;
       },
     ),
-    ...(input.publicSearchSucceeded || !input.external.publicWebTool
-      ? input.external.tools
-      : []),
+    ...(input.literatureOnly
+      ? input.external.tools.filter(
+          tool => tool.id === europePmcConversationTool,
+        )
+      : input.publicSearchSucceeded || !input.external.publicWebTool
+        ? input.external.tools
+        : []),
   ];
   return { tools, generated, localRetrievalFailed: () => failed };
 }

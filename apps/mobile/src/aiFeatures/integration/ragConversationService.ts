@@ -127,6 +127,7 @@ export function createRagConversationService({
         observer,
         runId: createOperationRunId?.() ?? operationRunId(),
         question: request,
+        entryIntent: entryContext?.intent,
         signal,
         continuation: await continuationFor(
           observer,
@@ -156,7 +157,7 @@ export function createRagConversationService({
           observer,
           researchInputs,
           external,
-          publicSearchSucceeded: searchPlan.includeExternalTools,
+          ...searchPlan.toolPolicy,
         });
       const retention = createConversationRetentionBridge({
         observer,
@@ -233,7 +234,7 @@ export function createRagConversationService({
         localRetrievalFailed,
         historyIsCurrent,
         publicSearch: searchPlan.currentSearch,
-        skipPublicSearchNotice: !request,
+        skipPublicSearchNotice: !request || searchPlan.literatureOnly,
         retention,
         signal,
         reportIsCurrent: report?.isCurrent,

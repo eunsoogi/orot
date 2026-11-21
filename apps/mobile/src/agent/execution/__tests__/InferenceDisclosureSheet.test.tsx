@@ -135,7 +135,7 @@ describe('InferenceDisclosureSheet', () => {
       />,
     );
     expect(screen.getByText('Europe PMC')).toBeTruthy();
-    expect(screen.getByText('증상·약·검사에 관한 검색어')).toBeTruthy();
+    expect(screen.getByText('증상, 약, 검사에 관한 검색어')).toBeTruthy();
     expect(screen.queryByText('사용할 AI')).toBeNull();
     expect(screen.queryByText('synthetic search terms')).toBeNull();
     await fireEvent.press(screen.getByTestId('inference-disclosure-expand'));

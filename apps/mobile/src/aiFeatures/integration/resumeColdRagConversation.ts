@@ -192,7 +192,8 @@ export async function resumeColdRagConversation(input: {
             ? result.checkpoint.initialSearchStatus
             : (factory.publicSearch?.status ?? 'unavailable'),
       },
-      skipPublicSearchNotice: !descriptor.request,
+      skipPublicSearchNotice:
+        !descriptor.request || factory.publicSearch?.literatureOnly,
     });
     // This private registry must not replace the global alias map: aliases can overlap between requests.
     return {

@@ -7,22 +7,27 @@ export const modelSettingsKo = {
     '대화 모델 및 공개 웹검색 동의',
   'modelSettings.consentJointCalendarTitle': '대화 및 일정 분류 AI 동의',
   'modelSettings.consentJointCalendarWebTitle':
-    '대화·검색 및 일정 분류 AI 동의',
+    '대화, 외부 검색 및 일정 분류 AI 동의',
   'modelSettings.consentJointCalendar':
     '일정 분류는 {recipient}의 {model}로 처리합니다. 진료 관련성을 분류하기 위해 캘린더 일정 제목과 시간만 전송합니다. 일정 분류를 시작할 때마다 다시 묻지 않습니다.',
   'modelSettings.consentJointWeb':
-    '{recipient}에는 앱이 정한 일반 공개 주제의 검색어만 보냅니다. 이 검색 요청에는 건강 기록, 대화 원문, 개인 식별정보를 보내지 않습니다.',
+    '{recipient}의 공개 웹검색에는 앱이 정한 일반 공개 주제의 검색어만 보냅니다. 이 검색 요청에는 건강 기록, 대화 원문, 개인 식별정보를 보내지 않습니다.',
   'modelSettings.consentWeb':
     '{recipient}에 공개 웹 검색용으로 검토된 검색어를 보내는 데 별도로 계속 동의합니다.',
   'modelSettings.consentMedical':
     'Europe PMC에 의학 문헌 검색어를 보내는 데 별도로 계속 동의합니다. 건강 기록 원문이나 대화 전체는 보내지 않습니다.',
+  'modelSettings.consentJointMedical':
+    'Europe PMC에는 의학 문헌 검색어만 전송합니다. 건강 기록 원문이나 대화 전체를 검색 요청에 첨부하지 않습니다.',
+  'modelSettings.consentJointConversationMedicalTitle':
+    '대화 모델 및 외부 검색 동의',
+  'modelSettings.consentMedicalTitle': '의학 문헌 검색 동의',
   'modelSettings.consentRecipient': '전송받는 곳: {recipient}',
   'modelSettings.consentConversationData':
-    '대화와 보고서 생성에 필요한 질문, 선택한 건강 기록·검토한 기억·이전 대화·생성 결과, 진료 예약과 질문, 녹음 전사문, 사진에서 읽은 텍스트, 일정 계획 및 검색 결과를 전송합니다. 원본 사진은 전송하지 않습니다.',
+    '대화와 보고서 생성에 필요한 질문, 선택한 건강 기록, 검토한 기억, 이전 대화, 생성 결과, 진료 예약과 질문, 녹음 전사문, 사진에서 읽은 텍스트, 일정 계획 및 검색 결과를 전송합니다. 원본 사진은 전송하지 않습니다.',
   'modelSettings.consentCalendarData':
     '일정의 진료 관련성을 분류하기 위해 캘린더 일정 제목과 시간을 전송합니다.',
   'modelSettings.consentVoiceData':
-    '선택한 음성 모델로 통화할 때 건강정보를 포함해 말한 실시간 음성과 대화 내용, 요청한 대화 AI의 답변을 전송합니다. 원본 기록·사진·이전 채팅은 직접 보내지 않습니다. 별도 API 사용료가 발생할 수 있습니다. 통화 내용은 임시 표시되며 검증된 의료기록으로 자동 저장되지 않습니다. 시스템 통화가 연결되면 다른 앱을 사용하는 동안에도 계속되며 종료하거나 마이크를 끌 때까지 답변 중에도 듣습니다. 마이크 접근과 기록 변경 등 별도 행동 승인은 유지됩니다.',
+    '선택한 음성 모델로 통화할 때 건강정보를 포함해 말한 실시간 음성과 대화 내용, 요청한 대화 AI의 답변을 전송합니다. 원본 기록, 사진, 이전 채팅은 직접 보내지 않습니다. 별도 API 사용료가 발생할 수 있습니다. 통화 내용은 임시 표시되며 검증된 의료기록으로 자동 저장되지 않습니다. 시스템 통화가 연결되면 다른 앱을 사용하는 동안에도 계속되며 종료하거나 마이크를 끌 때까지 답변 중에도 듣습니다. 마이크 접근과 기록 변경 등 별도 행동 승인은 유지됩니다.',
   'modelSettings.liveVoiceConsentTitle': 'OpenAI Live 음성 대화에 동의할까요?',
   'modelSettings.liveVoiceConsentScope':
     '통화 중 말한 음성과 이 통화의 대화만 전송해요.',
@@ -56,7 +61,7 @@ export const modelSettingsKo = {
   'modelSettings.liveVoiceLanguageHindi': '힌디어',
   'modelSettings.liveVoiceLanguageJapanese': '일본어',
   'modelSettings.consentContinuing':
-    '모델 선택을 확인하면 이 계정과 모델의 위 전송 범위에 계속 동의합니다. 같은 범위의 새 기록도 포함하며 채팅마다 다시 묻지 않습니다. 모델 설정에서 철회할 수 있고 계정·모델·전송 범위가 바뀌면 다시 동의해야 합니다. 공개 검색의 별도 수신자에게는 이 동의가 적용되지 않습니다.',
+    '모델 선택을 확인하면 이 계정과 모델의 위 전송 범위에 계속 동의합니다. 같은 범위의 새 기록도 포함하며 채팅마다 다시 묻지 않습니다. 모델 설정에서 철회할 수 있고 계정, 모델 또는 전송 범위가 바뀌면 다시 동의해야 합니다. 공개 검색의 별도 수신자에게는 이 동의가 적용되지 않습니다.',
 
   'modelSettings.decisionsUnavailable':
     '이 앱에서 OpenAI API 분류 모델을 사용할 수 없어요.',

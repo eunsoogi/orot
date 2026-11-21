@@ -1,3 +1,4 @@
+import { settingsSearchGrants } from '../src/agent/execution/settingsSearchGrants';
 import { settingsConsentRecipient } from '../src/agent/execution/settingsConsentRecipient';
 import type { saveModelSettingsConsent } from '../src/agent/execution/saveModelSettingsConsent';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
@@ -149,7 +150,7 @@ export function createSettingsConsentPersistenceFixture(input: {
       decision.selection.modelId !== chosen.modelId ||
       decision.recipient !== chosen.recipient ||
       decision.search?.web ||
-      decision.search?.medical
+      (slot !== 'conversation' && decision.search?.medical)
     )
       throw new Error('Unsupported synthetic UI selection');
     const epoch = await credentialEpoch(slot);
@@ -172,6 +173,13 @@ export function createSettingsConsentPersistenceFixture(input: {
         identity: identity(slot, generation, epoch),
         permissions: settingsPermissionsForFeature(slot, chosen.providerId),
       }),
+      additionalGrants: generation =>
+        slot === 'conversation'
+          ? settingsSearchGrants(
+              identity(slot, generation, epoch),
+              decision.search,
+            )
+          : [],
       saveSelection: () => selection.save(chosen),
       isSelectionCurrent: () => matches(chosen),
       isPreviousSelectionCurrent: () => matches(previous),

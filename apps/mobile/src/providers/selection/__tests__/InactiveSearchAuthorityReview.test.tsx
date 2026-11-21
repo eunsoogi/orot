@@ -115,19 +115,13 @@ test('an explicitly suspended local-model search stays off until a fresh mounted
     />,
   );
   const choose = () => fireEvent.press(view.getByTestId('provider-option-0'));
-  const toggle = (value: boolean) =>
-    fireEvent(
-      view.getByTestId('settings-consent-medical'),
-      'valueChange',
-      value,
-    );
   const confirm = () =>
     fireEvent.press(view.getByTestId('provider-selection-confirm'));
   const allow = () =>
     fireEvent.press(view.getByTestId('inference-disclosure-allow'));
   try {
     await choose();
-    await toggle(true);
+    expect(view.queryByTestId('settings-consent-medical')).toBeNull();
     await confirm();
     expect(
       view.getByTestId('inference-disclosure-recipient'),
@@ -141,30 +135,15 @@ test('an explicitly suspended local-model search stays off until a fresh mounted
     );
     expect(initial?.identity.recipient).toBe('Europe PMC');
 
-    await choose();
-    await waitFor(() =>
-      expect(view.getByTestId('settings-consent-medical').props.value).toBe(
-        true,
-      ),
-    );
-    await toggle(false);
-    await confirm();
-    await waitFor(() => expect(close).toHaveBeenCalledTimes(2));
-    expect(view.queryByTestId('inference-disclosure-allow')).toBeNull();
+    // A previous suspension survives the route mount and must be renewed explicitly.
+    await authority.suspend();
     expect(await authority.current()).toBeNull();
     expect(await grants.read(slot, domain)).toEqual(initial);
-
     await choose();
     await waitFor(() =>
-      expect(
-        view.getByTestId('settings-consent-medical').props.disabled,
-      ).not.toBe(true),
+      expect(view.getByTestId('provider-selection-confirm')).toBeEnabled(),
     );
-    expect(view.getByTestId('settings-consent-medical').props.value).toBe(
-      false,
-    );
-    expect(await authority.current()).toBeNull();
-    await toggle(true);
+    expect(view.queryByTestId('settings-consent-medical')).toBeNull();
     await confirm();
     expect(
       view.getByTestId('inference-disclosure-recipient'),
@@ -172,7 +151,7 @@ test('an explicitly suspended local-model search stays off until a fresh mounted
     expect(await authority.current()).toBeNull();
     expect(await grants.read(slot, domain)).toEqual(initial);
     await allow();
-    await waitFor(() => expect(close).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(close).toHaveBeenCalledTimes(2));
     const active = await authority.current();
     expect(active?.generation).not.toBe(initial?.identity.authorityGeneration);
     expect(
