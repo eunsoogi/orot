@@ -28,6 +28,7 @@ export default function ProviderSelectionScreen({
   screenTitle,
   screenIntroduction,
   navigationRouteKey,
+  conversationQuickReview,
   options,
   requirements,
   selectionStore,
@@ -95,10 +96,11 @@ export default function ProviderSelectionScreen({
       )
     : undefined;
   const confirmationOption = currentPendingOption ?? pendingOption;
-  const { settings, confirmSelection, disclosureSheet } =
+  const { unifiedReview, confirmSelection, disclosureSheet } =
     useConversationModelConfirmation({
       presentation,
       navigationRouteKey,
+      conversationQuickReview,
       selectionStore,
       onSelectionCommitted,
       pendingSelection,
@@ -184,7 +186,7 @@ export default function ProviderSelectionScreen({
                 );
                 search.choose(
                   option,
-                  presentation === 'settings-provider' &&
+                  unifiedReview &&
                     option.provider.id === savedSelection?.providerId &&
                     option.modelId === savedSelection.modelId,
                 );
@@ -201,8 +203,8 @@ export default function ProviderSelectionScreen({
           ) : null}
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionFooter
-              inlineConsent={!settings}
-              searchChoices={settings ? undefined : search.choices}
+              inlineConsent={!unifiedReview}
+              searchChoices={unifiedReview ? undefined : search.choices}
               searchReviewStatus={search.status}
               onSearchChoices={search.change}
               message={selectionMessage}

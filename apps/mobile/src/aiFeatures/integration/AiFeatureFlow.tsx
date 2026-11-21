@@ -210,6 +210,7 @@ export function AiFeatureFlow({
             <ProviderSelectionFlow
               key={navigation.route.key}
               navigationRouteKey={navigation.route.key}
+              conversationQuickReview={screenRoute === 'rag-conversation'}
               selectionStore={serviceDependencies?.selectedAi?.selectionStore}
               chatGPTServices={serviceDependencies?.selectedAi?.chatGPTServices}
               safeAreaHandledByParent

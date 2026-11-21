@@ -17,6 +17,7 @@ import type {
 export function useConversationModelConfirmation({
   presentation,
   navigationRouteKey,
+  conversationQuickReview = false,
   selectionStore,
   onSelectionCommitted,
   pendingSelection,
@@ -34,6 +35,7 @@ export function useConversationModelConfirmation({
   ProviderSelectionScreenProps,
   | 'presentation'
   | 'navigationRouteKey'
+  | 'conversationQuickReview'
   | 'selectionStore'
   | 'onSelectionCommitted'
 > & {
@@ -53,12 +55,14 @@ export function useConversationModelConfirmation({
 }) {
   const saveConsent = useModelConsentSave('conversation', selectionStore);
   const settings = presentation === 'settings-provider';
+  const unifiedReview = settings || conversationQuickReview;
   const consent = useModelSettingsReview(
     'conversation',
-    settings,
+    unifiedReview,
     selectionStore,
     JSON.stringify([
       presentation,
+      conversationQuickReview,
       navigationRouteKey,
       pendingSelection,
       pendingResolution?.ok,
@@ -89,17 +93,19 @@ export function useConversationModelConfirmation({
     setSaveError(false);
     let selectionSaved = false;
     try {
+      const remote =
+        currentPendingOption.privacyBoundary === 'selected-context-remote';
       const search = {
-        ...searchChoices,
-        // The settings sheet explicitly discloses Europe PMC alongside the model.
-        // Merely selecting a model, or having an older grant, cannot admit this scope.
-        medical: settings || searchChoices.medical,
+        // A fresh local quick choice must not enable any external scope.
+        // The shared sheet still discloses search when changing to a remote model.
+        medical:
+          settings ||
+          (conversationQuickReview && remote) ||
+          searchChoices.medical,
         web:
-          currentPendingOption.privacyBoundary === 'selected-context-remote' &&
-          Boolean(currentPendingOption.provider.searchPublicWeb) &&
-          // A normal settings review presents both scopes explicitly on one sheet.
-          // Merely viewing or selecting the row never creates permission.
-          settings,
+          unifiedReview &&
+          remote &&
+          Boolean(currentPendingOption.provider.searchPublicWeb),
       };
       const saved = await consent.review(
         currentPendingOption,
@@ -149,7 +155,7 @@ export function useConversationModelConfirmation({
   }
 
   return {
-    settings,
+    unifiedReview,
     confirmSelection: () => {
       confirmSelection();
     },
