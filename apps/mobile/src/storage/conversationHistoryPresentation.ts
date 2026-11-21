@@ -1,4 +1,4 @@
-import { readConversationSteeringHistoryMany } from './conversationSteeringHistory';
+import * as steeringHistory from './conversationSteeringHistory';
 import {
   decodeOwnedArchiveRow,
   type ConversationHistoryPresentation,
@@ -37,6 +37,7 @@ function createOwnedArchiveReader<T>(
     sessionId: string,
     version: number,
     rows: Map<string, T>,
+    schema: number,
   ) => Promise<void>,
 ) {
   return async (sessionId: string, version: number, ids: readonly string[]) => {
@@ -52,8 +53,11 @@ function createOwnedArchiveReader<T>(
     await ensure();
     const output: (T | null)[] = [];
     await database.transaction(async tx => {
+      const steering = decorate
+        ? `, ${steeringHistory.steeringHistorySchemaSql} AS steering`
+        : '';
       const lease = await tx.execute(
-        `SELECT s.id FROM conversation_artifact_sessions s
+        `SELECT s.id${steering} FROM conversation_artifact_sessions s
          JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
          WHERE s.id = ? AND s.hidden = 0 AND s.version = ?
          AND NOT EXISTS (SELECT 1 FROM conversation_artifact_removed_sessions x WHERE x.id = s.id)`,
@@ -134,7 +138,6 @@ function createOwnedArchiveReader<T>(
       for (const id of await suppressExplicitlyRemovedHistory(tx, savedIds))
         pending.delete(id);
       if (summaryRows.size) {
-        // Read only previously admitted card text for surviving rows in this owned snapshot.
         const summaries = await readArchivedHealthSummaryPresentation(
           tx,
           [...summaryRows.values()]
@@ -151,7 +154,8 @@ function createOwnedArchiveReader<T>(
           if (enriched !== null) pending.set(id, enriched);
         }
       }
-      await decorate?.(tx, sessionId, version, pending);
+      const schema = Number(lease.rows[0].steering ?? 0);
+      await decorate?.(tx, sessionId, version, pending, schema);
       for (const id of ids) {
         const projected = pending.get(id) ?? null;
         output.push(
@@ -180,16 +184,18 @@ export function createConversationProjectionReaders(
       },
       undefined,
       true,
-      async (tx, sessionId, version, rows) => {
+      async (tx, sessionId, version, rows, schema) => {
         const complete = [...rows].filter(
           ([, row]) => row.status === 'complete',
         );
-        const receipts = await readConversationSteeringHistoryMany(
-          tx,
-          sessionId,
-          version,
-          complete.map(([id]) => id),
-        );
+        const receipts =
+          await steeringHistory.readConversationSteeringHistoryMany(
+            tx,
+            sessionId,
+            version,
+            complete.map(([id]) => id),
+            schema,
+          );
         for (const [id, row] of complete) {
           const steeringInstructions = receipts.get(id);
           if (row.status === 'complete' && steeringInstructions?.length)

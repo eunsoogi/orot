@@ -4,26 +4,33 @@ import { steeringReceiptTimes } from './conversationSteeringReceiptTimes';
 
 type History = ReadonlyMap<string, readonly StoredSteeringInstruction[]>;
 
+/** Optional steering tables are created lazily and may differ on older installs. */
+export const steeringHistorySchemaSql = `(SELECT COALESCE(SUM(CASE name
+  WHEN 'conversation_steering' THEN 1
+  WHEN 'conversation_live_steering' THEN 2
+  WHEN 'conversation_steering_receipt_times' THEN 4
+  END), 0) FROM sqlite_master WHERE type = 'table'
+  AND name IN ('conversation_steering', 'conversation_live_steering', 'conversation_steering_receipt_times'))`;
+
 /** Read only already-eligible committed requests from the current owned display page. */
 export async function readConversationSteeringHistoryMany(
   sql: SqlExecutor,
   sessionId: string,
   version: number,
   requestIds: readonly string[],
+  knownSchema?: number,
 ): Promise<History> {
   const restored = new Map<string, StoredSteeringInstruction[]>();
   if (!requestIds.length) return restored;
-  const tables = (
-    await sql.execute(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('conversation_steering', 'conversation_live_steering', 'conversation_steering_receipt_times')",
-    )
-  ).rows;
-  if (!tables.some(row => row.name === 'conversation_steering'))
-    return restored;
-  const hasLive = tables.some(row => row.name === 'conversation_live_steering');
-  const hasTimes = tables.some(
-    row => row.name === 'conversation_steering_receipt_times',
-  );
+  const schema =
+    knownSchema ??
+    Number(
+      (await sql.execute(`SELECT ${steeringHistorySchemaSql} AS steering`))
+        .rows[0]?.steering ?? 0,
+    );
+  if (schema % 2 !== 1) return restored;
+  const hasLive = Math.floor(schema / 2) % 2 === 1;
+  const hasTimes = schema >= 4;
   const { rows } = await sql.execute(
     `SELECT request_id, run_id, id, text, sequence, status, live_status, submitted_at, sent_at, read_at
      FROM (
