@@ -194,7 +194,8 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  // Keep the caution readable against the page background at enlarged text sizes.
-  composerDisclaimer: { backgroundColor: appColors.background },
+  // Let the shared fade provide the backdrop, including its opaque accessibility
+  // fallback. The stronger text token stays legible without a separate plate.
+  composerDisclaimer: { color: appColors.text },
   error: { color: appColors.danger },
 });
