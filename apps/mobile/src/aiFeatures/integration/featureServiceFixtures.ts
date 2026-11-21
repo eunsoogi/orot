@@ -95,9 +95,9 @@ export function memoryTransportFixture() {
   };
   return {
     records: [positive, note],
-    assertScoped(requests: unknown, consent: unknown) {
+    assertScoped(requests: unknown, consentRequests: unknown) {
       const outbound = JSON.stringify(requests);
-      const disclosure = JSON.stringify(consent);
+      const disclosure = JSON.stringify(consentRequests);
       expect(outbound).toContain('기억 내용 1');
       for (const privateValue of [note.text, key, sourceId]) {
         expect(outbound).not.toContain(privateValue);
