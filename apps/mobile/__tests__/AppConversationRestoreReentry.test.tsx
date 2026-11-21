@@ -5,11 +5,17 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
-import { AccessibilityInfo, AppState } from 'react-native';
+import { AccessibilityInfo, AppState, ScrollView } from 'react-native';
 import App from '../App';
 import * as sessionOptions from '../src/aiFeatures/integration/conversationSessionOptions';
 import { setup } from '../src/ragConversation/testSupport/continuousSessionFixture';
 import type { ConversationHistoryPage } from '../src/ragConversation/conversationHistoryPage';
+import {
+  at,
+  fixture as savedArchive,
+  sessionId,
+} from '../src/ragConversation/testSupport/savedHistoryDisplayFixture';
+import { notifyLocalDataCleared } from '../src/storage/localDataClearEvents';
 
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
   importLocalCommonObservations: jest.fn(),
@@ -106,3 +112,103 @@ test.each(['same', 'changed'] as const)(
     }
   },
 );
+
+test('keeps the settled transcript and draft across root tabs without another model or archive read', async () => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
+  const original = Object.getOwnPropertyDescriptor(AppState, 'currentState');
+  Object.defineProperty(AppState, 'currentState', {
+    configurable: true,
+    value: 'active',
+  });
+  const f = await savedArchive(1);
+  const answer = 'Synthetic saved answer 0';
+  const draft = '보내지 않은 합성 초안';
+  let releaseLookup!: () => void;
+  const blocked = new Promise<void>(resolve => {
+    releaseLookup = resolve;
+  });
+  let firstResolution = true;
+  const lookup = jest.fn(async () => {
+    if (!firstResolution) await blocked;
+    firstResolution = false;
+    return {
+      id: sessionId,
+      version: 0,
+      updatedAt: at(0),
+      model: { providerId: 'fixture-provider', modelId: 'fixture-model' },
+    };
+  });
+  const read = jest.fn(f.reader);
+  jest
+    .spyOn(sessionOptions, 'createConversationSessionOptions')
+    .mockReturnValue({
+      continuousSession: lookup,
+      readSavedHistoryDisplay: read,
+      retention: f.retention,
+      restoreSession: f.strict,
+      restoreSessionPage: f.strict,
+    });
+  const app = await render(<App />);
+  try {
+    expect(await screen.findByText(answer)).toBeTruthy();
+    const scroll = screen.getByTestId('rag-conversation-history');
+    await fireEvent(scroll, 'scrollBeginDrag');
+    await fireEvent.scroll(scroll, {
+      nativeEvent: {
+        contentOffset: { x: 0, y: 220 },
+        contentSize: { width: 320, height: 1000 },
+        layoutMeasurement: { width: 320, height: 360 },
+      },
+    });
+    await fireEvent(scroll, 'scrollEndDrag');
+    const jump = jest.spyOn(ScrollView.prototype, 'scrollTo');
+    const follow = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
+    jump.mockClear();
+    follow.mockClear();
+
+    await fireEvent.changeText(
+      screen.getByTestId('rag-conversation-input'),
+      draft,
+    );
+    expect(lookup).toHaveBeenCalledTimes(1);
+    await fireEvent.press(screen.getByTestId('navigation-tab-records'));
+    expect(await screen.findByTestId('records-title')).toBeTruthy();
+    expect(screen.queryByText(answer)).toBeNull();
+    expect(
+      screen.getByText(answer, { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('rag-conversation-history', {
+        includeHiddenElements: true,
+      }),
+    ).toBe(scroll);
+    await fireEvent.press(screen.getByTestId('navigation-tab-conversation'));
+    // A redundant new lookup would still be blocked on the first accessible render.
+    expect(await screen.findByTestId('rag-conversation-history')).toBe(scroll);
+    expect(screen.getByText(answer)).toBeTruthy();
+    expect(screen.getByTestId('rag-conversation-history')).toBe(scroll);
+    expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
+      draft,
+    );
+    expect(screen.queryByTestId('conversation-history-restoring')).toBeNull();
+    expect(lookup).toHaveBeenCalledTimes(1);
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(jump).not.toHaveBeenCalled();
+    expect(follow).not.toHaveBeenCalled();
+
+    // An actual privacy invalidation still wins while Chat is hidden.
+    await fireEvent.press(screen.getByTestId('navigation-tab-records'));
+    await act(async () => notifyLocalDataCleared());
+    await fireEvent.press(screen.getByTestId('navigation-tab-conversation'));
+    expect(screen.queryByText(answer)).toBeNull();
+    expect(f.strict).not.toHaveBeenCalled();
+    expect(f.forbidden).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => releaseLookup());
+    await app.unmount();
+    if (original) Object.defineProperty(AppState, 'currentState', original);
+    f.f.close();
+  }
+});
