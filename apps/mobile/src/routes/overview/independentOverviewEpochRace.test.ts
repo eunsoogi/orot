@@ -136,3 +136,64 @@ test('an unconfirmed dirty native settlement is fail-closed for independent read
   expect(literal?.current()).toBe(true);
   literal?.dispose();
 });
+
+test.each([
+  ['DELETE FROM', 'discarded'],
+  ['SELECT id FROM', 'published'],
+] as const)(
+  'a direct %s already queued when BEGIN executes is classified through native settlement',
+  async (command, expected) => {
+    const f = openOpSqliteFileQueue();
+    const worker = gate();
+    const admitted = gate();
+    const release = gate();
+    const owner = guardedNativeDatabase(f.database);
+    let direct: ReturnType<typeof owner.execute> | undefined;
+    let writing: Promise<void> | undefined;
+    let revoke: (() => void) | undefined;
+    try {
+      await f.database.execute('PRAGMA journal_mode=WAL');
+      await seed(f.database);
+      const statement = `${command} health_observations WHERE id = ?`;
+      f.delayWorker(async query => {
+        if (query === statement) await worker.reached;
+      });
+      direct = owner.execute(statement, ['sample']);
+      writing = owner.transaction(async () => {
+        admitted.release();
+        await release.reached;
+      });
+      await admitted.reached; // Pinned synchronous BEGIN has already returned.
+      worker.release();
+      await direct; // Delete joined the transaction and its individual Promise settled.
+      const epoch = acquireIndependentReadEpoch(owner);
+      revoke = epoch?.dispose;
+      const publish = jest.fn();
+      let versions = 0;
+      const outcome = await readIndependentOverviewSnapshot(
+        () =>
+          readonlyOpen(
+            f.filename,
+            () => {},
+            async () => {
+              if (++versions !== 2) return;
+              release.release();
+              await writing;
+            },
+          ),
+        () => epoch?.current() === true,
+        async () => true,
+        project,
+        publish,
+      );
+      expect(outcome).toBe(expected);
+      expect(publish).toHaveBeenCalledTimes(expected === 'published' ? 1 : 0);
+    } finally {
+      revoke?.();
+      worker.release();
+      release.release();
+      await Promise.allSettled([direct, writing]);
+      await f.close();
+    }
+  },
+);

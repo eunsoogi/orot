@@ -20,6 +20,7 @@ export function openOpSqliteFileQueue() {
   const events: { event: string; at: number }[] = [];
   const mark = (event: string) => events.push({ event, at: performance.now() });
   let afterSubmit: ((query: string) => void) | undefined;
+  let beforeWorker: ((query: string) => Promise<void>) | undefined;
   let tail = Promise.resolve();
   function executeSync(query: string, bindings: SqlValue[] = []): SqlResult {
     const statement = handle.prepare(query);
@@ -35,20 +36,23 @@ export function openOpSqliteFileQueue() {
     execute(query: string, bindings?: SqlValue[]) {
       const aggregate = query.includes('WITH days(date, from_key, to_key)');
       if (aggregate) mark('aggregate_submitted');
-      const result = tail.then(
-        () =>
-          new Promise<SqlResult>((resolve, reject) => {
-            nextTurn(() => {
-              try {
-                if (aggregate) mark('aggregate_worker_start');
-                const value = executeSync(query, bindings);
-                if (aggregate) mark('aggregate_worker_end');
-                resolve(value);
-              } catch (error) {
-                reject(error);
-              }
-            });
-          }),
+      const executeOnTurn = () =>
+        new Promise<SqlResult>((resolve, reject) => {
+          nextTurn(() => {
+            try {
+              if (aggregate) mark('aggregate_worker_start');
+              const value = executeSync(query, bindings);
+              if (aggregate) mark('aggregate_worker_end');
+              resolve(value);
+            } catch (error) {
+              reject(error);
+            }
+          });
+        });
+      const result = tail.then(() =>
+        beforeWorker
+          ? beforeWorker(query).then(executeOnTurn)
+          : executeOnTurn(),
       );
       tail = result.then(
         () => undefined,
@@ -91,6 +95,9 @@ export function openOpSqliteFileQueue() {
     filename,
     events,
     mark,
+    delayWorker(callback?: (query: string) => Promise<void>) {
+      beforeWorker = callback;
+    },
     observeSubmit(callback?: (query: string) => void) {
       afterSubmit = callback;
     },

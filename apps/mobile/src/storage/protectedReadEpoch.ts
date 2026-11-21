@@ -30,14 +30,15 @@ export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
     dirtyTransactions: 0,
   };
   const openTransactions = new Set<{ dirty: boolean }>();
+  const markDirty = (scope: { dirty: boolean }) => {
+    if (scope.dirty) return;
+    scope.dirty = true;
+    epoch.dirtyTransactions++;
+  };
   const track = <R>(call: () => R): R => {
     // Direct execute shares the native connection with tx.execute. Either can
     // make an admitted callback dirty, and op-sqlite commits after it returns.
-    for (const transaction of openTransactions) {
-      if (transaction.dirty) continue;
-      transaction.dirty = true;
-      epoch.dirtyTransactions++;
-    }
+    for (const transaction of openTransactions) markDirty(transaction);
     epoch.mutation++;
     epoch.pending++;
     const finish = () => {
@@ -68,6 +69,9 @@ export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
     try {
       await native.transaction(async tx => {
         openTransactions.add(scope);
+        // The native BEGIN is synchronous; a tracked asynchronous direct
+        // dispatch may still be queued and execute inside this transaction.
+        if (epoch.pending !== 0) markDirty(scope);
         try {
           await operation({
             execute(sql, binds) {
