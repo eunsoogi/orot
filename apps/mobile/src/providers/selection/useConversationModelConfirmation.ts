@@ -84,6 +84,9 @@ export function useConversationModelConfirmation({
     try {
       const search = {
         ...searchChoices,
+        // The settings sheet explicitly discloses Europe PMC alongside the model.
+        // Merely selecting a model, or having an older grant, cannot admit this scope.
+        medical: settings || searchChoices.medical,
         web:
           currentPendingOption.privacyBoundary === 'selected-context-remote' &&
           Boolean(currentPendingOption.provider.searchPublicWeb) &&
