@@ -1,3 +1,4 @@
+import { markConversationInput } from '../providers/conversationInputDiagnostic';
 import { t } from '../i18n';
 import { startOwnedConversationRequest } from './conversationOwnedRequest';
 import type { createConversationSessionRequests } from './conversationSessionRequests';
@@ -76,6 +77,7 @@ export function conversationDispatch(input: {
     let dispatched = false;
     try {
       input.update(id, { preparingSend: true, error: '' });
+      markConversationInput('conversation_send_preparing');
       if (!current()) return;
       const ready = await Promise.race([
         input.beforeSend?.(id, controller.signal) ?? Promise.resolve(true),
