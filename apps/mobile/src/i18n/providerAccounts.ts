@@ -24,6 +24,9 @@ export const providerAccountsKo = {
   'provider.selection.rowTitle': '사용할 AI',
   'provider.selection.rowPrompt': 'AI 선택하기',
   'provider.selection.rowLoading': '선택한 AI를 확인하고 있어요…',
+  'provider.selection.rowSavedPendingLabel':
+    '저장된 선택: {model}. 사용 가능 여부를 확인하고 있어요.',
+  'provider.selection.rowOpenSettings': '모델 설정 열기',
   'provider.selection.rowUnavailable': '선택한 AI를 확인할 수 없어요.',
   'provider.selection.rowHint': '추천에 사용할 제공자와 모델을 선택합니다.',
   'provider.selection.introduction':

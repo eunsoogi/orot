@@ -1,4 +1,9 @@
 import { t } from '../../i18n';
+import { chatGPTCredentialMutation } from '../../providers/chatGPTConsentIdentity';
+import {
+  savedChatGPTModelLabel,
+  selectedChatGPTAccountId,
+} from './savedChatGPTModelLabel';
 import {
   APPLE_PCC_PROVIDER_ID,
   APPLE_PCC_MODEL_ID,
@@ -34,6 +39,7 @@ export interface ConversationModelDisplayObserver {
   readonly platformRefreshOnly?: SavedPlatformChoice;
   selection(witness: OnDeviceSelectionWitness | null): void;
   savedPlatformName(name: string, platform: SavedPlatformChoice): void;
+  savedChatGPTName?(name: string, credential: OnDeviceSelectionWitness): void;
 }
 
 export type ResolveConversationModelDisplay = (
@@ -52,7 +58,8 @@ export type SelectedAiResolution =
       readonly remoteProcessing: boolean;
       readonly onDeviceSelectionWitness?: OnDeviceSelectionWitness;
     }
-  | { readonly status: 'selection-required' | 'unavailable' };
+  | { readonly status: 'selection-required' }
+  | { readonly status: 'unavailable'; readonly reason?: 'transient-catalog' };
 
 export interface SelectedAiResolverOptions {
   readonly selectionStore?: ProviderSelectionStore;
@@ -60,8 +67,6 @@ export interface SelectedAiResolverOptions {
   readonly loadAppleOption?: typeof loadAppleSelectionOption;
   readonly loadPccOption?: typeof loadPrivateCloudComputeOption;
 }
-
-const CHATGPT_PROVIDER_PREFIX = 'chatgpt-plan:';
 
 /** Resolves only the saved provider/model pair; catalog or account failure never selects a substitute. */
 export async function resolveSelectedAiProvider(
@@ -82,6 +87,9 @@ export async function resolveSelectedAiProvider(
     );
   const chatGPTServices =
     options.chatGPTServices ?? nativeChatGPTSelectionServices;
+  const credentialWitness = display?.savedChatGPTName
+    ? chatGPTCredentialMutation.capture()
+    : undefined;
   let selection: ProviderSelection | null;
   try {
     selection = await selectionStore.load();
@@ -159,30 +167,34 @@ export async function resolveSelectedAiProvider(
       return { status: 'unavailable' };
     }
 
+    const label = savedChatGPTModelLabel(selection.modelId);
+    // Fence only UI lookups on local credential mutation; dispatch is unchanged.
+    const displayCurrent = () =>
+      !(display?.savedChatGPTName && selectionWitness) ||
+      (selectionWitness() && credentialWitness?.() === true);
+    if (!displayCurrent()) return { status: 'unavailable' };
+    if (label && selectionWitness?.() && credentialWitness?.())
+      display?.savedChatGPTName?.(label, {
+        isCurrent: credentialWitness,
+        subscribe: listener => chatGPTCredentialMutation.subscribe(listener),
+      });
     const models = await chatGPTServices.listModels(accountId);
-    if (!models.ok) return { status: 'unavailable' };
+    if (!displayCurrent()) return { status: 'unavailable' };
+    if (!models.ok)
+      return {
+        status: 'unavailable',
+        ...(display &&
+        models.error.code === 'provider_unavailable' &&
+        models.error.retryable
+          ? { reason: 'transient-catalog' as const }
+          : {}),
+      };
     return readySelection(selection, [
       ...createChatGPTSelectionOptions(accountId, models.value),
     ]);
   } catch {
     return { status: 'unavailable' };
   }
-}
-
-function selectedChatGPTAccountId(
-  selection: ProviderSelection,
-): string | undefined {
-  if (!selection.providerId.startsWith(CHATGPT_PROVIDER_PREFIX))
-    return undefined;
-  const modelSuffix = `:${selection.modelId}`;
-  if (!selection.providerId.endsWith(modelSuffix)) return undefined;
-  const accountId = selection.providerId.slice(
-    CHATGPT_PROVIDER_PREFIX.length,
-    -modelSuffix.length,
-  );
-  return accountId.trim() === accountId && accountId.length > 0
-    ? accountId
-    : undefined;
 }
 
 function readySelection(
