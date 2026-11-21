@@ -16,6 +16,9 @@ export interface HealthSummaryReference {
 export interface HealthSummaryResult {
   readonly reference: HealthSummaryReference;
   readonly analysis: DiseaseHypothesisAnalysis;
+  /** Display-only metadata; re-open source ownership only when a chip is pressed. */
+  readonly archivedSummaryRevision?: string;
+  readonly archivedSectionCitations?: readonly (readonly import('./savedArchivedCitations').SavedArchivedCitation[])[];
 }
 
 /** Reject malformed or medication-only windows without inventing a replacement period. */

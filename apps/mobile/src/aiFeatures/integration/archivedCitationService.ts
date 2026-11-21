@@ -30,6 +30,7 @@ export function createArchivedCitationService(
       target.turnId,
       target.createdAt,
       ordinal,
+      ...(target.summary ? [target.summary] : []),
     );
     return !signal.aborted && source && !isConversationPhotoSource(source)
       ? { data, source }
@@ -50,7 +51,11 @@ export function createArchivedCitationService(
         sessionVersion: target.sessionVersion,
         requestId: target.turnId,
         operationRunId: 'archived-citation',
-        archiveCitation: { createdAt: target.createdAt, ordinal },
+        archiveCitation: {
+          createdAt: target.createdAt,
+          ordinal,
+          ...(target.summary ? { summary: target.summary } : {}),
+        },
       },
     };
   };
@@ -69,6 +74,7 @@ export function createArchivedCitationService(
       sessionVersion: owner.sessionVersion,
       turnId: owner.requestId,
       createdAt: key.createdAt,
+      ...(key.summary ? { summary: key.summary } : {}),
     };
     try {
       const entry = await selected(target, key.ordinal, signal);

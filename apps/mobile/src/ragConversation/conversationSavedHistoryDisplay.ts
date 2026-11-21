@@ -19,6 +19,7 @@ export type SavedHistoryDisplayRow = {
       readonly archivedCitationTarget?: import('./useArchivedCitationOpen').ArchivedCitationTarget;
       readonly interruptionReason?: ConversationRecoveryReason;
       readonly partial?: true;
+      readonly healthSummary?: NonNullable<DisplayMessage['healthSummary']>;
       readonly dailyReport?: NonNullable<DisplayMessage['dailyReport']>;
       readonly savedCitations?: readonly SavedArchivedCitation[];
     })
@@ -106,6 +107,9 @@ export function savedHistoryTranscript(
             ? { initialResponse: row.initialResponse }
             : {}),
           ...(activity ? { activity } : {}),
+          ...(row.kind === 'answer' && row.healthSummary
+            ? { healthSummary: row.healthSummary }
+            : {}),
           ...(row.kind === 'answer' && row.dailyReport
             ? { dailyReport: row.dailyReport }
             : {}),
