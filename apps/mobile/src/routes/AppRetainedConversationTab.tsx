@@ -50,12 +50,12 @@ export function conversationTabAuthority(
 export function AppRetainedConversationTab({
   actions,
   activeTab,
-  conversation,
+  renderConversation,
   children,
 }: {
   readonly actions: RouteActions;
   readonly activeTab: AppRootTab;
-  readonly conversation: (actions: RouteActions) => ReactNode;
+  readonly renderConversation: (actions: RouteActions) => ReactNode;
   readonly children: ReactNode;
 }) {
   const root = actions.route.name === 'root';
@@ -73,7 +73,9 @@ export function AppRetainedConversationTab({
     [actions, root, visible],
   );
   if (!root)
-    return isAppAiRoute(actions.route.name) ? conversation(actions) : children;
+    return isAppAiRoute(actions.route.name)
+      ? renderConversation(actions)
+      : children;
   return (
     <View style={styles.fill}>
       {(visible || opened) && (
@@ -89,7 +91,7 @@ export function AppRetainedConversationTab({
             <NavigationPrimaryActionContext.Provider
               value={visible ? primary : null}
             >
-              {conversation(conversationActions)}
+              {renderConversation(conversationActions)}
             </NavigationPrimaryActionContext.Provider>
           </NavigationLeaveStateRegistrationProvider>
         </View>

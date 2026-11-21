@@ -133,13 +133,13 @@ function App({
               <AppRetainedConversationTab
                 actions={actions}
                 activeTab={activeTab}
-                conversation={actions => (
+                renderConversation={sceneActions => (
                   <AppConversationScene
-                    actions={actions}
-                    defaultConversation={actions.route.name === 'root'}
+                    actions={sceneActions}
+                    defaultConversation={sceneActions.route.name === 'root'}
                     {...conversationTabAuthority(
                       appNavigation,
-                      actions.route,
+                      sceneActions.route,
                       () => activeTabRef.current === 'conversation',
                     )}
                     consent={ai.consent}
