@@ -71,7 +71,7 @@ export function dailyReportSensorFacts(
 }
 
 /** Local presentation describes a retrieved subset, never a clinical normal range. */
-function sensorSummaryText(summary: ProviderObservationSummary): string {
+export function sensorSummaryText(summary: ProviderObservationSummary): string {
   const display = (value: number) => Number(value.toFixed(4));
   const unit = summary.unit === 'count/min' ? '회/분' : (summary.unit ?? '');
   return [

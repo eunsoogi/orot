@@ -48,8 +48,6 @@ export const ragConversationKo = {
   'ragConversation.photo.consentCancel': '취소',
   'ragConversation.sessions': '대화 목록',
   'ragConversation.newConversation': '새 대화',
-  'ragConversation.transmissionNotice':
-    '필요하면 동의를 받고 공개 웹자료와 의학 문헌도 찾아요.',
   'ragConversation.disclaimer': 'AI 답변은 진료를 대신하지 않아요.',
   'ragConversation.loading': '저장된 근거를 확인하고 있어요.',
   'ragConversation.progressAnswer': '답변을 작성하고 있어요.',

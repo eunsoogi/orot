@@ -7,12 +7,13 @@ import { openLocalAgentMemoryDatabase } from '../../../storage/secureDatabase';
 import { createConversationSessions } from '../../../ragConversation/conversationSessions';
 import { conversationComposerDisabled } from '../../../ragConversation/conversationComposerDisabled';
 import * as diagnostics from '../../../providers/diagnostics';
+import * as historyDiagnostic from '../../../providers/conversationHistoryDiagnostic';
 import { createAiFeatureServices } from '../featureServices';
 import { consent } from '../featureServiceFixtures';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { diverseHistoryProfileFixture } from '../testSupport/diverseHistoryProfileFixture';
-import * as projection from '../../../healthEvidence/healthContext/projection';
-import * as revisions from '../../../healthEvidence/healthContext/scope';
+import { coldConversationProfile } from '../testSupport/coldConversationProfile';
+import { fingerprint } from '../evidenceUtils';
 /** Jest leaves Metro's lazy imports intact. Transform the two entry modules
  * while preserving production factory code and using Jest's actual dependencies. */
 function loadProductionLocalData() {
@@ -190,57 +191,58 @@ test('profiles revision and presentation work after committed report reuse', asy
   const options = createAiFeatureServices(consent, {
     loadLocalData,
   }).conversationSessionOptions();
-  const stats = {
-    hydrationMs: 0,
-    revisionMs: 0,
-    projectionMs: 0,
-    revisionCalls: 0,
-    projectionCalls: 0,
-  };
-  let start = null;
-  const diagnostic = jest
-    .spyOn(diagnostics, 'providerDiagnostic')
-    .mockImplementation((_feature, stage, outcome) => {
-      if (stage !== 'artifact_source_hydration') return;
-      if (outcome === 'started') start = performance.now();
-      else if (start !== null) {
-        stats.hydrationMs += performance.now() - start;
-        start = null;
-      }
-    });
-  const observe = (module, name, key) => {
-    const work = module[name];
-    return jest.spyOn(module, name).mockImplementation((...args) => {
-      if (start === null) return work(...args);
-      const before = performance.now();
-      try {
-        return work(...args);
-      } finally {
-        stats[key + 'Ms'] += performance.now() - before;
-        stats[key + 'Calls']++;
-      }
-    });
-  };
-  const revision = observe(revisions, 'healthContextRevision', 'revision');
-  const project = observe(projection, 'projectHealthContext', 'projection');
+  const profile = coldConversationProfile(f.database);
+  const costDetail = jest
+    .spyOn(historyDiagnostic, 'historyValidationCostEnabled')
+    .mockReturnValue(true);
   try {
     const fullStart = performance.now();
+    const cpuStart = process.cpuUsage();
     const page = await options.restoreSessionPage(
       'session',
       new AbortController().signal,
     );
     expect(page.turns).toHaveLength(5);
     expect(page.turns.filter(turn => turn.historyUnavailable)).toEqual([]);
-    expect(page.turns.every(turn => turn.citations.length)).toBe(true);
+    expect(page.turns.map(turn => turn.toolMessageId)).toEqual([
+      'turn-0',
+      'turn-1',
+      'turn-2',
+      'turn-3',
+      'turn-4',
+    ]);
+    expect(page.turns.map(turn => turn.citations.length)).toEqual([
+      1, 2, 2, 2, 2,
+    ]);
+    const stats = profile.read();
+    for (const stage of [
+      'artifact_source_authority',
+      'artifact_parent_decode',
+      'artifact_parent_fingerprint',
+      'artifact_report_calendar',
+      'artifact_report_snapshot',
+      'artifact_report_fingerprint',
+    ])
+      expect(stats.initialValidationCosts[stage]?.calls).toBeGreaterThan(0);
+    expect(stats.timelineToRecheckMs).toBeGreaterThan(0);
+    expect(stats.sql.activity.calls).toBe(2);
+    expect(stats.sql.activity.indexedLatest).toBe(2);
+    expect(stats.sql.measurement.calls).toBe(3);
+    expect(stats.sql.measurement.indexedLatest).toBe(3);
+    expect(stats.sql.heart.calls).toBe(3);
     expect(stats.revisionCalls).toBe(15);
+    // A retained parent can appear in several roots, but the validated report
+    // only needs one pure summary projection for both alias and prose review.
+    expect(stats.projectionCalls).toBe(5);
     console.info('SYNTHETIC_LONG_SOURCE_HYDRATION', {
       ...stats,
       fullMs: performance.now() - fullStart,
+      cpu: process.cpuUsage(cpuStart),
+      transcriptRevision: fingerprint(page),
     });
   } finally {
-    diagnostic.mockRestore();
-    revision.mockRestore();
-    project.mockRestore();
+    costDetail.mockRestore();
+    profile.dispose();
     await drain();
     f.close();
   }

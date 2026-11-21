@@ -1,4 +1,9 @@
 import {
+  liveVoiceModelId,
+  liveVoiceProviderId,
+  liveVoiceRecipient,
+} from './liveVoiceSettingsIdentity';
+import {
   settingsSearchGrants,
   type SettingsSearchChoices,
 } from './settingsSearchGrants';
@@ -31,6 +36,18 @@ export async function saveModelSettingsConsent(input: {
   signal: AbortSignal;
   isCurrent: () => boolean;
 }) {
+  // Only the explicit model-settings action can commit this exact Live media grant.
+  if (
+    (input.selection.providerId === liveVoiceProviderId ||
+      (input.slot === 'voice' &&
+        input.selection.modelId === liveVoiceModelId)) &&
+    (input.slot !== 'voice' ||
+      !input.remote ||
+      input.selection.providerId !== liveVoiceProviderId ||
+      input.selection.modelId !== liveVoiceModelId ||
+      input.recipient !== liveVoiceRecipient)
+  )
+    throw new Error('Invalid Live voice consent scope');
   const authority = settingsConsentAuthority(input.slot);
   const prior = await input.store.load();
   if (input.signal.aborted || !input.isCurrent())
@@ -85,7 +102,10 @@ export async function saveModelSettingsConsent(input: {
         authorityGeneration: generation,
         credentialEpoch: credential.epoch,
       },
-      permissions: settingsPermissionsForFeature(input.slot),
+      permissions: settingsPermissionsForFeature(
+        input.slot,
+        input.selection.providerId,
+      ),
     }),
     additionalGrants: generation =>
       input.slot === 'conversation'

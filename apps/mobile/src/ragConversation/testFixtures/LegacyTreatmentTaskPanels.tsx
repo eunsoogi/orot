@@ -199,7 +199,7 @@ export function ConversationStoredTaskCards({
               </Fragment>
             );
           }
-          return durableSessionId ? (
+          return card.task.kind === 'treatment' && durableSessionId ? (
             <TreatmentConversationAction
               key={card.id}
               sessionId={id}

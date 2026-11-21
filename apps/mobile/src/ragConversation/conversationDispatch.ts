@@ -98,8 +98,15 @@ export function conversationDispatch(input: {
       await sending;
     } catch (error) {
       if (dispatched) throw error;
-      if (current())
-        input.update(id, { error: t('ragConversation.preflight.failed') });
+      // A rejected draft must not put its retry notice on newer text.
+      if (
+        current() &&
+        (prompt !== undefined || input.find(id)?.draft === session.draft)
+      )
+        input.update(id, {
+          error: t('ragConversation.preflight.failed'),
+          errorSurface: 'composerPreflight',
+        });
     } finally {
       controller.signal.removeEventListener('abort', release);
       if (preparing.get(id) === controller) {

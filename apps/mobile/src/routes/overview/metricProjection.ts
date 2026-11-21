@@ -1,4 +1,4 @@
-import type { HealthContextReport } from '../../healthEvidence/healthContext/types';
+import type { OverviewChartHealthContext } from '../../healthEvidence/healthContext/healthContextReport';
 import type { OverviewMetric } from './metricSelection';
 
 export interface OverviewMetricDay {
@@ -26,7 +26,7 @@ export interface OverviewMetricProjection {
 
 /** Uses one sensor series throughout; absent dates remain gaps and partial today is excluded from comparison. */
 export function projectOverviewMetric(
-  report: HealthContextReport,
+  report: OverviewChartHealthContext,
   metric: OverviewMetric,
   sourceName: string,
   sleepMeasuredAt: string | null = null,

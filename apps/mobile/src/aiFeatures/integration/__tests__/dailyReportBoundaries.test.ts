@@ -55,7 +55,7 @@ const request = () => ({
   signal: new AbortController().signal,
 });
 
-test('does not transmit a source corrected while remote consent is pending', async () => {
+test('readmits a corrected source with fresh exact consent before its only model dispatch', async () => {
   const connection = openSqliteTestDatabase(':memory:');
   try {
     await runMigrations(connection.database);
@@ -78,18 +78,19 @@ test('does not transmit a source corrected while remote consent is pending', asy
         },
       },
     });
-    expect(await service(request())).toEqual({
-      status: 'failed',
-      code: 'source_revision_changed',
-    });
-    expect(generate).not.toHaveBeenCalled();
+    const result = await service(request());
+    expect(result.status).toBe('completed');
+    expect(generate).toHaveBeenCalledTimes(1);
+    const payload = JSON.stringify(generate.mock.calls[0]![0]);
+    expect(payload).toContain('99');
+    expect(payload).not.toContain('72');
     expect(
       (
         await connection.database.execute(
           'SELECT identity_key FROM daily_report_heads',
         )
       ).rows,
-    ).toHaveLength(0);
+    ).toHaveLength(1);
   } finally {
     connection.close();
   }

@@ -3,6 +3,9 @@ import type { ProviderSelectionStore } from '../../providers/selection/types';
 import { createContext, useContext } from 'react';
 import { voiceSettingsStore } from '../../voiceSettings/voiceSettingsStore';
 import { calendarModelStore } from '../../calendarModelSettings/calendarModelStore';
+import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
+import { alreadyApprovedModelSettings } from './alreadyApprovedModelSettings';
+import { productionSettingsConsentReadServices } from './SettingsConsentReadServices';
 import { saveModelSettingsConsent } from './saveModelSettingsConsent';
 
 export interface ModelSettingsServices {
@@ -13,6 +16,10 @@ export interface ModelSettingsServices {
   readonly calendar: ProviderSelectionStore;
   readonly calendarOption: typeof createCalendarDecisionsOption;
   readonly saveConsent: typeof saveModelSettingsConsent;
+  readonly reuseApproval?: (
+    input: Omit<Parameters<typeof alreadyApprovedModelSettings>[0], 'services'>,
+    store: ProviderSelectionStore,
+  ) => Promise<boolean>;
 }
 
 // Production defaults are unchanged. A scoped synthetic native host can provide
@@ -22,6 +29,14 @@ const productionServices: ModelSettingsServices = {
   calendar: calendarModelStore,
   calendarOption: createCalendarDecisionsOption,
   saveConsent: saveModelSettingsConsent,
+  reuseApproval: (input, store) =>
+    store ===
+    (input.slot === 'calendar' ? calendarModelStore : providerSelectionStore)
+      ? alreadyApprovedModelSettings({
+          ...input,
+          services: productionSettingsConsentReadServices,
+        })
+      : Promise.resolve(false),
 };
 export const ModelSettingsServicesContext = createContext(productionServices);
 export function useModelSettingsServices() {

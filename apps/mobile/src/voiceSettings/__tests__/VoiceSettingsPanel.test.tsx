@@ -1,5 +1,6 @@
+import * as voiceConsentView from '../testSupport/voiceSettingsAlerts';
 import { waitForRefreshEnabled } from '../testSupport/voiceSettingsViewFixture';
-import { hasRealtimeVoiceRuntime } from '../voiceRuntimeCapability';
+import { hasLiveVoiceRuntime } from '../voiceRuntimeCapability';
 import {
   act,
   fireEvent,
@@ -25,12 +26,16 @@ jest.mock('../voiceSettingsStore', () => ({
     subscribe: jest.fn(() => () => {}),
   },
 }));
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
 jest.mock('../voiceRuntimeCapability', () => ({
-  hasRealtimeVoiceRuntime: jest.fn(() => false),
+  hasLiveVoiceRuntime: jest.fn(() => false),
 }));
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.mocked(hasRealtimeVoiceRuntime).mockReturnValue(false);
+  jest.mocked(hasLiveVoiceRuntime).mockReturnValue(true);
   jest.mocked(voiceSettingsStore.load).mockResolvedValue({
     mode: 'local',
     model: 'apple-system-speech',
@@ -41,7 +46,7 @@ beforeEach(() => {
     .mockResolvedValue({ connected: true, revision: 1 });
   jest.mocked(voiceSettingsStore.discoverModels).mockResolvedValue({
     revision: 1,
-    ids: ['gpt-realtime-2.1-mini', 'gpt-text'],
+    ids: ['gpt-live-1.1', 'gpt-text'],
   });
   jest.mocked(voiceSettingsStore.save).mockResolvedValue();
 });
@@ -50,7 +55,7 @@ it('does not present a static catalog or credentials and refreshes only explicit
   const view = await render(<VoiceSettingsPanel onOpenAccounts={accounts} />);
   await waitForRefreshEnabled(view);
   expect(view.queryByTestId('voice-api-key')).toBeNull();
-  expect(view.queryByTestId('voice-model-gpt-realtime-2.1-mini')).toBeNull();
+  expect(view.queryByTestId('voice-model-gpt-live-1.1')).toBeNull();
   expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
   expect(view.queryByTestId('voice-open-accounts')).toBeNull();
   await fireEvent.press(view.getByTestId('voice-account-details'));
@@ -58,24 +63,25 @@ it('does not present a static catalog or credentials and refreshes only explicit
   expect(accounts).toHaveBeenCalledTimes(1);
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await waitFor(() =>
-    expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy(),
+    expect(view.getByTestId('voice-model-gpt-live-1.1')).toBeTruthy(),
   );
   const local = within(view.getByTestId('voice-model-group-local'));
   const api = within(view.getByTestId('voice-model-group-openai-api'));
   expect(local.getByTestId('voice-model-apple-system-speech')).toBeTruthy();
   expect(local.getByText('기기 안에서 처리')).toBeTruthy();
-  expect(local.queryByTestId('voice-model-gpt-realtime-2.1-mini')).toBeNull();
-  expect(api.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy();
+  expect(local.queryByTestId('voice-model-gpt-live-1.1')).toBeNull();
+  expect(api.getByTestId('voice-model-gpt-live-1.1')).toBeTruthy();
   expect(api.queryByTestId('voice-model-apple-system-speech')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-text')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-realtime-2.1')).toBeNull();
-  await fireEvent.press(view.getByTestId('voice-model-gpt-realtime-2.1-mini'));
-  expect(view.getByText(/이 빌드에는 Realtime 통화 기능이 없어/)).toBeTruthy();
+  await fireEvent.press(view.getByTestId('voice-model-gpt-live-1.1'));
+  expect(view.queryByText(/자동 전환하지 않아요/)).toBeNull();
   await fireEvent.press(view.getByTestId('voice-settings-save'));
+  await voiceConsentView.tapVoiceSettingsAlertButton('동의');
   await waitFor(() =>
     expect(voiceSettingsStore.save).toHaveBeenCalledWith({
       mode: 'openai-api',
-      model: 'gpt-realtime-2.1-mini',
+      model: 'gpt-live-1.1',
       expectedAccountRevision: 1,
     }),
   );
@@ -85,7 +91,7 @@ it('marks retained results stale and disables API selection after a failed refre
   await waitForRefreshEnabled(view);
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await waitFor(() =>
-    expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy(),
+    expect(view.getByTestId('voice-model-gpt-live-1.1')).toBeTruthy(),
   );
   jest
     .mocked(voiceSettingsStore.discoverModels)
@@ -96,8 +102,8 @@ it('marks retained results stale and disables API selection after a failed refre
   );
   expect(view.getByText(/이전 조회 목록/)).toBeTruthy();
   expect(
-    view.getByTestId('voice-model-gpt-realtime-2.1-mini').props
-      .accessibilityState.disabled,
+    view.getByTestId('voice-model-gpt-live-1.1').props.accessibilityState
+      .disabled,
   ).toBe(true);
 });
 it('preserves unavailable saved selection and never silently substitutes local', async () => {
@@ -111,7 +117,7 @@ it('preserves unavailable saved selection and never silently substitutes local',
     .mockResolvedValue({ connected: false, revision: 1 });
   const view = await render(<VoiceSettingsPanel />);
   expect(await view.findByTestId('voice-current-model')).toHaveTextContent(
-    /GPT Realtime 2.1/,
+    /기존 OpenAI 음성 설정 \(전환 필요\)/,
   );
   expect(
     view.getByTestId('voice-settings-save').props.accessibilityState.disabled,
@@ -141,9 +147,7 @@ it('shows an empty discovered catalog honestly without static fallback', async (
   await waitForRefreshEnabled(view);
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await waitFor(() =>
-    expect(
-      view.getByText(/지원하는 Realtime 음성 모델이 없습니다/),
-    ).toBeTruthy(),
+    expect(view.getByText(/GPT-Live-1.1을 찾지 못했어요/)).toBeTruthy(),
   );
   expect(view.queryByTestId('voice-model-gpt-realtime-2.1')).toBeNull();
   expect(
@@ -181,25 +185,21 @@ it('ignores a late catalog response after disconnection', async () => {
   ).toBe(true);
 });
 it('keeps settings quiet without starting a call or granting runtime consent', async () => {
-  jest.mocked(hasRealtimeVoiceRuntime).mockReturnValue(true);
+  jest.mocked(hasLiveVoiceRuntime).mockReturnValue(true);
   const view = await render(<VoiceSettingsPanel />);
   await waitForRefreshEnabled(view);
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await waitFor(() =>
-    expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy(),
+    expect(view.getByTestId('voice-model-gpt-live-1.1')).toBeTruthy(),
   );
-  await fireEvent.press(view.getByTestId('voice-model-gpt-realtime-2.1-mini'));
-  expect(view.queryByText(/별도로 동의해야 합니다/)).toBeNull();
-  expect(view.queryByText(/API 사용 요금/)).toBeNull();
-  expect(view.queryByText(/이 API 계정의 모델 목록을 새로고침/)).toBeNull();
-  expect(view.queryByText(/기기 내 처리:/)).toBeNull();
+  await fireEvent.press(view.getByTestId('voice-model-gpt-live-1.1'));
+  voiceConsentView.expectNoInlineVoiceConsent(view);
   expect(voiceSettingsStore.save).not.toHaveBeenCalled();
-  expect(
-    view.getByTestId('model-settings-transmission-disclosure'),
-  ).toHaveTextContent(/OpenAI Realtime API/);
-  expect(
-    view.getByTestId('model-settings-transmission-disclosure'),
-  ).toHaveTextContent(/별도 API 사용료/);
+  await fireEvent.press(view.getByTestId('voice-settings-save'));
+  expect(voiceSettingsStore.save).not.toHaveBeenCalled();
+  await voiceConsentView.expectLiveSettingsDisclosure(view);
+  await voiceConsentView.tapVoiceSettingsAlertButton('취소');
+  expect(voiceSettingsStore.save).not.toHaveBeenCalled();
 });
 it('reports failed persistence without claiming the selected model was saved', async () => {
   jest.mocked(voiceSettingsStore.save).mockRejectedValue(new Error('locked'));
@@ -231,16 +231,17 @@ it('shows the stored model before refresh and keeps it distinct from an unsaved 
   });
   await fireEvent.press(view.getByTestId('voice-model-refresh'));
   await waitFor(() =>
-    expect(view.getByTestId('voice-model-gpt-realtime-2.1-mini')).toBeTruthy(),
+    expect(view.getByTestId('voice-model-gpt-live-1.1')).toBeTruthy(),
   );
-  await fireEvent.press(view.getByTestId('voice-model-gpt-realtime-2.1-mini'));
+  await fireEvent.press(view.getByTestId('voice-model-gpt-live-1.1'));
   expect(view.getByTestId('voice-current-model')).toHaveTextContent(
     /Apple 시스템 음성/,
   );
   await fireEvent.press(view.getByTestId('voice-settings-save'));
+  await voiceConsentView.tapVoiceSettingsAlertButton('동의');
   await waitFor(() =>
     expect(view.getByTestId('voice-current-model')).toHaveTextContent(
-      /GPT Realtime 2.1 mini/,
+      /GPT-Live-1.1/,
     ),
   );
 });

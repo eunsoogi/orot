@@ -101,4 +101,51 @@ final class AudioSessionOwnershipTests: OrotFailFastTestCase {
         }
         XCTAssertEqual(winners, 1)
     }
+
+    func testConnectedVoiceDurationExcludesDialingAndWaitingForReceipt() {
+        var clock: UInt64 = 0
+        let duration = VoiceConnectedDuration(nowNanoseconds: { clock })
+        duration.begin()
+        clock += 8_000_000_000
+        duration.markStopped("failed")
+        XCTAssertNil(duration.take("failed"))
+
+        duration.markReady("connected")
+        clock += 60_000_000_000
+        duration.markReady("connected")
+        clock += 5_599_000_000
+        duration.markStopped("wrong")
+        duration.markStopped("connected")
+        clock += 20_000_000_000
+
+        XCTAssertNil(duration.take("wrong"))
+        let end = duration.take("connected")
+        XCTAssertEqual(end?["callId"] as? String, "connected")
+        XCTAssertEqual(end?["durationSeconds"] as? Int, 65)
+        XCTAssertNil(duration.take("connected"))
+
+        // A backwards sample cannot underflow; exactly one second is not rounded down.
+        clock = 10
+        duration.markReady("backwards")
+        clock = 9
+        duration.markStopped("backwards")
+        XCTAssertNil(duration.take("backwards"))
+        duration.markReady("boundary")
+        clock += 1_000_000_000
+        duration.markStopped("boundary")
+        XCTAssertEqual(duration.take("boundary")?["durationSeconds"] as? Int, 1)
+    }
+
+    func testNewVoiceOwnerNeverReceivesPreviousReceipt() {
+        let duration = VoiceConnectedDuration()
+        duration.begin()
+        duration.markReady("old")
+        duration.markStopped("old")
+        duration.begin()
+        XCTAssertNil(duration.take("old"))
+        duration.markReady("next")
+        duration.markStopped("next")
+        XCTAssertNil(duration.take("old"))
+        XCTAssertEqual(duration.take("next")?["callId"] as? String, "next")
+    }
 }

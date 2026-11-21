@@ -1,3 +1,10 @@
+import {
+  liveVoiceAudioPolicy,
+  liveVoiceAudioPurpose,
+  liveVoiceModelId,
+  liveVoiceProviderId,
+  liveVoiceRecipient,
+} from '../agent/execution/liveVoiceSettingsIdentity';
 import type {
   ExecutionConsentPort,
   OutboundProcessingRequest,
@@ -7,6 +14,7 @@ import type {
  * a synthetic consent port; no authorization verdict is shared between calls. */
 export function createRealtimeSettingsPermission(
   consent: ExecutionConsentPort,
+  liveAudioOnly = false,
 ) {
   let active: {
     controller: AbortController;
@@ -27,19 +35,24 @@ export function createRealtimeSettingsPermission(
       consent.isAuthorizationCurrent?.(active.request) === true,
     async authorize(model: string, invalidated: () => void) {
       stop();
+      if (liveAudioOnly && model !== liveVoiceModelId) return false;
       const controller = new AbortController();
       const request: OutboundProcessingRequest = {
-        operationRunId: 'realtime-settings-session',
-        providerId: 'openai-realtime',
+        operationRunId: liveAudioOnly
+          ? 'live-settings-session'
+          : 'realtime-settings-session',
+        providerId: liveAudioOnly ? liveVoiceProviderId : 'openai-realtime',
         modelId: model,
-        recipient: 'OpenAI Realtime API',
+        recipient: liveAudioOnly ? liveVoiceRecipient : 'OpenAI Realtime API',
         remoteProcessing: true,
         consentScope: {
-          purpose: 'realtime_audio',
-          policyVersion: 'selected-realtime-v1',
+          purpose: liveAudioOnly ? liveVoiceAudioPurpose : 'realtime_audio',
+          policyVersion: liveAudioOnly
+            ? liveVoiceAudioPolicy
+            : 'selected-realtime-v1',
           dataCategories: ['live_voice_audio', 'voice_conversation'],
         },
-        allowedScope: { sourceKinds: ['personal_record'] },
+        allowedScope: { sourceKinds: liveAudioOnly ? [] : ['personal_record'] },
         payload: {
           messages: [
             { role: 'user', content: 'Live audio conversation session' },

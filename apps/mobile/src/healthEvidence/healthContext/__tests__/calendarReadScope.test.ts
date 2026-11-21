@@ -3,6 +3,8 @@ import {
   readHealthContextCalendar,
 } from '../calendarReadScope';
 import * as calendar from '../window';
+import { dayFormatter } from '../calendarDate';
+import { observeCalendarProbes } from '../testSupport/observeCalendarProbes';
 import {
   committedReportCalendar,
   createCommittedReportScope,
@@ -128,5 +130,36 @@ test('a failed calendar enumeration never publishes an entry', () => {
   } finally {
     scope.dispose();
     calculate.mockRestore();
+  }
+});
+
+test('overlapping long windows reuse civil midnights while retaining distinct clipped edges', () => {
+  const scope = createHealthContextCalendarScope();
+  const first = {
+    fromInclusive: '2023-01-01T06:00:00.0001Z',
+    toExclusive: '2024-04-01T04:00:00Z',
+    timeZone: 'America/New_York',
+  };
+  const next = {
+    ...first,
+    fromInclusive: '2023-01-01T07:00:00.0002Z',
+    toExclusive: '2024-04-02T04:00:00.0001Z',
+  };
+  const expected = calendar.healthContextDays(next);
+  // Evict the expected-value formatter before measuring a cold first pass.
+  for (const zone of ['UTC', 'Asia/Seoul', 'Pacific/Apia', 'Europe/London'])
+    dayFormatter(zone);
+  const probes = observeCalendarProbes(dayFormatter(first.timeZone));
+  try {
+    // A decoded period enumerates the same civil boundaries before scoped reads.
+    calendar.healthContextDays(first);
+    expect(probes.count).toBeGreaterThan(100);
+    probes.reset();
+    expect(scope.read(next)).toEqual(expected);
+    // Across the DST transitions only newly exposed boundaries need an Intl search.
+    expect(probes.count).toBeLessThan(100);
+  } finally {
+    scope.dispose();
+    probes.dispose();
   }
 });

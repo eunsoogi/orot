@@ -29,6 +29,7 @@ export function ProviderSelectionFooter({
   onConfirm,
   onCancel,
   searchChoices,
+  inlineConsent = true,
   onSearchChoices,
 }: {
   readonly option: ProviderSelectionOption | null | undefined;
@@ -38,6 +39,7 @@ export function ProviderSelectionFooter({
   readonly saveError: boolean;
   readonly remoteAvailable: boolean;
   readonly searchChoices?: SettingsSearchChoices;
+  readonly inlineConsent?: boolean;
   readonly onSearchChoices?: (value: SettingsSearchChoices) => void;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
@@ -77,6 +79,7 @@ export function ProviderSelectionFooter({
       {option ? (
         <ProviderSelectionConfirmation
           option={option}
+          inlineConsent={inlineConsent}
           consentChoices={
             searchChoices && onSearchChoices ? (
               <SettingsSearchConsentChoices
@@ -103,7 +106,7 @@ export function ProviderSelectionFooter({
         />
       ) : (
         <>
-          {remoteAvailable ? (
+          {inlineConsent && remoteAvailable ? (
             <Text>{providerSelectionText.remotePrivacy}</Text>
           ) : null}
           <ModelSelectionSummary

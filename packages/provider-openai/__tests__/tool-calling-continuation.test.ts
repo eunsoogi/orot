@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import type { LanguageModelRequest, ToolCall } from '@orot/model-runtime';
 import { createChatGPTPlanProvider } from '../src';
 import type { ChatGPTPlanNativeBridge, ChatGPTPlanNativeEvent, ChatGPTPlanRequest } from '../src';
+import { FakeBridge } from './providerTestSupport';
 
 const tool = {
   name: 'lookup_source',
@@ -102,6 +103,83 @@ describe('ChatGPT plan continuation across consecutive local tools', () => {
       },
     ]);
   });
+});
+
+it('reconstructs an explicitly resumed tool exchange without the prior provider lifetime', async () => {
+  const options = {
+    issuedClientID: 'synthetic-account',
+    model: { slug: 'gpt-test', displayName: 'Test model' },
+  };
+  const initial: LanguageModelRequest = {
+    messages: [
+      { role: 'system', content: 'Use the supplied synthetic sources.' },
+      { role: 'system', content: 'Keep citation order.' },
+      { role: 'user', content: 'Read the synthetic source.' },
+    ],
+    tools: [
+      tool,
+      {
+        name: 'lookup_followup',
+        inputSchema: { type: 'object', properties: { topic: { type: 'string' } } },
+      },
+    ],
+  };
+  const beforeRestart = new SequentialToolBridge();
+  const prior = createChatGPTPlanProvider({ ...options, bridge: beforeRestart });
+  await expect(prior.generate(initial)).resolves.toMatchObject({
+    ok: true,
+    value: { toolCalls: [firstCall] },
+  });
+
+  // A recreated provider has no live socket or cached opaque output from the prior lifetime.
+  const afterRestart = new FakeBridge(async (requestId, target) => {
+    target.emit({ requestId, type: 'text_delta', text: 'Synthetic answer.' });
+    target.emit({ requestId, type: 'completed', text: 'Synthetic answer.' });
+  });
+  const restored = createChatGPTPlanProvider({ ...options, bridge: afterRestart });
+  expect(afterRestart.started).toHaveLength(0);
+
+  const resumed: LanguageModelRequest = {
+    ...initial,
+    messages: [
+      ...initial.messages,
+      { role: 'assistant', content: 'Checking the source.', toolCalls: [firstCall] },
+      { role: 'tool', toolCallId: firstCall.id, result: { available: true } },
+    ],
+  };
+  await expect(restored.generate(resumed)).resolves.toMatchObject({
+    ok: true,
+    value: { text: 'Synthetic answer.' },
+  });
+  expect(beforeRestart.started).toHaveLength(1);
+  expect(afterRestart.started).toHaveLength(1);
+  const first = beforeRestart.started[0]!;
+  const next = afterRestart.started[0]!.request;
+  expect(next.transportScope).toBeTruthy();
+  expect(next.transportScope).not.toBe(first.transportScope);
+  expect(first.tools?.map((definition) => definition.name)).toEqual([
+    'lookup_source',
+    'lookup_followup',
+  ]);
+  expect(next.tools).toEqual(first.tools);
+  expect(first.messages).toEqual(initial.messages);
+  expect(next.messages).toEqual([
+    ...first.messages,
+    { role: 'assistant', content: 'Checking the source.' },
+    {
+      type: 'function_call',
+      callID: firstCall.id,
+      name: firstCall.name,
+      arguments: JSON.stringify(firstCall.arguments),
+    },
+    {
+      type: 'function_call_output',
+      callID: firstCall.id,
+      output: JSON.stringify({ available: true }),
+    },
+  ]);
+  expect(next).not.toHaveProperty('previous_response_id');
+  expect(next).not.toHaveProperty('prompt_cache_key');
 });
 
 class SequentialToolBridge implements ChatGPTPlanNativeBridge {

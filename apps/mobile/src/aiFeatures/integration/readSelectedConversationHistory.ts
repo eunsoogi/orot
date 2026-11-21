@@ -15,6 +15,7 @@ export async function readSelectedConversationHistory(
   sessionId: string,
   ids: readonly string[],
   signal: AbortSignal,
+  admitAvailableOnly = false,
 ) {
   const turns: Awaited<
     ReturnType<Discovery['readSession']>
@@ -33,7 +34,7 @@ export async function readSelectedConversationHistory(
       });
       if (signal.aborted)
         throw new ConversationHistoryFailure('history_cancelled');
-      if (page.unavailableCount)
+      if (page.unavailableCount && !admitAvailableOnly)
         throw new ConversationHistoryFailure('history_page_unavailable');
       turns.push(...page.items);
       cursor = page.nextCursor ?? undefined;

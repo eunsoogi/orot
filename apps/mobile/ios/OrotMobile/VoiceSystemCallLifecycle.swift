@@ -70,7 +70,8 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         action.isVideo = false
         controller.request(CXTransaction(action: action)) { [weak self] error in
             DispatchQueue.main.async {
-                guard let self, self.uuid == id, error != nil else { return }
+                guard let self, self.uuid == id, let error else { return }
+                Self.reportRequestTransactionFailure(error)
                 self.finish(notify: true)
             }
         }
@@ -78,6 +79,32 @@ final class VoiceSystemCallLifecycle: NSObject, VoiceSystemCallPort, CXProviderD
         timeout = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
             guard let self, uuid == id else { return }
             finish(notify: true)
+        }
+    }
+
+    /// A device diagnostic may expose a recognized CallKit status, never the NSError itself.
+    static func requestTransactionDiagnosticCode(_ error: Error) -> Int? {
+        let value = error as NSError
+        guard value.domain == CXErrorDomainRequestTransaction else { return nil }
+        let recognized = [
+            CXErrorCodeRequestTransactionError.unknown,
+            CXErrorCodeRequestTransactionError.unentitled,
+            CXErrorCodeRequestTransactionError.unknownCallProvider,
+            CXErrorCodeRequestTransactionError.emptyTransaction,
+            CXErrorCodeRequestTransactionError.unknownCallUUID,
+            CXErrorCodeRequestTransactionError.callUUIDAlreadyExists,
+            CXErrorCodeRequestTransactionError.invalidAction,
+            CXErrorCodeRequestTransactionError.maximumCallGroupsReached,
+        ]
+        return recognized.contains(where: { $0.rawValue == value.code }) ? value.code : nil
+    }
+
+    private static func reportRequestTransactionFailure(_ error: Error) {
+        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") else { return }
+        if let code = requestTransactionDiagnosticCode(error) {
+            NSLog("OROT_VOICE_DIAGNOSTIC stage=callkit_request outcome=rejected code=%ld", code)
+        } else {
+            NSLog("OROT_VOICE_DIAGNOSTIC stage=callkit_request outcome=rejected")
         }
     }
 

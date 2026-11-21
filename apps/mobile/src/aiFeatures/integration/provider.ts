@@ -1,10 +1,13 @@
 import { t } from '../../i18n';
 import {
   APPLE_PCC_PROVIDER_ID,
+  APPLE_PCC_MODEL_ID,
+  APPLE_PCC_DISPLAY_NAME,
   loadPrivateCloudComputeOption,
 } from '../../providers/selection/privateCloudCompute';
 import type { LanguageModelProvider } from '@orot/model-runtime';
 import {
+  createAppleSelectionOption,
   createChatGPTSelectionOptions,
   loadAppleSelectionOption,
   resolveProviderSelection,
@@ -19,6 +22,24 @@ import type { ChatGPTSelectionServices } from '../../providers/selection/chatGPT
 import { nativeChatGPTSelectionServices } from '../../providers/selection/chatGPTServices';
 import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
 
+export interface OnDeviceSelectionWitness {
+  isCurrent(): boolean;
+  subscribe(listener: () => void): () => void;
+}
+
+export type SavedPlatformChoice = 'on-device' | 'pcc';
+
+/** UI-only observations never grant selection, provider capability, or dispatch. */
+export interface ConversationModelDisplayObserver {
+  readonly platformRefreshOnly?: SavedPlatformChoice;
+  selection(witness: OnDeviceSelectionWitness | null): void;
+  savedPlatformName(name: string, platform: SavedPlatformChoice): void;
+}
+
+export type ResolveConversationModelDisplay = (
+  observer?: ConversationModelDisplayObserver,
+) => Promise<SelectedAiResolution>;
+
 export type SelectedAiResolution =
   | {
       readonly status: 'ready';
@@ -29,6 +50,7 @@ export type SelectedAiResolution =
       readonly modelId: string;
       readonly recipient: string;
       readonly remoteProcessing: boolean;
+      readonly onDeviceSelectionWitness?: OnDeviceSelectionWitness;
     }
   | { readonly status: 'selection-required' | 'unavailable' };
 
@@ -44,8 +66,20 @@ const CHATGPT_PROVIDER_PREFIX = 'chatgpt-plan:';
 /** Resolves only the saved provider/model pair; catalog or account failure never selects a substitute. */
 export async function resolveSelectedAiProvider(
   options: SelectedAiResolverOptions = {},
+  display?: ConversationModelDisplayObserver,
 ): Promise<SelectedAiResolution> {
   const selectionStore = options.selectionStore ?? providerSelectionStore;
+  const selectionWitness = options.selectionStore
+    ? null
+    : providerSelectionStore.liveWitness();
+  if (display && !options.selectionStore)
+    display.selection(
+      selectionWitness && {
+        isCurrent: selectionWitness,
+        subscribe: listener =>
+          providerSelectionStore.subscribeChanges(listener),
+      },
+    );
   const chatGPTServices =
     options.chatGPTServices ?? nativeChatGPTSelectionServices;
   let selection: ProviderSelection | null;
@@ -55,6 +89,27 @@ export async function resolveSelectedAiProvider(
     return { status: 'unavailable' };
   }
   if (!selection) return { status: 'selection-required' };
+
+  if (display) {
+    const saved = createAppleSelectionOption('unavailable');
+    const platform =
+      selection.providerId === saved.provider.id &&
+      selection.modelId === saved.modelId
+        ? 'on-device'
+        : selection.providerId === APPLE_PCC_PROVIDER_ID &&
+            selection.modelId === APPLE_PCC_MODEL_ID
+          ? 'pcc'
+          : undefined;
+    // A foreground presentation refresh may recheck only the same platform route,
+    // never a different model or a ChatGPT account/catalog.
+    if (display.platformRefreshOnly && platform !== display.platformRefreshOnly)
+      return { status: 'unavailable' };
+    if (platform && selectionWitness?.())
+      display.savedPlatformName(
+        platform === 'on-device' ? saved.displayName : APPLE_PCC_DISPLAY_NAME,
+        platform,
+      );
+  }
 
   // Resolve PCC independently from ChatGPT credentials and local model availability.
   if (selection.providerId === APPLE_PCC_PROVIDER_ID) {
@@ -67,19 +122,33 @@ export async function resolveSelectedAiProvider(
     }
   }
 
-  let appleOption: ProviderSelectionOption;
-  try {
-    appleOption = await (options.loadAppleOption ?? loadAppleSelectionOption)();
-  } catch {
-    return { status: 'unavailable' };
-  }
-
-  if (selection.providerId === appleOption.provider.id) {
-    return readySelection(selection, [appleOption]);
-  }
-
   const accountId = selectedChatGPTAccountId(selection);
-  if (!accountId) return { status: 'unavailable' };
+  // A saved ChatGPT choice depends on its own account/catalog, not the unrelated
+  // local Apple availability bridge. Keep exact model validation in both paths.
+  if (!accountId) {
+    try {
+      const ready = readySelection(selection, [
+        await (options.loadAppleOption ?? loadAppleSelectionOption)(),
+      ]);
+      // This witness is tied to the selection read above and never reissues after a change.
+      if (
+        ready.status === 'ready' &&
+        !ready.remoteProcessing &&
+        selectionWitness?.() === true
+      )
+        return {
+          ...ready,
+          onDeviceSelectionWitness: {
+            isCurrent: selectionWitness,
+            subscribe: listener =>
+              providerSelectionStore.subscribeChanges(listener),
+          },
+        };
+      return ready;
+    } catch {
+      return { status: 'unavailable' };
+    }
+  }
 
   try {
     const accounts = await chatGPTServices.listAccounts();
@@ -93,7 +162,6 @@ export async function resolveSelectedAiProvider(
     const models = await chatGPTServices.listModels(accountId);
     if (!models.ok) return { status: 'unavailable' };
     return readySelection(selection, [
-      appleOption,
       ...createChatGPTSelectionOptions(accountId, models.value),
     ]);
   } catch {

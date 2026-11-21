@@ -34,9 +34,9 @@ export const consentFixtureDestinations = {
     recipient: 'OpenAI API',
   },
   voice: {
-    providerId: 'openai-realtime',
-    modelId: 'gpt-realtime-2.1-mini',
-    recipient: 'OpenAI Realtime API',
+    providerId: 'openai-live',
+    modelId: 'gpt-live-1.1',
+    recipient: 'OpenAI Live API',
   },
 };
 
@@ -71,8 +71,10 @@ export function createSettingsConsentPersistenceFixture(input: {
     authorityGeneration: generation,
     credentialEpoch: epoch,
   });
-  const authorization = (slot: SettingsConsentSlot) => {
-    return createSettingsConsentAuthorization({
+  const authorizationServices = (
+    slot: SettingsConsentSlot,
+  ): Parameters<typeof createSettingsConsentAuthorization>[0] => {
+    return {
       catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
       readGrant: (selectedSlot, domain) => grants.read(selectedSlot, domain),
       async resolveOwner() {
@@ -95,12 +97,17 @@ export function createSettingsConsentPersistenceFixture(input: {
           subscribeInvalidation: listener => owners[slot].subscribe(listener),
         };
       },
-    });
+    };
   };
+  const authorization = (slot: SettingsConsentSlot) =>
+    createSettingsConsentAuthorization(authorizationServices(slot));
   const inspect = async () => {
     const observations: Record<string, string> = {};
     for (const slot of slots) {
-      const permission = settingsPermissionsForFeature(slot)[0];
+      const permission = settingsPermissionsForFeature(
+        slot,
+        consentFixtureDestinations[slot].providerId,
+      )[0];
       if (!permission) throw new Error('Synthetic permission missing');
       const signal = new AbortController().signal;
       const outbound: OutboundProcessingRequest = {
@@ -112,7 +119,9 @@ export function createSettingsConsentPersistenceFixture(input: {
           policyVersion: permission.policyVersion,
           dataCategories: permission.dataCategories,
         },
-        allowedScope: { sourceKinds: ['personal_record'] },
+        allowedScope: {
+          sourceKinds: slot === 'voice' ? [] : ['personal_record'],
+        },
         payload: {
           messages: [
             { role: 'user', content: 'Synthetic consent verification' },
@@ -161,7 +170,7 @@ export function createSettingsConsentPersistenceFixture(input: {
         version: 1,
         catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
         identity: identity(slot, generation, epoch),
-        permissions: settingsPermissionsForFeature(slot),
+        permissions: settingsPermissionsForFeature(slot, chosen.providerId),
       }),
       saveSelection: () => selection.save(chosen),
       isSelectionCurrent: () => matches(chosen),
@@ -173,6 +182,7 @@ export function createSettingsConsentPersistenceFixture(input: {
   };
   return {
     authorization,
+    authorizationServices,
     inspect,
     saveConsent,
     async approve(slot: SettingsConsentSlot) {

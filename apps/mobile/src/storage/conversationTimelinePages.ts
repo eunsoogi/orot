@@ -47,6 +47,7 @@ export function conversationTimelinePages(
         UNION ALL SELECT message_id, MAX(created_at), 'turn', 2 FROM conversation_tool_events WHERE session_id = ? GROUP BY message_id
         UNION ALL SELECT id, created_at, 'turn', 3 FROM conversation_requests WHERE session_id = ? AND session_version = ? AND status = 'interrupted'
         UNION ALL SELECT id, created_at, 'task', 2 FROM conversation_task_cards WHERE session_id = ?
+        UNION ALL SELECT id, created_at, 'task', 3 FROM conversation_voice_end_markers WHERE session_id = ?
         UNION ALL SELECT 'treatment:' || a.id, a.created_at, 'task', 1 FROM conversation_artifacts a WHERE a.session_id = ? AND (${treatmentArtifactPredicate})
       ), chosen AS (
         SELECT id, created_at, kind, ROW_NUMBER() OVER (PARTITION BY id, kind ORDER BY priority DESC) AS rank FROM candidates
@@ -58,6 +59,7 @@ export function conversationTimelinePages(
           sessionId,
           sessionId,
           version,
+          sessionId,
           sessionId,
           sessionId,
           cursor?.createdAt ?? null,

@@ -1,6 +1,3 @@
-const { performance } = require('node:perf_hooks') as {
-  performance: { now(): number };
-};
 import { runMigrations, type SqlDatabase, type SqlValue } from '@orot/storage';
 import { createConversationArtifactStorage } from '../conversationArtifactStorage';
 import { assertPeriodNotRemoved } from '../conversationPeriodRemoval';
@@ -21,9 +18,7 @@ const { DatabaseSync } = require('node:sqlite') as {
   DatabaseSync: new (path: string) => Handle;
 };
 
-/** Pure synthetic Node SQLite decomposition, not SQLCipher/bridge timing or a
- * proposed native statement cache. Identical emitted SQL is prepared/stepped. */
-test('separate period membership SQLite preparation from VM execution', async () => {
+test('prepared period membership queries preserve empty and live invalidation semantics', async () => {
   const handle = new DatabaseSync(':memory:');
   const database: SqlDatabase = {
     execute: async (sql, bindings = []) => {
@@ -112,52 +107,10 @@ test('separate period membership SQLite preparation from VM execution', async ()
             'INSERT INTO source_deletion_tombstones(source_id) VALUES (?)',
             [`unrelated-${m}`],
           );
-        for (const [branch, { sql, bindings }] of queries.entries()) {
-          let prepareMs = 0,
-            stepMs = 0;
-          const repeats = 20;
-          for (let i = 0; i < repeats; i++) {
-            let at = performance.now();
-            const statement = handle.prepare(sql);
-            prepareMs += performance.now() - at;
-            at = performance.now();
-            const result = statement.all(...bindings);
-            stepMs += performance.now() - at;
-            expect(result).toEqual([]);
-          }
-          const reused = handle.prepare(sql);
-          let reusedStepMs = 0;
-          for (let i = 0; i < repeats; i++) {
-            const at = performance.now();
-            const result = reused.all(...bindings);
-            reusedStepMs += performance.now() - at;
-            expect(result).toEqual([]);
-          }
-          const plan = handle
-            .prepare(`EXPLAIN QUERY PLAN ${sql}`)
-            .all(...bindings)
-            .map(row => row.detail);
-          const vm = handle.prepare(`EXPLAIN ${sql}`).all(...bindings);
-          const opcodes: Record<string, number> = {};
-          for (const row of vm) {
-            const op = String(row.opcode);
-            opcodes[op] = (opcodes[op] ?? 0) + 1;
-          }
-          console.info(
-            'SYNTHETIC_MEMBERSHIP_PREPARE',
-            JSON.stringify({
-              rows,
-              markers,
-              branch,
-              repeats,
-              sqlBytes: sql.length,
-              prepareMs,
-              stepMs,
-              reusedStepMs,
-              plan,
-              opcodes,
-            }),
-          );
+        for (const { sql, bindings } of queries) {
+          const statement = handle.prepare(sql);
+          expect(statement.all(...bindings)).toEqual([]);
+          expect(statement.all(...bindings)).toEqual([]);
         }
       }
     }

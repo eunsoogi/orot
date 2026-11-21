@@ -39,9 +39,7 @@ test.each([
     const controller = await renderMedicalRoute();
 
     expect(columnsAxis()).toBe(direction);
-    expect(
-      screen.getByTestId('medical-appointment-review-scroll'),
-    ).toBeTruthy();
+    expect(screen.getByTestId('medical-appointment-fullscreen')).toBeTruthy();
     expect(
       screen.queryByTestId(
         `navigation-route-columns-${controller.getSnapshot().currentRoute.key}`,

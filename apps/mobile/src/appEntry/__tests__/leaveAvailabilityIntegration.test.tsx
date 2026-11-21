@@ -42,6 +42,8 @@ jest.mock('../rootURLBridge', () => ({
   },
 }));
 
+beforeEach(() => jest.clearAllMocks());
+
 function Route() {
   const [ready, setReady] = useState(false);
   useNavigationLeaveStateRegistration({
@@ -55,47 +57,103 @@ function Route() {
   return <Text onPress={() => setReady(true)}>Make ready</Text>;
 }
 
-test('a committed leave-state readiness change resumes a deferred root entry once', async () => {
-  Object.defineProperty(AppState, 'currentState', {
-    configurable: true,
-    value: 'active',
+test.each(['records', 'conversation'] as const)(
+  'a committed leave-state readiness change resumes a deferred %s root entry once',
+  async destination => {
+    Object.defineProperty(AppState, 'currentState', {
+      configurable: true,
+      value: 'active',
+    });
+    let pending: unknown = { id: 'entry', destination };
+    jest.mocked(rootURLBridge.peek).mockImplementation(async () => pending);
+    jest.mocked(rootURLBridge.acknowledge).mockImplementation(async () => {
+      pending = null;
+    });
+    const controller = createNavigationController<AppNavigationRoute>('root');
+    const decision = jest.spyOn(controller, 'requestTabSwitchDecision');
+    const selectTab = jest.fn();
+    const view = await render(
+      <>
+        <NavigationRouteAdapter controller={controller}>
+          {() => <Route />}
+        </NavigationRouteAdapter>
+        <RootURLDeliveryHost
+          controller={controller}
+          arbiter={createEntryArbiter()}
+          ready
+          canEnter={() => true}
+          selectTab={selectTab}
+        />
+      </>,
+    );
+    await waitFor(() => expect(decision).toHaveBeenCalled());
+    await expect(decision.mock.results[0]?.value).resolves.toBe('unavailable');
+    expect(selectTab).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.press(screen.getByText('Make ready'));
+    });
+    await waitFor(() => expect(selectTab).toHaveBeenCalledTimes(1));
+    expect(selectTab).toHaveBeenCalledWith(destination);
+    expect(rootURLBridge.acknowledge).toHaveBeenCalledTimes(1);
+    expect(pending).toBeNull();
+    expect(rootURLBridge.acknowledge).toHaveBeenCalledWith('entry');
+    const wake = jest.fn();
+    controller.subscribeEntryAvailability(wake);
+    await view.unmount();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(wake).not.toHaveBeenCalled();
+  },
+);
+
+function CleanRoute() {
+  const [revision, setRevision] = useState(0);
+  useNavigationLeaveStateRegistration({
+    canLeave: true,
+    hasUnsavedChanges: false,
+    isRecording: false,
+    hasOngoingOperation: false,
+    revision,
+    inputRevision: revision,
   });
-  let pending: unknown = { id: 'entry', destination: 'records' };
-  jest.mocked(rootURLBridge.peek).mockImplementation(async () => pending);
-  jest.mocked(rootURLBridge.acknowledge).mockImplementation(async () => {
-    pending = null;
-  });
-  const controller = createNavigationController<AppNavigationRoute>('root');
-  const decision = jest.spyOn(controller, 'requestTabSwitchDecision');
-  const selectTab = jest.fn();
-  const view = await render(
-    <>
-      <NavigationRouteAdapter controller={controller}>
-        {() => <Route />}
-      </NavigationRouteAdapter>
-      <RootURLDeliveryHost
-        controller={controller}
-        arbiter={createEntryArbiter()}
-        ready
-        canEnter={() => true}
-        selectTab={selectTab}
-      />
-    </>,
+  return (
+    <Text onPress={() => setRevision(value => value + 1)}>Revise owner</Text>
   );
-  await waitFor(() => expect(decision).toHaveBeenCalled());
-  await expect(decision.mock.results[0]?.value).resolves.toBe('unavailable');
-  expect(selectTab).not.toHaveBeenCalled();
-  await act(async () => {
-    fireEvent.press(screen.getByText('Make ready'));
-  });
-  await waitFor(() => expect(selectTab).toHaveBeenCalledTimes(1));
-  expect(selectTab).toHaveBeenCalledWith('records');
-  expect(rootURLBridge.acknowledge).toHaveBeenCalledWith('entry');
-  const wake = jest.fn();
-  controller.subscribeEntryAvailability(wake);
-  await view.unmount();
-  await act(async () => {
-    await Promise.resolve();
-  });
-  expect(wake).not.toHaveBeenCalled();
-});
+}
+
+// Stable guard identity is not permission to retain approval across real owner changes.
+test.each(['revision', 'replacement', 'unmount'] as const)(
+  'a real %s still revokes an approved canonical root entry',
+  async change => {
+    const controller = createNavigationController<AppNavigationRoute>('root');
+    const routeKey = controller.getSnapshot().currentRoute.key;
+    const tree = (owner: string) => (
+      <NavigationRouteAdapter controller={controller}>
+        {() => <CleanRoute key={owner} />}
+      </NavigationRouteAdapter>
+    );
+    const view = await render(tree('first'));
+    let decision: string | undefined;
+    await act(async () => {
+      decision = await controller.requestTabSwitchDecision();
+    });
+    expect(decision).toBe('approved');
+    if (change === 'revision')
+      await fireEvent.press(screen.getByText('Revise owner'));
+    else if (change === 'replacement') await view.rerender(tree('second'));
+    else await view.unmount();
+    expect(controller.commitApprovedRoot(routeKey)).toBe(false);
+    if (change !== 'unmount') {
+      await act(async () => {
+        decision = await controller.requestTabSwitchDecision();
+      });
+      expect(decision).toBe('approved');
+      await act(async () => {
+        expect(controller.commitApprovedRoot(routeKey)).toBe(true);
+        expect(controller.commitApprovedRoot(routeKey)).toBe(false);
+      });
+      await view.unmount();
+    }
+  },
+);

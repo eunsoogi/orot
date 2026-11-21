@@ -28,9 +28,7 @@ export function createSettingsConsentUiServices(
         const selection = await voiceSelection.load();
         return {
           mode:
-            selection?.providerId === 'openai-realtime'
-              ? 'openai-api'
-              : 'local',
+            selection?.providerId === 'openai-live' ? 'openai-api' : 'local',
           model: selection?.modelId ?? 'apple-system-speech',
           hasApiKey: true,
         };
@@ -45,9 +43,7 @@ export function createSettingsConsentUiServices(
           throw new Error('Synthetic UI cannot replace credentials');
         await voiceSelection.save({
           providerId:
-            value.mode === 'openai-api'
-              ? 'openai-realtime'
-              : 'apple-local-voice',
+            value.mode === 'openai-api' ? 'openai-live' : 'apple-local-voice',
           modelId: value.model,
         });
       },
@@ -56,7 +52,7 @@ export function createSettingsConsentUiServices(
         if (signal?.aborted) throw new Error('Synthetic catalog cancelled');
         return {
           revision: 1,
-          ids: ['gpt-6-luna', 'gpt-realtime-2.1-mini'],
+          ids: ['gpt-6-luna', 'gpt-live-1.1'],
         };
       },
       subscribe: () => () => {},

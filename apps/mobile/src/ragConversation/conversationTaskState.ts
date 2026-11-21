@@ -1,3 +1,4 @@
+import { createVoiceEndReceipt } from '../voiceConversation/voiceEndReceipt';
 import type { ConversationTaskCard } from '../storage/conversationTaskCards';
 import type {
   ConversationSession,
@@ -9,6 +10,7 @@ export interface RetainedConversationTask {
   readonly createdAt: string;
   readonly revision: number;
   readonly task: ConversationTaskCard;
+  readonly liveAfterMessageId?: number | null;
 }
 
 /** Serialize each card's changes so late results cannot overwrite a newer revision. */
@@ -23,13 +25,68 @@ export function createConversationTaskState(input: {
   const controllers = new Set<AbortController>();
   const routeOwners = new Map<string, number>();
   let generation = 0;
+  const voiceOwners = new Map<number, AbortController>();
   const cancelWrites = () => {
     generation += 1;
     for (const controller of controllers) controller.abort();
     queues.clear();
   };
-  return {
+  const tasks = {
+    captureVoiceEnd(
+      sessionId: number,
+      callId: string,
+    ): ((event: unknown) => Promise<void> | undefined) | undefined {
+      const owner = input.find(sessionId);
+      if (
+        !input.valid() ||
+        input.activeId() !== sessionId ||
+        !owner ||
+        owner.quarantined ||
+        owner.restoring ||
+        owner.restoreFailed
+      )
+        return;
+      const controller = voiceOwners.get(sessionId) ?? new AbortController();
+      // An abort stays false across remove/undo, even for a previously empty session.
+      voiceOwners.set(sessionId, controller);
+      const { signal } = controller;
+      const lease = input.retention?.activeLease(sessionId);
+      const current = () => {
+        const session = input.find(sessionId);
+        return (
+          input.valid() &&
+          !signal.aborted &&
+          Boolean(session) &&
+          !session?.quarantined &&
+          session?.createdAt === owner.createdAt
+        );
+      };
+      return createVoiceEndReceipt({
+        callId,
+        isCurrent: current,
+        retain: duration =>
+          tasks.save(
+            sessionId,
+            `voice-end:${callId}`,
+            { kind: 'voice_end', ...duration },
+            undefined,
+            {
+              current,
+              lease: lease ?? undefined,
+              signal,
+              createdAt: new Date().toISOString(),
+              afterMessage: input.find(sessionId)?.messages.at(-1)?.id ?? null,
+            },
+          ),
+      }).accept;
+    },
+    invalidateVoiceEnd(id: number) {
+      voiceOwners.get(id)?.abort();
+      voiceOwners.delete(id);
+    },
     invalidate() {
+      for (const owner of voiceOwners.values()) owner.abort();
+      voiceOwners.clear();
       cancelWrites();
       routeOwners.clear();
     },
@@ -71,6 +128,13 @@ export function createConversationTaskState(input: {
       cardId: string,
       task: ConversationTaskCard,
       expectedCardRevision?: number,
+      voice?: {
+        current: () => boolean;
+        lease?: { readonly id: string; readonly version: number };
+        signal: AbortSignal;
+        createdAt: string;
+        afterMessage: number | null;
+      },
     ) {
       // Freeze the requested identifiers before queued asynchronous work can start.
       const requested = JSON.parse(
@@ -85,6 +149,7 @@ export function createConversationTaskState(input: {
           const session = input.find(sessionId);
           if (
             !input.valid() ||
+            voice?.current() === false ||
             started !== generation ||
             !session ||
             session.quarantined ||
@@ -116,13 +181,17 @@ export function createConversationTaskState(input: {
             JSON.stringify(previous.task) === JSON.stringify(nextTask)
           )
             return;
-          const createdAt = previous?.createdAt ?? new Date().toISOString();
+          const createdAt =
+            previous?.createdAt ?? voice?.createdAt ?? new Date().toISOString();
           const revision = previous?.revision ?? null;
           if (input.retention && !input.retention.saveTaskCard)
             throw new Error('Conversation task storage is unavailable.');
           let stored: RetainedConversationTask | undefined;
           if (input.retention?.saveTaskCard) {
             const controller = new AbortController();
+            const stopVoice = () => controller.abort();
+            voice?.signal.addEventListener('abort', stopVoice, { once: true });
+            if (voice?.signal.aborted) stopVoice();
             controllers.add(controller);
             try {
               stored = await input.retention.saveTaskCard(
@@ -134,14 +203,17 @@ export function createConversationTaskState(input: {
                   task: nextTask,
                 },
                 controller.signal,
+                voice?.lease,
               );
             } finally {
+              voice?.signal.removeEventListener('abort', stopVoice);
               controllers.delete(controller);
             }
           }
           const current = input.find(sessionId);
           if (
             !input.valid() ||
+            voice?.current() === false ||
             started !== generation ||
             !current ||
             current.quarantined
@@ -156,7 +228,9 @@ export function createConversationTaskState(input: {
           input.update(sessionId, {
             taskCards: [
               ...(current.taskCards ?? []).filter(item => item.id !== cardId),
-              card,
+              voice
+                ? { ...card, liveAfterMessageId: voice.afterMessage }
+                : card,
             ],
           });
         });
@@ -171,4 +245,5 @@ export function createConversationTaskState(input: {
       return result;
     },
   };
+  return tasks;
 }

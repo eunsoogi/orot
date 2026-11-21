@@ -22,12 +22,15 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
         confirm(app, recipient: "OpenAI API")
         tap(app, "model-tab-voice", scroll: "settings-provider-screen")
         tap(app, "voice-model-refresh", scroll: "settings-provider-screen")
-        tap(app, "voice-model-gpt-realtime-2.1-mini", scroll: "settings-provider-screen")
+        tap(app, "voice-model-gpt-live-1.1", scroll: "settings-provider-screen")
         let disclosure = node(app, "model-settings-transmission-disclosure")
-        XCTAssertTrue(UITestConditions.exists(disclosure))
-        XCTAssertTrue(UITestConditions.text(disclosure).contains("OpenAI Realtime API"))
+        XCTAssertFalse(disclosure.exists)
         tap(app, "voice-settings-save", scroll: "settings-provider-screen")
-        XCTAssertTrue(wait { self.node(app, "voice-current-model").exists && UITestConditions.text(self.node(app, "voice-current-model")).contains("GPT Realtime 2.1 mini") })
+        let voiceApproval = node(app, "inference-disclosure-recipient")
+        XCTAssertTrue(UITestConditions.exists(voiceApproval))
+        XCTAssertTrue(UITestConditions.text(voiceApproval).contains("OpenAI Live API"))
+        tap(app, "inference-disclosure-allow", scroll: "inference-disclosure-content")
+        XCTAssertTrue(wait { self.node(app, "voice-current-model").exists && UITestConditions.text(self.node(app, "voice-current-model")).contains("GPT-Live-1.1") })
         inspect(app, expected: "authorized")
         app.terminate()
         launch(app, identifier, "reopen")
@@ -113,10 +116,13 @@ final class SettingsConsentUITests: OrotFailFastTestCase {
 
     @MainActor
     private func confirm(_ app: XCUIApplication, recipient: String) {
-        let disclosure = node(app, "model-settings-transmission-disclosure")
+        XCTAssertFalse(node(app, "model-settings-transmission-disclosure").exists)
+        tap(app, "provider-selection-confirm", scroll: "settings-provider-screen")
+        let disclosure = node(app, "inference-disclosure-recipient")
         XCTAssertTrue(UITestConditions.exists(disclosure))
         XCTAssertTrue(UITestConditions.text(disclosure).contains(recipient))
-        tap(app, "provider-selection-confirm", scroll: "settings-provider-screen")
+        tap(app, "inference-disclosure-allow", scroll: "inference-disclosure-content")
+        XCTAssertTrue(wait { !disclosure.exists })
         XCTAssertTrue(wait { !self.node(app, "provider-selection-confirm").exists })
     }
 

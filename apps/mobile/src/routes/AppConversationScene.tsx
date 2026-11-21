@@ -52,6 +52,7 @@ export function AppConversationScene({
     <AiFeatureFlow
       {...props}
       navigation={navigation}
+      canonicalConversationRoot={defaultConversation}
       onOpenArticle={openEuropePmcArticle}
     />
   );

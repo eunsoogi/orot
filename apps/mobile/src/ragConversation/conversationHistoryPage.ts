@@ -18,3 +18,14 @@ export type ReadConversationHistoryPage = (
   signal: AbortSignal,
   cursor?: ConversationHistoryCursor,
 ) => Promise<ConversationHistoryPage>;
+
+/** Local page-reader stage and cancellation ownership, never persisted. */
+export type ConversationHistoryReaderOwner = {
+  durableId: string;
+  cursor?: ConversationHistoryCursor;
+  initialized: boolean;
+  exhausted: boolean;
+  nextId: number;
+  controller?: AbortController;
+  flight?: Promise<void>;
+};

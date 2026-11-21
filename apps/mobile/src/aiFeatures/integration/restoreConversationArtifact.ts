@@ -4,6 +4,10 @@ import type { createConversationArtifactStorage } from '../../storage/conversati
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { fingerprint, stableJson } from './evidenceUtils';
+import {
+  readHistoryObservationAliases,
+  type ObservationHydrationOwner,
+} from './readHistoryObservationAliases';
 import { restoreRetainedSources } from './restoreRetainedSources';
 import { bindConversationSources } from './conversationSourceBindings';
 import {
@@ -27,7 +31,6 @@ type ParentHydration = (
   id: string,
   discovery: Parameters<ParentSnapshot>[0],
 ) => ReturnType<ParentSnapshot>;
-
 /** Restore opaque source links only while the saved result and every local input remain current. */
 export type RestoreInput = {
   readonly id: string;
@@ -39,8 +42,8 @@ export type RestoreInput = {
   readonly data: AiFeatureLocalData;
   readonly signal: AbortSignal;
   readonly boundCaptureOwner?: ConversationCaptureOwner;
+  readonly observationHydration?: ObservationHydrationOwner;
 };
-
 export async function restoreConversationArtifact(
   input: RestoreInput,
   reads = input.storage,
@@ -56,7 +59,6 @@ export async function restoreConversationArtifact(
     reads,
   );
 }
-
 /** Only the page reader may hydrate an already validated batch snapshot. Its final
  * readMany fence is mandatory before publication. Live aliases always retain the
  * original strict storage, never this snapshot or a snapshot-serving proxy. */
@@ -95,10 +97,18 @@ async function hydrate(
   // Keep treatment turns out of both visible history and model context until
   // the treatment-specific reopen path is integrated with this source binding.
   if (saved.treatmentContext) return null;
+  const initial =
+    !recheck && input.observationHydration
+      ? await readHistoryObservationAliases(input.observationHydration, saved)
+      : undefined;
+  if (input.signal.aborted) return null;
   const restored = await restoreRetainedSources(
     saved.sources.filter(isOriginalConversationSource),
     input.registry,
     input.data,
+    // Conversation rebinds aliases; it never reviews the saved prose as a summary.
+    'omit',
+    input.observationHydration?.current() ? initial : undefined,
   );
   if (restored.sourceChanged || input.signal.aborted) return null;
   const photoSources = saved.sources.filter(isConversationPhotoSource);

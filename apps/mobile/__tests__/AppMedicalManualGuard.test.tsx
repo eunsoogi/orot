@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import type { AlertButton } from 'react-native';
-import App from '../App';
+import { RetainedAppointmentRouteFixture } from '../test-helpers/RetainedAppointmentRouteFixture';
 import { navigationText } from '../src/i18n/navigation';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
 
@@ -38,27 +38,11 @@ test('uses one guarded toolbar for manual entry and blocks exit during save', as
     await pendingSave;
     return create(input);
   });
+  // The owner removed classification's manual entry. Keep its editor guards independently observable.
   await render(
-    <App
-      loadAppointments={async () => store.repository}
-      loadRecordings={async () => []}
-      aiFeatureServiceDependencies={{
-        selectedAi: {
-          selectionStore: {
-            load: async () => null,
-            save: async () => undefined,
-            clear: async () => undefined,
-          },
-        },
-      }}
-    />,
+    <RetainedAppointmentRouteFixture repository={store.repository} />,
   );
-  await fireEvent.press(screen.getByTestId('navigation-tab-records'));
-  await fireEvent.press(screen.getByTestId('records-section-schedule'));
-  await fireEvent.press(await screen.findByTestId('open-medical-appointments'));
-  await fireEvent.press(
-    await screen.findByTestId('medical-appointment-manual'),
-  );
+  await screen.findByTestId('appointment-add');
   expect(screen.getAllByTestId('navigation-action-bar-overlay')).toHaveLength(
     1,
   );
@@ -97,9 +81,9 @@ test('uses one guarded toolbar for manual entry and blocks exit during save', as
     expect(screen.getByTestId('navigation-back')).toBeEnabled(),
   );
   await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(await screen.findByTestId('medical-appointment-manual')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('navigation-back'));
-  expect(await screen.findByTestId('calendar-title')).toBeTruthy();
+  expect(
+    await screen.findByTestId('retained-appointment-route-return'),
+  ).toBeTruthy();
   alert.mockRestore();
 });
 

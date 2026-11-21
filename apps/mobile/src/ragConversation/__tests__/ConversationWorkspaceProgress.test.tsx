@@ -1,4 +1,4 @@
-import { Dimensions, View } from 'react-native';
+import { AccessibilityInfo, Dimensions, View } from 'react-native';
 import {
   fireEvent,
   render,
@@ -8,6 +8,10 @@ import {
 import { ConversationWorkspace } from '../ConversationWorkspace';
 import { ConversationHistory } from '../ConversationHistory';
 import type { ConversationSession } from '../conversationSessionTypes';
+import {
+  activity,
+  user,
+} from '../testSupport/conversationHistoryActivityFixture';
 import { conversationToolEventFixtures } from '../testSupport/conversationToolEventFixtures';
 
 jest.mock('../../navigation/NavigationGeometryProvider', () => ({
@@ -36,17 +40,19 @@ const measurable = View as unknown as {
     ) => void;
   };
 };
-let measurement: jest.SpyInstance;
 const originalWindow = Dimensions.get('window');
 beforeEach(() => {
   hostWidth = 390;
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
   Dimensions.set({ window: { ...originalWindow, fontScale: 1 } });
-  measurement = jest
+  jest
     .spyOn(measurable.prototype, 'measureInWindow')
     .mockImplementation(callback => callback(0, 0, hostWidth, 800));
 });
 afterEach(() => {
-  measurement.mockRestore();
+  jest.restoreAllMocks();
   Dimensions.set({ window: originalWindow });
 });
 const actions = { onOpenSource: jest.fn(), onLinkError: jest.fn() };
@@ -57,14 +63,14 @@ const session: ConversationSession = {
   draft: '',
   busy: true,
   error: '',
-  messages: [],
+  messages: [user],
   pendingMessage: {
     id: 44,
     content: '',
     activity: '',
     toolEvents: conversationToolEventFixtures,
   },
-  requestActivity: { sessionId: 12, requestId: 44, stage: 'waiting' },
+  requestActivity: activity('waiting'),
 };
 function workspace(value: ConversationSession) {
   return (
@@ -118,7 +124,7 @@ test('retains progress when expanded streaming text is hidden and clears at comp
   const streaming: ConversationSession = {
     ...session,
     pendingMessage: { ...session.pendingMessage!, content: '부분 답변' },
-    requestActivity: { sessionId: 12, requestId: 44, stage: 'streaming' },
+    requestActivity: activity('streaming'),
   };
   const view = await render(workspace(streaming));
   expect(dots()).toHaveLength(0);

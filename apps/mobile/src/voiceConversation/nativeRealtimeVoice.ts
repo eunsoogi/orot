@@ -1,13 +1,21 @@
+import {
+  createVoiceStopReceipts,
+  type CaptureVoiceEndReceipt,
+} from './voiceStopReceipts';
 import type {
   RealtimeToolNative,
   RealtimeToolRequest,
 } from './realtimeToolRequests';
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import type { VoicePhase } from './voiceTurn';
-import { hasRealtimeVoiceRuntime } from '../voiceSettings/voiceRuntimeCapability';
+import type { Preferences } from '../voiceSettings/liveVoicePreferences';
+import {
+  hasLiveVoiceRuntime,
+  hasRealtimeVoiceRuntime,
+} from '../voiceSettings/voiceRuntimeCapability';
 
 // Survives screen disposal: a failed release must be retried before any newer call opens.
-const pendingCleanup = new Set<string>();
+const pendingCleanup = createVoiceStopReceipts();
 const openingCalls = new Map<string, { cancelled: boolean }>();
 
 export interface RealtimeTranscript {
@@ -23,9 +31,11 @@ export interface NativeRealtimeVoice {
     key: string,
     language: string,
     enableTools?: boolean,
+    preferences?: Preferences,
+    isCurrent?: () => boolean,
   ): Promise<void>;
   tools?: RealtimeToolNative;
-  stop(id: string): Promise<void>;
+  stop(id: string, graceful?: boolean): Promise<void>;
   pause(id: string): Promise<void>;
   resume(id: string): Promise<void>;
   interrupt(id: string): Promise<void>;
@@ -34,14 +44,28 @@ export interface NativeRealtimeVoice {
   onSystemCall?(
     listener: (callId: string, active: boolean) => void,
   ): () => void;
+  onPaused?(listener: (id: string) => void): () => void;
   onInterrupted(listener: (id: string) => void): () => void;
 }
 
 /** Only transcripts/status cross the event bridge; native code owns PCM and transport. */
 export function nativeRealtimeVoice(): NativeRealtimeVoice | null {
+  return nativeOwnedVoice(false);
+}
+
+export function nativeLiveVoice(
+  captureEnd?: CaptureVoiceEndReceipt,
+): NativeRealtimeVoice | null {
+  return nativeOwnedVoice(true, captureEnd);
+}
+
+function nativeOwnedVoice(
+  live: boolean,
+  captureEnd?: CaptureVoiceEndReceipt,
+): NativeRealtimeVoice | null {
   const module =
     Platform.OS === 'ios' ? NativeModules.VoiceRealtimeModule : null;
-  if (!hasRealtimeVoiceRuntime()) return null;
+  if (!(live ? hasLiveVoiceRuntime() : hasRealtimeVoiceRuntime())) return null;
   const events = new NativeEventEmitter(module);
   const subscribe = (
     name: string,
@@ -53,26 +77,55 @@ export function nativeRealtimeVoice(): NativeRealtimeVoice | null {
     });
     return () => sub.remove();
   };
-  const stop = async (id: string) => {
+  let voiceEnd:
+    { id: string; receive: ReturnType<CaptureVoiceEndReceipt> } | undefined;
+  const stop = async (id: string, graceful = false) => {
     const opening = openingCalls.get(id);
     if (opening) opening.cancelled = true;
-    pendingCleanup.add(id);
-    await module.stopRealtimeCall(id);
-    pendingCleanup.delete(id);
+    const previous = voiceEnd?.id === id ? voiceEnd : undefined;
+    await pendingCleanup.stop(
+      id,
+      () =>
+        live && graceful && typeof module.closeLiveCall === 'function'
+          ? module.closeLiveCall(id)
+          : module.stopRealtimeCall(id),
+      previous?.receive,
+    );
+    if (voiceEnd === previous) voiceEnd = undefined;
   };
   return {
-    open: async (id, model, key, language, enableTools = false) => {
+    open: async (
+      id,
+      model,
+      key,
+      language,
+      enableTools = false,
+      preferences,
+      isCurrent,
+    ) => {
       const opening = { cancelled: false };
       openingCalls.set(id, opening);
       try {
-        for (const previous of pendingCleanup) await stop(previous);
+        for (const previous of pendingCleanup.pendingIds())
+          await stop(previous);
         if (opening.cancelled) throw new Error('Voice call cancelled');
-        await module.openRealtimeCall(id, model, key, language, enableTools);
+        if (live) {
+          if (!preferences || enableTools || !isCurrent?.())
+            throw new Error('Expected audio-only Live settings');
+          voiceEnd = { id, receive: captureEnd?.(id) };
+          await module.openLiveCall(id, model, key, {
+            language: 'auto',
+            voice: preferences.voice,
+          });
+        } else {
+          await module.openRealtimeCall(id, model, key, language, enableTools);
+        }
       } finally {
         if (openingCalls.get(id) === opening) openingCalls.delete(id);
       }
     },
-    ...(typeof module.resolveRealtimeToolCall === 'function' &&
+    ...(!live &&
+    typeof module.resolveRealtimeToolCall === 'function' &&
     typeof module.cancelRealtimeTools === 'function'
       ? {
           tools: {
@@ -138,6 +191,14 @@ export function nativeRealtimeVoice(): NativeRealtimeVoice | null {
         )
           listener(event.callId, event.active);
       }),
+    ...(live
+      ? {
+          onPaused: (listener: (id: string) => void) =>
+            subscribe('VoiceRealtimePaused', event => {
+              if (typeof event.callId === 'string') listener(event.callId);
+            }),
+        }
+      : {}),
     onInterrupted: listener =>
       subscribe('VoiceRealtimeInterrupted', event => {
         if (typeof event.callId === 'string') listener(event.callId);

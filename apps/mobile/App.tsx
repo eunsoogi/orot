@@ -4,7 +4,8 @@ import {
 } from './src/appointmentReminders/AppointmentReminderContext';
 import { GatedReminderDeliveryHost } from './src/assistantAppearance/GatedReminderDeliveryHost';
 import { RecordSourceNavigationProvider } from './src/routes/RecordSourceNavigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAppRootTab } from './src/routes/useAppRootTab';
+import { useEffect, useMemo, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { useRecapRecovery } from './src/transcription/useRecapRecovery';
 import { eventKitCalendarBridge } from './src/calendar/calendarBridge';
@@ -26,15 +27,10 @@ import {
   appContentLayoutOwner,
   appRouteIsScrollable,
 } from './src/navigation/appContentLayoutPolicy';
-import {
-  createNavigationRootTabs,
-  type AppRootTab,
-} from './src/navigation/rootTabs';
+import { createNavigationRootTabs } from './src/navigation/rootTabs';
 import type { AppNavigationRoute } from './src/routes/AppRouteContent';
-import { AppRouteContent } from './src/routes/AppRouteContent';
+import * as overview from './src/routes/AppOverviewDataBoundary';
 import type { AppProps } from './src/routes/AppEntryProps';
-import { useAppOverviewData } from './src/routes/useAppOverviewData';
-import { useOverviewActivity } from './src/routes/useOverviewActivity';
 import { useBackupPreparation } from './src/backup/useBackupPreparation';
 import { appColors } from './src/layout/appColors';
 import { syncLocalPreviouslyRequestedHealthKit } from './src/healthkit/autoSyncLocal';
@@ -83,22 +79,13 @@ function App({
     [ai.services],
   );
   const calendarSync = useCalendarAutoSync(calendarBridge);
-  const [activeTab, setActiveTab] = useState<AppRootTab>('conversation');
-  const activeTabRef = useRef(activeTab);
-  const selectActiveTab = (tab: AppRootTab) => {
-    activeTabRef.current = tab;
-    setActiveTab(tab);
-  };
+  const { activeTab, activeTabRef, selectActiveTab, capturePromptTab } =
+    useAppRootTab();
   const [selectedProvider, setSelectedProvider] = useState('');
   const [healthRecordDetailSelection, setHealthRecordDetailSelection] =
     useState<HealthRecordsDetailSelection | null>(null);
   const [appNavigation] = useState(() =>
     createNavigationController<AppNavigationRoute>('root'),
-  );
-  const homeData = useAppOverviewData(
-    loadAppointments,
-    loadRecordings,
-    useOverviewActivity(appNavigation, activeTab),
   );
   const backupPreparation = useBackupPreparation();
 
@@ -124,7 +111,7 @@ function App({
   }
 
   const rootTabs = createNavigationRootTabs(activeTab, selectActiveTab);
-  return (
+  const shell = (
     <View style={styles.appShell}>
       <RecordSourceNavigationProvider>
         <AiFeatureSharedNavigationStateProvider
@@ -174,7 +161,6 @@ function App({
                   onOpenCalendarSettings={() =>
                     appNavigation.push('settings-sync-status')
                   }
-                  onOpenManual={() => actions.push('medical-manual')}
                   onOpenProviderSelection={() =>
                     actions.push('settings-provider')
                   }
@@ -184,8 +170,7 @@ function App({
                   }
                 />
               ) : (
-                <AppRouteContent
-                  {...homeData}
+                <overview.AppOverviewDataRouteContent
                   documentImportService={documentImportService}
                   loadSavedVisitQuestions={ai.services.loadSavedVisitQuestions}
                   discoverManualVisits={ai.services.conversationArtifacts}
@@ -236,11 +221,20 @@ function App({
             retention={conversationSessionOptions.retention}
             loadLocalData={aiFeatureServiceDependencies?.loadLocalData}
             selectTab={selectActiveTab}
+            capturePromptTab={capturePromptTab}
           />
           {ai.disclosureSheet}
         </AiFeatureSharedNavigationStateProvider>
       </RecordSourceNavigationProvider>
     </View>
+  );
+  return (
+    <overview.AppOverviewDataBoundary
+      controller={appNavigation}
+      {...{ activeTab, loadAppointments, loadRecordings }}
+    >
+      {shell}
+    </overview.AppOverviewDataBoundary>
   );
 }
 

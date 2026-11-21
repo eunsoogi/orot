@@ -63,6 +63,12 @@ describe('Test entry routing', () => {
             AppRegistry: { registerComponent: jest.fn() },
             StyleSheet: { create: (styles: Record<string, unknown>) => styles },
           }));
+          jest.doMock(
+            '../test-helpers/RetainedAppointmentRouteFixture',
+            () => ({
+              RetainedAppointmentRouteFixture: () => null,
+            }),
+          );
           // Keep this assertion about polyfill ordering, not diagnostic service initialization.
           jest.doMock('../src/agent/execution/useInferenceConsent', () => ({
             useInferenceConsent: jest.fn(),
@@ -86,6 +92,7 @@ describe('Test entry routing', () => {
 
         expect(readableStreamAtAppImport).toBe(true);
       } finally {
+        jest.dontMock('../test-helpers/RetainedAppointmentRouteFixture');
         jest.dontMock('../App');
         jest.dontMock('../app.json');
         jest.dontMock('../src/providers/selection/options');

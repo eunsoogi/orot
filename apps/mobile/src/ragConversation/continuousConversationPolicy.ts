@@ -27,7 +27,11 @@ type Store = {
   create(): void;
   dispose(): void;
   invalidateAll(): void;
-  retryRestore(id: number, signal?: AbortSignal): Promise<void>;
+  retryInitialRestore(
+    id: number,
+    durableId: string,
+    signal: AbortSignal,
+  ): Promise<void>;
   send(id: number, sender: ConversationSender): Promise<void>;
   sendPrompt(
     id: number,
@@ -47,10 +51,35 @@ export function continuousConversationPolicy<T extends Store>(
   let controller: AbortController | undefined;
   let epoch = 0;
   let disposed = false;
+  let interrupted:
+    | {
+        sessionId: number;
+        lease: { id: string; version: number };
+        model: NonNullable<typeof model>;
+      }
+    | undefined;
   const enabled = Boolean(options.continuousSession);
-  const synchronizeModel = (refresh = false): Promise<void> => {
+  const synchronizeModel = (
+    refresh = false,
+    recovery?: 'restart-interrupted-initial-page',
+  ): Promise<void> => {
     if (!enabled || disposed) return Promise.resolve();
     if (pending && !refresh) return pending;
+    const snapshot = store.getSnapshot();
+    const reopenInterruptedPage =
+      recovery === 'restart-interrupted-initial-page';
+    if (refresh && reopenInterruptedPage) {
+      const active = snapshot.sessions.find(
+        session => session.id === snapshot.activeId,
+      );
+      const lease = options.retention?.activeLease(snapshot.activeId);
+      if (pending && active?.restoring && !active.quarantined && lease && model)
+        interrupted = {
+          sessionId: active.id,
+          lease: { ...lease },
+          model: { ...model },
+        };
+    } else if (refresh) interrupted = undefined;
     controller?.abort();
     const signal = (controller = new AbortController()).signal;
     const version = ++epoch;
@@ -69,6 +98,18 @@ export function continuousConversationPolicy<T extends Store>(
           );
         if (existing) {
           const lease = options.retention?.activeLease(existing.id);
+          const restart =
+            reopenInterruptedPage &&
+            existing.id === activeId &&
+            store.getSnapshot().activeId === existing.id &&
+            !existing.quarantined &&
+            interrupted?.sessionId === existing.id &&
+            interrupted.lease.id === target.id &&
+            interrupted.lease.version === target.version &&
+            interrupted.model.providerId === target.model.providerId &&
+            interrupted.model.modelId === target.model.modelId &&
+            lease?.id === target.id &&
+            lease.version === target.version;
           if (
             !lease ||
             lease.version !== target.version ||
@@ -76,7 +117,13 @@ export function continuousConversationPolicy<T extends Store>(
           ) {
             await store.refreshLease(existing.id, target, current, signal);
             if (!current()) return;
+          } else if (restart) {
+            // The cancelled reader cannot publish. Only a fresh matching retained
+            // lease may start another initial page under this selection owner.
+            await store.retryInitialRestore(existing.id, target.id, signal);
+            if (!current()) return;
           }
+          interrupted = undefined;
           if (existing.id !== activeId) store.cancel(activeId);
           store.select(existing.id);
 
@@ -86,6 +133,7 @@ export function continuousConversationPolicy<T extends Store>(
           });
           return;
         }
+        interrupted = undefined;
         // The old request keeps its own identity and late-event fences; it cannot migrate providers.
         store.cancel(activeId);
         await store.attachExisting(
@@ -174,12 +222,14 @@ export function continuousConversationPolicy<T extends Store>(
             });
     },
     invalidateAll() {
+      interrupted = undefined;
       ++epoch;
       controller?.abort();
       pending = undefined;
       store.invalidateAll();
     },
     dispose() {
+      interrupted = undefined;
       disposed = true;
       ++epoch;
       controller?.abort();

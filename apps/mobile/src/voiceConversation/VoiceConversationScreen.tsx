@@ -33,7 +33,7 @@ export function VoiceConversationScreen({
   phase: VoicePhase;
   status: string;
   identity?: ReactNode;
-  pipeline?: string;
+  pipeline?: string | null;
   transcript?: readonly VoiceTranscriptLine[];
   onEnd: () => void;
   onDismiss?: () => void;
@@ -106,9 +106,11 @@ export function VoiceConversationScreen({
           <AppText accessibilityLiveRegion="polite" style={styles.status}>
             {muted ? t('ragConversation.voice.muted') : status}
           </AppText>
-          <AppText maxFontSizeMultiplier={2} style={styles.note}>
-            {pipeline ?? t('ragConversation.voice.localPipeline')}
-          </AppText>
+          {pipeline === null ? null : (
+            <AppText maxFontSizeMultiplier={2} style={styles.note}>
+              {pipeline ?? t('ragConversation.voice.localPipeline')}
+            </AppText>
+          )}
           <VoiceTranscriptViewport lines={transcript ?? []} />
         </View>
         <View style={styles.actions}>

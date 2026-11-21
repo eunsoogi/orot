@@ -1,5 +1,9 @@
 import { useMemo } from 'react';
 import { useModelConsentSave } from '../agent/execution/useModelConsentSave';
+import {
+  liveVoiceModelId,
+  liveVoiceProviderId,
+} from '../agent/execution/liveVoiceSettingsIdentity';
 import type { VoiceMode } from './voiceSettingsStore';
 import { useModelSettingsServices } from '../agent/execution/ModelSettingsServices';
 
@@ -13,18 +17,24 @@ export function useVoiceConsentSave(accountRevision: number | null) {
         return {
           providerId:
             value.mode === 'openai-api'
-              ? 'openai-realtime'
+              ? value.model === liveVoiceModelId
+                ? liveVoiceProviderId
+                : 'openai-realtime'
               : 'apple-local-voice',
           modelId: value.model,
         };
       },
       async save(value: { providerId: string; modelId: string }) {
         if (
-          !['openai-realtime', 'apple-local-voice'].includes(value.providerId)
+          ![liveVoiceProviderId, 'apple-local-voice'].includes(
+            value.providerId,
+          ) ||
+          (value.providerId === liveVoiceProviderId &&
+            value.modelId !== liveVoiceModelId)
         )
           throw new Error('Unknown voice destination');
         const mode =
-          value.providerId === 'openai-realtime' ? 'openai-api' : 'local';
+          value.providerId === liveVoiceProviderId ? 'openai-api' : 'local';
         await voiceSettingsStore.save({
           mode,
           model: value.modelId,
@@ -40,13 +50,17 @@ export function useVoiceConsentSave(accountRevision: number | null) {
     [accountRevision, voiceSettingsStore],
   );
   const save = useModelConsentSave('voice', store);
-  return (mode: VoiceMode, model: string) =>
-    save({
-      provider: {
-        id: mode === 'openai-api' ? 'openai-realtime' : 'apple-local-voice',
+  return (mode: VoiceMode, model: string, isCurrentDraft: () => boolean) =>
+    save(
+      {
+        provider: {
+          id: mode === 'openai-api' ? liveVoiceProviderId : 'apple-local-voice',
+        },
+        modelId: model,
+        privacyBoundary:
+          mode === 'openai-api' ? 'selected-context-remote' : 'on-device',
       },
-      modelId: model,
-      privacyBoundary:
-        mode === 'openai-api' ? 'selected-context-remote' : 'on-device',
-    });
+      undefined,
+      isCurrentDraft,
+    );
 }

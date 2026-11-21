@@ -1,3 +1,4 @@
+import { AccessibilityInfo } from 'react-native';
 import {
   act,
   fireEvent,
@@ -18,6 +19,13 @@ const reference = {
   effectiveTime: null,
   reviewState: 'reviewed' as const,
 };
+
+beforeEach(() => {
+  jest
+    .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+    .mockResolvedValue(true);
+});
+afterEach(() => jest.restoreAllMocks());
 
 test('shows safe answer text and separate evidence activity while generating', async () => {
   let finish!: (value: RagConversationOutcome) => void;
@@ -43,6 +51,14 @@ test('shows safe answer text and separate evidence activity while generating', a
     '혈압 기록은?',
   );
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
+  expect(
+    screen.queryByTestId('rag-conversation-activity-bubble', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
+  await act(async () => {
+    observer?.onProviderReceipt?.('response_started');
+  });
   const bubble = await screen.findByTestId('rag-conversation-activity-bubble', {
     includeHiddenElements: true,
   });

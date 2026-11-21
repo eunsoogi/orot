@@ -1,3 +1,7 @@
+import { createSettingsConsentAuthorization } from '../settingsConsentAuthorization';
+import { settingsPermissionsForFeature } from '../settingsConsentCatalog';
+import { voiceSettingsStore } from '../../../voiceSettings/voiceSettingsStore';
+import type { SettingsConsentGrant } from '../settingsConsentGrant';
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import { resolveSettingsConsentOwner } from '../settingsConsentOwner';
 import { resolveSelectedAiProvider } from '../../../aiFeatures/integration/provider';
@@ -141,4 +145,105 @@ test('local model does not confer external model permission but can own an indep
   await f.authority.revoke();
   expect(owner?.isCurrent()).toBe(false);
   expect(await resolveSettingsConsentOwner(medical)).toBeNull();
+});
+
+test('Live media requires exact new settings authority and cannot relay generated results', async () => {
+  const f = await fixture();
+  jest.mocked(voiceSettingsStore.load).mockResolvedValue({
+    mode: 'openai-api',
+    model: 'gpt-live-1.1',
+    hasApiKey: true,
+  });
+  const live = {
+    ...f.request,
+    providerId: 'openai-live',
+    modelId: 'gpt-live-1.1',
+    recipient: 'OpenAI Live API',
+    allowedScope: { sourceKinds: [] },
+    consentScope: {
+      purpose: 'live_audio',
+      policyVersion: 'selected-live-audio-v1',
+      dataCategories: ['live_voice_audio'],
+    },
+  };
+  const legacy = {
+    ...live,
+    providerId: 'openai-realtime',
+    modelId: 'gpt-realtime-2.1',
+    recipient: 'OpenAI Realtime API',
+    allowedScope: f.request.allowedScope,
+    consentScope: {
+      purpose: 'realtime_audio',
+      policyVersion: 'selected-realtime-v1',
+      dataCategories: ['live_voice_audio'],
+    },
+  };
+  const grant: SettingsConsentGrant = {
+    version: 1,
+    catalogVersion: 'model-settings-v1',
+    identity: {
+      providerId: legacy.providerId,
+      modelId: legacy.modelId,
+      recipient: legacy.recipient,
+      authorityGeneration: 'a'.repeat(64),
+      credentialEpoch: 'synthetic-account',
+    },
+    permissions: settingsPermissionsForFeature('voice', legacy.providerId),
+  };
+  const readGrant = jest
+    .fn<Promise<SettingsConsentGrant | null>, []>()
+    .mockResolvedValue(grant);
+  const consent = createSettingsConsentAuthorization({
+    catalogVersion: 'model-settings-v1',
+    resolveOwner: resolveSettingsConsentOwner,
+    readGrant,
+  });
+  expect(await consent.authorize(live)).toBe('renewal_required');
+  expect(await resolveSettingsConsentOwner(legacy)).toBeNull();
+  expect(
+    await resolveSettingsConsentOwner({ ...live, recipient: legacy.recipient }),
+  ).toBeNull();
+
+  const owner = await resolveSettingsConsentOwner(live);
+  expect(owner?.identity.providerId).toBe('openai-live');
+  const permission = settingsPermissionsForFeature('voice', live.providerId);
+  expect(permission.map(p => p.purpose)).toEqual(['live_audio']);
+  readGrant.mockResolvedValue({
+    ...grant,
+    identity: owner!.identity,
+    permissions: permission,
+  });
+  expect(await consent.authorize(live)).toBe('authorized');
+  expect(
+    await consent.authorize({
+      ...live,
+      consentScope: {
+        purpose: 'live_result',
+        policyVersion: 'selected-live-result-v1',
+        dataCategories: ['generated_answer'],
+      },
+    }),
+  ).toBe('renewal_required');
+  readGrant.mockResolvedValue({
+    ...grant,
+    identity: owner!.identity,
+    permissions: grant.permissions,
+  });
+  expect(await consent.authorize(live)).toBe('renewal_required');
+  readGrant.mockResolvedValue({
+    ...grant,
+    identity: owner!.identity,
+    permissions: permission,
+  });
+  expect(await consent.authorize(live)).toBe('authorized');
+  const invalidated = jest.fn();
+  const unsubscribe = consent.subscribeAuthorizationInvalidation!(
+    live,
+    invalidated,
+  );
+  const finish = f.mutation.begin();
+  expect(invalidated).toHaveBeenCalled();
+  expect(consent.isAuthorizationCurrent!(live)).toBe(false);
+  finish();
+  unsubscribe();
 });

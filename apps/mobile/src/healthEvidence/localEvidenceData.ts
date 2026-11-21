@@ -1,3 +1,4 @@
+import { historyStalenessRead } from './historyObservationHydrationOwner';
 import {
   readAvailableHealthContextWindow,
   type ResolveHealthContextWindow,
@@ -108,8 +109,11 @@ export function createLocalEvidenceData(
     },
     loadCurrentChunks: (identities, signal) =>
       readCurrentEvidenceChunks(database, identities, signal),
-    loadStaleArtifacts: (identities, signal) =>
-      readSelectedStaleArtifacts(database, identities, signal),
+    loadStaleArtifacts: historyStalenessRead(
+      (identities, signal) =>
+        readSelectedStaleArtifacts(database, identities, signal),
+      database,
+    ),
     findIdentifiers: (text, signal) =>
       findEvidenceIdentifiers(database, text, signal),
   };

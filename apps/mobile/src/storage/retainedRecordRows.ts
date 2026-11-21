@@ -1,4 +1,8 @@
-import { STORAGE_TABLES, type SqlExecutor } from '@orot/storage';
+import {
+  STORAGE_TABLES,
+  type SqlExecutor,
+  type SqlResult,
+} from '@orot/storage';
 import type { SavedRecordSummarySource } from '../diseaseHypotheses/savedSummaries';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 
@@ -6,15 +10,8 @@ type Reference = SavedRecordSummarySource['records'][number];
 export const retainedRecordKey = (record: Pick<Reference, 'kind' | 'id'>) =>
   JSON.stringify([record.kind, record.id]);
 
-/** Fetch every selected record and its stale marker inside the caller's transaction.
- * One bound JSON ID set per kind avoids per-sample bridge round trips and SQLite's
- * variable limit. No cross-call cache or record/byte ceiling weakens revalidation. */
-export async function readRetainedRecordRows(
-  tx: SqlExecutor,
-  records: readonly Reference[],
-) {
+export function orderedRetainedRecords(records: readonly Reference[]) {
   const unique = new Map<string, Reference>();
-  const groups = new Map<Reference['kind'], string[]>();
   for (const record of records) {
     const key = retainedRecordKey(record);
     const previous = unique.get(key);
@@ -25,6 +22,30 @@ export async function readRetainedRecordRows(
       );
     if (previous) continue;
     unique.set(key, record);
+  }
+  return [...unique.values()];
+}
+
+export function checkedRetainedRow(row: SqlResult['rows'][number]) {
+  if (
+    typeof row.id !== 'string' ||
+    typeof row.source_json !== 'string' ||
+    (row.stale !== 0 && row.stale !== 1)
+  )
+    throw new RetainedSourceInvalidError('A cited source is invalid.');
+  return { id: row.id, serialized: row.source_json, stale: row.stale === 1 };
+}
+
+/** Fetch every selected record and its stale marker inside the caller's transaction.
+ * One bound JSON ID set per kind avoids per-sample bridge round trips and SQLite's
+ * variable limit. No cross-call cache or record/byte ceiling weakens revalidation. */
+export async function readRetainedRecordRows(
+  tx: SqlExecutor,
+  records: readonly Reference[],
+) {
+  const ordered = orderedRetainedRecords(records);
+  const groups = new Map<Reference['kind'], string[]>();
+  for (const record of ordered) {
     const ids = groups.get(record.kind) ?? [];
     ids.push(record.id);
     groups.set(record.kind, ids);
@@ -43,17 +64,9 @@ export async function readRetainedRecordRows(
       [kind, JSON.stringify(ids)],
     );
     for (const row of result.rows) {
-      if (
-        typeof row.id !== 'string' ||
-        typeof row.source_json !== 'string' ||
-        (row.stale !== 0 && row.stale !== 1)
-      )
-        throw new RetainedSourceInvalidError('A cited source is invalid.');
-      rows.set(retainedRecordKey({ kind, id: row.id }), {
-        serialized: row.source_json,
-        stale: row.stale === 1,
-      });
+      const { id, ...current } = checkedRetainedRow(row);
+      rows.set(retainedRecordKey({ kind, id }), current);
     }
   }
-  return { records: [...unique.values()], rows };
+  return { records: ordered, rows };
 }

@@ -62,7 +62,10 @@ test('a busy explicit daily tap does not immediately restore and re-prompt itsel
   );
   const view = await render(
     <AppointmentReminderProvider runtime={runtime}>
-      <AppointmentReminderDeliveryHost controller={controller} />
+      <AppointmentReminderDeliveryHost
+        controller={controller}
+        openConversationRoot={key => controller.commitApprovedRoot(key)}
+      />
     </AppointmentReminderProvider>,
   );
   try {

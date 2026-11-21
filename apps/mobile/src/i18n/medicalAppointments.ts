@@ -3,6 +3,20 @@
  * The feature adapter resolves it with `t()` so keys and placeholders stay typed.
  */
 export const medicalAppointmentsKo = {
+  'medicalAppointments.readerTooSmall':
+    '화면을 세로로 돌리거나 창을 키워 주세요',
+  'medicalAppointments.expandReader': '전체 화면으로 내용 보기',
+  'medicalAppointments.closeReader': '확대 화면 닫기',
+  'medicalAppointments.startShort': '시작',
+  'medicalAppointments.restartShort': '다시',
+  'medicalAppointments.confirmClassification': '캘린더 일정을 분류할까요?',
+  'medicalAppointments.progress': '일정 분류 중',
+  'medicalAppointments.savingResults': '분류한 일정을 저장하고 있어요.',
+  'medicalAppointments.reviewResults': '분류된 일정',
+  'medicalAppointments.startAgain': '다시 분류하기',
+  'medicalAppointments.previousResult': '이전 페이지',
+  'medicalAppointments.nextResult': '다음 페이지',
+  'medicalAppointments.resultPosition': '{current} / {total}',
   'medicalAppointments.classification.medical': '의료 방문·검사 일정',
   'medicalAppointments.classification.non_medical': '일반 생활 일정',
   'medicalAppointments.classification.uncertain': '제목만으로 판단 어려움',
@@ -130,6 +144,7 @@ export const medicalAppointmentsKo = {
     '[{type} 첨부 내용을 이 화면에서 확인할 수 없습니다]',
   'medicalAppointments.inferenceDisclosure.blockedAttachment':
     '첨부 내용을 미리 볼 수 없어 전송을 허용할 수 없습니다.',
+  'medicalAppointments.inferenceDisclosure.settingsAgree': '동의',
   'medicalAppointments.inferenceDisclosure.allow': '동의하고 전송',
   'medicalAppointments.inferenceDisclosure.cancel': '취소',
   'medicalAppointments.actions.loadCalendar': '선택한 AI로 분류',
@@ -147,8 +162,8 @@ export const medicalAppointmentsKo = {
     '캘린더 일정을 확인하지 못했어요. 설정에서 상태를 확인해 주세요.',
   'medicalAppointments.actions.calendarSettings': '캘린더 설정 열기',
   'medicalAppointments.status.providerUnavailable':
-    '선택된 AI를 사용할 수 없습니다. 수동으로 일정을 확인할 수 있습니다.',
-  // Provider lookup can finish asynchronously; manual entry remains available meanwhile.
+    '선택한 AI를 사용할 수 없어요. 다른 AI를 선택해 주세요.',
+  // Provider lookup is asynchronous; classification waits for its resolved state.
   'medicalAppointments.status.providerResolving':
     '선택한 AI를 확인하고 있어요.',
   'medicalAppointments.status.noProvider':

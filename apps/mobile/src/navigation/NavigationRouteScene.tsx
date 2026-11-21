@@ -35,8 +35,10 @@ export interface NavigationRouteSceneProps<Name extends string> {
     routeKey: string,
     source: NavigationLeaveStateSource<Name>,
   ) => () => void;
-  readonly getLeaveStateSource: () =>
-    NavigationLeaveStateSource<Name> | undefined;
+  readonly leaveStateOwner: unknown;
+  readonly getLeaveStateSource: (
+    routeKey: string,
+  ) => NavigationLeaveStateSource<Name> | undefined;
   readonly children: (actions: NavigationRouteActions<Name>) => ReactNode;
 }
 
@@ -51,9 +53,15 @@ export function NavigationRouteScene<Name extends string>({
   rootTabs,
   primaryActionHost,
   registerLeaveStateForRoute,
-  getLeaveStateSource,
+  getLeaveStateSource: getSource,
+  leaveStateOwner,
   children,
 }: NavigationRouteSceneProps<Name>) {
+  // A stable route lookup reads the latest owner, without render-only guard churn.
+  const getLeaveStateSource = useCallback(
+    () => getSource(route.key),
+    [getSource, route.key],
+  );
   // Preserve source identity while an async leave confirmation checks for stale state.
   const registerLeaveState = useCallback(
     (source: NavigationLeaveStateSource<Name>) =>
@@ -110,7 +118,7 @@ export function NavigationRouteScene<Name extends string>({
 
   useLayoutEffect(
     () => controller.registerLeaveGuard(route.key, leaveGuard),
-    [controller, leaveGuard, route.key],
+    [controller, leaveGuard, route.key, leaveStateOwner],
   );
 
   const routeContent = (

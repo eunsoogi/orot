@@ -1,3 +1,4 @@
+import { selectConversationDisplayTurnIds } from './conversationFirstDisplaySelection';
 import { observeConversationHistory as observe } from '../../providers/conversationHistoryDiagnostic';
 import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
 import type { createConversationSessionStorage } from './conversationSessionStorage';
@@ -28,9 +29,12 @@ export function conversationHistoryPageOption(
       () =>
         restoreConversationSessionTurns(input, openStorage, sessionId, signal, {
           version,
-          ids: page.items
-            .filter(item => item.kind === 'turn')
-            .map(item => item.id),
+          ids: selectConversationDisplayTurnIds(
+            page.items,
+            sessionId,
+            signal,
+            cursor === undefined,
+          ),
         }),
       signal,
     );
@@ -64,7 +68,12 @@ export function conversationHistoryPageOption(
     return {
       turns: chronological.flatMap(item =>
         item.kind === 'turn'
-          ? turns.filter(turn => turn.toolMessageId === item.id)
+          ? turns
+              .filter(turn => turn.toolMessageId === item.id)
+              .map(turn => ({
+                ...turn,
+                voiceTimelineOrder: { createdAt: item.createdAt, id: item.id },
+              }))
           : [],
       ),
       taskCards: chronological.flatMap(item =>

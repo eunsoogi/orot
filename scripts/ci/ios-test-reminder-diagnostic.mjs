@@ -1,3 +1,4 @@
+import { verifyDailyReminderRunnerEnvironment } from './ios-test-daily-reminder-diagnostic.mjs';
 import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
@@ -68,6 +69,7 @@ export function environment(runID) {
 
 /** Direct runner entry retains exact selection and UUID admission before xcodebuild starts. */
 export function environmentForRunner(profile, identifiers, invocationId, input = process.env) {
+  verifyDailyReminderRunnerEnvironment(profile, identifiers, input);
   const flag = input.TEST_RUNNER_OROT_IOS_REMINDER_DIAGNOSTICS;
   const runID = input.TEST_RUNNER_OROT_IOS_REMINDER_DIAGNOSTIC_RUN_ID;
   if (

@@ -96,14 +96,17 @@ final class RealtimeVoiceAudio: RealtimeAudioPort {
         }
     }
 
-    /// Playback position, not received bytes, defines server conversation truncation.
+    /// Read render time only for an attached player; AVFAudio asserts before attachment.
     func cancel() -> Int {
         var played = 0
-        if let time = player.lastRenderTime, let position = player.playerTime(forNodeTime: time) {
+        let canStopPlayer = attached && player.engine === engine
+        if canStopPlayer, let time = player.lastRenderTime, let position = player.playerTime(forNodeTime: time) {
             played = min(frames, max(0, Int(position.sampleTime - (startSample ?? 0))))
         }
         epoch += 1
-        player.stop()
+        if canStopPlayer {
+            player.stop()
+        }
         queued = 0; frames = 0; startSample = nil
         return played * 1000 / 24000
     }

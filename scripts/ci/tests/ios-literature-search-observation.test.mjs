@@ -46,3 +46,40 @@ test('receipt is content-free point observation, not another readiness or pass g
   assert.match(helper, /value as\? String == "sleep synthetic"/);
   assert.doesNotMatch(helper, /\\\(.*(?:query\.value|counter\.label|counter\.value)/);
 });
+
+test('the current settings gate approves the explicit Europe PMC disclosure before returning', () => {
+  const approve = readFileSync(`${root}LiteratureConsentUITestConditions.swift`, 'utf8').split(
+    'enum LiteratureSearchObservation {',
+  )[0];
+  const previousGate = approve.indexOf('id: "provider-selection-confirm"');
+  const recipient = approve.indexOf('XCTAssertEqual(recipientText, "Europe PMC")');
+  const guardRecipient = approve.indexOf('guard recipientText == "Europe PMC"');
+  const reveal = approve.indexOf(
+    'FormUITestConditions.reveal(allow, in: app, scrollID: "inference-disclosure-content")',
+  );
+  const tap = approve.indexOf('allow.tap()');
+  const dismissed = approve.indexOf('MainActor.assumeIsolated { !sheet.exists }');
+  const picker = approve.indexOf(
+    'XCTAssertTrue(UITestConditions.exists(node("summary-visual-picker")))',
+  );
+  assert.ok(
+    previousGate >= 0 &&
+      previousGate < recipient &&
+      recipient < guardRecipient &&
+      guardRecipient < reveal &&
+      reveal < tap &&
+      tap < dismissed &&
+      dismissed < picker,
+  );
+  assert.match(approve, /let sheet = node\("inference-disclosure-sheet"\)/);
+  assert.match(approve, /let disclosureRecipient = node\("inference-disclosure-recipient"\)/);
+  assert.match(approve, /let allow = node\("inference-disclosure-allow"\)/);
+  assert.match(approve, /let canApprove = allow\.isHittable && allow\.isEnabled/);
+  assert.match(approve, /guard canApprove else \{ return \}/);
+  assert.match(
+    approve,
+    /XCTAssertEqual\(UITestConditions\.wait\(for: \[dismissal\]\), \.completed\)/,
+  );
+  assert.equal(approve.match(/allow\.tap\(\)/g)?.length, 1);
+  assert.equal(approve.match(/"synthetic-literature-search-count"\)\), "0"\)/g)?.length, 2);
+});

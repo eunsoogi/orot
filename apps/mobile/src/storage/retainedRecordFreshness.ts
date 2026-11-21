@@ -13,6 +13,37 @@ import {
   retainedRecordKey,
 } from './retainedRecordRows';
 
+type RetainedRow = { readonly serialized: string; readonly stale: boolean };
+
+export function requireRetainedRecordPayload(current: RetainedRow | undefined) {
+  const serialized = current?.serialized;
+  if (typeof serialized !== 'string')
+    throw new RetainedSourceInvalidError(
+      'A cited source was removed before saving.',
+      'deleted',
+    );
+  return serialized;
+}
+
+export function assertRetainedRecordRevision(
+  serialized: string,
+  revision: string,
+  stale: boolean,
+  memory = false,
+) {
+  const parsed = JSON.parse(serialized);
+  if (
+    fingerprint(memory ? { text: parsed.text, meta: parsed.meta } : parsed) !==
+    revision
+  )
+    throw new RetainedSourceInvalidError(
+      'A cited source changed before saving.',
+      'changed',
+    );
+  if (stale)
+    throw new RetainedSourceInvalidError('A cited source is stale.', 'stale');
+}
+
 /** Apply the same source and quarantine checks to every retained artifact. */
 export async function assertRetainedRecordsCurrent(
   tx: SqlExecutor,
@@ -40,12 +71,7 @@ export async function assertRetainedRecordsCurrent(
     }
     const memory = record.kind === 'reviewed_memory';
     const current = batch.rows.get(retainedRecordKey(record));
-    const serialized = current?.serialized;
-    if (typeof serialized !== 'string')
-      throw new RetainedSourceInvalidError(
-        'A cited source was removed before saving.',
-        'deleted',
-      );
+    const serialized = requireRetainedRecordPayload(current);
     if (
       (record.kind === 'symptom_entry' && deleted.has(record.id)) ||
       (memory &&
@@ -62,17 +88,11 @@ export async function assertRetainedRecordsCurrent(
       throw new RetainedSourceInvalidError(
         'The reviewed memory parent is unavailable.',
       );
-    const parsed = JSON.parse(serialized);
-    if (
-      fingerprint(
-        memory ? { text: parsed.text, meta: parsed.meta } : parsed,
-      ) !== record.revision
-    )
-      throw new RetainedSourceInvalidError(
-        'A cited source changed before saving.',
-        'changed',
-      );
-    if (current?.stale)
-      throw new RetainedSourceInvalidError('A cited source is stale.', 'stale');
+    assertRetainedRecordRevision(
+      serialized,
+      record.revision,
+      current!.stale,
+      memory,
+    );
   }
 }

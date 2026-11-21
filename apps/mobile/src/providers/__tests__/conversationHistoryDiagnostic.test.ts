@@ -1,11 +1,50 @@
+import { createHistoryFenceDiagnostics } from '../../aiFeatures/integration/conversationHistoryFenceDiagnostics';
 import { NativeModules } from 'react-native';
-import { observeConversationHistory } from '../conversationHistoryDiagnostic';
+import {
+  historyValidationCostEnabled,
+  measureHistoryValidationCost,
+  observeConversationHistory,
+  observeOptInConversationHistory,
+} from '../conversationHistoryDiagnostic';
 
 jest.mock('react-native', () => ({
   NativeModules: { OrotProviderDiagnostics: { report: jest.fn() } },
 }));
 const report = NativeModules.OrotProviderDiagnostics.report;
 beforeEach(() => report.mockReset());
+
+test('cost detail requires the native opt-in', () => {
+  const sink = NativeModules.OrotProviderDiagnostics;
+  expect(historyValidationCostEnabled()).toBe(false);
+  sink.enabled = true;
+  try {
+    expect(historyValidationCostEnabled()).toBe(false);
+    sink.historyValidationCostEnabled = true;
+    expect(historyValidationCostEnabled()).toBe(true);
+  } finally {
+    delete sink.enabled;
+    delete sink.historyValidationCostEnabled;
+  }
+});
+
+test('synchronous report spans expose only fixed tokens and preserve failures', () => {
+  const result = { days: ['synthetic private value'] };
+  const error = new Error('synthetic private reconciliation error');
+  expect(
+    measureHistoryValidationCost('artifact_report_calendar', () => result),
+  ).toBe(result);
+  expect(() =>
+    measureHistoryValidationCost('artifact_report_fingerprint', () => {
+      throw error;
+    }),
+  ).toThrow(error);
+  expect(report.mock.calls).toEqual([
+    ['rag', 'artifact_report_calendar', 'started'],
+    ['rag', 'artifact_report_calendar', 'completed'],
+    ['rag', 'artifact_report_fingerprint', 'started'],
+    ['rag', 'artifact_report_fingerprint', 'failed'],
+  ]);
+});
 
 test('reports fixed boundary tokens without serializing protected read results', async () => {
   const result = {
@@ -55,4 +94,137 @@ test('optional diagnostic sink failure cannot break a local read', async () => {
   expect(
     await observeConversationHistory('history_recheck', async () => true),
   ).toBe(true);
+});
+
+describe('opted-in restore fences', () => {
+  beforeEach(() => {
+    NativeModules.OrotProviderDiagnostics.enabled = true;
+  });
+  afterEach(() => {
+    delete NativeModules.OrotProviderDiagnostics.enabled;
+  });
+  // Every new fence keeps result/error identity and emits only closed tokens.
+  test.each([
+    'history_session_recheck_before_assembly',
+    'history_session_recheck_after_assembly',
+    'history_tool_recheck_before_assembly',
+    'history_tool_recheck_final',
+    'history_cold_previews',
+  ] as const)('fence diagnostics preserve %s outcomes', async stage => {
+    const value = { privateValue: 'not exported' };
+    expect(
+      await observeOptInConversationHistory(stage, async () => value),
+    ).toBe(value);
+    const error = new Error('private failure');
+    await expect(
+      observeOptInConversationHistory(stage, async () => {
+        throw error;
+      }),
+    ).rejects.toBe(error);
+    const controller = new AbortController();
+    controller.abort();
+    expect(
+      await observeOptInConversationHistory(
+        stage,
+        async () => value,
+        controller.signal,
+      ),
+    ).toBe(value);
+    expect(report.mock.calls).toEqual([
+      ['rag', stage, 'started'],
+      ['rag', stage, 'completed'],
+      ['rag', stage, 'started'],
+      ['rag', stage, 'failed'],
+      ['rag', stage, 'started'],
+      ['rag', stage, 'cancelled'],
+    ]);
+    report.mockImplementationOnce(() => {
+      throw new Error('sink unavailable');
+    });
+    expect(
+      await observeOptInConversationHistory(stage, async () => value),
+    ).toBe(value);
+  });
+});
+
+test('fence observers retain live method ownership, argument identity and order', async () => {
+  const calls: string[] = [];
+  const turns: unknown[] = [];
+  const signal = new AbortController().signal;
+  const discovery = {
+    revalidateSession: jest.fn(function (this: unknown, ...args: unknown[]) {
+      expect(this).toBe(discovery);
+      expect(args[2]).toBe(turns);
+      calls.push('session');
+      return Promise.resolve(true);
+    }),
+  };
+  const storage = {
+    readToolTurnsSnapshot: jest.fn(function (
+      this: unknown,
+      ...args: unknown[]
+    ) {
+      expect(args).toHaveLength(3);
+      expect(this).toBe(storage);
+      calls.push('tools');
+      return Promise.resolve({ items: [] });
+    }),
+  };
+  const selection: { ids: readonly string[] | undefined } = { ids: undefined };
+  const fences = createHistoryFenceDiagnostics(
+    discovery as never,
+    storage as never,
+    ['session', 1, turns, signal] as never,
+    () => ['session', 1, selection.ids],
+  );
+  await fences.sessionBefore();
+  await fences.toolsBefore();
+  const error = new Error('replacement');
+  discovery.revalidateSession = jest.fn(() => Promise.reject(error));
+  await expect(fences.sessionAfter()).rejects.toBe(error);
+  selection.ids = ['late'];
+  const result = { items: [] };
+  storage.readToolTurnsSnapshot = jest.fn(function (
+    this: unknown,
+    ...args: unknown[]
+  ) {
+    expect(this).toBe(storage);
+    expect(args[2]).toBe(selection.ids);
+    calls.push('replacement');
+    return Promise.resolve(result);
+  });
+  expect(await fences.toolsFinal()).toBe(result);
+  expect(calls).toEqual(['session', 'tools', 'replacement']);
+});
+
+test('disabled restore fences keep the original promises and never report', async () => {
+  const original = NativeModules.OrotProviderDiagnostics;
+  const error = new Error('original rejection');
+  const accepted = Promise.resolve(true);
+  const rejected = Promise.reject(error);
+  const fences = createHistoryFenceDiagnostics(
+    { revalidateSession: () => accepted } as never,
+    { readToolTurnsSnapshot: () => rejected } as never,
+    ['synthetic', 1, [], new AbortController().signal] as never,
+    () => ['synthetic', 1, undefined],
+  );
+  const preview = () =>
+    observeOptInConversationHistory('history_cold_previews', () => accepted);
+  try {
+    original.enabled = false;
+    expect(fences.sessionBefore()).toBe(accepted);
+    expect(fences.sessionAfter()).toBe(accepted);
+    expect(fences.toolsBefore()).toBe(rejected);
+    expect(fences.toolsFinal()).toBe(rejected);
+    expect(preview()).toBe(accepted);
+    expect(report).not.toHaveBeenCalled();
+    NativeModules.OrotProviderDiagnostics = undefined;
+    expect(fences.sessionBefore()).toBe(accepted);
+    expect(preview()).toBe(accepted);
+  } finally {
+    NativeModules.OrotProviderDiagnostics = original;
+    delete original.enabled;
+    // Observe the fixture's rejection even when a preceding expectation fails.
+    await expect(rejected).rejects.toBe(error);
+  }
 });

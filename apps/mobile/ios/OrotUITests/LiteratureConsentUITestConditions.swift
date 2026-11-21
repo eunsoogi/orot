@@ -24,6 +24,26 @@ enum LiteratureConsentUITestConditions {
         medical.tap()
         XCTAssertEqual(medical.value as? String, "1")
         NavigationPageActionUITestConditions.tap(app, id: "provider-selection-confirm", label: "이 AI 사용")
+
+        // The current settings flow requires a separate decision for Europe PMC.
+        let sheet = node("inference-disclosure-sheet")
+        let disclosureRecipient = node("inference-disclosure-recipient")
+        let hasDisclosure = UITestConditions.exists(sheet) && UITestConditions.exists(disclosureRecipient)
+        XCTAssertTrue(hasDisclosure)
+        guard hasDisclosure else { return }
+        let recipientText = UITestConditions.text(disclosureRecipient)
+        XCTAssertEqual(recipientText, "Europe PMC")
+        guard recipientText == "Europe PMC" else { return }
+        let allow = node("inference-disclosure-allow")
+        guard FormUITestConditions.reveal(allow, in: app, scrollID: "inference-disclosure-content") != nil else { return }
+        let canApprove = allow.isHittable && allow.isEnabled
+        XCTAssertTrue(canApprove)
+        guard canApprove else { return }
+        allow.tap()
+        let dismissal = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            MainActor.assumeIsolated { !sheet.exists }
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [dismissal]), .completed)
         XCTAssertTrue(UITestConditions.exists(node("summary-visual-picker")))
         node("summary-visual-literature").tap()
         XCTAssertTrue(UITestConditions.exists(node("external-medical-evidence-screen")))

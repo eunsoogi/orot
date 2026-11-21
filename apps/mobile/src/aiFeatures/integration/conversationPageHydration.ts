@@ -41,7 +41,11 @@ export function createConversationPageHydration(
     return result;
   };
   type Result = Awaited<ReturnType<typeof restoreConversationArtifactSnapshot>>;
-  const restore = async (id: string, strict = false): Promise<Result> => {
+  const restore = async (
+    id: string,
+    strict = false,
+    direct = true,
+  ): Promise<Result> => {
     if (input.signal.aborted) return null;
     if (active.has(id)) throw new Error('Conversation ancestry is cyclic.');
     active.add(id);
@@ -57,7 +61,7 @@ export function createConversationPageHydration(
         if (strictParent && (!strictReads || !owned())) return undefined;
         // Native parents still perform both original and DB checks. Only report
         // calculation uses this page's owner; live aliases retain original storage.
-        const parent = await restore(parentId, strictParent);
+        const parent = await restore(parentId, strictParent, false);
         if (strictParent && !owned()) return undefined;
         return parent
           ? { revision: parent.revision, sourceStatus: parent.sourceStatus }
@@ -70,7 +74,13 @@ export function createConversationPageHydration(
             parentSnapshot,
           )
         : await restoreConversationArtifactSnapshot(
-            { ...input, id },
+            {
+              ...input,
+              id,
+              observationHydration: direct
+                ? input.observationHydration
+                : undefined,
+            },
             ancestry.get(id) ?? null,
             parentSnapshot,
           );

@@ -28,6 +28,7 @@ export function observeReplyFromHost(
     execute: input.executeReplyEntry,
     subscribeReady: input.subscribeReplyEntryReady,
     onReplyOpened: input.onReplyOpened,
+    openConversationRoot: input.openConversationRoot,
   });
 }
 
@@ -46,6 +47,7 @@ export function useReplyDeliveryFromHost(
     executeReplyEntry,
     subscribeReplyEntryReady,
     onReplyOpened,
+    openConversationRoot,
   } = input;
   useEffect(
     () =>
@@ -58,6 +60,7 @@ export function useReplyDeliveryFromHost(
         executeReplyEntry,
         subscribeReplyEntryReady,
         onReplyOpened,
+        openConversationRoot,
       }),
     [
       controller,
@@ -68,6 +71,7 @@ export function useReplyDeliveryFromHost(
       executeReplyEntry,
       subscribeReplyEntryReady,
       onReplyOpened,
+      openConversationRoot,
     ],
   );
 }

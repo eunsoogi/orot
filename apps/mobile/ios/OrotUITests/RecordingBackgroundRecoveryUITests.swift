@@ -25,7 +25,7 @@ final class RecordingBackgroundRecoveryUITests: OrotFailFastTestCase {
         app.terminate()
         RecordingFixtureUITestConditions.launch(app, playback: "resume")
         let restored = app.buttons.matching(identifier: identifier).firstMatch
-        FormUITestConditions.reveal(restored, in: app, scrollID: "recording-controls-scroll")
+        FormUITestConditions.reveal(restored, in: app, scrollID: "recording-review-scroll")
         XCTAssertTrue(restored.exists && restored.isHittable)
         restored.tap()
         let restoredPlay = RecordingFixtureUITestConditions.reveal(app, "recording-playback-button")

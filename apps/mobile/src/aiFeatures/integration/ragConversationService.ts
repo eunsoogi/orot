@@ -32,7 +32,7 @@ export function createRagConversationService({
   createOperationRunId,
   resolveDailyReport,
 }: RagConversationServiceDependencies) {
-  return async function sendRagMessage(
+  async function sendRagMessage(
     question: string,
     previousMessages: readonly RagConversationMessage[],
     parentSignal?: AbortSignal,
@@ -96,7 +96,7 @@ export function createRagConversationService({
         registry,
         signal,
       });
-      const { history, historyIsCurrent, researchInputs } =
+      const { history, historyIsCurrent, researchInputs, guardHistory } =
         await prepareConversationHistory(
           {
             messages: previousMessages,
@@ -107,6 +107,7 @@ export function createRagConversationService({
             signal,
           },
           report,
+          { entry: entryContext, hasPhoto: !!photo },
         );
       const external = conversationExternalEvidence({
         selected,
@@ -116,12 +117,10 @@ export function createRagConversationService({
         loadLocalData,
         observer,
         researchInputs,
+        owner: history.recoveredOwnerIsCurrent,
       });
-      // A failed local preflight must not flash an authorization prompt then dispose it.
-      opening.ready();
-      // Finish the reviewed opening before any external tool dispatch.
-      await opening?.done;
-      // Preserve the live getter rather than copying its preflight value with object rest.
+      opening[history.recoveredOwnerIsCurrent ? 'dispose' : 'ready']();
+      await opening.done;
       const searchPlan = await planSearch({
         external,
         observer,
@@ -148,8 +147,7 @@ export function createRagConversationService({
           }),
         ),
       });
-      if (searchPlan.eager.status === 'cancelled')
-        return { status: 'failure', kind: 'cancelled' };
+      if (searchPlan.eager.status === 'cancelled') return run.cancelled;
       const { tools, generated, localRetrievalFailed } =
         createConversationToolBundle({
           data,
@@ -195,7 +193,7 @@ export function createRagConversationService({
       stage = 'workflow';
       if (!(await historyIsCurrent()))
         return { status: 'failure', kind: 'retrieval_failed' };
-      const outcome = await ragRunner(
+      const outcome = await run.observeConversationMain(ragRunner)(
         run.conversationRunRequest({
           continuation: searchPlan.continuation,
           onInitialSearchStatus: searchPlan.onInitialSearchStatus,
@@ -213,7 +211,7 @@ export function createRagConversationService({
             ...run.conversationRunWorkflow(
               execution,
               historyIsCurrent,
-              !!history.references.length || !!report,
+              guardHistory,
               searchPlan.eager,
               searchPlan.chargeEagerSearch,
             ),
@@ -230,6 +228,7 @@ export function createRagConversationService({
       );
       return await finishConversationWorkflow({
         outcome,
+        priorDialogueOmitted: history.omitted,
         observer,
         generated,
         localRetrievalFailed,
@@ -246,5 +245,6 @@ export function createRagConversationService({
       opening?.dispose();
       linked.dispose();
     }
-  };
+  }
+  return run.observeConversationReceiptTiming(sendRagMessage);
 }

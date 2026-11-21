@@ -1,6 +1,8 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from './appColors';
 
+export const providerCatalogContentInset = 16;
+
 /** Filled grouping replaces decorative borders; option symbols still convey selection without color. */
 export const providerSettingsStyles = StyleSheet.create({
   section: { gap: 12, marginTop: 22 },
@@ -46,7 +48,7 @@ export const providerSettingsStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     minHeight: 82,
-    padding: 16,
+    padding: providerCatalogContentInset,
     borderWidth: 0,
     borderRadius: 20,
     backgroundColor: appColors.surface,

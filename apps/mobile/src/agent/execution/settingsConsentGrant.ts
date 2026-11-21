@@ -1,4 +1,5 @@
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
+import { isLiveVoiceAudioScope } from './liveVoiceSettingsIdentity';
 import { isReusablePublicWebQuery } from './publicWebQuery';
 
 /** A credential epoch is a non-secret, durable identity, never a key or token digest. */
@@ -33,6 +34,14 @@ const strings = (value: unknown): value is readonly string[] =>
   value.length > 0 &&
   value.every(nonempty) &&
   new Set(value).size === value.length;
+const emptyArray = (value: unknown): value is readonly [] =>
+  Array.isArray(value) && value.length === 0;
+const allowedSourceKinds = (
+  purpose: unknown,
+  policy: unknown,
+  value: unknown,
+): value is readonly string[] =>
+  isLiveVoiceAudioScope(purpose, policy) ? emptyArray(value) : strings(value);
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 const keys = (value: Record<string, unknown>, expected: readonly string[]) =>
@@ -74,7 +83,7 @@ export function parseSettingsConsentGrant(
       !nonempty(item.purpose) ||
       !nonempty(item.policyVersion) ||
       !strings(item.dataCategories) ||
-      !strings(item.sourceKinds)
+      !allowedSourceKinds(item.purpose, item.policyVersion, item.sourceKinds)
     )
       return null;
     permissions.push({
@@ -116,7 +125,14 @@ export function settingsGrantCoversRequest(
     request.signal.aborted ||
     !nonempty(identity.authorityGeneration) ||
     !strings(scope.dataCategories) ||
-    !strings(request.allowedScope.sourceKinds)
+    !allowedSourceKinds(
+      scope.purpose,
+      scope.policyVersion,
+      request.allowedScope.sourceKinds,
+    ) ||
+    (isLiveVoiceAudioScope(scope.purpose, scope.policyVersion) &&
+      request.allowedScope.sourceIds !== undefined &&
+      !emptyArray(request.allowedScope.sourceIds))
   )
     return false;
   if (
