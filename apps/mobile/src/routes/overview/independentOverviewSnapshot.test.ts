@@ -120,7 +120,7 @@ test('a missing readiness singleton falls back without setup or projection on th
   const f = openOpSqliteFileQueue();
   try {
     await runMigrations(f.database);
-    const project = jest.fn();
+    const projectIfReady = jest.fn();
     const close = jest.fn();
     const publish = jest.fn();
     await expect(
@@ -128,11 +128,11 @@ test('a missing readiness singleton falls back without setup or projection on th
         () => readonlyOpen(f.filename, close),
         () => true,
         async () => true,
-        project,
+        projectIfReady,
         publish,
       ),
     ).resolves.toBe('unavailable');
-    expect(project).not.toHaveBeenCalled();
+    expect(projectIfReady).not.toHaveBeenCalled();
     expect(publish).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalledTimes(1);
   } finally {

@@ -109,7 +109,8 @@ export function useOverviewMetrics() {
         const result = await storage.readIsolatedOverview?.(
           now,
           controller.signal,
-          ({ selection, chart }) => publish(selection, chart),
+          ({ selection: isolatedSelection, chart }) =>
+            publish(isolatedSelection, chart),
         );
         if (result === 'published' || controller.signal.aborted) return;
         if (result === 'discarded') {
@@ -122,7 +123,7 @@ export function useOverviewMetrics() {
           }
           return;
         }
-        const [selection, chart] = await Promise.all([
+        const [fallbackSelection, chart] = await Promise.all([
           storage.openLocalStorage().then(loadOverviewMetricSelection),
           storage
             .openLocalAgentMemoryDatabase()
@@ -130,7 +131,7 @@ export function useOverviewMetrics() {
               loadOverviewMetrics(database, now, controller.signal),
             ),
         ]);
-        publish(selection, chart);
+        publish(fallbackSelection, chart);
       })
       .catch(() => {
         if (active && currentLoadGeneration === loadGeneration.current)

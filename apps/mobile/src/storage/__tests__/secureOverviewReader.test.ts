@@ -117,15 +117,17 @@ test.each(['writer', 'protected-data'] as const)(
   'production adapter rejects %s revocation at synchronous close',
   async kind => {
     const f = fixture();
+    let nativeWrite: ReturnType<typeof f.writer.execute> | undefined;
     f.close.mockImplementation(() => {
       if (kind === 'writer')
-        void f.writer.execute('DELETE FROM health_observations');
+        nativeWrite = f.writer.execute('DELETE FROM health_observations');
       else f.event({ kind: 'protectedData', available: false });
     });
     const publish = jest.fn();
     expect(
       await f.read(new Date(), new AbortController().signal, publish),
     ).toBe('discarded');
+    await nativeWrite;
     expect(publish).not.toHaveBeenCalled();
     expect(f.unsubscribe).toHaveBeenCalledTimes(1);
   },
