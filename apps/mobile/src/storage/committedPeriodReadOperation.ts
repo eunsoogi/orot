@@ -1,4 +1,10 @@
 import {
+  BoundReadWitnessUnavailable,
+  guardedBoundTransaction,
+  type BoundReadResultWitness,
+} from './boundReadResultWitness';
+import { withBoundPeriodRemovalPlan } from './boundPeriodRemovalPlan';
+import {
   reportCacheDecision,
   endReportCalculationDiagnostic,
 } from '../healthEvidence/healthContext/reportCalculationDiagnostic';
@@ -22,7 +28,7 @@ import { nativeHeartWorkoutPrefix } from '../healthEvidence/healthContext/heartW
 import {
   historyValidationCostEnabled,
   measureHistoryValidationCost,
-  startHistoryValidationCost,
+  observePeriodReadTransaction,
 } from '../providers/conversationHistoryDiagnostic';
 
 /** Scope invalidation must not undo unrelated native writes on this connection. */
@@ -43,8 +49,8 @@ export function committedPeriodReadOperation(
   const reportScope = createCommittedReportScope(database);
   const reports = committedReportCache(reportScope.token, database)!;
   const calendar = committedReportCalendar(reportScope.token, database)!;
-  const profilePeriodTransaction = historyValidationCostEnabled();
-  const profileHistoryValidation = historyPage && profilePeriodTransaction;
+  const profileHistoryValidation =
+    historyPage && historyValidationCostEnabled();
   let disposed = false;
   const cancel = () => {
     calendar.dispose();
@@ -78,20 +84,13 @@ export function committedPeriodReadOperation(
         rollbackOnFailure?: boolean;
         /** Only the canonical, still-owned bound reader can opt into this plan. */
         boundQuantityOwner?: () => boolean;
+        witness?: BoundReadResultWitness;
       } = {},
     ) {
       check();
       const pending = new Map<string, HealthContextReport>();
       let failure: { error: unknown } | undefined;
-      let endTransaction:
-        ReturnType<typeof startHistoryValidationCost> | undefined;
-      const read = async (tx: SqlExecutor) => {
-        // One aggregate span per owned transaction: after acquisition through
-        // SQLite settlement, before the separate publication-generation check.
-        if (profilePeriodTransaction)
-          endTransaction = startHistoryValidationCost(
-            'artifact_period_transaction',
-          );
+      const execute = async (tx: SqlExecutor) => {
         // Check cancellation at every query boundary without converting operational
         // SQL errors into cancellation. The report's generic abort errors must not
         // accidentally select rollback and resurrect an interleaved native delete.
@@ -158,8 +157,7 @@ export function committedPeriodReadOperation(
           const key = healthContextReportCacheKey(source.scope.window, [
             source.scope.topic,
           ]);
-          // Pending reports belong only to this transaction. Reuse calculation,
-          // not validity: every source still checks live generations and revision.
+          // Pending reports reuse calculation, not source validity, in this transaction.
           const cached = pending.get(key) ?? reports.get(key);
           reportCacheDecision(
             cached && same(cached, before)
@@ -210,7 +208,8 @@ export function committedPeriodReadOperation(
         } catch (error) {
           // Tool snapshots explicitly retain their existing rollback contract.
           if (
-            options.rollbackOnFailure &&
+            (options.rollbackOnFailure ||
+              error instanceof BoundReadWitnessUnavailable) &&
             !(error instanceof ReadScopeInvalidated)
           )
             throw error;
@@ -220,16 +219,26 @@ export function committedPeriodReadOperation(
           failure = { error };
         }
       };
-      try {
-        await database.transaction(read);
-        endTransaction?.(failure ? 'failed' : 'completed');
-      } catch (error) {
-        endTransaction?.('failed');
-        throw error;
-      }
+      const witness = options.witness;
+      const observation = observePeriodReadTransaction();
+      const transaction = () =>
+        witness
+          ? guardedBoundTransaction(
+              database,
+              witness,
+              tx => withBoundPeriodRemovalPlan(tx, witness, () => execute(tx)),
+              observation?.acquire,
+            )
+          : database.transaction(
+              observation ? tx => execute(observation.acquire(tx)) : execute,
+            );
+      await (observation
+        ? observation.settle(transaction, () => !failure)
+        : transaction());
       if (failure) throw failure.error;
       check();
       const committed = await readHealthContextGeneration(database);
+      if (witness) await witness.sample(database);
       check();
       for (const report of pending.values())
         if (!same(report, committed))

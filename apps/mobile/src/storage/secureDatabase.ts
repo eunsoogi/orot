@@ -1,3 +1,7 @@
+import {
+  guardedNativeDatabase,
+  aliasProtectedReadEpoch,
+} from './protectedReadEpoch';
 import { observeSharedDatabase } from './sharedDatabaseDiagnostics';
 import { IOS_LIBRARY_PATH, isSQLCipher, open } from '@op-engineering/op-sqlite';
 import {
@@ -120,7 +124,7 @@ export function openLocalStorage(): Promise<RecordRepository> {
         databaseFileState: () =>
           getDatabaseFileState(DATABASE_NAME, IOS_LIBRARY_PATH),
         openDatabase(name, encryptionKey, allowCreate = true) {
-          database = observeSharedDatabase(
+          const guarded = guardedNativeDatabase(
             open({
               name,
               location: IOS_LIBRARY_PATH,
@@ -128,6 +132,8 @@ export function openLocalStorage(): Promise<RecordRepository> {
               failOnCreate: !allowCreate,
             }),
           );
+          database = observeSharedDatabase(guarded);
+          aliasProtectedReadEpoch(guarded, database);
           return database;
         },
       });

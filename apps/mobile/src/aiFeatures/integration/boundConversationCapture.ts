@@ -3,7 +3,10 @@ import {
   ownsBoundCaptureAuthority,
 } from './boundCaptureAuthority';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
-import { readOwnedBoundParentRows } from '../../storage/conversationArtifactRead';
+import {
+  readOwnedBoundParentRows,
+  type BoundCaptureReadPhase,
+} from '../../storage/conversationArtifactRead';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import {
   prepareCaptureSources,
@@ -14,7 +17,8 @@ import { fingerprint } from './evidenceUtils';
 
 /** Issued only by discovery's storage owner and explicitly supplied to binding.
  * The inner alias keeps its own native/summary/research/live validation; no graph
- * authority is transferred to it. Both outer fences remain ordinary strict reads. */
+ * authority is transferred to it. Each outer fence independently authorizes
+ * a strict read, using the guarded structural plan only while its witness holds. */
 export function createBoundConversationCaptureOwner(input: {
   storage: Pick<
     ReturnType<typeof createConversationArtifactStorage>,
@@ -29,14 +33,20 @@ export function createBoundConversationCaptureOwner(input: {
         if (!request.bound) throw new Error('Missing bound capture authority.');
         return request.bound;
       });
-      const current = async () => {
+      const current = async (capturePhase: BoundCaptureReadPhase) => {
         if (signal.aborted || !boundCaptureAuthorityUnchanged(owner))
           return false;
         const scoped = reads?.forStorage(input.storage);
         const ids = bindings.map(binding => binding.parentId);
         const witnessed =
           scoped && ownsBoundCaptureAuthority(owner)
-            ? await readOwnedBoundParentRows(scoped, input.storage, signal, ids)
+            ? await readOwnedBoundParentRows(
+                scoped,
+                input.storage,
+                signal,
+                ids,
+                capturePhase,
+              )
             : undefined;
         const witnessedRows = witnessed?.rows;
         // Revocation can mean the scoped callback itself was replaced during
@@ -76,7 +86,7 @@ export function createBoundConversationCaptureOwner(input: {
           })
         );
       };
-      if (!(await current()))
+      if (!(await current('initial')))
         throw new Error('The outer conversation parent changed.');
       const inner = await prepareCaptureSources(
         input.registry,
@@ -94,7 +104,7 @@ export function createBoundConversationCaptureOwner(input: {
         finish: async () =>
           !signal.aborted &&
           (await inner.finish()) &&
-          (await current()) &&
+          (await current('final')) &&
           !signal.aborted,
       };
     },

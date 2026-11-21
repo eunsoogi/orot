@@ -1,3 +1,8 @@
+import {
+  createConversationAncestryTraversal,
+  type ConversationSharedAncestry,
+  type ConversationAncestryParent,
+} from './conversationSharedAncestry';
 import type { BoundParentDigest } from './boundParentDigest';
 import { assertBatchedHistoryRecords } from './batchedHistoryRecords';
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
@@ -40,6 +45,7 @@ export async function assertConversationArtifactCurrent(
   canBatchOrdinary?: () => boolean,
   boundParentDigest?: BoundParentDigest,
   boundParentDecode?: typeof decodeConversationArtifact,
+  sharedAncestry?: ConversationSharedAncestry,
 ) {
   const history = createManualHistoryRepository(database);
   // New report-bound turns must still belong to the active revision at commit.
@@ -55,17 +61,20 @@ export async function assertConversationArtifactCurrent(
         'The selected report changed before saving.',
       );
   }
-  const path = new Set<string>();
+  const ancestry = createConversationAncestryTraversal(
+    tx,
+    requireGeneration || collectValidated || canBatchOrdinary
+      ? undefined
+      : sharedAncestry,
+  );
   const measureCost = profileHistoryValidation
     ? measureHistoryValidationCost
     : undefined;
-  let visited = 0;
-  const visit = async (current: ConversationArtifact): Promise<void> => {
-    if (path.has(current.id) || path.size >= 16 || ++visited > 128)
-      throw new RetainedSourceInvalidError(
-        'Conversation ancestry is cyclic or too large.',
-      );
-    path.add(current.id);
+  const visit = async (
+    current: ConversationArtifact,
+    expectedParent?: ConversationAncestryParent,
+  ): Promise<void> => {
+    ancestry.enter(current.id);
     const finishAuthority = profileHistoryValidation
       ? startHistoryValidationCost('artifact_source_authority')
       : undefined;
@@ -78,11 +87,11 @@ export async function assertConversationArtifactCurrent(
       throw error;
     }
     const batched =
-      !requireGeneration && path.size === 1 && canBatchOrdinary?.()
+      !requireGeneration && ancestry.depth === 1 && canBatchOrdinary?.()
         ? await assertBatchedHistoryRecords(tx, current, canBatchOrdinary)
         : false;
     if (batched) {
-      path.delete(current.id);
+      ancestry.leave(current.id, expectedParent);
       collectValidated?.(current);
       return;
     }
@@ -109,6 +118,7 @@ export async function assertConversationArtifactCurrent(
           throw error;
         }
       } else if (isGeneratedConversationSource(source)) {
+        if (ancestry.reuse(source)) continue;
         // Observe this original await without adding a promise or changing its owner.
         const finishRead = profileHistoryValidation
           ? startHistoryValidationCost('artifact_parent_row')
@@ -150,7 +160,7 @@ export async function assertConversationArtifactCurrent(
           throw new RetainedSourceInvalidError(
             'The generated conversation changed or was removed.',
           );
-        await visit(parent);
+        await visit(parent, source);
       } else {
         // Existing parents keep scoped deletion guards rather than a new turn's global lease.
         // Observe this original await without adding a promise or changing its owner.
@@ -162,7 +172,7 @@ export async function assertConversationArtifactCurrent(
             tx,
             [source],
             history,
-            requireGeneration && path.size === 1,
+            requireGeneration && ancestry.depth === 1,
             undefined,
             validatePeriod,
           );
@@ -180,7 +190,7 @@ export async function assertConversationArtifactCurrent(
         current.treatmentContext,
         current.sources,
       );
-    path.delete(current.id);
+    ancestry.leave(current.id, expectedParent);
     collectValidated?.(current);
   };
   await visit(artifact);

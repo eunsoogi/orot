@@ -7,7 +7,8 @@ import * as evidence from '../evidenceUtils';
 import { diverseHistoryProfileFixture } from '../testSupport/diverseHistoryProfileFixture';
 import type { ConversationArtifact } from '../../../storage/conversationArtifactCodec';
 import type { EvidenceReference } from '@orot/agent-runtime';
-import type { SqlResult, SqlValue } from '@orot/storage';
+import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
+import type { SqlDatabase, SqlResult, SqlValue } from '@orot/storage';
 
 export function gate() {
   let release!: () => void;
@@ -17,9 +18,14 @@ export function gate() {
   return { wait, release };
 }
 
-export async function boundConversationDigestFixture() {
+export async function boundConversationDigestFixture(
+  wrapDatabase?: (database: SqlDatabase) => SqlDatabase,
+) {
   const f = await diverseHistoryProfileFixture(3, true);
-  const { storage, input, database } = f;
+  const { input, database } = f;
+  const storage = wrapDatabase
+    ? createConversationArtifactStorage(wrapDatabase(database))
+    : f.storage;
   const registry = input.registry;
   const signal = new AbortController().signal;
   const inner = (await storage.read('turn-0'))!;
