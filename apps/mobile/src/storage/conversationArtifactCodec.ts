@@ -223,6 +223,7 @@ export function decodeConversationArtifact(
         !hasConversationCitationReferences(sources, value.citations))
     )
       return null;
+    if (value.proactiveMemory !== true) delete value.proactiveMemory;
     // Bad optional receipts must not make a valid answer impossible to save.
     const delivery = parseConversationMessageDelivery(value.delivery);
     delete value.delivery;

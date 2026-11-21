@@ -126,3 +126,32 @@ test('generation clear removes both the continuous pointer and pending source id
     f.close();
   }
 });
+
+test('commits an explicitly remembered authored turn, but not canned labels or assistant output', async () => {
+  const f = await fixture();
+  try {
+    await f.storage.append({
+      ...f.turn,
+      id: 'explicit-user-memory',
+      question: 'Remember that I prefer concise replies.',
+    });
+    for (const [index, question] of [
+      '진료 질문 준비하기',
+      '질병 가능성 보고서',
+      '내 건강 정보 요약',
+      '오늘의 보고서',
+    ].entries()) {
+      await f.storage.append({
+        ...f.turn,
+        id: `synthetic-choice-${index}`,
+        question,
+        answer: 'I prefer compact detail.',
+      });
+    }
+    expect(await f.jobs()).toEqual([{ source_id: 'explicit-user-memory' }]);
+    await f.storage.deleteSession(f.lease.id);
+    expect(await f.jobs()).toEqual([]);
+  } finally {
+    f.close();
+  }
+});
