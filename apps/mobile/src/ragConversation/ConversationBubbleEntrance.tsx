@@ -42,7 +42,16 @@ function LiveConversationBubble({
   readonly motionAllowed: boolean;
   readonly entranceKey: string;
 }) {
-  const [scale] = useState(() => new Animated.Value(1));
+  const [{ scale, opacity }] = useState(() => {
+    const progress = new Animated.Value(1);
+    // Reuse the spring's first leg. Opacity remains 1 throughout overshoot and settle.
+    const fade = progress.interpolate({
+      inputRange: [0.985, 1],
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
+    });
+    return { scale: progress, opacity: fade };
+  });
   useLayoutEffect(() => {
     if (!receipts.claim(entranceKey, motionAllowed)) return;
     scale.setValue(0.985);
@@ -69,6 +78,9 @@ function LiveConversationBubble({
     };
   }, [motionAllowed, receipts, entranceKey, scale]);
   return (
-    <Animated.View {...props} style={[style, { transform: [{ scale }] }]} />
+    <Animated.View
+      {...props}
+      style={[style, { opacity, transform: [{ scale }] }]}
+    />
   );
 }
