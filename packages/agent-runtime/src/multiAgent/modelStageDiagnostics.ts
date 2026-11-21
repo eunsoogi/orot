@@ -1,5 +1,6 @@
 /** Observation boundaries, not provider-success or physical cancellation acknowledgments. */
-export type ModelStage = 'consent_wait' | 'provider_wait' | 'evidence_check';
+export type ModelStage =
+  'consent_wait' | 'provider_wait' | 'evidence_check' | 'response_correction';
 export type ModelStageObserver = (
   stage: ModelStage,
   event: 'started' | 'completed',
