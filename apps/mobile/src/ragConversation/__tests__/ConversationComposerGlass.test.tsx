@@ -128,7 +128,8 @@ test('shares a 44pt single-line baseline and grows without flex compressing the 
     paddingBottom: 11,
   });
   expect(StyleSheet.flatten(input().props.style).flex).toBeUndefined();
-  expect(StyleSheet.flatten(input().props.style).paddingRight).toBe(58);
+  // Trailing controls have layout slots, so no overlay padding is required.
+  expect(StyleSheet.flatten(input().props.style).paddingRight).toBeUndefined();
   expect(StyleSheet.flatten(input().props.style).height).toBeUndefined();
   await view.rerender(
     <ConversationComposer {...props} value={'one\ntwo\nthree'} />,

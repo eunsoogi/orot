@@ -16,10 +16,10 @@ import { styles } from './ConversationScreen.styles';
 import { ConversationTranscriptMessages } from './ConversationTranscriptMessages';
 import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
-import { conversationHistoryActivity } from './conversationHistoryActivity';
-import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserTurn';
+import { useConversationHistoryPresentation } from './conversationHistoryActivity';
 export function ConversationHistory({
   messages,
+  savedHistoryDisplay,
   voiceEndCards,
   steeringInstructions,
   pendingMessage,
@@ -86,19 +86,18 @@ export function ConversationHistory({
     followsBottom,
     expectedOffset,
   });
-  const { visibleMessages, showActivityBubble } = conversationHistoryActivity(
-    messages,
-    pendingMessage,
-    requestSessionId,
-    requestActivity,
-    separatedActivity,
-  );
-  useConversationHistoryUserTurnFollow(
-    sessionId ?? null,
-    messages,
-    followsBottom,
-    expectedOffset,
-  );
+  const { visibleMessages, showActivityBubble } =
+    useConversationHistoryPresentation({
+      saved: savedHistoryDisplay,
+      messages,
+      pendingMessage,
+      requestSessionId,
+      requestActivity,
+      separatedActivity,
+      sessionId,
+      followsBottom,
+      expectedOffset,
+    });
   const reading = useConversationReadingPosition({
     sessionId: toolSourceSessionId,
     messages: visibleMessages,

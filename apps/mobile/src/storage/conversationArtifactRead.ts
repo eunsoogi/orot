@@ -1,3 +1,4 @@
+import { readGuardedBoundRows } from './readGuardedBoundRows';
 import { registerHistoryRead } from '../healthEvidence/historyObservationHydrationOwner';
 import { conversationToolSnapshotReader } from './conversationToolSnapshot';
 import { committedPeriodReadOperation } from './committedPeriodReadOperation';
@@ -10,12 +11,18 @@ type BoundParentRows = {
   readonly rows?: (ConversationArtifact | null)[];
   tokens?: readonly (number | undefined)[];
 };
+/** Only capture's two independent parent fences may select the witnessed plan. */
+export type BoundCaptureReadPhase = 'initial' | 'final';
+
 const boundParentReaders = new WeakMap<
   object,
   {
     storage: object;
     signal?: AbortSignal;
-    read(ids: readonly string[]): Promise<BoundParentRows | undefined>;
+    read(
+      ids: readonly string[],
+      capturePhase?: BoundCaptureReadPhase,
+    ): Promise<BoundParentRows | undefined>;
   }
 >();
 
@@ -25,10 +32,11 @@ export function readOwnedBoundParentRows(
   storage: object,
   signal: AbortSignal,
   ids: readonly string[],
+  capturePhase?: BoundCaptureReadPhase,
 ) {
   const owner = boundParentReaders.get(operation);
   return owner?.storage === storage && owner.signal === signal
-    ? owner.read(ids)
+    ? owner.read(ids, capturePhase)
     : undefined;
 }
 
@@ -181,65 +189,31 @@ export function createConversationArtifactReader(
       boundParentReaders.set(reads, {
         storage: this,
         signal,
-        async read(ids) {
+        async read(ids, capturePhase) {
           if (!boundReaderCurrent()) return undefined;
-          const tokens: (number | undefined)[] = [];
-          let previous: string | undefined;
-          let sequence = 0;
-          const share = ids.some((id, index) => ids[index - 1] === id);
-          const record = (raw?: string, same = raw === previous) => {
-            if (!same) sequence++;
-            previous = raw;
-            tokens.push(raw === undefined ? undefined : sequence);
-          };
-          let priorValue: ConversationArtifact | undefined;
-          let shared = false;
-          const recordAndShare = (
-            raw?: string,
-            value?: ConversationArtifact,
-          ) => {
-            // Never use the prior body as input to validation. Only the private
-            // settled match can reuse it after this slot independently passed.
-            const same = raw === previous;
-            record(raw, same);
-            if (
-              same &&
-              raw !== undefined &&
-              value &&
-              priorValue?.id === value.id
-            ) {
-              shared = true;
-              return priorValue;
-            }
-            priorValue = value;
-            return undefined;
-          };
-          const rows = await readManyWithLease(
+          const canWitness =
+            capturePhase === 'initial' || capturePhase === 'final';
+          // Complete schema preparation before minting a read-only witness.
+          if (canWitness) await ensure();
+          if (!boundReaderCurrent()) return { rows: undefined };
+          return readGuardedBoundRows(
+            database,
             ids,
-            undefined,
-            undefined,
-            operation,
-            rollback,
-            undefined,
-            share
-              ? recordAndShare
-              : raw => {
-                  record(raw);
-                  return undefined;
-                },
+            boundReaderCurrent,
+            canWitness,
+            (targetIds, record, witness) =>
+              readManyWithLease(
+                targetIds,
+                undefined,
+                undefined,
+                operation,
+                rollback,
+                undefined,
+                record,
+                boundReaderCurrent,
+                witness,
+              ),
           );
-          return {
-            get rows() {
-              // Unchanged unique reads keep their existing settled output.
-              // Shared values cannot be used after the exact reader is lost.
-              return !shared || boundReaderCurrent() ? rows : undefined;
-            },
-            get tokens() {
-              return boundReaderCurrent() && tokens.length === rows.length
-                ? tokens
-                : undefined;
-            },
-          };
         },
       });
       return registerHistoryRead(reads, database, canBatchOrdinary);

@@ -43,14 +43,14 @@ final class FormScrollGeometryUITests: XCTestCase {
     private func verifyClassificationStartAction() {
         typealias Action = FormScrollGeometry.ClassificationStartAction
         let owner = CGRect(x: 0, y: 0, width: 678, height: 466)
-        let footer = CGRect(x: 20, y: 400, width: 638, height: 50)
+        let circleSlot = CGRect(x: 20, y: 400, width: 638, height: 50)
         func classify(_ label: String = Action.startLabel, button: Bool = true, enabled: Bool = true,
                       hittable: Bool = true, global: Int = 1, owned: Int = 1,
-                      frame: CGRect = CGRect(x: 290, y: 400, width: 90, height: 44),
+                      frame: CGRect = CGRect(x: 313, y: 400, width: 44, height: 44),
                       expanded: Bool = false) -> Action?
         {
             Action.resolve(label: label, isButton: button, enabled: enabled, hittable: hittable,
-                           global: global, owned: owned, frame: frame, footer: footer, owner: owner,
+                           global: global, owned: owned, frame: frame, circleSlot: circleSlot, owner: owner,
                            inExpandedReader: expanded)
         }
         XCTAssertEqual(classify(), .start)
@@ -172,7 +172,7 @@ extension AppointmentConsentUITests {
         typealias Action = FormScrollGeometry.ClassificationStartAction
         let actionID = "medical-appointment-import"
         let closeID = "classification-close-reader"
-        let footerID = "classification-stage-footer"
+        let slotID = "classification-circle-slot"
         let confirmationID = "medical-appointment-confirmation"
         let counterID = "calendar-classification-synthetic-provider-calls"
         let releaseID = "classification-release-response"
@@ -181,8 +181,8 @@ extension AppointmentConsentUITests {
 
         func validate(inExpandedReader: Bool) throws -> (action: Action, element: XCUIElement) {
             // The Modal can project a separate AX window. Its close control, confirmation,
-            // and footer must share the real action owner; the route root can remain outside it.
-            let required = [confirmationID, footerID, actionID]
+            // and circle must share the real action owner; the route root can remain outside it.
+            let required = [confirmationID, slotID, actionID]
                 + (inExpandedReader ? [closeID] : ["medical-appointment-fullscreen"])
             let owner = try FormWindowOwnership.resolveStage(app, observed: anchor?.frame, required: required)
             func scoped(_ id: String) -> XCUIElementQuery {
@@ -217,7 +217,7 @@ extension AppointmentConsentUITests {
             guard let action = Action.resolve(
                 label: label, isButton: button, enabled: enabled, hittable: hittable,
                 global: global, owned: owned, frame: target.frame,
-                footer: scoped(footerID).firstMatch.frame, owner: owner.frame,
+                circleSlot: scoped(slotID).firstMatch.frame, owner: owner.frame,
                 inExpandedReader: inExpandedReader,
             ) else {
                 XCTFail("Classification invalid action: startLabel=\(label == Action.startLabel), expandLabel=\(label == Action.expandLabel), "

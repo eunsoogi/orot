@@ -70,6 +70,83 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
     });
     return result;
   }
+  /** Publish all scopes from one review in a single protected transaction.
+   * Pending rows cannot authorize, and the outer owner stays suspended until commit. */
+  async function activateTogether(
+    slot: SettingsConsentSlot,
+    decisions: readonly {
+      readonly token: string;
+      readonly domain: SettingsConsentDomain;
+    }[],
+    stillValid: () => boolean,
+  ) {
+    validSlot(slot);
+    const entries = decisions.map(({ token, domain }) => {
+      validDomain(domain);
+      validToken(token);
+      return { token, domain };
+    });
+    if (
+      !entries.length ||
+      new Set(entries.map(entry => entry.domain)).size !== entries.length ||
+      new Set(entries.map(entry => entry.token)).size !== entries.length
+    )
+      throw new Error('Invalid joint permission activation');
+    await ensure();
+    await database.transaction(async tx => {
+      for (const { token, domain } of entries) {
+        if (!stillValid()) throw new Error('Settings selection changed');
+        const pending = await tx.execute(
+          `SELECT grant_json FROM settings_inference_grants
+          WHERE activation_id = ? AND slot = ? AND domain = ? AND state = 'pending'`,
+          [token, slot, domain],
+        );
+        if (pending.rows.length !== 1)
+          throw new Error('Pending permission unavailable');
+        const value = pending.rows[0].grant_json;
+        if (
+          typeof value !== 'string' ||
+          !parseSettingsConsentGrant(JSON.parse(value))
+        )
+          throw new Error('Pending permission invalid');
+        if (!stillValid()) throw new Error('Settings selection changed');
+        await tx.execute(
+          `DELETE FROM settings_inference_grants WHERE slot = ? AND domain = ? AND state = 'active'`,
+          [slot, domain],
+        );
+        const activated = await tx.execute(
+          `UPDATE settings_inference_grants SET state = 'active'
+          WHERE activation_id = ? AND slot = ? AND domain = ? AND state = 'pending'`,
+          [token, slot, domain],
+        );
+        if (entries.length > 1) {
+          const updated =
+            activated.rowsAffected ??
+            (
+              await tx.execute(
+                "SELECT activation_id FROM settings_inference_grants WHERE activation_id = ? AND slot = ? AND domain = ? AND state = 'active'",
+                [token, slot, domain],
+              )
+            ).rows.length;
+          if (updated !== 1)
+            throw new Error('Joint permission activation incomplete');
+        }
+        if (!stillValid()) throw new Error('Settings selection changed');
+      }
+    });
+    // An owner can invalidate after the callback but before native commit. Do
+    // not restore any old authority; undo only entries from this exact decision.
+    if (!stillValid()) {
+      await database.transaction(async tx => {
+        for (const { token } of entries)
+          await tx.execute(
+            'DELETE FROM settings_inference_grants WHERE activation_id = ?',
+            [token],
+          );
+      });
+      throw new Error('Settings selection changed after commit');
+    }
+  }
   return {
     async stage(
       slot: SettingsConsentSlot,
@@ -92,55 +169,15 @@ export function createSettingsConsentStorage(database: SqlDatabase) {
         );
       });
     },
-    async activate(
+    activate(
       slot: SettingsConsentSlot,
       token: string,
       stillValid: () => boolean,
       domain: SettingsConsentDomain = 'model',
     ) {
-      validSlot(slot);
-      validDomain(domain);
-      validToken(token);
-      await ensure();
-      await database.transaction(async tx => {
-        if (!stillValid()) throw new Error('Settings selection changed');
-        const pending = await tx.execute(
-          `SELECT grant_json FROM settings_inference_grants
-          WHERE activation_id = ? AND slot = ? AND domain = ? AND state = 'pending'`,
-          [token, slot, domain],
-        );
-        if (pending.rows.length !== 1)
-          throw new Error('Pending permission unavailable');
-        const value = pending.rows[0].grant_json;
-        if (
-          typeof value !== 'string' ||
-          !parseSettingsConsentGrant(JSON.parse(value))
-        )
-          throw new Error('Pending permission invalid');
-        if (!stillValid()) throw new Error('Settings selection changed');
-        await tx.execute(
-          `DELETE FROM settings_inference_grants WHERE slot = ? AND domain = ? AND state = 'active'`,
-          [slot, domain],
-        );
-        await tx.execute(
-          `UPDATE settings_inference_grants SET state = 'active'
-          WHERE activation_id = ? AND slot = ? AND domain = ? AND state = 'pending'`,
-          [token, slot, domain],
-        );
-        if (!stillValid()) throw new Error('Settings selection changed');
-      });
-      // A native transaction may finish committing after its callback returns.
-      // Never report success for a permission invalidated in that interval.
-      if (!stillValid()) {
-        await database.transaction(async tx => {
-          await tx.execute(
-            'DELETE FROM settings_inference_grants WHERE activation_id = ?',
-            [token],
-          );
-        });
-        throw new Error('Settings selection changed after commit');
-      }
+      return activateTogether(slot, [{ token, domain }], stillValid);
     },
+    activateTogether,
     async cancel(token: string) {
       validToken(token);
       await ensure();

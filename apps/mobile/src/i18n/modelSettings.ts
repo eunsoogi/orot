@@ -3,6 +3,10 @@ export const modelSettingsKo = {
   'modelSettings.searchConsentLoading': '저장된 검색 동의를 확인하고 있어요.',
   'modelSettings.searchConsentUnavailable':
     '저장된 검색 동의를 확인하지 못했어요. 취소한 뒤 다시 시도해 주세요.',
+  'modelSettings.consentJointConversationWebTitle':
+    '대화 모델 및 공개 웹검색 동의',
+  'modelSettings.consentJointWeb':
+    '{recipient}에는 앱이 정한 일반 공개 주제의 검색어만 보냅니다. 이 검색 요청에는 건강 기록, 대화 원문, 개인 식별정보를 보내지 않습니다.',
   'modelSettings.consentWeb':
     '{recipient}에 공개 웹 검색용으로 검토된 검색어를 보내는 데 별도로 계속 동의합니다.',
   'modelSettings.consentMedical':

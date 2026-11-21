@@ -1,28 +1,14 @@
 import { useDailyReminderPrompt } from '../../appointmentReminders/useDailyReminderPrompt';
 import { conversationChoiceActions } from '../../ragConversation/selectConversationChoice';
 import { useCallback, useContext } from 'react';
-import type { ReactElement } from 'react';
-import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import { View } from 'react-native';
-import type { ExternalMedicalPublication } from '../../externalMedicalEvidence/europePmc';
 import { ProviderSelectionFlow } from '../../providers/selection';
-import type {
-  ProviderSelection,
-  ProviderSelectionOption,
-} from '../../providers/selection';
-import type { NavigationRouteActions } from '../../navigation/NavigationRouteAdapter';
-import type {
-  AiFeatureServiceDependencies,
-  AiFeatureServices,
-} from './featureServices';
 import {
   resolveSelectedAiProvider as resolveSelectedAi,
   type ResolveConversationModelDisplay,
 } from './provider';
 import { EvidenceSourceDetailScreen } from './EvidenceSourceDetailScreen';
-import type { AiFeatureRouteName } from './aiFeatureNavigation';
 import { AiFeatureFlowScreen } from './AiFeatureFlowScreen';
-import type { VisitQuestionsRenderInput } from './AiFeatureFlowScreen';
 import { styles } from './AiFeatureFlow.styles';
 import { useAiFeatureFlowNavigation } from './useAiFeatureFlowNavigation';
 import { useAiFeatureSharedNavigationState } from './AiFeatureSharedNavigationState';
@@ -30,25 +16,8 @@ import { NavigationPrimaryActionContext } from '../../navigation/useNavigationPr
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
 import { useConversationSessions } from '../../ragConversation/ConversationSessionsContext';
 import { useConversationVisibility } from './useConversationVisibility';
-export interface AiFeatureFlowProps {
-  readonly canonicalConversationRoot?: boolean;
-  readonly isEntryCurrent?: () => boolean;
-  readonly navigation: NavigationRouteActions<AiFeatureRouteName>;
-  readonly consent: ExecutionConsentPort;
-  readonly services: AiFeatureServices;
-  readonly renderVisitQuestions?: (
-    input: VisitQuestionsRenderInput,
-  ) => ReactElement;
-  readonly onOpenArticle: (
-    publication: ExternalMedicalPublication,
-  ) => void | Promise<void>;
-  /** Lets the home shortcut update its provider summary after selection is committed. */
-  readonly onProviderSelectionCommitted?: (
-    selection: ProviderSelection,
-    provider: ProviderSelectionOption['provider'],
-  ) => void;
-  readonly serviceDependencies?: AiFeatureServiceDependencies;
-}
+import type { AiFeatureFlowProps } from './AiFeatureFlowProps';
+export type { AiFeatureFlowProps } from './AiFeatureFlowProps';
 
 /** Keeps source/provider overlays over the live feature route so drafts survive navigation. */
 export function AiFeatureFlow({
@@ -60,6 +29,7 @@ export function AiFeatureFlow({
   serviceDependencies,
   services,
   isEntryCurrent,
+  isRouteCurrent,
   canonicalConversationRoot,
 }: AiFeatureFlowProps) {
   const conversationStore = useConversationSessions();
@@ -85,7 +55,13 @@ export function AiFeatureFlow({
     sourceReference,
   } = useAiFeatureFlowNavigation(navigation, onOpenArticle);
   const isConversationVisible = useConversationVisibility(
-    isEntryCurrent,
+    isEntryCurrent ?? isRouteCurrent,
+    sourceDetailOpen,
+    providerSelectionOpen,
+    Boolean(isRouteCurrent),
+  );
+  const ownsConversationPresentation = useConversationVisibility(
+    isRouteCurrent ?? isEntryCurrent,
     sourceDetailOpen,
     providerSelectionOpen,
   );
@@ -131,6 +107,7 @@ export function AiFeatureFlow({
           >
             <AiFeatureFlowScreen
               isEntryCurrent={isConversationVisible}
+              ownsConversationPresentation={ownsConversationPresentation}
               route={screenRoute}
               reportOwnsOperation={!sourceDetailOpen && !providerSelectionOpen}
               onOpenSavedAnalysis={() => pushFeatureRoute('saved-analysis')}
@@ -151,7 +128,12 @@ export function AiFeatureFlow({
               )}
               onOpenRagConversation={() => pushFeatureRoute('rag-conversation')}
               onOpenDailyReportChat={target => {
-                if (!isEntryCurrent?.() || !reminderRuntime) return;
+                if (
+                  (!isRouteCurrent && !isEntryCurrent) ||
+                  !isConversationVisible() ||
+                  !reminderRuntime
+                )
+                  return;
                 const route = pushFeatureRoute('rag-conversation');
                 if (route)
                   reminderRuntime.dailyReportFollowUps.set(route.key, target);

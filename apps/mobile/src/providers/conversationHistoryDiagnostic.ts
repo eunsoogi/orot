@@ -1,3 +1,4 @@
+import type { SqlExecutor } from '@orot/storage';
 import { providerDiagnostic } from './diagnostics';
 import { NativeModules } from 'react-native';
 
@@ -123,4 +124,25 @@ export function observeOptInConversationHistory<T>(
     // If the bridge is inaccessible, leave the original operation untouched.
   }
   return enabled ? observeConversationHistory(stage, work, signal) : work();
+}
+
+/** Retain the public acquisition-to-SQLite-settlement measurement for either reader. */
+export function observePeriodReadTransaction() {
+  if (!historyValidationCostEnabled()) return;
+  let finish: ReturnType<typeof startHistoryValidationCost> | undefined;
+  return {
+    acquire(tx: SqlExecutor) {
+      finish = startHistoryValidationCost('artifact_period_transaction');
+      return tx;
+    },
+    async settle(work: () => Promise<void>, succeeded: () => boolean) {
+      try {
+        await work();
+        finish?.(succeeded() ? 'completed' : 'failed');
+      } catch (error) {
+        finish?.('failed');
+        throw error;
+      }
+    },
+  };
 }

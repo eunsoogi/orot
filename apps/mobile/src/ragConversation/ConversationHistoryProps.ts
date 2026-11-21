@@ -14,6 +14,7 @@ export interface ConversationHistoryProps {
   readonly restoring?: boolean;
   readonly restoringHistory?: boolean;
   readonly messages: readonly DisplayMessage[];
+  readonly savedHistoryDisplay?: ConversationSession['savedHistoryDisplay'];
   readonly voiceEndCards?: ConversationSession['taskCards'];
   readonly pendingMessage: ConversationSession['pendingMessage'];
   readonly error: string;

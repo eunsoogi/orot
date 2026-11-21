@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Animated } from 'react-native';
+import { Animated, StyleSheet } from 'react-native';
 import { NavigationMotionContext } from '../../navigation/NavigationMotionContext';
 import { MedicalAppointmentReviewView } from '../MedicalAppointmentReviewView';
 import { ClassificationProgress } from '../ClassificationProgress';
@@ -56,6 +56,10 @@ test('shows only the current stage, with exact completed-event progress and no d
   expect(screen.getByTestId('medical-appointment-results')).toBeTruthy();
   expect(screen.queryByRole('progressbar')).toBeNull();
   expect(screen.getByText('첫 진료')).toBeTruthy();
+  const resultTree = JSON.stringify(view.toJSON());
+  expect(resultTree).not.toContain('chevron.left');
+  expect(resultTree).not.toContain('chevron.right');
+  expect(screen.getByText('다음 페이지')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('medical-appointment-next-result'));
   expect(screen.getByText('둘째 진료')).toBeTruthy();
   await fireEvent.press(
@@ -131,3 +135,49 @@ test('does not invent progress for an empty or unfinished input and distinguishe
   );
   expect(screen.getByText('분류한 일정을 저장하고 있어요.')).toBeTruthy();
 });
+
+test.each([
+  { width: 292, height: 440 },
+  { width: 608, height: 316 },
+])(
+  'shares the measured circle anchor across all stages of the $width-point pane',
+  async layout => {
+    const control = (classifying: boolean, completed: boolean) => (
+      <NavigationMotionContext.Provider value>
+        <MedicalAppointmentReviewView
+          {...base}
+          classifying={classifying}
+          completed={completed}
+        />
+      </NavigationMotionContext.Provider>
+    );
+    const view = await render(control(false, false));
+    const slot = async (stage: string) => {
+      await fireEvent(screen.getByTestId(stage), 'layout', {
+        nativeEvent: { layout },
+      });
+      return StyleSheet.flatten(
+        screen.getByTestId('classification-circle-slot').props.style,
+      );
+    };
+    const before = await slot('medical-appointment-confirmation');
+    const captions = StyleSheet.flatten(
+      screen.getByTestId('classification-stage-captions').props.style,
+    );
+    expect(before.top + before.height / 2).toBe(layout.height / 2);
+    expect(captions.top).toBeGreaterThan(before.top + before.height);
+    expect(screen.getByText('시작')).toBeTruthy();
+    expect(
+      screen.getByTestId('medical-appointment-select-provider'),
+    ).toBeTruthy();
+    await view.rerender(control(true, false));
+    expect(await slot('medical-appointment-progress')).toEqual(before);
+    expect(screen.getByRole('progressbar').props.accessibilityValue.now).toBe(
+      0,
+    );
+    await view.rerender(control(false, true));
+    expect(await slot('medical-appointment-results')).toEqual(before);
+    expect(screen.getByText('다시')).toBeTruthy();
+    expect(JSON.stringify(view.toJSON())).not.toContain('RCTScrollView');
+  },
+);

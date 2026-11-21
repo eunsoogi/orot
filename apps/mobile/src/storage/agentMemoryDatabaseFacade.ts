@@ -1,3 +1,4 @@
+import { aliasProtectedReadEpoch } from './protectedReadEpoch';
 import type { SqlDatabase } from '@orot/storage';
 
 const facades = new WeakMap<SqlDatabase, SqlDatabase>();
@@ -16,5 +17,6 @@ export function agentMemoryDatabaseFacade(
   };
   // No await separates lookup and publication; concurrent successful opens receive this same facade.
   facades.set(connection, facade);
+  aliasProtectedReadEpoch(connection, facade);
   return facade;
 }

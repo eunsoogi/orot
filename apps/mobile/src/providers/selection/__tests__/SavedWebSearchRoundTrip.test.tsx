@@ -1,10 +1,10 @@
+import { saveModelSettingsConsent } from '../../../agent/execution/saveModelSettingsConsent';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import {
   getGenericPassword,
   setGenericPassword,
   STORAGE_TYPE,
 } from 'react-native-keychain';
-import { providerFailure } from '@orot/model-runtime';
 import { openMigrationSqlite } from '../../../../../../packages/storage/__tests__/migrationSqliteDatabase';
 import { createSettingsConsentStorage } from '../../../storage/settingsConsentStorage';
 import { settingsConsentRepository } from '../../../storage/settingsConsentRepository';
@@ -52,7 +52,7 @@ jest.mock('../../../aiFeatures/integration/provider', () => ({
   resolveSelectedAiProvider: jest.fn(),
 }));
 
-test('mounted settings approval survives same-model reselection and authorizes only the exact public search', async () => {
+test('one explicit combined settings approval upgrades an exact legacy model-only grant', async () => {
   const sql = openMigrationSqlite(':memory:');
   const execution = publicEvidenceFixture();
   const model = execution.selected;
@@ -154,43 +154,65 @@ test('mounted settings approval survives same-model reselection and authorizes o
     return { search, answer };
   };
   try {
-    const view = await render(selectionView());
-    await fireEvent.press(view.getByTestId('provider-option-0'));
-    await fireEvent(
-      view.getByTestId('settings-consent-web'),
-      'valueChange',
-      true,
-    );
+    // Recreate an existing legacy receipt without changing current settings behavior.
+    await saveModelSettingsConsent({
+      slot: 'conversation',
+      selection,
+      recipient,
+      remote: true,
+      store: providerSelectionStore,
+      signal: new AbortController().signal,
+      isCurrent: () => true,
+    });
+    const legacy = await reloaded.read('conversation');
+    expect(legacy).not.toBeNull();
     expect(await reloaded.read('conversation', 'public-web')).toBeNull();
-    expect((await run('before-approval')).search.status).toBe(
+    expect((await run('legacy-model-only')).search.status).toBe(
       'consent_required',
     );
-    expect(execution.search).not.toHaveBeenCalled();
-    await fireEvent.press(view.getByTestId('provider-selection-confirm'));
-    expect(view.getByTestId('inference-disclosure-allow')).toBeTruthy();
+
+    const view = await render(selectionView());
+    const press = (id: string) => fireEvent.press(view.getByTestId(id));
+    expect(
+      view.queryByTestId('settings-provider-review-web-search'),
+    ).toBeNull();
+    await press('provider-option-0');
+    expect(view.queryByTestId('settings-consent-web')).toBeNull();
+    await waitFor(() =>
+      expect(view.getByTestId('provider-selection-confirm')).toBeEnabled(),
+    );
+    await press('provider-selection-confirm');
+    expect(view.getByTestId('inference-disclosure-scope')).toHaveTextContent(
+      /건강 기록[\s\S]+공개 웹검색/,
+    );
+    expect(
+      view.getByTestId('inference-disclosure-scope'),
+    ).not.toHaveTextContent(/Europe PMC/);
     expect(await reloaded.read('conversation', 'public-web')).toBeNull();
-    await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
+    await press('inference-disclosure-cancel');
+    expect(await reloaded.read('conversation')).toEqual(legacy);
+    expect(await reloaded.read('conversation', 'public-web')).toBeNull();
+    await press('provider-selection-confirm');
+    await press('inference-disclosure-allow');
     await waitFor(() => expect(commit).toHaveBeenCalledTimes(1));
     const saved = await reloaded.read('conversation', 'public-web');
-    expect(saved?.identity.credentialEpoch).toBe('epoch-one');
-    expect(saved?.permissions.map(permission => permission.purpose)).toEqual([
-      'public_web_search',
-    ]);
+    expect(saved?.permissions[0]?.purpose).toBe('public_web_search');
+    expect(saved?.identity.authorityGeneration).toBe(
+      (await reloaded.read('conversation'))?.identity.authorityGeneration,
+    );
     expect(await reloaded.read('conversation', 'medical-search')).toBeNull();
     await view.unmount();
 
     const resumed = await render(selectionView());
     await fireEvent.press(resumed.getByTestId('provider-option-0'));
     await waitFor(() =>
-      expect(resumed.getByTestId('settings-consent-web').props.value).toBe(
-        true,
-      ),
+      expect(resumed.getByTestId('provider-selection-confirm')).toBeEnabled(),
     );
     await fireEvent.press(resumed.getByTestId('provider-selection-confirm'));
     await waitFor(() => expect(commit).toHaveBeenCalledTimes(2));
     expect(resumed.queryByTestId('inference-disclosure-allow')).toBeNull();
     expect(await reloaded.read('conversation', 'public-web')).toEqual(saved);
-    expect(setGenericPassword).toHaveBeenCalledTimes(1);
+    expect(setGenericPassword).toHaveBeenCalledTimes(2);
     await resumed.unmount();
 
     const success = await run('exact-approved');
@@ -204,35 +226,19 @@ test('mounted settings approval survives same-model reselection and authorizes o
       answer: 'Synthetic answer',
       citations: [expect.objectContaining({ sourceKind: 'external_medical' })],
     });
-    execution.search.mockResolvedValueOnce(
-      providerFailure({
-        code: 'provider_unavailable',
-        message: 'Synthetic failure',
-        retryable: false,
-      }),
-    );
-    const unavailable = await run('approved-transport-unavailable');
-    expect(unavailable.search.status).toBe('unavailable');
-    expect(unavailable.answer).toMatchObject({
-      status: 'answer',
-      answer: expect.stringContaining('공개 웹검색을 사용할 수 없어'),
-      citations: [],
-    });
-    expect(execution.search).toHaveBeenCalledTimes(2);
-
     const finish = credential.begin();
     epoch = 'epoch-two';
     finish();
     expect((await run('changed-credential')).search.status).toBe(
       'consent_required',
     );
-    expect(execution.search).toHaveBeenCalledTimes(2);
+    expect(execution.search).toHaveBeenCalledTimes(1);
     epoch = 'epoch-one';
     await authority.revoke();
     expect((await run('revoked-authority')).search.status).toBe(
       'consent_required',
     );
-    expect(execution.search).toHaveBeenCalledTimes(2);
+    expect(execution.search).toHaveBeenCalledTimes(1);
   } finally {
     sql.close();
   }

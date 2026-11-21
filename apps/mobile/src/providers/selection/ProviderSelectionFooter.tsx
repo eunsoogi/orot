@@ -1,6 +1,5 @@
 import { SettingsSearchConsentChoices } from '../../agent/execution/SettingsSearchConsentChoices';
 import type { SettingsSearchChoices } from '../../agent/execution/settingsSearchGrants';
-import { settingsConsentRecipient } from '../../agent/execution/settingsConsentRecipient';
 import { t } from '../../i18n';
 import { ModelSelectionSummary } from '../../layout/ModelSelectionSummary';
 import { View } from 'react-native';
@@ -105,14 +104,6 @@ export function ProviderSelectionFooter({
                 value={searchChoices}
                 onChange={onSearchChoices}
                 disabled={saving || searchReviewStatus !== 'ready'}
-                webRecipient={
-                  option.provider.searchPublicWeb
-                    ? t('externalMedicalEvidence.publicSearchRecipient', {
-                        recipient:
-                          settingsConsentRecipient(option.provider.id) ?? '',
-                      })
-                    : undefined
-                }
               />
             ) : null
           }

@@ -1,7 +1,7 @@
 import type { SqlExecutor } from '@orot/storage';
 import { isPeriodSummarySource } from '../diseaseHypotheses/savedSummaries';
 import type { ConversationArtifact } from './conversationArtifactCodec';
-import { assertPeriodNotRemoved } from './conversationPeriodRemoval';
+import { assertPlannedPeriodNotRemoved } from './boundPeriodRemovalPlan';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { markerMatchesKind } from './typedDeletionMarkers';
 import {
@@ -14,7 +14,7 @@ import {
 /** Logical tombstones fence retained results even before a physical record is removed. */
 export async function assertConversationSourcesNotRemoved(
   tx: SqlExecutor,
-  value: ConversationArtifact,
+  value: Pick<ConversationArtifact, 'sources'>,
 ) {
   const identities: [string, string | null][] = [];
   for (const source of value.sources) {
@@ -26,7 +26,7 @@ export async function assertConversationSourcesNotRemoved(
     )
       continue;
     if (isPeriodSummarySource(source)) {
-      await assertPeriodNotRemoved(tx, source);
+      await assertPlannedPeriodNotRemoved(tx, source);
       continue;
     }
     if (source.reference.sourceKind === 'external_medical') continue;

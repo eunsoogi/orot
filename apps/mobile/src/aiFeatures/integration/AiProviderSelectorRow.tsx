@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { APPLE_PCC_PROVIDER_ID, APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { StyleSheet, View } from 'react-native';
 import { t } from '../../i18n';
+import {
+  providerControlCopy,
+  type Presentation,
+} from './conversationModelControlCopy';
 import { observeConversationModelLifecycle } from './conversationModelDisplayLifecycle';
 import { SelectedModelControl } from '../../layout/SelectedModelControl';
 import type {
@@ -16,14 +20,6 @@ interface AiProviderSelectorRowProps {
   readonly revision: number;
   readonly embedded?: boolean;
 }
-
-type Presentation =
-  | { readonly status: 'loading' | 'selection-required' | 'unavailable' }
-  | {
-      readonly status: 'saved' | 'ready';
-      readonly name: string;
-      readonly local: boolean;
-    };
 
 type ScopedPresentation = {
   readonly resolve: ResolveConversationModelDisplay;
@@ -46,6 +42,8 @@ export function AiProviderSelectorRow({
 
   useEffect(() => {
     let active = true;
+    let chatGPTPresentation = false;
+    let unsubscribeCredential: (() => void) | undefined;
     let exactPlatform: SavedPlatformChoice | undefined;
     let invalidated = false;
     let fence = 0;
@@ -74,8 +72,14 @@ export function AiProviderSelectorRow({
       if (fenced) {
         fence++;
         waiting = undefined;
-        if (exactPlatform) publish(unavailable);
+        if (chatGPTPresentation) invalidate();
+        else if (exactPlatform) publish(unavailable);
       } else if (exactPlatform) resumePlatform();
+      else if (chatGPTPresentation && current(attempt) && waiting) {
+        const value = waiting;
+        waiting = undefined;
+        publish(value);
+      }
     });
 
     const protectedPlatform = () =>
@@ -121,6 +125,8 @@ export function AiProviderSelectorRow({
       ownsSelection = null;
       unsubscribe?.();
       unsubscribe = undefined;
+      unsubscribeCredential?.();
+      unsubscribeCredential = undefined;
       publish({ status: 'loading' });
       resolveSelectedAi({
         platformRefreshOnly,
@@ -133,6 +139,30 @@ export function AiProviderSelectorRow({
           ownsSelection = witness;
           unsubscribe = witness.subscribe(invalidate);
           if (!witness.isCurrent()) invalidate();
+        },
+        savedChatGPTName(name, credential) {
+          if (!current(id) || !ownsSelection?.isCurrent()) return;
+          unsubscribeCredential?.();
+          unsubscribeCredential = credential.subscribe(invalidate);
+          if (!credential.isCurrent()) {
+            invalidate();
+            return;
+          }
+          // A foreground change must not trigger a new remote catalog lookup.
+          if (!lifecycle.hasProtectedDataWitness) return;
+          chatGPTPresentation = true;
+          if (!launchedForeground || launchedFence !== fence) {
+            invalidate();
+            return;
+          }
+          lifecycle.observeSavedPlatform();
+          const value = {
+            status: 'saved-chatgpt',
+            name,
+            local: false,
+          } as const;
+          if (lifecycle.canShowSavedName()) publish(value);
+          else waiting = value;
         },
         savedPlatformName(name, platform) {
           if (!current(id)) return;
@@ -173,8 +203,15 @@ export function AiProviderSelectorRow({
                   name: result.option.displayName,
                   local: result.selection.providerId === APPLE_PROVIDER_ID,
                 }
-              : { status: result.status };
+              : {
+                  status:
+                    result.status === 'unavailable' &&
+                    result.reason === 'transient-catalog'
+                      ? 'catalog-unconfirmed'
+                      : result.status,
+                };
           if (exactPlatform) platformResult(value);
+          else if (chatGPTPresentation && !lifecycle.ready()) waiting = value;
           else publish(value);
         },
         () => {
@@ -187,28 +224,20 @@ export function AiProviderSelectorRow({
     return () => {
       active = false;
       unsubscribe?.();
+      unsubscribeCredential?.();
       lifecycle.dispose();
     };
   }, [resolveSelectedAi, revision]);
 
-  const named = shown.status === 'ready' || shown.status === 'saved';
-  const value = named
-    ? shown.name
-    : shown.status === 'selection-required'
-      ? t('provider.selection.rowPrompt')
-      : shown.status === 'loading'
-        ? t('provider.selection.rowLoading')
-        : t('provider.selection.rowUnavailable');
-  const rowLabel = `${t('provider.selection.rowTitle')}, ${value}`;
-
+  const { local, value, rowLabel, busy } = providerControlCopy(shown);
   return (
     <View style={!embedded && styles.inset}>
       <SelectedModelControl
         name={value}
-        local={named && shown.local}
+        local={local}
         label={rowLabel}
         hint={t('provider.selection.rowHint')}
-        busy={shown.status === 'loading' || shown.status === 'saved'}
+        busy={busy}
         onPress={onPress}
         testID="ai-feature-select-provider"
       />

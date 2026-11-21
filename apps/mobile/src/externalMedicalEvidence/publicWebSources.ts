@@ -7,7 +7,9 @@ export interface PublicWebSource {
 }
 
 /** Web citations are provider-returned links on a generated explanation, not paper identifiers. */
-export function isPublicWebReference(reference: EvidenceReference): boolean {
+export function isPublicWebReference(
+  reference: Pick<EvidenceReference, 'sourceKind' | 'sourceId' | 'locator'>,
+): boolean {
   return (
     reference.sourceKind === 'external_medical' &&
     reference.sourceId === PUBLIC_WEB_SOURCE_ID
@@ -16,7 +18,7 @@ export function isPublicWebReference(reference: EvidenceReference): boolean {
 
 /** Validate persisted references again before handing a URL to the operating system. */
 export function publicWebSources(
-  reference: EvidenceReference,
+  reference: Pick<EvidenceReference, 'sourceKind' | 'sourceId' | 'locator'>,
 ): readonly PublicWebSource[] | undefined {
   if (!isPublicWebReference(reference)) return undefined;
   const locator = reference.locator;

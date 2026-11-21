@@ -53,6 +53,7 @@ test.each(['continue', 'deleted', 'foreign'] as const)(
       const cursor = first.coverage[0]!.nextCursor;
       if (!cursor) throw new Error('Missing research page');
       expect(f.registry.resolve(first.items[0]!)?.sourceId).toBe('research-2');
+      const completion = f.descriptor.reconstruction.completion!;
       f.descriptor.reconstruction = await captureColdRagConversationState({
         registry: f.registry,
         tracker: f.tracker,
@@ -65,6 +66,10 @@ test.each(['continue', 'deleted', 'foreign'] as const)(
         signal: f.controller.signal,
         researchPaging: f.bundle.generated.researchPagingSnapshot!('run'),
       });
+      f.descriptor.reconstruction = {
+        ...f.descriptor.reconstruction,
+        completion,
+      };
       if (mode === 'deleted')
         await db.database.execute(
           'DELETE FROM research_artifacts WHERE id = ?',

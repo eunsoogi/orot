@@ -32,6 +32,7 @@ export function quarantineConversation(): Partial<ConversationSession> {
     deletionError: '',
     quarantined: true,
     messages: [],
+    savedHistoryDisplay: undefined,
     taskCards: [],
     draft: '',
     title: getRagConversationCopy().newConversation,

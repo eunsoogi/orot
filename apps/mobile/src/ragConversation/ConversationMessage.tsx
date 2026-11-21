@@ -198,6 +198,8 @@ export function ConversationMessage({
             <ConversationMessageText
               content={message.content}
               user={user}
+              staticText={message.savedHistoryDisplayOnly}
+              // The canonical report parser formats settled text without loading sources.
               allowReport={
                 !message.streaming &&
                 !message.incomplete &&

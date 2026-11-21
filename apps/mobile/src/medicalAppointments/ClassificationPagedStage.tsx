@@ -8,6 +8,11 @@ import {
 } from './ClassificationReaderFrame';
 import { ClassificationPagingActions } from './ClassificationPagingActions';
 import {
+  ClassificationCircleButton,
+  ClassificationCircleSlot,
+  classificationCircleGeometry,
+} from './ClassificationCircle';
+import {
   paginateClassificationLines,
   type ClassificationTextLine,
 } from './classificationTextPagination';
@@ -27,7 +32,8 @@ interface Props {
 
 /** A measured, non-scrolling reader keeps even one long event reachable without shrinking Dynamic Type. */
 export function ClassificationPagedStage(props: Props) {
-  const { fontScale } = useWindowDimensions();
+  const window = useWindowDimensions();
+  const { fontScale } = window;
   const frame = useClassificationReaderFrame(props.onAction, props.documents);
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
   const [footerHeight, setFooterHeight] = useState(0);
@@ -45,10 +51,16 @@ export function ClassificationPagedStage(props: Props) {
     key: string;
     lines: readonly ClassificationTextLine[];
   } | null>(null);
-  // The fixed footer contains both paging and primary actions, rather than stacking controls below clipped text.
-  const available = Math.max(0, bounds.height - footerHeight - 12);
-  const compactActions =
-    bounds.height > 0 && bounds.height < 26 * fontScale * 3 + 100;
+  const paneHeight = bounds.height || window.height;
+  const geometry = classificationCircleGeometry(
+    bounds.width || window.width,
+    paneHeight,
+    fontScale,
+  );
+  const available = Math.max(
+    0,
+    paneHeight - geometry.captionTop - footerHeight,
+  );
   const lines = measurement?.key === identity ? measurement.lines : null;
   const measuredPages =
     lines && available > 0 ? paginateClassificationLines(lines, available) : [];
@@ -87,7 +99,32 @@ export function ClassificationPagedStage(props: Props) {
           );
         }}
       >
-        <View style={styles.group}>
+        <ClassificationCircleSlot {...geometry}>
+          <ClassificationCircleButton
+            size={geometry.size}
+            title={
+              requiresExpansion
+                ? t('medicalAppointments.readerShort')
+                : props.actionTitle
+            }
+            label={
+              requiresExpansion
+                ? t('medicalAppointments.expandReader')
+                : cannotFitLine
+                  ? t('medicalAppointments.readerTooSmall')
+                  : props.actionLabel
+            }
+            onPress={requiresExpansion ? frame.expand : frame.execute}
+            disabled={
+              frame.closing ||
+              (!requiresExpansion && (cannotFitLine || Boolean(props.disabled)))
+            }
+          />
+        </ClassificationCircleSlot>
+        <View
+          style={[styles.group, { top: geometry.captionTop }]}
+          testID="classification-stage-captions"
+        >
           <View
             style={[
               styles.viewport,
@@ -155,24 +192,7 @@ export function ClassificationPagedStage(props: Props) {
               }
               onPrevious={previous}
               onNext={next}
-              compact={compactActions || cannotFitLine}
-              actionTitle={
-                requiresExpansion
-                  ? t('medicalAppointments.expandReader')
-                  : props.actionTitle
-              }
-              actionLabel={
-                requiresExpansion
-                  ? t('medicalAppointments.expandReader')
-                  : cannotFitLine
-                    ? t('medicalAppointments.readerTooSmall')
-                    : props.actionLabel
-              }
-              onAction={requiresExpansion ? frame.expand : frame.execute}
-              disabled={
-                frame.closing ||
-                (!requiresExpansion && (cannotFitLine || props.disabled))
-              }
+              showPaging={pages.length > 1 || props.documents.length > 1}
               supplementaryAction={props.supplementaryAction}
             />
           </View>
@@ -182,8 +202,8 @@ export function ClassificationPagedStage(props: Props) {
   );
 }
 const styles = StyleSheet.create({
-  fill: { flex: 1, minHeight: 0, justifyContent: 'center' },
-  group: { width: '100%', gap: 12 },
+  fill: { flex: 1, width: '100%', minHeight: 0 },
+  group: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   reader: { flex: 1, justifyContent: 'center' },
   viewport: { overflow: 'hidden' },
   text: { fontSize: 18, lineHeight: 26, textAlign: 'center' },

@@ -1,3 +1,4 @@
+import { ResolveArchivedCitationContext } from '../../ragConversation/useArchivedCitationOpen';
 import { useAppointmentReminderRuntime } from '../../appointmentReminders/AppointmentReminderContext';
 import { DailyReportSourceResolverContext } from './DailyReportSourceLinks';
 import { DailyReportFlowScreen } from './DailyReportFlowScreen';
@@ -23,6 +24,7 @@ import type { AiFeatureFlowScreenProps } from './AiFeatureFlowScreenTypes';
 /** Renders one stack destination while the parent keeps source/provider overlays mounted above it. */
 export function AiFeatureFlowScreen({
   isEntryCurrent,
+  ownsConversationPresentation,
   onRestoreSummary,
   route,
   navigationRouteKey,
@@ -62,6 +64,7 @@ export function AiFeatureFlowScreen({
   const conversationScreen = (
     <ConversationScreen
       isEntryCurrent={isEntryCurrent}
+      ownsConversationPresentation={ownsConversationPresentation}
       entryContext={{
         intent: intent ?? 'conversation',
         entryKey: navigationRouteKey ?? route,
@@ -180,7 +183,11 @@ export function AiFeatureFlowScreen({
     <DailyReportSourceResolverContext.Provider
       value={services.dailyReportSources}
     >
-      {conversationScreen}
+      <ResolveArchivedCitationContext.Provider
+        value={services.resolveArchivedCitation}
+      >
+        {conversationScreen}
+      </ResolveArchivedCitationContext.Provider>
     </DailyReportSourceResolverContext.Provider>
   );
   if (intent !== null) return conversation;

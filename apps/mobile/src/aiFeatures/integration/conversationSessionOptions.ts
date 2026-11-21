@@ -1,4 +1,5 @@
 import { conversationHistoryPageOption } from './conversationHistoryPageOption';
+import { conversationSavedHistoryDisplayOption } from './conversationSavedHistoryDisplayOption';
 import { restoreConversationSessionTurns } from './restoreConversationSessionTurns';
 import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
 import { continuousSessionOption } from './continuousSessionOption';
@@ -21,10 +22,16 @@ export function createConversationSessionOptions(
   const photo = conversationPhotoPreparationOption(input);
   return {
     ...photo,
+    useProtectedPromptHistory: true,
+    readSavedHistoryDisplay: conversationSavedHistoryDisplayOption(openStorage),
     readPlainContextPage: async (...args) =>
       (await openStorage()).readPlainContextPage(...args),
     restoreSessionPage: conversationHistoryPageOption(input, openStorage),
-    ...continuousSessionOption(input.selectedAi, openStorage),
+    ...continuousSessionOption(
+      input.selectedAi,
+      openStorage,
+      input.captureSelectionWitness,
+    ),
     restoreSteering: restoreConversationSteering(openStorage),
     coldResume: input.coldResume,
     execution: conversationExecutionNative() ?? undefined,

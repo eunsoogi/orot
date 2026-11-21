@@ -54,7 +54,11 @@ test('passes typed saved-question recovery to the conversation result', async ()
 
 /** A completed tool is not proof that the model produced an invalid answer. */
 test.each([
-  ['needs_clarification', undefined, { status: 'insufficient' }],
+  [
+    'needs_clarification',
+    undefined,
+    { status: 'insufficient', guidance: 'visit_goal' },
+  ],
   ['unavailable', undefined, { status: 'failure', kind: 'unavailable' }],
   [
     'budget_exceeded',
@@ -167,7 +171,7 @@ test('forwards reviewed initial responses through the explicit visit turn observ
     confirmConsent: async () => false,
     observer: { onTaskStreamEvent },
   });
-  expect(result).toEqual({ status: 'insufficient' });
+  expect(result).toEqual({ status: 'insufficient', guidance: 'visit_goal' });
   expect(onTaskStreamEvent).toHaveBeenCalledTimes(1);
   expect(onTaskStreamEvent).toHaveBeenCalledWith(event);
 });

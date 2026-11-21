@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Text } from 'react-native';
 import { ConversationPhotoAttachment } from '../ConversationPhotoAttachment';
 import { ConversationComposer } from '../ConversationComposer';
 
@@ -13,14 +12,10 @@ test('photo selection and removal are explicit actions, independent of send', as
       onRemove={onRemove}
     />,
   );
-  expect(
-    screen.getByRole('button', { name: '사진 첨부' }).props.onGlassIconPress,
-  ).toEqual(expect.any(Function));
   expect(screen.getByRole('button', { name: '사진 첨부' })).toHaveStyle({
     width: 44,
     height: 44,
-    borderRadius: 0,
-    overflow: 'visible',
+    flexShrink: 0,
   });
   await fireEvent.press(screen.getByRole('button', { name: '사진 첨부' }));
   expect(
@@ -93,23 +88,6 @@ test('another active picker disables selection without disabling removal', async
   expect(screen.getByRole('button', { name: '사진 첨부' })).toBeDisabled();
   await fireEvent.press(screen.getByRole('button', { name: '첨부 사진 제거' }));
   expect(onRemove).toHaveBeenCalledTimes(1);
-});
-
-test('the composer keeps a separate trailing action outside the photo and send controls', async () => {
-  await render(
-    <ConversationComposer
-      value="합성 질문"
-      busy={false}
-      onChangeText={jest.fn()}
-      onSend={jest.fn()}
-      onCancel={jest.fn()}
-      photo={{ status: 'empty', onSelect: jest.fn(), onRemove: jest.fn() }}
-      trailingAction={<Text testID="synthetic-trailing-action">별도 동작</Text>}
-    />,
-  );
-  expect(screen.getByTestId('synthetic-trailing-action')).toBeTruthy();
-  expect(screen.getByRole('button', { name: '사진 첨부' })).toBeTruthy();
-  expect(screen.getByTestId('rag-conversation-send')).toBeTruthy();
 });
 
 test('explains when the selected photo has no recognized text', async () => {

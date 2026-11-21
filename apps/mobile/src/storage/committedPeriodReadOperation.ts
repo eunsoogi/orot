@@ -1,4 +1,10 @@
 import {
+  BoundReadWitnessUnavailable,
+  guardedBoundTransaction,
+  type BoundReadResultWitness,
+} from './boundReadResultWitness';
+import { withBoundPeriodRemovalPlan } from './boundPeriodRemovalPlan';
+import {
   reportCacheDecision,
   endReportCalculationDiagnostic,
 } from '../healthEvidence/healthContext/reportCalculationDiagnostic';
@@ -22,7 +28,7 @@ import { nativeHeartWorkoutPrefix } from '../healthEvidence/healthContext/heartW
 import {
   historyValidationCostEnabled,
   measureHistoryValidationCost,
-  startHistoryValidationCost,
+  observePeriodReadTransaction,
 } from '../providers/conversationHistoryDiagnostic';
 
 /** Scope invalidation must not undo unrelated native writes on this connection. */
@@ -43,8 +49,8 @@ export function committedPeriodReadOperation(
   const reportScope = createCommittedReportScope(database);
   const reports = committedReportCache(reportScope.token, database)!;
   const calendar = committedReportCalendar(reportScope.token, database)!;
-  const profilePeriodTransaction = historyValidationCostEnabled();
-  const profileHistoryValidation = historyPage && profilePeriodTransaction;
+  const profileHistoryValidation =
+    historyPage && historyValidationCostEnabled();
   let disposed = false;
   const cancel = () => {
     calendar.dispose();
@@ -74,20 +80,17 @@ export function committedPeriodReadOperation(
         tx: SqlExecutor,
         validate: ReadOnlyPeriodValidation,
       ) => Promise<void>,
-      options: { rollbackOnFailure?: boolean } = {},
+      options: {
+        rollbackOnFailure?: boolean;
+        /** Only the canonical, still-owned bound reader can opt into this plan. */
+        boundQuantityOwner?: () => boolean;
+        witness?: BoundReadResultWitness;
+      } = {},
     ) {
       check();
       const pending = new Map<string, HealthContextReport>();
       let failure: { error: unknown } | undefined;
-      let endTransaction:
-        ReturnType<typeof startHistoryValidationCost> | undefined;
-      const read = async (tx: SqlExecutor) => {
-        // One aggregate span per owned transaction: after acquisition through
-        // SQLite settlement, before the separate publication-generation check.
-        if (profilePeriodTransaction)
-          endTransaction = startHistoryValidationCost(
-            'artifact_period_transaction',
-          );
+      const execute = async (tx: SqlExecutor) => {
         // Check cancellation at every query boundary without converting operational
         // SQL errors into cancellation. The report's generic abort errors must not
         // accidentally select rollback and resurrect an interleaved native delete.
@@ -99,17 +102,46 @@ export function committedPeriodReadOperation(
             return result;
           },
         };
-        // Keep the send/capture and its strict fallback on the same aggregate
-        // shape. Only the explicit user-visible page borrows this workspace.
+        // The history-page workspace retains its own separately gated TEMP
+        // prefix. Bound capture borrows only the read-only quantity expression.
         const measureCost = profileHistoryValidation
           ? measureHistoryValidationCost
           : undefined;
+        let supportsOrderedAggregate: boolean | undefined;
+        const owner = options.boundQuantityOwner;
         const restorationWorkspace = historyPage
           ? {
               acquireHeartPrefix: nativeHeartWorkoutPrefix(reportExecutor, tx),
               measureCost,
             }
-          : undefined;
+          : owner
+            ? {
+                indexedQuantity: async (
+                  days: number,
+                  family: 'all' | 'measurements' | 'activity',
+                ) => {
+                  // The index plan pays a latest-row seek per daily group.
+                  // Keep short/other scopes and unsupported engines on the original sweep.
+                  if (days < 7 || family !== 'measurements' || !owner())
+                    return false;
+                  if (supportsOrderedAggregate === undefined) {
+                    const result = await reportExecutor.execute(
+                      'SELECT sqlite_version() AS version',
+                    );
+                    const version = result.rows[0]?.version;
+                    const match =
+                      typeof version === 'string' &&
+                      /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+                    supportsOrderedAggregate = Boolean(
+                      match &&
+                      (Number(match[1]) > 3 ||
+                        (Number(match[1]) === 3 && Number(match[2]) >= 44)),
+                    );
+                  }
+                  return supportsOrderedAggregate && owner();
+                },
+              }
+            : undefined;
         const validate: ReadOnlyPeriodValidation = async (
           executor,
           source,
@@ -125,8 +157,7 @@ export function committedPeriodReadOperation(
           const key = healthContextReportCacheKey(source.scope.window, [
             source.scope.topic,
           ]);
-          // Pending reports belong only to this transaction. Reuse calculation,
-          // not validity: every source still checks live generations and revision.
+          // Pending reports reuse calculation, not source validity, in this transaction.
           const cached = pending.get(key) ?? reports.get(key);
           reportCacheDecision(
             cached && same(cached, before)
@@ -177,7 +208,8 @@ export function committedPeriodReadOperation(
         } catch (error) {
           // Tool snapshots explicitly retain their existing rollback contract.
           if (
-            options.rollbackOnFailure &&
+            (options.rollbackOnFailure ||
+              error instanceof BoundReadWitnessUnavailable) &&
             !(error instanceof ReadScopeInvalidated)
           )
             throw error;
@@ -187,16 +219,26 @@ export function committedPeriodReadOperation(
           failure = { error };
         }
       };
-      try {
-        await database.transaction(read);
-        endTransaction?.(failure ? 'failed' : 'completed');
-      } catch (error) {
-        endTransaction?.('failed');
-        throw error;
-      }
+      const witness = options.witness;
+      const observation = observePeriodReadTransaction();
+      const transaction = () =>
+        witness
+          ? guardedBoundTransaction(
+              database,
+              witness,
+              tx => withBoundPeriodRemovalPlan(tx, witness, () => execute(tx)),
+              observation?.acquire,
+            )
+          : database.transaction(
+              observation ? tx => execute(observation.acquire(tx)) : execute,
+            );
+      await (observation
+        ? observation.settle(transaction, () => !failure)
+        : transaction());
       if (failure) throw failure.error;
       check();
       const committed = await readHealthContextGeneration(database);
+      if (witness) await witness.sample(database);
       check();
       for (const report of pending.values())
         if (!same(report, committed))

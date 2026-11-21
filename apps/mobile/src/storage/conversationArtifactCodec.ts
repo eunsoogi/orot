@@ -1,3 +1,4 @@
+import { validHistoricalDialogueParents } from './conversationHistoricalDialogue';
 import { parseConversationMessageDelivery } from '../ragConversation/conversationMessageDelivery';
 import { validConversationReportTarget } from './conversationReportTarget';
 import { validConversationPhotoArtifactSource } from './conversationPhotoArtifactValidation';
@@ -53,6 +54,10 @@ export function decodeConversationArtifact(
               typeof turn.question !== 'string' ||
               typeof turn.answer !== 'string',
           ))) ||
+      !validHistoricalDialogueParents(
+        value.historicalDialogueParents,
+        value.id,
+      ) ||
       (value.priorUserReports !== undefined &&
         (!Array.isArray(value.priorUserReports) ||
           value.priorUserReports.some(report => typeof report !== 'string'))) ||

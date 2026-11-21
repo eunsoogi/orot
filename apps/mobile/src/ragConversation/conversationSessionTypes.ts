@@ -18,6 +18,8 @@ export type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly useProtectedPromptHistory?: boolean;
+  readonly readSavedHistoryDisplay?: import('./conversationSavedHistoryDisplay').ReadSavedHistoryDisplay;
   readonly readPlainContextPage?: ReturnType<
     typeof import('../storage/plainConversationContext').createPlainConversationContextReader
   >;
@@ -28,6 +30,7 @@ export interface ConversationSessionOptions {
     version: number;
     updatedAt: string;
     model: { providerId: string; modelId: string };
+    selectionCurrent?: () => boolean;
   }>;
   readonly restoreSteering?: (
     sessionId: string,
@@ -189,6 +192,7 @@ export interface ConversationSession {
   readonly retryingSave?: boolean;
   readonly restoreFailed?: boolean;
   readonly restoring?: boolean;
+  readonly savedHistoryDisplay?: readonly import('./conversationSavedHistoryDisplay').SavedHistoryDisplayItem[];
   readonly historyHasMore?: boolean;
   readonly historyLoading?: boolean;
   readonly historyLoadFailed?: boolean;

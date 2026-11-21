@@ -4,6 +4,9 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 /** Display-only view of a turn; retained identity controls all durable source actions. */
 export interface DisplayMessage extends RagConversationMessage {
   /** Display-only origin marker; never a provider-history or persistence permission. */
+  readonly savedHistoryDisplayOnly?: true;
+  readonly archivedCitationTarget?: import('./useArchivedCitationOpen').ArchivedCitationTarget;
+  readonly savedCitations?: readonly import('./savedArchivedCitations').SavedArchivedCitation[];
   readonly restoredHistory?: true;
   readonly voiceTimelineOrder?: {
     readonly createdAt: string;

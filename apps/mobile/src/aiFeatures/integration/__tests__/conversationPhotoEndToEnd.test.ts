@@ -217,12 +217,12 @@ test('photo-only OCR crosses explicit consent, provider, protected save and fres
       },
     });
     expect(followUp.status).toBe('answer');
-    expect((await storage.read('follow-up'))?.sources).toContainEqual(
-      expect.objectContaining({
-        kind: 'generated_conversation',
-        id: 'request',
-      }),
+    // A plain follow-up cannot silently reuse an earlier OCR attachment.
+    expect(await storage.read('follow-up')).toMatchObject({ sources: [] });
+    expect(JSON.stringify(generate.mock.calls.at(-1))).not.toContain(
+      'synthetic OCR',
     );
+    expect(photoConsent).toHaveBeenCalledTimes(2);
     expect(
       await restoreConversationArtifact({
         id: 'follow-up',
@@ -233,7 +233,7 @@ test('photo-only OCR crosses explicit consent, provider, protected save and fres
       }),
     ).not.toBeNull();
     await storage.invalidateRequestSource(submitted.ocr!.source.id);
-    expect(await storage.read('follow-up')).toBeNull();
+    expect(await storage.read('follow-up')).not.toBeNull();
     expect(
       await restoreConversationArtifact({
         id: 'request',

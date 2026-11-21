@@ -40,6 +40,9 @@ test.each(['source_deletion_tombstones', 'agent_memory_removed_sources'])(
         'numeric-transcript',
         JSON.stringify({ transcriptId: 1, recordingSourceId: 'numeric-root' }),
       ]);
+      await f.database.execute(
+        "INSERT INTO transcript_segments(id,payload_json) WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i<500) SELECT 'unrelated-segment-' || i, json_object('recordingSourceId','unrelated-recording','transcriptId','unrelated-transcript-' || i,'segmentOrdinal',i,'revision',1) FROM n",
+      );
       const cases = [
         ['same', {}, 'same', 'symptom_entry', false],
         ['same', {}, 'same', 'health_observation', true],
@@ -165,9 +168,19 @@ test.each(['source_deletion_tombstones', 'agent_memory_removed_sources'])(
         await f.database.execute(`DROP INDEX ${table}_period_singleton`);
         await f.database.execute(`DROP INDEX ${table}_period_fallback`);
       }
+      await f.database.execute('DROP INDEX transcript_segments_recording_idx');
       await ensurePeriodRemovalIndexes(f.database);
       await ensurePeriodRemovalIndexes(f.database);
       expect((await f.database.execute(split, bindings)).rows).toEqual([]);
+      const splitPlan = await f.database.execute(
+        `EXPLAIN QUERY PLAN ${split}`,
+        bindings,
+      );
+      expect(
+        splitPlan.rows.filter(row =>
+          String(row.detail).includes('transcript_segments_recording_idx'),
+        ),
+      ).toHaveLength(2);
       const plan = await f.database.execute(`EXPLAIN QUERY PLAN ${current}`);
       expect(
         plan.rows.some(row => /SCAN m(?: |$)/.test(String(row.detail))),

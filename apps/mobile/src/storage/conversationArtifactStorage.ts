@@ -1,3 +1,4 @@
+import { assertHistoricalDialogueParentsCurrent } from './conversationHistoricalDialogue';
 import { withWritePeriodCalculations } from './writePeriodCalculationScope';
 import { registerConversationStrictReaders } from './conversationStrictReadOwner';
 import { appendConversationSourceRows } from './conversationArtifactSourceRows';
@@ -16,6 +17,7 @@ import { setupConversationArtifactSchema } from './conversationArtifactSchema';
 import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 import { createConversationArtifactReader } from './conversationArtifactRead';
 import { createConversationCompletionReader } from './conversationCompletionReader';
+import { createConversationProjectionReaders } from './conversationHistoryPresentation';
 import { listConversationArtifactPage } from './conversationArtifactPages';
 import { createConversationSessionVisibility } from './conversationSessionVisibility';
 import { assertConversationNotCancelled } from './conversationArtifactCancellation';
@@ -32,7 +34,6 @@ import {
   appendTreatmentTaskCard,
   createConversationTaskCardStorage,
 } from './conversationTaskCards';
-
 async function generation(tx: SqlExecutor): Promise<number> {
   const result = await tx.execute(
     'SELECT generation FROM conversation_artifact_generation WHERE singleton = 1',
@@ -42,7 +43,6 @@ async function generation(tx: SqlExecutor): Promise<number> {
     throw new Error('Conversation generation is unavailable.');
   return value;
 }
-
 /** Session and source validation share each write transaction; no retry can reopen a removed session. */
 export function createConversationArtifactStorage(database: SqlDatabase) {
   let ready: Promise<void> | undefined;
@@ -59,6 +59,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
   const listTimeline = conversationTimelinePages(database, ensure);
   const storage = {
     listTimeline,
+    ...createConversationProjectionReaders(database, ensure),
     readPlainContextPage: createPlainConversationContextReader(
       database,
       listTimeline,
@@ -181,6 +182,12 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         if (existing.rows.length) {
           if (existing.rows[0]?.result_json !== serialized)
             throw new Error('A different output already owns this identity.');
+          if (decoded.historicalDialogueParents?.length)
+            await assertHistoricalDialogueParentsCurrent(
+              tx,
+              decoded.sessionId,
+              decoded.historicalDialogueParents,
+            );
           assertConversationNotCancelled(signal);
           await commitConversationRequest(
             tx,
@@ -197,6 +204,13 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         if (decoded.treatmentContext)
           await appendTreatmentTaskCard(tx, decoded);
         await appendConversationSourceRows(tx, decoded);
+        // An earlier invalidation rolls back this write; a later one cascades the indexed edge.
+        if (decoded.historicalDialogueParents?.length)
+          await assertHistoricalDialogueParentsCurrent(
+            tx,
+            decoded.sessionId,
+            decoded.historicalDialogueParents,
+          );
         // After this check, commit wins; the caller must report the saved result even if cancellation arrives later.
         assertConversationNotCancelled(signal);
         await commitConversationRequest(tx, decoded, expectedSessionVersion);

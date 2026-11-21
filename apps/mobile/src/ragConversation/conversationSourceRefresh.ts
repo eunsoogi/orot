@@ -13,6 +13,7 @@ import { filterHealthDerivedMessages } from './conversationHealthDeletion';
 export function refreshConversationSources(input: {
   snapshot: ConversationSnapshot;
   event?: SourceDeletionEvent;
+  deferReloadId?: number;
   options: ConversationSessionOptions;
   requests: ReturnType<typeof createConversationSessionRequests>;
   restoration: ReturnType<typeof createConversationSessionRestoreState>;
@@ -31,6 +32,7 @@ export function refreshConversationSources(input: {
     }
     const restrict = (session: ConversationSession) => ({
       historyLoading: false,
+      savedHistoryDisplay: undefined,
       historyLoadFailed: session.historyLoading || session.historyLoadFailed,
       messages: filterHealthDerivedMessages(session.messages, deletedIds).map(
         message => ({ ...message, steeringInstructions: undefined }),
@@ -82,9 +84,14 @@ export function refreshConversationSources(input: {
         : null,
     });
     for (const session of snapshot.sessions) {
+      if (session.id === input.deferReloadId) continue;
       // Re-run only an already pending restore to fence its earlier storage read.
       const durableId = options.retention?.activeIdentity(session.id);
-      if (session.restoring && durableId)
+      if (
+        durableId &&
+        (session.restoring ||
+          (options.readSavedHistoryDisplay && session.id === snapshot.activeId))
+      )
         restoration.start(session.id, durableId).catch(() => {});
       else if (
         durableId &&
@@ -97,10 +104,13 @@ export function refreshConversationSources(input: {
   for (const session of snapshot.sessions) {
     requests.abandon(session.id);
     requests.forgetSaves(session.id);
-    restoration.forget(session.id);
+    const reload = session.id !== input.deferReloadId;
+    if (reload) restoration.forget(session.id);
+    else restoration.invalidatePage(session.id);
     const durableId = options.retention?.activeIdentity(session.id);
     update(session.id, {
       messages: [],
+      savedHistoryDisplay: undefined,
       taskCards: [],
       title: createEmptyConversation(session.id).title,
       pendingMessage: null,
@@ -109,7 +119,7 @@ export function refreshConversationSources(input: {
       restoreFailed: false,
       artifactContinuation: null,
     });
-    if (durableId && options.restoreSession)
+    if (reload && durableId && options.restoreSession)
       restoration.start(session.id, durableId).catch(() => {});
   }
   // Undo snapshots may hold deleted source text even when their session is hidden.

@@ -141,10 +141,10 @@ test.each([true, false])(
           signal,
         }),
       };
-      descriptor.reconstruction = {
-        ...descriptor.reconstruction,
+      Object.assign(descriptor.reconstruction, {
+        completion: f.descriptor.reconstruction.completion!,
         publicSearch: { version: 1, status: 'consent_required', charged: true },
-      };
+      });
       const restored = await restoreColdRagConversationFactory({
         descriptor,
         dependencies: f.dependencies,
@@ -174,6 +174,7 @@ test.each([true, false])(
       const persisted = await storage.openWorkflowContinuation(
         owner,
         async input => ({
+          completion: f.descriptor.reconstruction.completion!,
           publicSearch: {
             version: 1,
             status: 'consent_required',

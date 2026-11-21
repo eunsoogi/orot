@@ -2,7 +2,7 @@ import { prepareConversationContinuation } from './prepareConversationContinuati
 import type { ConversationColdReconstruction } from '../../storage/conversationContinuationCapture';
 import { captureColdRagConversationState } from './coldRagConversationState';
 import type { ConversationEntryContext } from './conversationIntent';
-import type { loadConversationHistory } from './conversationHistorySources';
+import type { FreshConversationHistory } from './freshConversationDialogue';
 import type { EvidenceReference } from '@orot/agent-runtime';
 
 type State = Parameters<typeof captureColdRagConversationState>[0];
@@ -13,7 +13,7 @@ export function liveRagConversationCapture(
     'registry' | 'tracker' | 'external' | 'signal' | 'sessionId'
   >,
   completion: () => {
-    history: Awaited<ReturnType<typeof loadConversationHistory>>;
+    history: FreshConversationHistory;
     entryContext?: ConversationEntryContext;
     reportReferences: readonly EvidenceReference[];
     localRetrievalFailed: boolean;
@@ -52,7 +52,13 @@ export function liveRagConversationCapture(
         : {}),
       completion: JSON.parse(
         JSON.stringify({
-          version: 1,
+          version: saved.history.historicalDialogueParents ? 2 : 1,
+          ...(saved.history.historicalDialogueParents
+            ? {
+                historicalDialogueParents:
+                  saved.history.historicalDialogueParents,
+              }
+            : {}),
           entryContext: saved.entryContext ?? null,
           priorDialogue: saved.history.priorTurns,
           priorUserReports: saved.history.reports,

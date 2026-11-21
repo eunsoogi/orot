@@ -1,3 +1,7 @@
+import {
+  coldSelectedModelIdentity,
+  createColdPromptDialogueGuard,
+} from './coldPromptDialogue';
 import { restoreConversationRequestBudget } from './restoreConversationRequestBudget';
 import { coldArtifactPaging } from './artifactPagingSnapshot';
 import { restoreColdConversationActions } from './restoreColdConversationActions';
@@ -29,8 +33,8 @@ import { createConversationToolBundle } from './conversationToolBundle';
 import { executionOptions } from './featureServiceExecution';
 import { guardHistory } from './conversationHistoryProviderGuard';
 import { revalidateWithLocalDeletionGuard } from './deletionAwareEvidence';
-import { stableJson } from './evidenceUtils';
 import {
+  assertColdRagFactoryState,
   COLD_RAG_FACTORY_VERSION,
   captureColdRagConversationState,
 } from './coldRagConversationState';
@@ -46,17 +50,7 @@ export async function restoreColdRagConversationFactory(input: {
   const saved = d.reconstruction;
   if (signal.aborted || saved.factoryVersion !== COLD_RAG_FACTORY_VERSION)
     throw new Error('Unsupported cold conversation factory.');
-  if (
-    !saved.external ||
-    typeof saved.external !== 'object' ||
-    Array.isArray(saved.external) ||
-    !saved.registry ||
-    !saved.research ||
-    !saved.scope ||
-    !Array.isArray(saved.sources) ||
-    !Array.isArray(saved.evidenceBatches)
-  )
-    throw new Error('Incomplete protected cold factory state.');
+  assertColdRagFactoryState(saved);
   const original = saved.invocation as unknown as {
     request: string;
     context: JsonObject;
@@ -72,16 +66,16 @@ export async function restoreColdRagConversationFactory(input: {
     throw new Error('Unsupported cold task or photo.');
   const photo = readColdPhotoBinding(d, input.observer?.confirmPhotoResume);
   const selected = await deps.selectedAi();
-  const selection = (value: typeof selected) =>
-    stableJson({
-      selection: value.selection,
-      provider: value.provider.id,
-      model: value.modelId,
-      recipient: value.recipient,
-      remote: value.remoteProcessing,
-    });
-  const expectedSelection = selection(selected);
+  const expectedSelection = coldSelectedModelIdentity(selected);
   const data = await deps.loadLocalData();
+  const dialogueCurrent = await createColdPromptDialogueGuard(
+    saved.completion,
+    data,
+    {
+      id: d.manifest.sessionId,
+      version: d.manifest.sessionVersion,
+    },
+  );
   const registry = await restoreColdConversationRegistry({
     snapshot: saved.registry as unknown as EvidenceRegistrySnapshot,
     sources: saved.sources as unknown as readonly ConversationArtifactSource[],
@@ -157,6 +151,7 @@ export async function restoreColdRagConversationFactory(input: {
   const aliases = registry.snapshot().entries.map(value => value.alias);
   const historyIsCurrent = async () =>
     !signal.aborted &&
+    ((await dialogueCurrent?.(signal)) ?? true) &&
     (!aliases.length || (await registry.revalidateEvidence(aliases, signal)));
   let options: MultiAgentWorkflowOptions<GroundedRagAnswer> = {
     ...guardHistory(execution, historyIsCurrent, true),
@@ -178,6 +173,7 @@ export async function restoreColdRagConversationFactory(input: {
       data,
       registry,
       signal,
+      dialogueCurrent,
     }),
     request: original.request,
     context: original.context as JsonObject,
@@ -215,10 +211,12 @@ export async function restoreColdRagConversationFactory(input: {
     registry,
     bundle,
     historyIsCurrent,
+    dialogueCurrent,
     async validateSelection(current: AbortSignal) {
       if (
         current.aborted ||
-        selection(await deps.selectedAi()) !== expectedSelection ||
+        coldSelectedModelIdentity(await deps.selectedAi()) !==
+          expectedSelection ||
         current.aborted ||
         !(await historyIsCurrent())
       )
