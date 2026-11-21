@@ -211,3 +211,40 @@ test('fades through a sibling veil without translating either screen', async () 
     screen.queryByText('Home', { includeHiddenElements: true }),
   ).toBeNull();
 });
+
+// A native driver may report interruption without a newer React tab transition.
+test('an interrupted incoming fade uncovers the mounted destination', async () => {
+  const view = await render(transition('home', 'Home'));
+  await view.rerender(transition('records', 'Records'));
+  await act(() => pendingAnimations[0]!.complete({ finished: true }));
+  await act(() => pendingAnimations[1]!.complete({ finished: false }));
+  expect(screen.getByText('Records')).toBeVisible();
+  expect(
+    screen.getByTestId('navigation-content-transition').props.pointerEvents,
+  ).toBe('auto');
+});
+
+// React Native may report an unfinished animation synchronously from stop().
+test('ignores a synchronous interrupted exit callback while switching destinations', async () => {
+  const view = await render(transition('home', 'Home'));
+  await view.rerender(transition('records', 'Records'));
+  const obsoleteExit = pendingAnimations[0]!;
+  obsoleteExit.stop.mockImplementationOnce(() =>
+    obsoleteExit.complete({ finished: false }),
+  );
+  const root = 'navigation-content-transition';
+  const hidden = { includeHiddenElements: true };
+  await view.rerender(transition('schedule', 'Schedule'));
+  expect(obsoleteExit.stop).toHaveBeenCalledTimes(1);
+  expect(pendingAnimations).toHaveLength(2);
+  expect(screen.getByText('Home', hidden)).toBeTruthy();
+  expect(screen.queryByText(/^(Records|Schedule)$/, hidden)).toBeNull();
+  expect(screen.getByTestId(root, hidden).props.pointerEvents).toBe('none');
+  await act(() => pendingAnimations[1]!.complete({ finished: true }));
+  expect(pendingAnimations).toHaveLength(3);
+  expect(screen.getByText('Schedule', hidden)).toBeTruthy();
+  expect(screen.getByTestId(root, hidden).props.pointerEvents).toBe('none');
+  await act(() => pendingAnimations[2]!.complete({ finished: true }));
+  expect(screen.getByText('Schedule')).toBeVisible();
+  expect(screen.getByTestId(root, hidden).props.pointerEvents).toBe('auto');
+});
