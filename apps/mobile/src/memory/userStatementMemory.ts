@@ -1,3 +1,4 @@
+import { isEligibleConversationMemorySource } from '../manualHistory/conversationHistoryIntent';
 import type { AgentMemoryInput } from '@orot/agent-memory';
 import type { ConversationArtifact } from '../storage/conversationArtifactTypes';
 import type { ManualHistoryEntry } from '@orot/domain';
@@ -15,6 +16,7 @@ function statementFromExplicitRequest(text: string): string | undefined {
 /** Shared admission excludes quoted, hypothetical, third-party, private and opted-out claims. */
 function isSafeStatement(text: string): boolean {
   if (
+    !isEligibleConversationMemorySource(text) ||
     text.length < 8 ||
     text.length > 1000 ||
     /[?？`<>「」“”"]|https?:\/\/|예를\s*들|가정|만약|라고\s*(말|했|해)|인용|번역|요약|기억|저장|비밀|남기지|기록하지|잊어|알려|보여|해줘|해주세요|부탁|만들어|인가요|가요|나요|까요|습니까|왜|어떤|어떻게|무엇|궁금|알고\s*싶|라면|다면/.test(
@@ -82,7 +84,6 @@ export function conversationStatementMemory(
   if (!isSafeStatement(text)) return undefined;
   const proposed =
     value.proactiveMemory === true &&
-    !value.entryIntent &&
     !value.dailyReport &&
     !value.submittedInput &&
     isProactiveMemoryStatement(question);

@@ -68,6 +68,7 @@ export function conversationRunRequest(input: {
   readonly question: string;
   readonly photoEvidence?: RagConversationRunOptions['photoEvidence'];
   readonly entryIntent?: RagConversationRunOptions['entryIntent'];
+  readonly authoredCurrentRequest?: boolean;
   readonly targetVisitEvidence?: RagConversationRunOptions['targetVisitEvidence'];
   readonly dailyReportEvidence?: RagConversationRunOptions['dailyReportEvidence'];
   readonly history: Awaited<ReturnType<typeof loadConversationHistory>>;
@@ -83,6 +84,7 @@ export function conversationRunRequest(input: {
     question: input.question,
     ...(input.photoEvidence ? { photoEvidence: input.photoEvidence } : {}),
     entryIntent: input.entryIntent,
+    authoredCurrentRequest: input.authoredCurrentRequest,
     targetVisitEvidence: input.targetVisitEvidence,
     dailyReportEvidence: input.dailyReportEvidence,
     previousMessages: input.history.messages,
