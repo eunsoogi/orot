@@ -8,6 +8,7 @@ import type { requireSelectedAi } from './provider';
 import type { createRagConversationService } from './ragConversationService';
 import { createHealthSummaryService } from './healthSummaryService';
 import { createConversationHealthSummary } from './conversationHealthSummary';
+import { captureNativeConversationSelectionWitness } from './conversationNativeSelectionWitness';
 import { createConversationSessionOptions } from './conversationSessionOptions';
 import { openSummaryStorage } from './symptomSummaryPersistence';
 import { restoreHealthSummary } from './restoreHealthSummary';
@@ -55,6 +56,10 @@ export function createConversationSummaryIntegration(input: {
         coldResume: input.coldResume,
         registry: input.registry,
         selectedAi: input.selectedAi,
+        captureSelectionWitness: () =>
+          captureNativeConversationSelectionWitness(
+            input.dependencies.selectedAi,
+          ),
         loadSavedVisitQuestions: input.loadSavedVisitQuestions,
         restoreHealthSummary: async reference =>
           restoreHealthSummary({

@@ -7,6 +7,7 @@ import {
 import type { ConversationSessionOptions } from './conversationSessionTypes';
 import type {
   ConversationHistoryReaderOwner,
+  ConversationInitialPageAdmission,
   ReadConversationHistoryPage,
 } from './conversationHistoryPage';
 import { conversationRestoredMessages } from './conversationRestoredMessages';
@@ -33,11 +34,10 @@ export function createConversationPagedRestoreState(
   ): Promise<void> => {
     const owner = owners.get(id);
     if (!owner || owner.exhausted || signal?.aborted) return Promise.resolve();
-    if (
+    const staleInitial =
       initialId !== undefined &&
-      (owner.initialized || owner.durableId !== initialId)
-    )
-      return Promise.resolve();
+      (owner.initialized || owner.durableId !== initialId);
+    if (staleInitial) return Promise.resolve();
     if (owner.flight)
       return joinConversationHistoryFlight(owner.flight, signal);
     const controller = new AbortController();
@@ -175,11 +175,13 @@ export function createConversationPagedRestoreState(
       durableId: string,
       signal?: AbortSignal,
       displayAdmission?: () => boolean,
+      initialAdmission?: ConversationInitialPageAdmission,
     ) {
       forget(id);
       owners.set(id, {
         durableId,
         displayAdmission,
+        initialAdmission,
         initialized: false,
         exhausted: false,
         nextId: 0,
@@ -200,7 +202,6 @@ export function createConversationPagedRestoreState(
       load(id, signal, durableId),
     retry: load,
     loadOlder: load,
-    /** Retry a failed read once per explicit send, never dispatch with unvalidated history. */
     async prepareContext(id: number, signal?: AbortSignal) {
       const planned = planPlainHistoryForSend(id, signal);
       if (planned) {
@@ -236,11 +237,8 @@ export function createConversationPagedRestoreState(
           return false;
       }
       const session = input.find(id);
-      return (
-        !signal?.aborted &&
-        !session?.restoreFailed &&
-        !session?.leaseRefreshRequired
-      );
+      const blocked = session?.restoreFailed || session?.leaseRefreshRequired;
+      return !signal?.aborted && !blocked;
     },
     forget,
     dispose() {

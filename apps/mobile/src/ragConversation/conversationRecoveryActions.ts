@@ -32,10 +32,22 @@ export function conversationRecoveryActions(input: {
       id: number,
       durableId: string,
       signal: AbortSignal,
+      displayAdmission?: () => boolean,
+      initialAdmission?: import('./conversationHistoryPage').ConversationInitialPageAdmission,
     ) =>
       disposed()
         ? Promise.resolve()
-        : restoration.retryInitial(id, durableId, signal),
+        : options.readSavedHistoryDisplay && displayAdmission
+          ? // A fresh selection owns a new page generation, not the aborted
+            // delivery/visibility closure from the original attachment.
+            restoration.start(
+              id,
+              durableId,
+              signal,
+              displayAdmission,
+              initialAdmission,
+            )
+          : restoration.retryInitial(id, durableId, signal),
     async refreshLease(
       id: number,
       lease: { id: string; version: number },

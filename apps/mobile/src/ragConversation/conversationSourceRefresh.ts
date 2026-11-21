@@ -13,6 +13,7 @@ import { filterHealthDerivedMessages } from './conversationHealthDeletion';
 export function refreshConversationSources(input: {
   snapshot: ConversationSnapshot;
   event?: SourceDeletionEvent;
+  deferReloadId?: number;
   options: ConversationSessionOptions;
   requests: ReturnType<typeof createConversationSessionRequests>;
   restoration: ReturnType<typeof createConversationSessionRestoreState>;
@@ -83,6 +84,7 @@ export function refreshConversationSources(input: {
         : null,
     });
     for (const session of snapshot.sessions) {
+      if (session.id === input.deferReloadId) continue;
       // Re-run only an already pending restore to fence its earlier storage read.
       const durableId = options.retention?.activeIdentity(session.id);
       if (
@@ -102,7 +104,9 @@ export function refreshConversationSources(input: {
   for (const session of snapshot.sessions) {
     requests.abandon(session.id);
     requests.forgetSaves(session.id);
-    restoration.forget(session.id);
+    const reload = session.id !== input.deferReloadId;
+    if (reload) restoration.forget(session.id);
+    else restoration.invalidatePage(session.id);
     const durableId = options.retention?.activeIdentity(session.id);
     update(session.id, {
       messages: [],
@@ -115,7 +119,7 @@ export function refreshConversationSources(input: {
       restoreFailed: false,
       artifactContinuation: null,
     });
-    if (durableId && options.restoreSession)
+    if (reload && durableId && options.restoreSession)
       restoration.start(session.id, durableId).catch(() => {});
   }
   // Undo snapshots may hold deleted source text even when their session is hidden.
