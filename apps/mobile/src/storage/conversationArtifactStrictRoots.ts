@@ -11,6 +11,7 @@ import {
   decodeConversationArtifact,
   type ConversationArtifact,
 } from './conversationArtifactCodec';
+import { createBoundParentDecode } from './boundParentDecode';
 import { createBoundParentDigest } from './boundParentDigest';
 import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 
@@ -52,6 +53,13 @@ export function createConversationStrictRoots(
         const parentDigest =
           recordRootBytes && boundReaderCurrent && operation?.active
             ? createBoundParentDigest(
+                () => operation.active && boundReaderCurrent(),
+              )
+            : undefined;
+        // This memo cannot expose a decoded nested row to an ancestry collector.
+        const parentDecode =
+          !collectValidated && parentDigest && boundReaderCurrent && operation
+            ? createBoundParentDecode(
                 () => operation.active && boundReaderCurrent(),
               )
             : undefined;
@@ -122,6 +130,7 @@ export function createConversationStrictRoots(
               operation?.active && operation.profileHistoryValidation,
               !lease && operation?.active ? canBatchOrdinary : undefined,
               parentDigest,
+              parentDecode,
             );
             const witnessed = recordRootBytes?.(
               typeof raw === 'string' ? raw : undefined,

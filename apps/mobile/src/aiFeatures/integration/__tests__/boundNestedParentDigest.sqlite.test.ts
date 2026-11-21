@@ -1,4 +1,5 @@
 import { readOwnedBoundParentRows } from '../../../storage/conversationArtifactRead';
+import * as codec from '../../../storage/conversationArtifactCodec';
 import type { ConversationArtifact } from '../../../storage/conversationArtifactCodec';
 import * as evidence from '../evidenceUtils';
 import { quarantinedHistoryFixture } from '../testSupport/quarantinedHistoryFixture';
@@ -59,7 +60,7 @@ async function fixture() {
   const tx = f.database.transaction.bind(f.database);
   const trace: [string, readonly unknown[] | undefined][] = [];
   let matchingRows = 0;
-  let alter: 'delete' | 'corrupt' | undefined;
+  let alter: 'delete' | 'corrupt' | 'revoke' | undefined;
   f.database.transaction = operation =>
     tx(async executor => {
       const execute = executor.execute.bind(executor);
@@ -72,7 +73,7 @@ async function fixture() {
             sql.includes(
               'SELECT a.result_json, a.id, a.session_id, a.created_at',
             ) &&
-            args?.[0] === (alter === 'delete' ? 'leaf' : 'heavy-a') &&
+            args?.[0] === (alter === 'corrupt' ? 'heavy-a' : 'leaf') &&
             ++matchingRows === 2
           ) {
             // The second root has already been read; deletion from SQLite
@@ -81,6 +82,11 @@ async function fixture() {
               await execute('DELETE FROM conversation_artifacts WHERE id = ?', [
                 'leaf',
               ]);
+            if (alter === 'revoke')
+              await execute(
+                'INSERT INTO conversation_invalid_parents (id) VALUES (?)',
+                ['leaf'],
+              );
             if (alter === 'corrupt')
               await execute(
                 'UPDATE conversation_artifacts SET result_json = ? WHERE id = ?',
@@ -116,6 +122,11 @@ test.each([
   async (_, input, expected) => {
     const f = await fixture();
     const calls = jest.spyOn(evidence, 'fingerprint');
+    const decode = jest.spyOn(codec, 'decodeConversationArtifact');
+    const decodes = () =>
+      decode.mock.calls.filter(
+        ([raw]) => typeof raw === 'string' && /^\{"id":"heavy-[ab]",/.test(raw),
+      ).length;
     const counts = () =>
       calls.mock.calls.filter(([value]) =>
         ['heavy-a', 'heavy-b'].includes((value as ConversationArtifact).id),
@@ -128,21 +139,26 @@ test.each([
       expect(counts()).toBe(ids.length);
       f.reset();
       calls.mockClear();
+      decode.mockClear();
       expect(await f.owned(ids)).toEqual(strict);
       expect(f.trace).toEqual(strictTrace);
       expect(counts()).toBe(expected);
+      expect(decodes()).toBe(expected);
       f.reset();
       calls.mockClear();
+      decode.mockClear();
       expect(await f.owned(ids)).toEqual(strict);
       expect(counts()).toBe(expected);
+      expect(decodes()).toBe(expected);
     } finally {
       calls.mockRestore();
+      decode.mockRestore();
       f.close();
     }
   },
 );
 
-test.each(['delete', 'corrupt'] as const)(
+test.each(['delete', 'corrupt', 'revoke'] as const)(
   'bound repeats refuse a late %s of a descendant',
   async mutation => {
     const f = await fixture();
@@ -164,16 +180,26 @@ test.each(['delete', 'corrupt'] as const)(
           ([sql, args]) =>
             sql.includes(
               'SELECT a.result_json, a.id, a.session_id, a.created_at',
-            ) && args?.[0] === (mutation === 'delete' ? 'leaf' : 'heavy-a'),
+            ) && args?.[0] === (mutation === 'corrupt' ? 'heavy-a' : 'leaf'),
         ),
       ).toHaveLength(2);
       const selected = await f.database.execute(
         'SELECT result_json FROM conversation_artifacts WHERE id = ?',
-        [mutation === 'delete' ? 'leaf' : 'heavy-a'],
+        [mutation === 'corrupt' ? 'heavy-a' : 'leaf'],
       );
-      expect(selected.rows.map(row => row.result_json)).toEqual(
-        mutation === 'delete' ? [] : ['{invalid json'],
-      );
+      if (mutation === 'revoke') {
+        // The underlying parent still exists, but its SQL authority is gone.
+        expect(selected.rows).toHaveLength(1);
+        const marker = await f.database.execute(
+          'SELECT id FROM conversation_invalid_parents WHERE id = ?',
+          ['leaf'],
+        );
+        expect(marker.rows).toHaveLength(1);
+      } else {
+        expect(selected.rows.map(row => row.result_json)).toEqual(
+          mutation === 'delete' ? [] : ['{invalid json'],
+        );
+      }
     } finally {
       f.close();
     }

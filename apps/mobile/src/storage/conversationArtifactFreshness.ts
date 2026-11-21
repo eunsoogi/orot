@@ -39,6 +39,7 @@ export async function assertConversationArtifactCurrent(
   profileHistoryValidation = false,
   canBatchOrdinary?: () => boolean,
   boundParentDigest?: BoundParentDigest,
+  boundParentDecode?: typeof decodeConversationArtifact,
 ) {
   const history = createManualHistoryRepository(database);
   // New report-bound turns must still belong to the active revision at commit.
@@ -128,11 +129,10 @@ export async function assertConversationArtifactCurrent(
         }
         const row = result.rows[0];
         const raw = row?.result_json;
+        const decodeParent = boundParentDecode ?? decodeConversationArtifact;
         const parent = measureCost
-          ? measureCost('artifact_parent_decode', () =>
-              decodeConversationArtifact(raw),
-            )
-          : decodeConversationArtifact(raw);
+          ? measureCost('artifact_parent_decode', () => decodeParent(raw))
+          : decodeParent(raw);
         const digest = (validated: ConversationArtifact) =>
           boundParentDigest && typeof raw === 'string'
             ? boundParentDigest(raw, validated, source.revision)
