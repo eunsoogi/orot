@@ -1,3 +1,4 @@
+import { parseTitle } from './savedSelectionTitle';
 import { createCredentialMutationOwner } from '../../agent/execution/credentialMutation';
 import {
   ACCESSIBLE,
@@ -5,7 +6,11 @@ import {
   resetGenericPassword,
   setGenericPassword,
 } from 'react-native-keychain';
-import type { ProviderSelection, ProviderSelectionStore } from './types';
+import type {
+  SavedSelectionTitle,
+  ProviderSelection,
+  ProviderSelectionStore,
+} from './types';
 
 const KEYCHAIN_SERVICE = 'com.orot.mobile.provider-selection.v1';
 const KEYCHAIN_ACCOUNT = 'provider-selection';
@@ -54,7 +59,7 @@ function isIdentifier(value: unknown): value is string {
   );
 }
 
-function parseSelection(value: string): ProviderSelection | null {
+function parseSelection(value: string) {
   try {
     const parsed: unknown = JSON.parse(value);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
@@ -63,7 +68,9 @@ function parseSelection(value: string): ProviderSelection | null {
     const record = parsed as Record<string, unknown>;
     const keys = Object.keys(record);
     if (
-      keys.length !== 2 ||
+      keys.some(
+        key => !['providerId', 'modelId', 'presentation'].includes(key),
+      ) ||
       !keys.includes('providerId') ||
       !keys.includes('modelId') ||
       !isIdentifier(record.providerId) ||
@@ -71,7 +78,11 @@ function parseSelection(value: string): ProviderSelection | null {
     ) {
       return null;
     }
-    return { providerId: record.providerId, modelId: record.modelId };
+    const selection = {
+      providerId: record.providerId,
+      modelId: record.modelId,
+    };
+    return { selection, title: parseTitle(record.presentation, selection) };
   } catch {
     return null;
   }
@@ -103,11 +114,18 @@ export class KeychainProviderSelectionStore implements ProviderSelectionStore {
   private async inspect() {
     const credentials = await getGenericPassword({ service: this.service });
     if (credentials === false) return { selection: null, readable: true };
-    const selection = parseSelection(credentials.password);
-    return { selection, readable: selection !== null };
+    const parsed = parseSelection(credentials.password);
+    return {
+      selection: parsed?.selection ?? null,
+      title: parsed?.title,
+      readable: parsed !== null,
+    };
   }
 
-  private async write(value: ProviderSelection | null) {
+  private async write(
+    value: ProviderSelection | null,
+    title?: SavedSelectionTitle,
+  ) {
     if (value === null) {
       if (!(await resetGenericPassword({ service: this.service })))
         throw new Error('The provider selection could not be cleared.');
@@ -115,7 +133,7 @@ export class KeychainProviderSelectionStore implements ProviderSelectionStore {
     }
     const saved = await setGenericPassword(
       KEYCHAIN_ACCOUNT,
-      JSON.stringify(value),
+      JSON.stringify(title ? { ...value, presentation: title } : value),
       {
         service: this.service,
         accessible: ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
@@ -133,6 +151,50 @@ export class KeychainProviderSelectionStore implements ProviderSelectionStore {
   async save(value: ProviderSelection): Promise<void> {
     const selection = requireSelection(value);
     await this.mutate(() => this.write(selection));
+  }
+
+  /** Writes only matching presentation metadata, in the same per-slot queue
+   * as selection changes. It cannot choose a model or change grant generations. */
+  async rememberTitle(
+    selection: ProviderSelection,
+    title: SavedSelectionTitle,
+    current: () => boolean,
+  ) {
+    const witness = this.liveWitness();
+    const validated = parseTitle(title, selection);
+    if (!witness || !validated || !current()) return;
+    await serializeSelectionWrite(this.service, async () => {
+      if (!witness() || !current()) return;
+      const stored = await this.inspect();
+      if (
+        !stored.selection ||
+        !sameSelection(stored.selection, selection) ||
+        !witness() ||
+        !current()
+      )
+        return;
+      if (
+        stored.title?.name === validated.name &&
+        stored.title.epoch === validated.epoch
+      )
+        return;
+      await this.write(stored.selection, validated);
+    });
+  }
+
+  async loadTitle(
+    selection: ProviderSelection,
+    epoch: string,
+  ): Promise<string | undefined> {
+    const witness = this.liveWitness();
+    if (!witness) return;
+    const stored = await this.inspect();
+    if (
+      witness() &&
+      sameSelection(stored.selection, selection) &&
+      stored.title?.epoch === epoch
+    )
+      return stored.title.name;
   }
 
   async clear(): Promise<void> {

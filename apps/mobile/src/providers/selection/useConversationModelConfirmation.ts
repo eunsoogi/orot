@@ -1,3 +1,7 @@
+import {
+  chatGPTCredentialMutation,
+  readChatGPTConsentCredential,
+} from '../chatGPTConsentIdentity';
 import { useModelSettingsReview } from '../../agent/execution/useModelSettingsReview';
 import { useModelConsentSave } from '../../agent/execution/useModelConsentSave';
 import type { SettingsSearchChoices } from '../../agent/execution/settingsSearchGrants';
@@ -74,6 +78,9 @@ export function useConversationModelConfirmation({
     )
       return;
     const selection = pendingSelection;
+    const titleOwner = selection.providerId.startsWith('chatgpt-plan:')
+      ? chatGPTCredentialMutation.capture()
+      : undefined;
     publishNavigationState({
       hasPendingSelection: true,
       isSavingSelection: true,
@@ -100,6 +107,24 @@ export function useConversationModelConfirmation({
         isCurrent => saveConsent(currentPendingOption, search, isCurrent),
       );
       if (!saved) return;
+      // Capture the selected row only after explicit confirmation, under the
+      // original account mutation witness. Copy failure must not undo consent.
+      if (titleOwner?.() && selectionStore.rememberTitle) {
+        try {
+          const credential = await readChatGPTConsentCredential();
+          if (titleOwner() && credential?.isCurrent())
+            await selectionStore.rememberTitle(
+              selection,
+              {
+                name: currentPendingOption.displayName.trim(),
+                epoch: credential.epoch,
+              },
+              () => titleOwner() && credential.isCurrent(),
+            );
+        } catch {
+          // The saved pair and authorization remain authoritative.
+        }
+      }
       setSavedSelection(selection);
       setPendingOption(null);
       selectionSaved = true;

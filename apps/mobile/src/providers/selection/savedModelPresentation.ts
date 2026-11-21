@@ -1,3 +1,4 @@
+import { savedChatGPTModelLabel } from './knownChatGPTModelLabel';
 import {
   calendarDecisionsModelLabel,
   calendarDecisionsProviderLabel,
@@ -18,6 +19,7 @@ export function savedModelPresentation(
   saved: ProviderSelection,
   option?: ProviderSelectionOption,
   slot?: 'calendar',
+  savedChatGPTTitle?: string,
 ): string {
   if (slot === 'calendar' && saved.providerId === 'openai-api-decisions') {
     return modelPresentation(
@@ -29,6 +31,10 @@ export function savedModelPresentation(
   }
   const appleLocal = saved.providerId === APPLE_PROVIDER_ID;
   const applePcc = saved.providerId === APPLE_PCC_PROVIDER_ID;
+  const chatGPTMatch =
+    saved.providerId.startsWith('chatgpt-plan:') &&
+    saved.providerId.endsWith(':' + saved.modelId) &&
+    saved.providerId.length > 'chatgpt-plan::'.length + saved.modelId.length;
   const provider =
     appleLocal || applePcc
       ? 'Apple'
@@ -45,7 +51,9 @@ export function savedModelPresentation(
       ? name
       : knownApple
         ? 'Apple Intelligence'
-        : undefined,
+        : chatGPTMatch
+          ? (savedChatGPTTitle ?? savedChatGPTModelLabel(saved.modelId))
+          : undefined,
   );
 }
 
