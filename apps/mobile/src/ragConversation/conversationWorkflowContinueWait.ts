@@ -1,4 +1,7 @@
-import { adoptContinuedConversationLease } from './conversationContinuedWork';
+import {
+  adoptContinuedConversationLease,
+  continuedOpportunityObserver,
+} from './conversationContinuedWork';
 import { requestOwnedConversationPause } from './conversationDeferredPause';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
 import { beginConversationExecutionLease } from './conversationExecutionLease';
@@ -65,6 +68,7 @@ export async function waitForWorkflowContinue(
             () => requiresConversationDecisionAbort(entry, input.execution),
             () => requestOwnedConversationPause(entry, entries),
             entry.diagnose,
+            continuedOpportunityObserver(entry, entries, input.execution),
           );
           if (!current()) release();
           else adoptContinuedConversationLease(entry, release, input.execution);

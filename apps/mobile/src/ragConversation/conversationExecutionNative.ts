@@ -48,7 +48,8 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
             event.kind === 'continued' &&
             typeof event.requestId === 'string' &&
             (event.state === 'continued-granted' ||
-              event.state === 'continued-refused')
+              event.state === 'continued-refused' ||
+              event.state === 'continued-deferred-inactive')
           )
             listener({
               kind: 'continued',
@@ -62,6 +63,8 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
             listener({ kind: 'pause-requested', requestId: event.requestId });
           else if (event.kind === 'foreground')
             listener({ kind: 'foreground' });
+          else if (event.kind === 'continuation-foreground')
+            listener({ kind: 'continuation-foreground' });
           else if (
             event.kind === 'expired' &&
             typeof event.requestId === 'string'

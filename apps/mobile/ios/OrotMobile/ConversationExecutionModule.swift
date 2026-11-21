@@ -33,6 +33,12 @@ final class ConversationExecutionModule: RCTEventEmitter {
     override func startObserving() {
         listening = true
         let center = NotificationCenter.default
+        // Use the same native emitter as the deferred receipt to preserve phase ordering.
+        observers.append(center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self, !requests.isEmpty else { return }
+            observeConversationExecution(.foreground)
+            publish(["kind": "continuation-foreground"])
+        })
         for name in [UIApplication.protectedDataWillBecomeUnavailableNotification,
                      UIApplication.protectedDataDidBecomeAvailableNotification]
         {
@@ -92,6 +98,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
                     signalBackgroundFailure(token)
                 }
             #endif
+            observeConversationExecution(.shortLeaseExpired)
             endLease(requestId)
             publish(["kind": "expired", "requestId": requestId])
         }
@@ -121,7 +128,8 @@ final class ConversationExecutionModule: RCTEventEmitter {
         // cache that non-attempt: a later eligible foreground stage may try.
         // Actual scheduler refusals remain cached, so they are never retried here.
         guard UIApplication.shared.applicationState == .active else {
-            publish(["kind": "continued", "state": "continued-refused", "requestId": requestId])
+            observeConversationExecution(.deferredInactive)
+            publish(["kind": "continued", "state": "continued-deferred-inactive", "requestId": requestId])
             return
         }
         if #available(iOS 26.0, *) {
@@ -206,6 +214,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
                 continue
             }
             pauseRequested.insert(requestId)
+            observeConversationExecution(.shortLeaseDrain)
             publish(["kind": "pause-requested", "requestId": requestId])
         }
     }

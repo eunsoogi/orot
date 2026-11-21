@@ -1,6 +1,7 @@
 import {
   adoptContinuedConversationLease,
   observeContinuedConversationActivity,
+  continuedOpportunityObserver,
   revokeContinuedConversationWork,
 } from './conversationContinuedWork';
 import {
@@ -74,6 +75,7 @@ export function createConversationRequestLifetime(input: {
         () => requiresConversationDecisionAbort(entry, input.execution),
         () => requestOwnedConversationPause(entry, entries),
         entry.diagnose,
+        continuedOpportunityObserver(entry, entries, input.execution),
       );
       if (
         controller.signal.aborted ||
@@ -152,7 +154,7 @@ export function createConversationRequestLifetime(input: {
           )
             return false;
           clearDrainedConversationPause(entry);
-          // The graph boundary is already durable; reuse the existing generic notification policy.
+          entry.diagnose('workflow-checkpoint-paused', reason);
           await entry.turn
             .interruptRequest('interrupted', reason)
             .catch(() => {});

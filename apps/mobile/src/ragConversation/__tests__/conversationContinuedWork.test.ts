@@ -1,8 +1,10 @@
 import { createConversationRequestLifetime } from '../conversationRequestLifetime';
 import type { Turn } from '../conversationLifetimeEntry';
+import type { ConversationExecutionEvent } from '../conversationExecutionLease';
 
 function setup(initial: 'active' | 'background' = 'active', admitted = true) {
   let phase = initial;
+  let protectedData = true;
   let resolveStart!: () => void;
   const turn = {
     toolMessageId: 'synthetic',
@@ -13,17 +15,24 @@ function setup(initial: 'active' | 'background' = 'active', admitted = true) {
     interruptRequest: jest.fn(async () => {}),
   } as unknown as Turn;
   const work = jest.fn();
+  const interrupt = jest.fn();
+  let push: (event: ConversationExecutionEvent) => void = () => {};
   const life = createConversationRequestLifetime({
     execution: {
       begin: async () => admitted,
       end: jest.fn(),
       currentPhase: () => phase,
-      protectedDataAvailable: async () => true,
+      protectedDataAvailable: async () => protectedData,
       isActive: async () => true,
-      subscribe: () => () => {},
+      subscribe(listener) {
+        push = listener;
+        return () => {
+          push = () => {};
+        };
+      },
       work,
     },
-    interrupt: jest.fn(),
+    interrupt,
     reportFenceFailure: jest.fn(),
   });
   const controller = new AbortController();
@@ -34,6 +43,12 @@ function setup(initial: 'active' | 'background' = 'active', admitted = true) {
     controller,
     observer,
     work,
+    interrupt,
+    event: (event: ConversationExecutionEvent) => push(event),
+    requestId: () => work.mock.calls[0]?.[0] as string,
+    lock: () => {
+      protectedData = false;
+    },
     foreground: () => {
       phase = 'active';
     },
@@ -88,3 +103,66 @@ test('a backgrounded checkpoint and denied or stopped ownership cannot schedule 
   await stopped.finishStart();
   expect(stopped.work).not.toHaveBeenCalled();
 });
+
+async function finishBridgeEvent() {
+  // Drain the actual protection and lease checks before asserting admission.
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+}
+
+test('a native inactive non-attempt waits for a later certified foreground', async () => {
+  const f = setup();
+  await f.finishStart();
+  const requestId = f.requestId();
+  f.event({
+    kind: 'continued',
+    requestId,
+    state: 'continued-deferred-inactive',
+  });
+  f.observer.onExecutionState('working');
+  f.event({ kind: 'foreground' });
+  await finishBridgeEvent();
+  expect(f.work.mock.calls).toEqual([[requestId, true]]);
+  f.event({ kind: 'continuation-foreground' });
+  await finishBridgeEvent();
+  expect(f.work.mock.calls).toEqual([
+    [requestId, true],
+    [requestId, true],
+  ]);
+  f.event({ kind: 'continuation-foreground' });
+  await finishBridgeEvent();
+  expect(f.work).toHaveBeenCalledTimes(2);
+});
+
+test.each([
+  'refused',
+  'expired',
+  'wrong-owner',
+  'decision',
+  'stop',
+  'locked',
+] as const)(
+  'a %s event cannot turn into another native admission',
+  async caseName => {
+    const f = setup();
+    await f.finishStart();
+    const requestId = f.requestId();
+    if (caseName === 'refused') {
+      f.event({ kind: 'continued', requestId, state: 'continued-refused' });
+    } else {
+      f.event({
+        kind: 'continued',
+        requestId: caseName === 'wrong-owner' ? 'unowned' : requestId,
+        state: 'continued-deferred-inactive',
+      });
+      if (caseName === 'expired') f.event({ kind: 'expired', requestId });
+      if (caseName === 'decision') f.observer.onApprovalWait(true);
+      if (caseName === 'stop') f.controller.abort();
+      if (caseName === 'locked') f.lock();
+    }
+    f.event({ kind: 'continuation-foreground' });
+    await finishBridgeEvent();
+    expect(f.work.mock.calls.filter(([, active]) => active)).toEqual([
+      [requestId, true],
+    ]);
+  },
+);

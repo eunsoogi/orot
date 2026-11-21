@@ -22,5 +22,6 @@ export type ConversationLifetimeEntry = {
   fence?: Promise<void>;
   release?: Awaited<ReturnType<typeof beginConversationExecutionLease>>;
   continuedRequested?: boolean;
+  continuedDeferred?: boolean;
   diagnose: import('./conversationExecutionDiagnostics').ExecutionDiagnostic;
 };

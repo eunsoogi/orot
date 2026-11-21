@@ -31,6 +31,11 @@ export function decodeConversationRecoveryReason(
     : undefined;
 }
 
+export type ConversationContinuedState =
+  'continued-granted' | 'continued-refused' | 'continued-deferred-inactive';
+export type ContinuationOpportunity =
+  ConversationContinuedState | 'continuation-foreground';
+
 export type ConversationExecutionEvent =
   | { readonly kind: 'pause-requested'; readonly requestId: string }
   | {
@@ -41,9 +46,10 @@ export type ConversationExecutionEvent =
   | {
       readonly kind: 'continued';
       readonly requestId: string;
-      readonly state: 'continued-granted' | 'continued-refused';
+      readonly state: ConversationContinuedState;
     }
   | { readonly kind: 'foreground' }
+  | { readonly kind: 'continuation-foreground' }
   | { readonly kind: 'phase' }
   | { readonly kind: 'protectedData'; readonly available: boolean };
 
@@ -67,6 +73,7 @@ export async function beginConversationExecutionLease(
   needsDecision: () => boolean = () => false,
   requestPause: () => void = () => {},
   diagnostic?: ReturnType<typeof createExecutionDiagnostics>,
+  observeOpportunity?: (event: ContinuationOpportunity) => void,
 ) {
   const diagnose =
     diagnostic ??
@@ -87,10 +94,12 @@ export async function beginConversationExecutionLease(
   };
   let reconciling = false;
   let reconcileAgain = false;
+  let nativeOpportunity = false;
   // Native and AppState can both announce foreground. Keep one bridge check in
   // flight and one trailing recheck, without caching availability or lease state.
-  const reconcile = async () => {
+  const reconcile = async (continuationForeground = false) => {
     if (closed || interrupted) return;
+    nativeOpportunity ||= continuationForeground;
     if (reconciling) {
       reconcileAgain = true;
       return;
@@ -100,13 +109,19 @@ export async function beginConversationExecutionLease(
       do {
         // Observe actual bridge checks, not duplicate foreground notifications.
         reconcileAgain = false;
+        const opportunity = nativeOpportunity;
+        nativeOpportunity = false;
         diagnose('foreground-check-started');
         const available = await adapter.protectedDataAvailable();
         if (closed || interrupted) return;
         if (available === false) notify('protected-data');
         else if (!(await adapter.isActive(requestId))) notify('expired');
         // A passed lease check is not provider progress; late results have no owner.
-        else if (!closed && !interrupted) diagnose('foreground-check-passed');
+        else if (!closed && !interrupted) {
+          diagnose('foreground-check-passed');
+          if (opportunity && available === true)
+            observeOpportunity?.('continuation-foreground');
+        }
       } while (reconcileAgain && !closed && !interrupted);
     } catch {
       notify('lease-check-failed');
@@ -128,8 +143,15 @@ export async function beginConversationExecutionLease(
       diagnose('pause-requested');
       requestPause();
     }
-    if (event.kind === 'continued' && event.requestId === requestId)
+    if (
+      event.kind === 'continued' &&
+      event.requestId === requestId &&
+      !closed &&
+      !interrupted
+    ) {
       diagnose(event.state);
+      observeOpportunity?.(event.state);
+    }
     if (event.kind === 'expired' && event.requestId === requestId)
       notify(event.reason ?? 'expired');
     if (event.kind === 'protectedData' && !event.available)
@@ -142,6 +164,10 @@ export async function beginConversationExecutionLease(
     }
     // Recheck after foregrounding in case suspension delayed the expiration event.
     if (event.kind === 'foreground' && acquired) reconcile();
+    if (event.kind === 'continuation-foreground' && acquired) {
+      diagnose('continuation-foreground');
+      reconcile(true);
+    }
   });
   try {
     if ((await adapter.protectedDataAvailable()) === false)
