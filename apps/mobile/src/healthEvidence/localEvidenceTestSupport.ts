@@ -31,7 +31,7 @@ export function createHealthEvidenceTestDatabase(path = ':memory:'): {
     parameters: SqlValue[] = [],
   ): SqlResult => {
     const statement = connection.prepare(query);
-    if (/^\s*(SELECT|PRAGMA)\b/i.test(query)) {
+    if (/^\s*(SELECT|PRAGMA|EXPLAIN)\b/i.test(query)) {
       return { rows: statement.all(...parameters) };
     }
     return {

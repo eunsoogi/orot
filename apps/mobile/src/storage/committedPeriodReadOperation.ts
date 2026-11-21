@@ -73,7 +73,11 @@ export function committedPeriodReadOperation(
         tx: SqlExecutor,
         validate: ReadOnlyPeriodValidation,
       ) => Promise<void>,
-      options: { rollbackOnFailure?: boolean } = {},
+      options: {
+        rollbackOnFailure?: boolean;
+        /** Only the canonical, still-owned bound reader can opt into this plan. */
+        boundQuantityOwner?: () => boolean;
+      } = {},
     ) {
       check();
       const pending = new Map<string, HealthContextReport>();
@@ -90,17 +94,46 @@ export function committedPeriodReadOperation(
             return result;
           },
         };
-        // Keep the send/capture and its strict fallback on the same aggregate
-        // shape. Only the explicit user-visible page borrows this workspace.
+        // The history-page workspace retains its own separately gated TEMP
+        // prefix. Bound capture borrows only the read-only quantity expression.
         const measureCost = profileHistoryValidation
           ? measureHistoryValidationCost
           : undefined;
+        let supportsOrderedAggregate: boolean | undefined;
+        const owner = options.boundQuantityOwner;
         const restorationWorkspace = historyPage
           ? {
               acquireHeartPrefix: nativeHeartWorkoutPrefix(reportExecutor, tx),
               measureCost,
             }
-          : undefined;
+          : owner
+            ? {
+                indexedQuantity: async (
+                  days: number,
+                  family: 'all' | 'measurements' | 'activity',
+                ) => {
+                  // The index plan pays a latest-row seek per daily group.
+                  // Keep short/other scopes and unsupported engines on the original sweep.
+                  if (days < 7 || family !== 'measurements' || !owner())
+                    return false;
+                  if (supportsOrderedAggregate === undefined) {
+                    const result = await reportExecutor.execute(
+                      'SELECT sqlite_version() AS version',
+                    );
+                    const version = result.rows[0]?.version;
+                    const match =
+                      typeof version === 'string' &&
+                      /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+                    supportsOrderedAggregate = Boolean(
+                      match &&
+                      (Number(match[1]) > 3 ||
+                        (Number(match[1]) === 3 && Number(match[2]) >= 44)),
+                    );
+                  }
+                  return supportsOrderedAggregate && owner();
+                },
+              }
+            : undefined;
         const validate: ReadOnlyPeriodValidation = async (
           executor,
           source,
