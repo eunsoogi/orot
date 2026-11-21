@@ -1,3 +1,4 @@
+import { useClassificationProgressMotion } from './useClassificationProgressMotion';
 import { useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -27,6 +28,7 @@ export function ClassificationProgress({
   const { width, height } = bounds;
   const percent =
     total > 0 ? Math.floor((100 * Math.min(classified, total)) / total) : 0;
+  const shown = useClassificationProgressMotion(percent);
   const geometry = classificationCircleGeometry(
     width,
     height,
@@ -84,7 +86,8 @@ export function ClassificationProgress({
               strokeWidth={7}
               fill="none"
               strokeDasharray={[circumference, circumference]}
-              strokeDashoffset={circumference * (1 - percent / 100)}
+              testID="classification-progress-arc"
+              strokeDashoffset={circumference * (1 - shown / 100)}
               rotation={-90}
               origin="50, 50"
             />
@@ -92,10 +95,11 @@ export function ClassificationProgress({
           <View pointerEvents="none" style={styles.number}>
             {/* The decorative numeral follows circle size; the progressbar exposes the complete spoken value/status. */}
             <AppText
+              testID="classification-progress-number"
               allowFontScaling={false}
               style={[styles.percent, { fontSize: Math.min(32, size * 0.22) }]}
             >
-              {percent}%
+              {shown}%
             </AppText>
           </View>
         </View>

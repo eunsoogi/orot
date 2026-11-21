@@ -115,9 +115,11 @@ extension AppointmentConsentUITests {
             actions.append("medical-appointment-select-provider")
         }
         let viewportID = "classification-text-viewport"
+        let resultListID = "classification-result-list"
+        let resultIDs = node(app, resultListID).exists ? [resultListID] : [viewportID, "classification-page-text"]
         let required = ["medical-appointment-fullscreen", tokens[phase], "classification-circle-slot"]
             + (paging ? ["classification-stage-footer"] : []) + actions
-            + (phase == 2 ? [viewportID, "classification-page-text"] : [])
+            + (phase == 2 ? resultIDs : [])
         /// Confirmation measurement does not require a text viewport AX projection; result pagination does.
         /// If UIKit does project it, never accept a duplicate or an element outside the scoped owner.
         func confirmationViewportProjected(in window: XCUIElement) throws -> Bool {
