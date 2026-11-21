@@ -61,6 +61,7 @@ test('queued expiration from a previous lease cannot interrupt a resumed request
     isActive: async () => true,
     protectedDataAvailable: async () => true,
     work: jest.fn(),
+    currentPhase: () => 'active' as const,
     milestone: jest.fn(),
     subscribe: (
       listener: (

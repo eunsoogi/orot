@@ -1,4 +1,10 @@
 import {
+  adoptContinuedConversationLease,
+  observeContinuedConversationActivity,
+  continuedOpportunityObserver,
+  revokeContinuedConversationWork,
+} from './conversationContinuedWork';
+import {
   requestOwnedConversationPause,
   clearDrainedConversationPause,
   registerConversationPause,
@@ -69,6 +75,7 @@ export function createConversationRequestLifetime(input: {
         () => requiresConversationDecisionAbort(entry, input.execution),
         () => requestOwnedConversationPause(entry, entries),
         entry.diagnose,
+        continuedOpportunityObserver(entry, entries, input.execution),
       );
       if (
         controller.signal.aborted ||
@@ -76,7 +83,7 @@ export function createConversationRequestLifetime(input: {
         entry.status
       )
         release();
-      else entry.release = release;
+      else adoptContinuedConversationLease(entry, release, input.execution);
     }
   }
   return {
@@ -126,6 +133,7 @@ export function createConversationRequestLifetime(input: {
           entry.resumableApproval = waiting;
           if (waiting) {
             entry.waitingForDecision = true;
+            revokeContinuedConversationWork(entry, input.execution);
             requiresConversationDecisionAbort(entry, input.execution);
           } else entry.waitingForDecision = false;
         },
@@ -146,7 +154,7 @@ export function createConversationRequestLifetime(input: {
           )
             return false;
           clearDrainedConversationPause(entry);
-          // The graph boundary is already durable; reuse the existing generic notification policy.
+          entry.diagnose('workflow-checkpoint-paused', reason);
           await entry.turn
             .interruptRequest('interrupted', reason)
             .catch(() => {});
@@ -163,16 +171,7 @@ export function createConversationRequestLifetime(input: {
             controller.signal.aborted
           )
             return;
-          entry.waitingForDecision = state === 'decision';
-          input.execution?.work?.(entry.executionId, state === 'working');
-          if (
-            state === 'decision' &&
-            requiresConversationDecisionAbort(entry, input.execution) &&
-            input.execution?.currentPhase?.() === 'background'
-          ) {
-            entry.interruptionReason = 'decision-required';
-            input.interrupt(entry.id);
-          }
+          observeContinuedConversationActivity(entry, state, input);
         },
       };
     },
