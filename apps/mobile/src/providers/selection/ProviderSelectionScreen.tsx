@@ -28,7 +28,6 @@ export default function ProviderSelectionScreen({
   screenTitle,
   screenIntroduction,
   navigationRouteKey,
-  conversationQuickReview,
   options,
   requirements,
   selectionStore,
@@ -100,7 +99,6 @@ export default function ProviderSelectionScreen({
     useConversationModelConfirmation({
       presentation,
       navigationRouteKey,
-      conversationQuickReview,
       selectionStore,
       onSelectionCommitted,
       pendingSelection,

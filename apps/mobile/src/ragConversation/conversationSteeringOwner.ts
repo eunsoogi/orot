@@ -14,19 +14,16 @@ export function createConversationSteeringOwner(
       current: () => boolean;
       release?: () => void;
       submitting: boolean;
+      submissionId?: string;
       responseId?: number;
     }
   >();
   let sequence = 0;
   const prefix = Date.now().toString(36);
-  const clear = (id: number) => {
+  const dropActive = (id: number) => {
     entries.get(id)?.release?.();
     entries.delete(id);
     update(id, {
-      messages: find(id)?.messages.map(message => ({
-        ...message,
-        steeringInstructions: undefined,
-      })),
       steeringInstructions: [],
       steeringDeliveryMode: undefined,
       steeringAvailable: false,
@@ -34,8 +31,18 @@ export function createConversationSteeringOwner(
       steeringError: false,
     });
   };
+  const clear = (id: number) => {
+    dropActive(id);
+    update(id, {
+      messages: find(id)?.messages.map(message => ({
+        ...message,
+        steeringInstructions: undefined,
+      })),
+    });
+  };
   return {
     clear,
+    dropActive,
     dispose: () => {
       for (const id of entries.keys()) clear(id);
     },
@@ -47,13 +54,20 @@ export function createConversationSteeringOwner(
         current,
         release: undefined as (() => void) | undefined,
         submitting: false,
+        submissionId: undefined as string | undefined,
         responseId: find(id)?.pendingMessage?.id,
       };
       entries.set(id, entry);
       const refresh = async () => {
         const rows = await store.list();
         if (entries.get(id) === entry && current())
-          update(id, { steeringInstructions: rows });
+          update(id, {
+            steeringInstructions: rows.map(row =>
+              row.id === entry.submissionId
+                ? { ...row, submittedHere: true as const }
+                : row,
+            ),
+          });
       };
       entry.release = store.subscribe?.(refresh);
       if (current())
@@ -65,12 +79,10 @@ export function createConversationSteeringOwner(
       const text = find(id)?.draft.trim();
       if (!entry || !entry.current() || entry.submitting || !text) return;
       entry.submitting = true;
+      entry.submissionId = `steering-${prefix}-${++sequence}`;
       update(id, { steeringSubmitting: true, steeringError: false });
       try {
-        const accepted = await entry.store.enqueue(
-          `steering-${prefix}-${++sequence}`,
-          text,
-        );
+        const accepted = await entry.store.enqueue(entry.submissionId, text);
         if (
           accepted &&
           entries.get(id) === entry &&

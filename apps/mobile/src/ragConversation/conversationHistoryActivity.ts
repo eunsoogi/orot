@@ -82,6 +82,7 @@ export function conversationHistoryActivity(
 /** Follow-to-bottom observes live turns only. Old prose joins at render time. */
 export function useConversationHistoryPresentation(input: {
   saved?: readonly SavedHistoryDisplayItem[];
+  steeringInstructions?: DisplayMessage['steeringInstructions'];
   messages: readonly DisplayMessage[];
   pendingMessage: ConversationSession['pendingMessage'];
   requestSessionId?: number;
@@ -97,6 +98,11 @@ export function useConversationHistoryPresentation(input: {
     messages,
     input.followsBottom,
     input.expectedOffset,
+    input.pendingMessage &&
+      input.pendingMessage.id === input.requestActivity?.requestId &&
+      input.sessionId === input.requestActivity?.sessionId
+      ? input.steeringInstructions?.find(row => row.submittedHere)?.id
+      : undefined,
   );
   const transcript = useMemo(
     () => savedHistoryTranscript(saved ?? [], messages),

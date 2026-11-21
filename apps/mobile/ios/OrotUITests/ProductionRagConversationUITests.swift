@@ -68,14 +68,19 @@ final class ProductionRagConversationUITests: XCTestCase {
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         guard UITestConditions.exists(node(app, "rag-conversation-screen")) else { throw failure("conversation_unavailable") }
         try tap(app, "ai-feature-select-provider")
-        guard UITestConditions.exists(node(app, "provider-selection-screen")) else { throw failure("provider_selection_unavailable") }
+        guard UITestConditions.exists(node(app, "settings-provider-screen")) else { throw failure("provider_selection_unavailable") }
         let apple = node(app, "provider-option-0")
         guard apple.exists, apple.isEnabled, apple.label.contains("Apple Intelligence") else {
             throw failure("apple_intelligence_unavailable_or_unknown")
         }
         apple.tap()
         try tap(app, "provider-selection-confirm")
-        guard UITestConditions.exists(node(app, "rag-conversation-screen")) else { throw failure("provider_return_unavailable") }
+        guard UITestConditions.exists(node(app, "rag-conversation-screen")) else {
+            if node(app, "inference-disclosure-sheet").exists {
+                throw failure("provider_settings_requires_explicit_consent")
+            }
+            throw failure("provider_return_unavailable")
+        }
         let selected = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             self.node(app, "ai-feature-select-provider").label.contains("Apple Intelligence")
         }, object: nil)

@@ -22,6 +22,7 @@ export type SavedHistoryDisplayRow = {
       readonly healthSummary?: NonNullable<DisplayMessage['healthSummary']>;
       readonly dailyReport?: NonNullable<DisplayMessage['dailyReport']>;
       readonly savedCitations?: readonly SavedArchivedCitation[];
+      readonly steeringInstructions?: DisplayMessage['steeringInstructions'];
     })
   | {
       readonly kind: 'interrupted';
@@ -112,6 +113,9 @@ export function savedHistoryTranscript(
             : {}),
           ...(row.kind === 'answer' && row.dailyReport
             ? { dailyReport: row.dailyReport }
+            : {}),
+          ...(row.kind === 'answer' && row.steeringInstructions
+            ? { steeringInstructions: row.steeringInstructions }
             : {}),
           ...(row.kind === 'answer' && row.savedCitations
             ? { savedCitations: row.savedCitations }

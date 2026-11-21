@@ -93,6 +93,9 @@ export function conversationSavedHistoryDisplayOption(
                     },
                   }
                 : {}),
+              ...(row.steeringInstructions
+                ? { steeringInstructions: row.steeringInstructions }
+                : {}),
               ...(row.savedCitations
                 ? { savedCitations: row.savedCitations }
                 : {}),
