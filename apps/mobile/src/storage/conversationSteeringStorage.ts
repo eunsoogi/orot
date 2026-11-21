@@ -11,6 +11,8 @@ export interface StoredSteeringInstruction {
   readonly sequence: number;
   /** True only after the live provider acknowledges this instruction. */
   readonly serverAccepted?: boolean;
+  /** View receipt only: set by the in-memory composer owner, never read from SQLite. */
+  readonly submittedHere?: true;
   /** Local user submission time, never a transmission receipt. */
   readonly submittedAt?: string;
   /** Local observation times of real provider receipts, not provider clock or user comprehension. */

@@ -94,7 +94,7 @@ export function ConversationHistory({
       requestSessionId,
       requestActivity,
       separatedActivity,
-      sessionId,
+      ...{ sessionId, steeringInstructions },
       followsBottom,
       expectedOffset,
     });

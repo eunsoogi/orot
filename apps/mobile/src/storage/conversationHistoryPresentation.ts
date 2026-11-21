@@ -1,3 +1,4 @@
+import { readConversationSteeringHistoryMany } from './conversationSteeringHistory';
 import {
   decodeOwnedArchiveRow,
   type ConversationHistoryPresentation,
@@ -31,6 +32,12 @@ function createOwnedArchiveReader<T>(
   ) => T | null,
   authorize?: (tx: SqlExecutor, value: T) => Promise<T | null>,
   readSavedSummaryCards?: true,
+  decorate?: (
+    tx: SqlExecutor,
+    sessionId: string,
+    version: number,
+    rows: Map<string, T>,
+  ) => Promise<void>,
 ) {
   return async (sessionId: string, version: number, ids: readonly string[]) => {
     if (
@@ -144,6 +151,7 @@ function createOwnedArchiveReader<T>(
           if (enriched !== null) pending.set(id, enriched);
         }
       }
+      await decorate?.(tx, sessionId, version, pending);
       for (const id of ids) {
         const projected = pending.get(id) ?? null;
         output.push(
@@ -162,16 +170,33 @@ export function createConversationProjectionReaders(
   database: SqlDatabase,
   ensure: () => Promise<void>,
 ) {
-  const readSessionPresentationMany = createOwnedArchiveReader(
-    database,
-    ensure,
-    (_id, value, row) => {
-      const savedCitations = projectSavedArchivedCitations(value?.citations);
-      return savedCitations.length ? { ...row, savedCitations } : row;
-    },
-    undefined,
-    true,
-  );
+  const readSessionPresentationMany =
+    createOwnedArchiveReader<ConversationHistoryPresentation>(
+      database,
+      ensure,
+      (_id, value, row) => {
+        const savedCitations = projectSavedArchivedCitations(value?.citations);
+        return savedCitations.length ? { ...row, savedCitations } : row;
+      },
+      undefined,
+      true,
+      async (tx, sessionId, version, rows) => {
+        const complete = [...rows].filter(
+          ([, row]) => row.status === 'complete',
+        );
+        const receipts = await readConversationSteeringHistoryMany(
+          tx,
+          sessionId,
+          version,
+          complete.map(([id]) => id),
+        );
+        for (const [id, row] of complete) {
+          const steeringInstructions = receipts.get(id);
+          if (row.status === 'complete' && steeringInstructions?.length)
+            rows.set(id, { ...row, steeringInstructions });
+        }
+      },
+    );
   return {
     ...createProtectedPromptHistory(database, ensure),
     readSessionPresentationMany,

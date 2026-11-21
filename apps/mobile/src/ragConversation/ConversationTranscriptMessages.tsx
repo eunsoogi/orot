@@ -60,39 +60,57 @@ export function ConversationTranscriptMessages({
       ?.map(card => (
         <ConversationVoiceEndMarker key={card.id} task={card.task} />
       ));
-  const rows = messages.map(message => (
-    <ReplyMessageContainer
-      key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
-      readingId={onReadingLayout ? message.id : undefined}
-      focused={Boolean(
-        replyFocus && message.retainedTurnId === replyFocus.messageId,
-      )}
-      onLayout={onLayout}
-      onFrame={
-        onReadingLayout
-          ? (y, height) => onReadingLayout(message.id, y, height)
-          : undefined
-      }
-      onPosition={message.id === anchorId ? onAnchorLayout : undefined}
-    >
-      <ConversationSteeringMessages
-        restored={
-          message.id <= 0 || (message !== target && message.restoredHistory)
-        }
-        instructions={
-          message === target ? instructions : message.steeringInstructions
-        }
-      />
-      <ConversationMessage message={message} {...messageProps} />
-      {message.role === 'user' ? (
-        <ConversationMessageReceipt
-          delivery={message.delivery}
-          pending={message.deliveryPending}
-          localChoicePending={message.localChoicePending}
+  const rows = messages.map(message => {
+    const ownInstructions =
+      message === target ? instructions : message.steeringInstructions;
+    const restored =
+      message.id <= 0 || (message !== target && message.restoredHistory);
+    const bubbleRows = (receipts: typeof instructions) =>
+      receipts?.length ? (
+        <ConversationSteeringMessages
+          instructions={receipts}
+          restored={restored}
         />
-      ) : null}
-    </ReplyMessageContainer>
-  ));
+      ) : null;
+    const before = message.streaming
+      ? ownInstructions?.filter(
+          row => row.status === 'applied' && message.previousOutputs?.length,
+        )
+      : ownInstructions;
+    const after = message.streaming
+      ? ownInstructions?.filter(row => !before?.includes(row))
+      : undefined;
+    return (
+      <ReplyMessageContainer
+        key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
+        readingId={onReadingLayout ? message.id : undefined}
+        focused={Boolean(
+          replyFocus && message.retainedTurnId === replyFocus.messageId,
+        )}
+        onLayout={onLayout}
+        onFrame={
+          onReadingLayout
+            ? (y, height) => onReadingLayout(message.id, y, height)
+            : undefined
+        }
+        onPosition={message.id === anchorId ? onAnchorLayout : undefined}
+      >
+        <ConversationMessage
+          message={message}
+          beforeAnswer={bubbleRows(before)}
+          {...messageProps}
+        />
+        {bubbleRows(after)}
+        {message.role === 'user' ? (
+          <ConversationMessageReceipt
+            delivery={message.delivery}
+            pending={message.deliveryPending}
+            localChoicePending={message.localChoicePending}
+          />
+        ) : null}
+      </ReplyMessageContainer>
+    );
+  });
   // A stable sibling key preserves choice/task state across the first live append and older prepends.
   // Fragments add no layout wrapper, preserving reply-focus and paging row coordinates.
   const choicesAt =
@@ -122,10 +140,10 @@ export function ConversationTranscriptMessages({
     >
       {transcript}
       {markerRows(null)}
-      {!target ? (
+      {!target && pendingId !== undefined ? (
         <ConversationSteeringMessages
           instructions={instructions}
-          restored={pendingId === undefined || pendingId <= 0}
+          restored={pendingId <= 0}
         />
       ) : null}
       {showPendingBubble ? (
