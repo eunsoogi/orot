@@ -1,5 +1,6 @@
 import { openSavedWebSettingsFixture } from '../testSupport/SavedWebSearchRoundTrip.fixture';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import * as jointCalendarReview from '../../../agent/execution/prepareJointCalendarReview';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { setGenericPassword } from 'react-native-keychain';
 import { calendarModelStore } from '../../../calendarModelSettings/calendarModelStore';
 import { saveModelSettingsConsent } from '../../../agent/execution/saveModelSettingsConsent';
@@ -42,7 +43,6 @@ test.each([
                 modelId: 'synthetic-prior-model',
               }
             : selection;
-      // Legacy users have a model-only grant; first-time setup has no model.
       if (priorChoice)
         await saveModelSettingsConsent({
           slot: 'conversation',
@@ -178,6 +178,72 @@ test.each([
       );
       expect(execution.search).toHaveBeenCalledTimes(1);
     } finally {
+      sql.close();
+    }
+  },
+);
+
+test.each(['calendar-selection-changed', 'conversation-unmounted'] as const)(
+  'publishes the committed Conversation selection only to its current picker: %s',
+  async change => {
+    const { sql, selection, calendarChoice, commit, reloaded, selectionView } =
+      openSavedWebSettingsFixture();
+    const prepare = jointCalendarReview.prepareJointCalendarReview;
+    let persisted!: () => void;
+    const persistedLocally = new Promise<void>(resolve => {
+      persisted = resolve;
+    });
+    let release!: () => void;
+    const receipt = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const staged = jest
+      .spyOn(jointCalendarReview, 'prepareJointCalendarReview')
+      .mockImplementation(async (...args) => {
+        const plan = await prepare(...args);
+        return (
+          plan && {
+            ...plan,
+            async commit() {
+              await plan.commit();
+              persisted();
+              // The writer is already durable; delay only delivery to the picker.
+              await receipt;
+            },
+          }
+        );
+      });
+    await calendarModelStore.save(calendarChoice);
+    const view = await render(selectionView());
+    try {
+      await fireEvent.press(view.getByTestId('provider-option-0'));
+      await waitFor(() =>
+        expect(view.getByTestId('provider-selection-confirm')).toBeEnabled(),
+      );
+      await fireEvent.press(view.getByTestId('provider-selection-confirm'));
+      await fireEvent.press(
+        await view.findByTestId('inference-disclosure-allow'),
+      );
+      await persistedLocally;
+      expect(await providerSelectionStore.load()).toEqual(selection);
+      expect(await reloaded.read('conversation', 'public-web')).not.toBeNull();
+      expect(await reloaded.read('calendar')).not.toBeNull();
+      expect(commit).not.toHaveBeenCalled();
+      if (change === 'calendar-selection-changed')
+        await calendarModelStore.save({
+          ...calendarChoice,
+          modelId: 'synthetic-new-calendar-model',
+        });
+      else await view.unmount();
+      await act(async () => release());
+      if (change === 'calendar-selection-changed') {
+        await waitFor(() => expect(commit).toHaveBeenCalledTimes(1));
+        expect(commit).toHaveBeenCalledWith(selection, expect.any(Object));
+      } else expect(commit).not.toHaveBeenCalled();
+    } finally {
+      release();
+      staged.mockRestore();
+      if (change === 'calendar-selection-changed') await view.unmount();
       sql.close();
     }
   },

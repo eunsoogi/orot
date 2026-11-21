@@ -159,7 +159,8 @@ export function useModelSettingsReview(
       if (!current() || (calendar && !calendar.isCurrent())) return false;
       if (calendar) await calendar.commit();
       else await commit(current);
-      return current() && (!calendar || calendar.isCurrent());
+      // The joint writer already settled; a later Calendar-only change must not strand the Conversation picker.
+      return current();
     } finally {
       if (pending.current === controller) pending.current = null;
       unsubscribe?.();
