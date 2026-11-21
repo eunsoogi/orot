@@ -28,6 +28,7 @@ import { nativeHeartWorkoutPrefix } from '../healthEvidence/healthContext/heartW
 import {
   historyValidationCostEnabled,
   measureHistoryValidationCost,
+  observePeriodReadTransaction,
 } from '../providers/conversationHistoryDiagnostic';
 
 /** Scope invalidation must not undo unrelated native writes on this connection. */
@@ -156,8 +157,7 @@ export function committedPeriodReadOperation(
           const key = healthContextReportCacheKey(source.scope.window, [
             source.scope.topic,
           ]);
-          // Pending reports belong only to this transaction. Reuse calculation,
-          // not validity: every source still checks live generations and revision.
+          // Pending reports reuse calculation, not source validity, in this transaction.
           const cached = pending.get(key) ?? reports.get(key);
           reportCacheDecision(
             cached && same(cached, before)
@@ -220,11 +220,21 @@ export function committedPeriodReadOperation(
         }
       };
       const witness = options.witness;
-      if (witness)
-        await guardedBoundTransaction(database, witness, tx =>
-          withBoundPeriodRemovalPlan(tx, witness, () => execute(tx)),
-        );
-      else await database.transaction(execute);
+      const observation = observePeriodReadTransaction();
+      const transaction = () =>
+        witness
+          ? guardedBoundTransaction(
+              database,
+              witness,
+              tx => withBoundPeriodRemovalPlan(tx, witness, () => execute(tx)),
+              observation?.acquire,
+            )
+          : database.transaction(
+              observation ? tx => execute(observation.acquire(tx)) : execute,
+            );
+      await (observation
+        ? observation.settle(transaction, () => !failure)
+        : transaction());
       if (failure) throw failure.error;
       check();
       const committed = await readHealthContextGeneration(database);

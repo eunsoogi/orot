@@ -95,6 +95,7 @@ export function startExplicitVisitPreparation(
   store: ConversationSessions,
   id: number,
   prepare: ConversationScreenProps['prepareVisitQuestions'],
+  quickChoice = false,
 ) {
   const session = store.getSnapshot().sessions.find(item => item.id === id);
   const context = conversationEntryForSession(store, id);
@@ -105,7 +106,8 @@ export function startExplicitVisitPreparation(
     !canStartExplicitVisitPreparation(session, context, prepare)
   )
     return;
-  return store.sendPrompt(
+  const send = quickChoice ? store.sendQuickPrompt : store.sendPrompt;
+  return send(
     id,
     session.entryPrompt!,
     visitPreparationSender(store, id, prepare, context),

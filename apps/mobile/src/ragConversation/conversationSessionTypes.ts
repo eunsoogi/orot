@@ -13,9 +13,14 @@ export type ConversationSessions = ReturnType<
   typeof import('./conversationSessions').createConversationSessions
 >;
 
+export type { SourceDeletionEvent } from '../storage/localDataClearEvents';
+
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly readPlainContextPage?: ReturnType<
+    typeof import('../storage/plainConversationContext').createPlainConversationContextReader
+  >;
   readonly restoreSessionPage?: import('./conversationHistoryPage').ReadConversationHistoryPage;
   /** Resolve the saved model and its protected conversation lease without inference. */
   readonly continuousSession?: (signal: AbortSignal) => Promise<{
@@ -175,6 +180,8 @@ export interface ConversationSession {
   } | null;
   readonly busy: boolean;
   readonly preparingSend?: boolean;
+  /** Display only until the exact choice becomes an owned outgoing request. */
+  readonly preparingQuickChoice?: import('./conversationQuickChoicePreview').PreparingQuickChoice;
   readonly leaseRefreshRequired?: boolean;
   readonly error: string;
   readonly errorSurface?: 'composerPreflight';
