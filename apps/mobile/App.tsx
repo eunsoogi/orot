@@ -79,8 +79,8 @@ function App({
     [ai.services],
   );
   const calendarSync = useCalendarAutoSync(calendarBridge);
-  const { activeTab, activeTabRef, selectActiveTab, capturePromptTab } =
-    useAppRootTab();
+  const root = useAppRootTab();
+  const { activeTab, activeTabRef, selectActiveTab, capturePromptTab } = root;
   const [selectedProvider, setSelectedProvider] = useState('');
   const [healthRecordDetailSelection, setHealthRecordDetailSelection] =
     useState<HealthRecordsDetailSelection | null>(null);
@@ -116,6 +116,9 @@ function App({
       <RecordSourceNavigationProvider>
         <AiFeatureSharedNavigationStateProvider
           conversationSessionOptions={conversationSessionOptions}
+          subscribeRootConversationVisibility={
+            root.subscribeRootConversationVisibility
+          }
         >
           <NavigationRouteAdapter
             controller={appNavigation}

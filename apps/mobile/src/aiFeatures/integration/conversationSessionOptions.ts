@@ -27,7 +27,11 @@ export function createConversationSessionOptions(
     readPlainContextPage: async (...args) =>
       (await openStorage()).readPlainContextPage(...args),
     restoreSessionPage: conversationHistoryPageOption(input, openStorage),
-    ...continuousSessionOption(input.selectedAi, openStorage),
+    ...continuousSessionOption(
+      input.selectedAi,
+      openStorage,
+      input.captureSelectionWitness,
+    ),
     restoreSteering: restoreConversationSteering(openStorage),
     coldResume: input.coldResume,
     execution: conversationExecutionNative() ?? undefined,

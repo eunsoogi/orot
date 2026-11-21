@@ -19,6 +19,11 @@ export type ReadConversationHistoryPage = (
   cursor?: ConversationHistoryCursor,
 ) => Promise<ConversationHistoryPage>;
 
+/** Initial saved display only: return a final publication assertion, not consent. */
+export type ConversationInitialPageAdmission = {
+  wait(signal: AbortSignal): Promise<() => void>;
+};
+
 /** Local page-reader stage and cancellation ownership, never persisted. */
 export type ConversationHistoryReaderOwner = {
   durableId: string;
@@ -27,6 +32,7 @@ export type ConversationHistoryReaderOwner = {
   exhausted: boolean;
   nextId: number;
   displayAdmission?: () => boolean;
+  initialAdmission?: ConversationInitialPageAdmission;
   controller?: AbortController;
   flight?: Promise<void>;
 };

@@ -80,6 +80,7 @@ export function createConversationSessions(
     retention: options.retention,
     restoration,
     canRestore: Boolean(options.restoreSession),
+    canHoldSavedDisplay: Boolean(options.readSavedHistoryDisplay),
     empty,
     snapshot: () => snapshot,
     apply,
@@ -177,12 +178,16 @@ export function createConversationSessions(
       if (!disposed) requests.cancel(id);
     },
     retrySave,
-    refreshAfterSourceDeletion(...event: S.SourceDeletionEvent) {
+    refreshAfterSourceDeletionOwned(
+      event: S.SourceDeletionEvent,
+      deferReloadId?: number,
+    ) {
       if (disposed) return;
       const retryIds = invalidateTasks(snapshot, taskState, taskRefresh);
       refreshConversationSources({
         snapshot,
         event,
+        deferReloadId,
         options,
         requests,
         restoration,

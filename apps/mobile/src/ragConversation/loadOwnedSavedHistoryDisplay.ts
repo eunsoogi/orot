@@ -42,8 +42,14 @@ async function loadOwnedSavedHistoryDisplay(input: {
   };
   if (!sessionIfCurrent()) return;
   const page = await input.read(lease.id, lease.version, signal, owner.cursor);
+  // Source-free storage work can finish away; publication waits for the
+  // original root owner to prove the same authority after returning.
+  const assertAdmitted = owner.initialAdmission
+    ? await owner.initialAdmission.wait(signal)
+    : undefined;
   const session = sessionIfCurrent();
   if (!session) return;
+  assertAdmitted?.();
   if (page.nextCursor && page.nextCursor.version !== lease.version)
     throw new Error('Conversation changed during restoration.');
   const initial = !owner.initialized;
@@ -107,7 +113,10 @@ export function createOwnedSavedHistoryDisplay(input: {
         lease: input.presentationLease,
         nextId: () => --nextId,
       }).finally(() => {
-        if (current()) owner.displayAdmission = undefined;
+        if (current()) {
+          owner.displayAdmission = undefined;
+          owner.initialAdmission = undefined;
+        }
       });
     },
     invalidate(owner: ConversationHistoryReaderOwner) {
@@ -116,6 +125,7 @@ export function createOwnedSavedHistoryDisplay(input: {
       owner.flight = undefined;
       owner.initialized = false;
       owner.displayAdmission = undefined;
+      owner.initialAdmission = undefined;
       owner.exhausted = false;
       owner.cursor = undefined;
     },

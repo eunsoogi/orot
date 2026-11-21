@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import { createConversationSessions } from './conversationSessions';
 import type { ConversationSessions } from './conversationSessions';
@@ -8,17 +14,28 @@ import {
 } from '../storage/localDataClearEvents';
 import type { ConversationSessionOptions } from './conversationSessionTypes';
 
+export type SubscribeRootConversationVisibility = (
+  listener: (visible: boolean) => void,
+) => () => void;
+
 const Context = createContext<ConversationSessions | null>(null);
 /** One app lifetime owns conversations; route components only subscribe. */
 export function ConversationSessionsProvider({
   children,
   options,
+  subscribeRootConversationVisibility,
 }: {
   children: ReactNode;
   options?: ConversationSessionOptions;
+  subscribeRootConversationVisibility?: SubscribeRootConversationVisibility;
 }) {
   // Standalone callers retain memory-only behavior; the app owner supplies durable options.
   const [store] = useState(() => createConversationSessions(options));
+  useLayoutEffect(
+    () =>
+      subscribeRootConversationVisibility?.(store.setRootConversationVisible),
+    [store, subscribeRootConversationVisibility],
+  );
   useEffect(() => subscribeLocalDataClear(store.invalidateAll), [store]);
   useEffect(
     () => subscribeLocalSourceDeletion(store.refreshAfterSourceDeletion),

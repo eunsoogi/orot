@@ -156,6 +156,7 @@ export function createConversationSessionRestoreState(input: {
       durableId: string,
       signal?: AbortSignal,
       _displayAdmission?: () => boolean,
+      _initialAdmission?: import('./conversationHistoryPage').ConversationInitialPageAdmission,
     ) {
       forget(id);
       sessions.set(id, { durableId });

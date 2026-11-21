@@ -30,6 +30,7 @@ export interface ConversationSessionOptions {
     version: number;
     updatedAt: string;
     model: { providerId: string; modelId: string };
+    selectionCurrent?: () => boolean;
   }>;
   readonly restoreSteering?: (
     sessionId: string,
