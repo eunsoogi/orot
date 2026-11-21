@@ -15,16 +15,35 @@ export function bindConversationToolSource(input: {
   storage: Pick<
     ReturnType<typeof createConversationArtifactStorage>,
     'readToolTurns'
-  >;
+  > &
+    Partial<
+      Pick<ReturnType<typeof createConversationArtifactStorage>, 'readToolCall'>
+    >;
   registry: LocalEvidenceReferenceRegistry;
 }) {
   const original = input.registry.resolve(input.alias);
   if (!original) throw new Error('Tool source is unavailable.');
   const expected = fingerprint(input.snapshot);
   const current = async () => {
-    const turns = await input.storage.readToolTurns(input.sessionId);
+    const type = (original.locator as { type?: unknown } | null)?.type;
+    const exact =
+      original.sourceKind === 'generated_artifact' &&
+      (type === 'research_publication' ||
+        type === 'research_web_explanation') &&
+      input.storage.readToolCall;
+    const turns = exact
+      ? [
+          await exact.call(
+            input.storage,
+            input.sessionId,
+            input.runId,
+            input.callId,
+            input.messageId,
+          ),
+        ]
+      : await input.storage.readToolTurns(input.sessionId);
     for (const turn of turns) {
-      if (turn.messageId !== input.messageId) continue;
+      if (turn?.messageId !== input.messageId) continue;
       const event = turn.toolEvents.find(
         value =>
           value.operationRunId === input.runId && value.callId === input.callId,
