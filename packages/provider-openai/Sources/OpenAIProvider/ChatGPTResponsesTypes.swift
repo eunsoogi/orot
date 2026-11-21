@@ -45,7 +45,9 @@ public struct ChatGPTResponsesRequest: Equatable, Sendable {
     public let publicWebQuery: String?
     var containsDirectPhoto: Bool {
         messages.contains {
-            if case .userPhoto = $0 { return true }
+            if case .userPhoto = $0 {
+                return true
+            }
             return false
         }
     }

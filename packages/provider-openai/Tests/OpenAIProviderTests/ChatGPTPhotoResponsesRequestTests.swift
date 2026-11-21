@@ -52,7 +52,7 @@ final class ChatGPTPhotoResponsesRequestTests: XCTestCase {
             "messages": [["role": "user", "content": "old message"]],
         ], allowDirectPhoto: true))
         let mixed = ChatGPTResponsesRequest(model: "gpt-6.2-sol", messages: [
-            .userPhoto(text: "", normalizedJPEG: Data([0xff, 0xd8, 0xff, 0xd9])),
+            .userPhoto(text: "", normalizedJPEG: Data([0xFF, 0xD8, 0xFF, 0xD9])),
             .user("old message"),
         ])
         XCTAssertThrowsError(try ChatGPTResponsesRequestBuilder.build(mixed, accessToken: "synthetic-test-token"))

@@ -16,13 +16,13 @@ enum ConversationPhotoNormalizer {
     static func normalize(pickerURL: URL) throws -> Data {
         let values = try pickerURL.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
         guard values.isRegularFile == true, let size = values.fileSize,
-              (1...maxSourceBytes).contains(size)
+              (1 ... maxSourceBytes).contains(size)
         else { throw InvalidSelection.unsupportedImage }
         return try normalize(pixelContainer: Data(contentsOf: pickerURL, options: .mappedIfSafe))
     }
 
     static func normalize(pixelContainer data: Data) throws -> Data {
-        guard (1...maxSourceBytes).contains(data.count),
+        guard (1 ... maxSourceBytes).contains(data.count),
               let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
               CGImageSourceGetCount(source) == 1,
               let type = CGImageSourceGetType(source) as String?,
@@ -46,12 +46,11 @@ enum ConversationPhotoNormalizer {
         guard let destination = CGImageDestinationCreateWithData(output, UTType.jpeg.identifier as CFString, 1, nil)
         else { throw InvalidSelection.unsupportedImage }
         CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: 0.83] as CFDictionary)
-        guard CGImageDestinationFinalize(destination), (1...maxOutputBytes).contains(output.length)
+        guard CGImageDestinationFinalize(destination), (1 ... maxOutputBytes).contains(output.length)
         else { throw InvalidSelection.unsupportedImage }
         return output as Data
     }
 }
-
 
 /// Separate bridge method: legacy document and OCR paths cannot become image uploads.
 public extension MedicalDocumentImportModule {

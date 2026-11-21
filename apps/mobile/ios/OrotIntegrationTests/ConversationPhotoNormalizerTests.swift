@@ -1,22 +1,28 @@
 import CoreGraphics
 import Foundation
 import ImageIO
+@testable import Orot
 import UniformTypeIdentifiers
 import XCTest
-@testable import Orot
 
 final class ConversationPhotoNormalizerTests: XCTestCase {
     func testNoTextGeometryImportsWithBakedOrientationAndNoGPSorExif() throws {
-        let context = try XCTUnwrap(CGContext(data: nil, width: 1600, height: 800,
-            bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
+        let context = try XCTUnwrap(CGContext(
+            data: nil,
+            width: 1600,
+            height: 800,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue,
+        ))
         context.setFillColor(red: 1, green: 0, blue: 0, alpha: 1)
         context.fill(CGRect(x: 0, y: 0, width: 800, height: 800))
         context.setFillColor(red: 0, green: 1, blue: 0, alpha: 1)
         context.fill(CGRect(x: 800, y: 0, width: 800, height: 800))
         let source = NSMutableData()
         let destination = try XCTUnwrap(CGImageDestinationCreateWithData(source, UTType.jpeg.identifier as CFString, 1, nil))
-        CGImageDestinationAddImage(destination, try XCTUnwrap(context.makeImage()), [
+        try CGImageDestinationAddImage(destination, XCTUnwrap(context.makeImage()), [
             kCGImagePropertyOrientation: 6,
             kCGImagePropertyGPSDictionary: [
                 kCGImagePropertyGPSLatitude: 1.0,
@@ -43,7 +49,7 @@ final class ConversationPhotoNormalizerTests: XCTestCase {
 
     func testRejectsEmptyMalformedAndOversizedInput() {
         XCTAssertThrowsError(try ConversationPhotoNormalizer.normalize(pixelContainer: Data()))
-        XCTAssertThrowsError(try ConversationPhotoNormalizer.normalize(pixelContainer: Data([0xff, 0xd8])))
+        XCTAssertThrowsError(try ConversationPhotoNormalizer.normalize(pixelContainer: Data([0xFF, 0xD8])))
         XCTAssertThrowsError(try ConversationPhotoNormalizer.normalize(pixelContainer: Data(count: ConversationPhotoNormalizer.maxSourceBytes + 1)))
     }
 }

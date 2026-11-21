@@ -77,7 +77,9 @@ public extension ChatGPTOAuthClient {
             throw ChatGPTResponsesError.transportUnavailable
         }
 
-        if input.containsDirectPhoto { try DirectPhotoHTTPBoundary.validate(response) }
+        if input.containsDirectPhoto {
+            try DirectPhotoHTTPBoundary.validate(response)
+        }
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ChatGPTResponsesError.invalidHTTPResponse
         }

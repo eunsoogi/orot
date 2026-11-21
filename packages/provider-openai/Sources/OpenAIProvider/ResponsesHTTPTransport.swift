@@ -6,8 +6,8 @@ protocol ChatGPTResponsesHTTPTransport: Sendable {
 }
 
 extension ChatGPTResponsesHTTPTransport {
-    // Other transports must explicitly implement the protected photo route;
-    // never fall through to their ordinary request and redirect behavior.
+    /// Other transports must explicitly implement the protected photo route;
+    /// never fall through to their ordinary request and redirect behavior.
     func streamDirectPhoto(for _: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>) {
         throw ChatGPTResponsesError.transportUnavailable
     }
@@ -45,7 +45,9 @@ struct URLSessionChatGPTResponsesHTTPTransport: ChatGPTResponsesHTTPTransport {
             return (response, Self.chunks(bytes, ownedSession: photoSession))
         } catch {
             photoSession.invalidateAndCancel()
-            if redirect.refused { throw ChatGPTResponsesError.invalidHTTPResponse }
+            if redirect.refused {
+                throw ChatGPTResponsesError.invalidHTTPResponse
+            }
             throw error
         }
     }
@@ -97,7 +99,9 @@ enum DirectPhotoHTTPBoundary {
 final class DirectPhotoNoRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     private let lock = NSLock()
     private var redirectRefused = false
-    var refused: Bool { lock.withLock { redirectRefused } }
+    var refused: Bool {
+        lock.withLock { redirectRefused }
+    }
 
     func urlSession(_: URLSession, task: URLSessionTask,
                     willPerformHTTPRedirection _: HTTPURLResponse, newRequest _: URLRequest,

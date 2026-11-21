@@ -62,17 +62,30 @@ final class DirectPhotoHTTPBoundaryTests: XCTestCase {
 private final class DirectPhotoRedirectTrace: @unchecked Sendable {
     private let lock = NSLock()
     private var urls: [URL] = []
-    func clear() { lock.withLock { urls.removeAll() } }
-    func record(_ url: URL) { lock.withLock { urls.append(url) } }
-    func snapshot() -> [URL] { lock.withLock { urls } }
+    func clear() {
+        lock.withLock { urls.removeAll() }
+    }
+
+    func record(_ url: URL) {
+        lock.withLock { urls.append(url) }
+    }
+
+    func snapshot() -> [URL] {
+        lock.withLock { urls }
+    }
 }
 
 private final class DirectPhotoRedirectURLProtocol: URLProtocol, @unchecked Sendable {
     static let trace = DirectPhotoRedirectTrace()
     private static let endpoint = ChatGPTResponsesRequestBuilder.endpoint
 
-    override class func canInit(with _: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override class func canInit(with _: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
 
     override func startLoading() {
         guard let url = request.url else {
