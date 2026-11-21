@@ -13,9 +13,14 @@ export type ConversationSessions = ReturnType<
   typeof import('./conversationSessions').createConversationSessions
 >;
 
+export type { SourceDeletionEvent } from '../storage/localDataClearEvents';
+
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly readPlainContextPage?: ReturnType<
+    typeof import('../storage/plainConversationContext').createPlainConversationContextReader
+  >;
   readonly restoreSessionPage?: import('./conversationHistoryPage').ReadConversationHistoryPage;
   /** Resolve the saved model and its protected conversation lease without inference. */
   readonly continuousSession?: (signal: AbortSignal) => Promise<{
