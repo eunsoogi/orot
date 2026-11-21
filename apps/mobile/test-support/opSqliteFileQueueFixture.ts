@@ -15,7 +15,8 @@ const ts = require('typescript');
  * on Node's JS thread here, so timings cannot prove native worker/Hermes costs. */
 export function openOpSqliteFileQueue() {
   const directory = fs.mkdtempSync(path.join(tmpdir(), 'active-tool-queue-'));
-  const handle = new DatabaseSync(path.join(directory, 'synthetic.sqlite'));
+  const filename = path.join(directory, 'synthetic.sqlite');
+  const handle = new DatabaseSync(filename);
   const events: { event: string; at: number }[] = [];
   const mark = (event: string) => events.push({ event, at: performance.now() });
   let afterSubmit: ((query: string) => void) | undefined;
@@ -87,6 +88,7 @@ export function openOpSqliteFileQueue() {
   const database = exports.open!({ name: 'synthetic.sqlite' });
   return {
     database,
+    filename,
     events,
     mark,
     observeSubmit(callback?: (query: string) => void) {

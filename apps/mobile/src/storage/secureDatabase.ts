@@ -1,3 +1,4 @@
+import { createSecureOverviewReader } from './secureOverviewReader';
 import {
   guardedNativeDatabase,
   aliasProtectedReadEpoch,
@@ -159,6 +160,12 @@ export function openLocalStorage(): Promise<RecordRepository> {
   return opening;
 }
 
+export const readIsolatedOverview = createSecureOverviewReader(
+  openLocalStorage,
+  () => database,
+  keyStore.getSecret,
+  DATABASE_NAME,
+);
 /** Gives the agent-memory adapter access to the existing encrypted connection without exposing close/delete. */
 export async function openLocalAgentMemoryDatabase(): Promise<SqlDatabase> {
   await openLocalStorage();
@@ -171,11 +178,9 @@ export async function openLocalAppointmentRepository(): Promise<AppointmentRepos
   if (!database) throw new Error('The encrypted database is not open.');
   return createAppointmentRepository(records, database);
 }
-
 export async function hasDatabaseKey(): Promise<boolean> {
   return (await keyStore.getSecret()) !== null;
 }
-
 export async function prepareDatabaseForBackup(): Promise<void> {
   await openLocalStorage();
   await migrateDatabaseKeyForBackup();
@@ -187,7 +192,6 @@ export async function prepareDatabaseForBackup(): Promise<void> {
     );
   }
 }
-
 export async function getCipherVersion(): Promise<string | null> {
   if (!database) throw new Error('The database is not open.');
   const result = await database.execute('PRAGMA cipher_version');

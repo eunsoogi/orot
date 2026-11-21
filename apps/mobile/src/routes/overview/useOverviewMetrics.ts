@@ -18,6 +18,7 @@ import type { OverviewMetricProjection } from './metricProjection';
 declare const require: (path: string) => {
   openLocalStorage: () => Promise<RecordRepository>;
   openLocalAgentMemoryDatabase: () => Promise<SqlDatabase>;
+  readIsolatedOverview?: typeof import('../../storage/secureDatabase').readIsolatedOverview;
 };
 
 /** Reads encrypted local data on entry; selecting metrics never invokes permission or synchronization flows. */
@@ -89,27 +90,47 @@ export function useOverviewMetrics() {
     const selectionReadGeneration = selectionGeneration.current;
     const currentLoadGeneration = loadGeneration.current;
     setState(hasSnapshot.current ? 'refreshing' : 'loading');
+    const publish = (
+      nextSelection: readonly OverviewMetric[],
+      nextMetrics: Awaited<ReturnType<typeof loadOverviewMetrics>>,
+    ) => {
+      if (!active || currentLoadGeneration !== loadGeneration.current) return;
+      if (selectionReadGeneration === selectionGeneration.current)
+        setSelection(nextSelection);
+      setMetrics(nextMetrics.metrics);
+      setQuantityTruncated(nextMetrics.quantityTruncated);
+      hasSnapshot.current = true;
+      setState('ready');
+    };
     Promise.resolve()
-      .then(() => {
+      .then(async () => {
         const storage = require('../../storage/secureDatabase');
-        return Promise.all([
+        const now = new Date();
+        const result = await storage.readIsolatedOverview?.(
+          now,
+          controller.signal,
+          ({ selection, chart }) => publish(selection, chart),
+        );
+        if (result === 'published' || controller.signal.aborted) return;
+        if (result === 'discarded') {
+          // A revoked or changed snapshot must not leave older values visible.
+          if (active && currentLoadGeneration === loadGeneration.current) {
+            hasSnapshot.current = false;
+            setMetrics({});
+            setQuantityTruncated(false);
+            setState('failed');
+          }
+          return;
+        }
+        const [selection, chart] = await Promise.all([
           storage.openLocalStorage().then(loadOverviewMetricSelection),
           storage
             .openLocalAgentMemoryDatabase()
             .then(database =>
-              loadOverviewMetrics(database, undefined, controller.signal),
+              loadOverviewMetrics(database, now, controller.signal),
             ),
         ]);
-      })
-      .then(([nextSelection, nextMetrics]) => {
-        if (active && currentLoadGeneration === loadGeneration.current) {
-          if (selectionReadGeneration === selectionGeneration.current)
-            setSelection(nextSelection);
-          setMetrics(nextMetrics.metrics);
-          setQuantityTruncated(nextMetrics.quantityTruncated);
-          hasSnapshot.current = true;
-          setState('ready');
-        }
+        publish(selection, chart);
       })
       .catch(() => {
         if (active && currentLoadGeneration === loadGeneration.current)
