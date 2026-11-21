@@ -59,13 +59,9 @@ test('shows only the current stage, with exact completed-event progress and no d
   const resultTree = JSON.stringify(view.toJSON());
   expect(resultTree).not.toContain('chevron.left');
   expect(resultTree).not.toContain('chevron.right');
-  expect(screen.getByText('다음 페이지')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('medical-appointment-next-result'));
   expect(screen.getByText('둘째 진료')).toBeTruthy();
-  await fireEvent.press(
-    screen.getByTestId('medical-appointment-previous-result'),
-  );
-  expect(screen.getByText('첫 진료')).toBeTruthy();
+  expect(screen.queryByTestId('medical-appointment-next-result')).toBeNull();
+  expect(screen.getAllByTestId('classification-result-row')).toHaveLength(2);
   await fireEvent.press(screen.getByTestId('medical-appointment-import'));
   expect(screen.getByTestId('medical-appointment-confirmation')).toBeTruthy();
   expect(classify).toHaveBeenCalledTimes(1);

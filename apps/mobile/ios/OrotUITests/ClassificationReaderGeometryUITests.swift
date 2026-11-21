@@ -205,3 +205,45 @@ extension AppointmentConsentUITests {
         add(attachment)
     }
 }
+
+extension AppointmentConsentUITests {
+    @MainActor
+    func readCompactResultPages(_ app: XCUIApplication, anchor: ClassificationStageWindowAnchor?) throws -> [String] {
+        let list = node(app, "classification-result-list")
+        let rows = app.descendants(matching: .button).matching(identifier: "classification-result-row")
+        let next = node(app, "medical-appointment-next-result")
+        let previous = node(app, "medical-appointment-previous-result")
+        var details: [String] = []
+        var starts: [String] = []
+        var labels: [String] = []
+        for _ in 0 ..< 9 {
+            let page = rows.allElementsBoundByIndex
+            let first = try XCTUnwrap(page.first)
+            let start = first.label
+            XCTAssertFalse(starts.contains(start), "Result pagination visited one page twice")
+            starts.append(start)
+            XCTAssertTrue(page.allSatisfy { $0.isHittable && $0.frame.height >= 44 && list.frame.insetBy(dx: -1, dy: -1).contains($0.frame) })
+            assertStageActions(app)
+            try captureStageLayout(app, stage: "result-list-\(starts.count)", anchor: anchor)
+            labels += page.map(\.label)
+            if starts.count == 1 {
+                first.tap()
+                XCTAssertTrue(node(app, "classification-result-reader").waitForAppearance())
+                details = try readAllResultPages(app, anchor: anchor)
+                tap(app, "medical-appointment-import")
+                XCTAssertTrue(list.waitForAppearance())
+            }
+            guard next.exists, next.isEnabled else { break }
+            next.tap()
+            try geometryWait { rows.firstMatch.exists && rows.firstMatch.label != start }
+        }
+        XCTAssertFalse(next.exists && next.isEnabled, "Synthetic compact result paging must terminate")
+        for expected in starts.dropLast().reversed() {
+            previous.tap()
+            try geometryWait { rows.firstMatch.exists && rows.firstMatch.label == expected }
+        }
+        XCTAssertFalse(previous.exists && previous.isEnabled)
+        XCTAssertEqual(labels.count, 9)
+        return details + labels
+    }
+}

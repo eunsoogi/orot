@@ -25,7 +25,7 @@ function parseFloatingDateTime(value: string | null | undefined): Date | null {
     : null;
 }
 
-export function formatCalendarEventRange(event: CalendarEvent): string {
+function eventDisplayTimes(event: CalendarEvent) {
   const isFloating = event.calendarEventSnapshot.timeZoneIdentifier === null;
   const floatingStart = isFloating
     ? parseFloatingDateTime(event.calendarEventSnapshot.floatingStartAt)
@@ -38,6 +38,27 @@ export function formatCalendarEventRange(event: CalendarEvent): string {
   const timeZone = displayFloatingComponents ? 'UTC' : calendarTimeZone(event);
   const start = floatingStart ?? new Date(event.effectiveAt);
   const end = floatingEnd ?? new Date(event.endsAt);
+  return { start, end, timeZone };
+}
+
+/** Short display only. Detail keeps the full dates and source time zone. */
+export function formatCalendarEventCompactRange(event: CalendarEvent): string {
+  const { start, end, timeZone } = eventDisplayTimes(event);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()))
+    return t('appointments.errors.invalidTime');
+  const date = (value: Date) =>
+    formatDate(value, { month: 'long', day: 'numeric', timeZone });
+  const startDate = date(start);
+  if (event.calendarEventSnapshot.isAllDay) {
+    const lastDate = date(new Date(end.getTime() - 1));
+    return `${lastDate === startDate ? startDate : `${startDate}–${lastDate}`} · ${t('calendar.allDay')}`;
+  }
+  const endDate = date(end);
+  return `${startDate} ${formatTime(start, timeZone)}–${endDate !== startDate ? endDate + ' ' : ''}${formatTime(end, timeZone)}`;
+}
+
+export function formatCalendarEventRange(event: CalendarEvent): string {
+  const { start, end, timeZone } = eventDisplayTimes(event);
   if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
     return t('appointments.errors.invalidTime');
   }

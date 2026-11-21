@@ -1,5 +1,8 @@
 import { withLegacyConversationSchema } from './conversationLegacySchema';
-import { ragConversationTask as currentTask } from './task';
+import {
+  ragConversationTask as currentTask,
+  structuredConversationTask,
+} from './task';
 import { withoutReportTemplate } from './conversationLegacyTemplateMessages';
 import { legacyCompletionTask } from './conversationLegacyCompletion';
 import { legacyTask as ragConversationTask } from './task';
@@ -14,13 +17,15 @@ const publicFallbackInstruction =
   'If optional public web research failed, answer a supported local-record question with completion=partial using only its supplied local evidence, and state that public research was unavailable. Never invent external findings. ';
 
 /** Retain previous tool-preview ordering for either protected v9 policy. New sends
- * use v15; restoration never creates a new opening or mutates a saved checkpoint. */
+ * use v16; restoration never creates a new opening or mutates a saved checkpoint. */
 export function restoreConversationTask(
   identity: { taskType: string; taskVersion: string },
   exactInput?: string,
 ): typeof ragConversationTask | undefined {
   if (identity.taskType !== ragConversationTask.taskType) return undefined;
   if (identity.taskVersion === currentTask.taskVersion) return currentTask;
+  if (identity.taskVersion === structuredConversationTask.taskVersion)
+    return structuredConversationTask;
   if (identity.taskVersion === ragConversationTask.taskVersion)
     return withLegacyConversationSchema(ragConversationTask);
   if (identity.taskVersion === '13')

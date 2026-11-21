@@ -14,6 +14,7 @@ export interface ConversationRetentionCandidate {
   readonly question: string;
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly answer: string;
+  readonly proactiveMemory?: true;
   readonly providerId: string;
   readonly modelId: string;
   /** Preserve the selected exploration mode without persisting route identifiers. */

@@ -1,3 +1,7 @@
+import {
+  ClassificationConfirmationCaption,
+  type ClassificationCaptionCopy,
+} from './ClassificationConfirmationCaption';
 import { useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
@@ -19,6 +23,7 @@ import {
 
 interface Props {
   readonly documents: readonly string[];
+  readonly caption?: ClassificationCaptionCopy;
   readonly actionTitle: string;
   readonly actionLabel: string;
   readonly onAction: () => void;
@@ -61,16 +66,30 @@ export function ClassificationPagedStage(props: Props) {
     0,
     paneHeight - geometry.captionTop - footerHeight,
   );
+  const [captionMeasurement, setCaptionMeasurement] = useState<{
+    key: string;
+    height: number;
+  }>();
+  const captionHeight =
+    captionMeasurement?.key === identity ? captionMeasurement.height : 0;
+  const captionFits = Boolean(
+    props.caption && captionHeight > 0 && captionHeight <= available,
+  );
   const lines = measurement?.key === identity ? measurement.lines : null;
   const measuredPages =
     lines && available > 0 ? paginateClassificationLines(lines, available) : [];
   const pages = measuredPages.length ? measuredPages : [text];
   const page = Math.min(pageIndex, Math.max(0, pages.length - 1));
-  const cannotFitLine = Boolean(lines?.some(line => line.height > available));
+  const cannotFitLine =
+    !captionFits && Boolean(lines?.some(line => line.height > available));
   const requiresExpansion = cannotFitLine && !frame.expanded;
   const naturalHeight =
     lines?.reduce((sum, line) => sum + line.height, 0) ?? available;
-  const viewportHeight = cannotFitLine ? 0 : Math.min(available, naturalHeight);
+  const viewportHeight = captionFits
+    ? captionHeight
+    : cannotFitLine
+      ? 0
+      : Math.min(available, naturalHeight);
   const previous = () => {
     if (page > 0) setPageIndex(page - 1);
     else {
@@ -151,7 +170,23 @@ export function ClassificationPagedStage(props: Props) {
             >
               {text}
             </Text>
-            {!cannotFitLine ? (
+            {props.caption ? (
+              <ClassificationConfirmationCaption
+                key={`caption-${identity}`}
+                copy={props.caption}
+                measuring
+                onLayout={event => {
+                  if (latestIdentity.current === identity)
+                    setCaptionMeasurement({
+                      key: identity,
+                      height: event.nativeEvent.layout.height,
+                    });
+                }}
+              />
+            ) : null}
+            {captionFits && props.caption ? (
+              <ClassificationConfirmationCaption copy={props.caption} />
+            ) : !cannotFitLine ? (
               <View style={styles.reader}>
                 <Text
                   style={styles.text}
@@ -192,7 +227,9 @@ export function ClassificationPagedStage(props: Props) {
               }
               onPrevious={previous}
               onNext={next}
-              showPaging={pages.length > 1 || props.documents.length > 1}
+              showPaging={
+                !captionFits && (pages.length > 1 || props.documents.length > 1)
+              }
               supplementaryAction={props.supplementaryAction}
             />
           </View>
