@@ -1,7 +1,9 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from './appColors';
+import { COMPACT_APP_SYMBOL_POINT_SIZE } from './iconSizing';
 
 export const providerCatalogContentInset = 16;
+const catalogActionTargetSize = 44;
 
 /** Filled grouping replaces decorative borders; option symbols still convey selection without color. */
 export const providerSettingsStyles = StyleSheet.create({
@@ -25,6 +27,14 @@ export const providerSettingsStyles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: appColors.surface,
   },
+  catalogContent: { gap: 8, padding: providerCatalogContentInset },
+  // Match the model selection symbol's center without shrinking the touch target.
+  // Keep the lane in the header so opening account details cannot move it.
+  catalogActionLane: {
+    width: catalogActionTargetSize,
+    marginRight: (COMPACT_APP_SYMBOL_POINT_SIZE - catalogActionTargetSize) / 2,
+    justifyContent: 'center',
+  },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   icon: {
     width: 48,
@@ -38,8 +48,8 @@ export const providerSettingsStyles = StyleSheet.create({
   secondary: { fontSize: 13, color: appColors.secondary },
   copy: { flex: 1, minWidth: 0, gap: 5 },
   action: {
-    width: 44,
-    height: 44,
+    width: catalogActionTargetSize,
+    height: catalogActionTargetSize,
     alignItems: 'center',
     justifyContent: 'center',
   },
