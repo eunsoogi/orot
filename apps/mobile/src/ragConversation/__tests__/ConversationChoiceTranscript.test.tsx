@@ -62,7 +62,6 @@ test('all four chat choices remain in one transcript and allow a report follow-u
   await waitFor(() =>
     expect(screen.getByText('Synthetic daily-report result')).toBeTruthy(),
   );
-  expect(sender.mock.calls[0][3]?.inputOrigin).toBe('shortcut');
   // A historical report remains visible, but only an explicit selection binds a follow-up.
   const session = store.getSnapshot().sessions[0];
   expect(session.dailyReport).toBeUndefined();
@@ -87,7 +86,6 @@ test('all four chat choices remain in one transcript and allow a report follow-u
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(sender).toHaveBeenCalledTimes(3));
   expect(sender.mock.calls[2][4]).toMatchObject({ dailyReport: target });
-  expect(sender.mock.calls[2][3]?.inputOrigin).toBe('composer');
   await waitFor(() => expect(store.getSnapshot().sessions[0].busy).toBe(false));
   for (const [index, button] of [
     'conversation-open-possibilities',
@@ -96,8 +94,6 @@ test('all four chat choices remain in one transcript and allow a report follow-u
   ].entries()) {
     await fireEvent.press(screen.getByTestId(button));
     await waitFor(() => expect(sender).toHaveBeenCalledTimes(index + 4));
-    if (button !== 'conversation-open-visit-questions')
-      expect(sender.mock.calls[index + 3][3]?.inputOrigin).toBe('shortcut');
     await waitFor(() =>
       expect(store.getSnapshot().sessions[0].busy).toBe(false),
     );

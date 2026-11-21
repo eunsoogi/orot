@@ -41,8 +41,6 @@ export type RagConversationObserver = Pick<
     text: string,
     signal: AbortSignal,
   ) => Promise<boolean>;
-  /** Opt-in is from the composer dispatch, never inferred from typed route or model output. */
-  readonly inputOrigin?: 'composer' | 'shortcut';
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
   /** The checkpoint and explicit photo consent are owned by this specific turn. */

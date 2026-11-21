@@ -1,4 +1,3 @@
-import { hasConversationMemoryCommand } from '../manualHistory/conversationHistoryIntent';
 import type { DisplayMessage } from './ConversationMessage';
 import type { RagConversationMessage } from './task';
 
@@ -38,11 +37,6 @@ export function conversationHistoryPayload(
           message.role === 'user' &&
           message.content === retryQuestion
         ),
-    )
-    .filter(
-      message =>
-        message.role !== 'user' ||
-        !hasConversationMemoryCommand(message.content),
     )
     .map(providerHistoryMessage);
 }

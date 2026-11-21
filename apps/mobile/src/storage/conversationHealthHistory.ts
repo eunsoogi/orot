@@ -12,24 +12,16 @@ import {
 import { createManualHistoryEntry } from '@orot/domain';
 import {
   insertManualHistoryEntry,
-  localConversationMemoryIdPrefix,
-  isLocalConversationMemoryId,
   readManualHistoryEntry,
   type SqlDatabase,
 } from '@orot/storage';
-import {
-  conversationHistoryIntent,
-  legacyConversationHistoryIntent,
-  isEligibleConversationMemorySource,
-} from '../manualHistory/conversationHistoryIntent';
+import { conversationHistoryIntent } from '../manualHistory/conversationHistoryIntent';
 
 export interface ConversationHistorySave {
   readonly requestId: string;
   readonly sessionId: string;
   readonly sessionVersion: number;
   readonly question: string;
-  /** Only the local composer command can opt into this non-evidence lane. */
-  readonly localOnly?: true;
   readonly operation?: ConversationActionIdentity;
   /** Host-validated user selection; never copied directly from a model grant. */
   readonly approvedSource?: {
@@ -47,15 +39,8 @@ export async function saveConversationHealthHistory(
   signal: AbortSignal,
 ): Promise<string> {
   const details =
-    input.approvedSource?.text ??
-    (input.localOnly
-      ? conversationHistoryIntent(input.question)
-      : legacyConversationHistoryIntent(input.question));
-  if (
-    (input.localOnly && (input.approvedSource || input.operation)) ||
-    !details ||
-    !isEligibleConversationMemorySource(details)
-  )
+    input.approvedSource?.text ?? conversationHistoryIntent(input.question);
+  if (!details)
     throw new Error('An explicit history save command is required.');
   let result = '';
   await database.transaction(async tx => {
@@ -92,8 +77,6 @@ export async function saveConversationHealthHistory(
     }
     if (receipt.rows.length) {
       const id = String(receipt.rows[0].entry_id);
-      if (Boolean(input.localOnly) !== isLocalConversationMemoryId(id))
-        throw new Error('Previously saved memory belongs to another boundary.');
       const entry = await readManualHistoryEntry(tx, id);
       if (!entry || entry.details !== details)
         throw new Error('Previously saved history was removed or changed.');
@@ -107,11 +90,7 @@ export async function saveConversationHealthHistory(
       result = id;
       return;
     }
-    const id =
-      additional?.id ??
-      (input.localOnly
-        ? localConversationMemoryIdPrefix
-        : 'conversation-history:') + input.requestId;
+    const id = additional?.id ?? 'conversation-history:' + input.requestId;
     const now = new Date().toISOString();
     const entry = createManualHistoryEntry({
       id,
@@ -136,12 +115,7 @@ export async function saveConversationHealthHistory(
         ],
       );
     await commitConversationActionRecovery(tx, input, id);
-    if (input.localOnly)
-      await validateConversationHistorySource(tx, input, details);
     if (signal.aborted) throw new Error('History save cancelled.');
-    // A protected local-only write neither publishes after cancellation nor leaves
-    // a window between its final exact user-source validation and COMMIT.
-    if (input.localOnly) tx.commit();
     result = id;
   });
   return result;

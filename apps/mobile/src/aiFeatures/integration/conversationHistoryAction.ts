@@ -1,14 +1,11 @@
-import { conversationIntentRequests } from './conversationIntent';
 import { fingerprint, stableJson } from './evidenceUtils';
 import type { LocalActionTool } from '@orot/agent-runtime';
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import {
-  legacyConversationHistoryIntent,
-  hasConversationMemoryCommand,
+  conversationHistoryIntent,
   isReferentialHistoryCommand,
-  isEligibleConversationMemorySource,
 } from '../../manualHistory/conversationHistoryIntent';
 import { buildManualHistoryEvidence } from './manualHistoryEvidence';
 
@@ -27,9 +24,7 @@ export function conversationHistoryAction(input: {
   const requestId = observer?.retentionRequestId;
   if (!session || !requestId || !data.saveConversationHistory) return [];
   const candidates = [
-    ...(observer.inputOrigin === 'shortcut'
-      ? []
-      : [{ id: requestId, question }]),
+    { id: requestId, question },
     ...(observer.retainedHistory ?? []).filter(turn =>
       input.admittedQuestions.includes(turn.question),
     ),
@@ -49,19 +44,12 @@ export function conversationHistoryAction(input: {
     const selected =
       matches.find(candidate => candidate.id === requestId) ??
       (matches.length === 1 ? matches[0] : undefined);
-    if (
-      !selected ||
-      Object.values(conversationIntentRequests).includes(selected.question) ||
-      selected.question === '오늘의 보고서' ||
-      isReferentialHistoryCommand(selected.question)
-    )
+    if (!selected || isReferentialHistoryCommand(selected.question))
       return undefined;
-    const legacy = legacyConversationHistoryIntent(selected.question);
-    if (!legacy && hasConversationMemoryCommand(selected.question))
-      return undefined;
-    const text = legacy ?? selected.question;
-    if (!isEligibleConversationMemorySource(text)) return undefined;
-    return { requestId: selected.id, text };
+    return {
+      requestId: selected.id,
+      text: conversationHistoryIntent(selected.question) ?? selected.question,
+    };
   };
   const resultEvidence = async (
     id: string,
@@ -118,7 +106,7 @@ export function conversationHistoryAction(input: {
         if (!selected || signal.aborted) return false;
         const explicit =
           selected.requestId === requestId &&
-          legacyConversationHistoryIntent(question) === selected.text;
+          conversationHistoryIntent(question) === selected.text;
         if (
           !explicit &&
           !(await observer.confirmHistorySave?.(selected.text, signal))
