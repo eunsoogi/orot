@@ -105,13 +105,14 @@ extension AppointmentConsentUITests {
     func captureStageLayout(_ app: XCUIApplication, stage: String, anchor: ClassificationStageWindowAnchor? = nil, settled: CGRect? = nil, measuredProgress: NSPredicate? = nil) throws -> ClassificationStageWindowAnchor {
         let tokens = ["medical-appointment-confirmation", "medical-appointment-progress", "medical-appointment-results"]
         let phase = stage.hasPrefix("progress-") ? 1 : stage.hasPrefix("result-") ? 2 : 0
-        var actions = phase == 1 ? ["classification-release-response"] : ["medical-appointment-previous-result", "medical-appointment-import", "medical-appointment-next-result"]
-        if phase == 0 {
-            actions.append("medical-appointment-select-provider")
-        }
+        let pagerIDs = ["medical-appointment-previous-result", "medical-appointment-next-result"]
+        let paging = phase != 1 && pagerIDs.contains { node(app, $0).exists }
+        var actions = phase == 1 ? ["classification-release-response"] : ["medical-appointment-import"]
+        if paging { actions += pagerIDs }
+        if phase == 0 { actions.append("medical-appointment-select-provider") }
         let viewportID = "classification-text-viewport"
-        let required = ["medical-appointment-fullscreen", tokens[phase]]
-            + (phase == 1 ? [] : ["classification-stage-footer"]) + actions
+        let required = ["medical-appointment-fullscreen", tokens[phase], "classification-circle-slot"]
+            + (paging ? ["classification-stage-footer"] : []) + actions
             + (phase == 2 ? [viewportID, "classification-page-text"] : [])
         /// Confirmation measurement does not require a text viewport AX projection; result pagination does.
         /// If UIKit does project it, never accept a duplicate or an element outside the scoped owner.

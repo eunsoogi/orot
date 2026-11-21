@@ -159,5 +159,5 @@ export function MedicalAppointmentReviewView(props: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
   lane: { flex: 1, flexDirection: 'column', paddingHorizontal: 24 },
-  center: { flex: 1, justifyContent: 'center', gap: 16 },
+  center: { flex: 1, minHeight: 0 },
 });

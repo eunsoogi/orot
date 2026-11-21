@@ -6,6 +6,7 @@ export const medicalAppointmentsKo = {
   'medicalAppointments.readerTooSmall':
     '화면을 세로로 돌리거나 창을 키워 주세요',
   'medicalAppointments.expandReader': '전체 화면으로 내용 보기',
+  'medicalAppointments.readerShort': '내용',
   'medicalAppointments.closeReader': '확대 화면 닫기',
   'medicalAppointments.startShort': '시작',
   'medicalAppointments.restartShort': '다시',
