@@ -1,3 +1,4 @@
+import type { FreshConversationHistory } from './freshConversationDialogue';
 import { NativeModules } from 'react-native';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import type { Stage } from '../../providers/diagnosticTypes';
@@ -190,5 +191,17 @@ export function observeConversationMain(
       observeReceiptStage('conversation_receipt_main', 'failed');
       throw error;
     }
+  };
+}
+
+/** Pass the app-owned historical dialogue separately from live evidence. */
+export function conversationRetentionHistoryOptions(
+  history: FreshConversationHistory,
+) {
+  return {
+    priorDialogue: history.priorTurns,
+    historicalDialogueParents: history.historicalDialogueParents,
+    priorUserReports: history.reports,
+    ...(history.omitted ? { priorDialogueOmitted: true as const } : {}),
   };
 }

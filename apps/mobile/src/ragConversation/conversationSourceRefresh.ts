@@ -31,6 +31,7 @@ export function refreshConversationSources(input: {
     }
     const restrict = (session: ConversationSession) => ({
       historyLoading: false,
+      savedHistoryDisplay: undefined,
       historyLoadFailed: session.historyLoading || session.historyLoadFailed,
       messages: filterHealthDerivedMessages(session.messages, deletedIds).map(
         message => ({ ...message, steeringInstructions: undefined }),
@@ -84,7 +85,11 @@ export function refreshConversationSources(input: {
     for (const session of snapshot.sessions) {
       // Re-run only an already pending restore to fence its earlier storage read.
       const durableId = options.retention?.activeIdentity(session.id);
-      if (session.restoring && durableId)
+      if (
+        durableId &&
+        (session.restoring ||
+          (options.readSavedHistoryDisplay && session.id === snapshot.activeId))
+      )
         restoration.start(session.id, durableId).catch(() => {});
       else if (
         durableId &&
@@ -101,6 +106,7 @@ export function refreshConversationSources(input: {
     const durableId = options.retention?.activeIdentity(session.id);
     update(session.id, {
       messages: [],
+      savedHistoryDisplay: undefined,
       taskCards: [],
       title: createEmptyConversation(session.id).title,
       pendingMessage: null,

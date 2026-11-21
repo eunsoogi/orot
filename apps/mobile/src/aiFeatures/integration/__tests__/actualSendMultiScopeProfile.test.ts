@@ -172,15 +172,23 @@ test.each(['nested-topics-three', 'nested-topics-six'] as const)(
           ownerPhases,
         }),
       );
-      // Group fences and exact owned period callbacks share calculation leases;
-      // callback validity/final fences still run for every source.
-      expect([...(counts.get('retention')?.values() ?? [])]).toEqual([
-        2, 2, 1, 1,
-      ]);
-      expect([...(counts.get('save')?.values() ?? [])]).toEqual([1, 1, 1, 1]);
+      // History remains dialogue-only across pre-dispatch and terminal checks.
+      expect([...counts.keys()]).toEqual(['current-tool', 'save']);
+      expect([...(counts.get('current-tool')?.values() ?? [])]).toEqual([1, 1]);
+      expect([...(counts.get('save')?.values() ?? [])]).toEqual([1, 1]);
       phase = 'replay';
       const saved = await f.storage.read('saved-answer');
       expect(saved?.answer).toContain('Synthetic current answer');
+      expect(
+        saved?.historicalDialogueParents?.map(parent => parent.id),
+      ).toEqual(Array.from({ length: count }, (_, index) => `direct-${index}`));
+      expect(saved?.citations?.length).toBeGreaterThan(0);
+      expect(
+        saved?.sources.some(
+          source =>
+            'kind' in source && source.kind === 'generated_conversation',
+        ),
+      ).toBe(false);
       await f.repository.delete('health_observation', f.inside.id);
       await expect(f.storage.read('saved-answer')).resolves.toBeNull();
     } finally {

@@ -26,6 +26,7 @@ export type ConversationHistoryReaderOwner = {
   initialized: boolean;
   exhausted: boolean;
   nextId: number;
+  displayAdmission?: () => boolean;
   controller?: AbortController;
   flight?: Promise<void>;
 };

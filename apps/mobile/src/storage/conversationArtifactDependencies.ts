@@ -14,7 +14,7 @@ import {
 /** Logical tombstones fence retained results even before a physical record is removed. */
 export async function assertConversationSourcesNotRemoved(
   tx: SqlExecutor,
-  value: ConversationArtifact,
+  value: Pick<ConversationArtifact, 'sources'>,
 ) {
   const identities: [string, string | null][] = [];
   for (const source of value.sources) {

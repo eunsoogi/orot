@@ -75,6 +75,7 @@ export function conversationRecoveryActions(input: {
         leaseRefreshRequired: true,
         restoreFailed: true,
         messages: [],
+        savedHistoryDisplay: undefined,
         taskCards: [],
         steeringInstructions: [],
         steeringAvailable: false,

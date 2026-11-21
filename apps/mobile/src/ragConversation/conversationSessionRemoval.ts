@@ -27,6 +27,36 @@ export function createConversationSessionRemoval(input: {
   lifecycle: () => number;
   finalizeDraft: (id: number) => void;
 }) {
+  // Another archived conversation can include text derived from this one.
+  // Evict those views before Hide; reload their protected transcript only after
+  // the database transition resolves. Send history and live turns stay separate.
+  const suspendArchivedViews = (removedId: number) => {
+    if (!input.options.readSavedHistoryDisplay) return () => {};
+    const reload: [number, string][] = [];
+    for (const session of input.snapshot().sessions) {
+      if (
+        session.id === removedId ||
+        (!session.savedHistoryDisplay &&
+          !session.restoring &&
+          !session.historyLoading)
+      )
+        continue;
+      const durableId = input.options.retention?.activeIdentity(session.id);
+      input.restoration.invalidatePage(session.id);
+      input.update(session.id, {
+        savedHistoryDisplay: undefined,
+        historyHasMore: false,
+        historyLoading: false,
+      });
+      if (durableId) reload.push([session.id, durableId]);
+    }
+    return () => {
+      for (const [id, durableId] of reload) {
+        if (input.options.retention?.activeIdentity(id) === durableId)
+          input.restoration.start(id, durableId).catch(() => {});
+      }
+    };
+  };
   let deleting = false;
   const drafts = new Map<number, string>();
   const removeRetained = async (id: number) => {
@@ -44,6 +74,7 @@ export function createConversationSessionRemoval(input: {
     requests.abandon(id);
     restoration.forget(id);
     input.update(id, quarantineConversation());
+    const reloadArchivedViews = suspendArchivedViews(id);
     try {
       const prior = input.snapshot().deleted;
       if (prior?.handle !== undefined) {
@@ -94,7 +125,10 @@ export function createConversationSessionRemoval(input: {
         deletionError: t('ragConversation.conversation.deleteFailed'),
       });
     } finally {
-      if (input.lifecycle() === started) deleting = false;
+      if (input.lifecycle() === started) {
+        deleting = false;
+        if (!input.disposed()) reloadArchivedViews();
+      }
     }
   };
   const undoRetained = async () => {

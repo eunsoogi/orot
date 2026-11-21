@@ -1,3 +1,4 @@
+import { savedHistoryTranscript } from '../../../ragConversation/conversationSavedHistoryDisplay';
 import { readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -96,8 +97,7 @@ test('cold restore reuses summary storage setup across discovery owners and reva
       await work(tx);
     });
   const stages = {};
-  const hydrationStarts = [];
-  let hydrationMs = 0;
+  let hydrationStarts = 0;
   let start = 0;
   const record = stage => {
     stages[stage] ??= performance.now() - start;
@@ -105,15 +105,8 @@ test('cold restore reuses summary storage setup across discovery owners and reva
   const diagnostic = jest
     .spyOn(diagnostics, 'providerDiagnostic')
     .mockImplementation((_feature, stage, outcome) => {
-      if (
-        (stage === 'history_timeline' && outcome === 'started') ||
-        (stage === 'history_recheck' && outcome === 'completed')
-      )
-        record(stage);
       if (stage === 'artifact_source_hydration' && outcome === 'started')
-        hydrationStarts.push(performance.now());
-      if (stage === 'artifact_source_hydration' && outcome === 'completed')
-        hydrationMs += performance.now() - hydrationStarts.pop();
+        hydrationStarts++;
     });
   try {
     const data = await openAiFeatureLocalData();
@@ -137,7 +130,8 @@ test('cold restore reuses summary storage setup across discovery owners and reva
         expect(selected.messages).toEqual([]);
         expect(conversationComposerDisabled(selected)).toBe(true);
       }
-      if (selected?.messages.length) record('first_transcript_state');
+      if (selected?.savedHistoryDisplay?.length)
+        record('first_transcript_state');
     });
     start = performance.now();
     const [first, second, , id] = await Promise.all([
@@ -156,24 +150,30 @@ test('cold restore reuses summary storage setup across discovery owners and reva
       .getSnapshot()
       .sessions.find(item => item.id === id);
     expect(
-      selected.messages.filter(item => item.role === 'assistant'),
+      savedHistoryTranscript(
+        selected.savedHistoryDisplay,
+        selected.messages,
+      ).filter(item => item.role === 'assistant'),
     ).toHaveLength(3);
+    expect(selected.messages).toEqual([]);
+    expect(hydrationStarts).toBe(0);
     expect(selected.restoreFailed).toBe(false);
     expect(conversationComposerDisabled(selected)).toBe(false);
     expect(Object.keys(stages)).toEqual([
-      'history_timeline',
-      'history_recheck',
       'first_transcript_state',
       'restoration_settled',
     ]);
     await direct('DELETE FROM health_observations WHERE id = ?', [f.inside.id]);
     expect(await left.read('summary-0')).toBeNull();
     expect(await right.read('summary-1')).toBeNull();
-    console.info('SYNTHETIC_COLD_CONVERSATION', {
-      setupAttempts,
-      hydrationMs,
-      stages,
-    });
+    await expect(
+      options.readSavedHistoryDisplay(
+        'session',
+        version,
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({ rows: [] });
+    console.info('SYNTHETIC_COLD_CONVERSATION', { setupAttempts, stages });
     expect(setupAttempts).toBe(2);
   } finally {
     diagnostic.mockRestore();

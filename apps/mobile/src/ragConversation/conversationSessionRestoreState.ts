@@ -1,13 +1,18 @@
 import { createConversationPagedRestoreState } from './conversationPagedRestoreState';
 import { conversationRestoredMessages } from './conversationRestoredMessages';
 import type { RestoredTurn } from './conversationRestoredTurn';
-import type { ConversationSession } from './conversationSessionTypes';
+import type {
+  ConversationSession,
+  ConversationSessionOptions,
+} from './conversationSessionTypes';
 import { getRagConversationCopy } from './copy';
 import { t } from '../i18n';
 
 /** Rebuild displayed turns with freshly validated sources, and keep failures retryable. */
 export function createConversationSessionRestoreState(input: {
   readPlainContextPage?: import('./conversationSessionTypes').ConversationSessionOptions['readPlainContextPage'];
+  readPresentation?: import('./conversationSavedHistoryDisplay').ReadSavedHistoryDisplay;
+  presentationLease?: import('./loadOwnedSavedHistoryDisplay').ReadPresentationLease;
   page?: import('./conversationHistoryPage').ReadConversationHistoryPage;
   find?: (id: number) => ConversationSession | undefined;
   read?: (id: string, signal: AbortSignal) => Promise<readonly RestoredTurn[]>;
@@ -15,6 +20,8 @@ export function createConversationSessionRestoreState(input: {
   readTasks?: import('./conversationSessionTypes').ConversationSessionOptions['restoreTasks'];
   update: (id: number, change: Partial<ConversationSession>) => void;
 }) {
+  if (input.readPresentation && (!input.page || !input.find))
+    throw new Error('Display restoration requires an owned paged session.');
   if (input.page && input.find)
     return createConversationPagedRestoreState({
       ...input,
@@ -144,7 +151,12 @@ export function createConversationSessionRestoreState(input: {
     }
   };
   return {
-    async start(id: number, durableId: string, signal?: AbortSignal) {
+    async start(
+      id: number,
+      durableId: string,
+      signal?: AbortSignal,
+      _displayAdmission?: () => boolean,
+    ) {
       forget(id);
       sessions.set(id, { durableId });
       await runWhileCurrent(id, signal);
@@ -174,4 +186,23 @@ export function createConversationSessionRestoreState(input: {
       for (const id of sessions.keys()) forget(id);
     },
   };
+}
+
+/** Select the display port independently of the existing send-only context inputs. */
+export function conversationRestorationForOptions(
+  options: ConversationSessionOptions,
+  find: Parameters<typeof createConversationSessionRestoreState>[0]['find'],
+  update: Parameters<typeof createConversationSessionRestoreState>[0]['update'],
+) {
+  return createConversationSessionRestoreState({
+    read: options.restoreSession,
+    page: options.restoreSessionPage,
+    readPresentation: options.readSavedHistoryDisplay,
+    presentationLease: options.retention?.activeLease,
+    readPlainContextPage: options.readPlainContextPage,
+    find,
+    readSteering: options.restoreSteering,
+    readTasks: options.restoreTasks,
+    update,
+  });
 }

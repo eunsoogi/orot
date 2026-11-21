@@ -108,6 +108,10 @@ export async function coldRagFactoryFixture(
       signal: f.controller.signal,
     }),
   };
+  descriptor.reconstruction = {
+    ...descriptor.reconstruction,
+    completion: emptyLegacyColdCompletion,
+  };
   if (eager)
     descriptor.reconstruction = {
       ...descriptor.reconstruction,
@@ -125,3 +129,14 @@ export async function coldRagFactoryFixture(
     external,
   };
 }
+
+/** Real live capture always writes this reconstruction field for V1. */
+export const emptyLegacyColdCompletion = {
+  version: 1,
+  entryContext: null,
+  priorDialogue: [],
+  priorUserReports: [],
+  historySources: [],
+  reportReferences: [],
+  localRetrievalFailed: false,
+};

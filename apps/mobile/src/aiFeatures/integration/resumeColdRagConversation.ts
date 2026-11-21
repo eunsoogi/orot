@@ -79,6 +79,7 @@ export async function resumeColdRagConversation(input: {
       descriptor.reconstruction,
       factory.registry,
       signal,
+      factory.dialogueCurrent,
     );
     const retention = createConversationRetentionBridge({
       observer,
@@ -89,6 +90,9 @@ export async function resumeColdRagConversation(input: {
       modelId: factory.options.execution.modelId,
       entryContext: completion.entryContext ?? undefined,
       priorDialogue: completion.priorDialogue,
+      ...(completion.historicalDialogueParents
+        ? { historicalDialogueParents: completion.historicalDialogueParents }
+        : {}),
       priorUserReports: completion.priorUserReports,
       ...(completion.priorDialogueOmitted
         ? { priorDialogueOmitted: true as const }
