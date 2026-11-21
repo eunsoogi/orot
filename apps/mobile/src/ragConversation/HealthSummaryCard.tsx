@@ -19,6 +19,7 @@ export function HealthSummaryCard({
   onLinkError,
   onRetry,
   showCitations = true,
+  openArchivedCitation,
 }: {
   result: HealthSummaryResult;
   testIDPrefix?: string;
@@ -26,6 +27,9 @@ export function HealthSummaryCard({
   onLinkError: () => void;
   onRetry?: () => void;
   showCitations?: boolean;
+  openArchivedCitation?: (
+    citation: import('./savedArchivedCitations').SavedArchivedCitation,
+  ) => void;
 }) {
   const instanceId = useId();
   const identity = testIDPrefix ?? `health-summary-${instanceId}`;
@@ -86,6 +90,14 @@ export function HealthSummaryCard({
           {showCitations ? (
             <ConversationSources
               testIDPrefix={`${identity}-section-${index}`}
+              archived={
+                result.archivedSectionCitations && openArchivedCitation
+                  ? {
+                      citations: result.archivedSectionCitations[index] ?? [],
+                      open: openArchivedCitation,
+                    }
+                  : undefined
+              }
               references={[
                 ...section.supportingEvidence,
                 ...section.contraryEvidence,

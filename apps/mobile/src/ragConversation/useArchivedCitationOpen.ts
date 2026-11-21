@@ -11,6 +11,7 @@ export type ArchivedCitationTarget = Readonly<{
   sessionVersion: number;
   turnId: string;
   createdAt: string;
+  summary?: { readonly id: string; readonly revision: string };
 }>;
 
 export type ResolveArchivedCitation = (
@@ -51,6 +52,8 @@ export function useArchivedCitationOpen(
       target?.sessionVersion,
       target?.turnId,
       target?.createdAt,
+      target?.summary?.id,
+      target?.summary?.revision,
       resolve,
     ],
   );

@@ -1,51 +1,20 @@
 import {
-  archivedConversationPresentationMetadata,
-  type ArchivedConversationPresentationMetadata,
-} from './archivedConversationPresentationMetadata';
-import { validConversationReportTarget } from './conversationReportTarget';
-import type { ConversationArtifact } from './conversationArtifactTypes';
+  decodeOwnedArchiveRow,
+  type ConversationHistoryPresentation,
+} from './conversationArchivePresentationRow';
+export type { ConversationHistoryPresentation } from './conversationArchivePresentationRow';
+import {
+  archivedHealthSummaryOwner,
+  readArchivedHealthSummaryPresentation,
+  selectArchivedHealthSummaryCitation,
+  type ArchivedHealthSummaryOwner,
+} from './archivedHealthSummaryPresentation';
 import { assertConversationSourcesNotRemoved } from './conversationArtifactDependencies';
 import { selectArchivedCitation } from './selectArchivedCitation';
 import { createProtectedPromptHistory } from './protectedPromptHistory';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
-import {
-  projectSavedArchivedCitations,
-  type SavedArchivedCitation,
-} from '../ragConversation/savedArchivedCitations';
-import {
-  decodeConversationRecoveryReason,
-  type ConversationRecoveryReason,
-} from '../ragConversation/conversationExecutionLease';
+import { projectSavedArchivedCitations } from '../ragConversation/savedArchivedCitations';
 import { suppressExplicitlyRemovedHistory } from './conversationHistoryDisplayAncestorFence';
-
-/** Stored transcript, not a retained turn or source authorization. */
-export type ConversationHistoryPresentation = {
-  readonly id: string;
-  readonly sessionId: string;
-  readonly createdAt: string;
-  readonly question: string;
-  readonly interruptionReason?: ConversationRecoveryReason;
-} & (
-  | (ArchivedConversationPresentationMetadata & {
-      readonly status: 'complete' | 'partial';
-      readonly answer: string;
-      readonly dailyReport?: NonNullable<ConversationArtifact['dailyReport']>;
-      readonly savedCitations?: readonly SavedArchivedCitation[];
-    })
-  | { readonly status: 'interrupted'; readonly answer?: never }
-);
-
-function readArchivedText(serialized: unknown): Record<string, unknown> | null {
-  if (typeof serialized !== 'string') return null;
-  try {
-    const value: unknown = JSON.parse(serialized);
-    return value && typeof value === 'object' && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
-}
 
 /** Read verified-at-save text, not whether sources are still openable. The
  * artifact table is written by the existing protected, validating append.
@@ -60,7 +29,8 @@ function createOwnedArchiveReader<T>(
     value: Record<string, unknown> | undefined,
     row: ConversationHistoryPresentation,
   ) => T | null,
-  authorize?: (tx: SqlExecutor, value: T) => Promise<void>,
+  authorize?: (tx: SqlExecutor, value: T) => Promise<T | null>,
+  readSavedSummaryCards?: true,
 ) {
   return async (sessionId: string, version: number, ids: readonly string[]) => {
     if (
@@ -128,82 +98,59 @@ function createOwnedArchiveReader<T>(
       );
       const pending = new Map<string, T>();
       const savedIds: string[] = [];
+      const summaryRows = new Map<
+        string,
+        {
+          value: Record<string, unknown>;
+          row: ConversationHistoryPresentation;
+          owner: ArchivedHealthSummaryOwner;
+        }
+      >();
       for (const row of rows) {
-        if (
-          typeof row.id !== 'string' ||
-          typeof row.created_at !== 'string' ||
-          !Number.isFinite(Date.parse(row.created_at)) ||
-          new Date(row.created_at).toISOString() !== row.created_at
-        )
-          continue;
-        const interruptionReason = decodeConversationRecoveryReason(
-          row.interruption_reason,
-        );
-        if (row.result_json === null) {
-          if (
-            row.checkpoint_status === 'interrupted' &&
-            typeof row.checkpoint_question === 'string' &&
-            row.checkpoint_question.trim()
-          ) {
-            const projected = project(row.id, undefined, {
-              id: row.id,
-              sessionId,
-              createdAt: row.created_at,
-              question: row.checkpoint_question,
-              status: 'interrupted',
-              ...(interruptionReason ? { interruptionReason } : {}),
-            });
-            if (projected !== null) pending.set(row.id, projected);
-          }
+        const decoded = decodeOwnedArchiveRow(row, sessionId);
+        if (!decoded) continue;
+        const { value, presentation } = decoded;
+        const { id } = presentation;
+        if (!value) {
+          const projected = project(id, undefined, presentation);
+          if (projected !== null) pending.set(id, projected);
           continue;
         }
-        const value = readArchivedText(row.result_json);
-        if (
-          !value ||
-          value.id !== row.id ||
-          value.sessionId !== sessionId ||
-          value.createdAt !== row.created_at ||
-          (value.status !== 'complete' && value.status !== 'partial') ||
-          (row.request_id != null &&
-            (value.status === 'complete'
-              ? row.checkpoint_status !== 'completed' ||
-                row.completion_id !== row.id
-              : row.checkpoint_status !== 'interrupted' ||
-                row.completion_id != null)) ||
-          typeof value.question !== 'string' ||
-          (row.request_id != null &&
-            value.question !== row.checkpoint_question) ||
-          typeof value.answer !== 'string' ||
-          !value.answer.trim()
-        )
-          continue;
-        const dailyReport =
-          value.status === 'complete' &&
-          validConversationReportTarget(value.dailyReport)
-            ? (value.dailyReport as NonNullable<
-                ConversationArtifact['dailyReport']
-              >)
-            : undefined;
-        savedIds.push(row.id);
-        const valueForRoute = project(row.id, value, {
-          id: row.id,
-          sessionId,
-          createdAt: value.createdAt,
-          question: value.question,
-          answer: value.answer,
-          status: value.status,
-          ...archivedConversationPresentationMetadata(value),
-          ...(dailyReport ? { dailyReport } : {}),
-          ...(interruptionReason ? { interruptionReason } : {}),
-        });
-        if (valueForRoute !== null) pending.set(row.id, valueForRoute);
+        const owner = readSavedSummaryCards
+          ? archivedHealthSummaryOwner(id, value)
+          : undefined;
+        if (owner) summaryRows.set(id, { value, row: presentation, owner });
+        savedIds.push(id);
+        const valueForRoute = project(id, value, presentation);
+        if (valueForRoute !== null) pending.set(id, valueForRoute);
       }
       for (const id of await suppressExplicitlyRemovedHistory(tx, savedIds))
         pending.delete(id);
+      if (summaryRows.size) {
+        // Read only previously admitted card text for surviving rows in this owned snapshot.
+        const summaries = await readArchivedHealthSummaryPresentation(
+          tx,
+          [...summaryRows.values()]
+            .filter(item => pending.has(item.row.id))
+            .map(item => item.owner),
+        );
+        for (const [id, healthSummary] of summaries) {
+          const item = summaryRows.get(id);
+          if (!item || item.row.status !== 'complete') continue;
+          const enriched = project(id, item.value, {
+            ...item.row,
+            healthSummary,
+          });
+          if (enriched !== null) pending.set(id, enriched);
+        }
+      }
       for (const id of ids) {
         const projected = pending.get(id) ?? null;
-        if (projected !== null && authorize) await authorize(tx, projected);
-        output.push(projected);
+        output.push(
+          projected !== null && authorize
+            ? await authorize(tx, projected)
+            : projected,
+        );
       }
     });
     return output;
@@ -222,6 +169,8 @@ export function createConversationProjectionReaders(
       const savedCitations = projectSavedArchivedCitations(value?.citations);
       return savedCitations.length ? { ...row, savedCitations } : row;
     },
+    undefined,
+    true,
   );
   return {
     ...createProtectedPromptHistory(database, ensure),
@@ -232,18 +181,39 @@ export function createConversationProjectionReaders(
       id: string,
       createdAt: string,
       ordinal: number,
+      summary?: { readonly id: string; readonly revision: string },
     ) {
-      const read = createOwnedArchiveReader(
+      const read = createOwnedArchiveReader<{
+        source?: NonNullable<ReturnType<typeof selectArchivedCitation>>;
+        owner?: ArchivedHealthSummaryOwner;
+      }>(
         database,
         ensure,
-        (_id, value, row) =>
-          value && row.createdAt === createdAt
-            ? selectArchivedCitation(value, ordinal)
-            : null,
-        (tx, source) =>
-          assertConversationSourcesNotRemoved(tx, { sources: [source] }),
+        (turnId, value, row) => {
+          if (!value || row.createdAt !== createdAt) return null;
+          if (summary === undefined) {
+            const source = selectArchivedCitation(value, ordinal);
+            return source ? { source } : null;
+          }
+          const owner = archivedHealthSummaryOwner(turnId, value);
+          return owner?.reference.summaryId === summary.id ? { owner } : null;
+        },
+        async (tx, selected) => {
+          const source =
+            selected.owner && summary
+              ? await selectArchivedHealthSummaryCitation(
+                  tx,
+                  selected.owner,
+                  ordinal,
+                  summary.revision,
+                )
+              : selected.source;
+          if (!source) return null;
+          await assertConversationSourcesNotRemoved(tx, { sources: [source] });
+          return { source };
+        },
       );
-      return (await read(sessionId, version, [id]))[0] ?? null;
+      return (await read(sessionId, version, [id]))[0]?.source ?? null;
     },
   };
 }

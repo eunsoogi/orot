@@ -76,8 +76,14 @@ export function conversationSavedHistoryDisplayOption(
               ...(row.initialResponse
                 ? { initialResponse: row.initialResponse }
                 : {}),
+              ...(row.healthSummary
+                ? { healthSummary: row.healthSummary }
+                : {}),
               ...(row.dailyReport ? { dailyReport: row.dailyReport } : {}),
-              ...(row.savedCitations?.length
+              ...(row.savedCitations?.length ||
+              row.healthSummary?.archivedSectionCitations?.some(
+                section => section.length,
+              )
                 ? {
                     archivedCitationTarget: {
                       sessionId,

@@ -18,7 +18,6 @@ import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
 import type { DisplayMessage } from './conversationDisplayMessage';
 export type { DisplayMessage } from './conversationDisplayMessage';
-/** Keeps transcript citations beside their answer; compact session previews may omit source links. */
 export function ConversationMessage({
   message: suppliedMessage,
   onContinueCold,
@@ -49,12 +48,13 @@ export function ConversationMessage({
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
 }) {
-  const { message, openSource, citations } = useConversationMessageEvidence({
-    suppliedMessage,
-    showCitations,
-    onOpenSource,
-    onLinkError,
-  });
+  const { message, openSource, citations, openArchivedSummary } =
+    useConversationMessageEvidence({
+      suppliedMessage,
+      showCitations,
+      onOpenSource,
+      onLinkError,
+    });
   const user = message.role === 'user';
   const visitQuestions =
     !user && message.visitQuestions ? renderVisitQuestions?.(message) : null;
@@ -199,7 +199,6 @@ export function ConversationMessage({
               content={message.content}
               user={user}
               staticText={message.savedHistoryDisplayOnly}
-              // The canonical report parser formats settled text without loading sources.
               allowReport={
                 !message.streaming &&
                 !message.incomplete &&
@@ -212,6 +211,7 @@ export function ConversationMessage({
             <HealthSummaryCard
               testIDPrefix={`rag-conversation-message-${message.id}-summary`}
               result={message.healthSummary}
+              openArchivedCitation={openArchivedSummary}
               showCitations={showCitations}
               onOpenSource={openSource}
               onLinkError={onLinkError}
