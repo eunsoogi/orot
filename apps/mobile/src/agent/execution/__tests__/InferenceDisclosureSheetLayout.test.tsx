@@ -122,7 +122,7 @@ test('keeps the four transmission paragraphs individually readable in a compact 
       recipient: 'OpenAI API',
       model: 'fixture·model',
     }),
-    t('modelSettings.consentMedical'),
+    t('modelSettings.consentJointMedical'),
   ];
   const notice = t('modelSettings.consentContinuing');
   const subtitle = t('modelSettings.consentJointCalendarWebTitle');
@@ -167,7 +167,7 @@ test('keeps the four transmission paragraphs individually readable in a compact 
   expect(blocks[2]).toHaveTextContent(/OpenAI API의 fixture·model/);
   expect(blocks[3]).toHaveTextContent(/Europe PMC/);
   expect(blocks[3]).toHaveTextContent(
-    /건강 기록 원문이나 대화 전체는 보내지 않습니다\./,
+    /건강 기록 원문이나 대화 전체를 검색 요청에 첨부하지 않습니다\./,
   );
   expect(
     [paragraphs[0], paragraphs[1], paragraphs[3], subtitle, notice].join(' '),

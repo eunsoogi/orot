@@ -6,7 +6,10 @@ import type { ConsentAuthorityState } from '../src/agent/execution/consentAuthor
 import type { ProviderSelection } from '../src/providers/selection/types';
 import { voiceSettingsStore } from '../src/voiceSettings/voiceSettingsStore';
 import { calendarModelStore } from '../src/calendarModelSettings/calendarModelStore';
-import type { SettingsConsentSlot } from '../src/storage/settingsConsentStorage';
+import {
+  createSettingsConsentStorage,
+  type SettingsConsentSlot,
+} from '../src/storage/settingsConsentStorage';
 
 jest.mock(
   'react-native-safe-area-context',
@@ -78,12 +81,18 @@ test('conversation and calendar Save require shared disclosure before grants and
       await view.findByTestId('inference-disclosure-recipient'),
     ).toHaveTextContent('선택한 ChatGPT 계정');
     expect(states.get('conversation')).toBeUndefined();
+    expect(view.getByTestId('inference-disclosure-scope')).toHaveTextContent(
+      /Europe PMC/,
+    );
+    const grants = createSettingsConsentStorage(db.database);
+    expect(await grants.read('conversation', 'medical-search')).toBeNull();
     expect(view.getByTestId('inference-disclosure-allow')).toHaveProp(
       'accessibilityLabel',
       '동의',
     );
     await fireEvent.press(view.getByTestId('inference-disclosure-cancel'));
     expect(states.get('conversation')).toBeUndefined();
+    expect(await grants.read('conversation', 'medical-search')).toBeNull();
     await fireEvent.press(view.getByTestId('provider-selection-confirm'));
     await fireEvent.press(
       await view.findByTestId('inference-disclosure-allow'),
@@ -91,6 +100,10 @@ test('conversation and calendar Save require shared disclosure before grants and
     await waitFor(() =>
       expect(states.get('conversation')?.status).toBe('active'),
     );
+    expect(await grants.read('conversation', 'medical-search')).toMatchObject({
+      identity: { recipient: 'Europe PMC' },
+      permissions: [{ purpose: 'public_medical_search' }],
+    });
     await fireEvent.press(view.getByTestId('model-tab-calendar'));
     await waitFor(() =>
       expect(

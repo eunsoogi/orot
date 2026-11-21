@@ -45,20 +45,26 @@ function disclosureFor(
         model: calendar.calendarModel,
       }),
     );
-  if (search?.medical) copy.push(t('modelSettings.consentMedical'));
+  if (search?.medical) copy.push(t('modelSettings.consentJointMedical'));
   return {
     providerId: remote ? option.provider.id : 'europe-pmc',
     modelId: remote ? option.modelId : 'public-medical-search',
     recipient,
     subtitle: calendar
       ? t(
-          jointWeb
+          jointWeb || search?.medical
             ? 'modelSettings.consentJointCalendarWebTitle'
             : 'modelSettings.consentJointCalendarTitle',
         )
-      : jointWeb
-        ? t('modelSettings.consentJointConversationWebTitle')
-        : t('medicalAppointments.inferenceDisclosure.title'),
+      : search?.medical
+        ? t(
+            remote
+              ? 'modelSettings.consentJointConversationMedicalTitle'
+              : 'modelSettings.consentMedicalTitle',
+          )
+        : jointWeb
+          ? t('modelSettings.consentJointConversationWebTitle')
+          : t('medicalAppointments.inferenceDisclosure.title'),
     information: copy.join('\n'),
     notice: t('modelSettings.consentContinuing'),
   };
