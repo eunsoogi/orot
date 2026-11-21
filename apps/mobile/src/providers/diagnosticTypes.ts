@@ -20,6 +20,8 @@ export type Stage =
   | 'conversation_history_preflight'
   | 'conversation_dispatch'
   | 'conversation_run'
+  | 'conversation_quick_press'
+  | 'conversation_send_preparing'
   | 'conversation_receipt_attempt'
   | 'conversation_receipt_main'
   | 'conversation_receipt_accepted'

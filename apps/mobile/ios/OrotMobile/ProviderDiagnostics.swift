@@ -30,6 +30,7 @@ final class OrotProviderDiagnostics: NSObject {
                "history_timeline", "history_turns", "history_artifacts", "history_tool_read",
                "history_tool_restore", "history_tasks",
                "history_session_recheck_before_assembly", "history_session_recheck_after_assembly", "history_tool_recheck_before_assembly", "history_tool_recheck_final", "history_cold_previews", "history_recheck", "history_transcript_layout", "conversation_model_preflight", "conversation_history_preflight",
+               "conversation_quick_press", "conversation_send_preparing",
                "conversation_receipt_attempt", "conversation_receipt_main", "conversation_receipt_accepted", "conversation_receipt_response_started",
                "conversation_dispatch", "conversation_run", "tool_capture_personal", "tool_capture_memory", "tool_capture_generated", "tool_capture_external",
                "tool_event_adapter", "tool_event_discard", "tool_event_capture", "tool_event_write", "tool_event_bind",
