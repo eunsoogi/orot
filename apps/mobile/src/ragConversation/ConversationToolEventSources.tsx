@@ -178,7 +178,7 @@ export function ConversationToolEventSources({
               {canOpen ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`${t('ragConversation.tool.openSource')} · ${sourceKindLabel(source.sourceKind)}`}
+                  accessibilityLabel={`${t('ragConversation.tool.openSource')} · ${sourceKindLabel(source.sourceKind, event.toolName)}`}
                   accessibilityState={{ busy, disabled: busy }}
                   disabled={busy}
                   onPress={() => {
@@ -187,7 +187,7 @@ export function ConversationToolEventSources({
                   style={styles.toolEventSource}
                 >
                   <Text style={styles.sourceText}>
-                    {sourceKindLabel(source.sourceKind)} ·{' '}
+                    {sourceKindLabel(source.sourceKind, event.toolName)} ·{' '}
                     {busy
                       ? t('ragConversation.tool.verifyingSource')
                       : t('ragConversation.tool.openSource')}
@@ -195,7 +195,7 @@ export function ConversationToolEventSources({
                 </Pressable>
               ) : (
                 <Text style={styles.toolEventValue}>
-                  {sourceKindLabel(source.sourceKind)}
+                  {sourceKindLabel(source.sourceKind, event.toolName)}
                 </Text>
               )}
               {errors.has(key) ? (
@@ -214,6 +214,7 @@ export function ConversationToolEventSources({
       {sheet ? (
         <PublicToolSourceSheet
           state={sheet}
+          destination={sourceKindLabel('external_medical', event.toolName)}
           close={close}
           open={choice => {
             const source = event.sources.find(
