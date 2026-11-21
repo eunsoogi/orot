@@ -14,6 +14,7 @@ export interface ProviderSelectionScreenProps {
   readonly screenTitle?: string;
   readonly screenIntroduction?: string;
   readonly navigationRouteKey?: string;
+  readonly conversationQuickReview?: boolean;
   readonly options: readonly ProviderSelectionOption[];
   readonly requirements: ProviderSelectionRequirements;
   readonly selectionStore: ProviderSelectionStore;
