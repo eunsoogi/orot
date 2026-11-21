@@ -7,6 +7,7 @@ import {
 import type { OutboundProcessingRequest } from '@orot/agent-runtime';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import InferenceDisclosureSheet from '../InferenceDisclosureSheet';
+import { t } from '../../../i18n';
 
 /** Sends measured panel bounds through the Modal-owned sheet's layout callback. */
 function disclosureRequest(): OutboundProcessingRequest {
@@ -111,4 +112,108 @@ test('reflows from measured modal geometry while keeping the consent summary and
   expect(scopeCard).toHaveStyle({ padding: 18 });
   expect(footer).toHaveStyle({ paddingHorizontal: 20, gap: 10 });
   expect(grabber).toHaveStyle({ marginTop: 8, marginBottom: 13 });
+});
+
+test('keeps the four transmission paragraphs individually readable in a compact sheet', async () => {
+  const paragraphs = [
+    t('modelSettings.consentConversationData'),
+    t('modelSettings.consentJointWeb', { recipient: 'ChatGPT' }),
+    t('modelSettings.consentJointCalendar', {
+      recipient: 'OpenAI API',
+      model: 'fixture·model',
+    }),
+    t('modelSettings.consentMedical'),
+  ];
+  const notice = t('modelSettings.consentContinuing');
+  const subtitle = t('modelSettings.consentJointCalendarWebTitle');
+  const decide = jest.fn();
+  await render(
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 320, height: 500 },
+        insets: { top: 0, right: 0, bottom: 24, left: 0 },
+      }}
+    >
+      <InferenceDisclosureSheet
+        summary={{
+          providerId: 'synthetic-provider',
+          modelId: 'synthetic·model',
+          recipient: 'ChatGPT',
+          information: paragraphs.join('\n'),
+          subtitle,
+          notice,
+        }}
+        onDecision={decide}
+      />
+    </SafeAreaProvider>,
+  );
+  await fireEvent(screen.getByTestId('inference-disclosure-sheet'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width: 320, height: 500 } },
+  });
+  const content = screen.getByTestId('inference-disclosure-content');
+  const scope = within(content).getByTestId('inference-disclosure-scope');
+  expect(scope).toHaveStyle({ gap: 12 });
+  const blocks = within(scope).getAllByTestId('inference-disclosure-paragraph');
+  expect(blocks).toHaveLength(4);
+  paragraphs.forEach((copy, index) => {
+    expect(blocks[index]).toHaveTextContent(copy, { exact: true });
+    // Native Dynamic Type remains enabled, without a line or scaling cap.
+    expect(blocks[index]?.props.allowFontScaling).not.toBe(false);
+    expect(blocks[index]?.props.numberOfLines).toBeUndefined();
+    expect(blocks[index]?.props.maxFontSizeMultiplier).toBeUndefined();
+  });
+  expect(blocks[0]).toHaveTextContent(/원본 사진은 전송하지 않습니다\./);
+  expect(blocks[1]).toHaveTextContent(/ChatGPT의 공개 웹검색/);
+  expect(blocks[2]).toHaveTextContent(/OpenAI API의 fixture·model/);
+  expect(blocks[3]).toHaveTextContent(/Europe PMC/);
+  expect(blocks[3]).toHaveTextContent(
+    /건강 기록 원문이나 대화 전체는 보내지 않습니다\./,
+  );
+  expect(
+    [paragraphs[0], paragraphs[1], paragraphs[3], subtitle, notice].join(' '),
+  ).not.toContain('·');
+  expect(screen.getByText('synthetic·model')).toBeTruthy();
+  expect(screen.getByText(notice)).toBeTruthy();
+  expect(
+    within(content).getByTestId('inference-disclosure-allow'),
+  ).toBeEnabled();
+  expect(
+    within(content).getByTestId('inference-disclosure-cancel'),
+  ).toBeEnabled();
+  expect(decide).not.toHaveBeenCalled();
+});
+
+test('keeps the shared one-request scope and continuing notice in plain Korean', async () => {
+  await render(
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 430, height: 800 },
+        insets: { top: 0, right: 0, bottom: 24, left: 0 },
+      }}
+    >
+      <InferenceDisclosureSheet
+        request={{
+          ...disclosureRequest(),
+          consentScope: {
+            purpose: 'record_conversation',
+            dataCategories: ['health_records', 'conversation'],
+            policyVersion: 'synthetic',
+          },
+        }}
+        onDecision={jest.fn()}
+      />
+    </SafeAreaProvider>,
+  );
+  const scope = screen.getByTestId('inference-disclosure-scope');
+  expect(
+    within(scope).getAllByTestId('inference-disclosure-paragraph'),
+  ).toHaveLength(1);
+  expect(scope).toHaveTextContent(
+    '건강, 복약, 활동, 수면, 증상 기록, 질문과 대화',
+  );
+  expect(
+    screen.getByText(
+      '계정, AI, 기능, 정보 종류 또는 허용 범위가 바뀌면 다시 확인해요.',
+    ),
+  ).toBeTruthy();
 });

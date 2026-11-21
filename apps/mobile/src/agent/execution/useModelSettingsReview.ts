@@ -36,13 +36,7 @@ function disclosureFor(
     : [];
   const jointWeb = slot === 'conversation' && remote && search?.web;
   if (jointWeb) {
-    copy.push(
-      t('modelSettings.consentJointWeb', {
-        recipient: t('externalMedicalEvidence.publicSearchRecipient', {
-          recipient,
-        }),
-      }),
-    );
+    copy.push(t('modelSettings.consentJointWeb', { recipient }));
   }
   if (calendar)
     copy.push(

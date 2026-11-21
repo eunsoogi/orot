@@ -1,4 +1,5 @@
 import type { SettingsDisclosureSummary } from './settingsDisclosureSummary';
+import { InferenceDisclosureScopeText } from './InferenceDisclosureScopeText';
 import { inferenceConsentCopy } from './inferenceConsentCopy';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -151,9 +152,7 @@ export default function InferenceDisclosureModalPanel({
             <Text style={styles.label}>
               {t('medicalAppointments.inferenceDisclosure.information')}
             </Text>
-            <Text style={styles.value} testID="inference-disclosure-scope">
-              {copy.information}
-            </Text>
+            <InferenceDisclosureScopeText information={copy.information} />
             {!summary ? (
               <Text style={styles.noticeBody}>
                 {calendar && !realtimeResult
