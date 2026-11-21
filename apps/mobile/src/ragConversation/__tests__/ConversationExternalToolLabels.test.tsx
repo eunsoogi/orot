@@ -8,12 +8,8 @@ import type { ConversationToolEvent } from '@orot/agent-runtime';
 import { ConversationToolEvents } from '../ConversationToolEvents';
 
 test.each([
-  ['public-web-search', 'ChatGPT 웹 검색', 'ChatGPT 공개 웹'],
-  [
-    'europe-pmc-publication-search',
-    'Europe PMC 의학 문헌 검색',
-    'Europe PMC 의학 문헌',
-  ],
+  ['public-web-search', '웹검색', '공개 웹 출처'],
+  ['europe-pmc-publication-search', '의학 문헌 검색', '공개 의학 문헌'],
 ] as const)(
   'identifies the actual destination on the activity and source window: %s',
   async (name, activity, destination) => {
