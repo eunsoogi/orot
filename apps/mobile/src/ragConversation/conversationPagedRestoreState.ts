@@ -1,3 +1,8 @@
+import {
+  joinConversationHistoryFlight,
+  createPlainHistoryPlanner,
+  usableHistoryMessages,
+} from './plainConversationSendContext';
 import type {
   ConversationSession,
   ConversationSessionOptions,
@@ -12,11 +17,13 @@ import { t } from '../i18n';
 /** Each page keeps the lease and owner fence; failed pages never advance the cursor. */
 export function createConversationPagedRestoreState(input: {
   read: ReadConversationHistoryPage;
+  readPlainContextPage?: ConversationSessionOptions['readPlainContextPage'];
   readSteering?: ConversationSessionOptions['restoreSteering'];
   find: (id: number) => ConversationSession | undefined;
   update: (id: number, change: Partial<ConversationSession>) => void;
 }) {
   const owners = new Map<number, ConversationHistoryReaderOwner>();
+  const planPlainHistoryForSend = createPlainHistoryPlanner(input, owners);
   const forget = (id: number) => {
     owners.get(id)?.controller?.abort();
     owners.delete(id);
@@ -33,19 +40,8 @@ export function createConversationPagedRestoreState(input: {
       (owner.initialized || owner.durableId !== initialId)
     )
       return Promise.resolve();
-    if (owner.flight) {
-      // Joining cancellation releases this wait, never the scroll reader's ownership.
-      const flight = owner.flight;
-      if (!signal) return flight;
-      return new Promise<void>(resolve => {
-        const finish = () => {
-          signal.removeEventListener('abort', finish);
-          resolve();
-        };
-        signal.addEventListener('abort', finish, { once: true });
-        flight.then(finish, finish);
-      });
-    }
+    if (owner.flight)
+      return joinConversationHistoryFlight(owner.flight, signal);
     const controller = new AbortController();
     owner.controller = controller;
     const current = () =>
@@ -201,6 +197,11 @@ export function createConversationPagedRestoreState(input: {
     loadOlder: load,
     /** Retry a failed read once per explicit send, never dispatch with unvalidated history. */
     async prepareContext(id: number, signal?: AbortSignal) {
+      const planned = planPlainHistoryForSend(id, signal);
+      if (planned) {
+        const plain = await planned;
+        if (plain) return plain;
+      }
       let retried = false;
       while (owners.has(id) && !signal?.aborted) {
         const owner = owners.get(id)!;
@@ -215,13 +216,7 @@ export function createConversationPagedRestoreState(input: {
         }
         if (
           owner.initialized &&
-          (owner.exhausted ||
-            session.messages.filter(
-              message =>
-                !message.incomplete &&
-                !message.failed &&
-                !message.historyUnavailable,
-            ).length >= 8)
+          (owner.exhausted || usableHistoryMessages(session.messages) >= 8)
         )
           return true;
         const previous = owner.cursor;

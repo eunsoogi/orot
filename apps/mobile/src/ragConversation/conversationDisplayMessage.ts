@@ -13,6 +13,8 @@ export interface DisplayMessage extends RagConversationMessage {
   readonly historyUnavailable?: true;
   readonly delivery?: import('./conversationMessageDelivery').ConversationMessageDelivery;
   readonly deliveryPending?: boolean;
+  /** Render-only quick-choice queue state; never a receipt or stored turn. */
+  readonly localChoicePending?: true;
   readonly steeringInstructions?: readonly import('../storage/conversationSteeringStorage').StoredSteeringInstruction[];
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly photoAttached?: boolean;

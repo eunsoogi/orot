@@ -1,3 +1,5 @@
+import type { CapturePeriodReads } from './conversationPeriodReadLease';
+import { ownsEvidenceRegistryReaders } from './evidenceRegistryReadOwner';
 import { stableEvidenceReference } from './stableEvidenceReference';
 import type { EvidenceSourceReadResult } from './evidenceSourceDocument';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -19,6 +21,7 @@ export async function captureEvidenceSources(
   prepared?: {
     readonly registry: LocalEvidenceReferenceRegistry;
     readonly results: ReadonlyMap<string, EvidenceSourceReadResult>;
+    readonly periodReads?: CapturePeriodReads;
   },
 ) {
   const mapping = new Map<string, EvidenceReference>();
@@ -39,7 +42,15 @@ export async function captureEvidenceSources(
       prepared?.registry === registry
         ? prepared.results.get(stableEvidenceReference(ref))
         : undefined;
-    const read = ready ?? (await registry.readSource(ref, signal));
+    // Typed period registrations may reuse only committed calculations within this capture.
+    // The registry still runs its live read/validate sequence and generation fences.
+    const read =
+      ready ??
+      (await (prepared?.registry === registry &&
+      prepared.periodReads &&
+      ownsEvidenceRegistryReaders(registry)
+        ? registry.readSource(ref, signal, prepared.periodReads)
+        : registry.readSource(ref, signal)));
     if (!original || read.status === 'missing' || read.status === 'changed')
       throw new RetainedSourceInvalidError(
         'The cited source changed before saving.',

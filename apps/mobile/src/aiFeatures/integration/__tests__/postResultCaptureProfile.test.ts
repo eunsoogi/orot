@@ -186,7 +186,7 @@ test.each([
   120000,
 );
 
-test('direct period readSource calls share warm reader cache but six scopes churn its five entries', async () => {
+test('direct capture keeps a warm hit and batches six period scopes beyond the shared cache', async () => {
   const f = await healthContextFixture();
   const signal = new AbortController().signal;
   try {
@@ -220,7 +220,8 @@ test('direct period readSource calls share warm reader cache but six scopes chur
       expect(
         (await captureConversationSources(refs, f.registry, signal)).sources,
       ).toHaveLength(6);
-      expect(observation.stats.aggregateSql).toBe(12);
+      // The same read-owned batch covers all six windows; no cross-capture sharing.
+      expect(observation.stats.aggregateSql).toBe(2);
       console.info('POST_RESULT_DIRECT', JSON.stringify(observation.stats));
       await f.repository.put('health_observation', {
         ...f.inside,

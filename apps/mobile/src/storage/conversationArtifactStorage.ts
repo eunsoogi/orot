@@ -2,6 +2,7 @@ import { withWritePeriodCalculations } from './writePeriodCalculationScope';
 import { registerConversationStrictReaders } from './conversationStrictReadOwner';
 import { appendConversationSourceRows } from './conversationArtifactSourceRows';
 import { enqueueStatementMemory } from './userStatementMemoryJobs';
+import { createPlainConversationContextReader } from './plainConversationContext';
 import { conversationTimelinePages } from './conversationTimelinePages';
 import { continuousConversationStorage } from './continuousConversationStorage';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
@@ -55,8 +56,13 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         throw error;
       }));
   const tools = createConversationToolEventStorage(database, ensure);
+  const listTimeline = conversationTimelinePages(database, ensure);
   const storage = {
-    listTimeline: conversationTimelinePages(database, ensure),
+    listTimeline,
+    readPlainContextPage: createPlainConversationContextReader(
+      database,
+      listTimeline,
+    ),
     continuousSession: continuousConversationStorage(database, ensure),
     readSteeringHistory: conversationSteeringHistory(database, ensure),
     openWorkflowContinuation: conversationWorkflowContinuationOpener(database),
