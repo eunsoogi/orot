@@ -11,7 +11,9 @@ function eligible(input: TaskResponderInput): boolean {
   return (
     isProactiveMemoryStatement(input.request) &&
     (!isObject(context) ||
-      ((!context.intent || context.intent === 'conversation') &&
+      ((!context.intent ||
+        context.intent === 'conversation' ||
+        context.authoredCurrentRequest === true) &&
         context.photoAttachment !== true))
   );
 }
