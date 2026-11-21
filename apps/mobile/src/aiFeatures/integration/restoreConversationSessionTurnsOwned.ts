@@ -1,3 +1,4 @@
+import type { ConversationTimelineSelection } from '../../ragConversation/conversationHistoryPage';
 import { createHistoryFenceDiagnostics } from './conversationHistoryFenceDiagnostics';
 import type { AiFeatureLocalData } from './localData';
 import type { createConversationArtifactDiscovery } from './conversationArtifactDiscovery';
@@ -29,7 +30,7 @@ export async function restoreConversationSessionTurnsOwned(
   openStorage: ReturnType<typeof createConversationSessionStorage>,
   sessionId: string,
   signal: AbortSignal,
-  selection: { ids: readonly string[]; version: number } | undefined,
+  selection: ConversationTimelineSelection | undefined,
   data: AiFeatureLocalData,
   discovery: ReturnType<typeof createConversationArtifactDiscovery>,
 ) {
@@ -101,7 +102,6 @@ export async function restoreConversationSessionTurnsOwned(
     [sessionId, version, turns, signal],
     () => [sessionId, version, selection?.ids],
   );
-  // Content and tool events must not outlive a session deletion or source change during restoration.
   if (
     !(await fences.sessionBefore()) ||
     fingerprint(await fences.toolsBefore()) !== fingerprint(savedToolSnapshot)
@@ -190,7 +190,8 @@ export async function restoreConversationSessionTurnsOwned(
           toolTurns.find(turn => turn.messageId === request.id)?.toolEvents ??
           [],
       });
-  // Visit restoration performs additional reads; recheck the session after those reads too.
+  // Keep hydrated content private until admitted; then recheck visit/source reads.
+  if (selection?.awaitFinalValidation) await selection.awaitFinalValidation();
   if (
     signal.aborted ||
     !(await fences.sessionAfter()) ||

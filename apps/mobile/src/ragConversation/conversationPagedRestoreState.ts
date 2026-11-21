@@ -4,10 +4,12 @@ import type {
 } from './conversationSessionTypes';
 import type {
   ConversationHistoryReaderOwner,
+  ConversationInitialPageAdmission,
   ReadConversationHistoryPage,
 } from './conversationHistoryPage';
 import { conversationRestoredMessages } from './conversationRestoredMessages';
 import { getRagConversationCopy } from './copy';
+import { preparePagedConversationContext } from './preparePagedConversationContext';
 import { t } from '../i18n';
 /** Each page keeps the lease and owner fence; failed pages never advance the cursor. */
 export function createConversationPagedRestoreState(input: {
@@ -58,6 +60,9 @@ export function createConversationPagedRestoreState(input: {
         // Detach stopped SQL immediately; its late result cannot own a fresh retry.
         owner.controller = undefined;
         owner.flight = undefined;
+        // A strict retry follows a new selection check and must not borrow the
+        // abandoned flight's old tab or credential permit.
+        owner.initialAdmission = undefined;
         input.update(id, {
           restoring: false,
           historyLoading: false,
@@ -78,11 +83,18 @@ export function createConversationPagedRestoreState(input: {
     if (!current()) return Promise.resolve();
     const flight = (async () => {
       try {
-        const page = await input.read(
-          owner.durableId,
-          controller.signal,
-          owner.cursor,
-        );
+        const admission = initial ? owner.initialAdmission : undefined;
+        const page = admission
+          ? await input.read(
+              owner.durableId,
+              controller.signal,
+              undefined,
+              admission,
+            )
+          : await input.read(owner.durableId, controller.signal, owner.cursor);
+        // Readers without the protected validation seam must stay strict.
+        if (admission && !page.assertAdmissionCurrent)
+          throw new Error('Conversation restoration was cancelled.');
         if (!current()) return;
         const receipts = await Promise.all(
           page.turns.map(turn =>
@@ -100,6 +112,9 @@ export function createConversationPagedRestoreState(input: {
         );
         const session = input.find(id);
         if (!current() || !session) return;
+        // Steering is the last asynchronous step; a reclosed permit cannot
+        // publish into the raw store or advance the cursor.
+        page.assertAdmissionCurrent?.();
         const existing = initial ? [] : session.messages;
         const ids = new Set(
           existing.flatMap(message =>
@@ -124,6 +139,7 @@ export function createConversationPagedRestoreState(input: {
         owner.cursor = page.nextCursor ?? undefined;
         owner.exhausted = page.nextCursor === null;
         owner.initialized = true;
+        owner.initialAdmission = undefined;
         input.update(id, {
           messages,
           taskCards: [...cards, ...existingCards],
@@ -168,6 +184,8 @@ export function createConversationPagedRestoreState(input: {
         if (owners.get(id) === owner && owner.controller === controller) {
           owner.controller = undefined;
           owner.flight = undefined;
+          // The permit belonged to this exact flight, including failure paths.
+          if (initial) owner.initialAdmission = undefined;
           input.update(id, { restoring: false, historyLoading: false });
         }
       }
@@ -176,10 +194,16 @@ export function createConversationPagedRestoreState(input: {
     return flight;
   };
   return {
-    async start(id: number, durableId: string, signal?: AbortSignal) {
+    async start(
+      id: number,
+      durableId: string,
+      signal?: AbortSignal,
+      initialAdmission?: ConversationInitialPageAdmission,
+    ) {
       forget(id);
       owners.set(id, {
         durableId,
+        initialAdmission,
         initialized: false,
         exhausted: false,
         nextId: 0,
@@ -199,49 +223,7 @@ export function createConversationPagedRestoreState(input: {
       load(id, signal, durableId),
     retry: load,
     loadOlder: load,
-    /** Retry a failed read once per explicit send, never dispatch with unvalidated history. */
-    async prepareContext(id: number, signal?: AbortSignal) {
-      let retried = false;
-      while (owners.has(id) && !signal?.aborted) {
-        const owner = owners.get(id)!;
-        const session = input.find(id);
-        if (!session || session.quarantined) return false;
-        if (session.restoreFailed || session.historyLoadFailed) {
-          if (retried) return false;
-          retried = true;
-          await load(id, signal);
-          if (owners.get(id) !== owner) return false;
-          continue;
-        }
-        if (
-          owner.initialized &&
-          (owner.exhausted ||
-            session.messages.filter(
-              message =>
-                !message.incomplete &&
-                !message.failed &&
-                !message.historyUnavailable,
-            ).length >= 8)
-        )
-          return true;
-        const previous = owner.cursor;
-        await load(id, signal);
-        if (signal?.aborted || owners.get(id) !== owner) return false;
-        if (
-          owner.cursor === previous &&
-          !owner.exhausted &&
-          !input.find(id)?.restoreFailed &&
-          !input.find(id)?.historyLoadFailed
-        )
-          return false;
-      }
-      const session = input.find(id);
-      return (
-        !signal?.aborted &&
-        !session?.restoreFailed &&
-        !session?.leaseRefreshRequired
-      );
-    },
+    prepareContext: preparePagedConversationContext(owners, input.find, load),
     forget,
     dispose() {
       for (const id of owners.keys()) forget(id);

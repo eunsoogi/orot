@@ -1,3 +1,4 @@
+import { createConversationInitialPageAdmission } from '../conversationInitialPageAdmission';
 import { createConversationPagedRestoreState } from '../conversationPagedRestoreState';
 import { createEmptyConversation } from '../conversationEmptySession';
 import type {
@@ -18,10 +19,16 @@ const cursor = {
   kind: 'turn' as const,
   version: 0,
 };
-function setup(read: ReadConversationHistoryPage) {
+function setup(
+  read: ReadConversationHistoryPage,
+  readSteering?: Parameters<
+    typeof createConversationPagedRestoreState
+  >[0]['readSteering'],
+) {
   let session = createEmptyConversation(1);
   const state = createConversationPagedRestoreState({
     read,
+    readSteering,
     find: () => session,
     update: (_id, change) => {
       session = { ...session, ...change };
@@ -198,4 +205,46 @@ test('health deletion fences an in-flight older page while keeping a retryable c
   expect(f.get().historyLoadFailed).toBe(true);
   await f.state.loadOlder(1);
   expect(read.mock.calls[2]?.[2]).toBe(cursor);
+});
+
+test('reclosing admission during steering keeps the old page out of the raw store', async () => {
+  type Receipts = NonNullable<
+    Parameters<typeof createConversationPagedRestoreState>[0]['readSteering']
+  >;
+  let entered!: () => void;
+  const atSteering = new Promise<void>(resolve => {
+    entered = resolve;
+  });
+  let finish!: (value: Awaited<ReturnType<Receipts>>) => void;
+  const gate = createConversationInitialPageAdmission();
+  let reads = 0;
+  const f = setup(
+    async (_id, signal, _cursor, admission) => ({
+      turns: [turn(++reads === 1 ? 'private' : 'retry')],
+      taskCards: [],
+      nextCursor: null,
+      assertAdmissionCurrent: await admission?.wait(signal),
+    }),
+    () => {
+      if (reads > 1) return Promise.resolve([]);
+      entered();
+      return new Promise(resolve => {
+        finish = resolve;
+      });
+    },
+  );
+  const read = f.state.start(1, 'durable', undefined, gate);
+  await atSteering;
+  expect(f.get().messages).toEqual([]);
+  const release = gate.hold();
+  release();
+  finish([]);
+  await read;
+  expect(f.get().messages).toEqual([]);
+  expect(f.get().restoreFailed).toBe(true);
+  await f.state.retry(1);
+  expect(f.get().messages.map(message => message.content)).toContain(
+    'answer retry',
+  );
+  expect(f.get().restoreFailed).toBe(false);
 });

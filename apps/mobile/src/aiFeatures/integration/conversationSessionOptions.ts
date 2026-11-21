@@ -22,7 +22,11 @@ export function createConversationSessionOptions(
   return {
     ...photo,
     restoreSessionPage: conversationHistoryPageOption(input, openStorage),
-    ...continuousSessionOption(input.selectedAi, openStorage),
+    ...continuousSessionOption(
+      input.selectedAi,
+      openStorage,
+      input.captureSelectionWitness,
+    ),
     restoreSteering: restoreConversationSteering(openStorage),
     coldResume: input.coldResume,
     execution: conversationExecutionNative() ?? undefined,

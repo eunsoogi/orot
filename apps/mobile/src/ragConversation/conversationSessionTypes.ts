@@ -23,6 +23,8 @@ export interface ConversationSessionOptions {
     version: number;
     updatedAt: string;
     model: { providerId: string; modelId: string };
+    /** Optional live witness; absence never proves authority across tab return. */
+    selectionCurrent?: () => boolean;
   }>;
   readonly restoreSteering?: (
     sessionId: string,

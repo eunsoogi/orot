@@ -85,9 +85,8 @@ export function createConversationSessions(
     update,
   });
   const attachExisting = createConversationSessionAttachment({
-    retention: options.retention,
+    options,
     restoration,
-    canRestore: Boolean(options.restoreSession),
     empty,
     snapshot: () => snapshot,
     apply,
@@ -185,12 +184,13 @@ export function createConversationSessions(
       if (!disposed) requests.cancel(id);
     },
     retrySave,
-    refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
+    refreshAfterSourceDeletion(event: SourceDeletionEvent, defer?: number) {
       if (disposed) return;
       const retryIds = invalidateTasks(snapshot, taskState, taskRefresh);
       refreshConversationSources({
         snapshot,
         event,
+        deferReloadId: defer,
         options,
         requests,
         restoration,

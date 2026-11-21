@@ -1,47 +1,22 @@
+import { createConversationRootRestoreOwnership } from './conversationRootRestoreOwnership';
+import { isProtectedConversationHistoryPage } from './conversationHistoryPage';
+import {
+  activeRestoringConversation,
+  conversationSelectionReady,
+  type ContinuousConversationStore,
+} from './conversationSelectionReady';
+import type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 import type {
   ConversationSession,
   ConversationSessionOptions,
-  ConversationSnapshot,
   ConversationSender,
 } from './conversationSessionTypes';
 
-type Store = {
-  getSnapshot(): ConversationSnapshot;
-  toolSourceSessionId(id: number): string | null;
-  attachExisting(
-    id: string,
-    version: number,
-    updatedAt: string,
-    select?: boolean,
-    current?: () => boolean,
-    signal?: AbortSignal,
-  ): Promise<number>;
-  refreshLease(
-    id: number,
-    lease: { id: string; version: number },
-    current: () => boolean,
-    signal: AbortSignal,
-  ): Promise<void>;
-  select(id: number): void;
-  cancel(id: number): void;
-  create(): void;
-  dispose(): void;
-  invalidateAll(): void;
-  retryInitialRestore(
-    id: number,
-    durableId: string,
-    signal: AbortSignal,
-  ): Promise<void>;
-  send(id: number, sender: ConversationSender): Promise<void>;
-  sendPrompt(
-    id: number,
-    prompt: string,
-    sender: ConversationSender,
-  ): Promise<void>;
-};
 /** App-level policy, not a new transcript store. Existing restore/retention fences remain authoritative.
  * A selection failure blocks dispatch instead of starting an apparently empty conversation. */
-export function continuousConversationPolicy<T extends Store>(
+export function continuousConversationPolicy<
+  T extends ContinuousConversationStore,
+>(
   store: T,
   options: ConversationSessionOptions,
   update: (id: number, change: Partial<ConversationSession>) => void,
@@ -59,27 +34,37 @@ export function continuousConversationPolicy<T extends Store>(
       }
     | undefined;
   const enabled = Boolean(options.continuousSession);
+  const rootRestore = createConversationRootRestoreOwnership();
+  const activeRestoration = () =>
+    activeRestoringConversation(store.getSnapshot(), options.retention);
+  const abandonInitial = (recover = false) => {
+    const target = rootRestore.target;
+    if (!target) return undefined;
+    const id = store.getSnapshot().activeId;
+    const active = recover ? activeRestoration() : undefined;
+    interrupted = active && model ? { ...active, model } : undefined;
+    rootRestore.clear();
+    ++epoch;
+    controller?.abort();
+    pending = undefined;
+    update(id, { modelSelectionPending: false });
+    return store.toolSourceSessionId(id) === target.id ? id : undefined;
+  };
   const synchronizeModel = (
     refresh = false,
     recovery?: 'restart-interrupted-initial-page',
   ): Promise<void> => {
     if (!enabled || disposed) return Promise.resolve();
     if (pending && !refresh) return pending;
-    const snapshot = store.getSnapshot();
+    const resume = refresh && recovery && resumeRootRestore();
+    if (resume) return resume;
     const reopenInterruptedPage =
       recovery === 'restart-interrupted-initial-page';
     if (refresh && reopenInterruptedPage) {
-      const active = snapshot.sessions.find(
-        session => session.id === snapshot.activeId,
-      );
-      const lease = options.retention?.activeLease(snapshot.activeId);
-      if (pending && active?.restoring && !active.quarantined && lease && model)
-        interrupted = {
-          sessionId: active.id,
-          lease: { ...lease },
-          model: { ...model },
-        };
+      const active = activeRestoration();
+      if (pending && active && model) interrupted = { ...active, model };
     } else if (refresh) interrupted = undefined;
+    rootRestore.clear();
     controller?.abort();
     const signal = (controller = new AbortController()).signal;
     const version = ++epoch;
@@ -136,14 +121,24 @@ export function continuousConversationPolicy<T extends Store>(
         interrupted = undefined;
         // The old request keeps its own identity and late-event fences; it cannot migrate providers.
         store.cancel(activeId);
-        await store.attachExisting(
-          target.id,
-          target.version,
-          target.updatedAt,
-          true,
-          current,
-          signal,
-        );
+        const initial = isProtectedConversationHistoryPage(
+          options.restoreSessionPage,
+        )
+          ? rootRestore.start(target, signal)
+          : undefined;
+        try {
+          await store.attachExisting(
+            target.id,
+            target.version,
+            target.updatedAt,
+            true,
+            initial ? () => current() && initial.selectionCurrent() : current,
+            signal,
+            initial?.admission,
+          );
+        } finally {
+          initial?.finish();
+        }
         if (current())
           update(activeId, {
             modelSelectionPending: false,
@@ -166,46 +161,57 @@ export function continuousConversationPolicy<T extends Store>(
       .catch(() => {});
     return work;
   };
-  const ready = async (id: number, signal?: AbortSignal) => {
-    if (signal?.aborted) return false;
-    if (!enabled) return true;
-    const work = synchronizeModel();
-    const expected = controller;
-    const cancel = () => {
-      if (controller !== expected) return;
+  const restartInitial = () =>
+    synchronizeModel(true, 'restart-interrupted-initial-page');
+  const resumeRootRestore = () =>
+    rootRestore.reconcile({
+      resolve: options.continuousSession!,
+      attached: ({ id, version }) => {
+        const active = activeRestoration();
+        return active?.lease.id === id && active.lease.version === version;
+      },
+      restart: restartInitial,
+    });
+  const ready = conversationSelectionReady({
+    enabled,
+    snapshot: store.getSnapshot,
+    synchronize: synchronizeModel,
+    controller: () => controller,
+    disposed: () => disposed,
+    cancel() {
+      rootRestore.clear();
       ++epoch;
-      expected?.abort();
+      controller?.abort();
       pending = undefined;
       update(store.getSnapshot().activeId, { modelSelectionPending: false });
-    };
-    signal?.addEventListener('abort', cancel, { once: true });
-    if (signal?.aborted) cancel();
-    try {
-      await work;
-    } finally {
-      signal?.removeEventListener('abort', cancel);
-    }
-    if (
-      signal?.aborted ||
-      disposed ||
-      expected !== controller ||
-      expected?.signal.aborted
-    )
-      return false;
-    const snapshot = store.getSnapshot();
-    const session = snapshot.sessions.find(item => item.id === id);
-    return (
-      snapshot.activeId === id &&
-      Boolean(session) &&
-      !session?.quarantined &&
-      !session?.modelSelectionPending &&
-      !session?.modelSelectionFailed
-    );
-  };
+    },
+  });
   return {
     ...store,
     continuous: enabled,
     synchronizeModel,
+    setRootConversationVisible(visible: boolean) {
+      rootRestore.setVisible(visible);
+      // A leave and return can land in one React batch without a scene effect.
+      if (visible)
+        void (
+          resumeRootRestore() ??
+          (interrupted && !pending ? restartInitial() : undefined)
+        )?.catch(() => {});
+    },
+    cancel(id: number) {
+      if (store.getSnapshot().activeId === id) abandonInitial();
+      store.cancel(id);
+    },
+    remove(id: number) {
+      if (store.getSnapshot().activeId === id) abandonInitial();
+      return store.remove(id);
+    },
+    refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
+      const deferReloadId = abandonInitial(true);
+      store.refreshAfterSourceDeletion(event, deferReloadId);
+      if (interrupted && rootRestore.visible) void restartInitial();
+    },
     // Route intent may update the current conversation, but cannot create a parallel chat.
     create: () => {
       if (!enabled) store.create();
@@ -222,6 +228,7 @@ export function continuousConversationPolicy<T extends Store>(
             });
     },
     invalidateAll() {
+      rootRestore.clear();
       interrupted = undefined;
       ++epoch;
       controller?.abort();
@@ -229,6 +236,7 @@ export function continuousConversationPolicy<T extends Store>(
       store.invalidateAll();
     },
     dispose() {
+      rootRestore.clear();
       interrupted = undefined;
       disposed = true;
       ++epoch;

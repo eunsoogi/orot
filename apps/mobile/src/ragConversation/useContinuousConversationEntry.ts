@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type {
   ConversationSession,
   ConversationSessions,
@@ -14,11 +14,17 @@ export function useContinuousConversationEntry(
   revision: number | undefined,
   current: boolean,
 ) {
+  const selection = useRef({ revision, changed: false });
   useEffect(() => {
-    if (current)
-      store
-        .synchronizeModel(true, 'restart-interrupted-initial-page')
-        .catch(() => {});
+    if (selection.current.revision !== revision)
+      selection.current = { revision, changed: true };
+    if (!current) return;
+    // An explicit provider edit is a strict selection change, not a route return.
+    const routeReturn = selection.current.changed
+      ? undefined
+      : 'restart-interrupted-initial-page';
+    selection.current.changed = false;
+    store.synchronizeModel(true, routeReturn).catch(() => {});
   }, [store, revision, current]);
   useConversationEntryIntent(
     store,

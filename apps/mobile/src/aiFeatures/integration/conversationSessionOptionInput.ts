@@ -10,6 +10,8 @@ export interface ConversationSessionOptionInput {
   readonly loadLocalData: () => Promise<AiFeatureLocalData>;
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly selectedAi?: () => Promise<ReturnType<typeof requireSelectedAi>>;
+  readonly captureSelectionWitness?: () =>
+    ((providerId: string) => (() => boolean) | null) | undefined;
   readonly restoreHealthSummary?: (
     reference: import('../../ragConversation/healthSummary').HealthSummaryReference,
   ) => Promise<
