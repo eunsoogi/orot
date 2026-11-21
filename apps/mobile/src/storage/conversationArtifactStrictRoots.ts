@@ -11,6 +11,8 @@ import {
   decodeConversationArtifact,
   type ConversationArtifact,
 } from './conversationArtifactCodec';
+import { createBoundParentDecode } from './boundParentDecode';
+import { createBoundParentDigest } from './boundParentDigest';
 import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 
 /** Preserve every original strict root and source validation in its existing transaction. */
@@ -29,6 +31,7 @@ export function createConversationStrictRoots(
       raw?: string,
       value?: ConversationArtifact,
     ) => ConversationArtifact | undefined,
+    boundReaderCurrent?: () => boolean,
   ): Promise<(ConversationArtifact | null)[]> => {
     const diagnostic = createConversationReadDiagnostics(
       Boolean(operation?.active && operation.profileHistoryValidation),
@@ -46,6 +49,24 @@ export function createConversationStrictRoots(
         // Source validation may record non-destructive quarantine audit state.
         // Only identical period calculations, never that policy authority, are shared.
         const validatePeriod = createReadOnlyPeriodValidation(tx, calculate);
+        // Reuse only pure computation inside this private exact bound operation.
+        const parentDigest =
+          recordRootBytes && boundReaderCurrent && operation?.active
+            ? createBoundParentDigest(
+                () => operation.active && boundReaderCurrent(),
+              )
+            : undefined;
+        // This memo cannot expose a decoded nested row to an ancestry collector.
+        const parentDecode =
+          !collectValidated && parentDigest && boundReaderCurrent && operation
+            ? createBoundParentDecode(
+                () => operation.active && boundReaderCurrent(),
+              )
+            : undefined;
+        const repeatedRoot =
+          recordRootBytes &&
+          boundReaderCurrent &&
+          ids.some((id, index) => ids[index - 1] === id);
         if (lease) {
           diagnostic.start('artifact_session_lease');
           const { rows } = await tx.execute(
@@ -55,6 +76,11 @@ export function createConversationStrictRoots(
           diagnostic.finish();
           if (!rows.length) throw new Error('Conversation is unavailable.');
         }
+        // Only the private bound reader may hand back shared decoded objects.
+        // Keep one successful adjacent decode, never a freshness verdict. All
+        // returned row fields and recursive authorities are checked on every visit.
+        let prior:
+          { id: string; raw: string; value: ConversationArtifact } | undefined;
         for (const id of ids) {
           diagnostic.start('artifact_root_row');
           const row = await tx.execute(
@@ -64,12 +90,24 @@ export function createConversationStrictRoots(
           diagnostic.finish();
           // Decode and witness the exact same immutable string, even if an adapter reuses its result object.
           const raw = row.rows[0]?.result_json;
+          const reuse = Boolean(
+            !lease &&
+            !collectValidated &&
+            repeatedRoot &&
+            boundReaderCurrent?.(),
+          );
+          const cached =
+            reuse && prior?.id === id && prior.raw === raw
+              ? prior.value
+              : undefined;
+          prior = undefined;
           const value =
-            operation?.active && operation.profileHistoryValidation
+            cached ??
+            (operation?.active && operation.profileHistoryValidation
               ? measureHistoryValidationCost('artifact_root_decode', () =>
                   decodeConversationArtifact(raw),
                 )
-              : decodeConversationArtifact(raw);
+              : decodeConversationArtifact(raw));
           if (
             !value ||
             value.id !== row.rows[0]?.id ||
@@ -91,12 +129,15 @@ export function createConversationStrictRoots(
               collectValidated,
               operation?.active && operation.profileHistoryValidation,
               !lease && operation?.active ? canBatchOrdinary : undefined,
+              parentDigest,
+              parentDecode,
             );
             const witnessed = recordRootBytes?.(
               typeof raw === 'string' ? raw : undefined,
               value,
             );
             output.push(witnessed ?? value);
+            if (reuse && typeof raw === 'string') prior = { id, raw, value };
           } catch (error) {
             // Only proven invalid lineage is unavailable; operational failures remain retryable.
             if (!(error instanceof RetainedSourceInvalidError)) throw error;
