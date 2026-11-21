@@ -1,4 +1,9 @@
 import {
+  adoptContinuedConversationLease,
+  observeContinuedConversationActivity,
+  revokeContinuedConversationWork,
+} from './conversationContinuedWork';
+import {
   requestOwnedConversationPause,
   clearDrainedConversationPause,
   registerConversationPause,
@@ -76,7 +81,7 @@ export function createConversationRequestLifetime(input: {
         entry.status
       )
         release();
-      else entry.release = release;
+      else adoptContinuedConversationLease(entry, release, input.execution);
     }
   }
   return {
@@ -126,6 +131,7 @@ export function createConversationRequestLifetime(input: {
           entry.resumableApproval = waiting;
           if (waiting) {
             entry.waitingForDecision = true;
+            revokeContinuedConversationWork(entry, input.execution);
             requiresConversationDecisionAbort(entry, input.execution);
           } else entry.waitingForDecision = false;
         },
@@ -163,16 +169,7 @@ export function createConversationRequestLifetime(input: {
             controller.signal.aborted
           )
             return;
-          entry.waitingForDecision = state === 'decision';
-          input.execution?.work?.(entry.executionId, state === 'working');
-          if (
-            state === 'decision' &&
-            requiresConversationDecisionAbort(entry, input.execution) &&
-            input.execution?.currentPhase?.() === 'background'
-          ) {
-            entry.interruptionReason = 'decision-required';
-            input.interrupt(entry.id);
-          }
+          observeContinuedConversationActivity(entry, state, input);
         },
       };
     },

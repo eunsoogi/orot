@@ -162,11 +162,13 @@ export async function beginConversationExecutionLease(
   } catch {
     notify('lease-check-failed');
   }
-  return () => {
+  const release = () => {
     if (closed) return;
     closed = true;
     diagnose('release');
     unsubscribe();
     if (acquired) adapter.end(requestId);
   };
+  // Cleanup also exists for interrupted or denied acquisitions.
+  return Object.assign(release, { admitted: acquired && !interrupted });
 }

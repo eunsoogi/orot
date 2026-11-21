@@ -106,7 +106,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
         resolve(true)
     }
 
-    /// Called only when an authorized remote provider is dispatched, never while waiting for approval.
+    /// Admit durably owned foreground work; provider authorization remains independent.
     @objc(work:active:)
     func work(_ requestId: String, active: Bool) {
         guard requests.contains(requestId) else { return }
@@ -117,8 +117,8 @@ final class ConversationExecutionModule: RCTEventEmitter {
             return
         }
         guard continued[requestId] == nil, UIApplication.shared.isProtectedDataAvailable else { return }
-        // A dispatch outside the foreground cannot submit a continued task. Do not
-        // cache that non-attempt: a later authorized foreground dispatch may try.
+        // Work outside the foreground cannot submit a continued task. Do not
+        // cache that non-attempt: a later eligible foreground stage may try.
         // Actual scheduler refusals remain cached, so they are never retried here.
         guard UIApplication.shared.applicationState == .active else {
             publish(["kind": "continued", "state": "continued-refused", "requestId": requestId])
