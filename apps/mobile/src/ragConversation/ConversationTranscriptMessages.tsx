@@ -1,3 +1,4 @@
+import { GeneratedReportBookmark } from './GeneratedReportBookmark';
 import { ConversationVoiceEndMarker } from './ConversationVoiceEndMarker';
 import { conversationVoiceEndPlacement } from './conversationVoiceEndPlacement';
 import { ConversationActivityBubble } from './ConversationActivityBubble';
@@ -84,6 +85,7 @@ export function ConversationTranscriptMessages({
         }
       />
       <ConversationMessage message={message} {...messageProps} />
+      <GeneratedReportBookmark message={message} />
       {message.role === 'user' ? (
         <ConversationMessageReceipt
           delivery={message.delivery}
