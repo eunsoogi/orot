@@ -4,8 +4,7 @@ import { hasUncommittedTurn } from './hasUncommittedTurn';
 import { createConversationSteeringOwner } from './conversationSteeringOwner';
 import { createConversationColdRequest } from './conversationColdRequest';
 import { getRagConversationFailureCopy } from './copy';
-import { createConversationTurnActivity } from './conversationTurnActivity';
-import type { ConversationTurnActivity } from './conversationTurnActivity';
+import * as turnActivity from './conversationTurnActivity';
 import type { ConversationActivityTracker } from './conversationActivity';
 import {
   activityNotifier,
@@ -59,7 +58,7 @@ export function createConversationSessionRequests(
   const controllers = new Map<number, AbortController>();
   const pendingTurns = new Map<number, PendingTurn>();
   const snapshots = new Map<number, ConversationActivityTracker>();
-  const activities = new Map<number, ConversationTurnActivity>();
+  const activities = new Map<number, turnActivity.ConversationTurnActivity>();
   const lifetime = createConversationRequestLifetime({
     execution,
     pauseState: (id, continueWorkflow) => update(id, { continueWorkflow }),
@@ -88,6 +87,7 @@ export function createConversationSessionRequests(
     cancel,
     steer: steering.submit,
     clearSteering: steering.clear,
+    reserveUserMessageId: () => ++messageId,
     discardOpenings: saveRecovery.discardOpenings,
     ...createConversationRequestDisposal(ownership),
     async send(
@@ -118,7 +118,7 @@ export function createConversationSessionRequests(
       update(id, { ...change, requestActivity: snapshot.getSnapshot() });
       const current = () =>
         controllers.get(id) === controller && !controller.signal.aborted;
-      let activity: ConversationTurnActivity | undefined;
+      let activity: turnActivity.ConversationTurnActivity | undefined;
       let retained:
         ReturnType<typeof createConversationTurnRetention> | undefined;
       let preview:
@@ -149,7 +149,7 @@ export function createConversationSessionRequests(
           update,
           error: copy.previewSaveFailed,
         });
-        activity = createConversationTurnActivity({
+        activity = turnActivity.createConversationTurnActivity({
           id,
           userMessageId,
           responseId,

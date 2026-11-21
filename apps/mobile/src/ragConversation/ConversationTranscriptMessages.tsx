@@ -88,6 +88,7 @@ export function ConversationTranscriptMessages({
         <ConversationMessageReceipt
           delivery={message.delivery}
           pending={message.deliveryPending}
+          localChoicePending={message.localChoicePending}
         />
       ) : null}
     </ReplyMessageContainer>

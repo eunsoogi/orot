@@ -3,6 +3,7 @@ import {
   type PlainHistoryPlan,
 } from './plainConversationSendContext';
 import { markConversationInput } from '../providers/conversationInputDiagnostic';
+import { reserveQuickChoice } from './conversationQuickChoicePreview';
 import { t } from '../i18n';
 import { startOwnedConversationRequest } from './conversationOwnedRequest';
 import type { createConversationSessionRequests } from './conversationSessionRequests';
@@ -34,13 +35,18 @@ export function conversationDispatch(input: {
     if (!controller) return;
     preparing.delete(id);
     controller.abort();
-    if (!preparing.has(id)) input.update(id, { preparingSend: false });
+    if (!preparing.has(id))
+      input.update(id, {
+        preparingSend: false,
+        preparingQuickChoice: undefined,
+      });
   };
   const send = async (
     id: number,
     sender: ConversationSender,
     prompt?: string,
     registerOwner?: (cancel: () => boolean) => void,
+    quickChoice = false,
   ) => {
     const session = input.find(id);
     if (
@@ -83,7 +89,15 @@ export function conversationDispatch(input: {
     controller.signal.addEventListener('abort', release, { once: true });
     let dispatched = false;
     try {
-      input.update(id, { preparingSend: true, error: '' });
+      // The preview is the user's own accepted prompt, with no delivery claim.
+      input.update(id, {
+        preparingSend: true,
+        error: '',
+        preparingQuickChoice:
+          quickChoice && current()
+            ? reserveQuickChoice(prompt, input.requests.reserveUserMessageId)
+            : undefined,
+      });
       markConversationInput('conversation_send_preparing');
       if (!current()) return;
       const ready = await Promise.race([
@@ -110,7 +124,10 @@ export function conversationDispatch(input: {
       );
       if (preparing.get(id) === controller) {
         preparing.delete(id);
-        input.update(id, { preparingSend: false });
+        input.update(id, {
+          preparingSend: false,
+          preparingQuickChoice: undefined,
+        });
       }
       await sending;
     } catch (error) {
@@ -128,7 +145,10 @@ export function conversationDispatch(input: {
       controller.signal.removeEventListener('abort', release);
       if (preparing.get(id) === controller) {
         preparing.delete(id);
-        input.update(id, { preparingSend: false });
+        input.update(id, {
+          preparingSend: false,
+          preparingQuickChoice: undefined,
+        });
       }
     }
   };
@@ -140,6 +160,8 @@ export function conversationDispatch(input: {
     send: (id: number, sender: ConversationSender) => send(id, sender),
     sendPrompt: (id: number, prompt: string, sender: ConversationSender) =>
       send(id, sender, prompt),
+    sendQuickPrompt: (id: number, prompt: string, sender: ConversationSender) =>
+      send(id, sender, prompt, undefined, true),
     sendOwnedPrompt: (id: number, prompt: string, sender: ConversationSender) =>
       startOwnedConversationRequest({
         retention: input.disposed() ? undefined : input.retention,
