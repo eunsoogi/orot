@@ -24,6 +24,7 @@ import type { AiFeatureFlowScreenProps } from './AiFeatureFlowScreenTypes';
 /** Renders one stack destination while the parent keeps source/provider overlays mounted above it. */
 export function AiFeatureFlowScreen({
   isEntryCurrent,
+  ownsConversationPresentation,
   onRestoreSummary,
   route,
   navigationRouteKey,
@@ -63,6 +64,7 @@ export function AiFeatureFlowScreen({
   const conversationScreen = (
     <ConversationScreen
       isEntryCurrent={isEntryCurrent}
+      ownsConversationPresentation={ownsConversationPresentation}
       entryContext={{
         intent: intent ?? 'conversation',
         entryKey: navigationRouteKey ?? route,
