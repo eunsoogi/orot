@@ -2,7 +2,7 @@
 import { calendarFixture } from './dailyReportCalendarTestFixture';
 import { createRecordRepository } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
-import { createCredentialMutationOwner } from '../../../agent/execution/credentialMutation';
+import { dailyReportAtomicSaveConsent } from './dailyReportAtomicSaveConsent';
 import { createDailyReportCalendarWindow } from '../../../healthEvidence/healthContext/dailyReportWindow';
 import { readDailyReportSnapshot } from '../../../healthEvidence/healthContext/dailyReportSnapshot';
 import { createDailyReportStorage } from '../../../storage/dailyReportStorage';
@@ -30,6 +30,8 @@ type Scenario =
   | 'competing head'
   | 'stop'
   | 'read error'
+  | 'remote equivalent'
+  | `remote revoke during ${'local proof' | 'atomic save'}`
   | 'remote'
   | 'refused'
   | 'unchanged calendar'
@@ -49,20 +51,18 @@ export async function runAtomicSaveRace(scenario: Scenario) {
   const controller = new AbortController();
   const native = scenario.includes('calendar') ? calendarFixture() : undefined;
   const listEvents = native && jest.spyOn(native.bridge, 'listEventsInRange');
-  const remote = scenario === 'remote' || scenario === 'refused';
+  const remote = scenario.startsWith('remote') || scenario === 'refused';
   const hasPrior = [
     'repeated drift',
     'competing head',
     'head during reproof',
   ].includes(scenario);
   const store = createDailyReportStorage(connection.database, native?.read);
-  const auth = jest.fn(async (): Promise<'authorized' | 'renewal_required'> =>
-    scenario === 'refused' ? 'renewal_required' : 'authorized',
-  );
-  const selection = createCredentialMutationOwner();
-  const initialWitness = selection.capture();
-  if (!initialWitness) throw new Error('Missing synthetic selection witness.');
-  const switchSelection = () => selection.begin()();
+  const { auth, live, selectionWitness, switchSelection } =
+    dailyReportAtomicSaveConsent(
+      scenario === 'refused',
+      scenario.startsWith('remote '),
+    );
   const baseRecovery = recovery.createDailyReportRecoveryBridge;
   const pendingStages = jest.fn();
   const restore = jest
@@ -154,6 +154,7 @@ export async function runAtomicSaveRace(scenario: Scenario) {
         case 'calendar drift':
           native!.change();
           break;
+        case 'remote revoke during local proof':
         case 'selection during reproof':
           switchSelection();
           break;
@@ -184,8 +185,8 @@ export async function runAtomicSaveRace(scenario: Scenario) {
         if (attempt === 2 && scenario === 'second save error')
           throw new Error('Synthetic local save failure.');
       },
-      didWrite: attempt => {
-        if (attempt === 2 && scenario === 'selection during save')
+      didWrite: n => {
+        if (n === 2 && /during (atomic )?save$/.test(scenario))
           switchSelection();
       },
       didCommit: attempt => {
@@ -210,9 +211,8 @@ export async function runAtomicSaveRace(scenario: Scenario) {
       remote,
       auth,
       native,
-      scenario === 'no selection witness'
-        ? undefined
-        : { isCurrent: initialWitness, subscribe: selection.subscribe },
+      scenario === 'no selection witness' ? undefined : selectionWitness,
+      live,
     )({
       ...reportRequest(controller.signal),
       ...(hasPrior

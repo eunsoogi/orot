@@ -1,3 +1,4 @@
+import type { ExecutionConsentPort } from '@orot/agent-runtime';
 import type { SqlDatabase } from '@orot/storage';
 import { createDailyReportService } from '../dailyReportService';
 import type { OnDeviceSelectionWitness } from '../provider';
@@ -16,6 +17,7 @@ export function atomicReportService(
   authorize: () => Promise<'authorized' | 'renewal_required'>,
   calendar?: ReturnType<typeof calendarFixture>,
   witness?: OnDeviceSelectionWitness,
+  liveConsent?: Omit<ExecutionConsentPort, 'authorize'>,
 ) {
   return createDailyReportService({
     database,
@@ -26,7 +28,7 @@ export function atomicReportService(
       ...selectedReportProvider(model, remote),
       ...(witness ? { onDeviceSelectionWitness: witness } : {}),
     }),
-    consent: { authorize },
+    consent: { authorize, ...liveConsent },
   });
 }
 

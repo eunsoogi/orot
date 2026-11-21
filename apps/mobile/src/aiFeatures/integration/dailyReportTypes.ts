@@ -55,6 +55,7 @@ export interface DailyReportServiceInput {
 
 /** Prepared dependencies shared by the lookup and generation stages. */
 export type DailyReportRunInput = Omit<DailyReportServiceInput, 'database'> & {
+  readonly dispatchAuthority?: import('./dailyReportDispatchAuthority').DailyReportDispatchAuthority;
   readonly data: LocalEvidenceData;
   /** DB-owned, generation-local proof refresh; custom readers remain strict. */
   readonly prepareSnapshotRefresh?: (
