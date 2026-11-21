@@ -203,8 +203,26 @@ test.each(cases)('residual actual send retention: %s', async variant => {
     );
     if (healthSql)
       console.info('SYNTHETIC_HEALTH_SQL', JSON.stringify(healthSql.summary()));
-    // Exact calculation counts catch loss of reuse in normal CI, not only profiling.
-    expect([...(counts.get('retention')?.values() ?? [])]).toEqual([
+    // The two strict readers may select different quantity plans for the same
+    // exact binds. Keep their raw diagnostics and assert per-scope execution.
+    const retained = new Map<string, number>();
+    const quantityPlans = new Set<string>();
+    for (const [query, executions] of counts.get('retention') ?? []) {
+      const [sql, bindings] = JSON.parse(query) as [string, unknown];
+      const ranked = sql.includes('), ranked AS (');
+      const ordered = sql.includes('sum(amount ORDER BY');
+      const key =
+        sql.includes('observations AS MATERIALIZED') && (ranked || ordered)
+          ? JSON.stringify(['quantity', bindings])
+          : query;
+      if (key !== query) {
+        const plan = JSON.stringify([key, ordered]);
+        expect(quantityPlans.has(plan)).toBe(false);
+        quantityPlans.add(plan);
+      }
+      retained.set(key, (retained.get(key) ?? 0) + executions);
+    }
+    expect([...retained.values()]).toEqual([
       ...Array(count * 2 - 2).fill(2),
       1,
       1,

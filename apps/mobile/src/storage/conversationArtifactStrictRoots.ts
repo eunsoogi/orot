@@ -148,7 +148,13 @@ export function createConversationStrictRoots(
         diagnostic.start('artifact_read_settlement');
       };
       diagnostic.start('artifact_read_admission');
-      if (operation?.active) await operation.run(work, { rollbackOnFailure });
+      if (operation?.active)
+        await operation.run(work, {
+          rollbackOnFailure,
+          ...(recordRootBytes && boundReaderCurrent
+            ? { boundQuantityOwner: boundReaderCurrent }
+            : {}),
+        });
       else await database.transaction(work);
       diagnostic.finish();
       return output;
