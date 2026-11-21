@@ -197,6 +197,7 @@ export interface ConversationSession {
   readonly historyLoading?: boolean;
   readonly historyLoadFailed?: boolean;
   readonly modelSelectionPending?: boolean;
+  readonly modelSelectionKeepsDisplay?: boolean;
   readonly modelSelectionFailed?: boolean;
   readonly deletionError?: string;
   readonly quarantined?: boolean;

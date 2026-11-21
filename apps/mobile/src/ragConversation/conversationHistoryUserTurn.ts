@@ -23,11 +23,12 @@ export function useConversationHistoryUserTurnFollow(
     const newSubmittedMessage = messages.some(
       message =>
         message.role === 'user' &&
+        !message.localChoicePending &&
         message.id > 0 &&
         !previousIds.includes(message.id),
     );
     if (newSubmittedMessage) {
-      // Restored turns use negative IDs; passive assistant updates retain reader position.
+      // A quick preview preserves reading position through its same-ID receipt transition.
       followsBottom.current = true;
       expectedOffset.current = null;
     }

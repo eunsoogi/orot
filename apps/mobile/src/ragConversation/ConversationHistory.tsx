@@ -127,7 +127,7 @@ export function ConversationHistory({
     expectedOffset,
     geometry: scrollGeometry,
   });
-  const followLatest = () =>
+  const followLatest = (contentHeight?: number) =>
     !reading.pending &&
     followConversationLatest({
       hasMessages: visibleMessages.length + (voiceEndCards?.length ?? 0) > 0,
@@ -140,6 +140,7 @@ export function ConversationHistory({
       expectedOffset,
       historyView,
       scrollGeometry,
+      contentHeight,
     });
   const wasRestoringPosition = useRef(reading.pending);
   useEffect(() => {
