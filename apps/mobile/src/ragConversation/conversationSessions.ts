@@ -1,5 +1,6 @@
 import { conversationSessionErrorState } from './conversationSessionErrorState';
 import { invalidateTasks } from './invalidateConversationTaskRefresh';
+import { createConversationDirectPhotoRetention } from './conversationDirectPhotoRetention';
 import { conversationPhotoSurface } from './conversationPhotoSurface';
 import { prepareConversationSend } from './conversationSendPreflight';
 import { continuousConversationPolicy } from './continuousConversationPolicy';
@@ -38,10 +39,9 @@ export function createConversationSessions(
   const photoSurface = conversationPhotoSurface(options);
   const { photoDrafts, photoConsent } = photoSurface;
   const apply = (next: S.ConversationSnapshot | null) => {
-    if (next) {
-      snapshot = next;
-      listeners.emit();
-    }
+    if (!next) return;
+    snapshot = next;
+    listeners.emit();
   };
   const update = (
     id: number,
@@ -50,8 +50,7 @@ export function createConversationSessions(
   ) => {
     if (disposed) return;
     snapshot = conversationSessionErrorState.update(snapshot, id, change);
-    if (stream) listeners.emitStream();
-    else listeners.emit();
+    (stream ? listeners.emitStream : listeners.emit)();
   };
   const find = (id: number) => snapshot.sessions.find(item => item.id === id)!;
   const { taskState, taskRefresh } = createConversationTasks({
@@ -112,9 +111,7 @@ export function createConversationSessions(
     restoration,
     disposed: () => disposed,
     lifecycle: () => lifecycle,
-    finalizeDraft: id => {
-      photoDrafts.retireSession(id).catch(() => {});
-    },
+    finalizeDraft: id => photoDrafts.retireSession(id).catch(() => {}),
   });
   const dispatch = conversationDispatch({
     bindSender: sender => bindSender(sender),
@@ -141,6 +138,11 @@ export function createConversationSessions(
     resumeCold: requests.resumeCold,
     steer: requests.steer,
     ...photoSurface,
+    retainDirectPhoto: createConversationDirectPhotoRetention(
+      options,
+      restoration.publishDirectPhoto,
+      id => !disposed && snapshot.activeId === id,
+    ),
     attachExisting,
     loadHistory,
     loadOlderHistory: restoration.loadOlder,

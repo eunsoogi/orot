@@ -10,6 +10,7 @@ import {
   type ArchivedHealthSummaryOwner,
 } from './archivedHealthSummaryPresentation';
 import { assertConversationSourcesNotRemoved } from './conversationArtifactDependencies';
+import { readDirectPhotoReplyPresentations } from './conversationDirectPhotoReplies';
 import { selectArchivedCitation } from './selectArchivedCitation';
 import { createProtectedPromptHistory } from './protectedPromptHistory';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
@@ -142,6 +143,20 @@ function createOwnedArchiveReader<T>(
             healthSummary,
           });
           if (enriched !== null) pending.set(id, enriched);
+        }
+      }
+      if (readSavedSummaryCards) {
+        for (const photo of await readDirectPhotoReplyPresentations(
+          tx,
+          sessionId,
+          ids,
+        )) {
+          // A colliding identity is corrupt, never authority to show another row.
+          if (pending.has(photo.id)) pending.delete(photo.id);
+          else {
+            const projected = project(photo.id, undefined, photo);
+            if (projected !== null) pending.set(photo.id, projected);
+          }
         }
       }
       for (const id of ids) {

@@ -1,3 +1,4 @@
+import { canDiscloseDirectPhoto } from './directPhotoConsentScope';
 import { resolveCalendarModel } from '../../calendarModelSettings/resolveCalendarModel';
 import { calendarModelStore } from '../../calendarModelSettings/calendarModelStore';
 import { providerSelectionStore } from '../../providers/selection/keychainSelectionStore';
@@ -26,7 +27,7 @@ export interface JointCalendarReview {
   readonly calendarModel: string;
   readonly isCurrent: () => boolean;
   readonly alreadyApproved: () => Promise<boolean>;
-  readonly commit: () => Promise<void>;
+  readonly commit: (reviewedPhoto?: true) => Promise<void>;
 }
 
 /** Add Calendar only to a review for a known already selected remote calendar owner.
@@ -94,7 +95,7 @@ export async function prepareJointCalendarReview(
         signal,
         isCurrent: initial,
       }),
-    async commit() {
+    async commit(reviewedPhoto) {
       if (!initial()) throw new Error('Joint permission owner changed');
       // First-time legacy epochs may be created only after the explicit joint review.
       const calendarCredential = await settingsConsentCredential(
@@ -134,6 +135,7 @@ export async function prepareJointCalendarReview(
                     permissions: settingsPermissionsForFeature(
                       'conversation',
                       choice.providerId,
+                      reviewedPhoto === true && canDiscloseDirectPhoto(option),
                     ),
                   },
                 },

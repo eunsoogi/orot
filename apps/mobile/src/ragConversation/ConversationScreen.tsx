@@ -139,6 +139,7 @@ export function ConversationScreen({
             <ConversationSteeringComposer
               {...composer}
               photo={photo}
+              isEntryCurrent={isEntryCurrent}
               session={session}
               store={store}
               cancelling={session.requestActivity?.stage === 'cancelling'}

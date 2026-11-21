@@ -75,6 +75,8 @@ final class MedicalDocumentPhotoPickerCompletion {
 
 /// Reads only the photo explicitly selected in the system picker; no library access is requested.
 final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate, UIAdaptivePresentationControllerDelegate {
+    enum Mode { case document, transientJPEG }
+    private var mode: Mode = .document
     private let fileStore = MedicalDocumentFileStore()
     private let requests = MedicalDocumentPhotoPickerCompletion()
     private var activePicker: PHPickerViewController?
@@ -83,7 +85,7 @@ final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate
         requests.isActive
     }
 
-    func present(from presenter: UIViewController, completion: @escaping (Result<[String: Any]?, Error>) -> Void) {
+    func present(from presenter: UIViewController, mode: Mode = .document, completion: @escaping (Result<[String: Any]?, Error>) -> Void) {
         guard let id = requests.start({ [weak self] result in
             self?.activePicker = nil
             self?.activeID = nil
@@ -92,6 +94,7 @@ final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate
             completion(.failure(MedicalDocumentExtractionFailure.unsupportedDocument))
             return
         }
+        self.mode = mode
         var configuration = PHPickerConfiguration()
         configuration.filter = .images
         configuration.selectionLimit = 1
@@ -122,6 +125,7 @@ final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate
             requests.resolved(id, .success(nil))
             return
         }
+        let mode = mode
         // The provider URL is temporary and valid only during its callback; never retain it.
         result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { [weak self] url, error in
             do {
@@ -130,8 +134,14 @@ final class MedicalDocumentPhotoPicker: NSObject, PHPickerViewControllerDelegate
                     throw error
                 }
                 guard let url else { throw CocoaError(.fileReadUnknown) }
-                let data = try Data(contentsOf: url)
-                let document = try extractAndStore(data)
+                let document: [String: Any]
+                switch mode {
+                case .document: document = try extractAndStore(Data(contentsOf: url))
+                case .transientJPEG:
+                    // Image mode needs neither Vision text nor a protected original on disk.
+                    let jpeg = try ConversationPhotoNormalizer.normalize(pickerURL: url)
+                    document = ["jpegBase64": jpeg.base64EncodedString()]
+                }
                 DispatchQueue.main.async { self.requests.resolved(id, .success(document)) }
             } catch {
                 DispatchQueue.main.async { self?.requests.resolved(id, .failure(error)) }

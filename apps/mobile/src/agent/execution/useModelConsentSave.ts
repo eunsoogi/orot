@@ -30,6 +30,7 @@ export function useModelConsentSave(
     },
     search?: SettingsSearchChoices,
     isCurrentDraft: () => boolean = () => true,
+    reviewedPhoto?: true,
   ) => {
     if (!mounted.current || pending.current || !isCurrentDraft())
       throw new Error('Settings save unavailable');
@@ -43,6 +44,7 @@ export function useModelConsentSave(
       await saveConsent({
         slot,
         search,
+        ...(reviewedPhoto ? { reviewedPhotoOption: option } : {}),
         store,
         remote,
         recipient: recipient ?? '',

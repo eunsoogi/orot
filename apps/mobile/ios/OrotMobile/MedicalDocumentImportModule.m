@@ -5,6 +5,8 @@ RCT_EXTERN_METHOD(pickMedicalDocument : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(pickMedicalDocumentPhoto : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(pickConversationImage : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(loadMedicalDocumentOriginalPhoto : (NSString *)sourceID expectedContentHash : (
     NSString *_Nullable)expectedContentHash resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)

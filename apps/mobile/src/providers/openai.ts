@@ -20,6 +20,7 @@ import {
   listChatGPTPlanModels,
 } from '@orot/provider-openai';
 import type {
+  ChatGPTPlanDirectPhotoRequest,
   ChatGPTPlanModel,
   ChatGPTPlanModelDescriptor,
   ChatGPTPlanNativeBridge,
@@ -42,6 +43,11 @@ interface NativeOpenAIProviderModule {
   ): Promise<readonly ChatGPTPlanModelDescriptor[]>;
   startResponse(
     request: ChatGPTPlanRequest | ChatGPTPlanPublicWebRequest,
+    requestId: string,
+    issuedClientID: string,
+  ): void;
+  startPhotoResponse?(
+    request: ChatGPTPlanDirectPhotoRequest,
     requestId: string,
     issuedClientID: string,
   ): void;
@@ -104,6 +110,18 @@ export const chatGPTPlanNativeBridge: ChatGPTPlanNativeBridge = {
     if (!nativeModule) throw bridgeUnavailable();
     nativeModule.startResponse(request, requestId, issuedClientID);
   },
+
+  ...(nativeModule?.startPhotoResponse
+    ? {
+        async startPhotoResponse(
+          requestId: string,
+          issuedClientID: string,
+          request: ChatGPTPlanDirectPhotoRequest,
+        ) {
+          nativeModule.startPhotoResponse!(request, requestId, issuedClientID);
+        },
+      }
+    : {}),
 
   ...(nativeModule?.startSteerableResponse && nativeModule.steerResponse
     ? {
