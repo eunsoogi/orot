@@ -148,7 +148,9 @@ extension AppointmentConsentUITests {
             XCTAssertTrue(node(app, "classification-circle-slot").frame.insetBy(dx: -1, dy: -1).contains(circle.frame))
             XCTAssertGreaterThanOrEqual(circle.frame.height, 44)
             XCTAssertEqual(circle.frame.width, circle.frame.height, accuracy: 1)
-            if circle.isEnabled { XCTAssertTrue(circle.isHittable) }
+            if circle.isEnabled {
+                XCTAssertTrue(circle.isHittable)
+            }
             for identifier in ["medical-appointment-previous-result", "medical-appointment-next-result"] {
                 let element = node(app, identifier)
                 XCTAssertGreaterThanOrEqual(element.frame.width, 44)

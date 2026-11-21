@@ -143,7 +143,12 @@ enum ClassificationFailureNoticeUITestSupport {
             pages.append(text)
             let next = testCase.node(app, "medical-appointment-next-result")
             guard next.exists else {
-                XCTFail("Failure reader lost its paging control")
+                // A single page has no paging actions; losing them after advancing is a failure.
+                if index == 0 {
+                    assertMessage(pages, reason: reason)
+                } else {
+                    XCTFail("Failure reader lost its paging controls after advancing")
+                }
                 return
             }
             if !next.isEnabled {
@@ -182,14 +187,19 @@ enum ClassificationFailureNoticeUITestSupport {
         guard !viewport.frame.isEmpty,
               results.frame.insetBy(dx: -1, dy: -1).contains(viewport.frame),
               UITestConditions.element(app, "classification-circle-slot").frame.insetBy(dx: -1, dy: -1)
-                  .contains(UITestConditions.element(app, "medical-appointment-import").frame) else { return false }
-        let controls = ["medical-appointment-previous-result", "medical-appointment-next-result"].map { UITestConditions.element(app, $0) }
-        guard controls[0].exists == controls[1].exists else { return false }
-        if !controls[0].exists { return true }
-        return footer.exists && controls.allSatisfy { control in
-            return control.frame.width >= 44 && control.frame.height >= 44
-                && footer.frame.insetBy(dx: -1, dy: -1).contains(control.frame)
+              .contains(UITestConditions.element(app, "medical-appointment-import").frame) else { return false }
+        let controls = ["medical-appointment-previous-result", "medical-appointment-next-result"].map {
+            app.descendants(matching: .any).matching(identifier: $0)
         }
+        if controls.allSatisfy({ $0.count == 0 }) {
+            return true
+        }
+        return controls.allSatisfy { $0.count == 1 } && footer.exists &&
+            controls.map(\.firstMatch).allSatisfy { control in
+                control.elementType == .button && !control.label.isEmpty &&
+                    control.frame.width >= 44 && control.frame.height >= 44 &&
+                    footer.frame.insetBy(dx: -1, dy: -1).contains(control.frame)
+            }
     }
 
     /// Persist before every possible fail-fast assertion; defer is not reliable when XCTest aborts a case.

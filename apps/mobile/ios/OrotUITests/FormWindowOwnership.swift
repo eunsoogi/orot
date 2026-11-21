@@ -108,8 +108,12 @@ extension AppointmentConsentUITests {
         let pagerIDs = ["medical-appointment-previous-result", "medical-appointment-next-result"]
         let paging = phase != 1 && pagerIDs.contains { node(app, $0).exists }
         var actions = phase == 1 ? ["classification-release-response"] : ["medical-appointment-import"]
-        if paging { actions += pagerIDs }
-        if phase == 0 { actions.append("medical-appointment-select-provider") }
+        if paging {
+            actions += pagerIDs
+        }
+        if phase == 0 {
+            actions.append("medical-appointment-select-provider")
+        }
         let viewportID = "classification-text-viewport"
         let required = ["medical-appointment-fullscreen", tokens[phase], "classification-circle-slot"]
             + (paging ? ["classification-stage-footer"] : []) + actions

@@ -157,17 +157,23 @@ extension AppointmentConsentUITests {
         XCTAssertTrue(slot.exists && slot.frame.insetBy(dx: -1, dy: -1).contains(primary.frame))
         XCTAssertGreaterThanOrEqual(primary.frame.height, 44)
         XCTAssertEqual(primary.frame.width, primary.frame.height, accuracy: 1)
-        if primary.isEnabled { XCTAssertTrue(primary.isHittable) }
+        if primary.isEnabled {
+            XCTAssertTrue(primary.isHittable)
+        }
         let paging = ["medical-appointment-previous-result", "medical-appointment-next-result"].map { node(app, $0) }
         XCTAssertEqual(paging[0].exists, paging[1].exists)
-        if node(app, "medical-appointment-results").exists { XCTAssertTrue(paging[0].exists) }
+        if node(app, "medical-appointment-results").exists {
+            XCTAssertTrue(paging[0].exists)
+        }
         for action in paging where action.exists {
             let footer = node(app, "classification-stage-footer")
             XCTAssertTrue(footer.exists && app.frame.contains(footer.frame))
             XCTAssertGreaterThanOrEqual(action.frame.width, 44)
             XCTAssertGreaterThanOrEqual(action.frame.height, 44)
             XCTAssertTrue(footer.frame.insetBy(dx: -1, dy: -1).contains(action.frame))
-            if action.isEnabled { XCTAssertTrue(action.isHittable) }
+            if action.isEnabled {
+                XCTAssertTrue(action.isHittable)
+            }
         }
     }
 
