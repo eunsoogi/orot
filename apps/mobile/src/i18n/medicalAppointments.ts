@@ -82,7 +82,7 @@ export const medicalAppointmentsKo = {
   'medicalAppointments.inferenceDisclosure.webSearchTerms': '공개 웹검색어',
   'medicalAppointments.inferenceDisclosure.webResults': '공개 웹검색 자료',
   'medicalAppointments.inferenceDisclosure.healthRecords':
-    '건강·복약·활동·수면·증상 기록',
+    '건강, 복약, 활동, 수면, 증상 기록',
   'medicalAppointments.inferenceDisclosure.memory': '확인한 기억',
   'medicalAppointments.inferenceDisclosure.conversation': '질문과 대화',
   'medicalAppointments.inferenceDisclosure.generatedArtifacts':
@@ -90,7 +90,7 @@ export const medicalAppointmentsKo = {
   'medicalAppointments.inferenceDisclosure.visit': '진료 일정 제목과 시각',
   'medicalAppointments.inferenceDisclosure.literature': '공개 의학 문헌',
   'medicalAppointments.inferenceDisclosure.searchTerms':
-    '증상·약·검사에 관한 검색어',
+    '증상, 약, 검사에 관한 검색어',
   'medicalAppointments.inferenceDisclosure.subtitle':
     '선택한 AI로 아래 내용을 보내요.',
   'medicalAppointments.inferenceDisclosure.account': '연결한 ChatGPT 계정',
@@ -108,7 +108,7 @@ export const medicalAppointmentsKo = {
     '이 기능의 같은 종류 정보는 다시 묻지 않아요.',
   'medicalAppointments.inferenceDisclosure.oneTime': '이번 전송만 동의해요.',
   'medicalAppointments.inferenceDisclosure.changes':
-    '계정·AI·기능·정보 종류나 허용 범위가 바뀌면 다시 확인해요.',
+    '계정, AI, 기능, 정보 종류 또는 허용 범위가 바뀌면 다시 확인해요.',
   'medicalAppointments.inferenceDisclosure.unavailable':
     '이번에 확인한 전송 내용에만 적용돼요. 다음 전송은 다시 확인해요.',
   'medicalAppointments.inferenceDisclosure.settingsHint':

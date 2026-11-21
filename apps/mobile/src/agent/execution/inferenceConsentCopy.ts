@@ -49,7 +49,7 @@ export function inferenceConsentCopy(request: OutboundProcessingRequest) {
   return {
     subtitle: t(key ?? 'medicalAppointments.inferenceDisclosure.subtitle'),
     information: labels?.length
-      ? [...new Set(labels)].join(' · ')
+      ? [...new Set(labels)].join(', ')
       : t('medicalAppointments.inferenceDisclosure.records'),
     publicSearch: purpose === 'public_medical_search',
   };
