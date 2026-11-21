@@ -21,6 +21,10 @@ declare const require: (path: string) => {
   readIsolatedOverview?: typeof import('../../storage/secureDatabase').readIsolatedOverview;
 };
 
+// A discarded witness can be a concurrent commit or a just-resumed native
+// lifecycle. Use fresh leases, never a tight loop or an unguarded fallback.
+const discardedReadRetryDelays = [100, 300] as const;
+
 /** Reads encrypted local data on entry; selecting metrics never invokes permission or synchronization flows. */
 export function useOverviewMetrics() {
   const focused = useIsFocused();
@@ -87,6 +91,7 @@ export function useOverviewMetrics() {
     if (!focused) return;
     let active = true;
     const controller = new AbortController();
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const selectionReadGeneration = selectionGeneration.current;
     const currentLoadGeneration = loadGeneration.current;
     setState(hasSnapshot.current ? 'refreshing' : 'loading');
@@ -102,8 +107,11 @@ export function useOverviewMetrics() {
       hasSnapshot.current = true;
       setState('ready');
     };
-    Promise.resolve()
-      .then(async () => {
+    const isCurrent = () =>
+      active && currentLoadGeneration === loadGeneration.current;
+    const load = async (discardRetries: number) => {
+      if (!isCurrent()) return;
+      try {
         const storage = require('../../storage/secureDatabase');
         const now = new Date();
         const result = await storage.readIsolatedOverview?.(
@@ -113,13 +121,24 @@ export function useOverviewMetrics() {
             publish(isolatedSelection, chart),
         );
         if (result === 'published' || controller.signal.aborted) return;
-        if (result === 'discarded') {
+        if (result === 'discarded' || discardRetries > 0) {
           // A revoked or changed snapshot must not leave older values visible.
-          if (active && currentLoadGeneration === loadGeneration.current) {
-            hasSnapshot.current = false;
-            setMetrics({});
-            setQuantityTruncated(false);
+          if (!isCurrent()) return;
+          hasSnapshot.current = false;
+          setMetrics({});
+          setQuantityTruncated(false);
+          const delay = discardedReadRetryDelays[discardRetries];
+          if (delay === undefined) {
             setState('failed');
+          } else {
+            setState('loading');
+            retryTimer = setTimeout(() => {
+              if (
+                AppState.currentState !== 'inactive' &&
+                AppState.currentState !== 'background'
+              )
+                load(discardRetries + 1);
+            }, delay);
           }
           return;
         }
@@ -132,13 +151,15 @@ export function useOverviewMetrics() {
             ),
         ]);
         publish(fallbackSelection, chart);
-      })
-      .catch(() => {
-        if (active && currentLoadGeneration === loadGeneration.current)
-          setState(hasSnapshot.current ? 'stale' : 'failed');
-      });
+      } catch {
+        if (isCurrent()) setState(hasSnapshot.current ? 'stale' : 'failed');
+      }
+    };
+    // Start asynchronously, as before, so immediate effect cleanup can win.
+    Promise.resolve().then(() => load(0));
     return () => {
       active = false;
+      clearTimeout(retryTimer);
       // Discard queued work and stop only this read at safe SQL boundaries.
       controller.abort();
     };
