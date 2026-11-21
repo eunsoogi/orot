@@ -115,19 +115,19 @@ test('uses native usable regions and retains complete result details through ref
   expect(screen.getByTestId('medical-appointment-results')).toBeTruthy();
 });
 
-it('keeps complete details and explicit paging targets without a scrolling list', async () => {
+it('keeps complete single-result details and a circular action without inert paging controls', async () => {
   await setWindowSize(320, 1.5);
   await renderMedicalRoute();
   expect(screen.queryByTestId('medical-appointment-review-scroll')).toBeNull();
   expect(screen.getByText(/분류 근거: Synthetic classification/)).toBeTruthy();
-  for (const id of [
-    'medical-appointment-previous-result',
-    'medical-appointment-next-result',
-  ]) {
-    const action = screen.getByTestId(id);
-    expect(
-      StyleSheet.flatten(action.props.style).minHeight,
-    ).toBeGreaterThanOrEqual(44);
-    expect(action.props.accessibilityRole).toBe('button');
-  }
+  expect(
+    screen.queryByTestId('medical-appointment-previous-result'),
+  ).toBeNull();
+  expect(screen.queryByTestId('medical-appointment-next-result')).toBeNull();
+  const action = screen.getByTestId('medical-appointment-import');
+  const circle = StyleSheet.flatten(action.props.style);
+  expect(circle.height).toBeGreaterThanOrEqual(44);
+  expect(circle.width).toBe(circle.height);
+  expect(circle.borderRadius).toBe(circle.height / 2);
+  expect(action.props.accessibilityRole).toBe('button');
 });

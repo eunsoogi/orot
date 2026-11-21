@@ -39,7 +39,7 @@ test.each(['medical-appointment-confirmation', 'medical-appointment-results'])(
       />,
     );
     await fireEvent(screen.getByTestId(testID), 'layout', {
-      nativeEvent: { layout: { width: 272, height: 190 } },
+      nativeEvent: { layout: { width: 272, height: 360 } },
     });
     const footer = screen.getByTestId('medical-appointment-import').parent
       ?.parent;
@@ -56,7 +56,7 @@ test.each(['medical-appointment-confirmation', 'medical-appointment-results'])(
       }),
       'textLayout',
       {
-        nativeEvent: { lines: text.split('\n').map(value => line(value)) },
+        nativeEvent: { lines: text.split('\n').map(value => line(value, 22)) },
       },
     );
     expect(screen.getByTestId('classification-page-text')).toHaveTextContent(
@@ -88,7 +88,7 @@ test.each(['medical-appointment-confirmation', 'medical-appointment-results'])(
       }),
       'textLayout',
       {
-        nativeEvent: { lines: text.split('\n').map(value => line(value)) },
+        nativeEvent: { lines: text.split('\n').map(value => line(value, 22)) },
       },
     );
     expect(screen.getByTestId('classification-page-text')).toHaveTextContent(
@@ -122,7 +122,7 @@ test('moves directly over wide-XXXL paragraph spacers in both directions', async
     />,
   );
   await fireEvent(screen.getByTestId('medical-appointment-results'), 'layout', {
-    nativeEvent: { layout: { width: 678, height: 120 } },
+    nativeEvent: { layout: { width: 678, height: 400 } },
   });
   await fireEvent(screen.getByTestId('classification-stage-footer'), 'layout', {
     nativeEvent: { layout: { height: 44 } },

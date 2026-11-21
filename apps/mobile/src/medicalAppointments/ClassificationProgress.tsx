@@ -4,6 +4,10 @@ import Svg, { Circle } from 'react-native-svg';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
+import {
+  classificationCircleGeometry,
+  ClassificationCircleSlot,
+} from './ClassificationCircle';
 
 /** Counts validated classifications, never time or predicted model completion. */
 export function ClassificationProgress({
@@ -23,13 +27,18 @@ export function ClassificationProgress({
   const { width, height } = bounds;
   const percent =
     total > 0 ? Math.floor((100 * Math.min(classified, total)) / total) : 0;
-  const size = Math.max(0, Math.min(240, width * 0.55, height * 0.65));
+  const geometry = classificationCircleGeometry(
+    width,
+    height,
+    window.fontScale,
+  );
+  const { size, captionTop } = geometry;
   const label = t(
     saving
       ? 'medicalAppointments.savingResults'
       : 'medicalAppointments.progress',
   );
-  const showLabel = height >= size + window.fontScale * 24 + 24;
+  const showLabel = height - captionTop >= window.fontScale * 20;
   const circumference = 2 * Math.PI * 44;
   return (
     <View
@@ -45,52 +54,57 @@ export function ClassificationProgress({
         );
       }}
     >
-      <View
-        accessible
-        accessibilityRole="progressbar"
-        accessibilityLabel={label}
-        accessibilityValue={{ min: 0, max: 100, now: percent }}
-        style={{ width: size, height: size }}
-      >
-        <Svg
-          width="100%"
-          height="100%"
-          viewBox="0 0 100 100"
-          accessible={false}
+      <ClassificationCircleSlot {...geometry}>
+        <View
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={label}
+          accessibilityValue={{ min: 0, max: 100, now: percent }}
+          style={{ width: size, height: size }}
         >
-          <Circle
-            cx={50}
-            cy={50}
-            r={44}
-            stroke={appColors.border}
-            strokeWidth={7}
-            fill="none"
-          />
-          <Circle
-            cx={50}
-            cy={50}
-            r={44}
-            stroke={appColors.primaryText}
-            strokeWidth={7}
-            fill="none"
-            strokeDasharray={[circumference, circumference]}
-            strokeDashoffset={circumference * (1 - percent / 100)}
-            rotation={-90}
-            origin="50, 50"
-          />
-        </Svg>
-        <View pointerEvents="none" style={styles.number}>
-          {/* The decorative numeral follows circle size; the progressbar exposes the complete spoken value/status. */}
-          <AppText
-            allowFontScaling={false}
-            style={[styles.percent, { fontSize: Math.min(32, size * 0.22) }]}
+          <Svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 100 100"
+            accessible={false}
           >
-            {percent}%
-          </AppText>
+            <Circle
+              cx={50}
+              cy={50}
+              r={44}
+              stroke={appColors.border}
+              strokeWidth={7}
+              fill="none"
+            />
+            <Circle
+              cx={50}
+              cy={50}
+              r={44}
+              stroke={appColors.primaryText}
+              strokeWidth={7}
+              fill="none"
+              strokeDasharray={[circumference, circumference]}
+              strokeDashoffset={circumference * (1 - percent / 100)}
+              rotation={-90}
+              origin="50, 50"
+            />
+          </Svg>
+          <View pointerEvents="none" style={styles.number}>
+            {/* The decorative numeral follows circle size; the progressbar exposes the complete spoken value/status. */}
+            <AppText
+              allowFontScaling={false}
+              style={[styles.percent, { fontSize: Math.min(32, size * 0.22) }]}
+            >
+              {percent}%
+            </AppText>
+          </View>
         </View>
-      </View>
+      </ClassificationCircleSlot>
       {showLabel ? (
-        <AppText accessibilityLiveRegion="polite" style={styles.label}>
+        <AppText
+          accessibilityLiveRegion="polite"
+          style={[styles.label, { top: captionTop }]}
+        >
           {label}
         </AppText>
       ) : null}
@@ -98,7 +112,7 @@ export function ClassificationProgress({
   );
 }
 const styles = StyleSheet.create({
-  content: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 24 },
+  content: { flex: 1, width: '100%', minHeight: 0 },
   number: {
     position: 'absolute',
     top: 0,
@@ -109,5 +123,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   percent: { fontSize: 32, fontWeight: '700' },
-  label: { textAlign: 'center', fontSize: 17 },
+  label: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 17,
+  },
 });

@@ -12,7 +12,7 @@ enum DisclosureLayoutUITestObservations {
             let text = UITestConditions.text(page)
             guard visited.insert(text).inserted else { break }
             let next = testCase.node(app, "medical-appointment-next-result")
-            guard next.isEnabled else { break }
+            guard next.exists, next.isEnabled else { break }
             testCase.tap(app, "medical-appointment-next-result")
             let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 UITestConditions.text(page) != text
@@ -116,7 +116,7 @@ enum ClassificationFailureNoticeUITestSupport {
             return
         }
         let previous = testCase.node(app, "medical-appointment-previous-result")
-        guard validStage(app, results: results), previous.exists, !previous.isEnabled else {
+        guard validStage(app, results: results), !previous.exists || !previous.isEnabled else {
             XCTFail("Failure reading must begin at the unique results stage's first page")
             return
         }
@@ -143,7 +143,12 @@ enum ClassificationFailureNoticeUITestSupport {
             pages.append(text)
             let next = testCase.node(app, "medical-appointment-next-result")
             guard next.exists else {
-                XCTFail("Failure reader lost its paging control")
+                // A single page has no paging actions; losing them after advancing is a failure.
+                if index == 0 {
+                    assertMessage(pages, reason: reason)
+                } else {
+                    XCTFail("Failure reader lost its paging controls after advancing")
+                }
                 return
             }
             if !next.isEnabled {
@@ -172,21 +177,29 @@ enum ClassificationFailureNoticeUITestSupport {
     /// then require unique identities and enclosing geometry rather than accepting arbitrary global text.
     private static func validStage(_ app: XCUIApplication, results: XCUIElement) -> Bool {
         let ids = ["medical-appointment-results", "classification-page-text", "classification-text-viewport",
-                   "classification-stage-footer", "medical-appointment-previous-result", "medical-appointment-next-result"]
+                   "classification-circle-slot", "medical-appointment-import"]
         guard ids.allSatisfy({ app.descendants(matching: .any).matching(identifier: $0).count == 1 }),
               ["medical-appointment-confirmation", "medical-appointment-progress"].allSatisfy({
                   app.descendants(matching: .any).matching(identifier: $0).count == 0
               }), !results.frame.isEmpty, app.frame.contains(results.frame) else { return false }
         let viewport = UITestConditions.element(app, "classification-text-viewport")
         let footer = UITestConditions.element(app, "classification-stage-footer")
-        guard !viewport.frame.isEmpty, !footer.frame.isEmpty,
+        guard !viewport.frame.isEmpty,
               results.frame.insetBy(dx: -1, dy: -1).contains(viewport.frame),
-              results.frame.insetBy(dx: -1, dy: -1).contains(footer.frame) else { return false }
-        return ["medical-appointment-previous-result", "medical-appointment-next-result"].allSatisfy {
-            let control = UITestConditions.element(app, $0)
-            return control.frame.width >= 44 && control.frame.height >= 44
-                && footer.frame.insetBy(dx: -1, dy: -1).contains(control.frame)
+              UITestConditions.element(app, "classification-circle-slot").frame.insetBy(dx: -1, dy: -1)
+              .contains(UITestConditions.element(app, "medical-appointment-import").frame) else { return false }
+        let controls = ["medical-appointment-previous-result", "medical-appointment-next-result"].map {
+            app.descendants(matching: .any).matching(identifier: $0)
         }
+        if controls.allSatisfy({ $0.count == 0 }) {
+            return true
+        }
+        return controls.allSatisfy { $0.count == 1 } && footer.exists &&
+            controls.map(\.firstMatch).allSatisfy { control in
+                control.elementType == .button && !control.label.isEmpty &&
+                    control.frame.width >= 44 && control.frame.height >= 44 &&
+                    footer.frame.insetBy(dx: -1, dy: -1).contains(control.frame)
+            }
     }
 
     /// Persist before every possible fail-fast assertion; defer is not reliable when XCTest aborts a case.
