@@ -38,7 +38,7 @@ export function useSavedSearchChoices(store: ProviderSelectionStore) {
       providerId: option.provider.id,
       modelId: option.modelId,
     };
-    void (async () => {
+    (async () => {
       try {
         const witness =
           'liveWitness' in store && typeof store.liveWitness === 'function'
