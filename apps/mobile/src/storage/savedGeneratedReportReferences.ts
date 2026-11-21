@@ -106,14 +106,32 @@ export function createSavedGeneratedReportReferences(
         )
           return;
         await tx.execute(
-          'INSERT OR IGNORE INTO saved_generated_report_refs VALUES (?, ?, ?)',
+          'INSERT INTO saved_generated_report_refs VALUES (?, ?, ?) ON CONFLICT(report_id) DO NOTHING',
           [
             reference.runId,
             artifact.id,
             input.savedAt ?? new Date().toISOString(),
           ],
         );
+        const existing = (
+          await tx.execute(
+            `SELECT a.result_json ${visible} AND b.report_id = ?`,
+            [reference.runId],
+          )
+        ).rows[0];
+        const savedReference = decodeConversationArtifact(
+          existing?.result_json,
+        )?.dailyReport;
+        if (
+          savedReference?.runId !== reference.runId ||
+          savedReference.revision !== reference.revision ||
+          savedReference.identity.key !== reference.identity.key
+        )
+          throw new Error('Report bookmark target no longer matches.');
+        // The driver otherwise awaits our callback before committing. Keep
+        // publication adjacent to this last live owner check, with no await.
         if (!input.current()) throw new Error('Report bookmark owner moved.');
+        tx.commit();
         saved = true;
       });
       return saved;

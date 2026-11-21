@@ -1,3 +1,4 @@
+import { expectBookmarkSynchronousCommit } from '../testSupport/savedGeneratedReportCommitAcceptance';
 import { expectReportBookmarkMounted } from '../testSupport/savedGeneratedReportBookmarkAcceptance';
 import { HealthObservationSchema } from '@orot/domain';
 import { createRecordRepository, runMigrations } from '@orot/storage';
@@ -156,6 +157,11 @@ test('bookmarks the original daily report without copying follow-up prose and sw
         () => false,
       ),
     ).toBeNull();
+    await expectBookmarkSynchronousCommit(
+      connection.database,
+      path,
+      historical,
+    );
     const columns = await connection.database.execute(
       'PRAGMA table_info(saved_generated_report_refs)',
     );
