@@ -182,6 +182,23 @@ export function createConversationToolEventStorage(
     },
     recoverInterruptedToolEvents: toolEventRecovery(database, ensure),
     readToolTurnsSnapshot: readSnapshot,
+    /** A user opening one public source does not authorize unrelated call reads. */
+    async readToolCall(
+      sessionId: string,
+      runId: string,
+      callId: string,
+      messageId?: string,
+    ) {
+      return (
+        await readSnapshot(
+          sessionId,
+          undefined,
+          messageId ? [messageId] : undefined,
+          true,
+          { runId, callId },
+        )
+      ).items[0];
+    },
     async readToolTurns(
       sessionId: string,
       expectedVersion?: number,

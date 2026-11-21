@@ -1,3 +1,8 @@
+import {
+  PublicToolSourceSheet,
+  type PublicToolSourceChoice,
+  type PublicToolSourceSheetState,
+} from './PublicToolSourceSheet';
 import { useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import type {
@@ -6,7 +11,7 @@ import type {
   ToolSourceReference,
 } from '@orot/agent-runtime';
 import type { ToolCallScope } from '../aiFeatures/integration/toolReferenceIndex';
-import { isSafeEuropePmcArticleUrl } from '../aiFeatures/integration/articleLinks';
+import { verifiedPublicToolSourceChoices } from './verifiedPublicToolSourceChoices';
 import { AppText as Text } from '../layout/AppText';
 import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
@@ -14,21 +19,12 @@ import {
   sourceKey,
   sourceKindLabel,
 } from './ConversationToolEventPresentation';
-import {
-  isPublicWebReference,
-  publicWebSources,
-} from '../externalMedicalEvidence/publicWebSources';
 
 export type ResolveConversationToolSource = (
   reference: ToolSourceReference,
   signal: AbortSignal,
   scope: ToolCallScope,
 ) => Promise<EvidenceReference | undefined>;
-
-function locatorUrl(reference: EvidenceReference): string {
-  const locator = reference.locator as Record<string, unknown> | null;
-  return typeof locator?.originalUrl === 'string' ? locator.originalUrl : '';
-}
 
 /** Resolve persisted references at the user's action boundary before opening any source. */
 export function ConversationToolEventSources({
@@ -50,30 +46,44 @@ export function ConversationToolEventSources({
 }) {
   const [resolving, setResolving] = useState<ReadonlySet<string>>(new Set());
   const [errors, setErrors] = useState<ReadonlySet<string>>(new Set());
-  const [webChoices, setWebChoices] = useState<
-    Readonly<Record<string, readonly { title: string; url: string }[]>>
-  >({});
+  const [sheet, setSheet] = useState<PublicToolSourceSheetState | null>(null);
+  const publicOperation = useRef<AbortController | null>(null);
+  const close = () => {
+    publicOperation.current?.abort();
+    publicOperation.current = null;
+    if (sheet)
+      setResolving(current => {
+        const next = new Set(current);
+        next.delete(sheet.key);
+        return next;
+      });
+    setSheet(null);
+  };
   const activeControllers = useRef(new Set<AbortController>());
 
   const sourceIdentity = JSON.stringify(event.sources);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const controllers = activeControllers.current;
+    setSheet(null);
+    setResolving(new Set());
+    return () => {
       // A hidden row or changed session cannot finish an old source navigation.
-      activeControllers.current.forEach(controller => controller.abort());
-      activeControllers.current.clear();
-    },
-    [
-      sessionId,
-      event.operationRunId,
-      event.callId,
-      durableMessageId,
-      sourceIdentity,
-    ],
-  );
+      controllers.forEach(controller => controller.abort());
+      controllers.clear();
+      publicOperation.current = null;
+    };
+  }, [
+    allowSourceActions,
+    sessionId,
+    event.operationRunId,
+    event.callId,
+    durableMessageId,
+    sourceIdentity,
+  ]);
 
   const openSource = async (
     source: ToolSourceReference,
-    selectedWebSource?: { title: string; url: string },
+    selectedWebSource?: PublicToolSourceChoice,
   ) => {
     if (
       !allowSourceActions ||
@@ -84,6 +94,17 @@ export function ConversationToolEventSources({
       return;
     const key = sourceKey(source);
     const controller = new AbortController();
+    const external = source.sourceKind === 'external_medical';
+    if (external) {
+      // A second press cannot start another lookup before React disables the chip.
+      if (publicOperation.current) return;
+      publicOperation.current = controller;
+      setSheet(current =>
+        selectedWebSource && current?.key === key
+          ? { ...current, opening: true }
+          : { key },
+      );
+    }
     activeControllers.current.add(controller);
     setResolving(current => new Set(current).add(key));
     setErrors(current => {
@@ -100,37 +121,35 @@ export function ConversationToolEventSources({
       if (controller.signal.aborted) return;
       if (!verified) throw new Error('Source validation failed.');
 
-      if (isPublicWebReference(verified)) {
-        const currentSources = publicWebSources(verified);
-        if (!currentSources) throw new Error('Web source validation failed.');
+      if (external) {
+        const choices = verifiedPublicToolSourceChoices(verified);
+        if (!choices?.length)
+          throw new Error('Public source validation failed.');
         if (selectedWebSource) {
-          const current = currentSources.find(
-            sourceValue =>
-              sourceValue.title === selectedWebSource.title &&
-              sourceValue.url === selectedWebSource.url,
+          const current = choices.find(
+            choice =>
+              choice.title === selectedWebSource.title &&
+              choice.url === selectedWebSource.url,
           );
-          if (!current) throw new Error('Web source changed.');
+          if (!current) throw new Error('Public source changed.');
           await Linking.openURL(current.url);
-        } else if (currentSources.length > 1) {
-          setWebChoices(current => ({ ...current, [key]: currentSources }));
-        } else {
-          await Linking.openURL(currentSources[0]!.url);
         }
-      } else if (verified.sourceKind === 'external_medical') {
-        const url = locatorUrl(verified);
-        if (!isSafeEuropePmcArticleUrl(url))
-          throw new Error('Publication URL validation failed.');
-        await Linking.openURL(url);
+        if (!controller.signal.aborted) setSheet({ key, choices });
       } else {
         onOpenSource(verified);
       }
     } catch {
       if (!controller.signal.aborted) {
-        setErrors(current => new Set(current).add(key));
-        onLinkError();
+        if (external) setSheet({ key, failed: true });
+        else {
+          setErrors(current => new Set(current).add(key));
+          onLinkError();
+        }
       }
     } finally {
       activeControllers.current.delete(controller);
+      if (publicOperation.current === controller)
+        publicOperation.current = null;
       if (!controller.signal.aborted)
         setResolving(current => {
           const next = new Set(current);
@@ -149,7 +168,6 @@ export function ConversationToolEventSources({
         event.sources.map(source => {
           const key = sourceKey(source);
           const busy = resolving.has(key);
-          const choices = webChoices[key] ?? [];
           const canOpen =
             allowSourceActions &&
             !!sessionId &&
@@ -180,23 +198,6 @@ export function ConversationToolEventSources({
                   {sourceKindLabel(source.sourceKind)}
                 </Text>
               )}
-              {choices.map(choice => (
-                <Pressable
-                  accessibilityRole="link"
-                  accessibilityLabel={t('ragConversation.tool.openWebSource', {
-                    title: choice.title,
-                  })}
-                  key={`${choice.title}:${choice.url}`}
-                  onPress={() => {
-                    openSource(source, choice);
-                  }}
-                  style={styles.toolEventSource}
-                >
-                  <Text numberOfLines={2} style={styles.sourceText}>
-                    {choice.title}
-                  </Text>
-                </Pressable>
-              ))}
               {errors.has(key) ? (
                 <Text accessibilityRole="alert" style={styles.error}>
                   {t('ragConversation.tool.sourceUnavailable')}
@@ -210,6 +211,18 @@ export function ConversationToolEventSources({
           {t('ragConversation.tool.sourcesUnavailable')}
         </Text>
       )}
+      {sheet ? (
+        <PublicToolSourceSheet
+          state={sheet}
+          close={close}
+          open={choice => {
+            const source = event.sources.find(
+              item => sourceKey(item) === sheet.key,
+            );
+            if (source) openSource(source, choice);
+          }}
+        />
+      ) : null}
     </View>
   );
 }

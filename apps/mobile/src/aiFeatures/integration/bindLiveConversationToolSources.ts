@@ -13,13 +13,10 @@ export async function bindLiveConversationToolSources(
   data: AiFeatureLocalData,
   registry: LocalEvidenceReferenceRegistry,
 ) {
-  const turns = await storage.readToolTurns(sessionId);
-  const owner = turns.find(turn =>
-    turn.toolEvents.some(
-      item =>
-        item.operationRunId === event.operationRunId &&
-        item.callId === event.callId,
-    ),
+  const owner = await storage.readToolCall(
+    sessionId,
+    event.operationRunId,
+    event.callId,
   );
   if (!owner) return;
   const turn = {
