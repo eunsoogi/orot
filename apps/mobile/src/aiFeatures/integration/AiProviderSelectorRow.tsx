@@ -1,9 +1,11 @@
+import { AppText } from '../../layout/AppText';
+import { appColors } from '../../layout/appColors';
 import { useEffect, useState } from 'react';
-import { APPLE_PCC_PROVIDER_ID, APPLE_PROVIDER_ID } from '@orot/provider-apple';
 import { StyleSheet, View } from 'react-native';
 import { t } from '../../i18n';
 import {
   providerControlCopy,
+  resolvedProviderPresentation,
   type Presentation,
 } from './conversationModelControlCopy';
 import { observeConversationModelLifecycle } from './conversationModelDisplayLifecycle';
@@ -12,6 +14,7 @@ import type {
   OnDeviceSelectionWitness,
   ResolveConversationModelDisplay,
   SavedPlatformChoice,
+  SelectedAiResolution,
 } from './provider';
 
 interface AiProviderSelectorRowProps {
@@ -45,6 +48,7 @@ export function AiProviderSelectorRow({
     let chatGPTPresentation = false;
     let unsubscribeCredential: (() => void) | undefined;
     let exactPlatform: SavedPlatformChoice | undefined;
+    let observedName: string | undefined;
     let invalidated = false;
     let fence = 0;
     let launchedFence = 0;
@@ -119,9 +123,11 @@ export function AiProviderSelectorRow({
 
     function launch(platformRefreshOnly?: SavedPlatformChoice) {
       const id = ++attempt;
+      let settled: SelectedAiResolution | undefined;
       launchedFence = fence;
       launchedForeground = lifecycle.foreground();
       waiting = undefined;
+      observedName = undefined;
       ownsSelection = null;
       unsubscribe?.();
       unsubscribe = undefined;
@@ -151,16 +157,21 @@ export function AiProviderSelectorRow({
           // A foreground change must not trigger a new remote catalog lookup.
           if (!lifecycle.hasProtectedDataWitness) return;
           chatGPTPresentation = true;
+          observedName = name;
           if (!launchedForeground || launchedFence !== fence) {
             invalidate();
             return;
           }
+          if (settled?.status === 'ready') return;
           lifecycle.observeSavedPlatform();
-          const value = {
+          const pend = {
             status: 'saved-chatgpt',
             name,
             local: false,
           } as const;
+          const value = settled
+            ? resolvedProviderPresentation(settled, undefined, name)
+            : pend;
           if (lifecycle.canShowSavedName()) publish(value);
           else waiting = value;
         },
@@ -169,6 +180,7 @@ export function AiProviderSelectorRow({
           // Classify before protection checks so a late PCC result cannot
           // escape into generic presentation when native proof is absent.
           exactPlatform = platform;
+          observedName = name;
           if (!protectedPlatform()) return;
           lifecycle.observeSavedPlatform();
           if (launchedFence !== fence || !launchedForeground) {
@@ -186,30 +198,12 @@ export function AiProviderSelectorRow({
       }).then(
         result => {
           if (!current(id)) return;
-          // A verified resolver result is not a presentation witness. A
-          // resolver without the exact saved-choice callback cannot expose PCC.
-          if (
-            result.status === 'ready' &&
-            result.selection.providerId === APPLE_PCC_PROVIDER_ID &&
-            exactPlatform !== 'pcc'
-          ) {
-            publish(unavailable);
-            return;
-          }
-          const value: Presentation =
-            result.status === 'ready'
-              ? {
-                  status: 'ready',
-                  name: result.option.displayName,
-                  local: result.selection.providerId === APPLE_PROVIDER_ID,
-                }
-              : {
-                  status:
-                    result.status === 'unavailable' &&
-                    result.reason === 'transient-catalog'
-                      ? 'catalog-unconfirmed'
-                      : result.status,
-                };
+          settled = result;
+          const value = resolvedProviderPresentation(
+            result,
+            exactPlatform,
+            observedName,
+          );
           if (exactPlatform) platformResult(value);
           else if (chatGPTPresentation && !lifecycle.ready()) waiting = value;
           else publish(value);
@@ -229,7 +223,7 @@ export function AiProviderSelectorRow({
     };
   }, [resolveSelectedAi, revision]);
 
-  const { local, value, rowLabel, busy } = providerControlCopy(shown);
+  const { local, value, rowLabel, busy, detail } = providerControlCopy(shown);
   return (
     <View style={!embedded && styles.inset}>
       <SelectedModelControl
@@ -241,10 +235,12 @@ export function AiProviderSelectorRow({
         onPress={onPress}
         testID="ai-feature-select-provider"
       />
+      {detail ? <AppText style={styles.detail}>{detail}</AppText> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   inset: { marginHorizontal: 20, marginVertical: 8 },
+  detail: { color: appColors.secondary },
 });

@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react-native';
 import { providerSelectionStore } from '../../../providers/selection/keychainSelectionStore';
 import { chatGPTCredentialMutation } from '../../../providers/chatGPTConsentIdentity';
+import * as credentialIdentity from '../../../providers/chatGPTConsentIdentity';
 import type { ChatGPTSelectionServices } from '../../../providers/selection/chatGPTServices';
 import * as native from '../../../ragConversation/conversationExecutionNative';
 import type { ConversationExecutionEvent } from '../../../ragConversation/conversationExecutionLease';
@@ -180,5 +181,67 @@ test.each(['different-account', 'needs-sign-in'] as const)(
     expect(screen.queryByText('GPT-6.2 Sol')).toBeNull();
     expect(f.listModels).not.toHaveBeenCalled();
     expect(screen.getByText('선택한 AI를 확인할 수 없어요.')).toBeTruthy();
+  },
+);
+
+test.each(['local-first', 'offline-first', 'verified-first', 'no-credential'])(
+  'handles saved-name and readiness results independently: %s',
+  async scenario => {
+    const valid = scenario !== 'no-credential';
+    const stored = deferred<string>();
+    jest
+      .spyOn(credentialIdentity, 'readChatGPTConsentCredential')
+      .mockResolvedValue(
+        valid
+          ? {
+              epoch: 'fixture-generation',
+              isCurrent: () => true,
+              subscribe: () => () => undefined,
+            }
+          : null,
+      );
+    const title = jest
+      .spyOn(providerSelectionStore, 'loadTitle')
+      .mockReturnValue(stored.promise);
+    const modelId = 'opaque-saved-model';
+    const f = setup(modelId);
+    await render(f.mount(0));
+    await f.accountReady();
+    if (valid)
+      expect(title).toHaveBeenCalledWith(
+        { modelId, providerId: `chatgpt-plan:${exactAccount}:${modelId}` },
+        'fixture-generation',
+      );
+    else expect(title).not.toHaveBeenCalled();
+    const release = () => act(() => stored.resolve('Stored Friendly Name'));
+    if (scenario === 'local-first') await release();
+    expect(Boolean(screen.queryByText('Stored Friendly Name'))).toBe(
+      scenario === 'local-first',
+    );
+    const verified = scenario === 'verified-first';
+    if (verified) {
+      await f.ready();
+      expect(screen.getByText('Verified catalog name')).toBeTruthy();
+    } else {
+      await act(() =>
+        f.catalog.resolve({
+          ok: false,
+          error: {
+            code: 'provider_unavailable',
+            message: 'Fixture offline',
+            retryable: true,
+            connectivity: 'offline',
+          },
+        }),
+      );
+      expect(screen.getByText('모델 설정 열기')).toBeTruthy();
+    }
+    expect(f.row().props.accessibilityState.busy).toBe(false);
+    if (scenario !== 'local-first') await release();
+    expect(Boolean(screen.queryByText('Stored Friendly Name'))).toBe(
+      valid && !verified,
+    );
+    expect(Boolean(screen.queryByText('Verified catalog name'))).toBe(verified);
+    expect(screen.queryByText(modelId)).toBeNull();
   },
 );
