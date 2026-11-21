@@ -55,7 +55,11 @@ int main() {
     exec(db, "CREATE TABLE source_deletion_tombstones(source_id TEXT); CREATE TABLE "
              "agent_memory_removed_sources(source_id TEXT); CREATE TABLE "
              "typed_deletion_markers(marker_table TEXT, source_id TEXT, kind TEXT); CREATE TABLE "
-             "transcript_segments(id TEXT, payload_json TEXT)");
+             "transcript_segments(id TEXT, payload_json TEXT); CREATE INDEX "
+             "transcript_segments_recording_idx ON transcript_segments ("
+             "json_extract(payload_json, '$.recordingSourceId'), "
+             "json_extract(payload_json, '$.segmentOrdinal'), "
+             "json_extract(payload_json, '$.revision'))");
 
     {
         OrotStatementCache cache(db, orotCacheEligible);
