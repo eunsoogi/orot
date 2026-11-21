@@ -21,6 +21,8 @@ export function createConversationSessionOptions(
   const photo = conversationPhotoPreparationOption(input);
   return {
     ...photo,
+    readPlainContextPage: async (...args) =>
+      (await openStorage()).readPlainContextPage(...args),
     restoreSessionPage: conversationHistoryPageOption(input, openStorage),
     ...continuousSessionOption(input.selectedAi, openStorage),
     restoreSteering: restoreConversationSteering(openStorage),

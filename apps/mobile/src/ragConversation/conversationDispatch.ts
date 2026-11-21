@@ -1,3 +1,7 @@
+import {
+  appendPlainHistoryToSender,
+  type PlainHistoryPlan,
+} from './plainConversationSendContext';
 import { markConversationInput } from '../providers/conversationInputDiagnostic';
 import { t } from '../i18n';
 import { startOwnedConversationRequest } from './conversationOwnedRequest';
@@ -19,7 +23,10 @@ export function conversationDispatch(input: {
   update: (id: number, change: Partial<ConversationSession>) => void;
   current: (id: number) => boolean;
   bindSender?: (sender: ConversationSender) => ConversationSender;
-  beforeSend?: (id: number, signal: AbortSignal) => Promise<boolean>;
+  beforeSend?: (
+    id: number,
+    signal: AbortSignal,
+  ) => Promise<boolean | PlainHistoryPlan>;
 }) {
   const preparing = new Map<number, AbortController>();
   const cancelPreparation = (id: number) => {
@@ -86,9 +93,17 @@ export function conversationDispatch(input: {
       if (!ready || !current()) return;
       // The same owner transitions synchronously into requests.send before another tap can enter.
       dispatched = true;
+      const prepared =
+        typeof ready === 'object'
+          ? appendPlainHistoryToSender(sender, {
+              ...ready,
+              current: () =>
+                !input.disposed() && input.current(id) && ready.current(),
+            })
+          : sender;
       const sending = input.requests.send(
         id,
-        input.bindSender?.(sender) ?? sender,
+        input.bindSender?.(prepared) ?? prepared,
         prompt,
         prompt === undefined && input.photoDrafts.get(id).status !== 'empty',
         registerOwner,
