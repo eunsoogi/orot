@@ -12,7 +12,9 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
   const saveConsent = useVoiceConsentSave(catalog.revision);
   const [mode, setMode] = useState<VoiceMode>('local');
   const [model, setModel] = useState<string>(localVoiceModel);
-  const [savedModel, setSavedModel] = useState<string | null>(null);
+  const [saved, setSaved] = useState<{ mode: VoiceMode; model: string } | null>(
+    null,
+  );
   const [busy, setBusy] = useState(true);
   const [failedLoad, setFailedLoad] = useState(false);
   const [message, setMessage] = useState('');
@@ -24,14 +26,14 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
     const version = ++owner.current;
     setBusy(true);
     setFailedLoad(false);
-    setSavedModel(null);
+    setSaved(null);
     voiceSettingsStore
       .load()
       .then(value => {
         if (!mounted.current || version !== owner.current) return;
         setMode(value.mode);
         setModel(value.model);
-        setSavedModel(value.model);
+        setSaved({ mode: value.mode, model: value.model });
       })
       .catch(() => {
         if (mounted.current && version === owner.current) {
@@ -58,7 +60,7 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
     try {
       await saveConsent(mode, model, current);
       if (!current()) return false;
-      setSavedModel(model);
+      setSaved({ mode, model });
       setMessage(t('modelSettings.voiceSaved'));
       return true;
     } catch {
@@ -72,7 +74,8 @@ export function useVoiceSelection(catalog: ReturnType<typeof useVoiceCatalog>) {
   return {
     mode,
     model,
-    savedModel,
+    savedModel: saved?.model ?? null,
+    savedMode: saved?.mode,
     busy,
     failedLoad,
     message,

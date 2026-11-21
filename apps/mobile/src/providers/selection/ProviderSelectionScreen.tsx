@@ -1,3 +1,4 @@
+import { savedModelPresentation } from './savedModelPresentation';
 import { useSavedSearchChoices } from './useSavedSearchChoices';
 import { useConversationModelConfirmation } from './useConversationModelConfirmation';
 import { t } from '../../i18n';
@@ -112,6 +113,10 @@ export default function ProviderSelectionScreen({
     loadError,
     available: resolution.ok,
     displayName: selectedOption?.displayName,
+    storedLabel:
+      savedSelection && presentation === 'settings-provider'
+        ? savedModelPresentation(savedSelection, selectedOption)
+        : undefined,
     savedModelId: savedSelection?.modelId,
     presentation,
   });

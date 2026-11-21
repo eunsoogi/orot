@@ -117,7 +117,7 @@ it('preserves unavailable saved selection and never silently substitutes local',
     .mockResolvedValue({ connected: false, revision: 1 });
   const view = await render(<VoiceSettingsPanel />);
   expect(await view.findByTestId('voice-current-model')).toHaveTextContent(
-    /기존 OpenAI 음성 설정 \(전환 필요\)/,
+    /OpenAI API - 모델 이름을 확인할 수 없어요\./,
   );
   expect(
     view.getByTestId('voice-settings-save').props.accessibilityState.disabled,
@@ -219,7 +219,7 @@ it('shows the stored model before refresh and keeps it distinct from an unsaved 
   const view = await render(<VoiceSettingsPanel />);
   await waitFor(() =>
     expect(view.getByTestId('voice-current-model')).toHaveTextContent(
-      /Apple 시스템 음성/,
+      /Apple - Apple 시스템 음성/,
     ),
   );
   expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
@@ -235,13 +235,13 @@ it('shows the stored model before refresh and keeps it distinct from an unsaved 
   );
   await fireEvent.press(view.getByTestId('voice-model-gpt-live-1.1'));
   expect(view.getByTestId('voice-current-model')).toHaveTextContent(
-    /Apple 시스템 음성/,
+    /Apple - Apple 시스템 음성/,
   );
   await fireEvent.press(view.getByTestId('voice-settings-save'));
   await voiceConsentView.tapVoiceSettingsAlertButton('동의');
   await waitFor(() =>
     expect(view.getByTestId('voice-current-model')).toHaveTextContent(
-      /GPT-Live-1.1/,
+      /OpenAI API - GPT-Live-1\.1/,
     ),
   );
 });
