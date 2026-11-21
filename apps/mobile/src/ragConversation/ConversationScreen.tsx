@@ -28,6 +28,7 @@ import { ConversationQuickChoices } from './ConversationQuickChoices';
 import * as ConversationTasks from './ConversationTaskPanels';
 export function ConversationScreen({
   isEntryCurrent,
+  ownsConversationPresentation = isEntryCurrent,
   entryContext,
   navigationRouteKey,
   providerSelection,
@@ -61,12 +62,14 @@ export function ConversationScreen({
   const session = snapshot.sessions.find(
     item => item.id === snapshot.activeId,
   )!;
+  const canPaint = ownsConversationPresentation?.() ?? true;
   useContinuousConversationEntry(
     store,
     entryContext,
     session,
     voiceSelection?.revision,
     !isEntryCurrent || isEntryCurrent(),
+    canPaint,
   );
   const { id, messages, pendingMessage, busy, error } = session;
   const preflightError =
@@ -162,11 +165,7 @@ export function ConversationScreen({
             onContinueCold={requestId =>
               store.resumeCold(id, requestId).catch(() => {})
             }
-            {...conversationHistoryRecoveryProps(
-              session,
-              store,
-              isEntryCurrent?.(),
-            )}
+            {...conversationHistoryRecoveryProps(session, store, canPaint)}
             sessionId={id}
             requestSessionId={id}
             requestActivity={session.requestActivity}

@@ -135,10 +135,9 @@ function App({
                 <AppConversationScene
                   actions={actions}
                   defaultConversation={actions.route.name === 'root'}
-                  isEntryCurrent={() => {
+                  isRouteCurrent={() => {
                     const snapshot = appNavigation.getSnapshot();
                     return (
-                      AppState.currentState === 'active' &&
                       !snapshot.isTransitioning &&
                       snapshot.currentRoute.key === actions.route.key &&
                       (actions.route.name !== 'root' ||
