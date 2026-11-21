@@ -194,12 +194,13 @@ enum ClassificationFailureNoticeUITestSupport {
         if controls.allSatisfy({ $0.count == 0 }) {
             return true
         }
-        return controls.allSatisfy { $0.count == 1 } && footer.exists &&
-            controls.map(\.firstMatch).allSatisfy { control in
-                control.elementType == .button && !control.label.isEmpty &&
-                    control.frame.width >= 44 && control.frame.height >= 44 &&
-                    footer.frame.insetBy(dx: -1, dy: -1).contains(control.frame)
-            }
+        guard controls.allSatisfy({ $0.count == 1 }), footer.exists else { return false }
+        let matchedControls: [XCUIElement] = controls.map { $0.firstMatch }
+        return matchedControls.allSatisfy { control in
+            guard control.elementType == .button, !control.label.isEmpty,
+                  control.frame.width >= 44, control.frame.height >= 44 else { return false }
+            return footer.frame.insetBy(dx: -1, dy: -1).contains(control.frame)
+        }
     }
 
     /// Persist before every possible fail-fast assertion; defer is not reliable when XCTest aborts a case.
