@@ -24,14 +24,35 @@ const originalDimensions = Native.Dimensions.get('window');
 beforeEach(() => Native.Dimensions.set({ window: dimensions }));
 afterEach(() => Native.Dimensions.set({ window: originalDimensions }));
 
-test('keeps the caution readable in the conversation page', async () => {
-  await render(<ConversationComposer {...props} value="" />);
-  expect(
-    Native.StyleSheet.flatten(
-      screen.getByText(getRagConversationCopy().disclaimer).props.style,
-    ).backgroundColor,
-  ).toEqual(appColors.background);
-});
+test.each([false, true])(
+  'keeps the caution legible without a text plate (reduced transparency: %s)',
+  async opaque => {
+    const reduced = jest
+      .spyOn(Native.AccessibilityInfo, 'isReduceTransparencyEnabled')
+      .mockResolvedValue(opaque);
+    const gradientId = 'conversation-composer-gradient';
+    try {
+      await render(<ConversationComposer {...props} value="" />);
+      const disclaimer = screen.getByText(getRagConversationCopy().disclaimer);
+      const style = Native.StyleSheet.flatten(disclaimer.props.style);
+      expect(style.backgroundColor).toBeUndefined();
+      expect(style.color).toEqual(appColors.text);
+      const gradient = screen.getByTestId(gradientId, {
+        includeHiddenElements: true,
+      });
+      const solid = screen.queryByTestId(`${gradientId}-opaque`, {
+        includeHiddenElements: true,
+      });
+      expect(Boolean(solid)).toBe(opaque);
+      expect(Native.StyleSheet.flatten(gradient.props.style).top).toBe(
+        opaque ? 0 : -16,
+      );
+      expect(gradient.props.pointerEvents).toBe('none');
+    } finally {
+      reduced.mockRestore();
+    }
+  },
+);
 
 test('ignores stale native frame height after clearing a large draft', async () => {
   const view = await render(<ConversationComposer {...props} value="" />);
