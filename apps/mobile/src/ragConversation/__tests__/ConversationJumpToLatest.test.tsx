@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ScrollView, Text } from 'react-native';
 import { ConversationHistory } from '../ConversationHistory';
+import { trackJumpLatestMotion } from '../testSupport/jumpLatestMotion';
 import { NavigationMotionContext } from '../../navigation/NavigationMotionContext';
 import { FloatingComposerSurface } from '../FloatingComposerSurface';
 
@@ -35,6 +36,9 @@ const end = (y: number) =>
     nativeEvent: { layout: { y } },
   });
 
+beforeEach(() => {
+  trackJumpLatestMotion(true);
+});
 afterEach(() => jest.restoreAllMocks());
 
 test('appears only above the latest position and resumes following when activated', async () => {
@@ -187,7 +191,6 @@ test('enabling Reduce Motion during a jump completes it without animation', asyn
   );
   expect(move).toHaveBeenLastCalledWith({ y: 600, animated: false });
 });
-
 test('status-bar scroll to top cancels an in-flight jump and restores its control', async () => {
   const follow = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
   await render(<ConversationHistory {...props} />);

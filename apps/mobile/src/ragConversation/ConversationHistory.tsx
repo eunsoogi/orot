@@ -233,17 +233,17 @@ export function ConversationHistory({
         />
         {footer}
       </ScrollView>
-      {jumpControl.away ? (
-        <ConversationJumpToLatest
-          bottom={composerInset}
-          onPress={() => {
-            reading.cancel();
-            window.cancelAnchor();
-            jumpControl.jump();
-            reading.save({ bottom: true });
-          }}
-        />
-      ) : null}
+      <ConversationJumpToLatest
+        key={sessionId}
+        visible={jumpControl.away}
+        bottom={composerInset}
+        onPress={() => {
+          reading.cancel();
+          window.cancelAnchor();
+          jumpControl.jump();
+          reading.save({ bottom: true });
+        }}
+      />
     </View>
   );
 }

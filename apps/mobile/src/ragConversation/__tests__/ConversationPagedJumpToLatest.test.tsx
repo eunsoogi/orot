@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { ScrollView } from 'react-native';
 import { ConversationHistory } from '../ConversationHistory';
+import { trackJumpLatestMotion } from '../testSupport/jumpLatestMotion';
 
 jest.mock('../../layout/AiResponseText', () => ({
   AiResponseText: require('react-native').Text,
@@ -8,6 +9,9 @@ jest.mock('../../layout/AiResponseText', () => ({
 jest.mock('../../layout/GlassIconButton', () => ({
   GlassIconButton: require('react-native').Pressable,
 }));
+beforeEach(() => {
+  trackJumpLatestMotion(true);
+});
 afterEach(() => jest.restoreAllMocks());
 
 // Synthetic layout events prove ownership coordination, not native hit geometry.

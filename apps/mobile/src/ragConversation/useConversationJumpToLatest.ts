@@ -44,13 +44,26 @@ export function useConversationJumpToLatest(input: {
     animatedTarget.current = null;
     followsBottom.current = false;
   }
-  const [away, setAway] = useState(false);
+  const sessionId = input.sessionId;
+  const [visibility, setVisibility] = useState<{
+    sessionId: number | undefined;
+    away: boolean;
+  }>({ sessionId, away: false });
+  const setAway = useCallback(
+    (away: boolean) =>
+      setVisibility(previous =>
+        previous.sessionId === sessionId && previous.away === away
+          ? previous
+          : { sessionId, away },
+      ),
+    [sessionId],
+  );
   const measured = useRef<Geometry | null>(null);
   useEffect(() => {
     measured.current = null;
     animatedTarget.current = null;
     setAway(false);
-  }, [input.sessionId]);
+  }, [setAway]);
   const refresh = useCallback(
     (patch?: Partial<Geometry>) => {
       const geometry = {
@@ -72,7 +85,7 @@ export function useConversationJumpToLatest(input: {
           : Math.max(0, geometry.contentHeight - geometry.height);
       setAway(animatedTarget.current === null && end - geometry.offset > 8);
     },
-    [compact, composerInset, messageEnd],
+    [compact, composerInset, messageEnd, setAway],
   );
   // Composer growth can change the visible message end without a scroll event.
   useEffect(() => {
@@ -179,7 +192,8 @@ export function useConversationJumpToLatest(input: {
     );
   };
   return {
-    away,
+    // A new session never inherits the old session's more-latest control.
+    away: visibility.sessionId === sessionId && visibility.away,
     refresh,
     onScroll,
     cancelJump() {
