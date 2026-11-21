@@ -1,3 +1,8 @@
+import {
+  BoundReadWitnessUnavailable,
+  type BoundReadResultWitness,
+} from './boundReadResultWitness';
+import { createConversationSharedAncestry } from './conversationSharedAncestry';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { measureHistoryValidationCost } from '../providers/conversationHistoryDiagnostic';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
@@ -32,6 +37,7 @@ export function createConversationStrictRoots(
       value?: ConversationArtifact,
     ) => ConversationArtifact | undefined,
     boundReaderCurrent?: () => boolean,
+    witness?: BoundReadResultWitness,
   ): Promise<(ConversationArtifact | null)[]> => {
     const diagnostic = createConversationReadDiagnostics(
       Boolean(operation?.active && operation.profileHistoryValidation),
@@ -48,6 +54,8 @@ export function createConversationStrictRoots(
         diagnostic.finish();
         // Source validation may record non-destructive quarantine audit state.
         // Only identical period calculations, never that policy authority, are shared.
+        const sharedAncestry =
+          witness && createConversationSharedAncestry(tx, witness.current);
         const validatePeriod = createReadOnlyPeriodValidation(tx, calculate);
         // Reuse only pure computation inside this private exact bound operation.
         const parentDigest =
@@ -131,6 +139,7 @@ export function createConversationStrictRoots(
               !lease && operation?.active ? canBatchOrdinary : undefined,
               parentDigest,
               parentDecode,
+              sharedAncestry,
             );
             const witnessed = recordRootBytes?.(
               typeof raw === 'string' ? raw : undefined,
@@ -147,10 +156,13 @@ export function createConversationStrictRoots(
         }
         diagnostic.start('artifact_read_settlement');
       };
+      if (witness && !operation?.active)
+        throw new BoundReadWitnessUnavailable();
       diagnostic.start('artifact_read_admission');
       if (operation?.active)
         await operation.run(work, {
           rollbackOnFailure,
+          witness,
           ...(recordRootBytes && boundReaderCurrent
             ? { boundQuantityOwner: boundReaderCurrent }
             : {}),

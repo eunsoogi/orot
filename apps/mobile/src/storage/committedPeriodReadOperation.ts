@@ -1,4 +1,10 @@
 import {
+  BoundReadWitnessUnavailable,
+  guardedBoundTransaction,
+  type BoundReadResultWitness,
+} from './boundReadResultWitness';
+import { withBoundPeriodRemovalPlan } from './boundPeriodRemovalPlan';
+import {
   reportCacheDecision,
   endReportCalculationDiagnostic,
 } from '../healthEvidence/healthContext/reportCalculationDiagnostic';
@@ -77,12 +83,13 @@ export function committedPeriodReadOperation(
         rollbackOnFailure?: boolean;
         /** Only the canonical, still-owned bound reader can opt into this plan. */
         boundQuantityOwner?: () => boolean;
+        witness?: BoundReadResultWitness;
       } = {},
     ) {
       check();
       const pending = new Map<string, HealthContextReport>();
       let failure: { error: unknown } | undefined;
-      await database.transaction(async tx => {
+      const execute = async (tx: SqlExecutor) => {
         // Check cancellation at every query boundary without converting operational
         // SQL errors into cancellation. The report's generic abort errors must not
         // accidentally select rollback and resurrect an interleaved native delete.
@@ -201,7 +208,8 @@ export function committedPeriodReadOperation(
         } catch (error) {
           // Tool snapshots explicitly retain their existing rollback contract.
           if (
-            options.rollbackOnFailure &&
+            (options.rollbackOnFailure ||
+              error instanceof BoundReadWitnessUnavailable) &&
             !(error instanceof ReadScopeInvalidated)
           )
             throw error;
@@ -210,10 +218,17 @@ export function committedPeriodReadOperation(
           // non-destructive quarantine audit state merely because the read fails.
           failure = { error };
         }
-      });
+      };
+      const witness = options.witness;
+      if (witness)
+        await guardedBoundTransaction(database, witness, tx =>
+          withBoundPeriodRemovalPlan(tx, witness, () => execute(tx)),
+        );
+      else await database.transaction(execute);
       if (failure) throw failure.error;
       check();
       const committed = await readHealthContextGeneration(database);
+      if (witness) await witness.sample(database);
       check();
       for (const report of pending.values())
         if (!same(report, committed))
