@@ -38,9 +38,21 @@ export function createBoundConversationCaptureOwner(input: {
           scoped && ownsBoundCaptureAuthority(owner)
             ? await readOwnedBoundParentRows(scoped, input.storage, signal, ids)
             : undefined;
+        const witnessedRows = witnessed?.rows;
+        // Revocation can mean the scoped callback itself was replaced during
+        // the read. Recheck authority and retry through the stock reader only.
+        if (
+          witnessed &&
+          !witnessedRows &&
+          (signal.aborted || !ownsBoundCaptureAuthority(owner))
+        )
+          return false;
         const rows =
-          witnessed?.rows ?? (await (scoped ?? input.storage).readMany(ids));
-        const tokens = witnessed?.tokens;
+          witnessedRows ??
+          (await (
+            witnessed ? input.storage : (scoped ?? input.storage)
+          ).readMany(ids));
+        const tokens = witnessedRows ? witnessed?.tokens : undefined;
         let lastToken: number | undefined;
         let lastDigest: string | undefined;
         return (

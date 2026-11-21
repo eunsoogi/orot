@@ -25,7 +25,10 @@ export function createConversationStrictRoots(
     operation?: ReturnType<typeof committedPeriodReadOperation>,
     rollbackOnFailure = false,
     canBatchOrdinary?: () => boolean,
-    recordRootBytes?: (raw?: string) => void,
+    recordRootBytes?: (
+      raw?: string,
+      value?: ConversationArtifact,
+    ) => ConversationArtifact | undefined,
   ): Promise<(ConversationArtifact | null)[]> => {
     const diagnostic = createConversationReadDiagnostics(
       Boolean(operation?.active && operation.profileHistoryValidation),
@@ -89,8 +92,11 @@ export function createConversationStrictRoots(
               operation?.active && operation.profileHistoryValidation,
               !lease && operation?.active ? canBatchOrdinary : undefined,
             );
-            recordRootBytes?.(typeof raw === 'string' ? raw : undefined);
-            output.push(value);
+            const witnessed = recordRootBytes?.(
+              typeof raw === 'string' ? raw : undefined,
+              value,
+            );
+            output.push(witnessed ?? value);
           } catch (error) {
             // Only proven invalid lineage is unavailable; operational failures remain retryable.
             if (!(error instanceof RetainedSourceInvalidError)) throw error;

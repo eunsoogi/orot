@@ -7,7 +7,7 @@ import type { ConversationArtifact } from './conversationArtifactCodec';
 import { createConversationStrictRoots } from './conversationArtifactStrictRoots';
 
 type BoundParentRows = {
-  rows: (ConversationArtifact | null)[];
+  readonly rows?: (ConversationArtifact | null)[];
   tokens?: readonly (number | undefined)[];
 };
 const boundParentReaders = new WeakMap<
@@ -186,6 +186,34 @@ export function createConversationArtifactReader(
           const tokens: (number | undefined)[] = [];
           let previous: string | undefined;
           let sequence = 0;
+          const share = ids.some((id, index) => ids[index - 1] === id);
+          const record = (raw?: string, same = raw === previous) => {
+            if (!same) sequence++;
+            previous = raw;
+            tokens.push(raw === undefined ? undefined : sequence);
+          };
+          let priorValue: ConversationArtifact | undefined;
+          let shared = false;
+          const recordAndShare = (
+            raw?: string,
+            value?: ConversationArtifact,
+          ) => {
+            // Never use the prior body as input to validation. Only the private
+            // settled match can reuse it after this slot independently passed.
+            const same = raw === previous;
+            record(raw, same);
+            if (
+              same &&
+              raw !== undefined &&
+              value &&
+              priorValue?.id === value.id
+            ) {
+              shared = true;
+              return priorValue;
+            }
+            priorValue = value;
+            return undefined;
+          };
           const rows = await readManyWithLease(
             ids,
             undefined,
@@ -193,16 +221,19 @@ export function createConversationArtifactReader(
             operation,
             rollback,
             undefined,
-            raw => {
-              // The token witnesses only exact JSON bytes, never source validity.
-              // Keep at most one prior string; each row still decodes and validates.
-              if (raw !== previous) sequence++;
-              previous = raw;
-              tokens.push(raw === undefined ? undefined : sequence);
-            },
+            share
+              ? recordAndShare
+              : raw => {
+                  record(raw);
+                  return undefined;
+                },
           );
           return {
-            rows,
+            get rows() {
+              // Unchanged unique reads keep their existing settled output.
+              // Shared values cannot be used after the exact reader is lost.
+              return !shared || boundReaderCurrent() ? rows : undefined;
+            },
             get tokens() {
               return boundReaderCurrent() && tokens.length === rows.length
                 ? tokens
