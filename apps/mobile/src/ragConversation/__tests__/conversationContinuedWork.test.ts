@@ -34,7 +34,9 @@ function setup(initial: 'active' | 'background' = 'active', admitted = true) {
     controller,
     observer,
     work,
-    foreground: () => { phase = 'active'; },
+    foreground: () => {
+      phase = 'active';
+    },
     async finishStart() {
       resolveStart();
       await start;
@@ -62,7 +64,11 @@ test('decision revokes OS work and local activity cannot clear pending journal a
   expect(f.work.mock.calls.map(([, value]) => value)).toEqual([true, false]);
   f.observer.onApprovalWait(false);
   f.observer.onExecutionState('working');
-  expect(f.work.mock.calls.map(([, value]) => value)).toEqual([true, false, true]);
+  expect(f.work.mock.calls.map(([, value]) => value)).toEqual([
+    true,
+    false,
+    true,
+  ]);
 });
 
 test('a backgrounded checkpoint and denied or stopped ownership cannot schedule work', async () => {
