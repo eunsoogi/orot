@@ -121,6 +121,7 @@ export async function restoreColdRagConversationFactory(input: {
     external,
     artifactPaging: coldArtifactPaging(d, input.observer),
     publicSearchSucceeded: !publicSearch || publicSearch.status === 'success',
+    literatureOnly: publicSearch?.literatureOnly,
     researchPaging:
       'researchPaging' in saved
         ? {
