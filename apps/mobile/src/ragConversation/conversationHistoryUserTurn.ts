@@ -9,14 +9,19 @@ export function useConversationHistoryUserTurnFollow(
   messages: readonly DisplayMessage[],
   followsBottom: MutableRef<boolean>,
   expectedOffset: MutableRef<number | null>,
+  submittedSteeringId?: string,
 ) {
   const previousSessionId = useRef(sessionId);
+  const lastSteering = useRef(submittedSteeringId);
   const messageIds = useRef(messages.map(message => message.id));
 
   useLayoutEffect(() => {
     const previousIds = messageIds.current;
+    const previousSteering = lastSteering.current;
+    if (submittedSteeringId) lastSteering.current = submittedSteeringId;
     if (sessionId !== previousSessionId.current) {
       previousSessionId.current = sessionId;
+      lastSteering.current = submittedSteeringId;
       messageIds.current = messages.map(message => message.id);
       return;
     }
@@ -27,11 +32,14 @@ export function useConversationHistoryUserTurnFollow(
         message.id > 0 &&
         !previousIds.includes(message.id),
     );
-    if (newSubmittedMessage) {
+    if (
+      newSubmittedMessage ||
+      (submittedSteeringId && submittedSteeringId !== previousSteering)
+    ) {
       // A quick preview preserves reading position through its same-ID receipt transition.
       followsBottom.current = true;
       expectedOffset.current = null;
     }
     messageIds.current = messages.map(message => message.id);
-  }, [expectedOffset, followsBottom, messages, sessionId]);
+  }, [expectedOffset, followsBottom, messages, sessionId, submittedSteeringId]);
 }

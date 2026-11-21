@@ -1,8 +1,9 @@
+import type { ConversationSession } from '../conversationSessionTypes';
 import { createConversationSteeringOwner } from '../conversationSteeringOwner';
 import { createEmptyConversation } from '../conversationEmptySession';
 import type { WorkflowOperationJournal } from '@orot/agent-runtime';
 function fixture() {
-  let session = {
+  let session: ConversationSession = {
     ...createEmptyConversation(1),
     draft: 'Synthetic instruction',
   };
@@ -119,4 +120,34 @@ test('invalidation fences pending refresh and enqueue receipts immediately', asy
   expect(f.session().steeringInstructions).toEqual([]);
   expect(f.session().steeringAvailable).toBe(false);
   expect(f.session().draft).toBe('Synthetic instruction');
+});
+
+test('dropping the active queue does not clear committed receipts in the session', () => {
+  const row = {
+    id: 'past',
+    text: 'Prior instruction',
+    sequence: 1,
+    status: 'applied' as const,
+  };
+  let session: ConversationSession = {
+    ...createEmptyConversation(1),
+    messages: [
+      {
+        id: 1,
+        role: 'assistant' as const,
+        content: 'Earlier answer',
+        steeringInstructions: [row],
+      },
+    ],
+    steeringInstructions: [row],
+  };
+  const owner = createConversationSteeringOwner(
+    () => session,
+    (_id, change) => {
+      session = { ...session, ...change };
+    },
+  );
+  owner.dropActive(1);
+  expect(session.steeringInstructions).toEqual([]);
+  expect(session.messages[0]?.steeringInstructions).toEqual([row]);
 });

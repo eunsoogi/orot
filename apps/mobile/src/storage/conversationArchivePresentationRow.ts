@@ -1,3 +1,4 @@
+import type { StoredSteeringInstruction } from './conversationSteeringStorage';
 import {
   archivedConversationPresentationMetadata,
   type ArchivedConversationPresentationMetadata,
@@ -25,6 +26,7 @@ export type ConversationHistoryPresentation = {
       readonly healthSummary?: HealthSummaryResult;
       readonly dailyReport?: NonNullable<ConversationArtifact['dailyReport']>;
       readonly savedCitations?: readonly SavedArchivedCitation[];
+      readonly steeringInstructions?: readonly StoredSteeringInstruction[];
     })
   | { readonly status: 'interrupted'; readonly answer?: never }
 );
