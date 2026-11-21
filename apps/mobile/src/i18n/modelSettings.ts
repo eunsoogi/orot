@@ -16,6 +16,11 @@ export const modelSettingsKo = {
     '{recipient}에 공개 웹 검색용으로 검토된 검색어를 보내는 데 별도로 계속 동의합니다.',
   'modelSettings.consentMedical':
     'Europe PMC에 의학 문헌 검색어를 보내는 데 별도로 계속 동의합니다. 건강 기록 원문이나 대화 전체는 보내지 않습니다.',
+  'modelSettings.consentJointMedical':
+    'Europe PMC에는 의학 문헌 검색어만 전송합니다. 건강 기록 원문이나 대화 전체를 검색 요청에 첨부하지 않습니다.',
+  'modelSettings.consentJointConversationMedicalTitle':
+    '대화 모델 및 외부 검색 동의',
+  'modelSettings.consentMedicalTitle': '의학 문헌 검색 동의',
   'modelSettings.consentRecipient': '전송받는 곳: {recipient}',
   'modelSettings.consentConversationData':
     '대화와 보고서 생성에 필요한 질문, 선택한 건강 기록·검토한 기억·이전 대화·생성 결과, 진료 예약과 질문, 녹음 전사문, 사진에서 읽은 텍스트, 일정 계획 및 검색 결과를 전송합니다. 원본 사진은 전송하지 않습니다.',

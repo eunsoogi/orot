@@ -89,9 +89,9 @@ test.each([
         expect(
           view.getByTestId('inference-disclosure-scope'),
         ).not.toHaveTextContent(/캘린더 일정 제목과 시간만/);
-      expect(
-        view.getByTestId('inference-disclosure-scope'),
-      ).not.toHaveTextContent(/Europe PMC/);
+      expect(view.getByTestId('inference-disclosure-scope')).toHaveTextContent(
+        /Europe PMC/,
+      );
       expect(await reloaded.read('conversation', 'public-web')).toBeNull();
       expect(await reloaded.read('calendar')).toBeNull();
       await press('inference-disclosure-cancel');
@@ -109,7 +109,6 @@ test.each([
       expect(saved?.identity.authorityGeneration).toBe(
         (await reloaded.read('conversation'))?.identity.authorityGeneration,
       );
-      expect(await reloaded.read('conversation', 'medical-search')).toBeNull();
       if (hasCalendar) {
         const calendarGrant = await reloaded.read('calendar');
         expect(calendarGrant?.identity).toMatchObject({

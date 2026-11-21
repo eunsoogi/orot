@@ -187,7 +187,7 @@ export default function ProviderSelectionScreen({
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionFooter
               inlineConsent={!settings}
-              searchChoices={search.choices}
+              searchChoices={settings ? undefined : search.choices}
               searchReviewStatus={search.status}
               onSearchChoices={search.change}
               message={selectionMessage}

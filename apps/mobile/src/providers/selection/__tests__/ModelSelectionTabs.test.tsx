@@ -11,6 +11,11 @@ import ProviderSelectionScreen from '../ProviderSelectionScreen';
 import { createAppleSelectionOption } from '../options';
 import { providerSelectionText } from '../text';
 
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
+
 jest.mock('../../../voiceSettings/VoiceSettingsPanel', () => ({
   VoiceSettingsPanel: () => {
     const { Text } = require('react-native');
@@ -121,6 +126,10 @@ it('allows explicit replacement of an unavailable saved model without automatic 
   );
   await fireEvent.press(screen.getByTestId('provider-option-0'));
   await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
+  expect(storage.save).not.toHaveBeenCalled();
+  await fireEvent.press(
+    await screen.findByTestId('inference-disclosure-allow'),
+  );
   expect(storage.save).toHaveBeenCalledTimes(1);
   expect(committed).toHaveBeenCalledTimes(1);
   expect(storage.clear).not.toHaveBeenCalled();
