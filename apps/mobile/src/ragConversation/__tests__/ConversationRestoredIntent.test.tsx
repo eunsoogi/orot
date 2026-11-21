@@ -161,7 +161,7 @@ test('continues a restored possibilities conversation after a plain route entry'
     '지난주부터예요',
     expect.any(Array),
     expect.any(AbortSignal),
-    expect.objectContaining({ inputOrigin: 'composer' }),
+    expect.any(Object),
     expect.objectContaining({ intent: 'possibilities' }),
   );
 });

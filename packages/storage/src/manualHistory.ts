@@ -43,26 +43,13 @@ export interface ManualHistoryRepositoryOptions {
   createId?: () => string;
 }
 
-/** Local user memories share the protected edit/delete UI, not the health corpus. */
-export const localConversationMemoryIdPrefix = 'conversation-local-memory:';
-export function isLocalConversationMemoryId(id: string): boolean {
-  return id.startsWith(localConversationMemoryIdPrefix);
-}
-
 function newManualHistoryId(): string {
   return 'manual-history-' + Date.now() + '-' + Math.random().toString(36).slice(2);
 }
 
-function listSql(
-  query: ParsedManualHistoryQuery,
-  evidenceOnly: boolean,
-): { sql: string; parameters: SqlValue[] } {
+function listSql(query: ParsedManualHistoryQuery): { sql: string; parameters: SqlValue[] } {
   const conditions = ['1 = 1'];
   const parameters: SqlValue[] = [];
-  if (evidenceOnly) {
-    conditions.push('substr(entry.id, 1, ?) <> ?');
-    parameters.push(localConversationMemoryIdPrefix.length, localConversationMemoryIdPrefix);
-  }
   if (!query.includeSuperseded) {
     conditions.push(
       'NOT EXISTS (SELECT 1 FROM manual_history_entries AS successor ' +
@@ -114,12 +101,9 @@ export function createManualHistoryRepository(
   const clock = options.clock ?? (() => new Date().toISOString());
   const createId = options.createId ?? newManualHistoryId;
 
-  async function list(
-    query: ManualHistoryQuery = {},
-    evidenceOnly = false,
-  ): Promise<ManualHistoryEntry[]> {
+  async function list(query: ManualHistoryQuery = {}): Promise<ManualHistoryEntry[]> {
     const parsed = ManualHistoryQuerySchema.parse(query);
-    const { sql, parameters } = listSql(parsed, evidenceOnly);
+    const { sql, parameters } = listSql(parsed);
     const result = await database.execute(sql, parameters);
     return result.rows.map(decodeManualHistoryRow);
   }
@@ -177,9 +161,7 @@ export function createManualHistoryRepository(
         }
         const recordedAt = clock();
         corrected = correctManualHistoryEntry(previous, input, {
-          id:
-            (isLocalConversationMemoryId(previous.id) ? localConversationMemoryIdPrefix : '') +
-            createId(),
+          id: createId(),
           recordedAt,
           ingestedAt: recordedAt,
         });
@@ -217,11 +199,10 @@ export function createManualHistoryRepository(
       return deleted;
     },
     async listEvidence(query = {}) {
-      const entries = await list({ ...query, includeSuperseded: false }, true);
+      const entries = await list({ ...query, includeSuperseded: false });
       return entries.map(toManualHistoryEvidence);
     },
     async getEvidence(id, transaction) {
-      if (isLocalConversationMemoryId(id)) return null;
       let evidence: ManualHistoryEvidence | null = null;
       const readCurrent = async (executor: SqlExecutor) => {
         const entry = await readManualHistoryEntry(executor, id);

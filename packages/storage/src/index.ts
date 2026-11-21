@@ -58,11 +58,7 @@ export type {
   CalendarAppointmentInput,
   ManualAppointmentInput,
 } from './appointments';
-export {
-  createManualHistoryRepository,
-  localConversationMemoryIdPrefix,
-  isLocalConversationMemoryId,
-} from './manualHistory';
+export { createManualHistoryRepository } from './manualHistory';
 export type {
   ManualHistoryRepository,
   ManualHistoryRepositoryOptions,

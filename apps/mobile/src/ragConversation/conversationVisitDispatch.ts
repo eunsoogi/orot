@@ -122,7 +122,7 @@ export function sendConversationMessage(
   prepare?: ConversationScreenProps['prepareVisitQuestions'],
 ) {
   const session = store.getSnapshot().sessions.find(item => item.id === id);
-  const sendEntry = entryIntentSender(store, id, onSend, 'composer');
+  const sendEntry = entryIntentSender(store, id, onSend);
   return store.send(id, (question, history, signal, observer) => {
     if (observer?.photoInput)
       return sendEntry(question, history, signal, observer);
