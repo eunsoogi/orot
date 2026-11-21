@@ -1,13 +1,13 @@
+import { registerHistoryRead } from '../healthEvidence/historyObservationHydrationOwner';
 import { createConversationReadDiagnostics } from './conversationReadDiagnostics';
 import { measureHistoryValidationCost } from '../providers/conversationHistoryDiagnostic';
 import { conversationToolSnapshotReader } from './conversationToolSnapshot';
 import { committedPeriodReadOperation } from './committedPeriodReadOperation';
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
-import type { SqlExecutor } from '@orot/storage';
+import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
 import { createReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
-import type { SqlDatabase } from '@orot/storage';
 import {
   decodeConversationArtifact,
   type ConversationArtifact,
@@ -26,6 +26,7 @@ export function createConversationArtifactReader(
     collectValidated?: (artifact: ConversationArtifact) => void,
     operation?: ReturnType<typeof committedPeriodReadOperation>,
     rollbackOnFailure = false,
+    canBatchOrdinary?: () => boolean,
   ): Promise<(ConversationArtifact | null)[]> => {
     const diagnostic = createConversationReadDiagnostics(
       Boolean(operation?.active && operation.profileHistoryValidation),
@@ -45,13 +46,12 @@ export function createConversationArtifactReader(
         const validatePeriod = createReadOnlyPeriodValidation(tx, calculate);
         if (lease) {
           diagnostic.start('artifact_session_lease');
-          const session = await tx.execute(
+          const { rows } = await tx.execute(
             'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ?',
             [lease.sessionId, lease.version],
           );
           diagnostic.finish();
-          if (!session.rows.length)
-            throw new Error('Conversation is unavailable.');
+          if (!rows.length) throw new Error('Conversation is unavailable.');
         }
         for (const id of ids) {
           diagnostic.start('artifact_root_row');
@@ -85,6 +85,7 @@ export function createConversationArtifactReader(
               validatePeriod,
               collectValidated,
               operation?.active && operation.profileHistoryValidation,
+              !lease && operation?.active ? canBatchOrdinary : undefined,
             );
             output.push(value);
           } catch (error) {
@@ -108,6 +109,7 @@ export function createConversationArtifactReader(
   const methods = (
     operation?: ReturnType<typeof committedPeriodReadOperation>,
     rollbackOnFailure = false,
+    canBatchOrdinary?: () => boolean,
   ) => {
     const readMany = (ids: readonly string[]) =>
       readManyWithLease(
@@ -136,6 +138,7 @@ export function createConversationArtifactReader(
           },
           operation,
           rollbackOnFailure,
+          canBatchOrdinary,
         );
         return {
           items,
@@ -195,13 +198,16 @@ export function createConversationArtifactReader(
         signal,
         options?.historyPage,
       );
-      const scoped = methods(operation, options?.rollbackOnFailure);
+      const canBatchOrdinary = () =>
+        Boolean(options?.historyPage && operation.active && owned());
+      const rollback = options?.rollbackOnFailure;
+      const scoped = methods(operation, rollback, canBatchOrdinary);
       const toolSnapshot = conversationToolSnapshotReader(
         database,
         ensure,
         operation,
       );
-      return {
+      const reads = {
         get healthContextReportScope() {
           return owned() && operation.active
             ? operation.reportScope
@@ -217,6 +223,17 @@ export function createConversationArtifactReader(
           (owned() ? scoped : this).readMany(ids),
         readManyWithAncestry: (ids: readonly string[]) =>
           (owned() ? scoped : this).readManyWithAncestry(ids),
+        readManyFinalFence: (ids: readonly string[]) =>
+          canBatchOrdinary?.()
+            ? readManyWithLease(
+                ids,
+                undefined,
+                undefined,
+                operation,
+                rollback,
+                canBatchOrdinary,
+              )
+            : (owned() ? scoped : this).readMany(ids),
         readSessionMany: (
           id: string,
           version: number,
@@ -225,6 +242,7 @@ export function createConversationArtifactReader(
         read: (id: string) => (owned() ? scoped : this).read(id),
         dispose: operation.dispose,
       };
+      return registerHistoryRead(reads, database, canBatchOrdinary);
     },
   };
 }

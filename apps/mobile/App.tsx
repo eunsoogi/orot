@@ -29,10 +29,8 @@ import {
 } from './src/navigation/appContentLayoutPolicy';
 import { createNavigationRootTabs } from './src/navigation/rootTabs';
 import type { AppNavigationRoute } from './src/routes/AppRouteContent';
-import { AppRouteContent } from './src/routes/AppRouteContent';
+import * as overview from './src/routes/AppOverviewDataBoundary';
 import type { AppProps } from './src/routes/AppEntryProps';
-import { useAppOverviewData } from './src/routes/useAppOverviewData';
-import { useOverviewActivity } from './src/routes/useOverviewActivity';
 import { useBackupPreparation } from './src/backup/useBackupPreparation';
 import { appColors } from './src/layout/appColors';
 import { syncLocalPreviouslyRequestedHealthKit } from './src/healthkit/autoSyncLocal';
@@ -89,11 +87,6 @@ function App({
   const [appNavigation] = useState(() =>
     createNavigationController<AppNavigationRoute>('root'),
   );
-  const homeData = useAppOverviewData(
-    loadAppointments,
-    loadRecordings,
-    useOverviewActivity(appNavigation, activeTab),
-  );
   const backupPreparation = useBackupPreparation();
 
   useEffect(() => {
@@ -118,7 +111,7 @@ function App({
   }
 
   const rootTabs = createNavigationRootTabs(activeTab, selectActiveTab);
-  return (
+  const shell = (
     <View style={styles.appShell}>
       <RecordSourceNavigationProvider>
         <AiFeatureSharedNavigationStateProvider
@@ -177,8 +170,7 @@ function App({
                   }
                 />
               ) : (
-                <AppRouteContent
-                  {...homeData}
+                <overview.AppOverviewDataRouteContent
                   documentImportService={documentImportService}
                   loadSavedVisitQuestions={ai.services.loadSavedVisitQuestions}
                   discoverManualVisits={ai.services.conversationArtifacts}
@@ -235,6 +227,14 @@ function App({
         </AiFeatureSharedNavigationStateProvider>
       </RecordSourceNavigationProvider>
     </View>
+  );
+  return (
+    <overview.AppOverviewDataBoundary
+      controller={appNavigation}
+      {...{ activeTab, loadAppointments, loadRecordings }}
+    >
+      {shell}
+    </overview.AppOverviewDataBoundary>
   );
 }
 

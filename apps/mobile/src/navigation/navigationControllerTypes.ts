@@ -37,7 +37,7 @@ export interface NavigationController<Name extends string> {
   requestBack: () => Promise<boolean>;
   reconcileNativeBack: (routeKey: string) => boolean;
   requestHome: () => Promise<boolean>;
-  requestTabSwitch: () => Promise<boolean>;
+  requestTabSwitch: (commitApprovedTab?: () => void) => Promise<boolean>;
   /** Consume one unchanged tab decision and collapse to the existing root. */
   commitApprovedRoot: (expectedRouteKey: string) => boolean;
   requestTabSwitchDecision: () => Promise<

@@ -1,3 +1,4 @@
+import { selectConversationDisplayTurnIds } from './conversationFirstDisplaySelection';
 import { observeConversationHistory as observe } from '../../providers/conversationHistoryDiagnostic';
 import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
 import type { createConversationSessionStorage } from './conversationSessionStorage';
@@ -28,9 +29,12 @@ export function conversationHistoryPageOption(
       () =>
         restoreConversationSessionTurns(input, openStorage, sessionId, signal, {
           version,
-          ids: page.items
-            .filter(item => item.kind === 'turn')
-            .map(item => item.id),
+          ids: selectConversationDisplayTurnIds(
+            page.items,
+            sessionId,
+            signal,
+            cursor === undefined,
+          ),
         }),
       signal,
     );

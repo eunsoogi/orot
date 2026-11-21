@@ -1,3 +1,5 @@
+import { claimConversationFirstDisplay } from './conversationFirstDisplaySelection';
+import { openOwnedObservationHydration } from '../../healthEvidence/historyObservationHydrationOwner';
 import { observeConversationHistory } from '../../providers/conversationHistoryDiagnostic';
 import { withConversationReadOperation } from './conversationReadOperation';
 import type { ConversationCaptureOwner } from './evidenceCaptureBatch';
@@ -38,6 +40,15 @@ export async function restoreConversationSessionPage(
           data,
           ownerData: input.data,
           reads: operation ?? input.storage,
+          observationHydration:
+            !input.cursor &&
+            claimConversationFirstDisplay(
+              input.ids,
+              input.sessionId,
+              input.signal,
+            )
+              ? openOwnedObservationHydration(operation, data, input.signal)
+              : undefined,
         }),
       input.signal,
       operation?.healthContextReportScope,
@@ -50,10 +61,13 @@ export async function restoreConversationSessionPage(
 async function restore(
   input: SessionRestoreInput & {
     ownerData: AiFeatureLocalData;
+    observationHydration: ReturnType<typeof openOwnedObservationHydration>;
     reads: Pick<
       SessionRestoreInput['storage'],
       'readMany' | 'readManyWithAncestry'
-    >;
+    > & {
+      readManyFinalFence?: SessionRestoreInput['storage']['readMany'];
+    };
   },
 ) {
   if (input.signal.aborted)
@@ -106,7 +120,12 @@ async function restore(
   // Recheck the entire page in one transaction against a consistent source snapshot.
   const saved = await observeConversationHistory(
     'artifact_final_validation',
-    () => input.reads.readMany(items.map(item => item.id)),
+    () => {
+      const ids = items.map(item => item.id);
+      return input.reads.readManyFinalFence
+        ? input.reads.readManyFinalFence(ids)
+        : input.reads.readMany(ids);
+    },
     input.signal,
   );
   for (let index = items.length - 1; index >= 0; index--) {

@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -179,4 +180,47 @@ test('cancel preserves the committed appearance and entry without deleting data'
   await fireEvent.press(screen.getByRole('button', { name: '취소' }));
   expect(screen.getByText('오롯')).toBeTruthy();
   expect(store.save).not.toHaveBeenCalled();
+});
+
+test('opening and closing the editor preserves the mounted consumer until a committed save', async () => {
+  store.load.mockResolvedValue({ avatar: 'leaf', name: '오롯' });
+  let releaseSave!: (value: { avatar: 'star'; name: string }) => void;
+  store.save.mockReturnValue(
+    new Promise(resolve => {
+      releaseSave = resolve;
+    }),
+  );
+  const renders = jest.fn();
+  function RetainedContent() {
+    const appearance = useAssistantAppearance();
+    renders(appearance);
+    return <Content />;
+  }
+  await render(
+    <AssistantAppearanceProvider>
+      <RetainedContent />
+    </AssistantAppearanceProvider>,
+  );
+  await screen.findByText('오롯');
+  const initial = renders.mock.calls.length;
+  const committed = renders.mock.lastCall![0];
+  expect(committed.canEnter()).toBe(true);
+
+  await fireEvent.press(screen.getByRole('button', { name: '편집' }));
+  await fireEvent.press(screen.getByRole('button', { name: '취소' }));
+  expect(renders).toHaveBeenCalledTimes(initial);
+
+  await fireEvent.press(screen.getByRole('button', { name: '편집' }));
+  await fireEvent.press(screen.getByRole('radio', { name: '별' }));
+  fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  await waitFor(() => expect(store.save).toHaveBeenCalledTimes(1));
+  expect(store.save).toHaveBeenCalledTimes(1);
+  expect(renders).toHaveBeenCalledTimes(initial);
+  expect(committed.canEnter()).toBe(true);
+
+  await act(async () => releaseSave({ avatar: 'star', name: '새 비서' }));
+  await screen.findByText('새 비서');
+  expect(renders).toHaveBeenCalledTimes(initial + 1);
+  expect(renders.mock.lastCall![0].canEnter).toBe(committed.canEnter);
+  expect(committed.canEnter()).toBe(true);
 });

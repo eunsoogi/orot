@@ -15,7 +15,10 @@ export function useContinuousConversationEntry(
   current: boolean,
 ) {
   useEffect(() => {
-    if (current) store.synchronizeModel(true).catch(() => {});
+    if (current)
+      store
+        .synchronizeModel(true, 'restart-interrupted-initial-page')
+        .catch(() => {});
   }, [store, revision, current]);
   useConversationEntryIntent(
     store,

@@ -149,6 +149,12 @@ export function createConversationSessionRestoreState(input: {
       await runWhileCurrent(id, signal);
     },
     invalidatePage: (_id: number) => {},
+    retryInitial(id: number, durableId: string, signal: AbortSignal) {
+      // The legacy single-read path removes its entry after successful publication.
+      return sessions.get(id)?.durableId === durableId
+        ? runWhileCurrent(id, signal)
+        : Promise.resolve();
+    },
     retry: runWhileCurrent,
     loadOlder: async (_id: number, _signal?: AbortSignal) => {},
     async prepareContext(id: number, signal?: AbortSignal) {
