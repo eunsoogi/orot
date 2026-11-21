@@ -1,3 +1,4 @@
+import { createDailyReportDispatchAuthority } from './dailyReportDispatchAuthority';
 import { prepareReportCalendar } from './dailyReportSystemCalendar';
 import { generateDailyReportWithCalendar } from './dailyReportGenerationRun';
 import type {
@@ -16,6 +17,7 @@ export async function generateDailyReport(
   request: DailyReportServiceRequest,
   calendar: ReadyCalendar,
 ) {
+  const dispatchAuthority = createDailyReportDispatchAuthority();
   let external: Awaited<ReturnType<typeof prepareReportCalendar>> | undefined;
   try {
     if (!request.scope.sourceIds && !request.signal.aborted) {
@@ -30,12 +32,13 @@ export async function generateDailyReport(
       }
     }
     return await generateDailyReportWithCalendar(
-      input,
+      { ...input, dispatchAuthority },
       request,
       calendar,
       external,
     );
   } finally {
+    dispatchAuthority.dispose();
     external?.snapshot.dispose();
   }
 }
