@@ -1,3 +1,4 @@
+import { providerVisibleAgentMemory } from './providerVisibleMemory';
 import type {
   AgentMemoryService,
   AgentMemoryStoreView,
@@ -74,7 +75,7 @@ export function openLocalAgentMemoryStore(
   current.store ??= Promise.all([current.resources, current.service]).then(
     ([{ embedder, storage }, memory]) =>
       createAgentMemoryStoreView(
-        memory,
+        providerVisibleAgentMemory(memory),
         new RememoriLangGraphStore({ embedder, storage }),
       ),
   );

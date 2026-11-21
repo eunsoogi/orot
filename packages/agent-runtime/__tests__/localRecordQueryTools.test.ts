@@ -59,7 +59,7 @@ describe('local record query tools', () => {
       createdAt: 1790659200000,
     };
     const memory: LocalMemoryReader = {
-      recall: jest.fn(async () => [memoryHit]),
+      recall: jest.fn(async () => [{ ...memoryHit, memoryKey: 'test-internal-durable-key' }]),
     };
     const service = createLocalRecordQueryService(storage, memory);
     const [health, medications, doses, appointment, transcript, memoryTool] =
@@ -117,6 +117,7 @@ describe('local record query tools', () => {
       await memoryTool.invoke({ query: 'medicine routine', limit: 1 }),
     ) as { hits: LocalMemoryHit[] };
     expect(memory.recall).toHaveBeenCalledWith('medicine routine', { limit: 1 });
+    expect(memoryResult.hits[0]).not.toHaveProperty('memoryKey');
     expect(memoryResult.hits[0]).toMatchObject({
       provenance: {
         sourceIds: ['recording-1'],

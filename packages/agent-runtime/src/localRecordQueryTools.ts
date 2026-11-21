@@ -209,7 +209,20 @@ export function createLocalRecordQueryTools(
       ) {
         throw new Error(`A memory query limit must be between 1 and ${LOCAL_MEMORY_MAX_RESULTS}.`);
       }
-      return JSON.stringify(await service.searchMemory(value.query, limit));
+      const result = await service.searchMemory(value.query, limit);
+      return JSON.stringify({
+        status: result.status,
+        // Durable keys guide local admission, but are not part of the provider tool result.
+        hits: result.hits.map(({ id, text, score, kind, provenance, createdAt }) => ({
+          id,
+          text,
+          score,
+          kind,
+          provenance,
+          createdAt,
+        })),
+        limit: result.limit,
+      });
     },
     {
       name: 'search_source_linked_user_memory',

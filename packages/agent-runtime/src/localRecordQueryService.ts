@@ -64,6 +64,8 @@ export interface LocalRecordQueryStorage<Health, Medication, Dose, Appointment, 
 
 export interface LocalMemoryHit {
   readonly id: string;
+  /** Stable local identity when available; used for privacy admission. */
+  readonly memoryKey?: string;
   readonly text: string;
   readonly score: number;
   readonly kind: string;

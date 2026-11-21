@@ -1,3 +1,4 @@
+import { isProviderVisibleMemory } from '../../memory/providerVisibleMemory';
 import { isAgentMemoryProvenance } from '@orot/agent-memory';
 import type {
   AgentMemoryKind,
@@ -84,6 +85,12 @@ export async function buildMemoryEvidence(input: {
   const chunks: EvidenceChunk[] = [];
   for (const record of input.records) {
     const metadata = validMetadata(record.meta);
+    // Ordinary local Memory is visible/editable but never admitted to model evidence.
+    if (
+      metadata &&
+      !isProviderVisibleMemory(metadata.provenance, record.meta?.memoryKey)
+    )
+      continue;
     if (!metadata || !record.id.trim() || !record.text.trim()) {
       excludedCount += 1;
       continue;
