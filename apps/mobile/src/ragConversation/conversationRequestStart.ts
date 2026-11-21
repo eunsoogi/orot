@@ -1,3 +1,4 @@
+import { confirmedQuickChoiceId } from './conversationQuickChoicePreview';
 import { getRagConversationCopy } from './copy';
 import { t } from '../i18n';
 import type {
@@ -28,7 +29,9 @@ export function prepareConversationRequest(
   const copy = getRagConversationCopy();
   const request: PendingTurn = {
     question,
-    userMessageId: nextId(),
+    userMessageId:
+      confirmedQuickChoiceId(session, explicitQuestion, question, hasPhoto) ??
+      nextId(),
     restorePromptToComposer,
     saving: false,
     committed: false,
@@ -37,6 +40,7 @@ export function prepareConversationRequest(
   };
   const responseId = nextId();
   const change: Partial<ConversationSession> = {
+    preparingQuickChoice: undefined,
     ...(restorePromptToComposer ? { draft: '' } : {}),
     title: session.messages.length
       ? session.title

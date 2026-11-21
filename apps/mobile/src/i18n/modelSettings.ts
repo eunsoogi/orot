@@ -1,5 +1,8 @@
 /** App-owned model settings copy; privacy and billing notices retain their original meaning. */
 export const modelSettingsKo = {
+  'modelSettings.searchConsentLoading': '저장된 검색 동의를 확인하고 있어요.',
+  'modelSettings.searchConsentUnavailable':
+    '저장된 검색 동의를 확인하지 못했어요. 취소한 뒤 다시 시도해 주세요.',
   'modelSettings.consentWeb':
     '{recipient}에 공개 웹 검색용으로 검토된 검색어를 보내는 데 별도로 계속 동의합니다.',
   'modelSettings.consentMedical':

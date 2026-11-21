@@ -16,7 +16,8 @@ export type HistoryValidationCost =
   | 'artifact_parent_fingerprint'
   | 'artifact_report_calendar'
   | 'artifact_report_snapshot'
-  | 'artifact_report_fingerprint';
+  | 'artifact_report_fingerprint'
+  | 'artifact_period_transaction';
 
 /** Each token names a local read boundary, never an ID, record type or error message. */
 export type ConversationHistoryStage =

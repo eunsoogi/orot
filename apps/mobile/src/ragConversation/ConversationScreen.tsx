@@ -23,6 +23,7 @@ import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { useConversationScreenControls } from './useConversationScreenControls';
 import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
 import { t } from '../i18n';
+import { projectQuickChoice } from './conversationQuickChoicePreview';
 import { ConversationQuickChoices } from './ConversationQuickChoices';
 import * as ConversationTasks from './ConversationTaskPanels';
 export function ConversationScreen({
@@ -172,7 +173,7 @@ export function ConversationScreen({
             compact={composerLayout.compact}
             header={header}
             steeringInstructions={session.steeringInstructions}
-            messages={messages}
+            messages={projectQuickChoice(session)}
             pendingMessage={pendingMessage}
             error={preflightError ? '' : error}
             unsavedCount={session.unsavedCount}
