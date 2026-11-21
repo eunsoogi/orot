@@ -3,6 +3,10 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { stripTypeScriptTypes } from 'node:module';
 const swift = readFileSync('apps/mobile/ios/OrotUITests/ClassificationStagesUITests.swift', 'utf8');
+const compactList = readFileSync(
+  'apps/mobile/ios/OrotUITests/ClassificationReaderGeometryUITests.swift',
+  'utf8',
+);
 const owner = readFileSync('apps/mobile/ios/OrotUITests/FormWindowOwnership.swift', 'utf8');
 const entry = readFileSync('apps/mobile/e2e/ClassificationProbeScreen.tsx', 'utf8');
 test('existing staged journey samples actual geometry without replacing its oracles', () => {
@@ -52,7 +56,17 @@ test('existing staged journey samples actual geometry without replacing its orac
   const read = owner.indexOf('UITestConditions.text(scoped(owner, markerID))');
   assert.ok(firstOwner > 0 && firstOwner < tap && tap < responseOwner && responseOwner < read);
   assert.match(owner, /stableStageFrame\(owner.frame, frame\)/);
-  assert.match(owner, /phase == 2 \? \[viewportID, "classification-page-text"\]/);
+  assert.match(owner, /let resultListID = "classification-result-list"/);
+  assert.match(
+    owner,
+    /let resultIDs = node\(app, resultListID\)\.exists \? \[resultListID\] : \[viewportID, "classification-page-text"\]/,
+  );
+  assert.match(owner, /phase == 2 \? resultIDs : \[\]/);
+  assert.match(compactList, /captureStageLayout\(app, stage: "result-list-/);
+  assert.match(compactList, /list\.frame\.insetBy\(dx: -1, dy: -1\)\.contains/);
+  assert.match(compactList, /readAllResultPages\(app, anchor: anchor\)/);
+  assert.match(compactList, /starts\.dropLast\(\)\.reversed\(\)/);
+  assert.match(compactList, /XCTAssertEqual\(labels\.count, 9\)/);
   assert.match(owner, /guard phase == 0 else \{ return false \}/);
   assert.match(owner, /acceptsOptionalStageMarker\(global: total, owned: owned\)/);
   assert.match(owner, /receipt\["confirmationTextViewportProjected"\] = sawConfirmationViewport/);

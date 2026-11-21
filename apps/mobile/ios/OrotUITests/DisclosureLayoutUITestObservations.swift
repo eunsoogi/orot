@@ -5,8 +5,14 @@ import XCTest
 enum DisclosureLayoutUITestObservations {
     /// Reads the actual paged text; inline paragraphs are not separate UIKit accessibility elements.
     static func assertClassificationText(_ app: XCUIApplication, contains expected: String, in testCase: AppointmentConsentUITests) {
+        let privacy = testCase.node(app, "classification-confirmation-privacy")
         let page = testCase.node(app, "classification-page-text")
-        XCTAssertTrue(page.waitForAppearance())
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in privacy.exists || page.exists }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [visible]), .completed)
+        if privacy.exists {
+            XCTAssertTrue(UITestConditions.text(privacy).contains(expected), app.debugDescription)
+            return
+        }
         var visited = Set<String>()
         while !UITestConditions.text(page).contains(expected) {
             let text = UITestConditions.text(page)

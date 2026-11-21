@@ -9,7 +9,11 @@ import { NavigationContentTransition } from '../navigation/NavigationContentTran
 import type { ProviderSelectionOption } from '../providers/selection/types';
 import type { CandidateReview } from './classificationWorkflow';
 import { ClassificationPagedStage } from './ClassificationPagedStage';
-import { formatCalendarEventRange } from '../calendar/dateTime';
+import {
+  formatCalendarEventCompactRange,
+  formatCalendarEventRange,
+} from '../calendar/dateTime';
+import { ClassificationResultsStage } from './ClassificationResultsStage';
 import { ClassificationProgress } from './ClassificationProgress';
 import { medicalAppointmentCopy as copy } from './copy.ko';
 import { isConfidentMedical } from './saveCalendarCandidate';
@@ -57,6 +61,24 @@ export function MedicalAppointmentReviewView(props: Props) {
     setConfirmAgain(false);
     props.onImport();
   };
+  const confirmation = {
+    title: t('medicalAppointments.confirmClassification'),
+    supporting: copy.description,
+    privacy:
+      props.provider?.privacyBoundary === 'on-device'
+        ? copy.localNotice
+        : copy.remoteNotice,
+    warning: [unavailable ? copy.providerUnavailable : '', props.message]
+      .filter(Boolean)
+      .join('\n'),
+  };
+  const resultSummary = copy.coverage(props.eventCount, classified);
+  const resultNotice = [
+    props.message,
+    !props.queryComplete ? copy.incompleteCalendar : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
   const content =
     stage === 'progress' ? (
       <View style={styles.center}>
@@ -70,19 +92,8 @@ export function MedicalAppointmentReviewView(props: Props) {
       <ClassificationPagedStage
         key="confirmation"
         testID="medical-appointment-confirmation"
-        documents={[
-          [
-            t('medicalAppointments.confirmClassification'),
-            copy.description,
-            props.provider?.privacyBoundary === 'on-device'
-              ? copy.localNotice
-              : copy.remoteNotice,
-            unavailable ? copy.providerUnavailable : '',
-            props.message,
-          ]
-            .filter(Boolean)
-            .join('\n\n'),
-        ]}
+        documents={[Object.values(confirmation).filter(Boolean).join('\n\n')]}
+        caption={confirmation}
         actionTitle={t('medicalAppointments.startShort')}
         actionLabel={copy.loadCalendar}
         onAction={start}
@@ -101,33 +112,29 @@ export function MedicalAppointmentReviewView(props: Props) {
         }
       />
     ) : (
-      <ClassificationPagedStage
+      <ClassificationResultsStage
         key="results"
-        testID="medical-appointment-results"
-        documents={
-          medical.length
-            ? medical.map(candidate =>
-                [
-                  candidate.event.calendarEventSnapshot.title,
-                  formatCalendarEventRange(candidate.event),
-                  copy.labels[candidate.classification!],
-                  candidate.reason ? `${copy.reason}: ${candidate.reason}` : '',
-                  candidate.uncertainty
-                    ? `${copy.uncertainty}: ${copy.labels[candidate.uncertainty]}`
-                    : '',
-                  props.savedIds.has(candidate.candidateId) ? copy.saved : '',
-                  props.message,
-                  !props.queryComplete ? copy.incompleteCalendar : '',
-                  copy.coverage(props.eventCount, classified),
-                ]
-                  .filter(Boolean)
-                  .join('\n\n'),
-              )
-            : [props.message || copy.noMedical]
-        }
-        actionTitle={t('medicalAppointments.restartShort')}
-        actionLabel={t('medicalAppointments.startAgain')}
-        onAction={() => setConfirmAgain(true)}
+        rows={medical.map(candidate => ({
+          id: candidate.candidateId,
+          title: candidate.event.calendarEventSnapshot.title,
+          when: formatCalendarEventCompactRange(candidate.event),
+          category: copy.labels[candidate.classification!],
+          details: [
+            candidate.event.calendarEventSnapshot.title,
+            formatCalendarEventRange(candidate.event),
+            copy.labels[candidate.classification!],
+            candidate.reason ? `${copy.reason}: ${candidate.reason}` : '',
+            candidate.uncertainty
+              ? `${copy.uncertainty}: ${copy.labels[candidate.uncertainty]}`
+              : '',
+            props.savedIds.has(candidate.candidateId) ? copy.saved : '',
+          ]
+            .filter(Boolean)
+            .join('\n\n'),
+        }))}
+        summary={resultSummary}
+        notice={medical.length ? resultNotice : resultNotice || copy.noMedical}
+        restart={() => setConfirmAgain(true)}
       />
     );
   return (

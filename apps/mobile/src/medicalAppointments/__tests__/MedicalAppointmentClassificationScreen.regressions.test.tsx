@@ -81,14 +81,18 @@ test('automatically saves both same-title recurring occurrences with their exact
   );
   expect(appointments.confirmCalendarEvent).toHaveBeenNthCalledWith(1, first);
   expect(appointments.confirmCalendarEvent).toHaveBeenNthCalledWith(2, second);
-  expect(screen.getAllByText('치과 진료')).toHaveLength(1);
-  expect(
-    screen.getByText('2035년 6월 2일 09:00–10:00 · Asia/Seoul'),
-  ).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('medical-appointment-next-result'));
-  expect(
-    screen.getByText('2035년 6월 3일 09:00–10:00 · Asia/Seoul'),
-  ).toBeTruthy();
+  // Both occurrences can share a page; each row must still open its own exact dates.
+  expect(screen.getAllByText('치과 진료')).toHaveLength(2);
+  const rows = screen.getAllByTestId('classification-result-row');
+  await fireEvent.press(rows[0]);
+  expect(screen.getByTestId('classification-page-text')).toHaveTextContent(
+    /2035년 6월 2일 09:00–10:00 · Asia\/Seoul/,
+  );
+  await fireEvent.press(importAction());
+  await fireEvent.press(screen.getAllByTestId('classification-result-row')[1]);
+  expect(screen.getByTestId('classification-page-text')).toHaveTextContent(
+    /2035년 6월 3일 09:00–10:00 · Asia\/Seoul/,
+  );
   expect(bridge.findEvent).toHaveBeenCalledWith(
     'recurring-event',
     second.calendarEventSnapshot.occurrenceDate,
@@ -122,7 +126,12 @@ test('blocks another import while a medical save is pending and confirms success
   expect(screen.queryByText('B 진료')).toBeNull();
   await act(async () => finish());
   await waitFor(() => expect(importAction()).not.toBeDisabled());
-  expect(screen.getAllByText('일정을 저장했습니다.').length).toBeGreaterThan(0);
+  expect(screen.getByText('진료 일정 1건을 가져왔어요.')).toBeTruthy();
+  expect(appointments.confirmCalendarEvent).toHaveBeenCalledTimes(1);
+  await fireEvent.press(screen.getByTestId('classification-result-row'));
+  expect(screen.getByTestId('classification-page-text')).toHaveTextContent(
+    /일정을 저장했습니다\./,
+  );
 });
 
 test('uses the latest synced events when the user starts another classification', async () => {
@@ -138,7 +147,10 @@ test('uses the latest synced events when the user starts another classification'
   );
   await fireEvent.press(importAction());
   await waitFor(() => expect(importAction()).not.toBeDisabled());
-  expect(screen.getByText('일정 1건 · 분류 완료')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: /일정 1건 · 분류 완료/ }),
+  ).toBeTruthy();
+  expect(screen.getByText('기존 진료')).toBeTruthy();
   await updateCalendarSync(calendarSyncState([next]));
   await fireEvent.press(importAction());
   expect(screen.getByTestId('medical-appointment-confirmation')).toBeTruthy();
