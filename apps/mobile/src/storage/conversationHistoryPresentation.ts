@@ -1,3 +1,7 @@
+import {
+  archivedConversationPresentationMetadata,
+  type ArchivedConversationPresentationMetadata,
+} from './archivedConversationPresentationMetadata';
 import { validConversationReportTarget } from './conversationReportTarget';
 import type { ConversationArtifact } from './conversationArtifactTypes';
 import { assertConversationSourcesNotRemoved } from './conversationArtifactDependencies';
@@ -22,12 +26,12 @@ export type ConversationHistoryPresentation = {
   readonly question: string;
   readonly interruptionReason?: ConversationRecoveryReason;
 } & (
-  | {
+  | (ArchivedConversationPresentationMetadata & {
       readonly status: 'complete' | 'partial';
       readonly answer: string;
       readonly dailyReport?: NonNullable<ConversationArtifact['dailyReport']>;
       readonly savedCitations?: readonly SavedArchivedCitation[];
-    }
+    })
   | { readonly status: 'interrupted'; readonly answer?: never }
 );
 
@@ -188,6 +192,7 @@ function createOwnedArchiveReader<T>(
           question: value.question,
           answer: value.answer,
           status: value.status,
+          ...archivedConversationPresentationMetadata(value),
           ...(dailyReport ? { dailyReport } : {}),
           ...(interruptionReason ? { interruptionReason } : {}),
         });

@@ -72,6 +72,10 @@ export function conversationSavedHistoryDisplayOption(
               createdAt: row.createdAt,
               question: row.question,
               answer: row.answer,
+              ...(row.delivery ? { delivery: row.delivery } : {}),
+              ...(row.initialResponse
+                ? { initialResponse: row.initialResponse }
+                : {}),
               ...(row.dailyReport ? { dailyReport: row.dailyReport } : {}),
               ...(row.savedCitations?.length
                 ? {

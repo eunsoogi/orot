@@ -32,9 +32,10 @@ function disclosureFor(
         ),
       ]
     : [];
-  if (remote && search?.web) {
+  const jointWeb = slot === 'conversation' && remote && search?.web;
+  if (jointWeb) {
     copy.push(
-      t('modelSettings.consentWeb', {
+      t('modelSettings.consentJointWeb', {
         recipient: t('externalMedicalEvidence.publicSearchRecipient', {
           recipient,
         }),
@@ -46,7 +47,9 @@ function disclosureFor(
     providerId: remote ? option.provider.id : 'europe-pmc',
     modelId: remote ? option.modelId : 'public-medical-search',
     recipient,
-    subtitle: t('medicalAppointments.inferenceDisclosure.title'),
+    subtitle: jointWeb
+      ? t('modelSettings.consentJointConversationWebTitle')
+      : t('medicalAppointments.inferenceDisclosure.title'),
     information: copy.join('\n'),
     notice: t('modelSettings.consentContinuing'),
   };

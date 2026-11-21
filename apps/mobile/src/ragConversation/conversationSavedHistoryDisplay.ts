@@ -1,3 +1,4 @@
+import type { ArchivedConversationPresentationMetadata } from '../storage/archivedConversationPresentationMetadata';
 import type { ConversationHistoryCursor } from './conversationHistoryPage';
 import type { DisplayMessage } from './conversationDisplayMessage';
 import type { ConversationSession } from './conversationSessionTypes';
@@ -11,7 +12,7 @@ export type SavedHistoryDisplayRow = {
   readonly id: string;
   readonly createdAt: string;
 } & (
-  | {
+  | (ArchivedConversationPresentationMetadata & {
       readonly kind: 'answer';
       readonly question: string;
       readonly answer: string;
@@ -20,7 +21,7 @@ export type SavedHistoryDisplayRow = {
       readonly partial?: true;
       readonly dailyReport?: NonNullable<DisplayMessage['dailyReport']>;
       readonly savedCitations?: readonly SavedArchivedCitation[];
-    }
+    })
   | {
       readonly kind: 'interrupted';
       readonly question: string;
@@ -90,6 +91,9 @@ export function savedHistoryTranscript(
                 id: questionId,
                 role: 'user' as const,
                 content: row.question,
+                ...(row.kind === 'answer' && row.delivery
+                  ? { delivery: row.delivery }
+                  : {}),
               },
             ]
           : []),
@@ -98,6 +102,9 @@ export function savedHistoryTranscript(
           id: answerId,
           role: 'assistant',
           content: row.kind === 'answer' ? row.answer : '',
+          ...(row.kind === 'answer' && row.initialResponse
+            ? { initialResponse: row.initialResponse }
+            : {}),
           ...(activity ? { activity } : {}),
           ...(row.kind === 'answer' && row.dailyReport
             ? { dailyReport: row.dailyReport }
