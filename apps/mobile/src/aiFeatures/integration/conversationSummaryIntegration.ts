@@ -1,3 +1,4 @@
+import { trySaveExplicitConversationMemory } from './saveExplicitConversationMemory';
 import { createConversationDailyReport } from './conversationDailyReport';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
@@ -75,6 +76,13 @@ export function createConversationSummaryIntegration(input: {
       ...args: Parameters<ReturnType<typeof createRagConversationService>>
     ) => {
       const [question, , signal, observer, context] = args;
+      const localMemory = trySaveExplicitConversationMemory(
+        question,
+        observer,
+        input.loadData,
+        signal ?? new AbortController().signal,
+      );
+      if (localMemory) return localMemory;
       if (
         context?.intent === 'daily-report' &&
         context.reportRequest &&

@@ -1,3 +1,4 @@
+import { localConversationMemoryIdPrefix } from '@orot/storage';
 import type {
   AgentMemoryStorageAdapter,
   PersistedMemoryRecord,
@@ -78,6 +79,32 @@ export function memoryRecord(index: number): PersistedMemoryRecord {
     createdAt: Date.UTC(2026, 0, index + 1),
     reinforcements: 0,
   } as unknown as PersistedMemoryRecord;
+}
+
+/** Adds only synthetic local-note data to a positive evidence transport fixture. */
+export function memoryTransportFixture() {
+  const positive = memoryRecord(1);
+  const sourceId =
+    localConversationMemoryIdPrefix + 'synthetic-outbound-shortcut';
+  const key = 'manual-history-memory:' + sourceId;
+  const note = {
+    ...positive,
+    id: 'synthetic-local-note',
+    text: 'Synthetic private shortcut note',
+    meta: { ...positive.meta, memoryKey: key },
+  };
+  return {
+    records: [positive, note],
+    assertScoped(requests: unknown, consent: unknown) {
+      const outbound = JSON.stringify(requests);
+      const disclosure = JSON.stringify(consent);
+      expect(outbound).toContain('기억 내용 1');
+      for (const privateValue of [note.text, key, sourceId]) {
+        expect(outbound).not.toContain(privateValue);
+        expect(disclosure).not.toContain(privateValue);
+      }
+    },
+  };
 }
 
 export function selectionStore(

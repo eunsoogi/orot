@@ -5,7 +5,7 @@ import { createConversationArtifactStorage } from '../../../storage/conversation
 import { createRagConversationService } from '../ragConversationService';
 import { runRagConversationTurn } from '../../../ragConversation/service';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
-import { localData, memoryRecord } from '../featureServiceFixtures';
+import { localData, memoryTransportFixture } from '../featureServiceFixtures';
 import { openLocalAgentMemoryDatabase } from '../../../storage/secureDatabase';
 
 jest.mock('../../../storage/secureDatabase', () => ({
@@ -157,7 +157,8 @@ test.each([
           },
         },
       };
-      const local = localData(grounded ? [memoryRecord(1)] : []);
+      const transportFixture = memoryTransportFixture();
+      const local = localData(grounded ? transportFixture.records : []);
       const data = local.data;
       if (mode === 'grounded-denied' || mode === 'grounded-changed') {
         f.authorize.mockImplementation(async request => {
@@ -188,6 +189,7 @@ test.each([
         [],
         controller.signal,
         {
+          inputOrigin: 'shortcut',
           retentionRequestId: identity.requestId,
           retentionSession: {
             id: identity.sessionId,
@@ -219,6 +221,10 @@ test.each([
           ],
         });
         expect(generate).toHaveBeenCalledTimes(4);
+        transportFixture.assertScoped(
+          generate.mock.calls,
+          f.authorize.mock.calls,
+        );
       } else if (mode === 'unavailable') {
         expect(result).toMatchObject({
           status: 'answer',
