@@ -225,15 +225,15 @@ it('offers model selection rather than manual fallback when saved provider looku
   await fireEvent.press(screen.getByTestId('records-section-schedule'));
   await fireEvent.press(await screen.findByTestId('open-medical-appointments'));
   expect(
-    await screen.findByText(medicalAppointmentCopy.providerUnavailable),
-  ).toBeTruthy();
+    await screen.findByTestId('classification-page-text'),
+  ).toHaveTextContent(
+    /선택한 AI를 사용할 수 없어요\. 다른 AI를 선택해 주세요\./,
+  );
   expect(screen.queryByTestId('medical-appointment-manual')).toBeNull();
   expect(
     screen.getByTestId('medical-appointment-select-provider'),
   ).toBeEnabled();
-  expect(
-    await screen.findByText(medicalAppointmentCopy.providerUnavailable),
-  ).toBeTruthy();
+  expect(screen.getByTestId('medical-appointment-import')).toBeDisabled();
   expect(screen.getByTestId('navigation-back')).toBeEnabled();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(await screen.findByTestId('open-medical-appointments')).toBeTruthy();

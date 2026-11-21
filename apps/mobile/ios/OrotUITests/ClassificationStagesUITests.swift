@@ -67,13 +67,6 @@ extension AppointmentConsentUITests {
         XCTAssertFalse(readable.contains("합성진료예약10"))
         XCTAssertTrue(readable.contains("분류근거:의료방문·검사일정"))
         XCTAssertEqual(node(app, "calendar-classification-synthetic-provider-calls").label, "syntheticProviderCalls=2")
-        // Going back traverses the same native pages, not a second request or a synthetic page counter.
-        for expected in pages.dropLast().reversed() {
-            tap(app, "medical-appointment-previous-result")
-            waitForText(node(app, "classification-page-text"), expected: expected)
-            assertStageActions(app)
-        }
-        XCTAssertFalse(node(app, "medical-appointment-previous-result").isEnabled)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-long-result-returned", testCase: self)
     }
@@ -124,7 +117,10 @@ extension AppointmentConsentUITests {
     }
 
     @MainActor
-    private func readAllResultPages(_ app: XCUIApplication, anchor: ClassificationStageWindowAnchor?) throws -> [String] {
+    func readAllResultPages(_ app: XCUIApplication, anchor: ClassificationStageWindowAnchor?) throws -> [String] {
+        if node(app, "classification-result-list").exists {
+            return try readCompactResultPages(app, anchor: anchor)
+        }
         var pages: [String] = []
         for _ in 0 ..< 256 {
             let page = node(app, "classification-page-text")
@@ -137,7 +133,14 @@ extension AppointmentConsentUITests {
             try captureStageLayout(app, stage: "result-\(pages.count)", anchor: anchor)
             pages.append(text)
             let next = node(app, "medical-appointment-next-result")
-            if !next.isEnabled {
+            if !next.exists || !next.isEnabled {
+                for expected in pages.dropLast().reversed() {
+                    tap(app, "medical-appointment-previous-result")
+                    waitForText(page, expected: expected)
+                    assertStageActions(app)
+                }
+                let previous = node(app, "medical-appointment-previous-result")
+                XCTAssertFalse(previous.exists && previous.isEnabled)
                 return pages
             }
             next.tap()
@@ -151,7 +154,7 @@ extension AppointmentConsentUITests {
     }
 
     @MainActor
-    private func assertStageActions(_ app: XCUIApplication) {
+    func assertStageActions(_ app: XCUIApplication) {
         let slot = node(app, "classification-circle-slot")
         let primary = node(app, "medical-appointment-import")
         XCTAssertTrue(slot.exists && slot.frame.insetBy(dx: -1, dy: -1).contains(primary.frame))
@@ -162,9 +165,6 @@ extension AppointmentConsentUITests {
         }
         let paging = ["medical-appointment-previous-result", "medical-appointment-next-result"].map { node(app, $0) }
         XCTAssertEqual(paging[0].exists, paging[1].exists)
-        if node(app, "medical-appointment-results").exists {
-            XCTAssertTrue(paging[0].exists)
-        }
         for action in paging where action.exists {
             let footer = node(app, "classification-stage-footer")
             XCTAssertTrue(footer.exists && app.frame.contains(footer.frame))

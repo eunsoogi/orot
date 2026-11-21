@@ -1,4 +1,7 @@
-import { formatCalendarEventRange } from '../dateTime';
+import {
+  formatCalendarEventCompactRange,
+  formatCalendarEventRange,
+} from '../dateTime';
 import type { CalendarEvent } from '../types';
 
 function calendarEvent(
@@ -110,5 +113,33 @@ describe('Calendar event date display', () => {
         ),
       ).toBe('2027년 6월 2일 09:00–10:00 · 현지 시간');
     });
+  });
+});
+
+test('compact display keeps start/end dates when an event crosses midnight', () => {
+  expect(
+    formatCalendarEventCompactRange(
+      calendarEvent(
+        '2027-06-02T14:45:00.000Z',
+        '2027-06-02T15:15:00.000Z',
+        false,
+      ),
+    ),
+  ).toBe('6월 2일 23:45–6월 3일 00:15');
+});
+
+test('compact display preserves an all-day floating local date across a device zone change', () => {
+  withDeviceTimeZone('America/Los_Angeles', () => {
+    expect(
+      formatCalendarEventCompactRange(
+        floatingCalendarEvent(
+          '2035-06-01T15:00:00.000Z',
+          '2035-06-02T15:00:00.000Z',
+          true,
+          '2035-06-02T00:00:00.000',
+          '2035-06-03T00:00:00.000',
+        ),
+      ),
+    ).toBe('6월 2일 · 하루 종일');
   });
 });

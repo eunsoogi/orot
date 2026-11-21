@@ -35,6 +35,7 @@ test('uses native usable regions and retains complete result details through ref
     screen.queryByTestId(`navigation-route-columns-${routeKey}`),
   ).toBeNull();
 
+  await fireEvent.press(screen.getByTestId('classification-result-row'));
   expect(screen.getByText(/분류 근거: Synthetic classification/)).toBeTruthy();
 
   windowBounds.set('medical-appointment-columns-frame-host', {
@@ -119,6 +120,7 @@ it('keeps complete single-result details and a circular action without inert pag
   await setWindowSize(320, 1.5);
   await renderMedicalRoute();
   expect(screen.queryByTestId('medical-appointment-review-scroll')).toBeNull();
+  await fireEvent.press(screen.getByTestId('classification-result-row'));
   expect(screen.getByText(/분류 근거: Synthetic classification/)).toBeTruthy();
   expect(
     screen.queryByTestId('medical-appointment-previous-result'),
