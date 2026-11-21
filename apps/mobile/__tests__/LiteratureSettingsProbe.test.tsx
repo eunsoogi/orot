@@ -11,6 +11,12 @@ import { providerSelectionStore } from '../src/providers/selection/keychainSelec
 import { saveModelSettingsConsent } from '../src/agent/execution/saveModelSettingsConsent';
 import { searchConsentedMedicalEvidence } from '../src/externalMedicalEvidence/searchConsentedMedicalEvidence';
 
+// Provide native modal insets without replacing its disclosure controls.
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
+
 // Real settings component/hook and search admission; persistence is a controlled
 // boundary here. Existing SQLite suites separately prove grant commit/revocation.
 jest.mock('../src/agent/execution/saveModelSettingsConsent', () => ({
@@ -28,7 +34,18 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-test('literature settings cancel writes nothing; only explicit medical toggle and confirmation save', async () => {
+async function openEuropePmcDisclosure(
+  view: Awaited<ReturnType<typeof render>>,
+) {
+  await fireEvent.press(view.getByTestId('provider-selection-confirm'));
+  expect(
+    await view.findByTestId('inference-disclosure-recipient'),
+  ).toHaveTextContent('Europe PMC');
+  expect(view.getByTestId('inference-disclosure-sheet')).toBeTruthy();
+  expect(saveModelSettingsConsent).not.toHaveBeenCalled();
+}
+
+test('literature settings save only after explicitly allowing the Europe PMC disclosure', async () => {
   const back = jest.fn();
   const view = await render(<LiteratureSettingsProbe onBack={back} />);
   await waitFor(() =>
@@ -48,7 +65,17 @@ test('literature settings cancel writes nothing; only explicit medical toggle an
     true,
   );
   expect(saveModelSettingsConsent).not.toHaveBeenCalled();
-  await fireEvent.press(view.getByTestId('provider-selection-confirm'));
+  // Saving opens a recipient-specific decision; it does not grant search access.
+  await openEuropePmcDisclosure(view);
+  expect(back).not.toHaveBeenCalled();
+  await fireEvent.press(view.getByTestId('inference-disclosure-cancel'));
+  await waitFor(() =>
+    expect(view.queryByTestId('inference-disclosure-sheet')).toBeNull(),
+  );
+  expect(saveModelSettingsConsent).not.toHaveBeenCalled();
+  expect(back).not.toHaveBeenCalled();
+  await openEuropePmcDisclosure(view);
+  await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
   await waitFor(() => expect(back).toHaveBeenCalledTimes(1));
   expect(saveModelSettingsConsent).toHaveBeenCalledTimes(1);
   expect(saveModelSettingsConsent).toHaveBeenCalledWith(
@@ -83,8 +110,10 @@ test('departed literature settings abort the pending decision and cannot route a
     'valueChange',
     true,
   );
+  await openEuropePmcDisclosure(view);
+  expect(back).not.toHaveBeenCalled();
   const completion = fireEvent.press(
-    view.getByTestId('provider-selection-confirm'),
+    view.getByTestId('inference-disclosure-allow'),
   );
   await waitFor(() =>
     expect(saveModelSettingsConsent).toHaveBeenCalledTimes(1),
