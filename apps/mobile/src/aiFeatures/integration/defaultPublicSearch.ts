@@ -12,7 +12,10 @@ export type DefaultPublicSearchResult =
   | {
       readonly status: 'empty' | 'consent_required' | 'cancelled';
     }
-  | { readonly status: 'unavailable'; readonly reason?: 'offline' };
+  | {
+      readonly status: 'unavailable';
+      readonly reason?: 'offline' | 'publisher_refresh_required';
+    };
 
 /** Reserve the preflight provider call inside the feature's existing budget. */
 export function budgetAfterPublicSearch(
@@ -31,7 +34,10 @@ export function budgetAfterPublicSearch(
 /** Display and persisted-answer copy only; status codes and query selection stay language-independent. */
 export function publicSearchNotice(
   status: 'empty' | 'unavailable' | 'consent_required' | 'cancelled',
+  reason?: 'offline' | 'publisher_refresh_required',
 ): string {
+  if (status === 'unavailable' && reason === 'publisher_refresh_required')
+    return t('publisherWeb.refreshRequired');
   return status === 'empty'
     ? t('externalMedicalEvidence.publicSearchEmptyNotice')
     : status === 'consent_required'

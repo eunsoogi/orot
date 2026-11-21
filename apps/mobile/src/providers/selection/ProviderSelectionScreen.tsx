@@ -1,3 +1,5 @@
+import { PublisherCorpusSettings } from '../../externalMedicalEvidence/curatedWeb/PublisherCorpusSettings';
+import { selectedOnDeviceApple } from '../../aiFeatures/integration/curatedPublisherEvidence';
 import { useSavedSearchChoices } from './useSavedSearchChoices';
 import { useConversationModelConfirmation } from './useConversationModelConfirmation';
 import { t } from '../../i18n';
@@ -212,6 +214,12 @@ export default function ProviderSelectionScreen({
               option={pendingOption ? confirmationOption : null}
               saving={saving}
             />
+          ) : null}
+          {presentation === 'settings-provider' &&
+          !pendingOption &&
+          savedSelection &&
+          selectedOnDeviceApple(savedSelection) ? (
+            <PublisherCorpusSettings />
           ) : null}
         </ModelSelectionTabs>
       </ScrollView>

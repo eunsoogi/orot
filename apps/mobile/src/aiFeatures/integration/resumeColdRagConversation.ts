@@ -191,6 +191,7 @@ export async function resumeColdRagConversation(input: {
           result.checkpoint.initialSearchStatus !== 'pending'
             ? result.checkpoint.initialSearchStatus
             : (factory.publicSearch?.status ?? 'unavailable'),
+        reason: factory.publicSearch?.reason,
       },
       skipPublicSearchNotice: !descriptor.request,
     });

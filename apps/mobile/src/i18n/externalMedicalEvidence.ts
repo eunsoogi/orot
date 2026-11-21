@@ -1,5 +1,17 @@
 /** Korean catalog entries for user-consented literature and public web search. */
 export const externalMedicalEvidenceKo = {
+  'publisherWeb.title': '웹검색',
+  'publisherWeb.disclosure':
+    'MedlinePlus의 공개 건강 문서 6개만 대상으로 검색해요. 갱신하면 기기가 해당 문서만 내려받고, 대화나 검색어는 보내지 않아요. 문서 제공처에는 접속 IP가 보일 수 있어요. Apple Intelligence는 기기에서 답해요.',
+  'publisherWeb.refresh': '검색 자료 갱신',
+  'publisherWeb.refreshRequired':
+    '웹검색 자료가 아직 없거나 오래됐어요. 설정의 AI 제공자와 모델에서 ‘검색 자료 갱신’을 눌러 주세요.',
+  'publisherWeb.ready':
+    '검색 자료를 준비했어요. 대화에서 웹검색을 요청해 보세요.',
+  'publisherWeb.partial': '일부 공개 문서만 내려받았어요.',
+  'publisherWeb.unavailable': '검색 자료를 준비하지 못했어요.',
+  'publisherWeb.sourceHint':
+    '검색 범위 {coverage}. MedlinePlus 공개 문서를 엽니다.',
   'externalMedicalEvidence.publicSearchRecipient': '{recipient} · 공개 웹검색',
   'externalMedicalEvidence.publicSearchSourceTitle': '공개 웹검색',
   'externalMedicalEvidence.publicSearchEmptyNotice':

@@ -119,6 +119,7 @@ export function createRagConversationService({
         observer,
         researchInputs,
         owner: history.recoveredOwnerIsCurrent,
+        curatedQuestion: report || photo ? undefined : request,
       });
       opening[history.recoveredOwnerIsCurrent ? 'dispose' : 'ready']();
       await opening.done;

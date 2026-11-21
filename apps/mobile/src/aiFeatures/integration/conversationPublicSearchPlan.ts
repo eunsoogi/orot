@@ -12,15 +12,22 @@ export async function conversationPublicSearchPlan(
     continuation?: ConversationWorkflowContinuation;
   },
 ) {
-  const tool = input.external.publicWebTool;
+  const curated = input.external.curatedSearch?.(input.question, input.signal);
+  const tool = curated ? undefined : input.external.publicWebTool;
   const deferred = Boolean(
     input.question && input.continuation && tool?.prepareAuthorizedSearch,
   );
   const eager: DefaultPublicSearchResult =
-    !deferred && input.question
+    curated ??
+    (!deferred && input.question
       ? await conversationPublicSearch(input)
-      : { status: 'unavailable' };
+      : { status: 'unavailable' });
   let status = eager.status;
+  const publisherReason =
+    curated?.status === 'unavailable' &&
+    curated.reason === 'publisher_refresh_required'
+      ? curated.reason
+      : undefined;
   return {
     continuation: input.continuation,
     operationRunId: input.runId,
@@ -33,6 +40,7 @@ export async function conversationPublicSearchPlan(
             version: 1 as const,
             status: eager.status,
             charged: Boolean(input.question && tool),
+            ...(publisherReason ? { reason: publisherReason } : {}),
           }
         : undefined,
     chargeEagerSearch: Boolean(!deferred && input.question && tool),
@@ -40,7 +48,10 @@ export async function conversationPublicSearchPlan(
       ? { toolId: tool!.id, input: defaultPublicSearchInput(input.question) }
       : undefined,
     get currentSearch() {
-      return { status };
+      return {
+        status,
+        ...(publisherReason ? { reason: publisherReason } : {}),
+      };
     },
     // This display-only status never authorizes a query or substitutes for its retained evidence.
     onInitialSearchStatus(

@@ -1,3 +1,8 @@
+import {
+  isCuratedPublisherReference,
+  validCuratedPublisherReference,
+} from './curatedWeb/publisherReference';
+import { publisherAttribution } from './curatedWeb/medlinePlusSeeds';
 import { t } from '../i18n';
 import { Linking, Pressable } from 'react-native';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
@@ -20,7 +25,13 @@ export function PublicWebSourceLinks({
   readonly textStyle?: StyleProp<TextStyle>;
   readonly onLinkError: () => void;
 }) {
-  const sources = publicWebSources(reference);
+  const curated = isCuratedPublisherReference(reference);
+  const locator = reference.locator as Record<string, unknown> | null;
+  const coverage = `${locator?.coveredPages}/${locator?.catalogPages}`;
+  const sources =
+    !curated || validCuratedPublisherReference(reference)
+      ? publicWebSources(reference)
+      : undefined;
   if (!sources)
     return (
       <Pressable
@@ -39,13 +50,17 @@ export function PublicWebSourceLinks({
           key={`${source.url}:${index}`}
           accessibilityRole="link"
           accessibilityLabel={t('publicWeb.open', { title: source.title })}
-          accessibilityHint={t('publicWeb.generatedHint')}
+          accessibilityHint={
+            curated
+              ? `${publisherAttribution}. ${t('publisherWeb.sourceHint', { coverage })}`
+              : t('publicWeb.generatedHint')
+          }
           style={linkStyle}
           onPress={() => Linking.openURL(source.url).catch(onLinkError)}
         >
           <AppSymbol name="globe" size={18} color={appColors.primaryText} />
           <AppText numberOfLines={1} style={textStyle}>
-            {t('publicWeb.prefix')}
+            {curated ? `MedlinePlus ${coverage}: ` : t('publicWeb.prefix')}
             {source.title.length > 22
               ? `${source.title.slice(0, 21)}…`
               : source.title}

@@ -13,6 +13,9 @@
 		CE1178000000000000000003 /* VoiceDuplexSystemLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1178000000000000000004 /* VoiceDuplexSystemLifecycleTests.swift */; };
 		CE1131000000000000000001 /* VoiceSystemCallLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1131000000000000000002 /* VoiceSystemCallLifecycle.swift */; };
 		CE1178000000000000000001 /* VoiceDuplexPorts.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1178000000000000000002 /* VoiceDuplexPorts.swift */; };
+		A10FEF000000000000000001 /* CuratedPublisherPageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10FEF000000000000000001 /* CuratedPublisherPageLoader.swift */; };
+		A10FEF000000000000000002 /* CuratedPublisherPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10FEF000000000000000002 /* CuratedPublisherPages.swift */; };
+		A10FEF000000000000000003 /* CuratedPublisherPages.m in Sources */ = {isa = PBXBuildFile; fileRef = B10FEF000000000000000003 /* CuratedPublisherPages.m */; };
 		A10940000000000000000003 /* CalendarDecisionsTransport.m in Sources */ = {isa = PBXBuildFile; fileRef = B10940000000000000000003 /* CalendarDecisionsTransport.m */; };
 		A10940000000000000000002 /* CalendarDecisionsTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10940000000000000000002 /* CalendarDecisionsTransport.swift */; };
 		A10940000000000000000001 /* CalendarDecisionsRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10940000000000000000001 /* CalendarDecisionsRequest.swift */; };
@@ -419,6 +422,9 @@
 		CE1178000000000000000004 /* VoiceDuplexSystemLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDuplexSystemLifecycleTests.swift; sourceTree = "<group>"; };
 		CE1131000000000000000002 /* VoiceSystemCallLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceSystemCallLifecycle.swift; path = OrotMobile/VoiceSystemCallLifecycle.swift; sourceTree = "<group>"; };
 		CE1178000000000000000002 /* VoiceDuplexPorts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceDuplexPorts.swift; path = OrotMobile/VoiceDuplexPorts.swift; sourceTree = "<group>"; };
+		B10FEF000000000000000001 /* CuratedPublisherPageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CuratedPublisherPageLoader.swift; path = OrotMobile/CuratedPublisherPageLoader.swift; sourceTree = "<group>"; };
+		B10FEF000000000000000002 /* CuratedPublisherPages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CuratedPublisherPages.swift; path = OrotMobile/CuratedPublisherPages.swift; sourceTree = "<group>"; };
+		B10FEF000000000000000003 /* CuratedPublisherPages.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = CuratedPublisherPages.m; path = OrotMobile/CuratedPublisherPages.m; sourceTree = "<group>"; };
 		B10940000000000000000003 /* CalendarDecisionsTransport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = CalendarDecisionsTransport.m; path = OrotMobile/CalendarDecisionsTransport.m; sourceTree = "<group>"; };
 		B10940000000000000000002 /* CalendarDecisionsTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalendarDecisionsTransport.swift; path = OrotMobile/CalendarDecisionsTransport.swift; sourceTree = "<group>"; };
 		B10940000000000000000001 /* CalendarDecisionsRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalendarDecisionsRequest.swift; path = OrotMobile/CalendarDecisionsRequest.swift; sourceTree = "<group>"; };
@@ -878,6 +884,9 @@
 				B62F00000000000000000012 /* AppleNativeToolSession.swift */,
 				B62F00000000000000000011 /* AppleNativeToolGeneration.swift */,
 				BF39B211764F40D99FEAC2C1 /* OpenAIProviderModelCatalog.swift */,
+				B10FEF000000000000000001 /* CuratedPublisherPageLoader.swift */,
+				B10FEF000000000000000002 /* CuratedPublisherPages.swift */,
+				B10FEF000000000000000003 /* CuratedPublisherPages.m */,
 				B10940000000000000000003 /* CalendarDecisionsTransport.m */,
 				B10940000000000000000002 /* CalendarDecisionsTransport.swift */,
 				B10940000000000000000001 /* CalendarDecisionsRequest.swift */,
@@ -1638,6 +1647,9 @@
 				A62F00000000000000000012 /* AppleNativeToolSession.swift in Sources */,
 				A62F00000000000000000011 /* AppleNativeToolGeneration.swift in Sources */,
 				AF39B211764F40D99FEAC2C1 /* OpenAIProviderModelCatalog.swift in Sources */,
+				A10FEF000000000000000001 /* CuratedPublisherPageLoader.swift in Sources */,
+				A10FEF000000000000000002 /* CuratedPublisherPages.swift in Sources */,
+				A10FEF000000000000000003 /* CuratedPublisherPages.m in Sources */,
 				A10940000000000000000003 /* CalendarDecisionsTransport.m in Sources */,
 				A10940000000000000000002 /* CalendarDecisionsTransport.swift in Sources */,
 				A10940000000000000000001 /* CalendarDecisionsRequest.swift in Sources */,

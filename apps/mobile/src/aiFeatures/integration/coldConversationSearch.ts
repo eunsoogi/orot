@@ -6,6 +6,7 @@ export interface ColdConversationSearch {
   version: 1;
   status: Exclude<DefaultPublicSearchResult['status'], 'cancelled'>;
   charged: boolean;
+  reason?: 'publisher_refresh_required';
 }
 
 /** Old no-initial-search snapshots lack exact preflight history and remain unsupported. */
@@ -20,10 +21,19 @@ export function readColdConversationSearch(
     !saved ||
     saved.version !== 1 ||
     typeof saved.charged !== 'boolean' ||
+    (saved.reason !== undefined &&
+      (saved.reason !== 'publisher_refresh_required' ||
+        saved.status !== 'unavailable' ||
+        saved.charged)) ||
     !['success', 'empty', 'consent_required', 'unavailable'].includes(
       saved.status,
     )
   )
     throw new Error('Cold initial-search contract unavailable.');
-  return { version: 1, status: saved.status, charged: saved.charged };
+  return {
+    version: 1,
+    status: saved.status,
+    charged: saved.charged,
+    ...(saved.reason ? { reason: saved.reason } : {}),
+  };
 }

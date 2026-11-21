@@ -10,7 +10,11 @@ import {
 export async function finishRagConversation(input: {
   outcome: RagConversationOutcome;
   publicSearch:
-    DefaultPublicSearchResult | Pick<DefaultPublicSearchResult, 'status'>;
+    | DefaultPublicSearchResult
+    | {
+        status: DefaultPublicSearchResult['status'];
+        reason?: 'offline' | 'publisher_refresh_required';
+      };
   retention: ReturnType<typeof createConversationRetentionBridge>;
   signal: AbortSignal;
   continuation: boolean;
@@ -23,7 +27,7 @@ export async function finishRagConversation(input: {
     input.publicSearch.status !== 'success'
       ? {
           ...input.outcome,
-          answer: `${input.outcome.answer}\n\n${publicSearchNotice(input.publicSearch.status)}`,
+          answer: `${input.outcome.answer}\n\n${publicSearchNotice(input.publicSearch.status, 'reason' in input.publicSearch ? input.publicSearch.reason : undefined)}`,
         }
       : input.outcome;
   const finished = await input.retention.finish(annotated);

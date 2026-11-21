@@ -18,6 +18,7 @@ import { isControlledPublicWebQuery } from '../../agent/execution/publicWebQuery
 export interface SelectedExternalEvidenceSnapshot {
   readonly literature: ProtectedExternalReferences;
   readonly web: ProtectedExternalReferences | null;
+  readonly curated?: ProtectedExternalReferences;
 }
 
 /** Offer each supported destination explicitly; neither adapter substitutes for the other. */

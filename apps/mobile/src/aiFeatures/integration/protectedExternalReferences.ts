@@ -1,8 +1,12 @@
+import {
+  curatedReferenceSequence,
+  validCuratedPublisherReference,
+} from '../../externalMedicalEvidence/curatedWeb/publisherReference';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { stableJson } from './evidenceUtils';
 import { publicWebSources } from '../../externalMedicalEvidence/publicWebSources';
 
-type Destination = 'europe-pmc' | 'public-web';
+type Destination = 'europe-pmc' | 'public-web' | 'curated-public-web';
 /** Only an exact validated protected descriptor may supply this snapshot. It is provenance, not consent. */
 export interface ProtectedExternalReferences {
   readonly version: 1;
@@ -15,7 +19,8 @@ function valid(reference: EvidenceReference, destination: Destination) {
   if (
     !reference ||
     reference.sourceKind !== 'external_medical' ||
-    reference.sourceId !== destination ||
+    reference.sourceId !==
+      (destination === 'curated-public-web' ? 'public-web' : destination) ||
     reference.reviewState !== 'unknown' ||
     !['sourceRevision', 'evidenceId', 'evidenceRevision'].every(
       key =>
@@ -31,6 +36,8 @@ function valid(reference: EvidenceReference, destination: Destination) {
   const value = reference.locator;
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const locator = value as Record<string, unknown>;
+  if (destination === 'curated-public-web')
+    return validCuratedPublisherReference(reference);
   if (destination === 'public-web') {
     const sequence = Number(
       /^web-result-([1-9]\d*)$/.exec(reference.evidenceId)?.[1],
@@ -94,9 +101,12 @@ export function protectedExternalReferences(
     });
     sequence = saved.sequence;
     if (
-      destination === 'public-web' &&
+      destination !== 'europe-pmc' &&
       saved.references.some(
-        reference => Number(reference.evidenceId.slice(11)) > sequence,
+        reference =>
+          (destination === 'curated-public-web'
+            ? curatedReferenceSequence(reference.evidenceId)
+            : Number(reference.evidenceId.slice(11))) > sequence,
       )
     )
       throw new Error('External sequence does not cover its references.');

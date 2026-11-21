@@ -1,3 +1,8 @@
+import {
+  createCuratedPublisherEvidence,
+  explicitPublisherSearch,
+  selectedOnDeviceApple,
+} from './curatedPublisherEvidence';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import type { RagConversationObserver } from '../../ragConversation/service';
 import type { createResearchInputTracker } from './researchInputTracker';
@@ -21,6 +26,7 @@ export function conversationExternalEvidence(input: {
   observer?: RagConversationObserver;
   researchInputs: ReturnType<typeof createResearchInputTracker>;
   restored?: SelectedExternalEvidenceSnapshot;
+  curatedQuestion?: string;
   owner?: () => Promise<boolean>;
 }) {
   const {
@@ -44,7 +50,7 @@ export function conversationExternalEvidence(input: {
       throw new Error('Conversation research owner is no longer current.');
   };
   const provider = selected.provider;
-  return createSelectedExternalEvidence({
+  const external = createSelectedExternalEvidence({
     selected:
       recoveredOwnerIsCurrent && provider.searchPublicWeb
         ? {
@@ -85,6 +91,33 @@ export function conversationExternalEvidence(input: {
     validateResearchInputs: researchInputs.revalidate,
     onResearchRetained: researchInputs.recordResearch,
   });
+  const onDeviceApple = selectedOnDeviceApple({
+    providerId: selected.provider.id,
+    modelId: selected.modelId,
+    remoteProcessing: selected.remoteProcessing,
+  });
+  if (input.restored?.curated && !onDeviceApple)
+    throw new Error(
+      'Unexpected publisher evidence for another answer provider.',
+    );
+  const localWeb =
+    onDeviceApple &&
+    (input.restored?.curated ||
+      explicitPublisherSearch(input.curatedQuestion ?? ''))
+      ? createCuratedPublisherEvidence(input.restored?.curated)
+      : undefined;
+  return {
+    ...external,
+    // Explicit local web search must not make Europe PMC or a third party a fallback.
+    tools: localWeb ? [] : external.tools,
+    curatedSearch: localWeb?.search,
+    snapshot: () => ({
+      ...external.snapshot(),
+      ...(localWeb ? { curated: localWeb.snapshot() } : {}),
+    }),
+    validates: (reference: Parameters<typeof external.validates>[0]) =>
+      external.validates(reference) || Boolean(localWeb?.validates(reference)),
+  };
 }
 
 /** Keep public search observation and cancellation tied to the same turn. */
