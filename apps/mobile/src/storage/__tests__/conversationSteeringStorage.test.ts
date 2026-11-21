@@ -149,3 +149,47 @@ test('large steering and more than sixteen instructions remain bound to the exac
     f.connection.close();
   }
 });
+
+test('a finished drain refuses a late instruction; a prior durable enqueue remains eligible', async () => {
+  const f = await fixture();
+  try {
+    const final = () =>
+      f.steering.pendingAtFinalBoundary?.() ??
+      f.steering.list().then(rows => rows.some(row => row.status === 'queued'));
+    const admission = f.steering.enqueue('first', 'First instruction');
+    const firstBoundary = final();
+    await expect(admission).resolves.toBe(true);
+    await expect(firstBoundary).resolves.toBe(true);
+    const operationId = 'model-second-pass';
+    const bound = await f.steering.bind(operationId, request);
+    expect(bound?.messages.at(-1)).toMatchObject({
+      role: 'user',
+      content: 'First instruction',
+    });
+    const identity = {
+      operationId,
+      input: JSON.stringify(bound),
+      evidenceReferences: [],
+    };
+    await f.journal.loadOrCreate(identity);
+    const claim = await f.journal.begin({ ...identity, revision: 0 });
+    if (claim.status !== 'claimed')
+      throw new Error('Synthetic claim unavailable.');
+    await f.journal.complete({
+      ...identity,
+      claim: claim.claim,
+      result: 'synthetic receipt',
+    });
+    await expect(f.steering.acknowledge(operationId)).resolves.toBe(true);
+
+    const finalBoundary = final();
+    const late = f.steering.enqueue('late', 'Keep this in the composer');
+    await expect(finalBoundary).resolves.toBe(false);
+    await expect(late).resolves.toBe(false);
+    expect(await f.steering.list()).toEqual([
+      expect.objectContaining({ id: 'first', status: 'applied' }),
+    ]);
+  } finally {
+    f.connection.close();
+  }
+});
