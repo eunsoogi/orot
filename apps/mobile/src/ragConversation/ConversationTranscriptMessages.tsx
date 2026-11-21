@@ -72,13 +72,23 @@ export function ConversationTranscriptMessages({
           restored={restored}
         />
       ) : null;
+    const reviewedOpening =
+      message.initialResponse && message.initialResponse.source !== 'receipt';
+    // A reviewed opening can be the entire predecessor; no superseded stream
+    // text needs to exist before the applied instruction owns the successor.
+    const afterBoundary =
+      message.previousOutputs?.length || reviewedOpening
+        ? (ownInstructions?.reduce(
+            (index, row, current) =>
+              row.status === 'applied' ? current + 1 : index,
+            0,
+          ) ?? 0)
+        : 0;
     const before = message.streaming
-      ? ownInstructions?.filter(
-          row => row.status === 'applied' && message.previousOutputs?.length,
-        )
+      ? ownInstructions?.slice(0, afterBoundary)
       : ownInstructions;
     const after = message.streaming
-      ? ownInstructions?.filter(row => !before?.includes(row))
+      ? ownInstructions?.slice(afterBoundary)
       : undefined;
     return (
       <ReplyMessageContainer
