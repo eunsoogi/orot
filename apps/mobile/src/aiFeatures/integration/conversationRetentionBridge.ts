@@ -109,7 +109,10 @@ export function createConversationRetentionBridge(input: {
           answer: outcome.answer,
           ...(outcome.proactiveMemory === true &&
           !input.submittedInput &&
-          (!input.entryContext || input.entryContext.intent === 'conversation')
+          input.observer?.inputOrigin !== 'shortcut' &&
+          (!input.entryContext ||
+            input.entryContext.intent === 'conversation' ||
+            input.observer?.inputOrigin === 'composer')
             ? { proactiveMemory: true as const }
             : {}),
           providerId: input.providerId,

@@ -1,3 +1,4 @@
+import { localConversationMemoryIdPrefix } from '@orot/storage';
 import type { EvidenceSearchRuntime } from '@orot/agent-runtime';
 import { prepareVisitQuestionContext } from '../evidenceService';
 import { createVisitQuestionEvidenceAliases } from '../evidenceAliases';
@@ -19,9 +20,20 @@ test('keeps valid dated memory and drops malformed provenance from the graph Sto
     },
     createdAt: Date.parse('2026-10-01T00:00:00Z'),
   } as const;
+  const localSource = localConversationMemoryIdPrefix + 'outbound-visit';
+  const privateKey = 'manual-history-memory:' + localSource;
+  const privateMemory = {
+    ...memory,
+    id: 'synthetic-local-note',
+    text: 'Synthetic private visit note',
+    memoryKey: privateKey,
+  };
   dependencies.queryService.searchMemory.mockResolvedValue({
     status: 'available',
-    hits: [{ ...memory, score: 0.9 }],
+    hits: [
+      { ...memory, score: 0.9 },
+      { ...privateMemory, score: 0.8 },
+    ],
     limit: 3,
   });
   const storeItem = {
@@ -57,7 +69,11 @@ test('keeps valid dated memory and drops malformed provenance from the graph Sto
         readonly limit?: number;
       };
       return search.namespacePrefix?.[0] === 'agent-memory'
-        ? [storeItem, malformedStoreItem].slice(0, search.limit ?? 10)
+        ? [
+            storeItem,
+            malformedStoreItem,
+            { ...storeItem, key: privateKey, value: privateMemory },
+          ].slice(0, search.limit ?? 10)
         : [];
     }),
   );
@@ -153,8 +169,9 @@ test('keeps valid dated memory and drops malformed provenance from the graph Sto
       citations: [citation],
     }),
   ];
-  const { provider } = makeProvider(outputs);
-  const { selection, option } = selectedOption(provider, 'on-device');
+  const { provider, requests } = makeProvider(outputs);
+  const { selection, option } = selectedOption(provider);
+  const confirmConsent = jest.fn(async () => true);
   const searchEvidence = jest.fn(
     (...args: Parameters<typeof prepared.searchEvidence>) =>
       prepared.searchEvidence(...args),
@@ -164,9 +181,20 @@ test('keeps valid dated memory and drops malformed provenance from the graph Sto
     prepared: { ...prepared, searchEvidence },
     selection,
     providerOptions: [option],
+    recipient: 'Synthetic transport',
+    confirmConsent,
   });
 
   expect(result.status).toBe('ready');
+  const outbound = JSON.stringify(requests);
+  const disclosure = JSON.stringify(confirmConsent.mock.calls);
+  expect(requests).toHaveLength(2);
+  expect(outbound).toContain(memory.text);
+  expect(confirmConsent).toHaveBeenCalled();
+  for (const privateValue of [privateMemory.text, privateKey, localSource]) {
+    expect(outbound).not.toContain(privateValue);
+    expect(disclosure).not.toContain(privateValue);
+  }
   const searchedEvidence = await searchEvidence.mock.results[0]!.value;
   expect(searchedEvidence.batch.items).toEqual(
     expect.arrayContaining([

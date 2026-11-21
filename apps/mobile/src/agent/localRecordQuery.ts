@@ -1,3 +1,4 @@
+import { providerVisibleMemoryReader } from '../memory/providerVisibleMemory';
 import {
   createLocalRecordQueryService,
   createLocalRecordQueryTools,
@@ -10,7 +11,10 @@ import { openLocalAgentMemoryDatabase } from '../storage/secureDatabase';
 export async function openLocalRecordQueryService(memory?: LocalMemoryReader) {
   const encryptedDatabase = await openLocalAgentMemoryDatabase();
   const repository = createLocalRecordQueryRepository(encryptedDatabase);
-  return createLocalRecordQueryService(repository, memory);
+  return createLocalRecordQueryService(
+    repository,
+    memory && providerVisibleMemoryReader(memory),
+  );
 }
 
 /** Builds the bounded read-only LangChain tools over the same encrypted local records. */

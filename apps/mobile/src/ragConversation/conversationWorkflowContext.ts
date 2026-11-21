@@ -18,6 +18,9 @@ export function conversationWorkflowContext(
     history,
     ...(options.photoEvidence?.length ? { photoAttachment: true } : {}),
     ...(options.entryIntent ? { intent: options.entryIntent } : {}),
+    ...(options.entryIntent && options.authoredCurrentRequest
+      ? { authoredCurrentRequest: true }
+      : {}),
     ...(options.validatedPriorTurns?.length
       ? { priorDialogue: options.validatedPriorTurns }
       : {}),

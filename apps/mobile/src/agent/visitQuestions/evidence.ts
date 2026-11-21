@@ -1,3 +1,4 @@
+import { isProviderVisibleMemory } from '../../memory/providerVisibleMemory';
 import { isAgentMemoryProvenance } from '@orot/agent-memory';
 import type { LocalMemoryHit } from '@orot/agent-runtime';
 import { HealthObservationSchema } from '@orot/domain';
@@ -210,7 +211,8 @@ export function mapMemoryHitToVisitQuestionEvidence(hit: LocalMemoryHit): {
     !hit.id.trim() ||
     !hit.text.trim() ||
     hit.provenance.sourceIds.length === 0 ||
-    !isAgentMemoryProvenance(hit.provenance)
+    !isAgentMemoryProvenance(hit.provenance) ||
+    !isProviderVisibleMemory(hit.provenance, hit.memoryKey)
   ) {
     return null;
   }
