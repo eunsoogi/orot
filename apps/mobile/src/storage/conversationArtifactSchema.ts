@@ -1,3 +1,4 @@
+import { setupSavedGeneratedReportReferences } from './savedGeneratedReportReferences';
 import { STORAGE_TABLES, type SqlExecutor } from '@orot/storage';
 import { ensureHealthContextGeneration } from '../healthEvidence/healthContext/generation';
 import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
@@ -121,6 +122,7 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS symptom_summary_sources (summary_id TEXT NOT NULL REFERENCES symptom_summary_runs(id) ON DELETE CASCADE, record_kind TEXT NOT NULL, record_id TEXT NOT NULL, PRIMARY KEY(summary_id, record_kind, record_id))',
   );
+  await setupSavedGeneratedReportReferences(tx);
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_invalid_summaries (id TEXT PRIMARY KEY NOT NULL)',
   );

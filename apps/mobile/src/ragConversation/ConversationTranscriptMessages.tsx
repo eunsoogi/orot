@@ -4,6 +4,7 @@ import { ConversationActivityBubble } from './ConversationActivityBubble';
 import { ConversationTranscriptEntranceScope } from './ConversationTranscriptEntranceScope';
 import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { ConversationMessageReceipt } from './ConversationMessageReceipt';
+import { GeneratedReportBookmark } from './GeneratedReportBookmark';
 import { Fragment, type ComponentProps, type ReactNode } from 'react';
 import {
   ConversationMessage,
@@ -111,6 +112,7 @@ export function ConversationTranscriptMessages({
           {...messageProps}
         />
         {bubbleRows(after)}
+        <GeneratedReportBookmark message={message} />
         {message.role === 'user' ? (
           <ConversationMessageReceipt
             delivery={message.delivery}
