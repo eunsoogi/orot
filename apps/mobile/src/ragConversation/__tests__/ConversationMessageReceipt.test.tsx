@@ -37,3 +37,31 @@ test('displays observed receipt time with accessible full dates and never backfi
     screen.getByTestId('conversation-message-receipt').props.accessibilityHint,
   ).toContain('내용을 이해했거나 답변이 완료됐다는 뜻은 아니에요');
 });
+
+test('a locally queued choice shows only sending, then existing observations take precedence', async () => {
+  const screen = await render(
+    <ConversationMessageReceipt localChoicePending />,
+  );
+  expect(screen.getByText('전송 중')).toBeTruthy();
+  expect(screen.queryByText(/보냄|읽음|질문 제출 시각|\d/)).toBeNull();
+  expect(
+    screen.getByTestId('conversation-message-receipt').props.accessibilityLabel,
+  ).toBeUndefined();
+  await screen.rerender(
+    <ConversationMessageReceipt delivery={{ submittedAt }} pending />,
+  );
+  expect(screen.queryByText(/전송 중/)).not.toBeNull();
+  expect(screen.queryByText(/보냄|읽음/)).toBeNull();
+  await screen.rerender(
+    <ConversationMessageReceipt
+      localChoicePending
+      delivery={{ submittedAt, acceptedAt: '2026-10-01T10:01:00Z' }}
+    />,
+  );
+  expect(screen.getByText(/보냄/)).toBeTruthy();
+  expect(screen.queryByText(/전송 중|읽음/)).toBeNull();
+  await screen.rerender(<ConversationMessageReceipt pending />);
+  expect(screen.queryByTestId('conversation-message-receipt')).toBeNull();
+  await screen.rerender(<ConversationMessageReceipt />);
+  expect(screen.queryByTestId('conversation-message-receipt')).toBeNull();
+});

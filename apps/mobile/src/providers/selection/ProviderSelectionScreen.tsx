@@ -1,3 +1,4 @@
+import { useSavedSearchChoices } from './useSavedSearchChoices';
 import { useConversationModelConfirmation } from './useConversationModelConfirmation';
 import { t } from '../../i18n';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
@@ -34,10 +35,7 @@ export default function ProviderSelectionScreen({
   onNavigationStateChange,
 }: ProviderSelectionScreenProps) {
   const navigationInset = useNavigationContentInset();
-  const [searchChoices, setSearchChoices] = useState({
-    web: false,
-    medical: false,
-  });
+  const search = useSavedSearchChoices(selectionStore);
   const [savedSelection, setSavedSelection] =
     useState<ProviderSelection | null>(null);
   const [pendingOption, setPendingOption] =
@@ -101,7 +99,7 @@ export default function ProviderSelectionScreen({
       pendingResolution,
       currentPendingOption,
       confirmationOption,
-      searchChoices,
+      searchChoices: search.choices,
       saving,
       setSaving,
       setSaveError,
@@ -169,7 +167,12 @@ export default function ProviderSelectionScreen({
                   { hasPendingSelection: true, isSavingSelection: false },
                   true,
                 );
-                setSearchChoices({ web: false, medical: false });
+                search.choose(
+                  option,
+                  presentation === 'settings-provider' &&
+                    option.provider.id === savedSelection?.providerId &&
+                    option.modelId === savedSelection.modelId,
+                );
                 setPendingOption(option);
                 setSaveError(false);
               }}
@@ -184,8 +187,9 @@ export default function ProviderSelectionScreen({
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionFooter
               inlineConsent={!settings}
-              searchChoices={searchChoices}
-              onSearchChoices={setSearchChoices}
+              searchChoices={search.choices}
+              searchReviewStatus={search.status}
+              onSearchChoices={search.change}
               message={selectionMessage}
               saveError={saveError}
               remoteAvailable={options.some(
@@ -199,9 +203,12 @@ export default function ProviderSelectionScreen({
                   { hasPendingSelection: false, isSavingSelection: false },
                   true,
                 );
+                search.choose();
                 setPendingOption(null);
               }}
-              onConfirm={confirmSelection}
+              onConfirm={() => {
+                if (search.canConfirm()) confirmSelection();
+              }}
               option={pendingOption ? confirmationOption : null}
               saving={saving}
             />
