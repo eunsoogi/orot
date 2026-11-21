@@ -1,3 +1,4 @@
+import type { BoundParentDigest } from './boundParentDigest';
 import { assertBatchedHistoryRecords } from './batchedHistoryRecords';
 import type { ReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
 import {
@@ -37,6 +38,7 @@ export async function assertConversationArtifactCurrent(
   collectValidated?: (artifact: ConversationArtifact) => void,
   profileHistoryValidation = false,
   canBatchOrdinary?: () => boolean,
+  boundParentDigest?: BoundParentDigest,
 ) {
   const history = createManualHistoryRepository(database);
   // New report-bound turns must still belong to the active revision at commit.
@@ -125,11 +127,16 @@ export async function assertConversationArtifactCurrent(
           throw error;
         }
         const row = result.rows[0];
+        const raw = row?.result_json;
         const parent = measureCost
           ? measureCost('artifact_parent_decode', () =>
-              decodeConversationArtifact(row?.result_json),
+              decodeConversationArtifact(raw),
             )
-          : decodeConversationArtifact(row?.result_json);
+          : decodeConversationArtifact(raw);
+        const digest = (validated: ConversationArtifact) =>
+          boundParentDigest && typeof raw === 'string'
+            ? boundParentDigest(raw, validated, source.revision)
+            : fingerprint(validated);
         if (
           !parent ||
           parent.id !== row?.id ||
@@ -137,10 +144,8 @@ export async function assertConversationArtifactCurrent(
           parent.createdAt !== row.created_at ||
           parent.citations === undefined ||
           (measureCost
-            ? measureCost('artifact_parent_fingerprint', () =>
-                fingerprint(parent),
-              )
-            : fingerprint(parent)) !== source.revision
+            ? measureCost('artifact_parent_fingerprint', () => digest(parent))
+            : digest(parent)) !== source.revision
         )
           throw new RetainedSourceInvalidError(
             'The generated conversation changed or was removed.',

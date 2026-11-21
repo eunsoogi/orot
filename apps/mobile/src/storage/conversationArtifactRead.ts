@@ -198,8 +198,8 @@ export function createConversationArtifactReader(
             raw?: string,
             value?: ConversationArtifact,
           ) => {
-            // Never use the prior body as input to validation. Only the private
-            // settled match can reuse it after this slot independently passed.
+            // Share a settled match only after this slot independently passed
+            // freshness checks against the current rows, even on a decode hit.
             const same = raw === previous;
             record(raw, same);
             if (
@@ -227,6 +227,7 @@ export function createConversationArtifactReader(
                   record(raw);
                   return undefined;
                 },
+            boundReaderCurrent,
           );
           return {
             get rows() {
