@@ -90,6 +90,7 @@ export const modelSettingsKo = {
   'modelSettings.refreshVoice': '음성 모델 새로고침',
   'modelSettings.manageApi': 'OpenAI API 연결 관리',
   'modelSettings.confirmVoice': '이 보이스 사용',
+  'modelSettings.modelNameUnknown': '모델 이름을 확인할 수 없어요.',
   'modelSettings.currentSelection': '현재 선택:',
   'modelSettings.voiceConsent':
     '통화를 시작할 때 마이크 사용과 OpenAI로의 음성 전송에 별도로 동의해야 합니다. 설정 저장만으로 키를 확인하거나 음성을 전송하지 않습니다.',

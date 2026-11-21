@@ -30,10 +30,13 @@ export function selectionSummaryMessage(input: {
   available: boolean;
   displayName?: string;
   savedModelId?: string;
+  storedLabel?: string;
   presentation: ProviderSelectionPresentation;
 }): string {
   if (input.loading) return '';
   if (input.loadError) return providerSelectionText.storageLoadError;
+  if (input.storedLabel)
+    return `${providerSelectionText.selectedPrefix} ${input.storedLabel}`;
   if (input.available)
     return `${providerSelectionText.selectedPrefix} ${input.displayName ?? ''}`;
   if (!input.savedModelId) return providerSelectionText.selectPrompt;
