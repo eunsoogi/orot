@@ -66,13 +66,15 @@ export async function commitSettingsConsent(input: {
     if (!(await selectedCurrent()))
       throw new Error('Settings selection changed');
     activationAttempted = true;
-    for (const decision of staged)
+    if (staged.length === 1)
       await input.grants.activate(
         input.slot,
-        decision.token,
+        staged[0]!.token,
         requestCurrent,
-        decision.domain,
+        staged[0]!.domain,
       );
+    else
+      await input.grants.activateTogether(input.slot, staged, requestCurrent);
     if (!(await input.authority.complete(suspended, selectedCurrent)))
       throw new Error('Settings permission activation incomplete');
     const current = await input.authority.current();

@@ -125,3 +125,31 @@ it('allows explicit replacement of an unavailable saved model without automatic 
   expect(committed).toHaveBeenCalledTimes(1);
   expect(storage.clear).not.toHaveBeenCalled();
 });
+
+it('does not present a separate search review on any model tab', async () => {
+  const searchPublicWeb = jest.fn();
+  const option = {
+    ...apple,
+    provider: { ...apple.provider, id: saved.providerId, searchPublicWeb },
+    modelId: saved.modelId,
+    privacyBoundary: 'selected-context-remote' as const,
+  };
+  await render(
+    <ProviderSelectionScreen
+      presentation="settings-provider"
+      options={[option]}
+      requirements={requirements}
+      selectionStore={store()}
+    />,
+  );
+  const entry = 'settings-provider-review-web-search';
+  expect(screen.queryByTestId(entry)).toBeNull();
+  for (const tab of ['calendar', 'voice']) {
+    await fireEvent.press(screen.getByTestId('model-tab-' + tab));
+    expect(screen.queryByTestId(entry)).toBeNull();
+    expect(screen.queryByTestId('settings-consent-web')).toBeNull();
+  }
+  await fireEvent.press(screen.getByTestId('model-tab-language'));
+  expect(screen.queryByTestId(entry)).toBeNull();
+  expect(searchPublicWeb).not.toHaveBeenCalled();
+});

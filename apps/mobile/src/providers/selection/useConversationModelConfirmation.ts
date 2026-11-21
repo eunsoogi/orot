@@ -85,8 +85,11 @@ export function useConversationModelConfirmation({
       const search = {
         ...searchChoices,
         web:
-          searchChoices.web &&
-          Boolean(currentPendingOption.provider.searchPublicWeb),
+          currentPendingOption.privacyBoundary === 'selected-context-remote' &&
+          Boolean(currentPendingOption.provider.searchPublicWeb) &&
+          // A normal settings review presents both scopes explicitly on one sheet.
+          // Merely viewing or selecting the row never creates permission.
+          settings,
       };
       const saved = await consent.review(
         currentPendingOption,

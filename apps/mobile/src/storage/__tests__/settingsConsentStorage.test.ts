@@ -137,3 +137,43 @@ test('recipient domains coexist without a model grant implicitly approving searc
     connection.close();
   }
 });
+
+test('joint activation rolls back both active replacements if the second write fails', async () => {
+  const conn = openSqliteTestDatabase(':memory:');
+  try {
+    const storage = createSettingsConsentStorage(conn.database);
+    const selections = [
+      { token: 'synthetic-new-model', domain: 'model' },
+      { token: 'synthetic-new-web-search', domain: 'public-web' },
+    ] as const;
+    const replacement = {
+      ...grant,
+      identity: { ...grant.identity, authorityGeneration: 'next' },
+    };
+    for (const { token, domain } of selections) {
+      await storage.stage('conversation', `${token}-old`, grant, domain);
+      await storage.activate(
+        'conversation',
+        `${token}-old`,
+        () => true,
+        domain,
+      );
+      await storage.stage('conversation', token, replacement, domain);
+    }
+    await conn.database.execute(`CREATE TRIGGER reject_web_permission
+      BEFORE UPDATE ON settings_inference_grants
+      WHEN NEW.domain = 'public-web' AND NEW.state = 'active'
+      BEGIN SELECT RAISE(ABORT, 'synthetic second activation failure'); END`);
+    await expect(
+      storage.activateTogether('conversation', selections, () => true),
+    ).rejects.toThrow('synthetic second activation failure');
+    for (const { domain } of selections)
+      expect(await storage.read('conversation', domain)).toEqual(grant);
+    await conn.database.execute('DROP TRIGGER reject_web_permission');
+    await storage.activateTogether('conversation', selections, () => true);
+    for (const { domain } of selections)
+      expect(await storage.read('conversation', domain)).toEqual(replacement);
+  } finally {
+    conn.close();
+  }
+});
