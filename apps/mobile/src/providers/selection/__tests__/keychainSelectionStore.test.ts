@@ -113,3 +113,97 @@ it('isolates calendar selection from the conversation keychain entry', async () 
   );
   expect(resetGenericPasswordMock).not.toHaveBeenCalled();
 });
+
+describe('joint approval selection replacement', () => {
+  const first = { providerId: 'synthetic-account-a', modelId: 'model-a' };
+  const second = { providerId: 'synthetic-account-b', modelId: 'model-b' };
+  const storage = STORAGE_TYPE.AES_GCM_NO_AUTH;
+  let password: string | undefined;
+  let writeFence: (() => Promise<void>) | undefined;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    password = undefined;
+    writeFence = undefined;
+    getGenericPasswordMock.mockImplementation(async () =>
+      password === undefined
+        ? false
+        : {
+            service: 'isolated',
+            storage,
+            password,
+            username: 'provider-selection',
+          },
+    );
+    setGenericPasswordMock.mockImplementation(async (_user, value) => {
+      await writeFence?.();
+      password = value;
+      return { service: 'isolated', storage };
+    });
+    resetGenericPasswordMock.mockImplementation(async () => {
+      password = undefined;
+      return true;
+    });
+  });
+
+  it('allows a true empty slot and only the returned exact writer can compensate', async () => {
+    const store = new KeychainProviderSelectionStore('isolated');
+    const original = store.liveWitness()!;
+    const owned = await store.replaceOwned(null, first, original, () => true);
+    expect(original()).toBe(false);
+    expect(owned?.()).toBe(true);
+    expect(await store.load()).toEqual(first);
+    await expect(
+      store.replaceOwned(first, null, original, () => true),
+    ).resolves.toBeNull();
+    expect(await store.load()).toEqual(first);
+    const cleared = await store.replaceOwned(first, null, owned!, () => true);
+    expect(cleared?.()).toBe(true);
+    expect(await store.load()).toBeNull();
+  });
+
+  it('does not replace a corrupt slot or a known different owner as initial setup', async () => {
+    const store = new KeychainProviderSelectionStore('isolated');
+    for (const saved of ['not-json', JSON.stringify(second)]) {
+      password = saved;
+      await expect(
+        store.replaceOwned(null, first, store.liveWitness()!, () => true),
+      ).resolves.toBeNull();
+      expect(password).toBe(saved);
+    }
+    expect(setGenericPasswordMock).not.toHaveBeenCalled();
+  });
+
+  it('a slow staging write cannot regain ownership or overwrite a newer native clear/change', async () => {
+    const store = new KeychainProviderSelectionStore('isolated');
+    await store.save(first);
+    let started!: () => void;
+    const entered = new Promise<void>(resolve => {
+      started = resolve;
+    });
+    let resume!: () => void;
+    const release = new Promise<void>(resolve => {
+      resume = resolve;
+    });
+    writeFence = async () => {
+      started();
+      await release;
+    };
+    const pending = store.replaceOwned(
+      first,
+      second,
+      store.liveWitness()!,
+      () => true,
+    );
+    await entered;
+    const clearing = store.clear();
+    const newest = store.save(first);
+    expect(store.liveWitness()).toBeNull();
+    writeFence = undefined;
+    resume();
+    await expect(pending).resolves.toBeNull();
+    await clearing;
+    await newest;
+    expect(await store.load()).toEqual(first);
+    expect(setGenericPasswordMock).toHaveBeenCalledTimes(3);
+  });
+});

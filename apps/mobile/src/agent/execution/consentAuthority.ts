@@ -138,6 +138,31 @@ export function createConsentAuthority(
       });
     },
     suspend: () => transition('suspended'),
+    /** Read rollback provenance inside the same serialized mutation that advances
+     * this owner. A prior snapshot taken before entering the queue can be stale. */
+    suspendForJointReplacement(stillValid: () => boolean) {
+      return serialized(async owner => {
+        const raw = await persistence.read();
+        const previous = parse(raw);
+        if (
+          !stillValid() ||
+          owner !== revision ||
+          (raw !== null && !previous)
+        ) {
+          blocked = owner !== revision || previous?.status !== 'active';
+          throw new Error('Consent authority owner unavailable');
+        }
+        const next = parse({
+          version: 1,
+          generation: newGeneration(),
+          status: 'suspended',
+        });
+        if (!next || next.generation === previous?.generation)
+          throw new Error('Consent authority identity unavailable');
+        await persistence.write(next);
+        return { prior: previous?.status === 'active' ? previous : null, next };
+      });
+    },
     revoke: () => transition('revoked'),
     /** Only an explicit new settings decision may issue a fresh active generation. */
     activate: () => transition('active'),
