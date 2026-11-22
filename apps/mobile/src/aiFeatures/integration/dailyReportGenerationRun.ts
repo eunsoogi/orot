@@ -14,7 +14,7 @@ import {
   type SelectedAiResolution,
 } from './provider';
 import { dailyReportFacts } from './dailyReportFacts';
-import { dailyReportAnalysis } from './dailyReportAnalysis';
+import { dailyReportAnalysis, reportObservations } from './dailyReportAnalysis';
 import { fingerprint } from './evidenceUtils';
 import { reportFailureOutcome as failureOutcome } from './dailyReportFailureDiagnostics';
 import type {
@@ -186,12 +186,7 @@ export async function generateDailyReportWithCalendar(
     schemaVersion: 1 as const,
     identity: context.identity,
     generatedAt: input.now(),
-    observations: [...new Set([...required, ...selection.indexes])]
-      .slice(0, 8)
-      .map(index => ({
-        text: facts[index]!.text,
-        sourceReferences: facts[index]!.sourceReferences,
-      })),
+    observations: reportObservations(facts, required, selection.indexes),
     supportedContext: dailyReportAnalysis(
       snapshot.values,
       snapshot.sourceSnapshot.records.slice(0, snapshot.values.length),

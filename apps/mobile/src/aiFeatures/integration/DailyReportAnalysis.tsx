@@ -16,19 +16,12 @@ export function DailyReportAnalysis({
       <AppText accessibilityRole="header">
         {t('dailyReport.supportedContext')}
       </AppText>
-      {claims.some(item => item.section) ? (
-        <AppText>{t('dailyReport.analysis.scope')}</AppText>
-      ) : null}
       {claims.map((item, index) => (
         <Fragment key={index}>
           {item.section && item.section !== claims[index - 1]?.section ? (
             <AppText accessibilityRole="header">
               {t(`dailyReport.analysis.${item.section}`)}
             </AppText>
-          ) : null}
-          {item.section === 'model' &&
-          claims[index - 1]?.section !== 'model' ? (
-            <AppText>{t('dailyReport.analysis.modelCaution')}</AppText>
           ) : null}
           <AppText>{item.text}</AppText>
         </Fragment>

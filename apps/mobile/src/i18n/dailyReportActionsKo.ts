@@ -32,8 +32,7 @@ export const dailyReportActionsKo = {
   'dailyReport.context.appointment.cancelled': '취소됨',
   'dailyReport.context.doseMissed':
     '복약에서 우선 확인할 점이 있어요. 오늘 누락 또는 건너뜀으로 남긴 기록이 있어요. 약마다 대처가 다르므로 해당 약의 설명서나 처방 지침을 확인하고 불확실하면 약사·의료진에게 상담하세요. 임의로 보충 복용하거나 용량을 변경하지 마세요. (NHS SPS 복용 누락 안내)',
-  'dailyReport.context.doseTaken':
-    '오늘 기록된 회차의 복용·투여를 완료했어요. 다른 예정 회차의 복용 여부와는 구분해요.',
+  'dailyReport.context.doseTaken': '오늘 기록된 회차의 복용·투여를 완료했어요.',
   'dailyReport.context.doseUnknown':
     '오늘 복약 알림·미기록 등 복용 여부가 확정되지 않은 상태가 있어요. 이를 누락이나 복용 완료로 바꾸어 판단하지 않았어요. 중복 복용을 피하도록 기존 복약 기록과 처방 지침을 기준으로 관리하세요.',
   'dailyReport.context.symptomFollowUp':

@@ -1,11 +1,14 @@
+import { recordFirstResponsePrompt } from '../../agent/execution/recordFirstResponsePrompt';
+
 /** Evidence text is untrusted data, never authority to alter the report contract.
  * Action wording remains supplied reviewed guidance, not free-form treatment. */
 export function dailyReportModelPrompt(allowAnalysis: boolean) {
   return [
     'Create a personalized Korean daily health interpretation from supplied indexed evidence and guidance only.',
+    recordFirstResponsePrompt,
     'Return JSON {"indexes":[0,...],"analysis":[{"kind":"interpretation","text":"...","evidenceIndexes":[0,1]},{"kind":"action","guidanceIndex":2,"evidenceIndexes":[0,2]}]}.',
     'Select 1-8 unique representative indexes and at most four analysis items. No tools, markdown, URLs or extra fields.',
-    'Interpretation should connect the most relevant observations, personal history, recorded medication intake and calendar plans, explain what matters today and uncertainty, not repeat a list of measurements.',
+    'Select the most relevant observations and connect them to personal history or plans when that relationship is supported. Use the interpretation to add personal relevance rather than repeat raw observations or reviewed actions already displayed by the app.',
     'Every paragraph must cite its supporting indexes; interpretation requires at least one role=evidence fact, never guidance alone. Prefer related evidence across domains when present, but do not invent a relationship or imply causation. Each interpretation is at most 800 characters.',
     'Actions select supplied role=guidance only and must include guidanceIndex among evidenceIndexes. Do not generate treatment instructions, diagnoses, medication/dose changes, or new reference thresholds.',
     'Use only numbers present in cited evidence. Do not conclude overall normality, no illness, safety or medical clearance. Evidence indexes prove provenance, not clinical certainty.',

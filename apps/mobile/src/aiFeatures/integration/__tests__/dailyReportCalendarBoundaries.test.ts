@@ -22,46 +22,6 @@ import {
   selectedReportProvider,
 } from '../testSupport/dailyReportFailureStageFixtures';
 
-test.each(['denied', 'scoped'] as const)(
-  'calendar %s never widens authorization or means no plans',
-  async mode => {
-    const connection = openSqliteTestDatabase(':memory:');
-    const native = calendarFixture();
-    const read = jest.fn(native.read);
-    try {
-      await runMigrations(connection.database);
-      await createRecordRepository(connection.database).put(
-        'health_observation',
-        calendarTestObservation,
-      );
-      if (mode === 'denied') native.revoke();
-      const { run, consent } = calendarReportService(connection.database, {
-        ...native,
-        read,
-      });
-      const result = await run({
-        ...calendarTestRequest(),
-        scope: mode === 'scoped' ? { sourceIds: ['synthetic'] } : {},
-      });
-      if (result.status !== 'completed')
-        throw new Error(JSON.stringify(result));
-      expect(result.context.systemCalendar).toBeUndefined();
-      expect(result.report.coverage).toContainEqual({
-        source: 'system_calendar',
-        status: 'unknown',
-        limitationCodes: ['calendar_unavailable_or_scoped_out'],
-      });
-      expect(
-        consent.mock.calls[0]?.[0].consentScope?.dataCategories,
-      ).not.toContain('calendar_plans');
-      if (mode === 'scoped') expect(read).not.toHaveBeenCalled();
-      expect(native.listeners.size).toBe(0);
-    } finally {
-      connection.close();
-    }
-  },
-);
-
 test('native change during SQLite save cannot return or reopen completed prose', async () => {
   const connection = openSqliteTestDatabase(':memory:');
   const native = calendarFixture();

@@ -1,3 +1,4 @@
+import { recordFirstResponsePrompt } from '../agent/execution/recordFirstResponsePrompt';
 import { withStructuredPossibilityReport } from './structuredPossibilityReport';
 import { validateConversationResult } from './conversationResultValidation';
 import { acceptsLocalPublicSearchFallback } from './publicSearchFallback';
@@ -145,6 +146,13 @@ export interface RagConversationCurrentEvidence {
 
 export const structuredConversationTask =
   withStructuredPossibilityReport(legacyTask);
-export const ragConversationTask = withProactiveMemory(
+export const proactiveConversationTaskV16 = withProactiveMemory(
   structuredConversationTask,
 );
+
+// Prompt text is part of protected execution identity, not a migration of prior turns.
+export const ragConversationTask = {
+  ...proactiveConversationTaskV16,
+  taskVersion: '17',
+  systemPrompt: `${recordFirstResponsePrompt} ${proactiveConversationTaskV16.systemPrompt}`,
+};

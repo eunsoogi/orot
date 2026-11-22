@@ -44,11 +44,9 @@ test('synthesizes chronological measurements rather than counting records or mak
     measurement('early', 70),
   ]);
   expect(result[0]?.text).toContain(
-    '첫 기록 70 회/분에서 마지막 기록 90 회/분로 높아졌어요',
+    '첫 기록은 70 회/분, 마지막 기록은 90 회/분. 두 기록을 비교하면 높아졌어요',
   );
-  expect(result[0]?.text).toContain(
-    '건강이 좋아지거나 나빠졌다는 의미로 해석하지 않았어요',
-  );
+  expect(result[0]?.text).toContain('오늘 심박수 기록을 비교했어요');
   expect(result[0]?.sourceReferences.map(ref => ref.recordId)).toEqual([
     'early',
     'late',
@@ -56,9 +54,7 @@ test('synthesizes chronological measurements rather than counting records or mak
 });
 test('single and empty samples do not invent baselines or reassurance', () => {
   expect(summarize([])).toEqual([]);
-  expect(summarize([measurement('only', 72)])[0]?.text).toContain(
-    '하루 동안의 변화는 알 수 없어요',
-  );
+  expect(summarize([measurement('only', 72)])[0]?.text).toContain('72 회/분.');
 });
 test('equal endpoints do not claim an unobserved stable day', () => {
   const result = summarize([
@@ -66,7 +62,9 @@ test('equal endpoints do not claim an unobserved stable day', () => {
     measurement('b', 99, '05'),
     measurement('c', 72, '09'),
   ]);
-  expect(result[0]?.text).toContain('중간 값까지 일정했다는 뜻은 아니에요');
+  expect(result[0]?.text).toContain(
+    '첫 기록과 마지막 기록은 같았어요: 72 회/분.',
+  );
 });
 test('conflicting same-time readings are not interpreted as trends', () => {
   const result = summarize([
@@ -83,7 +81,7 @@ test('different units do not create a comparison', () => {
     measurement('b', 1.2, '09', 'count/s'),
   ]);
   expect(result).toHaveLength(2);
-  expect(result.every(item => item.text.includes('변화는 알 수 없어요'))).toBe(
+  expect(result.every(item => item.text.includes('오늘 기록된 심박수:'))).toBe(
     true,
   );
 });
@@ -112,7 +110,6 @@ test('distinguishes reported active and resolved symptoms without inventing thei
   expect(result[0]?.text).toContain(
     '‘합성 메스꺼움’ 증상은 해소된 것으로 기록',
   );
-  expect(result[0]?.text).toContain('현재 상태나 원인');
   expect(result[0]?.sourceReferences).toHaveLength(2);
 });
 test('rejects a source identity mismatch', () => {
@@ -149,7 +146,7 @@ test.each(['sourceIdentifier', 'productType', 'device'] as const)(
     const result = summarize(values);
     expect(result).toHaveLength(2);
     expect(
-      result.every(item => item.text.includes('변화는 알 수 없어요')),
+      result.every(item => item.text.includes('오늘 기록된 심박수:')),
     ).toBe(true);
   },
 );

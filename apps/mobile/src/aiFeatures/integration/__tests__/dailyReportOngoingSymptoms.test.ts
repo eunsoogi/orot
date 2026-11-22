@@ -116,7 +116,9 @@ test('old explicit active status is context, resolved history is not current, an
     expect(JSON.stringify(generate.mock.calls[0]![0])).toContain(
       '현재도 이어지거나 악화되면',
     );
-    expect(text).toContain('이전에 시작된 기록도 포함');
+    expect(text).toContain(
+      '이전에 시작된 ‘Synthetic ongoing symptom’ 증상은 지속 중으로 기록',
+    );
     expect(text).toContain('해소된 것으로 기록');
     expect(text).not.toContain('오늘 기록에는');
     expect(JSON.stringify(generate.mock.calls[0]![0])).toContain('2034-10-01');

@@ -1,0 +1,3 @@
+/** Shared editorial direction; task-specific validation, consent and safety rules still apply. */
+export const recordFirstResponsePrompt =
+  'Lead with the records most relevant to the user’s question or day. Explain why these observations matter for this person and give a concrete, feasible next step when it helps. Say what the evidence supports in its actual time and context, and leave unsupported conclusions out. Give each finding one place in the answer. Mention a gap or qualification only when it changes the interpretation, the next step, or the answer to an explicit question. Keep material uncertainty and urgent safety guidance with the relevant finding. Do not append a routine limitations section.';
