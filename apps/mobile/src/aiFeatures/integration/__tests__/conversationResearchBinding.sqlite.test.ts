@@ -25,7 +25,7 @@ import {
   createResearchBindingTools,
   saveSyntheticAnswer,
   syntheticAnswer,
-} from './conversationResearchBindingFixture';
+} from '../testSupport/conversationResearchBindingFixture';
 const at = '2026-11-06T00:00:00.000Z';
 const paperId = 'synthetic-paper-call';
 const blocked = 'synthetic dependency reindex rejected';

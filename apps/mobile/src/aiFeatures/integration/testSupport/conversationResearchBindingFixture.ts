@@ -4,7 +4,7 @@ import type { createResearchInputTracker } from '../researchInputTracker';
 import { createSelectedExternalEvidence } from '../selectedExternalEvidence';
 import { retainLiteratureResults } from '../researchRetention';
 import type { AiFeatureLocalData } from '../localData';
-import type { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
+import type { publicEvidenceFixture } from './publicWebEvidenceTestSupport';
 
 /** Exercise the real research adapters. Neither transport can make a live request. */
 export function createResearchBindingTools(
