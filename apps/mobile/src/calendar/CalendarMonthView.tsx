@@ -222,7 +222,10 @@ export function CalendarMonthView({
             </Text>
           </>
         ) : null}
-        <View testID="calendar-events-for-selected-date">
+        <View
+          style={styles.calendarSelectedEventList}
+          testID="calendar-events-for-selected-date"
+        >
           {eventsOnSelectedDate.map(item => {
             // A selected recurring event is one exact snapshot, not every matching calendar identifier.
             const selected =

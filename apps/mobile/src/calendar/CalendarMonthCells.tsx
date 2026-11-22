@@ -146,11 +146,12 @@ export function CalendarMonthEventRow({
   const time = formatCalendarEventRange(item.event);
   return (
     <View
-      style={[
-        styles.calendarEventRow,
-        item.isNextVisit && styles.calendarNextVisitEvent,
-      ]}
-      testID={item.isNextVisit ? 'calendar-next-visit' : undefined}
+      style={styles.calendarEventRow}
+      testID={
+        item.isNextVisit
+          ? 'calendar-next-visit'
+          : `calendar-event-card-${item.rowKey}`
+      }
     >
       <View
         style={styles.calendarEventHeading}
@@ -168,7 +169,10 @@ export function CalendarMonthEventRow({
           </Text>
         ) : null}
       </View>
-      <Text testID={item.isNextVisit ? 'calendar-next-visit-time' : undefined}>
+      <Text
+        style={styles.calendarEventTime}
+        testID={item.isNextVisit ? 'calendar-next-visit-time' : undefined}
+      >
         {time}
       </Text>
       {item.canSelect ? (
