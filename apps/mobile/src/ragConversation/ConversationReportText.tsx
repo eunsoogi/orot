@@ -10,31 +10,36 @@ export function ConversationReportText({
   report,
   testID,
   showTitle = true,
+  selectable = true,
 }: {
   readonly report: NonNullable<ReturnType<typeof parseConversationReport>>;
   readonly testID?: string;
   /** The Records shell already has the same report title above its metadata. */
   readonly showTitle?: boolean;
+  readonly selectable?: boolean;
 }) {
   return (
     <View testID={testID} style={styles.report}>
       {showTitle ? (
         <AppText
           accessibilityRole="header"
-          selectable
+          selectable={selectable}
           style={[conversationStyles.messageText, styles.title]}
         >
           {report.title}
         </AppText>
       ) : null}
       {report.introduction !== undefined ? (
-        <AppText selectable style={conversationStyles.messageText}>
+        <AppText selectable={selectable} style={conversationStyles.messageText}>
           {report.introduction}
         </AppText>
       ) : null}
       {report.sections.map((section, index) => (
         <ConversationReportSection key={index} title={section.title}>
-          <AppText selectable style={conversationStyles.messageText}>
+          <AppText
+            selectable={selectable}
+            style={conversationStyles.messageText}
+          >
             {section.content}
           </AppText>
         </ConversationReportSection>

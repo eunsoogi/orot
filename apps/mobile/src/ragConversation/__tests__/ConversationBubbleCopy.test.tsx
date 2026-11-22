@@ -1,0 +1,163 @@
+import { fireEvent, render, screen } from '@testing-library/react-native';
+import { Linking } from 'react-native';
+import { ConversationMessage } from '../ConversationMessage';
+import { conversationBubbleCopyText } from '../conversationBubbleCopyText';
+import { possibilityReportTemplate } from '../conversationReportTemplate';
+
+jest.mock('../ConversationBubbleCopyHost', () => ({
+  ConversationBubbleCopyHost: require('react-native').View,
+  AnimatedConversationBubbleCopyHost: require('react-native').Animated.View,
+}));
+
+const actions = { onOpenSource: jest.fn(), onLinkError: jest.fn() };
+test.each(['user', 'assistant'] as const)(
+  'only the visible %s body is configured; retain the same bubble when authority changes',
+  async role => {
+    const id = role === 'user' ? 1 : -2;
+    const message = {
+      role,
+      id,
+      content: 'Synthetic visible words',
+      photoAttached: true,
+      previousOutputs: ['Synthetic older body'],
+      toolMessageId: 'never expose a retained identity',
+      ...(role === 'assistant'
+        ? {
+            savedHistoryDisplayOnly: true as const,
+            restoredHistory: true as const,
+          }
+        : {}),
+    };
+    const type = `conversation-${role}-message`;
+    const view = await render(
+      <ConversationMessage
+        {...actions}
+        message={message}
+        copyScope={{ sessionId: 9, allowed: true }}
+      />,
+    );
+    const original = screen.getByTestId(type);
+    expect(original.props).toMatchObject({
+      copyOwner: `9:${id}`,
+      copyLabel: '복사',
+      copyText: 'Synthetic visible words',
+    });
+    expect(actions.onOpenSource).not.toHaveBeenCalled();
+    await view.rerender(
+      <ConversationMessage
+        {...actions}
+        message={message}
+        copyScope={{ sessionId: 9, allowed: false }}
+      />,
+    );
+    const cleared = screen.getByTestId(type);
+    expect(cleared).toBe(original);
+    expect(cleared.props.copyText).toBeUndefined();
+    expect(screen.getByText('Synthetic visible words')).toBeTruthy();
+  },
+);
+
+test('copies a separately visible reviewed opening only on its own bubble', async () => {
+  await render(
+    <ConversationMessage
+      {...actions}
+      copyScope={{ sessionId: 7, allowed: true }}
+      message={{
+        id: -4,
+        role: 'assistant',
+        content: 'Synthetic answer',
+        initialResponse: {
+          callId: 'synthetic',
+          text: 'Synthetic reviewed opening',
+        },
+      }}
+    />,
+  );
+  expect(
+    screen.getByTestId('conversation-assistant-opening-message').props,
+  ).toMatchObject({
+    copyOwner: '7:-4:opening',
+    copyText: 'Synthetic reviewed opening',
+  });
+  expect(
+    screen.getByTestId('conversation-assistant-message').props.copyText,
+  ).toBe('Synthetic answer');
+});
+
+test('formats visible report headings and refuses unavailable or not-yet-admitted text', () => {
+  const template = possibilityReportTemplate();
+  const message = {
+    role: 'assistant' as const,
+    id: -2,
+    content: [
+      `# ${template.title}`,
+      ...template.sections.map(
+        (title, index) => `## ${title}\nSynthetic section ${index}`,
+      ),
+    ].join('\n'),
+  };
+  expect(conversationBubbleCopyText(message)).toBe(
+    [
+      template.title,
+      ...template.sections.map(
+        (title, index) => `${title}\nSynthetic section ${index}`,
+      ),
+    ].join('\n\n'),
+  );
+  for (const denied of [
+    { streaming: true },
+    { historyUnavailable: true },
+    { localChoicePending: true },
+    { content: '   ' },
+  ] as const)
+    expect(
+      conversationBubbleCopyText({ ...message, ...denied }),
+    ).toBeUndefined();
+});
+
+test('a citation remains an independent tap and its URL is not a copy payload', async () => {
+  const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+  try {
+    await render(
+      <ConversationMessage
+        {...actions}
+        showCitations
+        copyScope={{ sessionId: 6, allowed: true }}
+        message={{
+          id: -9,
+          role: 'assistant',
+          content: 'Visible synthetic answer',
+          savedHistoryDisplayOnly: true,
+          citations: [
+            {
+              sourceKind: 'external_medical',
+              sourceId: 'europe-pmc',
+              sourceRevision: 'retrieved:2026-10-11',
+              evidenceId: 'MED:123',
+              evidenceRevision: '1',
+              reviewState: 'unknown',
+              effectiveTime: '2026-01-01',
+              locator: {
+                title: 'Synthetic literature title',
+                originalUrl: 'https://europepmc.org/article/MED/123',
+                retrievedAt: '2026-10-11T00:00:00Z',
+              },
+            },
+          ],
+        }}
+      />,
+    );
+    expect(
+      screen.getByTestId('conversation-assistant-message').props.copyText,
+    ).toBe('Visible synthetic answer');
+    expect(screen.getByText('Visible synthetic answer').props.selectable).toBe(
+      false,
+    );
+    expect(open).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText(/원문 근거 열기/));
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith('https://europepmc.org/article/MED/123');
+  } finally {
+    open.mockRestore();
+  }
+});
