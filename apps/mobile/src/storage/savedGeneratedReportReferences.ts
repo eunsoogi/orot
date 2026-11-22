@@ -1,3 +1,7 @@
+import {
+  createSavedDiseasePossibilityReferences,
+  setupSavedDiseasePossibilityReferences,
+} from './savedDiseasePossibilityReferences';
 import { createManualHistoryRepository } from '@orot/storage';
 import { validateDailyReportArtifact } from './dailyReportArtifactValidation';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
@@ -17,12 +21,13 @@ type Lease = Readonly<{ id: string; version: number }>;
 export type SavedGeneratedReportReference = Readonly<{
   artifactId: string;
   savedAt: string;
-  reportKind?: 'health_summary';
+  reportKind?: 'health_summary' | 'disease_possibilities';
 }>;
 
 /** The bookmark belongs to the protected generated artifact, not the model's memory corpus. */
 export async function setupSavedGeneratedReportReferences(tx: SqlExecutor) {
   await setupSavedHealthSummaryReferences(tx);
+  await setupSavedDiseasePossibilityReferences(tx);
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS saved_generated_report_refs (report_id TEXT PRIMARY KEY NOT NULL, artifact_id TEXT UNIQUE NOT NULL, saved_at TEXT NOT NULL)',
   );
@@ -58,8 +63,13 @@ export function createSavedGeneratedReportReferences(
     );
   const history = createManualHistoryRepository(database);
   const summary = createSavedHealthSummaryReferences(database, ensure);
+  const possibilities = createSavedDiseasePossibilityReferences(
+    database,
+    ensure,
+  );
   return {
     ...summary,
+    ...possibilities,
     async bookmarkDailyReport(input: {
       artifactId: string;
       lease: Lease;
@@ -147,7 +157,10 @@ export function createSavedGeneratedReportReferences(
     async listSavedGeneratedReportReferences(): Promise<
       SavedGeneratedReportReference[]
     > {
-      const summaries = await summary.listSavedHealthSummaryReferences();
+      const summaries = [
+        ...(await summary.listSavedHealthSummaryReferences()),
+        ...(await possibilities.listSavedDiseasePossibilityReferences()),
+      ];
       if (!(await catalogExists())) return summaries;
       const { rows } = await database.execute(
         `SELECT b.artifact_id, b.saved_at ${visible} ORDER BY b.saved_at DESC, b.artifact_id`,

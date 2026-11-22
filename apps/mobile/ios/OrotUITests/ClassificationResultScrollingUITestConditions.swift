@@ -46,24 +46,39 @@ extension AppointmentConsentUITests {
         XCTAssertTrue(fullyVisible(last) && !fullyVisible(first))
         XCTAssertTrue(FormScrollGeometry.stableStageFrame(primary.frame, primaryFrame) && FormScrollGeometry.stableStageFrame(notice.frame, noticeFrame))
         try captureStageLayout(app, stage: "result-list-end", anchor: anchor)
-        let before = last.frame
+        let before = last.frame, listBefore = list.frame
         last.tap()
         XCTAssertTrue(node(app, "classification-result-reader").waitForAppearance())
         XCTAssertFalse(node(app, id).exists)
         XCTAssertEqual(UITestConditions.text(node(app, "classification-detail-value-0")), "합성 진료 예약 9")
         tap(app, "classification-detail-back")
-        let restored = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            fullyVisible(last) && FormScrollGeometry.stableStageFrame(last.frame, before)
-        }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [restored]), .completed)
-        XCTAssertFalse(fullyVisible(first), "Back must not reset the list to the top")
-        XCTAssertTrue(FormScrollGeometry.stableStageFrame(last.frame, before))
+        // Use fresh AX queries and a bounded wait for the route and named row.
+        // Repeated hit tests inside a polling predicate can each request a full AX snapshot.
+        guard node(app, id).waitForExistence(timeout: 4) else {
+            XCTFail("Back did not reveal the results list; before=\(listBefore) row=\(before)")
+            throw ActivationError.unproven
+        }
+        let returnedList = classificationListScroll(app)
+        let returnedRows = returnedList.buttons.matching(identifier: "classification-result-row")
+        let returnedLast = returnedRows.matching(NSPredicate(format: "label BEGINSWITH %@", "합성 진료 예약 9,")).firstMatch
+        guard returnedLast.waitForExistence(timeout: 4) else {
+            XCTFail("Back did not reveal the named last row; before=\(before) list=\(returnedList.frame)")
+            throw ActivationError.unproven
+        }
+        let after = returnedLast.frame, listAfter = returnedList.frame
+        let revealedFirst = returnedRows.firstMatch
+        let firstAfter = revealedFirst.exists ? revealedFirst.frame : .null
+        XCTContext.runActivity(named: "Classification Back geometry: row before=\(before) after=\(after), list before=\(listBefore) after=\(listAfter), first after=\(firstAfter)") { _ in }
+        XCTAssertTrue(FormScrollGeometry.stableStageFrame(listAfter, listBefore), "The list viewport must not move on Back")
+        XCTAssertTrue(FormScrollGeometry.stableStageFrame(after, before), "The last row must retain its exact frame on Back")
+        XCTAssertTrue(listAfter.insetBy(dx: -1, dy: -1).contains(after) && returnedLast.isHittable)
+        XCTAssertFalse(listAfter.insetBy(dx: -1, dy: -1).contains(firstAfter), "Back must not reset the list to the top")
         return details + labels
     }
 
-    /// Sample the settled product geometry before and after the real repeat confirmation.
+    /// Record and validate settled product geometry before any list or detail gestures.
     @MainActor
-    func assertClassificationCircleRoundTrip(_ app: XCUIApplication, original: CGRect, originalLane: CGRect, expectLeft: Bool, requireDuoWidth: Bool) throws {
+    func assertClassificationCircleDock(_ app: XCUIApplication, original: CGRect, originalLane: CGRect, expectLeft: Bool, requireDuoWidth: Bool) throws -> CGRect {
         let slot = node(app, "classification-circle-slot")
         let button = node(app, "medical-appointment-import")
         let list = classificationListScroll(app)
@@ -81,17 +96,25 @@ extension AppointmentConsentUITests {
         XCTContext.runActivity(named: "Classification dock: window=\(owner.frame), initialLane=\(originalLane), lane=\(lane), central=\(original), docked=\(dock), list=\(list.frame)") { _ in }
         if requireDuoWidth {
             XCTAssertEqual(owner.frame.width, 466, accuracy: 2, "Launch intent is not proof of an expanded Duo viewport")
-            XCTAssertGreaterThanOrEqual(lane.width, 344)
+            XCTAssertGreaterThanOrEqual(lane.width, 334)
         }
-        if expectLeft {
-            XCTAssertLessThan(dock.midX, lane.midX - 20)
-            XCTAssertEqual(dock.midY, lane.midY, accuracy: 2)
-            XCTAssertLessThanOrEqual(dock.maxX, list.frame.minX)
-        } else {
-            XCTAssertLessThan(dock.midY, lane.midY - 20)
-            XCTAssertEqual(dock.midX, lane.midX, accuracy: 2)
-            XCTAssertLessThanOrEqual(dock.maxY, list.frame.minY)
+        let listFrame = list.frame
+        let sideOrder = dock.midX < lane.midX - 20 && abs(dock.midY - lane.midY) <= 2 && dock.maxX <= listFrame.minX
+        let stackedOrder = dock.midY < lane.midY - 20 && abs(dock.midX - lane.midX) <= 2 && dock.maxY <= listFrame.minY
+        guard expectLeft ? sideOrder : stackedOrder else {
+            XCTFail("Wrong classification dock: expectLeft=\(expectLeft), lane=\(lane), circle=\(dock), list=\(listFrame)")
+            throw ActivationError.unproven
         }
+        return dock
+    }
+
+    /// Repeat confirmation keeps the dock, then returns the real ring to the current lane's center.
+    @MainActor
+    func assertClassificationCircleReturn(_ app: XCUIApplication, dock: CGRect, expectLeft: Bool) {
+        let laneNode = node(app, "classification-moving-stage")
+        let lane = laneNode.frame
+        let slot = node(app, "classification-circle-slot")
+        let button = node(app, "medical-appointment-import")
         button.tap()
         XCTAssertTrue(node(app, "medical-appointment-confirmation").waitForAppearance())
         XCTAssertTrue(button.waitForAppearance())

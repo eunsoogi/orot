@@ -21,7 +21,7 @@ afterEach(async () => {
 
 test.each([
   { width: 342, windowWidth: 390, height: 524, side: false },
-  { width: 346, windowWidth: 466, height: 504, side: true },
+  { width: 334, windowWidth: 466, height: 504, side: true },
   { width: 662, windowWidth: 700, height: 404, side: true },
 ])(
   'keeps one circle during travel and withholds the list until it settles ($width point lane)',
@@ -136,12 +136,13 @@ test.each([
 );
 
 test('reserves enough measured width for readable results even with scaled text and a short pane', () => {
-  const duo = classificationDockGeometry(346, 504, 1, 466);
+  const duo = classificationDockGeometry(334, 504, 1, 466);
   expect(duo.side).toBe(true);
-  expect(duo.size).toBe(106);
-  expect(346 - duo.listStart).toBe(224);
-  expect(classificationDockGeometry(346, 504, 1, 430).side).toBe(false);
-  expect(classificationDockGeometry(346, 504, 1.7, 466).side).toBe(false);
+  expect(duo.size).toBe(104);
+  expect(334 - duo.listStart).toBe(214);
+  expect(classificationDockGeometry(333, 504, 1, 466).side).toBe(false);
+  expect(classificationDockGeometry(334, 504, 1, 430).side).toBe(false);
+  expect(classificationDockGeometry(334, 504, 1.7, 466).side).toBe(false);
   expect(classificationDockGeometry(700, 125, 1).side).toBe(false);
 });
 

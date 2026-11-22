@@ -82,6 +82,7 @@ test('routes both accepted symptom actions through the same durable save boundar
     .spyOn(persistence, 'createSymptomSummaryPersistence')
     .mockReturnValue({
       history: { list: async () => [], read: async () => null },
+      readCommittedStatus: async () => null,
       save,
     });
   try {

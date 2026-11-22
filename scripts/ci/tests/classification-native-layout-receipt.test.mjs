@@ -71,8 +71,21 @@ test('existing staged journey samples actual geometry without replacing its orac
   assert.match(compactList, /readSingleResultDetail\(app\)/);
   assert.match(compactList, /XCTAssertFalse\(node\(app, id\).exists/);
   assert.match(compactList, /tap\(app, "classification-detail-back"\)/);
-  assert.match(compactList, /stableStageFrame\(last.frame, before\)/);
-  assert.match(compactList, /XCTAssertFalse\(fullyVisible\(first\)/);
+  const dockCheck = swift.indexOf('try assertClassificationCircleDock');
+  assert.ok(dockCheck > 0 && dockCheck < swift.indexOf('try readScrollableResults'));
+  assert.match(compactList, /guard expectLeft \? sideOrder : stackedOrder else/);
+  assert.match(compactList, /guard node\(app, id\)\.waitForExistence\(timeout: 4\) else/);
+  assert.match(compactList, /guard returnedLast\.waitForExistence\(timeout: 4\) else/);
+  assert.match(compactList, /stableStageFrame\(listAfter, listBefore\)/);
+  assert.match(compactList, /stableStageFrame\(after, before\)/);
+  assert.match(
+    compactList,
+    /listAfter\.insetBy\(dx: -1, dy: -1\)\.contains\(after\) && returnedLast\.isHittable/,
+  );
+  assert.match(
+    compactList,
+    /XCTAssertFalse\(listAfter\.insetBy\(dx: -1, dy: -1\)\.contains\(firstAfter\)/,
+  );
   assert.match(compactList, /XCTAssertEqual\(labels\.count, 9\)/);
   assert.match(swift, /XCTAssertFalse\(node\(app, "medical-appointment-next-result"\).exists\)/);
   assert.match(swift, /tap\(app, "classification-detail-back"\)/);

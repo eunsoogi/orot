@@ -38,10 +38,10 @@ export function classificationDockGeometry(
   windowWidth = width,
 ) {
   const centered = classificationCircleGeometry(width, height, fontScale);
-  // A 466pt wide window can leave just 346pt after the rail and route padding.
+  // The native expanded 466pt window leaves 334pt after the rail and route padding.
   // Shrink both moving states equally before sacrificing the readable right pane.
   const laneGap = 16;
-  const minimumListWidth = Math.max(224, Math.ceil(224 * fontScale));
+  const minimumListWidth = Math.max(214, Math.ceil(214 * fontScale));
   const sideSize = Math.min(centered.size, width - laneGap - minimumListWidth);
   const side =
     windowWidth >= 460 &&

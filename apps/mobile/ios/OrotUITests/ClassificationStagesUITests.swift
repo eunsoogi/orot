@@ -59,6 +59,8 @@ extension AppointmentConsentUITests {
         UITestConditions.value(node(app, "calendar-classification-synthetic-calendar-save"), equals: "syntheticCalendarSave=confirmed")
         XCTAssertFalse(node(app, "medical-appointment-progress").exists)
         XCTAssertFalse(node(app, "medical-appointment-confirmation").exists)
+        let expectLeft = sceneSession != nil || expectDuo
+        let dock = try assertClassificationCircleDock(app, original: originalCircle, originalLane: originalLane, expectLeft: expectLeft, requireDuoWidth: expectDuo)
         let results = try readScrollableResults(app, anchor: anchor)
         let readable = results.joined().filter { !$0.isWhitespace }
         // Indexed segments make loss/repetition observable even when native line breaks split a long title.
@@ -72,7 +74,7 @@ extension AppointmentConsentUITests {
         XCTAssertEqual(node(app, "calendar-classification-synthetic-provider-calls").label, "syntheticProviderCalls=2")
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-long-result-returned", testCase: self)
-        try assertClassificationCircleRoundTrip(app, original: originalCircle, originalLane: originalLane, expectLeft: sceneSession != nil || expectDuo, requireDuoWidth: expectDuo)
+        assertClassificationCircleReturn(app, dock: dock, expectLeft: expectLeft)
     }
 
     @MainActor

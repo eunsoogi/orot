@@ -3,6 +3,10 @@ export const savedMemoryKo = {
   'savedMemory.pickGeneratedReport':
     '보관할 원본 일일 보고서의 기억에 보관하기 버튼을 눌러 주세요.',
   'savedMemory.bookmarkHealthSummary': '원본 건강 정보 요약을 기억에 보관하기',
+  'savedMemory.bookmarkDiseasePossibilities':
+    '원본 질병 가능성 보고서를 기억에 보관하기',
+  'savedMemory.generatedReportDiseasePossibilities':
+    'AI가 만든 질병 가능성 보고서',
   'savedMemory.generatedReportHealthSummary': 'AI가 만든 건강 정보 요약',
   'savedMemory.bookmarkGeneratedReport': '원본 일일 보고서를 기억에 보관하기',
   'savedMemory.generatedReportSaved': '보고서 링크를 기억에 보관했어요.',
