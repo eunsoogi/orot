@@ -36,7 +36,8 @@ test('uses native usable regions and retains complete result details through ref
   ).toBeNull();
 
   await fireEvent.press(screen.getByTestId('classification-result-row'));
-  expect(screen.getByText(/분류 근거: Synthetic classification/)).toBeTruthy();
+  expect(screen.getByText('분류 근거')).toBeTruthy();
+  expect(screen.getByText('Synthetic classification')).toBeTruthy();
 
   windowBounds.set('medical-appointment-columns-frame-host', {
     x: 24,
@@ -112,7 +113,8 @@ test('uses native usable regions and retains complete result details through ref
   );
 
   expect(columnsAxis()).toBe('column');
-  expect(screen.getByText(/분류 근거: Synthetic classification/)).toBeTruthy();
+  expect(screen.getByText('분류 근거')).toBeTruthy();
+  expect(screen.getByText('Synthetic classification')).toBeTruthy();
   expect(screen.getByTestId('medical-appointment-results')).toBeTruthy();
 });
 
@@ -121,7 +123,8 @@ it('keeps complete single-result details and a circular action without inert pag
   await renderMedicalRoute();
   expect(screen.queryByTestId('medical-appointment-review-scroll')).toBeNull();
   await fireEvent.press(screen.getByTestId('classification-result-row'));
-  expect(screen.getByText(/분류 근거: Synthetic classification/)).toBeTruthy();
+  expect(screen.getByText('분류 근거')).toBeTruthy();
+  expect(screen.getByText('Synthetic classification')).toBeTruthy();
   expect(
     screen.queryByTestId('medical-appointment-previous-result'),
   ).toBeNull();

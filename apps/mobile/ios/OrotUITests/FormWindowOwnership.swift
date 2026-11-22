@@ -116,12 +116,13 @@ extension AppointmentConsentUITests {
         }
         let viewportID = "classification-text-viewport"
         let resultListID = "classification-result-list"
-        let resultIDs = node(app, resultListID).exists ? [resultListID] : [viewportID, "classification-page-text"]
+        let listResults = phase == 2 && node(app, resultListID).exists
+        let resultIDs = listResults ? [resultListID] : [viewportID, "classification-page-text"]
+        let pagingContainer = listResults ? "classification-result-paging" : "classification-stage-footer"
         let required = ["medical-appointment-fullscreen", tokens[phase], "classification-circle-slot"]
-            + (paging ? ["classification-stage-footer"] : []) + actions
+            + (paging ? [pagingContainer] : []) + actions
             + (phase == 2 ? resultIDs : [])
-        /// Confirmation measurement does not require a text viewport AX projection; result pagination does.
-        /// If UIKit does project it, never accept a duplicate or an element outside the scoped owner.
+        /// UIKit may omit the confirmation viewport; a projected one must be unique and scoped.
         func confirmationViewportProjected(in window: XCUIElement) throws -> Bool {
             guard phase == 0 else { return false }
             let total = app.descendants(matching: .any).matching(identifier: viewportID).count
@@ -150,7 +151,6 @@ extension AppointmentConsentUITests {
             marker.exists && UITestConditions.text(marker) != previous
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [fresh]), .completed)
-        // The invisible receipt establishes ownership only, not an interactive hit rectangle.
         let owner = try FormWindowOwnership.resolveStage(app, observed: beforeFrame, required: scopedIDs)
         let sawConfirmationViewport = try confirmationViewportProjected(in: owner)
         let value = UITestConditions.text(scoped(owner, markerID))
