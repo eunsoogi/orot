@@ -184,6 +184,7 @@ export default function ProviderSelectionScreen({
           ) : null}
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionChoices
+              followsSiblingSummary={presentation === 'settings-provider'}
               chatGPTSetup={chatGPTSetup}
               loading={loading}
               onChoose={option => {
