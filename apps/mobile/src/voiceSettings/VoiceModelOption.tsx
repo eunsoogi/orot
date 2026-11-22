@@ -41,9 +41,11 @@ export function VoiceModelOption({
       <View style={styles.copy}>
         <Text style={styles.title}>{item.title}</Text>
         {item.mode === 'openai-api' ? (
-          <Text style={styles.detail}>{item.id}</Text>
+          <>
+            <Text style={styles.detail}>{item.id}</Text>
+            <Text style={styles.detail}>{item.detail}</Text>
+          </>
         ) : null}
-        <Text style={styles.detail}>{item.detail}</Text>
         {capability.mode === 'live-audio-only' ? (
           <Text style={styles.detail}>
             {t('modelSettings.liveVoiceToolsUnavailable')}
