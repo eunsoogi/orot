@@ -75,21 +75,35 @@ export async function beginConversationExecutionLease(
       adapter.bridgeAvailable,
       () => adapter.currentPhase?.() ?? 'unknown',
     );
-  diagnose('begin');
+  // A failed diagnostic cannot replace the cancellation fence.
+  const report = (...args: Parameters<typeof diagnose>) => {
+    try {
+      diagnose(...args);
+    } catch {
+      // The bridge's release and interruption behavior does not depend on logging.
+    }
+  };
+  report('begin');
   let closed = false;
   let interrupted = false;
   let acquired = false;
   let pauseRequested = false;
-  let sawBackground = adapter.currentPhase?.() === 'background';
-  const lostLease = () =>
-    sawBackground || adapter.currentPhase?.() === 'background'
-      ? 'expired'
-      : 'lease-check-failed';
   const notify = (reason: ConversationInterruptionReason) => {
     if (closed || interrupted) return;
     interrupted = true;
-    diagnose('interrupt', reason);
+    report('interrupt', reason);
     interrupt(reason);
+  };
+  // A failed ownership check is terminal for safety, but neither a background
+  // transition nor a boolean result establishes an OS-expiration cause.
+  const unavailable = (stage: 'startup' | 'foreground') => {
+    if (closed || interrupted) return;
+    report(
+      stage === 'startup'
+        ? 'startup-lease-unavailable'
+        : 'foreground-lease-unavailable',
+    );
+    notify('lease-check-failed');
   };
   let reconciling = false;
   let reconcileAgain = false;
@@ -106,15 +120,15 @@ export async function beginConversationExecutionLease(
       do {
         // Observe actual bridge checks, not duplicate foreground notifications.
         reconcileAgain = false;
-        diagnose('foreground-check-started');
+        report('foreground-check-started');
         const available = await adapter.protectedDataAvailable();
         if (closed || interrupted) return;
         if (available === false) notify('protected-data');
-        else if (!(await adapter.isActive(requestId))) notify(lostLease());
+        else if (!(await adapter.isActive(requestId)))
+          unavailable('foreground');
         // A passed lease check is not provider progress; late results have no owner.
         else if (!closed && !interrupted) {
-          sawBackground = adapter.currentPhase?.() === 'background';
-          diagnose('foreground-check-passed');
+          report('foreground-check-passed');
         }
       } while (reconcileAgain && !closed && !interrupted);
     } catch {
@@ -134,11 +148,11 @@ export async function beginConversationExecutionLease(
     ) {
       pauseRequested = true;
       // This acknowledges the advisory request, not successful checkpoint creation.
-      diagnose('pause-requested');
+      report('pause-requested');
       requestPause();
     }
     if (event.kind === 'continued' && event.requestId === requestId)
-      diagnose(event.state);
+      report(event.state);
     // An unaccepted expiry is not a consumed interruption: a subsequent
     // lock, decision fence or bridge failure must still reach its exact owner.
     if (
@@ -147,15 +161,16 @@ export async function beginConversationExecutionLease(
       !closed &&
       !interrupted &&
       (event.reason !== undefined || acceptsNativeExpiry?.() !== false)
-    )
+    ) {
+      if (event.reason === undefined) report('native-expiration');
       notify(event.reason ?? 'expired');
+    }
     if (event.kind === 'protectedData' && !event.available)
       notify('protected-data');
-    if (event.kind === 'foreground') diagnose('foreground');
+    if (event.kind === 'foreground') report('foreground');
     if (event.kind === 'phase') {
-      diagnose('phase');
+      report('phase');
       const background = adapter.currentPhase?.() === 'background';
-      sawBackground ||= background;
       if (needsDecision() && background) notify('decision-required');
     }
     // Recheck after foregrounding in case suspension delayed the expiration event.
@@ -166,7 +181,7 @@ export async function beginConversationExecutionLease(
       notify('protected-data');
     if (!interrupted) {
       acquired = await adapter.begin(requestId);
-      diagnose(acquired ? 'acquired' : 'denied');
+      report(acquired ? 'acquired' : 'denied');
       if (!acquired)
         notify(
           adapter.bridgeAvailable === false
@@ -175,7 +190,7 @@ export async function beginConversationExecutionLease(
         );
       else if ((await adapter.protectedDataAvailable()) === false)
         notify('protected-data');
-      else if (!(await adapter.isActive(requestId))) notify(lostLease());
+      else if (!(await adapter.isActive(requestId))) unavailable('startup');
     }
   } catch {
     notify('lease-check-failed');
@@ -183,7 +198,7 @@ export async function beginConversationExecutionLease(
   return () => {
     if (closed) return;
     closed = true;
-    diagnose('release');
+    report('release');
     unsubscribe();
     if (acquired) adapter.end(requestId);
   };
