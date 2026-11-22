@@ -44,6 +44,7 @@ export function pageActionRailLayout({
   navigationCount,
   actionCount,
   hasContextualBack = false,
+  pinContextualBack = false,
 }: {
   height: number;
   top: number;
@@ -52,6 +53,7 @@ export function pageActionRailLayout({
   navigationCount: number;
   actionCount: number;
   hasContextualBack?: boolean;
+  pinContextualBack?: boolean;
 }) {
   const available = Math.max(0, height - top - bottom);
   // The root surface follows the canonical destination count; shared Back gets its own 48pt target and 4pt gap.
@@ -78,10 +80,13 @@ export function pageActionRailLayout({
     top,
     height - bottom - navHeight - actionGroupHeight,
   );
-  // Duo root navigation remains at the bottom while its separate page dock starts
-  // at the measured safe top. Preserve legacy Back/Home composition unchanged.
+  // Moving right-rail Back above the root dock spends its existing height at
+  // the safe top rather than beside the bottom-anchored tabs.
   const pageTopInset = rootTabs
-    ? top
+    ? top +
+      (pinContextualBack && hasContextualBack
+        ? NAVIGATION_ROOT_BACK_GROUP_HEIGHT
+        : 0)
     : navigationCount > 0
       ? groupTop + step + groupGap
       : groupTop;
