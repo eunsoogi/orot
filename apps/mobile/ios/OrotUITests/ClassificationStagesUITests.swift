@@ -8,7 +8,6 @@ extension AppointmentConsentUITests {
         let app = XCUIApplication()
         let sceneSession = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_WIDE_STAGE_VALIDATION"] == "YES" ? UUID().uuidString : nil
         let expectDuo = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_DUO_DOCK_EXPECTATION"] == "YES"
-        // Explicit diagnostic only. Ordinary runs still require the full native scroll/Back journey.
         let motionOnly = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_MOTION_ONLY"] == "YES"
         let device = XCUIDevice.shared
         let priorOrientation = device.orientation
