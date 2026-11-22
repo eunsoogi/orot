@@ -68,13 +68,16 @@ it('does not present a static catalog or credentials and refreshes only explicit
   const local = within(view.getByTestId('voice-model-group-local'));
   const api = within(view.getByTestId('voice-model-group-openai-api'));
   expect(local.getByTestId('voice-model-apple-system-speech')).toBeTruthy();
-  expect(local.getByText('기기 안에서 처리')).toBeTruthy();
+  expect(local.queryByText('기기 안에서 처리')).toBeNull();
   expect(local.queryByTestId('voice-model-gpt-live-1.1')).toBeNull();
   expect(api.getByTestId('voice-model-gpt-live-1.1')).toBeTruthy();
   expect(api.queryByTestId('voice-model-apple-system-speech')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-text')).toBeNull();
   expect(view.queryByTestId('voice-model-gpt-realtime-2.1')).toBeNull();
   await fireEvent.press(view.getByTestId('voice-model-gpt-live-1.1'));
+  expect(view.getByTestId('voice-current-model')).toHaveTextContent(
+    /선택한 AI.*OpenAI API - GPT-Live-1.1/s,
+  );
   expect(view.queryByText(/자동 전환하지 않아요/)).toBeNull();
   await fireEvent.press(view.getByTestId('voice-settings-save'));
   await voiceConsentView.tapVoiceSettingsAlertButton('동의');
@@ -218,33 +221,29 @@ it('reports failed persistence without claiming the selected model was saved', a
   );
   expect(view.queryByText(/음성 설정을 저장했습니다/)).toBeNull();
 });
-it('shows the stored model before refresh and keeps it distinct from an unsaved choice', async () => {
+it('uses the same summary for distinct draft and saved states', async () => {
   const view = await render(<VoiceSettingsPanel />);
-  await waitFor(() =>
-    expect(view.getByTestId('voice-current-model')).toHaveTextContent(
-      /Apple - Apple 시스템 음성/,
-    ),
-  );
+  const summary = await view.findByTestId('voice-current-model');
+  expect(summary).toHaveTextContent(/Apple - Apple 시스템 음성/);
   expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
-  expect(
-    view.getByTestId('voice-model-refresh').props.accessibilityState,
-  ).toMatchObject({
+  const refresh = view.getByTestId('voice-model-refresh');
+  expect(refresh.props.accessibilityState).toMatchObject({
     disabled: false,
     busy: false,
   });
-  await fireEvent.press(view.getByTestId('voice-model-refresh'));
-  await waitFor(() =>
-    expect(view.getByTestId('voice-model-gpt-live-1.1')).toBeTruthy(),
-  );
-  await fireEvent.press(view.getByTestId('voice-model-gpt-live-1.1'));
-  expect(view.getByTestId('voice-current-model')).toHaveTextContent(
-    /Apple - Apple 시스템 음성/,
-  );
+  await fireEvent.press(refresh);
+  const api = await view.findByTestId('voice-model-gpt-live-1.1');
+  await fireEvent.press(api);
+  expect(summary).toHaveTextContent(/선택한 AI.*OpenAI API - GPT-Live-1.1/s);
+  await fireEvent.press(view.getByTestId('voice-model-apple-system-speech'));
+  expect(summary).toHaveTextContent(/현재 선택:.*Apple - Apple 시스템 음성/s);
+  expect(voiceSettingsStore.save).not.toHaveBeenCalled();
+  await fireEvent.press(api);
   await fireEvent.press(view.getByTestId('voice-settings-save'));
   await voiceConsentView.tapVoiceSettingsAlertButton('동의');
   await waitFor(() =>
-    expect(view.getByTestId('voice-current-model')).toHaveTextContent(
-      /OpenAI API - GPT-Live-1\.1/,
+    expect(summary).toHaveTextContent(
+      /현재 선택:.*OpenAI API - GPT-Live-1\.1/s,
     ),
   );
 });

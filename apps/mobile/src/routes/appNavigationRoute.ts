@@ -2,6 +2,7 @@
 export type AppNavigationRoute =
   | AiFeatureRouteName
   | 'root'
+  | 'overview-metric-selection'
   | 'recording'
   | 'saved-recordings'
   | 'recent-records'

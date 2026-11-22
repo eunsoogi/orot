@@ -1,5 +1,7 @@
 import { View } from 'react-native';
 import { generatedReportCopy as copy } from './text';
+import { HealthSummarySections } from '../ragConversation/HealthSummarySections';
+import { readableHypothesis } from '../diseaseHypotheses/readableHypothesis';
 import { AppText } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
 import { OMITTED_SUMMARY_CONTENT_NOTE } from '../diseaseHypotheses/summaryPartialValidation';
@@ -26,6 +28,8 @@ export function GeneratedReportContent({
 }) {
   const sources = detail.conversationSources;
   const report = detail.dailyReport ?? detail.conversationPossibility;
+  const summary =
+    detail.analysis?.presentation === 'symptom_summary' && detail.analysis;
   return (
     <View testID="generated-report-detail">
       {detail.warning ? <AppText>{detail.warning}</AppText> : null}
@@ -45,6 +49,19 @@ export function GeneratedReportContent({
             detail.dailyReport ? 'generated-report-paragraph' : undefined
           }
         />
+      ) : summary ? (
+        <HealthSummarySections
+          sections={summary.hypotheses.map(readableHypothesis)}
+          renderSectionTail={section => (
+            <AppText>
+              {copy.evidenceCounts(
+                section.title,
+                section.supportingEvidence.length,
+                section.contraryEvidence.length,
+              )}
+            </AppText>
+          )}
+        />
       ) : (
         detail.paragraphs.map((text, index) => (
           <AiResponseText
@@ -55,15 +72,16 @@ export function GeneratedReportContent({
           </AiResponseText>
         ))
       )}
-      {detail.analysis?.hypotheses.map((h, index) => (
-        <AppText key={index}>
-          {copy.evidenceCounts(
-            h.title,
-            h.supportingEvidence.length,
-            h.contraryEvidence.length,
-          )}
-        </AppText>
-      ))}
+      {!summary &&
+        detail.analysis?.hypotheses.map((h, index) => (
+          <AppText key={index}>
+            {copy.evidenceCounts(
+              h.title,
+              h.supportingEvidence.length,
+              h.contraryEvidence.length,
+            )}
+          </AppText>
+        ))}
       {(detail.analysis || detail.dailyReport) && !sources ? (
         <AppText>{copy.sourceNavigationUnavailable}</AppText>
       ) : null}

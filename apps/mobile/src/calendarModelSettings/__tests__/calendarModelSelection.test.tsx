@@ -188,7 +188,6 @@ it('uses the shared compact API account card and keeps disconnected management r
   expect(account.discoverModels).not.toHaveBeenCalled();
   expect(store.save).not.toHaveBeenCalled();
 });
-
 it('keeps the compact refresh disabled until its explicit discovery finishes', async () => {
   let complete!: (value: { revision: number; ids: string[] }) => void;
   account.discoverModels.mockImplementation(
@@ -208,7 +207,6 @@ it('keeps the compact refresh disabled until its explicit discovery finishes', a
   expect(screen.getByTestId('calendar-model-refresh')).not.toBeDisabled();
   expect(screen.getByText('GPT-6 Luna')).toBeTruthy();
 });
-
 it('groups unset and saved identity in the shared summary without the removed introduction', async () => {
   await render(
     <CalendarModelSettingsPanel options={[apple]} onBusyChange={jest.fn()} />,
@@ -237,7 +235,9 @@ it('groups unset and saved identity in the shared summary without the removed in
     ),
   ).toBeNull();
   await fireEvent.press(screen.getByTestId('provider-option-0'));
-  expect(screen.queryByTestId('calendar-current-model-card')).toBeNull();
+  expect(screen.getByTestId('calendar-current-model')).toHaveTextContent(
+    /선택한 AI/,
+  );
   expect(store.save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
   expect(screen.getByTestId('calendar-current-model-card')).toBeTruthy();

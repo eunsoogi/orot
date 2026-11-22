@@ -22,6 +22,7 @@ interface ProviderSelectionConfirmationProps {
   readonly consentChoices?: ReactNode;
   readonly consentSlot?: 'conversation' | 'calendar';
   readonly inlineConsent?: boolean;
+  readonly summaryAbove?: boolean;
 }
 
 export default function ProviderSelectionConfirmation({
@@ -34,6 +35,7 @@ export default function ProviderSelectionConfirmation({
   hasActionDock = false,
   consentSlot = 'conversation',
   inlineConsent = true,
+  summaryAbove = false,
   consentChoices,
 }: ProviderSelectionConfirmationProps) {
   const local = option.privacyBoundary === 'on-device';
@@ -50,7 +52,7 @@ export default function ProviderSelectionConfirmation({
           {blockedMessage}
         </Text>
       ) : null}
-      {local || inlineConsent ? (
+      {(local ? !summaryAbove : inlineConsent) ? (
         <View style={styles.privacy}>
           <AppSymbol name="checkmark.shield.fill" />
           <Text
@@ -77,7 +79,17 @@ export default function ProviderSelectionConfirmation({
       {option.provider.id === 'openai-api-decisions' ? (
         <Text style={styles.usageCost}>{t('modelSettings.apiUsageCost')}</Text>
       ) : null}
-      {hasActionDock ? (
+      {summaryAbove ? (
+        !hasActionDock ? (
+          <Button
+            disabled={saving}
+            onPress={onCancel}
+            testID="provider-selection-cancel"
+            title={providerSelectionText.cancel}
+            variant="neutral"
+          />
+        ) : null
+      ) : hasActionDock ? (
         <View style={styles.summary}>{summary}</View>
       ) : (
         <Pressable

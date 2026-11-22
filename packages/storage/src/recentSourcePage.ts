@@ -11,7 +11,26 @@ const isoTime = `CASE WHEN (${sourceTime}) GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]
 // The timestamp key ends outside its fractional-digit alphabet. Appending the
 // unique source ID gives SQLite a complete seek key, including within a timestamp tie.
 const sourceKey = `(${localQueryTimestampKeyExpression('(' + isoTime + ')')}) || id`;
-const eligible = `${sourceTypes} AND julianday((${isoTime})) IS NOT NULL AND json_extract(payload_json, '$.id')=id`;
+// Keep the existing v18 expression index exactly as installed. SQLite's time
+// parser also accepts timezone-free and noncanonical values; qualify candidates
+// in SQL before LIMIT instead of letting a bad legacy row break decoding.
+const timestamp = `(${sourceTime})`;
+const datePart = `substr(${timestamp}, 1, 10)`;
+const utcSuffix = `substr(${timestamp}, -1) = 'Z'`;
+const offsetSuffix = `substr(${timestamp}, -6)`;
+const fraction = `substr(${timestamp}, 20, length(${timestamp}) - 19 - CASE WHEN ${utcSuffix} THEN 1 ELSE 6 END)`;
+const canonicalTime = `
+  typeof(${timestamp}) = 'text' AND instr(${timestamp}, char(0)) = 0
+  AND substr(${timestamp}, 1, 19) GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]'
+  AND substr(${timestamp}, 12, 2) < '24'
+  AND date(${datePart}, '+0 days') = ${datePart}
+  AND (${utcSuffix}
+    OR ${offsetSuffix} GLOB '[+-][01][0-9]:[0-5][0-9]'
+    OR ${offsetSuffix} GLOB '[+-]2[0-3]:[0-5][0-9]')
+  AND (${fraction} = '' OR (substr(${fraction}, 1, 1) = '.'
+    AND length(${fraction}) >= 2 AND substr(${fraction}, 2) NOT GLOB '*[^0-9]*'))
+`;
+const eligible = `${sourceTypes} AND ${canonicalTime} AND julianday((${isoTime})) IS NOT NULL AND json_extract(payload_json, '$.id')=id`;
 
 /** Add only a metadata seek index. It updates with the normal writer and needs no feed-time backfill. */
 export async function createRecentSourcePageIndex(sql: SqlExecutor): Promise<void> {

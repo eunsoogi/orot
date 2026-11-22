@@ -126,7 +126,7 @@ test('keeps the Decisions label before, during and after explicit catalog discov
   const summary = () => screen.getByTestId('calendar-current-model');
   const label = /OpenAI API - Decisions - GPT-6 Luna/;
   expect(summary()).toHaveTextContent(label);
-  expect(screen.getByText('OpenAI API - Decisions')).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'OpenAI API' })).toBeTruthy();
   expect(discoverModels).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('calendar-model-refresh'));
   expect(summary()).toHaveTextContent(label);

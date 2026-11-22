@@ -174,8 +174,11 @@ export default function ProviderSelectionScreen({
           chatGPTSetup={chatGPTSetup}
           enabled={presentation === 'settings-provider'}
           languageHeader={
-            presentation === 'settings-provider' && !pendingOption ? (
-              <ProviderSelectionCurrentSummary message={selectionMessage} />
+            presentation === 'settings-provider' ? (
+              <ProviderSelectionCurrentSummary
+                message={selectionMessage}
+                draft={confirmationOption?.displayName}
+              />
             ) : null
           }
           locked={saving || pendingOption !== null}
@@ -183,6 +186,7 @@ export default function ProviderSelectionScreen({
         >
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionChoices
+              followsSiblingSummary={presentation === 'settings-provider'}
               chatGPTSetup={chatGPTSetup}
               loading={loading}
               onChoose={option => {

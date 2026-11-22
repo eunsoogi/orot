@@ -7,6 +7,10 @@ import {
 } from '@testing-library/react-native';
 import { providerSuccess } from '@orot/model-runtime';
 import type { LanguageModelProvider } from '@orot/model-runtime';
+import {
+  ModelSettingsServicesContext,
+  type ModelSettingsServices,
+} from '../../../agent/execution/ModelSettingsServices';
 import ProviderSelectionScreen from '../ProviderSelectionScreen';
 import { t } from '../../../i18n';
 import { providerSelectionText } from '../text';
@@ -123,7 +127,18 @@ describe('Settings provider presentation', () => {
       providerSelectionText.chatGPTAccountSignedOut,
     );
     expect(screen.queryByTestId('provider-option-0-capabilities')).toBeNull();
-    expect(screen.getByText('기기 안에서 처리')).toBeTruthy();
+    expect(screen.queryByText('기기 안에서 처리')).toBeNull();
+    await fireEvent.press(screen.getByTestId('provider-option-0'));
+    expect(screen.getByTestId('provider-selection-current-card')).toBeTruthy();
+    expect(screen.getByTestId('provider-selection-current')).toHaveTextContent(
+      /선택한 AI/,
+    );
+    expect(
+      screen.queryByTestId('provider-selection-confirmation-privacy'),
+    ).toBeNull();
+    expect(screen.getAllByText(/선택한 AI/)).toHaveLength(1);
+    expect(store.save).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByTestId('provider-selection-cancel'));
     expect(screen.queryByTestId('provider-option-1-capabilities')).toBeNull();
     // The catalog wrapper takes natural content height rather than filling the scroll page.
     expect(
@@ -178,4 +193,58 @@ describe('Settings provider presentation', () => {
     ).toBeNull();
     expect(screen.queryByTestId('provider-option-0-capabilities')).toBeNull();
   });
+});
+
+it('starts every model tab with exactly one identically styled selection card', async () => {
+  const local = makeOption('local', 'on-device');
+  const calendar = makeStore();
+  const voice: ModelSettingsServices['voice'] = {
+    load: async () => ({
+      mode: 'local',
+      model: 'apple-system-speech',
+      hasApiKey: false,
+    }),
+    save: jest.fn(),
+    accountStatus: async () => ({ connected: false, revision: 0 }),
+    discoverModels: jest.fn(),
+    subscribe: () => () => undefined,
+  };
+  await render(
+    <ModelSettingsServicesContext.Provider
+      value={{
+        calendar,
+        voice,
+        calendarOption: jest.fn(),
+        saveConsent: jest.fn(),
+      }}
+    >
+      <ProviderSelectionScreen
+        options={[local]}
+        requirements={requirements}
+        selectionStore={makeStore()}
+        presentation="settings-provider"
+      />
+    </ModelSettingsServicesContext.Provider>,
+  );
+  const summaries = () =>
+    screen.getAllByTestId(
+      /^(provider-selection-current|calendar-current-model|voice-current-model)-card$/,
+    );
+  const languageCard = screen.getByTestId('provider-selection-current-card');
+  expect(summaries()).toEqual([languageCard]);
+  await fireEvent.press(screen.getByTestId('model-tab-calendar'));
+  const calendarCard = screen.getByTestId('calendar-current-model-card');
+  expect(summaries()).toEqual([calendarCard]);
+  expect(screen.getByTestId('calendar-model-settings').children[0]).toBe(
+    calendarCard,
+  );
+  expect(calendarCard.props.style).toEqual(languageCard.props.style);
+  await fireEvent.press(screen.getByTestId('model-tab-voice'));
+  const voiceCard = await screen.findByTestId('voice-current-model-card');
+  expect(summaries()).toEqual([voiceCard]);
+  expect(screen.getByTestId('voice-settings-panel').children[0]).toBe(
+    voiceCard,
+  );
+  expect(voiceCard.props.style).toEqual(languageCard.props.style);
+  expect(calendar.save).not.toHaveBeenCalled();
 });

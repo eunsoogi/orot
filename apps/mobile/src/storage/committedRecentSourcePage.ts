@@ -9,8 +9,9 @@ import {
   awaitIndependentReadSettlement,
 } from './protectedReadEpoch';
 
-// Ordinary sqlite startup mutations can cross the native queue once.
+// Allow two independently settled startup mutations within one first-page window.
 const initialContentionBudgetMs = 1_000;
+const maxInitialContentionRetries = 2;
 
 /** A single indexed read takes a turn on the same queue as protected writes.
  * Return no candidate, rather than a mixed snapshot, when a direct mutation
@@ -45,8 +46,8 @@ async function tryPage(
   }
 }
 
-/** Defer one first-page admission across a known and bounded startup contention.
- * Do not reuse the old snapshot, retry actual SQLite failures, or outlive the
+/** Read a fresh first page after bounded startup contention; every admission
+ * rechecks the same route. Never reuse a snapshot, retry SQLite errors, or outlive the
  * owning tab/route's cancellation. Other metadata streams remain independent. */
 export async function readCommittedRecentSourcePage(
   database: SqlDatabase,
@@ -57,17 +58,22 @@ export async function readCommittedRecentSourcePage(
   if (signal?.aborted) return [];
   const initial = await tryPage(database, before, signal);
   if (initial) return initial;
-  if (
-    !before &&
-    (await awaitIndependentReadSettlement(
-      database,
-      initialContentionBudgetMs,
-      signal,
-    )) &&
-    !signal?.aborted &&
-    (!canRetry || (await canRetry())) &&
-    !signal?.aborted
+  const deadline = performance.now() + initialContentionBudgetMs;
+  for (
+    let attempt = 0;
+    !before && attempt < maxInitialContentionRetries && !signal?.aborted;
+    attempt++
   ) {
+    const remaining = deadline - performance.now();
+    if (
+      remaining <= 0 ||
+      !(await awaitIndependentReadSettlement(database, remaining, signal)) ||
+      signal?.aborted ||
+      (canRetry && !(await canRetry())) ||
+      signal?.aborted ||
+      performance.now() >= deadline
+    )
+      break;
     const fresh = await tryPage(database, before, signal);
     if (fresh) return fresh;
   }

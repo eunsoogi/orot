@@ -14,6 +14,7 @@ import { useAppOverviewData } from './useAppOverviewData';
 import { loadRecordingSummaries } from '../recording/loadRecordingSummaries';
 import { RecordsSourcePaging } from './RecordsSourcePagingContext';
 import { useOverviewActivity } from './useOverviewActivity';
+import { OverviewMetricSelectionRoute } from './overview/OverviewMetricSelectionRoute';
 
 type OwnerData = ReturnType<typeof useAppOverviewData>;
 type AppointmentData = Pick<
@@ -112,6 +113,8 @@ const idleRecordings: RecordingData = {
 /** Subscribe only to the independently owned data actually rendered by each route. */
 export function AppOverviewDataRouteContent(props: RouteProps) {
   const route = props.actions.route.name;
+  if (route === 'overview-metric-selection')
+    return <OverviewMetricSelectionRoute actions={props.actions} />;
   const root = route === 'root' ? props.activeTab : undefined;
   if (root === 'overview') return <OverviewRouteContent {...props} />;
   if (root === 'schedule' || route === 'appointments')

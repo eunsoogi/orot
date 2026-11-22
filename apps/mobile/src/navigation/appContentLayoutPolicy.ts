@@ -67,13 +67,14 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     : 'scene';
 };
 
-/** Root pages and document activity use exactly one route-scoped scroll owner. */
+/** Root pages and selected detail routes use exactly one route-scoped scroll owner. */
 export function appRouteIsScrollable(
   route: NavigationRoute<string>,
   activeTab: string,
 ): boolean {
   return (
     [
+      'overview-metric-selection',
       'recent-records',
       'medical-document-detail',
       'saved-memory-detail',
