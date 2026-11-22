@@ -52,6 +52,7 @@ export function continuousConversationPolicy<
   const synchronizeModel = (
     refresh = false,
     recovery?: 'restart-interrupted-initial-page',
+    origin?: 'send',
   ): Promise<void> => {
     if (!enabled || disposed) return Promise.resolve();
     if (pending && !refresh) return pending;
@@ -68,8 +69,20 @@ export function continuousConversationPolicy<
     const signal = (controller = new AbortController()).signal;
     const version = ++epoch;
     const current = () => version === epoch && !signal.aborted;
-    const activeId = store.getSnapshot().activeId;
-    update(activeId, { modelSelectionPending: true });
+    const start = store.getSnapshot();
+    const activeId = start.activeId;
+    const admitted = start.sessions.find(item => item.id === activeId);
+    // Reconfirming a quick choice does not revoke an already admitted display.
+    // Explicit route/model reconciliation still uses the ordinary strict gate.
+    const keepDisplay =
+      origin === 'send' &&
+      admitted?.preparingQuickChoice &&
+      admitted.savedHistoryDisplay &&
+      options.retention?.activeLease(activeId);
+    update(activeId, {
+      modelSelectionPending: true,
+      modelSelectionKeepsDisplay: Boolean(keepDisplay),
+    });
     const run = async () => {
       try {
         const target = await options.continuousSession!(signal);
@@ -164,7 +177,7 @@ export function continuousConversationPolicy<
   const ready = conversationSelectionReady({
     enabled,
     snapshot: store.getSnapshot,
-    synchronize: synchronizeModel,
+    synchronize: () => synchronizeModel(false, undefined, 'send'),
     controller: () => controller,
     disposed: () => disposed,
     cancel() {

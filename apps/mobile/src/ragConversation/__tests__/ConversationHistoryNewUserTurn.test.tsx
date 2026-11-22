@@ -1,6 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ScrollView } from 'react-native';
 import { ConversationHistory } from '../ConversationHistory';
+import { trackJumpLatestMotion } from '../testSupport/jumpLatestMotion';
+
+beforeAll(() => {
+  trackJumpLatestMotion(true);
+});
+afterAll(() => {
+  jest.restoreAllMocks();
+});
 
 type HistoryProps = Parameters<typeof ConversationHistory>[0];
 type HistoryElement = ReturnType<typeof screen.getByTestId>;

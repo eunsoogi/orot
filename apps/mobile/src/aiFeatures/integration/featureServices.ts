@@ -220,6 +220,7 @@ export function createAiFeatureServices(
       consent,
       dependencies,
       loadData: privateLocalData,
+      ordinaryMemory: !dependencies.loadLocalData,
       selectedAi,
       registry,
       diseaseRunner,

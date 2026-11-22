@@ -1,3 +1,7 @@
+import {
+  chatGPTCredentialMutation,
+  readChatGPTConsentCredential,
+} from '../chatGPTConsentIdentity';
 import { useModelSettingsReview } from '../../agent/execution/useModelSettingsReview';
 import { useModelConsentSave } from '../../agent/execution/useModelConsentSave';
 import type { SettingsSearchChoices } from '../../agent/execution/settingsSearchGrants';
@@ -48,10 +52,10 @@ export function useConversationModelConfirmation({
   >;
 }) {
   const saveConsent = useModelConsentSave('conversation', selectionStore);
-  const settings = presentation === 'settings-provider';
+  const unifiedReview = presentation === 'settings-provider';
   const consent = useModelSettingsReview(
     'conversation',
-    settings,
+    unifiedReview,
     selectionStore,
     JSON.stringify([
       presentation,
@@ -74,6 +78,9 @@ export function useConversationModelConfirmation({
     )
       return;
     const selection = pendingSelection;
+    const titleOwner = selection.providerId.startsWith('chatgpt-plan:')
+      ? chatGPTCredentialMutation.capture()
+      : undefined;
     publishNavigationState({
       hasPendingSelection: true,
       isSavingSelection: true,
@@ -82,14 +89,16 @@ export function useConversationModelConfirmation({
     setSaveError(false);
     let selectionSaved = false;
     try {
+      const remote =
+        currentPendingOption.privacyBoundary === 'selected-context-remote';
       const search = {
-        ...searchChoices,
+        // Europe PMC permission is separate from on-device inference and is
+        // included only through an applicable explicit settings review.
+        medical: unifiedReview || searchChoices.medical,
         web:
-          currentPendingOption.privacyBoundary === 'selected-context-remote' &&
-          Boolean(currentPendingOption.provider.searchPublicWeb) &&
-          // A normal settings review presents both scopes explicitly on one sheet.
-          // Merely viewing or selecting the row never creates permission.
-          settings,
+          unifiedReview &&
+          remote &&
+          Boolean(currentPendingOption.provider.searchPublicWeb),
       };
       const saved = await consent.review(
         currentPendingOption,
@@ -97,6 +106,24 @@ export function useConversationModelConfirmation({
         isCurrent => saveConsent(currentPendingOption, search, isCurrent),
       );
       if (!saved) return;
+      // Capture the selected row only after explicit confirmation, under the
+      // original account mutation witness. Copy failure must not undo consent.
+      if (titleOwner?.() && selectionStore.rememberTitle) {
+        try {
+          const credential = await readChatGPTConsentCredential();
+          if (titleOwner() && credential?.isCurrent())
+            await selectionStore.rememberTitle(
+              selection,
+              {
+                name: currentPendingOption.displayName.trim(),
+                epoch: credential.epoch,
+              },
+              () => titleOwner() && credential.isCurrent(),
+            );
+        } catch {
+          // The saved pair and authorization remain authoritative.
+        }
+      }
       setSavedSelection(selection);
       setPendingOption(null);
       selectionSaved = true;
@@ -121,7 +148,7 @@ export function useConversationModelConfirmation({
   }
 
   return {
-    settings,
+    unifiedReview,
     confirmSelection: () => {
       confirmSelection();
     },

@@ -26,10 +26,8 @@ async function fixture() {
   const f = createHealthEvidenceTestDatabase();
   await runMigrations(f.database);
   const artifact = createConversationArtifactStorage(f.database);
-  await artifact.createSession(
-    turn.sessionId,
-    await artifact.currentGeneration(),
-  );
+  const generation = await artifact.currentGeneration();
+  await artifact.createSession(turn.sessionId, generation);
   const storage = new SqlCipherAgentMemoryStorage(f.database);
   const embed = jest.fn(async (texts: string[]) =>
     texts.map(() => new Float32Array([1, 0])),
@@ -37,36 +35,42 @@ async function fixture() {
   const memory = await createAgentMemory({ storage, embedder: { embed } });
   return { ...f, artifact, storage, memory, embed };
 }
-test('answer commit queues memory, drains locally, survives reopen and is recalled as unreviewed', async () => {
-  const f = await fixture();
-  try {
-    await f.artifact.append(turn);
-    expect(
-      (await f.database.execute('SELECT * FROM user_statement_memory_jobs'))
-        .rows,
-    ).toHaveLength(1);
-    await processStatementMemoryJobs(f.database, f.memory);
-    await processStatementMemoryJobs(f.database, f.memory);
-    const rows = await listSavedMemories(f.storage);
-    expect(rows).toHaveLength(1);
-    expect(rows[0].provenance.reviewState).toBe('user_stated');
-    const records = await f.storage.listRecords();
-    const built = await buildMemoryEvidence({
-      records,
-      storage: f.storage,
-      registry: new LocalEvidenceReferenceRegistry(),
-    });
-    expect(built.items).toHaveLength(1);
-    expect(built.items[0].reviewState).toBe('unreviewed');
-    expect(built.items[0].effectiveTime).toBe(turn.createdAt);
-    await f.memory.close();
-    expect(
-      await listSavedMemories(new SqlCipherAgentMemoryStorage(f.database)),
-    ).toHaveLength(1);
-  } finally {
-    f.close();
-  }
-});
+test.each([turn.question, 'Remember that I prefer concise replies.'])(
+  'answer commit queues memory, drains locally, survives reopen and recalls %s as unreviewed',
+  async question => {
+    const f = await fixture();
+    try {
+      await f.artifact.append({ ...turn, question });
+      expect(
+        (await f.database.execute('SELECT * FROM user_statement_memory_jobs'))
+          .rows,
+      ).toHaveLength(1);
+      await processStatementMemoryJobs(f.database, f.memory);
+      await processStatementMemoryJobs(f.database, f.memory);
+      const rows = await listSavedMemories(f.storage);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].provenance.reviewState).toBe('user_stated');
+      const recalled = await f.memory.recall('synthetic preference', {
+        limit: 2,
+      });
+      expect(recalled).toHaveLength(1);
+      const records = await f.storage.listRecords();
+      const built = await buildMemoryEvidence({
+        records,
+        storage: f.storage,
+        registry: new LocalEvidenceReferenceRegistry(),
+      });
+      expect(built.items).toHaveLength(1);
+      expect(built.items[0].reviewState).toBe('unreviewed');
+      expect(built.items[0].effectiveTime).toBe(turn.createdAt);
+      await f.memory.close();
+      const reopened = new SqlCipherAgentMemoryStorage(f.database);
+      expect(await listSavedMemories(reopened)).toHaveLength(1);
+    } finally {
+      f.close();
+    }
+  },
+);
 test('hidden/deleted source removes memory and rejects a late retry', async () => {
   const f = await fixture();
   try {
@@ -132,7 +136,6 @@ test('embedding failure preserves a retry job without failing the already commit
     f.close();
   }
 });
-
 test('exact repeats remain one memory while a changed statement stays separately dated', async () => {
   const f = await fixture();
   try {
@@ -157,7 +160,6 @@ test('exact repeats remain one memory while a changed statement stays separately
     f.close();
   }
 });
-
 test('source deletion during embedding cannot recreate memory after its original is gone', async () => {
   const f = await fixture();
   try {
@@ -178,7 +180,6 @@ test('source deletion during embedding cannot recreate memory after its original
     f.close();
   }
 });
-
 test('closing a still-cached service after source deletion cannot compact memory back into storage', async () => {
   const f = await fixture();
   try {
@@ -197,7 +198,6 @@ test('closing a still-cached service after source deletion cannot compact memory
     f.close();
   }
 });
-
 test('statement-time SQL guard rejects a cached record after source removal even without JS validation', async () => {
   const f = await fixture();
   try {

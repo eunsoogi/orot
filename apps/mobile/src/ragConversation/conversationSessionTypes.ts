@@ -19,6 +19,7 @@ type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
   readonly useProtectedPromptHistory?: boolean;
+  readonly ordinaryMemory?: import('./ordinaryConversationMemoryTask').OrdinaryConversationMemoryPort;
   readonly readSavedHistoryDisplay?: import('./conversationSavedHistoryDisplay').ReadSavedHistoryDisplay;
   readonly readPlainContextPage?: ReturnType<
     typeof import('../storage/plainConversationContext').createPlainConversationContextReader
@@ -197,6 +198,7 @@ export interface ConversationSession {
   readonly historyLoading?: boolean;
   readonly historyLoadFailed?: boolean;
   readonly modelSelectionPending?: boolean;
+  readonly modelSelectionKeepsDisplay?: boolean;
   readonly modelSelectionFailed?: boolean;
   readonly deletionError?: string;
   readonly quarantined?: boolean;

@@ -1,3 +1,5 @@
+import { useSavedChatGPTTitle } from './useSavedChatGPTTitle';
+import { savedModelPresentation } from './savedModelPresentation';
 import { useSavedSearchChoices } from './useSavedSearchChoices';
 import { useConversationModelConfirmation } from './useConversationModelConfirmation';
 import { t } from '../../i18n';
@@ -74,6 +76,10 @@ export default function ProviderSelectionScreen({
       option.provider.id === savedSelection?.providerId &&
       option.modelId === savedSelection?.modelId,
   );
+  const savedChatGPTTitle = useSavedChatGPTTitle(
+    selectionStore,
+    savedSelection,
+  );
   const pendingSelection = pendingOption
     ? { providerId: pendingOption.provider.id, modelId: pendingOption.modelId }
     : null;
@@ -89,7 +95,7 @@ export default function ProviderSelectionScreen({
       )
     : undefined;
   const confirmationOption = currentPendingOption ?? pendingOption;
-  const { settings, confirmSelection, disclosureSheet } =
+  const { unifiedReview, confirmSelection, disclosureSheet } =
     useConversationModelConfirmation({
       presentation,
       navigationRouteKey,
@@ -112,6 +118,15 @@ export default function ProviderSelectionScreen({
     loadError,
     available: resolution.ok,
     displayName: selectedOption?.displayName,
+    storedLabel:
+      savedSelection && presentation === 'settings-provider'
+        ? savedModelPresentation(
+            savedSelection,
+            selectedOption,
+            undefined,
+            savedChatGPTTitle,
+          )
+        : undefined,
     savedModelId: savedSelection?.modelId,
     presentation,
   });
@@ -169,7 +184,7 @@ export default function ProviderSelectionScreen({
                 );
                 search.choose(
                   option,
-                  presentation === 'settings-provider' &&
+                  unifiedReview &&
                     option.provider.id === savedSelection?.providerId &&
                     option.modelId === savedSelection.modelId,
                 );
@@ -186,8 +201,8 @@ export default function ProviderSelectionScreen({
           ) : null}
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionFooter
-              inlineConsent={!settings}
-              searchChoices={search.choices}
+              inlineConsent={!unifiedReview}
+              searchChoices={unifiedReview ? undefined : search.choices}
               searchReviewStatus={search.status}
               onSearchChoices={search.change}
               message={selectionMessage}

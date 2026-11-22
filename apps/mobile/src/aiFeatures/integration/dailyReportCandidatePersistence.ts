@@ -1,3 +1,4 @@
+import type { DailyReportDispatchAuthority } from './dailyReportDispatchAuthority';
 import type { DailyReportContext } from '@orot/domain';
 import { createDailyReportContext } from '../../healthEvidence/healthContext/dailyReportContext';
 import { validateDailyReportCompletion } from '../../storage/dailyReportValidation';
@@ -16,13 +17,14 @@ type SaveProof = NonNullable<
   ReturnType<NonNullable<DailyReportRunInput['prepareSnapshotRefresh']>>
 >;
 type LocalReproof = {
+  dispatchAuthority?: DailyReportDispatchAuthority;
   refresh?: SaveProof;
   current(): boolean;
   calendarCurrent?: (signal: AbortSignal) => Promise<boolean>;
   selected: Extract<SelectedAiResolution, { status: 'ready' }>;
 };
 
-/** Rebase only the proof token of an admitted on-device candidate, never its result or lineage. */
+/** Rebase only the proof token of an admitted candidate, never its result or lineage. */
 async function refreshedCandidate(
   candidate: ContextCandidate,
   calendar: DailyReportCalendarWindow,
@@ -97,9 +99,9 @@ export async function persistDailyReportCandidate(
       return saveSignal.aborted ? { status: 'cancelled' } : { status: 'error' };
     }
   };
-  const owner =
-    !proof.selected.remoteProcessing &&
-    proof.selected.option.privacyBoundary === 'on-device'
+  const owner = proof.selected.remoteProcessing
+    ? proof.dispatchAuthority?.witness
+    : proof.selected.option.privacyBoundary === 'on-device'
       ? proof.selected.onDeviceSelectionWitness
       : undefined;
   let saved = await save(

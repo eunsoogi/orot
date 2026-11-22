@@ -24,6 +24,8 @@ export type WorkflowOperationRecord =
 export interface WorkflowSteeringStore {
   subscribe?(listener: () => Promise<void>): () => void;
   enqueue(id: string, text: string): Promise<boolean>;
+  /** In the owning queue, atomically detect pending input or close admission for this answer. */
+  pendingAtFinalBoundary?(): Promise<boolean>;
   /** Persist an at-most-once live submission before sending; uncertainty must not replay it. */
   beginLive?(operationId: string, id: string): Promise<boolean>;
   settleLive?(

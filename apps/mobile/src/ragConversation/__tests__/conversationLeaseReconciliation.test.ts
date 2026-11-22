@@ -84,7 +84,7 @@ test.each(['release', 'expired', 'protectedData'] as const)(
   },
 );
 
-test('a queued foreground recheck still catches a missed expiration', async () => {
+test('a queued foreground recheck still catches missing ownership', async () => {
   const f = await fixture();
   const pending = deferred<boolean>();
   jest
@@ -96,7 +96,17 @@ test('a queued foreground recheck still catches a missed expiration', async () =
   f.emit({ kind: 'foreground' });
   pending.resolve(true);
   await flush();
-  expect(f.interrupt).toHaveBeenCalledWith('expired');
+  expect(f.interrupt).toHaveBeenCalledWith('lease-check-failed');
   expect(f.adapter.isActive).toHaveBeenCalledTimes(2);
+  f.release();
+});
+
+test('missing at an active-only foreground check is not evidence of iOS expiration', async () => {
+  const f = await fixture();
+  f.adapter.currentPhase = () => 'active';
+  jest.mocked(f.adapter.isActive).mockResolvedValue(false);
+  f.emit({ kind: 'foreground' });
+  await flush();
+  expect(f.interrupt).toHaveBeenCalledWith('lease-check-failed');
   f.release();
 });

@@ -87,6 +87,7 @@ export type Stage =
   | 'provider_wait'
   | 'public_search'
   | 'evidence_check'
+  | 'response_correction'
   | 'evidence_appointment'
   | 'evidence_period'
   | 'evidence_records'

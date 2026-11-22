@@ -1,3 +1,4 @@
+import { providerVisiblePersistedMemory } from '../../memory/providerVisibleMemory';
 import { createConversationLocalAccess } from './conversationLocalAccess';
 import { registerConversationReadOperation } from './conversationReadOperation';
 import { scheduleStatementMemory } from '../../memory/scheduleStatementMemory';
@@ -126,7 +127,10 @@ async function openDefault(): Promise<AiFeatureLocalData> {
     rag,
     memoryStorage,
     ...createLocalEvidenceData(database),
-    loadMemoryRecords: () => memoryStorage.listRecords(),
+    loadMemoryRecords: async () =>
+      (await memoryStorage.listRecords()).filter(
+        providerVisiblePersistedMemory,
+      ),
     summaryArtifactDiscovery: registry => summaryDiscovery(data, registry),
     ...createConversationLocalAccess(database, () => data),
     async validateConversationPhotoInput(input, signal) {

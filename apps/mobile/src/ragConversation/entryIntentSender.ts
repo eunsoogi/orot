@@ -11,6 +11,7 @@ export function entryIntentSender(
   store: ConversationSessions,
   id: number,
   send: ConversationScreenProps['onSend'],
+  inputOrigin: 'composer' | 'shortcut' = 'shortcut',
 ): ConversationSender {
   // Freeze the selected source before storage preflight can yield to another selection.
   const selected = conversationEntryForSession(store, id);
@@ -39,6 +40,7 @@ export function entryIntentSender(
     let committed = false;
     const scopedObserver = {
       ...observer,
+      inputOrigin,
       onSummarySaveSettled(value: boolean) {
         committed = value;
         observer?.onSummarySaveSettled?.(value);

@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react-native';
 import { AccessibilityInfo, Animated } from 'react-native';
 import type { DisplayMessage } from '../conversationDisplayMessage';
 import { ConversationTranscriptMessages } from '../ConversationTranscriptMessages';
+import { trackEntrances } from '../testSupport/bubbleEntranceMotion';
 
 const profile: Parameters<
   typeof ConversationTranscriptMessages
@@ -72,26 +73,13 @@ function scene({
   );
 }
 
-function trackEntrances() {
-  const start = jest.fn();
-  const stop = jest.fn();
-  // The independent dot loop uses a different Animated entry point.
-  const sequence = jest.spyOn(Animated, 'sequence').mockImplementation(() => ({
-    start,
-    stop,
-    reset: jest.fn(),
-    _startNativeLoop: jest.fn(),
-    _isUsingNativeDriver: () => true,
-  }));
-  return { start, stop, sequence };
-}
-
 test('animates each new actual surface once, not streaming, focus remount, or restored history', async () => {
   jest
     .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
     .mockResolvedValue(false);
   const { start, stop, sequence } = trackEntrances();
   const timing = jest.spyOn(Animated, 'timing');
+  const interpolate = jest.spyOn(Animated.Value.prototype, 'interpolate');
   try {
     const view = await render(scene({}));
     expect(sequence).not.toHaveBeenCalled();
@@ -125,6 +113,12 @@ test('animates each new actual surface once, not streaming, focus remount, or re
     );
     expect(sequence).toHaveBeenCalledTimes(5);
     expect(screen.getByTestId('conversation-assistant-message')).toBeTruthy();
+    expect(interpolate).toHaveBeenCalledWith({
+      inputRange: [0.985, 1],
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
+    });
+    // Fade adds no per-bubble timeline; the first spring leg owns both paint properties.
     await view.rerender(
       scene({
         messages: [

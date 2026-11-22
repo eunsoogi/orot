@@ -53,6 +53,9 @@ export async function conversationWorkflowOutcome(
           : {
               status: 'answer',
               answer: result.value.answer,
+              ...(result.value.proactiveMemory === true
+                ? { proactiveMemory: true as const }
+                : {}),
               citations: [],
             },
       );
@@ -111,6 +114,9 @@ export async function conversationWorkflowOutcome(
               ? `${result.value.answer}\n\n${t('ragConversation.literature.historicalRankedEvidence')}`
               : `${result.value.answer}\n\n${t('ragConversation.literature.historicalEvidence')}`,
       citations: presentation.citations,
+      ...(result.value.proactiveMemory === true
+        ? { proactiveMemory: true as const }
+        : {}),
     });
   }
   return failureFromWorkflow(result);

@@ -71,6 +71,16 @@ export function NavigationRouteScene<Name extends string>({
   const actions = useMemo<NavigationRouteActions<Name>>(
     () => ({
       route,
+      // Use the logical owner even before a native transition or React commit.
+      ownership: {
+        isCurrent: () => {
+          const snapshot = controller.getSnapshot();
+          return (
+            !snapshot.isTransitioning && snapshot.currentRoute.key === route.key
+          );
+        },
+        subscribe: controller.subscribe,
+      },
       onBack: controller.requestBack,
       onHome: controller.requestHome,
       push: controller.push,

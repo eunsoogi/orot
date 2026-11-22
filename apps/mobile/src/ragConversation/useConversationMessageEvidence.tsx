@@ -54,6 +54,21 @@ export function useConversationMessageEvidence({
     onOpenSource,
     onLinkError,
   );
+  const summary = message.healthSummary;
+  const summaryTarget = message.archivedCitationTarget;
+  const openArchivedSummary = useArchivedCitationOpen(
+    summary?.archivedSummaryRevision && summaryTarget
+      ? {
+          ...summaryTarget,
+          summary: {
+            id: summary.reference.summaryId,
+            revision: summary.archivedSummaryRevision,
+          },
+        }
+      : undefined,
+    onOpenSource,
+    onLinkError,
+  );
   const citations =
     showCitations && message.dailyReport && resolveDailyReport ? (
       <DailyReportSourceLinks
@@ -81,5 +96,5 @@ export function useConversationMessageEvidence({
         onLinkError={onLinkError}
       />
     ) : null;
-  return { message, openSource, citations };
+  return { message, openSource, citations, openArchivedSummary };
 }

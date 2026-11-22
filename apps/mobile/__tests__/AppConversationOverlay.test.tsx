@@ -69,7 +69,7 @@ test('keeps the conversation mounted underneath provider selection and restores 
   const originalInput = screen.getByTestId('rag-conversation-input');
   await fireEvent.changeText(originalInput, '보존할 초안');
   await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
-  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
+  expect(await screen.findByTestId('settings-provider-screen')).toBeTruthy();
   // Provider selection must push over the retained conversation in the same native stack.
   expect(screen.queryByTestId('ai-feature-overlay')).toBeNull();
   expect(mockConversationUnmount).not.toHaveBeenCalled();

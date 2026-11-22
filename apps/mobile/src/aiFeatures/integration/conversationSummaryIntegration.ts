@@ -1,3 +1,4 @@
+import { trySaveExplicitConversationMemory } from './saveExplicitConversationMemory';
 import { createConversationDailyReport } from './conversationDailyReport';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
@@ -13,6 +14,7 @@ import { createConversationSessionOptions } from './conversationSessionOptions';
 import { openSummaryStorage } from './symptomSummaryPersistence';
 import { restoreHealthSummary } from './restoreHealthSummary';
 import { operationRunId } from './featureRunIdentity';
+import { appOrdinaryConversationMemory } from './appOrdinaryConversationMemory';
 
 /** Wire only an explicit summary turn to its own generation, storage and retry operation. */
 export function createConversationSummaryIntegration(input: {
@@ -22,6 +24,7 @@ export function createConversationSummaryIntegration(input: {
   >[0]['sources'];
   coldResume?: import('../../ragConversation/conversationSessionTypes').ConversationSessionOptions['coldResume'];
   consent: MultiAgentWorkflowOptions['consent'];
+  ordinaryMemory?: boolean;
   dependencies: AiFeatureServiceDependencies;
   loadData: () => Promise<AiFeatureLocalData>;
   selectedAi: () => Promise<ReturnType<typeof requireSelectedAi>>;
@@ -53,6 +56,9 @@ export function createConversationSummaryIntegration(input: {
     conversationSessionOptions: () =>
       createConversationSessionOptions({
         loadLocalData: input.loadData,
+        ordinaryMemory: input.ordinaryMemory
+          ? appOrdinaryConversationMemory
+          : undefined,
         coldResume: input.coldResume,
         registry: input.registry,
         selectedAi: input.selectedAi,
@@ -75,6 +81,13 @@ export function createConversationSummaryIntegration(input: {
       ...args: Parameters<ReturnType<typeof createRagConversationService>>
     ) => {
       const [question, , signal, observer, context] = args;
+      const localMemory = trySaveExplicitConversationMemory(
+        question,
+        observer,
+        input.loadData,
+        signal ?? new AbortController().signal,
+      );
+      if (localMemory) return localMemory;
       if (
         context?.intent === 'daily-report' &&
         context.reportRequest &&

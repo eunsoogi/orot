@@ -94,7 +94,7 @@ export function ConversationHistory({
       requestSessionId,
       requestActivity,
       separatedActivity,
-      sessionId,
+      ...{ sessionId, steeringInstructions },
       followsBottom,
       expectedOffset,
     });
@@ -127,7 +127,7 @@ export function ConversationHistory({
     expectedOffset,
     geometry: scrollGeometry,
   });
-  const followLatest = () =>
+  const followLatest = (contentHeight?: number) =>
     !reading.pending &&
     followConversationLatest({
       hasMessages: visibleMessages.length + (voiceEndCards?.length ?? 0) > 0,
@@ -140,6 +140,7 @@ export function ConversationHistory({
       expectedOffset,
       historyView,
       scrollGeometry,
+      contentHeight,
     });
   const wasRestoringPosition = useRef(reading.pending);
   useEffect(() => {
@@ -233,17 +234,17 @@ export function ConversationHistory({
         />
         {footer}
       </ScrollView>
-      {jumpControl.away ? (
-        <ConversationJumpToLatest
-          bottom={composerInset}
-          onPress={() => {
-            reading.cancel();
-            window.cancelAnchor();
-            jumpControl.jump();
-            reading.save({ bottom: true });
-          }}
-        />
-      ) : null}
+      <ConversationJumpToLatest
+        key={sessionId}
+        visible={jumpControl.away}
+        bottom={composerInset}
+        onPress={() => {
+          reading.cancel();
+          window.cancelAnchor();
+          jumpControl.jump();
+          reading.save({ bottom: true });
+        }}
+      />
     </View>
   );
 }

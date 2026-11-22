@@ -1,3 +1,4 @@
+import { GeneratedReportBookmarkContext } from './GeneratedReportBookmark';
 import { FloatingComposerSurface } from './FloatingComposerSurface';
 import { NavigationOcclusionContext } from '../navigation/useNavigationContentInset';
 import { type ReactNode } from 'react';
@@ -23,6 +24,7 @@ type SourceActions = Pick<
 >;
 type Props = {
   sourceActions: SourceActions;
+  isEntryCurrent?: () => boolean;
   session: ConversationSession;
   children: ReactNode;
   composer?: ReactNode;
@@ -86,7 +88,14 @@ export function ConversationWorkspace(props: Props) {
                       </NavigationOcclusionContext.Provider>
                     }
                   >
-                    {props.children}
+                    <GeneratedReportBookmarkContext.Provider
+                      value={{
+                        sessionId: props.session.id,
+                        isCurrent: props.isEntryCurrent,
+                      }}
+                    >
+                      {props.children}
+                    </GeneratedReportBookmarkContext.Provider>
                   </FloatingComposerSurface>
                 </TranscriptInset>
               </SeparatedConversationActivity.Provider>

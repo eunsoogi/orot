@@ -1,3 +1,8 @@
+import { savedModelPresentation } from '../providers/selection/savedModelPresentation';
+import {
+  calendarDecisionsModelLabel,
+  calendarDecisionsProviderLabel,
+} from './calendarDecisionsPresentation';
 import type { CalendarModelSettingsPanelProps } from './CalendarModelSettingsPanel.types';
 import { refreshCalendarModels } from './refreshCalendarModels';
 import { useCalendarModelConfirmation } from './useCalendarModelConfirmation';
@@ -154,6 +159,11 @@ export function CalendarModelSettingsPanel({
     confirm,
     () => setPending(null),
   );
+  const savedOption = all.find(
+    option =>
+      option.provider.id === saved?.providerId &&
+      option.modelId === saved.modelId,
+  );
   return (
     <View testID="calendar-model-settings">
       <ProviderSelectionChoices
@@ -164,16 +174,12 @@ export function CalendarModelSettingsPanel({
         pendingOption={pending}
         requirements={requirements}
         presentation="settings-provider"
-        selectedOption={all.find(
-          option =>
-            option.provider.id === saved?.providerId &&
-            option.modelId === saved.modelId,
-        )}
+        selectedOption={savedOption}
         onChoose={setPending}
       />
       <View style={styles.section} testID="calendar-model-group-openai-api">
         <Text accessibilityRole="header" style={styles.heading}>
-          OpenAI API
+          {calendarDecisionsProviderLabel}
         </Text>
         <View style={styles.catalogAccount}>
           <ApiCatalogAccount
@@ -190,6 +196,7 @@ export function CalendarModelSettingsPanel({
             <ProviderSelectionOptionCard
               key={option.modelId}
               option={option}
+              catalogModelLabel={calendarDecisionsModelLabel}
               index={options.length + index}
               disabled={saving || loading || loadError}
               requirements={requirements}
@@ -222,7 +229,11 @@ export function CalendarModelSettingsPanel({
         <View style={styles.section}>
           <ModelSelectionSummary
             label={saved ? t('modelSettings.currentSelection') : undefined}
-            value={saved?.modelId ?? t('modelSettings.calendarUnselected')}
+            value={
+              saved
+                ? savedModelPresentation(saved, savedOption, 'calendar')
+                : t('modelSettings.calendarUnselected')
+            }
             testID="calendar-current-model"
           />
         </View>

@@ -76,8 +76,13 @@ export function AiFeatureSharedNavigationStateProvider({
   );
 }
 
+/** In-app Settings shares the mounted scene; standalone previews may not. */
+export function useOptionalAiFeatureSharedNavigationState() {
+  return useContext(AiFeatureSharedNavigationStateContext);
+}
+
 export function useAiFeatureSharedNavigationState() {
-  const context = useContext(AiFeatureSharedNavigationStateContext);
+  const context = useOptionalAiFeatureSharedNavigationState();
   if (!context) {
     throw new Error('AI feature navigation needs its shared state provider.');
   }

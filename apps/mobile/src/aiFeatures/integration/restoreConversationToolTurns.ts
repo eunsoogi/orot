@@ -25,7 +25,10 @@ export async function restoreConversationToolTurns(
   storage: Pick<
     ReturnType<typeof createConversationArtifactStorage>,
     'readToolTurns' | 'readFilteredToolPeriod'
-  >,
+  > &
+    Partial<
+      Pick<ReturnType<typeof createConversationArtifactStorage>, 'readToolCall'>
+    >,
 ) {
   return Promise.all(
     turns.map(async turn => ({

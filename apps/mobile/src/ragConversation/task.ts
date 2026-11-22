@@ -18,12 +18,14 @@ import { isEvidenceIndependentConversation } from './literatureIntent';
 import { conversationTaskInput } from './conversationEntryContext';
 import { conversationRequestHistory } from './conversationRequestHistory';
 import { possibilityPrompt } from './possibilityPrompt';
+import { withProactiveMemory } from './proactiveConversationMemory';
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
   readonly content: string;
 }
 export interface GroundedRagAnswer {
   readonly answer: string;
+  readonly proactiveMemory?: true;
   /** Omitted legacy values remain grounded; only explicit social/clarifying replies need no sources. */
   readonly answerKind?: 'grounded' | 'conversation' | 'prior_output';
   readonly literatureReferences?: readonly LiteratureIdentity[];
@@ -141,4 +143,8 @@ export interface RagConversationCurrentEvidence {
   readonly chunks: readonly import('@orot/rag').EvidenceChunk[];
 }
 
-export const ragConversationTask = withStructuredPossibilityReport(legacyTask);
+export const structuredConversationTask =
+  withStructuredPossibilityReport(legacyTask);
+export const ragConversationTask = withProactiveMemory(
+  structuredConversationTask,
+);

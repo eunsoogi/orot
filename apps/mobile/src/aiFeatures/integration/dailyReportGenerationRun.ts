@@ -231,6 +231,7 @@ export async function generateDailyReportWithCalendar(
     {
       selected,
       refresh,
+      dispatchAuthority: input.dispatchAuthority,
       current: currentSelection.currentOwner,
       calendarCurrent: external?.snapshot.revalidate,
     },

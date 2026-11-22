@@ -74,6 +74,7 @@ export function createConversationSessions(
       preparation: options.photoPreparation,
     },
     options.coldResume,
+    options.ordinaryMemory,
   );
   const restoration = conversationRestorationForOptions(options, find, update);
   const attachExisting = createConversationSessionAttachment({
@@ -233,6 +234,7 @@ export function createConversationSessions(
     treatment: conversationTreatmentOwnership(options, () =>
       disposed ? undefined : snapshot,
     ),
+    savedReportLease: options.retention?.activeLease ?? (() => undefined),
     toolSourceSessionId: options.retention?.activeIdentity ?? (() => null),
   };
   const policy = continuousConversationPolicy(store, options, update);

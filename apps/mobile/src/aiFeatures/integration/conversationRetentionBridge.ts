@@ -107,6 +107,14 @@ export function createConversationRetentionBridge(input: {
           // Only validated final outcomes reach this writer. Storage completion denotes a finished
           // response, not exhaustive topic coverage; actual interruption uses request storage.
           answer: outcome.answer,
+          ...(outcome.proactiveMemory === true &&
+          !input.submittedInput &&
+          input.observer?.inputOrigin !== 'shortcut' &&
+          (!input.entryContext ||
+            input.entryContext.intent === 'conversation' ||
+            input.observer?.inputOrigin === 'composer')
+            ? { proactiveMemory: true as const }
+            : {}),
           providerId: input.providerId,
           modelId: input.modelId,
           ...(input.entryContext?.intent === 'possibilities'

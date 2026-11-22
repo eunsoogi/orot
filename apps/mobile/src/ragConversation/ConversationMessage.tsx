@@ -1,6 +1,6 @@
 import { conversationMessageBodyTestID } from './conversationMessageBodyTestID';
-import { View } from 'react-native';
 import type { ReactNode } from 'react';
+import { View } from 'react-native';
 import { useConversationMessageEvidence } from './useConversationMessageEvidence';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppButton } from '../layout/AppButton';
@@ -18,9 +18,9 @@ import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
 import type { DisplayMessage } from './conversationDisplayMessage';
 export type { DisplayMessage } from './conversationDisplayMessage';
-/** Keeps transcript citations beside their answer; compact session previews may omit source links. */
 export function ConversationMessage({
   message: suppliedMessage,
+  beforeAnswer,
   onContinueCold,
   coldResumeBusy,
   onOpenSource,
@@ -34,6 +34,7 @@ export function ConversationMessage({
   renderVisitQuestions,
 }: {
   readonly message: DisplayMessage;
+  readonly beforeAnswer?: ReactNode;
   readonly onContinueCold?: (requestId: string) => void;
   readonly coldResumeBusy?: boolean;
   readonly onOpenSource: (
@@ -49,12 +50,13 @@ export function ConversationMessage({
   readonly resolveToolSource?: ResolveConversationToolSource;
   readonly renderVisitQuestions?: (message: DisplayMessage) => ReactNode;
 }) {
-  const { message, openSource, citations } = useConversationMessageEvidence({
-    suppliedMessage,
-    showCitations,
-    onOpenSource,
-    onLinkError,
-  });
+  const { message, openSource, citations, openArchivedSummary } =
+    useConversationMessageEvidence({
+      suppliedMessage,
+      showCitations,
+      onOpenSource,
+      onLinkError,
+    });
   const user = message.role === 'user';
   const visitQuestions =
     !user && message.visitQuestions ? renderVisitQuestions?.(message) : null;
@@ -73,11 +75,11 @@ export function ConversationMessage({
       {message.activity}
     </Text>
   ) : null;
-  // Keep the last streamed line at the end of a short reading viewport.
   const activityBeforeText = compact && message.streaming;
   return (
     <ConversationMessageBubbles
       message={message}
+      beforeAnswer={beforeAnswer}
       presentation={{
         showCitations,
         showToolActivity,
@@ -124,7 +126,9 @@ export function ConversationMessage({
             ]
           }
         >
-          <ConversationPreviousOutputs outputs={message.previousOutputs} />
+          <ConversationPreviousOutputs
+            outputs={beforeAnswer ? undefined : message.previousOutputs}
+          />
           {message.incomplete && message.content ? (
             <>
               <Text style={styles.activity}>
@@ -147,7 +151,6 @@ export function ConversationMessage({
             />
           ) : null}
           {activityBeforeText ? activity : null}
-          {/* Restored execution rows are not replayed; individual answer citations remain available. */}
           {!user && !message.restoredHistory && message.toolEvents?.length ? (
             <View
               style={!showToolActivity && styles.toolEventsHidden}
@@ -186,9 +189,8 @@ export function ConversationMessage({
             </Text>
           ) : null}
           {!user &&
-          message.initialResponse &&
           message.streaming &&
-          message.initialResponse.source === 'receipt' ? (
+          message.initialResponse?.source === 'receipt' ? (
             <ConversationInitialResponse
               key={message.initialResponse.callId}
               response={message.initialResponse}
@@ -199,7 +201,6 @@ export function ConversationMessage({
               content={message.content}
               user={user}
               staticText={message.savedHistoryDisplayOnly}
-              // The canonical report parser formats settled text without loading sources.
               allowReport={
                 !message.streaming &&
                 !message.incomplete &&
@@ -212,14 +213,13 @@ export function ConversationMessage({
             <HealthSummaryCard
               testIDPrefix={`rag-conversation-message-${message.id}-summary`}
               result={message.healthSummary}
+              openArchivedCitation={openArchivedSummary}
               showCitations={showCitations}
               onOpenSource={openSource}
               onLinkError={onLinkError}
               onRetry={
                 message.retryHealthSummary
-                  ? () => {
-                      message.retryHealthSummary?.().catch(onLinkError);
-                    }
+                  ? () => message.retryHealthSummary?.().catch(onLinkError)
                   : undefined
               }
             />

@@ -16,6 +16,7 @@ export interface ColdConversationSourceOwner {
   readonly archiveCitation?: {
     readonly createdAt: string;
     readonly ordinal: number;
+    readonly summary?: { readonly id: string; readonly revision: string };
   };
 }
 export type ResolveColdConversationToolSource = (

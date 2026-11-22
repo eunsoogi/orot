@@ -135,9 +135,15 @@ test('native AX membership uses global identity plus geometry, not React descend
     /"classification-circle-slot"\)\.frame\.insetBy\(dx: -1, dy: -1\)\s*\.contains\(UITestConditions\.element\(app, "medical-appointment-import"\)\.frame\)/,
   );
   assert.match(stage, /if controls\.allSatisfy\(\{ \$0\.count == 0 \}\)/);
-  assert.match(stage, /controls\.allSatisfy \{ \$0\.count == 1 \} && footer\.exists/);
-  assert.match(stage, /control\.elementType == \.button && !control\.label\.isEmpty/);
-  assert.match(stage, /control.frame.width >= 44 && control.frame.height >= 44/);
+  // Preserve the same required controls and geometry after Swift's compiler-friendly guard split.
+  assert.match(
+    stage,
+    /guard controls\.allSatisfy\(\{ \$0\.count == 1 \}\), footer\.exists else \{ return false \}/,
+  );
+  assert.match(
+    stage,
+    /let matchedControls: \[XCUIElement\] = controls\.map\(\\\.firstMatch\)\s+return matchedControls\.allSatisfy \{ control in\s+guard control\.elementType == \.button, !control\.label\.isEmpty,\s+control\.frame\.width >= 44, control\.frame\.height >= 44 else \{ return false \}/,
+  );
   assert.match(stage, /footer.frame.insetBy\(dx: -1, dy: -1\).contains\(control.frame\)/);
   assert.doesNotMatch(
     reader.slice(0, reader.indexOf('private static func observe')),

@@ -48,7 +48,7 @@ export function useContinuousConversationEntry(
   }, [store, revision, current, ownsPresentation]);
   useConversationEntryIntent(
     store,
-    context,
+    current ? context : undefined,
     session.id,
     Boolean(
       session.restoring ||

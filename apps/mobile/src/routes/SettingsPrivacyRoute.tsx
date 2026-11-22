@@ -6,10 +6,14 @@ import { t } from '../i18n';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
+import { SettingsAutomaticMemorySection } from './SettingsAutomaticMemorySection';
 import { InferenceConsentSettings } from '../agent/execution/InferenceConsentSettings';
 
 /** Measures privacy panels while keeping OS-owned permissions and consent scope explicit. */
-export function SettingsPrivacyRoute() {
+export function SettingsPrivacyRoute({
+  ownership,
+}: { readonly ownership?: NavigationRouteOwnership } = {}) {
   const navigationInset = useNavigationContentInset();
   const [settingsError, setSettingsError] = useState(false);
   const [isClearingConsent, setIsClearingConsent] = useState(false);
@@ -67,6 +71,7 @@ export function SettingsPrivacyRoute() {
                 title={t('settings.calendarPrivacy')}
               />
             </View>
+            <SettingsAutomaticMemorySection ownership={ownership} />
             <View
               style={styles.secondaryColumn}
               testID="settings-privacy-external-transfer"

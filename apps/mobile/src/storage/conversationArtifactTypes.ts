@@ -24,6 +24,7 @@ export interface ConversationArtifact {
   readonly question: string;
   readonly submittedInput?: ConversationSubmittedInput;
   readonly answer: string;
+  readonly proactiveMemory?: true;
   /** Display metadata only; excluded from answer/evidence and provider history. */
   readonly delivery?: import('../ragConversation/conversationMessageDelivery').ConversationMessageDelivery;
   readonly initialResponse?: { readonly callId: string; readonly text: string };

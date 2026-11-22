@@ -15,6 +15,9 @@ test.each([
   ['stop', 2, 1, null, 'cancelled'],
   ['read error', 2, 1, null, null],
   ['remote', 1, 1, null, null],
+  ['remote equivalent', 2, 2, candidate, null],
+  ['remote revoke during local proof', 2, 1, null, null],
+  ['remote revoke during atomic save', 2, 2, null, 'cancelled'],
   ['refused', 0, 0, null, 'consent_required'],
   ['unchanged calendar', 2, 2, candidate, null],
   ['calendar drift', 2, 1, null, null],
@@ -50,12 +53,16 @@ test.each([
       scenario === 'refused' ? 0 : 1,
     );
     expect(attempt.auth).toHaveBeenCalledTimes(
-      scenario === 'refused' || scenario === 'remote' ? 1 : 0,
+      scenario === 'refused' || scenario.startsWith('remote') ? 1 : 0,
     );
     expect(attempt.reads).toBe(expectedReads);
     expect(attempt.saveAttempts).toBe(expectedAttempts);
     expect(attempt.writes).toBe(
-      Number(success || scenario === 'selection during save'),
+      Number(
+        success ||
+          scenario === 'selection during save' ||
+          scenario === 'remote revoke during atomic save',
+      ),
     );
     expect(attempt.heads).toEqual(
       expectedHead ? [{ active_run_id: expectedHead }] : [],

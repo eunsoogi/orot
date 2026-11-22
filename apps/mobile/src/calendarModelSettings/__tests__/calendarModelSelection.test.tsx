@@ -123,7 +123,7 @@ it('offers only the documented Decisions model returned by explicit account disc
   );
   expect(account.discoverModels).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('calendar-model-refresh'));
-  expect(screen.getByText('Synthetic Decisions')).toBeTruthy();
+  expect(screen.getByText('GPT-6 Luna')).toBeTruthy();
   expect(screen.queryByText('fake-decision-model')).toBeNull();
   await fireEvent.press(screen.getByTestId('provider-option-0'));
   expect(
@@ -151,7 +151,7 @@ it('does not publish a late catalog after account replacement', async () => {
   await act(async () => {
     finish({ revision: 3, ids: ['gpt-6-luna'] });
   });
-  expect(screen.queryByText('Synthetic Decisions')).toBeNull();
+  expect(screen.queryByText('GPT-6 Luna')).toBeNull();
 });
 
 it('uses the shared compact API account card and keeps disconnected management reachable', async () => {
@@ -209,7 +209,7 @@ it('keeps the compact refresh disabled until its explicit discovery finishes', a
   expect(account.discoverModels).toHaveBeenCalledTimes(1);
   await act(async () => complete({ revision: 3, ids: ['gpt-6-luna'] }));
   expect(screen.getByTestId('calendar-model-refresh')).not.toBeDisabled();
-  expect(screen.getByText('Synthetic Decisions')).toBeTruthy();
+  expect(screen.getByText('GPT-6 Luna')).toBeTruthy();
 });
 
 it('groups unset and saved identity in the shared summary without the removed introduction', async () => {
@@ -243,6 +243,6 @@ it('groups unset and saved identity in the shared summary without the removed in
     /현재 선택:/,
   );
   expect(screen.getByTestId('calendar-current-model')).toHaveTextContent(
-    new RegExp(apple.modelId),
+    /Apple - Apple Intelligence/,
   );
 });

@@ -1,6 +1,12 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import {
+  Animated,
+  AppState,
+  Dimensions,
+  Easing,
+  StyleSheet,
+} from 'react-native';
 import { NavigationFadeVeil } from './NavigationFadeVeil';
 import { NavigationMotionContext } from './NavigationMotionContext';
 
@@ -44,6 +50,27 @@ export function NavigationContentTransition({
   }
 
   useEffect(() => {
+    // Window reflow and foreground return can interrupt native-driver completion.
+    // Settle only presentation to the latest selected tab; never recreate its data,
+    // composer, or navigation route to recover from an opaque transition veil.
+    const settle = () => {
+      transitionGeneration.current += 1;
+      veilOpacity.stopAnimation();
+      veilOpacity.setValue(0);
+      setDisplayed(latestContent.current);
+      setEnterPending(false);
+    };
+    const appState = AppState.addEventListener('change', state => {
+      if (state === 'active') settle();
+    });
+    const dimensions = Dimensions.addEventListener('change', settle);
+    return () => {
+      appState.remove();
+      dimensions.remove();
+    };
+  }, [veilOpacity]);
+
+  useEffect(() => {
     if (displayed.transitionKey === transitionKey) {
       // Returning to the still-mounted tab cancels its partial fade instead of leaving it covered.
       if (!enterPending) {
@@ -68,7 +95,14 @@ export function NavigationContentTransition({
       useNativeDriver: true,
     });
     exitMotion.start(({ finished }) => {
-      if (!finished || transitionGeneration.current !== generation) return;
+      if (transitionGeneration.current !== generation) return;
+      if (!finished) {
+        // An interrupted current transition must not retain a covered outgoing tab.
+        veilOpacity.setValue(0);
+        setDisplayed(latestContent.current);
+        setEnterPending(false);
+        return;
+      }
       // Swap only when covered, then reveal the incoming content without moving it.
       veilOpacity.setValue(1);
       setDisplayed(latestContent.current);
@@ -98,14 +132,18 @@ export function NavigationContentTransition({
     if (displayed.transitionKey !== transitionKey) return;
 
     let active = true;
+    const generation = transitionGeneration.current;
     const enterMotion = Animated.timing(veilOpacity, {
       toValue: 0,
       duration: 200,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     });
-    enterMotion.start(({ finished }) => {
-      if (finished && active) setEnterPending(false);
+    enterMotion.start(() => {
+      if (!active || transitionGeneration.current !== generation) return;
+      // Both completion and interruption reveal the already-mounted destination.
+      veilOpacity.setValue(0);
+      setEnterPending(false);
     });
     return () => {
       active = false;

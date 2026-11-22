@@ -1,3 +1,4 @@
+import { createSavedGeneratedReportReferences } from './savedGeneratedReportReferences';
 import { assertHistoricalDialogueParentsCurrent } from './conversationHistoricalDialogue';
 import { withWritePeriodCalculations } from './writePeriodCalculationScope';
 import { registerConversationStrictReaders } from './conversationStrictReadOwner';
@@ -58,6 +59,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
   const tools = createConversationToolEventStorage(database, ensure);
   const listTimeline = conversationTimelinePages(database, ensure);
   const storage = {
+    ...createSavedGeneratedReportReferences(database, ensure),
     listTimeline,
     ...createConversationProjectionReaders(database, ensure),
     readPlainContextPage: createPlainConversationContextReader(
