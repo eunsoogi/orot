@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
 import {
@@ -17,13 +11,23 @@ import type {
   GeneratedReportRow,
 } from './types';
 import { useGeneratedReportAccess } from './useGeneratedReportAccess';
-import { useSavedReportPublicCitation } from './useSavedReportPublicCitation';
+
 import {
-  savedReportBrowserDepartureDeadline,
-  useSavedReportBrowserReturn,
+  isSameRefreshedReport,
+  useGeneratedReportPull,
+  type RefreshSelection,
+} from './refreshOwnedGeneratedReport';
+
+import {
+  hasCurrentSavedReportSourceTrip,
+  prepareSavedReportReturnRead,
+  useSavedReportTrips,
   type SavedReportSourceTrip,
 } from './useSavedReportBrowserReturn';
-import { watchSavedReportNativeProtection } from './savedReportNativeProtection';
+import {
+  openSavedReportCitation,
+  useSavedReportPublicCitation,
+} from './useSavedReportPublicCitation';
 
 /** Reopen one selected metadata identity locally, never passing report prose through navigation. */
 export function GeneratedReportDetailDestination({
@@ -41,11 +45,12 @@ export function GeneratedReportDetailDestination({
 }) {
   const request = useRef<AbortController | null>(null);
   const started = useRef(false);
+  const renewable = useRef(false);
+  const resumeRow = useRef<GeneratedReportRow | null>(null);
   const generation = useRef(0);
   const sourceTrip = useRef<SavedReportSourceTrip | undefined>(undefined);
   const scroll = useNavigationRouteScrollPosition();
   const externalCitation = useSavedReportPublicCitation();
-  const browserReturn = useSavedReportBrowserReturn(sourceTrip, started);
   const [state, setState] = useState<GeneratedReportDetailPresentationState>({
     status: 'loading',
   });
@@ -54,95 +59,127 @@ export function GeneratedReportDetailDestination({
     request.current = null;
   }, []);
   const invalidate = useCallback(() => {
+    renewable.current = false;
+    const browser = sourceTrip.current?.surface === 'browser';
+    if (browser) sourceTrip.current = undefined;
+    if (resumeRow.current || browser) {
+      resumeRow.current = null;
+      started.current = true;
+    }
     abort();
     setState({ status: 'unavailable' });
   }, [abort]);
+  const suspend = useCallback(() => {
+    const trip = sourceTrip.current;
+    if (trip?.surface === 'browser') {
+      if (trip.phase !== 'leaving' && trip.phase !== 'covered') {
+        invalidate();
+        return;
+      }
+      trip.suspended = true;
+      abort();
+      setState({ status: 'loading' });
+      return;
+    }
+    if (!renewable.current) {
+      invalidate();
+      return;
+    }
+    // Clear the protected snapshot immediately; only this row may be renewed.
+    resumeRow.current = row;
+    started.current = false;
+    abort();
+    setState({ status: 'loading' });
+  }, [abort, invalidate, row]);
   const { accessVersion, canAccess } = useGeneratedReportAccess(
     active,
     ownership,
     invalidate,
     abort,
+    false,
+    suspend,
   );
-  useLayoutEffect(() => {
-    const trip = sourceTrip.current;
-    if (trip?.surface !== 'stack') return;
-    if (!active && trip?.phase === 'leaving') trip.phase = 'covered';
-    if (active && trip?.phase === 'covered') {
-      // Only this report's explicit source child may start another local read.
-      // Never republish the previously open result without a new proof.
-      trip.phase = 'returning';
-      started.current = false;
-    }
-  }, [active]);
-  useLayoutEffect(() => {
-    if (
-      state.status === 'ready' &&
-      sourceTrip.current?.phase === 'restore' &&
-      canAccess()
-    ) {
-      sourceTrip.current = undefined;
-      scroll?.restore();
-    }
-  }, [canAccess, scroll, state]);
-  const read = useCallback(async () => {
-    if (!canAccess()) return;
-    abort();
-    const controller = new AbortController();
-    request.current = controller;
-    const current = () =>
-      request.current === controller &&
-      !controller.signal.aborted &&
-      canAccess();
-    setState({ status: 'loading' });
-    const trip = sourceTrip.current;
-    const protectedReturn =
-      trip?.surface === 'browser' && trip.phase === 'returning';
-    const revoked = () => {
-      if (!current()) return;
-      sourceTrip.current = undefined;
-      invalidate();
-    };
-    const protection = protectedReturn
-      ? watchSavedReportNativeProtection(controller.signal, revoked)
-      : undefined;
-    const confirm = () => protection?.confirm();
-    let retainProtection = false;
-    try {
-      if (protectedReturn && (!(await confirm()) || !current())) return;
-      const reader = await openGeneratedReportReader();
-      if (!current() || (protectedReturn && (!(await confirm()) || !current())))
-        return;
-      const detail = await reader.read(row, controller.signal);
-      if (!current() || (protectedReturn && (!(await confirm()) || !current())))
-        return;
-      if (trip?.phase === 'returning') {
-        const renewed = detail?.conversationSources?.target;
-        if (
-          renewed?.sessionId !== trip.target.sessionId ||
-          renewed.sessionVersion !== trip.target.sessionVersion
-        ) {
-          sourceTrip.current = undefined;
-          setState({ status: 'unavailable' });
+  const browserReturn = useSavedReportTrips(
+    sourceTrip,
+    started,
+    active,
+    state,
+    canAccess,
+    scroll,
+    invalidate,
+  );
+  const read = useCallback(
+    async (refresh?: RefreshSelection) => {
+      if (!canAccess()) return;
+      const controller = new AbortController();
+      refresh?.claim(controller);
+      abort();
+      resumeRow.current = null;
+      renewable.current = true;
+      request.current = controller;
+      const current = () =>
+        request.current === controller &&
+        !controller.signal.aborted &&
+        canAccess();
+      if (!refresh?.keepVisible) setState({ status: 'loading' });
+      const trip = sourceTrip.current;
+      const browser = prepareSavedReportReturnRead(
+        trip,
+        controller.signal,
+        current,
+        invalidate,
+      );
+      const verify = browser?.confirm ?? refresh?.verify;
+      let ready = false;
+      try {
+        if (browser && (refresh || !(await browser.confirm()) || !current()))
+          return;
+        const reader = await openGeneratedReportReader();
+        if (!current() || (verify && (!(await verify()) || !current()))) return;
+        const detail = await reader.read(row, controller.signal);
+        if (!current() || (verify && (!(await verify()) || !current()))) return;
+        const prior = refresh?.prior;
+        const refreshedTarget = detail?.conversationSources?.target;
+        if (prior && !isSameRefreshedReport(prior, refreshedTarget)) {
+          invalidate();
           return;
         }
-        trip.phase = 'restore';
+        if (trip?.phase === 'returning') {
+          if (
+            sourceTrip.current !== trip ||
+            !isSameRefreshedReport(trip.target, refreshedTarget)
+          ) {
+            sourceTrip.current = undefined;
+            renewable.current = false;
+            setState({ status: 'unavailable' });
+            return;
+          }
+          trip.phase = 'restore';
+        }
+        ready = Boolean(detail);
+        renewable.current = ready;
+        setState(
+          detail
+            ? { status: 'ready', detail, generation: ++generation.current }
+            : { status: 'unavailable' },
+        );
+      } catch {
+        if (current()) {
+          renewable.current = false;
+          setState({ status: 'failed' });
+        }
+      } finally {
+        if (!ready) browser?.dispose();
       }
-      // Keep the same published browser-return owner subscribed until close;
-      // a lock can arrive before React has committed the newly verified body.
-      retainProtection = protectedReturn && detail !== null;
-      setState(
-        detail
-          ? { status: 'ready', detail, generation: ++generation.current }
-          : { status: 'unavailable' },
-      );
-    } catch {
-      if (current()) setState({ status: 'failed' });
-    } finally {
-      if (!retainProtection) protection?.dispose();
-    }
-  }, [abort, canAccess, invalidate, row]);
+    },
+    [abort, canAccess, invalidate, row],
+  );
   useEffect(() => {
     if (started.current || !canAccess()) return;
+    if (resumeRow.current && resumeRow.current !== row) {
+      invalidate();
+      return;
+    }
     let live = true;
     // Strict replay and a synchronous Back must invalidate before any reader starts.
     Promise.resolve().then(() => {
@@ -153,12 +190,22 @@ export function GeneratedReportDetailDestination({
     return () => {
       live = false;
     };
-  }, [accessVersion, active, browserReturn, canAccess, read]);
+  }, [accessVersion, active, browserReturn, canAccess, invalidate, read, row]);
+  const refreshing = useGeneratedReportPull({
+    active,
+    state,
+    request,
+    canAccess,
+    invalidate,
+    read,
+    hasSourceTrip: () => hasCurrentSavedReportSourceTrip(sourceTrip),
+  });
   if (!active || (ownership && !ownership.isCurrent())) return null;
   const owner = request.current;
   const isCurrent = () =>
     Boolean(
       owner &&
+      !refreshing.current &&
       request.current === owner &&
       !owner.signal.aborted &&
       canAccess(),
@@ -168,7 +215,12 @@ export function GeneratedReportDetailDestination({
       row={row}
       state={state}
       onRetry={() => {
-        if (state.status === 'failed' && request.current === owner) read();
+        if (
+          state.status === 'failed' &&
+          request.current === owner &&
+          !refreshing.current
+        )
+          read();
       }}
       isCurrent={isCurrent}
       sourceOpenFailed={Boolean(
@@ -177,51 +229,20 @@ export function GeneratedReportDetailDestination({
       onOpenCitation={
         openReportSource &&
         ((selection, citation) => {
-          if (
-            !isCurrent() ||
-            !owner ||
-            state.status !== 'ready' ||
-            !state.detail.conversationSources?.citations.includes(citation) ||
-            state.detail.conversationSources.target !== selection.target ||
-            selection.target.turnId !== row.id ||
-            selection.target.createdAt !== row.createdAt
-          )
-            return;
-          if (
-            citation.kind === 'public_web' ||
-            citation.kind === 'external_medical'
-          ) {
-            externalCitation.open(
-              selection,
-              citation,
-              owner.signal,
-              isCurrent,
-              invalidate,
-              () => {
-                const trip: SavedReportSourceTrip = {
-                  phase: 'leaving',
-                  surface: 'browser',
-                  target: selection.target,
-                  departBy: savedReportBrowserDepartureDeadline(),
-                };
-                sourceTrip.current = trip;
-                scroll?.preserve();
-                return () => {
-                  if (sourceTrip.current === trip && trip.phase === 'leaving')
-                    sourceTrip.current = undefined;
-                };
-              },
-            );
-            return;
-          }
-          if (citation.kind !== 'personal_record') return;
-          sourceTrip.current = {
-            phase: 'leaving',
-            surface: 'stack',
-            target: selection.target,
-          };
-          scroll?.preserve();
-          if (!openReportSource(selection)) sourceTrip.current = undefined;
+          if (!owner || state.status !== 'ready') return;
+          openSavedReportCitation({
+            row,
+            detail: state.detail,
+            selection,
+            citation,
+            owner,
+            isCurrent,
+            invalidate,
+            sourceTrip,
+            scroll,
+            openReportSource,
+            externalCitation,
+          });
         })
       }
     />

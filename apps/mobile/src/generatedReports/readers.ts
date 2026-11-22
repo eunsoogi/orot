@@ -1,5 +1,5 @@
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
-import { conversationDailyReportText } from '../aiFeatures/integration/conversationDailyReportText';
+import { dailyReportPresentation } from '../aiFeatures/integration/conversationDailyReportText';
 import { projectGeneratedSummaryDetail } from './summaryDetail';
 import { readConversationReportEvidence } from './conversationReportEvidence';
 import { createArchivedCitationService } from '../aiFeatures/integration/archivedCitationService';
@@ -111,10 +111,11 @@ async function readSelected(
     });
     if (!state.result) return null;
     return {
-      paragraphs: [
-        conversationDailyReportText({ status: 'saved', ...state.result }),
-      ],
-      daily: state.result.report,
+      paragraphs: [],
+      dailyReport: dailyReportPresentation({
+        status: 'saved',
+        ...state.result,
+      }),
       warning: copy.coverage,
     };
   }
@@ -131,7 +132,14 @@ async function readSelected(
     });
     if (saved.status !== 'ready' || saved.questions.length === 0) return null;
     return {
-      paragraphs: saved.questions.flatMap(q => [q.questionText, q.rationale]),
+      paragraphs: [],
+      // Keep the stored order and wording, without transferring source or edit authority.
+      visitQuestions: saved.questions.map(question => ({
+        id: question.identity.id,
+        questionText: question.questionText,
+        rationale: question.rationale,
+        priority: question.priority,
+      })),
       warning: saved.restorationNotice,
     };
   }

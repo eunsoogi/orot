@@ -20,6 +20,7 @@ interface ProviderSelectionChoicesProps {
   readonly pendingOption: ProviderSelectionOption | null;
   readonly requirements: ProviderSelectionRequirements;
   readonly presentation?: ProviderSelectionPresentation;
+  readonly followsSiblingSummary?: boolean;
   readonly onChoose: (option: ProviderSelectionOption) => void;
   readonly chatGPTSetup?: ChatGPTAccountSetup;
 }
@@ -33,6 +34,7 @@ export function ProviderSelectionChoices({
   pendingOption,
   requirements,
   presentation = 'feature',
+  followsSiblingSummary = false,
   onChoose,
   chatGPTSetup,
 }: ProviderSelectionChoicesProps) {
@@ -47,6 +49,7 @@ export function ProviderSelectionChoices({
           index={index}
           onPress={() => onChoose(option)}
           option={option}
+          hideLocalSubtitle={presentation === 'settings-provider'}
           requirements={requirements}
           selected={
             selected?.provider.id === option.provider.id &&
@@ -57,7 +60,10 @@ export function ProviderSelectionChoices({
     );
   const localPanel = (
     <View
-      style={styles.section}
+      style={[
+        styles.section,
+        followsSiblingSummary && styles.firstSectionAfterSiblingSummary,
+      ]}
       testID={
         presentation === 'settings-provider'
           ? 'settings-provider-local-panel'

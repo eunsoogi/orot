@@ -178,24 +178,18 @@ export const calendarStyles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
   },
-  // The event stripe and next-visit badge retain semantics; the enclosing frame is decorative.
+  calendarSelectedEventList: { gap: 10 },
   calendarEventRow: {
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
+    backgroundColor: appColors.background,
     borderRadius: 12,
-    borderWidth: 0,
-    borderLeftWidth: 1,
-    borderLeftColor: appColors.border,
     gap: 8,
     minWidth: 0,
     padding: 14,
   },
-  // The visit badge carries meaning; the full event surface stays neutral.
-  calendarNextVisitEvent: {
-    backgroundColor: appColors.background,
-    borderLeftWidth: 1,
-    borderRadius: 12,
-    borderWidth: 0,
+  calendarEventTime: {
+    color: appColors.text,
+    flexShrink: 1,
+    minWidth: 0,
   },
   calendarEventHeading: {
     alignItems: 'flex-start',

@@ -1,3 +1,7 @@
+import {
+  restoreWithoutCurrentVisitPeriod,
+  saveHistoricalVisitReplacement,
+} from './historicalVisitReplacementFixture';
 import { AppState } from 'react-native';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import type { ConversationExecutionEvent } from '../../ragConversation/conversationExecutionLease';
@@ -5,7 +9,11 @@ import {
   createAgentMemory,
   type PersistedMemoryRecord,
 } from '@orot/agent-memory';
-import { createManualHistoryRepository, runMigrations } from '@orot/storage';
+import {
+  createManualHistoryRepository,
+  createRecordRepository,
+  runMigrations,
+} from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import { SqlCipherAgentMemoryStorage } from '../../storage/agentMemoryStorage';
@@ -18,10 +26,9 @@ import { healthContextRevision } from '../../healthEvidence/healthContext/scope'
 import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { assertRetainedRecordsCurrent } from '../../storage/retainedRecordFreshness';
 import { healthPeriodDependencyId } from '../../storage/healthPeriodDependencies';
-
 /** Build an actual approved visit-question memory before simulating the old
  * backup shape, where the current-evidence period attestation didn't exist. */
-export async function historicalMemoryFixture() {
+export async function historicalMemoryFixture(laterReview = false) {
   const { mkdtempSync, rmSync } = require('node:fs');
   const { tmpdir } = require('node:os');
   const { join } = require('node:path');
@@ -36,7 +43,9 @@ export async function historicalMemoryFixture() {
     .mocked(createAgentMemory)
     .mockImplementationOnce(actual.createAgentMemory);
   const memory = await original.memory();
-  const saved = await original.save({ memory });
+  const saved = laterReview
+    ? await saveHistoricalVisitReplacement(original, memory)
+    : await original.save({ memory });
   if (saved.memoryStatus !== 'saved')
     throw new Error('Synthetic approved write did not commit.');
   await memory.close();
@@ -70,7 +79,8 @@ export async function historicalMemoryFixture() {
     throw new Error(
       'The synthetic current source unexpectedly matched its older revision.',
     );
-  await original.database.execute('DELETE FROM memory_period_attestation');
+  if (laterReview) await restoreWithoutCurrentVisitPeriod(original, question);
+  else await original.database.execute('DELETE FROM memory_period_attestation');
   original.close();
   jest.mocked(createAgentMemory).mockClear();
   const owner = openSqliteTestDatabase(file);
@@ -104,6 +114,11 @@ export async function historicalMemoryFixture() {
         [JSON.stringify(payload), row.id!],
       );
     },
+    deletePeriodContributor: () =>
+      createRecordRepository(owner.database).delete(
+        'health_observation',
+        original.observation.id,
+      ),
     close() {
       owner.close();
       rmSync(directory, { recursive: true, force: true });
@@ -117,6 +132,18 @@ export async function invalidateHistoricalMemoryFixture(
   boundary: string,
 ) {
   switch (boundary) {
+    case 'replacement missing attestation':
+      await file.db.execute(
+        'DELETE FROM memory_period_attestation WHERE memory_id=?',
+        [file.id],
+      );
+      break;
+    case 'replacement different parent revision':
+      await file.db.execute(
+        "UPDATE memory_period_attestation SET parents_json=json_set(parents_json,'$[0].revision',?) WHERE memory_id=?",
+        ['different-revision', file.id],
+      );
+      break;
     case 'explicit record tombstone':
       await file.db.execute(
         'INSERT INTO agent_memory_removed_sources VALUES (?)',
@@ -195,7 +222,6 @@ export async function invalidateHistoricalMemoryFixture(
       throw new Error('Unknown synthetic history boundary.');
   }
 }
-
 /** Keep native witness values synthetic while real storage and route guards execute. */
 export const nativeListeners = new Set<
   (event: ConversationExecutionEvent) => void

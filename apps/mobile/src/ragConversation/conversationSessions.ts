@@ -34,11 +34,12 @@ export function createConversationSessions(
   let snapshot = initialConversationSnapshot(empty());
   const listeners = createConversationListeners();
   let disposed = false;
-  let lifecycle = 0;
+  const epoch = { lifecycle: 0, selection: 0 };
   const photoSurface = conversationPhotoSurface(options);
   const { photoDrafts, photoConsent } = photoSurface;
   const apply = (next: S.ConversationSnapshot | null) => {
     if (next) {
+      if (next.activeId !== snapshot.activeId) epoch.selection++;
       snapshot = next;
       listeners.emit();
     }
@@ -75,6 +76,7 @@ export function createConversationSessions(
     },
     options.coldResume,
     options.ordinaryMemory,
+    id => (!disposed && snapshot.activeId === id ? epoch.selection : undefined),
   );
   const restoration = conversationRestorationForOptions(options, find, update);
   const attachExisting = createConversationSessionAttachment({
@@ -91,7 +93,7 @@ export function createConversationSessions(
     options,
     attach: attachExisting,
     snapshot: () => snapshot,
-    lifecycle: () => lifecycle,
+    lifecycle: () => epoch.lifecycle,
     disposed: () => disposed,
   });
   const retrySave = createConversationRetrySave({
@@ -112,7 +114,7 @@ export function createConversationSessions(
     requests,
     restoration,
     disposed: () => disposed,
-    lifecycle: () => lifecycle,
+    lifecycle: () => epoch.lifecycle,
     finalizeDraft: id => {
       photoDrafts.retireSession(id).catch(() => {});
     },
@@ -202,7 +204,7 @@ export function createConversationSessions(
       if (disposed) return;
       photoConsent.dispose();
       photoDrafts.clear().catch(() => {});
-      lifecycle++;
+      epoch.lifecycle++;
       taskState.invalidate();
       taskRefresh.invalidate();
       dispatch.disposeBeforeSend();
@@ -210,16 +212,14 @@ export function createConversationSessions(
       restoration.dispose();
       options.retention?.invalidate();
       removal.invalidate();
-      const session = empty();
-      snapshot = { activeId: session.id, sessions: [session], deleted: null };
-      listeners.emit();
+      apply(initialConversationSnapshot(empty()));
     },
     dispose() {
       photoConsent.dispose();
       photoDrafts.clear().catch(() => {});
       disposed = true;
       listeners.dispose();
-      lifecycle++;
+      epoch.lifecycle++;
       taskState.invalidate();
       taskRefresh.invalidate();
       dispatch.disposeBeforeSend();

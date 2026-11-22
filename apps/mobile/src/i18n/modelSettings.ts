@@ -33,6 +33,8 @@ export const modelSettingsKo = {
     '통화 중 말한 음성과 이 통화의 대화만 전송해요.',
   'modelSettings.liveVoiceConsentNotice':
     '같은 계정과 모델로 음성 대화를 시작할 때 다시 묻지 않아요. 모델 설정에서 동의를 변경할 수 있어요.',
+  'modelSettings.liveVoiceToolsUnavailable':
+    'GPT Live 통화에서는 기록·기억, 검색, 기록 수정 도구를 사용하지 않아요.',
   'modelSettings.liveVoiceProcessing':
     'OpenAI Live API에서 음성 대화를 처리해요.',
   'modelSettings.liveVoiceUnselected': '선택',

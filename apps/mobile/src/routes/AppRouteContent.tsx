@@ -2,7 +2,7 @@ import { AppointmentQuestionRoutes } from './AppointmentQuestionRoutes';
 import { useVisitDayQuestionsEntry } from './useVisitDayQuestionsEntry';
 import { RecordsMaterialDestination } from './RecordsMaterialDestination';
 import { SavedMemoryDetail } from '../memory/SavedMemoryDetail';
-import { useRecordSourceNavigation } from './RecordSourceNavigation';
+import { useRecordNav } from './RecordSourceNavigation';
 import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
 import { useIsFocused } from '@react-navigation/native';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
@@ -29,6 +29,7 @@ export function AppRouteContent({
   discoverManualVisits,
   actions,
   activeTab,
+  recordsTabAuthority,
   selectTab,
   onSelectRecordsSection,
   appointmentRepository,
@@ -52,9 +53,9 @@ export function AppRouteContent({
   healthRecordDetailSelection,
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
-  const recordNavigation = useRecordSourceNavigation(actions);
-  const { sourceId, openDocument, openMemory } = recordNavigation;
   const active = useIsFocused();
+  const recordNav = useRecordNav(actions, active, recordsTabAuthority);
+  const { sourceId, openMemory } = recordNav;
   const openOverviewPreparation = useVisitDayQuestionsEntry(
     active,
     nextAppointment,
@@ -67,16 +68,16 @@ export function AppRouteContent({
           <OverviewRoute
             appointment={nextAppointment}
             appointmentState={appointmentState}
-            recentRecording={recordings[0] ?? null}
-            recordingState={recordingState}
             onRetryAppointments={() => refreshAppointments()}
-            onRetryRecordings={() => refreshRecordings()}
             onPrepareVisit={openOverviewPreparation}
             onOpenSchedule={() => selectTab('schedule')}
-            onOpenRecords={() => selectTab('records')}
+            onEditMetricSelection={() =>
+              active &&
+              actions.ownership?.isCurrent() !== false &&
+              actions.push('overview-metric-selection')
+            }
             loadSavedVisitQuestions={loadSavedVisitQuestions}
             discoverManualVisits={discoverManualVisits}
-            onOpenRecording={openRecording}
           />
         );
       case 'records':
@@ -86,7 +87,7 @@ export function AppRouteContent({
             onSelect={onSelectRecordsSection}
           >
             <RecordsRoute
-              onOpenDocumentDetail={openDocument}
+              {...recordNav}
               onOpenGeneratedReports={() => actions.push('generated-reports')}
               memoryActive={active}
               onOpenRecentRecords={() => actions.push('recent-records')}
@@ -170,7 +171,7 @@ export function AppRouteContent({
       // A native stack destination keeps the overview mounted and owns its own scroll position.
       return (
         <RecordsRoute
-          onOpenDocumentDetail={openDocument}
+          {...recordNav}
           showAllRecent
           documentImportService={documentImportService}
           recordings={recordings}
@@ -209,14 +210,11 @@ export function AppRouteContent({
     case 'manual-history':
     case 'generated-reports':
     case 'generated-report-detail':
-    case 'generated-report-source':
-      return (
-        <RecordsMaterialDestination
-          actions={actions}
-          onOpenMemory={openMemory}
-          {...recordNavigation}
-        />
-      );
+    case 'generated-report-source': {
+      // Keep the shared source callbacks and their precedence on all four routes.
+      const props = { actions, onOpenMemory: openMemory, ...recordNav };
+      return <RecordsMaterialDestination {...props} />;
+    }
     case 'appointments':
       return appointmentRepository ? (
         <AppointmentsScreen

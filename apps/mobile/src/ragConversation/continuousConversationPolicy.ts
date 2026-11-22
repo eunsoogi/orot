@@ -1,3 +1,4 @@
+import { admittedDisplayLease } from './conversationSavedHistoryDisplay';
 import { createConversationWarmAdmission } from './conversationWarmAdmission';
 import {
   createConversationRootRestoreOwnership,
@@ -72,13 +73,10 @@ export function continuousConversationPolicy<
     const start = store.getSnapshot();
     const activeId = start.activeId;
     const admitted = start.sessions.find(item => item.id === activeId);
-    // Reconfirming a quick choice does not revoke an already admitted display.
-    // Explicit route/model reconciliation still uses the ordinary strict gate.
     const keepDisplay =
-      origin === 'send' &&
-      admitted?.preparingQuickChoice &&
-      admitted.savedHistoryDisplay &&
-      options.retention?.activeLease(activeId);
+      origin === 'send'
+        ? admittedDisplayLease(admitted, options.retention)
+        : undefined;
     update(activeId, {
       modelSelectionPending: true,
       modelSelectionKeepsDisplay: Boolean(keepDisplay),
@@ -86,6 +84,10 @@ export function continuousConversationPolicy<
     const run = async () => {
       try {
         const target = await options.continuousSession!(signal);
+        keepDisplay?.withholdUnless(target, () => {
+          if (current())
+            update(activeId, { modelSelectionKeepsDisplay: false });
+        });
         if (!current()) return;
         model = target.model;
         const archive = ownedArchiveRestore({

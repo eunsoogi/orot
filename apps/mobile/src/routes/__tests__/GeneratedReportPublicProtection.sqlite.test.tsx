@@ -181,3 +181,43 @@ test('a verified returned body is revoked on native lock while JS still reports 
     f.close();
   }
 });
+
+test.each([
+  ['inactive only', 'none'],
+  ['late background', 'late'],
+  ['prompt background', 'prompt'],
+] as const)(
+  'a selected browser citation observes inactive then %s without ordinary resume',
+  async (_case, departure) => {
+    const move = installReportAppState();
+    const native = reportNativeWitness();
+    const clock = jest
+      .spyOn(globalThis.performance, 'now')
+      .mockReturnValue(100);
+    jest.mocked(conversationExecutionNative).mockReturnValue(native.adapter);
+    const { f, nav, browser, read } = await openReport();
+    try {
+      const route = nav.getSnapshot().currentRoute.key;
+      await click();
+      await waitFor(() => expect(browser).toHaveBeenCalledTimes(1));
+      await move('inactive');
+      expect(screen.queryByText('Synthetic paragraph 1.')).toBeNull();
+      if (departure === 'late') clock.mockReturnValue(1_000_000);
+      if (departure !== 'none') await move('background');
+      expect(read).toHaveBeenCalledTimes(1);
+      await move('active');
+      if (departure === 'prompt') {
+        expect(await screen.findByText('Synthetic paragraph 1.')).toBeVisible();
+        expect(read).toHaveBeenCalledTimes(2);
+        expect(read.mock.calls[1]?.[0]).toEqual(read.mock.calls[0]?.[0]);
+      } else {
+        expect(await screen.findByText(unavailable)).toBeVisible();
+        expect(read).toHaveBeenCalledTimes(1);
+      }
+      expect(nav.getSnapshot().currentRoute.key).toBe(route);
+      expect(browser).toHaveBeenCalledTimes(1);
+    } finally {
+      f.close();
+    }
+  },
+);

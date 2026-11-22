@@ -3,7 +3,6 @@ import type { AiFeatureServices } from '../aiFeatures/integration/featureService
 import { HubBanner } from './HubBanner';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
-import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { AppText as Text } from '../layout/AppText';
 import { formatDate, t } from '../i18n';
 import { appColors } from '../layout/appColors';
@@ -18,14 +17,10 @@ export interface OverviewRouteProps extends OverviewPreparationLoaders {
   readonly discoverManualVisits?: AiFeatureServices['conversationArtifacts'];
   readonly appointment: Appointment | null;
   readonly appointmentState: 'loading' | 'ready' | 'failed';
-  readonly recentRecording: RecordingSourceRecord | null;
-  readonly recordingState: 'loading' | 'ready' | 'failed';
   readonly onRetryAppointments: () => void;
-  readonly onRetryRecordings: () => void;
   readonly onPrepareVisit: () => void;
   readonly onOpenSchedule: () => void;
-  readonly onOpenRecords: () => void;
-  readonly onOpenRecording: () => void;
+  readonly onEditMetricSelection: () => void;
 }
 
 /** Keeps visit preparation and health metrics in one ordered page. */
@@ -35,6 +30,7 @@ export default function OverviewRoute({
   onRetryAppointments,
   onPrepareVisit,
   onOpenSchedule,
+  onEditMetricSelection,
   discoverManualVisits,
 }: OverviewRouteProps) {
   useNavigationLeaveStateRegistration({
@@ -76,7 +72,7 @@ export default function OverviewRoute({
           appointmentId={appointment?.id}
           discover={discoverManualVisits}
         />
-        <OverviewMetrics />
+        <OverviewMetrics onEdit={onEditMetricSelection} />
       </View>
     </View>
   );

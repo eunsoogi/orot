@@ -10,6 +10,8 @@ export type ConversationTurnRetentionInput = {
       Pick<
         ReturnType<typeof createConversationArtifactStorage>,
         | 'openWorkflowContinuation'
+        | 'admitAutomaticDailyReportMemory'
+        | 'bookmarkCompletedDailyReport'
         | 'appendToolEvent'
         | 'discardToolEvent'
         | 'startRequest'

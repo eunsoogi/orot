@@ -88,9 +88,11 @@ export function GeneratedReportDetailPresentation({
       {state.status === 'ready' ? (
         <>
           <View style={styles.body}>
-            <AppText accessibilityRole="header" style={styles.sectionTitle}>
-              {detailCopy.body}
-            </AppText>
+            {state.detail.dailyReport ? null : (
+              <AppText accessibilityRole="header" style={styles.sectionTitle}>
+                {detailCopy.body}
+              </AppText>
+            )}
             <GeneratedReportContent
               detail={state.detail}
               onOpenCitation={

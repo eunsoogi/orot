@@ -10,7 +10,13 @@ test('explicit report choice appends a normal user and assistant exchange in the
     answer: 'Synthetic report',
     citations: [],
   });
-  await startConversationReportTurn(store, () => true, sender);
+  await startConversationReportTurn(
+    store,
+    () => true,
+    sender,
+    undefined,
+    'direct-user-tap',
+  );
   const state = store.getSnapshot();
   expect(state.activeId).toBe(1);
   expect(state.sessions).toHaveLength(1);
@@ -22,6 +28,7 @@ test('explicit report choice appends a normal user and assistant exchange in the
   expect(state.sessions[0].taskCards ?? []).toHaveLength(0);
   expect(sender.mock.calls[0][4]).toMatchObject({
     intent: 'daily-report',
+    directDailyReportRequest: true,
     reportRequest: expect.objectContaining({ kind: 'daily_report' }),
   });
   store.dispose();
@@ -41,16 +48,20 @@ test('duplicate, navigation-stale, or drafted choices cannot dispatch another ta
 test('rapid repeat taps share one owned report request', async () => {
   const store = createConversationSessions();
   let complete!: (value: unknown) => void;
-  const sender = jest.fn(
-    () =>
+  const send = jest.fn(
+    (..._args: unknown[]) =>
       new Promise(resolve => {
         complete = resolve;
       }),
-  ) as never;
+  );
+  const sender = send as never;
   const first = startConversationReportTurn(store, () => true, sender);
   const second = startConversationReportTurn(store, () => true, sender);
   await Promise.resolve();
   expect(sender).toHaveBeenCalledTimes(1);
+  expect(send.mock.calls[0]?.[4]).not.toHaveProperty(
+    'directDailyReportRequest',
+  );
   complete({ status: 'answer', answer: 'Synthetic report', citations: [] });
   await Promise.all([first, second]);
   expect(store.getSnapshot().sessions[0].messages).toHaveLength(2);

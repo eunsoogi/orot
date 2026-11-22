@@ -15,7 +15,8 @@ export function dailyReportConsentRequest(
     providerId: selected.provider.id,
     modelId: selected.modelId,
     recipient: selected.recipient,
-    remoteProcessing: true,
+    // Local inference never opens a remote authorization witness at dispatch.
+    remoteProcessing: selected.remoteProcessing,
     consentScope: {
       purpose: 'daily_report',
       dataCategories: [

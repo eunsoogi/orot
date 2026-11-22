@@ -20,15 +20,13 @@ const styles = StyleSheet.create({
   detailPanel: { flexGrow: 1, minWidth: 0, gap: 16 },
   selectionCard: {
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
     borderRadius: 16,
-    borderWidth: 1,
     gap: 10,
     padding: 16,
   },
+  // Keep focus visibly distinct without changing the card's outline or dimensions.
   selectionCardSelected: {
-    borderColor: appColors.primary,
-    borderWidth: 2,
+    backgroundColor: appColors.primarySoft,
   },
   nextVisitBadge: {
     alignSelf: 'flex-start',

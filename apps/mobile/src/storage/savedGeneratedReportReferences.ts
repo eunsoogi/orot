@@ -1,4 +1,12 @@
 import {
+  createDailyReportBookmark,
+  visibleDailyReportBookmarks,
+} from './dailyReportMemoryBookmark';
+import {
+  dailyReportAutomaticMemorySetting,
+  setupDailyReportAutomaticMemory,
+} from './dailyReportAutomaticMemorySetting';
+import {
   createSavedDiseasePossibilityReferences,
   setupSavedDiseasePossibilityReferences,
 } from './savedDiseasePossibilityReferences';
@@ -17,7 +25,6 @@ type Original = NonNullable<
   Awaited<ReturnType<typeof validateDailyReportArtifact>>
 > & { status: 'saved' };
 
-type Lease = Readonly<{ id: string; version: number }>;
 export type SavedGeneratedReportReference = Readonly<{
   artifactId: string;
   savedAt: string;
@@ -26,6 +33,7 @@ export type SavedGeneratedReportReference = Readonly<{
 
 /** The bookmark belongs to the protected generated artifact, not the model's memory corpus. */
 export async function setupSavedGeneratedReportReferences(tx: SqlExecutor) {
+  await setupDailyReportAutomaticMemory(tx);
   await setupSavedHealthSummaryReferences(tx);
   await setupSavedDiseasePossibilityReferences(tx);
   await tx.execute(
@@ -40,13 +48,6 @@ export async function setupSavedGeneratedReportReferences(tx: SqlExecutor) {
       DELETE FROM saved_generated_report_refs WHERE report_id = OLD.id;
     END`);
 }
-
-const visible = `FROM saved_generated_report_refs b
-  JOIN conversation_artifacts a ON a.id = b.artifact_id
-  JOIN symptom_summary_runs run ON run.id = b.report_id
-  JOIN conversation_artifact_sessions s ON s.id = a.session_id
-  JOIN conversation_artifact_generation g ON g.singleton = 1 AND g.generation = s.generation
-  WHERE s.hidden = 0`;
 
 /** Pin a complete daily report only while its selected conversation and protected sources still agree. */
 export function createSavedGeneratedReportReferences(
@@ -67,93 +68,25 @@ export function createSavedGeneratedReportReferences(
     database,
     ensure,
   );
+  const setting = dailyReportAutomaticMemorySetting(database, ensure);
+  const bookmarkDailyReport = createDailyReportBookmark(
+    database,
+    ensure,
+    setting,
+  );
   return {
     ...summary,
     ...possibilities,
-    async bookmarkDailyReport(input: {
-      artifactId: string;
-      lease: Lease;
-      current: () => boolean;
-      savedAt?: string;
-    }) {
-      if (!input.current()) return false;
-      await ensure();
-      let saved = false;
-      await database.transaction(async tx => {
-        if (!input.current()) return;
-        const row = (
-          await tx.execute(
-            `SELECT a.result_json
-          FROM conversation_artifacts a
-          JOIN conversation_artifact_sessions s ON s.id = a.session_id
-          JOIN conversation_artifact_generation g ON g.singleton = 1 AND g.generation = s.generation
-          WHERE a.id = ? AND s.id = ? AND s.version = ? AND s.hidden = 0`,
-            [input.artifactId, input.lease.id, input.lease.version],
-          )
-        ).rows[0];
-        const artifact = decodeConversationArtifact(row?.result_json);
-        if (
-          !artifact?.dailyReport ||
-          artifact.status !== 'complete' ||
-          artifact.id !== input.artifactId ||
-          artifact.sessionId !== input.lease.id ||
-          !input.current()
-        )
-          return;
-        await withWritePeriodCalculations(tx, validate =>
-          assertConversationArtifactCurrent(
-            tx,
-            database,
-            artifact,
-            false,
-            validate,
-          ),
-        );
-        const reference = artifact.dailyReport;
-        const original = await validateDailyReportArtifact(
-          tx,
-          reference.runId,
-          history,
-          true,
-        );
-        if (
-          !input.current() ||
-          !original ||
-          original.revision !== reference.revision ||
-          original.context.identity.key !== reference.identity.key
-        )
-          return;
-        await tx.execute(
-          'INSERT INTO saved_generated_report_refs VALUES (?, ?, ?) ON CONFLICT(report_id) DO NOTHING',
-          [
-            reference.runId,
-            artifact.id,
-            input.savedAt ?? new Date().toISOString(),
-          ],
-        );
-        const existing = (
-          await tx.execute(
-            `SELECT a.result_json ${visible} AND b.report_id = ?`,
-            [reference.runId],
-          )
-        ).rows[0];
-        const savedReference = decodeConversationArtifact(
-          existing?.result_json,
-        )?.dailyReport;
-        if (
-          savedReference?.runId !== reference.runId ||
-          savedReference.revision !== reference.revision ||
-          savedReference.identity.key !== reference.identity.key
-        )
-          throw new Error('Report bookmark target no longer matches.');
-        // The driver otherwise awaits our callback before committing. Keep
-        // publication adjacent to this last live owner check, with no await.
-        if (!input.current()) throw new Error('Report bookmark owner moved.');
-        tx.commit();
-        saved = true;
-      });
-      return saved;
-    },
+    bookmarkDailyReport: (input: Parameters<typeof bookmarkDailyReport>[0]) =>
+      bookmarkDailyReport(input),
+    // The application must mint the token before starting an explicit live request.
+    readAutomaticDailyReportMemory: setting.enabled,
+    changeAutomaticDailyReportMemory: setting.change,
+    admitAutomaticDailyReportMemory: setting.admit,
+    bookmarkCompletedDailyReport: (
+      input: Parameters<typeof bookmarkDailyReport>[0],
+      admission: NonNullable<Parameters<typeof bookmarkDailyReport>[1]>,
+    ) => bookmarkDailyReport(input, admission),
     async listSavedGeneratedReportReferences(): Promise<
       SavedGeneratedReportReference[]
     > {
@@ -163,7 +96,7 @@ export function createSavedGeneratedReportReferences(
       ];
       if (!(await catalogExists())) return summaries;
       const { rows } = await database.execute(
-        `SELECT b.artifact_id, b.saved_at ${visible} ORDER BY b.saved_at DESC, b.artifact_id`,
+        `SELECT b.artifact_id, b.saved_at ${visibleDailyReportBookmarks} ORDER BY b.saved_at DESC, b.artifact_id`,
       );
       const daily = rows.flatMap(row =>
         typeof row.artifact_id === 'string' &&
@@ -188,7 +121,7 @@ export function createSavedGeneratedReportReferences(
       await database.transaction(async tx => {
         const row = (
           await tx.execute(
-            `SELECT a.result_json, b.report_id ${visible} AND a.id = ?`,
+            `SELECT a.result_json, b.report_id ${visibleDailyReportBookmarks} AND a.id = ?`,
             [artifactId],
           )
         ).rows[0];

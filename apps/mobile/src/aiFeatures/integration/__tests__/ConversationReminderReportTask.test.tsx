@@ -50,7 +50,6 @@ function setup() {
       task,
     },
     services,
-    sessionId: 1,
     onTaskIdentity,
     onTaskResult: jest.fn(async () => {}),
     onBack: jest.fn(),
@@ -60,7 +59,7 @@ function setup() {
   return { dailyReport, services, props };
 }
 
-test('a retained historical reminder reads its exact identity without dispatch and persists explicit today selection', async () => {
+test('a retained historical reminder keeps its exact identity without offering today again', async () => {
   const { dailyReport, services, props } = setup();
   await render(<ConversationReportTask {...props} />);
   await waitFor(() =>
@@ -69,23 +68,17 @@ test('a retained historical reminder reads its exact identity without dispatch a
   expect(screen.getByTestId('inline-daily-report-task')).toBeTruthy();
   expect(screen.getByText(t('dailyReport.reminderZone'))).toBeTruthy();
   expect(screen.queryByText('오늘 요약하기')).toBeNull();
+  expect(screen.queryByText('오늘 선택하기')).toBeNull();
   expect(dailyReport.start).not.toHaveBeenCalled();
   expect(services.sendRagMessage).not.toHaveBeenCalled();
-  await fireEvent.press(screen.getByText('오늘 선택하기'));
-  await waitFor(() =>
-    expect(dailyReport.lookup).toHaveBeenCalledWith(todayIdentity()),
-  );
-  expect(screen.queryByText('오늘 요약하기')).toBeNull();
   expect(
-    props.onTaskIdentity.mock.calls.some(
-      ([value]) => value.key !== identity.key,
+    props.onTaskIdentity.mock.calls.every(
+      ([value]) => value.key === identity.key,
     ),
   ).toBe(true);
-  expect(dailyReport.start).not.toHaveBeenCalled();
-  expect(services.sendRagMessage).not.toHaveBeenCalled();
 });
 
-test('ordinary date-only cards keep their existing presentation', async () => {
+test('ordinary date-only cards do not add a stale today button or start a request', async () => {
   const { dailyReport, props } = setup();
   await render(
     <ConversationReportTask
@@ -94,8 +87,9 @@ test('ordinary date-only cards keep their existing presentation', async () => {
     />,
   );
   expect(screen.queryByTestId('inline-daily-report-task')).toBeNull();
-  expect(screen.getByText('오늘 선택하기')).toBeTruthy();
+  expect(screen.queryByText('오늘 선택하기')).toBeNull();
   expect(dailyReport.lookup).not.toHaveBeenCalled();
+  expect(dailyReport.start).not.toHaveBeenCalled();
 });
 
 test('historical saved lookup retains the exact result and forwards deliberate chat', async () => {
@@ -120,7 +114,7 @@ test('historical saved lookup retains the exact result and forwards deliberate c
   expect(dailyReport.start).not.toHaveBeenCalled();
 });
 
-test('failed explicit today persistence leaves the historical card selected', async () => {
+test('inline history never attempts to persist another day', async () => {
   const { dailyReport, props } = setup();
   props.onTaskIdentity.mockImplementation(async value => {
     if (value.key !== identity.key) throw new Error('Synthetic save failure');
@@ -129,7 +123,7 @@ test('failed explicit today persistence leaves the historical card selected', as
   await waitFor(() =>
     expect(dailyReport.lookup).toHaveBeenCalledWith(identity),
   );
-  await fireEvent.press(screen.getByText('오늘 선택하기'));
+  expect(screen.queryByText('오늘 선택하기')).toBeNull();
   expect(screen.queryByText('오늘 요약하기')).toBeNull();
   expect(
     dailyReport.lookup.mock.calls.every(

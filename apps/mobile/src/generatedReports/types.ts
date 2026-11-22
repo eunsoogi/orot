@@ -9,9 +9,18 @@ export interface GeneratedReportRow {
   readonly createdAt: string;
   readonly unavailable: boolean;
 }
+/** Display projection of an admitted saved question, with no evidence or edit capabilities. */
+export interface GeneratedVisitQuestion {
+  readonly id: string;
+  readonly questionText: string;
+  readonly rationale: string;
+  readonly priority: 'routine' | 'important';
+}
 export interface GeneratedReportDetail {
+  readonly visitQuestions?: readonly GeneratedVisitQuestion[];
   readonly analysis?: import('../diseaseHypotheses/types').DiseaseHypothesisAnalysis;
-  readonly daily?: import('@orot/domain').DailyReportOutput;
+  /** Only from the exact validated standalone Daily Report; not an archive link target. */
+  readonly dailyReport?: import('../ragConversation/conversationReportTemplate').ConversationReport;
   /** Parsed only from a complete, currently validated Conversation possibility artifact. */
   readonly conversationPossibility?: NonNullable<
     ReturnType<

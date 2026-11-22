@@ -1,10 +1,18 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import { Linking } from 'react-native';
 import type { SavedArchivedCitation } from '../ragConversation/savedArchivedCitations';
 import { openGeneratedReportReader } from './readers';
 import { savedReportPublicCitationUrl } from './savedReportPublicCitation';
 import { watchSavedReportNativeProtection } from './savedReportNativeProtection';
-import type { GeneratedReportCitationSelection } from './types';
+import type {
+  GeneratedReportCitationSelection,
+  GeneratedReportDetail,
+  GeneratedReportRow,
+} from './types';
+import {
+  beginSavedReportBrowserTrip,
+  type SavedReportSourceTrip,
+} from './useSavedReportBrowserReturn';
 
 /** Press-only lookup owned by the exact currently displayed, protected Records read. */
 export function useSavedReportPublicCitation() {
@@ -65,4 +73,70 @@ export function useSavedReportPublicCitation() {
   }
 
   return { open, failedOwner };
+}
+
+/** Dispatch only the pill object belonging to the exact current rendered report. */
+export function openSavedReportCitation({
+  row,
+  detail,
+  selection,
+  citation,
+  owner,
+  isCurrent,
+  invalidate,
+  sourceTrip,
+  scroll,
+  openReportSource,
+  externalCitation,
+}: {
+  readonly row: GeneratedReportRow;
+  readonly detail: GeneratedReportDetail;
+  readonly selection: GeneratedReportCitationSelection;
+  readonly citation: SavedArchivedCitation;
+  readonly owner: AbortController;
+  readonly isCurrent: () => boolean;
+  readonly invalidate: () => void;
+  readonly sourceTrip: RefObject<SavedReportSourceTrip | undefined>;
+  readonly scroll:
+    | { readonly preserve: () => void; readonly restore: () => void }
+    | null
+    | undefined;
+  readonly openReportSource: (
+    selection: GeneratedReportCitationSelection,
+  ) => boolean;
+  readonly externalCitation: ReturnType<typeof useSavedReportPublicCitation>;
+}) {
+  if (
+    !isCurrent() ||
+    !detail.conversationSources?.citations.includes(citation) ||
+    detail.conversationSources.target !== selection.target ||
+    selection.target.turnId !== row.id ||
+    selection.target.createdAt !== row.createdAt
+  )
+    return;
+  if (citation.kind === 'public_web' || citation.kind === 'external_medical') {
+    externalCitation.open(
+      selection,
+      citation,
+      owner.signal,
+      isCurrent,
+      invalidate,
+      () =>
+        beginSavedReportBrowserTrip(
+          sourceTrip,
+          selection.target,
+          scroll,
+          invalidate,
+        ),
+    );
+    return;
+  }
+  if (citation.kind !== 'personal_record') return;
+  sourceTrip.current = {
+    phase: 'leaving',
+    surface: 'stack',
+    target: selection.target,
+  };
+  scroll?.preserve();
+  if (!openReportSource(selection)) sourceTrip.current = undefined;
 }
