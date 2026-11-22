@@ -1,9 +1,9 @@
 import { useRecordsDetailVisibility } from './RecordsHubSection';
+import { RecordsHubHeadingContext } from './RecordsHubBanner';
 import { NavigationInlineTransition } from '../navigation/NavigationInlineTransition';
-import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useContext, useEffect } from 'react';
+import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
 import { VerticalPageSections } from '../layout/VerticalPageSections';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { MedicalDocumentSourceView } from '../medicalDocuments/MedicalDocumentSourceView';
@@ -16,13 +16,13 @@ import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDo
 import { useRecordsSourcePaging } from './RecordsSourcePagingContext';
 import { RecordsRecentSources } from './RecordsRecentSources';
 import { hubSpacing } from '../layout/hubSpacing';
-import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
 import { RecordsRouteEntries } from './RecordsRouteEntries';
 import type { RecordsTabAuthority } from './useAppRootTab';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import type { GeneratedReportRow } from '../generatedReports/types';
 import { LegacySymptomData } from './LegacySymptomData';
+import { recordsRouteStyles as styles } from './recordsRouteStyles';
 
 export interface RecordsRouteProps {
   readonly memoryActive?: boolean;
@@ -92,6 +92,7 @@ export function RecordsRoute({
   } = useMedicalDocumentImport(documentImportService, !pagedDocuments);
   useRecordsDetailVisibility(sourceDetail !== null);
   const routeScrollPosition = useNavigationRouteScrollPosition();
+  const hasHubBanner = useContext(RecordsHubHeadingContext);
   useEffect(() => {
     // Source invalidation closes detail before file cleanup settles.
     if (activity === 'deleting' && !sourceDetail)
@@ -103,7 +104,6 @@ export function RecordsRoute({
       onOpenDocumentDetail(sourceId);
       return;
     }
-    // The root-tab ScrollView stays mounted while detail replaces the long Records list.
     routeScrollPosition?.preserve();
     openSavedDocument(sourceId);
   }
@@ -166,7 +166,13 @@ export function RecordsRoute({
       style={styles.transition}
     >
       <View style={styles.container}>
-        <View testID="records-layout" style={styles.page}>
+        <View
+          testID="records-layout"
+          style={[
+            styles.page,
+            hasHubBanner && !showAllRecent && styles.pageAfterBanner,
+          ]}
+        >
           {!showAllRecent ? (
             <View style={styles.primaryPanel}>
               <RecordsRouteEntries
@@ -230,21 +236,3 @@ export function RecordsRoute({
     </NavigationInlineTransition>
   );
 }
-
-const styles = StyleSheet.create({
-  transition: { flexGrow: 1, minWidth: 0 },
-  container: {
-    flexGrow: 1,
-    minWidth: 0,
-    backgroundColor: appColors.background,
-  },
-  page: {
-    gap: hubSpacing.item,
-    paddingHorizontal: hubSpacing.horizontal,
-    paddingTop: hubSpacing.top,
-    // The route scroller already supplies the shared readable gap above navigation.
-    paddingBottom: hubSpacing.bottom - NAVIGATION_CONTENT_GAP,
-  },
-  primaryPanel: { minWidth: 0, gap: hubSpacing.item },
-  status: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
-});

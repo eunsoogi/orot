@@ -15,6 +15,7 @@ type ModelTab = (typeof modelTabs)[number];
 /** Retain drafts and catalog requests across tab switches; hiding a panel never saves it. */
 export function ModelSelectionTabs({
   enabled,
+  languageHeader,
   children,
   locked,
   onOpenAccounts,
@@ -29,6 +30,7 @@ export function ModelSelectionTabs({
   readonly calendarOptions?: readonly ProviderSelectionOption[];
   readonly chatGPTSetup?: ChatGPTAccountSetup;
   readonly enabled: boolean;
+  readonly languageHeader?: ReactNode;
   readonly children: ReactNode;
   readonly locked: boolean;
   readonly onOpenAccounts?: () => void;
@@ -66,6 +68,7 @@ export function ModelSelectionTabs({
           </Pressable>
         ))}
       </View>
+      {active === 'language' ? languageHeader : null}
       {/* Animate the incoming pane only. Keep the tabs and their keyboard/AX
           targets stationary, and do not remount the visited Voice settings. */}
       <View style={styles.viewport} testID="model-tab-content-viewport">

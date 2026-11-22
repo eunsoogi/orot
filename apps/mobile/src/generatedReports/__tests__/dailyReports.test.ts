@@ -1,6 +1,9 @@
 import { HealthObservationSchema } from '@orot/domain';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
+import { parseDailyConversationReport } from '../../ragConversation/dailyConversationReportTemplate';
+import { conversationDailyReportText } from '../../aiFeatures/integration/conversationDailyReportText';
+import { t } from '../../i18n';
 import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { createDailyReportCalendarWindow } from '../../healthEvidence/healthContext/dailyReportWindow';
 import { createDailyReportContext } from '../../healthEvidence/healthContext/dailyReportContext';
@@ -36,6 +39,13 @@ test('production daily save and revise preserves exact historical metadata, neve
     await repository.put('health_observation', observation);
     const generation = await readHealthContextGeneration(f.database);
     const revision = fingerprint(observation);
+    const coverage = [
+      {
+        source: 'calendar',
+        status: 'partial' as const,
+        limitationCodes: ['snapshot_incomplete'],
+      },
+    ];
     const context = createDailyReportContext(
       calendar.context,
       {
@@ -50,7 +60,7 @@ test('production daily save and revise preserves exact historical metadata, neve
             ingestedAt: observation.ingestedAt,
           },
         ],
-        coverage: [],
+        coverage,
       },
       { providerId: 'local', modelId: 'fixture' },
     );
@@ -65,7 +75,7 @@ test('production daily save and revise preserves exact historical metadata, neve
         },
       ],
       supportedContext: [],
-      coverage: [],
+      coverage,
       followUpQuestions: [],
     };
     const input = {
@@ -88,11 +98,27 @@ test('production daily save and revise preserves exact historical metadata, neve
     const reader = createGeneratedReportReader(f.database);
     const first = (await reader.list()).find(r => r.id === 'run-one')!;
     expect(first.kind).toBe('daily_report');
+    const detail = await reader.read(first, new AbortController().signal);
+    expect(detail?.paragraphs).toEqual([]);
+    expect(detail?.dailyReport?.sections.map(section => section.title)).toEqual(
+      [t('dailyReport.observations'), t('dailyReport.coverage.attention')],
+    );
+    expect(detail?.dailyReport?.sections[0]?.content).toBe(
+      'Synthetic private report',
+    );
+    const saved = await store.lookup(context.identity);
+    if (saved.status !== 'saved')
+      throw new Error('Expected exact saved report');
+    const chat = parseDailyConversationReport(
+      conversationDailyReportText(saved),
+    );
     expect(
-      (await reader.read(first, new AbortController().signal))?.paragraphs.join(
-        '\n',
-      ),
-    ).toContain('Synthetic private report');
+      chat?.sections.map(({ title, content }) => ({
+        title,
+        content: content.trim(),
+      })),
+    ).toEqual(detail?.dailyReport?.sections);
+    expect(detail?.conversationSources).toBeUndefined();
     expect(
       await store.save({
         ...input,
@@ -114,9 +140,8 @@ test('production daily save and revise preserves exact historical metadata, neve
     expect(rows.find(r => r.id === 'run-one')?.unavailable).toBe(true);
     expect(await reader.read(first, new AbortController().signal)).toBeNull();
     expect(
-      (
-        await reader.read(rows[0]!, new AbortController().signal)
-      )?.paragraphs.join('\n'),
+      (await reader.read(rows[0]!, new AbortController().signal))?.dailyReport
+        ?.sections[0]?.content,
     ).toContain('Second version');
     const otherCalendar = createDailyReportCalendarWindow({
       localDate: '2035-01-01',
@@ -126,7 +151,7 @@ test('production daily save and revise preserves exact historical metadata, neve
     if (otherCalendar.status !== 'ready') throw new Error('Invalid fixture');
     const otherContext = createDailyReportContext(
       otherCalendar.context,
-      context.sourceSnapshot,
+      { ...context.sourceSnapshot, coverage: [] },
       context.provider,
     );
     expect(
@@ -136,16 +161,25 @@ test('production daily save and revise preserves exact historical metadata, neve
         context: otherContext,
         result: {
           status: 'completed',
-          report: { ...report, identity: otherContext.identity },
+          report: {
+            ...report,
+            identity: otherContext.identity,
+            observations: [],
+            supportedContext: report.observations,
+            coverage: [],
+          },
         },
       }),
     ).toEqual({ status: 'saved' });
     const other = (await reader.list()).find(r => r.id === 'other-identity')!;
-    expect(
-      (await reader.read(other, new AbortController().signal))?.paragraphs.join(
-        '\n',
-      ),
-    ).toContain('Synthetic private report');
+    const legacy = await reader.read(other, new AbortController().signal);
+    expect(legacy?.dailyReport?.sections).toEqual([
+      {
+        title: t('dailyReport.supportedContext'),
+        content: 'Synthetic private report',
+      },
+    ]);
+    expect(legacy?.conversationSources).toBeUndefined();
     await repository.delete('health_observation', observation.id);
     expect(
       await reader.read(rows[0]!, new AbortController().signal),

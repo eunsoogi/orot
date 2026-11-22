@@ -1,4 +1,3 @@
-import { createDailyReportIdentity } from '@orot/domain';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../../layout/AppText';
@@ -117,19 +116,15 @@ test.each([320, 840])(
               status: 'ready',
               detail: {
                 warning: '합성 출처 경고',
-                paragraphs: [long],
-                daily: {
-                  schemaVersion: 1,
-                  identity: createDailyReportIdentity('2035-04-01', 'UTC'),
-                  generatedAt: item.createdAt,
-                  observations: [],
-                  supportedContext: [],
-                  followUpQuestions: [],
-                  coverage: [
+                paragraphs: [],
+                dailyReport: {
+                  title: t('dailyReport.title'),
+                  introduction: '합성 보고서 기준 시각',
+                  sections: [
+                    { title: t('dailyReport.observations'), content: long },
                     {
-                      source: 'calendar',
-                      status: 'partial',
-                      limitationCodes: ['snapshot_incomplete'],
+                      title: t('dailyReport.coverage.attention'),
+                      content: '합성 자료: 일부 자료를 확인하지 못했어요.',
                     },
                   ],
                 },
@@ -160,7 +155,13 @@ test.each([320, 840])(
     expect(screen.getAllByRole('header')[0]).toHaveTextContent(
       generatedReportCopy.daily_report,
     );
-    expect(screen.getByRole('header', { name: '저장된 내용' })).toBeVisible();
+    expect(screen.queryByText('저장된 내용')).toBeNull();
+    expect(screen.getAllByText(long)).toHaveLength(1);
+    expect(screen.getByText(t('dailyReport.coverage.attention'))).toBeVisible();
+    expect(
+      screen.getByText('합성 자료: 일부 자료를 확인하지 못했어요.'),
+    ).toBeVisible();
+    expect(screen.queryByText(/^##? /u)).toBeNull();
     const title = screen.getByTestId('generated-material-detail-title');
     expect(StyleSheet.flatten(title.props.style)).toMatchObject({
       color: appColors.text,
@@ -170,16 +171,7 @@ test.each([320, 840])(
     expect(
       screen.getByText(generatedReportCopy.sourceNavigationUnavailable),
     ).toBeVisible();
-    await fireEvent.press(
-      screen.getByRole('button', {
-        name: `하루 범위: ${t('dailyReport.coverage.details.show')}`,
-      }),
-    );
-    expect(
-      screen.getByRole('button', {
-        name: `하루 범위: ${t('dailyReport.coverage.details.hide')}`,
-      }),
-    ).toBeVisible();
+    expect(screen.queryByTestId(/^daily-report-coverage-/u)).toBeNull();
   },
 );
 

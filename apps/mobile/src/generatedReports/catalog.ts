@@ -38,15 +38,18 @@ export async function listGeneratedReports(
 export function listRecentMaterial(
   database: SqlDatabase,
   before?: CatalogCursor,
+  signal?: AbortSignal,
 ) {
-  return readCatalog(database, before, true);
+  return readCatalog(database, before, true, signal);
 }
 
 async function readCatalog(
   database: SqlDatabase,
   before: CatalogCursor | undefined,
   feed: boolean,
+  signal?: AbortSignal,
 ): Promise<readonly RecentMaterialRow[]> {
+  if (signal?.aborted) return [];
   const tables = new Set(
     (
       await database.execute(
@@ -54,6 +57,8 @@ async function readCatalog(
       )
     ).rows.map(r => r.name),
   );
+  // An already-running native read can finish, but a retired page cannot start its content query.
+  if (signal?.aborted) return [];
   const queries: string[] = [];
   if (tables.has('symptom_summary_runs')) {
     const daily = tables.has('daily_report_revisions');

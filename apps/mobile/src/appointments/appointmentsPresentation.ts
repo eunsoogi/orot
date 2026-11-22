@@ -8,11 +8,12 @@ const appointmentStatusKeys = {
   cancelled: 'appointments.status.cancelled',
 } as const satisfies Record<Appointment['status'], TranslationKey>;
 
-/** Shares the same localized name and status across appointment selection and detail views. */
+/** Prefer the linked event title already saved on this appointment; do not query Calendar. */
 export function appointmentClinicName(appointment: Appointment): string {
   return (
-    appointment.clinicLabel ??
-    appointment.reason ??
+    appointment.calendarEventSnapshot?.title.trim() ||
+    appointment.clinicLabel?.trim() ||
+    appointment.reason?.trim() ||
     t('appointments.fallbackTitle')
   );
 }
