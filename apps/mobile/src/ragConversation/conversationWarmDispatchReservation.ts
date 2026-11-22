@@ -61,7 +61,7 @@ export function prepareWarmDispatchReservation(
 }
 
 /** Preserve the legacy two-argument port when a dispatch has no warm reservation. */
-export async function beginWarmDispatchTurn(
+export function beginWarmDispatchTurn(
   retention: ConversationSessionOptions['retention'],
   id: number,
   signal: AbortSignal,
@@ -76,9 +76,12 @@ export async function beginWarmDispatchTurn(
     plannedTurn.close();
     return undefined;
   }
-  const turn = await retention?.beginTurn(id, signal, plannedTurn.reservation);
-  if (turn) carryWarmExecution(turn, plannedTurn.execution);
-  return turn;
+  return retention
+    ?.beginTurn(id, signal, plannedTurn.reservation)
+    .then(turn => {
+      carryWarmExecution(turn, plannedTurn.execution);
+      return turn;
+    });
 }
 
 /** Keep exact selection ownership from early preparation to the durable lookup. */

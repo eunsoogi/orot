@@ -137,7 +137,9 @@ export function createConversationSessionRequests(
       let preview: ReturnType<typeof requestPreview> | undefined;
       let photoInput: Awaited<ReturnType<typeof startRetainedRequest>>;
       try {
-        retained = await beginTurn(retention, id, controller.signal, onSend);
+        retained = retention
+          ? await beginTurn(retention, id, controller.signal, onSend)
+          : undefined;
         if (current() && (retained || hasPhoto))
           photoInput = await startRetainedRequest({
             id,

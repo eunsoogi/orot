@@ -74,7 +74,8 @@ export function createConversationRequestLifetime(input: {
     });
     await entry.start;
     if (controller.signal.aborted || entries.get(id) !== entry) return;
-    await adoptConversationLifetimeLease(entry, entries, input, early);
+    if (input.execution)
+      await adoptConversationLifetimeLease(entry, entries, input, early);
   }
   return {
     start(
