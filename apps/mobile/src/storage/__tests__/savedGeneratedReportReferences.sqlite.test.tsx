@@ -1,3 +1,5 @@
+import { dailyReportDeviceAuthorityFixture } from '../testSupport/dailyReportDeviceAuthorityFixture';
+import { expectAutomaticReportReference } from '../testSupport/dailyReportAutomaticMemoryAcceptance';
 import { expectBookmarkSynchronousCommit } from '../testSupport/savedGeneratedReportCommitAcceptance';
 import { expectReportBookmarkMounted } from '../testSupport/savedGeneratedReportBookmarkAcceptance';
 import { HealthObservationSchema } from '@orot/domain';
@@ -16,11 +18,24 @@ import { fingerprint } from '../../aiFeatures/integration/evidenceUtils';
 import { createConversationArtifactStorage } from '../conversationArtifactStorage';
 import { createDailyReportStorage } from '../dailyReportStorage';
 
+jest.mock('react-native-keychain', () => ({
+  ACCESSIBLE: { WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'device-only' },
+  getGenericPassword: jest.fn(),
+  setGenericPassword: jest.fn(),
+}));
+jest.mock('../../agent/execution/consentGeneration', () => {
+  let sequence = 0;
+  return {
+    createConsentGeneration: () => (++sequence).toString(16).padStart(64, '0'),
+  };
+});
+
 jest.mock('../../memory/openSavedGeneratedReportReferences', () => ({
   openSavedGeneratedReportReferences: jest.fn(),
 }));
 
 test('bookmarks the original daily report without copying follow-up prose and sweeps deleted roots', async () => {
+  const device = dailyReportDeviceAuthorityFixture();
   const directory = mkdtempSync(join(tmpdir(), 'orot-report-followup-red-'));
   const path = join(directory, 'records.sqlite');
   let connection = openSqliteTestDatabase(path);
@@ -198,6 +213,16 @@ test('bookmarks the original daily report without copying follow-up prose and sw
     connection = openSqliteTestDatabase(path);
     const reopened = createConversationArtifactStorage(connection.database);
     expect(await reopened.listSavedGeneratedReportReferences()).toHaveLength(1);
+    await expectAutomaticReportReference(
+      reopened,
+      historical,
+      {
+        identity,
+        runId: 'daily-report-two',
+        revision: 2,
+      },
+      device.lose,
+    );
     await reopened.deleteSession(historical.sessionId);
     expect(await reopened.listSavedGeneratedReportReferences()).toEqual([]);
     expect(

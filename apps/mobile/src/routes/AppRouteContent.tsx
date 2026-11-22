@@ -209,14 +209,11 @@ export function AppRouteContent({
     case 'manual-history':
     case 'generated-reports':
     case 'generated-report-detail':
-    case 'generated-report-source':
-      return (
-        <RecordsMaterialDestination
-          actions={actions}
-          onOpenMemory={openMemory}
-          {...recordNavigation}
-        />
-      );
+    case 'generated-report-source': {
+      // Keep the shared source callbacks and their precedence on all four routes.
+      const props = { actions, onOpenMemory: openMemory, ...recordNavigation };
+      return <RecordsMaterialDestination {...props} />;
+    }
     case 'appointments':
       return appointmentRepository ? (
         <AppointmentsScreen
