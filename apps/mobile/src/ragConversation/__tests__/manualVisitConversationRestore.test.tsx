@@ -31,7 +31,7 @@ import { createConversationArtifactStorage } from '../../storage/conversationArt
 import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
 import { manualVisitRestoreData } from '../testSupport/manualVisitRestoreData';
-import { verifyManualVisitHealthKitRefresh } from '../testSupport/verifyManualVisitHealthKitRefresh';
+import { verifyDraftDuringHealthKitDeletion } from '../testSupport/verifyManualVisitHealthKitRefresh';
 import { prepareConversationVisitRetention } from '../../aiFeatures/integration/prepareConversationVisitRetention';
 import { createVisitQuestionSourceService } from '../../aiFeatures/integration/visitQuestionSourceRegistration';
 import { restoreConversationArtifact } from '../../aiFeatures/integration/restoreConversationArtifact';
@@ -53,7 +53,6 @@ import {
   openManualVisitRecords,
 } from '../manualVisitRecordService';
 import type { ConversationSessions } from '../conversationSessions';
-
 jest.mock('../manualVisitRecordService', () => ({
   ...jest.requireActual('../manualVisitRecordService'),
   openManualVisitRecords: jest.fn(),
@@ -125,7 +124,7 @@ test('restores a source-validated visit and its official answer after reopening 
     });
     const id = saved.questions[0]!.id;
     const manual = createManualVisitRecords(connection.database);
-    await manual.saveManual({
+    const recorded = await manual.saveManual({
       appointmentId: appointment.id,
       questionId: id,
       expectedQuestionRevision: (await readVisitQuestionRevision(
@@ -148,6 +147,7 @@ test('restores a source-validated visit and its official answer after reopening 
       registry: freshRegistry,
       data,
     });
+    const open = async () => discovery;
     const makeOptions = () => ({
       retention: createConversationSessionRetention({
         openStorage: async () => storage,
@@ -210,7 +210,7 @@ test('restores a source-validated visit and its official answer after reopening 
     const view = await render(
       <ConversationSessionsProvider options={makeOptions()}>
         <Capture />
-        <RestoredVisitDestinations discover={async () => discovery} />
+        <RestoredVisitDestinations visit={appointment.id} discover={open} />
       </ConversationSessionsProvider>,
     );
     await act(async () => {
@@ -220,7 +220,7 @@ test('restores a source-validated visit and its official answer after reopening 
     expect(screen.queryByText('저장된 답변')).toBeNull();
     await fireEvent.press(screen.getByText('한눈에'));
     await screen.findByText('저장된 답변');
-    await verifyManualVisitHealthKitRefresh(records);
+    await verifyDraftDuringHealthKitDeletion(records, recorded.id);
     await fireEvent.press(screen.getByText('저장'));
     await waitFor(() =>
       expect(screen.getByText('재열기 후 수정')).toBeTruthy(),
