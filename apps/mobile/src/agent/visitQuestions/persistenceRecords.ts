@@ -22,6 +22,7 @@ export function createReviewedVisitQuestionRecord(input: {
   readonly appointmentId: string;
   readonly question: VisitQuestionCandidate;
   readonly position: number;
+  readonly previousEffectiveAt?: string;
   readonly now: string;
   readonly metadataByCitation: VisitQuestionEvidenceCollection['metadataByCitation'];
   readonly legacyRecord?: VisitQuestion;
@@ -73,7 +74,8 @@ export function createReviewedVisitQuestionRecord(input: {
   // The local app has no user account ID; this marks an explicit on-device human review.
   return VisitQuestionCreateSchema.parse({
     id: input.question.identity!.id,
-    effectiveAt: input.appointment.effectiveAt,
+    // Revisiting a list under the same ID cannot relabel an already saved question.
+    effectiveAt: input.previousEffectiveAt ?? input.appointment.effectiveAt,
     recordedAt: input.now,
     ingestedAt: input.now,
     provenance: input.legacyRecord?.provenance ?? {
@@ -129,17 +131,26 @@ export async function saveReviewedVisitQuestionMemory(
     }
   }
 
+  // Keep historical question batches separate in the existing local memory entry too.
+  const byDate = new Map<string, VisitQuestionCreate[]>();
+  for (const question of questions) {
+    const sameDate = byDate.get(question.effectiveAt) ?? [];
+    sameDate.push(question);
+    byDate.set(question.effectiveAt, sameDate);
+  }
   try {
     await memory.remember({
       memoryKey: `visit-question-review:${appointmentId}`,
       kind: 'reviewed_interaction',
       importance: 0.75,
-      text: [
-        `사용자가 ${appointment.effectiveAt} 예약을 위해 검토한 질문:`,
-        ...questions.map(
-          (question, index) => `${index + 1}. ${question.questionText}`,
-        ),
-      ].join('\n'),
+      text: [...byDate]
+        .flatMap(([date, group]) => [
+          `사용자가 ${date} 예약을 위해 검토한 질문:`,
+          ...group.map(
+            (question, index) => `${index + 1}. ${question.questionText}`,
+          ),
+        ])
+        .join('\n'),
       provenance: {
         sourceIds,
         sourceReferences: questions.map(question => ({

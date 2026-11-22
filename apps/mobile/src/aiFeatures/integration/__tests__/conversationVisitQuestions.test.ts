@@ -196,3 +196,55 @@ test('rejects a late automatic appointment lookup after cancellation', async () 
   expect(resolveSelectedAi).not.toHaveBeenCalled();
   expect(generate).not.toHaveBeenCalled();
 });
+
+test('a newly earlier visit does not replace the appointment during an admitted preparation', async () => {
+  let next = appointment;
+  let entered!: () => void;
+  let release!: () => void;
+  const loading = new Promise<void>(resolve => {
+    entered = resolve;
+  });
+  const held = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  const loadAppointment = jest.fn(async () => next);
+  const generate = jest.fn(async () => ({
+    status: 'ready' as const,
+    questions: [candidate],
+    caveats: [],
+    validateSource: async () => true,
+  }));
+  const prepare = generateConversationVisitQuestions({
+    ownerKey: 'same-owned-turn',
+    request: '진료 질문을 준비해 주세요.',
+    operations: {
+      loadAppointment,
+      generate,
+    } as unknown as VisitQuestionRouteOperations,
+    loadSaved: async appointmentId => {
+      entered();
+      await held;
+      return {
+        status: 'ready',
+        appointmentId,
+        questions: [],
+        caveats: [],
+        restorationNotice: '',
+      };
+    },
+    resolveSelectedAi: async () => selected,
+    confirmConsent: jest.fn(),
+    isCurrentOwner: () => true,
+    signal: new AbortController().signal,
+  });
+  await loading;
+  next = {
+    ...appointment,
+    id: 'earlier-visit',
+    effectiveAt: '2026-10-30T09:00:00+09:00',
+  };
+  release();
+  expect(await prepare).toMatchObject({ status: 'ready', appointment });
+  expect(loadAppointment).toHaveBeenCalledTimes(1);
+  expect(generate.mock.calls[0]).toMatchObject([{ appointment }]);
+});
