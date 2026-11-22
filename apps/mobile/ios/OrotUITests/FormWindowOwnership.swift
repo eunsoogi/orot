@@ -118,9 +118,8 @@ extension AppointmentConsentUITests {
         let resultListID = "classification-result-list"
         let listResults = phase == 2 && node(app, resultListID).exists
         let resultIDs = listResults ? [resultListID] : [viewportID, "classification-page-text"]
-        let pagingContainer = listResults ? "classification-result-paging" : "classification-stage-footer"
         let required = ["medical-appointment-fullscreen", tokens[phase], "classification-circle-slot"]
-            + (paging ? [pagingContainer] : []) + actions
+            + (paging ? ["classification-stage-footer"] : []) + actions
             + (phase == 2 ? resultIDs : [])
         /// UIKit may omit the confirmation viewport; a projected one must be unique and scoped.
         func confirmationViewportProjected(in window: XCUIElement) throws -> Bool {

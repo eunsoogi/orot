@@ -77,7 +77,7 @@ test.each([
   { width: 430, height: 660, scale: 1 },
   { width: 300, height: 550, scale: 1.6 },
 ])(
-  'pages complete compact rows, keeping long detail accessible at $width points and $scale scale',
+  'scrolls complete compact rows, keeping long detail accessible at $width points and $scale scale',
   async ({ width, height, scale }) => {
     await act(async () =>
       Dimensions.set({
@@ -86,7 +86,7 @@ test.each([
       }),
     );
     const restart = jest.fn();
-    const view = await render(
+    await render(
       <ClassificationResultsStage
         rows={rows}
         summary="전체 분류 범위"
@@ -96,11 +96,10 @@ test.each([
     );
     await layout('medical-appointment-results', width, height);
     const first = screen.getAllByTestId('classification-result-row');
-    expect(first.length).toBeGreaterThanOrEqual(scale === 1 ? 2 : 1);
-    expect(first.length).toBeLessThanOrEqual(3);
+    expect(first).toHaveLength(rows.length);
     expect(screen.queryByText('이전 페이지')).toBeNull();
     expect(screen.queryByText('다음 페이지')).toBeNull();
-    expect(screen.getByRole('button', { name: '이전 페이지' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '이전 페이지' })).toBeNull();
     expect(screen.getAllByText(/09:05/)[0].props.numberOfLines).toBe(1);
     expect(screen.getByText(rows[0]!.title).props.numberOfLines).toBe(1);
     await fireEvent.press(first[0]!);
@@ -120,31 +119,16 @@ test.each([
     await fireEvent.press(
       screen.getByRole('button', { name: '분류된 일정 목록으로 돌아가기' }),
     );
-    await fireEvent.press(
-      screen.getByTestId('medical-appointment-next-result'),
-    );
-    expect(screen.queryByText(rows[0]!.title)).toBeNull();
-    expect(screen.getByText(rows[first.length]!.title)).toBeTruthy();
-    await fireEvent.press(
-      screen.getByTestId('medical-appointment-previous-result'),
-    );
     expect(screen.getByText(rows[0]!.title)).toBeTruthy();
-    expect(JSON.stringify(view.toJSON())).not.toContain('RCTScrollView');
-    expect(JSON.stringify(view.toJSON())).toMatch(
-      /chevron\.left.*chevron\.right/,
-    );
-    const band = screen.getByTestId('classification-result-paging');
-    expect(StyleSheet.flatten(band.props.style)).toMatchObject({
-      flexDirection: 'row',
-      alignItems: 'center',
-    });
-    for (const name of ['이전 페이지', '다음 페이지']) {
-      expect(
-        StyleSheet.flatten(screen.getByRole('button', { name }).props.style),
-      ).toMatchObject({ width: 44, height: 44, flexShrink: 0 });
-    }
+    expect(screen.getByText(rows.at(-1)!.title)).toBeTruthy();
+    expect(screen.queryByTestId('medical-appointment-next-result')).toBeNull();
+    expect(
+      screen.queryByTestId('medical-appointment-previous-result'),
+    ).toBeNull();
     await layout('medical-appointment-results', 240, 125);
-    expect(screen.getAllByTestId('classification-result-row')).toHaveLength(1);
+    expect(screen.getAllByTestId('classification-result-row')).toHaveLength(
+      rows.length,
+    );
     expect(screen.queryByTestId('classification-result-reader')).toBeNull();
     await layout('medical-appointment-results', width, height);
     expect(screen.getAllByTestId('classification-result-row')).toHaveLength(

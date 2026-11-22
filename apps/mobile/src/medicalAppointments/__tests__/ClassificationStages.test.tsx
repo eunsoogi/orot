@@ -62,6 +62,7 @@ test('shows only the current stage, with exact completed-event progress and no d
   expect(screen.getByText('둘째 진료')).toBeTruthy();
   expect(screen.queryByTestId('medical-appointment-next-result')).toBeNull();
   expect(screen.getAllByTestId('classification-result-row')).toHaveLength(2);
+  expect(screen.getByTestId('classification-result-list')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('medical-appointment-import'));
   expect(screen.getByTestId('medical-appointment-confirmation')).toBeTruthy();
   expect(classify).toHaveBeenCalledTimes(1);

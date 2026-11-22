@@ -532,19 +532,20 @@ regressions; native acceptance of the actual consumer UI remains unverified.
 
 #### 단계별 분류 자동 native case 준비 (실행 전)
 
-`AppointmentConsentUITests/testApprovedBatchesExposeMeasuredProgressAndAllResultPages`는
+`AppointmentConsentUITests/testApprovedBatchesExposeMeasuredProgressAndScrollableResults`는
 `fixtures` 및 `duo` inventory에 같은 한 case로 등록합니다. 기존 설정 취소/실패 저장 방지,
 회전 disclosure와 App-navigation/Back case는 삭제하거나 약화하지 않습니다. 새 case는
 UUID 격리 저장소에서 실제 설정 UI 승인 후에만 합성 remote provider의 gate를 해제합니다.
 실제 완료 배치의 AX 값 `0% → 88% → 100%`와 provider 호출 `1 → 2 → 2`, 저장 gate 전
 저장 marker 부재, progress 중 결과/확인 페이지 부재를 확인합니다. 마지막 해제 후 결과를
-앞으로 끝까지 읽고 뒤로 같은 순서로 돌아오며 9개 제목, 인덱스를 붙인 긴 첫 제목의 전체
-원문, 본문 viewport containment, 모든 footer 동작의 44pt 최소 크기/도달성을 검사합니다.
-인덱스는 같은 반복 제목 페이지가 우연히 같아 변화 감지가 불가능한 fixture 문제를 없애며,
-실제 일정이나 제품 데이터 형식에는 영향을 주지 않습니다.
+한 세로 목록에서 끝까지 스크롤하며 9개 제목, 인덱스를 붙인 긴 첫 제목의 전체 원문,
+본문 viewport containment 및 실제 도달성, 버튼의 44pt 최소 크기를 확인합니다. 상세에서는
+목록이 접근성 트리에 나타나지 않아야 하며, 마지막 결과의 상세에서 돌아왔을 때 같은 행이
+같은 위치에 있어야 합니다. 결과 요약과 재분류 버튼은 스크롤 중에도 고정되어야 합니다.
+인덱스는 합성 제목을 구별하기 위한 것으로 실제 일정 데이터에는 영향을 주지 않습니다.
 
 이 case 소스/등록 및 cloud 회귀는 native 성공 증거가 아닙니다. 아직 컴파일/실행 전이며
-실행자는 progress AX label/value와 원문 pagination의 실제 UIKit 결과를 보존해야 합니다.
+실행자는 진행 AX label/value와 결과 목록 스크롤·상세 복귀의 실제 UIKit 결과를 보존해야 합니다.
 fixture gate 45pt와 진단 텍스트가 차감된 화면을 스크린샷에 함께 남깁니다. 이것은
 App-navigation 제품 geometry 또는 실제 VoiceOver 구동의 대체 증거가 아닙니다.
 

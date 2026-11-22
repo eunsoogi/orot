@@ -4,7 +4,7 @@ import XCTest
 /// Real settings approval and manually released synthetic batches expose stable native stage boundaries.
 extension AppointmentConsentUITests {
     @MainActor
-    func testApprovedBatchesExposeMeasuredProgressAndAllResultPages() throws {
+    func testApprovedBatchesExposeMeasuredProgressAndScrollableResults() throws {
         let app = XCUIApplication()
         let sceneSession = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_WIDE_STAGE_VALIDATION"] == "YES" ? UUID().uuidString : nil
         let device = XCUIDevice.shared
@@ -56,8 +56,8 @@ extension AppointmentConsentUITests {
         UITestConditions.value(node(app, "calendar-classification-synthetic-calendar-save"), equals: "syntheticCalendarSave=confirmed")
         XCTAssertFalse(node(app, "medical-appointment-progress").exists)
         XCTAssertFalse(node(app, "medical-appointment-confirmation").exists)
-        let pages = try readAllResultPages(app, anchor: anchor)
-        let readable = pages.joined().filter { !$0.isWhitespace }
+        let results = try readScrollableResults(app, anchor: anchor)
+        let readable = results.joined().filter { !$0.isWhitespace }
         // Indexed segments make loss/repetition observable even when native line breaks split a long title.
         let title = (1 ... 30).map { "합성 긴 진료 예약 \($0)" }.joined(separator: " ").filter { !$0.isWhitespace }
         XCTAssertTrue(readable.contains(title), "Every segment of the long synthetic title must remain reachable")
@@ -114,21 +114,6 @@ extension AppointmentConsentUITests {
         try captureStageLayout(app, stage: "progress-\(percent)", anchor: anchor, measuredProgress: predicate)
         // Evidence includes fixture controls: their 45pt gate and diagnostic text reduce the product stage height.
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-progress-\(percent)", testCase: self)
-    }
-
-    @MainActor
-    func readAllResultPages(_ app: XCUIApplication, anchor: ClassificationStageWindowAnchor?) throws -> [String] {
-        XCTAssertTrue(node(app, "classification-result-list").waitForAppearance())
-        return try readCompactResultPages(app, anchor: anchor)
-    }
-
-    @MainActor
-    func assertResultPager(previous: XCUIElement, next: XCUIElement, list: XCUIElement) {
-        guard previous.exists, next.exists else { return }
-        XCTAssertLessThanOrEqual(previous.frame.maxX, list.frame.minX + 1)
-        XCTAssertGreaterThanOrEqual(next.frame.minX, list.frame.maxX - 1)
-        XCTAssertEqual(previous.frame.midY, list.frame.midY, accuracy: 1)
-        XCTAssertEqual(next.frame.midY, list.frame.midY, accuracy: 1)
     }
 
     /// The single detail surface has a dedicated Back action and no pagination.
@@ -194,8 +179,7 @@ extension AppointmentConsentUITests {
         let paging = ["medical-appointment-previous-result", "medical-appointment-next-result"].map { node(app, $0) }
         XCTAssertEqual(paging[0].exists, paging[1].exists)
         for action in paging where action.exists {
-            let resultBand = node(app, "classification-result-paging")
-            let container = resultBand.exists ? resultBand : node(app, "classification-stage-footer")
+            let container = node(app, "classification-stage-footer")
             XCTAssertTrue(container.exists && app.frame.contains(container.frame))
             XCTAssertGreaterThanOrEqual(action.frame.width, 44)
             XCTAssertGreaterThanOrEqual(action.frame.height, 44)

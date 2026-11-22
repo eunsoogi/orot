@@ -126,7 +126,7 @@ export const fixtureTests = [
   'OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification',
   'OrotUITests/AppointmentConsentUITests/testSettingsDisclosureAndDeclineAcrossAppearances',
   'OrotUITests/AppointmentConsentUITests/testClassificationReturnsThroughScheduleToHome',
-  'OrotUITests/AppointmentConsentUITests/testApprovedBatchesExposeMeasuredProgressAndAllResultPages',
+  'OrotUITests/AppointmentConsentUITests/testApprovedBatchesExposeMeasuredProgressAndScrollableResults',
   'OrotUITests/AppointmentConsentUITests/testWideLargeTextReaderPreservesContentAndNativeDismissal',
   'OrotUITests/VisitQuestionConsentUITests/testDeclinedRemoteConsentStopsSendsAndCitedQuestionsRemainReviewable',
   'OrotUITests/VisitQuestionConsentUITests/testPublicSearchShowsConsentBeforeSyntheticSearch',

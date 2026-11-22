@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { ClassificationResultsStage } from '../ClassificationResultsStage';
 
@@ -21,14 +27,14 @@ const rows = Array.from({ length: 8 }, (_, index) => {
   };
 });
 
-test('wide results stay at three per page and Detail Back preserves the selected list page', async () => {
+test('one scroll owns all ordered rows and stays mounted but inaccessible during detail', async () => {
   const pane = { width: 820, height: 750, scale: 2, fontScale: 1 };
   await act(async () => Dimensions.set({ window: pane, screen: pane }));
   const restart = jest.fn();
   await render(
     <ClassificationResultsStage
       rows={rows}
-      summary="범위"
+      summary="합성 집계"
       notice=""
       restart={restart}
     />,
@@ -36,15 +42,22 @@ test('wide results stay at three per page and Detail Back preserves the selected
   await fireEvent(screen.getByTestId('medical-appointment-results'), 'layout', {
     nativeEvent: { layout: pane },
   });
-  const rowIDs = () => screen.getAllByTestId('classification-result-row');
-  const next = () => screen.getByRole('button', { name: '다음 페이지' });
-  const previous = () => screen.getByRole('button', { name: '이전 페이지' });
-  expect(rowIDs()).toHaveLength(3);
-  expect(previous()).toBeDisabled();
-  await fireEvent.press(next());
-  expect(rowIDs()).toHaveLength(3);
-  expect(screen.getByText(rows[3]!.title)).toBeTruthy();
-  await fireEvent.press(rowIDs()[0]!);
+  const list = screen.getByTestId('classification-result-list');
+  const visibleRows = screen.getAllByTestId('classification-result-row');
+  expect(visibleRows.map(row => row.props.accessibilityLabel)).toEqual(
+    rows.map(row => `${row.title}, ${row.when}, ${row.category}`),
+  );
+  expect(
+    screen.queryByTestId('medical-appointment-previous-result'),
+  ).toBeNull();
+  expect(screen.queryByTestId('medical-appointment-next-result')).toBeNull();
+  expect(within(list).getAllByTestId('classification-result-row')).toHaveLength(
+    rows.length,
+  );
+  expect(within(list).queryByTestId('medical-appointment-import')).toBeNull();
+  expect(within(list).queryByTestId('classification-result-notice')).toBeNull();
+  expect(screen.getByText('합성 집계')).toBeVisible();
+  await fireEvent.press(visibleRows.at(-1)!);
   const back = screen.getByRole('button', {
     name: '분류된 일정 목록으로 돌아가기',
   });
@@ -53,16 +66,20 @@ test('wide results stay at three per page and Detail Back preserves the selected
     height: 44,
   });
   expect(back).not.toHaveTextContent('목록');
+  expect(screen.getByTestId('classification-detail-value-0')).toHaveTextContent(
+    rows.at(-1)!.title,
+  );
+  expect(screen.queryByTestId('classification-result-list')).toBeNull();
+  expect(screen.queryAllByTestId('classification-result-row')).toHaveLength(0);
+  expect(
+    screen.getByTestId('classification-result-list', {
+      includeHiddenElements: true,
+    }),
+  ).toBe(list);
   await fireEvent.press(back);
+  expect(screen.getByTestId('classification-result-list')).toBe(list);
+  expect(screen.queryByTestId('classification-result-reader')).toBeNull();
   expect(restart).not.toHaveBeenCalled();
-  expect(screen.getByText(rows[3]!.title)).toBeTruthy();
-  await fireEvent.press(next());
-  expect(rowIDs()).toHaveLength(2);
-  expect(next()).toBeDisabled();
-  expect(screen.getByText(rows[7]!.title)).toBeTruthy();
-  await fireEvent.press(previous());
-  await fireEvent.press(previous());
-  expect(screen.getByText(rows[0]!.title)).toBeTruthy();
 });
 
 test('a short partial list shows warning and coverage and offers their full text without a second result page', async () => {
@@ -83,7 +100,9 @@ test('a short partial list shows warning and coverage and offers their full text
   });
   expect(screen.getByText(notice)).toBeVisible();
   expect(screen.getByText(coverage)).toBeVisible();
-  expect(screen.getAllByTestId('classification-result-row')).toHaveLength(1);
+  expect(screen.getAllByTestId('classification-result-row')).toHaveLength(
+    rows.length,
+  );
   await fireEvent.press(screen.getByTestId('classification-result-notice'));
   expect(screen.getByText(notice).props.numberOfLines).toBeUndefined();
   expect(screen.getByText(coverage).props.numberOfLines).toBeUndefined();
