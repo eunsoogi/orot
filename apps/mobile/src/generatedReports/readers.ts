@@ -1,7 +1,8 @@
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { conversationDailyReportText } from '../aiFeatures/integration/conversationDailyReportText';
 import { projectGeneratedSummaryDetail } from './summaryDetail';
-import { parsePossibilityConversationReport } from '../ragConversation/conversationReportTemplate';
+import { readConversationReportEvidence } from './conversationReportEvidence';
+import { createArchivedCitationService } from '../aiFeatures/integration/archivedCitationService';
 import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
 import { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import { validateDailyReportArtifact } from '../storage/dailyReportArtifactValidation';
@@ -37,6 +38,11 @@ export function createGeneratedReportReader(
 } {
   const bookmarks = createConversationArtifactStorage(database);
   return {
+    archivedSources: createArchivedCitationService(async () => ({
+      ...(await dependencies.data()),
+      // Resolve and recheck the same protected database that admitted the report.
+      openConversationArtifactStorage: async () => bookmarks,
+    })),
     async readBookmarkedDiseasePossibilities(id, current) {
       const revision = await bookmarks.readSavedDiseasePossibilitiesPin(
         id,
@@ -87,22 +93,7 @@ async function readSelected(
   },
 ): Promise<GeneratedReportDetail | null> {
   if (row.origin === 'conversation') {
-    if (row.kind !== 'possibilities' || row.key !== `conversation:${row.id}`)
-      return null;
-    const saved = await createConversationArtifactStorage(database).read(
-      row.id,
-    );
-    if (
-      !saved ||
-      saved.entryIntent !== 'possibilities' ||
-      saved.status !== 'complete' ||
-      saved.createdAt !== row.createdAt
-    )
-      return null;
-    const report = parsePossibilityConversationReport(saved.answer);
-    return report
-      ? { paragraphs: [], conversationPossibility: report }
-      : { paragraphs: [saved.answer] };
+    return readConversationReportEvidence(database, row, signal);
   }
   if (row.kind === 'daily_report') {
     // Superseded and invalidated runs share a tombstone. Never guess the reason or

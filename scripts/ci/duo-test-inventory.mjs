@@ -34,6 +34,7 @@ export const duoTests = [
   'OrotUITests/ScheduleCalendarUITests/testSelectedAppointmentSurvivesDarkLandscapeReflowAndConfirmation',
   'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable',
   'OrotUITests/AppointmentsUITests/testAppointmentSelectionDetailsReflowAcrossDuoGeometry',
+  'OrotUITests/AppointmentsUITests/testAppAppointmentOuterEdgeKeepsScrollAndRailBack',
   'OrotUITests/AppointmentsUITests/testSavedAppointmentIdentitySurvivesAppearanceEditAndRestart',
   'OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification',
   'OrotUITests/AppointmentConsentUITests/testClassificationReturnsThroughScheduleToHome',

@@ -18,6 +18,8 @@ export interface ConversationEntryContext {
   readonly entryKey: string;
   readonly appointmentId?: string;
   readonly reportRequest?: DailyReportIdentity;
+  /** Ephemeral indicator from a direct user tap, never restored or scheduled. */
+  readonly directDailyReportRequest?: true;
   /** A route-local artifact identity; it does not authorize report content transfer. */
   readonly dailyReport?: {
     readonly identity: DailyReportIdentity;

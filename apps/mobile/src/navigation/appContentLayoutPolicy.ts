@@ -56,6 +56,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'disease-hypotheses' ||
     route.name === 'saved-analysis' ||
     route.name === 'source-detail' ||
+    route.name === 'generated-report-source' ||
     (route.name === 'root' &&
       (rootTabs?.activeTab === 'overview' ||
         rootTabs?.activeTab === 'records' ||

@@ -99,6 +99,7 @@ export function createConversationSummaryIntegration(input: {
           context.reportRequest,
           signal ?? new AbortController().signal,
           observer,
+          context.directDailyReportRequest === true,
         );
       return context?.intent === 'health-summary' && !observer?.photoInput
         ? summarize(

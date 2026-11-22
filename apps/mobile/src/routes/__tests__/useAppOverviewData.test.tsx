@@ -121,3 +121,23 @@ test('a late older recording refresh cannot replace the latest snapshot', async 
   expect(result.current.recordings).toEqual([savedSource]);
   expect(result.current.recordingState).toBe('ready');
 });
+
+test('Records reloads a newly saved recording without refreshing unrelated appointments', async () => {
+  const store = createAppointmentStore([]);
+  const loadAppointments = jest.fn(async () => store.repository);
+  const loadRecordings = jest
+    .fn()
+    .mockResolvedValueOnce([])
+    .mockResolvedValue([savedSource]);
+  const { result, rerender } = await renderHook(
+    ({ records }: { records: boolean }) =>
+      useAppOverviewData(loadAppointments, loadRecordings, false, records),
+    { initialProps: { records: true } },
+  );
+  expect(result.current.recordings).toEqual([]);
+  await rerender({ records: false });
+  await rerender({ records: true });
+  expect(result.current.recordings).toEqual([savedSource]);
+  expect(loadRecordings).toHaveBeenCalledTimes(2);
+  expect(loadAppointments).toHaveBeenCalledTimes(1);
+});
