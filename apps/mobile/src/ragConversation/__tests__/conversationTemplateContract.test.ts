@@ -48,3 +48,19 @@ test.each(['\n', '\n\n', '\n\n\n'])(
     ).toEqual(bodies);
   },
 );
+
+test.each([
+  'conversationTemplate.daily.scope',
+  'dailyReport.coverage.attention',
+] as const)(
+  'renders the historical or current app-owned Daily Report heading %s',
+  key => {
+    const body = 'First retained line.\n\nSecond retained line.';
+    const title = t(key);
+    expect(
+      parseConversationReport(
+        `# ${t('dailyReport.title')}\n\nSynthetic cutoff.\n\n## ${title}\n\n${body}`,
+      )?.sections,
+    ).toEqual([{ title, content: `\n${body}` }]);
+  },
+);
