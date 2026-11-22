@@ -1,3 +1,4 @@
+import { observeToolEventTransaction } from './toolEventWriteDiagnostic';
 import { toolEventRecovery } from './toolEventRecovery';
 import {
   legacyToolPeriodAvailable,
@@ -99,7 +100,7 @@ export function createConversationToolEventStorage(
         throw new Error('Invalid conversation tool identity.');
       await ensure();
       const lineage = decodeToolLineage(input.dependencies ?? [], event, input);
-      await database.transaction(async tx => {
+      await observeToolEventTransaction(database, async tx => {
         // A late callback must not recreate events after a retained turn was removed.
         const session = await tx.execute(
           'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ? AND NOT EXISTS (SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id = ?) AND NOT EXISTS (SELECT 1 FROM conversation_tool_removed_calls r WHERE r.session_id = s.id AND r.run_id = ? AND r.call_id = ?)',

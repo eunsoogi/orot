@@ -1,3 +1,4 @@
+import { observeModelStage } from './modelStageDiagnostics';
 import { executionLimit } from './executionLimits';
 import { exceedsEvidenceCapacity } from './evidenceCapacity';
 import { availableEvidenceTools, requiresCompleteResearch } from './initialEvidenceSearch';
@@ -51,10 +52,15 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     });
     let batch: EvidenceBatch;
     try {
-      const searched = await observeUntilAbort(
-        invokePreparedEvidenceSearch(context, state, tool, runtime.store),
-        context.signal,
-      );
+      const search = () =>
+        observeUntilAbort(
+          invokePreparedEvidenceSearch(context, state, tool, runtime.store),
+          context.signal,
+        );
+      const observe = context.options.onModelStage;
+      const searched = await (observe
+        ? observeModelStage(observe, 'tool_search_wait', search)
+        : search());
       if (searched.kind === 'cancelled') {
         canceled(context, toolProviderStop(tool));
         return completeState();
