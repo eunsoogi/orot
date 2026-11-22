@@ -12,6 +12,9 @@ import {
   useConversationSessions,
 } from '../ConversationSessionsContext';
 import { startConversationReportTurn } from '../startConversationReportTurn';
+import { entryIntentSender } from '../entryIntentSender';
+import { createConversationSessions } from '../conversationSessions';
+import { isTypedTodayDailyReportRequest } from '../typedTodayDailyReportRequest';
 import type { ConversationScreenProps } from '../ConversationScreenProps';
 
 const mockOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
@@ -64,35 +67,43 @@ async function typeAndSend(value: string) {
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
 }
 
-test('bare typed Daily Report starts one report on the local day, without a second button', async () => {
-  localMidnight();
-  const sender = jest.fn(
-    async (..._args: Parameters<ConversationScreenProps['onSend']>) => ({
-      status: 'answer' as const,
-      answer: 'Synthetic report ready',
-      citations: [],
-    }),
-  );
-  await mount(sender);
-  await typeAndSend('일일 보고서');
-  await waitFor(() =>
-    expect(screen.getByText('Synthetic report ready')).toBeTruthy(),
-  );
-  expect(sender).toHaveBeenCalledTimes(1);
-  const [question, , , observer, context] = sender.mock.calls[0];
-  expect(question).toBe('일일 보고서');
-  expect(observer?.inputOrigin).toBe('composer');
-  expect(context).toMatchObject({
-    intent: 'daily-report',
-    reportRequest: createDailyReportIdentity('2035-01-02', 'Asia/Seoul'),
-  });
-  expect(context?.directDailyReportRequest).toBeUndefined();
-  expect(screen.queryByText('오늘 선택하기')).toBeNull();
+test.each([
+  '일일 보고서',
+  '오늘의 보고서 요청하기',
+  '오늘 일일 보고서 만들어줘',
+  '일일 보고서를 작성해 주세요.',
+])(
+  'typed Daily Report starts one report on the local day, without a second button: %s',
+  async command => {
+    localMidnight();
+    const sender = jest.fn(
+      async (..._args: Parameters<ConversationScreenProps['onSend']>) => ({
+        status: 'answer' as const,
+        answer: 'Synthetic report ready',
+        citations: [],
+      }),
+    );
+    await mount(sender);
+    await typeAndSend(command);
+    await waitFor(() =>
+      expect(screen.getByText('Synthetic report ready')).toBeTruthy(),
+    );
+    expect(sender).toHaveBeenCalledTimes(1);
+    const [question, , , observer, context] = sender.mock.calls[0];
+    expect(question).toBe(command);
+    expect(observer?.inputOrigin).toBe('composer');
+    expect(context).toMatchObject({
+      intent: 'daily-report',
+      reportRequest: createDailyReportIdentity('2035-01-02', 'Asia/Seoul'),
+    });
+    expect(context?.directDailyReportRequest).toBeUndefined();
+    expect(screen.queryByText('오늘 선택하기')).toBeNull();
 
-  await typeAndSend('어제 일일 보고서를 설명해 줘');
-  await waitFor(() => expect(sender).toHaveBeenCalledTimes(2));
-  expect(sender.mock.calls[1][4]?.reportRequest).toBeUndefined();
-});
+    await typeAndSend('어제 일일 보고서를 설명해 줘');
+    await waitFor(() => expect(sender).toHaveBeenCalledTimes(2));
+    expect(sender.mock.calls[1][4]?.reportRequest).toBeUndefined();
+  },
+);
 
 test('a later typed request after a successful shortcut uses the new local day', async () => {
   localMidnight();
@@ -157,4 +168,37 @@ test('a stale composer callback cannot start a typed report', async () => {
   active = false;
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   expect(send).not.toHaveBeenCalled();
+});
+
+test('pins the natural-language target at the send boundary across midnight', async () => {
+  localMidnight();
+  const store = createConversationSessions();
+  const command = '오늘 일일 보고서를 만들어 줘.';
+  const send = jest.fn(
+    async (..._args: Parameters<ConversationScreenProps['onSend']>) => ({
+      status: 'no_evidence' as const,
+    }),
+  );
+  try {
+    const id = store.getSnapshot().activeId;
+    jest.setSystemTime(new Date('2035-01-01T14:59:59.900Z'));
+    store.setDraft(id, command);
+    const admitted = entryIntentSender(store, id, send, 'composer');
+    jest.setSystemTime(new Date('2035-01-01T15:00:00.100Z'));
+    await admitted(command, [], new AbortController().signal);
+    expect(send.mock.calls[0]?.[4]?.reportRequest).toEqual(
+      createDailyReportIdentity('2035-01-01', 'Asia/Seoul'),
+    );
+    expect(
+      isTypedTodayDailyReportRequest('어제 일일 보고서를 만들어 줘.'),
+    ).toBe(false);
+    expect(
+      isTypedTodayDailyReportRequest('2035년 1월 6일 일일 보고서를 만들어 줘.'),
+    ).toBe(false);
+    expect(
+      isTypedTodayDailyReportRequest('일일 보고서가 무엇인지 설명해 줘.'),
+    ).toBe(false);
+  } finally {
+    store.dispose();
+  }
 });

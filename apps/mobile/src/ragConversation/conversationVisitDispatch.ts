@@ -5,6 +5,7 @@ import type { ConversationSession } from './conversationSessionTypes';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import { entryIntentSender } from './entryIntentSender';
 import { isTypedVisitQuestionRequest } from './typedVisitQuestionRequest';
+import { withTypedComposerReport } from './typedConversationReportRequest';
 import type { TreatmentConversationSender } from '../treatmentContext/treatmentConversationSender';
 
 const pendingVisits = new WeakMap<
@@ -123,7 +124,12 @@ export function sendConversationMessage(
   prepare?: ConversationScreenProps['prepareVisitQuestions'],
 ) {
   const session = store.getSnapshot().sessions.find(item => item.id === id);
-  const sendEntry = entryIntentSender(store, id, onSend, 'composer');
+  const sendEntry = entryIntentSender(
+    store,
+    id,
+    withTypedComposerReport(onSend),
+    'composer',
+  );
   return store.send(id, (question, history, signal, observer) => {
     if (observer?.photoInput)
       return sendEntry(question, history, signal, observer);

@@ -21,6 +21,12 @@ export function conversationWorkflowContext(
     ...(options.entryIntent && options.authoredCurrentRequest
       ? { authoredCurrentRequest: true }
       : {}),
+    ...(options.entryIntent === 'possibilities' &&
+    options.authoredCurrentRequest &&
+    options.typedPossibilityReport &&
+    !options.photoEvidence?.length
+      ? { typedPossibilityReport: true }
+      : {}),
     ...(options.validatedPriorTurns?.length
       ? { priorDialogue: options.validatedPriorTurns }
       : {}),
