@@ -11,15 +11,18 @@ import { generatedReportCopy as copy } from './text';
 import type { GeneratedReportRow } from './types';
 import { generatedReportBrowserStyles as styles } from './generatedReportBrowserStyles';
 
+export type GeneratedReportPagination =
+  'idle' | 'ready' | 'loading' | 'failed' | 'complete';
+
 /** The list publishes metadata only; opening a row is the protected content read. */
 export function GeneratedReportRows({
   rows,
-  more,
+  pagination,
   onOpen,
   onMore,
 }: {
   readonly rows: readonly GeneratedReportRow[];
-  readonly more: boolean;
+  readonly pagination: GeneratedReportPagination;
   readonly onOpen: (row: GeneratedReportRow) => void;
   readonly onMore: () => void;
 }) {
@@ -43,14 +46,32 @@ export function GeneratedReportRows({
           ))}
         </MaterialLibraryRows>
       )}
-      {more ? (
-        <AppButton
-          title={copy.more}
-          onPress={() => {
-            onMore();
-          }}
-        />
-      ) : null}
+      {pagination !== 'idle' && (
+        <View style={styles.pagination}>
+          {pagination === 'failed' && (
+            <AppText accessibilityRole="alert">{copy.moreFailed}</AppText>
+          )}
+          {pagination === 'complete' ? (
+            <AppText accessibilityLiveRegion="polite">
+              {copy.moreComplete}
+            </AppText>
+          ) : (
+            <AppButton
+              title={
+                pagination === 'loading'
+                  ? copy.moreLoading
+                  : pagination === 'failed'
+                    ? copy.moreRetry
+                    : copy.more
+              }
+              busy={pagination === 'loading'}
+              onPress={() => {
+                onMore();
+              }}
+            />
+          )}
+        </View>
+      )}
     </>
   );
 }

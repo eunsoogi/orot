@@ -73,6 +73,9 @@ export type RagConversationObserver = Pick<
   readonly expectedConversationModel?: {
     readonly providerId: string;
     readonly modelId: string;
+    /** Warm local preparation never bypasses the late selection/credential guard. */
+    readonly isCurrent?: () => boolean;
+    readonly isDurablyCurrent?: () => Promise<boolean>;
   };
   /** Voice binds its transcript to the exact selection approved before capture. */
   readonly expectedVoiceSelection?: {

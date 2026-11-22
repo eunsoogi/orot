@@ -6,6 +6,9 @@ type Event =
   | 'pause-requested'
   | 'foreground-check-started'
   | 'foreground-check-passed'
+  | 'foreground-lease-unavailable'
+  | 'startup-lease-unavailable'
+  | 'native-expiration'
   | 'stop-received'
   | 'abort-dispatched'
   | 'stop-awaiting-commit'
@@ -35,6 +38,9 @@ const events = new Set<Event>([
   'pause-requested',
   'foreground-check-started',
   'foreground-check-passed',
+  'foreground-lease-unavailable',
+  'startup-lease-unavailable',
+  'native-expiration',
   'stop-received',
   'abort-dispatched',
   'stop-awaiting-commit',

@@ -54,11 +54,17 @@ export function beginOrdinaryConversationMemoryTask(
         candidate.question === question &&
         candidate.status !== 'partial' &&
         !candidate.submittedInput &&
-        !candidate.entryIntent &&
+        (candidate.entryIntent === undefined ||
+          candidate.entryIntent === 'possibilities') &&
         !candidate.dailyReport &&
         !candidate.healthSummary &&
         !candidate.visitQuestions &&
         !candidate.treatmentContext;
+      // The session already proved this was a fresh composer request. Carry
+      // the app-owned mode from its retained result to the protected matcher;
+      // neither the typed shortcut phrase nor generated report text can save.
+      if (proposed && candidate.entryIntent === 'possibilities')
+        source = { ...source, entryIntent: candidate.entryIntent };
     },
     async finish(ownerCurrent: () => boolean) {
       if (finishing) return false;
