@@ -42,6 +42,7 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
         }
       });
       let active = false;
+      let schemaCalls = 0;
       const profile = new Map<
         string,
         { calls: number; rows: number; ms: number }
@@ -51,6 +52,8 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
           const started = performance.now();
           const result = await tx.execute(query, parameters);
           if (active) {
+            if (/^(?:CREATE|ALTER|DROP)\b/i.test(query.trimStart()))
+              schemaCalls++;
             const key = query.includes('source_deletion_tombstones')
               ? 'tombstone-fence'
               : query.includes('agent_memory_removed_sources')
@@ -132,12 +135,14 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
           count,
           totalMs: performance.now() - start,
           profile: Object.fromEntries(profile),
+          schemaCalls,
         }),
       );
       expect(profile.get('record-read')?.calls).toBe(1);
       expect(profile.get('dependency-index')?.calls).toBe(1);
-      // Four fixed policy setup/check/stamp calls preserve quarantine without per-member work.
-      expect([...profile.values()].reduce((n, p) => n + p.calls, 0)).toBe(12);
+      // The owning schema installs policy before the write; warm writes must not repeat DDL.
+      expect(schemaCalls).toBe(0);
+      expect([...profile.values()].reduce((n, p) => n + p.calls, 0)).toBe(10);
       const indexed = await database.execute(
         'SELECT count(*) AS count FROM conversation_tool_dependencies',
       );

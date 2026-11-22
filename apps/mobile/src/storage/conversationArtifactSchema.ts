@@ -15,6 +15,7 @@ import { setupResearchArtifactGuards } from './researchArtifactGuards';
 import { completeSummaryDeletion } from './summaryDeletionPolicy';
 import { setupResearchInputGuards } from './researchInputGuards';
 import { setupConversationToolGuards } from './conversationToolGuards';
+import { setupToolPeriodPolicy } from './legacyToolPeriodQuarantine';
 import {
   ensureTypedDeletionMarkers,
   markerMatchesArtifactSource,
@@ -64,6 +65,8 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_tool_events (session_id TEXT NOT NULL, message_id TEXT NOT NULL, created_at TEXT NOT NULL, run_id TEXT NOT NULL, call_id TEXT NOT NULL, event_json TEXT NOT NULL, PRIMARY KEY (session_id, run_id, call_id))',
   );
+  // Install the call retirement guard with the owning schema, not during source reads.
+  await setupToolPeriodPolicy(tx);
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_tool_lineage (session_id TEXT NOT NULL, run_id TEXT NOT NULL, call_id TEXT NOT NULL, sources_json TEXT NOT NULL, PRIMARY KEY (session_id, run_id, call_id))',
   );
