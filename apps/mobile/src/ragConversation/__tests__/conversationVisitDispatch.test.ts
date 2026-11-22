@@ -3,6 +3,7 @@ import {
   sendConversationMessage,
 } from '../conversationVisitDispatch';
 import { createConversationSessions } from '../conversationSessions';
+import { isWarmConversationSender } from '../warmConversationSender';
 import { conversationEntryForSession } from '../useConversationEntryIntent';
 import { createConversationSessionRetention } from '../conversationSessionRetention';
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
@@ -151,3 +152,48 @@ test('edited initial failure retries preparation then allows an ordinary follow-
   expect(onSend).toHaveBeenCalledTimes(1);
   store.dispose();
 });
+
+test.each([
+  ['원인이 뭐예요?', undefined],
+  ['일일 보고서를 만들어 줘.', 'daily-report'],
+  ['질병 가능성 보고서를 만들어 줘.', 'possibilities'],
+  ['내 건강 정보를 요약해 줘.', 'health-summary'],
+  ['다음 진료 질문을 준비해 줘.', 'visit-questions'],
+] as const)(
+  'preserves exact ordinary warm sender identity without enrolling typed template %s',
+  async (question, intent) => {
+    jest.mocked(conversationEntryForSession).mockReturnValue(undefined);
+    const store = createConversationSessions();
+    type Send = Parameters<typeof sendConversationMessage>[2];
+    const sender = jest.fn<ReturnType<Send>, Parameters<Send>>(async () => ({
+      status: 'answer',
+      answer: '합성 답변',
+      citations: [],
+    }));
+    const prepare = jest.fn<ReturnType<Send>, Parameters<Send>>(async () => ({
+      status: 'answer',
+      answer: '합성 진료 질문',
+      citations: [],
+    }));
+    const dispatch = jest.spyOn(store, 'send');
+    try {
+      store.setDraft(1, question);
+      await sendConversationMessage(store, 1, sender, prepare);
+      expect(dispatch).toHaveBeenCalledTimes(1);
+      expect(isWarmConversationSender(dispatch.mock.calls[0]![1])).toBe(
+        intent === undefined,
+      );
+      if (intent === 'visit-questions') {
+        expect(sender).not.toHaveBeenCalled();
+        expect(prepare).toHaveBeenCalledTimes(1);
+        expect(prepare.mock.calls[0]?.[4]?.intent).toBe(intent);
+      } else {
+        expect(prepare).not.toHaveBeenCalled();
+        expect(sender).toHaveBeenCalledTimes(1);
+        expect(sender.mock.calls[0]?.[4]?.intent).toBe(intent);
+      }
+    } finally {
+      store.dispose();
+    }
+  },
+);

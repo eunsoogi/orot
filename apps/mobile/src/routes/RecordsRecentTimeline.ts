@@ -2,9 +2,9 @@ import { localQueryTimestampKey } from '@orot/storage';
 import type { MedicalDocumentSourceRecord } from '../medicalDocuments/medicalDocumentImportService';
 import { t } from '../i18n';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
-
 import type { RecentMediaRow } from './recentSourceReader';
 import type { RecentMaterialRow } from '../generatedReports/catalog';
+import { recentMaterialTimestamp } from '../generatedReports/recentMaterialTimestamp';
 import { generatedReportCopy } from '../generatedReports/text';
 
 export const recentPageSize = 20;
@@ -78,7 +78,7 @@ export function buildRecentRecordEntries(
           row.origin === 'memory'
             ? ('saved_memory' as const)
             : ('generated_report' as const),
-        timestamp: row.createdAt,
+        timestamp: recentMaterialTimestamp(row.createdAt),
         title:
           row.origin === 'memory'
             ? t('savedMemory.title')
@@ -88,7 +88,10 @@ export function buildRecentRecordEntries(
   ];
   return [
     ...new Map(records.map(row => [`${row.kind}:${row.id}`, row])).values(),
-  ].sort(compareRecency);
+  ]
+    .map(row => ({ row, order: position(row) }))
+    .sort((left, right) => compareRecentPosition(left.order, right.order))
+    .map(({ row }) => row);
 }
 
 /** Groups by device-local day and optionally limits the collapsed feed to its newest entries. */
@@ -133,31 +136,86 @@ export function formatRecentTime(timestamp: string): string {
     : date.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
 }
 
-function compareRecency(
-  left: RecentRecordEntry,
-  right: RecentRecordEntry,
-): number {
-  const leftTime = Date.parse(left.timestamp);
-  const rightTime = Date.parse(right.timestamp);
-  const key = (row: RecentRecordEntry) =>
-    row.material
-      ? 'material:' + row.material.key
-      : row.source
-        ? 'source:' + row.source.key
-        : row.kind + ':' + row.id;
-  // SQLite's catalog cursor uses the exact same descending, binary key order.
-  const compareKey = () =>
-    key(left) === key(right) ? 0 : key(left) < key(right) ? 1 : -1;
-  if (!Number.isFinite(leftTime))
-    return Number.isFinite(rightTime) ? 1 : compareKey();
-  if (!Number.isFinite(rightTime)) return -1;
-  if (left.source && right.source && leftTime === rightTime) {
-    // JS Date truncates fractional timestamps; keep this cursor's exact ordering within a millisecond.
-    const a = localQueryTimestampKey(left.timestamp);
-    const b = localQueryTimestampKey(right.timestamp);
-    if (a !== b) return a < b ? 1 : -1;
+interface RecentPosition {
+  readonly instant: string;
+  readonly key: string;
+}
+
+interface RecentFrontier {
+  readonly more: boolean;
+  readonly tail?: RecentPosition;
+}
+
+export function recentStreamFrontier(
+  stream: {
+    readonly more: boolean;
+    readonly rows: readonly { key: string; createdAt: string }[];
+  },
+  namespace: 'material' | 'source',
+): RecentFrontier {
+  const tail = stream.rows.at(-1);
+  return {
+    more: stream.more,
+    tail: tail && {
+      instant: instantKey(recentMaterialTimestamp(tail.createdAt)),
+      key: namespace + ':' + tail.key,
+    },
+  };
+}
+
+function position(row: RecentRecordEntry): RecentPosition {
+  const key = row.material
+    ? 'material:' + row.material.key
+    : row.source
+      ? 'source:' + row.source.key
+      : row.kind + ':' + row.id;
+  return { instant: instantKey(row.timestamp), key };
+}
+
+/** An unseen row can be newer than another stream's tail, never newer than its own. */
+export function certifiedRecentPrefix(
+  sorted: readonly RecentRecordEntry[],
+  streams: readonly RecentFrontier[],
+): readonly RecentRecordEntry[] {
+  let newestBoundary: RecentPosition | undefined;
+  for (const { more, tail } of streams) {
+    if (!more) continue;
+    if (!tail || !tail.instant) return [];
+    if (!newestBoundary || compareRecentPosition(tail, newestBoundary) < 0)
+      newestBoundary = tail;
   }
-  return rightTime - leftTime || compareKey();
+  if (!newestBoundary) return sorted;
+  const boundary = newestBoundary;
+  const beyond = sorted.findIndex(
+    row => compareRecentPosition(position(row), boundary) > 0,
+  );
+  return beyond === -1 ? sorted : sorted.slice(0, beyond);
+}
+
+function instantKey(timestamp: string) {
+  return Number.isFinite(Date.parse(timestamp))
+    ? localQueryTimestampKey(timestamp)
+    : '';
+}
+
+function compareRecentPosition(left: RecentPosition, right: RecentPosition) {
+  if (left.instant !== right.instant)
+    return left.instant > right.instant ? -1 : 1;
+  return compareBinaryKey(right.key, left.key);
+}
+
+/** SQLite BINARY orders stored UTF-8 by scalar value, unlike JS's UTF-16 string order. */
+function compareBinaryKey(left: string, right: string): number {
+  if (left === right) return 0;
+  const compare = right[Symbol.iterator]();
+  for (const unit of left) {
+    const next = compare.next();
+    if (next.done) return 1;
+    const difference =
+      (unit.codePointAt(0) ?? 0) - (next.value.codePointAt(0) ?? 0);
+    if (difference !== 0) return difference;
+  }
+  return -1;
 }
 
 function localDayKey(date: Date): string {

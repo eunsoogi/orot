@@ -198,7 +198,7 @@ export function createRagConversationService({
           onInitialSearchStatus: searchPlan.onInitialSearchStatus,
           question: request,
           photoEvidence,
-          entryIntent: entryContext?.intent,
+          entryContext,
           authoredCurrentRequest: observer?.inputOrigin === 'composer',
           targetVisitEvidence: target.evidence,
           dailyReportEvidence: report?.items,

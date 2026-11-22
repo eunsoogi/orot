@@ -6,6 +6,10 @@ import { conversationEntryForSession } from './useConversationEntryIntent';
 import { entryIntentSender } from './entryIntentSender';
 import { isTypedVisitQuestionRequest } from './typedVisitQuestionRequest';
 import { isWarmConversationSender } from './warmConversationSender';
+import {
+  typedConversationReportIntent,
+  withTypedComposerReport,
+} from './typedConversationReportRequest';
 import type { TreatmentConversationSender } from '../treatmentContext/treatmentConversationSender';
 
 const pendingVisits = new WeakMap<
@@ -124,16 +128,21 @@ export function sendConversationMessage(
   prepare?: ConversationScreenProps['prepareVisitQuestions'],
 ) {
   const session = store.getSnapshot().sessions.find(item => item.id === id);
-  const sendEntry = entryIntentSender(store, id, onSend, 'composer');
+  const sendEntry = entryIntentSender(
+    store,
+    id,
+    withTypedComposerReport(onSend),
+    'composer',
+  );
   const intent = conversationEntryForSession(store, id)?.intent;
-  // Only an ordinary composer turn may pass the canonical branded sender
-  // through unchanged. Explicit typed/selected visit preparation and report
-  // ownership still use the scoped dispatch below.
+  // Only ordinary composer sends use the existing warm sender identity.
+  // Typed templates keep their own dispatch; entryIntentSender excludes Daily's pinned target.
   if (
     session &&
     (!intent || intent === 'conversation') &&
     !session.entryIntent &&
     !(prepare && isTypedVisitQuestionRequest(session.draft)) &&
+    !typedConversationReportIntent(session.draft) &&
     !pendingVisits.get(store)?.has(id) &&
     isWarmConversationSender(sendEntry)
   )

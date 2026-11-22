@@ -85,7 +85,7 @@ function mountRecords() {
   );
 }
 
-test('first Records entry after v17 upgrade retains its report without an error flash while media is awaiting a direct startup statement', async () => {
+test('first Records entry after v17 upgrade waits for both first pages without an error flash during direct startup contention', async () => {
   const entered = holdRecentTestPage<void>();
   const startup = holdRecentTestPage<void>();
   const f = openInterleavableRecentSourceDatabase(query => {
@@ -104,13 +104,12 @@ test('first Records entry after v17 upgrade retains its report without an error 
     operation = f.database.execute('PRAGMA temp_store = MEMORY');
     await entered.promise;
     mounted = await mountRecords();
-    await waitFor(() =>
-      expect(screen.getByTestId('records-recent-source-visit:30')).toBeTruthy(),
-    );
+    await waitFor(() => expect(loadRecentMaterial).toHaveBeenCalled());
     await act(async () => {
       await new Promise<void>(resolve => setImmediate(resolve));
       await new Promise<void>(resolve => setImmediate(resolve));
     });
+    expect(screen.queryByTestId('records-recent-source-visit:30')).toBeNull();
     expect(screen.queryByTestId('records-recent-sources-error')).toBeNull();
     expect(screen.queryByTestId('records-recent-sources-retry')).toBeNull();
     expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy();
@@ -132,7 +131,7 @@ test('first Records entry after v17 upgrade retains its report without an error 
   }
 });
 
-test('a genuinely failed indexed query still offers Retry without removing the successful report', async () => {
+test('a genuinely failed indexed query offers Retry and publishes both streams once certified', async () => {
   const f = openInterleavableRecentSourceDatabase();
   let mounted: Awaited<ReturnType<typeof mountRecords>> | undefined;
   try {
@@ -142,7 +141,7 @@ test('a genuinely failed indexed query still offers Retry without removing the s
     expect(
       await screen.findByTestId('records-recent-sources-error'),
     ).toBeTruthy();
-    expect(screen.getByTestId('records-recent-source-visit:30')).toBeTruthy();
+    expect(screen.queryByTestId('records-recent-source-visit:30')).toBeNull();
     expect(jest.mocked(loadRecentSourceMaterial)).toHaveBeenCalledTimes(1);
     await f.database.execute('PRAGMA user_version = 17');
     await runMigrations(f.database);
@@ -150,6 +149,7 @@ test('a genuinely failed indexed query still offers Retry without removing the s
     expect(
       await screen.findByText('Synthetic carried-forward file'),
     ).toBeTruthy();
+    expect(screen.getByTestId('records-recent-source-visit:30')).toBeTruthy();
     expect(screen.queryByTestId('records-recent-sources-error')).toBeNull();
     expect(jest.mocked(loadRecentSourceMaterial)).toHaveBeenCalledTimes(2);
   } finally {
@@ -174,9 +174,10 @@ test('a fresh native denial after startup contention prevents the deferred media
     await seedFile(f);
     operation = f.database.execute('PRAGMA temp_store = MEMORY');
     mounted = await mountRecords();
-    expect(
-      await screen.findByTestId('records-recent-source-visit:30'),
-    ).toBeTruthy();
+    await waitFor(() =>
+      expect(loadRecentSourceMaterial).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.queryByTestId('records-recent-source-visit:30')).toBeNull();
     await act(async () => {
       await new Promise<void>(resolve => setImmediate(resolve));
       await new Promise<void>(resolve => setImmediate(resolve));
