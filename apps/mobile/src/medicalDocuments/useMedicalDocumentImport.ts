@@ -53,6 +53,7 @@ function errorMessage(error: unknown): string {
 /** Owns the staged import and prevents navigation until the user saves or discards it. */
 export function useMedicalDocumentImport(
   service: MedicalDocumentImportService = medicalDocumentImportService,
+  listSavedBeforeOpening = true,
 ) {
   const [stagedDocument, setStagedDocument] =
     useState<StagedMedicalDocument | null>(null);
@@ -78,6 +79,7 @@ export function useMedicalDocumentImport(
   const sourceGeneration = useRef(0);
 
   const loadSavedDocuments = useCallback(async () => {
+    if (!listSavedBeforeOpening) return;
     const generation = ++listGeneration.current;
     setSavedDocumentsState('loading');
     setSavedDocumentsError(null);
@@ -92,7 +94,7 @@ export function useMedicalDocumentImport(
       setSavedDocumentsState('failed');
       setSavedDocumentsError(t('medicalDocument.source.loadError'));
     }
-  }, [service]);
+  }, [listSavedBeforeOpening, service]);
 
   useEffect(() => {
     loadSavedDocuments().catch(() => undefined);

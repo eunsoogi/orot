@@ -22,7 +22,7 @@ test('upgrades version sixteen without rewriting observations and uses the worko
       ])
     ).rows;
     await runMigrations(database);
-    expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(17);
+    expect((await database.execute('PRAGMA user_version')).rows[0]?.user_version).toBe(18);
     expect(
       (
         await database.execute('SELECT payload_json FROM health_observations WHERE id = ?', [

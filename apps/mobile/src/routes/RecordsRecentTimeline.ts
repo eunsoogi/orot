@@ -1,7 +1,9 @@
+import { localQueryTimestampKey } from '@orot/storage';
 import type { MedicalDocumentSourceRecord } from '../medicalDocuments/medicalDocumentImportService';
 import { t } from '../i18n';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 
+import type { RecentMediaRow } from './recentSourceReader';
 import type { RecentMaterialRow } from '../generatedReports/catalog';
 import { generatedReportCopy } from '../generatedReports/text';
 
@@ -18,6 +20,7 @@ export interface RecentRecordEntry {
   readonly summary?: string;
   readonly documentIndex?: number;
   readonly material?: RecentMaterialRow;
+  readonly source?: RecentMediaRow;
 }
 
 export interface RecentRecordGroup {
@@ -31,7 +34,9 @@ export function buildRecentRecordEntries(
   recordings: readonly RecordingSourceRecord[],
   documents: readonly MedicalDocumentSourceRecord[],
   material: readonly RecentMaterialRow[] = [],
+  sources: readonly RecentMediaRow[] = [],
 ): RecentRecordEntry[] {
+  let nextDocumentIndex = 0;
   const records: RecentRecordEntry[] = [
     ...recordings.map(recording => ({
       id: recording.id,
@@ -47,6 +52,24 @@ export function buildRecentRecordEntries(
       title: t('records.recent.medicalDocument'),
       summary: document.title ?? t('medicalDocument.source.untitled'),
     })),
+    ...sources.map(source => {
+      const isRecording = source.kind === 'audio_recording';
+      return {
+        id: source.id,
+        kind: isRecording
+          ? ('recording' as const)
+          : ('medical_document' as const),
+        timestamp: source.createdAt,
+        title: isRecording
+          ? (source.title ?? t('recording.library.untitled'))
+          : t('records.recent.medicalDocument'),
+        summary: isRecording
+          ? undefined
+          : (source.title ?? t('medicalDocument.source.untitled')),
+        documentIndex: isRecording ? undefined : nextDocumentIndex++,
+        source,
+      };
+    }),
     ...material
       .filter(row => row.origin === 'memory' || !row.unavailable)
       .map(row => ({
@@ -117,13 +140,23 @@ function compareRecency(
   const leftTime = Date.parse(left.timestamp);
   const rightTime = Date.parse(right.timestamp);
   const key = (row: RecentRecordEntry) =>
-    row.material ? 'material:' + row.material.key : row.kind + ':' + row.id;
+    row.material
+      ? 'material:' + row.material.key
+      : row.source
+        ? 'source:' + row.source.key
+        : row.kind + ':' + row.id;
   // SQLite's catalog cursor uses the exact same descending, binary key order.
   const compareKey = () =>
     key(left) === key(right) ? 0 : key(left) < key(right) ? 1 : -1;
   if (!Number.isFinite(leftTime))
     return Number.isFinite(rightTime) ? 1 : compareKey();
   if (!Number.isFinite(rightTime)) return -1;
+  if (left.source && right.source && leftTime === rightTime) {
+    // JS Date truncates fractional timestamps; keep this cursor's exact ordering within a millisecond.
+    const a = localQueryTimestampKey(left.timestamp);
+    const b = localQueryTimestampKey(right.timestamp);
+    if (a !== b) return a < b ? 1 : -1;
+  }
   return rightTime - leftTime || compareKey();
 }
 

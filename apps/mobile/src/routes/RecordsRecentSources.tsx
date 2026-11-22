@@ -1,4 +1,3 @@
-import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { MedicalDocumentSourceRecord } from '../medicalDocuments/medicalDocumentImportService';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
@@ -6,21 +5,18 @@ import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
-import {
-  buildRecentRecordEntries,
-  groupRecentRecords,
-  recentPageSize,
-} from './RecordsRecentTimeline';
 import { RecordsRecentSourceEntry } from './RecordsRecentSourceEntry';
 import { RecordsRecentSourceState } from './RecordsRecentSourceState';
 import type { GeneratedReportRow } from '../generatedReports/types';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import type { RecordsTabAuthority } from './useAppRootTab';
-import { useRecentSavedMaterial } from './useRecentSavedMaterial';
+import { useRecordsRecentFeed } from './useRecordsRecentFeed';
 import { hubSpacing } from '../layout/hubSpacing';
 
-interface RecordsRecentSourcesProps {
+export interface RecordsRecentSourcesProps {
   readonly showAll?: boolean;
+  readonly pagedAudio?: boolean;
+  readonly pagedDocuments?: boolean;
   readonly onViewAll?: () => void;
   readonly recordings: readonly RecordingSourceRecord[];
   readonly recordingState: 'loading' | 'ready' | 'failed';
@@ -41,80 +37,20 @@ interface RecordsRecentSourcesProps {
 }
 
 /** Renders actual local activity in one grouped timeline while preserving each existing destination. */
-export function RecordsRecentSources({
-  showAll = false,
-  onViewAll,
-  recordings,
-  recordingState,
-  documents,
-  documentsState,
-  documentsError,
-  documentsOpening,
-  onRetryRecordings,
-  onRetryDocuments,
-  onOpenMedicalDocument,
-  onOpenSavedRecordings,
-  onOpenRecording,
-  onOpenReport,
-  onOpenMemory,
-  active = true,
-  ownership,
-  tabAuthority,
-}: RecordsRecentSourcesProps) {
-  const reports = useRecentSavedMaterial(
-    active,
-    ownership,
-    undefined,
-    showAll,
-    Boolean(onOpenReport),
-    tabAuthority,
-  );
-  const [limit, setLimit] = useState(recentPageSize);
-  const records = useMemo(
-    () => buildRecentRecordEntries(recordings, documents, reports.rows),
-    [documents, recordings, reports.rows],
-  );
-  const availableLimit =
-    reports.more && reports.rows.length > 0 && reports.state !== 'failed'
-      ? Math.min(limit, reports.rows.length)
-      : limit;
-  const groups = groupRecentRecords(
+export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
+  const { showAll = false, onViewAll, documents, documentsOpening } = props;
+  const {
     records,
-    new Date(),
-    showAll ? availableLimit : 3,
-  );
-  async function showMore() {
-    if (!reports.isRouteCurrent()) return;
-    // One cursor page is sufficient before revealing one more batch of mixed records.
-    if (
-      reports.more &&
-      onOpenReport &&
-      reports.rows.length < limit + recentPageSize &&
-      reports.state !== 'failed' &&
-      !(await reports.loadMore())
-    )
-      return;
-    setLimit(value => value + recentPageSize);
-  }
-  const isLoading =
-    recordingState === 'loading' ||
-    documentsState === 'loading' ||
-    reports.state === 'loading';
-  const loadErrors = [
-    reports.state === 'failed'
-      ? t('records.recent.savedMaterialLoadError')
-      : null,
-    recordingState === 'failed' ? t('recording.library.loadError') : null,
-    documentsState === 'failed'
-      ? (documentsError ?? t('medicalDocument.source.loadError'))
-      : null,
-  ].filter((message): message is string => message !== null);
-
-  function retrySources() {
-    if (reports.state === 'failed') reports.loadMore();
-    if (recordingState === 'failed') onRetryRecordings();
-    if (documentsState === 'failed') onRetryDocuments();
-  }
+    groups,
+    showMore,
+    retrySources,
+    openRecord,
+    isCurrent,
+    more,
+    isLoading,
+    canAdvance,
+    loadErrors,
+  } = useRecordsRecentFeed(props);
 
   return (
     <View style={styles.container} testID="records-recent-sources">
@@ -125,7 +61,7 @@ export function RecordsRecentSources({
         {!showAll && records.length > 0 && onViewAll ? (
           <AppButton
             accessibilityLabel={t('records.recent.viewAll')}
-            onPress={() => reports.isRouteCurrent() && onViewAll()}
+            onPress={() => isCurrent() && onViewAll()}
             size="compact"
             testID="records-recent-view-all"
             title={t('records.recent.viewAll') + '  ›'}
@@ -172,23 +108,7 @@ export function RecordsRecentSources({
                     documentIndex={record.documentIndex}
                     documentsOpening={documentsOpening}
                     groupLabel={group.label}
-                    onOpen={() => {
-                      if (!reports.isRouteCurrent()) return;
-                      if (record.material) {
-                        reports.open(record.material, item => {
-                          if (item.origin === 'memory') onOpenMemory?.(item.id);
-                          else onOpenReport?.(item);
-                        });
-                      } else if (record.kind === 'medical_document') {
-                        onOpenMedicalDocument(record.id);
-                      } else {
-                        const source = recordings.find(
-                          row => row.id === record.id,
-                        );
-                        if (source && onOpenRecording) onOpenRecording(source);
-                        else onOpenSavedRecordings();
-                      }
-                    }}
+                    onOpen={() => openRecord(record)}
                     record={record}
                   />
                 ))}
@@ -197,13 +117,11 @@ export function RecordsRecentSources({
           ))}
         </View>
       ) : null}
-      {showAll &&
-      (records.length > limit ||
-        (onOpenReport && reports.more && reports.rows.length > 0)) ? (
+      {showAll && more ? (
         <AppButton
           testID="records-recent-show-more"
           title={t('records.recent.showMore')}
-          disabled={reports.state === 'loading'}
+          disabled={!canAdvance}
           onPress={showMore}
         />
       ) : null}

@@ -13,6 +13,7 @@ import {
 } from '../medicalDocuments/MedicalDocumentReview';
 import { useMedicalDocumentImport } from '../medicalDocuments/useMedicalDocumentImport';
 import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDocumentImportService';
+import { useRecordsSourcePaging } from './RecordsSourcePagingContext';
 import { RecordsRecentSources } from './RecordsRecentSources';
 import { hubSpacing } from '../layout/hubSpacing';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
@@ -69,6 +70,8 @@ export function RecordsRoute({
   documentImportService,
   onOpenManualHistory,
 }: RecordsRouteProps) {
+  const pagedAudio = useRecordsSourcePaging();
+  const pagedDocuments = pagedAudio && !documentImportService;
   const {
     activity,
     closeSavedDocument,
@@ -86,7 +89,7 @@ export function RecordsRoute({
     sourceLoading,
     sourceMessage,
     stagedDocument,
-  } = useMedicalDocumentImport(documentImportService);
+  } = useMedicalDocumentImport(documentImportService, !pagedDocuments);
   useRecordsDetailVisibility(sourceDetail !== null);
   const routeScrollPosition = useNavigationRouteScrollPosition();
   useEffect(() => {
@@ -111,7 +114,6 @@ export function RecordsRoute({
     routeScrollPosition?.restore();
   }
 
-  // Keep review actions before every extracted page inside the Records scene's single scroll owner.
   if (stagedDocument) {
     return (
       <NavigationInlineTransition
@@ -138,7 +140,6 @@ export function RecordsRoute({
   }
 
   if (sourceDetail) {
-    // The saved detail owns its measured panels so reflow keeps the text and Back state in place.
     return (
       <NavigationInlineTransition
         transitionKey="detail"
@@ -194,6 +195,8 @@ export function RecordsRoute({
           {!showAllRecent ? <LegacySymptomData /> : null}
           <RecordsRecentSources
             showAll={showAllRecent}
+            pagedAudio={pagedAudio}
+            pagedDocuments={pagedDocuments}
             onViewAll={onOpenRecentRecords}
             recordings={recordings}
             recordingState={recordingState}
@@ -235,7 +238,6 @@ const styles = StyleSheet.create({
     minWidth: 0,
     backgroundColor: appColors.background,
   },
-  // A single page owns both entry groups; no panel seam adds a second top or side gutter.
   page: {
     gap: hubSpacing.item,
     paddingHorizontal: hubSpacing.horizontal,
