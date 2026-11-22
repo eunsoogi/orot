@@ -142,13 +142,13 @@ test('built-in Records exposes only the certified global prefix and opens exact 
       await screen.findByTestId('records-recent-show-more'),
     );
     await waitFor(() =>
-      expect(reportRead).toHaveBeenLastCalledWith({
+      expect(reportRead.mock.lastCall?.[0]).toEqual({
         key: 'visit:11',
         createdAt: reportPages[19].createdAt,
       }),
     );
     await waitFor(() =>
-      expect(page).toHaveBeenLastCalledWith({
+      expect(page.mock.lastCall?.[0]).toEqual({
         key: 'audio-25',
         createdAt: timestamp,
       }),
@@ -170,7 +170,7 @@ test('built-in Records exposes only the certified global prefix and opens exact 
 
     await fireEvent.press(screen.getByTestId('records-recent-show-more'));
     await waitFor(() =>
-      expect(page).toHaveBeenLastCalledWith({
+      expect(page.mock.lastCall?.[0]).toEqual({
         key: 'audio-05',
         createdAt: timestamp,
       }),

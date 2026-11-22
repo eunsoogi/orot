@@ -30,7 +30,10 @@ type RecentPageRow = { readonly key: string; readonly createdAt: string };
 export function useRecentSavedMaterial<Row extends RecentPageRow>(
   active: boolean,
   ownership: NavigationRouteOwnership | undefined,
-  load: (before?: RecentPageRow) => Promise<readonly Row[]>,
+  load: (
+    before?: RecentPageRow,
+    options?: { signal: AbortSignal; canRetry: () => Promise<boolean> },
+  ) => Promise<readonly Row[]>,
   keepPages = false,
   enabled = true,
   tabAuthority?: RecordsTabAuthority,
@@ -149,6 +152,16 @@ export function useRecentSavedMaterial<Row extends RecentPageRow>(
         }
         const page = await load(
           before && { createdAt: before.createdAt, key: before.key },
+          {
+            signal: operation.signal,
+            canRetry: async () => {
+              if (!current()) return false;
+              const available = await isProtectedDataReadable(protection);
+              if (!current()) return false;
+              if (!available) refuse();
+              return available;
+            },
+          },
         );
         if (!current()) return false;
         const remaining = await isProtectedDataReadable(protection);
@@ -209,7 +222,7 @@ export function useRecentSavedMaterial<Row extends RecentPageRow>(
   return {
     rows,
     pageEpoch,
-    state,
+    state: state === 'idle' && active && enabled ? ('loading' as const) : state,
     more,
     open,
     isRouteCurrent,

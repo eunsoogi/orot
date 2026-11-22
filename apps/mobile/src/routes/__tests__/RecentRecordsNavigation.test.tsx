@@ -238,7 +238,7 @@ test('hides an uncertified audio row while the first page waits and appends the 
   expect(screen.getAllByTestId('records-recent-source-visit:30')).toHaveLength(
     1,
   );
-  expect(load).toHaveBeenLastCalledWith({
+  expect(load.mock.lastCall?.[0]).toEqual({
     key: 'visit:11',
     createdAt: reports[19].createdAt,
   });
