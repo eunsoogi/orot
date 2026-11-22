@@ -7,6 +7,7 @@ export function voiceStatus(
   error: boolean,
   preparing: boolean,
   state: VoiceState,
+  controls: { readonly manualFinish: boolean } = { manualFinish: true },
 ): string {
   return photoPending
     ? t('ragConversation.voice.photo')
@@ -17,7 +18,11 @@ export function voiceStatus(
         : state.phase === 'authorizing' || preparing
           ? t('ragConversation.voice.authorizing')
           : state.phase === 'listening'
-            ? t('ragConversation.voice.listening')
+            ? t(
+                controls.manualFinish
+                  ? 'ragConversation.voice.listening'
+                  : 'ragConversation.voice.listeningAutomatically',
+              )
             : state.phase === 'processing'
               ? t('ragConversation.voice.processing')
               : state.phase === 'speaking'
