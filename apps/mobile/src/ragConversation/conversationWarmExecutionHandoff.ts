@@ -53,9 +53,7 @@ export function warmExecutionHandoff(
       terminal =
         event.kind === 'expired'
           ? (event.reason ?? 'expired')
-          : event.kind === 'protectedData'
-            ? 'protected-data'
-            : 'lease-check-failed';
+          : 'protected-data';
       if (interrupt) interrupt(terminal);
       else stopPreparation();
     },

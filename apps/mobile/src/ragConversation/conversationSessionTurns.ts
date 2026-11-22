@@ -1,3 +1,4 @@
+import { mayHaveConversationCheckpoint } from './conversationCheckpointInterruption';
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import { createConversationTurnRetention } from './conversationTurnRetention';
 import {
@@ -116,9 +117,7 @@ export function conversationSessionTurns(
       const active = await storage.activeSessionVersion(slot.id);
       if (
         !request ||
-        !['expired', 'decision-required'].includes(
-          request.interruptionReason ?? '',
-        ) ||
+        !mayHaveConversationCheckpoint(request.interruptionReason) ||
         request.submittedInput ||
         signal.aborted ||
         active !== version ||

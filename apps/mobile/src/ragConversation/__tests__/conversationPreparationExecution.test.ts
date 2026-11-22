@@ -160,3 +160,56 @@ test('protected lock mid-handoff sends no event to a future durable owner', asyn
   expect(f.unsubscribe).toHaveBeenCalledTimes(1);
   expect(f.end).toHaveBeenCalledTimes(1);
 });
+
+test('only the current exact durable relay receives a pending advisory once', async () => {
+  const f = fixture();
+  const older = {
+    kind: 'pause-requested',
+    requestId: f.owner.requestId,
+    warning: 'old',
+  } as const;
+  const current = { ...older, warning: 'current' };
+  f.receive(older);
+  f.receive({ kind: 'foreground' });
+  f.receive(current);
+  expect(f.onPreparationEnd).not.toHaveBeenCalled();
+  expect(f.end).not.toHaveBeenCalled();
+  f.complete(true);
+  expect(await f.prep.started).toBe('short-lease-admitted');
+  const durable = jest.fn();
+  const release = await f.prep.adopt(f.owner, () => true, durable);
+  expect(durable.mock.calls).toEqual([[current]]);
+  const successor = jest.fn();
+  expect(
+    await f.prep.adopt(
+      { ...f.owner, revision: f.owner.revision + 1 },
+      () => true,
+      successor,
+    ),
+  ).toBeNull();
+  expect(successor).not.toHaveBeenCalled();
+  release?.();
+  expect(f.end).toHaveBeenCalledTimes(1);
+});
+
+test('a confirmed same-owner grant drops a parked short warning before durable transfer', async () => {
+  const f = fixture();
+  f.receive({
+    kind: 'pause-requested',
+    requestId: f.owner.requestId,
+    warning: 'old',
+  });
+  f.receive({
+    kind: 'continued',
+    requestId: f.owner.requestId,
+    state: 'continued-granted',
+  });
+  f.complete(true);
+  expect(await f.prep.started).toBe('short-lease-admitted');
+  const durable = jest.fn();
+  const release = await f.prep.adopt(f.owner, () => true, durable);
+  expect(release).not.toBeNull();
+  expect(durable).not.toHaveBeenCalled();
+  expect(f.onPreparationEnd).not.toHaveBeenCalled();
+  release?.();
+});

@@ -1,3 +1,4 @@
+import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import type { MultiAgentInvocation } from '@orot/agent-runtime';
 import type { ArtifactContinuation } from './artifactContinuation';
 import type {
@@ -33,7 +34,7 @@ export type RagConversationObserver = Pick<
   /** Owned pause/continue controls never submit a new question. */
   readonly onWorkflowPauseController?: (requestPause: () => void) => void;
   readonly onWorkflowPaused?: (
-    reason?: 'expired' | 'decision-required',
+    reason?: ConversationCheckpointPauseReason,
   ) => Promise<boolean>;
   readonly onExecutionState?: (state: 'working' | 'local' | 'decision') => void;
   /** Confirm an ambiguous model-selected user statement locally; never authorizes provider transfer. */

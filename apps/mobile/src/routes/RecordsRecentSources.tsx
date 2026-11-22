@@ -5,16 +5,18 @@ import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
-import {
-  buildRecentRecordEntries,
-  groupRecentRecords,
-} from './RecordsRecentTimeline';
 import { RecordsRecentSourceEntry } from './RecordsRecentSourceEntry';
 import { RecordsRecentSourceState } from './RecordsRecentSourceState';
+import type { GeneratedReportRow } from '../generatedReports/types';
+import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
+import type { RecordsTabAuthority } from './useAppRootTab';
+import { useRecordsRecentFeed } from './useRecordsRecentFeed';
 import { hubSpacing } from '../layout/hubSpacing';
 
-interface RecordsRecentSourcesProps {
+export interface RecordsRecentSourcesProps {
   readonly showAll?: boolean;
+  readonly pagedAudio?: boolean;
+  readonly pagedDocuments?: boolean;
   readonly onViewAll?: () => void;
   readonly recordings: readonly RecordingSourceRecord[];
   readonly recordingState: 'loading' | 'ready' | 'failed';
@@ -26,40 +28,29 @@ interface RecordsRecentSourcesProps {
   readonly onRetryDocuments: () => void;
   readonly onOpenMedicalDocument: (sourceId: string) => void;
   readonly onOpenSavedRecordings: () => void;
+  readonly onOpenRecording?: (source: RecordingSourceRecord) => void;
+  readonly onOpenMemory?: (id: string) => void;
+  readonly onOpenReport?: (row: GeneratedReportRow) => boolean;
+  readonly active?: boolean;
+  readonly ownership?: NavigationRouteOwnership;
+  readonly tabAuthority?: RecordsTabAuthority;
 }
 
 /** Renders actual local activity in one grouped timeline while preserving each existing destination. */
-export function RecordsRecentSources({
-  showAll = false,
-  onViewAll,
-  recordings,
-  recordingState,
-  documents,
-  documentsState,
-  documentsError,
-  documentsOpening,
-  onRetryRecordings,
-  onRetryDocuments,
-  onOpenMedicalDocument,
-  onOpenSavedRecordings,
-}: RecordsRecentSourcesProps) {
-  const records = buildRecentRecordEntries(recordings, documents);
-  const groups = groupRecentRecords(records, new Date(), showAll ? null : 3);
-  const isLoading =
-    recordingState === 'loading' || documentsState === 'loading';
-  // Independent source statuses must not replace records that loaded successfully.
-  const loadErrors = [
-    recordingState === 'failed' ? t('recording.library.loadError') : null,
-    documentsState === 'failed'
-      ? (documentsError ?? t('medicalDocument.source.loadError'))
-      : null,
-  ].filter((message): message is string => message !== null);
-
-  function retrySources() {
-    // Retry only the failed readers so successful and pending regions keep their state.
-    if (recordingState === 'failed') onRetryRecordings();
-    if (documentsState === 'failed') onRetryDocuments();
-  }
+export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
+  const { showAll = false, onViewAll, documents, documentsOpening } = props;
+  const {
+    records,
+    groups,
+    showMore,
+    retrySources,
+    openRecord,
+    isCurrent,
+    more,
+    isLoading,
+    canAdvance,
+    loadErrors,
+  } = useRecordsRecentFeed(props);
 
   return (
     <View style={styles.container} testID="records-recent-sources">
@@ -70,7 +61,7 @@ export function RecordsRecentSources({
         {!showAll && records.length > 0 && onViewAll ? (
           <AppButton
             accessibilityLabel={t('records.recent.viewAll')}
-            onPress={onViewAll}
+            onPress={() => isCurrent() && onViewAll()}
             size="compact"
             testID="records-recent-view-all"
             title={t('records.recent.viewAll') + '  ›'}
@@ -111,30 +102,28 @@ export function RecordsRecentSources({
               </View>
               <View style={styles.rows}>
                 <View pointerEvents="none" style={styles.timelineLine} />
-                {group.records.map(record => {
-                  const documentIndex =
-                    record.kind === 'medical_document'
-                      ? documents.findIndex(
-                          document => document.id === record.id,
-                        )
-                      : undefined;
-
-                  return (
-                    <RecordsRecentSourceEntry
-                      key={`${record.kind}:${record.id}`}
-                      documentIndex={documentIndex}
-                      documentsOpening={documentsOpening}
-                      groupLabel={group.label}
-                      onOpenMedicalDocument={onOpenMedicalDocument}
-                      onOpenSavedRecordings={onOpenSavedRecordings}
-                      record={record}
-                    />
-                  );
-                })}
+                {group.records.map(record => (
+                  <RecordsRecentSourceEntry
+                    key={`${record.kind}:${record.id}`}
+                    documentIndex={record.documentIndex}
+                    documentsOpening={documentsOpening}
+                    groupLabel={group.label}
+                    onOpen={() => openRecord(record)}
+                    record={record}
+                  />
+                ))}
               </View>
             </View>
           ))}
         </View>
+      ) : null}
+      {showAll && more ? (
+        <AppButton
+          testID="records-recent-show-more"
+          title={t('records.recent.showMore')}
+          disabled={!canAdvance}
+          onPress={showMore}
+        />
       ) : null}
       {documentsOpening ? (
         <Text accessibilityLiveRegion="polite">

@@ -1,3 +1,4 @@
+import { conversationCheckpointPauseReason } from '../ragConversation/conversationCheckpointInterruption';
 import {
   conversationPreparedActionCapture,
   exclusiveConversationTransition,
@@ -169,7 +170,6 @@ export async function createConversationWorkflowContinuationStore(
           throw new Error('Workflow has no safe continuation boundary.');
         const tuple = await latestConversationCheckpoint(checkpointer, config);
         const state = tuple.checkpoint.channel_values;
-        // Compare every returned domain field to the actually persisted graph state.
         if (
           Object.entries(checkpoint).some(
             ([key, value]) =>
@@ -204,7 +204,7 @@ export async function createConversationWorkflowContinuationStore(
           identity.sessionId,
           identity.sessionVersion,
           'interrupted',
-          checkpoint.awaitingAuthorization ? 'decision-required' : 'expired',
+          conversationCheckpointPauseReason(checkpoint.awaitingAuthorization),
         );
       });
     },

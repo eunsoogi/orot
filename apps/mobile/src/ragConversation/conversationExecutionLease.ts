@@ -1,3 +1,5 @@
+import { createConversationPauseAdvisory } from './conversationPauseAdvisory';
+import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
 export type ConversationInterruptionReason =
   | 'decision-required'
@@ -9,6 +11,7 @@ export type ConversationInterruptionReason =
 
 export type ConversationRecoveryReason =
   | ConversationInterruptionReason
+  | ConversationCheckpointPauseReason
   | 'user-stopped'
   | 'provider-failed'
   | 'process-interrupted';
@@ -18,6 +21,7 @@ export function decodeConversationRecoveryReason(
   return typeof value === 'string' &&
     [
       'decision-required',
+      'background-paused',
       'expired',
       'protected-data',
       'bridge-unavailable',
@@ -37,7 +41,11 @@ export type ContinuationOpportunity =
   ConversationContinuedState | 'continuation-foreground';
 
 export type ConversationExecutionEvent =
-  | { readonly kind: 'pause-requested'; readonly requestId: string }
+  | {
+      readonly kind: 'pause-requested';
+      readonly requestId: string;
+      readonly warning?: string;
+    }
   | {
       readonly kind: 'expired';
       readonly requestId: string;
@@ -63,6 +71,7 @@ export interface ConversationExecutionAdapter {
   work?(requestId: string, active: boolean): void;
   milestone?(requestId: string, stage: 'answered' | 'committed'): void;
   isActive(requestId: string): Promise<boolean>;
+  pauseStillCurrent?(requestId: string, warning: string): Promise<boolean>;
   protectedDataAvailable(): Promise<boolean | null>;
   subscribe(listener: (event: ConversationExecutionEvent) => void): () => void;
 }
@@ -96,7 +105,15 @@ export async function beginConversationExecutionLease(
   let closed = false;
   let interrupted = false;
   let acquired = false;
-  let pauseRequested = false;
+  const pause = createConversationPauseAdvisory(
+    adapter,
+    requestId,
+    () => !closed && !interrupted,
+    () => {
+      report('pause-requested');
+      requestPause();
+    },
+  );
   const notify = (reason: ConversationInterruptionReason) => {
     if (closed || interrupted) return;
     interrupted = true;
@@ -152,25 +169,15 @@ export async function beginConversationExecutionLease(
     }
   };
   const unsubscribe = adapter.subscribe(event => {
-    // A drain is advisory, not an abort: in-flight effects must reach a safe boundary.
-    if (
-      event.kind === 'pause-requested' &&
-      event.requestId === requestId &&
-      !closed &&
-      !interrupted &&
-      !pauseRequested
-    ) {
-      pauseRequested = true;
-      // This acknowledges the advisory request, not successful checkpoint creation.
-      report('pause-requested');
-      requestPause();
-    }
+    if (event.kind === 'pause-requested') pause.receive(event);
     if (
       event.kind === 'continued' &&
       event.requestId === requestId &&
       !closed &&
       !interrupted
     ) {
+      // A now-granted task replaces the sampled short-lease opportunity.
+      if (event.state === 'continued-granted') pause.invalidate();
       report(event.state);
       observeOpportunity?.(event.state);
     }
@@ -188,7 +195,10 @@ export async function beginConversationExecutionLease(
     }
     if (event.kind === 'protectedData' && !event.available)
       notify('protected-data');
-    if (event.kind === 'foreground') report('foreground');
+    if (event.kind === 'foreground') {
+      pause.invalidate();
+      report('foreground');
+    }
     if (event.kind === 'phase') {
       report('phase');
       const background = adapter.currentPhase?.() === 'background';
@@ -197,6 +207,7 @@ export async function beginConversationExecutionLease(
     // Recheck after foregrounding in case suspension delayed the expiration event.
     if (event.kind === 'foreground' && acquired) reconcile();
     if (event.kind === 'continuation-foreground' && acquired) {
+      pause.invalidate();
       report('continuation-foreground');
       reconcile(true);
     }

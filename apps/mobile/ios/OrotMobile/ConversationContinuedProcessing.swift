@@ -127,3 +127,11 @@ extension ConversationExecutionModule {
         }, reject: reject)
     }
 }
+
+/// Observe a granted task without changing its admission, cancellation, or availability.
+func conversationContinuedWorkIsActive(_ work: Any?) -> Bool {
+    if #available(iOS 26.0, *) {
+        return (work as? ConversationContinuedProcessing)?.active == true
+    }
+    return false
+}

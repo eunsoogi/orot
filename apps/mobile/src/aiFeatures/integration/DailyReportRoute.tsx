@@ -37,6 +37,7 @@ export function DailyReportRoute({
   onNavigationStateChange,
   ownsOperation = true,
   inline = false,
+  showTodaySelection = true,
   expectedReport,
   onTaskIdentity,
   onTaskResult,
@@ -194,7 +195,7 @@ export function DailyReportRoute({
           />
         </>
       ) : null}
-      {!chosenToday || !isToday ? (
+      {showTodaySelection && (!chosenToday || !isToday) ? (
         <DailyReportSelectToday
           persist={onSelectToday}
           onSelected={selected => {

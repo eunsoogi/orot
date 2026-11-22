@@ -1,3 +1,4 @@
+import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import {
   observeContinuedConversationActivity,
   revokeContinuedConversationWork,
@@ -135,7 +136,7 @@ export function createConversationRequestLifetime(input: {
             requestPause,
           ),
         onWorkflowPaused: async (
-          reason: 'expired' | 'decision-required' = 'expired',
+          reason: ConversationCheckpointPauseReason = 'background-paused',
         ) => {
           const entry = owners.get(controller);
           if (

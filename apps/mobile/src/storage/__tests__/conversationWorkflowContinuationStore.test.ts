@@ -4,9 +4,9 @@ test('durable safe pause and atomic claim preserve the original request', async 
   const f = await fixture();
   try {
     await f.persisted.paused(f.state);
-    expect(await f.requests.listInterruptedRequests('session', 0)).toHaveLength(
-      1,
-    );
+    expect(await f.requests.listInterruptedRequests('session', 0)).toEqual([
+      expect.objectContaining({ interruptionReason: 'background-paused' }),
+    ]);
     await f.persisted.claim(new AbortController().signal);
     expect(f.validate).toHaveBeenCalledTimes(1);
     const row = (

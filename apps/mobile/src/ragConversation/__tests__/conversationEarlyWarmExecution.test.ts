@@ -24,6 +24,7 @@ test.each([
   'Stop during commit',
   'lock',
   'expired',
+  'foreground return during preparation',
   'missing native lease',
 ] as const)(
   'held warm preflight and real SQLite use one fake native acquisition/listener: %s',
@@ -136,6 +137,18 @@ test.each([
       }
       if (mode === 'missing native lease') nativeAvailable = false;
       if (mode === 'lock') emit({ kind: 'protectedData', available: false });
+      if (mode === 'foreground return during preparation') {
+        const advisory = {
+          kind: 'pause-requested',
+          requestId,
+          warning: 'old',
+        } as const;
+        emit({ kind: 'phase' });
+        emit(advisory);
+        phase = 'active';
+        emit({ kind: 'foreground' });
+        expect(end).not.toHaveBeenCalled();
+      }
       warm.release({ current: () => true, recheckOwner: async () => true });
       if (mode === 'Stop during commit') {
         await writing.promise;

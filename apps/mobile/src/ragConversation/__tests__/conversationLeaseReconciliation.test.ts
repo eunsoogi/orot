@@ -202,3 +202,34 @@ test('a broken diagnostic cannot suppress the exact native cancellation or lease
   release();
   expect(f.adapter.end).toHaveBeenLastCalledWith('owner');
 });
+
+test('a background advisory delivered during an already active native phase does not drain the owner', async () => {
+  const f = await fixture();
+  f.release();
+  const pause = jest.fn();
+  const current = jest.fn(async () => false);
+  Object.assign(f.adapter, { pauseStillCurrent: current });
+  f.adapter.currentPhase = () => 'active';
+  const release = await beginConversationExecutionLease(
+    f.adapter,
+    'owner',
+    f.interrupt,
+    undefined,
+    pause,
+  );
+  const old = {
+    kind: 'pause-requested',
+    requestId: 'owner',
+    warning: 'stale-warning',
+  } as const;
+  f.emit(old);
+  await flush();
+  try {
+    expect(current).toHaveBeenCalledWith('owner', old.warning);
+    expect(pause).not.toHaveBeenCalled();
+    f.emit({ kind: 'expired', requestId: 'owner' });
+    expect(f.interrupt.mock.calls).toEqual([['expired']]);
+  } finally {
+    release();
+  }
+});

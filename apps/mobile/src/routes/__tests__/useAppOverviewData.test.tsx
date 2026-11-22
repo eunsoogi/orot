@@ -121,3 +121,49 @@ test('a late older recording refresh cannot replace the latest snapshot', async 
   expect(result.current.recordings).toEqual([savedSource]);
   expect(result.current.recordingState).toBe('ready');
 });
+
+test('Records reloads a newly saved recording without refreshing unrelated appointments', async () => {
+  const store = createAppointmentStore([]);
+  const loadAppointments = jest.fn(async () => store.repository);
+  const loadRecordings = jest
+    .fn()
+    .mockResolvedValueOnce([])
+    .mockResolvedValue([savedSource]);
+  const { result, rerender } = await renderHook(
+    ({ records }: { records: boolean }) =>
+      useAppOverviewData(loadAppointments, loadRecordings, false, records),
+    { initialProps: { records: true } },
+  );
+  expect(result.current.recordings).toEqual([]);
+  await rerender({ records: false });
+  await rerender({ records: true });
+  expect(result.current.recordings).toEqual([savedSource]);
+  expect(loadRecordings).toHaveBeenCalledTimes(2);
+  expect(loadAppointments).toHaveBeenCalledTimes(1);
+});
+
+test('built-in recordings do not load an Overview snapshot while Records owns indexed paging', async () => {
+  const store = createAppointmentStore([]);
+  const loadAppointments = async () => store.repository;
+  const loadRecordings = jest.fn(async () => [savedSource]);
+  const { result, rerender } = await renderHook(
+    ({ overview }: { overview: boolean }) =>
+      useAppOverviewData(
+        loadAppointments,
+        loadRecordings,
+        overview,
+        overview,
+        false,
+      ),
+    { initialProps: { overview: false } },
+  );
+  expect(loadRecordings).not.toHaveBeenCalled();
+  await act(async () => result.current.refreshRecordings());
+  expect(loadRecordings).not.toHaveBeenCalled();
+  await rerender({ overview: true });
+  expect(loadRecordings).toHaveBeenCalledTimes(1);
+  expect(result.current.recordings).toEqual([savedSource]);
+  await rerender({ overview: false });
+  await act(async () => result.current.refreshRecordings());
+  expect(loadRecordings).toHaveBeenCalledTimes(1);
+});

@@ -65,6 +65,7 @@ const events = new Set<Event>([
 ]);
 const reasons = new Set<ConversationRecoveryReason>([
   'decision-required',
+  'background-paused',
   'expired',
   'protected-data',
   'bridge-unavailable',

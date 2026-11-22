@@ -7,6 +7,10 @@ type Owner = Readonly<{
 }>;
 
 type Receipt = 'short-lease-admitted' | 'refused' | 'unavailable';
+type TerminalEvent = Extract<
+  ConversationExecutionEvent,
+  { kind: 'expired' | 'protectedData' }
+>;
 
 /** A preparation lease carries only local OS time. It cannot establish a model,
  * authorize transmission, or persist a request before protected storage wins. */
@@ -18,7 +22,7 @@ export function startConversationPreparationExecution(input: {
   readonly subscribe?: (
     receive: (event: ConversationExecutionEvent) => void,
   ) => () => void;
-  readonly onPreparationEnd?: (event: ConversationExecutionEvent) => void;
+  readonly onPreparationEnd?: (event: TerminalEvent) => void;
   readonly isActive: (requestId: string) => Promise<boolean>;
   readonly end: (requestId: string) => void;
 }) {
@@ -31,6 +35,9 @@ export function startConversationPreparationExecution(input: {
   let ended = false;
   let unsubscribe = () => {};
   let durable: ((event: ConversationExecutionEvent) => void) | undefined;
+  let warning:
+    | Extract<ConversationExecutionEvent, { kind: 'pause-requested' }>
+    | undefined;
   const usable = () =>
     !closed && !transferred && !input.signal.aborted && input.current();
   const release = () => {
@@ -47,6 +54,7 @@ export function startConversationPreparationExecution(input: {
   const close = () => {
     if (closed || transferred) return;
     closed = true;
+    warning = undefined;
     input.signal.removeEventListener('abort', close);
     release();
   };
@@ -67,9 +75,18 @@ export function startConversationPreparationExecution(input: {
           durable(event);
           return;
         }
-        if (
+        if (event.kind === 'pause-requested') {
+          // No graph exists yet. Only the exact durable relay may accept a
+          // warning after checking it against native background authority.
+          warning = event.warning ? event : undefined;
+        } else if (
+          event.kind === 'foreground' ||
+          event.kind === 'continuation-foreground' ||
+          (event.kind === 'continued' && event.state === 'continued-granted')
+        ) {
+          warning = undefined;
+        } else if (
           event.kind === 'expired' ||
-          event.kind === 'pause-requested' ||
           (event.kind === 'protectedData' && !event.available)
         ) {
           close();
@@ -127,6 +144,9 @@ export function startConversationPreparationExecution(input: {
       durable = receive;
       transferred = true;
       input.signal.removeEventListener('abort', close);
+      const queuedWarning = warning;
+      warning = undefined;
+      if (queuedWarning) durable?.(queuedWarning);
       // The durable lifetime now owns this single release; no second acquisition.
       return release;
     },
