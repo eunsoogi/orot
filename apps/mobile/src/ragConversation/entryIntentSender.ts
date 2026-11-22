@@ -1,4 +1,6 @@
 import { bindDailyReportMemoryTap } from './conversationDailyReportMemoryJobs';
+import { todayIdentity } from '../aiFeatures/integration/dailyReportTodayIdentity';
+import { t } from '../i18n';
 import type { DailyReportMemoryTap } from '../storage/dailyReportMemoryTap';
 import { allowWarmConversationSender } from './warmConversationSender';
 import type { ConversationSessions } from './conversationSessions';
@@ -21,32 +23,52 @@ export function entryIntentSender(
   // Freeze the selected source before storage preflight can yield to another selection.
   const selected = conversationEntryForSession(store, id);
   const restored = store.getSnapshot().sessions.find(item => item.id === id);
+  const command = t('dailyReport.title');
+  // Pin the local day at the explicit send, not after asynchronous preflight.
+  const typedToday =
+    inputOrigin === 'composer' &&
+    restored?.draft.trim() === command &&
+    !restored.dailyReport &&
+    !selected?.dailyReport &&
+    (!selected?.reportRequest || selected.intent === 'conversation') &&
+    store.photoDrafts.get(id).status === 'empty';
+  const typedDay = typedToday ? todayIdentity() : null;
   const dispatch: ConversationSender = async (
     question,
     history,
     signal,
     observer,
   ) => {
+    const isTodayCommand =
+      typedToday && question.trim() === command && !observer?.photoInput;
+    if (isTodayCommand && !typedDay)
+      return { status: 'failure', kind: 'unavailable' };
     // Restored targets are revalidated by the same guard used for the original entry.
     // Restored possibility sessions retain their safety and grounding boundary on follow-up.
     const context =
-      selected && selected.intent !== 'conversation'
+      isTodayCommand && typedDay
         ? {
-            ...selected,
-            ...(restored?.dailyReport
-              ? { dailyReport: restored.dailyReport }
-              : {}),
+            intent: 'daily-report' as const,
+            entryKey: `conversation-report:${id}`,
+            reportRequest: typedDay,
           }
-        : restored?.dailyReport
+        : selected && selected.intent !== 'conversation'
           ? {
-              intent: restored.entryIntent ?? ('conversation' as const),
-              entryKey: 'restored',
-              dailyReport: restored.dailyReport,
+              ...selected,
+              ...(restored?.dailyReport
+                ? { dailyReport: restored.dailyReport }
+                : {}),
             }
-          : restored?.entryIntent === 'possibilities' &&
-              (!selected || selected.intent === 'conversation')
-            ? { intent: 'possibilities' as const, entryKey: 'restored' }
-            : selected;
+          : restored?.dailyReport
+            ? {
+                intent: restored.entryIntent ?? ('conversation' as const),
+                entryKey: 'restored',
+                dailyReport: restored.dailyReport,
+              }
+            : restored?.entryIntent === 'possibilities' &&
+                (!selected || selected.intent === 'conversation')
+              ? { intent: 'possibilities' as const, entryKey: 'restored' }
+              : selected;
     let committed = false;
     const scopedObserver = {
       ...observer,
@@ -79,7 +101,8 @@ export function entryIntentSender(
     }
     return outcome;
   };
-  return !restored?.dailyReport &&
+  return !typedToday &&
+    !restored?.dailyReport &&
     !selected?.dailyReport &&
     !selected?.reportRequest &&
     !selected?.appointmentId &&

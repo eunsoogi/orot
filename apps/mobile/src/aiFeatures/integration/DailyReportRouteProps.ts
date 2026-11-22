@@ -32,6 +32,7 @@ export interface DailyReportRouteProps {
   readonly onNavigationStateChange?: import('./useAiFeatureNavigationState').AiFeatureNavigationStateChange;
   readonly ownsOperation?: boolean;
   readonly inline?: boolean;
+  readonly showTodaySelection?: boolean;
   readonly expectedReport?: NonNullable<
     ConversationEntryContext['dailyReport']
   >;
