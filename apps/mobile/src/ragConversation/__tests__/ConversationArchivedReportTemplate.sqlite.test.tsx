@@ -1,6 +1,8 @@
 import { act, render, within } from '@testing-library/react-native';
 import { useSyncExternalStore } from 'react';
 import { t } from '../../i18n';
+import { GeneratedReportDetailPresentation } from '../../generatedReports/GeneratedReportDetailPresentation';
+import { createGeneratedReportReader } from '../../generatedReports/readers';
 import {
   date,
   setup,
@@ -82,7 +84,10 @@ test('the same canonical report template renders before and after restoring a du
       sources: [f.personal],
       citations: [f.personal.reference],
     });
-    await f.save('generic-markdown', { answer: fake });
+    await f.save('generic-markdown', {
+      answer: fake,
+      entryIntent: 'possibilities',
+    });
     await f.save('daily-template', { answer: daily });
     const live = await render(
       <ConversationMessage
@@ -136,6 +141,44 @@ test('the same canonical report template renders before and after restoring a du
     } finally {
       await cold.unmount();
     }
+
+    // Records uses its ordinary protected reader, not the display-only archive
+    // read used above. The same accepted answer must have the same structure.
+    const records = createGeneratedReportReader(f.db);
+    const rows = await records.list();
+    const row = rows.find(
+      item => item.key === 'conversation:disease-template',
+    )!;
+    const signal = new AbortController().signal;
+    const legacy = rows.find(
+      item => item.key === 'conversation:generic-markdown',
+    )!;
+    expect(await records.read(legacy, signal)).toEqual({
+      paragraphs: [fake],
+    });
+    const detail = await records.read(row, signal);
+    expect(detail).not.toBeNull();
+    const browser = await render(
+      <GeneratedReportDetailPresentation
+        row={row}
+        state={{ status: 'ready', detail: detail!, generation: 1 }}
+        onRetry={jest.fn()}
+        isCurrent={() => true}
+      />,
+    );
+    try {
+      assertSameTemplate(browser);
+      expect(
+        browser.getAllByRole('header', { name: template.title }),
+      ).toHaveLength(1);
+      expect(
+        browser.queryByText(t('records.generatedConversationMaterials')),
+      ).toBeNull();
+    } finally {
+      await browser.unmount();
+    }
+    await f.storage.hideSession('selected', 0);
+    expect(await records.read(row, signal)).toBeNull();
   } finally {
     store.dispose();
     f.close();

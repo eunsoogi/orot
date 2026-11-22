@@ -7,6 +7,7 @@ import { OMITTED_SUMMARY_CONTENT_NOTE } from '../diseaseHypotheses/summaryPartia
 import { INCOMPLETE_SUMMARY_EVIDENCE_NOTE } from '../diseaseHypotheses/summaryPartialEvidence';
 import type { GeneratedReportDetail } from './types';
 import { SavedSummaryReviewWarnings } from '../diseaseHypotheses/SavedSummaryReviewWarnings';
+import { ConversationReportText } from '../ragConversation/ConversationReportText';
 
 /** Preserve every saved narrative field and coverage warning without inventing live evidence links. */
 export function GeneratedReportContent({
@@ -24,14 +25,22 @@ export function GeneratedReportContent({
         <AppText>{INCOMPLETE_SUMMARY_EVIDENCE_NOTE}</AppText>
       ) : null}
       <SavedSummaryReviewWarnings current={detail.analysis?.savedSummary} />
-      {detail.paragraphs.map((text, index) => (
-        <AiResponseText
-          key={index}
-          testID={`generated-report-paragraph-${index}`}
-        >
-          {text}
-        </AiResponseText>
-      ))}
+      {detail.conversationPossibility ? (
+        <ConversationReportText
+          report={detail.conversationPossibility}
+          testID="generated-report-conversation-template"
+          showTitle={false}
+        />
+      ) : (
+        detail.paragraphs.map((text, index) => (
+          <AiResponseText
+            key={index}
+            testID={`generated-report-paragraph-${index}`}
+          >
+            {text}
+          </AiResponseText>
+        ))
+      )}
       {detail.analysis?.hypotheses.map((h, index) => (
         <AppText key={index}>
           {copy.evidenceCounts(

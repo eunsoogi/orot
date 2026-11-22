@@ -12,6 +12,12 @@ export interface GeneratedReportRow {
 export interface GeneratedReportDetail {
   readonly analysis?: import('../diseaseHypotheses/types').DiseaseHypothesisAnalysis;
   readonly daily?: import('@orot/domain').DailyReportOutput;
+  /** Parsed only from a complete, currently validated Conversation possibility artifact. */
+  readonly conversationPossibility?: NonNullable<
+    ReturnType<
+      typeof import('../ragConversation/conversationReportTemplate').parsePossibilityConversationReport
+    >
+  >;
   readonly paragraphs: readonly string[];
   readonly warning?: string;
   /** Bound only to the exact rendered committed standalone possibility snapshot. */
