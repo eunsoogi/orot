@@ -11,6 +11,7 @@ import { hubSpacing } from '../layout/hubSpacing';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NextVisitPanel } from './OverviewSummaryPanels';
+import { ChartTooltipHost } from '../ui/charts/ChartTooltipHost';
 import { OverviewMetrics } from './overview/OverviewMetrics';
 import type { OverviewPreparationLoaders } from './useOverviewPreparationData';
 
@@ -47,7 +48,7 @@ export default function OverviewRoute({
   });
 
   return (
-    <View style={styles.container} testID="overview-screen">
+    <ChartTooltipHost style={styles.container} testID="overview-screen">
       <View style={styles.header}>
         <HubBanner
           title={t('overview.title')}
@@ -78,7 +79,7 @@ export default function OverviewRoute({
         />
         <OverviewMetrics />
       </View>
-    </View>
+    </ChartTooltipHost>
   );
 }
 

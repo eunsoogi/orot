@@ -7,7 +7,10 @@ import { StyleSheet } from 'react-native';
 import { NavigationRouteScrollView } from '../../navigation/NavigationRouteScrollView';
 import { NavigationOcclusionContext } from '../../navigation/useNavigationContentInset';
 
-jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
+jest.mock('@react-navigation/native', () => ({
+  NavigationContext: require('react').createContext(null),
+  useIsFocused: () => true,
+}));
 jest.mock('../../navigation', () => ({
   useNavigationLeaveStateRegistration: jest.fn(),
 }));
