@@ -157,6 +157,7 @@ export function NavigationRouteScene<Name extends string>({
   const body = scrollable ? (
     <NavigationRouteScrollView
       key={`${route.key}:${rootTabs?.activeTab ?? ''}`}
+      pullToRefresh={route.name === 'recent-records'}
     >
       {adaptiveContent}
     </NavigationRouteScrollView>
