@@ -1,3 +1,4 @@
+import type { WarmConversationPreparation } from './conversationWarmAdmission';
 import type { PlainHistoryPlan } from './plainConversationSendContext';
 import { observeConversationPreflight } from '../providers/conversationPreflightDiagnostic';
 import { t } from '../i18n';
@@ -5,7 +6,11 @@ import type { ConversationSession } from './conversationSessionTypes';
 
 /** Only explicit sends retry recoverable reads. A different owner or Stop is not an error. */
 export function prepareConversationSend(input: {
-  select: (id: number, signal?: AbortSignal) => Promise<boolean>;
+  select: (
+    id: number,
+    signal?: AbortSignal,
+    allowWarm?: boolean,
+  ) => Promise<boolean | WarmConversationPreparation>;
   context: (
     id: number,
     signal: AbortSignal,
@@ -17,10 +22,16 @@ export function prepareConversationSend(input: {
   return async (
     id: number,
     signal: AbortSignal,
-  ): Promise<boolean | PlainHistoryPlan> => {
+    allowWarm = false,
+  ): Promise<boolean | PlainHistoryPlan | WarmConversationPreparation> => {
+    const selection: { warm?: WarmConversationPreparation } = {};
     const selected = await observeConversationPreflight(
       'model',
-      () => input.select(id, signal),
+      async () => {
+        const result = await input.select(id, signal, allowWarm);
+        if (typeof result === 'object') selection.warm = result;
+        return Boolean(result);
+      },
       signal,
     );
     if (signal.aborted || !input.current(id)) return false;
@@ -48,6 +59,6 @@ export function prepareConversationSend(input: {
     );
     if (signal.aborted || !input.current(id)) return false;
     if (!ready) throw new Error(t('ragConversation.preflight.failed'));
-    return prepared;
+    return selection.warm ?? prepared;
   };
 }

@@ -1,3 +1,4 @@
+import { createConversationWarmLeaseReader } from './conversationWarmLease';
 import { createSavedGeneratedReportReferences } from './savedGeneratedReportReferences';
 import { assertHistoricalDialogueParentsCurrent } from './conversationHistoricalDialogue';
 import { withWritePeriodCalculations } from './writePeriodCalculationScope';
@@ -67,6 +68,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       listTimeline,
     ),
     continuousSession: continuousConversationStorage(database, ensure),
+    validateWarmLease: createConversationWarmLeaseReader(database, ensure),
     readSteeringHistory: conversationSteeringHistory(database, ensure),
     openWorkflowContinuation: conversationWorkflowContinuationOpener(database),
     ...createConversationPreviewStorage(database, ensure),

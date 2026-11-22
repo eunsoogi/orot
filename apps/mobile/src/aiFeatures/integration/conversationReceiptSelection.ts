@@ -1,3 +1,4 @@
+import { warmConversationProviderGuard } from './warmConversationProviderGuard';
 import type { SelectedAiResolution } from './provider';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import { conversationBackgroundProvider } from './conversationBackgroundProvider';
@@ -18,17 +19,25 @@ export function conversationReceiptSelection<T extends SelectedAiResolution>(
     selected.status === 'ready' &&
     expected &&
     (selected.provider.id !== expected.providerId ||
-      selected.modelId !== expected.modelId)
+      selected.modelId !== expected.modelId ||
+      expected.isCurrent?.() === false)
   )
     throw new Error('The conversation model changed before dispatch.');
   if (
     selected.status !== 'ready' ||
-    (!observer?.onProviderReceipt && !observer?.onExecutionState)
+    (!observer?.onProviderReceipt &&
+      !observer?.onExecutionState &&
+      !expected?.isCurrent)
   )
     return selected;
+  const guarded = warmConversationProviderGuard(
+    selected.provider,
+    expected?.isCurrent,
+    expected?.isDurablyCurrent,
+  );
   const receipt = observer?.onProviderReceipt
-    ? conversationReceiptProvider(selected.provider, observer.onProviderReceipt)
-    : selected.provider;
+    ? conversationReceiptProvider(guarded, observer.onProviderReceipt)
+    : guarded;
   // Keep both selection paths wrapped; workflows consume option.provider while
   // openings may call provider directly. Local inference must not request a grant.
   const provider = conversationBackgroundProvider(
