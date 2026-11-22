@@ -1,7 +1,13 @@
 import {
   localConversationMemoryIdPrefix,
+  localQueryTimestampKey,
+  localQueryTimestampKeyExpression,
   type SqlDatabase,
 } from '@orot/storage';
+import {
+  recentMaterialTimestamp,
+  recentMaterialTimestampExpression,
+} from './recentMaterialTimestamp';
 import { visibleSummary } from '../storage/symptomSummaryQuarantine';
 import type { GeneratedReportRow } from './types';
 
@@ -95,18 +101,28 @@ async function readCatalog(
       ? "AND NOT EXISTS (SELECT 1 FROM visit_period_policy p WHERE p.question_id=visit_questions.id AND p.status='quarantined')"
       : "AND (json_type(payload_json,'$.healthContextSources') IS NULL OR json_array_length(payload_json,'$.healthContextSources')=0 AND json_type(payload_json,'$.healthContextSources')='array')";
   const visitClock = 'coalesce(recorded_at,effective_at,ingested_at)';
-  const visitDate = feed
-    ? `strftime('%Y-%m-%dT%H:%M:%fZ',MAX(julianday(${visitClock})))`
-    : `MAX(${visitClock})`;
-  if (tables.has('visit_questions'))
-    queries.push(`
+  const visitRank = localQueryTimestampKeyExpression(
+    recentMaterialTimestampExpression(visitClock),
+  );
+  if (tables.has('visit_questions')) {
+    const visits = `
     SELECT 'visit:'||json_extract(payload_json,'$.appointmentId') AS key,
       json_extract(payload_json,'$.appointmentId') AS id,'visit' AS origin,'visit_questions' AS kind,
-      ${visitDate} AS createdAt,0 AS unavailable FROM visit_questions
+      ${feed ? visitClock : `MAX(${visitClock})`} AS createdAt,0 AS unavailable
+      ${feed ? `,MAX(CASE WHEN julianday(${visitClock}) IS NOT NULL AND ${visitClock} GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T*' THEN ${visitRank} END) AS visitRank` : ''}
+    FROM visit_questions
     WHERE json_valid(payload_json) AND json_type(payload_json,'$.appointmentId')='text'
       AND length(json_extract(payload_json,'$.appointmentId'))>0
       ${visitVisibility}
-      GROUP BY json_extract(payload_json,'$.appointmentId')`);
+      GROUP BY json_extract(payload_json,'$.appointmentId')`;
+    // With one MAX, SQLite takes the bare timestamp from the same ranked visit
+    // row. Preserve its original fractional UTC instant rather than rounding to milliseconds.
+    queries.push(
+      feed
+        ? `SELECT key,id,origin,kind,createdAt,unavailable FROM (${visits})`
+        : visits,
+    );
+  }
   if (
     [
       'conversation_artifacts',
@@ -140,14 +156,22 @@ async function readCatalog(
   if (!queries.length) return [];
   // The recent feed uses absolute instants and admits only available catalog rows.
   // The browser keeps its historical behavior, including unavailable recovery entries.
-  const clock = feed ? 'julianday(createdAt)' : 'createdAt';
-  const cursor = feed ? 'julianday(?)' : '?';
+  const clock = feed
+    ? localQueryTimestampKeyExpression(
+        recentMaterialTimestampExpression('createdAt'),
+      )
+    : 'createdAt';
+  const cursor = before
+    ? feed
+      ? localQueryTimestampKey(recentMaterialTimestamp(before.createdAt))
+      : before.createdAt
+    : null;
   const result = await database.execute(
     `SELECT * FROM (${queries.join(' UNION ALL ')})
     WHERE julianday(createdAt) IS NOT NULL AND createdAt GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T*'
       ${feed ? 'AND unavailable=0' : ''}
-      AND (? IS NULL OR ${clock}<${cursor} OR (${clock}=${cursor} AND key<?))
-    ORDER BY ${clock} DESC,key DESC LIMIT 20`,
+      AND (? IS NULL OR ${clock}<? OR (${clock}=? AND key COLLATE BINARY<?))
+    ORDER BY ${clock} DESC,key COLLATE BINARY DESC LIMIT 20`,
     [
       ...(includeNotes
         ? [
@@ -155,9 +179,9 @@ async function readCatalog(
             localConversationMemoryIdPrefix,
           ]
         : []),
-      before?.createdAt ?? null,
-      before?.createdAt ?? null,
-      before?.createdAt ?? null,
+      cursor,
+      cursor,
+      cursor,
       before?.key ?? null,
     ],
   );

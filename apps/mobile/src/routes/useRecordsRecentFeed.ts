@@ -5,8 +5,10 @@ import { subscribeRecentSourceSaved } from '../storage/recentSourceEvents';
 import type { RecordsRecentSourcesProps } from './RecordsRecentSources';
 import {
   buildRecentRecordEntries,
+  certifiedRecentPrefix,
   groupRecentRecords,
   recentPageSize,
+  recentStreamFrontier,
   type RecentRecordEntry,
 } from './RecordsRecentTimeline';
 import {
@@ -83,17 +85,18 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     ...(onOpenReport ? [reports] : []),
     ...(pagedAudio || pagedDocuments ? [media] : []),
   ];
-  // Newly discovered rows join the known chronological set without evicting media
-  // already shown. Keep the route and all still-valid keys mounted through late sort.
-  const visible = showAll
-    ? records.filter(
-        (row, index) => index < limit || row.source || row.material,
-      )
-    : records;
-  const groups = groupRecentRecords(visible, new Date(), showAll ? null : 3);
-  const hasLegacyMore = visible.length < records.length;
+  // Publishing below an unresolved cursor can show an old file ahead of an
+  // unseen newer report. Keep the certified prefix and one common visible depth.
+  const certified = certifiedRecentPrefix(records, [
+    ...(onOpenReport ? [recentStreamFrontier(reports, 'material')] : []),
+    ...(pagedAudio || pagedDocuments
+      ? [recentStreamFrontier(media, 'source')]
+      : []),
+  ]);
+  const groups = groupRecentRecords(certified, new Date(), showAll ? limit : 3);
+  const hasKnownMore = certified.length > limit;
   const canAdvance =
-    hasLegacyMore ||
+    hasKnownMore ||
     (Boolean(onOpenReport) && reportDemand.canAdvance) ||
     ((pagedAudio || pagedDocuments) && mediaDemand.canAdvance);
   const legacyRecordingState = pagedAudio ? 'ready' : recordingState;
@@ -154,19 +157,22 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     }
   }
   return {
-    records,
+    records: certified,
     groups,
     showMore,
     retrySources,
     openRecord,
     isCurrent: reports.isRouteCurrent,
     more:
-      hasLegacyMore ||
+      hasKnownMore ||
       streams.some(stream => stream.more && stream.rows.length > 0),
     isLoading:
       legacyRecordingState === 'loading' ||
       legacyDocumentState === 'loading' ||
-      streams.some(stream => stream.state === 'loading'),
+      streams.some(
+        stream =>
+          stream.state === 'loading' || (active && stream.state === 'idle'),
+      ),
     canAdvance,
     loadErrors: [
       reports.state === 'failed'
