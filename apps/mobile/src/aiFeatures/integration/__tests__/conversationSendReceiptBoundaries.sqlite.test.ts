@@ -70,6 +70,7 @@ test.each([
         services,
         listModels,
         listAccounts,
+        assertAccountReads,
         authorize,
         generate,
         change,
@@ -145,7 +146,7 @@ test.each([
         await work;
         expect(listModels).toHaveBeenCalledTimes(1);
         expect(normalModelSelection).toHaveBeenCalledTimes(1);
-        expect(listAccounts).toHaveBeenCalledTimes(mode === 'cold' ? 1 : 2);
+        assertAccountReads(1, mode !== 'cold');
         expect(generate).not.toHaveBeenCalled();
         expect(sent || read).toBe(false);
         return;
@@ -192,7 +193,7 @@ test.each([
             Number(warm),
         );
         expect(listAccounts).toHaveBeenCalledTimes(
-          mode === 'owner-deleted' ? 2 : 3,
+          (mode === 'owner-deleted' ? 2 : 3) - Number(warm),
         );
         expect(authorize).not.toHaveBeenCalled();
         expect(generate).not.toHaveBeenCalled();
@@ -206,7 +207,7 @@ test.each([
       f.elapse(50, f.history);
       await reached('authority.entered', f.authority.entered);
       expect(listModels).toHaveBeenCalledTimes(warm ? 2 : 3); // startup plus send catalogs
-      expect(listAccounts).toHaveBeenCalledTimes(3);
+      assertAccountReads(warm ? 2 : 3, warm);
       expect(generate).not.toHaveBeenCalled();
       f.elapse(70, f.authority);
       await reached('provider.started.entered', f.provider.started.entered);
