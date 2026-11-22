@@ -8,6 +8,7 @@ export interface RecentMediaRow extends RecentSourceRow {
 /** One protected indexed page; bodies and original locators stay in the detail repository. */
 export async function loadRecentSourceMaterial(
   before?: Pick<RecentMediaRow, 'key' | 'createdAt'>,
+  options?: { signal: AbortSignal; canRetry: () => Promise<boolean> },
 ) {
   const { openLocalAgentMemoryDatabase } =
     await import('../storage/secureDatabase');
@@ -15,6 +16,8 @@ export async function loadRecentSourceMaterial(
     await readCommittedRecentSourcePage(
       await openLocalAgentMemoryDatabase(),
       before && { id: before.key, createdAt: before.createdAt },
+      options?.signal,
+      options?.canRetry,
     )
   ).map(row => ({ ...row, key: row.id }));
 }
