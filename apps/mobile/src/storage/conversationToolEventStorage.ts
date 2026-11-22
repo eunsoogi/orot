@@ -1,6 +1,5 @@
 import { toolEventRecovery } from './toolEventRecovery';
 import {
-  setupToolPeriodPolicy,
   legacyToolPeriodAvailable,
   markToolPeriodPolicy,
   unavailableToolMetadata,
@@ -39,12 +38,8 @@ export function isOwnedConversationToolReader(reader: unknown): boolean {
 /** Tool calls share the encrypted conversation session lease and deletion lifecycle. */
 export function createConversationToolEventStorage(
   database: SqlDatabase,
-  ensureStorage: () => Promise<void>,
+  ensure: () => Promise<void>,
 ) {
-  const ensure = async () => {
-    await ensureStorage();
-    await setupToolPeriodPolicy(database);
-  };
   const readSnapshot = conversationToolSnapshotReader(database, ensure);
   const storage = {
     readUnavailableToolMetadata: unavailableToolMetadata(database, ensure),
