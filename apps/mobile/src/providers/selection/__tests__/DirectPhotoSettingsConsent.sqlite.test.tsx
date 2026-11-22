@@ -14,10 +14,10 @@ import { saveModelSettingsConsent } from '../../../agent/execution/saveModelSett
 import { calendarModelStore } from '../../../calendarModelSettings/calendarModelStore';
 import { providerSelectionStore } from '../keychainSelectionStore';
 
-test.each(['Settings', 'joint Calendar', 'quick picker'] as const)(
+test.each(['Settings', 'joint Calendar', 'non-Settings picker'] as const)(
   'only a reviewed Settings action can grant image access: %s',
   async route => {
-    const quick = route === 'quick picker';
+    const feature = route === 'non-Settings picker';
     const joint = route === 'joint Calendar';
     let receive: ((event: ChatGPTPlanNativeEvent) => void) | undefined;
     const startPhotoResponse = jest.fn(async (requestId: string) => {
@@ -75,7 +75,7 @@ test.each(['Settings', 'joint Calendar', 'quick picker'] as const)(
         selection,
         recipient,
         remote: true,
-        search: { web: false, medical: !quick },
+        search: { web: false, medical: !feature },
         store: providerSelectionStore,
         signal,
         isCurrent: () => true,
@@ -83,7 +83,7 @@ test.each(['Settings', 'joint Calendar', 'quick picker'] as const)(
       const before = await reloaded.read('conversation', 'model');
       expect(before?.permissions).not.toContainEqual(directPhotoPermission);
       await expect(authorize(current, signal)).resolves.toBeNull();
-      const view = await render(selectionView(quick));
+      const view = await render(selectionView(feature));
       try {
         const press = (id: string) => fireEvent.press(view.getByTestId(id));
         await press('provider-option-0');
@@ -91,23 +91,20 @@ test.each(['Settings', 'joint Calendar', 'quick picker'] as const)(
           expect(view.getByTestId('provider-selection-confirm')).toBeEnabled(),
         );
         await press('provider-selection-confirm');
-        const details = await view.findByTestId('inference-disclosure-scope');
-        if (quick) {
-          expect(details).not.toHaveTextContent(/선택한 사진 한 장/);
-          expect(details).toHaveTextContent(/Europe PMC/);
-          await fireEvent.press(view.getByTestId('inference-disclosure-allow'));
+        if (feature) {
           await waitFor(() => expect(commit).toHaveBeenCalledTimes(1));
+          expect(view.queryByTestId('inference-disclosure-sheet')).toBeNull();
           expect(
             (await reloaded.read('conversation', 'model'))?.permissions,
           ).not.toContainEqual(directPhotoPermission);
           expect(
-            (await reloaded.read('conversation', 'medical-search'))?.identity
-              .recipient,
-          ).toBe('Europe PMC');
+            await reloaded.read('conversation', 'medical-search'),
+          ).toBeNull();
           await expect(authorize(current, signal)).resolves.toBeNull();
           expect(startPhotoResponse).not.toHaveBeenCalled();
           return;
         }
+        const details = await view.findByTestId('inference-disclosure-scope');
         expect(details).toHaveTextContent(
           /선택한 사진 한 장과 입력한 질문만[\s\S]+다른 대화나 건강 기록을 자동으로 첨부하지 않습니다/,
         );
@@ -135,7 +132,7 @@ test.each(['Settings', 'joint Calendar', 'quick picker'] as const)(
         expect(Boolean(await reloaded.read('calendar'))).toBe(joint);
         if (!joint) {
           const approved = await reloaded.read('conversation', 'model');
-          await view.rerender(selectionView(true));
+          await view.rerender(selectionView());
           await press('provider-option-0');
           await waitFor(() =>
             expect(

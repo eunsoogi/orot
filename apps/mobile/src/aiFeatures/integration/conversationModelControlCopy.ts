@@ -12,7 +12,11 @@ export type Presentation =
     }
   | {
       readonly status:
-        'saved' | 'saved-chatgpt' | 'ready' | 'saved-unavailable';
+        | 'saved'
+        | 'saved-chatgpt'
+        | 'saved-chatgpt-unverified'
+        | 'ready'
+        | 'saved-unavailable';
       readonly detail?: string;
       readonly name: string;
       readonly local: boolean;
@@ -24,6 +28,7 @@ export function providerControlCopy(shown: Presentation) {
     shown.status === 'ready' ||
     shown.status === 'saved' ||
     shown.status === 'saved-chatgpt' ||
+    shown.status === 'saved-chatgpt-unverified' ||
     shown.status === 'saved-unavailable';
   const value = named
     ? shown.name
@@ -37,9 +42,11 @@ export function providerControlCopy(shown: Presentation) {
   const rowLabel = `${t('provider.selection.rowTitle')}, ${
     shown.status === 'saved-chatgpt'
       ? t('provider.selection.rowSavedPendingLabel', { model: value })
-      : shown.status === 'saved-unavailable'
-        ? `${value}. ${shown.detail ?? t('provider.selection.rowUnavailable')}`
-        : value
+      : shown.status === 'saved-chatgpt-unverified'
+        ? t('provider.selection.rowSavedUnverifiedLabel', { model: value })
+        : shown.status === 'saved-unavailable'
+          ? `${value}. ${shown.detail ?? t('provider.selection.rowUnavailable')}`
+          : value
   }`;
 
   return {

@@ -22,6 +22,7 @@ export function createConversationSessionOptions(
   const photo = conversationPhotoPreparationOption(input);
   return {
     ...photo,
+    ordinaryMemory: input.ordinaryMemory,
     useProtectedPromptHistory: true,
     writeDirectPhotoReply: async (...args) =>
       (await openStorage()).writeDirectPhotoReply(...args),

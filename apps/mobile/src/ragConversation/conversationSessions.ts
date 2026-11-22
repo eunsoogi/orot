@@ -14,10 +14,7 @@ import { createConversationRetrySave } from './conversationRetrySave';
 import { refreshConversationSources } from './conversationSourceRefresh';
 import { createConversationListeners } from './conversationListeners';
 import { createConversationVisitReviewUpdater } from './conversationVisitReviewUpdate';
-import {
-  createConversationSessionSeed,
-  initialConversationSnapshot,
-} from './conversationEmptySession';
+import * as emptySession from './conversationEmptySession';
 import { createConversationNavigation } from './conversationSessionTransitions';
 import { conversationTreatmentOwnership } from './conversationTreatmentOwnership';
 import { createConversationHistoryLoader } from './conversationHistoryLoader';
@@ -29,10 +26,10 @@ export type ConversationSessions = S.ConversationSessions;
 export function createConversationSessions(
   options: S.ConversationSessionOptions = {},
 ) {
-  const { owner, empty } = createConversationSessionSeed();
+  const { owner, empty } = emptySession.createConversationSessionSeed();
   let bindSender = (sender: S.ConversationSender) => sender;
   let beforeSend: Parameters<typeof conversationDispatch>[0]['beforeSend'];
-  let snapshot = initialConversationSnapshot(empty());
+  let snapshot = emptySession.initialConversationSnapshot(empty());
   const listeners = createConversationListeners();
   let disposed = false;
   let lifecycle = 0;
@@ -73,6 +70,7 @@ export function createConversationSessions(
       preparation: options.photoPreparation,
     },
     options.coldResume,
+    options.ordinaryMemory,
   );
   const restoration = conversationRestorationForOptions(options, find, update);
   const attachExisting = createConversationSessionAttachment({
@@ -235,6 +233,7 @@ export function createConversationSessions(
     treatment: conversationTreatmentOwnership(options, () =>
       disposed ? undefined : snapshot,
     ),
+    savedReportLease: options.retention?.activeLease ?? (() => undefined),
     toolSourceSessionId: options.retention?.activeIdentity ?? (() => null),
   };
   const policy = continuousConversationPolicy(store, options, update);

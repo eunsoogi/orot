@@ -4,6 +4,7 @@ import type { LanguageModelRequest } from '@orot/model-runtime';
 import type { TaskResponderInput } from './contracts';
 import type { ModelCallOutcome } from './modelCall';
 import { callModelWithEvidenceFreshness } from './modelCallFreshness';
+import { observeModelStage } from './modelStageDiagnostics';
 import { buildTaskRequest } from './requests';
 import { consumeResponderResponse } from './responses';
 import {
@@ -99,13 +100,27 @@ async function consumeInitialOutcome<TResult>(
     return { ...completeState(), modelCalls: state.modelCalls };
   }
 
+  // Mark the attempt, not a network send: nested stages show whether consent
+  // blocked dispatch and how much time belonged to the provider or local checks.
+  return observeModelStage(context.options.onModelStage, 'response_correction', () =>
+    runTaskCorrection(context, state, input, correctionInstruction, outcome.response),
+  );
+}
+
+async function runTaskCorrection<TResult>(
+  context: RuntimeContext<TResult>,
+  state: WorkflowState,
+  input: TaskResponderInput,
+  instruction: string,
+  precedingResponse: Extract<ModelCallOutcome, { status: 'response' }>['response'],
+): Promise<Partial<WorkflowState>> {
   const correctionRequest = await buildTaskRequest(
     context.options.provider,
     context.options.task,
     input,
     state.budget,
-    correctionInstruction,
-    outcome.response,
+    instruction,
+    precedingResponse,
   );
   if (correctionRequest.status === 'unsupported_input') {
     context.outcome = {

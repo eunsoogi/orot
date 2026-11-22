@@ -1,8 +1,12 @@
+import { SavedGeneratedReportDetail } from './SavedGeneratedReportDetail';
 import { SavedMemoryContent } from './SavedMemoryContent';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useState } from 'react';
 import { HistoryMemoryDetail } from './HistoryMemoryDetail';
-import { isHistoryMemory } from './unifiedSavedMemories';
+import {
+  isGeneratedReportMemory,
+  isHistoryMemory,
+} from './unifiedSavedMemories';
 import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
@@ -81,7 +85,12 @@ export function SavedMemoryDetail({
           }}
         />
       )}
-      {row && !isHistoryMemory(row) && <SavedMemoryContent memory={row} />}
+      {row && isGeneratedReportMemory(row) && (
+        <SavedGeneratedReportDetail key={row.id} artifactId={row.artifactId} />
+      )}
+      {row && !isHistoryMemory(row) && !isGeneratedReportMemory(row) && (
+        <SavedMemoryContent memory={row} />
+      )}
     </View>
   );
 }

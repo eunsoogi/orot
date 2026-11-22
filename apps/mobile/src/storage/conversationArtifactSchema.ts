@@ -1,3 +1,4 @@
+import { setupSavedGeneratedReportReferences } from './savedGeneratedReportReferences';
 import { STORAGE_TABLES, type SqlExecutor } from '@orot/storage';
 import { ensureHealthContextGeneration } from '../healthEvidence/healthContext/generation';
 import { healthPeriodDeletionGuards } from './healthPeriodDependencies';
@@ -20,6 +21,7 @@ import {
 } from './typedDeletionMarkers';
 import { setupConversationTaskCards } from './conversationTaskCards';
 import { setupConversationRequests } from './conversationRequestSchema';
+import { setupOrdinaryConversationMemoryNotes } from './ordinaryConversationMemoryNoteSchema';
 import { setupDirectPhotoReplies } from './conversationDirectPhotoReplies';
 import { setupConversationPreviewSchema } from './conversationPreviewSchema';
 
@@ -54,6 +56,7 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
     'CREATE TABLE IF NOT EXISTS conversation_artifacts (id TEXT PRIMARY KEY NOT NULL, session_id TEXT NOT NULL, created_at TEXT NOT NULL, result_json TEXT NOT NULL)',
   );
   await setupConversationRequests(tx);
+  await setupOrdinaryConversationMemoryNotes(tx);
   await setupConversationTaskCards(tx);
   await tx.execute(
     'CREATE INDEX IF NOT EXISTS conversation_artifacts_order ON conversation_artifacts (session_id, created_at DESC, id DESC)',
@@ -123,6 +126,7 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS symptom_summary_sources (summary_id TEXT NOT NULL REFERENCES symptom_summary_runs(id) ON DELETE CASCADE, record_kind TEXT NOT NULL, record_id TEXT NOT NULL, PRIMARY KEY(summary_id, record_kind, record_id))',
   );
+  await setupSavedGeneratedReportReferences(tx);
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS conversation_invalid_summaries (id TEXT PRIMARY KEY NOT NULL)',
   );

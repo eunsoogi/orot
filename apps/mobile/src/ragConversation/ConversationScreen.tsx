@@ -1,3 +1,4 @@
+import { composerSendWithReportBookmark } from './explicitDailyReportBookmark';
 import { entryIntentSender } from './entryIntentSender';
 import { ConversationScreenHeader } from './ConversationScreenHeader';
 import { conversationHistoryRecoveryProps } from './conversationHistoryRecoveryProps';
@@ -18,7 +19,6 @@ import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/use
 import { useConversationScreenLayout } from './useConversationScreenLayout';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
-import { dispatchConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { useConversationScreenControls } from './useConversationScreenControls';
 import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
@@ -134,6 +134,7 @@ export function ConversationScreen({
         <ConversationWorkspace
           session={session}
           sourceActions={sourceActions}
+          isEntryCurrent={isEntryCurrent}
           routeKey={navigationRouteKey}
           composer={
             <ConversationSteeringComposer
@@ -148,14 +149,13 @@ export function ConversationScreen({
               maximumInputHeight={composerLayout.maximumInputHeight}
               preflightError={preflightError}
               onChangeText={value => store.setDraft(id, value)}
-              onSend={() =>
-                dispatchConversationMessage(
-                  store,
-                  id,
-                  onSend,
-                  prepareVisitQuestions,
-                )
-              }
+              onSend={composerSendWithReportBookmark(
+                store,
+                id,
+                isEntryCurrent,
+                onSend,
+                prepareVisitQuestions,
+              )}
               onCancel={() => store.cancel(id)}
             />
           }

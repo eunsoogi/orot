@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { AgentMemoryHit } from '@orot/agent-memory';
 import type { ManualHistoryScreenRecord } from '../manualHistory/types';
 
@@ -11,7 +12,20 @@ export interface HistorySavedMemory {
   readonly createdAt: number;
   readonly record: ManualHistoryScreenRecord;
 }
-export type SavedMemory = AgentSavedMemory | HistorySavedMemory;
+export interface GeneratedReportSavedMemory {
+  readonly sourceKind: 'saved_generated_report';
+  readonly id: string;
+  readonly artifactId: string;
+  readonly text: string;
+  readonly createdAt: number;
+}
+export type SavedMemory =
+  AgentSavedMemory | HistorySavedMemory | GeneratedReportSavedMemory;
+export function isGeneratedReportMemory(
+  row: SavedMemory,
+): row is GeneratedReportSavedMemory {
+  return 'sourceKind' in row && row.sourceKind === 'saved_generated_report';
+}
 export function isHistoryMemory(row: SavedMemory): row is HistorySavedMemory {
   return 'sourceKind' in row && row.sourceKind === 'manual_history';
 }
@@ -46,14 +60,31 @@ export function unifySavedMemories(
 
 /** A protected local read only: no projection migration, provider dispatch or record rewrite. */
 export async function loadUnifiedLocalMemories(): Promise<SavedMemory[]> {
-  const [{ loadSavedLocalMemories }, { openLocalManualHistoryRepository }] =
-    await Promise.all([
-      import('./savedLocalMemories'),
-      import('../manualHistory/localRepository'),
-    ]);
-  const [memories, repository] = await Promise.all([
+  const [
+    { loadSavedLocalMemories },
+    { openLocalManualHistoryRepository },
+    { openSavedGeneratedReportReferences },
+  ] = await Promise.all([
+    import('./savedLocalMemories'),
+    import('../manualHistory/localRepository'),
+    import('./openSavedGeneratedReportReferences'),
+  ]);
+  const [memories, repository, generated] = await Promise.all([
     loadSavedLocalMemories(),
     openLocalManualHistoryRepository(),
+    openSavedGeneratedReportReferences().then(storage =>
+      storage.listSavedGeneratedReportReferences(),
+    ),
   ]);
-  return unifySavedMemories(memories, await repository.list());
+  const reportReferences: GeneratedReportSavedMemory[] = generated.map(row => ({
+    sourceKind: 'saved_generated_report',
+    id: 'generated-report:' + row.artifactId,
+    artifactId: row.artifactId,
+    text: t('savedMemory.generatedReportDaily'),
+    createdAt: Date.parse(row.savedAt),
+  }));
+  return [
+    ...unifySavedMemories(memories, await repository.list()),
+    ...reportReferences,
+  ].sort((a, b) => b.createdAt - a.createdAt || a.id.localeCompare(b.id));
 }

@@ -1,35 +1,34 @@
-import { AppText } from '../../layout/AppText';
-import { appColors } from '../../layout/appColors';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { t } from '../../i18n';
 import {
-  providerControlCopy,
   resolvedProviderPresentation,
   type Presentation,
 } from './conversationModelControlCopy';
-import { observeConversationModelLifecycle } from './conversationModelDisplayLifecycle';
-import { SelectedModelControl } from '../../layout/SelectedModelControl';
+import {
+  observeConversationModelLifecycle,
+  resumeSavedChatGPTTitle,
+} from './conversationModelDisplayLifecycle';
+import { ConversationModelSelectorControl } from './ConversationModelSelectorControl';
+import {
+  withOriginalChatGPTTitleOwner,
+  type ReadReturningChatGPTTitle,
+} from './readSavedChatGPTPresentation';
 import type {
   OnDeviceSelectionWitness,
   ResolveConversationModelDisplay,
   SavedPlatformChoice,
   SelectedAiResolution,
 } from './provider';
-
 interface AiProviderSelectorRowProps {
   readonly onPress: () => void;
   readonly resolveSelectedAi: ResolveConversationModelDisplay;
   readonly revision: number;
   readonly embedded?: boolean;
 }
-
 type ScopedPresentation = {
   readonly resolve: ResolveConversationModelDisplay;
   readonly revision: number;
   readonly value: Presentation;
 };
-
 /** Reads the saved choice for display and leaves unavailable choices explicit, with no provider fallback. */
 export function AiProviderSelectorRow({
   onPress,
@@ -42,10 +41,10 @@ export function AiProviderSelectorRow({
     scoped?.resolve === resolveSelectedAi && scoped.revision === revision
       ? scoped.value
       : { status: 'loading' };
-
   useEffect(() => {
     let active = true;
     let chatGPTPresentation = false;
+    let readReturningTitle: ReadReturningChatGPTTitle | undefined;
     let unsubscribeCredential: (() => void) | undefined;
     let exactPlatform: SavedPlatformChoice | undefined;
     let observedName: string | undefined;
@@ -63,6 +62,7 @@ export function AiProviderSelectorRow({
     const unavailable: Presentation = { status: 'unavailable' };
     const invalidate = () => {
       invalidated = true;
+      readReturningTitle = undefined;
       waiting = undefined;
       publish(unavailable);
     };
@@ -71,26 +71,44 @@ export function AiProviderSelectorRow({
       id === attempt &&
       !invalidated &&
       (!ownsSelection || ownsSelection.isCurrent());
-
+    function watchCredential(credential: OnDeviceSelectionWitness) {
+      unsubscribeCredential?.();
+      unsubscribeCredential = credential.subscribe(invalidate);
+      return credential.isCurrent();
+    }
     const lifecycle = observeConversationModelLifecycle(fenced => {
       if (fenced) {
         fence++;
         waiting = undefined;
-        if (chatGPTPresentation) invalidate();
-        else if (exactPlatform) publish(unavailable);
+        if (chatGPTPresentation) {
+          if (readReturningTitle) {
+            // Retire the previous readiness, but preserve the exact local reread capability.
+            attempt++;
+            publish(unavailable);
+          } else invalidate();
+        } else if (exactPlatform) publish(unavailable);
       } else if (exactPlatform) resumePlatform();
-      else if (chatGPTPresentation && current(attempt) && waiting) {
+      else if (readReturningTitle && launchedFence !== fence) {
+        const id = attempt;
+        const canRead = () => current(id) && lifecycle.canShowSavedName();
+        if (!canRead()) return;
+        launchedFence = fence;
+        resumeSavedChatGPTTitle(
+          readReturningTitle,
+          canRead,
+          watchCredential,
+          publish,
+        );
+      } else if (chatGPTPresentation && current(attempt) && waiting) {
         const value = waiting;
         waiting = undefined;
         publish(value);
       }
     });
-
     const protectedPlatform = () =>
       exactPlatform !== 'pcc' ||
       (lifecycle.hasProtectedDataWitness &&
         ownsSelection?.isCurrent() === true);
-
     function resumePlatform() {
       if (
         !current(attempt) ||
@@ -107,7 +125,6 @@ export function AiProviderSelectorRow({
           publish(value);
       }
     }
-
     function platformResult(value: Presentation) {
       if (!protectedPlatform()) {
         publish(unavailable);
@@ -146,24 +163,26 @@ export function AiProviderSelectorRow({
           unsubscribe = witness.subscribe(invalidate);
           if (!witness.isCurrent()) invalidate();
         },
-        savedChatGPTName(name, credential) {
+        savedChatGPTName(name, credential, onReturn) {
           if (!current(id) || !ownsSelection?.isCurrent()) return;
-          unsubscribeCredential?.();
-          unsubscribeCredential = credential.subscribe(invalidate);
-          if (!credential.isCurrent()) {
+          if (!watchCredential(credential)) {
             invalidate();
             return;
           }
           // A foreground change must not trigger a new remote catalog lookup.
           if (!lifecycle.hasProtectedDataWitness) return;
           chatGPTPresentation = true;
+          readReturningTitle = withOriginalChatGPTTitleOwner(
+            onReturn,
+            credential,
+          );
           observedName = name;
           if (!launchedForeground || launchedFence !== fence) {
             invalidate();
             return;
           }
-          if (settled?.status === 'ready') return;
           lifecycle.observeSavedPlatform();
+          if (settled?.status === 'ready') return;
           const pend = {
             status: 'saved-chatgpt',
             name,
@@ -213,7 +232,6 @@ export function AiProviderSelectorRow({
         },
       );
     }
-
     launch();
     return () => {
       active = false;
@@ -222,25 +240,11 @@ export function AiProviderSelectorRow({
       lifecycle.dispose();
     };
   }, [resolveSelectedAi, revision]);
-
-  const { local, value, rowLabel, busy, detail } = providerControlCopy(shown);
   return (
-    <View style={!embedded && styles.inset}>
-      <SelectedModelControl
-        name={value}
-        local={local}
-        label={rowLabel}
-        hint={t('provider.selection.rowHint')}
-        busy={busy}
-        onPress={onPress}
-        testID="ai-feature-select-provider"
-      />
-      {detail ? <AppText style={styles.detail}>{detail}</AppText> : null}
-    </View>
+    <ConversationModelSelectorControl
+      shown={shown}
+      onPress={onPress}
+      embedded={embedded}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  inset: { marginHorizontal: 20, marginVertical: 8 },
-  detail: { color: appColors.secondary },
-});

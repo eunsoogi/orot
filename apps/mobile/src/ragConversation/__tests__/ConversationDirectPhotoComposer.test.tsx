@@ -72,6 +72,52 @@ test('an image without text traverses the attached composer and only the dedicat
   ]);
 });
 
+test('opted-in automatic memory excludes a direct photo and its authored preference', async () => {
+  const f = await fixture({ enableOrdinaryMemory: true });
+  expect(f.optedIn).toBe(true);
+  const authored = 'For future replies, I prefer concise answers.';
+  const sessionId = f.session().id;
+  await render(f.view);
+  await act(() => f.store.setDraft(sessionId, authored));
+  await attach();
+  await send();
+  expect(await screen.findByText('합성 이미지 설명')).toBeTruthy();
+  expect(f.start).toHaveBeenCalledWith('image-request', 'synthetic-owner', {
+    model: 'gpt-6.2-sol',
+    directPhoto: { text: authored, jpegBase64: syntheticDirectJPEG },
+  });
+  expect(f.memoryCapture).not.toHaveBeenCalled();
+  expect(f.memorySave).not.toHaveBeenCalled();
+  expect(await f.storage.listCompletionIdentities()).toEqual([]);
+
+  await act(async () => {
+    f.store.setDraft(sessionId, authored);
+    await f.store.send(
+      sessionId,
+      async (question, history, signal, observer) => {
+        expect(history).toEqual([]);
+        const answer = 'Synthetic ordinary reply';
+        await observer!.onRetentionCandidate!(
+          {
+            question,
+            answer,
+            modelId: 'synthetic',
+            providerId: 'synthetic',
+            proactiveMemory: true,
+            sources: [],
+            citations: [],
+          },
+          signal!,
+        );
+        return { status: 'answer', answer, citations: [] };
+      },
+    );
+  });
+  expect(f.memoryCapture).toHaveBeenCalledTimes(1);
+  expect(f.memorySave).toHaveBeenCalledTimes(1);
+  expect(await f.memorySave.mock.results[0]?.value).toBe(true);
+});
+
 test.each(['denied', 'retired', 'unsupported'])(
   '%s makes no transfer, while explicit OCR is still separate',
   async condition => {

@@ -1,3 +1,4 @@
+import { isEligibleConversationMemorySource } from '../manualHistory/conversationHistoryIntent';
 import type { AgentMemoryInput } from '@orot/agent-memory';
 import type { ConversationArtifact } from '../storage/conversationArtifactTypes';
 import type { ManualHistoryEntry } from '@orot/domain';
@@ -15,6 +16,7 @@ function statementFromExplicitRequest(text: string): string | undefined {
 /** Shared admission excludes quoted, hypothetical, third-party, private and opted-out claims. */
 function isSafeStatement(text: string): boolean {
   if (
+    !isEligibleConversationMemorySource(text) ||
     text.length < 8 ||
     text.length > 1000 ||
     /[?？`<>「」“”"]|https?:\/\/|예를\s*들|가정|만약|라고\s*(말|했|해)|인용|번역|요약|기억|저장|비밀|남기지|기록하지|잊어|알려|보여|해줘|해주세요|부탁|만들어|인가요|가요|나요|까요|습니까|왜|어떤|어떻게|무엇|궁금|알고\s*싶|라면|다면/.test(
@@ -80,16 +82,10 @@ export function conversationStatementMemory(
   // the SQLite statement-time trigger can attest exactly the same source.
   const text = statementFromExplicitRequest(question) ?? question;
   if (!isSafeStatement(text)) return undefined;
-  const proposed =
-    value.proactiveMemory === true &&
-    !value.entryIntent &&
-    !value.dailyReport &&
-    !value.submittedInput &&
-    isProactiveMemoryStatement(question);
+  // Old serialized model advice never authorizes an embedding or recall write.
   // Korean often omits the speaker: a bounded health/topic subject may substitute
   // for first person, but this is retained as a dated statement, not an inferred diagnosis.
   if (
-    !proposed &&
     !/^(저는|나는|제가|내가|제\s|내\s|I\s(?:am|have|prefer|want|need)|My\s)/i.test(
       text,
     ) &&
@@ -104,8 +100,7 @@ export function conversationStatementMemory(
     )
   )
     return undefined;
-  const preference =
-    /선호|좋아|싫어|prefer/i.test(text) || (proposed && /^앞으로/.test(text));
+  const preference = /선호|좋아|싫어|prefer/i.test(text);
   return {
     memoryKey: `conversation-statement:${value.id}`,
     text: `${value.createdAt} 사용자가 직접 말한 내용 (당시의 진술이며 현재 상태나 의학적으로 확인된 사실이 아님):\n${question}`,

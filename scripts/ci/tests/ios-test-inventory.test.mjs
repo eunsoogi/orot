@@ -5,7 +5,6 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { iosTestInventory } from '../ios-test-inventory.mjs';
 import { explicitIosDiagnosticSelectors } from './ios-test-explicit-diagnostics.mjs';
 import { swiftSuiteExtensions } from './swift-suite-extensions.mjs';
-
 function assertTestMethodDeclared(identifier) {
   const [target, suite, method] = identifier.split('/');
   const base = `apps/mobile/ios/${target}/${suite}`;
@@ -149,7 +148,6 @@ test('each profile declares unique existing cases and every test method is sched
   }
   assert.throws(() => iosTestInventory('unknown'));
 });
-
 function swiftTestMethodsInDeclaration(source, suite, kind, withPositions = false) {
   const code = maskSwiftCommentsAndStrings(source);
   const declaration =
@@ -166,14 +164,12 @@ function swiftTestMethodsInDeclaration(source, suite, kind, withPositions = fals
     .filter((match) => swiftBraceDepth(body, match.index) === 0)
     .map((match) => (withPositions ? openIndex + 1 + match.index : match[1]));
 }
-
 function maskSwiftCommentsAndStrings(source) {
   return source.replace(
     /#"(?:\\.|[^"\\])*"#|"(?:\\.|[^"\\])*"|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
     (value) => value.replace(/[^\n]/g, ' '),
   );
 }
-
 function swiftBraceDepth(source, end) {
   let depth = 0;
   for (let index = 0; index < end; index += 1) {

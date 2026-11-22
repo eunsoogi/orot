@@ -4,6 +4,8 @@ import {
   type ChatGPTPlanNativeEvent,
 } from '@orot/provider-openai';
 import { runMigrations } from '@orot/storage';
+import { createOrdinaryConversationMemoryEnrollmentStore } from '../../storage/ordinaryConversationMemoryEnrollment';
+import { saveOrdinaryConversationMemoryNote } from '../../storage/ordinaryConversationMemoryNote';
 import { t } from '../../i18n';
 import { syntheticDirectJPEG } from '../../aiFeatures/integration/testSupport/directPhotoSendFixture';
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
@@ -25,19 +27,46 @@ export async function directPhotoComposerFixture({
   granted = true,
   holdGrant = false,
   beforeWrite,
+  enableOrdinaryMemory = false,
 }: {
   supported?: boolean;
   hold?: boolean;
   granted?: boolean;
   holdGrant?: boolean;
   beforeWrite?: () => Promise<void>;
+  enableOrdinaryMemory?: boolean;
 } = {}) {
   const f = openSqliteTestDatabase(':memory:');
   await runMigrations(f.database);
   const storage = createConversationArtifactStorage(f.database);
   await storage.createSession('selected', await storage.currentGeneration());
+  const enrollment = createOrdinaryConversationMemoryEnrollmentStore(
+    f.database,
+  );
+  const deviceEpoch = 'a'.repeat(64);
+  const permission = enableOrdinaryMemory
+    ? await enrollment.replace(await enrollment.read(), deviceEpoch, () => true)
+    : undefined;
+  const memoryCapture = jest.fn(async () =>
+    permission?.enabled
+      ? {
+          database: f.database,
+          deviceEpoch,
+          generation: permission.generation,
+          isCurrent: () => true,
+        }
+      : undefined,
+  );
+  const memorySave = jest.fn(saveOrdinaryConversationMemoryNote);
   const strict = jest.fn();
   const store = createConversationSessions({
+    ordinaryMemory: permission?.enabled
+      ? {
+          capture: memoryCapture,
+          save: (receipt, source, current) =>
+            memorySave(receipt, source, true, current),
+        }
+      : undefined,
     readSavedHistoryDisplay: conversationSavedHistoryDisplayOption(
       async () => storage,
     ),
@@ -162,6 +191,9 @@ export async function directPhotoComposerFixture({
   return {
     store,
     storage,
+    optedIn: permission?.enabled === true,
+    memoryCapture,
+    memorySave,
     close: f.close,
     session,
     view,

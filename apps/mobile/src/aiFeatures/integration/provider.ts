@@ -1,11 +1,11 @@
 import { readySelection } from './selectedAiProviderResolution';
 import { t } from '../../i18n';
 import { chatGPTCredentialMutation } from '../../providers/chatGPTConsentIdentity';
+import { selectedChatGPTAccountId } from './savedChatGPTModelLabel';
 import {
-  savedChatGPTModelLabel,
-  selectedChatGPTAccountId,
-} from './savedChatGPTModelLabel';
-import { readSavedChatGPTPresentation } from './readSavedChatGPTPresentation';
+  publishSavedChatGPTNames,
+  type ReadReturningChatGPTTitle,
+} from './readSavedChatGPTPresentation';
 import {
   APPLE_PCC_PROVIDER_ID,
   APPLE_PCC_MODEL_ID,
@@ -39,7 +39,11 @@ export interface ConversationModelDisplayObserver {
   readonly platformRefreshOnly?: SavedPlatformChoice;
   selection(witness: OnDeviceSelectionWitness | null): void;
   savedPlatformName(name: string, platform: SavedPlatformChoice): void;
-  savedChatGPTName?(name: string, credential: OnDeviceSelectionWitness): void;
+  savedChatGPTName?(
+    name: string,
+    credential: OnDeviceSelectionWitness,
+    onReturn?: ReadReturningChatGPTTitle,
+  ): void;
 }
 
 export type ResolveConversationModelDisplay = (
@@ -181,23 +185,16 @@ export async function resolveSelectedAiProvider(
       (selectionWitness() && credentialWitness?.() === true);
     if (!displayCurrent()) return { status: 'unavailable' };
     if (display?.savedChatGPTName && selectionWitness && credentialWitness) {
-      const fixed = savedChatGPTModelLabel(selection.modelId);
-      if (fixed)
-        display.savedChatGPTName(fixed, {
-          isCurrent: credentialWitness,
-          subscribe: chatGPTCredentialMutation.subscribe,
-        });
-      // Cosmetic Keychain reads must never delay the independent readiness check.
-      readSavedChatGPTPresentation(
+      publishSavedChatGPTNames({
         selection,
-        selectionWitness,
-        credentialWitness,
-      )
-        .then(title => {
-          if (title && displayCurrent())
-            display.savedChatGPTName?.(title.name, title.owner);
-        })
-        .catch(() => undefined);
+        selectionStore,
+        listAccounts: () => chatGPTServices.listAccounts(),
+        accountId,
+        selectionCurrent: selectionWitness,
+        credentialCurrent: credentialWitness,
+        subscribeCredential: chatGPTCredentialMutation.subscribe,
+        publish: display.savedChatGPTName,
+      });
     }
     const models = await chatGPTServices.listModels(accountId);
     if (!displayCurrent()) return { status: 'unavailable' };

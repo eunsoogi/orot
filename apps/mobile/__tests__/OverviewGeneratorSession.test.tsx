@@ -63,13 +63,13 @@ test('provider and provider selection detours preserve the existing conversation
     'A만의 준비 초안',
   );
   await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
-  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
+  expect(await screen.findByTestId('settings-provider-screen')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
     'A만의 준비 초안',
   );
   await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
-  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
+  expect(await screen.findByTestId('settings-provider-screen')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await fireEvent.press(screen.getByTestId('rag-conversation-send'));
   await waitFor(() => expect(send).toHaveBeenCalledTimes(1));

@@ -114,7 +114,7 @@ export function createDirectPhotoReplyWriter(
 }
 
 /** Called only from an already-owned display transaction, never a strict or prompt read. */
-export async function readDirectPhotoReplyPresentations(
+async function readDirectPhotoReplyPresentations(
   tx: SqlExecutor,
   sessionId: string,
   ids: readonly string[],
@@ -146,4 +146,29 @@ export async function readDirectPhotoReplyPresentations(
         ]
       : [],
   );
+}
+
+/** Merge only into the owned display projection; an identity collision hides both rows. */
+export async function mergePhotoRows<T>(
+  tx: SqlExecutor,
+  sessionId: string,
+  ids: readonly string[],
+  pending: Map<string, T>,
+  project: (
+    id: string,
+    value: undefined,
+    row: ConversationHistoryPresentation,
+  ) => T | null,
+) {
+  for (const photo of await readDirectPhotoReplyPresentations(
+    tx,
+    sessionId,
+    ids,
+  )) {
+    if (pending.has(photo.id)) pending.delete(photo.id);
+    else {
+      const projected = project(photo.id, undefined, photo);
+      if (projected !== null) pending.set(photo.id, projected);
+    }
+  }
 }

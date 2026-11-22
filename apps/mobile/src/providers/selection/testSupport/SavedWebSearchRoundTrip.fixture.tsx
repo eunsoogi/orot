@@ -168,10 +168,9 @@ export function openSavedWebSettingsFixture(
         ? selected
         : { status: 'selection-required' },
     );
-  const selectionView = (quick = false) => (
+  const selectionView = (feature = false) => (
     <ProviderSelectionScreen
-      presentation={quick ? 'feature' : 'settings-provider'}
-      conversationQuickReview={quick}
+      presentation={feature ? 'feature' : 'settings-provider'}
       options={[option]}
       requirements={{ inputTypes: ['text'], toolCalling: true }}
       selectionStore={providerSelectionStore}

@@ -1,3 +1,4 @@
+import { isProviderVisibleMemory } from '../../memory/providerVisibleMemory';
 import type { EvidenceSearchRuntime } from '@orot/agent-runtime';
 import {
   AGENT_MEMORY_NAMESPACE,
@@ -68,12 +69,14 @@ function toLocalMemoryHit(item: GraphStoreItem): LocalMemoryHit | null {
       value.kind !== 'reviewed_interaction' &&
       value.kind !== 'task_context') ||
     !isAgentMemoryProvenance(provenance) ||
+    !isProviderVisibleMemory(provenance, value.memoryKey) ||
     typeof value.createdAt !== 'number'
   ) {
     return null;
   }
   return {
     id: value.id,
+    memoryKey: value.memoryKey,
     text: value.text,
     score: typeof score === 'number' ? score : 0,
     kind: value.kind,

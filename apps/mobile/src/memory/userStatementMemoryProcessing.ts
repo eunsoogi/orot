@@ -1,6 +1,10 @@
 import type { AgentMemoryService } from '@orot/agent-memory';
 import type { SqlDatabase } from '@orot/storage';
-import { readManualHistoryEntry } from '@orot/storage';
+import {
+  autoLocalConversationMemoryIdPrefix,
+  isAutoLocalConversationMemoryId,
+  readManualHistoryEntry,
+} from '@orot/storage';
 import { decodeConversationArtifact } from '../storage/conversationArtifactCodec';
 import { ensureStatementMemoryJobs } from '../storage/userStatementMemoryJobs';
 import {
@@ -25,7 +29,11 @@ export async function processStatementMemoryJobs(
       if (!active()) return { failed };
       const id = String(row.source_id);
       let candidate;
-      if (row.source_kind === 'manual_history') {
+      // An older queued job must be consumed without reading or embedding automatic notes.
+      if (
+        row.source_kind === 'manual_history' &&
+        !isAutoLocalConversationMemoryId(id)
+      ) {
         const source = await readManualHistoryEntry(database, id);
         const newer = await database.execute(
           'SELECT id FROM manual_history_entries WHERE supersedes_id = ? LIMIT 1',
@@ -99,6 +107,10 @@ export async function processStatementMemoryJobs(
 export async function enqueueExistingHistoryMemories(database: SqlDatabase) {
   await ensureStatementMemoryJobs(database);
   await database.execute(
-    "INSERT OR IGNORE INTO user_statement_memory_jobs (source_kind, source_id) SELECT 'manual_history', h.id FROM manual_history_entries h WHERE NOT EXISTS (SELECT 1 FROM manual_history_entries newer WHERE newer.supersedes_id = h.id) AND NOT EXISTS (SELECT 1 FROM agent_memory_records m WHERE json_extract(m.record_json, '$.meta.memoryKey') = 'manual-history-memory:' || h.id)",
+    "INSERT OR IGNORE INTO user_statement_memory_jobs (source_kind, source_id) SELECT 'manual_history', h.id FROM manual_history_entries h WHERE substr(h.id, 1, ?) <> ? AND NOT EXISTS (SELECT 1 FROM manual_history_entries newer WHERE newer.supersedes_id = h.id) AND NOT EXISTS (SELECT 1 FROM agent_memory_records m WHERE json_extract(m.record_json, '$.meta.memoryKey') = 'manual-history-memory:' || h.id)",
+    [
+      autoLocalConversationMemoryIdPrefix.length,
+      autoLocalConversationMemoryIdPrefix,
+    ],
   );
 }

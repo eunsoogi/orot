@@ -1,6 +1,6 @@
 import { conversationMessageBodyTestID } from './conversationMessageBodyTestID';
-import { View } from 'react-native';
 import type { ReactNode } from 'react';
+import { View } from 'react-native';
 import { useConversationMessageEvidence } from './useConversationMessageEvidence';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppButton } from '../layout/AppButton';
@@ -20,6 +20,7 @@ import type { DisplayMessage } from './conversationDisplayMessage';
 export type { DisplayMessage } from './conversationDisplayMessage';
 export function ConversationMessage({
   message: suppliedMessage,
+  beforeAnswer,
   onContinueCold,
   coldResumeBusy,
   onOpenSource,
@@ -33,6 +34,7 @@ export function ConversationMessage({
   renderVisitQuestions,
 }: {
   readonly message: DisplayMessage;
+  readonly beforeAnswer?: ReactNode;
   readonly onContinueCold?: (requestId: string) => void;
   readonly coldResumeBusy?: boolean;
   readonly onOpenSource: (
@@ -77,6 +79,7 @@ export function ConversationMessage({
   return (
     <ConversationMessageBubbles
       message={message}
+      beforeAnswer={beforeAnswer}
       presentation={{
         showCitations,
         showToolActivity,
@@ -123,7 +126,9 @@ export function ConversationMessage({
             ]
           }
         >
-          <ConversationPreviousOutputs outputs={message.previousOutputs} />
+          <ConversationPreviousOutputs
+            outputs={beforeAnswer ? undefined : message.previousOutputs}
+          />
           {message.incomplete && message.content ? (
             <>
               <Text style={styles.activity}>
@@ -146,7 +151,6 @@ export function ConversationMessage({
             />
           ) : null}
           {activityBeforeText ? activity : null}
-          {/* Restored execution rows are not replayed; individual answer citations remain available. */}
           {!user && !message.restoredHistory && message.toolEvents?.length ? (
             <View
               style={!showToolActivity && styles.toolEventsHidden}
@@ -185,9 +189,8 @@ export function ConversationMessage({
             </Text>
           ) : null}
           {!user &&
-          message.initialResponse &&
           message.streaming &&
-          message.initialResponse.source === 'receipt' ? (
+          message.initialResponse?.source === 'receipt' ? (
             <ConversationInitialResponse
               key={message.initialResponse.callId}
               response={message.initialResponse}
@@ -199,8 +202,7 @@ export function ConversationMessage({
               user={user}
               staticText={message.savedHistoryDisplayOnly}
               allowReport={
-                !message.directPhotoReply &&
-                !message.streaming &&
+                !(message.directPhotoReply || message.streaming) &&
                 !message.incomplete &&
                 !message.historyUnavailable
               }
@@ -217,9 +219,7 @@ export function ConversationMessage({
               onLinkError={onLinkError}
               onRetry={
                 message.retryHealthSummary
-                  ? () => {
-                      message.retryHealthSummary?.().catch(onLinkError);
-                    }
+                  ? () => message.retryHealthSummary?.().catch(onLinkError)
                   : undefined
               }
             />

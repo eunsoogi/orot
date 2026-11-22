@@ -40,7 +40,7 @@ test('the actual App passes live route and overlay visibility to reply focus', a
   const visible = hook.mock.calls.at(-1)?.[1];
   expect(visible?.()).toBe(true);
   await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
-  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
+  expect(await screen.findByTestId('settings-provider-screen')).toBeTruthy();
   expect(visible?.()).toBe(false);
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() => expect(visible?.()).toBe(true));
@@ -69,13 +69,13 @@ test('opens conversation immediately and returns from provider overlays without 
     '계속할 대화 초안',
   );
   await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
-  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
+  expect(await screen.findByTestId('settings-provider-screen')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   expect(screen.getByTestId('rag-conversation-input')).toHaveDisplayValue(
     '계속할 대화 초안',
   );
   await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
-  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
+  expect(await screen.findByTestId('settings-provider-screen')).toBeTruthy();
   expect(screen.queryByTestId('rag-conversation-sessions-toggle')).toBeNull();
   await fireEvent.press(screen.getByTestId('navigation-back'));
   await waitFor(() =>
@@ -99,7 +99,7 @@ test('keeps recording under Records when leaving an conversation route', async (
   await fireEvent.press(screen.getByTestId('navigation-tab-conversation'));
   expect(await screen.findByTestId('rag-conversation-screen')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('ai-feature-select-provider'));
-  expect(await screen.findByTestId('provider-selection-screen')).toBeTruthy();
+  expect(await screen.findByTestId('settings-provider-screen')).toBeTruthy();
 
   expect(screen.queryByTestId('navigation-recording')).toBeNull();
   expect(screen.queryByTestId('navigation-home')).toBeNull();

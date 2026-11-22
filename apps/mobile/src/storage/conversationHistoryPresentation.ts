@@ -1,7 +1,5 @@
-import {
-  decodeOwnedArchiveRow,
-  type ConversationHistoryPresentation,
-} from './conversationArchivePresentationRow';
+import * as steeringHistory from './conversationSteeringHistory';
+import * as archiveRow from './conversationArchivePresentationRow';
 export type { ConversationHistoryPresentation } from './conversationArchivePresentationRow';
 import {
   archivedHealthSummaryOwner,
@@ -10,13 +8,14 @@ import {
   type ArchivedHealthSummaryOwner,
 } from './archivedHealthSummaryPresentation';
 import { assertConversationSourcesNotRemoved } from './conversationArtifactDependencies';
-import { readDirectPhotoReplyPresentations } from './conversationDirectPhotoReplies';
+import { mergePhotoRows } from './conversationDirectPhotoReplies';
 import { selectArchivedCitation } from './selectArchivedCitation';
 import { createProtectedPromptHistory } from './protectedPromptHistory';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { projectSavedArchivedCitations } from '../ragConversation/savedArchivedCitations';
 import { suppressExplicitlyRemovedHistory } from './conversationHistoryDisplayAncestorFence';
-
+type ConversationHistoryPresentation =
+  archiveRow.ConversationHistoryPresentation;
 /** Read verified-at-save text, not whether sources are still openable. The
  * artifact table is written by the existing protected, validating append.
  * Legacy complete answers predate request checkpoints; their durable artifact
@@ -32,6 +31,13 @@ function createOwnedArchiveReader<T>(
   ) => T | null,
   authorize?: (tx: SqlExecutor, value: T) => Promise<T | null>,
   readSavedSummaryCards?: true,
+  decorate?: (
+    tx: SqlExecutor,
+    sessionId: string,
+    version: number,
+    rows: Map<string, T>,
+    schema: number,
+  ) => Promise<void>,
 ) {
   return async (sessionId: string, version: number, ids: readonly string[]) => {
     if (
@@ -46,8 +52,11 @@ function createOwnedArchiveReader<T>(
     await ensure();
     const output: (T | null)[] = [];
     await database.transaction(async tx => {
+      const steering = decorate
+        ? `, ${steeringHistory.steeringHistorySchemaSql} AS steering`
+        : '';
       const lease = await tx.execute(
-        `SELECT s.id FROM conversation_artifact_sessions s
+        `SELECT s.id${steering} FROM conversation_artifact_sessions s
          JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation
          WHERE s.id = ? AND s.hidden = 0 AND s.version = ?
          AND NOT EXISTS (SELECT 1 FROM conversation_artifact_removed_sessions x WHERE x.id = s.id)`,
@@ -108,7 +117,7 @@ function createOwnedArchiveReader<T>(
         }
       >();
       for (const row of rows) {
-        const decoded = decodeOwnedArchiveRow(row, sessionId);
+        const decoded = archiveRow.decodeOwnedArchiveRow(row, sessionId);
         if (!decoded) continue;
         const { value, presentation } = decoded;
         const { id } = presentation;
@@ -128,7 +137,6 @@ function createOwnedArchiveReader<T>(
       for (const id of await suppressExplicitlyRemovedHistory(tx, savedIds))
         pending.delete(id);
       if (summaryRows.size) {
-        // Read only previously admitted card text for surviving rows in this owned snapshot.
         const summaries = await readArchivedHealthSummaryPresentation(
           tx,
           [...summaryRows.values()]
@@ -145,20 +153,10 @@ function createOwnedArchiveReader<T>(
           if (enriched !== null) pending.set(id, enriched);
         }
       }
-      if (readSavedSummaryCards) {
-        for (const photo of await readDirectPhotoReplyPresentations(
-          tx,
-          sessionId,
-          ids,
-        )) {
-          // A colliding identity is corrupt, never authority to show another row.
-          if (pending.has(photo.id)) pending.delete(photo.id);
-          else {
-            const projected = project(photo.id, undefined, photo);
-            if (projected !== null) pending.set(photo.id, projected);
-          }
-        }
-      }
+      const schema = Number(lease.rows[0].steering ?? 0);
+      await decorate?.(tx, sessionId, version, pending, schema);
+      if (readSavedSummaryCards)
+        await mergePhotoRows(tx, sessionId, ids, pending, project);
       for (const id of ids) {
         const projected = pending.get(id) ?? null;
         output.push(
@@ -171,22 +169,40 @@ function createOwnedArchiveReader<T>(
     return output;
   };
 }
-
 /** Keep the display-only and prompt-only contracts on the same encrypted owner. */
 export function createConversationProjectionReaders(
   database: SqlDatabase,
   ensure: () => Promise<void>,
 ) {
-  const readSessionPresentationMany = createOwnedArchiveReader(
-    database,
-    ensure,
-    (_id, value, row) => {
-      const savedCitations = projectSavedArchivedCitations(value?.citations);
-      return savedCitations.length ? { ...row, savedCitations } : row;
-    },
-    undefined,
-    true,
-  );
+  const readSessionPresentationMany =
+    createOwnedArchiveReader<ConversationHistoryPresentation>(
+      database,
+      ensure,
+      (_id, value, row) => {
+        const savedCitations = projectSavedArchivedCitations(value?.citations);
+        return savedCitations.length ? { ...row, savedCitations } : row;
+      },
+      undefined,
+      true,
+      async (tx, sessionId, version, rows, schema) => {
+        const complete = [...rows].filter(
+          ([, row]) => row.status === 'complete',
+        );
+        const receipts =
+          await steeringHistory.readConversationSteeringHistoryMany(
+            tx,
+            sessionId,
+            version,
+            complete.map(([id]) => id),
+            schema,
+          );
+        for (const [id, row] of complete) {
+          const steeringInstructions = receipts.get(id);
+          if (row.status === 'complete' && steeringInstructions?.length)
+            rows.set(id, { ...row, steeringInstructions });
+        }
+      },
+    );
   return {
     ...createProtectedPromptHistory(database, ensure),
     readSessionPresentationMany,
