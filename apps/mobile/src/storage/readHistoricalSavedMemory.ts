@@ -85,6 +85,7 @@ async function readOwnerSnapshot(
   if (!row.length) return null;
   const record = decodeAgentMemoryRecord(row[0]?.record_json);
   const snapshot = projectDefaultSavedMemory(record);
+  const revision = reviewedMemoryRevision(record);
   if (
     !snapshot ||
     snapshot.id !== id ||
@@ -92,8 +93,8 @@ async function readOwnerSnapshot(
     snapshot.provenance.reviewState !== 'human_reviewed' ||
     !snapshot.provenance.sourceIds.length ||
     snapshot.provenance.sourceIds.some(value => value !== value.trim()) ||
-    !row.some(value => value.revision === reviewedMemoryRevision(record)) ||
-    !(await ownsHistoricalVisitMemory(tx, snapshot))
+    !row.some(value => value.revision === revision) ||
+    !(await ownsHistoricalVisitMemory(tx, snapshot, revision))
   )
     return null;
   const sources = [...snapshot.provenance.sourceIds];
