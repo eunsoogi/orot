@@ -212,7 +212,7 @@ final class NavigationGlassSurfaceView: UIView {
         railPlacementConstraints[5].constant = layoutMode == "left" ? -max(0, host.bounds.width - NavigationRootGlassBar.exteriorWidth - railRightInset) : -railRightInset
         railPlacementConstraints[6].constant = contextualRailTop(
             hostHeight: host.bounds.height,
-            mountedToWindow: host === windowRailHost
+            mountedToWindow: host === windowRailHost,
         )
         railPlacementConstraints[7].constant = -railBottomInset
         rootBar.setVerticalLayout(usesRightRail)
