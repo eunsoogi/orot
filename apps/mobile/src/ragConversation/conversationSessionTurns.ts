@@ -1,5 +1,9 @@
 import type { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import { createConversationTurnRetention } from './conversationTurnRetention';
+import {
+  createConversationTurnReservations,
+  type ConversationTurnReservation,
+} from './conversationTurnReservations';
 type Storage = ReturnType<typeof createConversationArtifactStorage>;
 type Turn = ReturnType<typeof createConversationTurnRetention>;
 export type ConversationRetentionSlot = {
@@ -30,6 +34,7 @@ export function conversationSessionTurns(
     'captureToolSources' | 'onToolEventStored'
   >,
 ) {
+  const reservations = createConversationTurnReservations(input);
   const adoptions = new WeakMap<
     ConversationRetentionSlot,
     Map<string, { turn: Turn; signal: AbortSignal }>
@@ -76,9 +81,19 @@ export function conversationSessionTurns(
       owned!.delete(value.toolMessageId);
       return true;
     },
-    async beginTurn(id: number, signal: AbortSignal) {
+    reserveWarmTurn: reservations.reserve,
+    async beginTurn(
+      id: number,
+      signal: AbortSignal,
+      reservation?: ConversationTurnReservation,
+    ) {
       const { storage, current } = await input.ensureSession(id, signal);
-      return turn(storage, current, input.createId(), input.now());
+      const requestId = reservation
+        ? reservations.consume(id, current, reservation)
+        : input.createId();
+      if (!requestId || signal.aborted)
+        throw new Error('Conversation turn reservation changed.');
+      return turn(storage, current, requestId, input.now());
     },
     /** This is a local lifetime attachment, not execution permission; cold storage still claims atomically. */
     async adoptTurn(

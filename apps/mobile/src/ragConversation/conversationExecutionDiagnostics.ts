@@ -17,6 +17,9 @@ type Event =
   | 'outcome'
   | 'continued-granted'
   | 'continued-refused'
+  | 'continued-deferred-inactive'
+  | 'continuation-foreground'
+  | 'workflow-checkpoint-paused'
   | 'begin'
   | 'acquired'
   | 'denied'
@@ -49,6 +52,9 @@ const events = new Set<Event>([
   'outcome',
   'continued-granted',
   'continued-refused',
+  'continued-deferred-inactive',
+  'continuation-foreground',
+  'workflow-checkpoint-paused',
   'begin',
   'acquired',
   'denied',

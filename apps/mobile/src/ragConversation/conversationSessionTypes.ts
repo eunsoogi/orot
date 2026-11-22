@@ -33,6 +33,11 @@ export interface ConversationSessionOptions {
     model: { providerId: string; modelId: string };
     selectionCurrent?: () => boolean;
   }>;
+  /** A synchronous local owner witness, never permission to dispatch inference. */
+  readonly captureWarmExecution?: (lease: {
+    id: string;
+    version: number;
+  }) => (() => boolean) | undefined;
   /** Read-only proof of an already-admitted native ChatGPT owner, not remote eligibility. */
   readonly prepareWarmSend?: (
     lease: { readonly id: string; readonly version: number },
@@ -78,6 +83,7 @@ export interface ConversationSessionOptions {
   readonly resolveTreatmentSource?: import('../treatmentContext/treatmentSourceLinks').ResolveTreatmentSource;
   readonly retention?: Omit<
     Retention,
+    | 'reserveWarmTurn'
     | 'beginSession'
     | 'saveTaskCard'
     | 'discardUnpublished'
@@ -88,6 +94,7 @@ export interface ConversationSessionOptions {
     Partial<
       Pick<
         Retention,
+        | 'reserveWarmTurn'
         | 'beginSession'
         | 'saveTaskCard'
         | 'discardUnpublished'

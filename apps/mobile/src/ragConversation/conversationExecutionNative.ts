@@ -11,6 +11,7 @@ import type {
 
 type NativeExecution = {
   begin(requestId: string): Promise<boolean>;
+  beginPreparation?(attemptId: string): Promise<boolean>;
   end(requestId: string): void;
   work?(requestId: string, active: boolean): void;
   answered?(requestId: string): void;
@@ -32,6 +33,12 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
     bridgeAvailable: true,
     currentPhase,
     begin: id => module.begin(id),
+    ...(typeof module.beginPreparation === 'function'
+      ? {
+          beginPreparation: async (id: string) =>
+            (await module.beginPreparation?.(id)) === true,
+        }
+      : {}),
     end: id => module.end(id),
     work: (id, active) => module.work?.(id, active),
     milestone: (id, stage) => module[stage]?.(id),
@@ -48,7 +55,8 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
             event.kind === 'continued' &&
             typeof event.requestId === 'string' &&
             (event.state === 'continued-granted' ||
-              event.state === 'continued-refused')
+              event.state === 'continued-refused' ||
+              event.state === 'continued-deferred-inactive')
           )
             listener({
               kind: 'continued',
@@ -62,6 +70,8 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
             listener({ kind: 'pause-requested', requestId: event.requestId });
           else if (event.kind === 'foreground')
             listener({ kind: 'foreground' });
+          else if (event.kind === 'continuation-foreground')
+            listener({ kind: 'continuation-foreground' });
           else if (
             event.kind === 'expired' &&
             typeof event.requestId === 'string'

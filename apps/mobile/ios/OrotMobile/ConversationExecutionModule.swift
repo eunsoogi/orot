@@ -33,6 +33,12 @@ final class ConversationExecutionModule: RCTEventEmitter {
     override func startObserving() {
         listening = true
         let center = NotificationCenter.default
+        // Use the same native emitter as the deferred receipt to preserve phase ordering.
+        observers.append(center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self, !requests.isEmpty else { return }
+            observeConversationExecution(.foreground)
+            publish(["kind": "continuation-foreground"])
+        })
         for name in [UIApplication.protectedDataWillBecomeUnavailableNotification,
                      UIApplication.protectedDataDidBecomeAvailableNotification]
         {
@@ -92,6 +98,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
                     signalBackgroundFailure(token)
                 }
             #endif
+            observeConversationExecution(.shortLeaseExpired)
             endLease(requestId)
             publish(["kind": "expired", "requestId": requestId])
         }
@@ -106,7 +113,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
         resolve(true)
     }
 
-    /// Called only when an authorized remote provider is dispatched, never while waiting for approval.
+    /// Admit durably owned foreground work; provider authorization remains independent.
     @objc(work:active:)
     func work(_ requestId: String, active: Bool) {
         guard requests.contains(requestId) else { return }
@@ -117,11 +124,12 @@ final class ConversationExecutionModule: RCTEventEmitter {
             return
         }
         guard continued[requestId] == nil, UIApplication.shared.isProtectedDataAvailable else { return }
-        // A dispatch outside the foreground cannot submit a continued task. Do not
-        // cache that non-attempt: a later authorized foreground dispatch may try.
+        // Work outside the foreground cannot submit a continued task. Do not
+        // cache that non-attempt: a later eligible foreground stage may try.
         // Actual scheduler refusals remain cached, so they are never retried here.
         guard UIApplication.shared.applicationState == .active else {
-            publish(["kind": "continued", "state": "continued-refused", "requestId": requestId])
+            observeConversationExecution(.deferredInactive)
+            publish(["kind": "continued", "state": "continued-deferred-inactive", "requestId": requestId])
             return
         }
         if #available(iOS 26.0, *) {
@@ -206,6 +214,7 @@ final class ConversationExecutionModule: RCTEventEmitter {
                 continue
             }
             pauseRequested.insert(requestId)
+            observeConversationExecution(.shortLeaseDrain)
             publish(["kind": "pause-requested", "requestId": requestId])
         }
     }
