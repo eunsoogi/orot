@@ -1,3 +1,4 @@
+import { localConversationMemoryScope } from '../memory/authoredRoutineMemory';
 import { recordFirstResponsePrompt } from '../agent/execution/recordFirstResponsePrompt';
 import { withStructuredPossibilityReport } from './structuredPossibilityReport';
 import { validateConversationResult } from './conversationResultValidation';
@@ -151,8 +152,19 @@ export const proactiveConversationTaskV16 = withProactiveMemory(
 );
 
 // Prompt text is part of protected execution identity, not a migration of prior turns.
-export const ragConversationTask = {
+export const recordFirstConversationTaskV17 = {
   ...proactiveConversationTaskV16,
   taskVersion: '17',
   systemPrompt: `${recordFirstResponsePrompt} ${proactiveConversationTaskV16.systemPrompt}`,
+};
+
+// The new proposal grammar applies only to fresh requests; v17 restoration
+// keeps its original preference-only admission and checkpoint identity.
+export const ragConversationTask = {
+  ...withProactiveMemory(
+    structuredConversationTask,
+    value => localConversationMemoryScope(value) !== undefined,
+  ),
+  taskVersion: '18',
+  systemPrompt: recordFirstConversationTaskV17.systemPrompt,
 };

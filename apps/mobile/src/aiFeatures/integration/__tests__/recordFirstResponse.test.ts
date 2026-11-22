@@ -53,7 +53,12 @@ test('new Chat and actual Daily request share a record-first system prompt witho
   expect(ragConversationTask.systemPrompt).toBe(
     `${recordFirstResponsePrompt} ${old.systemPrompt}`,
   );
-  expect(ragConversationTask.validateResult).toBe(old.validateResult);
+  const v17 = restoreConversationTask({
+    taskType: old.taskType,
+    taskVersion: '17',
+  })!;
+  expect(v17.validateResult).toBe(old.validateResult);
+  expect(v17.systemPrompt).toBe(ragConversationTask.systemPrompt);
   expect(ragConversationTask.createMessages).toBe(old.createMessages);
   expect(recordFirstResponsePrompt).toContain('why these observations matter');
   expect(recordFirstResponsePrompt).toContain('concrete, feasible next step');

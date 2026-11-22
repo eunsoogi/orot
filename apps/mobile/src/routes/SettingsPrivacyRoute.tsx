@@ -72,6 +72,7 @@ export function SettingsPrivacyRoute({
               />
             </View>
             <SettingsAutomaticMemorySection ownership={ownership} />
+            <SettingsAutomaticMemorySection ownership={ownership} routine />
             <View
               style={styles.secondaryColumn}
               testID="settings-privacy-external-transfer"
