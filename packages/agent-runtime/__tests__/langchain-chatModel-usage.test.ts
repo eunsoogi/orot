@@ -108,33 +108,74 @@ describe('native chat reported usage', () => {
     expect(generate).toHaveBeenCalledTimes(1);
   });
 
-  it('cancels the native request and ignores usage arriving after cancellation', async () => {
-    let started!: () => void;
-    const dispatched = new Promise<void>((resolve) => {
-      started = resolve;
-    });
-    const bridge = new FakeBridge(async () => {
-      started();
-    });
-    const model = new NativeChatModel(
-      createChatGPTPlanProvider({
-        bridge,
-        issuedClientID: 'synthetic-account',
-        model: { slug: 'synthetic', displayName: 'Synthetic' },
-      }),
-    );
-    const controller = new AbortController();
-    const pending = model.invoke('Question', { signal: controller.signal });
-    await dispatched;
-    controller.abort();
-    bridge.emit({
-      requestId: bridge.started[0].requestID,
-      type: 'completed',
-      text: '',
-      usage: { inputTokens: 12, outputTokens: 4, totalTokens: 16 },
-    });
-    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
-    expect(bridge.started).toHaveLength(1);
-    expect(bridge.cancelled).toHaveLength(1);
-  });
+  it.each(['pending', 'acknowledged'] as const)(
+    'cancels the native request with registration %s and ignores late usage',
+    async (registration) => {
+      let started!: () => void;
+      let register!: () => void;
+      let registered!: () => void;
+      const dispatched = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      const allowRegistration = new Promise<void>((resolve) => {
+        register = resolve;
+      });
+      const registeredNative = new Promise<void>((resolve) => {
+        registered = resolve;
+      });
+      const active = new Set<string>();
+      const bridge = new FakeBridge(async (requestId) => {
+        started();
+        await allowRegistration;
+        active.add(requestId);
+        registered();
+      });
+      const cancelNative = bridge.cancelResponse.bind(bridge);
+      const reachedNative: boolean[] = [];
+      jest.spyOn(bridge, 'cancelResponse').mockImplementation((requestId) => {
+        reachedNative.push(active.delete(requestId));
+        cancelNative(requestId);
+      });
+
+      const model = new NativeChatModel(
+        createChatGPTPlanProvider({
+          bridge,
+          issuedClientID: 'synthetic-account',
+          model: { slug: 'synthetic', displayName: 'Synthetic' },
+        }),
+      );
+      // Registration and the provider start-promise continuation must both pass before
+      // treating the bridge as acknowledged. This task boundary is not a timed delay.
+      const acknowledge = async () => {
+        register();
+        await registeredNative;
+        await new Promise<void>((resolve) => setImmediate(resolve));
+      };
+      const controller = new AbortController();
+      const pending = model.invoke('Question', { signal: controller.signal });
+      await dispatched;
+      const [{ requestID }] = bridge.started;
+      if (registration === 'acknowledged') await acknowledge();
+      controller.abort();
+      const lateUsage = () =>
+        bridge.emit({
+          requestId: requestID,
+          type: 'completed',
+          text: '',
+          usage: { inputTokens: 12, outputTokens: 4, totalTokens: 16 },
+        });
+      lateUsage();
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+      expect(bridge.cancelled).toEqual([requestID]);
+
+      if (registration === 'pending') await acknowledge();
+      lateUsage();
+      expect(bridge.started).toHaveLength(1);
+      expect(bridge.cancelled).toEqual(
+        registration === 'pending' ? [requestID, requestID] : [requestID],
+      );
+      expect(reachedNative).toEqual(registration === 'pending' ? [false, true] : [true]);
+      expect(active.size).toBe(0);
+    },
+  );
 });

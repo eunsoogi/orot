@@ -182,7 +182,6 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
     this.close();
     throw error;
   }
-
   private start(): Promise<void> {
     if (!this.startTask) {
       this.steering.assertSupported();
@@ -199,7 +198,9 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
           transportScope: this.options.transportScope,
         })
         .then(() => {
-          if (this.closed) this.cancelNativeRequest();
+          // A stop sent before acknowledgment may have missed native registration.
+          this.nativeCancellationSent = false;
+          if (this.closed && !this.terminal) this.cancelNativeRequest();
         });
     }
     return this.startTask;
@@ -230,7 +231,6 @@ class ChatGPTPlanStreamIterator implements AsyncIterator<ProviderResult<Language
     this.unsubscribe();
     if (!this.terminal && this.startTask) this.cancelNativeRequest();
   }
-
   private cancelNativeRequest(): void {
     if (this.nativeCancellationSent) return;
     this.nativeCancellationSent = true;

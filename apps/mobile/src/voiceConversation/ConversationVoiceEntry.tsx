@@ -6,7 +6,7 @@ import {
 import type { ConversationVoiceProps } from './conversationVoiceDependencies';
 import { LocalConversationVoiceEntry } from './LocalConversationVoiceEntry';
 import { LiveConversationVoiceEntry } from './LiveConversationVoiceEntry';
-import { liveModel } from '../voiceSettings/liveVoicePreferences';
+import { voiceConversationCapability } from './voiceConversationCapability';
 import { Alert } from 'react-native';
 import { t } from '../i18n';
 import { VoiceConversationControl } from './VoiceConversationControl';
@@ -41,9 +41,10 @@ export function ConversationVoiceEntry(
     };
   }, []);
   if (!settings) return null;
-  if (settings.mode === 'local')
+  const capability = voiceConversationCapability(settings);
+  if (capability.mode === 'selected-conversation')
     return <LocalConversationVoiceEntry {...props} />;
-  if (settings.model !== liveModel)
+  if (capability.mode === 'unsupported-model')
     return (
       <VoiceConversationControl
         phase="idle"
