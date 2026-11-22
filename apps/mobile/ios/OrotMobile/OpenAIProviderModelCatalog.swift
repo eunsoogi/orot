@@ -28,4 +28,20 @@ public extension OpenAIProviderModule {
             }
         }
     }
+    /// Warm admission needs one local account summary, not every stored credential or the remote catalog.
+    @objc(loadAccountSummary:resolver:rejecter:)
+    func loadAccountSummary(
+        _ issuedClientID: String,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock,
+    ) {
+        Task { @MainActor in
+            do {
+                let summary = try activeClient.loadStoredAccountSummary(issuedClientID: issuedClientID)
+                resolve(summary.map(Self.accountSummaryDictionary))
+            } catch {
+                Self.rejectAccountList(reject, error: error)
+            }
+        }
+    }
 }

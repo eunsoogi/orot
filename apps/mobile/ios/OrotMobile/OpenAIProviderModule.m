@@ -7,6 +7,8 @@ RCT_EXTERN_METHOD(listModels : (NSString *)issuedClientID resolver : (RCTPromise
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(listAccounts : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)
                       reject)
+RCT_EXTERN_METHOD(loadAccountSummary : (NSString *)issuedClientID resolver : (RCTPromiseResolveBlock)
+                      resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(signIn : (NSString *)existingIssuedClientID resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(cancelSignIn)
