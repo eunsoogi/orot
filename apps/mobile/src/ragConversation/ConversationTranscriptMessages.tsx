@@ -61,7 +61,17 @@ export function ConversationTranscriptMessages({
       ?.map(card => (
         <ConversationVoiceEndMarker key={card.id} task={card.task} />
       ));
-  const rows = messages.map(message => {
+  // Keep the same keyed choice block across first live append and older prepends.
+  // Markers preceding the first live turn belong on the history side of the divider.
+  const choices =
+    entryChoices == null ? null : (
+      <Fragment key="conversation-entry-choices">{entryChoices}</Fragment>
+    );
+  const rows: ReactNode[] = [];
+  messages.forEach((message, position) => {
+    const markers = markerRows(message.id);
+    if (markers) rows.push(...markers);
+    if (choices && position === firstLive) rows.push(choices);
     const ownInstructions =
       message === target ? instructions : message.steeringInstructions;
     const restored =
@@ -91,7 +101,7 @@ export function ConversationTranscriptMessages({
     const after = message.streaming
       ? ownInstructions?.slice(afterBoundary)
       : undefined;
-    return (
+    rows.push(
       <ReplyMessageContainer
         key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
         readingId={onReadingLayout ? message.id : undefined}
@@ -120,27 +130,12 @@ export function ConversationTranscriptMessages({
             localChoicePending={message.localChoicePending}
           />
         ) : null}
-      </ReplyMessageContainer>
+      </ReplyMessageContainer>,
     );
   });
-  // A stable sibling key preserves choice/task state across the first live append and older prepends.
-  // Fragments add no layout wrapper, preserving reply-focus and paging row coordinates.
-  const choicesAt =
-    entryChoices == null ? -1 : firstLive < 0 ? rows.length : firstLive;
-  if (choicesAt >= 0)
-    rows.splice(
-      choicesAt,
-      0,
-      <Fragment key="conversation-entry-choices">{entryChoices}</Fragment>,
-    );
-  const transcript = placement
-    ? rows.flatMap((row, index) => {
-        if (index === choicesAt) return [row];
-        const id =
-          messages[index - Number(choicesAt >= 0 && index > choicesAt)]?.id;
-        return id === undefined ? [row] : [...(markerRows(id) ?? []), row];
-      })
-    : rows;
+  const trailingMarkers = markerRows(null);
+  if (trailingMarkers) rows.push(...trailingMarkers);
+  if (choices && firstLive < 0) rows.push(choices);
   return (
     <ConversationTranscriptEntranceScope
       availableMessages={availableMessages}
@@ -150,8 +145,7 @@ export function ConversationTranscriptMessages({
       presentation={messageProps}
       sessionId={sessionId}
     >
-      {transcript}
-      {markerRows(null)}
+      {rows}
       {!target && pendingId !== undefined ? (
         <ConversationSteeringMessages
           instructions={instructions}
