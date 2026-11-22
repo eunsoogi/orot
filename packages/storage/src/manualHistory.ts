@@ -45,6 +45,11 @@ export interface ManualHistoryRepositoryOptions {
 
 /** Local user memories share the protected edit/delete UI, not the health corpus. */
 export const localConversationMemoryIdPrefix = 'conversation-local-memory:';
+// Automatic notes are local display records, not candidates for historical embeddings.
+export const autoLocalConversationMemoryIdPrefix = localConversationMemoryIdPrefix + 'auto:';
+export function isAutoLocalConversationMemoryId(id: string): boolean {
+  return id.startsWith(autoLocalConversationMemoryIdPrefix);
+}
 export function isLocalConversationMemoryId(id: string): boolean {
   return id.startsWith(localConversationMemoryIdPrefix);
 }
@@ -178,8 +183,11 @@ export function createManualHistoryRepository(
         const recordedAt = clock();
         corrected = correctManualHistoryEntry(previous, input, {
           id:
-            (isLocalConversationMemoryId(previous.id) ? localConversationMemoryIdPrefix : '') +
-            createId(),
+            (isAutoLocalConversationMemoryId(previous.id)
+              ? autoLocalConversationMemoryIdPrefix
+              : isLocalConversationMemoryId(previous.id)
+                ? localConversationMemoryIdPrefix
+                : '') + createId(),
           recordedAt,
           ingestedAt: recordedAt,
         });

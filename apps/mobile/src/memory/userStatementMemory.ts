@@ -82,15 +82,10 @@ export function conversationStatementMemory(
   // the SQLite statement-time trigger can attest exactly the same source.
   const text = statementFromExplicitRequest(question) ?? question;
   if (!isSafeStatement(text)) return undefined;
-  const proposed =
-    value.proactiveMemory === true &&
-    !value.dailyReport &&
-    !value.submittedInput &&
-    isProactiveMemoryStatement(question);
+  // Old serialized model advice never authorizes an embedding or recall write.
   // Korean often omits the speaker: a bounded health/topic subject may substitute
   // for first person, but this is retained as a dated statement, not an inferred diagnosis.
   if (
-    !proposed &&
     !/^(저는|나는|제가|내가|제\s|내\s|I\s(?:am|have|prefer|want|need)|My\s)/i.test(
       text,
     ) &&
@@ -105,8 +100,7 @@ export function conversationStatementMemory(
     )
   )
     return undefined;
-  const preference =
-    /선호|좋아|싫어|prefer/i.test(text) || (proposed && /^앞으로/.test(text));
+  const preference = /선호|좋아|싫어|prefer/i.test(text);
   return {
     memoryKey: `conversation-statement:${value.id}`,
     text: `${value.createdAt} 사용자가 직접 말한 내용 (당시의 진술이며 현재 상태나 의학적으로 확인된 사실이 아님):\n${question}`,

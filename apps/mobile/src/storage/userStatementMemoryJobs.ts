@@ -1,3 +1,4 @@
+import { isAutoLocalConversationMemoryId } from '@orot/storage';
 import type { SqlExecutor } from '@orot/storage';
 import type { ConversationArtifact } from './conversationArtifactTypes';
 import { conversationStatementMemory } from '../memory/userStatementMemory';
@@ -39,6 +40,8 @@ export async function ensureStatementMemoryJobs(sql: SqlExecutor) {
 }
 
 export async function enqueueManualHistoryMemory(sql: SqlExecutor, id: string) {
+  // Do not queue an automatic local note, even when the caller uses this generic path.
+  if (isAutoLocalConversationMemoryId(id)) return;
   await ensureStatementMemoryJobs(sql);
   await sql.execute(
     "INSERT OR IGNORE INTO user_statement_memory_jobs (source_kind, source_id) VALUES ('manual_history', ?)",

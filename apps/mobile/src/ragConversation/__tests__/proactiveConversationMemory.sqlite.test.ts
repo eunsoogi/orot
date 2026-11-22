@@ -103,7 +103,7 @@ test.each([
   [true, false, '저는 오랫동안 다른 사람을 돌보고 있어요.', false, true],
   [true, false, 'I prefer that you never retain my words.', false],
 ] as const)(
-  'queues only admitted authored text after final commit (%s, delete %s, %s)',
+  'old model proposals cannot enqueue or drain into embedded memory (%s, delete %s, %s)',
   async (
     selection,
     deleteBeforeDrain,
@@ -160,7 +160,14 @@ test.each([
       expect((await retention.finish(outcome)).retained).toBe(true);
       expect(beforeCommit).toEqual([]);
       const queued = await jobs();
-      const admitted = legacy || (eligible && selection === true);
+      const admitted = legacy;
+      if (eligible && selection === true) {
+        // Simulate a queued job restored from a build that persisted model advice.
+        await f.database.execute(
+          "INSERT INTO user_statement_memory_jobs (source_kind, source_id) VALUES ('conversation_user_statement', ?)",
+          ['synthetic-user-turn'],
+        );
+      }
       const memoryStorage = new SqlCipherAgentMemoryStorage(f.database);
       const memory = await createAgentMemory({
         storage: memoryStorage,

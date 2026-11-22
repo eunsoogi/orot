@@ -6,6 +6,7 @@ import type { PendingTurn } from './conversationSessionTypes';
 
 /** Dispose only request-owned resources; a removed session cannot be revived. */
 export function createConversationRequestDisposal(input: {
+  ordinaryMemory?: { discard: (id: number) => void; dispose: () => void };
   steering?: { clear: (id: number) => void; dispose: () => void };
   controllers: Map<number, AbortController>;
   pendingTurns: Map<number, PendingTurn>;
@@ -17,6 +18,7 @@ export function createConversationRequestDisposal(input: {
 }) {
   return {
     abandon(id: number) {
+      input.ordinaryMemory?.discard(id);
       input.steering?.clear(id);
       input.saveRecovery.suspend(id);
       input.lifetime.interrupt(id, 'cancelled', true);
@@ -34,6 +36,7 @@ export function createConversationRequestDisposal(input: {
       });
     },
     dispose() {
+      input.ordinaryMemory?.dispose();
       input.steering?.dispose();
       input.saveRecovery.dispose();
       input.controllers.forEach((controller, id) => {
