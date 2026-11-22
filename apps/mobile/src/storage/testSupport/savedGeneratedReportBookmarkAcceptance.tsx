@@ -13,7 +13,7 @@ import {
 import { createConversationSessionRetention } from '../../ragConversation/conversationSessionRetention';
 import { conversationSavedHistoryDisplayOption } from '../../aiFeatures/integration/conversationSavedHistoryDisplayOption';
 import { openSavedGeneratedReportReferences } from '../../memory/openSavedGeneratedReportReferences';
-import { SavedGeneratedReportDetail } from '../../memory/SavedGeneratedReportDetail';
+import { SavedMemoryDetail } from '../../memory/SavedMemoryDetail';
 import type { ConversationArtifact } from '../conversationArtifactTypes';
 import type { createConversationArtifactStorage } from '../conversationArtifactStorage';
 
@@ -133,7 +133,20 @@ export async function expectReportBookmarkMounted(
     }
     expect(onSend).not.toHaveBeenCalled();
     await view.rerender(
-      <SavedGeneratedReportDetail artifactId={historical.id} />,
+      <SavedMemoryDetail
+        memoryId={'generated-report:' + historical.id}
+        load={async () =>
+          (await conversations.listSavedGeneratedReportReferences()).map(
+            row => ({
+              sourceKind: 'saved_generated_report',
+              id: 'generated-report:' + row.artifactId,
+              artifactId: row.artifactId,
+              text: 'Synthetic report reference',
+              createdAt: Date.parse(row.savedAt),
+            }),
+          )
+        }
+      />,
     );
     expect(await screen.findByText('AI가 만든 일일 보고서')).toBeTruthy();
     expect(await screen.findByText(/Original report/)).toBeTruthy();

@@ -12,6 +12,12 @@ import {
   type SavedMemory,
 } from './unifiedSavedMemories';
 export type { SavedMemory } from './unifiedSavedMemories';
+type ReadyRead = {
+  readonly rows: SavedMemory[];
+  readonly request: number;
+  readonly load: () => Promise<SavedMemory[]>;
+  readonly isCurrent: () => boolean;
+};
 const READ_WAIT_MS = 10_000;
 /** Shared protected read lifecycle for list and detail. Invalidations erase text before cleanup settles. */
 export function useSavedMemories(
@@ -20,7 +26,7 @@ export function useSavedMemories(
 ) {
   const contextLoad = useContext(SavedMemoryLoaderContext);
   const load = suppliedLoad ?? contextLoad;
-  const [rows, setRows] = useState<SavedMemory[]>([]);
+  const [read, setRead] = useState<ReadyRead | null>(null);
   const [state, setState] = useState<
     'idle' | 'loading' | 'ready' | 'failed' | 'invalidated'
   >('idle');
@@ -37,7 +43,7 @@ export function useSavedMemories(
       reportSavedMemoryRead('saved_memory_wait', 'cancelled');
     clearReadTimer();
     generation.current += 1;
-    setRows([]);
+    setRead(null);
     setState('idle');
   }, [clearReadTimer]);
 
@@ -50,7 +56,7 @@ export function useSavedMemories(
     reportSavedMemoryRead('saved_memory_wait', 'started');
     const request = ++generation.current;
     setState('loading');
-    setRows([]);
+    setRead(null);
     // Bound the UI wait, not the database transaction. Never close a shared connection
     // or treat a timeout as empty storage; discard its late result and offer a fresh read.
     timer.current = setTimeout(() => {
@@ -64,12 +70,12 @@ export function useSavedMemories(
       const result = await load();
       if (generation.current !== request) return;
       reportSavedMemoryRead('saved_memory_wait', 'completed');
-      setRows(result);
+      const isCurrent = () =>
+        generation.current === request && enabled && active.current;
+      setRead({ rows: result, request, load, isCurrent });
       setState('ready');
       if (load === loadUnifiedLocalMemories)
-        resumeStatementMemoryAfterRead(
-          () => generation.current === request && enabled && active.current,
-        );
+        resumeStatementMemoryAfterRead(isCurrent);
     } catch {
       if (generation.current === request) {
         reportSavedMemoryRead('saved_memory_wait', 'failed');
@@ -111,5 +117,14 @@ export function useSavedMemories(
     };
   }, [refresh, close, clearReadTimer, enabled]);
 
-  return { rows, state, refresh };
+  // The route and loader can change before passive cleanup runs. Never hand
+  // their previous snapshot (or its detail capability) to the next render.
+  const readyRead =
+    enabled && read?.load === load && read.isCurrent() ? read : null;
+  return {
+    rows: readyRead?.rows ?? [],
+    state: state === 'ready' && !readyRead ? 'idle' : state,
+    refresh,
+    readyRead,
+  };
 }

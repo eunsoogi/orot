@@ -4,6 +4,10 @@ import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { decodeConversationArtifact } from './conversationArtifactCodec';
 import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 import { withWritePeriodCalculations } from './writePeriodCalculationScope';
+import {
+  createSavedHealthSummaryReferences,
+  setupSavedHealthSummaryReferences,
+} from './savedHealthSummaryReferences';
 
 type Original = NonNullable<
   Awaited<ReturnType<typeof validateDailyReportArtifact>>
@@ -13,10 +17,12 @@ type Lease = Readonly<{ id: string; version: number }>;
 export type SavedGeneratedReportReference = Readonly<{
   artifactId: string;
   savedAt: string;
+  reportKind?: 'health_summary';
 }>;
 
 /** The bookmark belongs to the protected generated artifact, not the model's memory corpus. */
 export async function setupSavedGeneratedReportReferences(tx: SqlExecutor) {
+  await setupSavedHealthSummaryReferences(tx);
   await tx.execute(
     'CREATE TABLE IF NOT EXISTS saved_generated_report_refs (report_id TEXT PRIMARY KEY NOT NULL, artifact_id TEXT UNIQUE NOT NULL, saved_at TEXT NOT NULL)',
   );
@@ -51,7 +57,9 @@ export function createSavedGeneratedReportReferences(
       ).rows.length,
     );
   const history = createManualHistoryRepository(database);
+  const summary = createSavedHealthSummaryReferences(database, ensure);
   return {
+    ...summary,
     async bookmarkDailyReport(input: {
       artifactId: string;
       lease: Lease;
@@ -139,16 +147,22 @@ export function createSavedGeneratedReportReferences(
     async listSavedGeneratedReportReferences(): Promise<
       SavedGeneratedReportReference[]
     > {
-      if (!(await catalogExists())) return [];
+      const summaries = await summary.listSavedHealthSummaryReferences();
+      if (!(await catalogExists())) return summaries;
       const { rows } = await database.execute(
         `SELECT b.artifact_id, b.saved_at ${visible} ORDER BY b.saved_at DESC, b.artifact_id`,
       );
-      return rows.flatMap(row =>
+      const daily = rows.flatMap(row =>
         typeof row.artifact_id === 'string' &&
         typeof row.saved_at === 'string' &&
         Number.isFinite(Date.parse(row.saved_at))
           ? [{ artifactId: row.artifact_id, savedAt: row.saved_at }]
           : [],
+      );
+      return [...daily, ...summaries].sort(
+        (a, b) =>
+          b.savedAt.localeCompare(a.savedAt) ||
+          a.artifactId.localeCompare(b.artifactId),
       );
     },
     async readSavedGeneratedReportReference(
