@@ -1,4 +1,7 @@
-import type { GeneratedReportRow } from '../generatedReports/types';
+import type {
+  GeneratedReportCitationSelection,
+  GeneratedReportRow,
+} from '../generatedReports/types';
 import type { AppRouteContentProps } from './AppProps';
 import {
   createContext,
@@ -17,6 +20,14 @@ const Context = createContext<{
     routeKey: string;
     row: GeneratedReportRow;
   }) => void;
+  readonly reportSource: {
+    routeKey: string;
+    selected: GeneratedReportCitationSelection;
+  } | null;
+  readonly selectReportSource: (value: {
+    routeKey: string;
+    selected: GeneratedReportCitationSelection;
+  }) => void;
 } | null>(null);
 
 /** Retain only source IDs per native route; document contents are read locally by their destination. */
@@ -33,16 +44,22 @@ export function RecordSourceNavigationProvider({
     routeKey: string;
     row: GeneratedReportRow;
   } | null>(null);
+  const [reportSource, selectReportSource] = useState<{
+    routeKey: string;
+    selected: GeneratedReportCitationSelection;
+  } | null>(null);
   const value = useMemo(
     () => ({
       sources,
       report,
       selectReport,
+      reportSource,
+      selectReportSource,
       select: (routeKey: string, sourceId: string) => {
         setSources(current => new Map(current).set(routeKey, sourceId));
       },
     }),
-    [report, sources],
+    [report, reportSource, sources],
   );
   return (
     <Context.Provider value={value}>
@@ -60,6 +77,29 @@ export function useRecordSourceNavigation(
     report:
       sources?.report?.routeKey === actions.route.key
         ? sources.report.row
+        : undefined,
+    reportSource:
+      sources?.reportSource?.routeKey === actions.route.key
+        ? sources.reportSource.selected
+        : undefined,
+    openReportSource:
+      sources && actions.route.name === 'generated-report-detail'
+        ? (selection: GeneratedReportCitationSelection) => {
+            if (actions.ownership && !actions.ownership.isCurrent())
+              return false;
+            const route = actions.push('generated-report-source');
+            if (!route) return false;
+            const { sessionId, sessionVersion, turnId, createdAt } =
+              selection.target;
+            sources.selectReportSource({
+              routeKey: route.key,
+              selected: {
+                target: { sessionId, sessionVersion, turnId, createdAt },
+                ordinal: selection.ordinal,
+              },
+            });
+            return true;
+          }
         : undefined,
     openReport:
       sources && actions.route.name === 'generated-reports'
