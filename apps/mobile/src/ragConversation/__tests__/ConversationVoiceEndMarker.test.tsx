@@ -46,7 +46,7 @@ function contrast(a: string, b: string) {
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 }
 
-test('light mode separates the receipt from nearby surfaces without changing its dark colors or text', async () => {
+test('a stronger light fill separates the receipt without adding a border or changing dark mode', async () => {
   await render(
     <ConversationVoiceEndMarker
       task={{ kind: 'voice_end', durationSeconds: 134 }}
@@ -56,26 +56,19 @@ test('light mode separates the receipt from nearby surfaces without changing its
   const cardStyle = StyleSheet.flatten(card.props.style);
   const fill = palette(cardStyle.backgroundColor);
   expect(fill).toMatchObject({ dark: '#252525' });
-  const adjacentSurfaces = [
-    palette(conversationStyles.screen.backgroundColor).light,
-    palette(conversationStyles.assistantBody.backgroundColor).light,
-  ];
-  for (const nearby of adjacentSurfaces)
-    expect(contrast(fill.light, nearby)).toBeGreaterThan(1.08);
-  const outline = screen.getByTestId('conversation-voice-end-outline', {
-    includeHiddenElements: true,
-  });
-  const outlineStyle = StyleSheet.flatten(outline.props.style);
-  const stroke = palette(outlineStyle.borderColor);
-  expect(outlineStyle).toMatchObject({ position: 'absolute', borderWidth: 1 });
-  expect(outline.props).toMatchObject({
-    accessible: false,
-    accessibilityElementsHidden: true,
-    pointerEvents: 'none',
-  });
-  expect(stroke.dark).toBe('transparent');
-  for (const nearby of adjacentSurfaces)
-    expect(contrast(stroke.light, nearby)).toBeGreaterThan(1.5);
+  const canvas = palette(conversationStyles.screen.backgroundColor).light;
+  const bubble = palette(
+    conversationStyles.assistantBody.backgroundColor,
+  ).light;
+  expect(contrast(fill.light, canvas)).toBeGreaterThan(1.12);
+  expect(contrast(fill.light, bubble)).toBeGreaterThan(1.2);
+  expect(cardStyle).not.toHaveProperty('borderWidth');
+  expect(cardStyle).not.toHaveProperty('borderColor');
+  expect(
+    screen.queryByTestId('conversation-voice-end-outline', {
+      includeHiddenElements: true,
+    }),
+  ).toBeNull();
   const title = StyleSheet.flatten(
     screen.getByText('음성 대화 종료').props.style,
   );

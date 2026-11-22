@@ -7,6 +7,8 @@ extension AppointmentConsentUITests {
     func testApprovedBatchesExposeMeasuredProgressAndScrollableResults() throws {
         let app = XCUIApplication()
         let sceneSession = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_WIDE_STAGE_VALIDATION"] == "YES" ? UUID().uuidString : nil
+        let expectDuo = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_DUO_DOCK_EXPECTATION"] == "YES"
+        let motionOnly = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_MOTION_ONLY"] == "YES"
         let device = XCUIDevice.shared
         let priorOrientation = device.orientation
         if sceneSession != nil {
@@ -47,6 +49,8 @@ extension AppointmentConsentUITests {
         try startMeasuredClassification(app, anchor: anchor)
 
         try assertHeldProgress(app, percent: 0, calls: 1, saving: false, anchor: anchor)
+        let originalCircle = node(app, "classification-circle-slot").frame
+        let originalLane = node(app, "classification-moving-stage").frame
         tap(app, "classification-release-response")
         try assertHeldProgress(app, percent: 88, calls: 2, saving: false, anchor: anchor)
         tap(app, "classification-release-response")
@@ -56,6 +60,17 @@ extension AppointmentConsentUITests {
         UITestConditions.value(node(app, "calendar-classification-synthetic-calendar-save"), equals: "syntheticCalendarSave=confirmed")
         XCTAssertFalse(node(app, "medical-appointment-progress").exists)
         XCTAssertFalse(node(app, "medical-appointment-confirmation").exists)
+        let expectLeft = sceneSession != nil || expectDuo
+        let dock = try assertClassificationCircleDock(app, original: originalCircle, originalLane: originalLane, expectLeft: expectLeft, requireDuoWidth: expectDuo)
+        if motionOnly {
+            XCTContext.runActivity(named: "Classification motion-only: initial center → dock → confirmed recenter (no scroll or Back)") { _ in
+                assertClassificationCircleReturn(app, dock: dock, expectLeft: expectLeft)
+                let lane = node(app, "classification-moving-stage").frame
+                let recentered = node(app, "classification-circle-slot").frame
+                XCTContext.runActivity(named: "Classification motion-only recentered: dock=\(dock), lane=\(lane), circle=\(recentered)") { _ in }
+            }
+            return
+        }
         let results = try readScrollableResults(app, anchor: anchor)
         let readable = results.joined().filter { !$0.isWhitespace }
         // Indexed segments make loss/repetition observable even when native line breaks split a long title.
@@ -69,6 +84,7 @@ extension AppointmentConsentUITests {
         XCTAssertEqual(node(app, "calendar-classification-synthetic-provider-calls").label, "syntheticProviderCalls=2")
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-long-result-returned", testCase: self)
+        assertClassificationCircleReturn(app, dock: dock, expectLeft: expectLeft)
     }
 
     @MainActor

@@ -5,7 +5,6 @@ import { SelectedModelControl } from '../layout/SelectedModelControl';
 import { appColors } from '../layout/appColors';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import { NavigationContentTransition } from '../navigation/NavigationContentTransition';
 import type { ProviderSelectionOption } from '../providers/selection/types';
 import type { CandidateReview } from './classificationWorkflow';
 import { ClassificationPagedStage } from './ClassificationPagedStage';
@@ -14,7 +13,8 @@ import {
   formatCalendarEventRange,
 } from '../calendar/dateTime';
 import { ClassificationResultsStage } from './ClassificationResultsStage';
-import { ClassificationProgress } from './ClassificationProgress';
+import { ClassificationMovingStage } from './ClassificationMovingStage';
+import type { classificationDockGeometry } from './ClassificationCircle';
 import { medicalAppointmentCopy as copy } from './copy.ko';
 import { isConfidentMedical } from './saveCalendarCandidate';
 
@@ -79,19 +79,12 @@ export function MedicalAppointmentReviewView(props: Props) {
   ]
     .filter(Boolean)
     .join('\n');
-  const content =
-    stage === 'progress' ? (
-      <View style={styles.center}>
-        <ClassificationProgress
-          classified={classified}
-          total={props.eventCount}
-          saving={props.savingId !== null}
-        />
-      </View>
-    ) : stage === 'confirmation' ? (
+  const content = (dock: ReturnType<typeof classificationDockGeometry>) =>
+    stage === 'progress' ? null : stage === 'confirmation' ? (
       <ClassificationPagedStage
         key="confirmation"
         testID="medical-appointment-confirmation"
+        confirmAtDock={confirmAgain}
         documents={[Object.values(confirmation).filter(Boolean).join('\n\n')]}
         caption={confirmation}
         actionTitle={t('medicalAppointments.startShort')}
@@ -114,6 +107,7 @@ export function MedicalAppointmentReviewView(props: Props) {
     ) : (
       <ClassificationResultsStage
         key="results"
+        movingCircle={dock}
         rows={medical.map(candidate => ({
           id: candidate.candidateId,
           title: candidate.event.calendarEventSnapshot.title,
@@ -175,9 +169,16 @@ export function MedicalAppointmentReviewView(props: Props) {
               label={`${t('medicalAppointments.chooseClassifier')}: ${props.provider?.displayName ?? copy.chooseProvider}`}
               testID="medical-appointment-select-provider"
             />
-            <NavigationContentTransition transitionKey={stage}>
+            <ClassificationMovingStage
+              stage={stage}
+              confirmingRestart={confirmAgain && !busy}
+              classified={classified}
+              total={props.eventCount}
+              saving={props.savingId !== null}
+              onRestart={() => setConfirmAgain(true)}
+            >
               {content}
-            </NavigationContentTransition>
+            </ClassificationMovingStage>
           </View>
         }
       />
@@ -187,5 +188,4 @@ export function MedicalAppointmentReviewView(props: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
   lane: { flex: 1, flexDirection: 'column', paddingHorizontal: 24 },
-  center: { flex: 1, minHeight: 0 },
 });
