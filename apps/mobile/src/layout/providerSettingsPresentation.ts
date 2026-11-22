@@ -3,11 +3,18 @@ import { appColors } from './appColors';
 import { COMPACT_APP_SYMBOL_POINT_SIZE } from './iconSizing';
 
 export const providerCatalogContentInset = 16;
+export const modelSettingsPageGap = 12;
+const modelSettingsGroupSpacing = 22;
 const catalogActionTargetSize = 44;
 
 /** Filled grouping replaces decorative borders; option symbols still convey selection without color. */
 export const providerSettingsStyles = StyleSheet.create({
-  section: { gap: 12, marginTop: 22 },
+  section: { gap: 12, marginTop: modelSettingsGroupSpacing },
+  // Conversation has a fixed summary outside the choices; Calendar and Voice
+  // put it inside their panels. Both arrangements use one group spacing.
+  firstSectionAfterSiblingSummary: {
+    marginTop: modelSettingsGroupSpacing - modelSettingsPageGap,
+  },
   heading: {
     fontSize: 18,
     fontWeight: '600',
