@@ -18,6 +18,7 @@ final class NavigationGeometryView: UIView {
         NotificationCenter.default.addObserver(self, selector: #selector(navigationFrameChanged),
                                                name: Notification.Name("OrotNavigationSurfaceGeometryDidChange"), object: nil)
         if #available(iOS 27.1, *) {
+            registerForTraitChanges(UITraitCollection.systemTraitsAffectingVerticalBarEdge, action: #selector(setNeedsLayout))
             addInteraction(UIHingeInteraction { [weak self] _, update in
                 guard let self else { return }
                 hasHinge = update.hinge != nil
@@ -138,7 +139,22 @@ final class NavigationGeometryView: UIView {
         if let navigationSide {
             payload["navigationSide"] = navigationSide
         }
+        if let frame = systemTopBarFrame(in: window) {
+            payload["systemTopBarFrame"] = rectPayload(frame)
+        }
         return payload
+    }
+
+    private func systemTopBarFrame(in window: UIWindow) -> CGRect? {
+        if #available(iOS 27.1, *), window.traitCollection.verticalBarEdge != .unspecified {
+            return nil
+        }
+        guard let scene = window.windowScene, let manager = scene.statusBarManager else { return nil }
+        guard !manager.isStatusBarHidden else { return nil }
+        let frame = window.convert(manager.statusBarFrame, from: scene.coordinateSpace)
+        guard !frame.isEmpty, frame.width > frame.height else { return nil }
+        guard [frame.minX, frame.minY, frame.width, frame.height].allSatisfy(\.isFinite) else { return nil }
+        return frame
     }
 
     @available(iOS 27.1, *)
