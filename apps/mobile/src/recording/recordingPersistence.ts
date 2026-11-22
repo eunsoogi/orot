@@ -1,3 +1,4 @@
+import { notifyRecentSourceSaved } from '../storage/recentSourceEvents';
 import type { RecordRepository } from '@orot/storage';
 import { t } from '../i18n';
 import type {
@@ -67,5 +68,6 @@ export async function saveRecordingSource(
     recordingDurationMs: recording.durationMs,
   };
   await repository.put('source_record', source);
+  notifyRecentSourceSaved();
   return source;
 }

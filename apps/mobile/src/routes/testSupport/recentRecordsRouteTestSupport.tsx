@@ -1,3 +1,4 @@
+import type { RecentMaterialRow } from '../../generatedReports/catalog';
 import { RecordSourceNavigationProvider } from '../RecordSourceNavigation';
 import { render } from '@testing-library/react-native';
 import { emptyCalendarAutoSyncState } from '../../calendar/calendarAutoSync';
@@ -6,6 +7,7 @@ import type { AppRouteContentProps } from '../AppProps';
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
 import type { createNavigationController } from '../../navigation/navigationController';
+import { RecordsSourcePaging } from '../RecordsSourcePagingContext';
 import type { AppNavigationRoute } from '../appNavigationRoute';
 
 export function recentRouteProps(): Omit<AppRouteContentProps, 'actions'> {
@@ -71,21 +73,43 @@ export function recentRouteProps(): Omit<AppRouteContentProps, 'actions'> {
 export function renderRecords(
   controller: ReturnType<typeof createNavigationController<AppNavigationRoute>>,
   props: ReturnType<typeof recentRouteProps>,
+  indexed = false,
 ) {
   return render(
-    <RecordSourceNavigationProvider>
-      <NavigationRouteAdapter
-        controller={controller}
-        contentLayoutOwner={appContentLayoutOwner}
-        scrollable
-        rootTabs={route =>
-          route.name === 'root'
-            ? { activeTab: 'records', onSelect: jest.fn() }
-            : undefined
-        }
-      >
-        {actions => <AppRouteContent {...props} actions={actions} />}
-      </NavigationRouteAdapter>
-    </RecordSourceNavigationProvider>,
+    <RecordsSourcePaging.Provider value={indexed}>
+      <RecordSourceNavigationProvider>
+        <NavigationRouteAdapter
+          controller={controller}
+          contentLayoutOwner={appContentLayoutOwner}
+          scrollable
+          rootTabs={route =>
+            route.name === 'root'
+              ? { activeTab: 'records', onSelect: jest.fn() }
+              : undefined
+          }
+        >
+          {actions => <AppRouteContent {...props} actions={actions} />}
+        </NavigationRouteAdapter>
+      </RecordSourceNavigationProvider>
+    </RecordsSourcePaging.Provider>,
   );
+}
+
+export function pendingVisitReports(): RecentMaterialRow[] {
+  return Array.from({ length: 21 }, (_, index) => ({
+    id: String(30 - index),
+    key: 'visit:' + String(30 - index),
+    origin: 'visit',
+    kind: 'visit_questions',
+    createdAt: '2026-11-22T09:34:00.000Z',
+    unavailable: false,
+  }));
+}
+
+export function holdRecentTestPage<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(finish => {
+    resolve = finish;
+  });
+  return { promise, resolve };
 }

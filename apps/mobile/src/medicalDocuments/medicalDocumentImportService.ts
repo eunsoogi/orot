@@ -1,3 +1,4 @@
+import { notifyRecentSourceSaved } from '../storage/recentSourceEvents';
 import type { EvidenceSpan, SourceRecord } from '@orot/domain';
 import type { RecordRepository } from '@orot/storage';
 import {
@@ -192,6 +193,7 @@ export function createMedicalDocumentImportService(
         if (!markMedicalDocumentPersisted(document.id, generation)) {
           throw new MedicalDocumentImportError('STALE_DOCUMENT');
         }
+        notifyRecentSourceSaved();
         return 'saved';
       } catch (error) {
         if (

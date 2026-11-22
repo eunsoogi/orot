@@ -141,3 +141,29 @@ test('Records reloads a newly saved recording without refreshing unrelated appoi
   expect(loadRecordings).toHaveBeenCalledTimes(2);
   expect(loadAppointments).toHaveBeenCalledTimes(1);
 });
+
+test('built-in recordings do not load an Overview snapshot while Records owns indexed paging', async () => {
+  const store = createAppointmentStore([]);
+  const loadAppointments = async () => store.repository;
+  const loadRecordings = jest.fn(async () => [savedSource]);
+  const { result, rerender } = await renderHook(
+    ({ overview }: { overview: boolean }) =>
+      useAppOverviewData(
+        loadAppointments,
+        loadRecordings,
+        overview,
+        overview,
+        false,
+      ),
+    { initialProps: { overview: false } },
+  );
+  expect(loadRecordings).not.toHaveBeenCalled();
+  await act(async () => result.current.refreshRecordings());
+  expect(loadRecordings).not.toHaveBeenCalled();
+  await rerender({ overview: true });
+  expect(loadRecordings).toHaveBeenCalledTimes(1);
+  expect(result.current.recordings).toEqual([savedSource]);
+  await rerender({ overview: false });
+  await act(async () => result.current.refreshRecordings());
+  expect(loadRecordings).toHaveBeenCalledTimes(1);
+});
