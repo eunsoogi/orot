@@ -76,9 +76,11 @@ export function ClassificationResultsStage({
     : movingCircle
       ? movingCircle.captionTop
       : centerOffset + size + 8;
+  const sideStart = movingCircle?.side ? movingCircle.listStart : undefined;
+  const stackedBottom = movingCircle?.bottomInset ?? 0;
   const captionHeight = Math.min(
     naturalCaption,
-    Math.max(target, height - top - target),
+    Math.max(target, height - top - stackedBottom - target),
   );
   const showingDetail = Boolean(details);
   const side = movingCircle?.side === true;
@@ -92,17 +94,7 @@ export function ClassificationResultsStage({
     count: rows.length,
     top,
   });
-  const bottom = side ? groupTop : 0;
-  const panelStyle =
-    side && movingCircle
-      ? {
-          left: movingCircle.listStart,
-          right: 0,
-          width: undefined,
-          maxWidth: undefined,
-        }
-      : {};
-
+  const bottom = side ? groupTop : stackedBottom;
   const actionTitle = t('medicalAppointments.restartShort');
   const actionLabel = t('medicalAppointments.startAgain');
   // No list: preserve the full measured failure reader and small-window escape.
@@ -171,9 +163,10 @@ export function ClassificationResultsStage({
           reader owns the surface, hidden rows cannot take touches or AX focus. */}
       <View
         style={[
-          styles.list,
+          sideStart === undefined
+            ? styles.list
+            : [styles.sideList, { left: sideStart }],
           { top: groupTop, bottom },
-          panelStyle,
           showingDetail && styles.hidden,
         ]}
         testID="classification-result-group"
@@ -218,7 +211,8 @@ export function ClassificationResultsStage({
         <ClassificationResultDetail
           fields={details}
           top={top}
-          panelStyle={panelStyle}
+          sideStart={sideStart}
+          bottom={stackedBottom}
           back={() => setDetail(null)}
         />
       )}

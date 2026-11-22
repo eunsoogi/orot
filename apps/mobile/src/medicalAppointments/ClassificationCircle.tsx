@@ -39,9 +39,16 @@ export function classificationDockGeometry(
 ) {
   const centered = classificationCircleGeometry(width, height, fontScale);
   // Reserve symmetric breathing room inside the circle's own left column.
-  const circleInset = 16;
+  const minimumCircleInset = 16;
   const laneGap = 12;
   const minimumListWidth = Math.max(214, Math.ceil(214 * fontScale));
+  const circleInset = Math.max(
+    minimumCircleInset,
+    Math.min(
+      32,
+      Math.floor((width - centered.size - laneGap - minimumListWidth) / 2),
+    ),
+  );
   const side =
     expandedDuo &&
     centered.size >= 104 &&
@@ -49,10 +56,25 @@ export function classificationDockGeometry(
     height >= Math.max(160, 38 * fontScale + 110);
   const inline = !side && height < 140;
   const size = inline ? Math.min(centered.size, 44) : centered.size;
+  // Share only the space left after one complete caption and row. Compact
+  // and Dynamic Type panes keep their existing readable fallback.
+  const captionHeight = Math.max(44, Math.ceil(38 * fontScale + 4));
+  const rowHeight = Math.max(44, Math.ceil(38 * fontScale + 10));
+  const stackedInset =
+    side || inline
+      ? 0
+      : Math.max(
+          0,
+          Math.min(
+            16,
+            Math.floor((height - size - 8 - captionHeight - rowHeight) / 3),
+          ),
+        );
   return {
     size,
-    centerOffset: side ? (height - size) / 2 : 0,
-    captionTop: side ? 0 : size + 8,
+    centerOffset: side ? (height - size) / 2 : stackedInset,
+    captionTop: side ? 0 : size + 8 + 2 * stackedInset,
+    bottomInset: stackedInset,
     inline,
     side,
     listStart: side ? 2 * circleInset + size + laneGap : 0,
@@ -78,6 +100,7 @@ export function classificationConfirmationGeometry(
         ...classificationCircleGeometry(width, height, scale),
         x: 0,
         listStart: 0,
+        bottomInset: 0,
       };
 }
 

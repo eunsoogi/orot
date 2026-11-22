@@ -62,7 +62,8 @@ export function ClassificationPagedStage(props: Props) {
     Boolean(props.confirmAtDock && !frame.expanded),
     Boolean(bounds.width && bounds.height && expandedDuo),
   );
-  const available = Math.max(0, height - geometry.captionTop - footerHeight);
+  const { captionTop: top, listStart: left, bottomInset: bottom } = geometry;
+  const available = Math.max(0, height - top - bottom - footerHeight);
   const [captionMeasurement, setCaptionMeasurement] = useState<{
     key: string;
     height: number;
@@ -137,10 +138,7 @@ export function ClassificationPagedStage(props: Props) {
           />
         </ClassificationCircleSlot>
         <View
-          style={[
-            styles.group,
-            { top: geometry.captionTop, left: geometry.listStart },
-          ]}
+          style={[styles.group, { top, left, bottom }]}
           testID="classification-stage-captions"
         >
           <View

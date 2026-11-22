@@ -12,6 +12,7 @@ export const classificationResultStyles = StyleSheet.create({
     maxWidth: 520,
     alignSelf: 'center',
   },
+  sideList: { position: 'absolute', right: 0 },
   hidden: { opacity: 0 },
   viewport: { flex: 1, minHeight: 0 },
   rows: { paddingBottom: classificationResultRowBottomInset },
