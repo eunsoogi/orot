@@ -3,6 +3,7 @@ import { reportSavedMemoryRead } from './savedMemoryReadDiagnostics';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { SavedMemoryLoaderContext } from './SavedMemoryLoaderContext';
 import { AppState } from 'react-native';
+import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import {
   subscribeLocalDataClear,
   subscribeLocalSourceDeletion,
@@ -23,6 +24,7 @@ const READ_WAIT_MS = 10_000;
 export function useSavedMemories(
   suppliedLoad?: () => Promise<SavedMemory[]>,
   enabled = true,
+  ownership?: NavigationRouteOwnership,
 ) {
   const contextLoad = useContext(SavedMemoryLoaderContext);
   const load = suppliedLoad ?? contextLoad;
@@ -47,9 +49,13 @@ export function useSavedMemories(
     setState('idle');
   }, [clearReadTimer]);
 
+  const canRead = useCallback(
+    () => enabled && active.current && (ownership?.isCurrent() ?? true),
+    [enabled, ownership],
+  );
   const refresh = useCallback(async () => {
-    // A queued press after backgrounding must not start a protected read.
-    if (!enabled || !active.current) return;
+    // Refuse ownership loss even before the retained route's React focus changes.
+    if (!canRead()) return;
     if (timer.current !== null)
       reportSavedMemoryRead('saved_memory_wait', 'cancelled');
     clearReadTimer();
@@ -68,23 +74,22 @@ export function useSavedMemories(
     }, READ_WAIT_MS);
     try {
       const result = await load();
-      if (generation.current !== request) return;
+      const isCurrent = () => generation.current === request && canRead();
+      if (!isCurrent()) return;
       reportSavedMemoryRead('saved_memory_wait', 'completed');
-      const isCurrent = () =>
-        generation.current === request && enabled && active.current;
       setRead({ rows: result, request, load, isCurrent });
       setState('ready');
       if (load === loadUnifiedLocalMemories)
         resumeStatementMemoryAfterRead(isCurrent);
     } catch {
-      if (generation.current === request) {
+      if (generation.current === request && canRead()) {
         reportSavedMemoryRead('saved_memory_wait', 'failed');
         setState('failed');
       }
     } finally {
       if (generation.current === request) clearReadTimer();
     }
-  }, [load, clearReadTimer, enabled]);
+  }, [load, clearReadTimer, canRead]);
 
   useEffect(() => {
     // Deletion fences invalidate cached text and pending reads, even if later cleanup fails.
@@ -96,6 +101,15 @@ export function useSavedMemories(
     };
     const unsubscribeClear = subscribeLocalDataClear(invalidate);
     const unsubscribeSource = subscribeLocalSourceDeletion(invalidate);
+    let owned = ownership?.isCurrent();
+    const unsubscribeOwner = ownership?.subscribe(() => {
+      const next = ownership.isCurrent();
+      if (next === owned) return;
+      owned = next;
+      // A route transition immediately revokes an issued read or row action.
+      if (!next) close();
+      else refresh();
+    });
     const subscription = AppState.addEventListener('change', next => {
       active.current = enabled && next === 'active';
       if (!active.current) close();
@@ -112,10 +126,11 @@ export function useSavedMemories(
       clearReadTimer();
       generation.current += 1;
       subscription.remove();
+      unsubscribeOwner?.();
       unsubscribeClear();
       unsubscribeSource();
     };
-  }, [refresh, close, clearReadTimer, enabled]);
+  }, [refresh, close, clearReadTimer, enabled, ownership]);
 
   // The route and loader can change before passive cleanup runs. Never hand
   // their previous snapshot (or its detail capability) to the next render.

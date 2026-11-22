@@ -5,11 +5,11 @@ import {
 } from '../aiFeatures/integration/useAiFeatureNavigationState';
 import { useState } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
-import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
+import { MeasuredRouteScrollView } from '../navigation/MeasuredRouteScrollView';
 import { SavedSummaryHistory } from './SavedSummaryHistory';
 import { DiseaseHypothesesScreenOutput } from './DiseaseHypothesesScreenOutput';
 import type { SymptomSummaryHistory } from './savedSummaries';
@@ -39,15 +39,15 @@ export function ConversationSummaryHistory({
     0,
     onNavigationStateChange,
   );
-  const inset = useNavigationContentInset();
   const [selected, setSelected] = useState<DiseaseHypothesisAnalysis>();
   return (
     <AdaptiveColumns
       testID="summary-history-columns"
       primary={
-        <ScrollView
+        <MeasuredRouteScrollView
           testID="summary-history-screen"
-          contentContainerStyle={[styles.content, inset]}
+          contentStyle={styles.content}
+          trailingGutter={historyGutter}
         >
           <AppText accessibilityRole="header" style={styles.heading}>
             {t('summaryHistory.conversationTitle')}
@@ -88,16 +88,18 @@ export function ConversationSummaryHistory({
               />
             </View>
           ) : null}
-        </ScrollView>
+        </MeasuredRouteScrollView>
       }
     />
   );
 }
 
+const historyGutter = 24;
+
 const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
-    padding: 24,
+    padding: historyGutter,
     gap: 16,
     backgroundColor: appColors.background,
   },

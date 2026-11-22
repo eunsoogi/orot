@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { useNavigationRightScrollEdge } from '../navigation/navigationScrollEdge';
+import {
+  useNavigationEdgeMenu,
+  useNavigationEdgeVerticalScroll,
+} from '../navigation/navigationEdgeScroll';
 import { FlatList, StyleSheet, View } from 'react-native';
 import type { HealthObservationPageLoader } from '@orot/storage';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
@@ -44,15 +47,17 @@ export function HealthRecordsLibraryScreen({
   refreshRevision = 0,
 }: HealthRecordsLibraryScreenProps) {
   const navigationInset = useNavigationContentInset();
-  const edge = useNavigationRightScrollEdge();
   const [panelWidth, setPanelWidth] = useState(0);
-  // AdaptiveColumns can select a half-panel around a real seam; only the
-  // full-width primary panel is entitled to extend to the window's rail edge.
-  const right = Math.abs(panelWidth - edge.contentWidth) <= 1 ? edge.right : 0;
-  const listEdge = right ? { marginRight: -right } : undefined;
-  const listTrailingPadding = right
-    ? { paddingRight: libraryGutter + right }
-    : undefined;
+  // Measure the stable parent, never the extended list, so applying bleed
+  // cannot change the width authority or oscillate between local/full edge.
+  const edge = useNavigationEdgeVerticalScroll({
+    ownerWidth: panelWidth,
+    trailingPadding: navigationInset.paddingRight ?? libraryGutter,
+  });
+  const menuEdge = useNavigationEdgeMenu({
+    ownerWidth: panelWidth,
+    trailingGutter: navigationInset.paddingRight ?? libraryGutter,
+  });
   const [selectedCategory, setSelectedCategory] =
     useState<HealthRecordFilter>('blood_pressure');
   const { read, reload, revision } = useHealthRecordCategoryPages(
@@ -138,23 +143,11 @@ export function HealthRecordsLibraryScreen({
           <FlatList
             data={displayedCategories}
             keyExtractor={category => category}
-            automaticallyAdjustsScrollIndicatorInsets={
-              right ? false : undefined
-            }
-            scrollIndicatorInsets={
-              right
-                ? {
-                    top: edge.top,
-                    right: 0,
-                    bottom: navigationInset.paddingBottom,
-                    left: 0,
-                  }
-                : undefined
-            }
+            {...edge.indicatorProps}
             contentContainerStyle={[
               styles.container,
               navigationInset,
-              listTrailingPadding,
+              edge.contentStyle,
             ]}
             ListHeaderComponent={
               <HealthRecordsLibraryHeader
@@ -176,8 +169,8 @@ export function HealthRecordsLibraryScreen({
                 retryInDock={retryInDock}
                 onSelectCategory={setSelectedCategory}
                 selectedCategory={selectedCategory}
-                filterRailWidth={right}
-                filterTrailingGutter={right ? libraryGutter : 0}
+                filterRailWidth={menuEdge.touchClearance}
+                filterRightBleed={menuEdge.rightBleed}
               />
             }
             ItemSeparatorComponent={CategoryDivider}
@@ -197,7 +190,7 @@ export function HealthRecordsLibraryScreen({
                 />
               )
             }
-            style={[styles.scroll, listEdge]}
+            style={[styles.scroll, edge.scrollViewStyle]}
             testID="health-records-scroll"
           />
         </View>

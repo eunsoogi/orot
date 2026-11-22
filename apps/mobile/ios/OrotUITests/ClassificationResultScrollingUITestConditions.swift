@@ -183,7 +183,7 @@ extension AppointmentConsentUITests {
         XCTAssertTrue(divisions.allSatisfy { !$0.isActive }, "An active seam does not certify the flat posture")
     }
 
-    /// Repeat confirmation keeps the dock, then returns the real ring to the current lane's center.
+    /// Reclassify returns the circle to center before Start, then progress uses that same frame.
     @MainActor
     func assertClassificationCircleReturn(_ app: XCUIApplication, dock: CGRect, expectLeft: Bool) {
         let laneNode = node(app, "classification-moving-stage")
@@ -196,7 +196,14 @@ extension AppointmentConsentUITests {
         XCTAssertFalse(node(app, "classification-result-list").exists)
         XCTAssertEqual(UITestConditions.text(node(app, "calendar-classification-synthetic-provider-calls")), "syntheticProviderCalls=2")
         XCTAssertTrue(FormScrollGeometry.stableStageFrame(laneNode.frame, lane))
-        XCTAssertTrue(FormScrollGeometry.stableStageFrame(button.frame, dock))
+        let returned = button.frame
+        XCTAssertTrue(lane.contains(returned))
+        XCTAssertEqual(returned.midX, lane.midX, accuracy: 2)
+        XCTAssertEqual(returned.midY, lane.midY, accuracy: 2)
+        XCTAssertEqual(returned.width, dock.width, accuracy: 2)
+        XCTAssertEqual(returned.height, dock.height, accuracy: 2)
+        XCTAssertTrue(expectLeft ? returned.midX > dock.midX + 20 : returned.midY > dock.midY + 20)
+        XCTAssertFalse(node(app, "medical-appointment-progress").exists)
         if button.label == "전체 화면으로 내용 보기" {
             button.tap()
             XCTAssertTrue(node(app, "classification-close-reader").waitForAppearance())
@@ -209,7 +216,8 @@ extension AppointmentConsentUITests {
             return currentLane.contains(currentCircle)
                 && abs(currentCircle.midX - currentLane.midX) <= 2
                 && abs(currentCircle.midY - currentLane.midY) <= 2
-                && (expectLeft ? currentCircle.midX > dock.midX + 20 : currentCircle.midY > dock.midY + 20)
+                && abs(currentCircle.width - returned.width) <= 2
+                && abs(currentCircle.height - returned.height) <= 2
         }, object: nil)
         XCTAssertEqual(UITestConditions.wait(for: [center]), .completed)
         XCTAssertFalse(node(app, "classification-result-list").exists)

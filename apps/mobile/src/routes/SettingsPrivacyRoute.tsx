@@ -5,6 +5,7 @@ import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import { SettingsAutomaticMemorySection } from './SettingsAutomaticMemorySection';
@@ -15,6 +16,11 @@ export function SettingsPrivacyRoute({
   ownership,
 }: { readonly ownership?: NavigationRouteOwnership } = {}) {
   const navigationInset = useNavigationContentInset();
+  // This page owns the scroll viewport; the panels retain their readable inset.
+  const edge = useNavigationEdgeVerticalScroll({
+    trailingPadding:
+      navigationInset.paddingRight ?? styles.container.paddingHorizontal,
+  });
   const [settingsError, setSettingsError] = useState(false);
   const [isClearingConsent, setIsClearingConsent] = useState(false);
   const handleConsentClearingChange = useCallback((clearing: boolean) => {
@@ -38,8 +44,13 @@ export function SettingsPrivacyRoute({
   return (
     <ScrollView
       testID="settings-privacy-scroll"
-      contentContainerStyle={[styles.container, navigationInset]}
-      style={styles.scrollView}
+      {...edge.indicatorProps}
+      contentContainerStyle={[
+        styles.container,
+        navigationInset,
+        edge.contentStyle,
+      ]}
+      style={[styles.scrollView, edge.scrollViewStyle]}
     >
       <AdaptiveColumns
         primary={

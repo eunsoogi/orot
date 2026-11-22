@@ -5,7 +5,11 @@ import { t } from '../i18n';
 import { ClassificationPagedStage } from './ClassificationPagedStage';
 import { ClassificationResultNotice } from './ClassificationResultNotice';
 import { useClassificationResultGroupTop } from './useClassificationResultGroupTop';
-import { classificationResultStyles as styles } from './classificationResultStyles';
+import {
+  classificationResultMaxWidth,
+  classificationResultStyles as styles,
+} from './classificationResultStyles';
+import { useClassificationListEdge } from './useClassificationListEdge';
 import { classificationEdgeTarget } from './ClassificationEdgeAction';
 import {
   ClassificationResultDetail,
@@ -31,6 +35,8 @@ interface Props {
   readonly summary: string;
   readonly notice: string;
   readonly restart: () => void;
+  readonly routeRightGutter?: number;
+  readonly routeOwnerWidth?: number;
   readonly movingCircle?: ReturnType<typeof classificationDockGeometry>;
 }
 
@@ -40,6 +46,8 @@ export function ClassificationResultsStage({
   notice,
   restart,
   movingCircle,
+  routeRightGutter = 0,
+  routeOwnerWidth = 0,
 }: Props) {
   const window = useWindowDimensions();
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
@@ -76,9 +84,11 @@ export function ClassificationResultsStage({
     : movingCircle
       ? movingCircle.captionTop
       : centerOffset + size + 8;
+  const sideStart = movingCircle?.side ? movingCircle.listStart : undefined;
+  const stackedBottom = movingCircle?.bottomInset ?? 0;
   const captionHeight = Math.min(
     naturalCaption,
-    Math.max(target, height - top - target),
+    Math.max(target, height - top - stackedBottom - target),
   );
   const showingDetail = Boolean(details);
   const side = movingCircle?.side === true;
@@ -92,17 +102,14 @@ export function ClassificationResultsStage({
     count: rows.length,
     top,
   });
-  const bottom = side ? groupTop : 0;
-  const panelStyle =
-    side && movingCircle
-      ? {
-          left: movingCircle.listStart,
-          right: 0,
-          width: undefined,
-          maxWidth: undefined,
-        }
-      : {};
-
+  const bottom = side ? groupTop : stackedBottom;
+  const centeredInset = side
+    ? 0
+    : Math.max(0, (bounds.width - classificationResultMaxWidth) / 2);
+  const edge = useClassificationListEdge(
+    bounds.width > 0 ? routeOwnerWidth : 0,
+    routeRightGutter + centeredInset,
+  );
   const actionTitle = t('medicalAppointments.restartShort');
   const actionLabel = t('medicalAppointments.startAgain');
   // No list: preserve the full measured failure reader and small-window escape.
@@ -171,9 +178,10 @@ export function ClassificationResultsStage({
           reader owns the surface, hidden rows cannot take touches or AX focus. */}
       <View
         style={[
-          styles.list,
+          sideStart === undefined
+            ? styles.list
+            : [styles.sideList, { left: sideStart }],
           { top: groupTop, bottom },
-          panelStyle,
           showingDetail && styles.hidden,
         ]}
         testID="classification-result-group"
@@ -186,9 +194,10 @@ export function ClassificationResultsStage({
         {!compact && noticeAction(captionHeight, false)}
         {rows.length > 0 && (
           <ScrollView
-            style={styles.viewport}
+            {...edge.indicatorProps}
+            style={[styles.viewport, edge.scrollViewStyle]}
             onContentSizeChange={onContentSizeChange}
-            contentContainerStyle={styles.rows}
+            contentContainerStyle={[styles.rows, edge.contentStyle]}
             alwaysBounceVertical={false}
             contentInsetAdjustmentBehavior="never"
             testID="classification-result-list"
@@ -218,7 +227,8 @@ export function ClassificationResultsStage({
         <ClassificationResultDetail
           fields={details}
           top={top}
-          panelStyle={panelStyle}
+          sideStart={sideStart}
+          bottom={stackedBottom}
           back={() => setDetail(null)}
         />
       )}

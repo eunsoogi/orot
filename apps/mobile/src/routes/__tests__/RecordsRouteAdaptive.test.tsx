@@ -5,6 +5,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { StyleSheet } from 'react-native';
 import type { RecordingSourceRecord } from '../../recording/recordingTypes';
 import type { RecordsRouteProps } from '../RecordsRoute';
 import { RecordsRoute } from '../RecordsRoute';
@@ -57,6 +58,7 @@ function props(overrides: Partial<RecordsRouteProps> = {}): RecordsRouteProps {
     onOpenRecording: jest.fn(),
     onOpenHealthLibrary: jest.fn(),
     onOpenManualHistory: jest.fn(),
+    onOpenGeneratedReports: jest.fn(),
     documentImportService: {
       listDocuments: jest.fn().mockResolvedValue([]),
       getDocument: jest.fn().mockResolvedValue(null),
@@ -76,7 +78,35 @@ test('keeps one primary recording action and every existing Records destination'
   // Assert real route composition; the shared measured-columns tests own geometry.
   const materials = within(screen.getByTestId('records-material-columns'));
   expect(materials.getByTestId('records-materials')).toBeTruthy();
-  expect(materials.getByTestId('saved-memory-browser')).toBeTruthy();
+  const mine = materials.getByTestId('records-materials');
+  const conversation = materials.getByTestId('records-conversation-materials');
+  expect(StyleSheet.flatten(conversation.props.style)).toEqual(
+    StyleSheet.flatten(mine.props.style),
+  );
+  const heading = within(conversation).getByRole('header', {
+    name: '대화 자료',
+  });
+  expect(StyleSheet.flatten(heading.props.style)).toEqual(
+    StyleSheet.flatten(
+      within(mine).getByRole('header', { name: '내 자료' }).props.style,
+    ),
+  );
+  const rows = within(conversation).getAllByRole('button');
+  expect(rows).toHaveLength(2);
+  expect(within(rows[0]).getByText('기억')).toBeTruthy();
+  expect(within(rows[1]).getByText('대화에서 생성한 자료')).toBeTruthy();
+  expect(StyleSheet.flatten(rows[0].props.style)).toEqual(
+    StyleSheet.flatten(
+      screen.getByTestId('records-open-saved-recordings').props.style,
+    ),
+  );
+  expect(StyleSheet.flatten(rows[1].props.style)).toEqual(
+    StyleSheet.flatten(
+      screen.getByTestId('records-open-health-library').props.style,
+    ),
+  );
+  expect(screen.queryByTestId('saved-memory-browser')).toBeNull();
+  expect(screen.queryByTestId('generated-report-browser')).toBeNull();
   expect(screen.getByTestId('records-recent-sources-empty')).toHaveTextContent(
     '아직 최근 기록이 없어요.',
   );
@@ -85,13 +115,16 @@ test('keeps one primary recording action and every existing Records destination'
     'records-new-recording',
     'records-open-saved-recordings',
     'records-open-health-library',
+    'records-open-memory',
+    'records-open-generated-reports',
   ]) {
     await fireEvent.press(screen.getByTestId(id));
   }
 
   expect(routeProps.onOpenRecording).toHaveBeenCalledTimes(1);
   expect(routeProps.onOpenSavedRecordings).toHaveBeenCalledTimes(1);
-  expect(routeProps.onOpenManualHistory).not.toHaveBeenCalled();
+  expect(routeProps.onOpenManualHistory).toHaveBeenCalledTimes(1);
+  expect(routeProps.onOpenGeneratedReports).toHaveBeenCalledTimes(1);
   expect(screen.queryByTestId('records-open-manual-history')).toBeNull();
   expect(routeProps.onOpenHealthLibrary).toHaveBeenCalledTimes(1);
 });

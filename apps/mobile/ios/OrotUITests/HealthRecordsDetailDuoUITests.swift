@@ -16,14 +16,11 @@ extension HealthImportDuoUITests {
             }
             app.launch()
             defer { app.terminate() }
-            if ProcessInfo.processInfo.environment["OROT_HEALTH_SCROLL_EDGE_ONLY"] == "YES" {
-                return try HealthRecordsBoundaryUITestConditions.verifyMeasuredLibraryEdge(app, testCase: self)
-            }
             let size = largeText ? "large-text" : "default-text"
             try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
             try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "records-open-health-library", owners: [.init(identifier: "navigation-route-scroll")], testCase: self)
             NavigationUITestConditions.route(app, markers: ["health-records-title"])
-            try HealthRecordsBoundaryUITestConditions.captureLibraryEdge(app, name: "health-library-\(size)", testCase: self)
+            try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-records-scroll"], name: "health-library-\(size)", testCase: self)
             try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-record-filter-heart_rate", owners: [.init(identifier: "health-records-scroll"), .init(identifier: "health-record-category-filter", horizontal: true)], testCase: self)
             XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
             XCTAssertFalse(healthDetailNode(app, "health-record-category-blood_pressure").exists)

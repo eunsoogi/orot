@@ -42,6 +42,7 @@ interface Props {
 /** Three full-height stages share one native usable region; only validated results enter the final stage. */
 export function MedicalAppointmentReviewView(props: Props) {
   const inset = useNavigationContentInset();
+  const [laneWidth, setLaneWidth] = useState(0);
   const [confirmAgain, setConfirmAgain] = useState(false);
   const busy = props.loading || props.classifying || props.savingId !== null;
   const complete = props.completed ?? props.candidates.length > 0;
@@ -79,12 +80,16 @@ export function MedicalAppointmentReviewView(props: Props) {
   ]
     .filter(Boolean)
     .join('\n');
-  const content = (dock: ReturnType<typeof classificationDockGeometry>) =>
+  const content = (
+    dock: ReturnType<typeof classificationDockGeometry>,
+    interactive: boolean,
+  ) =>
     stage === 'progress' ? null : stage === 'confirmation' ? (
       <ClassificationPagedStage
         key="confirmation"
         testID="medical-appointment-confirmation"
-        confirmAtDock={confirmAgain}
+        circleSize={dock.size}
+        hideAction={!interactive}
         documents={[Object.values(confirmation).filter(Boolean).join('\n\n')]}
         caption={confirmation}
         actionTitle={t('medicalAppointments.startShort')}
@@ -108,6 +113,8 @@ export function MedicalAppointmentReviewView(props: Props) {
       <ClassificationResultsStage
         key="results"
         movingCircle={dock}
+        routeRightGutter={classificationSideGutter}
+        routeOwnerWidth={laneWidth}
         rows={medical.map(candidate => ({
           id: candidate.candidateId,
           title: candidate.event.calendarEventSnapshot.title,
@@ -160,7 +167,11 @@ export function MedicalAppointmentReviewView(props: Props) {
       <AdaptiveColumns
         testID="medical-appointment-columns-frame"
         primary={
-          <View style={styles.lane} testID="medical-appointment-columns">
+          <View
+            style={styles.lane}
+            testID="medical-appointment-columns"
+            onLayout={event => setLaneWidth(event.nativeEvent.layout.width)}
+          >
             <SelectedModelControl
               name={props.provider?.displayName ?? copy.chooseProvider}
               nameNumberOfLines={1}
@@ -171,7 +182,6 @@ export function MedicalAppointmentReviewView(props: Props) {
             />
             <ClassificationMovingStage
               stage={stage}
-              confirmingRestart={confirmAgain && !busy}
               classified={classified}
               total={props.eventCount}
               saving={props.savingId !== null}
@@ -185,7 +195,13 @@ export function MedicalAppointmentReviewView(props: Props) {
     </View>
   );
 }
+const classificationSideGutter = 24;
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
-  lane: { flex: 1, flexDirection: 'column', paddingHorizontal: 24 },
+  lane: {
+    flex: 1,
+    flexDirection: 'column',
+    paddingHorizontal: classificationSideGutter,
+  },
 });

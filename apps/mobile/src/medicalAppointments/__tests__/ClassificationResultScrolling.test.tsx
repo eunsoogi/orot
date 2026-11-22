@@ -163,10 +163,17 @@ test('centers the whole short expanded group and keeps overflow scroll geometry 
       }).props.style,
     );
   let list = screen.getByTestId('classification-result-list');
-  await fireEvent(list, 'contentSizeChange', 615, 108);
-  expect(group()).toMatchObject({ top: 125, bottom: 125, left: 204 });
+  await fireEvent(list, 'contentSizeChange', 583, 108);
+  expect(group()).not.toHaveProperty('maxWidth');
+  expect(group()).not.toHaveProperty('width');
+  expect(group()).toMatchObject({ top: 125, bottom: 125, left: 236, right: 0 });
   const first = screen.getAllByTestId('classification-result-row')[0]!;
   await fireEvent.press(first);
+  const reader = StyleSheet.flatten(
+    screen.getByTestId('classification-result-reader').props.style,
+  );
+  expect(reader).toMatchObject({ left: 236, right: 0 });
+  expect(reader).not.toHaveProperty('maxWidth');
   expect(group()).toMatchObject({ top: 125, bottom: 125, opacity: 0 });
   expect(
     screen.getByTestId('classification-result-list', {
@@ -179,7 +186,7 @@ test('centers the whole short expanded group and keeps overflow scroll geometry 
 
   await view.rerender(draw(8));
   list = screen.getByTestId('classification-result-list');
-  await fireEvent(list, 'contentSizeChange', 615, 470);
-  expect(group()).toMatchObject({ top: 0, bottom: 0, left: 204 });
+  await fireEvent(list, 'contentSizeChange', 583, 470);
+  expect(group()).toMatchObject({ top: 0, bottom: 0, left: 236, right: 0 });
   expect(screen.getAllByTestId('classification-result-row')).toHaveLength(8);
 });

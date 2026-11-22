@@ -1,3 +1,4 @@
+import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useEffect, useState } from 'react';
 import { AppState, ScrollView, View } from 'react-native';
@@ -18,20 +19,25 @@ import {
   appointmentDisplayUntil,
   isEligibleNextVisit,
 } from '../routes/nextAppointment';
-
 interface AppointmentsScreenProps {
   active?: boolean;
+  fullNavigationLane?: boolean;
   repository: AppointmentRepository;
   onAppointmentsChanged?: () => void;
 }
-
 /** Keeps explicit detail selection separate while defaulting to the eligible next visit. */
 export default function AppointmentsScreen({
   active = true,
+  fullNavigationLane = false,
   repository,
   onAppointmentsChanged,
 }: AppointmentsScreenProps) {
-  const navigationInset = useNavigationContentInset();
+  const inset = useNavigationContentInset();
+  const edge = useNavigationEdgeVerticalScroll({
+    ownerWidth: active && fullNavigationLane ? undefined : 0,
+    trailingPadding: 20,
+  });
+  const content = [styles.container, inset, edge.contentStyle];
   const [now, setNow] = useState(Date.now);
   const state = useAppointmentsScreenState({
     active,
@@ -39,9 +45,7 @@ export default function AppointmentsScreen({
     repository,
     onAppointmentsChanged,
   });
-  const reloadAppointments = state.reload;
-  const selectedAppointment = state.selectedAppointment;
-  const selectedAppointmentId = state.selectedAppointmentId;
+  const { reload, selectedAppointment } = state;
   // Retained routes need a fresh eligibility snapshot when a visit reaches its exclusive end.
   useEffect(() => {
     if (active) setNow(Date.now());
@@ -60,14 +64,14 @@ export default function AppointmentsScreen({
     const subscription = AppState.addEventListener('change', appState => {
       if (appState === 'active') {
         setNow(Date.now());
-        reloadAppointments().catch(() => undefined);
+        reload().catch(() => undefined);
       }
     });
     return () => {
       clearTimeout(timer);
       subscription.remove();
     };
-  }, [active, now, state.appointments, reloadAppointments]);
+  }, [active, now, state.appointments, reload]);
   const upcomingAppointments = state.appointments.filter(appointment =>
     isEligibleNextVisit(appointment, now),
   );
@@ -79,7 +83,6 @@ export default function AppointmentsScreen({
     state.saving,
     state.startNewAppointment,
   );
-
   // The selected ID belongs to this screen so measured panel changes do not reset selection.
   const primaryPanel = state.formOpen ? (
     <AppointmentForm
@@ -124,7 +127,7 @@ export default function AppointmentsScreen({
       <AppointmentListReadStatus
         loading={state.loading}
         failed={state.readError}
-        onRetry={state.reload}
+        onRetry={reload}
       />
       {state.appointments.length === 0 ? (
         !state.loading && !state.readError ? (
@@ -146,7 +149,7 @@ export default function AppointmentsScreen({
                   appointment={appointment}
                   history={false}
                   nextVisit={appointment.id === state.nextAppointment?.id}
-                  selected={appointment.id === selectedAppointmentId}
+                  selected={appointment.id === state.selectedAppointmentId}
                   onSelect={() =>
                     state.setSelectedAppointmentId(appointment.id)
                   }
@@ -168,7 +171,7 @@ export default function AppointmentsScreen({
                   appointment={appointment}
                   history
                   nextVisit={false}
-                  selected={appointment.id === selectedAppointmentId}
+                  selected={appointment.id === state.selectedAppointmentId}
                   onSelect={() =>
                     state.setSelectedAppointmentId(appointment.id)
                   }
@@ -187,7 +190,6 @@ export default function AppointmentsScreen({
       ) : null}
     </View>
   );
-
   const secondaryPanel = state.formOpen ? undefined : (
     <View style={styles.detailPanel}>
       <Text accessibilityRole="header" style={styles.detailTitle}>
@@ -218,10 +220,11 @@ export default function AppointmentsScreen({
     <ScrollView
       // Starting an edit replaces the list and resets its potentially distant scroll offset.
       key={state.formOpen ? 'editor' : 'list'}
-      contentContainerStyle={[styles.container, navigationInset]}
+      contentContainerStyle={content}
+      {...edge.indicatorProps}
       keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
-      style={styles.scroll}
+      style={[styles.scroll, edge.scrollViewStyle]}
       testID="appointments-scroll"
     >
       {state.notice ? (

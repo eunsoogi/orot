@@ -76,6 +76,8 @@ export function appRouteIsScrollable(
       'recent-records',
       'medical-document-detail',
       'saved-memory-detail',
+      'manual-history',
+      'generated-reports',
     ].includes(route.name) ||
     (route.name === 'root' &&
       ['overview', 'records', 'settings'].includes(activeTab))

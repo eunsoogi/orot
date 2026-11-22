@@ -1,11 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { NavigationEdgeMenuScrollView } from '../NavigationEdgeMenuScrollView';
 import {
   NavigationContentFrameContext,
   type NavigationContentFrame,
 } from '../navigationContentFrame';
 import { NavigationRouteScrollView } from '../NavigationRouteScrollView';
+import {
+  navigationPhysicalRightLayout,
+  useNavigationEdgeMenu,
+  useNavigationEdgeVerticalScroll,
+} from '../navigationEdgeScroll';
 import { resolveNavigationRightScrollEdge } from '../navigationScrollEdge';
 
 const windowFrame = { x: 0, y: 0, width: 466, height: 678 };
@@ -101,4 +106,68 @@ test('keeps menu actions out of the rail and puts terminal padding on the right'
   expect(shield.props.accessibilityElementsHidden).toBe(true);
   await fireEvent.press(screen.getByTestId('action'));
   expect(selected).toHaveBeenCalledTimes(1);
+});
+
+test('whole route rights do not leak into unmeasured or local panes', async () => {
+  function Owned({ width }: { width: number }) {
+    const edge = useNavigationEdgeVerticalScroll({
+      ownerWidth: width,
+      trailingPadding: 20,
+      indicatorTop: 220,
+      indicatorBottom: 54,
+    });
+    const menu = useNavigationEdgeMenu({
+      ownerWidth: width,
+      trailingGutter: 20,
+    });
+    return (
+      <>
+        <ScrollView
+          testID="owned"
+          {...edge.indicatorProps}
+          style={edge.scrollViewStyle}
+          contentContainerStyle={edge.contentStyle}
+        />
+        <NavigationEdgeMenuScrollView {...menu} testID="owned-menu" />
+      </>
+    );
+  }
+  const draw = (width: number) => (
+    <NavigationContentFrameContext.Provider value={rightRail}>
+      <Owned width={width} />
+    </NavigationContentFrameContext.Provider>
+  );
+  const view = await render(draw(0));
+  expect(
+    screen.getByTestId('owned').props.scrollIndicatorInsets,
+  ).toBeUndefined();
+  await view.rerender(draw(382));
+  expect(screen.getByTestId('owned').props.scrollIndicatorInsets).toEqual({
+    top: 220,
+    bottom: 54,
+    left: 0,
+    right: 0,
+  });
+  expect(
+    StyleSheet.flatten(screen.getByTestId('owned').props.contentContainerStyle),
+  ).toEqual({ paddingRight: 104 });
+  expect(
+    StyleSheet.flatten(screen.getByTestId('owned-menu').parent?.props.style),
+  ).toMatchObject({ marginRight: -104 });
+  await view.rerender(draw(330));
+  expect(
+    screen.getByTestId('owned').props.scrollIndicatorInsets,
+  ).toBeUndefined();
+  expect(
+    StyleSheet.flatten(screen.getByTestId('owned-menu').parent?.props.style)
+      ?.marginRight,
+  ).toBeUndefined();
+});
+
+test('Yoga extends and shields the physical right in RTL without swapping UIKit edge insets', () => {
+  expect(navigationPhysicalRightLayout(84, 104, true)).toEqual({
+    scrollViewStyle: { marginStart: -84 },
+    contentStyle: { paddingStart: 104 },
+    shieldAnchor: { start: 0 },
+  });
 });

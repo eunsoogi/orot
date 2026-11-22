@@ -86,7 +86,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
 
         app.terminate()
         ManualHistoryUITestSupport.launch(app, seed: "unknown")
-        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        try ManualHistoryUITestSupport.openMemory(app)
         XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "saved-memory-browser")))
         XCTAssertFalse(app.staticTexts["Synthetic unknown history"].exists)
         XCTAssertFalse(app.staticTexts["Synthetic corrected unknown history"].exists)
@@ -112,7 +112,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         let confirmLeave = app.alerts["저장하지 않은 내용이 있어요"].buttons["내용 버리고 나가기"]
         XCTAssertTrue(UITestConditions.exists(confirmLeave), app.debugDescription)
         confirmLeave.tap()
-        NavigationUITestConditions.route(app, markers: ["records-title"])
+        NavigationUITestConditions.route(app, markers: ["saved-memory-browser"])
         try openManualHistory(app, title: "Synthetic draft original")
         XCTAssertFalse(app.staticTexts["Synthetic unsaved draft"].exists)
     }
@@ -124,10 +124,10 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         try openManualHistory(app, title: "Synthetic rail original")
         // Observe the list and edited form independently from the departure guard's state assertions.
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], rightScrollEdges: ["navigation-route-scroll"], name: "manual-history-list-boundary", testCase: self)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], name: "manual-history-list-boundary", testCase: self)
         tap(app, "manual-history-correct", in: "navigation-route-scroll")
         guard replace(app, "manual-history-title-input", with: "Synthetic rail draft") else { return }
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], rightScrollEdges: ["navigation-route-scroll"], name: "manual-history-edited-draft-boundary", testCase: self)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], name: "manual-history-edited-draft-boundary", testCase: self)
 
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         // Keep the native rail's VoiceOver name and the route's discard guard.
@@ -140,13 +140,13 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(leavePrompt), app.debugDescription)
         leavePrompt.buttons["계속 편집"].tap()
         XCTAssertEqual(UITestConditions.element(app, "manual-history-title-input").value as? String, "Synthetic rail draft")
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], rightScrollEdges: ["navigation-route-scroll"], name: "manual-history-retained-draft-boundary", testCase: self)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], name: "manual-history-retained-draft-boundary", testCase: self)
 
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         let confirmLeave = app.alerts["저장하지 않은 내용이 있어요"].buttons["내용 버리고 나가기"]
         XCTAssertTrue(UITestConditions.exists(confirmLeave), app.debugDescription)
         confirmLeave.tap()
-        NavigationUITestConditions.route(app, markers: ["records-title"])
+        try ManualHistoryUITestSupport.backFromMemory(app)
         XCTAssertFalse(UITestConditions.element(app, "manual-history-title-input").exists)
     }
 
@@ -171,7 +171,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
             testCase: self,
             captureOriginal: { originalAppearance = $0 },
         )
-        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        try ManualHistoryUITestSupport.openMemory(app)
         let error = app.staticTexts["기억을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."]
         let retry = app.buttons["다시 시도"]
         XCTAssertTrue(UITestConditions.exists(error) && retry.isHittable, app.debugDescription)
@@ -188,13 +188,12 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         retry.tap()
         try openManualHistory(app, title: "Synthetic recovery original")
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        NavigationUITestConditions.route(app, markers: ["records-title"])
+        try ManualHistoryUITestSupport.backFromMemory(app)
     }
 
     @MainActor
     private func openManualHistory(_ app: XCUIApplication, title: String = "Synthetic known original") throws {
-        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
-        XCTAssertFalse(UITestConditions.element(app, "records-open-manual-history").exists)
+        try ManualHistoryUITestSupport.openMemory(app)
         // Stable identity lets the existing window-owner guard select the real route surface.
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label BEGINSWITH %@", "saved-memory-entry-", title)).firstMatch
         XCTAssertTrue(UITestConditions.exists(row), app.debugDescription)

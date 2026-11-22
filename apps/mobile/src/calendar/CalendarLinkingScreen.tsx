@@ -1,3 +1,4 @@
+import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -34,7 +35,6 @@ interface CalendarLinkingScreenProps {
   onBack?: () => void;
   onOpenRecording?: () => void;
 }
-
 export default function CalendarLinkingScreen({
   scrollHeader,
   repository,
@@ -48,7 +48,12 @@ export default function CalendarLinkingScreen({
   onBack,
   onOpenRecording,
 }: CalendarLinkingScreenProps) {
-  const navigationInset = useNavigationContentInset();
+  const inset = useNavigationContentInset();
+  const edge = useNavigationEdgeVerticalScroll({
+    ownerWidth: adaptiveScheduleLayout ? undefined : 0,
+    trailingPadding: 20,
+  });
+  const content = [styles.container, inset, edge.contentStyle];
   const calendar = useCalendarLinking(repository, bridge, calendarSync);
   const queryWindow: CalendarQueryWindow | null = calendarSync.query
     ? calendarQueryWindowFromCoverage(calendarSync.query)
@@ -132,11 +137,12 @@ export default function CalendarLinkingScreen({
     }
     lastNotice.current = calendar.notice;
   }, [calendar.notice, onAppointmentsChanged]);
-
   return (
     <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={[styles.container, navigationInset]}
+        style={edge.scrollViewStyle}
+        contentContainerStyle={content}
+        {...edge.indicatorProps}
         testID="calendar-screen"
       >
         {scrollHeader ? (

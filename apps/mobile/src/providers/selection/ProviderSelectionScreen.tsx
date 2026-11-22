@@ -5,6 +5,7 @@ import { useConversationModelConfirmation } from './useConversationModelConfirma
 import { t } from '../../i18n';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { ModelSelectionTabs } from './ModelSelectionTabs';
+import { useNavigationEdgeVerticalScroll } from '../../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../../navigation/useNavigationContentInset';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppText as Text } from '../../layout/AppText';
@@ -37,6 +38,14 @@ export default function ProviderSelectionScreen({
   onNavigationStateChange,
 }: ProviderSelectionScreenProps) {
   const navigationInset = useNavigationContentInset();
+  const [ownerWidth, setOwnerWidth] = useState(0);
+  // The embedded feature overlay shares a route key but does not own the route's scroll edge.
+  const edge = useNavigationEdgeVerticalScroll({
+    ownerWidth:
+      navigationRouteKey && presentation !== 'feature' ? ownerWidth : 0,
+    trailingPadding: navigationInset.paddingRight ?? styles.container.padding,
+  });
+  const contentStyle = [styles.container, navigationInset, edge.contentStyle];
   const search = useSavedSearchChoices(selectionStore);
   const [savedSelection, setSavedSelection] =
     useState<ProviderSelection | null>(null);
@@ -131,11 +140,15 @@ export default function ProviderSelectionScreen({
     presentation,
   });
   return (
-    <View style={styles.root}>
+    <View
+      style={styles.root}
+      testID="provider-selection-scroll-lane"
+      onLayout={event => setOwnerWidth(event.nativeEvent.layout.width)}
+    >
       <ScrollView
-        // The page owns scroll clearance once, including confirmation and recovery below the catalog.
-        contentContainerStyle={[styles.container, navigationInset]}
-        style={styles.scrollView}
+        {...edge.indicatorProps}
+        contentContainerStyle={contentStyle}
+        style={[styles.scrollView, edge.scrollViewStyle]}
         testID={
           presentation === 'settings-provider'
             ? 'settings-provider-screen'

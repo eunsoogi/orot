@@ -1,4 +1,3 @@
-import { GeneratedReportBrowser } from '../generatedReports/GeneratedReportBrowser';
 import { useRecordsDetailVisibility } from './RecordsHubSection';
 import { NavigationInlineTransition } from '../navigation/NavigationInlineTransition';
 import { useEffect } from 'react';
@@ -19,12 +18,11 @@ import { hubSpacing } from '../layout/hubSpacing';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
 import { RecordsRouteEntries } from './RecordsRouteEntries';
-import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
 import { LegacySymptomData } from './LegacySymptomData';
 
 export interface RecordsRouteProps {
   readonly memoryActive?: boolean;
-  readonly onOpenMemory?: (memoryId: string) => void;
+  readonly onOpenGeneratedReports?: () => void;
   readonly onOpenDocumentDetail?: (sourceId: string) => void;
   readonly showAllRecent?: boolean;
   readonly onOpenRecentRecords?: () => void;
@@ -35,13 +33,13 @@ export interface RecordsRouteProps {
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
   readonly documentImportService?: MedicalDocumentImportService;
-  readonly onOpenManualHistory: () => void;
+  readonly onOpenManualHistory?: () => void;
 }
 
 /** Reuses Home's loaded audio snapshot and keeps every Records state in measured usable space. */
 export function RecordsRoute({
   onOpenDocumentDetail,
-  onOpenMemory,
+  onOpenGeneratedReports,
   memoryActive = true,
   showAllRecent = false,
   onOpenRecentRecords,
@@ -154,12 +152,8 @@ export function RecordsRoute({
           {!showAllRecent ? (
             <View style={styles.primaryPanel}>
               <RecordsRouteEntries
-                secondary={
-                  <SavedMemoryBrowser
-                    active={memoryActive}
-                    onOpenMemory={onOpenMemory}
-                  />
-                }
+                materialsActive={memoryActive}
+                onOpenGeneratedReports={onOpenGeneratedReports}
                 onOpenSavedRecordings={onOpenSavedRecordings}
                 onOpenRecording={onOpenRecording}
                 onOpenHealthLibrary={onOpenHealthLibrary}
@@ -179,9 +173,6 @@ export function RecordsRoute({
                 </Text>
               ) : null}
             </View>
-          ) : null}
-          {!showAllRecent ? (
-            <GeneratedReportBrowser active={memoryActive} />
           ) : null}
           {!showAllRecent ? <LegacySymptomData /> : null}
           <RecordsRecentSources

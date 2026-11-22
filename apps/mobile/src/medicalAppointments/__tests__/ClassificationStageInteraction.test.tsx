@@ -24,7 +24,6 @@ test('keeps faded results and retry confirmation out of touch and accessibility 
   const draw = (stage: 'progress' | 'results' | 'confirmation') => (
     <ClassificationMovingStage
       stage={stage}
-      confirmingRestart={stage === 'confirmation'}
       classified={1}
       total={2}
       saving={false}

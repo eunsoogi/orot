@@ -13,7 +13,7 @@ export type HealthRecordsLibraryLoadState = 'loading' | 'ready' | 'failed';
 
 interface HealthRecordsLibraryHeaderProps {
   readonly filterRailWidth?: number;
-  readonly filterTrailingGutter?: number;
+  readonly filterRightBleed?: number;
   readonly beforeFilters?: ReactNode;
   readonly hasSharedNavigation: boolean;
   readonly hasMore?: boolean;
@@ -30,7 +30,7 @@ interface HealthRecordsLibraryHeaderProps {
 export function HealthRecordsLibraryHeader({
   beforeFilters,
   filterRailWidth = 0,
-  filterTrailingGutter = 0,
+  filterRightBleed = 0,
   hasSharedNavigation,
   hasMore = false,
   loadState,
@@ -81,7 +81,7 @@ export function HealthRecordsLibraryHeader({
       <HealthRecordsCategoryFilter
         selected={selectedCategory}
         onSelect={onSelectCategory}
-        rightBleed={filterRailWidth + filterTrailingGutter}
+        rightBleed={filterRightBleed}
         touchClearance={filterRailWidth}
       />
       <Text>{t('healthRecords.previewNotice')}</Text>
