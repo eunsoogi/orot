@@ -1,22 +1,28 @@
-import type {
-  ConversationSession,
-  ConversationSessionOptions,
-} from './conversationSessionTypes';
+import { createOwnedSavedHistoryDisplay } from './loadOwnedSavedHistoryDisplay';
+import {
+  joinConversationHistoryFlight,
+  createPlainHistoryPlanner,
+  usableHistoryMessages,
+} from './plainConversationSendContext';
+import type { ConversationSessionOptions } from './conversationSessionTypes';
 import type {
   ConversationHistoryReaderOwner,
+  ConversationInitialPageAdmission,
   ReadConversationHistoryPage,
 } from './conversationHistoryPage';
 import { conversationRestoredMessages } from './conversationRestoredMessages';
 import { getRagConversationCopy } from './copy';
 import { t } from '../i18n';
-/** Each page keeps the lease and owner fence; failed pages never advance the cursor. */
-export function createConversationPagedRestoreState(input: {
-  read: ReadConversationHistoryPage;
-  readSteering?: ConversationSessionOptions['restoreSteering'];
-  find: (id: number) => ConversationSession | undefined;
-  update: (id: number, change: Partial<ConversationSession>) => void;
-}) {
+export function createConversationPagedRestoreState(
+  input: {
+    read: ReadConversationHistoryPage;
+    readPlainContextPage?: ConversationSessionOptions['readPlainContextPage'];
+    readSteering?: ConversationSessionOptions['restoreSteering'];
+  } & Parameters<typeof createOwnedSavedHistoryDisplay>[0],
+) {
+  const display = createOwnedSavedHistoryDisplay(input);
   const owners = new Map<number, ConversationHistoryReaderOwner>();
+  const planPlainHistoryForSend = createPlainHistoryPlanner(input, owners);
   const forget = (id: number) => {
     owners.get(id)?.controller?.abort();
     owners.delete(id);
@@ -28,24 +34,12 @@ export function createConversationPagedRestoreState(input: {
   ): Promise<void> => {
     const owner = owners.get(id);
     if (!owner || owner.exhausted || signal?.aborted) return Promise.resolve();
-    if (
+    const staleInitial =
       initialId !== undefined &&
-      (owner.initialized || owner.durableId !== initialId)
-    )
-      return Promise.resolve();
-    if (owner.flight) {
-      // Joining cancellation releases this wait, never the scroll reader's ownership.
-      const flight = owner.flight;
-      if (!signal) return flight;
-      return new Promise<void>(resolve => {
-        const finish = () => {
-          signal.removeEventListener('abort', finish);
-          resolve();
-        };
-        signal.addEventListener('abort', finish, { once: true });
-        flight.then(finish, finish);
-      });
-    }
+      (owner.initialized || owner.durableId !== initialId);
+    if (staleInitial) return Promise.resolve();
+    if (owner.flight)
+      return joinConversationHistoryFlight(owner.flight, signal);
     const controller = new AbortController();
     owner.controller = controller;
     const current = () =>
@@ -55,7 +49,6 @@ export function createConversationPagedRestoreState(input: {
     const cancel = () => {
       controller.abort();
       if (owners.get(id) === owner && owner.controller === controller) {
-        // Detach stopped SQL immediately; its late result cannot own a fresh retry.
         owner.controller = undefined;
         owner.flight = undefined;
         input.update(id, {
@@ -78,6 +71,8 @@ export function createConversationPagedRestoreState(input: {
     if (!current()) return Promise.resolve();
     const flight = (async () => {
       try {
+        if (display)
+          return await display.load(id, owner, controller.signal, current);
         const page = await input.read(
           owner.durableId,
           controller.signal,
@@ -137,7 +132,6 @@ export function createConversationPagedRestoreState(input: {
                 error: '',
                 steeringInstructions: [],
                 steeringAvailable: false,
-                // Reopening history must not turn a past report into a mandatory input for a new question.
                 dailyReport: undefined,
                 entryIntent: page.turns.some(
                   turn => turn.entryIntent === 'possibilities',
@@ -176,10 +170,18 @@ export function createConversationPagedRestoreState(input: {
     return flight;
   };
   return {
-    async start(id: number, durableId: string, signal?: AbortSignal) {
+    async start(
+      id: number,
+      durableId: string,
+      signal?: AbortSignal,
+      displayAdmission?: () => boolean,
+      initialAdmission?: ConversationInitialPageAdmission,
+    ) {
       forget(id);
       owners.set(id, {
         durableId,
+        displayAdmission,
+        initialAdmission,
         initialized: false,
         exhausted: false,
         nextId: 0,
@@ -189,6 +191,7 @@ export function createConversationPagedRestoreState(input: {
     },
     invalidatePage(id: number) {
       const owner = owners.get(id);
+      if (display && owner) return display.invalidate(owner);
       if (!owner?.controller) return;
       owner.controller.abort();
       owner.controller = undefined;
@@ -199,8 +202,12 @@ export function createConversationPagedRestoreState(input: {
       load(id, signal, durableId),
     retry: load,
     loadOlder: load,
-    /** Retry a failed read once per explicit send, never dispatch with unvalidated history. */
     async prepareContext(id: number, signal?: AbortSignal) {
+      const planned = planPlainHistoryForSend(id, signal);
+      if (planned) {
+        const plain = await planned;
+        if (plain) return plain;
+      }
       let retried = false;
       while (owners.has(id) && !signal?.aborted) {
         const owner = owners.get(id)!;
@@ -215,13 +222,7 @@ export function createConversationPagedRestoreState(input: {
         }
         if (
           owner.initialized &&
-          (owner.exhausted ||
-            session.messages.filter(
-              message =>
-                !message.incomplete &&
-                !message.failed &&
-                !message.historyUnavailable,
-            ).length >= 8)
+          (owner.exhausted || usableHistoryMessages(session.messages) >= 8)
         )
           return true;
         const previous = owner.cursor;
@@ -236,11 +237,8 @@ export function createConversationPagedRestoreState(input: {
           return false;
       }
       const session = input.find(id);
-      return (
-        !signal?.aborted &&
-        !session?.restoreFailed &&
-        !session?.leaseRefreshRequired
-      );
+      const blocked = session?.restoreFailed || session?.leaseRefreshRequired;
+      return !signal?.aborted && !blocked;
     },
     forget,
     dispose() {

@@ -1,3 +1,4 @@
+import { markConversationInput } from '../providers/conversationInputDiagnostic';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { ConversationSessions } from './conversationSessions';
 import type { RetainedHealthActions } from './ConversationRetainedActions';
@@ -28,6 +29,7 @@ export function immediateConversationChoices(
         !canSelectConversationChoice(store, session)
       )
         return;
+      markConversationInput('conversation_quick_press');
       choose();
       const current = store.getSnapshot();
       const selected = current.sessions.find(item => item.id === id);
@@ -41,10 +43,12 @@ export function immediateConversationChoices(
       if (
         conversationEntryForSession(store, id)?.intent === 'visit-questions'
       ) {
-        startExplicitVisitPreparation(store, id, prepare)?.catch(() => {});
+        startExplicitVisitPreparation(store, id, prepare, true)?.catch(
+          () => {},
+        );
       } else {
         store
-          .sendPrompt(
+          .sendQuickPrompt(
             id,
             selected.entryPrompt,
             entryIntentSender(store, id, send),

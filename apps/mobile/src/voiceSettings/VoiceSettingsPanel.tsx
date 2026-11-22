@@ -1,3 +1,4 @@
+import { modelPresentation } from '../providers/selection/savedModelPresentation';
 import ProviderSelectionOptionCard from '../providers/selection/ProviderSelectionOptionCard';
 import { applePrivateCloudComputeProvider } from '../providers/apple';
 import { APPLE_PCC_MODEL_ID } from '../providers/selection/privateCloudCompute';
@@ -36,7 +37,8 @@ export function VoiceSettingsPanel({
   const catalog = useVoiceCatalog();
   const selection = useVoiceSelection(catalog);
   const liveAvailable = hasLiveVoiceRuntime();
-  const { mode, model, savedModel, busy, failedLoad, message } = selection;
+  const { mode, model, savedModel, savedMode, busy, failedLoad, message } =
+    selection;
   const canApproveNew = catalog.fresh && catalog.ids.includes(model);
   const disabled =
     busy ||
@@ -81,6 +83,9 @@ export function VoiceSettingsPanel({
       },
     ],
     active,
+  );
+  const savedChoice = voiceModels.find(
+    item => item.mode === savedMode && item.id === savedModel,
   );
   const choices = (connection: 'local' | 'openai-api') =>
     voiceModels
@@ -171,13 +176,13 @@ export function VoiceSettingsPanel({
         ) : null}
       </View>
       <View style={styles.section}>
-        {!busy && !failedLoad ? (
+        {savedModel !== null && !failedLoad ? (
           <ModelSelectionSummary
             label={t('modelSettings.currentSelection')}
-            value={
-              voiceModels.find(item => item.id === savedModel)?.title ??
-              (savedModel ? t('modelSettings.liveVoiceLegacyCurrent') : '')
-            }
+            value={modelPresentation(
+              savedMode === 'local' ? 'Apple' : 'OpenAI API',
+              savedChoice?.title,
+            )}
             testID="voice-current-model"
           />
         ) : null}

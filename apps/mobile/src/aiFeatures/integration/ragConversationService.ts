@@ -1,10 +1,10 @@
+import { historyHasDurableContext } from './freshConversationDialogue';
 import { startPreparedRagOpening as start } from './preparedOpeningConsent';
 import { conversationPublicSearchPlan as planSearch } from './conversationPublicSearchPlan';
 import { prepareLiveRagContinuation as continuationFor } from './liveRagConversationCapture';
 import { conversationMutationExecution } from './conversationMutationExecution';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import { finishConversationWorkflow } from './finishConversationWorkflow';
-import type * as Conversation from '../../ragConversation/service';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import { executionOptions } from './featureServiceExecution';
 import * as background from './conversationBackgroundProvider';
@@ -36,9 +36,9 @@ export function createRagConversationService({
     question: string,
     previousMessages: readonly RagConversationMessage[],
     parentSignal?: AbortSignal,
-    observer?: Conversation.RagConversationObserver,
+    observer?: import('../../ragConversation/service').RagConversationObserver,
     entryContext?: ConversationEntryContext,
-  ): Promise<Conversation.RagConversationOutcome> {
+  ): Promise<import('../../ragConversation/service').RagConversationOutcome> {
     const request = question.trim();
     const photo = background.photo(observer);
     if (!voiceSelection.validConversationInput(request, photo))
@@ -126,6 +126,7 @@ export function createRagConversationService({
         observer,
         runId: createOperationRunId?.() ?? operationRunId(),
         question: request,
+        entryIntent: entryContext?.intent,
         signal,
         continuation: await continuationFor(
           observer,
@@ -155,7 +156,7 @@ export function createRagConversationService({
           observer,
           researchInputs,
           external,
-          publicSearchSucceeded: searchPlan.includeExternalTools,
+          ...searchPlan.toolPolicy,
         });
       const retention = createConversationRetentionBridge({
         observer,
@@ -165,9 +166,7 @@ export function createRagConversationService({
         providerId: selected.provider.id,
         modelId: selected.modelId,
         entryContext,
-        priorDialogue: history.priorTurns,
-        priorUserReports: history.reports,
-        ...(history.omitted ? { priorDialogueOmitted: true as const } : {}),
+        ...run.conversationRetentionHistoryOptions(history),
         signal,
       });
       const baseExecution = executionOptions({
@@ -200,6 +199,7 @@ export function createRagConversationService({
           question: request,
           photoEvidence,
           entryIntent: entryContext?.intent,
+          authoredCurrentRequest: observer?.inputOrigin === 'composer',
           targetVisitEvidence: target.evidence,
           dailyReportEvidence: report?.items,
           history,
@@ -220,7 +220,7 @@ export function createRagConversationService({
         }),
         run.conversationRunInvocation(
           observer,
-          Boolean(history.references.length || report || photo),
+          Boolean(report || photo) || historyHasDurableContext(history),
           registry,
           { providerId: selected.provider.id, modelId: selected.modelId },
           signal,
@@ -234,7 +234,7 @@ export function createRagConversationService({
         localRetrievalFailed,
         historyIsCurrent,
         publicSearch: searchPlan.currentSearch,
-        skipPublicSearchNotice: !request,
+        skipPublicSearchNotice: !request || searchPlan.literatureOnly,
         retention,
         signal,
         reportIsCurrent: report?.isCurrent,

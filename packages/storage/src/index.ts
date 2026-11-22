@@ -58,7 +58,13 @@ export type {
   CalendarAppointmentInput,
   ManualAppointmentInput,
 } from './appointments';
-export { createManualHistoryRepository } from './manualHistory';
+export {
+  createManualHistoryRepository,
+  autoLocalConversationMemoryIdPrefix,
+  isAutoLocalConversationMemoryId,
+  localConversationMemoryIdPrefix,
+  isLocalConversationMemoryId,
+} from './manualHistory';
 export type {
   ManualHistoryRepository,
   ManualHistoryRepositoryOptions,

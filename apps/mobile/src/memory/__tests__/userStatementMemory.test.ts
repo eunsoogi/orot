@@ -104,3 +104,32 @@ test.each([
     expect(conversationStatementMemory({ ...turn, question })).toBeUndefined();
   },
 );
+
+test.each([
+  'Remember that I prefer concise replies.',
+  '기억해 주세요: 저는 짧은 설명을 선호합니다.',
+  '저는 짧은 설명을 선호합니다. 기억해 주세요.',
+])('records the exact current utterance for %s', question => {
+  const memory = conversationStatementMemory({ ...turn, question });
+  expect(memory?.text.split('\n')[1]).toBe(question);
+  expect(memory?.kind).toBe('preference');
+  expect(memory?.provenance).toMatchObject({
+    reviewState: 'user_stated',
+    sourceIds: [turn.id],
+  });
+});
+
+test.each([
+  'Remember my diagnosis.',
+  'Remember that I have diabetes? ',
+  'Remember that I have diabetes. Do not save this.',
+  '기억해 주세요: 제 친구가 운동해요.',
+  '저는 두통이 있나요? 기억해 주세요.',
+  '저는 이 사실을 기억하지 말아 주세요.',
+  '진료 질문 준비하기',
+  '질병 가능성 보고서',
+  '내 건강 정보 요약',
+  '오늘의 보고서',
+])('does not create a memory from unsupported or canned input %s', question => {
+  expect(conversationStatementMemory({ ...turn, question })).toBeUndefined();
+});

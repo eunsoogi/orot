@@ -2,13 +2,13 @@ import { runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { createConversationSessionOptions } from '../conversationSessionOptions';
-import { createConversationArtifactDiscovery } from '../conversationArtifactDiscovery';
+import { savedHistoryTranscript } from '../../../ragConversation/conversationSavedHistoryDisplay';
 import { createConversationSessions } from '../../../ragConversation/conversationSessions';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
 import { localData } from '../featureServiceFixtures';
 import type { AiFeatureLocalData } from '../localData';
 
-test('app restoration hydrates only recent ten turns then fetches older protected pages without losing records', async () => {
+test('app restoration pages committed text in batches of ten without hydrating evidence', async () => {
   const connection = openSqliteTestDatabase(':memory:');
   try {
     await runMigrations(connection.database);
@@ -30,29 +30,27 @@ test('app restoration hydrates only recent ten turns then fetches older protecte
       });
     }
     const registry = new LocalEvidenceReferenceRegistry();
-    let hydrated = 0;
+    const pageSizes: number[] = [];
+    const hydrate = jest.fn(async () => {
+      throw new Error('Archive hydrated old sources.');
+    });
     let deleteDuringRead = false;
     const data: AiFeatureLocalData = {
       ...localData([]).data,
-      openConversationArtifactStorage: async () => storage,
-      conversationArtifactDiscovery: async () => {
-        const discovery = createConversationArtifactDiscovery({
-          database: connection.database,
-          storage,
-          registry,
-          data,
-        });
-        return {
-          ...discovery,
-          readSession: async request => {
-            expect(request.ids?.length).toBeLessThanOrEqual(10);
-            const page = await discovery.readSession(request);
-            hydrated += page.items.length;
-            if (deleteDuringRead) await storage.deleteSession('saved');
-            return page;
-          },
-        };
-      },
+      openConversationArtifactStorage: async () => ({
+        ...storage,
+        async readSessionPresentationMany(sessionId, version, ids) {
+          pageSizes.push(ids.length);
+          const result = await storage.readSessionPresentationMany(
+            sessionId,
+            version,
+            ids,
+          );
+          if (deleteDuringRead) await storage.deleteSession('saved');
+          return result;
+        },
+      }),
+      conversationArtifactDiscovery: hydrate,
     };
     const options = createConversationSessionOptions({
       loadLocalData: async () => data,
@@ -67,31 +65,42 @@ test('app restoration hydrates only recent ten turns then fetches older protecte
     const session = () =>
       store.getSnapshot().sessions.find(value => value.id === id)!;
     expect(session().restoreFailed).toBe(false);
-    expect(hydrated).toBe(10);
-    expect(session().messages).toHaveLength(20);
-    expect(session().messages[0]?.content).toBe('question 15');
-    const stable = session().messages.map(message => message.id);
+    const transcript = () =>
+      savedHistoryTranscript(
+        session().savedHistoryDisplay ?? [],
+        session().messages,
+      );
+    expect(pageSizes).toEqual([10]);
+    expect(transcript()).toHaveLength(20);
+    expect(transcript()[0]?.content).toBe('question 15');
+    const stable = transcript().map(message => message.id);
     await store.loadOlderHistory(id!);
-    expect(hydrated).toBe(20);
+    expect(pageSizes).toEqual([10, 10]);
     expect(
-      session()
-        .messages.slice(-20)
+      transcript()
+        .slice(-20)
         .map(message => message.id),
     ).toEqual(stable);
     await store.loadOlderHistory(id!);
-    expect(hydrated).toBe(25);
+    expect(pageSizes).toEqual([10, 10, 5]);
     expect(session().historyHasMore).toBe(false);
-    expect(session().messages).toHaveLength(50);
+    expect(transcript()).toHaveLength(50);
+    expect(session().messages).toEqual([]);
+    expect(hydrate).not.toHaveBeenCalled();
     expect((await storage.list('saved')).items).toHaveLength(25);
     store.dispose();
     const cancelled = new AbortController();
     cancelled.abort();
     await expect(
-      options.restoreSessionPage!('saved', cancelled.signal),
+      options.readSavedHistoryDisplay!('saved', 0, cancelled.signal),
     ).rejects.toThrow();
     deleteDuringRead = true;
     await expect(
-      options.restoreSessionPage!('saved', new AbortController().signal),
+      options.readSavedHistoryDisplay!(
+        'saved',
+        0,
+        new AbortController().signal,
+      ),
     ).rejects.toThrow();
   } finally {
     connection.close();

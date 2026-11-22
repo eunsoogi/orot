@@ -162,7 +162,10 @@ export function LiveConversationVoiceEntry(
     setTranscripts([]);
   };
   const { onStatusChange } = props;
-  const status = voiceStatus(props.photoPending, false, false, state);
+  // Live turn detection advances after a pause; the modal has no finish control.
+  const status = voiceStatus(props.photoPending, false, false, state, {
+    manualFinish: false,
+  });
   useEffect(() => {
     onStatusChange?.(status);
     return () => onStatusChange?.('');

@@ -62,6 +62,7 @@ export const disclosureStyles = StyleSheet.create({
   },
   compactCard: { padding: 14 },
   row: { gap: 4 },
+  scopeParagraphs: { gap: 12 },
   label: { color: appColors.secondary, fontSize: 13, lineHeight: 18 },
   value: { fontSize: 16, lineHeight: 24, fontWeight: '600' },
   separator: {

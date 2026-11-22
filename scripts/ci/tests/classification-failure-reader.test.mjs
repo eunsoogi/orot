@@ -77,10 +77,15 @@ test('native reader remains unique-screen scoped, bounded and diagnostic while o
   assert.match(swift, /guard validStage\(app, results: results\), targets.count == 1/);
   assert.match(
     swift,
-    /guard validStage\(app, results: results\), previous.exists, !previous.isEnabled/,
+    /guard validStage\(app, results: results\), !previous\.exists \|\| !previous\.isEnabled/,
   );
   assert.match(swift, /for index in 0 \.\.< 256/);
-  assert.match(swift, /if !next\.isEnabled/);
+  assert.match(
+    swift,
+    /guard next\.exists else {[\s\S]*?if index == 0 {\s*assertMessage\(pages, reason: reason\)[\s\S]*?lost its paging controls after advancing/,
+  );
+  assert.match(swift, /if !next\.isEnabled {\s*assertMessage\(pages, reason: reason\)/);
+  assert.match(swift, /guard next\.isHittable[\s\S]*?next\.tap\(\)/);
   assert.match(swift, /seen\.insert\(text\)\.inserted/);
   assert.match(swift, /contains\(target\.frame\)/);
   assert.match(swift, /"type": String\(describing: snapshot.elementType\)/);
@@ -111,6 +116,8 @@ test('native AX membership uses global identity plus geometry, not React descend
     'classification-page-text',
     'classification-text-viewport',
     'classification-stage-footer',
+    'classification-circle-slot',
+    'medical-appointment-import',
     'medical-appointment-previous-result',
     'medical-appointment-next-result',
   ]) {
@@ -122,8 +129,21 @@ test('native AX membership uses global identity plus geometry, not React descend
     /"medical-appointment-confirmation", "medical-appointment-progress"[\s\S]*count == 0/,
   );
   assert.match(stage, /app.frame.contains\(results.frame\)/);
-  for (const frame of ['viewport', 'footer']) assert.ok(stage.includes(`contains(${frame}.frame)`));
-  assert.match(stage, /control.frame.width >= 44 && control.frame.height >= 44/);
+  assert.match(stage, /results\.frame\.insetBy\(dx: -1, dy: -1\)\.contains\(viewport\.frame\)/);
+  assert.match(
+    stage,
+    /"classification-circle-slot"\)\.frame\.insetBy\(dx: -1, dy: -1\)\s*\.contains\(UITestConditions\.element\(app, "medical-appointment-import"\)\.frame\)/,
+  );
+  assert.match(stage, /if controls\.allSatisfy\(\{ \$0\.count == 0 \}\)/);
+  // Preserve the same required controls and geometry after Swift's compiler-friendly guard split.
+  assert.match(
+    stage,
+    /guard controls\.allSatisfy\(\{ \$0\.count == 1 \}\), footer\.exists else \{ return false \}/,
+  );
+  assert.match(
+    stage,
+    /let matchedControls: \[XCUIElement\] = controls\.map\(\\\.firstMatch\)\s+return matchedControls\.allSatisfy \{ control in\s+guard control\.elementType == \.button, !control\.label\.isEmpty,\s+control\.frame\.width >= 44, control\.frame\.height >= 44 else \{ return false \}/,
+  );
   assert.match(stage, /footer.frame.insetBy\(dx: -1, dy: -1\).contains\(control.frame\)/);
   assert.doesNotMatch(
     reader.slice(0, reader.indexOf('private static func observe')),

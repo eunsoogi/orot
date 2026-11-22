@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
+import { AppSymbol } from '../layout/AppSymbol';
+import { appColors } from '../layout/appColors';
 import { AppButton as Button } from '../layout/AppButton';
 import { t } from '../i18n';
 import { styles } from './manualVisitRecordStyles';
@@ -130,19 +132,42 @@ export function ManualVisitRecords({
     }
   };
   if (!items.length && !error) return null;
+  const heading = (
+    <Text accessibilityRole="header" style={styles.title}>
+      {t('visitQuestions.manual.title')}
+    </Text>
+  );
+  const instructions = (
+    <Text style={embedded ? styles.embeddedInstructions : undefined}>
+      {t('visitQuestions.manual.instructions')}
+    </Text>
+  );
   return (
     <View
       style={[styles.panel, embedded && styles.embeddedPanel]}
       testID="manual-visit-records"
     >
-      <Text accessibilityRole="header" style={styles.title}>
-        {t('visitQuestions.manual.title')}
-      </Text>
-      <Text>{t('visitQuestions.manual.instructions')}</Text>
+      {embedded ? (
+        <View style={styles.embeddedHeader}>
+          <View style={styles.embeddedIcon}>
+            <AppSymbol name="checklist" color={appColors.primaryText} />
+          </View>
+          <View style={styles.embeddedHeading}>
+            {heading}
+            {instructions}
+          </View>
+        </View>
+      ) : (
+        <>
+          {heading}
+          {instructions}
+        </>
+      )}
       {items.map(item => (
         <ManualVisitQuestionCard
           key={item.question.id}
           item={item}
+          embedded={embedded}
           draft={draft}
           emptyAnswerLabel={emptyAnswerLabel}
           busy={busy}

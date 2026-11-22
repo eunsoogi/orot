@@ -13,6 +13,11 @@ export interface ColdConversationSourceOwner {
   readonly sessionVersion: number;
   readonly requestId: string;
   readonly operationRunId: string;
+  readonly archiveCitation?: {
+    readonly createdAt: string;
+    readonly ordinal: number;
+    readonly summary?: { readonly id: string; readonly revision: string };
+  };
 }
 export type ResolveColdConversationToolSource = (
   owner: ColdConversationSourceOwner,

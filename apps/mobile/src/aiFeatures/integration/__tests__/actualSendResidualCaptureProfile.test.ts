@@ -203,19 +203,22 @@ test.each(cases)('residual actual send retention: %s', async variant => {
     );
     if (healthSql)
       console.info('SYNTHETIC_HEALTH_SQL', JSON.stringify(healthSql.summary()));
-    // Exact calculation counts catch loss of reuse in normal CI, not only profiling.
-    expect([...(counts.get('retention')?.values() ?? [])]).toEqual([
-      ...Array(count * 2 - 2).fill(2),
-      1,
-      1,
-    ]);
-    expect(phaseDiagnostics.retention?.report_sql_unscoped ?? 0).toBe(0);
-    expect([...(counts.get('save')?.values() ?? [])]).toEqual(
-      Array(count * 2).fill(1),
-    );
+    // History remains dialogue-only across pre-dispatch and terminal checks.
+    expect([...counts.keys()]).toEqual(['current-tool', 'save']);
+    expect([...(counts.get('current-tool')?.values() ?? [])]).toEqual([1, 1]);
+    expect([...(counts.get('save')?.values() ?? [])]).toEqual([1, 1]);
     phase = 'replay';
     const saved = await f.storage.read('saved-answer');
     expect(saved?.answer).toContain('Synthetic current answer');
+    expect(saved?.historicalDialogueParents?.map(parent => parent.id)).toEqual(
+      Array.from({ length: count }, (_, index) => `direct-${index}`),
+    );
+    expect(saved?.citations?.length).toBeGreaterThan(0);
+    expect(
+      saved?.sources.some(
+        source => 'kind' in source && source.kind === 'generated_conversation',
+      ),
+    ).toBe(false);
     await f.repository.delete('health_observation', f.inside.id);
     await expect(f.storage.read('saved-answer')).resolves.toBeNull();
   } finally {

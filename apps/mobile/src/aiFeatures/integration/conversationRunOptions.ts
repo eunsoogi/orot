@@ -1,3 +1,4 @@
+import type { FreshConversationHistory } from './freshConversationDialogue';
 import { NativeModules } from 'react-native';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import type { Stage } from '../../providers/diagnosticTypes';
@@ -67,6 +68,7 @@ export function conversationRunRequest(input: {
   readonly question: string;
   readonly photoEvidence?: RagConversationRunOptions['photoEvidence'];
   readonly entryIntent?: RagConversationRunOptions['entryIntent'];
+  readonly authoredCurrentRequest?: boolean;
   readonly targetVisitEvidence?: RagConversationRunOptions['targetVisitEvidence'];
   readonly dailyReportEvidence?: RagConversationRunOptions['dailyReportEvidence'];
   readonly history: Awaited<ReturnType<typeof loadConversationHistory>>;
@@ -82,6 +84,7 @@ export function conversationRunRequest(input: {
     question: input.question,
     ...(input.photoEvidence ? { photoEvidence: input.photoEvidence } : {}),
     entryIntent: input.entryIntent,
+    authoredCurrentRequest: input.authoredCurrentRequest,
     targetVisitEvidence: input.targetVisitEvidence,
     dailyReportEvidence: input.dailyReportEvidence,
     previousMessages: input.history.messages,
@@ -183,12 +186,40 @@ export function observeConversationMain(
   return async (options, invocation) => {
     observeReceiptStage('conversation_receipt_main', 'started');
     try {
-      const outcome = await run(options, invocation);
+      const outcome = await run(
+        {
+          ...options,
+          workflow: {
+            ...options.workflow,
+            onModelStage(stage, event) {
+              try {
+                providerDiagnostic('rag', stage, event);
+              } catch {
+                // An optional diagnostic cannot suppress the caller's observer.
+              }
+              return options.workflow.onModelStage?.(stage, event);
+            },
+          },
+        },
+        invocation,
+      );
       observeReceiptStage('conversation_receipt_main', 'completed');
       return outcome;
     } catch (error) {
       observeReceiptStage('conversation_receipt_main', 'failed');
       throw error;
     }
+  };
+}
+
+/** Pass the app-owned historical dialogue separately from live evidence. */
+export function conversationRetentionHistoryOptions(
+  history: FreshConversationHistory,
+) {
+  return {
+    priorDialogue: history.priorTurns,
+    historicalDialogueParents: history.historicalDialogueParents,
+    priorUserReports: history.reports,
+    ...(history.omitted ? { priorDialogueOmitted: true as const } : {}),
   };
 }

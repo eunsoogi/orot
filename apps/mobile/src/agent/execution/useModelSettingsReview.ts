@@ -1,3 +1,4 @@
+import type { JointCalendarReview } from './prepareJointCalendarReview';
 import { useEffect, useRef } from 'react';
 import { t } from '../../i18n';
 import { chatGPTCredentialMutation } from '../../providers/chatGPTConsentIdentity';
@@ -16,6 +17,7 @@ function disclosureFor(
   slot: Slot,
   option: ProviderSelectionOption,
   search?: SettingsSearchChoices,
+  calendar?: JointCalendarReview,
 ): SettingsDisclosureSummary | null {
   const remote = option.privacyBoundary === 'selected-context-remote';
   const recipient = remote
@@ -32,21 +34,37 @@ function disclosureFor(
         ),
       ]
     : [];
-  if (remote && search?.web) {
+  const jointWeb = slot === 'conversation' && remote && search?.web;
+  if (jointWeb) {
+    copy.push(t('modelSettings.consentJointWeb', { recipient }));
+  }
+  if (calendar)
     copy.push(
-      t('modelSettings.consentWeb', {
-        recipient: t('externalMedicalEvidence.publicSearchRecipient', {
-          recipient,
-        }),
+      t('modelSettings.consentJointCalendar', {
+        recipient: calendar.calendarRecipient,
+        model: calendar.calendarModel,
       }),
     );
-  }
-  if (search?.medical) copy.push(t('modelSettings.consentMedical'));
+  if (search?.medical) copy.push(t('modelSettings.consentJointMedical'));
   return {
     providerId: remote ? option.provider.id : 'europe-pmc',
     modelId: remote ? option.modelId : 'public-medical-search',
     recipient,
-    subtitle: t('medicalAppointments.inferenceDisclosure.title'),
+    subtitle: calendar
+      ? t(
+          jointWeb || search?.medical
+            ? 'modelSettings.consentJointCalendarWebTitle'
+            : 'modelSettings.consentJointCalendarTitle',
+        )
+      : search?.medical
+        ? t(
+            remote
+              ? 'modelSettings.consentJointConversationMedicalTitle'
+              : 'modelSettings.consentMedicalTitle',
+          )
+        : jointWeb
+          ? t('modelSettings.consentJointConversationWebTitle')
+          : t('medicalAppointments.inferenceDisclosure.title'),
     information: copy.join('\n'),
     notice: t('modelSettings.consentContinuing'),
   };
@@ -60,7 +78,8 @@ export function useModelSettingsReview(
   key: string,
   store: ProviderSelectionStore,
 ) {
-  const { reuseApproval } = useModelSettingsServices();
+  const { reuseApproval, prepareJointCalendarReview } =
+    useModelSettingsServices();
   const { confirmDisclosure, disclosureSheet, cancelDisclosure } =
     useSettingsDisclosure();
   const latest = useRef({ owner, key });
@@ -104,7 +123,19 @@ export function useModelSettingsReview(
       !controller.signal.aborted &&
       witness();
     try {
-      const disclosure = enabled && disclosureFor(slot, option, search);
+      const calendar =
+        enabled && slot === 'conversation'
+          ? await prepareJointCalendarReview?.(
+              option,
+              search,
+              controller.signal,
+              current,
+              store,
+            )
+          : null;
+      if (!current() || (calendar && !calendar.isCurrent())) return false;
+      const disclosure =
+        enabled && disclosureFor(slot, option, search, calendar ?? undefined);
       if (
         disclosure &&
         (await reuseApproval?.(
@@ -116,16 +147,19 @@ export function useModelSettingsReview(
             isCurrent: current,
           },
           store,
-        ))
+        )) &&
+        (!calendar || (await calendar.alreadyApproved()))
       )
-        return current();
+        return current() && (!calendar || calendar.isCurrent());
       if (
         disclosure &&
         !(await confirmDisclosure(disclosure, controller.signal))
       )
         return false;
-      if (!current()) return false;
-      await commit(current);
+      if (!current() || (calendar && !calendar.isCurrent())) return false;
+      if (calendar) await calendar.commit();
+      else await commit(current);
+      // The joint writer already settled; a later Calendar-only change must not strand the Conversation picker.
       return current();
     } finally {
       if (pending.current === controller) pending.current = null;

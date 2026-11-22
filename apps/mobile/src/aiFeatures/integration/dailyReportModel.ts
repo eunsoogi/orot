@@ -1,6 +1,7 @@
 import { dailyReportConsentRequest } from './dailyReportConsentRequest';
 import * as reportAuth from './dailyReportAuthorizationWait';
-import { dailyReportModelPrompt } from './dailyReportModelPrompt';
+import { buildDailyReportModelRequest } from './dailyReportModelRequest';
+import type { DailyReportDispatchAuthority } from './dailyReportDispatchAuthority';
 import {
   parseReportModelResponse,
   type ReportModelFact,
@@ -16,10 +17,7 @@ import type {
   ConsentDecision,
   ExecutionConsentPort,
 } from '@orot/agent-runtime';
-import type {
-  LanguageModelProvider,
-  LanguageModelRequest,
-} from '@orot/model-runtime';
+import type { LanguageModelProvider } from '@orot/model-runtime';
 import type { SelectedAiResolution } from './provider';
 import { stableJson } from './evidenceUtils';
 import {
@@ -43,6 +41,7 @@ export async function selectDailyReportFacts(input: {
   signal: AbortSignal;
   timeoutMs: number | null;
   deadlineContext: DailyReportDeadlineContext;
+  dispatchAuthority?: DailyReportDispatchAuthority;
   revalidate: (signal: AbortSignal) => Promise<boolean>;
 }): Promise<
   | { status: 'selected'; indexes: number[]; analysis: ReportModelAnalysis[] }
@@ -52,6 +51,7 @@ export async function selectDailyReportFacts(input: {
   input.deadlineContext.stage = 'workflow';
   const controller = new AbortController();
   let timeout = false;
+  let authorizationRetained = false;
   const stop = () => controller.abort();
   input.signal.addEventListener('abort', stop, { once: true });
   const timer = reportAuth.reportProcessingDeadline(
@@ -62,25 +62,7 @@ export async function selectDailyReportFacts(input: {
     },
     input.timeoutMs,
   );
-  const request: LanguageModelRequest = {
-    messages: [
-      {
-        role: 'system',
-        content: dailyReportModelPrompt(input.allowAnalysis !== false),
-      },
-      {
-        role: 'user',
-        content: JSON.stringify({
-          context: input.reportContext,
-          facts: input.facts.map((fact, index) => ({
-            index,
-            text: fact.text,
-            role: fact.role ?? 'evidence',
-          })),
-        }),
-      },
-    ],
-  };
+  const request = buildDailyReportModelRequest(input);
   const original = stableJson(request);
   const cancelled = () => ({
     status: 'failed' as const,
@@ -232,6 +214,16 @@ export async function selectDailyReportFacts(input: {
     if (!parsed) return invalidOutput();
     providerDiagnostic('daily_report', 'validation', 'completed');
     input.deadlineContext.stage = 'workflow';
+    if (input.selected.remoteProcessing && input.dispatchAuthority)
+      authorizationRetained = input.dispatchAuthority.retain(
+        input.consent,
+        outbound,
+        () =>
+          !controller.signal.aborted &&
+          stableJson(request) === original &&
+          consentCurrent(),
+        () => controller.abort(),
+      );
     return { status: 'selected', ...parsed };
   } catch (error) {
     if (!controller.signal.aborted) {
@@ -244,6 +236,6 @@ export async function selectDailyReportFacts(input: {
   } finally {
     timer.dispose();
     input.signal.removeEventListener('abort', stop);
-    controller.abort();
+    if (!authorizationRetained) controller.abort();
   }
 }

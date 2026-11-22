@@ -15,6 +15,8 @@ export interface RestoredVisitQuestion {
 
 export interface RestoredSavedVisitQuestions {
   readonly appointmentId: string;
+  /** Display-only: never copy saved dates into editable/generated question objects. */
+  readonly savedAppointmentDates?: ReadonlyMap<string, string>;
   readonly questions: readonly RestoredVisitQuestion[];
   readonly caveats: readonly import('../../nextVisitQuestions/types').EvidenceCaveat[];
   /** Explains which source locations and generated metadata are absent from persisted questions. */

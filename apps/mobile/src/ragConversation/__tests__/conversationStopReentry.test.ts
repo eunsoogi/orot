@@ -20,7 +20,7 @@ function setup(saving = false) {
     pendingTurns,
     snapshots,
     activities: new Map([[1, { finish } as never]]),
-    steering: { clear, dispose: jest.fn() },
+    steering: { dropActive: clear },
     lifetime: {
       status: () => undefined,
       interrupt: jest.fn(),

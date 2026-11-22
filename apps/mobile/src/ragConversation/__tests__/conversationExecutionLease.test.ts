@@ -100,6 +100,8 @@ test('protected data loss during lease acquisition still ends the eventual lease
 
 test('foreground reconciliation catches an expiration whose event was missed', async () => {
   const f = fixture();
+  let phase: 'active' | 'background' = 'active';
+  f.adapter.currentPhase = () => phase;
   const interrupt = jest.fn();
   const end = await beginConversationExecutionLease(
     f.adapter,
@@ -107,6 +109,9 @@ test('foreground reconciliation catches an expiration whose event was missed', a
     interrupt,
   );
   jest.mocked(f.adapter.isActive).mockResolvedValue(false);
+  phase = 'background';
+  f.emit({ kind: 'phase' });
+  phase = 'active';
   f.emit({ kind: 'foreground' });
   await Promise.resolve();
   await Promise.resolve();

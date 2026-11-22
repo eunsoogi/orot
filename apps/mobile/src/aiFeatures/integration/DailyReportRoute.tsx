@@ -122,6 +122,12 @@ export function DailyReportRoute({
     revisionChanged,
     isToday,
   );
+  const regenerate = saved || revisionChanged || lookup?.status === 'stale';
+  const generateTitle = regenerate
+    ? 'dailyReport.regenerate'
+    : inline && reminder
+      ? null
+      : 'dailyReport.generate';
   const content = (
     <>
       {!navigationRouteKey && !inline ? (
@@ -223,15 +229,8 @@ export function DailyReportRoute({
           if (identity) state.retainResult(identity, runId);
         }}
       />
-      {canGenerate && !state.busy && !recoveryBusy ? (
-        <AppButton
-          title={t(
-            saved || revisionChanged || state.lookup?.status === 'stale'
-              ? 'dailyReport.regenerate'
-              : 'dailyReport.generate',
-          )}
-          onPress={state.generate}
-        />
+      {generateTitle && canGenerate && !state.busy && !recoveryBusy ? (
+        <AppButton title={t(generateTitle)} onPress={state.generate} />
       ) : null}
     </>
   );

@@ -4,9 +4,11 @@ import XCTest
 /// Real settings approval and manually released synthetic batches expose stable native stage boundaries.
 extension AppointmentConsentUITests {
     @MainActor
-    func testApprovedBatchesExposeMeasuredProgressAndAllResultPages() throws {
+    func testApprovedBatchesExposeMeasuredProgressAndScrollableResults() throws {
         let app = XCUIApplication()
         let sceneSession = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_WIDE_STAGE_VALIDATION"] == "YES" ? UUID().uuidString : nil
+        let expectDuo = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_DUO_DOCK_EXPECTATION"] == "YES"
+        let motionOnly = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_MOTION_ONLY"] == "YES"
         let device = XCUIDevice.shared
         let priorOrientation = device.orientation
         if sceneSession != nil {
@@ -47,6 +49,8 @@ extension AppointmentConsentUITests {
         try startMeasuredClassification(app, anchor: anchor)
 
         try assertHeldProgress(app, percent: 0, calls: 1, saving: false, anchor: anchor)
+        let originalCircle = node(app, "classification-circle-slot").frame
+        let originalLane = node(app, "classification-moving-stage").frame
         tap(app, "classification-release-response")
         try assertHeldProgress(app, percent: 88, calls: 2, saving: false, anchor: anchor)
         tap(app, "classification-release-response")
@@ -56,8 +60,18 @@ extension AppointmentConsentUITests {
         UITestConditions.value(node(app, "calendar-classification-synthetic-calendar-save"), equals: "syntheticCalendarSave=confirmed")
         XCTAssertFalse(node(app, "medical-appointment-progress").exists)
         XCTAssertFalse(node(app, "medical-appointment-confirmation").exists)
-        let pages = try readAllResultPages(app, anchor: anchor)
-        let readable = pages.joined().filter { !$0.isWhitespace }
+        let dock = try assertClassificationCircleDock(app, original: originalCircle, originalLane: originalLane, expectLeft: expectDuo, requireDuoWidth: expectDuo)
+        if motionOnly {
+            XCTContext.runActivity(named: "Classification motion-only: initial center → dock → confirmed recenter (no scroll or Back)") { _ in
+                assertClassificationCircleReturn(app, dock: dock, expectLeft: expectDuo)
+                let lane = node(app, "classification-moving-stage").frame
+                let recentered = node(app, "classification-circle-slot").frame
+                XCTContext.runActivity(named: "Classification motion-only recentered: dock=\(dock), lane=\(lane), circle=\(recentered)") { _ in }
+            }
+            return
+        }
+        let results = try readScrollableResults(app, anchor: anchor)
+        let readable = results.joined().filter { !$0.isWhitespace }
         // Indexed segments make loss/repetition observable even when native line breaks split a long title.
         let title = (1 ... 30).map { "합성 긴 진료 예약 \($0)" }.joined(separator: " ").filter { !$0.isWhitespace }
         XCTAssertTrue(readable.contains(title), "Every segment of the long synthetic title must remain reachable")
@@ -67,15 +81,9 @@ extension AppointmentConsentUITests {
         XCTAssertFalse(readable.contains("합성진료예약10"))
         XCTAssertTrue(readable.contains("분류근거:의료방문·검사일정"))
         XCTAssertEqual(node(app, "calendar-classification-synthetic-provider-calls").label, "syntheticProviderCalls=2")
-        // Going back traverses the same native pages, not a second request or a synthetic page counter.
-        for expected in pages.dropLast().reversed() {
-            tap(app, "medical-appointment-previous-result")
-            waitForText(node(app, "classification-page-text"), expected: expected)
-            assertStageActions(app)
-        }
-        XCTAssertFalse(node(app, "medical-appointment-previous-result").isEnabled)
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-long-result-returned", testCase: self)
+        assertClassificationCircleReturn(app, dock: dock, expectLeft: expectDuo)
     }
 
     @MainActor
@@ -123,55 +131,78 @@ extension AppointmentConsentUITests {
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-progress-\(percent)", testCase: self)
     }
 
+    /// The single detail surface has a dedicated Back action and no pagination.
     @MainActor
-    private func readAllResultPages(_ app: XCUIApplication, anchor: ClassificationStageWindowAnchor?) throws -> [String] {
-        var pages: [String] = []
-        for _ in 0 ..< 256 {
-            let page = node(app, "classification-page-text")
-            XCTAssertTrue(page.waitForAppearance())
-            let text = UITestConditions.text(page)
-            XCTAssertFalse(text.isEmpty)
-            let viewport = node(app, "classification-text-viewport")
-            XCTAssertTrue(viewport.frame.insetBy(dx: -1, dy: -1).contains(page.frame), app.debugDescription)
-            assertStageActions(app)
-            try captureStageLayout(app, stage: "result-\(pages.count)", anchor: anchor)
-            pages.append(text)
-            let next = node(app, "medical-appointment-next-result")
-            if !next.isEnabled {
-                return pages
-            }
-            next.tap()
-            let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-                UITestConditions.text(page) != text
-            }, object: nil)
-            XCTAssertEqual(UITestConditions.wait(for: [changed]), .completed)
+    func readSingleResultDetail(_ app: XCUIApplication) -> [String] {
+        XCTAssertFalse(node(app, "medical-appointment-next-result").exists)
+        XCTAssertFalse(node(app, "medical-appointment-previous-result").exists)
+        assertStageActions(app)
+        let back = node(app, "classification-detail-back"), detail = node(app, "classification-result-reader")
+        XCTAssertGreaterThanOrEqual(min(back.frame.width, back.frame.height), 44)
+        XCTAssertTrue(detail.frame.contains(back.frame) && back.isHittable)
+        let id = "classification-detail-fields", markerID = "classification-layout-receipt"
+        let matches = app.descendants(matching: .any).matching(identifier: id)
+        let observed = (try? JSONSerialization.jsonObject(with: Data(UITestConditions.text(node(app, markerID)).utf8))) as? [String: Any]
+        guard let bounds = observed?["windowFrameInScreen"] as? [String: Double],
+              let x = bounds["x"], let y = bounds["y"], let width = bounds["width"], let height = bounds["height"],
+              let owner = try? FormWindowOwnership.resolveStage(
+                  app, observed: CGRect(x: x, y: y, width: width, height: height),
+                  required: ["medical-appointment-results", "classification-result-reader", "classification-detail-back", id, markerID],
+              )
+        else {
+            XCTFail("Unpaired detail viewport: tagged=\(matches.count) windows=\(app.windows.count)")
+            return []
         }
-        XCTFail("Synthetic nine-result pagination did not terminate; refusing an unbounded native journey")
-        return pages
+        let tagged = owner.descendants(matching: .any).matching(identifier: id).firstMatch
+        let nested = tagged.scrollViews // Fabric may place the identifier on a wrapper.
+        let fields = tagged.elementType == .scrollView ? tagged : nested.firstMatch
+        XCTContext.runActivity(named: "Detail viewport evidence: role=\(tagged.elementType.rawValue) nested=\(nested.count) window=\(owner.frame) detail=\(detail.frame) back=\(back.frame) tag=\(tagged.frame) scroll=\(fields.exists ? fields.frame : .null)") { _ in }
+        guard nested.count == (tagged.elementType == .scrollView ? 0 : 1),
+              fields.exists, FormScrollGeometry.valid(fields.frame), detail.frame.contains(fields.frame), tagged.frame.insetBy(dx: -1, dy: -1).contains(fields.frame),
+              back.frame.maxX <= fields.frame.minX + 1
+        else {
+            XCTFail("The detail must own one unobscured native scroll target")
+            return []
+        }
+        let title = node(app, "classification-detail-value-0")
+        XCTAssertTrue(title.exists && title.frame.intersects(fields.frame))
+        let titleText = UITestConditions.text(title)
+        let reason = node(app, "classification-detail-value-3")
+        for _ in 0 ..< 12 {
+            if reason.exists, reason.frame.intersects(fields.frame) {
+                break
+            }
+            fields.swipeUp()
+        }
+        XCTAssertTrue(reason.exists && reason.frame.intersects(fields.frame))
+        let reasonLabel = node(app, "classification-detail-label-3")
+        let reasonText = UITestConditions.text(reasonLabel) + ":" + UITestConditions.text(reason)
+        tap(app, "classification-detail-back")
+        return [titleText, reasonText]
     }
 
     @MainActor
-    private func assertStageActions(_ app: XCUIApplication) {
-        let footer = node(app, "classification-stage-footer")
-        XCTAssertTrue(footer.exists && app.frame.contains(footer.frame))
-        for id in ["medical-appointment-previous-result", "medical-appointment-import", "medical-appointment-next-result"] {
-            let action = node(app, id)
-            XCTAssertTrue(action.exists)
+    func assertStageActions(_ app: XCUIApplication) {
+        let slot = node(app, "classification-circle-slot")
+        let primary = node(app, "medical-appointment-import")
+        XCTAssertTrue(slot.exists && slot.frame.insetBy(dx: -1, dy: -1).contains(primary.frame))
+        XCTAssertGreaterThanOrEqual(primary.frame.height, 44)
+        XCTAssertEqual(primary.frame.width, primary.frame.height, accuracy: 1)
+        if primary.isEnabled {
+            XCTAssertTrue(primary.isHittable)
+        }
+        let paging = ["medical-appointment-previous-result", "medical-appointment-next-result"].map { node(app, $0) }
+        XCTAssertEqual(paging[0].exists, paging[1].exists)
+        for action in paging where action.exists {
+            let container = node(app, "classification-stage-footer")
+            XCTAssertTrue(container.exists && app.frame.contains(container.frame))
             XCTAssertGreaterThanOrEqual(action.frame.width, 44)
             XCTAssertGreaterThanOrEqual(action.frame.height, 44)
-            XCTAssertTrue(footer.frame.insetBy(dx: -1, dy: -1).contains(action.frame))
+            XCTAssertTrue(container.frame.insetBy(dx: -1, dy: -1).contains(action.frame))
             if action.isEnabled {
                 XCTAssertTrue(action.isHittable)
             }
         }
-    }
-
-    @MainActor
-    private func waitForText(_ element: XCUIElement, expected: String) {
-        let changed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            UITestConditions.text(element) == expected
-        }, object: nil)
-        XCTAssertEqual(UITestConditions.wait(for: [changed]), .completed)
     }
 }
 

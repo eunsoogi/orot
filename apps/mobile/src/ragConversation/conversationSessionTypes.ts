@@ -13,9 +13,17 @@ export type ConversationSessions = ReturnType<
   typeof import('./conversationSessions').createConversationSessions
 >;
 
+export type { SourceDeletionEvent } from '../storage/localDataClearEvents';
+
 type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
+  readonly useProtectedPromptHistory?: boolean;
+  readonly ordinaryMemory?: import('./ordinaryConversationMemoryTask').OrdinaryConversationMemoryPort;
+  readonly readSavedHistoryDisplay?: import('./conversationSavedHistoryDisplay').ReadSavedHistoryDisplay;
+  readonly readPlainContextPage?: ReturnType<
+    typeof import('../storage/plainConversationContext').createPlainConversationContextReader
+  >;
   readonly restoreSessionPage?: import('./conversationHistoryPage').ReadConversationHistoryPage;
   /** Resolve the saved model and its protected conversation lease without inference. */
   readonly continuousSession?: (signal: AbortSignal) => Promise<{
@@ -23,7 +31,16 @@ export interface ConversationSessionOptions {
     version: number;
     updatedAt: string;
     model: { providerId: string; modelId: string };
+    selectionCurrent?: () => boolean;
   }>;
+  /** Read-only proof of an already-admitted native ChatGPT owner, not remote eligibility. */
+  readonly prepareWarmSend?: (
+    lease: { readonly id: string; readonly version: number },
+    signal: AbortSignal,
+  ) => Promise<
+    | import('./conversationWarmAdmission').WarmConversationSelectionProof
+    | undefined
+  >;
   readonly restoreSteering?: (
     sessionId: string,
     requestId: string,
@@ -128,6 +145,7 @@ export type PendingTurn = {
   committed: boolean;
   summarySaving: boolean;
   summaryCommitted: boolean;
+  readonly liveFinalResponseId?: number;
   readonly coldResponseId?: number;
   coldStopping?: boolean;
   readonly stopCold?: () => void;
@@ -175,6 +193,8 @@ export interface ConversationSession {
   } | null;
   readonly busy: boolean;
   readonly preparingSend?: boolean;
+  /** Display only until the exact choice becomes an owned outgoing request. */
+  readonly preparingQuickChoice?: import('./conversationQuickChoicePreview').PreparingQuickChoice;
   readonly leaseRefreshRequired?: boolean;
   readonly error: string;
   readonly errorSurface?: 'composerPreflight';
@@ -182,10 +202,12 @@ export interface ConversationSession {
   readonly retryingSave?: boolean;
   readonly restoreFailed?: boolean;
   readonly restoring?: boolean;
+  readonly savedHistoryDisplay?: readonly import('./conversationSavedHistoryDisplay').SavedHistoryDisplayItem[];
   readonly historyHasMore?: boolean;
   readonly historyLoading?: boolean;
   readonly historyLoadFailed?: boolean;
   readonly modelSelectionPending?: boolean;
+  readonly modelSelectionKeepsDisplay?: boolean;
   readonly modelSelectionFailed?: boolean;
   readonly deletionError?: string;
   readonly quarantined?: boolean;
@@ -196,3 +218,8 @@ export interface ConversationSession {
   readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
   readonly taskCards?: readonly import('./conversationTaskState').RetainedConversationTask[];
 }
+
+export type BindConversationSender = (
+  sender: ConversationSender,
+  warm?: import('./conversationWarmAdmission').WarmConversationPreparation,
+) => ConversationSender;

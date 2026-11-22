@@ -1,3 +1,4 @@
+import type { ColdDialogueCurrent } from './coldPromptDialogue';
 import type { JsonObject } from '@orot/model-runtime';
 import type { LocalActionTool } from '@orot/agent-runtime';
 import type { ConversationColdResumeDescriptor } from '../../storage/conversationColdResumeDescriptor';
@@ -23,6 +24,7 @@ export async function restoreColdConversationActions(
   input: {
     descriptor: ConversationColdResumeDescriptor;
     signal: AbortSignal;
+    dialogueCurrent?: ColdDialogueCurrent;
   } & Omit<
     Parameters<typeof conversationHistoryAction>[0],
     'question' | 'admittedQuestions'
@@ -48,6 +50,7 @@ export async function restoreColdConversationActions(
     d.reconstruction,
     input.registry,
     input.signal,
+    input.dialogueCurrent,
   );
   const actions = conversationHistoryAction({
     data: input.data,

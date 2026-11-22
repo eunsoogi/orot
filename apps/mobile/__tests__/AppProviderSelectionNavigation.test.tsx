@@ -11,6 +11,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { openSqliteTestDatabase } from '../../../packages/storage/__tests__/sqliteTestDatabase';
+import { createSettingsConsentStorage } from '../src/storage/settingsConsentStorage';
+import { settingsConsentRepository } from '../src/storage/settingsConsentRepository';
 import { Alert } from 'react-native';
 import type { AlertButton } from 'react-native';
 import type { ComponentProps } from 'react';
@@ -30,6 +33,10 @@ import {
 import type { AiFeatureServiceDependencies } from '../src/aiFeatures/integration/featureServices';
 import App from '../App';
 import { createAppointmentStore } from '../test-helpers/appointmentStore';
+
+jest.mock('../src/storage/settingsConsentRepository', () => ({
+  settingsConsentRepository: jest.fn(),
+}));
 
 // Route behavior is tested with native storage unopened and deterministic safe-area insets.
 jest.mock('../src/healthkit/commonObservations/importLocal', () => ({
@@ -103,30 +110,44 @@ test('routes Settings provider controls through shared Back', async () => {
 });
 
 test('retains a committed selection without a model subtitle on Settings', async () => {
-  const store = persistedSelectionStore(null);
-  await renderApp({
-    aiFeatureServiceDependencies: providerDependencies(store),
-  });
+  const sqlite = openSqliteTestDatabase(':memory:');
+  jest
+    .mocked(settingsConsentRepository)
+    .mockResolvedValue(createSettingsConsentStorage(sqlite.database));
+  try {
+    const store = persistedSelectionStore(null);
+    await renderApp({
+      aiFeatureServiceDependencies: providerDependencies(store),
+    });
 
-  await openProviderSettings();
-  await waitFor(() =>
-    expect(screen.getByTestId('provider-option-0')).toBeTruthy(),
-  );
-  await fireEvent.press(screen.getByTestId('provider-option-0'));
-  await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
+    await openProviderSettings();
+    await waitFor(() =>
+      expect(screen.getByTestId('provider-option-0')).toBeTruthy(),
+    );
+    await fireEvent.press(screen.getByTestId('provider-option-0'));
+    await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
 
-  await screen.findByTestId('settings-title');
-  expect(screen.queryByText(apple.provider.displayName)).toBeNull();
-  expect(await store.load()).toEqual({
-    providerId: apple.provider.id,
-    modelId: apple.modelId,
-  });
-  await fireEvent.press(screen.getByTestId('settings-open-provider'));
-  await waitFor(() =>
     expect(
-      screen.getByTestId('provider-option-0').props.accessibilityState.selected,
-    ).toBe(true),
-  );
+      await screen.findByTestId('inference-disclosure-recipient'),
+    ).toHaveTextContent('Europe PMC');
+    expect(await store.load()).toBeNull();
+    await fireEvent.press(screen.getByTestId('inference-disclosure-allow'));
+    await screen.findByTestId('settings-title');
+    expect(screen.queryByText(apple.provider.displayName)).toBeNull();
+    expect(await store.load()).toEqual({
+      providerId: apple.provider.id,
+      modelId: apple.modelId,
+    });
+    await fireEvent.press(screen.getByTestId('settings-open-provider'));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('provider-option-0').props.accessibilityState
+          .selected,
+      ).toBe(true),
+    );
+  } finally {
+    sqlite.close();
+  }
 });
 
 test('guards a pending provider choice through shared Back', async () => {

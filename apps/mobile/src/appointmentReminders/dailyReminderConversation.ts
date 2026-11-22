@@ -114,6 +114,7 @@ export function createDailyReminderConversation(input: {
         if (input.canEnter?.() !== false && stillOwned()) {
           dailyReminderPromptRendezvous(input.sessions).offer({
             sessionId: owner,
+            reportIdentity: identity,
             rootKey: root.currentRoute.key,
             isCurrent: stillOwned,
           });

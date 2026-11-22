@@ -1,3 +1,4 @@
+import { visibleSavedHistoryDisplay } from './conversationSavedHistoryDisplay';
 import type {
   ConversationSession,
   ConversationSessions,
@@ -20,6 +21,7 @@ export function conversationHistoryRecoveryProps(
     store.toolSourceSessionId?.(session.id) === null &&
     !session.preparingSend;
   return {
+    savedHistoryDisplay: visibleSavedHistoryDisplay(session, active),
     voiceEndCards: session.taskCards?.filter(
       card => card.task.kind === 'voice_end',
     ),

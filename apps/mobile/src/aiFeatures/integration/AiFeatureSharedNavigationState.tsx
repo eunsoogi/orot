@@ -3,7 +3,10 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { FeatureScreenRoute } from './aiFeatureNavigation';
 import { NextVisitQuestionsSessionProvider } from './NextVisitQuestionsSession';
-import { ConversationSessionsProvider } from '../../ragConversation/ConversationSessionsContext';
+import {
+  ConversationSessionsProvider,
+  type SubscribeRootConversationVisibility,
+} from '../../ragConversation/ConversationSessionsContext';
 import type { DiseaseHypothesisAnalysis } from '../../diseaseHypotheses/types';
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
 
@@ -47,15 +50,22 @@ const AiFeatureSharedNavigationStateContext =
 export function AiFeatureSharedNavigationStateProvider({
   children,
   conversationSessionOptions,
+  subscribeRootConversationVisibility,
 }: {
   readonly children: ReactNode;
   readonly conversationSessionOptions?: ConversationSessionOptions;
+  readonly subscribeRootConversationVisibility?: SubscribeRootConversationVisibility;
 }) {
   const [state, setState] = useState(initialState);
   const value = useMemo(() => ({ state, setState }), [state]);
   return (
     <AiFeatureSharedNavigationStateContext.Provider value={value}>
-      <ConversationSessionsProvider options={conversationSessionOptions}>
+      <ConversationSessionsProvider
+        options={conversationSessionOptions}
+        subscribeRootConversationVisibility={
+          subscribeRootConversationVisibility
+        }
+      >
         <NextVisitQuestionsSessionProvider
           selectedAiRevision={state.selectedAiRevision}
         >
@@ -66,8 +76,13 @@ export function AiFeatureSharedNavigationStateProvider({
   );
 }
 
+/** In-app Settings shares the mounted scene; standalone previews may not. */
+export function useOptionalAiFeatureSharedNavigationState() {
+  return useContext(AiFeatureSharedNavigationStateContext);
+}
+
 export function useAiFeatureSharedNavigationState() {
-  const context = useContext(AiFeatureSharedNavigationStateContext);
+  const context = useOptionalAiFeatureSharedNavigationState();
   if (!context) {
     throw new Error('AI feature navigation needs its shared state provider.');
   }

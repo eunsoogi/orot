@@ -79,6 +79,27 @@ export function createConsentAuthority(
       observedGeneration = state.generation;
       return state;
     },
+    /** Review-only proof of denied authority. A failed read/mutation is not an
+     * unchecked setting, and this witness cannot authorize provider dispatch. */
+    async reviewInactive(): Promise<(() => boolean) | null> {
+      const pending = tail;
+      const captured = revision;
+      try {
+        await pending;
+        if (pending !== tail || captured !== revision) return null;
+        const state = parse(await persistence.read());
+        if (
+          pending !== tail ||
+          captured !== revision ||
+          !state ||
+          state.status === 'active'
+        )
+          return null;
+        return () => pending === tail && captured === revision;
+      } catch {
+        return null;
+      }
+    },
     /** Synchronous dispatch fence issued only after current() read the durable owner.
      * Any queued mutation invalidates it immediately, before native storage awaits. */
     witness(generation: string): () => boolean {
@@ -117,6 +138,31 @@ export function createConsentAuthority(
       });
     },
     suspend: () => transition('suspended'),
+    /** Read rollback provenance inside the same serialized mutation that advances
+     * this owner. A prior snapshot taken before entering the queue can be stale. */
+    suspendForJointReplacement(stillValid: () => boolean) {
+      return serialized(async owner => {
+        const raw = await persistence.read();
+        const previous = parse(raw);
+        if (
+          !stillValid() ||
+          owner !== revision ||
+          (raw !== null && !previous)
+        ) {
+          blocked = owner !== revision || previous?.status !== 'active';
+          throw new Error('Consent authority owner unavailable');
+        }
+        const next = parse({
+          version: 1,
+          generation: newGeneration(),
+          status: 'suspended',
+        });
+        if (!next || next.generation === previous?.generation)
+          throw new Error('Consent authority identity unavailable');
+        await persistence.write(next);
+        return { prior: previous?.status === 'active' ? previous : null, next };
+      });
+    },
     revoke: () => transition('revoked'),
     /** Only an explicit new settings decision may issue a fresh active generation. */
     activate: () => transition('active'),

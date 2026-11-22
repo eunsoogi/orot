@@ -68,3 +68,18 @@ export async function captureColdRagConversationState(input: {
     }),
   );
 }
+
+/** The resumed factory requires a complete protected reconstruction. */
+export function assertColdRagFactoryState(saved: JsonObject) {
+  if (
+    !saved.external ||
+    typeof saved.external !== 'object' ||
+    Array.isArray(saved.external) ||
+    !saved.registry ||
+    !saved.research ||
+    !saved.scope ||
+    !Array.isArray(saved.sources) ||
+    !Array.isArray(saved.evidenceBatches)
+  )
+    throw new Error('Incomplete protected cold factory state.');
+}

@@ -3,13 +3,11 @@ import { AppState } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { SavedMemoryBrowser } from '../SavedMemoryBrowser';
 
-function expectFilledSection() {
-  expect(screen.getByTestId('saved-memory-browser')).toHaveStyle({
-    backgroundColor: appColors.surface,
-    borderWidth: 0,
-    borderRadius: 18,
-    padding: 16,
-  });
+function expectUnfilledLibraryShell() {
+  const frame = screen.getByTestId('saved-memory-browser');
+  expect(frame).toHaveStyle({ paddingHorizontal: 20, paddingTop: 24 });
+  expect(frame).not.toHaveStyle({ backgroundColor: appColors.surface });
+  expect(screen.queryByTestId('saved-memory-rows')).toBeNull();
 }
 
 beforeEach(() => {
@@ -17,20 +15,20 @@ beforeEach(() => {
   jest.mocked(AppState.addEventListener).mockReturnValue({ remove: jest.fn() });
 });
 
-it('retains the filled borderless section while loading and after empty completion', async () => {
+it('keeps loading and empty states outside a rows-only surface', async () => {
   let complete!: (rows: []) => void;
   const load = () =>
     new Promise<[]>(resolve => {
       complete = resolve;
     });
   await render(<SavedMemoryBrowser load={load} />);
-  expectFilledSection();
+  expectUnfilledLibraryShell();
   await act(async () => complete([]));
   expect(screen.getByText('아직 저장된 기억이 없어요.')).toBeTruthy();
-  expectFilledSection();
+  expectUnfilledLibraryShell();
 });
 
-it('retains the filled borderless section around read failure and retry', async () => {
+it('keeps read failure and retry outside a rows-only surface', async () => {
   await render(
     <SavedMemoryBrowser
       load={async () => {
@@ -39,5 +37,5 @@ it('retains the filled borderless section around read failure and retry', async 
     />,
   );
   expect(screen.getByText('다시 시도')).toBeTruthy();
-  expectFilledSection();
+  expectUnfilledLibraryShell();
 });

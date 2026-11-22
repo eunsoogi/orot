@@ -35,7 +35,9 @@ test('explicit composer start reaches the real Live modal without the discarded 
   const previous = AppState.currentState;
   AppState.currentState = 'active';
   const start = jest.fn();
+  let updateState: Parameters<typeof createRealtimeVoiceSession>[0]['changed'];
   jest.mocked(createRealtimeVoiceSession).mockImplementation(input => {
+    updateState = input.changed;
     start.mockImplementation(() =>
       input.changed({ phase: 'authorizing', identity: null }),
     );
@@ -72,6 +74,14 @@ test('explicit composer start reaches the real Live modal without the discarded 
     expect(await screen.findByText('실시간 음성 대화')).toBeTruthy();
     expect(screen.getByTestId('voice-call-end')).toBeTruthy();
     expect(screen.queryByText(/API 음성 처리|기존 기록 미전송/)).toBeNull();
+    await act(async () => {
+      updateState({ phase: 'listening', identity: null });
+    });
+    expect(screen.queryByTestId('voice-call-finish')).toBeNull();
+    expect(screen.queryByText(/완료를 눌러/)).toBeNull();
+    expect(
+      screen.getByText('듣고 있어요. 잠시 멈추면 답변을 준비해요.'),
+    ).toBeTruthy();
   } finally {
     AppState.currentState = previous;
   }

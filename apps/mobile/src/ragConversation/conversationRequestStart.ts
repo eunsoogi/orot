@@ -1,3 +1,4 @@
+import { confirmedQuickChoiceId } from './conversationQuickChoicePreview';
 import { getRagConversationCopy } from './copy';
 import { t } from '../i18n';
 import type {
@@ -26,17 +27,22 @@ export function prepareConversationRequest(
     return null;
 
   const copy = getRagConversationCopy();
+  const userMessageId =
+    confirmedQuickChoiceId(session, explicitQuestion, question, hasPhoto) ??
+    nextId();
+  const responseId = nextId();
   const request: PendingTurn = {
     question,
-    userMessageId: nextId(),
+    userMessageId,
+    liveFinalResponseId: responseId,
     restorePromptToComposer,
     saving: false,
     committed: false,
     summarySaving: false,
     summaryCommitted: false,
   };
-  const responseId = nextId();
   const change: Partial<ConversationSession> = {
+    preparingQuickChoice: undefined,
     ...(restorePromptToComposer ? { draft: '' } : {}),
     title: session.messages.length
       ? session.title

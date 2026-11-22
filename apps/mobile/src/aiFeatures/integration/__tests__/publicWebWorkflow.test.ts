@@ -57,7 +57,7 @@ test('denied search still returns the local analysis with a visible limitation',
     throw new Error('Expected local result');
   expect(result.result.value.hypotheses[0]?.summary).toBe('기록 요약');
   expect(result.result.value.hypotheses[0]?.missingData.join(' ')).toContain(
-    '동의가 없어',
+    '동의를 확인하지 못해',
   );
 });
 
@@ -100,7 +100,7 @@ test('denied public-query permission preserves the local answer without switchin
   );
   expect(result.status).toBe('answer');
   if (result.status !== 'answer') throw new Error('Expected local answer');
-  expect(result.answer).toContain('공개 웹검색 동의가 없어');
+  expect(result.answer).toContain('공개 웹검색 동의를 확인하지 못해');
   expect(run.search).not.toHaveBeenCalled();
   expect(run.literature.search).not.toHaveBeenCalled();
   expect(run.generate).toHaveBeenCalledTimes(2);

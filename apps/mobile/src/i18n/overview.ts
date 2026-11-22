@@ -3,8 +3,12 @@ export const overviewKo = {
   'visitDayQuestions.title': '진료 당일 물어볼 질문',
   'visitDayQuestions.empty':
     '이 진료에 저장한 질문이 아직 없어요. 대화에서 진료 질문을 준비한 뒤 검토해 저장해 주세요.',
-  'visitDayQuestions.readOnly':
-    '검토해 저장한 질문을 읽는 화면이에요. 새 질문을 생성하거나 기존 기록을 변경하지 않아요.',
+  'visitDayQuestions.readOnly': '검토해 저장한 질문을 읽기만 할 수 있어요.',
+  'visitDayQuestions.selectedAppointment': '선택한 진료',
+  'visitDayQuestions.currentQuestions': '이 진료에 저장한 질문',
+  'visitDayQuestions.originalDate': '이전 진료 일정에 맞춰 준비한 질문',
+  'visitDayQuestions.unknownDate': '연결 날짜를 확인할 수 없는 질문',
+  'visitDayQuestions.provenance': '저장된 근거 안내',
 
   'overview.title': '한눈에',
   'overview.healthOverview': '내 건강 한눈에',

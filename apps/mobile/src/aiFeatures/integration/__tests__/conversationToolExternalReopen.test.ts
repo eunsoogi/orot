@@ -161,6 +161,21 @@ test.each([
         new AbortController().signal,
       );
       const source = turn!.toolEvents![0]!.sources[0]!;
+      if (kind === 'web') {
+        // A corrupt sibling call used to poison both whole-session validation reads.
+        await storage.appendToolEvent({
+          sessionId: 'session',
+          messageId: 'turn',
+          createdAt: at,
+          sessionVersion: 0,
+          event: { ...event, callId: 'unrelated-call', sources: [] },
+        });
+        await connection.database.execute(
+          'UPDATE conversation_tool_events SET event_json = ? WHERE call_id = ?',
+          ['{}', 'unrelated-call'],
+        );
+        await expect(storage.readToolTurns('session')).rejects.toThrow();
+      }
       expect(
         await fresh.resolveToolSource(source, new AbortController().signal, {
           operationRunId: 'run',

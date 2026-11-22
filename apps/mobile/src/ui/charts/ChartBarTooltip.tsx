@@ -5,7 +5,7 @@ import { appColors } from '../../layout/appColors';
 import { t } from '../../i18n';
 import { ChartRenderer } from './ChartRenderer';
 import { chartAccessibilitySummary } from './chartAccessibilitySummary';
-import { formatChartValue } from './format';
+import { formatChartPointValue } from './format';
 import type { ChartData } from './types';
 
 type Props = {
@@ -14,10 +14,18 @@ type Props = {
   height: number;
   title: string;
   testID?: string;
+  kind?: 'bar' | 'range';
 };
 
 /** Overlays a wrapping callout at the native bar anchor without a below-chart row. */
-export function ChartBarTooltip({ data, width, height, title, testID }: Props) {
+export function ChartBarTooltip({
+  data,
+  width,
+  height,
+  title,
+  testID,
+  kind = 'bar',
+}: Props) {
   const { fontScale } = useWindowDimensions();
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const [calloutHeight, setCalloutHeight] = useState(0);
@@ -31,9 +39,7 @@ export function ChartBarTooltip({ data, width, height, title, testID }: Props) {
     ? [
         entry.point.x,
         entry.series.label,
-        entry.point.value === null
-          ? t('chart.missing')
-          : formatChartValue(data.metric, entry.point.value, entry.series.unit),
+        formatChartPointValue(data.metric, entry.point, entry.series.unit),
         entry.point.partial ? t('chart.partialValue') : '',
       ]
         .filter(Boolean)
@@ -80,15 +86,25 @@ export function ChartBarTooltip({ data, width, height, title, testID }: Props) {
           data={data}
           width={width}
           height={height}
-          kind="bar"
+          kind={kind}
           onBarSelect={selection => {
-            setAnchor(selection?.position ?? null);
-            if (!selection) return setSelected(null);
+            if (!selection) {
+              setAnchor(null);
+              setSelected(null);
+              return;
+            }
             const index = entries.findIndex(
               item =>
                 item.series.id === selection.seriesId &&
                 item.point.x === selection.x,
             );
+            // SVG range glyphs do not have Chart Kit's native deselect event.
+            if (kind === 'range' && selected === index && anchor) {
+              setAnchor(null);
+              setSelected(null);
+              return;
+            }
+            setAnchor(selection.position);
             setSelected(index < 0 ? null : index);
           }}
         />

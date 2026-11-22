@@ -12,6 +12,7 @@ export function conversationTimelinePages(
     version: number,
     cursor?: ConversationHistoryCursor,
     limit = 10,
+    displayOnly = false,
   ) => {
     if (
       !Number.isSafeInteger(limit) ||
@@ -45,7 +46,7 @@ export function conversationTimelinePages(
         `SELECT * FROM (WITH candidates AS (
         SELECT a.id, a.created_at, 'turn' AS kind, 1 AS priority FROM conversation_artifacts a WHERE a.session_id = ? AND NOT (${treatmentArtifactPredicate})
         UNION ALL SELECT message_id, MAX(created_at), 'turn', 2 FROM conversation_tool_events WHERE session_id = ? GROUP BY message_id
-        UNION ALL SELECT id, created_at, 'turn', 3 FROM conversation_requests WHERE session_id = ? AND session_version = ? AND status = 'interrupted'
+        UNION ALL SELECT id, created_at, 'turn', 3 FROM conversation_requests WHERE session_id = ? AND session_version = ? AND (status = 'interrupted' OR (? = 1 AND status = 'completed' AND local_outcome_json IS NOT NULL))
         UNION ALL SELECT id, created_at, 'task', 2 FROM conversation_task_cards WHERE session_id = ?
         UNION ALL SELECT id, created_at, 'task', 3 FROM conversation_voice_end_markers WHERE session_id = ?
         UNION ALL SELECT 'treatment:' || a.id, a.created_at, 'task', 1 FROM conversation_artifacts a WHERE a.session_id = ? AND (${treatmentArtifactPredicate})
@@ -59,6 +60,7 @@ export function conversationTimelinePages(
           sessionId,
           sessionId,
           version,
+          Number(displayOnly),
           sessionId,
           sessionId,
           sessionId,

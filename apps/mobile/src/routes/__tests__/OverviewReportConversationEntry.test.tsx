@@ -1,12 +1,5 @@
-import { Alert } from 'react-native';
-import { t } from '../../i18n';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
+import { AppointmentReminderProvider } from '../../appointmentReminders/AppointmentReminderContext';
 import { AppRouteContent } from '../AppRouteContent';
 import type { AppRouteContentProps } from '../AppProps';
 import { createConversationSessions } from '../../ragConversation/conversationSessions';
@@ -19,99 +12,60 @@ jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useIsFocused: () => true,
 }));
-jest.mock('../OverviewRoute', () => {
-  const { Button } = require('react-native');
-  return {
-    __esModule: true,
-    default: ({ onOpenDailyReport }: { onOpenDailyReport: () => void }) => (
-      <Button title="report" onPress={onOpenDailyReport} />
-    ),
-  };
-});
+jest.mock('../../navigation', () => ({
+  useNavigationLeaveStateRegistration: jest.fn(),
+}));
+jest.mock('../OverviewPreparedVisits', () => ({
+  OverviewPreparedVisits: () => null,
+}));
+jest.mock('../overview/OverviewMetrics', () => ({
+  OverviewMetrics: () => null,
+}));
 
-// Exercise the app callback, not a copied navigation rule; all records and services are synthetic.
-test('overview prepares an inline task and selects Conversation without pushing a route', async () => {
+test('the real Overview root has no daily report entry and still opens its guarded visit questions route', async () => {
   const selectTab = jest.fn();
-  const push = jest.fn();
+  const push = jest.fn(() => ({
+    name: 'visit-day-questions',
+    key: 'day-route',
+  }));
+  const runtime = { overviewPreparationTargets: new Map() };
   const id = mockStore.getSnapshot().activeId;
-  mockStore.setDraft(id, 'preserved synthetic draft');
+  mockStore.setDraft(id, 'Existing synthetic conversation draft');
+  const before = mockStore.getSnapshot();
   await render(
-    <AppRouteContent
-      {...({
-        actions: { route: { name: 'root', key: 'root' }, push },
-        activeTab: 'overview',
-        selectTab,
-        recordings: [],
-      } as unknown as AppRouteContentProps)}
-    />,
+    <AppointmentReminderProvider runtime={runtime as never}>
+      <AppRouteContent
+        {...({
+          actions: { route: { key: 'root', name: 'root' }, push },
+          activeTab: 'overview',
+          selectTab,
+          recordings: [],
+          appointmentState: 'ready',
+          nextAppointment: {
+            id: 'synthetic-visit',
+            effectiveAt: '2035-06-02T00:00:00Z',
+            recordedAt: '2026-10-20T09:00:00Z',
+            ingestedAt: '2026-10-20T09:00:00Z',
+            provenance: { origin: 'user_reported', sourceRecordIds: [] },
+            reviewState: { status: 'unreviewed' },
+            status: 'scheduled',
+            clinicLabel: '합성 의원',
+          },
+        } as unknown as AppRouteContentProps)}
+      />
+    </AppointmentReminderProvider>,
   );
-  await fireEvent.press(screen.getByText('report'));
-  await waitFor(() => expect(selectTab).toHaveBeenCalledWith('conversation'));
-  expect(push).not.toHaveBeenCalled();
-  expect(mockStore.getSnapshot().activeId).toBe(id);
-  expect(mockStore.getSnapshot().sessions).toHaveLength(1);
-  expect(mockStore.getSnapshot().sessions[0]).toMatchObject({
-    draft: 'preserved synthetic draft',
-    busy: false,
-    taskCards: [{ task: { kind: 'daily_report' } }],
-  });
-});
-
-test('overview reports storage failure without opening or replacing a conversation', async () => {
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-  const save = jest
-    .spyOn(mockStore, 'saveTaskCard')
-    .mockRejectedValue(new Error('synthetic storage failure'));
-  const selectTab = jest.fn();
-  const push = jest.fn();
-  await render(
-    <AppRouteContent
-      {...({
-        actions: { route: { name: 'root', key: 'root' }, push },
-        activeTab: 'overview',
-        selectTab,
-        recordings: [],
-      } as unknown as AppRouteContentProps)}
-    />,
+  expect(screen.getByTestId('overview-screen')).toBeTruthy();
+  expect(screen.queryByTestId('overview-open-daily-report')).toBeNull();
+  expect(screen.queryByRole('button', { name: '일일 보고서' })).toBeNull();
+  await fireEvent.press(
+    screen.getByRole('button', { name: '진료 당일 질문 보기' }),
   );
-  await fireEvent.press(screen.getByText('report'));
-  await waitFor(() =>
-    expect(alert).toHaveBeenCalledWith(
-      t('dailyReport.title'),
-      t('dailyReport.entryError'),
-    ),
+  expect(push).toHaveBeenCalledTimes(1);
+  expect(push).toHaveBeenCalledWith('visit-day-questions');
+  expect(runtime.overviewPreparationTargets.get('day-route')).toBe(
+    'synthetic-visit',
   );
-  expect(push).not.toHaveBeenCalled();
   expect(selectTab).not.toHaveBeenCalled();
-  save.mockRestore();
-  alert.mockRestore();
-});
-
-test('a late storage failure does not alert after leaving overview', async () => {
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-  let reject!: (error: Error) => void;
-  const save = jest.spyOn(mockStore, 'saveTaskCard').mockImplementation(
-    () =>
-      new Promise((_resolve, fail) => {
-        reject = fail;
-      }),
-  );
-  const view = await render(
-    <AppRouteContent
-      {...({
-        actions: { route: { name: 'root', key: 'root' }, push: jest.fn() },
-        activeTab: 'overview',
-        selectTab: jest.fn(),
-        recordings: [],
-      } as unknown as AppRouteContentProps)}
-    />,
-  );
-  await fireEvent.press(screen.getByText('report'));
-  await view.unmount();
-  await act(async () => {
-    reject(new Error('late synthetic failure'));
-  });
-  expect(alert).not.toHaveBeenCalled();
-  save.mockRestore();
-  alert.mockRestore();
+  expect(mockStore.getSnapshot()).toBe(before);
 });

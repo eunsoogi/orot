@@ -1,3 +1,4 @@
+import { composerSendWithReportBookmark } from './explicitDailyReportBookmark';
 import { entryIntentSender } from './entryIntentSender';
 import { ConversationScreenHeader } from './ConversationScreenHeader';
 import { conversationHistoryRecoveryProps } from './conversationHistoryRecoveryProps';
@@ -18,15 +19,16 @@ import { useAiFeatureScreenNavigationState } from '../aiFeatures/integration/use
 import { useConversationScreenLayout } from './useConversationScreenLayout';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import type { ConversationScreenProps } from './ConversationScreenProps';
-import { dispatchConversationMessage } from './conversationVisitDispatch';
 import { regenerateVisitQuestions } from './conversationVisitRegenerate';
 import { useConversationScreenControls } from './useConversationScreenControls';
 import { ConversationPhotoConsentSurface } from './ConversationPhotoConsentSurface';
 import { t } from '../i18n';
+import { projectQuickChoice } from './conversationQuickChoicePreview';
 import { ConversationQuickChoices } from './ConversationQuickChoices';
 import * as ConversationTasks from './ConversationTaskPanels';
 export function ConversationScreen({
   isEntryCurrent,
+  ownsConversationPresentation = isEntryCurrent,
   entryContext,
   navigationRouteKey,
   providerSelection,
@@ -60,12 +62,14 @@ export function ConversationScreen({
   const session = snapshot.sessions.find(
     item => item.id === snapshot.activeId,
   )!;
+  const canPaint = ownsConversationPresentation?.() ?? true;
   useContinuousConversationEntry(
     store,
     entryContext,
     session,
     voiceSelection?.revision,
     !isEntryCurrent || isEntryCurrent(),
+    canPaint,
   );
   const { id, messages, pendingMessage, busy, error } = session;
   const preflightError =
@@ -130,6 +134,7 @@ export function ConversationScreen({
         <ConversationWorkspace
           session={session}
           sourceActions={sourceActions}
+          isEntryCurrent={isEntryCurrent}
           routeKey={navigationRouteKey}
           composer={
             <ConversationSteeringComposer
@@ -143,14 +148,13 @@ export function ConversationScreen({
               maximumInputHeight={composerLayout.maximumInputHeight}
               preflightError={preflightError}
               onChangeText={value => store.setDraft(id, value)}
-              onSend={() =>
-                dispatchConversationMessage(
-                  store,
-                  id,
-                  onSend,
-                  prepareVisitQuestions,
-                )
-              }
+              onSend={composerSendWithReportBookmark(
+                store,
+                id,
+                isEntryCurrent,
+                onSend,
+                prepareVisitQuestions,
+              )}
               onCancel={() => store.cancel(id)}
             />
           }
@@ -161,18 +165,14 @@ export function ConversationScreen({
             onContinueCold={requestId =>
               store.resumeCold(id, requestId).catch(() => {})
             }
-            {...conversationHistoryRecoveryProps(
-              session,
-              store,
-              isEntryCurrent?.(),
-            )}
+            {...conversationHistoryRecoveryProps(session, store, canPaint)}
             sessionId={id}
             requestSessionId={id}
             requestActivity={session.requestActivity}
             compact={composerLayout.compact}
             header={header}
             steeringInstructions={session.steeringInstructions}
-            messages={messages}
+            messages={projectQuickChoice(session)}
             pendingMessage={pendingMessage}
             error={preflightError ? '' : error}
             unsavedCount={session.unsavedCount}

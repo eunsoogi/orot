@@ -1,3 +1,4 @@
+import { prepareJointCalendarReview } from './prepareJointCalendarReview';
 import { createCalendarDecisionsOption } from '../../calendarModelSettings/decisionsProvider';
 import type { ProviderSelectionStore } from '../../providers/selection/types';
 import { createContext, useContext } from 'react';
@@ -16,6 +17,12 @@ export interface ModelSettingsServices {
   readonly calendar: ProviderSelectionStore;
   readonly calendarOption: typeof createCalendarDecisionsOption;
   readonly saveConsent: typeof saveModelSettingsConsent;
+  readonly prepareJointCalendarReview?: (
+    ...input: [
+      ...Parameters<typeof prepareJointCalendarReview>,
+      ProviderSelectionStore,
+    ]
+  ) => ReturnType<typeof prepareJointCalendarReview>;
   readonly reuseApproval?: (
     input: Omit<Parameters<typeof alreadyApprovedModelSettings>[0], 'services'>,
     store: ProviderSelectionStore,
@@ -29,6 +36,10 @@ const productionServices: ModelSettingsServices = {
   calendar: calendarModelStore,
   calendarOption: createCalendarDecisionsOption,
   saveConsent: saveModelSettingsConsent,
+  prepareJointCalendarReview: (option, search, signal, current, store) =>
+    store === providerSelectionStore
+      ? prepareJointCalendarReview(option, search, signal, current)
+      : Promise.resolve(null),
   reuseApproval: (input, store) =>
     store ===
     (input.slot === 'calendar' ? calendarModelStore : providerSelectionStore)

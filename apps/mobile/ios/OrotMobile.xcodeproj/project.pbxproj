@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		B8A130BD6D51CFCE98120001 /* ClassificationReaderGeometryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */; };
+		B8A130BD6D51CFCE98120101 /* ClassificationResultScrollingUITestConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8A130BD6D51CFCE98120102 /* ClassificationResultScrollingUITestConditions.swift */; };
 		CE1131000000000000000003 /* RealtimeVoiceSystemLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */; };
 		CB1180000000000000000005 /* RealtimeVoiceToolLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */; };
 		CE1178000000000000000003 /* VoiceDuplexSystemLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE1178000000000000000004 /* VoiceDuplexSystemLifecycleTests.swift */; };
@@ -417,6 +418,7 @@
 
 /* Begin PBXFileReference section */
 		B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClassificationReaderGeometryUITests.swift; sourceTree = "<group>"; };
+		B8A130BD6D51CFCE98120102 /* ClassificationResultScrollingUITestConditions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ClassificationResultScrollingUITestConditions.swift; sourceTree = "<group>"; };
 		CE1131000000000000000004 /* RealtimeVoiceSystemLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceSystemLifecycleTests.swift; sourceTree = "<group>"; };
 		CB1180000000000000000006 /* RealtimeVoiceToolLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeVoiceToolLifecycleTests.swift; sourceTree = "<group>"; };
 		CE1178000000000000000004 /* VoiceDuplexSystemLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDuplexSystemLifecycleTests.swift; sourceTree = "<group>"; };
@@ -1273,6 +1275,7 @@
 				828EFA035C434AB29FEA60DF /* DisclosureLayoutUITestObservations.swift */,
 				A35E167B46BBA7094ECA91C2 /* ClassificationStagesUITests.swift */,
 				B8A130BD6D51CFCE98120002 /* ClassificationReaderGeometryUITests.swift */,
+				B8A130BD6D51CFCE98120102 /* ClassificationResultScrollingUITestConditions.swift */,
 				A7D00D8E5A4B04FAD68B60A7 /* VisitQuestionConsentUITests.swift */,
 				DA117E000000000000000002 /* DailyReportEntryUITests.swift */,
 				DA117E000000000000000004 /* DailyReportLoadingUITests.swift */,
@@ -1849,6 +1852,7 @@
 				C5E2D6BA892C46F386A24093 /* DisclosureLayoutUITestObservations.swift in Sources */,
 				34A69ED6EC6B659BBF1B7EA0 /* ClassificationStagesUITests.swift in Sources */,
 				B8A130BD6D51CFCE98120001 /* ClassificationReaderGeometryUITests.swift in Sources */,
+				B8A130BD6D51CFCE98120101 /* ClassificationResultScrollingUITestConditions.swift in Sources */,
 				BE13CE7E8348A6F82963409C /* VisitQuestionConsentUITests.swift in Sources */,
 				DA117E000000000000000001 /* DailyReportEntryUITests.swift in Sources */,
 				DA117E000000000000000003 /* DailyReportLoadingUITests.swift in Sources */,

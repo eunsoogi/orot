@@ -1,3 +1,4 @@
+import { NativeModules } from 'react-native';
 import { healthContextFixture } from '../../aiFeatures/integration/testSupport/healthContextPersistenceFixture';
 import { isPeriodSummarySource } from '../../diseaseHypotheses/savedSummaries';
 import { committedPeriodReadOperation } from '../committedPeriodReadOperation';
@@ -157,3 +158,66 @@ test('dispose during an in-flight calculation prevents late publication', async 
     f.close();
   }
 });
+
+test.each([
+  'disabled',
+  'completed',
+  'settlement-error',
+  'work-error',
+  'sink-error',
+] as const)(
+  'emits at most one fixed aggregate span without changing the transaction result: %s',
+  async mode => {
+    const f = await fixture();
+    const report = jest.fn((...event: string[]) => {
+      if (mode === 'sink-error' && event[1] === 'artifact_period_transaction')
+        throw new Error('Synthetic diagnostic failure');
+    });
+    const prior = Object.getOwnPropertyDescriptor(
+      NativeModules,
+      'OrotProviderDiagnostics',
+    );
+    Object.defineProperty(NativeModules, 'OrotProviderDiagnostics', {
+      configurable: true,
+      value: { historyValidationCostEnabled: mode !== 'disabled', report },
+    });
+    const scope = committedPeriodReadOperation(f.database);
+    const observed = f.database.transaction.bind(f.database);
+    const failure = new Error('Synthetic read failure');
+    const events = () =>
+      report.mock.calls.filter(
+        event => event[1] === 'artifact_period_transaction',
+      );
+    const start = ['rag', 'artifact_period_transaction', 'started'];
+    try {
+      f.database.transaction = async work => {
+        expect(events()).toEqual([]);
+        await observed(work);
+        expect(events()).toEqual(mode === 'disabled' ? [] : [start]);
+        if (mode === 'settlement-error') throw failure;
+      };
+      const result = scope.run(async () => {
+        expect(events()).toEqual(mode === 'disabled' ? [] : [start]);
+        if (mode === 'work-error') throw failure;
+      });
+      if (mode === 'work-error' || mode === 'settlement-error')
+        await expect(result).rejects.toBe(failure);
+      else await result;
+      const outcome =
+        mode.endsWith('error') && mode !== 'sink-error'
+          ? 'failed'
+          : 'completed';
+      expect(events()).toEqual(
+        mode === 'disabled'
+          ? []
+          : [start, ['rag', 'artifact_period_transaction', outcome]],
+      );
+    } finally {
+      scope.dispose();
+      f.close();
+      if (prior)
+        Object.defineProperty(NativeModules, 'OrotProviderDiagnostics', prior);
+      else Reflect.deleteProperty(NativeModules, 'OrotProviderDiagnostics');
+    }
+  },
+);

@@ -66,6 +66,7 @@ export async function selectCurrentDailyReportFacts(
       signal: request.signal,
       timeoutMs: input.timeoutMs ?? null,
       deadlineContext: input.deadlineContext,
+      dispatchAuthority: input.dispatchAuthority,
       revalidate: async signal => {
         input.deadlineContext.stage = 'source_read';
         providerDiagnostic('daily_report', 'data', 'started');

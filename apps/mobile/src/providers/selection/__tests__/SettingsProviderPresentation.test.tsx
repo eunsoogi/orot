@@ -144,9 +144,9 @@ describe('Settings provider presentation', () => {
     expect(
       sheet.getByTestId('inference-disclosure-recipient'),
     ).toHaveTextContent('OpenAI API');
-    expect(sheet.getByTestId('inference-disclosure-scope')).toHaveTextContent(
-      t('modelSettings.consentConversationData'),
-    );
+    const scope = sheet.getByTestId('inference-disclosure-scope');
+    expect(scope).toHaveTextContent(/대화와 보고서 생성에 필요한 질문/);
+    expect(scope).toHaveTextContent(/Europe PMC[\s\S]+의학 문헌 검색어/);
     expect(sheet.getByText(t('modelSettings.consentContinuing'))).toBeTruthy();
     expect(store.save).not.toHaveBeenCalled();
     await fireEvent.press(sheet.getByTestId('inference-disclosure-cancel'));

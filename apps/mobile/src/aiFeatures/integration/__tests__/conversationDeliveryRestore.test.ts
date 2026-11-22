@@ -1,3 +1,4 @@
+import { savedHistoryTranscript } from '../../../ragConversation/conversationSavedHistoryDisplay';
 import { healthContextFixture } from '../testSupport/healthContextPersistenceFixture';
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { LocalEvidenceReferenceRegistry } from '../evidenceRegistry';
@@ -77,9 +78,12 @@ test('protected artifact receipts reach the restored user message without backfi
     expect(
       sessions.getSnapshot().sessions.find(s => s.id === id)?.restoreFailed,
     ).not.toBe(true);
-    const messages = sessions
-      .getSnapshot()
-      .sessions.find(s => s.id === id)!.messages;
+    const session = sessions.getSnapshot().sessions.find(s => s.id === id)!;
+    expect(session.messages).toEqual([]);
+    const messages = savedHistoryTranscript(
+      session.savedHistoryDisplay ?? [],
+      session.messages,
+    );
     expect(
       messages.find(m => m.role === 'user' && m.content === 'new')?.delivery,
     ).toEqual(delivery);

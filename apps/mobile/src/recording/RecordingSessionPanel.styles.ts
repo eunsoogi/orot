@@ -1,3 +1,7 @@
+import {
+  roundPrimaryActionDiameter,
+  roundPrimaryActionStyles,
+} from '../layout/roundPrimaryActionStyles';
 import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 
@@ -11,21 +15,17 @@ export const recordingSessionStyles = StyleSheet.create({
   compactSecondaryAction: { width: 48, height: 48 },
   session: { alignItems: 'center', gap: 16, paddingTop: 24, paddingBottom: 12 },
   microphone: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    ...roundPrimaryActionStyles.outer,
+    width: roundPrimaryActionDiameter,
+    height: roundPrimaryActionDiameter,
+    borderRadius: roundPrimaryActionDiameter / 2,
     padding: 10,
-    backgroundColor: appColors.primarySoft,
   },
   microphoneInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    ...roundPrimaryActionStyles.inner,
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: appColors.primaryAction,
   },
   secondaryAction: {
     alignItems: 'center',

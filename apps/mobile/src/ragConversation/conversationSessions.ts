@@ -2,13 +2,12 @@ import { conversationSessionErrorState } from './conversationSessionErrorState';
 import { invalidateTasks } from './invalidateConversationTaskRefresh';
 import { conversationPhotoSurface } from './conversationPhotoSurface';
 import { prepareConversationSend } from './conversationSendPreflight';
-import type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 import { continuousConversationPolicy } from './continuousConversationPolicy';
 import { conversationRecoveryActions } from './conversationRecoveryActions';
 import { createConversationSessionRequests } from './conversationSessionRequests';
 import { conversationDispatch } from './conversationDispatch';
 import type * as S from './conversationSessionTypes';
-import { createConversationSessionRestoreState } from './conversationSessionRestoreState';
+import { conversationRestorationForOptions } from './conversationSessionRestoreState';
 import { createConversationSessionAttachment } from './conversationSessionAttachment';
 import { createConversationRetrySave } from './conversationRetrySave';
 import { refreshConversationSources } from './conversationSourceRefresh';
@@ -30,7 +29,7 @@ export function createConversationSessions(
   options: S.ConversationSessionOptions = {},
 ) {
   const { owner, empty } = createConversationSessionSeed();
-  let bindSender = (sender: S.ConversationSender) => sender;
+  let bindSender: S.BindConversationSender = sender => sender;
   let beforeSend: Parameters<typeof conversationDispatch>[0]['beforeSend'];
   let snapshot = initialConversationSnapshot(empty());
   const listeners = createConversationListeners();
@@ -57,7 +56,7 @@ export function createConversationSessions(
   const find = (id: number) => snapshot.sessions.find(item => item.id === id)!;
   const { taskState, taskRefresh } = createConversationTasks({
     options,
-    find: id => snapshot.sessions.find(session => session.id === id),
+    find,
     update,
     valid: () => !disposed,
     activeId: () => snapshot.activeId,
@@ -75,19 +74,14 @@ export function createConversationSessions(
       preparation: options.photoPreparation,
     },
     options.coldResume,
+    options.ordinaryMemory,
   );
-  const restoration = createConversationSessionRestoreState({
-    read: options.restoreSession,
-    page: options.restoreSessionPage,
-    find,
-    readSteering: options.restoreSteering,
-    readTasks: options.restoreTasks,
-    update,
-  });
+  const restoration = conversationRestorationForOptions(options, find, update);
   const attachExisting = createConversationSessionAttachment({
     retention: options.retention,
     restoration,
     canRestore: Boolean(options.restoreSession),
+    canHoldSavedDisplay: Boolean(options.readSavedHistoryDisplay),
     empty,
     snapshot: () => snapshot,
     apply,
@@ -101,7 +95,7 @@ export function createConversationSessions(
     disposed: () => disposed,
   });
   const retrySave = createConversationRetrySave({
-    find: id => snapshot.sessions.find(session => session.id === id),
+    find,
     update,
     disposed: () => disposed,
     requests,
@@ -124,9 +118,9 @@ export function createConversationSessions(
     },
   });
   const dispatch = conversationDispatch({
-    bindSender: sender => bindSender(sender),
+    bindSender: (...args) => bindSender(...args),
     beforeSend: options.continuousSession
-      ? (id, signal) => beforeSend!(id, signal)
+      ? (...args) => beforeSend!(...args)
       : undefined,
     requests,
     find,
@@ -185,12 +179,16 @@ export function createConversationSessions(
       if (!disposed) requests.cancel(id);
     },
     retrySave,
-    refreshAfterSourceDeletion(...event: SourceDeletionEvent) {
+    refreshAfterSourceDeletionOwned(
+      event: S.SourceDeletionEvent,
+      deferReloadId?: number,
+    ) {
       if (disposed) return;
       const retryIds = invalidateTasks(snapshot, taskState, taskRefresh);
       refreshConversationSources({
         snapshot,
         event,
+        deferReloadId,
         options,
         requests,
         restoration,
@@ -236,12 +234,14 @@ export function createConversationSessions(
     treatment: conversationTreatmentOwnership(options, () =>
       disposed ? undefined : snapshot,
     ),
+    savedReportLease: options.retention?.activeLease ?? (() => undefined),
     toolSourceSessionId: options.retention?.activeIdentity ?? (() => null),
   };
   const policy = continuousConversationPolicy(store, options, update);
   beforeSend = prepareConversationSend({
     select: policy.prepareSend,
     context: restoration.prepareContext,
+    protectedPromptHistory: options.useProtectedPromptHistory,
     find,
     current: id => !disposed && snapshot.activeId === id,
   });

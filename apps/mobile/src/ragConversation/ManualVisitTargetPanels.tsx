@@ -19,6 +19,7 @@ interface ManualVisitTargetPanelsProps {
   readonly content?: 'all' | 'recaps' | 'questions';
   readonly embedded?: boolean;
   readonly appointmentId?: string;
+  readonly selectedAppointmentOnly?: boolean;
   readonly store: ConversationSessions;
   readonly sessionId: number;
   readonly messages: readonly DisplayMessage[];
@@ -38,6 +39,7 @@ function ManualVisitSessionPanels({
   content = 'all',
   embedded = false,
   appointmentId: overviewAppointmentId,
+  selectedAppointmentOnly = false,
   store,
   sessionId,
   messages,
@@ -66,8 +68,9 @@ function ManualVisitSessionPanels({
   )?.appointmentId;
   if (available && overviewAppointmentId)
     targets.set(overviewAppointmentId, 'overview');
-  if (available && entryAppointment) targets.set(entryAppointment, 'entry');
-  for (const message of available ? messages : []) {
+  if (available && !selectedAppointmentOnly && entryAppointment)
+    targets.set(entryAppointment, 'entry');
+  for (const message of available && !selectedAppointmentOnly ? messages : []) {
     const visit = message.visitQuestions;
     if (visit)
       targets.set(
@@ -92,6 +95,7 @@ function ManualVisitSessionPanels({
         </Fragment>
       ))}
       {available &&
+      !selectedAppointmentOnly &&
       durableSessionId &&
       discover &&
       messages.some(message => message.visitQuestionsUnavailable) ? (

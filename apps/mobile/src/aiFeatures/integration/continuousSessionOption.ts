@@ -1,4 +1,6 @@
+import { warmNativeChatGPTSelection } from './warmNativeChatGPTSelection';
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
+import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
 import type { requireSelectedAi } from './provider';
 import type { createConversationSessionStorage } from './conversationSessionStorage';
 import { createConversationDurableIdentity } from '../../ragConversation/conversationDurableIdentity';
@@ -7,10 +9,20 @@ import { createConversationDurableIdentity } from '../../ragConversation/convers
 export function continuousSessionOption(
   selectedAi: (() => Promise<ReturnType<typeof requireSelectedAi>>) | undefined,
   openStorage: ReturnType<typeof createConversationSessionStorage>,
-): Pick<ConversationSessionOptions, 'continuousSession'> {
+  captureSelectionWitness?: ConversationSessionOptionInput['captureSelectionWitness'],
+): Pick<ConversationSessionOptions, 'continuousSession' | 'prepareWarmSend'> {
   if (!selectedAi) return {};
+  let previous:
+    | Awaited<
+        ReturnType<NonNullable<ConversationSessionOptions['continuousSession']>>
+      >
+    | undefined;
   return {
+    prepareWarmSend: (lease, signal) =>
+      warmNativeChatGPTSelection(previous, lease, signal, openStorage),
     continuousSession: async signal => {
+      previous = undefined;
+      const witness = captureSelectionWitness?.();
       const selected = await selectedAi();
       if (signal.aborted) throw new Error('Conversation selection cancelled.');
       const model = {
@@ -25,7 +37,12 @@ export function continuousSessionOption(
         new Date().toISOString(),
         signal,
       );
-      return { ...lease, model };
+      const current = witness?.(model.providerId);
+      return (previous = {
+        ...lease,
+        model,
+        ...(current ? { selectionCurrent: current } : {}),
+      });
     },
   };
 }

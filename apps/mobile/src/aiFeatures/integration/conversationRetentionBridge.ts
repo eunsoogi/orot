@@ -1,3 +1,4 @@
+import type { HistoricalDialogueParent } from '../../ragConversation/conversationRetention';
 import { observeConversationFinalization as finalize } from '../../ragConversation/conversationFinalizationDiagnostics';
 import type { ConversationEntryContext } from './conversationIntent';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -21,6 +22,7 @@ export function createConversationRetentionBridge(input: {
   readonly modelId: string;
   readonly entryContext?: ConversationEntryContext;
   readonly priorDialogue?: readonly { question: string; answer: string }[];
+  readonly historicalDialogueParents?: readonly HistoricalDialogueParent[];
   readonly priorUserReports?: readonly string[];
   readonly priorDialogueOmitted?: true;
   readonly signal: AbortSignal;
@@ -105,6 +107,14 @@ export function createConversationRetentionBridge(input: {
           // Only validated final outcomes reach this writer. Storage completion denotes a finished
           // response, not exhaustive topic coverage; actual interruption uses request storage.
           answer: outcome.answer,
+          ...(outcome.proactiveMemory === true &&
+          !input.submittedInput &&
+          input.observer?.inputOrigin !== 'shortcut' &&
+          (!input.entryContext ||
+            input.entryContext.intent === 'conversation' ||
+            input.observer?.inputOrigin === 'composer')
+            ? { proactiveMemory: true as const }
+            : {}),
           providerId: input.providerId,
           modelId: input.modelId,
           ...(input.entryContext?.intent === 'possibilities'
@@ -115,6 +125,9 @@ export function createConversationRetentionBridge(input: {
             : {}),
           ...(input.priorDialogue?.length
             ? { priorDialogue: input.priorDialogue }
+            : {}),
+          ...(input.historicalDialogueParents?.length
+            ? { historicalDialogueParents: input.historicalDialogueParents }
             : {}),
           ...(input.priorUserReports?.length
             ? { priorUserReports: input.priorUserReports }

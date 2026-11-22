@@ -79,6 +79,7 @@ export async function resumeColdRagConversation(input: {
       descriptor.reconstruction,
       factory.registry,
       signal,
+      factory.dialogueCurrent,
     );
     const retention = createConversationRetentionBridge({
       observer,
@@ -89,6 +90,9 @@ export async function resumeColdRagConversation(input: {
       modelId: factory.options.execution.modelId,
       entryContext: completion.entryContext ?? undefined,
       priorDialogue: completion.priorDialogue,
+      ...(completion.historicalDialogueParents
+        ? { historicalDialogueParents: completion.historicalDialogueParents }
+        : {}),
       priorUserReports: completion.priorUserReports,
       ...(completion.priorDialogueOmitted
         ? { priorDialogueOmitted: true as const }
@@ -188,7 +192,8 @@ export async function resumeColdRagConversation(input: {
             ? result.checkpoint.initialSearchStatus
             : (factory.publicSearch?.status ?? 'unavailable'),
       },
-      skipPublicSearchNotice: !descriptor.request,
+      skipPublicSearchNotice:
+        !descriptor.request || factory.publicSearch?.literatureOnly,
     });
     // This private registry must not replace the global alias map: aliases can overlap between requests.
     return {

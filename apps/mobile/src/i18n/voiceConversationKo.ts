@@ -16,6 +16,8 @@ export const voiceConversationKo = {
   'ragConversation.voice.authorizing': '음성 대화를 준비하고 있어요.',
   'ragConversation.voice.listening':
     '듣고 있어요. 잠시 멈추면 답변을 준비해요. 완료를 눌러 마칠 수도 있어요.',
+  'ragConversation.voice.listeningAutomatically':
+    '듣고 있어요. 잠시 멈추면 답변을 준비해요.',
   'ragConversation.voice.processing': '답변을 준비하고 있어요.',
   'ragConversation.voice.speaking': '답변을 읽고 있어요.',
   'ragConversation.voice.cleaning': '음성 대화를 정리하고 있어요.',

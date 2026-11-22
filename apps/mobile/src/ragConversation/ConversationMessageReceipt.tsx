@@ -10,12 +10,25 @@ import {
 export function ConversationMessageReceipt({
   delivery,
   pending = false,
+  localChoicePending = false,
 }: {
   readonly delivery?: ConversationMessageDelivery;
   readonly pending?: boolean;
+  readonly localChoicePending?: boolean;
 }) {
   const value = parseConversationMessageDelivery(delivery);
-  if (!value) return null;
+  if (!value) {
+    // The choice is locally queued, but a submission time or remote receipt does not yet exist.
+    return localChoicePending && delivery === undefined && !pending ? (
+      <AppText
+        testID="conversation-message-receipt"
+        style={styles.receipt}
+        accessibilityLiveRegion="polite"
+      >
+        {t('conversationDelivery.sending')}
+      </AppText>
+    ) : null;
+  }
   const format = (at: string) =>
     new Intl.DateTimeFormat('ko-KR', {
       hour: 'numeric',

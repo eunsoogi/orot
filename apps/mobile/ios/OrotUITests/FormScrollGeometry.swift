@@ -78,15 +78,16 @@ struct FormScrollGeometry {
 
         static func resolve(
             label: String, isButton: Bool, enabled: Bool, hittable: Bool,
-            global: Int, owned: Int, frame: CGRect, footer: CGRect, owner: CGRect,
+            global: Int, owned: Int, frame: CGRect, circleSlot: CGRect, owner: CGRect,
             inExpandedReader: Bool,
         ) -> Self? {
             guard global == 1, owned == 1, isButton, enabled, hittable,
                   FormScrollGeometry.valid(frame), frame.width >= 44, frame.height >= 44,
-                  FormScrollGeometry.valid(footer), FormScrollGeometry.valid(owner)
+                  FormScrollGeometry.valid(circleSlot), FormScrollGeometry.valid(owner),
+                  abs(frame.width - frame.height) <= 1
             else { return nil }
             let center = CGPoint(x: frame.midX, y: frame.midY)
-            guard footer.contains(center), owner.contains(center) else { return nil }
+            guard circleSlot.insetBy(dx: -1, dy: -1).contains(frame), owner.contains(center) else { return nil }
             if label == startLabel {
                 return .start
             }

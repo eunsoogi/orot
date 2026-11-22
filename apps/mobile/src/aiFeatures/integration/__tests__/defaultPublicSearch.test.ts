@@ -85,7 +85,7 @@ test('keeps denied consent, unavailability, empty and cancellation distinct', as
 });
 
 test.each([
-  ['consent_required', '동의가 없어'],
+  ['consent_required', '동의를 확인하지 못해'],
   ['unavailable', '사용할 수 없어'],
   ['empty', '결과를 찾지 못했어요'],
 ] as const)('keeps local results and explains %s', (status, notice) => {

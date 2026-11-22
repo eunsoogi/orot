@@ -1,3 +1,5 @@
+import { useConversationFinalCommitDiagnostic } from './conversationFinalCommitDiagnostic';
+import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { ConversationBubbleEntrance } from './ConversationBubbleEntrance';
@@ -15,29 +17,40 @@ import { styles } from './ConversationScreen.styles';
 export function ConversationMessageBubbles({
   message,
   children,
+  beforeAnswer,
   presentation,
 }: {
   readonly message: DisplayMessage;
   readonly children: ReactNode;
+  readonly beforeAnswer?: ReactNode;
   readonly presentation: ConversationBubblePresentation;
 }) {
   const { opening, showBody } = conversationBubblePaint(message, presentation);
-  if (!opening) return showBody ? children : null;
+  useConversationFinalCommitDiagnostic(message, Boolean(showBody));
+  if (!opening && !beforeAnswer) return showBody ? children : null;
   return (
     <View style={styles.assistantBubbleSequence}>
-      <ConversationBubbleEntrance
-        entranceKey={conversationBubbleKey('opening', message.id)}
-        restored={message.restoredHistory || message.id <= 0}
-        testID="conversation-assistant-opening-message"
-        style={styles.assistantMessage}
-      >
-        <View testID="conversation-opening-body" style={styles.assistantBody}>
-          <ConversationInitialResponse
-            key={opening.callId}
-            response={opening}
-          />
+      {opening ? (
+        <ConversationBubbleEntrance
+          entranceKey={conversationBubbleKey('opening', message.id)}
+          restored={message.restoredHistory || message.id <= 0}
+          testID="conversation-assistant-opening-message"
+          style={styles.assistantMessage}
+        >
+          <View testID="conversation-opening-body" style={styles.assistantBody}>
+            <ConversationInitialResponse
+              key={opening.callId}
+              response={opening}
+            />
+          </View>
+        </ConversationBubbleEntrance>
+      ) : null}
+      {beforeAnswer && message.previousOutputs?.length ? (
+        <View style={styles.assistantMessage}>
+          <ConversationPreviousOutputs outputs={message.previousOutputs} />
         </View>
-      </ConversationBubbleEntrance>
+      ) : null}
+      {beforeAnswer}
       {showBody ? children : null}
     </View>
   );

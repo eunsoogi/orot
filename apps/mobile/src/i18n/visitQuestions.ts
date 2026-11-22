@@ -26,6 +26,8 @@ export const visitQuestionsKo = {
   'visitQuestions.review.evidence.heading': '근거',
   'visitQuestions.review.evidence.source.reviewedMemory': '이전 검토 메모',
   'visitQuestions.review.evidence.source.personalRecord': '건강 기록',
+  'visitQuestions.conversation.clarifyGoal':
+    '진료에서 가장 확인하고 싶은 증상이나 궁금한 점을 알려 주세요.',
   'visitQuestions.workflow.providerUnavailable':
     '선택한 AI 제공자를 사용할 수 없어요.',
   'visitQuestions.workflow.consent.accountRequired':

@@ -15,7 +15,11 @@ export async function appendConversationSourceRows(
   tx: SqlExecutor,
   value: ConversationArtifact,
 ) {
-  const records: [string, string][] = [];
+  // Use the same pre-existing cascade edge as explicit citations, but context
+  // identities are deliberately excluded from evidence validation/projection.
+  const records: [string, string][] = (
+    value.historicalDialogueParents ?? []
+  ).map(parent => ['generated_conversation', parent.id]);
   for (const source of value.sources) {
     if (isConversationPhotoSource(source)) continue;
     if (

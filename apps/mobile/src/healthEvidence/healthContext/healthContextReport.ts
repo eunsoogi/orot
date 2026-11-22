@@ -41,7 +41,11 @@ type ReportInputs = [
   diagnosticOwner?: object,
   calendarScope?: HealthContextCalendarScope,
   restorationWorkspace?: {
-    acquireHeartPrefix: AcquireHeartWorkoutPrefix;
+    acquireHeartPrefix?: AcquireHeartWorkoutPrefix;
+    indexedQuantity?: (
+      calendarDays: number,
+      family: 'all' | 'measurements' | 'activity',
+    ) => Promise<boolean>;
     measureCost?: typeof measureHistoryValidationCost;
   },
   preparedCalendar?: {
@@ -105,17 +109,22 @@ async function readHealthContext(
     const quantities =
       selected.has('measurements') || selected.has('activity')
         ? await traceHealthContext(trace, 'quantities', async () => {
-            const result = await readHealthQuantityContext(
-              executor,
-              days,
-              signal,
+            const family =
               selected.has('activity') && selected.has('measurements')
                 ? 'all'
                 : selected.has('activity')
                   ? 'activity'
-                  : 'measurements',
+                  : 'measurements';
+            const indexed = restorationWorkspace?.indexedQuantity
+              ? await restorationWorkspace.indexedQuantity(days.length, family)
+              : Boolean(restorationWorkspace);
+            const result = await readHealthQuantityContext(
+              executor,
+              days,
+              signal,
+              family,
               window.dataAvailableThrough,
-              Boolean(restorationWorkspace),
+              indexed,
               preparedCalendar?.timestampKeys,
             );
             if (purpose === 'overviewCharts') return result;

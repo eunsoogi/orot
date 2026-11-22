@@ -1,75 +1,51 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import { AppSymbol } from '../layout/AppSymbol';
-import { AppButton } from '../layout/AppButton';
+import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 
-/** Fixed touch targets keep paging reachable when Dynamic Type leaves a short text viewport. */
+/** Text paging preserves every measured result without arrow decorations. */
 export function ClassificationPagingActions(props: {
   readonly previousDisabled: boolean;
   readonly nextDisabled: boolean;
   readonly onPrevious: () => void;
   readonly onNext: () => void;
-  readonly compact: boolean;
-  readonly actionTitle: string;
-  readonly actionLabel: string;
-  readonly disabled?: boolean;
-  readonly onAction: () => void;
+  readonly showPaging: boolean;
   readonly supplementaryAction?: {
     readonly title: string;
     readonly onPress: () => void;
   };
 }) {
+  if (!props.showPaging && !props.supplementaryAction) return null;
   return (
     <View style={styles.row}>
-      <IconAction
-        name="chevron.left"
-        label={t('medicalAppointments.previousResult')}
-        disabled={props.previousDisabled}
-        onPress={props.onPrevious}
-        testID="medical-appointment-previous-result"
-      />
-      {props.compact ? (
-        <View style={styles.action}>
-          <IconAction
-            name="arrow.right"
-            label={props.actionLabel}
-            disabled={props.disabled}
-            onPress={props.onAction}
-            testID="medical-appointment-import"
+      {props.showPaging ? (
+        <>
+          <TextAction
+            label={t('medicalAppointments.previousResult')}
+            disabled={props.previousDisabled}
+            onPress={props.onPrevious}
+            testID="medical-appointment-previous-result"
           />
-        </View>
-      ) : (
-        <AppButton
-          title={props.actionTitle}
-          accessibilityLabel={props.actionLabel}
-          onPress={props.onAction}
-          disabled={props.disabled}
-          testID="medical-appointment-import"
-          titleNumberOfLines={1}
-          style={styles.action}
-        />
-      )}
+          <TextAction
+            label={t('medicalAppointments.nextResult')}
+            disabled={props.nextDisabled}
+            onPress={props.onNext}
+            testID="medical-appointment-next-result"
+          />
+        </>
+      ) : null}
       {props.supplementaryAction ? (
-        <IconAction
-          name="gearshape"
+        <TextAction
           label={props.supplementaryAction.title}
           onPress={props.supplementaryAction.onPress}
           testID="medical-appointment-calendar-settings"
         />
       ) : null}
-      <IconAction
-        name="chevron.right"
-        label={t('medicalAppointments.nextResult')}
-        disabled={props.nextDisabled}
-        onPress={props.onNext}
-        testID="medical-appointment-next-result"
-      />
     </View>
   );
 }
-function IconAction(props: {
-  readonly name: string;
+
+function TextAction(props: {
   readonly label: string;
   readonly disabled?: boolean;
   readonly onPress: () => void;
@@ -83,20 +59,26 @@ function IconAction(props: {
       disabled={props.disabled}
       onPress={props.onPress}
       testID={props.testID}
-      style={[styles.icon, props.disabled && styles.disabled]}
+      style={[styles.button, props.disabled && styles.disabled]}
     >
-      <AppSymbol name={props.name} size={20} color={appColors.primaryText} />
+      <AppText style={styles.text}>{props.label}</AppText>
     </Pressable>
   );
 }
+
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  action: { flex: 1, minWidth: 0 },
-  icon: {
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     justifyContent: 'center',
   },
+  button: {
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  text: { color: appColors.primaryText, fontSize: 15, textAlign: 'center' },
   disabled: { opacity: 0.4 },
 });

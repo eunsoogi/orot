@@ -6,10 +6,13 @@ import type { ConversationSessionOptions } from '../../ragConversation/conversat
 
 /** Dependencies for protected conversation restoration and its continuous-model identity. */
 export interface ConversationSessionOptionInput {
+  readonly ordinaryMemory?: ConversationSessionOptions['ordinaryMemory'];
   readonly coldResume?: ConversationSessionOptions['coldResume'];
   readonly loadLocalData: () => Promise<AiFeatureLocalData>;
   readonly registry: LocalEvidenceReferenceRegistry;
   readonly selectedAi?: () => Promise<ReturnType<typeof requireSelectedAi>>;
+  readonly captureSelectionWitness?: () =>
+    ((providerId: string) => (() => boolean) | null) | undefined;
   readonly restoreHealthSummary?: (
     reference: import('../../ragConversation/healthSummary').HealthSummaryReference,
   ) => Promise<

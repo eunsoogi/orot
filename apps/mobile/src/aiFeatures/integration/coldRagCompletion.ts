@@ -1,10 +1,16 @@
+import type { HistoricalDialogueParent } from '../../storage/protectedPromptHistory';
+import {
+  parseColdDialogueParents,
+  type ColdDialogueCurrent,
+} from './coldPromptDialogue';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import type { JsonObject } from '@orot/model-runtime';
 import type { ConversationEntryContext } from './conversationIntent';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 
 export interface ColdRagCompletion {
-  version: 1;
+  version: 1 | 2;
+  historicalDialogueParents?: readonly HistoricalDialogueParent[];
   entryContext: ConversationEntryContext | null;
   priorDialogue: readonly { question: string; answer: string }[];
   priorUserReports: readonly string[];
@@ -19,11 +25,12 @@ export async function readColdRagCompletion(
   reconstruction: JsonObject,
   registry: LocalEvidenceReferenceRegistry,
   signal: AbortSignal,
+  dialogueCurrent?: ColdDialogueCurrent,
 ): Promise<ColdRagCompletion> {
   const saved = reconstruction.completion as unknown as ColdRagCompletion;
   if (
     !saved ||
-    saved.version !== 1 ||
+    (saved.version !== 1 && saved.version !== 2) ||
     !Array.isArray(saved.priorDialogue) ||
     saved.priorDialogue.some(
       turn =>
@@ -50,6 +57,19 @@ export async function readColdRagCompletion(
         ].includes(saved.entryContext.intent)))
   )
     throw new Error('Cold completion inputs unavailable.');
+  if (saved.version === 1 && saved.historicalDialogueParents !== undefined)
+    throw new Error('Unexpected legacy dialogue scope.');
+  if (saved.version === 2) {
+    const parents = parseColdDialogueParents(saved.historicalDialogueParents);
+    if (
+      !parents ||
+      parents.length !== saved.priorDialogue.length ||
+      saved.historySources.length ||
+      !dialogueCurrent ||
+      !(await dialogueCurrent(signal, parents))
+    )
+      throw new Error('Cold dialogue ownership changed.');
+  }
   const sources = [...saved.historySources, ...saved.reportReferences];
   if (
     signal.aborted ||

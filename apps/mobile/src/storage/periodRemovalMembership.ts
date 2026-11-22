@@ -28,7 +28,9 @@ export function periodRemovalMembership(
 
 /** Marker-driven direct/string-singleton lookup, with an exact legacy fallback.
  * UNION only deduplicates candidates; contributor/time guards still apply to each.
- * Recording roots expand inside this statement so marker inserts cannot race a precheck. */
+ * Recording roots expand inside this statement so marker inserts cannot race a precheck.
+ * Reuse the existing recording expression index to reduce per-marker scans of
+ * transcript payloads, without changing equality/affinity or statement order. */
 export function periodRemovalQuery(
   table: string,
   marker: string,
@@ -43,9 +45,9 @@ export function periodRemovalQuery(
     WITH p AS (SELECT ? AS topic, ? AS from_key, ? AS to_key),
     linked_ids(id) AS (
       SELECT source_id FROM ${marker}
-      UNION SELECT segment.id FROM ${marker} m CROSS JOIN transcript_segments segment
+      UNION SELECT segment.id FROM ${marker} m CROSS JOIN transcript_segments segment INDEXED BY transcript_segments_recording_idx
         WHERE json_extract(segment.payload_json, '$.recordingSourceId') = m.source_id
-      UNION SELECT json_extract(segment.payload_json, '$.transcriptId') FROM ${marker} m CROSS JOIN transcript_segments segment
+      UNION SELECT json_extract(segment.payload_json, '$.transcriptId') FROM ${marker} m CROSS JOIN transcript_segments segment INDEXED BY transcript_segments_recording_idx
         WHERE json_extract(segment.payload_json, '$.recordingSourceId') = m.source_id AND json_type(segment.payload_json, '$.transcriptId') = 'text'
     )
     SELECT h.id FROM ${marker} m CROSS JOIN ${table} h CROSS JOIN p

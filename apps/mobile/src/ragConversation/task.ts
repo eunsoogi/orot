@@ -1,3 +1,4 @@
+import { recordFirstResponsePrompt } from '../agent/execution/recordFirstResponsePrompt';
 import { withStructuredPossibilityReport } from './structuredPossibilityReport';
 import { validateConversationResult } from './conversationResultValidation';
 import { acceptsLocalPublicSearchFallback } from './publicSearchFallback';
@@ -18,12 +19,14 @@ import { isEvidenceIndependentConversation } from './literatureIntent';
 import { conversationTaskInput } from './conversationEntryContext';
 import { conversationRequestHistory } from './conversationRequestHistory';
 import { possibilityPrompt } from './possibilityPrompt';
+import { withProactiveMemory } from './proactiveConversationMemory';
 export interface RagConversationMessage {
   readonly role: 'user' | 'assistant';
   readonly content: string;
 }
 export interface GroundedRagAnswer {
   readonly answer: string;
+  readonly proactiveMemory?: true;
   /** Omitted legacy values remain grounded; only explicit social/clarifying replies need no sources. */
   readonly answerKind?: 'grounded' | 'conversation' | 'prior_output';
   readonly literatureReferences?: readonly LiteratureIdentity[];
@@ -141,4 +144,15 @@ export interface RagConversationCurrentEvidence {
   readonly chunks: readonly import('@orot/rag').EvidenceChunk[];
 }
 
-export const ragConversationTask = withStructuredPossibilityReport(legacyTask);
+export const structuredConversationTask =
+  withStructuredPossibilityReport(legacyTask);
+export const proactiveConversationTaskV16 = withProactiveMemory(
+  structuredConversationTask,
+);
+
+// Prompt text is part of protected execution identity, not a migration of prior turns.
+export const ragConversationTask = {
+  ...proactiveConversationTaskV16,
+  taskVersion: '17',
+  systemPrompt: `${recordFirstResponsePrompt} ${proactiveConversationTaskV16.systemPrompt}`,
+};

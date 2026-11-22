@@ -5,6 +5,11 @@ import {
 import { GatedReminderDeliveryHost } from './src/assistantAppearance/GatedReminderDeliveryHost';
 import { RecordSourceNavigationProvider } from './src/routes/RecordSourceNavigation';
 import { useAppRootTab } from './src/routes/useAppRootTab';
+import {
+  AppRetainedConversationTab,
+  conversationTabAuthority,
+  nonRootRouteOwnsScroll,
+} from './src/routes/AppRetainedConversationTab';
 import { useEffect, useMemo, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { useRecapRecovery } from './src/transcription/useRecapRecovery';
@@ -14,7 +19,6 @@ import { loadRecordingSummaries } from './src/recording/loadRecordingSummaries';
 import { AiFeatureSharedNavigationStateProvider } from './src/aiFeatures/integration/AiFeatureSharedNavigationState';
 import {
   AppConversationScene,
-  isAppAiRoute,
   useAppAiServices,
 } from './src/routes/AppConversationScene';
 import { renderVisitQuestionsRoute } from './src/routes/OverviewVisitQuestionsRoute';
@@ -23,10 +27,7 @@ import {
   createNavigationController,
   NavigationRouteAdapter,
 } from './src/navigation';
-import {
-  appContentLayoutOwner,
-  appRouteIsScrollable,
-} from './src/navigation/appContentLayoutPolicy';
+import { appContentLayoutOwner } from './src/navigation/appContentLayoutPolicy';
 import { createNavigationRootTabs } from './src/navigation/rootTabs';
 import type { AppNavigationRoute } from './src/routes/AppRouteContent';
 import * as overview from './src/routes/AppOverviewDataBoundary';
@@ -79,8 +80,8 @@ function App({
     [ai.services],
   );
   const calendarSync = useCalendarAutoSync(calendarBridge);
-  const { activeTab, activeTabRef, selectActiveTab, capturePromptTab } =
-    useAppRootTab();
+  const root = useAppRootTab();
+  const { activeTab, activeTabRef, selectActiveTab, capturePromptTab } = root;
   const [selectedProvider, setSelectedProvider] = useState('');
   const [healthRecordDetailSelection, setHealthRecordDetailSelection] =
     useState<HealthRecordsDetailSelection | null>(null);
@@ -116,105 +117,109 @@ function App({
       <RecordSourceNavigationProvider>
         <AiFeatureSharedNavigationStateProvider
           conversationSessionOptions={conversationSessionOptions}
+          subscribeRootConversationVisibility={
+            root.subscribeRootConversationVisibility
+          }
         >
           <NavigationRouteAdapter
             controller={appNavigation}
             // Recent records and root pages each retain one route-owned scroll host.
-            scrollable={route => appRouteIsScrollable(route, activeTab)}
+            scrollable={nonRootRouteOwnsScroll}
             rootTabs={route => (route.name === 'root' ? rootTabs : undefined)}
             contentLayoutOwner={appContentLayoutOwner}
           >
             {/* Settings and AI use the same account services and persisted selection. */}
-            {actions =>
-              isAppAiRoute(actions.route.name) ||
-              (actions.route.name === 'root' &&
-                activeTab === 'conversation') ? (
-                <AppConversationScene
-                  actions={actions}
-                  defaultConversation={actions.route.name === 'root'}
-                  isEntryCurrent={() => {
-                    const snapshot = appNavigation.getSnapshot();
-                    return (
-                      AppState.currentState === 'active' &&
-                      !snapshot.isTransitioning &&
-                      snapshot.currentRoute.key === actions.route.key &&
-                      (actions.route.name !== 'root' ||
-                        activeTabRef.current === 'conversation')
-                    );
-                  }}
-                  consent={ai.consent}
-                  services={ai.services}
-                  renderVisitQuestions={
-                    renderVisitQuestions ?? renderVisitQuestionsRoute
-                  }
-                  serviceDependencies={aiFeatureServiceDependencies}
-                  onProviderSelectionCommitted={(_, provider) =>
-                    setSelectedProvider(provider.displayName)
-                  }
-                />
-              ) : actions.route.name === 'medical' ||
+            {actions => (
+              <AppRetainedConversationTab
+                actions={actions}
+                activeTab={activeTab}
+                renderConversation={sceneActions => (
+                  <AppConversationScene
+                    actions={sceneActions}
+                    defaultConversation={sceneActions.route.name === 'root'}
+                    {...conversationTabAuthority(
+                      appNavigation,
+                      sceneActions.route,
+                      () => activeTabRef.current === 'conversation',
+                    )}
+                    consent={ai.consent}
+                    services={ai.services}
+                    renderVisitQuestions={
+                      renderVisitQuestions ?? renderVisitQuestionsRoute
+                    }
+                    serviceDependencies={aiFeatureServiceDependencies}
+                    onProviderSelectionCommitted={(_, provider) =>
+                      setSelectedProvider(provider.displayName)
+                    }
+                  />
+                )}
+              >
+                {actions.route.name === 'medical' ||
                 actions.route.name === 'medical-manual' ? (
-                <MedicalAppointmentRoute
-                  bridge={calendarBridge}
-                  calendarSync={calendarSync}
-                  manual={actions.route.name === 'medical-manual'}
-                  onOpenCalendarSettings={() =>
-                    appNavigation.push('settings-sync-status')
-                  }
-                  onOpenProviderSelection={() =>
-                    actions.push('settings-provider')
-                  }
-                  loadAppointments={loadAppointments}
-                  selectedAiResolverOptions={
-                    aiFeatureServiceDependencies?.selectedAi
-                  }
-                />
-              ) : (
-                <overview.AppOverviewDataRouteContent
-                  documentImportService={documentImportService}
-                  loadSavedVisitQuestions={ai.services.loadSavedVisitQuestions}
-                  discoverManualVisits={ai.services.conversationArtifacts}
-                  actions={actions}
-                  activeTab={activeTab}
-                  selectTab={selectActiveTab}
-                  onSelectRecordsSection={async tab => {
-                    if (await appNavigation.requestTabSwitch())
-                      selectActiveTab(tab);
-                  }}
-                  backupPreparationState={backupPreparation.state}
-                  retryBackupPreparation={backupPreparation.retry}
-                  calendarBridge={calendarBridge}
-                  calendarSync={calendarSync}
-                  selectedProvider={selectedProvider}
-                  serviceDependencies={aiFeatureServiceDependencies}
-                  onProviderSelectionCommitted={(_, provider) =>
-                    setSelectedProvider(provider.displayName)
-                  }
-                  openProviderSettings={() =>
-                    appNavigation.push('settings-provider')
-                  }
-                  openVisitQuestions={() =>
-                    appNavigation.push('visit-questions')
-                  }
-                  openDiseaseHypotheses={() =>
-                    appNavigation.push('disease-hypotheses')
-                  }
-                  openRagConversation={() =>
-                    appNavigation.push('rag-conversation')
-                  }
-                  openExternalEvidence={() =>
-                    appNavigation.push('external-evidence')
-                  }
-                  openRecording={openRecording}
-                  loadHealthObservations={readHealthPage}
-                  loadHealthRecordMedications={readHealthRecordMedications}
-                  healthRecordDetailSelection={healthRecordDetailSelection}
-                  onHealthRecordDetailSelectionChange={
-                    setHealthRecordDetailSelection
-                  }
-                />
-              )
-            }
+                  <MedicalAppointmentRoute
+                    bridge={calendarBridge}
+                    calendarSync={calendarSync}
+                    manual={actions.route.name === 'medical-manual'}
+                    onOpenCalendarSettings={() =>
+                      appNavigation.push('settings-sync-status')
+                    }
+                    onOpenProviderSelection={() =>
+                      actions.push('settings-provider')
+                    }
+                    loadAppointments={loadAppointments}
+                    selectedAiResolverOptions={
+                      aiFeatureServiceDependencies?.selectedAi
+                    }
+                  />
+                ) : (
+                  <overview.AppOverviewDataRouteContent
+                    documentImportService={documentImportService}
+                    loadSavedVisitQuestions={
+                      ai.services.loadSavedVisitQuestions
+                    }
+                    discoverManualVisits={ai.services.conversationArtifacts}
+                    actions={actions}
+                    activeTab={activeTab}
+                    selectTab={selectActiveTab}
+                    onSelectRecordsSection={async tab => {
+                      if (await appNavigation.requestTabSwitch())
+                        selectActiveTab(tab);
+                    }}
+                    backupPreparationState={backupPreparation.state}
+                    retryBackupPreparation={backupPreparation.retry}
+                    calendarBridge={calendarBridge}
+                    calendarSync={calendarSync}
+                    selectedProvider={selectedProvider}
+                    serviceDependencies={aiFeatureServiceDependencies}
+                    onProviderSelectionCommitted={(_, provider) =>
+                      setSelectedProvider(provider.displayName)
+                    }
+                    openProviderSettings={() =>
+                      appNavigation.push('settings-provider')
+                    }
+                    openVisitQuestions={() =>
+                      appNavigation.push('visit-questions')
+                    }
+                    openDiseaseHypotheses={() =>
+                      appNavigation.push('disease-hypotheses')
+                    }
+                    openRagConversation={() =>
+                      appNavigation.push('rag-conversation')
+                    }
+                    openExternalEvidence={() =>
+                      appNavigation.push('external-evidence')
+                    }
+                    openRecording={openRecording}
+                    loadHealthObservations={readHealthPage}
+                    loadHealthRecordMedications={readHealthRecordMedications}
+                    healthRecordDetailSelection={healthRecordDetailSelection}
+                    onHealthRecordDetailSelectionChange={
+                      setHealthRecordDetailSelection
+                    }
+                  />
+                )}
+              </AppRetainedConversationTab>
+            )}
           </NavigationRouteAdapter>
           <GatedReminderDeliveryHost
             controller={appNavigation}

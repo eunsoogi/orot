@@ -18,14 +18,10 @@ enum LiteratureConsentUITestConditions {
         cancel.tap()
         XCTAssertFalse(node("provider-selection-confirmation").exists)
         option.tap()
-        let medical = node("settings-consent-medical")
-        guard FormUITestConditions.reveal(medical, in: app, scrollID: "settings-provider-screen") != nil else { return }
-        XCTAssertEqual(medical.value as? String, "0")
-        medical.tap()
-        XCTAssertEqual(medical.value as? String, "1")
+        // Settings includes literature in the model review, not a pre-disclosure toggle.
         NavigationPageActionUITestConditions.tap(app, id: "provider-selection-confirm", label: "이 AI 사용")
 
-        // The current settings flow requires a separate decision for Europe PMC.
+        // For this on-device choice, Europe PMC is the only external recipient.
         let sheet = node("inference-disclosure-sheet")
         let disclosureRecipient = node("inference-disclosure-recipient")
         let hasDisclosure = UITestConditions.exists(sheet) && UITestConditions.exists(disclosureRecipient)

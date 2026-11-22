@@ -20,6 +20,11 @@ export const periodRecordKinds = {
 /** SQLite maintains these non-authoritative indexes on every mutation; reopening
  * an old database installs them before queries use them. No lineage copies/cache. */
 export async function ensurePeriodRemovalIndexes(tx: SqlExecutor) {
+  // Restored databases may need their non-authoritative indexes rebuilt. Use
+  // the same recording index as the main storage migration before INDEXED BY.
+  await tx.execute(
+    "CREATE INDEX IF NOT EXISTS transcript_segments_recording_idx ON transcript_segments (json_extract(payload_json, '$.recordingSourceId'), json_extract(payload_json, '$.segmentOrdinal'), json_extract(payload_json, '$.revision'))",
+  );
   for (const table of Object.keys(periodRecordKinds)) {
     await tx.execute(
       `CREATE INDEX IF NOT EXISTS ${table}_period_singleton ON ${table} (${singletonProvenanceValue}) WHERE ${singletonProvenance}`,

@@ -1,3 +1,4 @@
+import { useArchivedCitationOpen } from './useArchivedCitationOpen';
 import { useContext, useState } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import {
@@ -33,7 +34,9 @@ export function useConversationMessageEvidence({
   // A confirmed stale revision may remain in the transcript until its owner
   // refreshes. Suppress only this row's prose and sources immediately.
   const message: DisplayMessage =
-    reportKey !== undefined && unavailableReportKey === reportKey
+    !suppliedMessage.savedHistoryDisplayOnly &&
+    reportKey !== undefined &&
+    unavailableReportKey === reportKey
       ? {
           id: suppliedMessage.id,
           role: suppliedMessage.role,
@@ -46,16 +49,38 @@ export function useConversationMessageEvidence({
     message.sourceOwner
       ? onOpenSource(reference, message.sourceOwner)
       : onOpenSource(reference);
+  const openArchived = useArchivedCitationOpen(
+    message.archivedCitationTarget,
+    onOpenSource,
+    onLinkError,
+  );
+  const summary = message.healthSummary;
+  const summaryTarget = message.archivedCitationTarget;
+  const openArchivedSummary = useArchivedCitationOpen(
+    summary?.archivedSummaryRevision && summaryTarget
+      ? {
+          ...summaryTarget,
+          summary: {
+            id: summary.reference.summaryId,
+            revision: summary.archivedSummaryRevision,
+          },
+        }
+      : undefined,
+    onOpenSource,
+    onLinkError,
+  );
   const citations =
     showCitations && message.dailyReport && resolveDailyReport ? (
       <DailyReportSourceLinks
+        transcript
         key={reportKey}
         {...message.dailyReport}
         resolve={resolveDailyReport}
         testIDPrefix={`rag-conversation-message-${message.id}-report`}
         onOpen={onOpenSource}
         onStale={() => {
-          setUnavailableReportKey(reportKey);
+          if (!message.savedHistoryDisplayOnly)
+            setUnavailableReportKey(reportKey);
           onLinkError();
         }}
       />
@@ -63,9 +88,14 @@ export function useConversationMessageEvidence({
       <ConversationSources
         testIDPrefix={`rag-conversation-message-${message.id}`}
         references={message.citations ?? []}
+        archived={
+          message.savedHistoryDisplayOnly && message.savedCitations
+            ? { citations: message.savedCitations, open: openArchived }
+            : undefined
+        }
         onOpenSource={openSource}
         onLinkError={onLinkError}
       />
     ) : null;
-  return { message, openSource, citations };
+  return { message, openSource, citations, openArchivedSummary };
 }

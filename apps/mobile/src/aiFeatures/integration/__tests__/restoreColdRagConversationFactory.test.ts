@@ -73,7 +73,7 @@ test.each(['6', '7', '8', '12'])(
   'current factory refuses a version %s descriptor before consent or dispatch',
   async version => {
     const f = await fixture();
-    expect(ragConversationTask.taskVersion).toBe('15');
+    expect(ragConversationTask.taskVersion).toBe('17');
     const input = f.descriptor.reconstruction.invocation as {
       task: { taskVersion: string };
     };
@@ -157,30 +157,36 @@ test('rejects an altered protected task prompt rather than guessing a legacy pol
   expect(f.search).not.toHaveBeenCalled();
 });
 
-test('v13 cold invocation retains its exact input without applying the new report template', async () => {
-  const f = await fixture();
-  const task = restoreConversationTask({
-    taskType: ragConversationTask.taskType,
-    taskVersion: '13',
-  })!;
-  const options = { ...f.options, task };
-  const invocation = f.descriptor.reconstruction.invocation as Record<
-    string,
-    unknown
-  >;
-  f.descriptor.reconstruction = {
-    ...f.descriptor.reconstruction,
-    invocation: { ...invocation, task } as never,
-  };
-  f.descriptor.exactInput = continuationInput(options);
-  const restored = await restoreColdRagConversationFactory({
-    descriptor: f.descriptor,
-    dependencies: f.dependencies,
-    signal: f.controller.signal,
-    readKnownCallIds: async () => [],
-  });
-  expect(continuationInput(restored.options)).toBe(f.descriptor.exactInput);
-  expect(restored.options.task.taskVersion).toBe('13');
-  expect(f.authorize).not.toHaveBeenCalled();
-  expect(f.search).not.toHaveBeenCalled();
-});
+test.each(['13', '16'])(
+  'v%s cold invocation retains its exact identity without the new writing policy',
+  async version => {
+    const f = await fixture();
+    const task = restoreConversationTask({
+      taskType: ragConversationTask.taskType,
+      taskVersion: version,
+    })!;
+    const options = { ...f.options, task };
+    const invocation = f.descriptor.reconstruction.invocation as Record<
+      string,
+      unknown
+    >;
+    f.descriptor.reconstruction = {
+      ...f.descriptor.reconstruction,
+      invocation: { ...invocation, task } as never,
+    };
+    f.descriptor.exactInput = continuationInput(options);
+    const restored = await restoreColdRagConversationFactory({
+      descriptor: f.descriptor,
+      dependencies: f.dependencies,
+      signal: f.controller.signal,
+      readKnownCallIds: async () => [],
+    });
+    expect(continuationInput(restored.options)).toBe(f.descriptor.exactInput);
+    expect(restored.options.task.taskVersion).toBe(version);
+    expect(restored.options.task.systemPrompt).not.toContain(
+      'Lead with the records',
+    );
+    expect(f.authorize).not.toHaveBeenCalled();
+    expect(f.search).not.toHaveBeenCalled();
+  },
+);

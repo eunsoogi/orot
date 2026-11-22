@@ -135,6 +135,12 @@ export function NavigationActionBarPresentation({
         railTopInset: keyboardSuspended
           ? rightLayout.railTopInset
           : (pageLayout?.navigationTopInset ?? rightLayout.railTopInset),
+        // Keep the raw safe edge distinct from the legacy group placement.
+        railBackTopInset:
+          rightLayout.railSide !== 'left' &&
+          displayedNavigation.some(action => action.id === 'back')
+            ? rightLayout.railTopInset
+            : undefined,
         railAvailableHeight: railHeight,
       }
     : { layoutMode: 'bottom' as const };

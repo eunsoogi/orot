@@ -1,11 +1,16 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AppState, type AppStateStatus } from 'react-native';
+import { readIsolatedOverview } from '../../storage/secureDatabase';
 import { loadOverviewMetrics } from './metricLoader';
 import type { OverviewMetricProjection } from './metricProjection';
 import { useOverviewMetrics } from './useOverviewMetrics';
 
-jest.mock('@react-navigation/native', () => ({ useIsFocused: () => true }));
+let mockFocused = true;
+jest.mock('@react-navigation/native', () => ({
+  useIsFocused: () => mockFocused,
+}));
 jest.mock('../../storage/secureDatabase', () => ({
+  readIsolatedOverview: jest.fn(async () => 'unavailable'),
   openLocalStorage: async () => ({
     getSyncCheckpoint: async () => null,
     transaction: async (operation: (writer: unknown) => Promise<void>) =>
@@ -131,5 +136,81 @@ test('reports a first-read failure without treating it as an empty snapshot', as
   expect(hook.result.current.metrics).toEqual({});
 
   await hook.unmount();
+  subscription.mockRestore();
+});
+
+test('recovers from a discarded snapshot with a fresh read on foreground return', async () => {
+  let callback: ((state: AppStateStatus) => void) | undefined;
+  const subscription = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_event, listener) => {
+      callback = listener;
+      return { remove: jest.fn() };
+    });
+  const read = jest
+    .mocked(readIsolatedOverview)
+    .mockClear()
+    .mockResolvedValueOnce('unavailable')
+    .mockResolvedValueOnce('discarded')
+    .mockImplementationOnce(async (_now, _signal, publish) => {
+      publish({
+        selection: ['steps'],
+        chart: { metrics: {}, quantityTruncated: false },
+      });
+      return 'published';
+    });
+  const legacy = jest.mocked(loadOverviewMetrics);
+  legacy.mockResolvedValueOnce({ metrics: {}, quantityTruncated: false });
+  const hook = await renderHook(() => useOverviewMetrics());
+  await waitFor(() => expect(hook.result.current.state).toBe('ready'));
+  legacy.mockClear();
+  await act(async () => callback?.('active'));
+  expect(hook.result.current.state).toBe('loading');
+  await waitFor(() => expect(hook.result.current.state).toBe('ready'));
+  expect(read).toHaveBeenCalledTimes(3);
+  expect(legacy).not.toHaveBeenCalled();
+  expect(hook.result.current.selection).toEqual(['steps']);
+  await hook.unmount();
+  subscription.mockRestore();
+});
+
+test('bounds repeated rejections and does not use shared storage after losing a witness', async () => {
+  const subscription = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation(() => ({ remove: jest.fn() }));
+  const read = jest
+    .mocked(readIsolatedOverview)
+    .mockClear()
+    .mockResolvedValueOnce('discarded')
+    .mockResolvedValueOnce('unavailable')
+    .mockResolvedValueOnce('discarded');
+  const legacy = jest.mocked(loadOverviewMetrics);
+  legacy.mockClear();
+  const hook = await renderHook(() => useOverviewMetrics());
+  await waitFor(() => expect(hook.result.current.state).toBe('failed'));
+  expect(hook.result.current.metrics).toEqual({});
+  expect(read).toHaveBeenCalledTimes(3);
+  expect(legacy).not.toHaveBeenCalled();
+  await hook.unmount();
+  subscription.mockRestore();
+});
+
+test('cancels a queued recovery when the tab loses focus', async () => {
+  const subscription = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation(() => ({ remove: jest.fn() }));
+  const read = jest
+    .mocked(readIsolatedOverview)
+    .mockClear()
+    .mockResolvedValueOnce('discarded');
+  const hook = await renderHook(() => useOverviewMetrics());
+  await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+  mockFocused = false;
+  await hook.rerender(undefined);
+  await act(async () => new Promise(resolve => setTimeout(resolve, 150)));
+  expect(read).toHaveBeenCalledTimes(1);
+  expect(read.mock.calls[0]?.[1].aborted).toBe(true);
+  await hook.unmount();
+  mockFocused = true;
   subscription.mockRestore();
 });

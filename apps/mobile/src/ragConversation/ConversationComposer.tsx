@@ -11,8 +11,12 @@ import { ConversationEdgeGradient } from '../layout/ConversationEdgeGradient';
 import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
+import { ComposerInlineActionContext } from './ComposerInlineAction';
 import { ConversationGlassAction } from './ConversationGlassAction';
-import { ConversationPhotoAttachment } from './ConversationPhotoAttachment';
+import {
+  ConversationPhotoAttachment,
+  conversationPhotoTrayHeight,
+} from './ConversationPhotoAttachment';
 import type { PhotoDraftFailure } from './conversationPhotoTypes';
 import { styles } from './ConversationScreen.styles';
 import { getRagConversationCopy } from './copy';
@@ -51,7 +55,7 @@ export function ConversationComposer({
   readonly compact?: boolean;
   readonly maximumInputHeight?: number;
   readonly disabled?: boolean;
-  /** A separately owned action may occupy the trailing composer slot. */
+  /** A separately owned action shares the trailing row without owning the surface. */
   readonly trailingAction?: ReactNode;
   readonly status?: string;
   readonly preflightError?: string;
@@ -83,87 +87,103 @@ export function ConversationComposer({
   const textScale = Math.max(1, fontScale);
   // Native text scales its line but not its insets; reserve a full scaled line.
   const minimumHeight = Math.max(44, Math.ceil(22 * textScale + 22));
-  // Reserve reading space while allowing at least one scaled line of input.
+  const hasPhoto =
+    photo?.hasPhoto ??
+    (photo?.status === 'ready' ||
+      photo?.status === 'transferring' ||
+      Boolean(photo?.previewData));
+  const trayHeight = hasPhoto ? conversationPhotoTrayHeight(compact) : 0;
+  // Reserve the optional tray and keep at least one scaled line of input.
   const maximumHeight = Math.max(
     minimumHeight,
-    Math.min(height * 0.2, 160 * textScale, maximumInputHeight ?? Infinity),
+    Math.min(
+      height * 0.2,
+      160 * textScale,
+      (maximumInputHeight ?? Infinity) - trayHeight,
+    ),
   );
   const [placeholderHeight, setPlaceholderHeight] = useState(minimumHeight);
   useEffect(() => setPlaceholderHeight(minimumHeight), [minimumHeight]);
-  const field = (
-    <View style={styles.composerField} testID="rag-conversation-composer-field">
-      <ComposerGlassBackground testID="rag-conversation-composer-glass" />
-      <Text
-        pointerEvents="none"
-        accessible={false}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={[styles.input, styles.placeholderMeasurement]}
-        onLayout={event =>
-          setPlaceholderHeight(Math.ceil(event.nativeEvent.layout.height))
-        }
-        testID="rag-conversation-placeholder-measurement"
-      >
-        {copy.placeholder}
-      </Text>
-      <TextInput
-        accessibilityLabel={copy.placeholder}
-        // Keep the keyboard available so users can draft while a response runs.
-        editable
-        maxLength={1000}
-        multiline
-        scrollEnabled
-        onChangeText={onChangeText}
-        placeholder={copy.placeholder}
-        placeholderTextColor={appColors.secondary}
-        // A cleared multiline native editor can retain its previous intrinsic height.
-        // UITextView can retain the previous frame in an empty content-size event.
-        // The hidden, inaccessible Text measures only placeholder wrapping, so clearing
-        // shrinks independently. Typed content remains intrinsic for Fabric layout.
-        style={[
-          styles.input,
-          { minHeight: minimumHeight, maxHeight: maximumHeight },
-          !value && {
-            height: Math.min(
-              maximumHeight,
-              Math.max(minimumHeight, placeholderHeight),
-            ),
-          },
-        ]}
-        testID="rag-conversation-input"
-        value={value}
-      />
-      <ConversationGlassAction
-        busy={stopAction}
-        label={
-          stopping ? copy.cancelling : stopAction ? copy.cancel : copy.send
-        }
-        // A pending or failed attachment must not turn an intended photo send into text-only delivery.
-        disabled={
-          stopping ||
-          (steering && steeringDisabled) ||
-          (!busy &&
-            (disabled ||
-              (!value.trim() &&
-                !(
-                  photo?.status === 'ready' &&
-                  photo.deliveryReady &&
-                  photo.deliveryMode === 'ocr'
-                )) ||
-              photo?.status === 'preparing' ||
-              photo?.status === 'transferring' ||
-              photo?.status === 'error' ||
-              (photo?.status === 'ready' &&
-                (!photo.deliveryReady || photo.deliveryMode !== 'ocr'))))
-        }
-        onPress={() => {
-          // Guard the current callback as well as the native disabled state.
-          if (stopping || (steering && steeringDisabled)) return;
-          if (steering) onSteer?.();
-          else (busy ? onCancel : onSend)();
-        }}
-      />
-    </View>
+  const controls = (
+    <>
+      <View style={styles.composerEditor}>
+        <Text
+          pointerEvents="none"
+          accessible={false}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.input, styles.placeholderMeasurement]}
+          onLayout={event =>
+            setPlaceholderHeight(Math.ceil(event.nativeEvent.layout.height))
+          }
+          testID="rag-conversation-placeholder-measurement"
+        >
+          {copy.placeholder}
+        </Text>
+        <TextInput
+          accessibilityLabel={copy.placeholder}
+          // Keep the keyboard available so users can draft while a response runs.
+          editable
+          maxLength={1000}
+          multiline
+          scrollEnabled
+          onChangeText={onChangeText}
+          placeholder={copy.placeholder}
+          placeholderTextColor={appColors.secondary}
+          // A cleared multiline native editor can retain its previous intrinsic height.
+          // UITextView can retain the previous frame in an empty content-size event.
+          // The hidden, inaccessible Text measures only placeholder wrapping, so clearing
+          // shrinks independently. Typed content remains intrinsic for Fabric layout.
+          style={[
+            styles.input,
+            { minHeight: minimumHeight, maxHeight: maximumHeight },
+            !value && {
+              height: Math.min(
+                maximumHeight,
+                Math.max(minimumHeight, placeholderHeight),
+              ),
+            },
+          ]}
+          testID="rag-conversation-input"
+          value={value}
+        />
+      </View>
+      <ComposerInlineActionContext.Provider value={true}>
+        {trailingAction}
+      </ComposerInlineActionContext.Provider>
+      <View style={styles.composerSendSlot}>
+        <ConversationGlassAction
+          busy={stopAction}
+          label={
+            stopping ? copy.cancelling : stopAction ? copy.cancel : copy.send
+          }
+          // A pending or failed attachment must not turn an intended photo send into text-only delivery.
+          disabled={
+            stopping ||
+            (steering && steeringDisabled) ||
+            (!busy &&
+              (disabled ||
+                (!value.trim() &&
+                  !(
+                    photo?.status === 'ready' &&
+                    photo.deliveryReady &&
+                    photo.deliveryMode === 'ocr'
+                  )) ||
+                photo?.status === 'preparing' ||
+                photo?.status === 'transferring' ||
+                photo?.status === 'error' ||
+                (photo?.status === 'ready' &&
+                  (!photo.deliveryReady || photo.deliveryMode !== 'ocr'))))
+          }
+          onPress={() => {
+            // Guard the current callback as well as the native disabled state.
+            if (stopping || (steering && steeringDisabled)) return;
+            if (steering) onSteer?.();
+            else (busy ? onCancel : onSend)();
+          }}
+        />
+      </View>
+    </>
   );
   return (
     <View
@@ -202,15 +222,22 @@ export function ConversationComposer({
           {preflightError}
         </Text>
       ) : null}
-      <View style={styles.composer}>
+      <View
+        style={styles.composerField}
+        testID="rag-conversation-composer-field"
+      >
+        <ComposerGlassBackground testID="rag-conversation-composer-glass" />
         {photo ? (
-          <ConversationPhotoAttachment {...photo} disabled={disabled || busy}>
-            {field}
+          <ConversationPhotoAttachment
+            {...photo}
+            compact={compact}
+            disabled={disabled || busy}
+          >
+            {controls}
           </ConversationPhotoAttachment>
         ) : (
-          field
+          <View style={styles.composerRow}>{controls}</View>
         )}
-        {trailingAction}
       </View>
       {!compact ? (
         <Text style={[styles.disclaimer, styles.composerDisclaimer]}>

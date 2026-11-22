@@ -1,6 +1,5 @@
 import { SettingsSearchConsentChoices } from '../../agent/execution/SettingsSearchConsentChoices';
 import type { SettingsSearchChoices } from '../../agent/execution/settingsSearchGrants';
-import { settingsConsentRecipient } from '../../agent/execution/settingsConsentRecipient';
 import { t } from '../../i18n';
 import { ModelSelectionSummary } from '../../layout/ModelSelectionSummary';
 import { View } from 'react-native';
@@ -29,6 +28,7 @@ export function ProviderSelectionFooter({
   onConfirm,
   onCancel,
   searchChoices,
+  searchReviewStatus = 'ready',
   inlineConsent = true,
   onSearchChoices,
 }: {
@@ -39,6 +39,7 @@ export function ProviderSelectionFooter({
   readonly saveError: boolean;
   readonly remoteAvailable: boolean;
   readonly searchChoices?: SettingsSearchChoices;
+  readonly searchReviewStatus?: 'ready' | 'loading' | 'unreadable';
   readonly inlineConsent?: boolean;
   readonly onSearchChoices?: (value: SettingsSearchChoices) => void;
   readonly onConfirm: () => void;
@@ -51,7 +52,11 @@ export function ProviderSelectionFooter({
       accessibilityLabel: t('modelSettings.confirmLanguage'),
       testID: 'provider-selection-confirm',
       systemImageName: 'checkmark',
-      disabled: saving || !option || resolution?.ok !== true,
+      disabled:
+        saving ||
+        !option ||
+        resolution?.ok !== true ||
+        searchReviewStatus !== 'ready',
       busy: saving,
       onPress: onConfirm,
     },
@@ -76,6 +81,19 @@ export function ProviderSelectionFooter({
           {providerSelectionText.storageSaveError}
         </Text>
       ) : null}
+      {option && searchReviewStatus !== 'ready' ? (
+        <Text
+          accessibilityRole={
+            searchReviewStatus === 'unreadable' ? 'alert' : 'progressbar'
+          }
+        >
+          {t(
+            searchReviewStatus === 'unreadable'
+              ? 'modelSettings.searchConsentUnavailable'
+              : 'modelSettings.searchConsentLoading',
+          )}
+        </Text>
+      ) : null}
       {option ? (
         <ProviderSelectionConfirmation
           option={option}
@@ -85,20 +103,12 @@ export function ProviderSelectionFooter({
               <SettingsSearchConsentChoices
                 value={searchChoices}
                 onChange={onSearchChoices}
-                disabled={saving}
-                webRecipient={
-                  option.provider.searchPublicWeb
-                    ? t('externalMedicalEvidence.publicSearchRecipient', {
-                        recipient:
-                          settingsConsentRecipient(option.provider.id) ?? '',
-                      })
-                    : undefined
-                }
+                disabled={saving || searchReviewStatus !== 'ready'}
               />
             ) : null
           }
           blockedMessage={resolutionMessage(resolution)}
-          canConfirm={resolution?.ok === true}
+          canConfirm={resolution?.ok === true && searchReviewStatus === 'ready'}
           saving={saving}
           hasActionDock={hasDock}
           onConfirm={onConfirm}

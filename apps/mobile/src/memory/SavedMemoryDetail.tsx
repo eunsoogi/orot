@@ -1,8 +1,12 @@
+import { SavedGeneratedReportDetail } from './SavedGeneratedReportDetail';
 import { SavedMemoryContent } from './SavedMemoryContent';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useState } from 'react';
 import { HistoryMemoryDetail } from './HistoryMemoryDetail';
-import { isHistoryMemory } from './unifiedSavedMemories';
+import {
+  isGeneratedReportMemory,
+  isHistoryMemory,
+} from './unifiedSavedMemories';
 import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
@@ -28,7 +32,7 @@ export function SavedMemoryDetail({
     correctionTarget && correctionTarget.original === memoryId
       ? correctionTarget.id
       : memoryId;
-  const { rows, state, refresh } = useSavedMemories(load, active);
+  const { rows, state, refresh, readyRead } = useSavedMemories(load, active);
   const row = rows.find(value => value.id === selectedId);
   return (
     <View
@@ -81,7 +85,17 @@ export function SavedMemoryDetail({
           }}
         />
       )}
-      {row && !isHistoryMemory(row) && <SavedMemoryContent memory={row} />}
+      {readyRead && row && isGeneratedReportMemory(row) && (
+        <SavedGeneratedReportDetail
+          key={JSON.stringify([readyRead.request, row.id])}
+          artifactId={row.artifactId}
+          reportKind={row.reportKind}
+          isReadCurrent={readyRead.isCurrent}
+        />
+      )}
+      {row && !isHistoryMemory(row) && !isGeneratedReportMemory(row) && (
+        <SavedMemoryContent memory={row} />
+      )}
     </View>
   );
 }

@@ -3,11 +3,18 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 import type { ConversationArtifactSource } from './conversationArtifactSources';
 import type { HealthSummaryReference } from './healthSummary';
 
+/** Immutable same-session context identity; never a model-visible reference. */
+export type HistoricalDialogueParent = {
+  readonly id: string;
+  readonly createdAt: string;
+};
+
 /** Private candidate: persistent identities remain on-device and never enter a model request. */
 export interface ConversationRetentionCandidate {
   readonly question: string;
   readonly submittedInput?: import('./conversationSubmittedInput').ConversationSubmittedInput;
   readonly answer: string;
+  readonly proactiveMemory?: true;
   readonly providerId: string;
   readonly modelId: string;
   /** Preserve the selected exploration mode without persisting route identifiers. */
@@ -15,6 +22,7 @@ export interface ConversationRetentionCandidate {
   readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
   /** Bounded dialogue context is stored with the same protected turn. */
   readonly priorDialogue?: readonly { question: string; answer: string }[];
+  readonly historicalDialogueParents?: readonly HistoricalDialogueParent[];
   readonly priorUserReports?: readonly string[];
   readonly priorDialogueOmitted?: true;
   /** Set only for a validated partial result, never an uncommitted stream fragment. */

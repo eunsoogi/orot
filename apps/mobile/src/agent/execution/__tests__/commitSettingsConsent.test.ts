@@ -166,15 +166,13 @@ test('explicit recipient decisions activate together; omitted recipients never i
   }
 });
 
-test('a later recipient activation failure cannot make the earlier committed grant usable after restart', async () => {
+test('a second recipient write failure rolls back joint grants and stays suspended after restart', async () => {
   const f = await fixture();
-  const activate = f.input.grants.activate.bind(f.input.grants);
-  jest.spyOn(f.input.grants, 'activate').mockImplementation(async (...args) => {
-    if (args[3] === 'public-web')
-      throw new Error('Synthetic second recipient failure');
-    return activate(...args);
-  });
   try {
+    await f.connection.database.execute(`CREATE TRIGGER reject_web_activation
+      BEFORE UPDATE ON settings_inference_grants
+      WHEN NEW.domain = 'public-web' AND NEW.state = 'active'
+      BEGIN SELECT RAISE(ABORT, 'Synthetic second recipient failure'); END`);
     await expect(
       commitSettingsConsent({
         ...f.input,
@@ -184,7 +182,12 @@ test('a later recipient activation failure cannot make the earlier committed gra
       }),
     ).rejects.toThrow('second recipient');
     expect(await f.create().current()).toBeNull();
-    expect(await f.input.grants.read('conversation')).not.toBeNull();
+    expect((await f.input.grants.read('conversation'))?.identity).toMatchObject(
+      {
+        authorityGeneration: f.old.generation,
+        modelId: 'old',
+      },
+    );
     expect(await f.input.grants.read('conversation', 'public-web')).toBeNull();
   } finally {
     f.connection.close();

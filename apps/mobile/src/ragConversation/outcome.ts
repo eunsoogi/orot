@@ -26,6 +26,7 @@ export type RagConversationOutcome =
   | {
       readonly status: 'answer';
       readonly answer: string;
+      readonly proactiveMemory?: true;
       readonly dailyReport?: import('./conversationDisplayMessage').DisplayMessage['dailyReport'];
       readonly completion?: 'partial';
       readonly citations: readonly import('@orot/agent-runtime').EvidenceReference[];
@@ -37,7 +38,7 @@ export type RagConversationOutcome =
       >;
       readonly visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
     }
-  | { readonly status: 'insufficient' }
+  | { readonly status: 'insufficient'; readonly guidance?: 'visit_goal' }
   | {
       readonly status: 'failure';
       readonly kind: RagConversationFailureKind;

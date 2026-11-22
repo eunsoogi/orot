@@ -7,6 +7,7 @@ const ordinaryLimitations = new Set([
   'ongoing_symptom_context',
   'confirmed_appointments_only',
   'planned_events_not_attendance',
+  'calendar_scoped_out',
 ]);
 
 /** Display meaning only: absent sync metadata is not failure, and a bounded history

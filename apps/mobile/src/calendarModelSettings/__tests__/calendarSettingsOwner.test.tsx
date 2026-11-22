@@ -1,4 +1,10 @@
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import { CalendarModelSettingsPanel } from '../CalendarModelSettingsPanel';
 import { createAppleSelectionOption } from '../../providers/selection/options';
 import type { ProviderSelection } from '../../providers/selection/types';
@@ -14,8 +20,8 @@ test('replacement calendar and voice owners discard the old draft and same-revis
   const first: ModelSettingsServices = {
     calendar: {
       load: async () => ({
-        providerId: 'old-owner',
-        modelId: 'old-saved-model',
+        providerId: apple.provider.id,
+        modelId: apple.modelId,
       }),
       save: async () => {},
       clear: async () => {},
@@ -42,7 +48,7 @@ test('replacement calendar and voice owners discard the old draft and same-revis
   const view = await render(content(first));
   await waitFor(() =>
     expect(view.getByTestId('calendar-current-model')).toHaveTextContent(
-      /old-saved-model/,
+      /Apple - Apple Intelligence/,
     ),
   );
   await waitFor(() =>
@@ -69,16 +75,66 @@ test('replacement calendar and voice owners discard the old draft and same-revis
   await view.rerender(content(next));
   expect(view.queryByTestId('provider-selection-confirmation')).toBeNull();
   expect(view.queryByText('Old owner catalog')).toBeNull();
-  expect(view.queryByText('old-saved-model')).toBeNull();
+  expect(view.queryByText(/Apple - Apple Intelligence/)).toBeNull();
   expect(view.queryByTestId('provider-option-0')).toBeNull();
   await act(async () => {
     finish({ providerId: 'new-owner', modelId: 'new-saved-model' });
   });
   await waitFor(() =>
     expect(view.getByTestId('calendar-current-model')).toHaveTextContent(
-      /new-saved-model/,
+      /모델 이름을 확인할 수 없어요\./,
     ),
   );
   expect(first.saveConsent).not.toHaveBeenCalled();
   await view.unmount();
+});
+
+test('keeps the Decisions label before, during and after explicit catalog discovery', async () => {
+  let finish!: (value: { revision: number; ids: string[] }) => void;
+  const discoverModels = jest.fn(
+    () =>
+      new Promise<{ revision: number; ids: string[] }>(resolve => {
+        finish = resolve;
+      }),
+  );
+  const apple = createAppleSelectionOption('available');
+  const saved = { providerId: 'openai-api-decisions', modelId: 'gpt-6-luna' };
+  const services: ModelSettingsServices = {
+    calendar: {
+      load: async () => saved,
+      save: jest.fn(async () => {}),
+      clear: async () => {},
+    },
+    voice: {
+      ...modelSettingsVoiceFixture(),
+      accountStatus: async () => ({ connected: true, revision: 3 }),
+      discoverModels,
+    },
+    calendarOption: modelId => ({
+      ...apple,
+      modelId,
+      displayName: 'Synthetic Decisions',
+      provider: { ...apple.provider, id: saved.providerId },
+    }),
+    saveConsent: jest.fn(async () => {}),
+  };
+  await render(
+    <ModelSettingsServicesContext.Provider value={services}>
+      <CalendarModelSettingsPanel options={[]} onBusyChange={jest.fn()} />
+    </ModelSettingsServicesContext.Provider>,
+  );
+  const summary = () => screen.getByTestId('calendar-current-model');
+  const label = /OpenAI API - Decisions - GPT-6 Luna/;
+  expect(summary()).toHaveTextContent(label);
+  expect(screen.getByText('OpenAI API - Decisions')).toBeTruthy();
+  expect(discoverModels).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByTestId('calendar-model-refresh'));
+  expect(summary()).toHaveTextContent(label);
+  await act(async () => finish({ revision: 3, ids: ['gpt-6-luna'] }));
+  expect(summary()).toHaveTextContent(label);
+  expect(screen.getByTestId('provider-option-0')).toHaveTextContent(
+    /GPT-6 Luna/,
+  );
+  expect(screen.queryByText('gpt-6-luna')).toBeNull();
+  expect(services.saveConsent).not.toHaveBeenCalled();
 });

@@ -24,7 +24,9 @@ export async function steeringFinalBoundary<TResult>(
   // Existing graph budgets, fresh consent, evidence fences and journal identities still apply.
   let queued = false;
   try {
-    queued = (await steering.list()).some((row) => row.status === 'queued');
+    queued = steering.pendingAtFinalBoundary
+      ? await steering.pendingAtFinalBoundary()
+      : (await steering.list()).some((row) => row.status === 'queued');
   } catch {
     return result;
   }

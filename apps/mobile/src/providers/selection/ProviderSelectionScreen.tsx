@@ -1,3 +1,6 @@
+import { useSavedChatGPTTitle } from './useSavedChatGPTTitle';
+import { savedModelPresentation } from './savedModelPresentation';
+import { useSavedSearchChoices } from './useSavedSearchChoices';
 import { useConversationModelConfirmation } from './useConversationModelConfirmation';
 import { t } from '../../i18n';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
@@ -34,10 +37,7 @@ export default function ProviderSelectionScreen({
   onNavigationStateChange,
 }: ProviderSelectionScreenProps) {
   const navigationInset = useNavigationContentInset();
-  const [searchChoices, setSearchChoices] = useState({
-    web: false,
-    medical: false,
-  });
+  const search = useSavedSearchChoices(selectionStore);
   const [savedSelection, setSavedSelection] =
     useState<ProviderSelection | null>(null);
   const [pendingOption, setPendingOption] =
@@ -76,6 +76,10 @@ export default function ProviderSelectionScreen({
       option.provider.id === savedSelection?.providerId &&
       option.modelId === savedSelection?.modelId,
   );
+  const savedChatGPTTitle = useSavedChatGPTTitle(
+    selectionStore,
+    savedSelection,
+  );
   const pendingSelection = pendingOption
     ? { providerId: pendingOption.provider.id, modelId: pendingOption.modelId }
     : null;
@@ -91,7 +95,7 @@ export default function ProviderSelectionScreen({
       )
     : undefined;
   const confirmationOption = currentPendingOption ?? pendingOption;
-  const { settings, confirmSelection, disclosureSheet } =
+  const { unifiedReview, confirmSelection, disclosureSheet } =
     useConversationModelConfirmation({
       presentation,
       navigationRouteKey,
@@ -101,7 +105,7 @@ export default function ProviderSelectionScreen({
       pendingResolution,
       currentPendingOption,
       confirmationOption,
-      searchChoices,
+      searchChoices: search.choices,
       saving,
       setSaving,
       setSaveError,
@@ -114,6 +118,15 @@ export default function ProviderSelectionScreen({
     loadError,
     available: resolution.ok,
     displayName: selectedOption?.displayName,
+    storedLabel:
+      savedSelection && presentation === 'settings-provider'
+        ? savedModelPresentation(
+            savedSelection,
+            selectedOption,
+            undefined,
+            savedChatGPTTitle,
+          )
+        : undefined,
     savedModelId: savedSelection?.modelId,
     presentation,
   });
@@ -169,7 +182,12 @@ export default function ProviderSelectionScreen({
                   { hasPendingSelection: true, isSavingSelection: false },
                   true,
                 );
-                setSearchChoices({ web: false, medical: false });
+                search.choose(
+                  option,
+                  unifiedReview &&
+                    option.provider.id === savedSelection?.providerId &&
+                    option.modelId === savedSelection.modelId,
+                );
                 setPendingOption(option);
                 setSaveError(false);
               }}
@@ -183,9 +201,10 @@ export default function ProviderSelectionScreen({
           ) : null}
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionFooter
-              inlineConsent={!settings}
-              searchChoices={searchChoices}
-              onSearchChoices={setSearchChoices}
+              inlineConsent={!unifiedReview}
+              searchChoices={unifiedReview ? undefined : search.choices}
+              searchReviewStatus={search.status}
+              onSearchChoices={search.change}
               message={selectionMessage}
               saveError={saveError}
               remoteAvailable={options.some(
@@ -199,9 +218,12 @@ export default function ProviderSelectionScreen({
                   { hasPendingSelection: false, isSavingSelection: false },
                   true,
                 );
+                search.choose();
                 setPendingOption(null);
               }}
-              onConfirm={confirmSelection}
+              onConfirm={() => {
+                if (search.canConfirm()) confirmSelection();
+              }}
               option={pendingOption ? confirmationOption : null}
               saving={saving}
             />

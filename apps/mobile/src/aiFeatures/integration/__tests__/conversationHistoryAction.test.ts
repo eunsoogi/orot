@@ -212,3 +212,18 @@ test.each(['changed', 'deleted'] as const)(
     expect(await f.action!.recoverResult!(request(input))).toBeUndefined();
   },
 );
+
+test('a useful ordinary source still requires fresh approval and excludes the rendered shortcut', async () => {
+  const project = '라일락 프로젝트의 데모는 금요일이에요.';
+  const { action, confirmHistorySave, saveConversationHistory } = fixture(
+    '오늘의 보고서',
+    [project, '오늘의 보고서'],
+  );
+  expect(action.parseInput({ userMessage: '오늘의 보고서' })).toBeUndefined();
+  const selected = { userMessage: project };
+  expect(action.parseInput(selected)).toEqual(selected);
+  confirmHistorySave.mockResolvedValue(false);
+  expect(await action.authorize(selected, signal)).toBe(false);
+  expect(confirmHistorySave).toHaveBeenCalledWith(project, signal);
+  expect(saveConversationHistory).not.toHaveBeenCalled();
+});

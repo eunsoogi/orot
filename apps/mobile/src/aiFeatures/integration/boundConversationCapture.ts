@@ -1,5 +1,12 @@
-import { boundCaptureAuthorityUnchanged } from './boundCaptureAuthority';
+import {
+  boundCaptureAuthorityUnchanged,
+  ownsBoundCaptureAuthority,
+} from './boundCaptureAuthority';
 import type { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
+import {
+  readOwnedBoundParentRows,
+  type BoundCaptureReadPhase,
+} from '../../storage/conversationArtifactRead';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import {
   prepareCaptureSources,
@@ -10,7 +17,8 @@ import { fingerprint } from './evidenceUtils';
 
 /** Issued only by discovery's storage owner and explicitly supplied to binding.
  * The inner alias keeps its own native/summary/research/live validation; no graph
- * authority is transferred to it. Both outer fences remain ordinary strict reads. */
+ * authority is transferred to it. Each outer fence independently authorizes
+ * a strict read, using the guarded structural plan only while its witness holds. */
 export function createBoundConversationCaptureOwner(input: {
   storage: Pick<
     ReturnType<typeof createConversationArtifactStorage>,
@@ -25,24 +33,60 @@ export function createBoundConversationCaptureOwner(input: {
         if (!request.bound) throw new Error('Missing bound capture authority.');
         return request.bound;
       });
-      const current = async () => {
+      const current = async (capturePhase: BoundCaptureReadPhase) => {
         if (signal.aborted || !boundCaptureAuthorityUnchanged(owner))
           return false;
-        const rows = await (
-          reads?.forStorage(input.storage) ?? input.storage
-        ).readMany(bindings.map(binding => binding.parentId));
+        const scoped = reads?.forStorage(input.storage);
+        const ids = bindings.map(binding => binding.parentId);
+        const witnessed =
+          scoped && ownsBoundCaptureAuthority(owner)
+            ? await readOwnedBoundParentRows(
+                scoped,
+                input.storage,
+                signal,
+                ids,
+                capturePhase,
+              )
+            : undefined;
+        const witnessedRows = witnessed?.rows;
+        // Revocation can mean the scoped callback itself was replaced during
+        // the read. Recheck authority and retry through the stock reader only.
+        if (
+          witnessed &&
+          !witnessedRows &&
+          (signal.aborted || !ownsBoundCaptureAuthority(owner))
+        )
+          return false;
+        const rows =
+          witnessedRows ??
+          (await (
+            witnessed ? input.storage : (scoped ?? input.storage)
+          ).readMany(ids));
+        const tokens = witnessedRows ? witnessed?.tokens : undefined;
+        let lastToken: number | undefined;
+        let lastDigest: string | undefined;
         return (
           !signal.aborted &&
           boundCaptureAuthorityUnchanged(owner) &&
           rows.length === bindings.length &&
-          rows.every((row, index) =>
-            Boolean(
-              row && fingerprint(row) === bindings[index]!.parentRevision,
-            ),
-          )
+          rows.every((row, index) => {
+            if (!row) return false;
+            const token = tokens?.[index];
+            // Canonicalization keeps its original post-settlement error and
+            // short-circuit ordering; equality is witnessed only by owned SQL.
+            const digest =
+              token !== undefined && token === lastToken
+                ? lastDigest
+                : fingerprint(row);
+            lastToken = token;
+            lastDigest = digest;
+            return (
+              digest !== undefined && digest === bindings[index]!.parentRevision
+            );
+          })
         );
       };
-      if (!(await current()))
+      if (!(await current('initial')))
         throw new Error('The outer conversation parent changed.');
       const inner = await prepareCaptureSources(
         input.registry,
@@ -60,7 +104,7 @@ export function createBoundConversationCaptureOwner(input: {
         finish: async () =>
           !signal.aborted &&
           (await inner.finish()) &&
-          (await current()) &&
+          (await current('final')) &&
           !signal.aborted,
       };
     },

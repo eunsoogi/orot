@@ -33,10 +33,11 @@ export function ConversationVoiceEndMarker({
   );
 }
 
+// A cool light fill distinguishes the receipt from the canvas without a border.
 const background =
   Platform.OS === 'ios'
-    ? DynamicColorIOS({ light: '#f0f1f4', dark: '#252525' })
-    : '#f0f1f4';
+    ? DynamicColorIOS({ light: '#dae8fb', dark: '#252525' })
+    : '#dae8fb';
 
 const styles = StyleSheet.create({
   card: {

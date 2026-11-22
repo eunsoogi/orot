@@ -1,7 +1,9 @@
 import { observeToolRetention } from './conversationToolRetentionDiagnostic';
+import { conversationLocalClarification } from './conversationLocalClarification';
 import { createConversationDeliveryRetention } from './conversationDeliveryRetention';
 import { createConversationOpeningRetention } from './conversationOpeningRetention';
 import { notifyConversationInterruption } from '../replyNotifications/notifyConversationInterruption';
+import { completedMemorySource } from './ordinaryConversationMemoryTask';
 import type { ConversationTurnRetentionInput } from './conversationTurnRetentionInput';
 import {
   decodeConversationArtifact,
@@ -25,6 +27,7 @@ export function createConversationTurnRetention(
   let writing = false;
   let suspended = false;
   let resumeRequested = false;
+  let authoredCheckpoint: string | undefined;
   const write = async (value: ConversationArtifact, signal?: AbortSignal) => {
     if (writing)
       throw new Error('The conversation output is already being saved.');
@@ -56,6 +59,7 @@ export function createConversationTurnRetention(
     const value = decodeConversationArtifact(
       JSON.stringify({
         ...candidate,
+        proactiveMemory: undefined, // Model advice is live-only, never retention authority.
         ...opening.openingMetadata(),
         ...delivery.deliveryMetadata(),
         id: input.turnId,
@@ -70,12 +74,15 @@ export function createConversationTurnRetention(
   return {
     ...createConversationRetainedPreview(input),
     retainOpening: opening.retainOpening,
+    ...conversationLocalClarification(input, opening, delivery),
     retainDelivery: delivery.retainDelivery,
     discardOpening() {
       opening.discardOpening();
       delivery.discardDelivery();
     },
     toolMessageId: input.turnId,
+    ordinaryMemorySource: () =>
+      completedMemorySource(input, authoredCheckpoint),
     ...(input.storage.openWorkflowContinuation
       ? { openWorkflowContinuation: input.storage.openWorkflowContinuation }
       : {}),
@@ -105,6 +112,7 @@ export function createConversationTurnRetention(
         // The lifetime owner fences the committed checkpoint with the chosen stop reason.
         throw new Error('The conversation request was cancelled.');
       }
+      authoredCheckpoint = submittedInput ? undefined : question;
     },
     async interruptRequest(
       status: 'cancelled' | 'interrupted',

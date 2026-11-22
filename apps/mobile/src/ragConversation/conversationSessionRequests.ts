@@ -1,36 +1,28 @@
-import { stopSettlement } from './conversationStopSettlement';
-import { conversationFinalization as finalize } from './conversationFinalizationDiagnostics';
-import { hasUncommittedTurn } from './hasUncommittedTurn';
+import { hasShownUnsavedAnswer } from './conversationShownAnswerExpiry';
+import { finishConversationLiveRequest } from './finishConversationLiveRequest';
+import { liveConversationObservers } from './conversationLiveObservers';
+import { createConversationOrdinaryMemoryOwner } from './conversationOrdinaryMemoryOwner';
 import { createConversationSteeringOwner } from './conversationSteeringOwner';
 import { createConversationColdRequest } from './conversationColdRequest';
 import { getRagConversationFailureCopy } from './copy';
-import { createConversationTurnActivity } from './conversationTurnActivity';
-import type { ConversationTurnActivity } from './conversationTurnActivity';
+import * as turnActivity from './conversationTurnActivity';
 import type { ConversationActivityTracker } from './conversationActivity';
 import {
   activityNotifier,
   createConversationActivity as createActivity,
 } from './conversationActivity';
 import { createConversationRequestDisposal } from './conversationRequestDisposal';
-import {
-  conversationHistoryPayload,
-  retainedHistoryTurns,
-} from './conversationHistoryPayload';
+import { conversationHistoryPayload } from './conversationHistoryPayload';
 import { conversationCompletedAnswer } from './conversationCompletedAnswer';
-import { observeSummaryCommit } from './conversationSummaryCommit';
 import { prepareConversationRequest } from './conversationRequestStart';
 import { bindRequestCancel } from './conversationRequestIdentity';
-import { requestIdentityObserver } from './conversationRequestIdentity';
 import { ownsOutcome } from './conversationOutcomeOwnership';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import { createConversationRequestLifetime } from './conversationRequestLifetime';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 import { startConversationRetainedRequest as startRetainedRequest } from './conversationPhotoRequestStart';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
-import {
-  createConversationRequestPreview,
-  conversationPreviewObserver,
-} from './conversationRequestPreview';
+import type { createConversationRequestPreview } from './conversationRequestPreview';
 import { conversationPreviewSetup } from './conversationPreviewSetup';
 import {
   createRetainConversationPartial as retainPartialFor,
@@ -52,18 +44,22 @@ export function createConversationSessionRequests(
   execution?: ConversationExecutionAdapter,
   photo?: Parameters<typeof startRetainedRequest>[0]['photo'],
   cold?: ConversationSessionOptions['coldResume'],
+  memoryPort?: ConversationSessionOptions['ordinaryMemory'],
 ) {
   const steering = createConversationSteeringOwner(find, update);
+  const ordinaryMemory = createConversationOrdinaryMemoryOwner(memoryPort);
   let messageId = 0;
   const saveRecovery = createConversationRequestSaveRecovery(update, find);
   const controllers = new Map<number, AbortController>();
   const pendingTurns = new Map<number, PendingTurn>();
   const snapshots = new Map<number, ConversationActivityTracker>();
-  const activities = new Map<number, ConversationTurnActivity>();
+  const activities = new Map<number, turnActivity.ConversationTurnActivity>();
   const lifetime = createConversationRequestLifetime({
     execution,
     pauseState: (id, continueWorkflow) => update(id, { continueWorkflow }),
     interrupt: id => cancel(id, false, 'interrupted'),
+    acceptNativeExpiry: id =>
+      !hasShownUnsavedAnswer(pendingTurns.get(id), find(id)),
     reportFenceFailure: id =>
       update(id, { error: getRagConversationFailureCopy('unavailable') }),
   });
@@ -82,12 +78,21 @@ export function createConversationSessionRequests(
     lifetime,
     saveRecovery,
     steering,
+    ordinaryMemory,
   };
-  const cancel = createConversationStopHandler({ ...ownership, retainPartial });
+  const stop = createConversationStopHandler({ ...ownership, retainPartial });
+  const cancel = (...args: Parameters<typeof stop>) => {
+    ordinaryMemory.discard(args[0]);
+    return stop(...args);
+  };
   return {
     cancel,
-    steer: steering.submit,
+    steer(id: number) {
+      ordinaryMemory.discard(id);
+      return steering.submit(id);
+    },
     clearSteering: steering.clear,
+    reserveUserMessageId: () => ++messageId,
     discardOpenings: saveRecovery.discardOpenings,
     ...createConversationRequestDisposal(ownership),
     async send(
@@ -114,11 +119,18 @@ export function createConversationSessionRequests(
       snapshots.set(id, snapshot);
       controllers.set(id, controller);
       pendingTurns.set(id, request);
+      const memory = ordinaryMemory.begin(
+        id,
+        question,
+        controller.signal,
+        explicitQuestion === undefined && !hasPhoto,
+      );
       onOwner?.(bindRequestCancel(controllers, id, controller, cancel));
       update(id, { ...change, requestActivity: snapshot.getSnapshot() });
       const current = () =>
         controllers.get(id) === controller && !controller.signal.aborted;
-      let activity: ConversationTurnActivity | undefined;
+      let memoryShown = false;
+      let activity: turnActivity.ConversationTurnActivity | undefined;
       let retained:
         ReturnType<typeof createConversationTurnRetention> | undefined;
       let preview:
@@ -149,7 +161,7 @@ export function createConversationSessionRequests(
           update,
           error: copy.previewSaveFailed,
         });
-        activity = createConversationTurnActivity({
+        activity = turnActivity.createConversationTurnActivity({
           id,
           userMessageId,
           responseId,
@@ -161,24 +173,23 @@ export function createConversationSessionRequests(
           activityChanged: activityNotifier(current, update, id, snapshot),
         });
         activities.set(id, activity);
-        const outcome = await onSend(question, history, controller.signal, {
-          ...(retained
-            ? saveRecovery.observer(id, retained, request, current)
-            : {}),
-          ...lifetime.executionObserver(controller),
-          onSteeringReady: store => steering.bind(id, store, current),
-          conversationScope: conversationScope(id),
-          ...(photoInput ? { photoInput } : {}),
-          retainedHistory: retainedHistoryTurns(session.messages, question),
-          ...requestIdentityObserver(retention, retained, id),
-          artifactContinuation: session.artifactContinuation ?? null,
-          onArtifactContinuation(value) {
-            if (current()) update(id, { artifactContinuation: value });
-          },
-          ...observeSummaryCommit(request),
-          ...activity.observer,
-          ...(preview ? conversationPreviewObserver(preview, activity) : {}),
-        });
+        const outcome = await onSend(
+          question,
+          history,
+          controller.signal,
+          liveConversationObservers(ownership, {
+            id,
+            session,
+            request,
+            controller,
+            current,
+            activity,
+            retained,
+            preview,
+            photoInput,
+            memory,
+          }),
+        );
         if (
           !ownsOutcome(current(), controllers.get(id) === controller, request)
         )
@@ -209,37 +220,26 @@ export function createConversationSessionRequests(
           find,
           update,
         });
+        if (outcome.status === 'answer' && request.committed && memory) {
+          memoryShown = true;
+          memory.show();
+        }
       } catch {
         if (current())
           fail(copy.unavailable, getRagConversationFailureCopy('unavailable'));
       } finally {
-        steering.finish(id, current, !request.committed);
-        await finalize.presentation({ photoInput, preview, activity }, () =>
-          lifetime.failureStatus(controller),
-        );
-        if (request.committed && find(id)?.error === copy.previewSaveFailed)
-          update(id, { error: '' });
-        if (hasUncommittedTurn(retained, request, controller.signal))
-          lifetime.interrupt(id, 'interrupted');
-        const stopStatus = lifetime.status(id, controller);
-        await finalize.lifetime(lifetime, id, controller);
-        if (activities.get(id) === activity) activities.delete(id);
-        if (controllers.get(id) === controller) {
-          if (
-            controller.signal.aborted &&
-            !request.committed &&
-            !request.summaryCommitted
-          ) {
-            cancel(id, true, stopStatus);
-            return;
-          }
-          controllers.delete(id);
-          pendingTurns.delete(id);
-          snapshot.settle();
-          if (snapshots.get(id) === snapshot) snapshots.delete(id);
-          update(id, { busy: false, requestActivity: null });
-          stopSettlement.finish(controller);
-        }
+        if (!memoryShown) memory?.discard();
+        await finishConversationLiveRequest(ownership, {
+          id,
+          controller,
+          current,
+          request,
+          cancel,
+          previewError: copy.previewSaveFailed,
+          retained,
+          snapshot,
+          presentation: { photoInput, preview, activity },
+        });
       }
     },
     resumeCold: createConversationColdRequest({ ...ownership, cancel }),

@@ -1,3 +1,7 @@
+import {
+  calendarDecisionsModelLabel,
+  calendarDecisionsProviderLabel,
+} from './calendarDecisionsPresentation';
 import { t } from '../i18n';
 import { NativeModules } from 'react-native';
 import { providerFailure, providerSuccess } from '@orot/model-runtime';
@@ -30,7 +34,7 @@ export function createCalendarDecisionsOption(
   return {
     modelId,
     // Decisions is the service; preserve its documented model and stored identity.
-    displayName: 'Decisions · GPT-6 Luna',
+    displayName: `${calendarDecisionsProviderLabel} - ${calendarDecisionsModelLabel}`,
     privacyBoundary: 'selected-context-remote',
     availability: available
       ? { status: 'available' }
@@ -41,7 +45,7 @@ export function createCalendarDecisionsOption(
     provider: {
       kind: 'language-model',
       id: 'openai-api-decisions',
-      displayName: 'OpenAI API · Calendar Decisions',
+      displayName: calendarDecisionsProviderLabel,
       capabilities: {
         inputTypes: ['text'],
         streaming: false,

@@ -18,7 +18,12 @@ import type { OverviewMetricProjection } from './metricProjection';
 declare const require: (path: string) => {
   openLocalStorage: () => Promise<RecordRepository>;
   openLocalAgentMemoryDatabase: () => Promise<SqlDatabase>;
+  readIsolatedOverview?: typeof import('../../storage/secureDatabase').readIsolatedOverview;
 };
+
+// A discarded witness can be a concurrent commit or a just-resumed native
+// lifecycle. Use fresh leases, never a tight loop or an unguarded fallback.
+const discardedReadRetryDelays = [100, 300] as const;
 
 /** Reads encrypted local data on entry; selecting metrics never invokes permission or synchronization flows. */
 export function useOverviewMetrics() {
@@ -86,37 +91,75 @@ export function useOverviewMetrics() {
     if (!focused) return;
     let active = true;
     const controller = new AbortController();
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const selectionReadGeneration = selectionGeneration.current;
     const currentLoadGeneration = loadGeneration.current;
     setState(hasSnapshot.current ? 'refreshing' : 'loading');
-    Promise.resolve()
-      .then(() => {
+    const publish = (
+      nextSelection: readonly OverviewMetric[],
+      nextMetrics: Awaited<ReturnType<typeof loadOverviewMetrics>>,
+    ) => {
+      if (!active || currentLoadGeneration !== loadGeneration.current) return;
+      if (selectionReadGeneration === selectionGeneration.current)
+        setSelection(nextSelection);
+      setMetrics(nextMetrics.metrics);
+      setQuantityTruncated(nextMetrics.quantityTruncated);
+      hasSnapshot.current = true;
+      setState('ready');
+    };
+    const isCurrent = () =>
+      active && currentLoadGeneration === loadGeneration.current;
+    const load = async (discardRetries: number) => {
+      if (!isCurrent()) return;
+      try {
         const storage = require('../../storage/secureDatabase');
-        return Promise.all([
+        const now = new Date();
+        const result = await storage.readIsolatedOverview?.(
+          now,
+          controller.signal,
+          ({ selection: isolatedSelection, chart }) =>
+            publish(isolatedSelection, chart),
+        );
+        if (result === 'published' || controller.signal.aborted) return;
+        if (result === 'discarded' || discardRetries > 0) {
+          // A revoked or changed snapshot must not leave older values visible.
+          if (!isCurrent()) return;
+          hasSnapshot.current = false;
+          setMetrics({});
+          setQuantityTruncated(false);
+          const delay = discardedReadRetryDelays[discardRetries];
+          if (delay === undefined) {
+            setState('failed');
+          } else {
+            setState('loading');
+            retryTimer = setTimeout(() => {
+              if (
+                AppState.currentState !== 'inactive' &&
+                AppState.currentState !== 'background'
+              )
+                load(discardRetries + 1);
+            }, delay);
+          }
+          return;
+        }
+        const [fallbackSelection, chart] = await Promise.all([
           storage.openLocalStorage().then(loadOverviewMetricSelection),
           storage
             .openLocalAgentMemoryDatabase()
             .then(database =>
-              loadOverviewMetrics(database, undefined, controller.signal),
+              loadOverviewMetrics(database, now, controller.signal),
             ),
         ]);
-      })
-      .then(([nextSelection, nextMetrics]) => {
-        if (active && currentLoadGeneration === loadGeneration.current) {
-          if (selectionReadGeneration === selectionGeneration.current)
-            setSelection(nextSelection);
-          setMetrics(nextMetrics.metrics);
-          setQuantityTruncated(nextMetrics.quantityTruncated);
-          hasSnapshot.current = true;
-          setState('ready');
-        }
-      })
-      .catch(() => {
-        if (active && currentLoadGeneration === loadGeneration.current)
-          setState(hasSnapshot.current ? 'stale' : 'failed');
-      });
+        publish(fallbackSelection, chart);
+      } catch {
+        if (isCurrent()) setState(hasSnapshot.current ? 'stale' : 'failed');
+      }
+    };
+    // Start asynchronously, as before, so immediate effect cleanup can win.
+    Promise.resolve().then(() => load(0));
     return () => {
       active = false;
+      clearTimeout(retryTimer);
       // Discard queued work and stop only this read at safe SQL boundaries.
       controller.abort();
     };

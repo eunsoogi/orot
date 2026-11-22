@@ -85,7 +85,11 @@ test('shows a busy save state once and restores the checked completion after rea
     edit: jest.fn(),
   } as unknown as Service;
   await render(
-    <ManualVisitRecords appointmentId="visit-1" open={async () => service} />,
+    <ManualVisitRecords
+      appointmentId="visit-1"
+      embedded
+      open={async () => service}
+    />,
   );
 
   await fireEvent.press(

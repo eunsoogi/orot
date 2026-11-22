@@ -51,12 +51,16 @@ export function conversationCompletedAnswer(input: {
       );
     return;
   }
+  const clarification =
+    outcome.status === 'insufficient' && outcome.guidance === 'visit_goal';
   const content =
     outcome.status === 'answer'
       ? outcome.answer
       : outcome.status === 'no_evidence'
         ? input.copy.noEvidence
-        : input.copy.insufficient;
+        : outcome.guidance === 'visit_goal'
+          ? t('visitQuestions.conversation.clarifyGoal')
+          : input.copy.insufficient;
   update(id, {
     pendingMessage: null,
     // A generated report is retained on its own message, not selected for every later prompt.
@@ -64,20 +68,26 @@ export function conversationCompletedAnswer(input: {
       ? { error: t('ragConversation.conversation.answerSaveSourceUnavailable') }
       : {}),
     messages: [
-      ...find(id).messages,
+      ...find(id).messages.map(message =>
+        clarification && message.id === input.userMessageId
+          ? { ...message, localClarification: true as const }
+          : message,
+      ),
       {
         id: messageId,
         role: 'assistant',
+        ...(clarification ? { localClarification: true as const } : {}),
         content,
         initialResponse: session.pendingMessage?.withholdHealthBody
           ? undefined
           : session.pendingMessage?.initialResponse,
-        previousOutputs: session.pendingMessage?.withholdHealthBody
-          ? undefined
-          : session.pendingMessage?.previousOutputs,
+        previousOutputs:
+          clarification || session.pendingMessage?.withholdHealthBody
+            ? undefined
+            : session.pendingMessage?.previousOutputs,
         ...(input.dailyReport ? { dailyReport: input.dailyReport } : {}),
         ...activity.metadata(session.pendingMessage?.withholdHealthBody),
-        ...(input.retainedTurnId
+        ...(!clarification && input.retainedTurnId
           ? { retainedTurnId: input.retainedTurnId }
           : {}),
         ...(outcome.status === 'answer'

@@ -37,10 +37,16 @@ afterEach(() => jest.restoreAllMocks());
 async function openEuropePmcDisclosure(
   view: Awaited<ReturnType<typeof render>>,
 ) {
+  await waitFor(() =>
+    expect(view.getByTestId('provider-selection-confirm')).toBeEnabled(),
+  );
   await fireEvent.press(view.getByTestId('provider-selection-confirm'));
   expect(
     await view.findByTestId('inference-disclosure-recipient'),
-  ).toHaveTextContent('Europe PMC');
+  ).toHaveTextContent(/^Europe PMC$/);
+  expect(view.getByTestId('inference-disclosure-scope')).toHaveTextContent(
+    /Europe PMC에는 의학 문헌 검색어만 전송합니다/,
+  );
   expect(view.getByTestId('inference-disclosure-sheet')).toBeTruthy();
   expect(saveModelSettingsConsent).not.toHaveBeenCalled();
 }
@@ -54,18 +60,13 @@ test('literature settings save only after explicitly allowing the Europe PMC dis
     ).toBe(false),
   );
   await fireEvent.press(view.getByTestId('provider-option-0'));
-  expect(view.getByTestId('settings-consent-medical').props.value).toBe(false);
+  expect(view.queryByTestId('settings-consent-medical')).toBeNull();
   await fireEvent.press(view.getByTestId('provider-selection-cancel'));
   expect(saveModelSettingsConsent).not.toHaveBeenCalled();
   expect(back).not.toHaveBeenCalled();
   await fireEvent.press(view.getByTestId('provider-option-0'));
-  await fireEvent(
-    view.getByTestId('settings-consent-medical'),
-    'valueChange',
-    true,
-  );
   expect(saveModelSettingsConsent).not.toHaveBeenCalled();
-  // Saving opens a recipient-specific decision; it does not grant search access.
+  // Reviewing the option discloses Europe PMC without granting search access.
   await openEuropePmcDisclosure(view);
   expect(back).not.toHaveBeenCalled();
   await fireEvent.press(view.getByTestId('inference-disclosure-cancel'));
@@ -105,11 +106,6 @@ test('departed literature settings abort the pending decision and cannot route a
     ).toBe(false),
   );
   await fireEvent.press(view.getByTestId('provider-option-0'));
-  await fireEvent(
-    view.getByTestId('settings-consent-medical'),
-    'valueChange',
-    true,
-  );
   await openEuropePmcDisclosure(view);
   expect(back).not.toHaveBeenCalled();
   const completion = fireEvent.press(

@@ -51,6 +51,9 @@ test('the current settings gate approves the explicit Europe PMC disclosure befo
   const approve = readFileSync(`${root}LiteratureConsentUITestConditions.swift`, 'utf8').split(
     'enum LiteratureSearchObservation {',
   )[0];
+  assert.doesNotMatch(approve, /settings-consent-medical/);
+  const cancelChoice = approve.indexOf('cancel.tap()');
+  const chooseAgain = approve.lastIndexOf('option.tap()');
   const previousGate = approve.indexOf('id: "provider-selection-confirm"');
   const recipient = approve.indexOf('XCTAssertEqual(recipientText, "Europe PMC")');
   const guardRecipient = approve.indexOf('guard recipientText == "Europe PMC"');
@@ -63,7 +66,9 @@ test('the current settings gate approves the explicit Europe PMC disclosure befo
     'XCTAssertTrue(UITestConditions.exists(node("summary-visual-picker")))',
   );
   assert.ok(
-    previousGate >= 0 &&
+    cancelChoice >= 0 &&
+      cancelChoice < chooseAgain &&
+      chooseAgain < previousGate &&
       previousGate < recipient &&
       recipient < guardRecipient &&
       guardRecipient < reveal &&

@@ -1,6 +1,6 @@
 import { t } from '../../i18n';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton as Button } from '../../layout/AppButton';
 import { AppSymbol } from '../../layout/AppSymbol';
@@ -26,7 +26,7 @@ export function ApiCatalogAccount({
 }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <View style={local.container}>
+    <View style={styles.catalogContent}>
       <View style={styles.header}>
         <View style={styles.icon}>
           <OpenAIProviderMark />
@@ -46,26 +46,32 @@ export function ApiCatalogAccount({
               : t('modelSettings.apiRequired')}
           </Text>
         </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={refreshLabel}
-          accessibilityState={{
-            busy: busy,
-            disabled: busy || !connected,
-          }}
-          style={styles.action}
-          testID={`${testIDPrefix}-model-refresh`}
-          disabled={busy || !connected}
-          onPress={() => {
-            refresh();
-          }}
+        <View
+          pointerEvents="box-none"
+          style={styles.catalogActionLane}
+          testID={`${testIDPrefix}-account-action-lane`}
         >
-          <AppSymbol
-            name="arrow.triangle.2.circlepath"
-            size={18}
-            color={appColors.primary}
-          />
-        </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={refreshLabel}
+            accessibilityState={{
+              busy: busy,
+              disabled: busy || !connected,
+            }}
+            style={styles.action}
+            testID={`${testIDPrefix}-model-refresh`}
+            disabled={busy || !connected}
+            onPress={() => {
+              refresh();
+            }}
+          >
+            <AppSymbol
+              name="arrow.triangle.2.circlepath"
+              size={18}
+              color={appColors.primary}
+            />
+          </Pressable>
+        </View>
       </View>
       {expanded ? (
         <Button
@@ -79,5 +85,3 @@ export function ApiCatalogAccount({
     </View>
   );
 }
-
-const local = StyleSheet.create({ container: { padding: 10, gap: 8 } });

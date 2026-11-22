@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import { AiFeatureFlow } from '../aiFeatures/integration/AiFeatureFlow';
 import type { AiFeatureFlowProps } from '../aiFeatures/integration/AiFeatureFlow';
@@ -34,8 +34,13 @@ export function isAppAiRoute(
 export function AppConversationScene({
   actions,
   defaultConversation = false,
+  isEntryCurrent,
+  isRouteCurrent,
   ...props
-}: Omit<AiFeatureFlowProps, 'navigation' | 'onOpenArticle'> & {
+}: Omit<
+  AiFeatureFlowProps,
+  'navigation' | 'onOpenArticle' | 'onOpenConversationModelSettings'
+> & {
   readonly defaultConversation?: boolean;
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
 }) {
@@ -47,13 +52,22 @@ export function AppConversationScene({
         : actions) as NavigationRouteActions<AiFeatureRouteName>,
     [actions, defaultConversation],
   );
+  const openConversationModelSettings = useCallback(() => {
+    // Both entry points push the same destination. The native stack keeps the
+    // originating tab and draft, and the shared route owns confirmation.
+    if ((isEntryCurrent ?? isRouteCurrent)?.() === false) return;
+    actions.push('settings-provider');
+  }, [actions, isEntryCurrent, isRouteCurrent]);
   if (!defaultConversation && !isAppAiRoute(actions.route.name)) return null;
   return (
     <AiFeatureFlow
       {...props}
       navigation={navigation}
       canonicalConversationRoot={defaultConversation}
+      isEntryCurrent={isEntryCurrent}
+      isRouteCurrent={isRouteCurrent}
       onOpenArticle={openEuropePmcArticle}
+      onOpenConversationModelSettings={openConversationModelSettings}
     />
   );
 }

@@ -14,7 +14,7 @@ export function conversationHistoryScrollEvents({
   followsBottom,
 }: {
   viewportHeight: { current: number };
-  followLatest: () => unknown;
+  followLatest: (contentHeight?: number) => unknown;
   reading: ReturnType<typeof useConversationReadingPosition>;
   jumpControl: ReturnType<typeof useConversationJumpToLatest>;
   window: ReturnType<typeof useConversationTranscriptWindow>;
@@ -43,7 +43,7 @@ export function conversationHistoryScrollEvents({
         height: viewportHeight.current,
         contentHeight: height,
       });
-      followLatest();
+      followLatest(height);
     },
     onScrollBeginDrag: () => {
       reading.cancel();

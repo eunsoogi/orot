@@ -89,7 +89,7 @@ function ConversationToolEventDisclosure({
               {t('ragConversation.tool.input')}
             </Text>
             <Text style={styles.toolEventValue}>
-              {sourceKindLabel(event.inputSummary.sourceKind)}
+              {sourceKindLabel(event.inputSummary.sourceKind, event.toolName)}
             </Text>
           </View>
           <View style={styles.toolEventSection}>

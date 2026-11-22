@@ -16,7 +16,10 @@ import {
   hasStaleVisitQuestionEvidence,
   readCurrentTranscriptInvalidations,
 } from './transcriptInvalidations';
-import { isValidSavedVisitQuestion } from './savedVisitQuestionValidation';
+import {
+  isValidSavedVisitQuestion,
+  reviewedAppointmentDates,
+} from './savedVisitQuestionValidation';
 import type { AppointmentQuestionRecord } from './savedVisitQuestionValidation';
 import {
   registerSavedCitation,
@@ -195,6 +198,7 @@ export async function restoreSavedVisitQuestions(input: {
   return {
     appointmentId,
     questions,
+    savedAppointmentDates: reviewedAppointmentDates(ordered, appointmentId),
     caveats: [...caveats],
     restorationWarning:
       hasChangedOriginal ||

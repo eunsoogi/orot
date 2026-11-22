@@ -54,6 +54,7 @@ test('keeps gaps and excludes the partial day from coverage-aware comparisons', 
     date: '2026-10-15',
     value: 200,
     partial: true,
+    range: { minimum: 200, maximum: 200, samples: 1 },
   });
   expect(result?.days[0]?.value).toBeNull();
   expect(

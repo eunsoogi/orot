@@ -48,11 +48,7 @@ struct ResponsesPublicWebSearch {
               ids.count == calls.count, !ids.contains(""), Set(ids).count == ids.count,
               observedIDs.isSubset(of: Set(ids)),
               !output.contains(where: { $0["type"] as? String == "function_call" }),
-              calls.allSatisfy({
-                  let action = $0["action"] as? [String: Any]
-                  return $0["status"] as? String == "completed" &&
-                      ["search", "open_page", "find_in_page"].contains(action?["type"] as? String ?? "")
-              })
+              calls.allSatisfy(Self.isCompletedCall)
         else { throw ResponsesMalformedDiagnostics.failure(.publicCompletedCalls) }
 
         var citations = [ChatGPTWebCitation]()
@@ -74,6 +70,16 @@ struct ResponsesPublicWebSearch {
         }
         guard !citations.isEmpty else { throw ResponsesMalformedDiagnostics.failure(.publicCitationsMissing) }
         return ChatGPTPublicWebSearchResult(callCount: calls.count, citations: citations)
+    }
+
+    private static func isCompletedCall(_ call: [String: Any]) -> Bool {
+        guard call["status"] as? String == "completed" else { return false }
+        // Responses may omit action details from a completed tool call. An explicit
+        // null or unknown action is not omission; cited public output is checked below.
+        guard let rawAction = call["action"] else { return true }
+        guard let action = rawAction as? [String: Any],
+              let type = action["type"] as? String else { return false }
+        return ["search", "open_page", "find_in_page"].contains(type)
     }
 
     private static func citation(_ item: [String: Any], text: String) throws -> ChatGPTWebCitation {

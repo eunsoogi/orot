@@ -3,17 +3,11 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppSymbol } from '../../layout/AppSymbol';
-import { COMPACT_APP_SYMBOL_POINT_SIZE } from '../../layout/iconSizing';
 import { providerSettingsStyles as shared } from '../../layout/providerSettingsPresentation';
 import { appColors } from '../../layout/appColors';
 import type { ChatGPTAccountSetup } from './types';
 import { providerSelectionText as copy } from './text';
 import { OpenAIProviderMark } from './OpenAIProviderMark';
-
-const CARD_PADDING = 16;
-const CARD_GAP = 8;
-const ACTION_TARGET_SIZE = 44;
-const SELECTION_SYMBOL_SIZE = COMPACT_APP_SYMBOL_POINT_SIZE;
 
 /** Account controls use actual authentication state; model selection never implies consent. */
 export function ProviderCatalogAccount({
@@ -43,7 +37,7 @@ export function ProviderCatalogAccount({
       : setup.actionTitle;
   return (
     <View style={styles.container} testID="chatgpt-account-setup">
-      <View style={styles.content}>
+      <View style={shared.catalogContent}>
         <View style={shared.header}>
           <View style={shared.icon}>
             <OpenAIProviderMark />
@@ -66,7 +60,7 @@ export function ProviderCatalogAccount({
           {actionVisible ? (
             <View
               pointerEvents="box-none"
-              style={styles.actionOverlay}
+              style={shared.catalogActionLane}
               testID="chatgpt-account-action-lane"
             >
               <Pressable
@@ -172,19 +166,11 @@ export function ProviderCatalogAccount({
 }
 const styles = StyleSheet.create({
   container: { position: 'relative' },
-  content: { gap: CARD_GAP, padding: CARD_PADDING },
   // A single bounded text column lets long locale copy wrap before the action lane.
   accountCopy: { flex: 1, minWidth: 0, gap: 2 },
   accountText: { flexShrink: 1, minWidth: 0, color: appColors.secondary },
-  // Keep the target in the measured header row so Dynamic Type also centers it.
-  // The negative inset aligns its center with the smaller model selection symbol.
-  actionOverlay: {
-    width: ACTION_TARGET_SIZE,
-    marginRight: (SELECTION_SYMBOL_SIZE - ACTION_TARGET_SIZE) / 2,
-    justifyContent: 'center',
-  },
   action: {
-    minHeight: ACTION_TARGET_SIZE,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,

@@ -1,4 +1,11 @@
+import { readySelection } from './selectedAiProviderResolution';
 import { t } from '../../i18n';
+import { chatGPTCredentialMutation } from '../../providers/chatGPTConsentIdentity';
+import { selectedChatGPTAccountId } from './savedChatGPTModelLabel';
+import {
+  publishSavedChatGPTNames,
+  type ReadReturningChatGPTTitle,
+} from './readSavedChatGPTPresentation';
 import {
   APPLE_PCC_PROVIDER_ID,
   APPLE_PCC_MODEL_ID,
@@ -10,8 +17,6 @@ import {
   createAppleSelectionOption,
   createChatGPTSelectionOptions,
   loadAppleSelectionOption,
-  resolveProviderSelection,
-  visitRecommendationRequirements,
 } from '../../providers/selection';
 import type {
   ProviderSelection,
@@ -34,6 +39,11 @@ export interface ConversationModelDisplayObserver {
   readonly platformRefreshOnly?: SavedPlatformChoice;
   selection(witness: OnDeviceSelectionWitness | null): void;
   savedPlatformName(name: string, platform: SavedPlatformChoice): void;
+  savedChatGPTName?(
+    name: string,
+    credential: OnDeviceSelectionWitness,
+    onReturn?: ReadReturningChatGPTTitle,
+  ): void;
 }
 
 export type ResolveConversationModelDisplay = (
@@ -52,7 +62,12 @@ export type SelectedAiResolution =
       readonly remoteProcessing: boolean;
       readonly onDeviceSelectionWitness?: OnDeviceSelectionWitness;
     }
-  | { readonly status: 'selection-required' | 'unavailable' };
+  | { readonly status: 'selection-required' }
+  | {
+      readonly status: 'unavailable';
+      readonly reason?: 'transient-catalog';
+      readonly platformMessage?: string;
+    };
 
 export interface SelectedAiResolverOptions {
   readonly selectionStore?: ProviderSelectionStore;
@@ -60,8 +75,6 @@ export interface SelectedAiResolverOptions {
   readonly loadAppleOption?: typeof loadAppleSelectionOption;
   readonly loadPccOption?: typeof loadPrivateCloudComputeOption;
 }
-
-const CHATGPT_PROVIDER_PREFIX = 'chatgpt-plan:';
 
 /** Resolves only the saved provider/model pair; catalog or account failure never selects a substitute. */
 export async function resolveSelectedAiProvider(
@@ -82,6 +95,9 @@ export async function resolveSelectedAiProvider(
     );
   const chatGPTServices =
     options.chatGPTServices ?? nativeChatGPTSelectionServices;
+  const credentialWitness = display?.savedChatGPTName
+    ? chatGPTCredentialMutation.capture()
+    : undefined;
   let selection: ProviderSelection | null;
   try {
     selection = await selectionStore.load();
@@ -114,9 +130,11 @@ export async function resolveSelectedAiProvider(
   // Resolve PCC independently from ChatGPT credentials and local model availability.
   if (selection.providerId === APPLE_PCC_PROVIDER_ID) {
     try {
-      return readySelection(selection, [
-        await (options.loadPccOption ?? loadPrivateCloudComputeOption)(),
-      ]);
+      return readySelection(
+        selection,
+        [await (options.loadPccOption ?? loadPrivateCloudComputeOption)()],
+        Boolean(display),
+      );
     } catch {
       return { status: 'unavailable' };
     }
@@ -127,9 +145,11 @@ export async function resolveSelectedAiProvider(
   // local Apple availability bridge. Keep exact model validation in both paths.
   if (!accountId) {
     try {
-      const ready = readySelection(selection, [
-        await (options.loadAppleOption ?? loadAppleSelectionOption)(),
-      ]);
+      const ready = readySelection(
+        selection,
+        [await (options.loadAppleOption ?? loadAppleSelectionOption)()],
+        Boolean(display),
+      );
       // This witness is tied to the selection read above and never reissues after a change.
       if (
         ready.status === 'ready' &&
@@ -159,62 +179,40 @@ export async function resolveSelectedAiProvider(
       return { status: 'unavailable' };
     }
 
+    // Fence only UI lookups on local credential mutation; dispatch is unchanged.
+    const displayCurrent = () =>
+      !(display?.savedChatGPTName && selectionWitness) ||
+      (selectionWitness() && credentialWitness?.() === true);
+    if (!displayCurrent()) return { status: 'unavailable' };
+    if (display?.savedChatGPTName && selectionWitness && credentialWitness) {
+      publishSavedChatGPTNames({
+        selection,
+        selectionStore,
+        listAccounts: () => chatGPTServices.listAccounts(),
+        accountId,
+        selectionCurrent: selectionWitness,
+        credentialCurrent: credentialWitness,
+        subscribeCredential: chatGPTCredentialMutation.subscribe,
+        publish: display.savedChatGPTName,
+      });
+    }
     const models = await chatGPTServices.listModels(accountId);
-    if (!models.ok) return { status: 'unavailable' };
+    if (!displayCurrent()) return { status: 'unavailable' };
+    if (!models.ok)
+      return {
+        status: 'unavailable',
+        ...(display &&
+        models.error.code === 'provider_unavailable' &&
+        models.error.retryable
+          ? { reason: 'transient-catalog' as const }
+          : {}),
+      };
     return readySelection(selection, [
       ...createChatGPTSelectionOptions(accountId, models.value),
     ]);
   } catch {
     return { status: 'unavailable' };
   }
-}
-
-function selectedChatGPTAccountId(
-  selection: ProviderSelection,
-): string | undefined {
-  if (!selection.providerId.startsWith(CHATGPT_PROVIDER_PREFIX))
-    return undefined;
-  const modelSuffix = `:${selection.modelId}`;
-  if (!selection.providerId.endsWith(modelSuffix)) return undefined;
-  const accountId = selection.providerId.slice(
-    CHATGPT_PROVIDER_PREFIX.length,
-    -modelSuffix.length,
-  );
-  return accountId.trim() === accountId && accountId.length > 0
-    ? accountId
-    : undefined;
-}
-
-function readySelection(
-  selection: ProviderSelection,
-  options: readonly ProviderSelectionOption[],
-): SelectedAiResolution {
-  const result = resolveProviderSelection(
-    selection,
-    options,
-    visitRecommendationRequirements,
-  );
-  if (!result.ok) return { status: 'unavailable' };
-  const selected = options.find(
-    option =>
-      option.provider.id === selection.providerId &&
-      option.modelId === selection.modelId,
-  );
-  if (!selected) return { status: 'unavailable' };
-  return {
-    status: 'ready',
-    selection,
-    option: selected,
-    provider: result.provider,
-    modelId: selected.modelId,
-    recipient:
-      selected.privacyBoundary === 'on-device'
-        ? t('nextVisit.recipient.onDevice')
-        : selected.provider.id === APPLE_PCC_PROVIDER_ID
-          ? t('provider.pcc.recipient')
-          : t('nextVisit.recipient.chatgpt'),
-    remoteProcessing: selected.privacyBoundary === 'selected-context-remote',
-  };
 }
 
 /** Lets the flow move to explicit provider selection without weakening a failed resolution. */

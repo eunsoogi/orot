@@ -1,4 +1,4 @@
-import { assertPeriodNotRemoved } from './conversationPeriodRemoval';
+import { assertPlannedPeriodNotRemoved } from './boundPeriodRemovalPlan';
 import { legacySummaryPeriodAvailable } from './legacySummaryPeriodQuarantine';
 import { type SqlExecutor, type ManualHistoryRepository } from '@orot/storage';
 import type { SavedSummarySource } from '../diseaseHypotheses/savedSummaries';
@@ -163,7 +163,7 @@ export async function assertRetainedEvidenceCurrent(
   for (const source of sources) {
     if (isPeriodSummarySource(source)) {
       await assertSymptomPeriodAvailable(tx, source);
-      await assertPeriodNotRemoved(tx, source);
+      await assertPlannedPeriodNotRemoved(tx, source);
       await (validatePeriod ?? assertSummaryPeriodCurrent)(
         tx,
         source,

@@ -117,6 +117,50 @@ final class ResponsesPublicWebSearchTests: XCTestCase {
         XCTAssertThrowsError(try mismatched.consume(completion()))
     }
 
+    func testCompletedCallMayOmitActionWhenPublicCitationsAreValid() throws {
+        var normalizer = ResponsesEventNormalizer(requestID: nil, publicWebSearch: true)
+        try addSearch(&normalizer, id: "ws_1")
+        _ = try normalizer.consume(frame("response.output_text.delta", ["delta": "A public explanation."]))
+        let event = try normalizer.consume(completion(action: nil))
+        guard case let .completed(result) = event else { return XCTFail("Expected completed public search") }
+        XCTAssertEqual(result.webSearch?.callCount, 1)
+        XCTAssertEqual(result.webSearch?.citations, [
+            ChatGPTWebCitation(url: "https://example.org/source", title: "Synthetic public source"),
+        ])
+        XCTAssertTrue(result.toolCalls.isEmpty)
+        XCTAssertTrue(result.continuationItems.isEmpty)
+    }
+
+    func testOmittedActionCannotBypassStatusIdentityScopeOrCitationChecks() throws {
+        let invalidFrames = [
+            completion(annotations: [], action: nil),
+            completion(action: nil, status: "in_progress"),
+            completion(action: nil, status: NSNull()),
+            completion(action: nil, id: "unobserved"),
+            completion(action: nil, id: ""),
+            completion(citationPatch: ["url": "file:///private/source"], action: nil),
+        ]
+        for completionFrame in invalidFrames {
+            var normalizer = ResponsesEventNormalizer(requestID: nil, publicWebSearch: true)
+            try addSearch(&normalizer, id: "ws_1")
+            _ = try normalizer.consume(frame("response.output_text.delta", ["delta": "A public explanation."]))
+            XCTAssertThrowsError(try normalizer.consume(completionFrame))
+        }
+        var privateResponse = ResponsesEventNormalizer(requestID: nil)
+        _ = try privateResponse.consume(frame("response.output_text.delta", ["delta": "A public explanation."]))
+        XCTAssertThrowsError(try privateResponse.consume(completion(action: nil)))
+    }
+
+    func testExplicitMalformedOrUnknownActionsRemainInvalid() throws {
+        let actions: [Any] = [NSNull(), "search", [], ["type": NSNull()], ["type": "not_supported"], ["query": "synthetic"]]
+        for action in actions {
+            var normalizer = ResponsesEventNormalizer(requestID: nil, publicWebSearch: true)
+            try addSearch(&normalizer, id: "ws_1")
+            _ = try normalizer.consume(frame("response.output_text.delta", ["delta": "A public explanation."]))
+            XCTAssertThrowsError(try normalizer.consume(completion(action: action)))
+        }
+    }
+
     private func addSearch(_ normalizer: inout ResponsesEventNormalizer, id: String) throws {
         _ = try normalizer.consume(frame("response.output_item.added", [
             "output_index": id == "ws_1" ? 0 : 1,
@@ -124,15 +168,24 @@ final class ResponsesPublicWebSearchTests: XCTestCase {
         ]))
     }
 
-    private func completion(citationPatch: [String: Any] = [:], annotations: [[String: Any]]? = nil) -> ResponsesSSEFrame {
+    private func completion(
+        citationPatch: [String: Any] = [:],
+        annotations: [[String: Any]]? = nil,
+        action: Any? = ["type": "search"],
+        status: Any = "completed",
+        id: String = "ws_1",
+    ) -> ResponsesSSEFrame {
         var citation: [String: Any] = [
             "type": "url_citation", "url": "https://example.org/source", "title": "Synthetic public source",
             "start_index": 0, "end_index": 10,
         ]
         citation.merge(citationPatch) { _, new in new }
+        var call: [String: Any] = ["type": "web_search_call", "id": id, "status": status]
+        // Assigning nil removes the key, while NSNull preserves an explicit JSON null.
+        call["action"] = action
         return frame("response.completed", ["response": [
             "status": "completed", "output": [
-                ["type": "web_search_call", "id": "ws_1", "status": "completed", "action": ["type": "search"]],
+                call,
                 ["type": "message", "content": [[
                     "type": "output_text", "text": "A public explanation.", "annotations": annotations ?? [citation],
                 ]]],

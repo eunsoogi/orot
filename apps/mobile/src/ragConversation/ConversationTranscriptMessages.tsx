@@ -4,6 +4,7 @@ import { ConversationActivityBubble } from './ConversationActivityBubble';
 import { ConversationTranscriptEntranceScope } from './ConversationTranscriptEntranceScope';
 import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { ConversationMessageReceipt } from './ConversationMessageReceipt';
+import { GeneratedReportBookmark } from './GeneratedReportBookmark';
 import { Fragment, type ComponentProps, type ReactNode } from 'react';
 import {
   ConversationMessage,
@@ -60,56 +61,81 @@ export function ConversationTranscriptMessages({
       ?.map(card => (
         <ConversationVoiceEndMarker key={card.id} task={card.task} />
       ));
-  const rows = messages.map(message => (
-    <ReplyMessageContainer
-      key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
-      readingId={onReadingLayout ? message.id : undefined}
-      focused={Boolean(
-        replyFocus && message.retainedTurnId === replyFocus.messageId,
-      )}
-      onLayout={onLayout}
-      onFrame={
-        onReadingLayout
-          ? (y, height) => onReadingLayout(message.id, y, height)
-          : undefined
-      }
-      onPosition={message.id === anchorId ? onAnchorLayout : undefined}
-    >
-      <ConversationSteeringMessages
-        restored={
-          message.id <= 0 || (message !== target && message.restoredHistory)
-        }
-        instructions={
-          message === target ? instructions : message.steeringInstructions
-        }
-      />
-      <ConversationMessage message={message} {...messageProps} />
-      {message.role === 'user' ? (
-        <ConversationMessageReceipt
-          delivery={message.delivery}
-          pending={message.deliveryPending}
-        />
-      ) : null}
-    </ReplyMessageContainer>
-  ));
-  // A stable sibling key preserves choice/task state across the first live append and older prepends.
-  // Fragments add no layout wrapper, preserving reply-focus and paging row coordinates.
-  const choicesAt =
-    entryChoices == null ? -1 : firstLive < 0 ? rows.length : firstLive;
-  if (choicesAt >= 0)
-    rows.splice(
-      choicesAt,
-      0,
-      <Fragment key="conversation-entry-choices">{entryChoices}</Fragment>,
+  // Keep the same keyed choice block across first live append and older prepends.
+  // Markers preceding the first live turn belong on the history side of the divider.
+  const choices =
+    entryChoices == null ? null : (
+      <Fragment key="conversation-entry-choices">{entryChoices}</Fragment>
     );
-  const transcript = placement
-    ? rows.flatMap((row, index) => {
-        if (index === choicesAt) return [row];
-        const id =
-          messages[index - Number(choicesAt >= 0 && index > choicesAt)]?.id;
-        return id === undefined ? [row] : [...(markerRows(id) ?? []), row];
-      })
-    : rows;
+  const rows: ReactNode[] = [];
+  messages.forEach((message, position) => {
+    const markers = markerRows(message.id);
+    if (markers) rows.push(...markers);
+    if (choices && position === firstLive) rows.push(choices);
+    const ownInstructions =
+      message === target ? instructions : message.steeringInstructions;
+    const restored =
+      message.id <= 0 || (message !== target && message.restoredHistory);
+    const bubbleRows = (receipts: typeof instructions) =>
+      receipts?.length ? (
+        <ConversationSteeringMessages
+          instructions={receipts}
+          restored={restored}
+        />
+      ) : null;
+    const reviewedOpening =
+      message.initialResponse && message.initialResponse.source !== 'receipt';
+    // A reviewed opening can be the entire predecessor; no superseded stream
+    // text needs to exist before the applied instruction owns the successor.
+    const afterBoundary =
+      message.previousOutputs?.length || reviewedOpening
+        ? (ownInstructions?.reduce(
+            (index, row, current) =>
+              row.status === 'applied' ? current + 1 : index,
+            0,
+          ) ?? 0)
+        : 0;
+    const before = message.streaming
+      ? ownInstructions?.slice(0, afterBoundary)
+      : ownInstructions;
+    const after = message.streaming
+      ? ownInstructions?.slice(afterBoundary)
+      : undefined;
+    rows.push(
+      <ReplyMessageContainer
+        key={`${message.id}:${replyFocus && message.retainedTurnId === replyFocus.messageId ? `focus-${replyFocus.generation}` : 'ordinary'}`}
+        readingId={onReadingLayout ? message.id : undefined}
+        focused={Boolean(
+          replyFocus && message.retainedTurnId === replyFocus.messageId,
+        )}
+        onLayout={onLayout}
+        onFrame={
+          onReadingLayout
+            ? (y, height) => onReadingLayout(message.id, y, height)
+            : undefined
+        }
+        onPosition={message.id === anchorId ? onAnchorLayout : undefined}
+      >
+        <ConversationMessage
+          message={message}
+          beforeAnswer={bubbleRows(before)}
+          {...messageProps}
+        />
+        {bubbleRows(after)}
+        <GeneratedReportBookmark message={message} />
+        {message.role === 'user' ? (
+          <ConversationMessageReceipt
+            delivery={message.delivery}
+            pending={message.deliveryPending}
+            localChoicePending={message.localChoicePending}
+          />
+        ) : null}
+      </ReplyMessageContainer>,
+    );
+  });
+  const trailingMarkers = markerRows(null);
+  if (trailingMarkers) rows.push(...trailingMarkers);
+  if (choices && firstLive < 0) rows.push(choices);
   return (
     <ConversationTranscriptEntranceScope
       availableMessages={availableMessages}
@@ -119,12 +145,11 @@ export function ConversationTranscriptMessages({
       presentation={messageProps}
       sessionId={sessionId}
     >
-      {transcript}
-      {markerRows(null)}
-      {!target ? (
+      {rows}
+      {!target && pendingId !== undefined ? (
         <ConversationSteeringMessages
           instructions={instructions}
-          restored={pendingId === undefined || pendingId <= 0}
+          restored={pendingId <= 0}
         />
       ) : null}
       {showPendingBubble ? (

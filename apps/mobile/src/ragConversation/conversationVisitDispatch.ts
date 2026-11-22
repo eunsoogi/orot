@@ -95,6 +95,7 @@ export function startExplicitVisitPreparation(
   store: ConversationSessions,
   id: number,
   prepare: ConversationScreenProps['prepareVisitQuestions'],
+  quickChoice = false,
 ) {
   const session = store.getSnapshot().sessions.find(item => item.id === id);
   const context = conversationEntryForSession(store, id);
@@ -105,7 +106,8 @@ export function startExplicitVisitPreparation(
     !canStartExplicitVisitPreparation(session, context, prepare)
   )
     return;
-  return store.sendPrompt(
+  const send = quickChoice ? store.sendQuickPrompt : store.sendPrompt;
+  return send(
     id,
     session.entryPrompt!,
     visitPreparationSender(store, id, prepare, context),
@@ -120,7 +122,7 @@ export function sendConversationMessage(
   prepare?: ConversationScreenProps['prepareVisitQuestions'],
 ) {
   const session = store.getSnapshot().sessions.find(item => item.id === id);
-  const sendEntry = entryIntentSender(store, id, onSend);
+  const sendEntry = entryIntentSender(store, id, onSend, 'composer');
   return store.send(id, (question, history, signal, observer) => {
     if (observer?.photoInput)
       return sendEntry(question, history, signal, observer);

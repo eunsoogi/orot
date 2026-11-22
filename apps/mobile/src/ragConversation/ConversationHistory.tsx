@@ -16,10 +16,10 @@ import { styles } from './ConversationScreen.styles';
 import { ConversationTranscriptMessages } from './ConversationTranscriptMessages';
 import { ConversationHistoryStatus } from './ConversationHistoryStatus';
 import { useReplyScroll } from './useReplyScroll';
-import { conversationHistoryActivity } from './conversationHistoryActivity';
-import { useConversationHistoryUserTurnFollow } from './conversationHistoryUserTurn';
+import { useConversationHistoryPresentation } from './conversationHistoryActivity';
 export function ConversationHistory({
   messages,
+  savedHistoryDisplay,
   voiceEndCards,
   steeringInstructions,
   pendingMessage,
@@ -86,19 +86,18 @@ export function ConversationHistory({
     followsBottom,
     expectedOffset,
   });
-  const { visibleMessages, showActivityBubble } = conversationHistoryActivity(
-    messages,
-    pendingMessage,
-    requestSessionId,
-    requestActivity,
-    separatedActivity,
-  );
-  useConversationHistoryUserTurnFollow(
-    sessionId ?? null,
-    messages,
-    followsBottom,
-    expectedOffset,
-  );
+  const { visibleMessages, showActivityBubble } =
+    useConversationHistoryPresentation({
+      saved: savedHistoryDisplay,
+      messages,
+      pendingMessage,
+      requestSessionId,
+      requestActivity,
+      separatedActivity,
+      ...{ sessionId, steeringInstructions },
+      followsBottom,
+      expectedOffset,
+    });
   const reading = useConversationReadingPosition({
     sessionId: toolSourceSessionId,
     messages: visibleMessages,
@@ -128,7 +127,7 @@ export function ConversationHistory({
     expectedOffset,
     geometry: scrollGeometry,
   });
-  const followLatest = () =>
+  const followLatest = (contentHeight?: number) =>
     !reading.pending &&
     followConversationLatest({
       hasMessages: visibleMessages.length + (voiceEndCards?.length ?? 0) > 0,
@@ -141,6 +140,7 @@ export function ConversationHistory({
       expectedOffset,
       historyView,
       scrollGeometry,
+      contentHeight,
     });
   const wasRestoringPosition = useRef(reading.pending);
   useEffect(() => {
@@ -234,17 +234,17 @@ export function ConversationHistory({
         />
         {footer}
       </ScrollView>
-      {jumpControl.away ? (
-        <ConversationJumpToLatest
-          bottom={composerInset}
-          onPress={() => {
-            reading.cancel();
-            window.cancelAnchor();
-            jumpControl.jump();
-            reading.save({ bottom: true });
-          }}
-        />
-      ) : null}
+      <ConversationJumpToLatest
+        key={sessionId}
+        visible={jumpControl.away}
+        bottom={composerInset}
+        onPress={() => {
+          reading.cancel();
+          window.cancelAnchor();
+          jumpControl.jump();
+          reading.save({ bottom: true });
+        }}
+      />
     </View>
   );
 }

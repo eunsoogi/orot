@@ -18,6 +18,7 @@ interface ProviderSelectionOptionCardProps {
   readonly selected: boolean;
   readonly disabled: boolean;
   readonly index: number;
+  readonly catalogModelLabel?: string;
   readonly onPress: () => void;
 }
 
@@ -27,6 +28,7 @@ export default function ProviderSelectionOptionCard({
   selected,
   disabled,
   index,
+  catalogModelLabel,
   onPress,
 }: ProviderSelectionOptionCardProps) {
   // Descriptive capability lists are omitted; actual capability and availability gates stay enforced.
@@ -49,14 +51,18 @@ export default function ProviderSelectionOptionCard({
         />
       </View>
       <View style={shared.copy}>
-        <Text style={shared.title}>{option.displayName}</Text>
-        <Text style={shared.detail}>
-          {option.privacyBoundary === 'on-device'
-            ? t('modelSettings.localProcessing')
-            : option.provider.id === APPLE_PCC_PROVIDER_ID
-              ? t('provider.pcc.processing')
-              : option.modelId}
+        <Text style={shared.title}>
+          {catalogModelLabel ?? option.displayName}
         </Text>
+        {catalogModelLabel ? null : (
+          <Text style={shared.detail}>
+            {option.privacyBoundary === 'on-device'
+              ? t('modelSettings.localProcessing')
+              : option.provider.id === APPLE_PCC_PROVIDER_ID
+                ? t('provider.pcc.processing')
+                : option.modelId}
+          </Text>
+        )}
         {blockedMessage ? (
           <Text accessibilityRole="alert" style={styles.unavailable}>
             {blockedMessage}

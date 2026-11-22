@@ -1,4 +1,26 @@
 export const manualHistoryKo = {
+  'settings.automaticMemory.title': '답변 방식 선호 자동 저장',
+  'settings.automaticMemory.description':
+    '이 설정을 켜면 직접 말한 답변 길이, 언어 등 일부 선호를 이 기기의 보호된 메모에 자동으로 저장할 수 있어요. 이 설정으로 건강 정보를 저장하거나 AI 외부 전송 권한을 바꾸지는 않아요.',
+  'settings.automaticMemory.backup':
+    '이미 저장된 메모는 암호화된 iOS 기기 백업에 포함될 수 있어요. 자동 저장 허가는 다른 기기로 옮겨지지 않아요.',
+  'settings.automaticMemory.recovery':
+    '복원한 뒤에도 이 상태라면, 자동 저장을 끈 다음 이 기기에서 다시 켤 수 있어요. 자동 저장을 꺼도 기존 메모는 지워지지 않아요.',
+  'settings.automaticMemory.retention':
+    '끄면 새 메모를 만들지 않아요. 이미 저장된 메모는 직접 삭제할 수 있어요.',
+  'settings.automaticMemory.off': '꺼짐',
+  'settings.automaticMemory.on': '켜짐',
+  'settings.automaticMemory.checking': '설정을 확인하는 중…',
+  'settings.automaticMemory.enabling': '켜는 중…',
+  'settings.automaticMemory.disabling': '끄는 중…',
+  'settings.automaticMemory.enable': '자동 저장 켜기',
+  'settings.automaticMemory.disable': '자동 저장 끄기',
+  'settings.automaticMemory.retry': '상태 다시 확인',
+  'settings.automaticMemory.unavailable': '저장 설정을 확인할 수 없어요.',
+  'settings.automaticMemory.enableError':
+    '자동 저장이 켜졌는지 확인할 수 없어요.',
+  'settings.automaticMemory.disableError':
+    '자동 저장이 꺼졌는지 확인할 수 없어요. 다시 꺼 주세요.',
   'manualHistory.title': '과거 건강 기록',
   'manualHistory.subtitle':
     '진단, 시술, 복용 관련 내용과 건강 정보를 이 기기에 기록해요.',
