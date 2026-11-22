@@ -2,6 +2,7 @@ import { createConversationSessions } from '../conversationSessions';
 import type { ConversationSender } from '../conversationSessionTypes';
 import type { ConversationExecutionEvent } from '../conversationExecutionLease';
 import type { WarmConversationSelectionProof } from '../conversationWarmAdmission';
+import { sendConversationMessage } from '../conversationVisitDispatch';
 import { allowWarmConversationSender } from '../warmConversationSender';
 import { setup } from '../testSupport/continuousSessionFixture';
 
@@ -14,6 +15,7 @@ function held<T>() {
 }
 
 test.each([
+  'composer',
   'granted',
   'refused',
   'short-refused before Home',
@@ -101,7 +103,13 @@ test.each([
         await finish.promise;
         return { status: 'unavailable' as const };
       });
-      const sent = store.send(id, allowWarmConversationSender(sender));
+      const sent =
+        mode === 'composer'
+          ? sendConversationMessage(store, id, sender, jest.fn())
+          : store.send(id, allowWarmConversationSender(sender));
+      // The bridge is invoked in the submit turn, before the held local lookup.
+      if (mode === 'composer')
+        expect(beginPreparation).toHaveBeenCalledTimes(1);
       await preparing.promise;
       const owner = reserve.mock.results[0]?.value;
       expect(owner).toBeTruthy();
@@ -109,6 +117,9 @@ test.each([
       expect(beginPreparation.mock.calls).toEqual([[requestId]]);
       expect(subscribe).toHaveBeenCalledTimes(1);
       expect(begin).not.toHaveBeenCalled();
+      const checkpoints = () =>
+        f.database.execute('SELECT id, status FROM conversation_requests');
+      if (mode === 'composer') expect((await checkpoints()).rows).toEqual([]);
       emit({
         kind: 'continued',
         requestId,
@@ -140,6 +151,12 @@ test.each([
         mode !== 'missing native lease'
       ) {
         await entered.promise;
+        if (mode === 'composer') {
+          expect(sender.mock.calls[0]?.[3]?.retentionRequestId).toBe(requestId);
+          expect((await checkpoints()).rows).toEqual([
+            { id: requestId, status: 'active' },
+          ]);
+        }
         emit({ kind: 'expired', requestId: 'foreign' });
         if (mode === 'expired') emit({ kind: 'expired', requestId });
       }

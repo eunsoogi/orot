@@ -4,6 +4,7 @@ import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { ConversationSession } from './conversationSessionTypes';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import { entryIntentSender } from './entryIntentSender';
+import { isWarmConversationSender } from './warmConversationSender';
 import type { TreatmentConversationSender } from '../treatmentContext/treatmentConversationSender';
 
 const pendingVisits = new WeakMap<
@@ -123,6 +124,18 @@ export function sendConversationMessage(
 ) {
   const session = store.getSnapshot().sessions.find(item => item.id === id);
   const sendEntry = entryIntentSender(store, id, onSend, 'composer');
+  const intent = conversationEntryForSession(store, id)?.intent;
+  // Only an ordinary composer turn may pass the canonical branded sender
+  // through unchanged. Visit retry routing and saved report ownership still
+  // use the unbranded late-dispatch wrapper below.
+  if (
+    session &&
+    (!intent || intent === 'conversation') &&
+    !session.entryIntent &&
+    !pendingVisits.get(store)?.has(id) &&
+    isWarmConversationSender(sendEntry)
+  )
+    return store.send(id, sendEntry);
   return store.send(id, (question, history, signal, observer) => {
     if (observer?.photoInput)
       return sendEntry(question, history, signal, observer);
