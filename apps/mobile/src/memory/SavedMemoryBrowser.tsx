@@ -1,4 +1,5 @@
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
+import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
@@ -10,13 +11,19 @@ import { savedMemoryStyles as styles } from './savedMemoryStyles';
 export function SavedMemoryBrowser({
   load,
   active = true,
+  ownership,
   onOpenMemory,
 }: {
   readonly active?: boolean;
   readonly load?: () => Promise<SavedMemory[]>;
+  readonly ownership?: NavigationRouteOwnership;
   readonly onOpenMemory?: (id: string) => void;
 }) {
-  const { rows, state, refresh } = useSavedMemories(load, active);
+  const { rows, state, refresh, readyRead } = useSavedMemories(
+    load,
+    active,
+    ownership,
+  );
   const [visible, setVisible] = useState(20);
   const position = useNavigationRouteScrollPosition();
   // Restore only after the fresh protected list has committed, not while its rows are empty.
@@ -82,6 +89,7 @@ export function SavedMemoryBrowser({
               })}
               accessibilityHint={t('savedMemory.openDetail')}
               onPress={() => {
+                if (!readyRead?.isCurrent()) return;
                 position?.preserve();
                 onOpenMemory?.(row.id);
               }}

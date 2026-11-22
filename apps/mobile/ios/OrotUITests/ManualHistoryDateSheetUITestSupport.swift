@@ -13,6 +13,28 @@ enum ManualHistoryUITestSupport {
         app.launch()
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
     }
+    /// Records only exposes a static entry; protected Memory reads belong to the child.
+    @MainActor
+    static func openMemory(_ app: XCUIApplication) throws {
+        let browser = UITestConditions.element(app, "saved-memory-browser")
+        guard !browser.exists else { return }
+        try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
+        XCTAssertFalse(UITestConditions.element(app, "records-open-manual-history").exists)
+        XCTAssertFalse(browser.exists)
+        let entry = app.buttons["records-open-memory"]
+        _ = try XCTUnwrap(FormUITestConditions.reveal(entry, in: app, scrollID: "navigation-route-scroll"))
+        XCTAssertTrue(entry.isHittable && entry.isEnabled)
+        entry.tap()
+        NavigationUITestConditions.route(app, markers: ["saved-memory-browser"])
+    }
+
+    @MainActor
+    static func backFromMemory(_ app: XCUIApplication) throws {
+        NavigationUITestConditions.route(app, markers: ["saved-memory-browser"])
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["records-title"])
+        XCTAssertFalse(UITestConditions.element(app, "saved-memory-browser").exists)
+    }
 }
 
 /// Uses the real UIKit calendar; the test build fixes only the initial month.
