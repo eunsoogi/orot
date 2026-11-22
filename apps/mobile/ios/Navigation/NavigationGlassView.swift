@@ -125,7 +125,12 @@ final class NavigationGlassSurfaceView: UIView {
 
     override func layoutSubviews() {
         let host = layoutMode != "bottom" ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode, width: NavigationRootGlassBar.exteriorWidth + railRightInset) : nil
-        if rootBar.superview !== (host ?? self) {
+        // A resize can reclamp the same portal before React changes any props.
+        // Compare the exact anchor, not the frame, so a stable layout cannot reschedule itself.
+        let rightPortalTopChanged = host.map {
+            layoutMode == "right" && contextualRailTop(hostHeight: $0.bounds.height, mountedToWindow: true) != railPlacementConstraints[6].constant
+        } ?? false
+        if rootBar.superview !== (host ?? self) || rightPortalTopChanged {
             updatePresentation()
         }
         super.layoutSubviews()
