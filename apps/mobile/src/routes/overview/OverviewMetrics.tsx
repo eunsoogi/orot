@@ -1,10 +1,9 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { AppButton } from '../../layout/AppButton';
 import { t } from '../../i18n';
 import type { ChartStatus } from '../../ui/charts';
-import type { OverviewMetric } from './metricSelection';
 import { useOverviewMetrics } from './useOverviewMetrics';
 import { overviewMetricStyles as styles } from './overviewMetricStyles';
 import {
@@ -16,43 +15,14 @@ import {
   resolveOverviewMetricGridLayout,
   resolveOverviewRecentChangeLayout,
 } from './overviewMetricLayout';
-import { OverviewMetricSelectionEditor } from './OverviewMetricSelectionEditor';
 import { OverviewRecentHealthChange } from './OverviewRecentHealthChange';
 import { formatOverviewMetricValue } from './metricFormatting';
 
-/**
- * Shows calendar-day metrics and sizes cards to the measured grid.
- * Selection edits remain available when saving fails.
- */
-export function OverviewMetrics() {
+/** Shows saved calendar-day metrics; an isolated route owns uncommitted edits. */
+export function OverviewMetrics({ onEdit }: { readonly onEdit?: () => void }) {
   const data = useOverviewMetrics();
   const { fontScale } = useWindowDimensions();
   const [gridWidth, setGridWidth] = useState(0);
-  const [draft, setDraft] = useState<readonly OverviewMetric[] | null>(null);
-  const [saveError, setSaveError] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const savingRef = useRef(false);
-  const toggle = (metric: OverviewMetric) =>
-    setDraft(current =>
-      current?.includes(metric)
-        ? current.filter(item => item !== metric)
-        : [...(current ?? []), metric],
-    );
-  const save = async () => {
-    if (savingRef.current) return;
-    savingRef.current = true;
-    setSaving(true);
-    try {
-      await data.save(draft ?? []);
-      setDraft(null);
-      setSaveError(false);
-    } catch {
-      setSaveError(true);
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
-    }
-  };
   const comparisons = data.selection
     .flatMap(metric =>
       data.metrics[metric]?.comparison ? [data.metrics[metric]!] : [],
@@ -99,12 +69,9 @@ export function OverviewMetrics() {
             accessibilityRole="button"
             testID="overview-metrics-edit"
             style={styles.edit}
-            disabled={data.state !== 'ready' || saving}
-            accessibilityState={{ disabled: data.state !== 'ready' || saving }}
-            onPress={() => {
-              setDraft(data.selection);
-              setSaveError(false);
-            }}
+            disabled={data.state !== 'ready' || !onEdit}
+            accessibilityState={{ disabled: data.state !== 'ready' || !onEdit }}
+            onPress={onEdit}
           >
             <Text>{t('overview.metricEdit')}</Text>
           </Pressable>
@@ -154,18 +121,6 @@ export function OverviewMetrics() {
             ),
           )}
         </View>
-        {draft && (
-          <OverviewMetricSelectionEditor
-            canSave={draft.length >= 2 && draft.length <= 4}
-            onCancel={() => setDraft(null)}
-            onSave={save}
-            onToggle={toggle}
-            saveError={saveError}
-            saving={saving}
-            selection={draft}
-            title={title}
-          />
-        )}
       </View>
       <View style={styles.section} testID="overview-recent-changes-section">
         <View style={styles.heading} testID="overview-recent-changes-heading">

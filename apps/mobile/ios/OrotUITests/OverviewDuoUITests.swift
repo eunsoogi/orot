@@ -214,18 +214,21 @@ final class OverviewDuoUITests: OrotFailFastTestCase {
             previousY = relativeY
             XCTAssertGreaterThanOrEqual(frame.minX, pageFrame.minX - 1)
             XCTAssertLessThanOrEqual(frame.maxX, pageFrame.maxX + 1)
-            // XCTest attempts to reveal an offscreen target before the real activation.
-            action.tap()
             if identifier == "overview-metrics-edit" {
-                XCTAssertTrue(app.staticTexts["지표를 2개에서 4개 선택하세요."].waitForAppearance())
-                XCTAssertTrue(action.exists && action.isHittable, identifier)
+                UITestConditions.scrollToAndTap(action, in: homeScroll)
+                NavigationUITestConditions.route(app, markers: ["overview-metric-selection-screen"])
+                XCTAssertTrue(app.staticTexts["지표를 2개 이상 선택하세요."].waitForAppearance())
+                let editorScroll = UITestConditions.element(app, "navigation-route-scroll")
+                XCTAssertTrue(editorScroll.waitForAppearance())
                 for metric in ["sleep", "heartRate", "bodyMass", "steps"] {
                     OverviewMetricScrollUITestConditions.toggleCheckboxAndAssertState(
-                        app, identifier: "overview-metric-selection-\(metric)", in: homeScroll,
+                        app, identifier: "overview-metric-selection-\(metric)", in: editorScroll,
                     )
                 }
-                UITestConditions.scrollToAndTap(UITestConditions.element(app, "overview-metric-selection-cancel"), in: homeScroll)
+                UITestConditions.scrollToAndTap(UITestConditions.element(app, "overview-metric-selection-cancel"), in: editorScroll)
+                XCTAssertTrue(page.waitForAppearance())
             } else {
+                action.tap()
                 NavigationUITestConditions.route(app, markers: ["appointment-preparation"])
                 try NavigationUITestConditions.navigationAction(app, "navigation-back").control.tap()
                 XCTAssertTrue(page.waitForAppearance())
