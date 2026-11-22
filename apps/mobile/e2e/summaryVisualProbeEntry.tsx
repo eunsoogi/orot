@@ -17,19 +17,26 @@ import type {
 import type { SymptomSummaryHistory } from '../src/diseaseHypotheses/savedSummaries';
 import { ExternalMedicalEvidenceScreen } from '../src/externalMedicalEvidence/ExternalMedicalEvidenceScreen';
 import { NavigationRouteAdapter } from '../src/navigation/NavigationRouteAdapter';
+import { LiteratureSettingsProbe } from './LiteratureSettingsProbe';
 import { createNavigationController } from '../src/navigation/navigationController';
 import {
   openSyntheticSummaryFixture,
   retainedDiseaseVisualResult,
 } from './summaryVisualFixtures';
 import {
-  syntheticLiteratureService,
+  useLiteratureSearchObservation,
   syntheticPublication,
 } from './literatureVisualFixtures';
 
 type Services = Awaited<ReturnType<typeof openSyntheticSummaryFixture>>;
 type Route =
-  'picker' | 'summary' | 'history' | 'literature' | 'article' | 'evidence';
+  | 'picker'
+  | 'summary'
+  | 'history'
+  | 'literature'
+  | 'article'
+  | 'evidence'
+  | 'settings';
 const leaveState = {
   readState: () => ({
     hasUnsavedChanges: false,
@@ -53,8 +60,12 @@ function SummaryVisualProbe() {
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     let active = true;
-    openSyntheticSummaryFixture().then(
-      value => {
+    Promise.all([
+      openSyntheticSummaryFixture(),
+      // Only model availability is scripted; settings permission remains an explicit UI decision.
+      NativeModules.OrotAppleModelMock.configure({ status: 'available' }),
+    ]).then(
+      ([value]) => {
         if (active) setServices(value);
       },
       () => {
@@ -80,6 +91,8 @@ function Routes({ services }: { services: Services }) {
   );
   const [restored, setRestored] = useState<DiseaseHypothesisAnalysis>();
   const [reference, setReference] = useState<EvidenceReference>();
+  const { count: searchCount, service: literatureService } =
+    useLiteratureSearchObservation();
   const failNextList = useRef(false);
   const history = useMemo<SymptomSummaryHistory>(
     () => ({
@@ -150,8 +163,15 @@ function Routes({ services }: { services: Services }) {
                 testID="summary-visual-literature"
                 onPress={() => navigation.push('literature')}
               />
+              <AppButton
+                title="모델 설정"
+                testID="summary-visual-settings"
+                onPress={() => navigation.push('settings')}
+              />
             </View>
           );
+        if (navigation.route.name === 'settings')
+          return <LiteratureSettingsProbe onBack={onBack} />;
         if (navigation.route.name === 'history')
           return (
             <SummaryHistoryScreen
@@ -167,9 +187,14 @@ function Routes({ services }: { services: Services }) {
             <ExternalMedicalEvidenceScreen
               navigationRouteKey={navigation.route.key}
               onBack={onBack}
-              service={syntheticLiteratureService}
+              service={literatureService}
               providerSelection={
-                <SelectedModelControl name="합성 문헌 검사" local />
+                <View>
+                  <SelectedModelControl name="합성 문헌 검사" local />
+                  <AppText testID="synthetic-literature-search-count">
+                    {String(searchCount)}
+                  </AppText>
+                </View>
               }
               onOpenArticle={() => navigation.push('article')}
             />
