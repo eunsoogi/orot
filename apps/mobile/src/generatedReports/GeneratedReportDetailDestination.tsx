@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import {
-  GeneratedReportDetailFallback,
-  type GeneratedReportDetailFallbackState,
-} from './GeneratedReportDetailFallback';
+  GeneratedReportDetailPresentation,
+  type GeneratedReportDetailPresentationState,
+} from './GeneratedReportDetailPresentation';
 import { openGeneratedReportReader } from './readers';
 import type { GeneratedReportRow } from './types';
 import { useGeneratedReportAccess } from './useGeneratedReportAccess';
@@ -21,7 +21,7 @@ export function GeneratedReportDetailDestination({
   const request = useRef<AbortController | null>(null);
   const started = useRef(false);
   const generation = useRef(0);
-  const [state, setState] = useState<GeneratedReportDetailFallbackState>({
+  const [state, setState] = useState<GeneratedReportDetailPresentationState>({
     status: 'loading',
   });
   const abort = useCallback(() => {
@@ -78,7 +78,7 @@ export function GeneratedReportDetailDestination({
   if (!active || (ownership && !ownership.isCurrent())) return null;
   const owner = request.current;
   return (
-    <GeneratedReportDetailFallback
+    <GeneratedReportDetailPresentation
       row={row}
       state={state}
       onRetry={() => {

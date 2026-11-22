@@ -153,6 +153,8 @@ test('source deletion while the child is reading cancels selected proof and clea
   await fireEvent.press(screen.getByTestId('records-open-generated-reports'));
   await fireEvent.press(await screen.findByTestId(id(0)));
   await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+  expect(screen.getByText('이 자료를 불러오는 중이에요.')).toBeVisible();
+  expect(screen.queryByTestId('generated-report-detail')).toBeNull();
   await act(() => notifyLocalSourceDeleted());
   expect(read.mock.calls[0]?.[1].aborted).toBe(true);
   await act(() => held.release({ paragraphs: ['Deleted synthetic body'] }));
@@ -162,4 +164,50 @@ test('source deletion while the child is reading cancels selected proof and clea
   expect(controller.getSnapshot().currentRoute.name).toBe('generated-reports');
   expect(await screen.findByText(copy.empty)).toBeVisible();
   expect(screen.queryByTestId(id(0))).toBeNull();
+});
+
+test('dedicated detail shows selected metadata while retry and unavailable stay bound to that row', async () => {
+  mockGeometry = null;
+  const selected = row(0);
+  const list = jest.fn(async () => [selected]);
+  const read = jest
+    .fn(
+      async (
+        _row: GeneratedReportRow,
+        _signal: AbortSignal,
+      ): Promise<GeneratedReportDetail | null> => null,
+    )
+    .mockRejectedValueOnce(new Error('Synthetic protected read failure'))
+    .mockResolvedValueOnce(null);
+  jest.mocked(openGeneratedReportReader).mockResolvedValue({
+    list,
+    read,
+    readBookmarkedDiseasePossibilities: async () => null,
+  });
+  const controller = await renderRecordsRouteTest();
+  await fireEvent.press(screen.getByTestId('records-open-generated-reports'));
+  await fireEvent.press(await screen.findByTestId(id(0)));
+  expect(await screen.findByText('이 자료를 불러오지 못했어요.')).toBeVisible();
+  const scene = within(
+    screen.getByTestId(
+      `navigation-route-scene-${controller.getSnapshot().currentRoute.key}`,
+    ),
+  );
+  expect(
+    scene.getByTestId('generated-material-detail-title'),
+  ).toHaveTextContent(copy.health_summary);
+  expect(scene.getByText('보관 위치: 저장된 분석')).toBeVisible();
+  expect(scene.queryByText(selected.key)).toBeNull();
+  expect(scene.queryByText(copy.title)).toBeNull();
+  expect(scene.queryByRole('button', { name: copy.back })).toBeNull();
+  expect(scene.queryByTestId('generated-report-detail')).toBeNull();
+  await fireEvent.press(scene.getByRole('button', { name: copy.retry }));
+  expect(await scene.findByText(copy.unavailable)).toBeVisible();
+  expect(scene.queryByRole('button', { name: copy.retry })).toBeNull();
+  expect(scene.queryByTestId('generated-report-detail')).toBeNull();
+  expect(read.mock.calls.map(([item]) => item)).toEqual([selected, selected]);
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(controller.getSnapshot().currentRoute.name).toBe('generated-reports');
+  expect(await screen.findByTestId(id(0))).toBeVisible();
+  expect(list).toHaveBeenCalledTimes(1);
 });
