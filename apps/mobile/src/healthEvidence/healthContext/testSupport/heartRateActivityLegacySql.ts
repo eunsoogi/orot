@@ -1,9 +1,37 @@
 import { localQueryTimestampKeyExpression } from '@orot/storage';
 
+/** Recover stock timeline SQL before its exact same-statement no-workout bypass. */
+export function previousHeartWorkoutTimeline(query: string): string {
+  const prior = query
+    .replace(
+      'NULL AS workout_end FROM heart h WHERE EXISTS (SELECT 1 FROM workouts)',
+      'NULL AS workout_end FROM heart h',
+    )
+    .replace(
+      "SELECT h.date, h.unit, h.sensor, h.amount,\n        CASE WHEN h.end_key IS NULL OR h.end_key < h.start_key OR h.end_key > ? THEN 'unknown'",
+      "SELECT h.*,\n        CASE WHEN h.end_key IS NULL OR h.end_key < h.start_key OR h.end_key > ?\n          OR NOT EXISTS (SELECT 1 FROM workouts) THEN 'unknown'",
+    )
+    .replace(
+      "\n      UNION ALL\n      SELECT h.date, h.unit, h.sensor, h.amount, 'unknown' FROM heart h\n      WHERE NOT EXISTS (SELECT 1 FROM workouts)",
+      '',
+    );
+  if (
+    prior === query ||
+    !prior.includes('SELECT h.*,') ||
+    prior.includes('FROM heart h WHERE EXISTS') ||
+    prior.includes("'unknown' FROM heart h")
+  ) {
+    throw new Error(
+      'The heart timeline differential oracle did not recover stock SQL.',
+    );
+  }
+  return prior;
+}
+
 /** Reconstruct the prior calendar sweep from the indexed query for exact differential checks. */
 export function previousHeartCalendarSweep(query: string): string {
   const at = localQueryTimestampKeyExpression('r.effective_at');
-  const previous = query
+  const previous = previousHeartWorkoutTimeline(query)
     .replace('AS MATERIALIZED (SELECT json_extract', 'AS (SELECT json_extract')
     .replace('heart AS NOT MATERIALIZED (', 'undated_heart AS MATERIALIZED (')
     // The earlier correlated variant attaches its date after the timeline.
