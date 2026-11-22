@@ -1,3 +1,4 @@
+import { dailyReportMemoryTapFor } from '../../ragConversation/conversationDailyReportMemoryJobs';
 import type { DailyReportIdentity } from '@orot/domain';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { RagConversationOutcome } from '../../ragConversation/outcome';
@@ -19,6 +20,7 @@ export function createConversationDailyReport(input: {
     identity: DailyReportIdentity,
     signal: AbortSignal,
     observer?: RagConversationObserver,
+    directUserRequest = false,
   ): Promise<RagConversationOutcome> => {
     if (signal.aborted) return { status: 'failure', kind: 'cancelled' };
     const release = input.feature.retain(identity);
@@ -35,6 +37,14 @@ export function createConversationDailyReport(input: {
           : prior.status === 'deleted'
             ? { kind: 'revise' as const, expectedRunId: null }
             : { kind: 'reuse_or_generate' as const };
+      // Only the positive pair attached to the original tap is eligible; never wait for consent here.
+      const tap =
+        directUserRequest && prior.status !== 'saved'
+          ? dailyReportMemoryTapFor(observer)
+          : undefined;
+      const remember = tap
+        ? observer?.admitDailyReportMemory?.(tap)
+        : undefined;
       const operation = input.feature.start(identity, mode, observer, signal);
       if (operation.status !== 'started')
         return { status: 'failure', kind: 'unavailable' };
@@ -87,6 +97,16 @@ export function createConversationDailyReport(input: {
             },
             signal,
           );
+          if (
+            remember &&
+            'startedByCaller' in operation &&
+            operation.startedByCaller &&
+            generated.status === 'completed' &&
+            generated.freshCommit &&
+            !signal.aborted
+          )
+            // Optional local reference: failure must not relabel a committed answer.
+            remember(target);
         } catch {
           if (!signal.aborted) observer.onRetentionFailure?.();
         }

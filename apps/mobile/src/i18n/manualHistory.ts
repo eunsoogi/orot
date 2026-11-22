@@ -1,4 +1,9 @@
 export const manualHistoryKo = {
+  'settings.dailyReportMemory.title': '일일 보고서 링크 자동 보관',
+  'settings.dailyReportMemory.description':
+    '켜면 대화에서 직접 요청해 새로 완성한 일일 보고서의 링크만 기기의 보호된 기억에 보관해요. 이전 보고서나 알림으로 만든 보고서는 추가하지 않으며 AI에 보내지 않아요.',
+  'settings.dailyReportMemory.retention':
+    '끄면 새 링크를 만들지 않아요. 기존 링크와 보고서는 그대로 남아요. 원본 보고서나 연결된 대화를 삭제하면 링크도 사라져요.',
   'settings.automaticMemory.title': '답변 방식 선호 자동 저장',
   'settings.automaticMemory.description':
     '이 설정을 켜면 직접 말한 답변 길이, 언어 등 일부 선호를 이 기기의 보호된 메모에 자동으로 저장할 수 있어요. 이 설정으로 건강 정보를 저장하거나 AI 외부 전송 권한을 바꾸지는 않아요.',
