@@ -12,9 +12,8 @@ RCT_EXTERN_METHOD(work : (NSString *)requestId active : (BOOL)active)
 RCT_EXTERN_METHOD(answered : (NSString *)requestId)
 RCT_EXTERN_METHOD(committed : (NSString *)requestId)
 RCT_EXTERN_METHOD(end : (NSString *)requestId)
-RCT_EXTERN_METHOD(isPauseCurrent : (NSString *)requestId warning : (NSString *)
-                      warning resolver : (RCTPromiseResolveBlock)
-                          resolve rejecter : (RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(isPauseCurrent : (NSString *)requestId warning : (NSString *)warning resolver : (
+    RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(isActive : (NSString *)requestId resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 #if OROT_TESTS && TARGET_OS_SIMULATOR
