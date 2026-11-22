@@ -151,7 +151,13 @@ export function AppRouteContent({
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
       );
     case 'saved-memory-detail':
-      return <SavedMemoryDetail memoryId={sourceId} active={active} />;
+      return (
+        <SavedMemoryDetail
+          memoryId={sourceId}
+          active={active}
+          ownership={actions.ownership}
+        />
+      );
     case 'medical-document-detail':
       return (
         <MedicalDocumentDetailRoute

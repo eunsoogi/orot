@@ -11,7 +11,7 @@ import type {
   VisitQuestionCandidate,
   VisitQuestionEvidenceItem,
 } from './taskContract';
-import { healthPeriodDependencyId } from '../../storage/healthPeriodDependencies';
+import { visitQuestionMemorySnapshot } from './visitQuestionMemorySnapshot';
 
 function uniqueValues(values: readonly string[]): string[] {
   return [...new Set(values)];
@@ -109,17 +109,7 @@ export async function saveReviewedVisitQuestionMemory(
   metadataByCitation: VisitQuestionEvidenceCollection['metadataByCitation'],
 ): Promise<'saved' | 'retry_required'> {
   if (!memory) return 'retry_required';
-  const sourceIds = uniqueValues(
-    questions.flatMap(question => [
-      question.id,
-      question.appointmentId,
-      ...question.provenance.sourceRecordIds,
-      ...(question.generatedArtifactSources ?? []).map(
-        source => `generated-artifact:${source.kind}:${source.id}`,
-      ),
-      ...(question.healthContextSources ?? []).map(healthPeriodDependencyId),
-    ]),
-  );
+  const { sourceIds, text } = visitQuestionMemorySnapshot(questions);
   const sourceDates = new Map<string, string>([
     [appointmentId, appointment.effectiveAt],
   ]);
@@ -131,26 +121,12 @@ export async function saveReviewedVisitQuestionMemory(
     }
   }
 
-  // Keep historical question batches separate in the existing local memory entry too.
-  const byDate = new Map<string, VisitQuestionCreate[]>();
-  for (const question of questions) {
-    const sameDate = byDate.get(question.effectiveAt) ?? [];
-    sameDate.push(question);
-    byDate.set(question.effectiveAt, sameDate);
-  }
   try {
     await memory.remember({
       memoryKey: `visit-question-review:${appointmentId}`,
       kind: 'reviewed_interaction',
       importance: 0.75,
-      text: [...byDate]
-        .flatMap(([date, group]) => [
-          `사용자가 ${date} 예약을 위해 검토한 질문:`,
-          ...group.map(
-            (question, index) => `${index + 1}. ${question.questionText}`,
-          ),
-        ])
-        .join('\n'),
+      text,
       provenance: {
         sourceIds,
         sourceReferences: questions.map(question => ({
