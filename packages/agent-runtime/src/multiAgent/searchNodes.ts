@@ -16,7 +16,6 @@ import { deferEvidenceAdapter } from './modelCallFreshness';
 import { observeUntilAbort } from './modelCall';
 import type { Runtime } from '@langchain/langgraph/web';
 import { appendNativeToolResultMessage } from './nativeTools';
-
 // Search remains read-only; the external adapter verifies the declared outbound permission before networking.
 export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
   const executeSearch = async (state: WorkflowState, runtime: Runtime) => {
@@ -118,8 +117,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     const toolStatus = unavailableSearchBatch(batch) ? 'failed' : 'completed';
     const prior = referencesFromBatch(context.currentEvidence);
     const next = referencesFromBatch(batch);
-    // The standard transport sorts object keys. Compare projected references canonically
-    // so locator key order cannot make an already-seen source revision appear new.
+    // Compare projected references canonically so reordered locator keys cannot make a known revision appear new.
     const priorKeys = new Set(prior.map(serializedReferenceKey));
     const hasDuplicate = next.some((reference) => priorKeys.has(serializedReferenceKey(reference)));
     if (
@@ -220,13 +218,11 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       pendingOperation: undefined,
     };
   };
-
   return {
     prepareSearch: (state: WorkflowState) => prepareEvidenceSearch(context, state),
     executeSearch,
   };
 }
-
 async function evidenceIsFresh<TResult>(
   context: RuntimeContext<TResult>,
   batch: EvidenceBatch,
