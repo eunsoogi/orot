@@ -1,3 +1,4 @@
+import { NativeModules } from 'react-native';
 import { runMigrations } from '@orot/storage';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
@@ -10,6 +11,9 @@ import { createConversationArtifactStorage } from '../conversationArtifactStorag
 test('profiles terminal tool writes with all retained record dependencies', async () => {
   for (const count of [1000, 4000]) {
     const { database, close } = openSqliteTestDatabase(':memory:');
+    const prior = NativeModules.OrotProviderDiagnostics;
+    const report = jest.fn();
+    NativeModules.OrotProviderDiagnostics = { enabled: true, report };
     try {
       await runMigrations(database);
       const records: {
@@ -117,6 +121,7 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
         locator: null,
       };
       active = true;
+      report.mockClear();
       const start = performance.now();
       await storage.appendToolEvent({
         ...identity,
@@ -129,6 +134,24 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
         dependencies: [{ reference, records }],
       });
       active = false;
+      expect(
+        report.mock.calls.filter(([, stage]) =>
+          stage.startsWith('tool_event_write_'),
+        ),
+      ).toEqual([
+        ['storage', 'tool_event_write_setup', 'started'],
+        ['storage', 'tool_event_write_setup', 'completed'],
+        ['storage', 'tool_event_write_decode', 'started'],
+        ['storage', 'tool_event_write_decode', 'completed'],
+        ['storage', 'tool_event_write_admission', 'started'],
+        ['storage', 'tool_event_write_admission', 'completed'],
+        ['storage', 'tool_event_write_body', 'started'],
+        ['storage', 'tool_event_write_lineage_validation', 'started'],
+        ['storage', 'tool_event_write_lineage_validation', 'completed'],
+        ['storage', 'tool_event_write_body', 'completed'],
+        ['storage', 'tool_event_write_settlement', 'started'],
+        ['storage', 'tool_event_write_settlement', 'completed'],
+      ]);
       console.info(
         'TERMINAL_WRITE_PROFILE',
         JSON.stringify({
@@ -148,6 +171,7 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
       );
       expect(indexed.rows[0]?.count).toBe(count + 2);
     } finally {
+      NativeModules.OrotProviderDiagnostics = prior;
       close();
     }
   }

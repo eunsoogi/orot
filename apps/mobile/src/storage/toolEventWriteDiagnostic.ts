@@ -2,7 +2,32 @@ import { NativeModules } from 'react-native';
 import type { SqlDatabase } from '@orot/storage';
 import { providerDiagnostic } from '../providers/diagnostics';
 
-type WritePhase = 'admission' | 'body' | 'settlement';
+type WritePhase =
+  | 'setup'
+  | 'decode'
+  | 'admission'
+  | 'body'
+  | 'lineage_validation'
+  | 'settlement';
+type WriteOutcome = 'started' | 'completed' | 'failed';
+
+function reportWritePhase(phase: WritePhase, event: WriteOutcome) {
+  try {
+    providerDiagnostic('storage', `tool_event_write_${phase}`, event);
+  } catch {
+    // The sink cannot change the original transaction or its outcome.
+  }
+}
+
+/** Gate exact app-owned stage timestamps without constructing any record payload. */
+export function beginToolEventWriteStage(
+  phase: 'setup' | 'decode' | 'lineage_validation',
+) {
+  if (!diagnosticsEnabled()) return undefined;
+  reportWritePhase(phase, 'started');
+  return (outcome: Exclude<WriteOutcome, 'started'>) =>
+    reportWritePhase(phase, outcome);
+}
 
 /** Distinguish scheduler admission, transaction work and driver settlement.
  * Settlement after a failed callback includes rollback, not successful persistence. */
@@ -19,13 +44,7 @@ async function observe(
   work: Parameters<SqlDatabase['transaction']>[0],
 ) {
   let phase: WritePhase = 'admission';
-  const report = (event: 'started' | 'completed' | 'failed') => {
-    try {
-      providerDiagnostic('storage', `tool_event_write_${phase}`, event);
-    } catch {
-      // The sink cannot change the original transaction or its outcome.
-    }
-  };
+  const report = (event: WriteOutcome) => reportWritePhase(phase, event);
   const advance = (outcome: 'completed' | 'failed', next: WritePhase) => {
     report(outcome);
     phase = next;

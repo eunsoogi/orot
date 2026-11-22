@@ -1,4 +1,7 @@
-import { observeToolEventTransaction } from './toolEventWriteDiagnostic';
+import {
+  beginToolEventWriteStage,
+  observeToolEventTransaction,
+} from './toolEventWriteDiagnostic';
 import { toolEventRecovery } from './toolEventRecovery';
 import {
   legacyToolPeriodAvailable,
@@ -98,8 +101,23 @@ export function createConversationToolEventStorage(
         new Date(input.createdAt).toISOString() !== input.createdAt
       )
         throw new Error('Invalid conversation tool identity.');
-      await ensure();
-      const lineage = decodeToolLineage(input.dependencies ?? [], event, input);
+      const finishSetup = beginToolEventWriteStage('setup');
+      try {
+        await ensure();
+        finishSetup?.('completed');
+      } catch (error) {
+        finishSetup?.('failed');
+        throw error;
+      }
+      const finishDecode = beginToolEventWriteStage('decode');
+      let lineage;
+      try {
+        lineage = decodeToolLineage(input.dependencies ?? [], event, input);
+        finishDecode?.('completed');
+      } catch (error) {
+        finishDecode?.('failed');
+        throw error;
+      }
       await observeToolEventTransaction(database, async tx => {
         // A late callback must not recreate events after a retained turn was removed.
         const session = await tx.execute(
@@ -144,8 +162,17 @@ export function createConversationToolEventStorage(
           throw new Error('The legacy tool result must be regenerated.');
         const merged = mergeConversationToolEvents(old ? [old] : [], event)[0]!;
         // Validate the exact source revisions under the same lease as the event write.
-        if (!old || (old.status === 'started' && event.status !== 'started'))
-          await assertToolLineage(tx, database, lineage, true);
+        if (!old || (old.status === 'started' && event.status !== 'started')) {
+          const finishValidation =
+            beginToolEventWriteStage('lineage_validation');
+          try {
+            await assertToolLineage(tx, database, lineage, true);
+            finishValidation?.('completed');
+          } catch (error) {
+            finishValidation?.('failed');
+            throw error;
+          }
+        }
         await tx.execute(
           'INSERT INTO conversation_tool_events (session_id, message_id, created_at, run_id, call_id, event_json) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (session_id, run_id, call_id) DO UPDATE SET event_json = excluded.event_json',
           [
