@@ -4,7 +4,10 @@ import type {
   AgentMemoryService,
   PersistedMemoryRecord,
 } from '@orot/agent-memory';
-import type { LocalMemoryReader } from '@orot/agent-runtime';
+import {
+  LOCAL_MEMORY_MAX_RESULTS,
+  type LocalMemoryReader,
+} from '@orot/agent-runtime';
 import {
   isLocalConversationMemoryId,
   localConversationMemoryIdPrefix,
@@ -38,13 +41,49 @@ export function providerVisiblePersistedMemory(
   );
 }
 
+// Pinned Rememori 0.7.0 uses max(limit * 8, 64) for HNSW candidates.
+// Headroom must not move a small existing request above that search window.
+const recallCandidateCeiling = 8;
+
+/** Recover an eligible small-page hit hidden behind local-only notes. Rank once,
+ * reserve only a fixed extra local candidate window, then enforce the original
+ * privacy predicate and result count. Do not expand large/unbounded requests. */
+async function recallVisible<
+  Hit extends {
+    provenance: Parameters<typeof isProviderVisibleMemory>[0];
+    memoryKey?: string;
+  },
+>(
+  limit: number | undefined,
+  recall: (candidateLimit?: number) => Promise<readonly Hit[]>,
+): Promise<Hit[]> {
+  const bounded =
+    typeof limit === 'number' &&
+    Number.isInteger(limit) &&
+    limit >= 1 &&
+    limit <= Math.min(LOCAL_MEMORY_MAX_RESULTS, recallCandidateCeiling);
+  const candidateLimit = bounded
+    ? Math.min(limit + LOCAL_MEMORY_MAX_RESULTS, recallCandidateCeiling)
+    : 0;
+  const candidates = await recall(bounded ? candidateLimit : undefined);
+  const visible = (
+    bounded ? candidates.slice(0, candidateLimit) : candidates
+  ).filter(hit => isProviderVisibleMemory(hit.provenance, hit.memoryKey));
+  return bounded ? visible.slice(0, limit) : visible;
+}
+
 export function providerVisibleMemoryReader(
   memory: LocalMemoryReader,
 ): LocalMemoryReader {
   return {
-    recall: async (query, options) =>
-      (await memory.recall(query, options)).filter(hit =>
-        isProviderVisibleMemory(hit.provenance, hit.memoryKey),
+    recall: (query, options) =>
+      recallVisible(options?.limit, candidateLimit =>
+        memory.recall(
+          query,
+          candidateLimit === undefined
+            ? options
+            : { ...options, limit: candidateLimit },
+        ),
       ),
   };
 }
@@ -63,8 +102,15 @@ export function providerVisibleAgentMemory(
   return {
     getById: async id => visible(await memory.getById(id)),
     getByKey: async key => visible(await memory.getByKey(key)),
-    recall: async (query, options) =>
-      (await memory.recall(query, options)).flatMap(hit => visible(hit) ?? []),
+    recall: (query, options) =>
+      recallVisible(options?.limit, candidateLimit =>
+        memory.recall(
+          query,
+          candidateLimit === undefined
+            ? options
+            : { ...options, limit: candidateLimit },
+        ),
+      ),
     forgetByKey: (...args) => memory.forgetByKey(...args),
     remember: (...args) => memory.remember(...args),
     update: (...args) => memory.update(...args),
