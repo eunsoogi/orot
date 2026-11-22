@@ -44,7 +44,7 @@ function assertSummaryNotCancelled(signal?: AbortSignal) {
 /** Append-only generated results live in the existing SQLCipher database, never plaintext preferences. */
 export function createSymptomSummaryStorage(
   database: SqlDatabase,
-): SymptomSummaryStorage {
+): SymptomSummaryStorage & { prepareRetentionGuards(): Promise<void> } {
   let ready: Promise<void> | undefined;
   const manualHistory = createManualHistoryRepository(database);
   const ensure = () =>
@@ -128,6 +128,8 @@ export function createSymptomSummaryStorage(
     });
   }
   return {
+    // Dependent writes need schema and lifecycle guards, not a browse page.
+    prepareRetentionGuards: ensure,
     async append(value, signal) {
       assertSummaryNotCancelled(signal);
       await ensure();

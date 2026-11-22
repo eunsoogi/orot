@@ -147,9 +147,9 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
       const serialized = JSON.stringify(value);
       const decoded = decodeConversationArtifact(serialized);
       if (!decoded) throw new Error('The conversation output cannot be saved.');
-      // Install parent lifecycle guards even when this catalog opens before summary history.
+      // Install the parent lifecycle guards without materializing unrelated summary rows.
       if (decoded.sources.some(isGeneratedSummarySource))
-        await createSymptomSummaryStorage(database).list();
+        await createSymptomSummaryStorage(database).prepareRetentionGuards();
       assertConversationNotCancelled(signal);
       await database.transaction(async tx => {
         assertConversationNotCancelled(signal);
