@@ -1,3 +1,6 @@
+import { AppState } from 'react-native';
+import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
+import type { ConversationExecutionEvent } from '../../ragConversation/conversationExecutionLease';
 import {
   createAgentMemory,
   type PersistedMemoryRecord,
@@ -191,4 +194,31 @@ export async function invalidateHistoricalMemoryFixture(
     default:
       throw new Error('Unknown synthetic history boundary.');
   }
+}
+
+/** Keep native witness values synthetic while real storage and route guards execute. */
+export const nativeListeners = new Set<
+  (event: ConversationExecutionEvent) => void
+>();
+export const checkProtection = jest.fn<Promise<boolean>, []>();
+export function resetHistoricalProtectionMock() {
+  jest.clearAllMocks();
+  checkProtection.mockReset().mockResolvedValue(true);
+  nativeListeners.clear();
+  AppState.currentState = 'active';
+  jest.mocked(AppState.addEventListener).mockReturnValue({ remove: jest.fn() });
+  jest.mocked(conversationExecutionNative).mockReturnValue({
+    bridgeAvailable: true,
+    currentPhase: () => 'active',
+    begin: jest.fn(),
+    end: jest.fn(),
+    isActive: jest.fn(),
+    protectedDataAvailable: checkProtection,
+    subscribe(listener) {
+      nativeListeners.add(listener);
+      return () => {
+        nativeListeners.delete(listener);
+      };
+    },
+  });
 }

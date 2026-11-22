@@ -1,33 +1,62 @@
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { AppState } from 'react-native';
-import { listSavedMemories } from '@orot/agent-memory';
+import { createAgentMemory, listSavedMemories } from '@orot/agent-memory';
 import { openLocalAgentMemoryDatabase } from '../../storage/secureDatabase';
 import { notifyLocalSourceDeleted } from '../../storage/localDataClearEvents';
 import { loadSavedLocalMemories } from '../savedLocalMemories';
 import { SavedMemoryDetail } from '../SavedMemoryDetail';
 import { resumeStatementMemoryAfterRead } from '../resumeStatementMemoryAfterRead';
 import {
+  checkProtection,
   historicalMemoryFixture,
+  nativeListeners,
+  resetHistoricalProtectionMock,
   invalidateHistoricalMemoryFixture,
 } from '../testSupport/historicalMemoryFixture';
 import { createNavigationController } from '../../navigation/navigationController';
-import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
-import type { ConversationExecutionEvent } from '../../ragConversation/conversationExecutionLease';
+// Execute actual Metro lazy modules in Jest; never put dynamic evaluation in the app graph.
+function mockCompileHistoricalMemoryModule(path: string) {
+  const { readFileSync } = require('node:fs');
+  const { dirname, resolve } = require('node:path');
+  const { runInNewContext } = require('node:vm');
+  const { transformSync } = require('@babel/core');
+  const resolveModule = (
+    require as NodeRequire & {
+      resolve(name: string, options?: { paths: string[] }): string;
+    }
+  ).resolve;
+  const filename = resolveModule(path);
+  const transformed = transformSync(readFileSync(filename, 'utf8'), {
+    filename,
+    babelrc: false,
+    configFile: false,
+    presets: [resolveModule('@react-native/babel-preset')],
+    plugins: [
+      resolveModule('@babel/plugin-transform-dynamic-import', {
+        paths: [resolveModule('@babel/preset-env')],
+      }),
+    ],
+  });
+  const module = { exports: {} };
+  runInNewContext(transformed!.code!, {
+    module,
+    exports: module.exports,
+    setTimeout,
+    clearTimeout,
+    require: (name: string) =>
+      require(name.startsWith('.') ? resolve(dirname(filename), name) : name),
+  });
+  return module.exports;
+}
 
 jest.mock('../useSavedMemories', () =>
-  require('../testSupport/historicalMemoryLazyModule').compileHistoricalMemoryModule(
-    '../useSavedMemories',
-  ),
+  mockCompileHistoricalMemoryModule('../useSavedMemories'),
 );
 jest.mock('../unifiedSavedMemories', () =>
-  require('../testSupport/historicalMemoryLazyModule').compileHistoricalMemoryModule(
-    '../unifiedSavedMemories',
-  ),
+  mockCompileHistoricalMemoryModule('../unifiedSavedMemories'),
 );
 jest.mock('../savedLocalMemories', () =>
-  require('../testSupport/historicalMemoryLazyModule').compileHistoricalMemoryModule(
-    '../savedLocalMemories',
-  ),
+  mockCompileHistoricalMemoryModule('../savedLocalMemories'),
 );
 jest.mock('../../storage/secureDatabase', () => ({
   openLocalAgentMemoryDatabase: jest.fn(),
@@ -49,32 +78,8 @@ jest.mock('@orot/agent-memory', () => ({
     throw new Error('Do not open an AI memory engine from Memory Detail.');
   }),
 }));
-
 jest.mock('../../ragConversation/conversationExecutionNative');
-
-const nativeListeners = new Set<(event: ConversationExecutionEvent) => void>();
-const checkProtection = jest.fn<Promise<boolean>, []>();
-beforeEach(() => {
-  jest.clearAllMocks();
-  checkProtection.mockReset().mockResolvedValue(true);
-  nativeListeners.clear();
-  AppState.currentState = 'active';
-  jest.mocked(AppState.addEventListener).mockReturnValue({ remove: jest.fn() });
-  jest.mocked(conversationExecutionNative).mockReturnValue({
-    bridgeAvailable: true,
-    currentPhase: () => 'active',
-    begin: jest.fn(),
-    end: jest.fn(),
-    isActive: jest.fn(),
-    protectedDataAvailable: checkProtection,
-    subscribe(listener) {
-      nativeListeners.add(listener);
-      return () => {
-        nativeListeners.delete(listener);
-      };
-    },
-  });
-});
+beforeEach(resetHistoricalProtectionMock);
 
 test('current owner reads the exact committed review despite missing historical evidence attestation', async () => {
   const file = await historicalMemoryFixture();
@@ -101,16 +106,13 @@ test('current owner reads the exact committed review despite missing historical 
       ).toBeFalsy();
       expect(checkProtection).toHaveBeenCalledTimes(2);
       expect(resumeStatementMemoryAfterRead).not.toHaveBeenCalled();
-      expect(
-        jest.requireMock('@orot/agent-memory').createAgentMemory,
-      ).not.toHaveBeenCalled();
+      expect(createAgentMemory).not.toHaveBeenCalled();
       expect(await listSavedMemories(file.storage)).toEqual([]);
       await expect(file.requireCurrentEvidence()).rejects.toThrow('parent');
       expect(
         (await file.db.execute('SELECT record_json FROM agent_memory_records'))
           .rows,
       ).toEqual([{ record_json: file.raw }]);
-
       await act(async () => {
         await file.db.execute(
           'INSERT INTO source_deletion_tombstones(source_id) VALUES (?)',
@@ -175,9 +177,7 @@ test.each([
         ).toBeTruthy();
       }
       expect(screen.queryByTestId('saved-memory-verbatim')).toBeNull();
-      expect(
-        jest.requireMock('@orot/agent-memory').createAgentMemory,
-      ).not.toHaveBeenCalled();
+      expect(createAgentMemory).not.toHaveBeenCalled();
     } finally {
       await view.unmount();
     }
