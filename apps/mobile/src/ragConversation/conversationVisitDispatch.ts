@@ -4,6 +4,7 @@ import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { ConversationSession } from './conversationSessionTypes';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import { entryIntentSender } from './entryIntentSender';
+import { isTypedVisitQuestionRequest } from './typedVisitQuestionRequest';
 import type { TreatmentConversationSender } from '../treatmentContext/treatmentConversationSender';
 
 const pendingVisits = new WeakMap<
@@ -144,6 +145,25 @@ export function sendConversationMessage(
         signal,
         observer,
         context,
+      );
+    // A direct authored creation request uses the same typed preparation as
+    // the shortcut. Scope it only to this send; later chat does not inherit it.
+    if (
+      prepare &&
+      (!selected ||
+        selected.intent === 'conversation' ||
+        selected.intent === 'visit-questions') &&
+      !selected?.dailyReport &&
+      isTypedVisitQuestionRequest(question)
+    )
+      return prepare(
+        question,
+        history,
+        signal,
+        observer,
+        selected?.intent === 'visit-questions'
+          ? selected
+          : { intent: 'visit-questions', entryKey: 'typed-visit-questions' },
       );
     return sendEntry(question, history, signal, observer);
   });
