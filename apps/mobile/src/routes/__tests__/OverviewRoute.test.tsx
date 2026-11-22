@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { savedOverviewQuestions } from '../../../test-helpers/overviewFixtures';
-import { savedSource } from '../../recording/recordingScreenSupport';
 import OverviewRoute, { type OverviewRouteProps } from '../OverviewRoute';
 import { formatDate, t } from '../../i18n';
 import { StyleSheet } from 'react-native';
@@ -28,16 +27,12 @@ function props(
       clinicLabel: '합성 의원',
     },
     appointmentState: 'ready',
-    recentRecording: savedSource,
-    recordingState: 'ready',
     loadSavedVisitQuestions: async id =>
       savedOverviewQuestions(id, ['진료 전 확인할 합성 질문']),
     onRetryAppointments: jest.fn(),
-    onRetryRecordings: jest.fn(),
     onPrepareVisit: jest.fn(),
     onOpenSchedule: jest.fn(),
-    onOpenRecords: jest.fn(),
-    onOpenRecording: jest.fn(),
+    onEditMetricSelection: jest.fn(),
     ...overrides,
   };
 }

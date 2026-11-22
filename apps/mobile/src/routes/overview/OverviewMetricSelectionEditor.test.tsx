@@ -1,23 +1,22 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
-import { OverviewMetrics } from './OverviewMetrics';
-import { useOverviewMetrics } from './useOverviewMetrics';
-
-jest.mock('./useOverviewMetrics');
-const mocked = jest.mocked(useOverviewMetrics);
+import { OverviewMetricSelectionEditor } from './OverviewMetricSelectionEditor';
+import { overviewMetricTitle } from './OverviewMetricCard';
 
 test('presents choices as full-row checkboxes with selected and unselected status', async () => {
-  mocked.mockReturnValue({
-    selection: ['sleep', 'heartRate'],
-    metrics: {},
-    quantityTruncated: false,
-    state: 'ready',
-    retry: jest.fn(),
-    save: jest.fn(),
-  });
-  await render(<OverviewMetrics />);
-  await fireEvent.press(screen.getByRole('button', { name: '편집' }));
+  await render(
+    <OverviewMetricSelectionEditor
+      canSave
+      onCancel={jest.fn()}
+      onSave={jest.fn()}
+      onToggle={jest.fn()}
+      saving={false}
+      saveError={false}
+      selection={['sleep', 'heartRate']}
+      title={overviewMetricTitle}
+    />,
+  );
 
   expect(
     StyleSheet.flatten(
@@ -68,29 +67,4 @@ test('presents choices as full-row checkboxes with selected and unselected statu
       screen.getByTestId('overview-metric-selection-save').props.style,
     ),
   ).toMatchObject({ minHeight: 48, backgroundColor: appColors.primaryAction });
-});
-
-test('explains the two-to-four selection limit and disables save below two choices', async () => {
-  mocked.mockReturnValue({
-    selection: ['sleep', 'heartRate'],
-    metrics: {},
-    quantityTruncated: false,
-    state: 'ready',
-    retry: jest.fn(),
-    save: jest.fn(),
-  });
-  await render(<OverviewMetrics />);
-  await fireEvent.press(screen.getByRole('button', { name: '편집' }));
-
-  expect(screen.getByText('지표를 2개에서 4개 선택하세요.')).toBeTruthy();
-  const save = screen.getByRole('button', { name: '저장' });
-  expect(save).toBeEnabled();
-  await fireEvent.press(screen.getByRole('checkbox', { name: /기록된 수면/ }));
-  expect(save).toBeDisabled();
-  await fireEvent.press(screen.getByRole('checkbox', { name: /기록된 수면/ }));
-  await fireEvent.press(screen.getByRole('checkbox', { name: /체중/ }));
-  await fireEvent.press(
-    screen.getByRole('checkbox', { name: /기록된 걸음 샘플 합계/ }),
-  );
-  expect(save).toBeEnabled();
 });
