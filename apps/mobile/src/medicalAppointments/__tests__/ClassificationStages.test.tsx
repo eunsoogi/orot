@@ -67,6 +67,7 @@ test('shows only the current stage, with exact completed-event progress and no d
   await fireEvent.press(screen.getByTestId('medical-appointment-import'));
   expect(screen.getByTestId('medical-appointment-confirmation')).toBeTruthy();
   expect(classify).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole('progressbar')).toBeNull();
   expect(JSON.stringify(view.toJSON())).not.toContain('RCTScrollView');
   await fireEvent.press(screen.getByTestId('medical-appointment-import'));
   expect(classify).toHaveBeenCalledTimes(2);
@@ -124,10 +125,10 @@ test.each([false, true])(
       .mock.calls.map(call => call[1].toValue);
     await view.rerender(fixture(true, false));
     expect(screen.queryByTestId('medical-appointment-results')).toBeNull();
-    expect(values).toEqual(reduced ? [] : [1, 1, 1, 1]);
+    expect(values).toEqual(reduced ? [] : [1, 1, 1, 0, 1]);
     expect(
       jest.mocked(Animated.timing).mock.calls.map(call => call[1].toValue),
-    ).toEqual(reduced ? [] : [1, 1, 1, 1, 0, 1]);
+    ).toEqual(reduced ? [] : [1, 1, 1, 0, 1, 1]);
   },
 );
 
@@ -199,6 +200,10 @@ test.each([
     const docked = await slot('medical-appointment-results');
     expect(docked.top < before.top || docked.x < 0).toBe(true);
     expect(screen.getByText('재분류')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('medical-appointment-import'));
+    expect(await slot('medical-appointment-confirmation')).toEqual(before);
+    expect(screen.getByText('시작')).toBeTruthy();
+    expect(screen.queryByRole('progressbar')).toBeNull();
     expect(JSON.stringify(view.toJSON())).not.toContain('RCTScrollView');
   },
 );

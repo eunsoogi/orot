@@ -14,16 +14,12 @@ export function classificationCircleGeometry(
   width: number,
   height: number,
   fontScale: number,
+  sizeLimit = roundPrimaryActionDiameter,
 ) {
   const textReserve = Math.min(height * 0.35, 48 + 26 * fontScale);
   const size = Math.max(
     0,
-    Math.min(
-      roundPrimaryActionDiameter,
-      width,
-      height,
-      Math.max(44, height - 2 * textReserve),
-    ),
+    Math.min(sizeLimit, width, height, Math.max(44, height - 2 * textReserve)),
   );
   const centerOffset = Math.max(0, (height - size) / 2);
   return { size, centerOffset, captionTop: centerOffset + size + 8 };
@@ -86,24 +82,6 @@ export function classificationDockGeometry(
   };
 }
 
-/** Repeat confirmation stays in its settled lane; the expanded reader does not. */
-export function classificationConfirmationGeometry(
-  width: number,
-  height: number,
-  scale: number,
-  docked: boolean,
-  expandedDuo: boolean,
-) {
-  return docked
-    ? classificationDockGeometry(width, height, scale, expandedDuo)
-    : {
-        ...classificationCircleGeometry(width, height, scale),
-        x: 0,
-        listStart: 0,
-        bottomInset: 0,
-      };
-}
-
 export function ClassificationCircleSlot({
   size,
   centerOffset,
@@ -151,7 +129,6 @@ export function ClassificationCircleButton({
   readonly disabled: boolean;
   readonly onPress: () => void;
 }) {
-  const inner = size * (140 / 160);
   return (
     <Pressable
       testID="medical-appointment-import"
@@ -166,20 +143,56 @@ export function ClassificationCircleButton({
         disabled && styles.disabled,
       ]}
     >
-      <View
-        style={[
-          roundPrimaryActionStyles.inner,
-          { width: inner, height: inner, borderRadius: inner / 2 },
-        ]}
-      >
-        <AppText
-          allowFontScaling={false}
-          style={[styles.title, { fontSize: Math.min(32, size * 0.21) }]}
-        >
-          {title}
-        </AppText>
-      </View>
+      <CircleFace size={size} title={title} />
     </Pressable>
+  );
+}
+
+/** Paint the returning circle without a second hit target or VoiceOver button. */
+export function ClassificationCircleDecoration({
+  size,
+  title,
+}: {
+  readonly size: number;
+  readonly title: string;
+}) {
+  return (
+    <View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[
+        roundPrimaryActionStyles.outer,
+        { width: size, height: size, borderRadius: size / 2 },
+      ]}
+    >
+      <CircleFace size={size} title={title} />
+    </View>
+  );
+}
+
+function CircleFace({
+  size,
+  title,
+}: {
+  readonly size: number;
+  readonly title: string;
+}) {
+  const inner = size * (140 / 160);
+  return (
+    <View
+      style={[
+        roundPrimaryActionStyles.inner,
+        { width: inner, height: inner, borderRadius: inner / 2 },
+      ]}
+    >
+      <AppText
+        allowFontScaling={false}
+        style={[styles.title, { fontSize: Math.min(32, size * 0.21) }]}
+      >
+        {title}
+      </AppText>
+    </View>
   );
 }
 

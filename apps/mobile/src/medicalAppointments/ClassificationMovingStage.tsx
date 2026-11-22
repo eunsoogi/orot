@@ -18,6 +18,7 @@ import { t } from '../i18n';
 import {
   classificationDockGeometry,
   ClassificationCircleButton,
+  ClassificationCircleDecoration,
 } from './ClassificationCircle';
 import { useClassificationExpandedDuo } from './classificationExpandedDuo';
 import {
@@ -31,7 +32,6 @@ type Stage = 'confirmation' | 'progress' | 'results';
  * content immediately; only the destination fades in, so old results are never exposed during work. */
 export function ClassificationMovingStage({
   stage,
-  confirmingRestart,
   classified,
   total,
   saving,
@@ -39,13 +39,13 @@ export function ClassificationMovingStage({
   children,
 }: {
   readonly stage: Stage;
-  readonly confirmingRestart: boolean;
   readonly classified: number;
   readonly total: number;
   readonly saving: boolean;
   readonly onRestart: () => void;
   readonly children: (
     dock: ReturnType<typeof classificationDockGeometry>,
+    interactive: boolean,
   ) => ReactNode;
 }) {
   const reduceMotion = useContext(NavigationMotionContext);
@@ -63,7 +63,7 @@ export function ClassificationMovingStage({
   // Every moving state uses one diameter, including the 44pt short-pane fallback.
   const { size } = dock;
   const center = Math.max(0, (height - size) / 2);
-  const target = stage === 'results' || confirmingRestart ? 1 : 0;
+  const target = stage === 'results' ? 1 : 0;
   const position = useRef(new Animated.Value(target)).current;
   const opacity = useRef(new Animated.Value(1)).current;
   const lastTarget = useRef(target);
@@ -138,6 +138,7 @@ export function ClassificationMovingStage({
   const settled = reduceMotion || ready === stage;
   const showingResults = stage === 'results';
   const interactive = reduceMotion || exposed === stage;
+  const returning = stage === 'confirmation' && !interactive;
   return (
     <View
       style={styles.fill}
@@ -171,14 +172,16 @@ export function ClassificationMovingStage({
               />
             </View>
           ) : (
-            children(dock)
+            children(dock, interactive)
           )}
         </Animated.View>
       )}
       <Animated.View
         pointerEvents="box-none"
         testID={
-          stage === 'confirmation' ? undefined : 'classification-circle-slot'
+          stage === 'confirmation' && !returning
+            ? undefined
+            : 'classification-circle-slot'
         }
         style={[
           styles.slot,
@@ -203,7 +206,12 @@ export function ClassificationMovingStage({
           },
         ]}
       >
-        {showingResults && settled ? (
+        {returning ? (
+          <ClassificationCircleDecoration
+            size={size}
+            title={t('medicalAppointments.startShort')}
+          />
+        ) : showingResults && settled ? (
           <ClassificationCircleButton
             size={dock.size}
             title={t('medicalAppointments.restartShort')}

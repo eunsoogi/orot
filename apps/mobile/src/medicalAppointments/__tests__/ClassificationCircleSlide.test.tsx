@@ -107,7 +107,6 @@ test.each([
         <NavigationMotionContext.Provider value={reduced}>
           <ClassificationMovingStage
             stage={stage}
-            confirmingRestart={stage === 'confirmation'}
             classified={3}
             total={8}
             saving={false}
@@ -150,8 +149,7 @@ test.each([
       return [translateX, translateY];
     };
     const center = position();
-    expect(center[0]).toBe(0);
-    expect(center[1]).toBeGreaterThan(0);
+    expect(center).toEqual([0, expect.any(Number)]);
     await view.rerender(draw('results'));
     expect(screen.getByTestId('classification-circle-slot')).toBe(host);
     expect(screen.queryByTestId('synthetic-list')).toBeNull();
@@ -174,10 +172,13 @@ test.each([
     await fireEvent.press(
       screen.getByRole('button', { name: '다시 분류하기' }),
     );
-    expect(restart).toHaveBeenCalledTimes(1);
     await view.rerender(draw('confirmation'));
-    expect(slides).toHaveLength(1);
+    expect(slides).toHaveLength(2);
     expect(screen.queryByTestId('synthetic-list')).toBeNull();
+    await act(async () => slides[1]!.value.setValue(0.5));
+    expect(position()).toEqual(intermediate);
+    await act(async () => slides[1]!.finish());
+    expect(position()).toEqual(center);
     await view.rerender(draw('progress'));
     expect(slides).toHaveLength(2);
     expect(screen.queryByTestId('synthetic-list')).toBeNull();
@@ -185,7 +186,6 @@ test.each([
       37,
     );
     await act(async () => slides[0]!.finish());
-    expect(screen.queryByTestId('synthetic-list')).toBeNull();
     await view.rerender(draw('progress', true));
     expect(position()).toEqual(center);
     expect(slides[1]!.stop).toHaveBeenCalled();

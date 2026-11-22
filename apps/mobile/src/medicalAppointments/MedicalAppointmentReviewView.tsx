@@ -79,12 +79,16 @@ export function MedicalAppointmentReviewView(props: Props) {
   ]
     .filter(Boolean)
     .join('\n');
-  const content = (dock: ReturnType<typeof classificationDockGeometry>) =>
+  const content = (
+    dock: ReturnType<typeof classificationDockGeometry>,
+    interactive: boolean,
+  ) =>
     stage === 'progress' ? null : stage === 'confirmation' ? (
       <ClassificationPagedStage
         key="confirmation"
         testID="medical-appointment-confirmation"
-        confirmAtDock={confirmAgain}
+        circleSize={dock.size}
+        hideAction={!interactive}
         documents={[Object.values(confirmation).filter(Boolean).join('\n\n')]}
         caption={confirmation}
         actionTitle={t('medicalAppointments.startShort')}
@@ -171,7 +175,6 @@ export function MedicalAppointmentReviewView(props: Props) {
             />
             <ClassificationMovingStage
               stage={stage}
-              confirmingRestart={confirmAgain && !busy}
               classified={classified}
               total={props.eventCount}
               saving={props.savingId !== null}
