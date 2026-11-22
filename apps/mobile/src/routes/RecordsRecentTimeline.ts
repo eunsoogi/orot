@@ -2,7 +2,13 @@ import type { MedicalDocumentSourceRecord } from '../medicalDocuments/medicalDoc
 import { t } from '../i18n';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 
-export type RecentRecordKind = 'recording' | 'medical_document';
+import type { RecentMaterialRow } from '../generatedReports/catalog';
+import { generatedReportCopy } from '../generatedReports/text';
+
+export const recentPageSize = 20;
+
+export type RecentRecordKind =
+  'recording' | 'medical_document' | 'generated_report' | 'saved_memory';
 
 export interface RecentRecordEntry {
   readonly id: string;
@@ -10,6 +16,8 @@ export interface RecentRecordEntry {
   readonly timestamp: string;
   readonly title: string;
   readonly summary?: string;
+  readonly documentIndex?: number;
+  readonly material?: RecentMaterialRow;
 }
 
 export interface RecentRecordGroup {
@@ -22,21 +30,41 @@ export interface RecentRecordGroup {
 export function buildRecentRecordEntries(
   recordings: readonly RecordingSourceRecord[],
   documents: readonly MedicalDocumentSourceRecord[],
+  material: readonly RecentMaterialRow[] = [],
 ): RecentRecordEntry[] {
-  return [
+  const records: RecentRecordEntry[] = [
     ...recordings.map(recording => ({
       id: recording.id,
       kind: 'recording' as const,
       timestamp: recording.recordedAt,
       title: recording.title ?? t('recording.library.untitled'),
     })),
-    ...documents.map(document => ({
+    ...documents.map((document, documentIndex) => ({
+      documentIndex,
       id: document.id,
       kind: 'medical_document' as const,
       timestamp: document.ingestedAt,
       title: t('records.recent.medicalDocument'),
       summary: document.title ?? t('medicalDocument.source.untitled'),
     })),
+    ...material
+      .filter(row => row.origin === 'memory' || !row.unavailable)
+      .map(row => ({
+        id: row.key,
+        kind:
+          row.origin === 'memory'
+            ? ('saved_memory' as const)
+            : ('generated_report' as const),
+        timestamp: row.createdAt,
+        title:
+          row.origin === 'memory'
+            ? t('savedMemory.title')
+            : generatedReportCopy[row.kind],
+        material: row,
+      })),
+  ];
+  return [
+    ...new Map(records.map(row => [`${row.kind}:${row.id}`, row])).values(),
   ].sort(compareRecency);
 }
 
@@ -88,9 +116,15 @@ function compareRecency(
 ): number {
   const leftTime = Date.parse(left.timestamp);
   const rightTime = Date.parse(right.timestamp);
-  if (!Number.isFinite(leftTime)) return Number.isFinite(rightTime) ? 1 : 0;
+  const key = (row: RecentRecordEntry) =>
+    row.material ? 'material:' + row.material.key : row.kind + ':' + row.id;
+  // SQLite's catalog cursor uses the exact same descending, binary key order.
+  const compareKey = () =>
+    key(left) === key(right) ? 0 : key(left) < key(right) ? 1 : -1;
+  if (!Number.isFinite(leftTime))
+    return Number.isFinite(rightTime) ? 1 : compareKey();
   if (!Number.isFinite(rightTime)) return -1;
-  return rightTime - leftTime || left.id.localeCompare(right.id);
+  return rightTime - leftTime || compareKey();
 }
 
 function localDayKey(date: Date): string {

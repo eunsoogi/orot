@@ -1,10 +1,12 @@
-import { RecordingSelectionProvider } from '../../recording/RecordingSelectionContext';
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import { emptyCalendarAutoSyncState } from '../../calendar/calendarAutoSync';
-import { AppRouteContent } from '../AppRouteContent';
-import type { AppRouteContentProps } from '../AppProps';
-import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
-import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
+import { AppState } from 'react-native';
+import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
+import { loadRecentMaterial } from '../../generatedReports/recentMaterialReader';
+import { openGeneratedReportReader } from '../../generatedReports/readers';
+import { fireEvent, screen } from '@testing-library/react-native';
+import {
+  renderRecords,
+  recentRouteProps as routeProps,
+} from '../testSupport/recentRecordsRouteTestSupport';
 import { createNavigationController } from '../../navigation/navigationController';
 import type { AppNavigationRoute } from '../appNavigationRoute';
 
@@ -13,86 +15,78 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
-function routeProps(): Omit<AppRouteContentProps, 'actions'> {
+jest.mock('../../ragConversation/conversationExecutionNative', () => ({
+  conversationExecutionNative: jest.fn(),
+}));
+jest.mock('../../generatedReports/recentMaterialReader', () => ({
+  loadRecentMaterial: jest.fn(),
+}));
+jest.mock('../../generatedReports/readers', () => ({
+  openGeneratedReportReader: jest.fn(),
+}));
+// The selected detail uses a synthetic local history renderer; exact read authority is tested separately.
+jest.mock('../../memory/HistoryMemoryDetail', () => {
+  const React = jest.requireActual('react');
+  const { Text } = jest.requireActual('react-native');
+  const { useNavigationLeaveStateRegistration } =
+    jest.requireActual('../../navigation');
   return {
-    activeTab: 'records',
-    selectTab: jest.fn(),
-    appointmentRepository: null,
-    backupPreparationState: 'checking',
-    retryBackupPreparation: async () => undefined,
-    appointmentState: 'ready',
-    nextAppointment: null,
-    documentImportService: {
-      listDocuments: async () => [],
-      getDocument: async () => null,
-      selectDocument: async () => null,
-      saveDocument: async () => 'saved',
-      discardDocument: async () => undefined,
+    HistoryMemoryDetail: ({ record }: { record: { details: string } }) => {
+      useNavigationLeaveStateRegistration({
+        canLeave: true,
+        hasUnsavedChanges: false,
+        isRecording: false,
+        hasOngoingOperation: false,
+        revision: 0,
+        inputRevision: 0,
+      });
+      return React.createElement(Text, null, record.details);
     },
-    recordings: Array.from({ length: 5 }, (_, index) => ({
-      id: `synthetic-${index}`,
-      sourceKind: 'audio_recording' as const,
-      recordedAt: `2026-11-0${5 - index}T10:00:00Z`,
-      ingestedAt: `2026-11-0${5 - index}T10:00:00Z`,
-      effectiveAt: `2026-11-0${5 - index}T10:00:00Z`,
-      provenance: { origin: 'user_reported' as const, sourceRecordIds: [] },
-      reviewState: { status: 'unreviewed' as const },
-      title: `Synthetic recording ${index}`,
-    })),
-    recordingState: 'ready',
-    refreshAppointments: async () => undefined,
-    refreshRecordings: async () => undefined,
-    calendarBridge: {
-      requestAccessAndListUpcomingEvents: async () => ({
-        access: 'notDetermined',
-        events: [],
-      }),
-      findEvent: async () => ({ access: 'notDetermined', event: null }),
-      addEventStoreListener: () => ({ remove: () => undefined }),
-    },
-    calendarSync: {
-      ...emptyCalendarAutoSyncState,
-      requestAccess: async () => null,
-      refresh: async () => undefined,
-    },
-    selectedProvider: 'Synthetic provider',
-    onProviderSelectionCommitted: jest.fn(),
-    openProviderSettings: jest.fn(),
-    openVisitQuestions: jest.fn(),
-    openDiseaseHypotheses: jest.fn(),
-    openRagConversation: jest.fn(),
-    openExternalEvidence: jest.fn(),
-    openRecording: jest.fn(),
-    loadHealthObservations: async () => ({ records: [], nextCursor: null }),
-    loadHealthRecordMedications: async () => ({
-      definitions: [],
-      doseEvents: [],
-    }),
-    healthRecordDetailSelection: null,
-    onHealthRecordDetailSelectionChange: jest.fn(),
   };
+});
+jest.mock('../../memory/SavedMemoryLoaderContext', () => {
+  const { createContext } = jest.requireActual('react');
+  const record = {
+    id: 'conversation-local-memory:synthetic',
+    kind: 'note',
+    title: 'Synthetic saved memory',
+    details: 'synthetic memory body',
+    effectiveDate: { status: 'unknown' },
+    recordedAt: '2026-11-05T10:03:00Z',
+    provenance: { origin: 'user_reported' },
+    reviewState: { status: 'unreviewed' },
+  };
+  return {
+    SavedMemoryLoaderContext: createContext(async () => [
+      {
+        sourceKind: 'manual_history',
+        id: 'manual-history:' + record.id,
+        text: record.details,
+        createdAt: Date.parse(record.recordedAt),
+        record,
+      },
+    ]),
+  };
+});
+
+function allowSavedMaterial() {
+  AppState.currentState = 'active';
+  jest.mocked(conversationExecutionNative).mockReturnValue({
+    bridgeAvailable: true,
+    protectedDataAvailable: async () => true,
+    subscribe: () => () => {},
+    currentPhase: () => 'active',
+    begin: jest.fn(),
+    end: jest.fn(),
+    isActive: jest.fn(),
+  });
 }
 
 // Synthetic data exercises the production route switch and native-stack adapter, not a local expansion toggle.
 test('opens all recent records in a separate route and Back restores the compact overview', async () => {
   const controller = createNavigationController<AppNavigationRoute>('root');
   const props = routeProps();
-  await render(
-    <RecordingSelectionProvider>
-      <NavigationRouteAdapter
-        controller={controller}
-        contentLayoutOwner={appContentLayoutOwner}
-        scrollable
-        rootTabs={route =>
-          route.name === 'root'
-            ? { activeTab: 'records', onSelect: jest.fn() }
-            : undefined
-        }
-      >
-        {actions => <AppRouteContent {...props} actions={actions} />}
-      </NavigationRouteAdapter>
-    </RecordingSelectionProvider>,
-  );
+  await renderRecords(controller, props);
   expect(screen.getByTestId('records-capture-actions')).toBeTruthy();
   expect(screen.queryByTestId('records-recent-source-synthetic-4')).toBeNull();
   await fireEvent.press(screen.getByTestId('records-recent-view-all'));
@@ -109,5 +103,148 @@ test('opens all recent records in a separate route and Back restores the compact
   await fireEvent.press(
     screen.getByTestId('records-recent-source-synthetic-4'),
   );
-  expect(controller.getSnapshot().currentRoute.name).toBe('saved-recordings');
+  expect(controller.getSnapshot().currentRoute.name).toBe('recording-review');
+  expect(screen.getByTestId('recording-review-layout')).toBeTruthy();
+});
+
+test('lists five categories together and opens each selected protected destination without preview prose', async () => {
+  allowSavedMaterial();
+  const report = {
+    key: 'visit:synthetic',
+    id: 'synthetic',
+    origin: 'visit' as const,
+    kind: 'visit_questions' as const,
+    createdAt: '2026-11-05T10:01:00Z',
+    unavailable: false,
+  };
+  jest.mocked(loadRecentMaterial).mockResolvedValue([
+    {
+      key: 'memory:synthetic',
+      id: 'manual-history:conversation-local-memory:synthetic',
+      origin: 'memory',
+      createdAt: '2026-11-05T10:03:00Z',
+    },
+    report,
+  ]);
+  const read = jest.fn(async () => ({ paragraphs: ['synthetic report body'] }));
+  jest.mocked(openGeneratedReportReader).mockResolvedValue({
+    list: jest.fn(),
+    read,
+    readBookmarkedDiseasePossibilities: jest.fn(),
+  });
+  const controller = createNavigationController<AppNavigationRoute>('root');
+  const documents = [
+    {
+      id: 'photo',
+      sourceKind: 'medical_document' as const,
+      ingestedAt: '2026-11-05T10:04:00Z',
+      title: 'Synthetic imported photo',
+      provenance: { origin: 'imported' as const, sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' as const },
+    },
+    {
+      id: 'file',
+      sourceKind: 'medical_document' as const,
+      ingestedAt: '2026-11-05T10:02:00Z',
+      title: 'Synthetic imported file',
+      provenance: { origin: 'imported' as const, sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' as const },
+    },
+  ];
+  const base = routeProps();
+  const getDocument = jest.fn(async id => {
+    const document = documents.find(value => value.id === id);
+    return document ? { ...document, evidenceSpans: [] } : null;
+  });
+  const props = {
+    ...base,
+    recordings: base.recordings.slice(0, 1),
+    documentImportService: {
+      ...base.documentImportService!,
+      listDocuments: async () => documents,
+      getDocument,
+    },
+  };
+  await renderRecords(controller, props);
+  await fireEvent.press(screen.getByTestId('records-recent-view-all'));
+  await screen.findByTestId('records-recent-source-visit:synthetic');
+  const buttons = screen.getAllByTestId(
+    /^(medical-document-source-\d|records-recent-source-)/,
+  );
+  expect(buttons.map(button => button.props.testID)).toEqual([
+    'medical-document-source-0',
+    'records-recent-source-memory:synthetic',
+    'medical-document-source-1',
+    'records-recent-source-visit:synthetic',
+    'records-recent-source-synthetic-0',
+  ]);
+  expect(screen.queryByText('synthetic memory body')).toBeNull();
+  expect(screen.queryByText('synthetic report body')).toBeNull();
+  expect(getDocument).not.toHaveBeenCalled();
+  expect(read).not.toHaveBeenCalled();
+  await fireEvent.press(
+    screen.getByTestId('records-recent-source-visit:synthetic'),
+  );
+  expect(controller.getSnapshot().currentRoute.name).toBe(
+    'generated-report-detail',
+  );
+  expect(await screen.findByText('synthetic report body')).toBeTruthy();
+  expect(read).toHaveBeenCalledWith(report, expect.anything());
+
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  await fireEvent.press(
+    screen.getByTestId('records-recent-source-memory:synthetic'),
+  );
+  expect(controller.getSnapshot().currentRoute.name).toBe(
+    'saved-memory-detail',
+  );
+  expect(await screen.findByText('synthetic memory body')).toBeTruthy();
+
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  await fireEvent.press(screen.getByTestId('medical-document-source-0'));
+  expect(controller.getSnapshot().currentRoute.name).toBe(
+    'medical-document-detail',
+  );
+  expect(getDocument).toHaveBeenCalledWith('photo');
+});
+
+test('keeps audio responsive while the first page waits and appends the exact next cursor', async () => {
+  allowSavedMaterial();
+  const reports = Array.from({ length: 21 }, (_, index) => ({
+    key: 'visit:' + String(30 - index),
+    id: String(30 - index),
+    origin: 'visit' as const,
+    kind: 'visit_questions' as const,
+    createdAt: '2026-11-07T09:00:00Z',
+    unavailable: false,
+  }));
+  let release!: (rows: typeof reports) => void;
+  const held = new Promise<typeof reports>(resolve => {
+    release = resolve;
+  });
+  const load = jest.mocked(loadRecentMaterial);
+  load
+    .mockClear()
+    .mockImplementation(before =>
+      before ? Promise.resolve(reports.slice(20)) : held,
+    );
+  const controller = createNavigationController<AppNavigationRoute>('root');
+  await renderRecords(controller, routeProps());
+  expect(screen.getByTestId('records-recent-source-synthetic-0')).toBeTruthy();
+  expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('records-recent-view-all'));
+  release(reports.slice(0, 20));
+  const more = await screen.findByTestId('records-recent-show-more');
+  expect(screen.queryByTestId('records-recent-source-visit:10')).toBeNull();
+  await fireEvent.press(more);
+  expect(
+    await screen.findByTestId('records-recent-source-visit:10'),
+  ).toBeTruthy();
+  expect(screen.getAllByTestId('records-recent-source-visit:30')).toHaveLength(
+    1,
+  );
+  expect(load).toHaveBeenLastCalledWith({
+    key: 'visit:11',
+    createdAt: reports[19].createdAt,
+  });
 });

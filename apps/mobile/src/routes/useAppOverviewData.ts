@@ -18,6 +18,7 @@ export function useAppOverviewData(
   loadAppointments: () => Promise<AppointmentRepository>,
   loadRecordings: () => Promise<readonly RecordingSourceRecord[]>,
   overviewActive = true,
+  recordingsActive = overviewActive,
 ) {
   const [appointmentRepository, setAppointmentRepository] =
     useState<AppointmentRepository | null>(null);
@@ -33,6 +34,7 @@ export function useAppOverviewData(
   const appointmentRequest = useRef(0);
   const recordingRequest = useRef(0);
   const previousOverviewActive = useRef(overviewActive);
+  const previousRecordingsActive = useRef(recordingsActive);
   const [now, setNow] = useState(Date.now);
 
   useEffect(() => {
@@ -120,17 +122,23 @@ export function useAppOverviewData(
     // Root-tab scenes can remain mounted. A return to Overview must include recordings or visits saved elsewhere.
     if (overviewActive && !previousOverviewActive.current) {
       refreshAppointments().catch(() => undefined);
-      refreshRecordings().catch(() => undefined);
     }
+    if (recordingsActive && !previousRecordingsActive.current)
+      refreshRecordings().catch(() => undefined);
+    previousRecordingsActive.current = recordingsActive;
     previousOverviewActive.current = overviewActive;
     const subscription = AppState.addEventListener('change', state => {
-      if (overviewActive && state === 'active') {
-        refreshAppointments().catch(() => undefined);
-        refreshRecordings().catch(() => undefined);
-      }
+      if (state !== 'active') return;
+      if (overviewActive) refreshAppointments().catch(() => undefined);
+      if (recordingsActive) refreshRecordings().catch(() => undefined);
     });
     return () => subscription.remove();
-  }, [overviewActive, refreshAppointments, refreshRecordings]);
+  }, [
+    overviewActive,
+    recordingsActive,
+    refreshAppointments,
+    refreshRecordings,
+  ]);
 
   const nextAppointment = useMemo(
     () => selectNextAppointment(appointments, now),
