@@ -1,5 +1,6 @@
 import { useContext, type ReactNode } from 'react';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { hubSpacing } from '../layout/hubSpacing';
 import { RecordsHubHeadingContext } from './RecordsHubBanner';
 import { Pressable, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
@@ -78,6 +79,7 @@ export function RecordsRouteEntries({
 
       <AdaptiveColumns
         testID="records-material-columns"
+        stackedGap={hubSpacing.item}
         secondary={
           <RecordsMaterials
             title={t('records.conversationMaterials')}
