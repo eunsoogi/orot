@@ -23,7 +23,8 @@ export function entryIntentSender(
   // Freeze the selected source before storage preflight can yield to another selection.
   const selected = conversationEntryForSession(store, id);
   const restored = store.getSnapshot().sessions.find(item => item.id === id);
-  const draft = restored?.draft.trim();
+  // Voice and shortcut turns own separate input; only the composer reads its draft.
+  const draft = inputOrigin === 'composer' ? restored?.draft.trim() : undefined;
   // Pin the local day at the explicit send, not after asynchronous preflight.
   const typedToday =
     inputOrigin === 'composer' &&
