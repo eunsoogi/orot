@@ -7,7 +7,10 @@ import {
 } from 'react';
 import type { DailyReportIdentity } from '@orot/domain';
 import type { EvidenceReference } from '@orot/agent-runtime';
-import { AppButton } from '../../layout/AppButton';
+import {
+  DailyReportCitationControl,
+  DailyReportCitationStrip,
+} from './DailyReportCitationControl';
 import { AppText } from '../../layout/AppText';
 import { t } from '../../i18n';
 import type { AiFeatureServices } from './featureServices';
@@ -25,6 +28,7 @@ export function DailyReportSourceLinks({
   onOpen,
   onStale,
   testIDPrefix,
+  transcript = false,
 }: {
   identity: DailyReportIdentity;
   runId: string;
@@ -33,6 +37,7 @@ export function DailyReportSourceLinks({
   onOpen: (source: EvidenceReference) => void;
   onStale: () => void;
   testIDPrefix?: string;
+  transcript?: boolean;
 }) {
   const [sources, setSources] = useState<DailyReportCitationPresentation>();
   const [expanded, setExpanded] = useState<number>();
@@ -107,7 +112,7 @@ export function DailyReportSourceLinks({
   };
   const sourceLinks = (indices: readonly number[], group: string) =>
     indices.map((index, position) => (
-      <AppButton
+      <DailyReportCitationControl
         key={index}
         testID={
           testIDPrefix
@@ -115,7 +120,7 @@ export function DailyReportSourceLinks({
             : undefined
         }
         title={t('dailyReport.sourceLink', { number: position + 1 })}
-        variant="text"
+        transcript={transcript}
         disabled={busy}
         onPress={() => {
           load(index).catch(() => undefined);
@@ -124,56 +129,64 @@ export function DailyReportSourceLinks({
     ));
   return (
     <>
-      <AppButton
-        testID={testIDPrefix ? `${testIDPrefix}-sources` : undefined}
-        title={t('dailyReport.sources')}
-        variant="secondary"
-        busy={busy}
-        disabled={!resolve}
-        onPress={() => {
-          load().catch(() => undefined);
-        }}
-      />
+      <DailyReportCitationStrip
+        transcript={transcript}
+        testID={testIDPrefix ? `${testIDPrefix}-citation-strip` : undefined}
+      >
+        <DailyReportCitationControl
+          testID={testIDPrefix ? `${testIDPrefix}-sources` : undefined}
+          title={t('dailyReport.sources')}
+          transcript={transcript}
+          initial
+          busy={busy}
+          disabled={!resolve}
+          onPress={() => {
+            load().catch(() => undefined);
+          }}
+        />
+        {sources?.statistics.map((members, index) => (
+          <Fragment key={index}>
+            <DailyReportCitationControl
+              testID={
+                testIDPrefix ? `${testIDPrefix}-statistic-${index}` : undefined
+              }
+              title={t('dailyReport.statisticCitation', {
+                number: index + 1,
+                count: members.length,
+              })}
+              transcript={transcript}
+              expanded={expanded === index}
+              onPress={() =>
+                setExpanded(value => (value === index ? undefined : index))
+              }
+            />
+            {expanded === index
+              ? sourceLinks(members, `statistic-${index}`)
+              : null}
+          </Fragment>
+        ))}
+        {sources ? sourceLinks(sources.directSources, 'individual') : null}
+        {sources?.otherSources.length ? (
+          <>
+            <DailyReportCitationControl
+              testID={
+                testIDPrefix ? `${testIDPrefix}-other-sources` : undefined
+              }
+              title={t('dailyReport.otherBackingSources', {
+                count: sources.otherSources.length,
+              })}
+              transcript={transcript}
+              expanded={otherExpanded}
+              onPress={() => setOtherExpanded(value => !value)}
+            />
+            {otherExpanded ? sourceLinks(sources.otherSources, 'other') : null}
+          </>
+        ) : null}
+      </DailyReportCitationStrip>
       {error ? (
         <AppText accessibilityRole="alert">
           {t('dailyReport.sourceError')}
         </AppText>
-      ) : null}
-      {sources?.statistics.map((members, index) => (
-        <Fragment key={index}>
-          <AppButton
-            testID={
-              testIDPrefix ? `${testIDPrefix}-statistic-${index}` : undefined
-            }
-            title={t('dailyReport.statisticCitation', {
-              number: index + 1,
-              count: members.length,
-            })}
-            variant="text"
-            accessibilityState={{ expanded: expanded === index }}
-            onPress={() =>
-              setExpanded(value => (value === index ? undefined : index))
-            }
-          />
-          {expanded === index
-            ? sourceLinks(members, `statistic-${index}`)
-            : null}
-        </Fragment>
-      ))}
-      {sources ? sourceLinks(sources.directSources, 'individual') : null}
-      {sources?.otherSources.length ? (
-        <>
-          <AppButton
-            testID={testIDPrefix ? `${testIDPrefix}-other-sources` : undefined}
-            title={t('dailyReport.otherBackingSources', {
-              count: sources.otherSources.length,
-            })}
-            variant="text"
-            accessibilityState={{ expanded: otherExpanded }}
-            onPress={() => setOtherExpanded(value => !value)}
-          />
-          {otherExpanded ? sourceLinks(sources.otherSources, 'other') : null}
-        </>
       ) : null}
     </>
   );
