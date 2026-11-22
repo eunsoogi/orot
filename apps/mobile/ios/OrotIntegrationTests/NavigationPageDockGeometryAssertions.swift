@@ -105,3 +105,54 @@ func verifyWindowTopBack(in window: UIWindow, controller: UIViewController) thro
     surface.layoutMode = "left"
     XCTAssertEqual(surface.contextualRailTop(hostHeight: window.bounds.height, mountedToWindow: true), oldTop)
 }
+
+/// Compare the actual constraints after warm native resizing with the cold safe-top policy.
+/// Retain the portal and action, and do not refresh the bridge properties during resize.
+@MainActor
+func verifyWarmWindowBackAfterPortalResize(in window: UIWindow, controller: UIViewController) throws {
+    let originalFrame = window.frame
+    let safeTop: CGFloat = 192
+    let legacyTop: CGFloat = 166
+    window.frame.size.height = 260
+    controller.view.frame = window.bounds
+    let surface = NavigationGlassSurfaceView(frame: CGRect(x: window.bounds.maxX - 60, y: 0, width: 60, height: 260))
+    controller.view.addSubview(surface)
+    defer {
+        surface.removeFromSuperview()
+        window.frame = originalFrame
+        controller.view.frame = window.bounds
+    }
+
+    surface.railAvailableHeight = originalFrame.height
+    surface.railRightInset = 12
+    surface.railTopInset = legacyTop
+    surface.railBottomInset = 34
+    surface.railBackTopInset = safeTop
+    surface.layoutMode = "right"
+    surface.actions = [
+        ["id": "back", "label": "Back", "accessibilityLabel": "Back", "testID": "navigation-back"],
+    ] as NSArray
+    surface.layoutIfNeeded()
+    let portal = try XCTUnwrap(controller.view.subviews.compactMap { $0 as? NavigationWindowRailHost }.first)
+    portal.layoutIfNeeded()
+    let button = try XCTUnwrap(surface.innerActions.arrangedSubviews.compactMap { $0 as? UIButton }.first)
+    XCTAssertEqual(portal.bounds.height, 260, accuracy: 0.5)
+    XCTAssertEqual(button.convert(button.bounds, to: window).minY, legacyTop, accuracy: 0.5)
+
+    // Only the native window grows: the bridge still advertises the same full height and safe top.
+    window.frame = originalFrame
+    controller.view.frame = window.bounds
+    surface.setNeedsLayout()
+    surface.layoutIfNeeded()
+    portal.layoutIfNeeded()
+    XCTAssertTrue(surface.innerActions.superview === portal)
+    XCTAssertTrue(surface.innerActions.arrangedSubviews.first === button)
+    XCTAssertEqual(portal.bounds.height, originalFrame.height, accuracy: 0.5)
+    XCTAssertEqual(surface.contextualRailTop(hostHeight: portal.bounds.height, mountedToWindow: true), safeTop)
+
+    let expanded = button.convert(button.bounds, to: window)
+    XCTAssertEqual(expanded.minY, safeTop, accuracy: 0.5)
+    XCTAssertEqual(expanded.size.width, 48, accuracy: 0.5)
+    XCTAssertEqual(expanded.size.height, 48, accuracy: 0.5)
+    XCTAssertTrue(window.hitTest(CGPoint(x: expanded.midX, y: expanded.midY), with: nil) === button)
+}
