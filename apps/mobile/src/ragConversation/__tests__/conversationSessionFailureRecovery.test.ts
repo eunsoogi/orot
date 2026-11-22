@@ -48,7 +48,7 @@ test('restores a failed prompt and excludes it from retry history', async () => 
   store.dispose();
 });
 
-test('keeps failed output incomplete while preserving history and retrying once', async () => {
+test('drops validation-rejected output while preserving history and retrying once', async () => {
   const store = createConversationSessions();
   const id = store.getSnapshot().activeId;
   store.setDraft(id, '완료된 질문');
@@ -92,18 +92,10 @@ test('keeps failed output incomplete while preserving history and retrying once'
     '완료된 질문',
     '검증된 답변',
     failedQuestion,
-    '검증 전 답변',
   ]);
   expect(
     failed.messages.find(message => message.content === failedQuestion),
   ).toMatchObject({ failed: true });
-  expect(failed.messages.at(-1)).toMatchObject({ incomplete: true });
-  expect(failed.messages.at(-1)).toMatchObject({
-    activity: getRagConversationFailureCopy('validation_failed'),
-  });
-  expect(failed.messages.at(-1)?.activity).not.toBe(
-    getRagConversationCopy().unavailable,
-  );
   expect(failed.error).toBe(getRagConversationFailureCopy('validation_failed'));
   expect(failed.messages.at(-1)?.citations).toBeUndefined();
 
@@ -129,7 +121,7 @@ test('keeps failed output incomplete while preserving history and retrying once'
   ).toHaveLength(1);
   expect(
     retried.messages.find(message => message.content === '검증 전 답변'),
-  ).toMatchObject({ incomplete: true });
+  ).toBeUndefined();
   store.dispose();
 });
 
@@ -154,7 +146,7 @@ test('shows validation guidance without creating an empty answer when no text st
 });
 
 test.each(['provider_refused', 'cancelled'] as const)(
-  'keeps %s guidance on an incomplete stream',
+  'keeps %s guidance but only cancellation retains unfinished text',
   async kind => {
     const store = createConversationSessions();
     const id = store.getSnapshot().activeId;
@@ -167,10 +159,16 @@ test.each(['provider_refused', 'cancelled'] as const)(
       .getSnapshot()
       .sessions.find(session => session.id === id)!;
     expect(failed.error).toBe(getRagConversationFailureCopy(kind));
-    expect(failed.messages.at(-1)).toMatchObject({
-      incomplete: true,
-      activity: getRagConversationFailureCopy(kind),
-    });
+    if (kind === 'cancelled')
+      expect(failed.messages.at(-1)).toMatchObject({
+        content: '부분 답변',
+        incomplete: true,
+        activity: getRagConversationFailureCopy(kind),
+      });
+    else
+      expect(
+        failed.messages.filter(message => message.role === 'assistant'),
+      ).toHaveLength(0);
     store.dispose();
   },
 );

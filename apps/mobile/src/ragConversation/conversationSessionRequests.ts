@@ -198,7 +198,7 @@ export function createConversationSessionRequests(
         if (outcome.status === 'failure' || outcome.status === 'unavailable') {
           const kind =
             outcome.status === 'failure' ? outcome.kind : 'unavailable';
-          fail(getRagConversationFailureCopy(kind));
+          fail(kind);
           return;
         }
         if (outcome.status === 'answer')
@@ -225,8 +225,7 @@ export function createConversationSessionRequests(
           memory.show();
         }
       } catch {
-        if (current())
-          fail(copy.unavailable, getRagConversationFailureCopy('unavailable'));
+        if (current()) fail('unavailable', copy.unavailable);
       } finally {
         if (!memoryShown) memory?.discard();
         await finishConversationLiveRequest(ownership, {
