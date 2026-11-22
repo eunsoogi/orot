@@ -1,3 +1,4 @@
+import { conversationMaterialsKo } from './conversationMaterialsKo';
 import { realtimeToolConsentKo } from './realtimeToolConsentKo';
 import { calendarDisplayKo } from './calendarDisplayKo';
 import { historyDisplayKo } from './historyDisplayKo';
@@ -41,6 +42,7 @@ export const localizedCopyKo = {
   ...recordingExportKo,
   ...dailyGuidanceKo,
   ...savedMemoryKo,
+  ...conversationMaterialsKo,
   ...healthContextCopyKo,
   ...evidenceSourceKo,
   ...evidenceValuesKo,

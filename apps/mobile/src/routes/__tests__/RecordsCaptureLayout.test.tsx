@@ -79,3 +79,40 @@ test.each([1, 1.5, 3.571])(
     expect(onOpenRecording).toHaveBeenCalledTimes(1);
   },
 );
+
+test.each([
+  [900, 1, 'row'],
+  [390, 2, 'column'],
+] as const)(
+  'inherits the same material-column reflow at width %s and text scale %s',
+  async (width, fontScale, flexDirection) => {
+    Dimensions.set({
+      window: { ...original.window, width, fontScale },
+      screen: { ...original.screen, width, fontScale },
+    });
+    await render(
+      <RecordsRouteEntries
+        onOpenRecording={jest.fn()}
+        onOpenSavedRecordings={jest.fn()}
+        onOpenHealthLibrary={jest.fn()}
+        onOpenManualHistory={jest.fn()}
+        onOpenGeneratedReports={jest.fn()}
+        medicalDocumentOpening={false}
+        medicalDocumentDisabled={false}
+        onImportMedicalDocument={jest.fn()}
+        onImportMedicalPhoto={jest.fn()}
+      />,
+    );
+    expect(screen.getByTestId('records-material-columns')).toHaveStyle({
+      flexDirection,
+    });
+    expect(
+      screen.getByText('대화에서 생성한 자료').props.numberOfLines,
+    ).toBeUndefined();
+    expect(screen.getByTestId('records-open-generated-reports')).toHaveStyle({
+      minHeight: 70,
+    });
+    expect(screen.queryByTestId('saved-memory-browser')).toBeNull();
+    expect(screen.queryByTestId('generated-report-browser')).toBeNull();
+  },
+);

@@ -1,6 +1,6 @@
 import { AppointmentQuestionRoutes } from './AppointmentQuestionRoutes';
 import { useVisitDayQuestionsEntry } from './useVisitDayQuestionsEntry';
-import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
+import { RecordsMaterialDestination } from './RecordsMaterialDestination';
 import { SavedMemoryDetail } from '../memory/SavedMemoryDetail';
 import { useRecordSourceNavigation } from './RecordSourceNavigation';
 import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
@@ -87,7 +87,7 @@ export function AppRouteContent({
           >
             <RecordsRoute
               onOpenDocumentDetail={openDocument}
-              onOpenMemory={openMemory}
+              onOpenGeneratedReports={() => actions.push('generated-reports')}
               memoryActive={active}
               onOpenRecentRecords={() => actions.push('recent-records')}
               documentImportService={documentImportService}
@@ -165,8 +165,6 @@ export function AppRouteContent({
       return (
         <RecordsRoute
           onOpenDocumentDetail={openDocument}
-          onOpenMemory={openMemory}
-          memoryActive={active}
           showAllRecent
           documentImportService={documentImportService}
           recordings={recordings}
@@ -175,7 +173,6 @@ export function AppRouteContent({
           onOpenSavedRecordings={() => actions.push('saved-recordings')}
           onOpenRecording={openRecording}
           onOpenHealthLibrary={() => actions.push('health-records')}
-          onOpenManualHistory={() => actions.push('manual-history')}
         />
       );
     case 'saved-recordings':
@@ -204,8 +201,12 @@ export function AppRouteContent({
         />
       );
     case 'manual-history':
-      // Old in-memory routes no longer expose manual creation; originals live in Memory.
-      return <SavedMemoryBrowser active={active} onOpenMemory={openMemory} />;
+    case 'generated-reports':
+      return (
+        <RecordsMaterialDestination
+          {...{ actions, onOpenMemory: openMemory }}
+        />
+      );
     case 'appointments':
       return appointmentRepository ? (
         <AppointmentsScreen

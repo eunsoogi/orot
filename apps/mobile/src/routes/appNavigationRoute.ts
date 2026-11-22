@@ -7,6 +7,7 @@ export type AppNavigationRoute =
   | 'recent-records'
   | 'medical-document-detail'
   | 'saved-memory-detail'
+  | 'generated-reports'
   | 'recording-review'
   | 'unified-import'
   | 'health-records'
