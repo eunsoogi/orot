@@ -144,8 +144,10 @@ extension AppointmentConsentUITests {
         XCTAssertEqual(original.midY, originalLane.midY, accuracy: 2)
         XCTContext.runActivity(named: "Classification dock: window=\(owner.frame), initialLane=\(originalLane), lane=\(lane), central=\(original), docked=\(dock), list=\(list.frame)") { _ in }
         if requireDuoWidth {
-            XCTAssertEqual(owner.frame.width, 466, accuracy: 2, "Launch intent is not proof of an expanded Duo viewport")
-            XCTAssertGreaterThanOrEqual(lane.width, 334)
+            try assertNativeExpandedClassificationWindow(app, owner: owner.frame)
+            XCTAssertGreaterThanOrEqual(min(owner.frame.width, owner.frame.height), 650, "A folded Duo cannot prove flat expanded layout")
+            XCTAssertGreaterThanOrEqual(dock.minX - lane.minX, 12)
+            XCTAssertGreaterThanOrEqual(list.frame.minX - dock.maxX, 20)
         }
         let listFrame = list.frame
         let sideOrder = dock.midX < lane.midX - 20 && abs(dock.midY - lane.midY) <= 2 && dock.maxX <= listFrame.minX
@@ -155,6 +157,30 @@ extension AppointmentConsentUITests {
             throw ActivationError.unproven
         }
         return dock
+    }
+
+    /// Match the current UIKit reservation snapshot against the committed RN sensor.
+    @MainActor
+    private func assertNativeExpandedClassificationWindow(_ app: XCUIApplication, owner: CGRect) throws {
+        typealias Payload = NavigationGeometryReservedRegionMatcher.GeometryPayload
+        let receipt = try XCTUnwrap(NavigationUITestConditions.observationSnapshot(app, testCase: self, attachmentName: "classification-expanded-native-window"))
+        let native = try XCTUnwrap(receipt["windowGeometry"] as? [String: Any])
+        let events = try XCTUnwrap(receipt["lifecycle"] as? [[String: Any]])
+        let context = try XCTUnwrap(events.last { $0["event"] as? String == "window-geometry-context" })
+        let committedJSON = try XCTUnwrap(context["normalizedSnapshot"] as? String)
+        let committed = try JSONDecoder().decode(Payload.self, from: Data(committedJSON.utf8))
+        let observed = try JSONDecoder().decode(Payload.self, from: JSONSerialization.data(withJSONObject: native))
+        let window = observed.windowBounds
+        let sameWindow = abs(window.width - owner.width) <= 1 && abs(window.height - owner.height) <= 1
+        let bounds = CGRect(x: window.x, y: window.y, width: window.width, height: window.height)
+        let divisions = observed.reservedRegions.filter { region in
+            let frame = region.frame
+            return region.kind == "division" && frame.width > 0 && frame.height > 0
+                && bounds.intersects(CGRect(x: frame.x, y: frame.y, width: frame.width, height: frame.height))
+        }
+        XCTAssertTrue(sameWindow && observed.matches(committed) && observed.reservedRegionsSupported)
+        XCTAssertFalse(divisions.isEmpty, "Open evidence needs a real in-window UIKit division")
+        XCTAssertTrue(divisions.allSatisfy { !$0.isActive }, "An active seam does not certify the flat posture")
     }
 
     /// Repeat confirmation keeps the dock, then returns the real ring to the current lane's center.

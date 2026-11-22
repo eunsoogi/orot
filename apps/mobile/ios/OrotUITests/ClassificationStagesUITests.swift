@@ -60,11 +60,10 @@ extension AppointmentConsentUITests {
         UITestConditions.value(node(app, "calendar-classification-synthetic-calendar-save"), equals: "syntheticCalendarSave=confirmed")
         XCTAssertFalse(node(app, "medical-appointment-progress").exists)
         XCTAssertFalse(node(app, "medical-appointment-confirmation").exists)
-        let expectLeft = sceneSession != nil || expectDuo
-        let dock = try assertClassificationCircleDock(app, original: originalCircle, originalLane: originalLane, expectLeft: expectLeft, requireDuoWidth: expectDuo)
+        let dock = try assertClassificationCircleDock(app, original: originalCircle, originalLane: originalLane, expectLeft: expectDuo, requireDuoWidth: expectDuo)
         if motionOnly {
             XCTContext.runActivity(named: "Classification motion-only: initial center → dock → confirmed recenter (no scroll or Back)") { _ in
-                assertClassificationCircleReturn(app, dock: dock, expectLeft: expectLeft)
+                assertClassificationCircleReturn(app, dock: dock, expectLeft: expectDuo)
                 let lane = node(app, "classification-moving-stage").frame
                 let recentered = node(app, "classification-circle-slot").frame
                 XCTContext.runActivity(named: "Classification motion-only recentered: dock=\(dock), lane=\(lane), circle=\(recentered)") { _ in }
@@ -84,7 +83,7 @@ extension AppointmentConsentUITests {
         XCTAssertEqual(node(app, "calendar-classification-synthetic-provider-calls").label, "syntheticProviderCalls=2")
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-long-result-returned", testCase: self)
-        assertClassificationCircleReturn(app, dock: dock, expectLeft: expectLeft)
+        assertClassificationCircleReturn(app, dock: dock, expectLeft: expectDuo)
     }
 
     @MainActor

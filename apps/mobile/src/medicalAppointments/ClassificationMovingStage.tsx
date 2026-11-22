@@ -19,6 +19,7 @@ import {
   classificationDockGeometry,
   ClassificationCircleButton,
 } from './ClassificationCircle';
+import { useClassificationExpandedDuo } from './classificationExpandedDuo';
 import {
   ClassificationProgressCaption,
   ClassificationProgressRing,
@@ -49,6 +50,7 @@ export function ClassificationMovingStage({
 }) {
   const reduceMotion = useContext(NavigationMotionContext);
   const window = useWindowDimensions();
+  const expandedDuo = useClassificationExpandedDuo(window);
   const [bounds, setBounds] = useState<{ width: number; height: number }>();
   const { width, height } = bounds ?? window;
   // Before measuring the safe lane, a full window width does not prove an unobstructed list.
@@ -56,7 +58,7 @@ export function ClassificationMovingStage({
     bounds?.width ?? Math.min(width, 430),
     height,
     window.fontScale,
-    bounds ? window.width : 0,
+    Boolean(bounds && expandedDuo),
   );
   // Every moving state uses one diameter, including the 44pt short-pane fallback.
   const { size } = dock;

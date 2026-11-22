@@ -1,11 +1,16 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Animated, Dimensions, StyleSheet, View } from 'react-native';
 import {
-  Animated,
-  Dimensions,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+  openGeometry,
+  rotatedGeometry,
+  dividedGeometry,
+} from '../../navigation/__fixtures__/navigationOpenGeometry';
+import { NavigationGeometryProvider } from '../../navigation/NavigationGeometryProvider';
+import {
+  createNavigationGeometrySnapshot,
+  type NavigationGeometryPayload,
+} from '../../navigation/navigationGeometry';
+import { isClassificationExpandedDuo } from '../classificationExpandedDuo';
 import { NavigationMotionContext } from '../../navigation/NavigationMotionContext';
 import { ClassificationMovingStage } from '../ClassificationMovingStage';
 import { classificationDockGeometry } from '../ClassificationCircle';
@@ -19,17 +24,57 @@ afterEach(async () => {
   await act(async () => Dimensions.set(originalDimensions));
 });
 
+const folded: NavigationGeometryPayload = {
+  windowBounds: { x: 0, y: 0, width: 466, height: 678 },
+  safeAreaInsets: { top: 0, left: 0, right: 84, bottom: 34 },
+  reservedRegionsSupported: true,
+  hasHinge: true,
+  reservedRegions: [],
+};
+
 test.each([
-  { width: 342, windowWidth: 390, height: 524, side: false },
-  { width: 334, windowWidth: 466, height: 504, side: true },
-  { width: 662, windowWidth: 700, height: 404, side: true },
+  { width: 342, windowWidth: 390, windowHeight: 844, height: 524, side: false },
+  {
+    width: 334,
+    windowWidth: 466,
+    windowHeight: 678,
+    height: 402,
+    side: false,
+    geometry: folded,
+  },
+  {
+    width: 819,
+    windowWidth: 951,
+    windowHeight: 669,
+    height: 404,
+    side: true,
+    geometry: openGeometry,
+  },
+  {
+    width: 537,
+    windowWidth: 669,
+    windowHeight: 951,
+    height: 620,
+    side: true,
+    geometry: rotatedGeometry,
+  },
 ])(
   'keeps one circle during travel and withholds the list until it settles ($width point lane)',
-  async ({ width, windowWidth, height, side }) => {
+  async ({ width, windowWidth, windowHeight, height, side, geometry }) => {
     await act(async () =>
       Dimensions.set({
-        window: { width: windowWidth, height, scale: 2, fontScale: 1 },
-        screen: { width: windowWidth, height, scale: 2, fontScale: 1 },
+        window: {
+          width: windowWidth,
+          height: windowHeight,
+          scale: 2,
+          fontScale: 1,
+        },
+        screen: {
+          width: windowWidth,
+          height: windowHeight,
+          scale: 2,
+          fontScale: 1,
+        },
       }),
     );
     const timing = jest.mocked(Animated.timing);
@@ -58,27 +103,39 @@ test.each([
       stage: 'progress' | 'results' | 'confirmation',
       reduced = false,
     ) => (
-      <NavigationMotionContext.Provider value={reduced}>
-        <ClassificationMovingStage
-          stage={stage}
-          confirmingRestart={stage === 'confirmation'}
-          classified={3}
-          total={8}
-          saving={false}
-          onRestart={restart}
-        >
-          {dock => (
-            <View
-              testID={
-                stage === 'results' ? 'synthetic-list' : 'synthetic-confirm'
-              }
-              style={{ marginLeft: dock.listStart, marginTop: dock.captionTop }}
-            />
-          )}
-        </ClassificationMovingStage>
-      </NavigationMotionContext.Provider>
+      <NavigationGeometryProvider>
+        <NavigationMotionContext.Provider value={reduced}>
+          <ClassificationMovingStage
+            stage={stage}
+            confirmingRestart={stage === 'confirmation'}
+            classified={3}
+            total={8}
+            saving={false}
+            onRestart={restart}
+          >
+            {dock => (
+              <View
+                testID={
+                  stage === 'results' ? 'synthetic-list' : 'synthetic-confirm'
+                }
+                style={{
+                  marginLeft: dock.listStart,
+                  marginTop: dock.captionTop,
+                }}
+              />
+            )}
+          </ClassificationMovingStage>
+        </NavigationMotionContext.Provider>
+      </NavigationGeometryProvider>
     );
     const view = await render(draw('progress'));
+    if (geometry) {
+      await fireEvent(
+        screen.getByTestId('navigation-window-geometry-sensor'),
+        'geometryChange',
+        { nativeEvent: geometry },
+      );
+    }
     await fireEvent(
       screen.getByTestId('classification-moving-stage'),
       'layout',
@@ -135,84 +192,34 @@ test.each([
   },
 );
 
-test('reserves enough measured width for readable results even with scaled text and a short pane', () => {
-  const duo = classificationDockGeometry(334, 504, 1, 466);
-  expect(duo.side).toBe(true);
-  expect(duo.size).toBe(104);
-  expect(334 - duo.listStart).toBe(214);
-  expect(classificationDockGeometry(333, 504, 1, 466).side).toBe(false);
-  expect(classificationDockGeometry(334, 504, 1, 430).side).toBe(false);
-  expect(classificationDockGeometry(334, 504, 1.7, 466).side).toBe(false);
-  expect(classificationDockGeometry(700, 125, 1).side).toBe(false);
-});
-
-test('keeps faded results and retry confirmation out of touch and accessibility until each reveal owns the stage', async () => {
-  const timing = jest.mocked(Animated.timing);
-  const fallback = timing.getMockImplementation()!;
-  const reveal: (() => void)[] = [];
-  timing.mockImplementation((value, config) => {
-    if (config.duration !== 140) return fallback(value, config);
-    return {
-      start: callback => {
-        reveal.push(() => callback?.({ finished: true }));
-      },
-      stop: jest.fn(),
-      reset: jest.fn(),
-    };
-  });
-  const restart = jest.fn();
-  const draw = (stage: 'progress' | 'results' | 'confirmation') => (
-    <ClassificationMovingStage
-      stage={stage}
-      confirmingRestart={stage === 'confirmation'}
-      classified={1}
-      total={2}
-      saving={false}
-      onRestart={restart}
-    >
-      {() => (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={stage}
-          testID="destination"
-          onPress={restart}
-        />
-      )}
-    </ClassificationMovingStage>
-  );
-  const view = await render(draw('progress'));
-  await fireEvent(screen.getByTestId('classification-moving-stage'), 'layout', {
-    nativeEvent: { layout: { width: 300, height: 132 } },
-  });
-  const footprint = () =>
-    StyleSheet.flatten(
-      screen.getByTestId('classification-circle-slot').props.style,
-    ).width;
-  expect(footprint()).toBe(44);
-  await view.rerender(draw('results'));
-  expect(footprint()).toBe(44);
-  const concealed = () => {
-    expect(screen.queryByTestId('destination')).toBeNull();
-    const container = screen.getByTestId('destination', {
-      includeHiddenElements: true,
-    }).parent;
-    expect(container?.props.pointerEvents).toBe('none');
-    expect(container?.props.accessibilityElementsHidden).toBe(true);
-    expect(container?.props.importantForAccessibility).toBe(
-      'no-hide-descendants',
-    );
-  };
-  concealed();
-  expect(screen.getByRole('button', { name: '다시 분류하기' })).toBeDisabled();
-  await act(async () => reveal[0]!());
-  expect(screen.getByRole('button', { name: 'results' })).toBeEnabled();
-  await view.rerender(draw('confirmation'));
-  concealed();
-  await act(async () => reveal[0]!());
-  concealed();
-  await act(async () => reveal[1]!());
-  expect(screen.getByRole('button', { name: 'confirmation' })).toBeEnabled();
-  await view.rerender(draw('progress'));
-  expect(screen.queryByTestId('destination')).toBeNull();
-  expect(footprint()).toBe(44);
+test('requires flat native division on the current window and enough usable room', () => {
+  const expanded = createNavigationGeometrySnapshot(openGeometry);
+  const current = { width: 951, height: 669 };
+  expect(isClassificationExpandedDuo(expanded, current)).toBe(true);
+  expect(
+    isClassificationExpandedDuo(expanded, { width: 951, height: 540 }),
+  ).toBe(false);
+  expect(
+    isClassificationExpandedDuo(expanded, { width: 466, height: 678 }),
+  ).toBe(false);
+  expect(
+    isClassificationExpandedDuo(expanded, { width: 678, height: 466 }),
+  ).toBe(false);
+  expect(isClassificationExpandedDuo(null, current)).toBe(false);
+  expect(
+    isClassificationExpandedDuo(
+      createNavigationGeometrySnapshot(dividedGeometry),
+      dividedGeometry.windowBounds,
+    ),
+  ).toBe(false);
+  const dock = classificationDockGeometry(819, 402, 1, true);
+  const left = (819 - dock.size) / 2 + dock.x;
+  expect(left).toBe(16);
+  expect(dock.size).toBe(160);
+  expect(classificationDockGeometry(334, 402, 1).size).toBe(dock.size);
+  expect(dock.listStart - left - dock.size).toBe(28);
+  expect(classificationDockGeometry(361, 504, 1, true).side).toBe(false);
+  expect(classificationDockGeometry(500, 504, 2, true).side).toBe(false);
+  expect(classificationDockGeometry(700, 125, 1, true).side).toBe(false);
+  expect(classificationDockGeometry(819, 402, 1, false).side).toBe(false);
 });

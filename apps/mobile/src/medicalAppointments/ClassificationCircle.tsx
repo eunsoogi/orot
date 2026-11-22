@@ -35,33 +35,29 @@ export function classificationDockGeometry(
   width: number,
   height: number,
   fontScale: number,
-  windowWidth = width,
+  expandedDuo = false,
 ) {
   const centered = classificationCircleGeometry(width, height, fontScale);
-  // The native expanded 466pt window leaves 334pt after the rail and route padding.
-  // Shrink both moving states equally before sacrificing the readable right pane.
-  const laneGap = 16;
+  // Reserve symmetric breathing room inside the circle's own left column.
+  const circleInset = 16;
+  const laneGap = 12;
   const minimumListWidth = Math.max(214, Math.ceil(214 * fontScale));
-  const sideSize = Math.min(centered.size, width - laneGap - minimumListWidth);
   const side =
-    windowWidth >= 460 &&
-    sideSize >= 104 &&
+    expandedDuo &&
+    centered.size >= 104 &&
+    width >= centered.size + 2 * circleInset + laneGap + minimumListWidth &&
     height >= Math.max(160, 38 * fontScale + 110);
   const inline = !side && height < 140;
-  const size = side
-    ? sideSize
-    : inline
-      ? Math.min(centered.size, 44)
-      : centered.size;
+  const size = inline ? Math.min(centered.size, 44) : centered.size;
   return {
     size,
     centerOffset: side ? (height - size) / 2 : 0,
     captionTop: side ? 0 : size + 8,
     inline,
     side,
-    listStart: side ? size + laneGap : 0,
+    listStart: side ? 2 * circleInset + size + laneGap : 0,
     x: side
-      ? (size - width) / 2
+      ? circleInset + (size - width) / 2
       : inline
         ? (size - Math.min(520, width)) / 2
         : 0,
@@ -74,10 +70,10 @@ export function classificationConfirmationGeometry(
   height: number,
   scale: number,
   docked: boolean,
-  windowWidth: number,
+  expandedDuo: boolean,
 ) {
   return docked
-    ? classificationDockGeometry(width, height, scale, windowWidth)
+    ? classificationDockGeometry(width, height, scale, expandedDuo)
     : {
         ...classificationCircleGeometry(width, height, scale),
         x: 0,

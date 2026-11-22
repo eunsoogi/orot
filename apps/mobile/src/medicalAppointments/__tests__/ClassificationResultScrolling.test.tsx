@@ -6,6 +6,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
+import { classificationDockGeometry } from '../ClassificationCircle';
 import { ClassificationResultsStage } from '../ClassificationResultsStage';
 
 const originalDimensions = {
@@ -132,4 +133,53 @@ test('no classified rows keeps the original measured failure reader without a re
   expect(screen.getByText('재분류')).toBeVisible();
   await fireEvent.press(screen.getByRole('button', { name: '다시 분류하기' }));
   expect(restart).toHaveBeenCalledTimes(1);
+});
+
+test('centers the whole short expanded group and keeps overflow scroll geometry through detail Back', async () => {
+  const pane = { width: 819, height: 402, scale: 3, fontScale: 1 };
+  await act(async () => Dimensions.set({ window: pane, screen: pane }));
+  const draw = (count: number) => (
+    <ClassificationResultsStage
+      rows={rows.slice(0, count)}
+      summary="합성 집계"
+      notice=""
+      restart={jest.fn()}
+      movingCircle={classificationDockGeometry(
+        pane.width,
+        pane.height,
+        1,
+        true,
+      )}
+    />
+  );
+  const view = await render(draw(2));
+  await fireEvent(screen.getByTestId('medical-appointment-results'), 'layout', {
+    nativeEvent: { layout: pane },
+  });
+  const group = () =>
+    StyleSheet.flatten(
+      screen.getByTestId('classification-result-group', {
+        includeHiddenElements: true,
+      }).props.style,
+    );
+  let list = screen.getByTestId('classification-result-list');
+  await fireEvent(list, 'contentSizeChange', 615, 108);
+  expect(group()).toMatchObject({ top: 125, bottom: 125, left: 204 });
+  const first = screen.getAllByTestId('classification-result-row')[0]!;
+  await fireEvent.press(first);
+  expect(group()).toMatchObject({ top: 125, bottom: 125, opacity: 0 });
+  expect(
+    screen.getByTestId('classification-result-list', {
+      includeHiddenElements: true,
+    }),
+  ).toBe(list);
+  await fireEvent.press(screen.getByTestId('classification-detail-back'));
+  expect(screen.getByTestId('classification-result-list')).toBe(list);
+  expect(group()).toMatchObject({ top: 125, bottom: 125 });
+
+  await view.rerender(draw(8));
+  list = screen.getByTestId('classification-result-list');
+  await fireEvent(list, 'contentSizeChange', 615, 470);
+  expect(group()).toMatchObject({ top: 0, bottom: 0, left: 204 });
+  expect(screen.getAllByTestId('classification-result-row')).toHaveLength(8);
 });
