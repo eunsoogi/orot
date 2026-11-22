@@ -214,12 +214,37 @@ test('requires flat native division on the current window and enough usable room
   ).toBe(false);
   const dock = classificationDockGeometry(819, 402, 1, true);
   const left = (819 - dock.size) / 2 + dock.x;
-  expect(left).toBe(16);
+  expect(left).toBe(32);
   expect(dock.size).toBe(160);
   expect(classificationDockGeometry(334, 402, 1).size).toBe(dock.size);
-  expect(dock.listStart - left - dock.size).toBe(28);
+  expect(dock.listStart - left - dock.size).toBe(44);
   expect(classificationDockGeometry(361, 504, 1, true).side).toBe(false);
   expect(classificationDockGeometry(500, 504, 2, true).side).toBe(false);
   expect(classificationDockGeometry(700, 125, 1, true).side).toBe(false);
   expect(classificationDockGeometry(819, 402, 1, false).side).toBe(false);
+});
+
+test('adds folded vertical clearance only when the original circle and a complete row still fit', () => {
+  expect(classificationDockGeometry(334, 402, 1)).toMatchObject({
+    size: 160,
+    centerOffset: 16,
+    captionTop: 200,
+    bottomInset: 16,
+  });
+  const constrained = classificationDockGeometry(334, 276, 1.6);
+  expect(constrained.size).toBeCloseTo(96.8);
+  expect(constrained).toMatchObject({ centerOffset: 11, bottomInset: 11 });
+  expect(
+    276 - constrained.captionTop - constrained.bottomInset,
+  ).toBeGreaterThanOrEqual(136);
+  expect(classificationDockGeometry(430, 402, 1, true)).toMatchObject({
+    side: true,
+    size: 160,
+    listStart: 216,
+  });
+  expect(classificationDockGeometry(334, 125, 2)).toMatchObject({
+    inline: true,
+    centerOffset: 0,
+    bottomInset: 0,
+  });
 });
