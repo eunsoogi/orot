@@ -13,6 +13,7 @@ enum ManualHistoryUITestSupport {
         app.launch()
         NavigationUITestConditions.route(app, markers: ["rag-conversation-screen"])
     }
+
     /// Records only exposes a static entry; protected Memory reads belong to the child.
     @MainActor
     static func openMemory(_ app: XCUIApplication) throws {
