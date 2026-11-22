@@ -19,7 +19,9 @@ import {
 import {
   holdRecentTestPage,
   pendingVisitReports,
+  seedIndexedRecentSources,
   recentRouteProps,
+  recentTestExecution,
   renderRecords,
 } from '../testSupport/recentRecordsRouteTestSupport';
 
@@ -48,56 +50,28 @@ const timestamp = '2026-11-22T09:30:00.000Z';
 
 beforeEach(() => {
   AppState.currentState = 'active';
-  jest.mocked(conversationExecutionNative).mockReturnValue({
-    bridgeAvailable: true,
-    protectedDataAvailable: async () => true,
-    subscribe: () => () => {},
-    currentPhase: () => 'active',
-    begin: jest.fn(),
-    end: jest.fn(),
-    isActive: jest.fn(),
-  });
+  jest.mocked(conversationExecutionNative).mockReturnValue(recentTestExecution);
 });
 
-test('built-in Records uses one bounded media cursor independently of held reports and opens exact originals', async () => {
+test('built-in Records exposes only the certified global prefix and opens exact originals', async () => {
   const f = openInterleavableRecentSourceDatabase();
   const reports = holdRecentTestPage<RecentMaterialRow[]>();
   const olderReports = holdRecentTestPage<RecentMaterialRow[]>();
-  const reportPages = pendingVisitReports();
+  const reportPages = pendingVisitReports().map((report, index) => ({
+    ...report,
+    // The optional stream straddles the imported photo and hides a newer report on page two.
+    createdAt:
+      index < 12 ? '2026-11-22T18:32:00.000+09:00' : '2026-11-22T09:30:30.000Z',
+  }));
   try {
     await runMigrations(f.database);
     const records = createRecordRepository(f.database);
     const app = recentRouteProps();
-    const source = {
-      ...app.recordings[0]!,
-      id: 'audio-43',
-      recordedAt: timestamp,
-      ingestedAt: '2026-11-22T09:33:00.000Z',
-      recordingDurationMs: 120,
-    };
-    for (let i = 0; i < 44; i++) {
-      await records.put('source_record', {
-        ...source,
-        id: 'audio-' + String(i).padStart(2, '0'),
-      });
-    }
-    for (const [id, title, ingestedAt] of [
-      [
-        'imported-photo',
-        'Synthetic imported photo',
-        '2026-11-22T09:31:00.000Z',
-      ],
-      ['imported-file', 'Synthetic imported file', '2026-11-22T09:29:00.000Z'],
-    ]) {
-      await records.put('source_record', {
-        sourceKind: 'medical_document',
-        id,
-        title,
-        ingestedAt,
-        provenance: { origin: 'imported', sourceRecordIds: [] },
-        reviewState: { status: 'unreviewed' },
-      });
-    }
+    const source = await seedIndexedRecentSources(
+      records,
+      app.recordings[0]!,
+      timestamp,
+    );
     const page = jest.mocked(loadRecentSourceMaterial);
     page
       .mockClear()
@@ -139,57 +113,77 @@ test('built-in Records uses one bounded media cursor independently of held repor
       true,
     );
 
-    expect(await screen.findByText('Synthetic imported photo')).toBeTruthy();
-    expect(screen.getByTestId('records-recent-source-audio-43')).toBeTruthy();
+    await act(async () => {
+      await page.mock.results[0]?.value;
+    });
+    expect(page).toHaveBeenCalled();
+    expect(screen.queryByText('Synthetic imported photo')).toBeNull();
+    expect(screen.queryByTestId('records-recent-source-audio-43')).toBeNull();
     expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy();
-    expect(
-      screen.queryByTestId('records-recent-source-synthetic-0'),
-    ).toBeNull();
     expect(medicalDocumentImportService.listDocuments).not.toHaveBeenCalled();
     expect(readAudio).not.toHaveBeenCalled();
-    await fireEvent.press(screen.getByTestId('records-recent-view-all'));
-    const scrollHost = screen.getByTestId('navigation-route-scroll');
-    const more = await screen.findByTestId('records-recent-show-more');
-    expect(more).toBeEnabled();
-    await fireEvent.press(more);
-    expect(
-      await screen.findByTestId('records-recent-source-audio-24'),
-    ).toBeTruthy();
-    expect(page.mock.lastCall?.[0]).toEqual({
-      key: 'audio-25',
-      createdAt: timestamp,
-    });
-    expect(screen.queryByTestId('records-recent-source-visit:30')).toBeNull();
     await act(async () => {
       reports.resolve(reportPages.slice(0, 20));
     });
+    expect(
+      await screen.findByTestId('records-recent-source-visit:30'),
+    ).toBeTruthy();
+    expect(screen.queryByText('Synthetic imported photo')).toBeNull();
+    await fireEvent.press(screen.getByTestId('records-recent-view-all'));
+    const scrollHost = screen.getByTestId('navigation-route-scroll');
+    const rows = () =>
+      screen.getAllByTestId(
+        /^(records-recent-source-(visit|audio)|medical-document-source-)/,
+      );
+    expect(rows()).toHaveLength(20);
+    expect(rows()[12]?.props.testID).toBe('medical-document-source-0');
+
+    await fireEvent.press(
+      await screen.findByTestId('records-recent-show-more'),
+    );
     await waitFor(() =>
       expect(reportRead.mock.lastCall?.[0]).toEqual({
         key: 'visit:11',
         createdAt: reportPages[19].createdAt,
       }),
     );
-    expect(screen.getByTestId('records-recent-show-more')).toBeEnabled();
-    await fireEvent.press(screen.getByTestId('records-recent-show-more'));
-    expect(await screen.findByText('Synthetic imported file')).toBeTruthy();
-    expect(page.mock.lastCall?.[0]).toEqual({
-      key: 'audio-05',
-      createdAt: timestamp,
-    });
-    expect(screen.queryByTestId('records-recent-source-visit:10')).toBeNull();
+    await waitFor(() =>
+      expect(page.mock.lastCall?.[0]).toEqual({
+        key: 'audio-25',
+        createdAt: timestamp,
+      }),
+    );
+    expect(rows()).toHaveLength(21);
+    expect(screen.queryByTestId('records-recent-source-audio-43')).toBeNull();
+    expect(screen.queryByText('Synthetic imported file')).toBeNull();
     await act(async () => {
       olderReports.resolve(reportPages.slice(20));
     });
     expect(
       await screen.findByTestId('records-recent-source-visit:10'),
     ).toBeTruthy();
-    expect(
-      screen.getAllByTestId('records-recent-source-audio-43'),
-    ).toHaveLength(1);
-    const known = screen.getAllByTestId(/^records-recent-source-(visit|audio)/);
-    expect(known[0]?.props.testID).toBe('records-recent-source-visit:30');
+    expect(rows()).toHaveLength(40);
+    expect(rows()[21]?.props.testID).toBe('records-recent-source-visit:10');
+    expect(rows()[22]?.props.testID).toBe('records-recent-source-audio-43');
     expect(screen.getByTestId('navigation-route-scroll')).toBe(scrollHost);
-    expect(screen.getByText('Synthetic imported file')).toBeTruthy();
+    expect(screen.queryByText('Synthetic imported file')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('records-recent-show-more'));
+    await waitFor(() =>
+      expect(page.mock.lastCall?.[0]).toEqual({
+        key: 'audio-05',
+        createdAt: timestamp,
+      }),
+    );
+    expect(
+      await screen.findByTestId('records-recent-source-audio-06'),
+    ).toBeTruthy();
+    expect(rows()).toHaveLength(60);
+    expect(screen.queryByText('Synthetic imported file')).toBeNull();
+    await fireEvent.press(screen.getByTestId('records-recent-show-more'));
+    expect(await screen.findByText('Synthetic imported file')).toBeTruthy();
+    expect(rows()).toHaveLength(67);
+    expect(new Set(rows().map(row => row.props.testID)).size).toBe(67);
 
     await fireEvent.press(screen.getByTestId('medical-document-source-1'));
     expect(controller.getSnapshot().currentRoute.name).toBe(
@@ -217,6 +211,10 @@ test('built-in Records uses one bounded media cursor independently of held repor
     });
     expect(controller.getSnapshot().currentRoute.name).toBe('recent-records');
     expect(screen.queryByTestId('records-recent-source-audio-43')).toBeNull();
+    if (!screen.queryByTestId('records-recent-source-audio-42'))
+      await fireEvent.press(
+        await screen.findByTestId('records-recent-show-more'),
+      );
     await fireEvent.press(
       await screen.findByTestId('records-recent-source-audio-42'),
     );
