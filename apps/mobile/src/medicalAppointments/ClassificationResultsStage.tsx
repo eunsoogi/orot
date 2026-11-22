@@ -1,16 +1,11 @@
 import { useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { AppText } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { ClassificationPagedStage } from './ClassificationPagedStage';
 import { ClassificationResultNotice } from './ClassificationResultNotice';
+import { useClassificationResultGroupTop } from './useClassificationResultGroupTop';
+import { classificationResultStyles as styles } from './classificationResultStyles';
 import { classificationEdgeTarget } from './ClassificationEdgeAction';
 import {
   ClassificationResultDetail,
@@ -86,14 +81,27 @@ export function ClassificationResultsStage({
     Math.max(target, height - top - target),
   );
   const showingDetail = Boolean(details);
-  const panelStyle = movingCircle?.side
-    ? {
-        left: movingCircle.listStart,
-        right: 0,
-        width: undefined,
-        maxWidth: undefined,
-      }
-    : {};
+  const side = movingCircle?.side === true;
+  const { groupTop, onContentSizeChange } = useClassificationResultGroupTop({
+    side,
+    height,
+    width: width - (movingCircle?.listStart ?? 0),
+    scale,
+    captionHeight,
+    naturalRow,
+    count: rows.length,
+    top,
+  });
+  const bottom = side ? groupTop : 0;
+  const panelStyle =
+    side && movingCircle
+      ? {
+          left: movingCircle.listStart,
+          right: 0,
+          width: undefined,
+          maxWidth: undefined,
+        }
+      : {};
 
   const actionTitle = t('medicalAppointments.restartShort');
   const actionLabel = t('medicalAppointments.startAgain');
@@ -164,10 +172,11 @@ export function ClassificationResultsStage({
       <View
         style={[
           styles.list,
-          { top },
+          { top: groupTop, bottom },
           panelStyle,
           showingDetail && styles.hidden,
         ]}
+        testID="classification-result-group"
         pointerEvents={showingDetail ? 'none' : 'auto'}
         accessibilityElementsHidden={showingDetail}
         importantForAccessibility={
@@ -178,6 +187,7 @@ export function ClassificationResultsStage({
         {rows.length > 0 && (
           <ScrollView
             style={styles.viewport}
+            onContentSizeChange={onContentSizeChange}
             contentContainerStyle={styles.rows}
             alwaysBounceVertical={false}
             contentInsetAdjustmentBehavior="never"
@@ -215,36 +225,3 @@ export function ClassificationResultsStage({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  fill: { flex: 1, minHeight: 0, width: '100%' },
-  list: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    maxWidth: 520,
-    alignSelf: 'center',
-  },
-  hidden: { opacity: 0 },
-  viewport: { flex: 1, minHeight: 0 },
-  rows: { paddingBottom: 8 },
-  compactHeader: {
-    alignItems: 'center',
-    alignSelf: 'center',
-    flexDirection: 'row',
-    maxWidth: 520,
-    width: '100%',
-  },
-  compactAction: {
-    width: classificationEdgeTarget,
-    height: classificationEdgeTarget,
-  },
-  result: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: appColors.border,
-    paddingHorizontal: 8,
-    justifyContent: 'center',
-  },
-  title: { fontSize: 16, lineHeight: 21, fontWeight: '600' },
-  time: { fontSize: 13, lineHeight: 17, color: appColors.secondary },
-});

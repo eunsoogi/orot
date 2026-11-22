@@ -16,6 +16,7 @@ import {
   ClassificationCircleSlot,
   classificationConfirmationGeometry,
 } from './ClassificationCircle';
+import { useClassificationExpandedDuo } from './classificationExpandedDuo';
 import {
   paginateClassificationLines,
   type ClassificationTextLine,
@@ -36,7 +37,8 @@ interface Props {
 }
 export function ClassificationPagedStage(props: Props) {
   const window = useWindowDimensions();
-  const { fontScale } = window;
+  const expandedDuo = useClassificationExpandedDuo(window);
+  const scale = window.fontScale;
   const frame = useClassificationReaderFrame(props.onAction, props.documents);
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
   const [footerHeight, setFooterHeight] = useState(0);
@@ -45,26 +47,22 @@ export function ClassificationPagedStage(props: Props) {
   const lastDocument = Math.max(0, props.documents.length - 1);
   const index = Math.min(documentIndex, lastDocument);
   const text = props.documents[index] ?? '';
-  const identity = JSON.stringify([text, bounds.width, fontScale]);
+  const identity = JSON.stringify([text, bounds.width, scale]);
   const latestIdentity = useRef(identity);
   latestIdentity.current = identity;
   const [measurement, setMeasurement] = useState<{
     key: string;
     lines: readonly ClassificationTextLine[];
   } | null>(null);
-  const paneHeight = bounds.height || window.height;
-  const paneWidth = bounds.width || window.width;
+  const { width, height } = bounds.height ? bounds : window;
   const geometry = classificationConfirmationGeometry(
-    paneWidth,
-    paneHeight,
-    fontScale,
+    width,
+    height,
+    scale,
     Boolean(props.confirmAtDock && !frame.expanded),
-    window.width,
+    Boolean(bounds.width && bounds.height && expandedDuo),
   );
-  const available = Math.max(
-    0,
-    paneHeight - geometry.captionTop - footerHeight,
-  );
+  const available = Math.max(0, height - geometry.captionTop - footerHeight);
   const [captionMeasurement, setCaptionMeasurement] = useState<{
     key: string;
     height: number;
@@ -108,15 +106,15 @@ export function ClassificationPagedStage(props: Props) {
         style={styles.fill}
         testID={props.testID}
         onLayout={event => {
-          const { width, height } = event.nativeEvent.layout;
+          const layout = event.nativeEvent.layout;
           setBounds(old =>
-            old.width === width && old.height === height
+            old.width === layout.width && old.height === layout.height
               ? old
-              : { width, height },
+              : { width: layout.width, height: layout.height },
           );
         }}
       >
-        <ClassificationCircleSlot {...geometry} paneWidth={paneWidth}>
+        <ClassificationCircleSlot {...geometry} paneWidth={width}>
           <ClassificationCircleButton
             size={geometry.size}
             title={
@@ -200,7 +198,7 @@ export function ClassificationPagedStage(props: Props) {
                   numberOfLines={
                     measuredPages.length
                       ? undefined
-                      : Math.max(1, Math.floor(available / (26 * fontScale)))
+                      : Math.max(1, Math.floor(available / (26 * scale)))
                   }
                 >
                   {pages[page]?.split('\n\n').map((paragraph, item, all) => (
