@@ -32,7 +32,7 @@ export function SavedMemoryDetail({
     correctionTarget && correctionTarget.original === memoryId
       ? correctionTarget.id
       : memoryId;
-  const { rows, state, refresh } = useSavedMemories(load, active);
+  const { rows, state, refresh, readyRead } = useSavedMemories(load, active);
   const row = rows.find(value => value.id === selectedId);
   return (
     <View
@@ -85,8 +85,13 @@ export function SavedMemoryDetail({
           }}
         />
       )}
-      {row && isGeneratedReportMemory(row) && (
-        <SavedGeneratedReportDetail key={row.id} artifactId={row.artifactId} />
+      {readyRead && row && isGeneratedReportMemory(row) && (
+        <SavedGeneratedReportDetail
+          key={JSON.stringify([readyRead.request, row.id])}
+          artifactId={row.artifactId}
+          reportKind={row.reportKind}
+          isReadCurrent={readyRead.isCurrent}
+        />
       )}
       {row && !isHistoryMemory(row) && !isGeneratedReportMemory(row) && (
         <SavedMemoryContent memory={row} />

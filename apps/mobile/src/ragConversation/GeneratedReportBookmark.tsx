@@ -24,25 +24,38 @@ export function GeneratedReportBookmark({
     (message.savedHistoryDisplayOnly
       ? message.voiceTimelineOrder?.id
       : undefined);
+  const summary = message.healthSummary?.analysis.savedSummary;
+  const kind = message.dailyReport
+    ? 'daily_report'
+    : summary?.status === 'saved' && !summary.sourceChanged
+      ? 'health_summary'
+      : undefined;
   if (
     !owner ||
     message.role !== 'assistant' ||
-    !message.dailyReport ||
+    !kind ||
     !artifactId ||
     message.streaming ||
     message.incomplete
   )
     return null;
   return (
-    <BookmarkAction key={artifactId} artifactId={artifactId} owner={owner} />
+    <BookmarkAction
+      key={artifactId}
+      artifactId={artifactId}
+      kind={kind}
+      owner={owner}
+    />
   );
 }
 
 function BookmarkAction({
   artifactId,
+  kind,
   owner,
 }: {
   artifactId: string;
+  kind: 'daily_report' | 'health_summary';
   owner: NonNullable<React.ContextType<typeof GeneratedReportBookmarkContext>>;
 }) {
   const store = useConversationSessions();
@@ -89,11 +102,11 @@ function BookmarkAction({
     setStatus('saving');
     try {
       const storage = await openSavedGeneratedReportReferences();
-      const saved = await storage.bookmarkDailyReport({
-        artifactId,
-        lease,
-        current,
-      });
+      const bookmark =
+        kind === 'health_summary'
+          ? storage.bookmarkHealthSummary
+          : storage.bookmarkDailyReport;
+      const saved = await bookmark({ artifactId, lease, current });
       if (mounted.current)
         setStatus(current() ? (saved ? 'saved' : 'failed') : 'idle');
     } catch {
@@ -105,7 +118,11 @@ function BookmarkAction({
   return (
     <>
       <AppButton
-        title={t('savedMemory.bookmarkGeneratedReport')}
+        title={t(
+          kind === 'health_summary'
+            ? 'savedMemory.bookmarkHealthSummary'
+            : 'savedMemory.bookmarkGeneratedReport',
+        )}
         variant="neutral"
         testID="conversation-bookmark-generated-report"
         disabled={status === 'saving'}
