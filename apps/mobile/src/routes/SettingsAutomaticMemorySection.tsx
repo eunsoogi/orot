@@ -137,6 +137,7 @@ export function SettingsAutomaticMemorySection({
         {t('settings.automaticMemory.description')}
       </Text>
       <Text style={styles.body}>{t('settings.automaticMemory.retention')}</Text>
+      <Text style={styles.body}>{t('settings.automaticMemory.backup')}</Text>
       <Text
         accessibilityRole={isError(displayStatus) ? 'alert' : undefined}
         accessibilityLiveRegion="polite"
@@ -145,6 +146,11 @@ export function SettingsAutomaticMemorySection({
       >
         {t(`settings.automaticMemory.${displayStatus}`)}
       </Text>
+      {displayStatus === 'unavailable' && routeOwner.current?.connection ? (
+        <Text style={styles.body}>
+          {t('settings.automaticMemory.recovery')}
+        </Text>
+      ) : null}
       {displayStatus === 'off' ? (
         <MemoryAction action="enable" onPress={() => change(true)} />
       ) : null}

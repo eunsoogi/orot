@@ -17,7 +17,9 @@ async function readDeviceAuthority(): Promise<unknown> {
   if (value === false) return null;
   if (value.username !== account) return { invalid: true };
   try {
-    return JSON.parse(value.password) as unknown;
+    const parsed: unknown = JSON.parse(value.password);
+    // Only native item-not-found is absence; a stored JSON null is malformed.
+    return parsed ?? { invalid: true };
   } catch {
     return { invalid: true };
   }

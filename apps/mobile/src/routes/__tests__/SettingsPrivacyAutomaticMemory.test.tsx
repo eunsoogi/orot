@@ -102,6 +102,7 @@ test('real Privacy route defaults off and grants the separate local-only categor
       await screen.findByText(t('settings.automaticMemory.off')),
     ).toBeTruthy();
     expect(f.write).not.toHaveBeenCalled();
+    expect(screen.getByText(t('settings.automaticMemory.backup'))).toBeTruthy();
     expect(screen.getByTestId('settings-privacy-permissions')).toBeTruthy();
     expect(
       screen.getByTestId('settings-privacy-external-transfer'),
