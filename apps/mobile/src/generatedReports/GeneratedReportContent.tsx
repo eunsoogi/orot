@@ -13,6 +13,7 @@ import type {
 import { SavedSummaryReviewWarnings } from '../diseaseHypotheses/SavedSummaryReviewWarnings';
 import { ConversationReportText } from '../ragConversation/ConversationReportText';
 import { ConversationSources } from '../ragConversation/ConversationSources';
+import { GeneratedVisitQuestions } from './GeneratedVisitQuestions';
 
 const doNotOpenLiveSource = () => {};
 
@@ -62,6 +63,8 @@ export function GeneratedReportContent({
             </AppText>
           )}
         />
+      ) : detail.visitQuestions ? (
+        <GeneratedVisitQuestions questions={detail.visitQuestions} />
       ) : (
         detail.paragraphs.map((text, index) => (
           <AiResponseText
