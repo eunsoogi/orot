@@ -1,14 +1,14 @@
 import { fireEvent, render, screen, act } from '@testing-library/react-native';
 import { useState } from 'react';
-import { Animated, Text, ScrollView } from 'react-native';
+import { Animated, Text, View } from 'react-native';
 import { NavigationMotionContext } from '../../navigation/NavigationMotionContext';
 import { RecordsHubSection } from '../RecordsHubSection';
 
 function ScheduleContent() {
   return (
-    <ScrollView testID="schedule-scroll">
+    <View testID="schedule-content">
       <Text>Calendar content</Text>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -20,7 +20,7 @@ test('exposes separate neutral record and schedule selections without mixing con
     </RecordsHubSection>,
   );
   expect(screen.getByTestId('records-hub-header')).toBeVisible();
-  expect(screen.getByTestId('schedule-scroll')).not.toContainElement(
+  expect(screen.getByTestId('schedule-content')).not.toContainElement(
     screen.getByTestId('records-hub-header'),
   );
   expect(
@@ -98,6 +98,8 @@ test('keeps the same hub header while only the current body moves left or right'
   try {
     const view = await render(host(false));
     const header = screen.getByTestId('records-hub-header');
+    const scroll = screen.getByTestId('navigation-route-scroll');
+    expect(scroll).toContainElement(header);
     const tabs = screen.getByTestId('records-section-tabs');
     const body = screen.getByTestId('navigation-inline-transition');
     expect(body).toHaveStyle({ transform: [{ translateX: 0 }] });
@@ -109,13 +111,15 @@ test('keeps the same hub header while only the current body moves left or right'
     expect(screen.getByTestId('records-hub-header')).toBe(header);
     expect(screen.getByTestId('records-section-tabs')).toBe(tabs);
     expect(body).toHaveStyle({ transform: [{ translateX: 420 }] });
-    expect(body).toContainElement(screen.getByTestId('schedule-scroll'));
+    expect(body).toContainElement(screen.getByTestId('schedule-content'));
+    expect(screen.getByTestId('calendar-screen')).toBe(scroll);
+    expect(scroll).toContainElement(header);
     expect(screen.queryByText('Record content')).toBeNull();
     expect(screen.queryByTestId('navigation-route-scroll')).toBeNull();
     await fireEvent.press(screen.getByTestId('records-section-records'));
     expect(stop).toHaveBeenCalled();
     expect(body).toHaveStyle({ transform: [{ translateX: -420 }] });
-    expect(screen.queryByTestId('schedule-scroll')).toBeNull();
+    expect(screen.queryByTestId('calendar-screen')).toBeNull();
     expect(screen.getAllByTestId('navigation-route-scroll')).toHaveLength(1);
     await view.rerender(host(true));
     await fireEvent.press(screen.getByTestId('records-section-schedule'));

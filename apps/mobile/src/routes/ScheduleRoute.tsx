@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import type { AppointmentRepository } from '@orot/storage';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
@@ -63,6 +62,7 @@ export function ScheduleRoute({
         bridge={bridge}
         calendarSync={calendarSync}
         adaptiveScheduleLayout
+        embeddedInHubScroll
         heading={t('schedule.title')}
         onOpenAppointments={onOpenAppointments}
         onOpenMedicalAppointments={onOpenMedicalAppointments}
@@ -73,25 +73,23 @@ export function ScheduleRoute({
   }
 
   return (
-    <NavigationRouteScrollView>
-      <View style={styles.container}>
-        <Text accessibilityRole="header" style={styles.title}>
-          {t('schedule.title')}
-        </Text>
-        <Text style={styles.message}>
-          {appointmentState === 'loading'
-            ? t('appointments.opening')
-            : t('appointments.openError')}
-        </Text>
-        {appointmentState === 'failed' && !hasDock ? (
-          <AppButton
-            onPress={onRetry}
-            testID="schedule-retry"
-            title={t('appointments.retry')}
-          />
-        ) : null}
-      </View>
-    </NavigationRouteScrollView>
+    <View style={styles.container}>
+      <Text accessibilityRole="header" style={styles.title}>
+        {t('schedule.title')}
+      </Text>
+      <Text style={styles.message}>
+        {appointmentState === 'loading'
+          ? t('appointments.opening')
+          : t('appointments.openError')}
+      </Text>
+      {appointmentState === 'failed' && !hasDock ? (
+        <AppButton
+          onPress={onRetry}
+          testID="schedule-retry"
+          title={t('appointments.retry')}
+        />
+      ) : null}
+    </View>
   );
 }
 

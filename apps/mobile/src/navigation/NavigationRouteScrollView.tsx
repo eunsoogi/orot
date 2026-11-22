@@ -37,9 +37,11 @@ export function useNavigationRouteScrollPosition() {
 export function NavigationRouteScrollView({
   children,
   pullToRefresh = false,
+  testID = 'navigation-route-scroll',
 }: {
   readonly children: ReactNode;
   readonly pullToRefresh?: boolean;
+  readonly testID?: string;
 }) {
   const refresh = useNavigationRouteRefreshHost();
   const navigationInset = useNavigationContentInset();
@@ -101,7 +103,7 @@ export function NavigationRouteScrollView({
           }
           scrollEventThrottle={16}
           style={styles.fill}
-          testID="navigation-route-scroll"
+          testID={testID}
         >
           {children}
         </ScrollView>

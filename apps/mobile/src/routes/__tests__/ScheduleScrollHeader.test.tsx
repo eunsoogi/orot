@@ -3,17 +3,18 @@ import { RecordsHubSection } from '../RecordsHubSection';
 import { ScheduleRoute } from '../ScheduleRoute';
 import {
   bridge,
+  repository,
   syncedCalendar,
 } from '../../calendar/calendarLinkingTestFixtures';
 
-// Recovery states must use the same stationary hub header as the loaded calendar.
-test.each(['loading', 'failed'] as const)(
-  'keeps the schedule header outside the scroll view while storage is %s',
-  async appointmentState => {
-    await render(
+// Recovery states must use the same header and native vertical owner as the loaded calendar.
+test('uses the same vertical scroll owner and header across Calendar recovery and loaded content', async () => {
+  const repo = repository(async () => []);
+  function hub(appointmentState: 'loading' | 'failed' | 'ready') {
+    return (
       <RecordsHubSection selected="schedule" onSelect={jest.fn(async () => {})}>
         <ScheduleRoute
-          appointmentRepository={null}
+          appointmentRepository={appointmentState === 'ready' ? repo : null}
           appointmentState={appointmentState}
           bridge={bridge()}
           calendarSync={syncedCalendar([])}
@@ -22,12 +23,19 @@ test.each(['loading', 'failed'] as const)(
           onOpenMedicalAppointments={jest.fn()}
           onAppointmentsChanged={jest.fn()}
         />
-      </RecordsHubSection>,
+      </RecordsHubSection>
     );
-    const header = screen.getByTestId('records-hub-header');
-    expect(header).toBeVisible();
-    expect(screen.getByTestId('navigation-route-scroll')).not.toContainElement(
-      header,
-    );
-  },
-);
+  }
+  const view = await render(hub('loading'));
+  const scroll = screen.getByTestId('calendar-screen');
+  const header = screen.getByTestId('records-hub-header');
+  for (const state of ['failed', 'ready'] as const) {
+    await view.rerender(hub(state));
+    expect(screen.getAllByTestId('calendar-screen')).toEqual([scroll]);
+    expect(screen.getByTestId('records-hub-header')).toBe(header);
+    expect(scroll).toContainElement(header);
+    expect(screen.getByTestId('records-hub-body')).not.toContainElement(header);
+  }
+  expect(scroll).toContainElement(screen.getByTestId('calendar-month-view'));
+  expect(screen.queryByTestId('navigation-route-scroll')).toBeNull();
+});

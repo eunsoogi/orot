@@ -87,34 +87,36 @@ export function RecordsHubSection({
   );
   return (
     <View style={styles.screen}>
-      {selected === 'schedule' || !detailVisible ? header : null}
-      <RecordsHubHeadingContext.Provider value>
-        <RecordsDetailVisibilityContext.Provider value={setDetailVisible}>
-          <View style={styles.viewport} testID="records-hub-body">
-            <NavigationInlineTransition
-              transitionKey={selected}
-              depth={selected === 'records' ? 0 : 1}
-              style={styles.body}
-            >
-              {selected === 'records' ? (
-                <NavigationRouteScrollView>
-                  {children}
-                </NavigationRouteScrollView>
-              ) : (
-                children
-              )}
-            </NavigationInlineTransition>
-          </View>
-        </RecordsDetailVisibilityContext.Provider>
-      </RecordsHubHeadingContext.Provider>
+      <NavigationRouteScrollView
+        testID={
+          selected === 'schedule'
+            ? 'calendar-screen'
+            : 'navigation-route-scroll'
+        }
+      >
+        {selected === 'schedule' || !detailVisible ? header : null}
+        <RecordsHubHeadingContext.Provider value>
+          <RecordsDetailVisibilityContext.Provider value={setDetailVisible}>
+            <View style={styles.viewport} testID="records-hub-body">
+              <NavigationInlineTransition
+                transitionKey={selected}
+                depth={selected === 'records' ? 0 : 1}
+                style={styles.body}
+              >
+                {children}
+              </NavigationInlineTransition>
+            </View>
+          </RecordsDetailVisibilityContext.Provider>
+        </RecordsHubHeadingContext.Provider>
+      </NavigationRouteScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, minHeight: 0, backgroundColor: appColors.background },
-  viewport: { flex: 1, minHeight: 0, overflow: 'hidden' },
-  body: { flex: 1, minHeight: 0 },
+  viewport: { flexGrow: 1, minWidth: 0, overflow: 'hidden' },
+  body: { flexGrow: 1, minWidth: 0 },
   header: {
     marginHorizontal: hubSpacing.horizontal,
     marginTop: hubSpacing.top,
