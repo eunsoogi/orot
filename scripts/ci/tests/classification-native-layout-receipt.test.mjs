@@ -11,13 +11,12 @@ const owner = readFileSync('apps/mobile/ios/OrotUITests/FormWindowOwnership.swif
 const entry = readFileSync('apps/mobile/e2e/ClassificationProbeScreen.tsx', 'utf8');
 test('existing staged journey samples actual geometry without replacing its oracles', () => {
   assert.match(entry, /onPress=\{layout\.request\}/);
-  for (const stage of ['confirmation', 'progress-\\(percent)', 'result-\\(pages.count)'])
+  for (const stage of ['confirmation', 'progress-\\(percent)'])
     assert.ok(swift.includes(`captureStageLayout(app, stage: "${stage}", anchor: anchor`));
   for (const oracle of [
     'percent: 0, calls: 1',
     'percent: 88, calls: 2',
     'percent: 100, calls: 2',
-    'pages.dropLast().reversed()',
     'Every segment of the long synthetic title',
     'for index in 2 ... 9',
     'XCTAssertGreaterThanOrEqual(action.frame.height, 44)',
@@ -57,14 +56,23 @@ test('existing staged journey samples actual geometry without replacing its orac
   assert.ok(firstOwner > 0 && firstOwner < tap && tap < responseOwner && responseOwner < read);
   assert.match(owner, /stableStageFrame\(owner.frame, frame\)/);
   assert.match(owner, /let resultListID = "classification-result-list"/);
+  assert.match(owner, /let listResults = phase == 2 && node\(app, resultListID\)\.exists/);
   assert.match(
     owner,
-    /let resultIDs = node\(app, resultListID\)\.exists \? \[resultListID\] : \[viewportID, "classification-page-text"\]/,
+    /let resultIDs = listResults \? \[resultListID\] : \[viewportID, "classification-page-text"\]/,
   );
+  assert.match(
+    owner,
+    /let pagingContainer = listResults \? "classification-result-paging" : "classification-stage-footer"/,
+  );
+  assert.match(owner, /\(paging \? \[pagingContainer\] : \[\]\) \+ actions/);
   assert.match(owner, /phase == 2 \? resultIDs : \[\]/);
   assert.match(compactList, /captureStageLayout\(app, stage: "result-list-/);
   assert.match(compactList, /list\.frame\.insetBy\(dx: -1, dy: -1\)\.contains/);
-  assert.match(compactList, /readAllResultPages\(app, anchor: anchor\)/);
+  assert.match(compactList, /readSingleResultDetail\(app\)/);
+  assert.match(compactList, /XCTAssertLessThanOrEqual\(page.count, 3\)/);
+  assert.match(swift, /XCTAssertFalse\(node\(app, "medical-appointment-next-result"\).exists\)/);
+  assert.match(swift, /tap\(app, "classification-detail-back"\)/);
   assert.match(compactList, /starts\.dropLast\(\)\.reversed\(\)/);
   assert.match(compactList, /XCTAssertEqual\(labels\.count, 9\)/);
   assert.match(owner, /guard phase == 0 else \{ return false \}/);

@@ -218,19 +218,20 @@ extension AppointmentConsentUITests {
         var labels: [String] = []
         for _ in 0 ..< 9 {
             let page = rows.allElementsBoundByIndex
+            XCTAssertLessThanOrEqual(page.count, 3)
             let first = try XCTUnwrap(page.first)
             let start = first.label
             XCTAssertFalse(starts.contains(start), "Result pagination visited one page twice")
             starts.append(start)
             XCTAssertTrue(page.allSatisfy { $0.isHittable && $0.frame.height >= 44 && list.frame.insetBy(dx: -1, dy: -1).contains($0.frame) })
             assertStageActions(app)
+            assertResultPager(previous: previous, next: next, list: list)
             try captureStageLayout(app, stage: "result-list-\(starts.count)", anchor: anchor)
             labels += page.map(\.label)
             if starts.count == 1 {
                 first.tap()
                 XCTAssertTrue(node(app, "classification-result-reader").waitForAppearance())
-                details = try readAllResultPages(app, anchor: anchor)
-                tap(app, "medical-appointment-import")
+                details = readSingleResultDetail(app)
                 XCTAssertTrue(list.waitForAppearance())
             }
             guard next.exists, next.isEnabled else { break }

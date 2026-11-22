@@ -173,7 +173,7 @@ test.each([
     );
     await view.rerender(control(false, true));
     expect(await slot('medical-appointment-results')).toEqual(before);
-    expect(screen.getByText('다시')).toBeTruthy();
+    expect(screen.getByText('재분류')).toBeTruthy();
     expect(JSON.stringify(view.toJSON())).not.toContain('RCTScrollView');
   },
 );

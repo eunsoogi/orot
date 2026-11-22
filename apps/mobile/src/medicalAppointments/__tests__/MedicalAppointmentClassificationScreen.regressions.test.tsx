@@ -85,12 +85,12 @@ test('automatically saves both same-title recurring occurrences with their exact
   expect(screen.getAllByText('치과 진료')).toHaveLength(2);
   const rows = screen.getAllByTestId('classification-result-row');
   await fireEvent.press(rows[0]);
-  expect(screen.getByTestId('classification-page-text')).toHaveTextContent(
+  expect(screen.getByTestId('classification-detail-fields')).toHaveTextContent(
     /2035년 6월 2일 09:00–10:00 · Asia\/Seoul/,
   );
-  await fireEvent.press(importAction());
+  await fireEvent.press(screen.getByTestId('classification-detail-back'));
   await fireEvent.press(screen.getAllByTestId('classification-result-row')[1]);
-  expect(screen.getByTestId('classification-page-text')).toHaveTextContent(
+  expect(screen.getByTestId('classification-detail-fields')).toHaveTextContent(
     /2035년 6월 3일 09:00–10:00 · Asia\/Seoul/,
   );
   expect(bridge.findEvent).toHaveBeenCalledWith(
@@ -129,7 +129,7 @@ test('blocks another import while a medical save is pending and confirms success
   expect(screen.getByText('진료 일정 1건을 가져왔어요.')).toBeTruthy();
   expect(appointments.confirmCalendarEvent).toHaveBeenCalledTimes(1);
   await fireEvent.press(screen.getByTestId('classification-result-row'));
-  expect(screen.getByTestId('classification-page-text')).toHaveTextContent(
+  expect(screen.getByTestId('classification-detail-fields')).toHaveTextContent(
     /일정을 저장했습니다\./,
   );
 });

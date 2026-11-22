@@ -120,17 +120,38 @@ export function MedicalAppointmentReviewView(props: Props) {
           when: formatCalendarEventCompactRange(candidate.event),
           category: copy.labels[candidate.classification!],
           details: [
-            candidate.event.calendarEventSnapshot.title,
-            formatCalendarEventRange(candidate.event),
-            copy.labels[candidate.classification!],
-            candidate.reason ? `${copy.reason}: ${candidate.reason}` : '',
-            candidate.uncertainty
-              ? `${copy.uncertainty}: ${copy.labels[candidate.uncertainty]}`
-              : '',
-            props.savedIds.has(candidate.candidateId) ? copy.saved : '',
-          ]
-            .filter(Boolean)
-            .join('\n\n'),
+            {
+              label: t('medicalAppointments.detailTitle'),
+              value: candidate.event.calendarEventSnapshot.title,
+            },
+            {
+              label: t('medicalAppointments.detailDateTime'),
+              value: formatCalendarEventRange(candidate.event),
+            },
+            {
+              label: t('medicalAppointments.detailCategory'),
+              value: copy.labels[candidate.classification!],
+            },
+            ...(candidate.reason
+              ? [{ label: copy.reason, value: candidate.reason }]
+              : []),
+            ...(candidate.uncertainty
+              ? [
+                  {
+                    label: copy.uncertainty,
+                    value: copy.labels[candidate.uncertainty],
+                  },
+                ]
+              : []),
+            ...(props.savedIds.has(candidate.candidateId)
+              ? [
+                  {
+                    label: t('medicalAppointments.resultStatus'),
+                    value: copy.saved,
+                  },
+                ]
+              : []),
+          ],
         }))}
         summary={resultSummary}
         notice={medical.length ? resultNotice : resultNotice || copy.noMedical}
