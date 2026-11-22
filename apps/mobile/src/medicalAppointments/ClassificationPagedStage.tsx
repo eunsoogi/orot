@@ -14,9 +14,8 @@ import { ClassificationPagingActions } from './ClassificationPagingActions';
 import {
   ClassificationCircleButton,
   ClassificationCircleSlot,
-  classificationConfirmationGeometry,
+  classificationCircleGeometry,
 } from './ClassificationCircle';
-import { useClassificationExpandedDuo } from './classificationExpandedDuo';
 import {
   paginateClassificationLines,
   type ClassificationTextLine,
@@ -29,7 +28,8 @@ interface Props {
   readonly onAction: () => void;
   readonly disabled?: boolean;
   readonly testID: string;
-  readonly confirmAtDock?: boolean;
+  readonly circleSize?: number;
+  readonly hideAction?: boolean;
   readonly supplementaryAction?: {
     readonly title: string;
     readonly onPress: () => void;
@@ -37,7 +37,6 @@ interface Props {
 }
 export function ClassificationPagedStage(props: Props) {
   const window = useWindowDimensions();
-  const expandedDuo = useClassificationExpandedDuo(window);
   const scale = window.fontScale;
   const frame = useClassificationReaderFrame(props.onAction, props.documents);
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
@@ -55,15 +54,13 @@ export function ClassificationPagedStage(props: Props) {
     lines: readonly ClassificationTextLine[];
   } | null>(null);
   const { width, height } = bounds.height ? bounds : window;
-  const geometry = classificationConfirmationGeometry(
+  const geometry = classificationCircleGeometry(
     width,
     height,
     scale,
-    Boolean(props.confirmAtDock && !frame.expanded),
-    Boolean(bounds.width && bounds.height && expandedDuo),
+    frame.expanded ? undefined : props.circleSize,
   );
-  const { captionTop: top, listStart: left, bottomInset: bottom } = geometry;
-  const available = Math.max(0, height - top - bottom - footerHeight);
+  const available = Math.max(0, height - geometry.captionTop - footerHeight);
   const [captionMeasurement, setCaptionMeasurement] = useState<{
     key: string;
     height: number;
@@ -115,30 +112,33 @@ export function ClassificationPagedStage(props: Props) {
           );
         }}
       >
-        <ClassificationCircleSlot {...geometry} paneWidth={width}>
-          <ClassificationCircleButton
-            size={geometry.size}
-            title={
-              requiresExpansion
-                ? t('medicalAppointments.readerShort')
-                : props.actionTitle
-            }
-            label={
-              requiresExpansion
-                ? t('medicalAppointments.expandReader')
-                : cannotFitLine
-                  ? t('medicalAppointments.readerTooSmall')
-                  : props.actionLabel
-            }
-            onPress={requiresExpansion ? frame.expand : frame.execute}
-            disabled={
-              frame.closing ||
-              (!requiresExpansion && (cannotFitLine || Boolean(props.disabled)))
-            }
-          />
-        </ClassificationCircleSlot>
+        {!props.hideAction && (
+          <ClassificationCircleSlot {...geometry} paneWidth={width}>
+            <ClassificationCircleButton
+              size={geometry.size}
+              title={
+                requiresExpansion
+                  ? t('medicalAppointments.readerShort')
+                  : props.actionTitle
+              }
+              label={
+                requiresExpansion
+                  ? t('medicalAppointments.expandReader')
+                  : cannotFitLine
+                    ? t('medicalAppointments.readerTooSmall')
+                    : props.actionLabel
+              }
+              onPress={requiresExpansion ? frame.expand : frame.execute}
+              disabled={
+                frame.closing ||
+                (!requiresExpansion &&
+                  (cannotFitLine || Boolean(props.disabled)))
+              }
+            />
+          </ClassificationCircleSlot>
+        )}
         <View
-          style={[styles.group, { top, left, bottom }]}
+          style={[styles.group, { top: geometry.captionTop }]}
           testID="classification-stage-captions"
         >
           <View
