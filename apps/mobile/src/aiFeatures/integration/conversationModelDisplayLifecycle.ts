@@ -1,3 +1,6 @@
+import type { Presentation } from './conversationModelControlCopy';
+import type { OnDeviceSelectionWitness } from './provider';
+import type { ReadReturningChatGPTTitle } from './readSavedChatGPTPresentation';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 
 /** Use the existing protected-data and foreground bridge, presentation only. */
@@ -63,4 +66,28 @@ export function observeConversationModelLifecycle(
       unsubscribe?.();
     },
   };
+}
+
+/** A lifecycle return can publish only a fresh saved title, not a prior ready result. */
+export function resumeSavedChatGPTTitle(
+  read: ReadReturningChatGPTTitle,
+  current: () => boolean,
+  watch: (owner: OnDeviceSelectionWitness) => boolean,
+  publish: (value: Presentation) => void,
+) {
+  read(current)
+    .then(value => {
+      if (
+        value?.owner.isCurrent() &&
+        current() &&
+        watch(value.owner) &&
+        current()
+      )
+        publish({
+          status: 'saved-chatgpt-unverified',
+          name: value.name,
+          local: false,
+        });
+    })
+    .catch(() => undefined);
 }
