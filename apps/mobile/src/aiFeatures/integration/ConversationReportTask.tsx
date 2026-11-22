@@ -58,14 +58,12 @@ export function ConversationReportTask({
         onOpenSource={onOpenSource}
       />
     );
-  if (!card.task.report)
+  if (!card.task.report) {
+    // The Conversation choice is already the current-day report action.
+    if (card.task.identity.key === todayIdentity()?.key) return null;
     return (
       <AppButton
-        title={t(
-          card.task.identity.key === todayIdentity()?.key
-            ? 'dailyReport.generate'
-            : 'dailyReport.selectToday',
-        )}
+        title={t('dailyReport.selectToday')}
         onPress={() => {
           startConversationReportTurn(
             store,
@@ -75,6 +73,7 @@ export function ConversationReportTask({
         }}
       />
     );
+  }
   return (
     <ConversationSavedReportMessage
       target={card.task.report}

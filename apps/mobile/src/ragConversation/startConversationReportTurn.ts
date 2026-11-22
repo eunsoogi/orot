@@ -5,18 +5,22 @@ import { setConversationEntryForSession } from './useConversationEntryIntent';
 import { entryIntentSender } from './entryIntentSender';
 import { todayIdentity } from '../aiFeatures/integration/dailyReportTodayIdentity';
 import { t } from '../i18n';
+import type { DailyReportIdentity } from '@orot/domain';
 
 /** A live report choice submits one owned turn, using the same transcript, consent and cancellation. */
 export function startConversationReportTurn(
   store: ConversationSessions,
   isCurrent: () => boolean,
   sender: ConversationScreenProps['onSend'],
+  notificationIdentity?: DailyReportIdentity,
 ) {
   if (!isCurrent()) return;
   const snapshot = store.getSnapshot();
   const session = snapshot.sessions.find(item => item.id === snapshot.activeId);
   if (!session || !canSelectConversationChoice(store, session)) return;
-  const reportRequest = todayIdentity();
+  const today = todayIdentity();
+  if (notificationIdentity && notificationIdentity.key !== today?.key) return;
+  const reportRequest = notificationIdentity ?? today;
   if (!reportRequest) {
     store.setError(session.id, t('dailyReport.entryError'));
     return;

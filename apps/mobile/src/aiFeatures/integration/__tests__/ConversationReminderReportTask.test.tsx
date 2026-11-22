@@ -7,6 +7,7 @@ import {
 import { t } from '../../../i18n';
 import { createDailyReportIdentity } from '@orot/domain';
 import { ConversationReportTask } from '../ConversationReportTask';
+import { todayIdentity } from '../dailyReportTodayIdentity';
 import { parseTask } from '../../../storage/conversationTaskCardCodec';
 import type { AiFeatureServices } from '../featureServices';
 
@@ -71,7 +72,10 @@ test('a retained historical reminder reads its exact identity without dispatch a
   expect(dailyReport.start).not.toHaveBeenCalled();
   expect(services.sendRagMessage).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByText('오늘 선택하기'));
-  await screen.findByText('오늘 요약하기');
+  await waitFor(() =>
+    expect(dailyReport.lookup).toHaveBeenCalledWith(todayIdentity()),
+  );
+  expect(screen.queryByText('오늘 요약하기')).toBeNull();
   expect(
     props.onTaskIdentity.mock.calls.some(
       ([value]) => value.key !== identity.key,
@@ -134,3 +138,39 @@ test('failed explicit today persistence leaves the historical card selected', as
   ).toBe(true);
   expect(dailyReport.start).not.toHaveBeenCalled();
 });
+
+test.each([true, false])(
+  'current-day task (reminder=%s) cannot render a second initial report action',
+  async reminder => {
+    const { dailyReport, services, props } = setup();
+    const today = todayIdentity()!;
+    dailyReport.preview.mockResolvedValue({ status: 'not_today' });
+    await render(
+      <ConversationReportTask
+        {...props}
+        card={{
+          ...props.card,
+          task: {
+            kind: 'daily_report',
+            identity: today,
+            ...(reminder ? { reminder: true as const } : {}),
+          },
+        }}
+      />,
+    );
+    if (reminder) {
+      await waitFor(() =>
+        expect(dailyReport.lookup).toHaveBeenCalledWith(today),
+      );
+      expect(
+        await screen.findByTestId('inline-daily-report-task'),
+      ).toBeTruthy();
+      await waitFor(() =>
+        expect(screen.queryByText(t('dailyReport.preparing'))).toBeNull(),
+      );
+    }
+    expect(screen.queryByText('오늘 요약하기')).toBeNull();
+    expect(dailyReport.start).not.toHaveBeenCalled();
+    expect(services.sendRagMessage).not.toHaveBeenCalled();
+  },
+);
