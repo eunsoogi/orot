@@ -20,7 +20,7 @@ export const materialLibraryStyles = StyleSheet.create({
     minWidth: 0,
     paddingHorizontal: 12,
   },
-  row: { borderRadius: 0, paddingHorizontal: 0 },
+  row: { borderRadius: 0, paddingHorizontal: 0, paddingVertical: 14 },
   divider: {
     borderBottomColor: appColors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
