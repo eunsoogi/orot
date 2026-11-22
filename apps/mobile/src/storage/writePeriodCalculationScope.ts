@@ -22,6 +22,7 @@ const same = (a: Generation, b: Generation) =>
 export async function withWritePeriodCalculations<T>(
   snapshot: SqlExecutor,
   work: (validate: ReadOnlyPeriodValidation) => Promise<T>,
+  beginPeriod?: () => () => void,
 ): Promise<T> {
   const reports = new Map<string, HealthContextReport>();
   let active = true;
@@ -31,33 +32,38 @@ export async function withWritePeriodCalculations<T>(
       await assertSummaryPeriodCurrent(tx, source, required);
       return;
     }
-    const before = await readHealthContextGeneration(tx);
-    const key = healthContextReportCacheKey(source.scope.window, [
-      source.scope.topic,
-    ]);
-    const cached = reports.get(key);
-    const report =
-      cached && same(cached, before)
-        ? cached
-        : await readHealthContextReport(tx, source.scope.window, [
-            source.scope.topic,
-          ]);
-    const after = await readHealthContextGeneration(tx);
-    if (!active) {
-      await assertSummaryPeriodCurrent(tx, source, required);
-      return;
+    const endPeriod = beginPeriod?.();
+    try {
+      const before = await readHealthContextGeneration(tx);
+      const key = healthContextReportCacheKey(source.scope.window, [
+        source.scope.topic,
+      ]);
+      const cached = reports.get(key);
+      const report =
+        cached && same(cached, before)
+          ? cached
+          : await readHealthContextReport(tx, source.scope.window, [
+              source.scope.topic,
+            ]);
+      const after = await readHealthContextGeneration(tx);
+      if (!active) {
+        await assertSummaryPeriodCurrent(tx, source, required);
+        return;
+      }
+      if (!same(before, report) || !same(after, report))
+        throw new RetainedSourceInvalidError(
+          'Health context changed during write validation.',
+        );
+      if (validatedGeneration && !same(validatedGeneration, after))
+        throw new RetainedSourceInvalidError(
+          'Health context changed between write sources.',
+        );
+      assertSummaryPeriodReport(source, report, required);
+      validatedGeneration ??= after;
+      if (active) reports.set(key, report);
+    } finally {
+      endPeriod?.();
     }
-    if (!same(before, report) || !same(after, report))
-      throw new RetainedSourceInvalidError(
-        'Health context changed during write validation.',
-      );
-    if (validatedGeneration && !same(validatedGeneration, after))
-      throw new RetainedSourceInvalidError(
-        'Health context changed between write sources.',
-      );
-    assertSummaryPeriodReport(source, report, required);
-    validatedGeneration ??= after;
-    if (active) reports.set(key, report);
   };
   try {
     const result = await work(validate);
