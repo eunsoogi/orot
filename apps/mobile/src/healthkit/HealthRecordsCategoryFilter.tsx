@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { NavigationEdgeMenuScrollView } from '../navigation/NavigationEdgeMenuScrollView';
+import { Pressable, StyleSheet } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
 import { healthRecordCategoryPresentation } from './healthRecordCategoryPresentation';
 import { AppText as Text } from '../layout/AppText';
@@ -16,7 +17,11 @@ export type HealthRecordFilter = 'all' | HealthRecordCategory;
 export function HealthRecordsCategoryFilter({
   selected,
   onSelect,
+  rightBleed = 0,
+  touchClearance = 0,
 }: {
+  readonly rightBleed?: number;
+  readonly touchClearance?: number;
   readonly selected: HealthRecordFilter;
   readonly onSelect: (category: HealthRecordFilter) => void;
 }) {
@@ -25,9 +30,10 @@ export function HealthRecordsCategoryFilter({
     ...healthRecordCategories(),
   ];
   return (
-    <ScrollView
+    <NavigationEdgeMenuScrollView
       contentContainerStyle={styles.content}
-      horizontal
+      rightBleed={rightBleed}
+      touchClearance={touchClearance}
       showsHorizontalScrollIndicator={false}
       testID="health-record-category-filter"
     >
@@ -67,7 +73,7 @@ export function HealthRecordsCategoryFilter({
           </Pressable>
         );
       })}
-    </ScrollView>
+    </NavigationEdgeMenuScrollView>
   );
 }
 

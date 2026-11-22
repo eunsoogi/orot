@@ -8,6 +8,30 @@ enum HealthRecordsBoundaryUITestConditions {
         var horizontal = false
     }
 
+    /// Measure native scroll/chip bounds separately from the still-inset chart content.
+    static func captureLibraryEdge(_ app: XCUIApplication, name: String, testCase: XCTestCase) throws {
+        try NavigationGeometryUITestConditions.captureBoundary(app, navigationID: "navigation-back", name: name, testCase: testCase)
+        let geometry = try NavigationGeometryUITestConditions.snapshot(app)
+        let host = UITestConditions.element(app, "health-records-primary-scroll-host").frame
+        let content = UITestConditions.element(app, "navigation-content-region").frame
+        let list = UITestConditions.element(app, "health-records-scroll").frame
+        let menu = UITestConditions.element(app, "health-record-category-filter").frame
+        let title = UITestConditions.element(app, "health-records-title").frame
+        let frames = ["window": geometry.window, "content": content, "list": list, "menu": menu, "title": title]
+        try NavigationUITestConditions.panelSnapshot(app, frames: frames, testCase: testCase)
+        XCTAssertTrue([host, content, list, menu, title].allSatisfy(FormScrollGeometry.valid))
+        XCTAssertTrue(content.insetBy(dx: -0.5, dy: -0.5).contains(title))
+        if geometry.window.maxX - content.maxX > 30, abs(host.maxX - content.maxX) <= 1 {
+            XCTAssertEqual(list.maxX, geometry.window.maxX, accuracy: 1)
+            XCTAssertEqual(menu.maxX, geometry.window.maxX, accuracy: 1)
+            XCTAssertGreaterThan(list.maxX, content.maxX)
+            XCTAssertGreaterThan(menu.maxX, content.maxX)
+        } else {
+            XCTAssertLessThanOrEqual(list.maxX, content.maxX + 0.5)
+            XCTAssertLessThanOrEqual(menu.maxX, content.maxX + 0.5)
+        }
+    }
+
     /// Parent exposure and horizontal-chip exposure share the original eight-gesture total limit.
     static func tap(_ app: XCUIApplication, identifier: String, owners: [Owner], testCase: XCTestCase) throws {
         var gestures = 0
@@ -17,13 +41,20 @@ enum HealthRecordsBoundaryUITestConditions {
             let targetID = index + 1 < owners.count ? owners[index + 1].identifier : identifier
             let target = UITestConditions.element(app, targetID)
             XCTAssertTrue(UITestConditions.exists(container) && UITestConditions.exists(target))
-            let scroll = container.scrollViews.firstMatch.exists ? container.scrollViews.firstMatch : container
+            let nestedScroll = container.scrollViews.firstMatch
+            let scroll = container.elementType == .scrollView || !nestedScroll.exists ? container : nestedScroll
             while true {
                 let window = app.windows.firstMatch.frame
                 let content = UITestConditions.element(app, "navigation-content-region").frame
                 let scrollFrame = scroll.frame
                 let viewport = scrollFrame.intersection(window).intersection(content)
-                let frame = target.frame
+                // A nested menu may bleed under the rail. The parent only
+                // needs to expose its safe, interactive portion vertically.
+                let rawFrame = target.frame
+                let frame = index + 1 < owners.count && owners[index + 1].horizontal
+                    ? CGRect(x: max(rawFrame.minX, content.minX), y: rawFrame.minY,
+                             width: min(rawFrame.maxX, content.maxX) - max(rawFrame.minX, content.minX), height: rawFrame.height)
+                    : rawFrame
                 try NavigationUITestConditions.panelSnapshot(app, frames: ["window": window, "owner": scrollFrame, "viewport": viewport, "target": frame], testCase: testCase)
                 guard !viewport.isNull, !viewport.isEmpty, !frame.isEmpty else {
                     XCTFail("The actual scroll owner and target need finite visible frames: \(owner.identifier)")

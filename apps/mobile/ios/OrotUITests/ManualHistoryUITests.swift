@@ -124,10 +124,10 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         defer { app.terminate() }
         try openManualHistory(app, title: "Synthetic rail original")
         // Observe the list and edited form independently from the departure guard's state assertions.
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], name: "manual-history-list-boundary", testCase: self)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], rightScrollEdges: ["navigation-route-scroll"], name: "manual-history-list-boundary", testCase: self)
         tap(app, "manual-history-correct", in: "navigation-route-scroll")
         guard replace(app, "manual-history-title-input", with: "Synthetic rail draft") else { return }
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], name: "manual-history-edited-draft-boundary", testCase: self)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], rightScrollEdges: ["navigation-route-scroll"], name: "manual-history-edited-draft-boundary", testCase: self)
 
         let back = try NavigationUITestConditions.navigationAction(app, "navigation-back")
         // Keep the native rail's VoiceOver name and the route's discard guard.
@@ -140,7 +140,7 @@ final class ManualHistoryUITests: OrotFailFastTestCase {
         XCTAssertTrue(UITestConditions.exists(leavePrompt), app.debugDescription)
         leavePrompt.buttons["계속 편집"].tap()
         XCTAssertEqual(UITestConditions.element(app, "manual-history-title-input").value as? String, "Synthetic rail draft")
-        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], name: "manual-history-retained-draft-boundary", testCase: self)
+        try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["navigation-route-scroll"], rightScrollEdges: ["navigation-route-scroll"], name: "manual-history-retained-draft-boundary", testCase: self)
 
         try NavigationUITestConditions.tapNavigation(app, "navigation-back")
         let confirmLeave = app.alerts["저장하지 않은 내용이 있어요"].buttons["내용 버리고 나가기"]

@@ -13,7 +13,11 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import { useNavigationContentInset } from './useNavigationContentInset';
+import {
+  useNavigationContentInset,
+  useNavigationOcclusion,
+} from './useNavigationContentInset';
+import { useNavigationRightScrollEdge } from './navigationScrollEdge';
 
 interface NavigationRouteScrollPosition {
   readonly preserve: () => void;
@@ -35,6 +39,13 @@ export function NavigationRouteScrollView({
   readonly children: ReactNode;
 }) {
   const navigationInset = useNavigationContentInset();
+  const { right, top } = useNavigationRightScrollEdge();
+  const indicatorBottom = useNavigationOcclusion().scrollContentInsets.bottom;
+  const scrollEdge = right > 0 ? { marginRight: -right } : undefined;
+  const edgePadding =
+    right > 0
+      ? { paddingRight: (navigationInset.paddingRight ?? 0) + right }
+      : undefined;
   const scrollViewRef = useRef<ComponentRef<typeof ScrollView> | null>(null);
   const currentOffset = useRef(0);
   const preservedOffset = useRef<number | null>(null);
@@ -76,11 +87,19 @@ export function NavigationRouteScrollView({
       <ScrollView
         ref={scrollViewRef}
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={[styles.content, navigationInset]}
+        automaticallyAdjustsScrollIndicatorInsets={
+          right > 0 ? false : undefined
+        }
+        scrollIndicatorInsets={
+          right > 0
+            ? { top, right: 0, bottom: indicatorBottom, left: 0 }
+            : undefined
+        }
+        contentContainerStyle={[styles.content, navigationInset, edgePadding]}
         keyboardShouldPersistTaps="handled"
         onScroll={updateCurrentOffset}
         scrollEventThrottle={16}
-        style={styles.fill}
+        style={[styles.fill, scrollEdge]}
         testID="navigation-route-scroll"
       >
         {children}

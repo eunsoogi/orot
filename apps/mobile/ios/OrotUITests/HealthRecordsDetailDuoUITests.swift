@@ -20,7 +20,7 @@ extension HealthImportDuoUITests {
             try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
             try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "records-open-health-library", owners: [.init(identifier: "navigation-route-scroll")], testCase: self)
             NavigationUITestConditions.route(app, markers: ["health-records-title"])
-            try NavigationGeometryUITestConditions.captureChildBoundary(app, viewportIDs: ["health-records-scroll"], name: "health-library-\(size)", testCase: self)
+            try HealthRecordsBoundaryUITestConditions.captureLibraryEdge(app, name: "health-library-\(size)", testCase: self)
             try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "health-record-filter-heart_rate", owners: [.init(identifier: "health-records-scroll"), .init(identifier: "health-record-category-filter", horizontal: true)], testCase: self)
             XCTAssertTrue(healthDetailNode(app, "health-record-filter-heart_rate").isSelected)
             XCTAssertFalse(healthDetailNode(app, "health-record-category-blood_pressure").exists)
