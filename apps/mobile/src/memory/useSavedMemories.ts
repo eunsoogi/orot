@@ -3,6 +3,7 @@ import { reportSavedMemoryRead } from './savedMemoryReadDiagnostics';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { SavedMemoryLoaderContext } from './SavedMemoryLoaderContext';
 import { AppState } from 'react-native';
+import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import {
   subscribeLocalDataClear,
@@ -16,6 +17,7 @@ export type { SavedMemory } from './unifiedSavedMemories';
 type ReadyRead = {
   readonly rows: SavedMemory[];
   readonly request: number;
+  readonly historicalDetailId?: string;
   readonly load: () => Promise<SavedMemory[]>;
   readonly isCurrent: () => boolean;
 };
@@ -25,6 +27,7 @@ export function useSavedMemories(
   suppliedLoad?: () => Promise<SavedMemory[]>,
   enabled = true,
   ownership?: NavigationRouteOwnership,
+  historicalDetailId?: string,
 ) {
   const contextLoad = useContext(SavedMemoryLoaderContext);
   const load = suppliedLoad ?? contextLoad;
@@ -73,13 +76,41 @@ export function useSavedMemories(
       setState('failed');
     }, READ_WAIT_MS);
     try {
-      const result = await load();
+      const rows = await load();
       const isCurrent = () => generation.current === request && canRead();
       if (!isCurrent()) return;
+      // Historical read-only access is a selected-detail capability, never a list,
+      // evidence, export, or injected fixture loader capability.
+      const missingCurrentSource =
+        load === loadUnifiedLocalMemories &&
+        historicalDetailId &&
+        rows.find(
+          row =>
+            row.id === historicalDetailId &&
+            'unavailableReason' in row &&
+            row.unavailableReason,
+        );
+      let result = rows;
+      if (missingCurrentSource) {
+        const { readHistoricalSavedMemory } =
+          await import('../storage/readHistoricalSavedMemory');
+        if (!isCurrent()) return;
+        const snapshot = await readHistoricalSavedMemory(
+          missingCurrentSource.id,
+        );
+        if (snapshot) {
+          result = rows.map(row =>
+            row === missingCurrentSource
+              ? { ...row, ...snapshot, historicalSnapshot: true as const }
+              : row,
+          );
+        }
+      }
+      if (!isCurrent()) return;
       reportSavedMemoryRead('saved_memory_wait', 'completed');
-      setRead({ rows: result, request, load, isCurrent });
+      setRead({ rows: result, request, load, isCurrent, historicalDetailId });
       setState('ready');
-      if (load === loadUnifiedLocalMemories)
+      if (load === loadUnifiedLocalMemories && !missingCurrentSource)
         resumeStatementMemoryAfterRead(isCurrent);
     } catch {
       if (generation.current === request && canRead()) {
@@ -89,7 +120,7 @@ export function useSavedMemories(
     } finally {
       if (generation.current === request) clearReadTimer();
     }
-  }, [load, clearReadTimer, canRead]);
+  }, [load, clearReadTimer, canRead, historicalDetailId]);
 
   useEffect(() => {
     // Deletion fences invalidate cached text and pending reads, even if later cleanup fails.
@@ -110,6 +141,17 @@ export function useSavedMemories(
       if (!next) close();
       else refresh();
     });
+    // A lock can arrive while React Native still reports active and the keyed
+    // connection is warm. Revoke rendered or pending local historical text.
+    const protection =
+      historicalDetailId && load === loadUnifiedLocalMemories
+        ? conversationExecutionNative()
+        : null;
+    const unsubscribeProtection = protection?.bridgeAvailable
+      ? protection.subscribe(event => {
+          if (event.kind === 'protectedData' && !event.available) invalidate();
+        })
+      : undefined;
     const subscription = AppState.addEventListener('change', next => {
       active.current = enabled && next === 'active';
       if (!active.current) close();
@@ -127,15 +169,29 @@ export function useSavedMemories(
       generation.current += 1;
       subscription.remove();
       unsubscribeOwner?.();
+      unsubscribeProtection?.();
       unsubscribeClear();
       unsubscribeSource();
     };
-  }, [refresh, close, clearReadTimer, enabled, ownership]);
+  }, [
+    refresh,
+    close,
+    clearReadTimer,
+    enabled,
+    ownership,
+    historicalDetailId,
+    load,
+  ]);
 
   // The route and loader can change before passive cleanup runs. Never hand
   // their previous snapshot (or its detail capability) to the next render.
   const readyRead =
-    enabled && read?.load === load && read.isCurrent() ? read : null;
+    enabled &&
+    read?.load === load &&
+    read.historicalDetailId === historicalDetailId &&
+    read.isCurrent()
+      ? read
+      : null;
   return {
     rows: readyRead?.rows ?? [],
     state: state === 'ready' && !readyRead ? 'idle' : state,

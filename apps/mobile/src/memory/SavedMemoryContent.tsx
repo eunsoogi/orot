@@ -6,7 +6,7 @@ import type { AgentSavedMemory } from './unifiedSavedMemories';
 
 /** Present the exact stored text, never parse it into newer facts or invent source-opening actions. */
 export function SavedMemoryContent({ memory }: { memory: AgentSavedMemory }) {
-  if (memory.unavailableReason)
+  if (memory.unavailableReason && !memory.historicalSnapshot)
     return (
       <AppText
         accessibilityRole="alert"
@@ -33,7 +33,16 @@ export function SavedMemoryContent({ memory }: { memory: AgentSavedMemory }) {
         <AppText accessibilityRole="header" style={styles.heading}>
           {t('savedMemory.contentTitle')}
         </AppText>
-        <AppText selectable style={styles.body} testID="saved-memory-verbatim">
+        {memory.historicalSnapshot && (
+          <AppText style={styles.detail}>
+            {t('savedMemory.historicalSnapshot')}
+          </AppText>
+        )}
+        <AppText
+          selectable={!memory.historicalSnapshot}
+          style={styles.body}
+          testID="saved-memory-verbatim"
+        >
           {memory.text}
         </AppText>
       </View>
@@ -48,11 +57,13 @@ export function SavedMemoryContent({ memory }: { memory: AgentSavedMemory }) {
         </AppText>
         <View style={styles.provenance}>
           <AppText style={styles.detail}>{review}</AppText>
-          <AppText style={styles.detail}>
-            {t('savedMemory.sourceCount', {
-              count: memory.provenance.sourceIds.length,
-            })}
-          </AppText>
+          {!memory.historicalSnapshot && (
+            <AppText style={styles.detail}>
+              {t('savedMemory.sourceCount', {
+                count: memory.provenance.sourceIds.length,
+              })}
+            </AppText>
+          )}
         </View>
       </View>
     </>

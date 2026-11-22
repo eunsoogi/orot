@@ -1,6 +1,8 @@
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { conversationDailyReportText } from '../aiFeatures/integration/conversationDailyReportText';
 import { projectGeneratedSummaryDetail } from './summaryDetail';
+import { readConversationReportEvidence } from './conversationReportEvidence';
+import { createArchivedCitationService } from '../aiFeatures/integration/archivedCitationService';
 import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
 import { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import { validateDailyReportArtifact } from '../storage/dailyReportArtifactValidation';
@@ -36,6 +38,11 @@ export function createGeneratedReportReader(
 } {
   const bookmarks = createConversationArtifactStorage(database);
   return {
+    archivedSources: createArchivedCitationService(async () => ({
+      ...(await dependencies.data()),
+      // Resolve and recheck the same protected database that admitted the report.
+      openConversationArtifactStorage: async () => bookmarks,
+    })),
     async readBookmarkedDiseasePossibilities(id, current) {
       const revision = await bookmarks.readSavedDiseasePossibilitiesPin(
         id,
@@ -86,16 +93,7 @@ async function readSelected(
   },
 ): Promise<GeneratedReportDetail | null> {
   if (row.origin === 'conversation') {
-    const saved = await createConversationArtifactStorage(database).read(
-      row.id,
-    );
-    if (
-      !saved ||
-      saved.entryIntent !== 'possibilities' ||
-      saved.status !== 'complete'
-    )
-      return null;
-    return { paragraphs: [saved.answer] };
+    return readConversationReportEvidence(database, row, signal);
   }
   if (row.kind === 'daily_report') {
     // Superseded and invalidated runs share a tombstone. Never guess the reason or

@@ -2,7 +2,11 @@ import { useLayoutEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { GeneratedReportBrowser } from '../generatedReports/GeneratedReportBrowser';
 import { GeneratedReportDetailDestination } from '../generatedReports/GeneratedReportDetailDestination';
-import type { GeneratedReportRow } from '../generatedReports/types';
+import type {
+  GeneratedReportCitationSelection,
+  GeneratedReportRow,
+} from '../generatedReports/types';
+import { GeneratedReportSourceDestination } from '../generatedReports/GeneratedReportSourceDestination';
 import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
@@ -15,11 +19,17 @@ export function RecordsMaterialDestination({
   onOpenMemory,
   report,
   openReport,
+  reportSource,
+  openReportSource,
 }: {
   readonly actions: AppRouteContentProps['actions'];
   readonly onOpenMemory?: (id: string) => void;
   readonly report?: GeneratedReportRow;
   readonly openReport?: (row: GeneratedReportRow) => boolean;
+  readonly reportSource?: GeneratedReportCitationSelection;
+  readonly openReportSource?: (
+    citation: GeneratedReportCitationSelection,
+  ) => boolean;
 }) {
   // Native Back never waits for a read; ownership loss fences it immediately.
   useNavigationLeaveStateRegistration({
@@ -57,6 +67,17 @@ export function RecordsMaterialDestination({
         row={report}
         active={active}
         ownership={actions.ownership}
+        openReportSource={openReportSource}
+      />
+    ) : null;
+  if (actions.route.name === 'generated-report-source')
+    return reportSource ? (
+      <GeneratedReportSourceDestination
+        selection={reportSource}
+        active={active}
+        routeKey={actions.route.key}
+        ownership={actions.ownership}
+        onBack={actions.onBack}
       />
     ) : null;
   // Preserve the native list and its scroll range underneath the detail route.

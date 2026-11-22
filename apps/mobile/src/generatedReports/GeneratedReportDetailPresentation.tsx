@@ -8,7 +8,11 @@ import { NavigationMotionContext } from '../navigation/NavigationMotionContext';
 import { GeneratedReportBookmarkAction } from './GeneratedReportBookmarkAction';
 import { GeneratedReportContent } from './GeneratedReportContent';
 import { generatedReportCopy } from './text';
-import type { GeneratedReportDetail, GeneratedReportRow } from './types';
+import type {
+  GeneratedReportCitationSelection,
+  GeneratedReportDetail,
+  GeneratedReportRow,
+} from './types';
 
 export type GeneratedReportDetailPresentationState =
   | { readonly status: 'loading' | 'failed' | 'unavailable' }
@@ -40,11 +44,15 @@ export function GeneratedReportDetailPresentation({
   state,
   onRetry,
   isCurrent,
+  onOpenCitation,
 }: {
   readonly row: GeneratedReportRow;
   readonly state: GeneratedReportDetailPresentationState;
   readonly onRetry: () => void;
   readonly isCurrent: () => boolean;
+  readonly onOpenCitation?: (
+    selection: GeneratedReportCitationSelection,
+  ) => void;
 }) {
   const reduceMotion = useContext(NavigationMotionContext);
   const created = new Date(row.createdAt);
@@ -78,7 +86,15 @@ export function GeneratedReportDetailPresentation({
             <AppText accessibilityRole="header" style={styles.sectionTitle}>
               {detailCopy.body}
             </AppText>
-            <GeneratedReportContent detail={state.detail} />
+            <GeneratedReportContent
+              detail={state.detail}
+              onOpenCitation={
+                onOpenCitation &&
+                (selection => {
+                  if (isCurrent()) onOpenCitation(selection);
+                })
+              }
+            />
           </View>
           {state.detail.bookmarkOriginal ? (
             <View style={styles.actions}>
