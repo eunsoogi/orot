@@ -12,6 +12,7 @@ import type {
 import { SavedSummaryReviewWarnings } from '../diseaseHypotheses/SavedSummaryReviewWarnings';
 import { ConversationReportText } from '../ragConversation/ConversationReportText';
 import { ConversationSources } from '../ragConversation/ConversationSources';
+import type { SavedArchivedCitation } from '../ragConversation/savedArchivedCitations';
 
 const doNotOpenLiveSource = () => {};
 
@@ -23,6 +24,7 @@ export function GeneratedReportContent({
   readonly detail: GeneratedReportDetail;
   readonly onOpenCitation?: (
     selection: GeneratedReportCitationSelection,
+    citation: SavedArchivedCitation,
   ) => void;
 }) {
   const sources = detail.conversationSources;
@@ -80,10 +82,10 @@ export function GeneratedReportContent({
           archived={{
             citations: sources.citations,
             open: citation =>
-              onOpenCitation({
-                target: sources.target,
-                ordinal: citation.ordinal,
-              }),
+              onOpenCitation(
+                { target: sources.target, ordinal: citation.ordinal },
+                citation,
+              ),
           }}
         />
       ) : null}
