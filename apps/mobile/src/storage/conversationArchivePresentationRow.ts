@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { StoredSteeringInstruction } from './conversationSteeringStorage';
 import {
   archivedConversationPresentationMetadata,
@@ -61,6 +62,36 @@ export function decodeOwnedArchiveRow(
     row.interruption_reason,
   );
   if (row.result_json === null) {
+    if (row.checkpoint_status === 'completed') {
+      const value = readArchivedText(row.local_outcome_json);
+      if (
+        value?.kind !== 'visit-goal' ||
+        typeof row.checkpoint_question !== 'string' ||
+        !row.checkpoint_question.trim()
+      )
+        return null;
+      if (
+        Object.keys(value).some(
+          key => !['kind', 'delivery', 'initialResponse'].includes(key),
+        )
+      )
+        return null;
+      const display = archivedConversationPresentationMetadata(value);
+      if (display.initialResponse && display.initialResponse.text.length > 300)
+        return null;
+      // No artifact value: only the display reader can render this local outcome.
+      return {
+        presentation: {
+          id: row.id,
+          sessionId,
+          createdAt: row.created_at,
+          question: row.checkpoint_question,
+          status: 'complete',
+          answer: t('visitQuestions.conversation.clarifyGoal'),
+          ...display,
+        },
+      };
+    }
     if (
       row.checkpoint_status !== 'interrupted' ||
       typeof row.checkpoint_question !== 'string' ||

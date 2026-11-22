@@ -2,7 +2,7 @@ import type { ArchivedConversationPresentationMetadata } from '../storage/archiv
 import type { ConversationHistoryCursor } from './conversationHistoryPage';
 import type { DisplayMessage } from './conversationDisplayMessage';
 import type { ConversationSession } from './conversationSessionTypes';
-import { t } from '../i18n';
+import { restoredConversationInterruptionCopy } from './restoredConversationInterruptionCopy';
 import type { ConversationRecoveryReason } from './conversationExecutionLease';
 import type { RetainedConversationTask } from './conversationTaskState';
 import type { SavedArchivedCitation } from './savedArchivedCitations';
@@ -81,9 +81,7 @@ export function savedHistoryTranscript(
       };
       const incomplete = row.kind === 'interrupted' || row.partial;
       const activity = incomplete
-        ? row.interruptionReason
-          ? t(`conversationInterruption.${row.interruptionReason}`)
-          : t('ragConversation.progressInterrupted')
+        ? restoredConversationInterruptionCopy(row.interruptionReason)
         : undefined;
       return [
         ...(row.question

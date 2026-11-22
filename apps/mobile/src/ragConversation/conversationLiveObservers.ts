@@ -64,9 +64,23 @@ export function liveConversationObservers(
   const recovery =
     retained && owner.saveRecovery.observer(id, retained, request, current);
   const execution = owner.lifetime.executionObserver(controller);
+  const saveLocalClarification = retained?.completeLocalClarification;
   return {
     ...(retained && recovery
       ? (memory?.wrap(retained, recovery) ?? recovery)
+      : {}),
+    ...(saveLocalClarification && !photoInput
+      ? {
+          async onLocalVisitClarification(signal: AbortSignal) {
+            request.saving = true;
+            try {
+              await saveLocalClarification(request.question, signal, current);
+              request.committed = true;
+            } finally {
+              request.saving = false;
+            }
+          },
+        }
       : {}),
     ...execution,
     onWorkflowPauseController(requestPause) {
