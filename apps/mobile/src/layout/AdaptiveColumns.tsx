@@ -18,6 +18,7 @@ export interface AdaptiveColumnsProps {
   readonly routeKey?: string;
   readonly active?: boolean;
   readonly testID?: string;
+  readonly stackedGap?: number;
 }
 
 function createPanelStyle(
@@ -39,6 +40,7 @@ export function AdaptiveColumns({
   routeKey,
   active = true,
   testID = 'adaptive-columns',
+  stackedGap,
 }: AdaptiveColumnsProps) {
   const { width, fontScale } = useWindowDimensions();
   const occlusion = useNavigationOcclusion();
@@ -149,9 +151,9 @@ export function AdaptiveColumns({
       width: routeWidth,
       marginStart: plan.leadingInset,
       columnGap: plan.columns === 2 ? plan.columnGap : 0,
-      rowGap: plan.columns === 1 ? plan.rowGap : 0,
+      rowGap: plan.columns === 1 ? (stackedGap ?? plan.rowGap) : 0,
     }),
-    [plan, routeWidth],
+    [plan, routeWidth, stackedGap],
   );
   const primaryPanelStyle = useMemo(
     () => createPanelStyle(plan.columns, plan.primaryWidth),

@@ -1,9 +1,20 @@
 import { render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
+import { hubSpacing } from '../../layout/hubSpacing';
+import { createNavigationController } from '../../navigation/navigationController';
+import type { AppNavigationRoute } from '../appNavigationRoute';
+import {
+  recentRouteProps,
+  renderRecords,
+} from '../testSupport/recentRecordsRouteTestSupport';
 import { RecordsRecentSources } from '../RecordsRecentSources';
 import { savedSource } from '../../recording/recordingScreenSupport';
 
 jest.mock('../../layout/AppSymbol', () => ({ AppSymbol: () => null }));
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
+);
 
 /** Recent states inherit the page edge without an additional card inset. */
 test.each(['loading', 'failed', 'ready'] as const)(
@@ -55,4 +66,20 @@ test('populated rows use the same page edge and equal gaps while retaining reada
     StyleSheet.flatten(screen.getByTestId('records-recent-sources').props.style)
       .padding,
   ).toBeUndefined();
+});
+
+test('uses the same compact boundary gap after the hub banner and between the material panels', async () => {
+  await renderRecords(
+    createNavigationController<AppNavigationRoute>('root'),
+    recentRouteProps(),
+  );
+  expect(screen.getByTestId('records-hub-header')).toBeTruthy();
+  expect(screen.getByTestId('records-layout')).toHaveStyle({
+    paddingTop: hubSpacing.item,
+    gap: hubSpacing.item,
+  });
+  expect(screen.getByTestId('records-material-columns')).toHaveStyle({
+    flexDirection: 'column',
+    rowGap: hubSpacing.item,
+  });
 });
