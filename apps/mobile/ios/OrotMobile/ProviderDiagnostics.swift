@@ -46,6 +46,7 @@ final class OrotProviderDiagnostics: NSObject {
                "sql_aggregate", "sql_vector", "sql_health_records", "sql_artifact", "sql_other",
                "transaction_healthkit", "transaction_memory", "selection", "data", "workflow", "provider_error", "validation", "persistence",
                "consent_wait", "provider_wait", "evidence_check", "response_correction",
+               "chatgpt_prompt_cache_unknown", "chatgpt_prompt_cache_reported_zero", "chatgpt_prompt_cache_reported_positive",
                "public_search", "history_preparation",
                "evidence_appointment", "evidence_period", "evidence_records",
                "evidence_memory", "evidence_presentation",

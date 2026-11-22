@@ -1,3 +1,4 @@
+import { observeChatGPTPromptCache } from './chatGPTPromptCacheObservation';
 import { guardProviderAuthorization } from './authorizedProvider';
 import { observeModelStage, type ModelStageObserver } from './modelStageDiagnostics';
 import { invokeProductionRequest } from '../langchain/production';
@@ -182,6 +183,8 @@ export async function dispatchAuthorizedModelCall(
         result = { status: 'unavailable', errorCode: 'internal_error' };
       }
       if (guarded.wasDenied()) return { status: 'consent_required' };
+      if (result.status === 'response' && !signal.aborted)
+        observeChatGPTPromptCache(onModelStage, provider.id, result.response.usage);
       recordTelemetry(telemetry, 'language-model.stream', startedAt, result);
       return result;
     }
@@ -196,6 +199,8 @@ export async function dispatchAuthorizedModelCall(
       result = { status: 'unavailable', errorCode: 'internal_error' };
     }
     if (guarded.wasDenied()) return { status: 'consent_required' };
+    if (result.status === 'response' && !signal.aborted)
+      observeChatGPTPromptCache(onModelStage, provider.id, result.response.usage);
     recordTelemetry(telemetry, 'language-model.generate', startedAt, result);
     return result;
   });
