@@ -1,7 +1,8 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
+import { materialLibraryStyles } from '../layout/MaterialLibraryRows';
 
-export const generatedReportBrowserStyles = StyleSheet.create({
+const detail = StyleSheet.create({
   panel: {
     gap: 12,
     padding: 16,
@@ -10,3 +11,10 @@ export const generatedReportBrowserStyles = StyleSheet.create({
   },
   heading: { fontSize: 20, fontWeight: '600' },
 });
+
+export const generatedReportBrowserStyles = {
+  ...detail,
+  library: materialLibraryStyles.screen,
+  libraryHeading: materialLibraryStyles.heading,
+  libraryDescription: materialLibraryStyles.description,
+};
