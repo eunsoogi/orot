@@ -1,5 +1,6 @@
 import { AppointmentReminderControls } from '../appointmentReminders/AppointmentReminderControls';
-import { View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import type { Appointment } from '@orot/storage';
@@ -25,6 +26,11 @@ export default function AppointmentCard({
   const clinicName = appointmentClinicName(appointment);
   const canEdit =
     appointment.status === 'scheduled' || appointment.status === 'rescheduled';
+  const { fontScale } = useWindowDimensions();
+  const [headerWidth, setHeaderWidth] = useState<number>();
+  // In a narrow card lane or at large text sizes, Edit must not consume title width.
+  const stackedHeader =
+    canEdit && (fontScale > 1.3 || (headerWidth != null && headerWidth < 300));
   const formattedDateTime = formatDateTime(new Date(appointment.effectiveAt));
 
   return (
@@ -33,11 +39,15 @@ export default function AppointmentCard({
         {t('appointments.detail.title')}
       </Text>
       <View
-        style={styles.cardHeader}
+        onLayout={event => setHeaderWidth(event.nativeEvent.layout.width)}
+        style={[styles.cardHeader, stackedHeader && headerStyles.stack]}
         testID={`appointment-header-${appointment.id}`}
       >
         <Text
-          style={[styles.clinic, styles.cardHeaderClinic]}
+          style={[
+            styles.clinic,
+            stackedHeader ? headerStyles.fullTitle : styles.cardHeaderClinic,
+          ]}
           testID={`appointment-clinic-${appointment.id}`}
         >
           {clinicName}
@@ -46,6 +56,7 @@ export default function AppointmentCard({
           <Button
             onPress={onEdit}
             size="compact"
+            style={stackedHeader && headerStyles.edit}
             testID={`appointment-edit-${appointment.id}`}
             title={t('appointments.actions.edit')}
             variant="secondary"
@@ -85,3 +96,9 @@ export default function AppointmentCard({
     </View>
   );
 }
+
+const headerStyles = StyleSheet.create({
+  stack: { flexDirection: 'column' },
+  fullTitle: { alignSelf: 'stretch', minWidth: 0 },
+  edit: { maxWidth: '100%' },
+});

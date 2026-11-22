@@ -6,6 +6,7 @@ import {
 } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import type { Appointment } from '@orot/storage';
+import AppointmentCard from '../AppointmentCard';
 import AppointmentsScreen from '../AppointmentsScreen';
 import { createAppointmentStore } from '../../../test-helpers/appointmentStore';
 import { appColors } from '../../layout/appColors';
@@ -131,3 +132,49 @@ test('pairs reminders and separates the destructive action while keeping edit in
   });
   expect(actions.queryByTestId('appointment-edit-current')).toBeNull();
 });
+
+test.each([
+  [2.7, 362, 'column'],
+  [1, 280, 'column'],
+  [1, 362, 'row'],
+] as const)(
+  'keeps the full clinic title and Edit reachable at scale %s and width %s',
+  async (fontScale, width, flexDirection) => {
+    const currentWindow = Dimensions.get('window');
+    jest.spyOn(Dimensions, 'get').mockReturnValue({
+      ...currentWindow,
+      fontScale,
+    });
+    const clinicLabel = 'Synthetic teaching clinic and follow-up service';
+    const onEdit = jest.fn();
+    await render(
+      <AppointmentCard
+        appointment={{ ...appointment('layout'), clinicLabel }}
+        onEdit={onEdit}
+        onCancel={jest.fn()}
+      />,
+    );
+    const header = screen.getByTestId('appointment-header-layout');
+    await fireEvent(header, 'layout', {
+      nativeEvent: { layout: { width, height: 44, x: 0, y: 0 } },
+    });
+    expect(StyleSheet.flatten(header.props.style).flexDirection).toBe(
+      flexDirection,
+    );
+    const clinic = within(header).getByText(clinicLabel);
+    expect(clinic.props.numberOfLines).toBeUndefined();
+    if (flexDirection === 'column') {
+      expect(StyleSheet.flatten(clinic.props.style)).toMatchObject({
+        alignSelf: 'stretch',
+      });
+      expect(StyleSheet.flatten(clinic.props.style).flex).toBeUndefined();
+    }
+    const edit = within(header).getByRole('button');
+    expect(StyleSheet.flatten(edit.props.style)).toMatchObject({
+      minHeight: 44,
+      minWidth: 44,
+    });
+    await fireEvent.press(edit);
+    expect(onEdit).toHaveBeenCalledTimes(1);
+  },
+);
