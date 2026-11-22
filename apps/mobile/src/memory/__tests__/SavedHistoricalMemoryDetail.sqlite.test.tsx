@@ -1,4 +1,4 @@
-import { mockCompileHistoricalMemoryModule } from '../testSupport/compileHistoricalMemoryModule';
+import { historicalMemoryBoundaryCases } from '../testSupport/historicalMemoryBoundaryCases';
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import { createAgentMemory, listSavedMemories } from '@orot/agent-memory';
@@ -15,6 +15,40 @@ import {
   invalidateHistoricalMemoryFixture,
 } from '../testSupport/historicalMemoryFixture';
 import { createNavigationController } from '../../navigation/navigationController';
+// Load actual Metro lazy modules in Jest, outside the app graph.
+function mockCompileHistoricalMemoryModule(path: string) {
+  const { readFileSync } = require('node:fs');
+  const { dirname, resolve } = require('node:path');
+  const { runInNewContext } = require('node:vm');
+  const { transformSync } = require('@babel/core');
+  const resolveModule = (
+    require as NodeRequire & {
+      resolve(name: string, options?: { paths: string[] }): string;
+    }
+  ).resolve;
+  const filename = resolveModule(path);
+  const transformed = transformSync(readFileSync(filename, 'utf8'), {
+    filename,
+    babelrc: false,
+    configFile: false,
+    presets: [resolveModule('@react-native/babel-preset')],
+    plugins: [
+      resolveModule('@babel/plugin-transform-dynamic-import', {
+        paths: [resolveModule('@babel/preset-env')],
+      }),
+    ],
+  });
+  const module = { exports: {} };
+  runInNewContext(transformed!.code!, {
+    module,
+    exports: module.exports,
+    setTimeout,
+    clearTimeout,
+    require: (name: string) =>
+      require(name.startsWith('.') ? resolve(dirname(filename), name) : name),
+  });
+  return module.exports;
+}
 jest.mock('../useSavedMemories', () =>
   mockCompileHistoricalMemoryModule('../useSavedMemories'),
 );
@@ -101,63 +135,50 @@ test.each([false, true])(
   verifyHistoricalReview,
 );
 
-test.each([
-  'explicit record tombstone',
-  'explicit source tombstone',
-  'physical deletion',
-  'other namespace',
-  'malformed provenance',
-  'forged row identity',
-  'forged text',
-  'mismatched appointment',
-  'non-owner review',
-  'orphan source identity',
-  'replacement missing attestation',
-  'replacement different parent revision',
-  'locked open',
-  'warm connection locked',
-  'locked after read',
-])('never discloses historical prose for %s', async boundary => {
-  const file = await historicalMemoryFixture(
-    boundary.startsWith('replacement '),
-  );
-  try {
-    if (boundary === 'locked open') {
-      jest
-        .mocked(openLocalAgentMemoryDatabase)
-        .mockRejectedValue(new Error('locked'));
-    } else if (boundary === 'warm connection locked') {
-      checkProtection.mockResolvedValue(false);
-    } else if (boundary === 'locked after read') {
-      checkProtection.mockResolvedValueOnce(true).mockResolvedValue(false);
-    } else {
-      await invalidateHistoricalMemoryFixture(file, boundary);
-    }
-    const view = await render(<SavedMemoryDetail memoryId={file.id} />);
+test.each(historicalMemoryBoundaryCases)(
+  'never discloses historical prose for %s',
+  async boundary => {
+    const file = await historicalMemoryFixture(
+      boundary.startsWith('replacement '),
+    );
     try {
-      expect(openLocalAgentMemoryDatabase).toHaveBeenCalled();
       if (boundary === 'locked open') {
-        expect(
-          await screen.findByText(
-            '기억을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
-          ),
-        ).toBeTruthy();
+        jest
+          .mocked(openLocalAgentMemoryDatabase)
+          .mockRejectedValue(new Error('locked'));
+      } else if (boundary === 'warm connection locked') {
+        checkProtection.mockResolvedValue(false);
+      } else if (boundary === 'locked after read') {
+        checkProtection.mockResolvedValueOnce(true).mockResolvedValue(false);
       } else {
-        expect(
-          await screen.findByText(
-            /이 기억의 저장된 내용을 표시할 수 없어요|이 기억은 더 이상 볼 수 없어요/,
-          ),
-        ).toBeTruthy();
+        await invalidateHistoricalMemoryFixture(file, boundary);
       }
-      expect(screen.queryByTestId('saved-memory-verbatim')).toBeNull();
-      expect(createAgentMemory).not.toHaveBeenCalled();
+      const view = await render(<SavedMemoryDetail memoryId={file.id} />);
+      try {
+        expect(openLocalAgentMemoryDatabase).toHaveBeenCalled();
+        if (boundary === 'locked open') {
+          expect(
+            await screen.findByText(
+              '기억을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+            ),
+          ).toBeTruthy();
+        } else {
+          expect(
+            await screen.findByText(
+              /이 기억의 저장된 내용을 표시할 수 없어요|이 기억은 더 이상 볼 수 없어요/,
+            ),
+          ).toBeTruthy();
+        }
+        expect(screen.queryByTestId('saved-memory-verbatim')).toBeNull();
+        expect(createAgentMemory).not.toHaveBeenCalled();
+      } finally {
+        await view.unmount();
+      }
     } finally {
-      await view.unmount();
+      file.close();
     }
-  } finally {
-    file.close();
-  }
-});
+  },
+);
 
 test('native protected-data loss hides an already-open historical snapshot with AppState still active', async () => {
   const file = await historicalMemoryFixture();
