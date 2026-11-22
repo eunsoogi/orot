@@ -73,6 +73,13 @@ test('existing staged journey samples actual geometry without replacing its orac
   assert.match(compactList, /tap\(app, "classification-detail-back"\)/);
   const dockCheck = swift.indexOf('try assertClassificationCircleDock');
   assert.ok(dockCheck > 0 && dockCheck < swift.indexOf('try readScrollableResults'));
+  assert.ok(swift.includes('environment["OROT_CLASSIFICATION_MOTION_ONLY"] == "YES"'));
+  const motionScope = swift.indexOf('if motionOnly {');
+  const scroll = swift.indexOf('try readScrollableResults');
+  assert.ok(dockCheck < motionScope && motionScope < scroll);
+  assert.match(swift.slice(motionScope, scroll), /assertClassificationCircleReturn[\s\S]*return/);
+  assert.match(swift.slice(scroll), /readScrollableResults[\s\S]*assertClassificationCircleReturn/);
+
   assert.match(compactList, /guard expectLeft \? sideOrder : stackedOrder else/);
   assert.match(compactList, /guard node\(app, id\)\.waitForExistence\(timeout: 4\) else/);
   assert.match(compactList, /guard returnedLast\.waitForExistence\(timeout: 4\) else/);
@@ -81,7 +88,10 @@ test('existing staged journey samples actual geometry without replacing its orac
   assert.ok(compactList.includes('row.maxY - viewport.maxY + 12'));
   assert.ok(compactList.includes('sample.viewport.contains(sample.row)'));
   assert.ok(compactList.includes('stableStageFrame(sample.row, previous.row)'));
-  assert.match(compactList, /waitForSettledClassificationRow\(in: returnedList, row: returnedLast\)/);
+  assert.match(
+    compactList,
+    /waitForSettledClassificationRow\(in: returnedList, row: returnedLast\)/,
+  );
   assert.match(compactList, /stableStageFrame\(listAfter, listBefore\)/);
   assert.match(compactList, /stableStageFrame\(after, before\)/);
   assert.match(

@@ -8,6 +8,8 @@ extension AppointmentConsentUITests {
         let app = XCUIApplication()
         let sceneSession = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_WIDE_STAGE_VALIDATION"] == "YES" ? UUID().uuidString : nil
         let expectDuo = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_DUO_DOCK_EXPECTATION"] == "YES"
+        // Explicit diagnostic only. Ordinary runs still require the full native scroll/Back journey.
+        let motionOnly = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_MOTION_ONLY"] == "YES"
         let device = XCUIDevice.shared
         let priorOrientation = device.orientation
         if sceneSession != nil {
@@ -61,6 +63,15 @@ extension AppointmentConsentUITests {
         XCTAssertFalse(node(app, "medical-appointment-confirmation").exists)
         let expectLeft = sceneSession != nil || expectDuo
         let dock = try assertClassificationCircleDock(app, original: originalCircle, originalLane: originalLane, expectLeft: expectLeft, requireDuoWidth: expectDuo)
+        if motionOnly {
+            XCTContext.runActivity(named: "Classification motion-only: initial center → dock → confirmed recenter (no scroll or Back)") { _ in
+                assertClassificationCircleReturn(app, dock: dock, expectLeft: expectLeft)
+                let lane = node(app, "classification-moving-stage").frame
+                let recentered = node(app, "classification-circle-slot").frame
+                XCTContext.runActivity(named: "Classification motion-only recentered: dock=\(dock), lane=\(lane), circle=\(recentered)") { _ in }
+            }
+            return
+        }
         let results = try readScrollableResults(app, anchor: anchor)
         let readable = results.joined().filter { !$0.isWhitespace }
         // Indexed segments make loss/repetition observable even when native line breaks split a long title.
