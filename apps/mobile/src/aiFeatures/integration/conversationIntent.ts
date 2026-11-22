@@ -17,6 +17,8 @@ export interface ConversationEntryContext {
   readonly intent: ConversationIntent;
   readonly entryKey: string;
   readonly appointmentId?: string;
+  /** Bound to one explicit composer send; never inferred from restored intent. */
+  readonly typedPossibilityReport?: true;
   readonly reportRequest?: DailyReportIdentity;
   /** Ephemeral indicator from a direct user tap, never restored or scheduled. */
   readonly directDailyReportRequest?: true;

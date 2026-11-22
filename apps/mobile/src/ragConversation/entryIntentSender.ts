@@ -1,6 +1,6 @@
 import { bindDailyReportMemoryTap } from './conversationDailyReportMemoryJobs';
 import { todayIdentity } from '../aiFeatures/integration/dailyReportTodayIdentity';
-import { t } from '../i18n';
+import { isTypedTodayDailyReportRequest } from './typedTodayDailyReportRequest';
 import type { DailyReportMemoryTap } from '../storage/dailyReportMemoryTap';
 import { allowWarmConversationSender } from './warmConversationSender';
 import type { ConversationSessions } from './conversationSessions';
@@ -23,12 +23,14 @@ export function entryIntentSender(
   // Freeze the selected source before storage preflight can yield to another selection.
   const selected = conversationEntryForSession(store, id);
   const restored = store.getSnapshot().sessions.find(item => item.id === id);
-  const command = t('dailyReport.title');
+  const draft = restored?.draft.trim();
   // Pin the local day at the explicit send, not after asynchronous preflight.
   const typedToday =
     inputOrigin === 'composer' &&
-    restored?.draft.trim() === command &&
-    !restored.dailyReport &&
+    draft &&
+    isTypedTodayDailyReportRequest(draft) &&
+    !restored?.dailyReport &&
+    !selected?.appointmentId &&
     !selected?.dailyReport &&
     (!selected?.reportRequest || selected.intent === 'conversation') &&
     store.photoDrafts.get(id).status === 'empty';
@@ -40,7 +42,7 @@ export function entryIntentSender(
     observer,
   ) => {
     const isTodayCommand =
-      typedToday && question.trim() === command && !observer?.photoInput;
+      typedToday && question.trim() === draft && !observer?.photoInput;
     if (isTodayCommand && !typedDay)
       return { status: 'failure', kind: 'unavailable' };
     // Restored targets are revalidated by the same guard used for the original entry.
