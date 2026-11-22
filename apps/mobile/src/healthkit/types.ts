@@ -1,4 +1,5 @@
-export const healthKitFeatures = [
+/** The existing bulk choice must not add newly introduced HealthKit read scopes. */
+export const healthKitBulkImportFeatures = [
   'medications',
   'bloodPressure',
   'sleep',
@@ -8,6 +9,12 @@ export const healthKitFeatures = [
   'workouts',
 ] as const;
 
+export const healthKitFeatures = [
+  ...healthKitBulkImportFeatures,
+  'restingHeartRate',
+  'walkingHeartRateAverage',
+] as const;
+
 export type HealthKitFeature = (typeof healthKitFeatures)[number];
 
 export const healthKitSampleKinds = [
@@ -15,6 +22,8 @@ export const healthKitSampleKinds = [
   'bloodPressure',
   'sleep',
   'heartRate',
+  'restingHeartRate',
+  'walkingHeartRateAverage',
   'steps',
   'bodyMass',
   'workouts',

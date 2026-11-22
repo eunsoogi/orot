@@ -3,6 +3,8 @@ import type { RecordMap } from '@orot/storage';
 
 export const commonObservationFeatures = [
   'heartRate',
+  'restingHeartRate',
+  'walkingHeartRateAverage',
   'steps',
   'bodyMass',
   'workouts',
@@ -13,7 +15,12 @@ export type CommonObservationFeature =
 
 export type CommonObservationUnit = 'count/min' | 'count' | 'kg' | 'min';
 export type CommonObservationConcept =
-  'heart_rate' | 'step_count' | 'body_mass' | 'workout_duration';
+  | 'heart_rate'
+  | 'resting_heart_rate'
+  | 'walking_heart_rate_average'
+  | 'step_count'
+  | 'body_mass'
+  | 'workout_duration';
 export type CommonObservationQuantityValue = Extract<
   RecordMap['health_observation']['value'],
   { readonly kind: 'quantity' }

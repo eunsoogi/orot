@@ -1,5 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import type { HealthObservation } from '@orot/domain';
+import { isAppleDerivedHeartRateCategory } from '@orot/storage';
+import { AppleDerivedHeartRateSummary } from './AppleDerivedHeartRateSummary';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
@@ -102,7 +104,23 @@ export function HealthRecordsCategoryCard({
                 )}
         </Text>
       ) : null}
-      {!eventLike ? (
+      {isAppleDerivedHeartRateCategory(category) ? (
+        recentObservations.length && loadState !== 'ready' ? (
+          <Text>
+            {t(
+              loadState === 'failed'
+                ? 'healthRecords.error'
+                : 'healthRecords.loading',
+            )}
+          </Text>
+        ) : recentObservations.length ? (
+          <AppleDerivedHeartRateSummary
+            category={category}
+            observations={recentObservations}
+            partial={hasMore}
+          />
+        ) : null
+      ) : !eventLike ? (
         <HealthRecordsCategoryCharts
           category={category}
           observations={recentObservations}

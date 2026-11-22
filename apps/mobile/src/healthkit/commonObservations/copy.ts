@@ -10,6 +10,10 @@ export const commonObservationsCopy: CommonObservationsImportCopy = {
   featureNames: {
     workouts: t('healthkit.commonObservations.workouts'),
     heartRate: t('healthkit.commonObservations.heartRate'),
+    restingHeartRate: t('healthkit.commonObservations.restingHeartRate'),
+    walkingHeartRateAverage: t(
+      'healthkit.commonObservations.walkingHeartRateAverage',
+    ),
     steps: t('healthkit.commonObservations.steps'),
     bodyMass: t('healthkit.commonObservations.bodyMass'),
   },

@@ -1,3 +1,4 @@
+import { defaultObservationEvidence } from './defaultObservationEvidence';
 import {
   localQueryTimestampKey,
   localQueryTimestampKeyExpression,
@@ -60,7 +61,10 @@ export function candidateScopeCondition(
     );
     parameters.push(from, to);
   }
-  return { sql: clauses.join(' AND '), parameters };
+  return {
+    sql: `${clauses.join(' AND ')} ${defaultObservationEvidence(kind)}`.trim(),
+    parameters,
+  };
 }
 
 /** Maps Korean record topics to stored keys without adding facts or initiating a search. */

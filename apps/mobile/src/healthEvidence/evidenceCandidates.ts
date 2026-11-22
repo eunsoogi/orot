@@ -1,3 +1,7 @@
+import {
+  defaultHealthObservationCountSql,
+  defaultObservationEvidence,
+} from './defaultObservationEvidence';
 import { visitPeriodEvidenceAvailable } from '../storage/visitPeriodEvidencePolicy';
 import { STORAGE_TABLES } from '@orot/storage';
 import type { RecordKind, SqlDatabase, SqlExecutor } from '@orot/storage';
@@ -66,8 +70,8 @@ async function readDependencies(
       const batch = kindIds.slice(offset, offset + 100);
       const result = await executor.execute(
         `SELECT id, payload_json,
-          length(CAST(payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table}
-          WHERE id IN (${batch.map(() => '?').join(', ')})`,
+          length(CAST(payload_json AS BLOB)) AS payload_bytes FROM ${STORAGE_TABLES[kind].table} r
+          WHERE id IN (${batch.map(() => '?').join(', ')}) ${defaultObservationEvidence(kind)}`,
         [...batch],
       );
       for (const row of result.rows) {
@@ -100,7 +104,9 @@ export async function readEvidenceCandidates(
     for (const kind of HEALTH_EVIDENCE_RECORD_KINDS) {
       checkHealthEvidenceAbort(signal);
       const count = await transaction.execute(
-        `SELECT count(*) AS total FROM ${STORAGE_TABLES[kind].table}`,
+        kind === 'health_observation'
+          ? defaultHealthObservationCountSql()
+          : `SELECT count(*) AS total FROM ${STORAGE_TABLES[kind].table}`,
       );
       const total = count.rows[0]?.total;
       if (

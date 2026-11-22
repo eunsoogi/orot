@@ -1,3 +1,4 @@
+import { defaultObservationEvidence } from '../../healthEvidence/defaultObservationEvidence';
 import { RecordIdSchema } from '@orot/domain';
 import { decodeHealthEvidenceRecord } from '../../healthEvidence/localEvidenceQueries';
 import { openOwnedObservationHydration } from '../../healthEvidence/historyObservationHydrationOwner';
@@ -68,7 +69,8 @@ export async function readHistoryObservationAliases(
         length(CAST(r.payload_json AS BLOB)) AS payload_bytes,
         EXISTS (SELECT 1 FROM transcript_artifact_staleness s
           WHERE s.artifact_kind = 'health_observation' AND s.artifact_id = r.id) AS history_alias_stale
-      FROM health_observations r WHERE r.id IN (SELECT value FROM json_each(?))`,
+      FROM health_observations r WHERE r.id IN (SELECT value FROM json_each(?))
+        ${defaultObservationEvidence('health_observation')}`,
       [keys],
     );
     if (!owner.current()) return;

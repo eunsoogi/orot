@@ -10,6 +10,8 @@ const availableFeatures: readonly HealthKitAutoSyncFeature[] = [
   'bloodPressure',
   'sleep',
   'heartRate',
+  'restingHeartRate',
+  'walkingHeartRateAverage',
   'steps',
   'bodyMass',
   'workouts',

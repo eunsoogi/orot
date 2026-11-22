@@ -1,3 +1,4 @@
+import { defaultObservationEvidence } from './defaultObservationEvidence';
 import { visitPeriodEvidenceAvailable } from '../storage/visitPeriodEvidencePolicy';
 import { STORAGE_TABLES } from '@orot/storage';
 import type { RecordKind, RecordMap, SqlDatabase } from '@orot/storage';
@@ -49,7 +50,7 @@ export async function readCurrentEvidenceChunks(
         `SELECT r.id,
           r.payload_json,
           length(CAST(r.payload_json AS BLOB)) AS payload_bytes
-          FROM ${STORAGE_TABLES[kind].table} r WHERE r.id = ? AND ${currentEvidenceCondition(kind)}`,
+          FROM ${STORAGE_TABLES[kind].table} r WHERE r.id = ? AND ${currentEvidenceCondition(kind)} ${defaultObservationEvidence(kind)}`,
         [id],
       );
       if (!rows.rows[0]) continue;

@@ -1,3 +1,4 @@
+import { defaultObservationEvidence } from '../defaultObservationEvidence';
 import { recentHealthContextWindow } from './window';
 import { compareTimestamps, TimestampSchema } from '@orot/domain';
 import {
@@ -47,7 +48,7 @@ export async function readAvailableHealthContextWindow(
     return `SELECT ${occurrence} AS occurred, ${key} AS time_key FROM ${table} r
       WHERE ${occurrence} IS NOT NULL AND ${key} ${kind === 'medication_definition' ? '<=' : '<'} ?
       AND ${localQueryTimestampKeyExpression('r.ingested_at')} <= ?
-      AND ${currentEvidenceCondition(kind)}`;
+      AND ${currentEvidenceCondition(kind)} ${defaultObservationEvidence(kind)}`;
   });
   const result = await executor.execute(
     // Each branch keeps every eligibility filter before its local minimum. The

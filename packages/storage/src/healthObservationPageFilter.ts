@@ -2,10 +2,16 @@ import { RecordIdSchema, TimestampSchema } from '@orot/domain';
 import type { SqlExecutor, SqlValue } from './sql';
 import { localQueryTimestampKey, localQueryTimestampKeyExpression } from './localQueryTimestamp';
 import type { HealthObservationCursor } from './healthObservationPages';
+import {
+  appleDerivedHeartRateCategories,
+  appleDerivedHeartRatePredicate,
+  isAppleDerivedHeartRateCategory,
+} from './appleDerivedHeartRate';
 
 export const HEALTH_OBSERVATION_PAGE_CATEGORIES = [
   'blood_pressure',
   'heart_rate',
+  ...appleDerivedHeartRateCategories,
   'steps',
   'body_mass',
   'workouts',
@@ -53,8 +59,20 @@ export function healthObservationPagePredicate(
       ? null
       : localQueryTimestampKey(TimestampSchema.parse(filter.fromInclusive));
   if (from !== null && from > to) throw new Error('Health observation period is invalid.');
-  const clauses = [`(${categoryExpression}) = ?`, `(${timeExpression}) <= ?`];
-  const parameters: SqlValue[] = [filter.category, to];
+  const category = filter.category;
+  const derived = isAppleDerivedHeartRateCategory(category);
+  const clauses = [
+    derived ? appleDerivedHeartRatePredicate(category) : `(${categoryExpression}) = ?`,
+    `(${timeExpression}) <= ?`,
+  ];
+  const parameters: SqlValue[] = derived ? [to] : [category, to];
+  if (category === 'other') {
+    // Existing category index still seeks Other. Null legacy metadata must remain visible there.
+    const derivedPredicates = appleDerivedHeartRateCategories
+      .map((item) => `(${appleDerivedHeartRatePredicate(item)})`)
+      .join(' OR ');
+    clauses.push(`NOT COALESCE((${derivedPredicates}), 0)`);
+  }
   if (from !== null) {
     clauses.push(`(${timeExpression}) >= ?`);
     parameters.push(from);

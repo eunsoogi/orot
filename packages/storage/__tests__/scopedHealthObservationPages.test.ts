@@ -2,7 +2,7 @@ import { createRecordRepository, runMigrations } from '../src';
 import { readHealthObservationPage } from '../src/healthObservationPages';
 import { openSqliteTestDatabase } from './sqliteTestDatabase';
 import { healthObservation } from './localQueryTestSupport';
-import { HEALTH_OBSERVATION_PAGE_CATEGORIES } from '../src/healthObservationPageFilter';
+import type { HealthObservationPageCategory } from '../src/healthObservationPageFilter';
 
 function observed(...args: Parameters<typeof healthObservation>) {
   return { ...healthObservation(...args), ingestedAt: '2026-10-22T00:00:00Z' };
@@ -13,16 +13,16 @@ test('every health category reads its own bounded history without consuming unre
   try {
     await runMigrations(database);
     const repository = createRecordRepository(database);
-    const concepts = [
-      'blood pressure systolic',
-      'heart_rate',
-      'step_count',
-      'body_mass',
-      'workout_duration',
-      'HKCategoryTypeIdentifierSleepAnalysis',
-      'respiratory_rate',
-    ];
-    for (const [index, concept] of concepts.entries()) {
+    const cases = [
+      ['blood_pressure', 'blood pressure systolic'],
+      ['heart_rate', 'heart_rate'],
+      ['steps', 'step_count'],
+      ['body_mass', 'body_mass'],
+      ['workouts', 'workout_duration'],
+      ['sleep', 'HKCategoryTypeIdentifierSleepAnalysis'],
+      ['other', 'respiratory_rate'],
+    ] as const satisfies readonly (readonly [HealthObservationPageCategory, string])[];
+    for (const [index, [, concept]] of cases.entries()) {
       for (let row = 0; row < 3; row += 1) {
         await repository.put(
           'health_observation',
@@ -30,7 +30,7 @@ test('every health category reads its own bounded history without consuming unre
         );
       }
     }
-    for (const [index, category] of HEALTH_OBSERVATION_PAGE_CATEGORIES.entries()) {
+    for (const [index, [category]] of cases.entries()) {
       const filter = {
         category,
         fromInclusive: '2026-10-19T00:00:00Z',

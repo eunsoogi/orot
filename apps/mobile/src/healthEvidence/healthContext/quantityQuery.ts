@@ -1,3 +1,4 @@
+import { defaultObservationEvidence } from '../defaultObservationEvidence';
 import {
   healthContextCalendarParameter,
   healthContextCalendarSql,
@@ -75,6 +76,7 @@ export async function readHealthQuantityContext(
   const admitted = `${admittedKind}
           ${familyFilter}
           AND ${currentEvidenceCondition('health_observation')}
+          ${defaultObservationEvidence('health_observation')}
           AND json_extract(r.payload_json, '$.value.kind') = 'quantity'
           AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
           AND json_type(r.payload_json, '$.value.unit') = 'text'`;

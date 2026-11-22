@@ -17,6 +17,10 @@ export const unifiedHealthImportCopy: HealthKitImportScreenCopy = {
     bloodPressure: t('healthkit.unifiedImport.feature.bloodPressure'),
     sleep: t('healthkit.unifiedImport.feature.sleep'),
     heartRate: t('healthkit.unifiedImport.feature.heartRate'),
+    restingHeartRate: t('healthkit.unifiedImport.feature.restingHeartRate'),
+    walkingHeartRateAverage: t(
+      'healthkit.unifiedImport.feature.walkingHeartRateAverage',
+    ),
     steps: t('healthkit.unifiedImport.feature.steps'),
     bodyMass: t('healthkit.unifiedImport.feature.bodyMass'),
   },
