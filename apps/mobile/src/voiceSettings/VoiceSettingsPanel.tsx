@@ -109,6 +109,16 @@ export function VoiceSettingsPanel({
       ));
   return (
     <View testID="voice-settings-panel">
+      {savedModel !== null && !failedLoad ? (
+        <ModelSelectionSummary
+          label={t('modelSettings.currentSelection')}
+          value={modelPresentation(
+            savedMode === 'local' ? 'Apple' : 'OpenAI API',
+            savedChoice?.title,
+          )}
+          testID="voice-current-model"
+        />
+      ) : null}
       {active ? disclosureSheet : null}
       <View style={styles.section} testID="voice-model-group-local">
         <Text accessibilityRole="header" style={styles.heading}>
@@ -176,16 +186,6 @@ export function VoiceSettingsPanel({
         ) : null}
       </View>
       <View style={styles.section}>
-        {savedModel !== null && !failedLoad ? (
-          <ModelSelectionSummary
-            label={t('modelSettings.currentSelection')}
-            value={modelPresentation(
-              savedMode === 'local' ? 'Apple' : 'OpenAI API',
-              savedChoice?.title,
-            )}
-            testID="voice-current-model"
-          />
-        ) : null}
         {mode === 'openai-api' && (!liveAvailable || model !== liveModel) ? (
           <Text accessibilityRole="alert">
             {t('modelSettings.liveVoiceUnavailableNoFallback')}

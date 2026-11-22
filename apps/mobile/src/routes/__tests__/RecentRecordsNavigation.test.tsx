@@ -2,9 +2,10 @@ import { AppState } from 'react-native';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { loadRecentMaterial } from '../../generatedReports/recentMaterialReader';
 import { openGeneratedReportReader } from '../../generatedReports/readers';
-import { fireEvent, screen } from '@testing-library/react-native';
+import { act, fireEvent, screen } from '@testing-library/react-native';
 import {
   renderRecords,
+  recentTestExecution,
   recentRouteProps as routeProps,
 } from '../testSupport/recentRecordsRouteTestSupport';
 import { createNavigationController } from '../../navigation/navigationController';
@@ -71,25 +72,19 @@ jest.mock('../../memory/SavedMemoryLoaderContext', () => {
 
 function allowSavedMaterial() {
   AppState.currentState = 'active';
-  jest.mocked(conversationExecutionNative).mockReturnValue({
-    bridgeAvailable: true,
-    protectedDataAvailable: async () => true,
-    subscribe: () => () => {},
-    currentPhase: () => 'active',
-    begin: jest.fn(),
-    end: jest.fn(),
-    isActive: jest.fn(),
-  });
+  jest.mocked(conversationExecutionNative).mockReturnValue(recentTestExecution);
 }
 
 // Synthetic data exercises the production route switch and native-stack adapter, not a local expansion toggle.
 test('opens all recent records in a separate route and Back restores the compact overview', async () => {
+  allowSavedMaterial();
+  jest.mocked(loadRecentMaterial).mockResolvedValue([]);
   const controller = createNavigationController<AppNavigationRoute>('root');
   const props = routeProps();
   await renderRecords(controller, props);
   expect(screen.getByTestId('records-capture-actions')).toBeTruthy();
   expect(screen.queryByTestId('records-recent-source-synthetic-4')).toBeNull();
-  await fireEvent.press(screen.getByTestId('records-recent-view-all'));
+  await fireEvent.press(await screen.findByTestId('records-recent-view-all'));
   expect(controller.getSnapshot().currentRoute.name).toBe('recent-records');
   expect(screen.getByTestId('records-recent-source-synthetic-4')).toBeTruthy();
   expect(screen.queryByTestId('records-capture-actions')).toBeNull();
@@ -99,7 +94,7 @@ test('opens all recent records in a separate route and Back restores the compact
   expect(controller.getSnapshot().currentRoute.name).toBe('root');
   expect(screen.getByTestId('records-capture-actions')).toBeTruthy();
   expect(screen.queryByTestId('records-recent-source-synthetic-4')).toBeNull();
-  await fireEvent.press(screen.getByTestId('records-recent-view-all'));
+  await fireEvent.press(await screen.findByTestId('records-recent-view-all'));
   await fireEvent.press(
     screen.getByTestId('records-recent-source-synthetic-4'),
   );
@@ -166,7 +161,7 @@ test('lists five categories together and opens each selected protected destinati
     },
   };
   await renderRecords(controller, props);
-  await fireEvent.press(screen.getByTestId('records-recent-view-all'));
+  await fireEvent.press(await screen.findByTestId('records-recent-view-all'));
   await screen.findByTestId('records-recent-source-visit:synthetic');
   const buttons = screen.getAllByTestId(
     /^(medical-document-source-\d|records-recent-source-)/,
@@ -208,7 +203,7 @@ test('lists five categories together and opens each selected protected destinati
   expect(getDocument).toHaveBeenCalledWith('photo');
 });
 
-test('keeps audio responsive while the first page waits and appends the exact next cursor', async () => {
+test('hides an uncertified audio row while the first page waits and appends the exact next cursor', async () => {
   allowSavedMaterial();
   const reports = Array.from({ length: 21 }, (_, index) => ({
     key: 'visit:' + String(30 - index),
@@ -230,10 +225,10 @@ test('keeps audio responsive while the first page waits and appends the exact ne
     );
   const controller = createNavigationController<AppNavigationRoute>('root');
   await renderRecords(controller, routeProps());
-  expect(screen.getByTestId('records-recent-source-synthetic-0')).toBeTruthy();
+  expect(screen.queryByTestId('records-recent-source-synthetic-0')).toBeNull();
   expect(screen.getByTestId('records-recent-sources-loading')).toBeTruthy();
-  await fireEvent.press(screen.getByTestId('records-recent-view-all'));
-  release(reports.slice(0, 20));
+  await act(async () => release(reports.slice(0, 20)));
+  await fireEvent.press(await screen.findByTestId('records-recent-view-all'));
   const more = await screen.findByTestId('records-recent-show-more');
   expect(screen.queryByTestId('records-recent-source-visit:10')).toBeNull();
   await fireEvent.press(more);
@@ -243,7 +238,7 @@ test('keeps audio responsive while the first page waits and appends the exact ne
   expect(screen.getAllByTestId('records-recent-source-visit:30')).toHaveLength(
     1,
   );
-  expect(load).toHaveBeenLastCalledWith({
+  expect(load.mock.lastCall?.[0]).toEqual({
     key: 'visit:11',
     createdAt: reports[19].createdAt,
   });

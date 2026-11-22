@@ -128,7 +128,7 @@ export function ConversationHistory({
     geometry: scrollGeometry,
   });
   const followLatest = (contentHeight?: number) =>
-    !reading.pending &&
+    !(reading.pending || userScrolling.current /* drag owns offset */) &&
     followConversationLatest({
       hasMessages: visibleMessages.length + (voiceEndCards?.length ?? 0) > 0,
       compact,

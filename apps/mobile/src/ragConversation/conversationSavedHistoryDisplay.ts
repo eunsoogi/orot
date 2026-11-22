@@ -1,7 +1,10 @@
 import type { ArchivedConversationPresentationMetadata } from '../storage/archivedConversationPresentationMetadata';
 import type { ConversationHistoryCursor } from './conversationHistoryPage';
 import type { DisplayMessage } from './conversationDisplayMessage';
-import type { ConversationSession } from './conversationSessionTypes';
+import type {
+  ConversationSession,
+  ConversationSessionOptions,
+} from './conversationSessionTypes';
 import { restoredConversationInterruptionCopy } from './restoredConversationInterruptionCopy';
 import type { ConversationRecoveryReason } from './conversationExecutionLease';
 import type { RetainedConversationTask } from './conversationTaskState';
@@ -144,4 +147,35 @@ export function visibleSavedHistoryDisplay(
   )
     return undefined;
   return session.savedHistoryDisplay;
+}
+
+/** A send may retain mounted, already admitted rows during model confirmation.
+ * It does not authorize dispatch, rehydrate data, or borrow a replacement lease. */
+export function admittedDisplayLease(
+  session: ConversationSession | undefined,
+  retention: ConversationSessionOptions['retention'],
+) {
+  if (
+    !session?.preparingSend ||
+    visibleSavedHistoryDisplay(session) === undefined
+  )
+    return;
+  const lease = retention?.activeLease(session.id);
+  if (!lease) return;
+  const { id, version } = lease;
+  return {
+    withholdUnless(
+      target: { id: string; version: number },
+      withhold: () => void,
+    ) {
+      const live = retention?.activeLease(session.id);
+      if (
+        target.id !== id ||
+        target.version !== version ||
+        live?.id !== id ||
+        live.version !== version
+      )
+        withhold();
+    },
+  };
 }

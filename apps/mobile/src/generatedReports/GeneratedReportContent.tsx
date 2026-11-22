@@ -2,7 +2,6 @@ import { View } from 'react-native';
 import { generatedReportCopy as copy } from './text';
 import { AppText } from '../layout/AppText';
 import { AiResponseText } from '../layout/AiResponseText';
-import { DailyReportCoverageCard } from '../aiFeatures/integration/DailyReportCoverageCard';
 import { OMITTED_SUMMARY_CONTENT_NOTE } from '../diseaseHypotheses/summaryPartialValidation';
 import { INCOMPLETE_SUMMARY_EVIDENCE_NOTE } from '../diseaseHypotheses/summaryPartialEvidence';
 import type {
@@ -26,6 +25,7 @@ export function GeneratedReportContent({
   ) => void;
 }) {
   const sources = detail.conversationSources;
+  const report = detail.dailyReport ?? detail.conversationPossibility;
   return (
     <View testID="generated-report-detail">
       {detail.warning ? <AppText>{detail.warning}</AppText> : null}
@@ -36,11 +36,14 @@ export function GeneratedReportContent({
         <AppText>{INCOMPLETE_SUMMARY_EVIDENCE_NOTE}</AppText>
       ) : null}
       <SavedSummaryReviewWarnings current={detail.analysis?.savedSummary} />
-      {detail.conversationPossibility ? (
+      {report ? (
         <ConversationReportText
-          report={detail.conversationPossibility}
+          report={report}
           testID="generated-report-conversation-template"
           showTitle={false}
+          paragraphTestIDPrefix={
+            detail.dailyReport ? 'generated-report-paragraph' : undefined
+          }
         />
       ) : (
         detail.paragraphs.map((text, index) => (
@@ -61,14 +64,7 @@ export function GeneratedReportContent({
           )}
         </AppText>
       ))}
-      {detail.daily?.coverage.map((item, index) => (
-        <DailyReportCoverageCard
-          key={index}
-          item={item}
-          timeZone={detail.daily!.identity.timeZone}
-        />
-      ))}
-      {detail.analysis || detail.daily ? (
+      {(detail.analysis || detail.dailyReport) && !sources ? (
         <AppText>{copy.sourceNavigationUnavailable}</AppText>
       ) : null}
       {sources && onOpenCitation ? (

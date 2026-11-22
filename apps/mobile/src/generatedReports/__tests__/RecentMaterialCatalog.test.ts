@@ -1,11 +1,14 @@
 import {
   createManualHistoryRepository,
+  createRecordRepository,
+  listRecentSourcePage,
   localConversationMemoryIdPrefix,
   runMigrations,
 } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createConversationSessionVisibility } from '../../storage/conversationSessionVisibility';
 import { subscribeConversationVisibility } from '../../storage/conversationVisibilityEvents';
+import { buildRecentRecordEntries } from '../../routes/RecordsRecentTimeline';
 import { listGeneratedReports, listRecentMaterial } from '../catalog';
 
 test('pages across protected metadata only and hides superseded, cleared and unavailable items', async () => {
@@ -156,6 +159,87 @@ test('pages across protected metadata only and hides superseded, cleared and una
       (await listRecentMaterial(f.database)).at(-1)!,
     );
     expect(after.some(row => row.origin === 'memory')).toBe(false);
+  } finally {
+    f.close();
+  }
+});
+
+test('seeks exact submillisecond offset instants and SQLite Unicode ties across pages', async () => {
+  const f = openSqliteTestDatabase(':memory:');
+  const older = '2026-11-22T12:00:00.000100Z';
+  const latest = '2026-11-22T21:00:00.000200+09:00';
+  try {
+    await runMigrations(f.database);
+    const entries = [
+      ...Array.from({ length: 19 }, (_, index) => [
+        `new-${index}`,
+        `new-${index}`,
+        '2026-11-22T12:00:01Z',
+      ]),
+      ['supplementary', 'tie-\u{10000}', latest],
+      ['same-appointment-older', 'tie-\u{10000}', older],
+      ['bmp', 'tie-\uE000', latest],
+      ['older', 'zz-older', older],
+    ];
+    for (const [id, appointmentId, timestamp] of entries) {
+      await f.database.execute(
+        'INSERT INTO visit_questions(id,effective_at,recorded_at,ingested_at,payload_json) VALUES (?,?,?,?,?)',
+        [
+          id,
+          timestamp,
+          timestamp,
+          timestamp,
+          JSON.stringify({ appointmentId }),
+        ],
+      );
+    }
+    const first = await listRecentMaterial(f.database);
+    expect(first).toHaveLength(20);
+    expect(first.at(-1)).toMatchObject({
+      key: 'visit:tie-\u{10000}',
+      createdAt: latest,
+    });
+    const second = await listRecentMaterial(f.database, first.at(-1));
+    expect(second.map(({ key, createdAt }) => ({ key, createdAt }))).toEqual([
+      { key: 'visit:tie-\uE000', createdAt: latest },
+      { key: 'visit:zz-older', createdAt: older },
+    ]);
+
+    const records = createRecordRepository(f.database);
+    const shared = {
+      provenance: { origin: 'imported' as const, sourceRecordIds: [] },
+      reviewState: { status: 'unreviewed' as const },
+    };
+    await records.put('source_record', {
+      ...shared,
+      id: 'photo',
+      sourceKind: 'medical_document',
+      ingestedAt: older,
+    });
+    await records.put('source_record', {
+      ...shared,
+      id: 'audio',
+      sourceKind: 'audio_recording',
+      recordedAt: latest,
+      effectiveAt: latest,
+      ingestedAt: '2026-11-22T12:00:01Z',
+      recordingDurationMs: 100,
+    });
+    const media = (await listRecentSourcePage(f.database)).map(row => ({
+      ...row,
+      key: row.id,
+    }));
+    expect(
+      buildRecentRecordEntries([], [], [...first, ...second], media)
+        .slice(19)
+        .map(row => row.id),
+    ).toEqual([
+      'audio',
+      'visit:tie-\u{10000}',
+      'visit:tie-\uE000',
+      'photo',
+      'visit:zz-older',
+    ]);
   } finally {
     f.close();
   }

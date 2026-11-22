@@ -119,6 +119,9 @@ it('preserves unavailable saved selection and never silently substitutes local',
   expect(await view.findByTestId('voice-current-model')).toHaveTextContent(
     /OpenAI API - 모델 이름을 확인할 수 없어요\./,
   );
+  expect(view.getAllByTestId(/^voice-(current|model-group-local)/)[0]).toBe(
+    view.getByTestId('voice-current-model-card'),
+  );
   expect(
     view.getByTestId('voice-settings-save').props.accessibilityState.disabled,
   ).toBe(true);

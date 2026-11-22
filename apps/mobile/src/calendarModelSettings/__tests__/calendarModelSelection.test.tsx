@@ -5,7 +5,6 @@ import { voiceSettingsStore } from '../../voiceSettings/voiceSettingsStore';
 import { createAppleSelectionOption } from '../../providers/selection/options';
 import { resolveCalendarModel } from '../resolveCalendarModel';
 import { resolveSelectedAiProvider } from '../../aiFeatures/integration/provider';
-
 // View-only boundary: SQLite grant activation and credential races have dedicated service tests.
 jest.mock('../../agent/execution/saveModelSettingsConsent', () => ({
   saveModelSettingsConsent: async (input: {
@@ -17,7 +16,6 @@ jest.mock(
   '../../layout/AppButton',
   () => require('../testSupport/calendarButtonFixture').calendarButtonFixture,
 );
-
 jest.mock('../calendarModelStore', () => ({
   calendarModelStore: {
     ...jest
@@ -153,7 +151,6 @@ it('does not publish a late catalog after account replacement', async () => {
   });
   expect(screen.queryByText('GPT-6 Luna')).toBeNull();
 });
-
 it('uses the shared compact API account card and keeps disconnected management reachable', async () => {
   account.accountStatus.mockResolvedValue({ connected: false, revision: 3 });
   const onOpenAccounts = jest.fn();
@@ -216,6 +213,11 @@ it('groups unset and saved identity in the shared summary without the removed in
   await render(
     <CalendarModelSettingsPanel options={[apple]} onBusyChange={jest.fn()} />,
   );
+  expect(
+    screen.getAllByTestId(
+      /^(calendar-current-model-card|calendar-model-group-openai-api)$/,
+    )[0]?.props.testID,
+  ).toBe('calendar-current-model-card');
   expect(screen.getByTestId('calendar-current-model-card')).toHaveStyle({
     padding: 16,
     borderRadius: 20,

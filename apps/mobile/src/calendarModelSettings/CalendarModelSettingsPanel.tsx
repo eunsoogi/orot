@@ -166,6 +166,19 @@ export function CalendarModelSettingsPanel({
   );
   return (
     <View testID="calendar-model-settings">
+      {!pending ? (
+        <View style={styles.section}>
+          <ModelSelectionSummary
+            label={saved ? t('modelSettings.currentSelection') : undefined}
+            value={
+              saved
+                ? savedModelPresentation(saved, savedOption, 'calendar')
+                : t('modelSettings.calendarUnselected')
+            }
+            testID="calendar-current-model"
+          />
+        </View>
+      ) : null}
       <ProviderSelectionChoices
         options={options}
         chatGPTSetup={chatGPTSetup}
@@ -225,19 +238,7 @@ export function CalendarModelSettingsPanel({
           onConfirm={confirm}
           onCancel={() => setPending(null)}
         />
-      ) : (
-        <View style={styles.section}>
-          <ModelSelectionSummary
-            label={saved ? t('modelSettings.currentSelection') : undefined}
-            value={
-              saved
-                ? savedModelPresentation(saved, savedOption, 'calendar')
-                : t('modelSettings.calendarUnselected')
-            }
-            testID="calendar-current-model"
-          />
-        </View>
-      )}
+      ) : null}
     </View>
   );
 }

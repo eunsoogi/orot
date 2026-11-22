@@ -5,8 +5,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { RecentMaterialRow } from '../generatedReports/catalog';
-import { loadRecentMaterial } from '../generatedReports/recentMaterialReader';
 import { useGeneratedReportAccess } from '../generatedReports/useGeneratedReportAccess';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
@@ -15,6 +13,7 @@ import type { ConversationExecutionAdapter } from '../ragConversation/conversati
 
 import type { RecordsTabAuthority } from './useAppRootTab';
 import { recentPageSize } from './RecordsRecentTimeline';
+import { linkRecentRefresh, type RecentPageRefresh } from './recentPageRefresh';
 
 async function isProtectedDataReadable(
   protection: ConversationExecutionAdapter,
@@ -26,14 +25,20 @@ async function isProtectedDataReadable(
   }
 }
 
-/** Reads bounded saved-output metadata independently from the existing document/audio feed. */
-export function useRecentSavedMaterial(
+type RecentPageRow = { readonly key: string; readonly createdAt: string };
+/** Each metadata stream owns its bounded cursor and enters the same route and privacy fences independently. */
+export function useRecentSavedMaterial<Row extends RecentPageRow>(
   active: boolean,
   ownership: NavigationRouteOwnership | undefined,
-  load = loadRecentMaterial,
+  load: (
+    before?: RecentPageRow,
+    options?: { signal: AbortSignal; canRetry: () => Promise<boolean> },
+  ) => Promise<readonly Row[]>,
   keepPages = false,
   enabled = true,
   tabAuthority?: RecordsTabAuthority,
+  subscribeChanges = subscribeConversationVisibility,
+  requireBridge = false,
 ) {
   const route = useRef({ active, ownership });
   route.current = { active, ownership };
@@ -57,14 +62,14 @@ export function useRecentSavedMaterial(
     return () => isMountedOwner() && (isTabCurrent?.() ?? true);
   }, [isMountedOwner, tabAuthority]);
   const isRouteCurrent = captureCurrent();
-  const [rows, setRows] = useState<readonly RecentMaterialRow[]>([]);
+  const [rows, setRows] = useState<readonly Row[]>([]);
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'failed'>(
     'idle',
   );
   const [more, setMore] = useState(true);
-  const [tabVersion, setTabVersion] = useState(0);
+  const [pageEpoch, setPageEpoch] = useState(0);
   const generation = useRef(0);
-  const published = useRef<readonly RecentMaterialRow[]>([]);
+  const published = useRef<readonly Row[]>([]);
   const pending = useRef<AbortController | null>(null);
   const abort = useCallback(() => {
     generation.current += 1;
@@ -85,6 +90,7 @@ export function useRecentSavedMaterial(
     setRows([]);
     setMore(true);
     setState('idle');
+    setPageEpoch(version => version + 1);
   }, [abort]);
   const refuse = useCallback(() => {
     invalidate();
@@ -97,19 +103,17 @@ export function useRecentSavedMaterial(
     abort,
     keepPages,
   );
-
-  // Session hides can commit after a tab switch, without a source-deletion event.
-  useEffect(() => subscribeConversationVisibility(invalidate), [invalidate]);
+  // Commits can finish after the user changes tabs or before the route focuses again.
+  useEffect(
+    () => (enabled ? subscribeChanges(invalidate) : undefined),
+    [enabled, invalidate, subscribeChanges],
+  );
   useLayoutEffect(
-    () =>
-      tabAuthority?.subscribe(() => {
-        invalidate();
-        setTabVersion(version => version + 1);
-      }),
+    () => tabAuthority?.subscribe(invalidate),
     [invalidate, tabAuthority],
   );
-
   useEffect(() => {
+    if (!enabled) return;
     const protection = conversationExecutionNative();
     if (!protection?.bridgeAvailable) return;
     return protection.subscribe(event => {
@@ -118,86 +122,128 @@ export function useRecentSavedMaterial(
       if (event.available) invalidate();
       else refuse();
     });
-  }, [invalidate, refuse]);
-
+  }, [enabled, invalidate, refuse]);
   const request = useCallback(
-    async (before?: RecentMaterialRow) => {
+    async (before?: Row, epoch?: RecentPageRefresh) => {
       const inTab = captureCurrent();
       if (!inTab() || !canAccess() || pending.current) return false;
       const operation = new AbortController();
       pending.current = operation;
       const current = () => inTab() && canAccess() && !operation.signal.aborted;
       const protection = conversationExecutionNative();
+      let retained = false;
+      const release = () => {
+        unlink?.();
+        if (pending.current !== operation) return;
+        pending.current = null;
+        if (epoch)
+          setState(previous => (previous === 'loading' ? 'ready' : previous));
+      };
+      const unlink = epoch && linkRecentRefresh(epoch, operation, release);
+      const verify = async () => {
+        if (!current() || !protection?.bridgeAvailable) return false;
+        const admitted = await isProtectedDataReadable(protection);
+        if (!current()) return false;
+        if (!admitted) refuse();
+        return admitted;
+      };
       try {
         setState('loading');
         if (!protection?.bridgeAvailable) {
-          setMore(false);
-          setState('ready');
+          if (requireBridge || epoch) refuse();
+          else {
+            setMore(false);
+            setState('ready');
+          }
           return false;
         }
-        const admitted = await isProtectedDataReadable(protection);
-        if (!current()) return false;
-        if (!admitted) {
-          refuse();
-          return false;
-        }
+        if (!(await verify()) || !current()) return false;
         const page = await load(
           before && { createdAt: before.createdAt, key: before.key },
+          {
+            signal: operation.signal,
+            canRetry: verify,
+          },
         );
-        if (!current()) return false;
-        const remaining = await isProtectedDataReadable(protection);
-        if (!current()) return false;
-        if (!remaining) {
-          refuse();
-          return false;
-        }
-        published.current = before ? [...published.current, ...page] : page;
-        setRows(published.current);
-        setMore(page.length === recentPageSize);
-        setState('ready');
+        if (!(await verify()) || !current()) return false;
+        const publish = () => {
+          // A selection queued on a replaced prefix cannot open after publication.
+          if (epoch) generation.current += 1;
+          published.current = before ? [...published.current, ...page] : page;
+          setRows(published.current);
+          setMore(page.length === recentPageSize);
+          setState('ready');
+        };
+        if (epoch) {
+          // Hold the exact cursor operation until every required stream can publish together.
+          epoch.stage({ isCurrent: current, verify, publish, release });
+          retained = true;
+        } else publish();
         return true;
       } catch {
-        if (current()) setState('failed');
+        if (current()) {
+          setState('failed');
+          epoch?.fail();
+        }
         return false;
       } finally {
-        if (pending.current === operation) pending.current = null;
+        if (!retained) release();
       }
     },
-    [canAccess, captureCurrent, load, refuse],
+    [canAccess, captureCurrent, load, refuse, requireBridge],
   );
-
   useEffect(() => {
     if (active && enabled && state === 'idle') request();
-  }, [accessVersion, active, enabled, request, state, tabVersion]);
+  }, [accessVersion, active, enabled, pageEpoch, request, state]);
 
   /** A press already queued before a deletion or native lock cannot open its old selection. */
   async function open(
-    row: RecentMaterialRow,
-    select: (value: RecentMaterialRow) => void,
+    row: Row,
+    select: (
+      value: Row,
+      revalidate: () => Promise<boolean>,
+      current: () => boolean,
+    ) => void | Promise<void>,
   ) {
     const initial = generation.current;
     const current = () =>
       generation.current === initial && isRouteCurrent() && canAccess();
     if (!current() || !published.current.includes(row)) return;
     const protection = conversationExecutionNative();
-    const admitted = Boolean(
-      protection?.bridgeAvailable &&
-      (await isProtectedDataReadable(protection)),
-    );
-    if (!current()) return;
-    if (admitted) select(row);
-    else refuse();
+    const revalidate = async () => {
+      if (!current()) return false;
+      const admitted = Boolean(
+        protection?.bridgeAvailable &&
+        (await isProtectedDataReadable(protection)),
+      );
+      if (!current()) return false;
+      if (!admitted) refuse();
+      return admitted;
+    };
+    if ((await revalidate()) && current())
+      await select(row, revalidate, current);
   }
-
+  const pageGeneration = generation.current;
+  const tail = rows[rows.length - 1];
   return {
     rows,
-    state,
+    pageEpoch,
+    state: state === 'idle' && active && enabled ? ('loading' as const) : state,
     more,
     open,
     isRouteCurrent,
+    prepareRefresh: (epoch: RecentPageRefresh) => {
+      if (epoch.signal.aborted || !isRouteCurrent() || !canAccess())
+        return Promise.resolve(false);
+      abort();
+      setPageEpoch(version => version + 1);
+      return request(undefined, epoch);
+    },
     loadMore: () =>
-      isRouteCurrent()
-        ? request(rows[rows.length - 1])
+      isRouteCurrent() &&
+      generation.current === pageGeneration &&
+      tail === published.current[published.current.length - 1]
+        ? request(tail)
         : Promise.resolve(false),
   };
 }

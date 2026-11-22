@@ -8,11 +8,16 @@ import {
   useRef,
 } from 'react';
 import {
+  RefreshControl,
   ScrollView,
   StyleSheet,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
+import {
+  NavigationRouteRefreshContext,
+  useNavigationRouteRefreshHost,
+} from './navigationRouteRefresh';
 import { useNavigationContentInset } from './useNavigationContentInset';
 import { useNavigationEdgeVerticalScroll } from './navigationEdgeScroll';
 
@@ -32,9 +37,12 @@ export function useNavigationRouteScrollPosition() {
 /** Lets route content fill its viewport and scroll behind the shared glass actions. */
 export function NavigationRouteScrollView({
   children,
+  pullToRefresh = false,
 }: {
   readonly children: ReactNode;
+  readonly pullToRefresh?: boolean;
 }) {
+  const refresh = useNavigationRouteRefreshHost();
   const navigationInset = useNavigationContentInset();
   const edge = useNavigationEdgeVerticalScroll({
     trailingPadding: navigationInset.paddingRight,
@@ -77,23 +85,36 @@ export function NavigationRouteScrollView({
 
   return (
     <NavigationRouteScrollPositionContext.Provider value={position}>
-      <ScrollView
-        ref={scrollViewRef}
-        automaticallyAdjustKeyboardInsets
-        {...edge.indicatorProps}
-        contentContainerStyle={[
-          styles.content,
-          navigationInset,
-          edge.contentStyle,
-        ]}
-        keyboardShouldPersistTaps="handled"
-        onScroll={updateCurrentOffset}
-        scrollEventThrottle={16}
-        style={[styles.fill, edge.scrollViewStyle]}
-        testID="navigation-route-scroll"
+      <NavigationRouteRefreshContext.Provider
+        value={pullToRefresh ? refresh.register : null}
       >
-        {children}
-      </ScrollView>
+        <ScrollView
+          ref={scrollViewRef}
+          automaticallyAdjustKeyboardInsets
+          {...edge.indicatorProps}
+          contentContainerStyle={[
+            styles.content,
+            navigationInset,
+            edge.contentStyle,
+          ]}
+          keyboardShouldPersistTaps="handled"
+          onScroll={updateCurrentOffset}
+          refreshControl={
+            pullToRefresh ? (
+              <RefreshControl
+                testID="navigation-route-refresh"
+                refreshing={refresh.refreshing}
+                onRefresh={refresh.onRefresh}
+              />
+            ) : undefined
+          }
+          scrollEventThrottle={16}
+          style={[styles.fill, edge.scrollViewStyle]}
+          testID="navigation-route-scroll"
+        >
+          {children}
+        </ScrollView>
+      </NavigationRouteRefreshContext.Provider>
     </NavigationRouteScrollPositionContext.Provider>
   );
 }

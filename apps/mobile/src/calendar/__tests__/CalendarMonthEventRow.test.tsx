@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
 import { CalendarMonthView } from '../CalendarMonthView';
 import { appointmentFor, event } from '../calendarTestUtils';
+import { formatCalendarEventRange } from '../dateTime';
 // Event-card assertions use ordinary text; large-text rows have separate coverage.
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
   default: () => ({ width: 393, height: 852, scale: 3, fontScale: 1 }),
@@ -23,28 +24,45 @@ it('uses a neutral next-visit card and a scalable compact selection action', asy
       title: longTitle,
     },
   };
+  const onSelectEvent = jest.fn();
   const calendar = await render(
     <CalendarMonthView
       appointmentsLoading={false}
       candidatesLoaded
-      events={[visit]}
+      events={[visit, event('other', '2035-06-02T01:00:00.000Z')]}
       initialDate={new Date(2035, 5, 2)}
       linkedAppointment={appointmentFor(visit)}
-      onSelectEvent={jest.fn()}
+      onSelectEvent={onSelectEvent}
       queryWindow={queryWindow('2035-06-01', '2035-06-10')}
       resultsMayBeIncomplete={false}
     />,
   );
 
+  const list = calendar.getByTestId('calendar-events-for-selected-date');
+  expect(StyleSheet.flatten(list.props.style)).toMatchObject({ gap: 10 });
+  const cards = list.children;
+  expect(cards).toHaveLength(2);
   const card = calendar.getByTestId('calendar-next-visit');
   expect(StyleSheet.flatten(card.props.style)).toMatchObject({
     backgroundColor: appColors.background,
     borderRadius: 12,
-    borderWidth: 0,
-    borderLeftWidth: 1,
     minWidth: 0,
     padding: 14,
   });
+  const cardStyle = StyleSheet.flatten(card.props.style);
+  expect(
+    Object.keys(cardStyle).filter(property => property.startsWith('border')),
+  ).toEqual(['borderRadius']);
+  const other = calendar.getByTestId(
+    'calendar-event-card-candidate:other:2035-06-02T01:00:00.000Z',
+  );
+  expect(StyleSheet.flatten(other.props.style)).toEqual(
+    StyleSheet.flatten(card.props.style),
+  );
+  const time = calendar.getByTestId('calendar-next-visit-time');
+  expect(time).toHaveTextContent(formatCalendarEventRange(visit));
+  expect(time.props.numberOfLines).toBeUndefined();
+  expect(time.props.allowFontScaling).not.toBe(false);
   const title = calendar.getByTestId('calendar-next-visit-title');
   expect(title).toHaveTextContent(longTitle);
   expect(title.props.allowFontScaling).not.toBe(false);
@@ -72,9 +90,12 @@ it('uses a neutral next-visit card and a scalable compact selection action', asy
     selected: false,
     disabled: false,
   });
-  expect(calendar.getByText('이 일정 선택').props.allowFontScaling).not.toBe(
-    false,
-  );
+  expect(
+    calendar.getAllByText('이 일정 선택')[0].props.allowFontScaling,
+  ).not.toBe(false);
+  await fireEvent.press(selection);
+  expect(onSelectEvent).toHaveBeenCalledTimes(1);
+  expect(onSelectEvent).toHaveBeenCalledWith(visit);
 });
 
 it('exposes the exact selected event and disables choices while confirmation is pending', async () => {
