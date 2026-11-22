@@ -11,6 +11,7 @@ import {
   GeneratedReportFrame,
   GeneratedReportDescription,
   GeneratedReportRows,
+  type GeneratedReportPagination,
 } from './GeneratedReportRows';
 import type {
   GeneratedReportRow,
@@ -42,7 +43,8 @@ export function GeneratedReportBrowser({
   const [state, setState] = useState<
     'idle' | 'loading' | 'ready' | 'failed' | 'unavailable'
   >('idle');
-  const [more, setMore] = useState(false);
+  const [pagination, setPagination] =
+    useState<GeneratedReportPagination>('idle');
   const request = useRef<AbortController | null>(null);
   const abort = useCallback(() => {
     request.current?.abort();
@@ -53,7 +55,7 @@ export function GeneratedReportBrowser({
     setDetail(null);
     setSelected(null);
     setRows([]);
-    setMore(false);
+    setPagination('idle');
     setState('idle');
     setExpanded(false);
   }, [abort]);
@@ -66,26 +68,41 @@ export function GeneratedReportBrowser({
   const list = useCallback(
     async (append = false) => {
       if (!canAccess()) return;
+      const last = append ? rows.at(-1) : undefined;
+      if (append && !last) return;
       request.current?.abort();
       const controller = new AbortController();
       request.current = controller;
-      setExpanded(true);
-      setSelected(null);
-      setDetail(null);
-      setState('loading');
+      const current = () =>
+        request.current === controller &&
+        !controller.signal.aborted &&
+        canAccess();
+      if (append) {
+        // Replacing ready with loading unmounts rows and collapses the native scroll range.
+        setPagination('loading');
+      } else {
+        setExpanded(true);
+        setSelected(null);
+        setDetail(null);
+        setPagination('idle');
+        setState('loading');
+      }
       try {
         const reader = await open();
-        if (controller.signal.aborted || !canAccess()) return;
-        const last = append ? rows.at(-1) : undefined;
+        if (!current()) return;
         const page = await reader.list(
           last ? { createdAt: last.createdAt, key: last.key } : undefined,
         );
-        if (controller.signal.aborted || !canAccess()) return;
-        setRows(append ? [...rows, ...page] : page);
-        setMore(page.length === 20);
-        setState('ready');
+        if (!current()) return;
+        setRows(previous => (append ? [...previous, ...page] : page));
+        setPagination(
+          page.length === 20 ? 'ready' : append ? 'complete' : 'idle',
+        );
+        if (!append) setState('ready');
       } catch {
-        if (!controller.signal.aborted && canAccess()) setState('failed');
+        if (!current()) return;
+        if (append) setPagination('failed');
+        else setState('failed');
       }
     },
     [canAccess, open, rows],
@@ -107,6 +124,8 @@ export function GeneratedReportBrowser({
     const controller = new AbortController();
     request.current = controller;
     const selectedGeneration = ++generation.current;
+    // Opening an existing report wins over a page still in flight.
+    setPagination(previous => (previous === 'loading' ? 'ready' : previous));
     setSelected(row);
     setDetail(null);
     setState('loading');
@@ -202,12 +221,16 @@ export function GeneratedReportBrowser({
           {!selected && state === 'ready' ? (
             <GeneratedReportRows
               rows={rows}
-              more={more}
+              pagination={pagination}
               onOpen={row => {
                 if (request.current === metadataOwner) return read(row);
               }}
               onMore={() => {
-                if (request.current === metadataOwner) return list(true);
+                if (
+                  request.current === metadataOwner &&
+                  (pagination === 'ready' || pagination === 'failed')
+                )
+                  return list(true);
               }}
             />
           ) : null}

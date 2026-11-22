@@ -17,6 +17,10 @@ export const generatedReportCopy = {
   failed: '저장한 결과를 불러오지 못했어요.',
   retry: '다시 확인',
   more: '더 보기',
+  moreLoading: '더 불러오는 중',
+  moreFailed: '다음 결과를 불러오지 못했어요.',
+  moreRetry: '다시 더 보기',
+  moreComplete: '저장한 결과를 모두 불러왔어요.',
   back: '목록으로',
   close: '닫기',
   unavailable:
