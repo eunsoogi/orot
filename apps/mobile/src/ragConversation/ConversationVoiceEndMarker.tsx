@@ -24,6 +24,14 @@ export function ConversationVoiceEndMarker({
       testID="conversation-voice-end-marker"
       style={styles.card}
     >
+      <View
+        accessible={false}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        pointerEvents="none"
+        testID="conversation-voice-end-outline"
+        style={[StyleSheet.absoluteFill, styles.outline]}
+      />
       <AppSymbol name="waveform" size={24} color={appColors.text} />
       <View style={styles.copy}>
         <AppText style={styles.title}>{title}</AppText>
@@ -33,20 +41,28 @@ export function ConversationVoiceEndMarker({
   );
 }
 
-const background =
-  Platform.OS === 'ios'
-    ? DynamicColorIOS({ light: '#f0f1f4', dark: '#252525' })
-    : '#f0f1f4';
+const markerColor = (light: string, dark: string) =>
+  Platform.OS === 'ios' ? DynamicColorIOS({ light, dark }) : light;
+const cornerRadius = 16;
+const background = markerColor('#e3eaf2', '#252525');
+const outlineColor = markerColor('#aebfd3', 'transparent');
 
 const styles = StyleSheet.create({
   card: {
     alignSelf: 'stretch',
     alignItems: 'center',
     backgroundColor: background,
-    borderRadius: 16,
+    borderRadius: cornerRadius,
     flexDirection: 'row',
     gap: 12,
     padding: 16,
+  },
+  // A decorative light outline distinguishes the receipt from the canvas
+  // without changing its padded content box or dark appearance.
+  outline: {
+    borderRadius: cornerRadius,
+    borderWidth: 1,
+    borderColor: outlineColor,
   },
   copy: { flexShrink: 1, minWidth: 0, gap: 4 },
   title: { fontSize: 16, fontWeight: '600' },
