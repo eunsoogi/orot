@@ -206,6 +206,7 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         surface.removeFromSuperview()
         XCTAssertNil(portal.superview)
         try verifyTopAlignedPageDock(in: nextWindow, controller: nextController)
+        try verifyWindowTopBack(in: nextWindow, controller: nextController)
     }
 
     @MainActor
