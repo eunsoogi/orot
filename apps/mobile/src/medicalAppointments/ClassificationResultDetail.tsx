@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import { t } from '../i18n';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
@@ -13,14 +13,19 @@ export type ClassificationResultField = {
 export function ClassificationResultDetail({
   fields,
   top,
+  panelStyle,
   back,
 }: {
   readonly fields: readonly ClassificationResultField[];
   readonly top: number;
+  readonly panelStyle?: ViewStyle;
   readonly back: () => void;
 }) {
   return (
-    <View style={[styles.panel, { top }]} testID="classification-result-reader">
+    <View
+      style={[styles.panel, { top }, panelStyle]}
+      testID="classification-result-reader"
+    >
       <ClassificationEdgeAction
         direction="left"
         testID="classification-detail-back"

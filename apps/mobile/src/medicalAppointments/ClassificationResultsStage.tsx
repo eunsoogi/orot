@@ -20,6 +20,7 @@ import {
   ClassificationCircleButton,
   ClassificationCircleSlot,
   classificationCircleGeometry,
+  classificationDockGeometry,
 } from './ClassificationCircle';
 
 export interface ClassificationResultRow {
@@ -35,6 +36,7 @@ interface Props {
   readonly summary: string;
   readonly notice: string;
   readonly restart: () => void;
+  readonly movingCircle?: ReturnType<typeof classificationDockGeometry>;
 }
 
 export function ClassificationResultsStage({
@@ -42,6 +44,7 @@ export function ClassificationResultsStage({
   summary,
   notice,
   restart,
+  movingCircle,
 }: Props) {
   const window = useWindowDimensions();
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
@@ -63,7 +66,7 @@ export function ClassificationResultsStage({
   const naturalCaption = Math.max(target, Math.ceil(38 * scale + 4));
   // Keep the viewport the same size while a detail covers it. Resizing a
   // hidden scroll view near its bottom would clamp the remembered offset.
-  const compact = height < 3 * target + 8;
+  const compact = movingCircle ? movingCircle.inline : height < 3 * target + 8;
   const minimum = naturalCaption + naturalRow;
   const size = Math.max(
     0,
@@ -73,17 +76,29 @@ export function ClassificationResultsStage({
     0,
     Math.min((height - size) / 2, height - size - minimum - 8),
   );
-  const top = compact ? target + 8 : centerOffset + size + 8;
+  const top = compact
+    ? target + 8
+    : movingCircle
+      ? movingCircle.captionTop
+      : centerOffset + size + 8;
   const captionHeight = Math.min(
     naturalCaption,
     Math.max(target, height - top - target),
   );
   const showingDetail = Boolean(details);
+  const panelStyle = movingCircle?.side
+    ? {
+        left: movingCircle.listStart,
+        right: 0,
+        width: undefined,
+        maxWidth: undefined,
+      }
+    : {};
 
   const actionTitle = t('medicalAppointments.restartShort');
   const actionLabel = t('medicalAppointments.startAgain');
   // No list: preserve the full measured failure reader and small-window escape.
-  if (!rows.length) {
+  if (!rows.length && !movingCircle) {
     return (
       <ClassificationPagedStage
         testID="medical-appointment-results"
@@ -131,21 +146,28 @@ export function ClassificationResultsStage({
       {compact ? (
         <View style={styles.compactHeader}>
           <View style={styles.compactAction}>
-            <ClassificationCircleSlot size={target} centerOffset={0}>
-              {restartButton(target)}
-            </ClassificationCircleSlot>
+            {!movingCircle && (
+              <ClassificationCircleSlot size={target} centerOffset={0}>
+                {restartButton(target)}
+              </ClassificationCircleSlot>
+            )}
           </View>
           {!showingDetail && noticeAction(target, true)}
         </View>
-      ) : (
+      ) : !movingCircle ? (
         <ClassificationCircleSlot size={size} centerOffset={centerOffset}>
           {restartButton(size)}
         </ClassificationCircleSlot>
-      )}
+      ) : null}
       {/* Keep the native scroll view mounted at its original offset. When the
           reader owns the surface, hidden rows cannot take touches or AX focus. */}
       <View
-        style={[styles.list, { top }, showingDetail && styles.hidden]}
+        style={[
+          styles.list,
+          { top },
+          panelStyle,
+          showingDetail && styles.hidden,
+        ]}
         pointerEvents={showingDetail ? 'none' : 'auto'}
         accessibilityElementsHidden={showingDetail}
         importantForAccessibility={
@@ -153,37 +175,40 @@ export function ClassificationResultsStage({
         }
       >
         {!compact && noticeAction(captionHeight, false)}
-        <ScrollView
-          style={styles.viewport}
-          contentContainerStyle={styles.rows}
-          alwaysBounceVertical={false}
-          contentInsetAdjustmentBehavior="never"
-          testID="classification-result-list"
-        >
-          {rows.map(row => (
-            <Pressable
-              key={row.id}
-              style={[styles.result, { minHeight: naturalRow }]}
-              accessibilityRole="button"
-              accessibilityLabel={`${row.title}, ${row.when}, ${row.category}`}
-              accessibilityHint={t('medicalAppointments.openResultDetails')}
-              onPress={() => setDetail({ id: row.id })}
-              testID="classification-result-row"
-            >
-              <AppText numberOfLines={1} style={styles.title}>
-                {row.title}
-              </AppText>
-              <AppText numberOfLines={1} style={styles.time}>
-                {row.when} · {row.category}
-              </AppText>
-            </Pressable>
-          ))}
-        </ScrollView>
+        {rows.length > 0 && (
+          <ScrollView
+            style={styles.viewport}
+            contentContainerStyle={styles.rows}
+            alwaysBounceVertical={false}
+            contentInsetAdjustmentBehavior="never"
+            testID="classification-result-list"
+          >
+            {rows.map(row => (
+              <Pressable
+                key={row.id}
+                style={[styles.result, { minHeight: naturalRow }]}
+                accessibilityRole="button"
+                accessibilityLabel={`${row.title}, ${row.when}, ${row.category}`}
+                accessibilityHint={t('medicalAppointments.openResultDetails')}
+                onPress={() => setDetail({ id: row.id })}
+                testID="classification-result-row"
+              >
+                <AppText numberOfLines={1} style={styles.title}>
+                  {row.title}
+                </AppText>
+                <AppText numberOfLines={1} style={styles.time}>
+                  {row.when} · {row.category}
+                </AppText>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
       </View>
       {details && (
         <ClassificationResultDetail
           fields={details}
           top={top}
+          panelStyle={panelStyle}
           back={() => setDetail(null)}
         />
       )}

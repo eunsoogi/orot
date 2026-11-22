@@ -61,6 +61,64 @@ extension AppointmentConsentUITests {
         return details + labels
     }
 
+    /// Sample the settled product geometry before and after the real repeat confirmation.
+    @MainActor
+    func assertClassificationCircleRoundTrip(_ app: XCUIApplication, original: CGRect, originalLane: CGRect, expectLeft: Bool, requireDuoWidth: Bool) throws {
+        let slot = node(app, "classification-circle-slot")
+        let button = node(app, "medical-appointment-import")
+        let list = classificationListScroll(app)
+        XCTAssertTrue(slot.exists && button.isHittable)
+        let dock = button.frame
+        let hostID = "classification-moving-stage"
+        let owner = try FormWindowOwnership.resolveStage(app, observed: nil, required: [hostID, "classification-circle-slot", "classification-result-list"])
+        let laneNode = node(app, hostID)
+        let lane = laneNode.frame
+        // The fixture adds a saved marker above the route after the first run.
+        // Compare each real native circle against its current usable lane.
+        XCTAssertTrue(originalLane.contains(original) && lane.contains(dock))
+        XCTAssertEqual(original.midX, originalLane.midX, accuracy: 2)
+        XCTAssertEqual(original.midY, originalLane.midY, accuracy: 2)
+        XCTContext.runActivity(named: "Classification dock: window=\(owner.frame), initialLane=\(originalLane), lane=\(lane), central=\(original), docked=\(dock), list=\(list.frame)") { _ in }
+        if requireDuoWidth {
+            XCTAssertEqual(owner.frame.width, 466, accuracy: 2, "Launch intent is not proof of an expanded Duo viewport")
+            XCTAssertGreaterThanOrEqual(lane.width, 344)
+        }
+        if expectLeft {
+            XCTAssertLessThan(dock.midX, lane.midX - 20)
+            XCTAssertEqual(dock.midY, lane.midY, accuracy: 2)
+            XCTAssertLessThanOrEqual(dock.maxX, list.frame.minX)
+        } else {
+            XCTAssertLessThan(dock.midY, lane.midY - 20)
+            XCTAssertEqual(dock.midX, lane.midX, accuracy: 2)
+            XCTAssertLessThanOrEqual(dock.maxY, list.frame.minY)
+        }
+        button.tap()
+        XCTAssertTrue(node(app, "medical-appointment-confirmation").waitForAppearance())
+        XCTAssertTrue(button.waitForAppearance())
+        XCTAssertFalse(node(app, "classification-result-list").exists)
+        XCTAssertEqual(UITestConditions.text(node(app, "calendar-classification-synthetic-provider-calls")), "syntheticProviderCalls=2")
+        XCTAssertTrue(FormScrollGeometry.stableStageFrame(laneNode.frame, lane))
+        XCTAssertTrue(FormScrollGeometry.stableStageFrame(button.frame, dock))
+        if button.label == "전체 화면으로 내용 보기" {
+            button.tap()
+            XCTAssertTrue(node(app, "classification-close-reader").waitForAppearance())
+        }
+        tap(app, "medical-appointment-import")
+        let center = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard self.node(app, "medical-appointment-progress").exists, slot.exists,
+                  laneNode.exists else { return false }
+            let currentLane = laneNode.frame, currentCircle = slot.frame
+            return currentLane.contains(currentCircle)
+                && abs(currentCircle.midX - currentLane.midX) <= 2
+                && abs(currentCircle.midY - currentLane.midY) <= 2
+                && (expectLeft ? currentCircle.midX > dock.midX + 20 : currentCircle.midY > dock.midY + 20)
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [center]), .completed)
+        XCTAssertFalse(node(app, "classification-result-list").exists)
+        XCTAssertFalse(button.exists)
+        XCTAssertEqual(app.descendants(matching: .any).matching(identifier: "classification-circle-slot").count, 1)
+    }
+
     /// Accept only the unique native scroll surface, including Fabric's layout-only wrapper projection.
     @MainActor
     private func classificationListScroll(_ app: XCUIApplication) -> XCUIElement {

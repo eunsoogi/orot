@@ -26,22 +26,12 @@ export function ClassificationProgress({
     height: window.height,
   });
   const { width, height } = bounds;
-  const percent =
-    total > 0 ? Math.floor((100 * Math.min(classified, total)) / total) : 0;
-  const shown = useClassificationProgressMotion(percent);
   const geometry = classificationCircleGeometry(
     width,
     height,
     window.fontScale,
   );
   const { size, captionTop } = geometry;
-  const label = t(
-    saving
-      ? 'medicalAppointments.savingResults'
-      : 'medicalAppointments.progress',
-  );
-  const showLabel = height - captionTop >= window.fontScale * 20;
-  const circumference = 2 * Math.PI * 44;
   return (
     <View
       style={styles.content}
@@ -57,64 +47,109 @@ export function ClassificationProgress({
       }}
     >
       <ClassificationCircleSlot {...geometry}>
-        <View
-          accessible
-          accessibilityRole="progressbar"
-          accessibilityLabel={label}
-          accessibilityValue={{ min: 0, max: 100, now: percent }}
-          style={{ width: size, height: size }}
-        >
-          <Svg
-            width="100%"
-            height="100%"
-            viewBox="0 0 100 100"
-            accessible={false}
-          >
-            <Circle
-              cx={50}
-              cy={50}
-              r={44}
-              stroke={appColors.border}
-              strokeWidth={7}
-              fill="none"
-            />
-            <Circle
-              cx={50}
-              cy={50}
-              r={44}
-              stroke={appColors.primaryText}
-              strokeWidth={7}
-              fill="none"
-              strokeDasharray={[circumference, circumference]}
-              testID="classification-progress-arc"
-              strokeDashoffset={circumference * (1 - shown / 100)}
-              rotation={-90}
-              origin="50, 50"
-            />
-          </Svg>
-          <View pointerEvents="none" style={styles.number}>
-            {/* The decorative numeral follows circle size; the progressbar exposes the complete spoken value/status. */}
-            <AppText
-              testID="classification-progress-number"
-              allowFontScaling={false}
-              style={[styles.percent, { fontSize: Math.min(32, size * 0.22) }]}
-            >
-              {shown}%
-            </AppText>
-          </View>
-        </View>
+        <ClassificationProgressRing
+          classified={classified}
+          total={total}
+          saving={saving}
+          size={size}
+        />
       </ClassificationCircleSlot>
-      {showLabel ? (
-        <AppText
-          accessibilityLiveRegion="polite"
-          style={[styles.label, { top: captionTop }]}
-        >
-          {label}
-        </AppText>
-      ) : null}
+      <ClassificationProgressCaption
+        saving={saving}
+        top={captionTop}
+        height={height}
+        fontScale={window.fontScale}
+      />
     </View>
   );
 }
+const progressLabel = (saving: boolean) =>
+  t(
+    saving
+      ? 'medicalAppointments.savingResults'
+      : 'medicalAppointments.progress',
+  );
+
+/** Only the drawn arc eases; accessibility always exposes the validated count. */
+export function ClassificationProgressRing({
+  classified,
+  total,
+  saving,
+  size,
+}: {
+  readonly classified: number;
+  readonly total: number;
+  readonly saving: boolean;
+  readonly size: number;
+}) {
+  const percent =
+    total > 0 ? Math.floor((100 * Math.min(classified, total)) / total) : 0;
+  const shown = useClassificationProgressMotion(percent);
+  const label = progressLabel(saving);
+  const circumference = 2 * Math.PI * 44;
+  return (
+    <View
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={label}
+      accessibilityValue={{ min: 0, max: 100, now: percent }}
+      style={{ width: size, height: size }}
+    >
+      <Svg width="100%" height="100%" viewBox="0 0 100 100" accessible={false}>
+        <Circle
+          cx={50}
+          cy={50}
+          r={44}
+          stroke={appColors.border}
+          strokeWidth={7}
+          fill="none"
+        />
+        <Circle
+          cx={50}
+          cy={50}
+          r={44}
+          stroke={appColors.primaryText}
+          strokeWidth={7}
+          fill="none"
+          strokeDasharray={[circumference, circumference]}
+          testID="classification-progress-arc"
+          strokeDashoffset={circumference * (1 - shown / 100)}
+          rotation={-90}
+          origin="50, 50"
+        />
+      </Svg>
+      <View pointerEvents="none" style={styles.number}>
+        {/* The decorative numeral follows circle size; the progressbar exposes the complete spoken value/status. */}
+        <AppText
+          testID="classification-progress-number"
+          allowFontScaling={false}
+          style={[styles.percent, { fontSize: Math.min(32, size * 0.22) }]}
+        >
+          {shown}%
+        </AppText>
+      </View>
+    </View>
+  );
+}
+
+export function ClassificationProgressCaption({
+  saving,
+  top,
+  height,
+  fontScale,
+}: {
+  readonly saving: boolean;
+  readonly top: number;
+  readonly height: number;
+  readonly fontScale: number;
+}) {
+  return height - top >= fontScale * 20 ? (
+    <AppText accessibilityLiveRegion="polite" style={[styles.label, { top }]}>
+      {progressLabel(saving)}
+    </AppText>
+  ) : null;
+}
+
 const styles = StyleSheet.create({
   content: { flex: 1, width: '100%', minHeight: 0 },
   number: {

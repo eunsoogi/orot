@@ -7,6 +7,7 @@ extension AppointmentConsentUITests {
     func testApprovedBatchesExposeMeasuredProgressAndScrollableResults() throws {
         let app = XCUIApplication()
         let sceneSession = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_WIDE_STAGE_VALIDATION"] == "YES" ? UUID().uuidString : nil
+        let expectDuo = ProcessInfo.processInfo.environment["OROT_CLASSIFICATION_DUO_DOCK_EXPECTATION"] == "YES"
         let device = XCUIDevice.shared
         let priorOrientation = device.orientation
         if sceneSession != nil {
@@ -47,6 +48,8 @@ extension AppointmentConsentUITests {
         try startMeasuredClassification(app, anchor: anchor)
 
         try assertHeldProgress(app, percent: 0, calls: 1, saving: false, anchor: anchor)
+        let originalCircle = node(app, "classification-circle-slot").frame
+        let originalLane = node(app, "classification-moving-stage").frame
         tap(app, "classification-release-response")
         try assertHeldProgress(app, percent: 88, calls: 2, saving: false, anchor: anchor)
         tap(app, "classification-release-response")
@@ -69,6 +72,7 @@ extension AppointmentConsentUITests {
         XCTAssertEqual(node(app, "calendar-classification-synthetic-provider-calls").label, "syntheticProviderCalls=2")
         XCTAssertFalse(node(app, "inference-disclosure-sheet").exists)
         NavigationGeometryUITestConditions.captureScreen(app, name: "classification-long-result-returned", testCase: self)
+        try assertClassificationCircleRoundTrip(app, original: originalCircle, originalLane: originalLane, expectLeft: sceneSession != nil || expectDuo, requireDuoWidth: expectDuo)
     }
 
     @MainActor
