@@ -15,7 +15,9 @@ export const savedMemoryKo = {
     '이 항목은 AI가 작성한 원본 보고서의 링크예요. 사용자 진술이나 AI가 자동으로 사용하는 기억이 아니에요.',
 
   'savedMemory.quarantinedParent':
-    '이전에 검토한 기억의 출처를 확인할 수 없어 원문과 AI 재사용을 차단했어요. 저장된 원본은 보존되어 있어요.',
+    '이 기억의 저장된 내용을 표시할 수 없어요. 사용할 수 없는 기억은 AI가 재사용하지 않아요.',
+  'savedMemory.historicalSnapshot':
+    '지금 확인할 수 없는 출처가 있어 저장된 내용만 표시해요. AI는 이 기억을 재사용하지 않아요.',
   'savedMemory.reviewAgain':
     '원래 진료 질문이나 조사 화면에서 최신 근거로 다시 검토해 새 기억을 저장해 주세요. 이 화면에서는 AI 요청을 보내지 않아요.',
   'savedMemory.contentTitle': '기억 내용',
