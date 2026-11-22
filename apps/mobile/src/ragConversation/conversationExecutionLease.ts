@@ -67,6 +67,7 @@ export async function beginConversationExecutionLease(
   needsDecision: () => boolean = () => false,
   requestPause: () => void = () => {},
   diagnostic?: ReturnType<typeof createExecutionDiagnostics>,
+  acceptsNativeExpiry?: () => boolean,
 ) {
   const diagnose =
     diagnostic ??
@@ -138,7 +139,15 @@ export async function beginConversationExecutionLease(
     }
     if (event.kind === 'continued' && event.requestId === requestId)
       diagnose(event.state);
-    if (event.kind === 'expired' && event.requestId === requestId)
+    // An unaccepted expiry is not a consumed interruption: a subsequent
+    // lock, decision fence or bridge failure must still reach its exact owner.
+    if (
+      event.kind === 'expired' &&
+      event.requestId === requestId &&
+      !closed &&
+      !interrupted &&
+      (event.reason !== undefined || acceptsNativeExpiry?.() !== false)
+    )
       notify(event.reason ?? 'expired');
     if (event.kind === 'protectedData' && !event.available)
       notify('protected-data');

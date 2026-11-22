@@ -1,3 +1,4 @@
+import { hasShownUnsavedAnswer } from './conversationShownAnswerExpiry';
 import { finishConversationLiveRequest } from './finishConversationLiveRequest';
 import { liveConversationObservers } from './conversationLiveObservers';
 import { createConversationOrdinaryMemoryOwner } from './conversationOrdinaryMemoryOwner';
@@ -57,6 +58,8 @@ export function createConversationSessionRequests(
     execution,
     pauseState: (id, continueWorkflow) => update(id, { continueWorkflow }),
     interrupt: id => cancel(id, false, 'interrupted'),
+    acceptNativeExpiry: id =>
+      !hasShownUnsavedAnswer(pendingTurns.get(id), find(id)),
     reportFenceFailure: id =>
       update(id, { error: getRagConversationFailureCopy('unavailable') }),
   });
