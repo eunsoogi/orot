@@ -203,7 +203,7 @@ public extension OpenAIProviderModule {
         }
     }
 
-    private static func accountSummaryDictionary(_ summary: ChatGPTAccountSummary) -> [String: Any] {
+    internal static func accountSummaryDictionary(_ summary: ChatGPTAccountSummary) -> [String: Any] {
         [
             "issuedClientID": summary.issuedClientID,
             "requiresSignIn": summary.requiresSignIn,
@@ -211,7 +211,7 @@ public extension OpenAIProviderModule {
         ]
     }
 
-    private static func rejectAccountList(_ reject: RCTPromiseRejectBlock, error: Error) {
+    internal static func rejectAccountList(_ reject: RCTPromiseRejectBlock, error: Error) {
         let message = (error as? ChatGPTOAuthError)?.errorDescription
             ?? OpenAIProviderAuthCopy.text("statusUnavailable")
         let safeError = NSError(

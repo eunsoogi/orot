@@ -1,7 +1,10 @@
 import { runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createConversationArtifactStorage } from '../conversationArtifactStorage';
-import { hasOrdinaryConversationCompletedSource } from '../ordinaryConversationMemoryCompletion';
+import {
+  hasOrdinaryConversationCompletedSource,
+  type OrdinaryConversationCompletionIdentity,
+} from '../ordinaryConversationMemoryCompletion';
 
 const identity = {
   requestId: 'synthetic-request',
@@ -32,7 +35,9 @@ async function fixture() {
     return {
       ...sqlite,
       retained,
-      async matches(candidate = identity) {
+      async matches(
+        candidate: OrdinaryConversationCompletionIdentity = identity,
+      ) {
         let matched = false;
         await sqlite.database.transaction(async tx => {
           matched = await hasOrdinaryConversationCompletedSource(tx, candidate);
@@ -57,6 +62,9 @@ test('requires the exact authored bytes, checkpoint, completion and retained ide
     expect(await f.matches()).toBe(false);
     await f.retained.append(artifact);
     expect(await f.matches()).toBe(true);
+    expect(await f.matches({ ...identity, entryIntent: 'possibilities' })).toBe(
+      false,
+    );
     expect(
       await f.matches({ ...identity, question: question.toLowerCase() }),
     ).toBe(false);
@@ -72,7 +80,7 @@ test('requires the exact authored bytes, checkpoint, completion and retained ide
   }
 });
 
-test('legacy retained answers and a typed shortcut are not an enrolled ordinary completion', async () => {
+test('legacy outputs stay ineligible and typed rows require the exact live entry mode', async () => {
   const legacy = await fixture();
   try {
     await legacy.retained.append(artifact);
@@ -87,6 +95,9 @@ test('legacy retained answers and a typed shortcut are not an enrolled ordinary 
     await typed.retained.append({ ...artifact, entryIntent: 'possibilities' });
     expect(await typed.retained.read(id)).not.toBeNull();
     expect(await typed.matches()).toBe(false);
+    expect(
+      await typed.matches({ ...identity, entryIntent: 'possibilities' }),
+    ).toBe(true);
   } finally {
     typed.close();
   }

@@ -143,7 +143,11 @@ export function limitationLabel(code: string) {
     case 'planned_events_not_attendance':
       return t('dailyReport.systemCalendar.sourceLimit');
     case 'calendar_unavailable_or_scoped_out':
-      return t('dailyReport.systemCalendar.unavailable');
+      return t('dailyReport.systemCalendar.notIncluded');
+    case 'calendar_read_unavailable':
+      return t('dailyReport.systemCalendar.readUnavailable');
+    case 'calendar_scoped_out':
+      return t('dailyReport.systemCalendar.scopedOut');
     case 'partial_day':
       return t('dailyReport.partial');
     case 'ongoing_symptom_context':

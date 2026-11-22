@@ -180,6 +180,10 @@ test('reports row opens the protected native child; Back aborts an in-flight sel
   await fireEvent.press(
     await screen.findByTestId('generated-report-summary:synthetic'),
   );
+  expect(controller.getSnapshot().currentRoute.name).toBe(
+    'generated-report-detail',
+  );
+  expect(screen.queryByTestId('generated-report-back')).toBeNull();
   const signal = read.mock.calls[0]![1];
   expect(signal.aborted).toBe(false);
   await act(async () => {
@@ -189,9 +193,14 @@ test('reports row opens the protected native child; Back aborts an in-flight sel
     release({ paragraphs: ['Synthetic confidential report body'] });
     await leaving;
   });
-  expect(controller.getSnapshot().currentRoute.name).toBe('root');
+  expect(controller.getSnapshot().currentRoute.name).toBe('generated-reports');
   expect(screen.queryByText('Synthetic confidential report body')).toBeNull();
-  expect(screen.queryByTestId('generated-report-browser')).toBeNull();
+  expect(
+    screen.getByTestId('generated-report-summary:synthetic'),
+  ).toBeVisible();
+  expect(list).toHaveBeenCalledTimes(1);
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
   expect(screen.getByTestId('records-recent-sources')).toBeTruthy();
 });
 

@@ -1,26 +1,17 @@
 import { GeneratedReportBookmarkAction } from './GeneratedReportBookmarkAction';
 import { GeneratedReportContent } from './GeneratedReportContent';
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
-import { AppState } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useGeneratedReportAccess } from './useGeneratedReportAccess';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
-import {
-  subscribeLocalDataClear,
-  subscribeLocalSourceDeletion,
-} from '../storage/localDataClearEvents';
 import { openGeneratedReportReader } from './readers';
 import { generatedReportCopy as copy } from './text';
 import {
   GeneratedReportFrame,
   GeneratedReportDescription,
   GeneratedReportRows,
+  type GeneratedReportPagination,
 } from './GeneratedReportRows';
 import type {
   GeneratedReportRow,
@@ -34,11 +25,13 @@ export function GeneratedReportBrowser({
   open = openGeneratedReportReader,
   destination = false,
   ownership,
+  onOpenDestination,
 }: {
   readonly active?: boolean;
   readonly open?: () => Promise<GeneratedReportReader>;
   readonly destination?: boolean;
   readonly ownership?: NavigationRouteOwnership;
+  readonly onOpenDestination?: (row: GeneratedReportRow) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [rows, setRows] = useState<readonly GeneratedReportRow[]>([]);
@@ -52,92 +45,93 @@ export function GeneratedReportBrowser({
   const [state, setState] = useState<
     'idle' | 'loading' | 'ready' | 'failed' | 'unavailable'
   >('idle');
-  const [more, setMore] = useState(false);
+  const [pagination, setPagination] =
+    useState<GeneratedReportPagination>('idle');
   const request = useRef<AbortController | null>(null);
-  const foreground = useRef(AppState.currentState === 'active');
-  const available = useRef(active);
-  available.current = active;
-  const firstEntry = useRef(destination);
-  const canAccess = useCallback(
-    () =>
-      available.current &&
-      foreground.current &&
-      (ownership?.isCurrent() ?? true),
-    [ownership],
-  );
-  function invalidate() {
-    firstEntry.current = false;
+  const inactiveOwner = useRef({});
+  const abort = useCallback(() => {
     request.current?.abort();
     request.current = null;
+    inactiveOwner.current = {};
+  }, []);
+  const invalidate = useCallback(() => {
+    abort();
     setDetail(null);
     setSelected(null);
     setRows([]);
+    setPagination('idle');
     setState('idle');
     setExpanded(false);
-  }
-  useLayoutEffect(() => {
-    const clear = subscribeLocalDataClear(invalidate),
-      deleted = subscribeLocalSourceDeletion(invalidate);
-    const leave = ownership?.subscribe(() => {
-      if (!ownership.isCurrent()) invalidate();
-    });
-    const subscription = AppState.addEventListener('change', next => {
-      foreground.current = next === 'active';
-      if (!foreground.current) invalidate();
-    });
-    return () => {
-      request.current?.abort();
-      leave?.();
-      clear();
-      deleted();
-      subscription.remove();
-    };
-  }, [ownership]);
+  }, [abort]);
+  const retainedList = Boolean(onOpenDestination);
+  // A covered native list retains metadata and its scroll extent, never detail prose.
+  const { accessVersion, canAccess } = useGeneratedReportAccess(
+    active,
+    ownership,
+    invalidate,
+    abort,
+    retainedList,
+  );
   const list = useCallback(
     async (append = false) => {
       if (!canAccess()) return;
+      const last = append ? rows.at(-1) : undefined;
+      if (append && !last) return;
       request.current?.abort();
       const controller = new AbortController();
       request.current = controller;
-      setExpanded(true);
-      setSelected(null);
-      setDetail(null);
-      setState('loading');
+      const current = () =>
+        request.current === controller &&
+        !controller.signal.aborted &&
+        canAccess();
+      if (append) {
+        setPagination('loading');
+      } else {
+        setExpanded(true);
+        setSelected(null);
+        setDetail(null);
+        setPagination('idle');
+        setState('loading');
+      }
       try {
         const reader = await open();
-        if (controller.signal.aborted || !canAccess()) return;
-        const last = append ? rows.at(-1) : undefined;
+        if (!current()) return;
         const page = await reader.list(
           last ? { createdAt: last.createdAt, key: last.key } : undefined,
         );
-        if (controller.signal.aborted || !canAccess()) return;
-        setRows(append ? [...rows, ...page] : page);
-        setMore(page.length === 20);
-        setState('ready');
+        if (!current()) return;
+        setRows(previous => (append ? [...previous, ...page] : page));
+        setPagination(
+          page.length === 20 ? 'ready' : append ? 'complete' : 'idle',
+        );
+        if (!append) setState('ready');
       } catch {
-        if (!controller.signal.aborted && canAccess()) setState('failed');
+        if (!current()) return;
+        if (append) setPagination('failed');
+        else setState('failed');
       }
     },
     [canAccess, open, rows],
   );
   useEffect(() => {
-    if (!active) invalidate();
-  }, [active]);
-  useEffect(() => {
-    if (!active || !firstEntry.current) return;
+    if (!destination || state !== 'idle' || !canAccess()) return;
     let live = true;
-    // Defer the first read so a replayed effect cannot consume route entry.
     Promise.resolve().then(() => {
-      if (!live || !firstEntry.current || !canAccess()) return;
-      firstEntry.current = false;
-      list();
+      if (live && !request.current && canAccess()) list();
     });
     return () => {
       live = false;
     };
-  }, [active, canAccess, list]);
+  }, [accessVersion, active, canAccess, destination, list, state]);
   async function read(row: GeneratedReportRow) {
     if (!canAccess()) return;
+    // Opening an existing report wins over a page still in flight.
+    setPagination(previous => (previous === 'loading' ? 'ready' : previous));
+    if (onOpenDestination) {
+      abort();
+      onOpenDestination(row);
+      return;
+    }
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
@@ -160,19 +154,21 @@ export function GeneratedReportBrowser({
       if (!controller.signal.aborted && canAccess()) setState('failed');
     }
   }
-  if (!active || (ownership && !ownership.isCurrent())) return null;
-  // A newly selected instance of the same report cannot revive this press.
+  if (!retainedList && (!active || ownership?.isCurrent() === false))
+    return null;
   const ownsRenderedReport = () =>
     Boolean(
       detail &&
       request.current === detail.owner &&
       !detail.owner.signal.aborted &&
-      canAccess() &&
-      AppState.currentState === 'active',
+      canAccess(),
     );
+  const metadataOwner = request.current ?? inactiveOwner.current;
+  const ownsMetadata = () =>
+    (request.current ?? inactiveOwner.current) === metadataOwner;
   return (
     <GeneratedReportFrame destination={destination} selected={!!selected}>
-      {!expanded ? (
+      {!destination && !expanded ? (
         <AppButton
           testID="generated-report-open"
           title={copy.open}
@@ -237,9 +233,14 @@ export function GeneratedReportBrowser({
           {!selected && state === 'ready' ? (
             <GeneratedReportRows
               rows={rows}
-              more={more}
-              onOpen={read}
-              onMore={() => list(true)}
+              pagination={pagination}
+              onOpen={row => {
+                if (ownsMetadata()) return read(row);
+              }}
+              onMore={() => {
+                if (ownsMetadata() && ['ready', 'failed'].includes(pagination))
+                  return list(true);
+              }}
             />
           ) : null}
         </>

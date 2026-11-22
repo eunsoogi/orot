@@ -52,7 +52,7 @@ export function AppRouteContent({
   healthRecordDetailSelection,
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
-  const { sourceId, openDocument, openMemory } =
+  const { sourceId, openDocument, openMemory, report, openReport } =
     useRecordSourceNavigation(actions);
   const active = useIsFocused();
   const openOverviewPreparation = useVisitDayQuestionsEntry(
@@ -202,9 +202,10 @@ export function AppRouteContent({
       );
     case 'manual-history':
     case 'generated-reports':
+    case 'generated-report-detail':
       return (
         <RecordsMaterialDestination
-          {...{ actions, onOpenMemory: openMemory }}
+          {...{ actions, report, openReport, onOpenMemory: openMemory }}
         />
       );
     case 'appointments':

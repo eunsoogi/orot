@@ -2,6 +2,7 @@ import { runMigrations, type SqlExecutor } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { healthObservation } from '../../../../../../packages/storage/__tests__/localQueryTestSupport';
 import { addHeartRateActivityContext } from '../heartRateActivity';
+import { previousHeartWorkoutTimeline } from '../testSupport/heartRateActivityLegacySql';
 import { healthContextDays } from '../window';
 import { ensureHealthContextGeneration } from '../generation';
 import { ensureHealthContextCoveringIndexes } from '../healthContextCoveringIndexes';
@@ -104,6 +105,12 @@ test('heart covering indexes preserve upgrade, stale, cutoff, mutation and rollb
       expect(await f.database.execute(query, parameters)).toEqual(
         await f.database.execute(old, parameters),
       );
+      expect(await f.database.execute(query, parameters)).toEqual(
+        await f.database.execute(
+          previousHeartWorkoutTimeline(query),
+          parameters,
+        ),
+      );
       const plan = await f.database.execute(
         'EXPLAIN QUERY PLAN ' + query,
         parameters,
@@ -114,7 +121,8 @@ test('heart covering indexes preserve upgrade, stale, cutoff, mutation and rollb
             'USING COVERING INDEX health_context_heart_covering',
           ),
         ),
-      ).toHaveLength(2);
+        // Workout source plus the two mutually exclusive heart paths.
+      ).toHaveLength(3);
     };
     await compare();
     await f.database.execute(

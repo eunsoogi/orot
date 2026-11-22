@@ -25,37 +25,31 @@ export function GeneratedReportBookmark({
       ? message.voiceTimelineOrder?.id
       : undefined);
   const summary = message.healthSummary?.analysis.savedSummary;
-  const kind = message.dailyReport
-    ? 'daily_report'
-    : summary?.status === 'saved' && !summary.sourceChanged
-      ? 'health_summary'
-      : undefined;
+  // Daily reports remain in report history. Rendering an answer must not
+  // save a Memory reference or reuse the separate health-summary action.
+  const bookmarkableSummary =
+    !message.dailyReport &&
+    summary?.status === 'saved' &&
+    !summary.sourceChanged;
   if (
     !owner ||
     message.role !== 'assistant' ||
-    !kind ||
+    !bookmarkableSummary ||
     !artifactId ||
     message.streaming ||
     message.incomplete
   )
     return null;
   return (
-    <BookmarkAction
-      key={artifactId}
-      artifactId={artifactId}
-      kind={kind}
-      owner={owner}
-    />
+    <BookmarkAction key={artifactId} artifactId={artifactId} owner={owner} />
   );
 }
 
 function BookmarkAction({
   artifactId,
-  kind,
   owner,
 }: {
   artifactId: string;
-  kind: 'daily_report' | 'health_summary';
   owner: NonNullable<React.ContextType<typeof GeneratedReportBookmarkContext>>;
 }) {
   const store = useConversationSessions();
@@ -102,11 +96,11 @@ function BookmarkAction({
     setStatus('saving');
     try {
       const storage = await openSavedGeneratedReportReferences();
-      const bookmark =
-        kind === 'health_summary'
-          ? storage.bookmarkHealthSummary
-          : storage.bookmarkDailyReport;
-      const saved = await bookmark({ artifactId, lease, current });
+      const saved = await storage.bookmarkHealthSummary({
+        artifactId,
+        lease,
+        current,
+      });
       if (mounted.current)
         setStatus(current() ? (saved ? 'saved' : 'failed') : 'idle');
     } catch {
@@ -118,11 +112,7 @@ function BookmarkAction({
   return (
     <>
       <AppButton
-        title={t(
-          kind === 'health_summary'
-            ? 'savedMemory.bookmarkHealthSummary'
-            : 'savedMemory.bookmarkGeneratedReport',
-        )}
+        title={t('savedMemory.bookmarkHealthSummary')}
         variant="neutral"
         testID="conversation-bookmark-generated-report"
         disabled={status === 'saving'}

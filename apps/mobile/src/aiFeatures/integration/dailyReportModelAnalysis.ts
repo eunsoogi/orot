@@ -74,6 +74,12 @@ export function parseReportModelResponse(
   return { indexes: parsed.data.indexes, analysis };
 }
 
+/** This transient tag keeps reviewed guidance distinct from AI interpretation. */
+export type ProjectedReportModelClaim =
+  DailyReportOutput['supportedContext'][number] & {
+    readonly kind: ReportModelAnalysis['kind'];
+  };
+
 /** Map transient model indexes back to exact admitted sources. Generated prose
  * is durably labelled, including when later read through the report artifact. */
 export function reportModelClaims(
@@ -82,7 +88,7 @@ export function reportModelClaims(
     text: string;
     sourceReferences: DailyReportOutput['observations'][number]['sourceReferences'];
   }[],
-): DailyReportOutput['supportedContext'] {
+): ProjectedReportModelClaim[] {
   return analysis.map(item => {
     const sourceReferences = new Map(
       item.evidenceIndexes.flatMap(index =>
@@ -97,6 +103,7 @@ export function reportModelClaims(
           ? t('dailyReport.analysis.generated', { text: item.text })
           : facts[item.guidanceIndex]!.text,
       section: 'model' as const,
+      kind: item.kind,
       sourceReferences: [...sourceReferences.values()],
     };
   });

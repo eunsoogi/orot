@@ -27,18 +27,20 @@ export function prepareConversationRequest(
     return null;
 
   const copy = getRagConversationCopy();
+  const userMessageId =
+    confirmedQuickChoiceId(session, explicitQuestion, question, hasPhoto) ??
+    nextId();
+  const responseId = nextId();
   const request: PendingTurn = {
     question,
-    userMessageId:
-      confirmedQuickChoiceId(session, explicitQuestion, question, hasPhoto) ??
-      nextId(),
+    userMessageId,
+    liveFinalResponseId: responseId,
     restorePromptToComposer,
     saving: false,
     committed: false,
     summarySaving: false,
     summaryCommitted: false,
   };
-  const responseId = nextId();
   const change: Partial<ConversationSession> = {
     preparingQuickChoice: undefined,
     ...(restorePromptToComposer ? { draft: '' } : {}),
