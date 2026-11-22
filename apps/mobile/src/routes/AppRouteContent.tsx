@@ -4,7 +4,6 @@ import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
 import { SavedMemoryDetail } from '../memory/SavedMemoryDetail';
 import { useRecordSourceNavigation } from './RecordSourceNavigation';
 import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
-import { useOverviewReportEntry } from './useOverviewReportEntry';
 import { useIsFocused } from '@react-navigation/native';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
 import RecordingScreen from '../recording/RecordingScreen';
@@ -56,10 +55,6 @@ export function AppRouteContent({
   const { sourceId, openDocument, openMemory } =
     useRecordSourceNavigation(actions);
   const active = useIsFocused();
-  const openOverviewReport = useOverviewReportEntry(
-    active && activeTab === 'overview' && actions.route.name === 'root',
-    () => selectTab('conversation'),
-  );
   const openOverviewPreparation = useVisitDayQuestionsEntry(
     active,
     nextAppointment,
@@ -82,7 +77,6 @@ export function AppRouteContent({
             loadSavedVisitQuestions={loadSavedVisitQuestions}
             discoverManualVisits={discoverManualVisits}
             onOpenRecording={openRecording}
-            onOpenDailyReport={openOverviewReport}
           />
         );
       case 'records':

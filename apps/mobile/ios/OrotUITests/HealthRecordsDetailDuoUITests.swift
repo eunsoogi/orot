@@ -16,6 +16,9 @@ extension HealthImportDuoUITests {
             }
             app.launch()
             defer { app.terminate() }
+            if ProcessInfo.processInfo.environment["OROT_HEALTH_SCROLL_EDGE_ONLY"] == "YES" {
+                return try HealthRecordsBoundaryUITestConditions.verifyMeasuredLibraryEdge(app, testCase: self)
+            }
             let size = largeText ? "large-text" : "default-text"
             try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
             try HealthRecordsBoundaryUITestConditions.tap(app, identifier: "records-open-health-library", owners: [.init(identifier: "navigation-route-scroll")], testCase: self)

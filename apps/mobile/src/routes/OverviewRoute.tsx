@@ -5,7 +5,6 @@ import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { AppText as Text } from '../layout/AppText';
-import { AppButton } from '../layout/AppButton';
 import { formatDate, t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
@@ -27,7 +26,6 @@ export interface OverviewRouteProps extends OverviewPreparationLoaders {
   readonly onOpenSchedule: () => void;
   readonly onOpenRecords: () => void;
   readonly onOpenRecording: () => void;
-  readonly onOpenDailyReport?: () => void;
 }
 
 /** Keeps visit preparation and health metrics in one ordered page. */
@@ -37,7 +35,6 @@ export default function OverviewRoute({
   onRetryAppointments,
   onPrepareVisit,
   onOpenSchedule,
-  onOpenDailyReport,
   discoverManualVisits,
 }: OverviewRouteProps) {
   useNavigationLeaveStateRegistration({
@@ -68,14 +65,6 @@ export default function OverviewRoute({
 
       {/* The shell consumes system/navigation geometry once and owns the only vertical scroll. */}
       <View style={styles.sections} testID="overview-overview-sections">
-        {onOpenDailyReport ? (
-          <AppButton
-            title={t('dailyReport.title')}
-            testID="overview-open-daily-report"
-            variant="secondary"
-            onPress={onOpenDailyReport}
-          />
-        ) : null}
         <NextVisitPanel
           appointment={appointment}
           appointmentState={appointmentState}
