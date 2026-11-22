@@ -51,6 +51,22 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
     canAdvance,
     loadErrors,
   } = useRecordsRecentFeed(props);
+  // Keep pending-page feedback out of the retained timeline's leading layout.
+  const statusAtTail = showAll && records.length > 0;
+  const status = (
+    <>
+      {isLoading ? (
+        <RecordsRecentSourceState state="loading" onRetry={retrySources} />
+      ) : null}
+      {loadErrors.length > 0 ? (
+        <RecordsRecentSourceState
+          state="failed"
+          errorMessage={loadErrors.join('\n')}
+          onRetry={retrySources}
+        />
+      ) : null}
+    </>
+  );
 
   return (
     <View style={styles.container} testID="records-recent-sources">
@@ -69,16 +85,7 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
           />
         ) : null}
       </View>
-      {isLoading ? (
-        <RecordsRecentSourceState state="loading" onRetry={retrySources} />
-      ) : null}
-      {loadErrors.length > 0 ? (
-        <RecordsRecentSourceState
-          state="failed"
-          errorMessage={loadErrors.join('\n')}
-          onRetry={retrySources}
-        />
-      ) : null}
+      {!statusAtTail ? status : null}
       {!isLoading && loadErrors.length === 0 && records.length === 0 ? (
         <RecordsRecentSourceState
           state="empty"
@@ -125,6 +132,7 @@ export function RecordsRecentSources(props: RecordsRecentSourcesProps) {
           onPress={showMore}
         />
       ) : null}
+      {statusAtTail ? status : null}
       {documentsOpening ? (
         <Text accessibilityLiveRegion="polite">
           {t('medicalDocument.source.opening')}
