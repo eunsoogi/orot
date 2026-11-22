@@ -18,6 +18,8 @@ export function useAppOverviewData(
   loadAppointments: () => Promise<AppointmentRepository>,
   loadRecordings: () => Promise<readonly RecordingSourceRecord[]>,
   overviewActive = true,
+  recordingsActive = overviewActive,
+  eagerRecordingSnapshot = true,
 ) {
   const [appointmentRepository, setAppointmentRepository] =
     useState<AppointmentRepository | null>(null);
@@ -33,6 +35,9 @@ export function useAppOverviewData(
   const appointmentRequest = useRef(0);
   const recordingRequest = useRef(0);
   const previousOverviewActive = useRef(overviewActive);
+  const previousRecordingsActive = useRef(recordingsActive);
+  const recordingReaderEnabled = useRef(false);
+  recordingReaderEnabled.current = eagerRecordingSnapshot || recordingsActive;
   const [now, setNow] = useState(Date.now);
 
   useEffect(() => {
@@ -76,15 +81,26 @@ export function useAppOverviewData(
     }
   }, [loadAppointments]);
   const refreshRecordings = useCallback(async () => {
+    // Only Overview still owns the baseline snapshot in the built-in app.
+    if (!recordingReaderEnabled.current) return;
     const request = ++recordingRequest.current;
     if (activeRef.current) setRecordingState('loading');
     try {
       const next = await loadRecordings();
-      if (!activeRef.current || request !== recordingRequest.current) return;
+      if (
+        !activeRef.current ||
+        !recordingReaderEnabled.current ||
+        request !== recordingRequest.current
+      )
+        return;
       setRecordings(next);
       setRecordingState('ready');
     } catch {
-      if (activeRef.current && request === recordingRequest.current)
+      if (
+        activeRef.current &&
+        recordingReaderEnabled.current &&
+        request === recordingRequest.current
+      )
         setRecordingState('failed');
     }
   }, [loadRecordings]);
@@ -95,6 +111,7 @@ export function useAppOverviewData(
     refreshRecordings().catch(() => undefined);
     const invalidateRecordings = () => {
       // The event does not name the source. Drop the snapshot until storage confirms surviving rows.
+      recordingRequest.current += 1;
       setRecordings([]);
       refreshRecordings();
     };
@@ -120,17 +137,23 @@ export function useAppOverviewData(
     // Root-tab scenes can remain mounted. A return to Overview must include recordings or visits saved elsewhere.
     if (overviewActive && !previousOverviewActive.current) {
       refreshAppointments().catch(() => undefined);
-      refreshRecordings().catch(() => undefined);
     }
+    if (recordingsActive && !previousRecordingsActive.current)
+      refreshRecordings().catch(() => undefined);
+    previousRecordingsActive.current = recordingsActive;
     previousOverviewActive.current = overviewActive;
     const subscription = AppState.addEventListener('change', state => {
-      if (overviewActive && state === 'active') {
-        refreshAppointments().catch(() => undefined);
-        refreshRecordings().catch(() => undefined);
-      }
+      if (state !== 'active') return;
+      if (overviewActive) refreshAppointments().catch(() => undefined);
+      if (recordingsActive) refreshRecordings().catch(() => undefined);
     });
     return () => subscription.remove();
-  }, [overviewActive, refreshAppointments, refreshRecordings]);
+  }, [
+    overviewActive,
+    recordingsActive,
+    refreshAppointments,
+    refreshRecordings,
+  ]);
 
   const nextAppointment = useMemo(
     () => selectNextAppointment(appointments, now),

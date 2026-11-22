@@ -19,6 +19,7 @@ export type { ConversationLifetimeEntry } from './conversationLifetimeEntry';
 export function createConversationRequestLifetime(input: {
   execution?: ConversationExecutionAdapter;
   interrupt: (id: number) => void;
+  acceptNativeExpiry?: (id: number) => boolean;
   reportFenceFailure: (id: number) => void;
   pauseState?: (id: number, resume?: () => void) => void;
 }) {
@@ -69,6 +70,8 @@ export function createConversationRequestLifetime(input: {
         () => requiresConversationDecisionAbort(entry, input.execution),
         () => requestOwnedConversationPause(entry, entries),
         entry.diagnose,
+        () =>
+          entries.get(id) !== entry || input.acceptNativeExpiry?.(id) !== false,
       );
       if (
         controller.signal.aborted ||
@@ -176,7 +179,6 @@ export function createConversationRequestLifetime(input: {
         },
       };
     },
-    /** Record only a closed result category for the current request, never error text. */
     outcome(
       controller: AbortController,
       outcome: import('./outcome').RagConversationOutcome,
@@ -195,7 +197,7 @@ export function createConversationRequestLifetime(input: {
           outcome.status === 'failure' ? outcome.kind : 'unavailable',
         );
     },
-    /** Only observed workflow milestones advance the system UI; never elapsed-time estimates. */
+    /** Only observed workflow milestones advance the system UI. */
     answered(controller: AbortController, committed: boolean) {
       const entry = owners.get(controller);
       if (
@@ -228,7 +230,6 @@ export function createConversationRequestLifetime(input: {
     interruptionReason(controller: AbortController) {
       return owners.get(controller)?.interruptionReason;
     },
-    /** Final cleanup must retain the same interruption reason already used by Stop. */
     failureStatus(controller: AbortController): StopStatus | 'failed' {
       return controller.signal.aborted
         ? (owners.get(controller)?.status ?? 'cancelled')
@@ -244,7 +245,6 @@ export function createConversationRequestLifetime(input: {
       } while (observed !== entry.fence);
       entry.release?.();
       if (entries.get(id) === entry) entries.delete(id);
-      // Weak ownership retains the terminal Stop reason without preventing collection.
     },
   };
 }

@@ -7,6 +7,7 @@ type Epoch = {
   dirtyTransactions: number;
   unsettledFailure?: boolean;
   detached?: boolean;
+  settleListeners?: Set<() => void>;
 };
 const epochs = new WeakMap<SqlDatabase, Epoch>();
 
@@ -35,6 +36,10 @@ export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
     scope.dirty = true;
     epoch.dirtyTransactions++;
   };
+  const notifySettlement = () => {
+    if (epoch.pending === 0 && epoch.dirtyTransactions === 0)
+      epoch.settleListeners?.forEach(listener => listener());
+  };
   const track = <R>(call: () => R): R => {
     // Direct execute shares the native connection with tx.execute. Either can
     // make an admitted callback dirty, and op-sqlite commits after it returns.
@@ -44,6 +49,7 @@ export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
     const finish = () => {
       epoch.pending--;
       epoch.mutation++;
+      notifySettlement();
     };
     try {
       const result = call();
@@ -96,6 +102,7 @@ export function guardedNativeDatabase<T extends SqlDatabase>(native: T): T {
       // not merely until the JavaScript mutation statement settles.
       openTransactions.delete(scope);
       if (scope.dirty) epoch.dirtyTransactions--;
+      notifySettlement();
     }
   };
   const proxy = new Proxy(native, {
@@ -179,4 +186,33 @@ function acquireEpoch(owner: SqlDatabase, independent: boolean) {
       active = false;
     },
   };
+}
+
+/** A rejected snapshot can re-enter only after that same known connection
+ * settles. Missing/detached/unsettled owners are not retryable contention. */
+export function awaitIndependentReadSettlement(
+  owner: SqlDatabase,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  const epoch = epochs.get(owner);
+  const usable = () =>
+    !signal?.aborted && !epoch?.detached && !epoch?.unsettledFailure;
+  if (!epoch || !usable()) return Promise.resolve(false);
+  const idle = () => epoch.pending === 0 && epoch.dirtyTransactions === 0;
+  if (idle()) return Promise.resolve(true);
+  const listeners = (epoch.settleListeners ??= new Set());
+  return new Promise(resolve => {
+    const finish = (value: boolean) => {
+      listeners.delete(settled);
+      signal?.removeEventListener('abort', cancelled);
+      clearTimeout(timer);
+      resolve(value);
+    };
+    const settled = () => finish(usable());
+    const cancelled = () => finish(false);
+    const timer = setTimeout(cancelled, timeoutMs);
+    listeners.add(settled);
+    signal?.addEventListener('abort', cancelled, { once: true });
+  });
 }

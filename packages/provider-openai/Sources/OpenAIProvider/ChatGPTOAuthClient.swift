@@ -202,6 +202,11 @@ public final class ChatGPTOAuthClient: Sendable {
         try credentialStore.listAccounts().map(ChatGPTAccountSummary.init(account:))
     }
 
+    /// Read only the selected local account's metadata; this never refreshes credentials or fetches a catalog.
+    public func loadStoredAccountSummary(issuedClientID: String) throws -> ChatGPTAccountSummary? {
+        try credentialStore.loadAccount(issuedClientID: issuedClientID).map(ChatGPTAccountSummary.init(account:))
+    }
+
     /// Drop idle transports before any credential/account transition.
     public func invalidateResponseConnections() {
         responseConnections.invalidate()

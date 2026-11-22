@@ -5,15 +5,27 @@ import { AiResponseText } from '../layout/AiResponseText';
 import { DailyReportCoverageCard } from '../aiFeatures/integration/DailyReportCoverageCard';
 import { OMITTED_SUMMARY_CONTENT_NOTE } from '../diseaseHypotheses/summaryPartialValidation';
 import { INCOMPLETE_SUMMARY_EVIDENCE_NOTE } from '../diseaseHypotheses/summaryPartialEvidence';
-import type { GeneratedReportDetail } from './types';
+import type {
+  GeneratedReportCitationSelection,
+  GeneratedReportDetail,
+} from './types';
 import { SavedSummaryReviewWarnings } from '../diseaseHypotheses/SavedSummaryReviewWarnings';
+import { ConversationReportText } from '../ragConversation/ConversationReportText';
+import { ConversationSources } from '../ragConversation/ConversationSources';
+
+const doNotOpenLiveSource = () => {};
 
 /** Preserve every saved narrative field and coverage warning without inventing live evidence links. */
 export function GeneratedReportContent({
   detail,
+  onOpenCitation,
 }: {
   readonly detail: GeneratedReportDetail;
+  readonly onOpenCitation?: (
+    selection: GeneratedReportCitationSelection,
+  ) => void;
 }) {
+  const sources = detail.conversationSources;
   return (
     <View testID="generated-report-detail">
       {detail.warning ? <AppText>{detail.warning}</AppText> : null}
@@ -24,14 +36,22 @@ export function GeneratedReportContent({
         <AppText>{INCOMPLETE_SUMMARY_EVIDENCE_NOTE}</AppText>
       ) : null}
       <SavedSummaryReviewWarnings current={detail.analysis?.savedSummary} />
-      {detail.paragraphs.map((text, index) => (
-        <AiResponseText
-          key={index}
-          testID={`generated-report-paragraph-${index}`}
-        >
-          {text}
-        </AiResponseText>
-      ))}
+      {detail.conversationPossibility ? (
+        <ConversationReportText
+          report={detail.conversationPossibility}
+          testID="generated-report-conversation-template"
+          showTitle={false}
+        />
+      ) : (
+        detail.paragraphs.map((text, index) => (
+          <AiResponseText
+            key={index}
+            testID={`generated-report-paragraph-${index}`}
+          >
+            {text}
+          </AiResponseText>
+        ))
+      )}
       {detail.analysis?.hypotheses.map((h, index) => (
         <AppText key={index}>
           {copy.evidenceCounts(
@@ -50,6 +70,22 @@ export function GeneratedReportContent({
       ))}
       {detail.analysis || detail.daily ? (
         <AppText>{copy.sourceNavigationUnavailable}</AppText>
+      ) : null}
+      {sources && onOpenCitation ? (
+        <ConversationSources
+          testIDPrefix="generated-report-source"
+          references={[]}
+          onOpenSource={doNotOpenLiveSource}
+          onLinkError={doNotOpenLiveSource}
+          archived={{
+            citations: sources.citations,
+            open: citation =>
+              onOpenCitation({
+                target: sources.target,
+                ordinal: citation.ordinal,
+              }),
+          }}
+        />
       ) : null}
     </View>
   );

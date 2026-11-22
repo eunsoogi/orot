@@ -91,15 +91,17 @@ export function createConversationSummaryIntegration(input: {
       if (
         context?.intent === 'daily-report' &&
         context.reportRequest &&
-        report &&
         !observer?.photoInput
       )
-        return report(
-          question,
-          context.reportRequest,
-          signal ?? new AbortController().signal,
-          observer,
-        );
+        return report
+          ? report(
+              question,
+              context.reportRequest,
+              signal ?? new AbortController().signal,
+              observer,
+              context.directDailyReportRequest === true,
+            )
+          : ({ status: 'failure', kind: 'unavailable' } as const);
       return context?.intent === 'health-summary' && !observer?.photoInput
         ? summarize(
             { question },

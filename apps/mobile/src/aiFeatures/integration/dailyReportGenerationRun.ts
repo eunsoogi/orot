@@ -1,3 +1,4 @@
+import { dailyReportLiveCommit } from './dailyReportLiveCommit';
 import { persistDailyReportCandidate } from './dailyReportCandidatePersistence';
 import { conversationReceiptSelection as observeSelection } from './conversationReceiptSelection';
 import { withDailyReportOpening as openingFor } from './dailyReportOpening';
@@ -237,9 +238,8 @@ export async function generateDailyReportWithCalendar(
     // Persistence already ran; the route must recheck saved content even if Stop raced this lookup.
     return fail('source_unconfirmed_after_dispatch');
   }
-  // A committed report remains in local history, but a superseded run must not emit it live.
   if (saved.liveAfterReproof?.() === false) return fail('cancelled');
   providerDiagnostic('daily_report', 'persistence', 'completed');
   providerDiagnostic('daily_report', 'workflow', 'result');
-  return { ...result, runId, context: saved.context };
+  return dailyReportLiveCommit(result, runId, saved);
 }

@@ -1,3 +1,4 @@
+import { hasShownUnsavedAnswer } from './conversationShownAnswerExpiry';
 import { finishConversationLiveRequest } from './finishConversationLiveRequest';
 import { liveConversationObservers } from './conversationLiveObservers';
 import { createConversationOrdinaryMemoryOwner } from './conversationOrdinaryMemoryOwner';
@@ -12,16 +13,16 @@ import {
 } from './conversationActivity';
 import { createConversationRequestDisposal } from './conversationRequestDisposal';
 import { conversationHistoryPayload } from './conversationHistoryPayload';
-import { conversationCompletedAnswer } from './conversationCompletedAnswer';
+import { publishConversationAnswer } from './conversationDailyReportMemoryJobs';
 import { prepareConversationRequest } from './conversationRequestStart';
 import { bindRequestCancel } from './conversationRequestIdentity';
 import { ownsOutcome } from './conversationOutcomeOwnership';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import { createConversationRequestLifetime } from './conversationRequestLifetime';
-import type { createConversationTurnRetention } from './conversationTurnRetention';
+import type { createConversationTurnRetention as turnRetention } from './conversationTurnRetention';
 import { startConversationRetainedRequest as startRetainedRequest } from './conversationPhotoRequestStart';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
-import type { createConversationRequestPreview } from './conversationRequestPreview';
+import type { createConversationRequestPreview as requestPreview } from './conversationRequestPreview';
 import { conversationPreviewSetup } from './conversationPreviewSetup';
 import {
   createRetainConversationPartial as retainPartialFor,
@@ -44,6 +45,7 @@ export function createConversationSessionRequests(
   photo?: Parameters<typeof startRetainedRequest>[0]['photo'],
   cold?: ConversationSessionOptions['coldResume'],
   memoryPort?: ConversationSessionOptions['ordinaryMemory'],
+  activeSelection?: (id: number) => number | undefined,
 ) {
   const steering = createConversationSteeringOwner(find, update);
   const ordinaryMemory = createConversationOrdinaryMemoryOwner(memoryPort);
@@ -57,6 +59,8 @@ export function createConversationSessionRequests(
     execution,
     pauseState: (id, continueWorkflow) => update(id, { continueWorkflow }),
     interrupt: id => cancel(id, false, 'interrupted'),
+    acceptNativeExpiry: id =>
+      !hasShownUnsavedAnswer(pendingTurns.get(id), find(id)),
     reportFenceFailure: id =>
       update(id, { error: getRagConversationFailureCopy('unavailable') }),
   });
@@ -65,6 +69,7 @@ export function createConversationSessionRequests(
     find,
     update,
     conversationScope,
+    activeSelection,
     cold,
     confirmPhotoResume: photo?.consent.confirm,
     retention,
@@ -128,10 +133,8 @@ export function createConversationSessionRequests(
         controllers.get(id) === controller && !controller.signal.aborted;
       let memoryShown = false;
       let activity: turnActivity.ConversationTurnActivity | undefined;
-      let retained:
-        ReturnType<typeof createConversationTurnRetention> | undefined;
-      let preview:
-        ReturnType<typeof createConversationRequestPreview> | undefined;
+      let retained: ReturnType<typeof turnRetention> | undefined;
+      let preview: ReturnType<typeof requestPreview> | undefined;
       let photoInput: Awaited<ReturnType<typeof startRetainedRequest>>;
       try {
         retained = retention
@@ -200,7 +203,7 @@ export function createConversationSessionRequests(
         }
         if (outcome.status === 'answer')
           lifetime.answered(controller, request.committed);
-        conversationCompletedAnswer({
+        publishConversationAnswer(request, {
           id,
           userMessageId,
           messageId: outcome.status === 'answer' ? responseId : ++messageId,

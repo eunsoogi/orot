@@ -28,6 +28,6 @@ export type {
   PersistedMemoryRecord,
 } from './types';
 
-export { listSavedMemories } from './savedMemories';
+export { listSavedMemories, projectDefaultSavedMemory } from './savedMemories';
 
 export { isProvenance as isAgentMemoryProvenance } from './validation';

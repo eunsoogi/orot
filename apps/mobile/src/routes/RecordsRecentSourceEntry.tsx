@@ -10,8 +10,7 @@ interface RecordsRecentSourceEntryProps {
   readonly groupLabel: string;
   readonly documentIndex?: number;
   readonly documentsOpening: boolean;
-  readonly onOpenMedicalDocument: (sourceId: string) => void;
-  readonly onOpenSavedRecordings: () => void;
+  readonly onOpen: () => void;
 }
 
 /** Renders a real local source and routes each record type to its existing destination. */
@@ -20,15 +19,19 @@ export function RecordsRecentSourceEntry({
   groupLabel,
   documentIndex,
   documentsOpening,
-  onOpenMedicalDocument,
-  onOpenSavedRecordings,
+  onOpen,
 }: RecordsRecentSourceEntryProps) {
   const time = formatRecentTime(record.timestamp);
   const testID =
+    record.kind === 'medical_document'
+      ? `medical-document-source-${documentIndex}`
+      : `records-recent-source-${record.id}`;
+  const icon =
     record.kind === 'recording'
-      ? `records-recent-source-${record.id}`
-      : `medical-document-source-${documentIndex}`;
-  const icon = record.kind === 'recording' ? 'mic.fill' : 'doc.text';
+      ? 'mic.fill'
+      : record.kind === 'saved_memory'
+        ? 'bookmark'
+        : 'doc.text';
   const label = [groupLabel, record.title, record.summary, time]
     .filter(Boolean)
     .join(', ');
@@ -39,10 +42,7 @@ export function RecordsRecentSourceEntry({
       accessibilityLabel={label}
       disabled={record.kind === 'medical_document' && documentsOpening}
       key={`${record.kind}:${record.id}`}
-      onPress={() => {
-        if (record.kind === 'recording') onOpenSavedRecordings();
-        else onOpenMedicalDocument(record.id);
-      }}
+      onPress={onOpen}
       style={[
         styles.row,
         record.kind === 'medical_document' &&

@@ -3,11 +3,15 @@ import type { NavigationController } from '../navigation/navigationController';
 import type { AppRootTab } from '../navigation/rootTabs';
 import type { AppNavigationRoute } from './appNavigationRoute';
 
-/** Returning from a child refreshes the overview even when its tab remains selected. */
+/** A return to the appropriate root invalidates its previously captured local summaries. */
 export function useOverviewActivity(
   controller: NavigationController<AppNavigationRoute>,
   tab: AppRootTab,
-): boolean {
+) {
   const snapshot = useNavigationSnapshot(controller);
-  return tab === 'overview' && snapshot.currentRoute.name === 'root';
+  const root = snapshot.currentRoute.name === 'root';
+  return {
+    overview: root && tab === 'overview',
+    recordings: root && (tab === 'overview' || tab === 'records'),
+  };
 }

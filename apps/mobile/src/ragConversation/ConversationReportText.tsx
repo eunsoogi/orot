@@ -9,20 +9,25 @@ import type { parseConversationReport } from './conversationReportTemplate';
 export function ConversationReportText({
   report,
   testID,
+  showTitle = true,
 }: {
   readonly report: NonNullable<ReturnType<typeof parseConversationReport>>;
   readonly testID?: string;
+  /** The Records shell already has the same report title above its metadata. */
+  readonly showTitle?: boolean;
 }) {
   return (
     <View testID={testID} style={styles.report}>
-      <AppText
-        accessibilityRole="header"
-        selectable
-        style={[conversationStyles.messageText, styles.title]}
-      >
-        {report.title}
-      </AppText>
-      {'introduction' in report ? (
+      {showTitle ? (
+        <AppText
+          accessibilityRole="header"
+          selectable
+          style={[conversationStyles.messageText, styles.title]}
+        >
+          {report.title}
+        </AppText>
+      ) : null}
+      {report.introduction !== undefined ? (
         <AppText selectable style={conversationStyles.messageText}>
           {report.introduction}
         </AppText>

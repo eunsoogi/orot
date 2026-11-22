@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react';
 import { act, renderHook } from '@testing-library/react-native';
 import { AppState, type AppStateStatus, type HostInstance } from 'react-native';
 import { useConversationWorkspaceBounds } from '../useConversationWorkspaceBounds';
@@ -49,3 +50,60 @@ test('foreground remeasures the existing host and rejects pre-background callbac
     subscription.mockRestore();
   }
 });
+
+test.each([
+  ['inactive', 'active'],
+  ['active', 'background'],
+] as const)(
+  'uses current AppState when %s changes to %s before subscription',
+  async (renderState, committedState) => {
+    const initialState = AppState.currentState;
+    let change!: (state: AppStateStatus) => void;
+    const subscription = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_event, listener) => {
+        change = listener;
+        return { remove: jest.fn() };
+      });
+    let width = 390;
+    const measureInWindow = jest.fn(
+      (
+        callback: (x: number, y: number, width: number, height: number) => void,
+      ) => callback(0, 0, width, 600),
+    );
+    const host = { measureInWindow } as unknown as HostInstance;
+    try {
+      AppState.currentState = renderState;
+      const { result } = await renderHook(() => {
+        const workspace = useConversationWorkspaceBounds();
+        useLayoutEffect(() => {
+          workspace.ref.current = host;
+          // The RN singleton received the event before this hook subscribed.
+          AppState.currentState = committedState;
+        }, [workspace.ref]);
+        return workspace;
+      });
+
+      if (committedState === 'background') {
+        expect(measureInWindow).not.toHaveBeenCalled();
+        await act(() => result.current.measure());
+        expect(measureInWindow).not.toHaveBeenCalled();
+        await act(() => {
+          AppState.currentState = 'active';
+          change('active');
+        });
+      }
+      expect(measureInWindow).toHaveBeenCalledTimes(1);
+      expect(result.current.plan.transcriptWidth).toBe(390);
+
+      width = 620;
+      await act(() => result.current.measure());
+      expect(measureInWindow).toHaveBeenCalledTimes(2);
+      expect(result.current.plan.transcriptWidth).toBe(620);
+      expect(result.current.ref.current).toBe(host);
+    } finally {
+      AppState.currentState = initialState;
+      subscription.mockRestore();
+    }
+  },
+);

@@ -56,6 +56,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'disease-hypotheses' ||
     route.name === 'saved-analysis' ||
     route.name === 'source-detail' ||
+    route.name === 'generated-report-source' ||
     (route.name === 'root' &&
       (rootTabs?.activeTab === 'overview' ||
         rootTabs?.activeTab === 'records' ||
@@ -78,6 +79,7 @@ export function appRouteIsScrollable(
       'saved-memory-detail',
       'manual-history',
       'generated-reports',
+      'generated-report-detail',
     ].includes(route.name) ||
     (route.name === 'root' &&
       ['overview', 'records', 'settings'].includes(activeTab))

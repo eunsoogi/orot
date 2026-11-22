@@ -2,7 +2,7 @@ import { AppointmentQuestionRoutes } from './AppointmentQuestionRoutes';
 import { useVisitDayQuestionsEntry } from './useVisitDayQuestionsEntry';
 import { RecordsMaterialDestination } from './RecordsMaterialDestination';
 import { SavedMemoryDetail } from '../memory/SavedMemoryDetail';
-import { useRecordSourceNavigation } from './RecordSourceNavigation';
+import { useRecordNav } from './RecordSourceNavigation';
 import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
 import { useIsFocused } from '@react-navigation/native';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
@@ -29,6 +29,7 @@ export function AppRouteContent({
   discoverManualVisits,
   actions,
   activeTab,
+  recordsTabAuthority,
   selectTab,
   onSelectRecordsSection,
   appointmentRepository,
@@ -52,9 +53,9 @@ export function AppRouteContent({
   healthRecordDetailSelection,
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
-  const { sourceId, openDocument, openMemory } =
-    useRecordSourceNavigation(actions);
   const active = useIsFocused();
+  const recordNav = useRecordNav(actions, active, recordsTabAuthority);
+  const { sourceId, openMemory } = recordNav;
   const openOverviewPreparation = useVisitDayQuestionsEntry(
     active,
     nextAppointment,
@@ -86,7 +87,7 @@ export function AppRouteContent({
             onSelect={onSelectRecordsSection}
           >
             <RecordsRoute
-              onOpenDocumentDetail={openDocument}
+              {...recordNav}
               onOpenGeneratedReports={() => actions.push('generated-reports')}
               memoryActive={active}
               onOpenRecentRecords={() => actions.push('recent-records')}
@@ -151,7 +152,13 @@ export function AppRouteContent({
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
       );
     case 'saved-memory-detail':
-      return <SavedMemoryDetail memoryId={sourceId} active={active} />;
+      return (
+        <SavedMemoryDetail
+          memoryId={sourceId}
+          active={active}
+          ownership={actions.ownership}
+        />
+      );
     case 'medical-document-detail':
       return (
         <MedicalDocumentDetailRoute
@@ -164,7 +171,7 @@ export function AppRouteContent({
       // A native stack destination keeps the overview mounted and owns its own scroll position.
       return (
         <RecordsRoute
-          onOpenDocumentDetail={openDocument}
+          {...recordNav}
           showAllRecent
           documentImportService={documentImportService}
           recordings={recordings}
@@ -202,11 +209,12 @@ export function AppRouteContent({
       );
     case 'manual-history':
     case 'generated-reports':
-      return (
-        <RecordsMaterialDestination
-          {...{ actions, onOpenMemory: openMemory }}
-        />
-      );
+    case 'generated-report-detail':
+    case 'generated-report-source': {
+      // Keep the shared source callbacks and their precedence on all four routes.
+      const props = { actions, onOpenMemory: openMemory, ...recordNav };
+      return <RecordsMaterialDestination {...props} />;
+    }
     case 'appointments':
       return appointmentRepository ? (
         <AppointmentsScreen

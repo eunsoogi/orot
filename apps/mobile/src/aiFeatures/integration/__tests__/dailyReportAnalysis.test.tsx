@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 import { DailyReportOutputSchema } from '@orot/domain';
-import { DailyReportAnalysis } from '../DailyReportAnalysis';
+import { DailyReportAnalysis } from '../DailyReportAnalysisSection';
 import { dailyReportAnalysis } from '../dailyReportAnalysis';
 import { dailyReportGuidance } from '../dailyReportGuidance';
 import { calendarTestObservation } from '../testSupport/dailyReportCalendarTestFixture';

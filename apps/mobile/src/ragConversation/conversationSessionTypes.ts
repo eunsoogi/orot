@@ -145,6 +145,7 @@ export type PendingTurn = {
   committed: boolean;
   summarySaving: boolean;
   summaryCommitted: boolean;
+  readonly liveFinalResponseId?: number;
   readonly coldResponseId?: number;
   coldStopping?: boolean;
   readonly stopCold?: () => void;

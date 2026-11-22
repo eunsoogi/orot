@@ -11,6 +11,8 @@ import { AppRouteContent } from './AppRouteContent';
 import type { AppRouteContentProps } from './AppProps';
 import type { AppNavigationRoute } from './appNavigationRoute';
 import { useAppOverviewData } from './useAppOverviewData';
+import { loadRecordingSummaries } from '../recording/loadRecordingSummaries';
+import { RecordsSourcePaging } from './RecordsSourcePagingContext';
 import { useOverviewActivity } from './useOverviewActivity';
 
 type OwnerData = ReturnType<typeof useAppOverviewData>;
@@ -45,6 +47,7 @@ export function AppOverviewDataBoundary({
   readonly children: ReactNode;
 }) {
   const active = useOverviewActivity(controller, activeTab);
+  const useIndexForRecords = loadRecordings === loadRecordingSummaries;
   const {
     appointmentRepository,
     appointmentState,
@@ -53,7 +56,13 @@ export function AppOverviewDataBoundary({
     recordingState,
     refreshAppointments,
     refreshRecordings,
-  } = useAppOverviewData(loadAppointments, loadRecordings, active);
+  } = useAppOverviewData(
+    loadAppointments,
+    loadRecordings,
+    active.overview,
+    useIndexForRecords ? active.overview : active.recordings,
+    !useIndexForRecords,
+  );
   const appointmentData = useMemo(
     () => ({
       appointmentRepository,
@@ -79,7 +88,9 @@ export function AppOverviewDataBoundary({
   return (
     <Appointments.Provider value={appointmentData}>
       <Recordings.Provider value={recordingData}>
-        {children}
+        <RecordsSourcePaging.Provider value={useIndexForRecords}>
+          {children}
+        </RecordsSourcePaging.Provider>
       </Recordings.Provider>
     </Appointments.Provider>
   );

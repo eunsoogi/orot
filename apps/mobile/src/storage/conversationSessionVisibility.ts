@@ -1,4 +1,5 @@
 import type { SqlDatabase } from '@orot/storage';
+import { notifyConversationVisibilityChanged } from './conversationVisibilityEvents';
 import { listConversationSessionPage } from './conversationSessionPages';
 
 /** Hide immediately from discovery while keeping one recoverable undo until finalization. */
@@ -39,6 +40,7 @@ export function createConversationSessionVisibility(
         throw new Error('Conversation session version is invalid.');
       await ensure();
       let version: number | null = null;
+      let changed = false;
       await database.transaction(async tx => {
         const session = await tx.execute(
           'SELECT hidden, version FROM conversation_artifact_sessions WHERE id = ?',
@@ -63,12 +65,15 @@ export function createConversationSessionVisibility(
         )
           throw new Error('Conversation session state is invalid.');
         version = row.hidden === 1 ? row.version : row.version + 1;
-        if (row.hidden === 0)
+        if (row.hidden === 0) {
           await tx.execute(
             'UPDATE conversation_artifact_sessions SET hidden = 1, version = ? WHERE id = ?',
             [version, id],
           );
+          changed = true;
+        }
       });
+      if (changed) notifyConversationVisibilityChanged();
       return version;
     },
     async undoHiddenSession(id: string, expectedVersion: number) {
@@ -97,6 +102,7 @@ export function createConversationSessionVisibility(
           [expectedVersion + 1, id, expectedVersion - 1],
         );
       });
+      notifyConversationVisibilityChanged();
       return expectedVersion + 1;
     },
     async finalizeHiddenSessions() {

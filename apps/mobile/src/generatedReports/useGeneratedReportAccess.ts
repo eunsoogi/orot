@@ -12,6 +12,8 @@ export function useGeneratedReportAccess(
   ownership: NavigationRouteOwnership | undefined,
   invalidate: () => void,
   abort: () => void,
+  retainOnBlur = false,
+  onAppSuspended?: () => void,
 ) {
   const live = useRef({ active, ownership });
   live.current = { active, ownership };
@@ -27,23 +29,44 @@ export function useGeneratedReportAccess(
   );
 
   useLayoutEffect(() => {
+    if (retainOnBlur) invalidate();
+  }, [invalidate, ownership, retainOnBlur]);
+
+  useLayoutEffect(() => {
     foreground.current = AppState.currentState === 'active';
     // Old rows cannot survive replacement of the route's ownership object.
-    invalidate();
+    if (!retainOnBlur || !foreground.current) invalidate();
     let ready = canAccess();
-    const sync = () => {
+    const sync = (appTransition = false) => {
       const next = canAccess();
       if (ready === next) return;
       ready = next;
-      if (!next) invalidate();
+      if (!next) {
+        if (
+          appTransition &&
+          !foreground.current &&
+          onAppSuspended &&
+          live.current.active &&
+          (live.current.ownership?.isCurrent() ?? true)
+        )
+          onAppSuspended();
+        else if (retainOnBlur && foreground.current) abort();
+        else invalidate();
+      }
       wake();
     };
-    const leave = ownership?.subscribe(sync);
+    const leave = ownership?.subscribe(() => {
+      // Losing the actual route while suspended must disarm any pending return.
+      if (onAppSuspended && !foreground.current && !ownership.isCurrent())
+        invalidate();
+      sync();
+    });
     const clear = subscribeLocalDataClear(invalidate);
     const deleted = subscribeLocalSourceDeletion(invalidate);
     const appState = AppState.addEventListener('change', value => {
       foreground.current = value === 'active';
-      sync();
+      if (retainOnBlur && !foreground.current && !ready) invalidate();
+      sync(true);
     });
     return () => {
       abort();
@@ -52,7 +75,15 @@ export function useGeneratedReportAccess(
       deleted();
       appState.remove();
     };
-  }, [abort, active, canAccess, invalidate, ownership]);
+  }, [
+    abort,
+    active,
+    canAccess,
+    invalidate,
+    ownership,
+    retainOnBlur,
+    onAppSuspended,
+  ]);
 
   return { accessVersion, canAccess };
 }

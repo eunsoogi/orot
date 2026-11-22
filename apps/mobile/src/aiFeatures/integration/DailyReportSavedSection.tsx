@@ -1,4 +1,4 @@
-import { DailyReportAnalysis } from './DailyReportAnalysis';
+import { DailyReportAnalysis } from './DailyReportAnalysisSection';
 import { View, StyleSheet } from 'react-native';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';

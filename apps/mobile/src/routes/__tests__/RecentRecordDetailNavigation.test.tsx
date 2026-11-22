@@ -1,8 +1,9 @@
+import { recentTestExecution } from '../testSupport/recentRecordsRouteTestSupport';
+import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
 import { resumeStatementMemoryAfterRead } from '../../memory/resumeStatementMemoryAfterRead';
 import { document } from '../testSupport/recordsRouteTestProps';
 import { renderRecordsRouteTest as renderRoute } from '../testSupport/renderRecordsRouteTest';
 import { openGeneratedReportReader } from '../../generatedReports/readers';
-import { AppState } from 'react-native';
 import { loadUnifiedLocalMemories } from '../../memory/unifiedSavedMemories';
 jest.mock('../../memory/unifiedSavedMemories', () => ({
   ...jest.requireActual('../../memory/unifiedSavedMemories'),
@@ -16,7 +17,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import { deleteMedicalDocument } from '../../medicalDocuments/medicalDocumentDeletion';
 jest.mock('../../memory/resumeStatementMemoryAfterRead', () => ({
   resumeStatementMemoryAfterRead: jest.fn(),
@@ -32,6 +33,17 @@ jest.mock(
   () => require('react-native-safe-area-context/jest/mock').default,
 );
 
+jest.mock('../../generatedReports/recentMaterialReader', () => ({
+  loadRecentMaterial: jest.fn(async () => []),
+}));
+jest.mock('../../ragConversation/conversationExecutionNative', () => ({
+  conversationExecutionNative: jest.fn(),
+}));
+
+beforeEach(() => {
+  AppState.currentState = 'active';
+  jest.mocked(conversationExecutionNative).mockReturnValue(recentTestExecution);
+});
 test.each([false, true])(
   'document detail is a native pop destination from full list=%s',
   async full => {
@@ -83,8 +95,7 @@ test('deletion invalidation clears excerpts while cleanup blocks Back, then retu
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
   const controller = await renderRoute();
   await fireEvent.press(await screen.findByTestId('medical-document-source-0'));
-  await screen.findByTestId('medical-document-source-view');
-  await fireEvent.press(screen.getByTestId('medical-document-delete'));
+  await fireEvent.press(await screen.findByTestId('medical-document-delete'));
   const confirm = alert.mock.calls
     .at(-1)?.[2]
     ?.find(button => button.style === 'destructive');
@@ -109,7 +120,6 @@ test('deletion invalidation clears excerpts while cleanup blocks Back, then retu
 });
 
 test('memory list opens an ID-owned native destination and returns through the controller', async () => {
-  AppState.currentState = 'active';
   const text = 'Synthetic memory ' + 'long detail '.repeat(15);
   jest.mocked(loadUnifiedLocalMemories).mockResolvedValue([
     {
@@ -153,7 +163,6 @@ test('memory list opens an ID-owned native destination and returns through the c
 });
 
 test('reports row opens the protected native child; Back aborts an in-flight selected report immediately', async () => {
-  AppState.currentState = 'active';
   let release!: (value: { paragraphs: string[] }) => void;
   const pending = new Promise<{ paragraphs: string[] }>(done => {
     release = done;
@@ -180,6 +189,10 @@ test('reports row opens the protected native child; Back aborts an in-flight sel
   await fireEvent.press(
     await screen.findByTestId('generated-report-summary:synthetic'),
   );
+  expect(controller.getSnapshot().currentRoute.name).toBe(
+    'generated-report-detail',
+  );
+  expect(screen.queryByTestId('generated-report-back')).toBeNull();
   const signal = read.mock.calls[0]![1];
   expect(signal.aborted).toBe(false);
   await act(async () => {
@@ -189,14 +202,18 @@ test('reports row opens the protected native child; Back aborts an in-flight sel
     release({ paragraphs: ['Synthetic confidential report body'] });
     await leaving;
   });
-  expect(controller.getSnapshot().currentRoute.name).toBe('root');
+  expect(controller.getSnapshot().currentRoute.name).toBe('generated-reports');
   expect(screen.queryByText('Synthetic confidential report body')).toBeNull();
-  expect(screen.queryByTestId('generated-report-browser')).toBeNull();
+  expect(
+    screen.getByTestId('generated-report-summary:synthetic'),
+  ).toBeVisible();
+  expect(list).toHaveBeenCalledTimes(1);
+  await fireEvent.press(screen.getByTestId('navigation-back'));
+  expect(controller.getSnapshot().currentRoute.name).toBe('root');
   expect(screen.getByTestId('records-recent-sources')).toBeTruthy();
 });
 
 test('a held Memory list cannot publish or schedule maintenance after the controller leaves', async () => {
-  AppState.currentState = 'active';
   let release!: (rows: []) => void;
   const pending = new Promise<[]>(done => {
     release = done;
