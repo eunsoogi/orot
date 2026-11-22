@@ -23,7 +23,10 @@ export function createArchivedCitationService(
   ) {
     if (signal.aborted) return null;
     const data = await loadLocalData();
+    if (signal.aborted) return null;
     const storage = await data.openConversationArtifactStorage?.();
+    // A source destination may lose authority while opening local storage.
+    if (signal.aborted) return null;
     const source = await storage?.readSelectedArchivedCitation(
       target.sessionId,
       target.sessionVersion,
