@@ -12,7 +12,7 @@ import { createConversationSessions } from '../conversationSessions';
 
 function gate() {
   let release!: () => void;
-  const wait = new Promise<void>((resolve) => {
+  const wait = new Promise<void>(resolve => {
     release = resolve;
   });
   return { wait, release };
@@ -20,7 +20,7 @@ function gate() {
 
 test.each(['verified', 'stopped'] as const)(
   'separates mounted Sending, verified Read and first transcript text: %s',
-  async (outcome) => {
+  async outcome => {
     jest.useFakeTimers();
     const epoch = Date.parse('2035-01-01T00:00:00Z');
     jest.setSystemTime(epoch);
@@ -47,7 +47,10 @@ test.each(['verified', 'stopped'] as const)(
       async generate() {
         throw new Error('Only the synthetic stream is exercised');
       },
-      async *stream(_request, options): AsyncGenerator<ProviderResult<LanguageModelStreamEvent>> {
+      async *stream(
+        _request,
+        options,
+      ): AsyncGenerator<ProviderResult<LanguageModelStreamEvent>> {
         dispatchedAt = Date.now() - epoch;
         signalStart = options!.onResponseStarted!;
         yield { ok: true, value: { type: 'text_delta', text: '' } };
@@ -60,7 +63,10 @@ test.each(['verified', 'stopped'] as const)(
       },
     };
     function History() {
-      const { sessions: list } = useSyncExternalStore(sessions.subscribe, sessions.getSnapshot);
+      const { sessions: list } = useSyncExternalStore(
+        sessions.subscribe,
+        sessions.getSnapshot,
+      );
       const session = list[0];
       return (
         <ConversationHistory
@@ -74,7 +80,8 @@ test.each(['verified', 'stopped'] as const)(
         />
       );
     }
-    const readAt = () => sessions.getSnapshot().sessions[0].messages[0]?.delivery?.readAt;
+    const readAt = () =>
+      sessions.getSnapshot().sessions[0].messages[0]?.delivery?.readAt;
     const receipt = () => screen.getByTestId('conversation-message-receipt');
     const textOutput = () => screen.queryByTestId('rag-conversation-stream');
     const tick = (ms: number, action?: () => void) =>
@@ -90,12 +97,26 @@ test.each(['verified', 'stopped'] as const)(
         work = sessions.send(1, async (_q, _history, signal, observer) => {
           await local.wait;
           observer?.onTaskStreamEvent?.({ type: 'started' });
-          const wrapped = conversationReceiptProvider(provider, observer?.onProviderReceipt);
-          for await (const event of wrapped.stream!({ messages: [] }, { signal })) {
-            if (event.ok && event.value.type === 'text_delta' && event.value.text)
+          const wrapped = conversationReceiptProvider(
+            provider,
+            observer?.onProviderReceipt,
+          );
+          for await (const event of wrapped.stream!(
+            { messages: [] },
+            { signal },
+          )) {
+            if (
+              event.ok &&
+              event.value.type === 'text_delta' &&
+              event.value.text
+            )
               observer?.onTaskStreamEvent?.(event.value);
           }
-          return { status: 'answer', answer: 'Synthetic response', citations: [] };
+          return {
+            status: 'answer',
+            answer: 'Synthetic response',
+            citations: [],
+          };
         });
       });
       expect(receipt()).toHaveTextContent(/전송 중/);
