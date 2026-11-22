@@ -15,14 +15,19 @@ import {
 } from '../testSupport/toolAppendAttributionFixture';
 
 type Project = typeof projectConversationToolEvent;
-let mockObserveProjection: ((actual: () => ReturnType<Project>) => ReturnType<Project>) | undefined;
+let mockObserveProjection:
+  ((actual: () => ReturnType<Project>) => ReturnType<Project>) | undefined;
 jest.mock('@orot/agent-runtime', () => {
-  const original = jest.requireActual<typeof import('@orot/agent-runtime')>('@orot/agent-runtime');
+  const original = jest.requireActual<typeof import('@orot/agent-runtime')>(
+    '@orot/agent-runtime',
+  );
   return {
     ...original,
     projectConversationToolEvent: (...args: Parameters<Project>) =>
       mockObserveProjection
-        ? mockObserveProjection(() => original.projectConversationToolEvent(...args))
+        ? mockObserveProjection(() =>
+            original.projectConversationToolEvent(...args),
+          )
         : original.projectConversationToolEvent(...args),
   };
 });
@@ -35,12 +40,21 @@ test('attributes a terminal append to owned phases and separates awaited SQL fro
   const query = heldAppendInterval();
   const afterSql = heldAppendInterval();
   const settlement = heldAppendInterval();
-  const observer = observeSyntheticAppend(f.database, clock, setup, afterSql, settlement);
+  const observer = observeSyntheticAppend(
+    f.database,
+    clock,
+    setup,
+    afterSql,
+    settlement,
+  );
   const priorDiagnostics = NativeModules.OrotProviderDiagnostics;
   let blocker: Promise<void> | undefined;
   let append: Promise<void> | undefined;
   const report = jest.fn((feature: string, stage: string, outcome: string) => {
-    if (clock.track(feature, stage, outcome) === 'admission' && outcome === 'started') {
+    if (
+      clock.track(feature, stage, outcome) === 'admission' &&
+      outcome === 'started'
+    ) {
       // Put a genuine queued writer ahead of this request.
       blocker = f.database.transaction(async () => admitted.wait());
     }
@@ -48,9 +62,16 @@ test('attributes a terminal append to owned phases and separates awaited SQL fro
   try {
     await runMigrations(f.database);
     const warm = createConversationArtifactStorage(f.database);
-    await warm.createSession(syntheticTurn.sessionId, await warm.currentGeneration());
+    await warm.createSession(
+      syntheticTurn.sessionId,
+      await warm.currentGeneration(),
+    );
     await warm.appendToolEvent({ ...syntheticTurn, event: startedToolEvent });
-    const record = healthObservation('synthetic-observation', 'heart_rate', '2026-10-01T00:00:00Z');
+    const record = healthObservation(
+      'synthetic-observation',
+      'heart_rate',
+      '2026-10-01T00:00:00Z',
+    );
     await f.database.execute(
       'INSERT INTO health_observations (id,effective_at,recorded_at,ingested_at,payload_json) VALUES (?,?,?,?,?)',
       [
@@ -73,11 +94,11 @@ test('attributes a terminal append to owned phases and separates awaited SQL fro
     };
     const storage = createConversationArtifactStorage(observer.observed);
     NativeModules.OrotProviderDiagnostics = { enabled: true, report };
-    f.delayWorker(async (sql) => {
+    f.delayWorker(async sql => {
       if (observer.isHeldQuery(sql)) await query.wait();
     });
     const projection = { calls: 0, hostMs: 0 };
-    mockObserveProjection = (actual) => {
+    mockObserveProjection = actual => {
       if (clock.hasStarted('setup')) return actual();
       const started = clock.at();
       try {
@@ -98,7 +119,13 @@ test('attributes a terminal append to owned phases and separates awaited SQL fro
       dependencies: [
         {
           reference,
-          records: [{ kind: 'health_observation', id: record.id, revision: fingerprint(record) }],
+          records: [
+            {
+              kind: 'health_observation',
+              id: record.id,
+              revision: fingerprint(record),
+            },
+          ],
         },
       ],
     };
@@ -115,14 +142,16 @@ test('attributes a terminal append to owned phases and separates awaited SQL fro
     await afterSql.entered;
     clock.release(afterSql, 31);
     await settlement.entered;
-    const commits = f.events.filter((event) => event.event === 'COMMIT;').length;
+    const commits = f.events.filter(event => event.event === 'COMMIT;').length;
     expect(clock.hasStarted('settlement')).toBe(true);
     clock.release(settlement, 59);
     await append;
     const total = clock.elapsed(started);
-    expect(f.events.filter((event) => event.event === 'COMMIT;')).toHaveLength(commits + 1);
+    expect(f.events.filter(event => event.event === 'COMMIT;')).toHaveLength(
+      commits + 1,
+    );
     const stages = Object.fromEntries(
-      toolAppendPhases.map((phase) => [phase, clock.duration(phase)]),
+      toolAppendPhases.map(phase => [phase, clock.duration(phase)]),
     );
     const body = clock.duration('body');
     const sql = observer.sql();
@@ -131,7 +160,9 @@ test('attributes a terminal append to owned phases and separates awaited SQL fro
       hostMs: body.hostMs - sql.hostMs,
     };
     // Lineage validation is nested in body and must not be subtracted twice.
-    const exclusivePhases = toolAppendPhases.filter((phase) => phase !== 'lineage_validation');
+    const exclusivePhases = toolAppendPhases.filter(
+      phase => phase !== 'lineage_validation',
+    );
     const outsideOwnedPhases = exclusivePhases.reduce((outside, phase) => {
       const time = clock.duration(phase);
       return {
@@ -171,7 +202,9 @@ test('attributes a terminal append to owned phases and separates awaited SQL fro
       startedToolEvent.operationRunId,
       startedToolEvent.callId,
     );
-    expect(saved?.toolEvents).toEqual([expect.objectContaining({ status: 'completed' })]);
+    expect(saved?.toolEvents).toEqual([
+      expect.objectContaining({ status: 'completed' }),
+    ]);
   } finally {
     setup.release();
     admitted.release();

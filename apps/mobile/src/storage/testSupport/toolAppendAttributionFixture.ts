@@ -14,7 +14,7 @@ type Point = { readonly tick: number; readonly time: number };
 
 function signal() {
   let release!: () => void;
-  const done = new Promise<void>((resolve) => {
+  const done = new Promise<void>(resolve => {
     release = resolve;
   });
   return { done, release };
@@ -62,7 +62,7 @@ export function createToolAppendClock() {
   const hasStarted = (phase: Phase) => stages.has(phase);
   const bodyActive = () => hasStarted('body') && !hasStarted('settlement');
   const track = (feature: string, stage: string, outcome: string) => {
-    const phase = toolAppendPhases.find((p) => stage === 'tool_event_write_' + p);
+    const phase = toolAppendPhases.find(p => stage === 'tool_event_write_' + p);
     if (feature !== 'storage' || !phase) return;
     if (outcome === 'started') stages.set(phase, { start: at() });
     else if (outcome === 'completed') {
@@ -76,7 +76,10 @@ export function createToolAppendClock() {
     if (!value?.end) throw new Error('No completed synthetic phase: ' + phase);
     return elapsed(value.start, value.end);
   };
-  const release = (interval: ReturnType<typeof heldAppendInterval>, heldTicks: number) => {
+  const release = (
+    interval: ReturnType<typeof heldAppendInterval>,
+    heldTicks: number,
+  ) => {
     tick += heldTicks;
     interval.release();
   };
@@ -126,8 +129,8 @@ export function observeSyntheticAppend(
       if (query === 'PRAGMA temp_store = MEMORY') await setup.wait();
       return database.execute(query, bindings);
     },
-    transaction: (work) =>
-      database.transaction(async (tx) => {
+    transaction: work =>
+      database.transaction(async tx => {
         // The adapter setup transaction is not the terminal write.
         if (!clock.hasStarted('admission')) return work(tx);
         await work(observedTx(tx));
