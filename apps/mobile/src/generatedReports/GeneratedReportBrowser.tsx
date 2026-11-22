@@ -25,11 +25,13 @@ export function GeneratedReportBrowser({
   open = openGeneratedReportReader,
   destination = false,
   ownership,
+  onOpenDestination,
 }: {
   readonly active?: boolean;
   readonly open?: () => Promise<GeneratedReportReader>;
   readonly destination?: boolean;
   readonly ownership?: NavigationRouteOwnership;
+  readonly onOpenDestination?: (row: GeneratedReportRow) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [rows, setRows] = useState<readonly GeneratedReportRow[]>([]);
@@ -46,9 +48,11 @@ export function GeneratedReportBrowser({
   const [pagination, setPagination] =
     useState<GeneratedReportPagination>('idle');
   const request = useRef<AbortController | null>(null);
+  const inactiveOwner = useRef({});
   const abort = useCallback(() => {
     request.current?.abort();
     request.current = null;
+    inactiveOwner.current = {};
   }, []);
   const invalidate = useCallback(() => {
     abort();
@@ -59,11 +63,14 @@ export function GeneratedReportBrowser({
     setState('idle');
     setExpanded(false);
   }, [abort]);
+  const retainedList = Boolean(onOpenDestination);
+  // A covered native list retains metadata and its scroll extent, never detail prose.
   const { accessVersion, canAccess } = useGeneratedReportAccess(
     active,
     ownership,
     invalidate,
     abort,
+    retainedList,
   );
   const list = useCallback(
     async (append = false) => {
@@ -78,7 +85,6 @@ export function GeneratedReportBrowser({
         !controller.signal.aborted &&
         canAccess();
       if (append) {
-        // Replacing ready with loading unmounts rows and collapses the native scroll range.
         setPagination('loading');
       } else {
         setExpanded(true);
@@ -110,22 +116,26 @@ export function GeneratedReportBrowser({
   useEffect(() => {
     if (!destination || state !== 'idle' || !canAccess()) return;
     let live = true;
-    // Wait for committed ownership and let a replayed effect cancel its first read.
     Promise.resolve().then(() => {
       if (live && !request.current && canAccess()) list();
     });
     return () => {
       live = false;
     };
-  }, [accessVersion, canAccess, destination, list, state]);
+  }, [accessVersion, active, canAccess, destination, list, state]);
   async function read(row: GeneratedReportRow) {
     if (!canAccess()) return;
+    // Opening an existing report wins over a page still in flight.
+    setPagination(previous => (previous === 'loading' ? 'ready' : previous));
+    if (onOpenDestination) {
+      abort();
+      onOpenDestination(row);
+      return;
+    }
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
     const selectedGeneration = ++generation.current;
-    // Opening an existing report wins over a page still in flight.
-    setPagination(previous => (previous === 'loading' ? 'ready' : previous));
     setSelected(row);
     setDetail(null);
     setState('loading');
@@ -144,8 +154,8 @@ export function GeneratedReportBrowser({
       if (!controller.signal.aborted && canAccess()) setState('failed');
     }
   }
-  if (!active || (ownership && !ownership.isCurrent())) return null;
-  // A newly selected instance of the same report cannot revive this press.
+  if (!retainedList && (!active || ownership?.isCurrent() === false))
+    return null;
   const ownsRenderedReport = () =>
     Boolean(
       detail &&
@@ -153,7 +163,9 @@ export function GeneratedReportBrowser({
       !detail.owner.signal.aborted &&
       canAccess(),
     );
-  const metadataOwner = request.current;
+  const metadataOwner = request.current ?? inactiveOwner.current;
+  const ownsMetadata = () =>
+    (request.current ?? inactiveOwner.current) === metadataOwner;
   return (
     <GeneratedReportFrame destination={destination} selected={!!selected}>
       {!destination && !expanded ? (
@@ -223,13 +235,10 @@ export function GeneratedReportBrowser({
               rows={rows}
               pagination={pagination}
               onOpen={row => {
-                if (request.current === metadataOwner) return read(row);
+                if (ownsMetadata()) return read(row);
               }}
               onMore={() => {
-                if (
-                  request.current === metadataOwner &&
-                  (pagination === 'ready' || pagination === 'failed')
-                )
+                if (ownsMetadata() && ['ready', 'failed'].includes(pagination))
                   return list(true);
               }}
             />
