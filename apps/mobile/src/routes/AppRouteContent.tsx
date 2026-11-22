@@ -68,16 +68,16 @@ export function AppRouteContent({
           <OverviewRoute
             appointment={nextAppointment}
             appointmentState={appointmentState}
-            recentRecording={recordings[0] ?? null}
-            recordingState={recordingState}
             onRetryAppointments={() => refreshAppointments()}
-            onRetryRecordings={() => refreshRecordings()}
             onPrepareVisit={openOverviewPreparation}
             onOpenSchedule={() => selectTab('schedule')}
-            onOpenRecords={() => selectTab('records')}
+            onEditMetricSelection={() =>
+              active &&
+              actions.ownership?.isCurrent() !== false &&
+              actions.push('overview-metric-selection')
+            }
             loadSavedVisitQuestions={loadSavedVisitQuestions}
             discoverManualVisits={discoverManualVisits}
-            onOpenRecording={openRecording}
           />
         );
       case 'records':

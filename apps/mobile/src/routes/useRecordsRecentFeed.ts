@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { loadRecentMaterial } from '../generatedReports/recentMaterialReader';
 import { t } from '../i18n';
+import { useNavigationRouteRefresh } from '../navigation/navigationRouteRefresh';
 import { subscribeRecentSourceSaved } from '../storage/recentSourceEvents';
 import type { RecordsRecentSourcesProps } from './RecordsRecentSources';
 import {
@@ -17,6 +18,7 @@ import {
 } from './recentSourceReader';
 import { useRecentPageDemand } from './useRecentPageDemand';
 import { useRecentSavedMaterial } from './useRecentSavedMaterial';
+import { refreshRecentPages } from './recentPageRefresh';
 
 /** Independent cursor streams share one visible depth without blocking healthy sources. */
 export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
@@ -60,6 +62,9 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
   );
   const [limit, setLimit] = useState(recentPageSize);
   const requestedDepth = useRef(recentPageSize);
+  const refreshInFlight = useRef(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const retryRefresh = useRef(false);
   const reportDemand = useRecentPageDemand(reports, recentPageSize);
   const mediaDemand = useRecentPageDemand(media, recentPageSize);
   const records = useMemo(
@@ -85,6 +90,28 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
     ...(onOpenReport ? [reports] : []),
     ...(pagedAudio || pagedDocuments ? [media] : []),
   ];
+  async function refresh() {
+    if (refreshInFlight.current || !reports.isRouteCurrent()) return;
+    refreshInFlight.current = true;
+    setRefreshing(true);
+    retryRefresh.current = false;
+    try {
+      await refreshRecentPages(
+        streams.map(stream => stream.prepareRefresh),
+        () => {
+          requestedDepth.current = recentPageSize;
+          setLimit(recentPageSize);
+        },
+        () => {
+          retryRefresh.current = true;
+        },
+      );
+    } finally {
+      refreshInFlight.current = false;
+      setRefreshing(false);
+    }
+  }
+  useNavigationRouteRefresh(showAll && active && streams.length > 0, refresh);
   // Publishing below an unresolved cursor can show an old file ahead of an
   // unseen newer report. Keep the certified prefix and one common visible depth.
   const certified = certifiedRecentPrefix(records, [
@@ -96,15 +123,17 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
   const groups = groupRecentRecords(certified, new Date(), showAll ? limit : 3);
   const hasKnownMore = certified.length > limit;
   const canAdvance =
-    hasKnownMore ||
-    (Boolean(onOpenReport) && reportDemand.canAdvance) ||
-    ((pagedAudio || pagedDocuments) && mediaDemand.canAdvance);
+    !refreshing &&
+    (hasKnownMore ||
+      (Boolean(onOpenReport) && reportDemand.canAdvance) ||
+      ((pagedAudio || pagedDocuments) && mediaDemand.canAdvance));
   const legacyRecordingState = pagedAudio ? 'ready' : recordingState;
   const legacyDocumentState = pagedDocuments ? 'ready' : documentsState;
 
   function showMore() {
     if (
       !reports.isRouteCurrent() ||
+      refreshInFlight.current ||
       !canAdvance ||
       requestedDepth.current !== limit
     )
@@ -118,7 +147,11 @@ export function useRecordsRecentFeed(props: RecordsRecentSourcesProps) {
   }
 
   function retrySources() {
-    if (!reports.isRouteCurrent()) return;
+    if (!reports.isRouteCurrent() || refreshInFlight.current) return;
+    if (retryRefresh.current) {
+      refresh();
+      return;
+    }
     for (const stream of streams) {
       if (stream.state === 'failed') stream.loadMore();
     }

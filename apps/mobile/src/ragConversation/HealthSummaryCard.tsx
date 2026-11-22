@@ -1,4 +1,4 @@
-import { ConversationReportSection } from './ConversationReportSection';
+import { HealthSummarySections } from './HealthSummarySections';
 import { useId } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -9,7 +9,6 @@ import type { HealthSummaryResult } from './healthSummary';
 import { OMITTED_SUMMARY_CONTENT_NOTE } from '../diseaseHypotheses/summaryPartialValidation';
 import { INCOMPLETE_SUMMARY_EVIDENCE_NOTE } from '../diseaseHypotheses/summaryPartialEvidence';
 import { t } from '../i18n';
-import { HealthSummaryText } from './HealthSummaryText';
 
 /** Show only the validated sections and their original source links. */
 export function HealthSummaryCard({
@@ -78,36 +77,33 @@ export function HealthSummaryCard({
             </AppText>
           ))
         : null}
-      {result.analysis.hypotheses.map((section, index) => (
-        <ConversationReportSection key={index} title={section.title}>
-          <HealthSummaryText text={section.summary} />
-          {section.uncertainty ? (
-            <HealthSummaryText text={section.uncertainty} />
-          ) : null}
-          {section.missingData.map((missing, item) => (
-            <HealthSummaryText key={item} text={missing} />
-          ))}
-          {showCitations ? (
-            <ConversationSources
-              testIDPrefix={`${identity}-section-${index}`}
-              archived={
-                result.archivedSectionCitations && openArchivedCitation
-                  ? {
-                      citations: result.archivedSectionCitations[index] ?? [],
-                      open: openArchivedCitation,
-                    }
-                  : undefined
-              }
-              references={[
-                ...section.supportingEvidence,
-                ...section.contraryEvidence,
-              ]}
-              onOpenSource={onOpenSource}
-              onLinkError={onLinkError}
-            />
-          ) : null}
-        </ConversationReportSection>
-      ))}
+      <HealthSummarySections
+        sections={result.analysis.hypotheses}
+        renderSectionTail={
+          showCitations
+            ? (section, index) => (
+                <ConversationSources
+                  testIDPrefix={`${identity}-section-${index}`}
+                  archived={
+                    result.archivedSectionCitations && openArchivedCitation
+                      ? {
+                          citations:
+                            result.archivedSectionCitations[index] ?? [],
+                          open: openArchivedCitation,
+                        }
+                      : undefined
+                  }
+                  references={[
+                    ...section.supportingEvidence,
+                    ...section.contraryEvidence,
+                  ]}
+                  onOpenSource={onOpenSource}
+                  onLinkError={onLinkError}
+                />
+              )
+            : undefined
+        }
+      />
       <AppText testID="health-summary-save-status">
         {saved?.status === 'saved'
           ? saved.sourceChanged

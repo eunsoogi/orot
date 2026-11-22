@@ -8,11 +8,16 @@ import {
   useRef,
 } from 'react';
 import {
+  RefreshControl,
   ScrollView,
   StyleSheet,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
+import {
+  NavigationRouteRefreshContext,
+  useNavigationRouteRefreshHost,
+} from './navigationRouteRefresh';
 import { useNavigationContentInset } from './useNavigationContentInset';
 
 interface NavigationRouteScrollPosition {
@@ -31,9 +36,12 @@ export function useNavigationRouteScrollPosition() {
 /** Lets route content fill its viewport and scroll behind the shared glass actions. */
 export function NavigationRouteScrollView({
   children,
+  pullToRefresh = false,
 }: {
   readonly children: ReactNode;
+  readonly pullToRefresh?: boolean;
 }) {
+  const refresh = useNavigationRouteRefreshHost();
   const navigationInset = useNavigationContentInset();
   const scrollViewRef = useRef<ComponentRef<typeof ScrollView> | null>(null);
   const currentOffset = useRef(0);
@@ -73,18 +81,31 @@ export function NavigationRouteScrollView({
 
   return (
     <NavigationRouteScrollPositionContext.Provider value={position}>
-      <ScrollView
-        ref={scrollViewRef}
-        automaticallyAdjustKeyboardInsets
-        contentContainerStyle={[styles.content, navigationInset]}
-        keyboardShouldPersistTaps="handled"
-        onScroll={updateCurrentOffset}
-        scrollEventThrottle={16}
-        style={styles.fill}
-        testID="navigation-route-scroll"
+      <NavigationRouteRefreshContext.Provider
+        value={pullToRefresh ? refresh.register : null}
       >
-        {children}
-      </ScrollView>
+        <ScrollView
+          ref={scrollViewRef}
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={[styles.content, navigationInset]}
+          keyboardShouldPersistTaps="handled"
+          onScroll={updateCurrentOffset}
+          refreshControl={
+            pullToRefresh ? (
+              <RefreshControl
+                testID="navigation-route-refresh"
+                refreshing={refresh.refreshing}
+                onRefresh={refresh.onRefresh}
+              />
+            ) : undefined
+          }
+          scrollEventThrottle={16}
+          style={styles.fill}
+          testID="navigation-route-scroll"
+        >
+          {children}
+        </ScrollView>
+      </NavigationRouteRefreshContext.Provider>
     </NavigationRouteScrollPositionContext.Provider>
   );
 }

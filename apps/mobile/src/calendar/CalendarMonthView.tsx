@@ -44,9 +44,6 @@ interface CalendarMonthViewProps {
 function localDateKey(date: Date): string {
   return calendarDateKey(date.getFullYear(), date.getMonth(), date.getDate());
 }
-function dateNumber(dateKey: string): number {
-  return Number(dateKey.slice(-2));
-}
 export function CalendarMonthView({
   appointmentsLoading,
   candidatesLoaded,
@@ -127,7 +124,7 @@ export function CalendarMonthView({
       calendarDateKey(
         target.year,
         target.month,
-        Math.min(dateNumber(selectedDate), lastDay),
+        Math.min(Number(selectedDate.slice(-2)), lastDay),
       ),
     );
   }
@@ -222,7 +219,10 @@ export function CalendarMonthView({
             </Text>
           </>
         ) : null}
-        <View testID="calendar-events-for-selected-date">
+        <View
+          style={styles.calendarSelectedEventList}
+          testID="calendar-events-for-selected-date"
+        >
           {eventsOnSelectedDate.map(item => {
             // A selected recurring event is one exact snapshot, not every matching calendar identifier.
             const selected =

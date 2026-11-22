@@ -30,7 +30,9 @@ export function requestsPossibilityReport(
     input.request.trim() === t('conversationTemplate.possibilities.title') ||
     (isObject(input.context) &&
       input.context.intent === 'possibilities' &&
-      input.request === t('conversationIntent.possibilities'))
+      (input.request === t('conversationIntent.possibilities') ||
+        (input.context.authoredCurrentRequest === true &&
+          input.context.typedPossibilityReport === true)))
   );
 }
 

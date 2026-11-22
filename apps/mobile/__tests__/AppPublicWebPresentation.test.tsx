@@ -68,7 +68,6 @@ jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
-
 test.each([
   {
     scenario: 'retains the visible cited result without an unavailable notice',
@@ -127,7 +126,6 @@ test.each([
         await settingsStorage.read('conversation', 'public-web'),
       ).toBeNull();
       expect(publicWeb).not.toHaveBeenCalled();
-
       await press('settings-provider-load-models');
       await fireEvent.press(await screen.findByText(model.displayName));
       await press('provider-selection-confirm');
@@ -147,7 +145,6 @@ test.each([
           expect.objectContaining({ purpose: 'public_web_search' }),
         ],
       });
-
       await press('navigation-tab-conversation');
       await fireEvent.changeText(
         await screen.findByTestId('rag-conversation-input'),
@@ -157,11 +154,15 @@ test.each([
       // Emit the native glass control's press event; the mounted app retains admission.
       await fireEvent(send, 'composerPress');
       if (invalidCitation) {
-        expect(
-          await screen.findByTestId('rag-conversation-incomplete-activity'),
-        ).toHaveTextContent(/답변을 확인하지 못해 표시하지 않았어요/);
-        expect(screen.queryByTestId('rag-conversation-answer-body')).toBeNull();
-        expect(screen.queryByTestId('rag-conversation-sources')).toBeNull();
+        const copy = /답변을 확인하지 못해 표시하지 않았어요/;
+        const error = await screen.findByTestId('rag-conversation-error');
+        expect(error).toHaveTextContent(copy);
+        expect(screen.getAllByText(copy)).toHaveLength(1);
+        const rejected =
+          /^rag-conversation-(incomplete-activity|answer-body|sources)$/;
+        expect(screen.queryAllByTestId(rejected)).toHaveLength(0);
+        expect(screen.queryByText('완료되지 않은 응답 초안')).toBeNull();
+        expect(screen.queryByText(finished)).toBeNull();
         const completions = await sqlite.database.execute(
           'SELECT message_id FROM conversation_completions',
         );
