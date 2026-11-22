@@ -87,7 +87,9 @@ test('the browser return remains unavailable when protected data is still locked
 test('a successful link with no prompt departure does not grant an unrelated later foreground refresh', async () => {
   const move = installReportAppState();
   const native = reportNativeWitness();
-  const instant = jest.spyOn(global.performance, 'now').mockReturnValue(100);
+  const instant = jest
+    .spyOn(globalThis.performance, 'now')
+    .mockReturnValue(100);
   jest.mocked(conversationExecutionNative).mockReturnValue(native.adapter);
   const { f, browser, read } = await openReport();
   try {
