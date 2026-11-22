@@ -3,6 +3,8 @@ import { AppText as Text } from '../layout/AppText';
 import { AppSymbol } from '../layout/AppSymbol';
 import { appColors } from '../layout/appColors';
 import { providerSettingsStyles as styles } from '../layout/providerSettingsPresentation';
+import { t } from '../i18n';
+import { voiceConversationCapability } from '../voiceConversation/voiceConversationCapability';
 import type { voiceModels } from './voiceModels';
 
 /** Voice and language choices share layout, not provider capabilities or selection logic. */
@@ -17,6 +19,10 @@ export function VoiceModelOption({
   readonly disabled: boolean;
   readonly onPress: () => void;
 }) {
+  const capability = voiceConversationCapability({
+    mode: item.mode,
+    model: item.id,
+  });
   return (
     <Pressable
       accessibilityRole="radio"
@@ -38,6 +44,11 @@ export function VoiceModelOption({
           <Text style={styles.detail}>{item.id}</Text>
         ) : null}
         <Text style={styles.detail}>{item.detail}</Text>
+        {capability.mode === 'live-audio-only' ? (
+          <Text style={styles.detail}>
+            {t('modelSettings.liveVoiceToolsUnavailable')}
+          </Text>
+        ) : null}
       </View>
       <AppSymbol
         name={selected ? 'checkmark.circle.fill' : 'circle'}
