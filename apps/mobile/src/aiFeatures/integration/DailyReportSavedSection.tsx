@@ -103,7 +103,6 @@ export function DailyReportSavedSection({
           onStale={onStale}
         />
       ) : null}
-      <AppText>{t('dailyReport.reportCaution')}</AppText>
       {saved.report.followUpQuestions.length > 0 ? (
         <>
           <AppText accessibilityRole="header">

@@ -60,7 +60,9 @@ export async function prepareDailyReportFacts(
         limitationCodes: [
           external
             ? 'planned_events_not_attendance'
-            : 'calendar_unavailable_or_scoped_out',
+            : request.scope.sourceIds
+              ? 'calendar_scoped_out'
+              : 'calendar_read_unavailable',
         ],
       },
       {

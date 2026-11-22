@@ -80,7 +80,9 @@ test('uses real SQLite for explicit generation, source validation, save and reus
     expect(result.report.observations[0]?.text).toContain('72');
     // A report uses admitted evidence without making answers a prerequisite.
     expect(result.report.followUpQuestions).toEqual([]);
-    expect(result.report.supportedContext[0]?.text).toContain('오늘 심박수');
+    expect(result.report.supportedContext[0]?.text).toContain(
+      '오늘 기록된 심박수: 72 회/분.',
+    );
     expect(result.report.supportedContext[0]?.sourceReferences).toEqual(
       result.report.observations[0]?.sourceReferences,
     );

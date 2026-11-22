@@ -19,19 +19,41 @@ export function conversationDailyReportText(
     saved.context.sourceSnapshot?.records,
   );
   const coverage = saved.report.coverage
+    .filter(isDailyReportCoverageWarning)
     .map(item => {
+      const meaning = dailyReportCoverageMeaning(item);
+      // The cutoff and deliberate scope exclusions are provenance, not warnings.
+      const codes = item.limitationCodes.filter(
+        code =>
+          code !== 'partial_day' &&
+          code !== 'selected_facts_only' &&
+          code !== 'planned_events_not_attendance',
+      );
+      if (
+        meaning === 'partial' &&
+        item.syncStatus !== 'retryable' &&
+        item.limitationCodes.length > 0 &&
+        codes.length === 0
+      )
+        return '';
       const count = counts?.get(item.source);
-      const details = isDailyReportCoverageWarning(item)
-        ? [
-            statusLabel(dailyReportCoverageMeaning(item)),
-            ...new Set(item.limitationCodes.map(limitationLabel)),
-          ]
-        : [];
+      // The old ambiguous calendar status proves non-inclusion, not a partial read.
+      const unknownCalendar =
+        item.source === 'system_calendar' &&
+        item.status === 'unknown' &&
+        item.syncStatus !== 'retryable' &&
+        codes.some(
+          code =>
+            code === 'calendar_unavailable_or_scoped_out' ||
+            code === 'calendar_read_unavailable',
+        );
+      const details = [
+        ...(unknownCalendar ? [] : [statusLabel(meaning)]),
+        ...new Set(codes.map(limitationLabel)),
+      ];
       if (count !== undefined)
         details.unshift(t('dailyReport.coverage.count', { count }));
-      return details.length
-        ? `${sourceLabel(item.source)}: ${details.join('. ')}`
-        : '';
+      return `${sourceLabel(item.source)}: ${[...new Set(details)].join('. ')}`;
     })
     .filter(Boolean);
   return [
@@ -50,9 +72,6 @@ export function conversationDailyReportText(
       ...(claim.section && claim.section !== claims[index - 1]?.section
         ? [`## ${t(`dailyReport.analysis.${claim.section}`)}`]
         : []),
-      ...(claim.section === 'model' && claims[index - 1]?.section !== 'model'
-        ? [t('dailyReport.analysis.modelCaution')]
-        : []),
       claim.text,
     ]),
     ...(saved.report.observations.length
@@ -67,8 +86,8 @@ export function conversationDailyReportText(
           ...saved.report.followUpQuestions,
         ]
       : []),
-    `## ${t('conversationTemplate.daily.scope')}`,
-    ...coverage,
-    t('dailyReport.reportCaution'),
+    ...(coverage.length
+      ? [`## ${t('dailyReport.coverage.attention')}`, ...coverage]
+      : []),
   ].join('\n\n');
 }

@@ -104,7 +104,6 @@ export function dailyReportActions(
       ]),
     );
   }
-  result.push(claim(t('dailyReport.context.coverage'), [0]));
   return result;
 }
 

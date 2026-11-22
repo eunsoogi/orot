@@ -1,4 +1,11 @@
 export const dailyReportCoverageKo = {
+  'dailyReport.coverage.attention': '확인이 필요한 자료',
+  'dailyReport.systemCalendar.notIncluded':
+    '시스템 캘린더 자료는 이 보고서에 반영되지 않았어요.',
+  'dailyReport.systemCalendar.readUnavailable':
+    '시스템 캘린더 기록을 확인하지 못했어요.',
+  'dailyReport.systemCalendar.scopedOut':
+    '시스템 캘린더는 이번 보고서 범위에 포함하지 않았어요.',
   'dailyReport.statisticCitation': '통계 출처 {number} · 근거 원본 {count}건',
   'dailyReport.otherBackingSources': '그 외 근거 원본 {count}건',
   'dailyReport.coverage.recordedScope': '기록된 기간 기준',
