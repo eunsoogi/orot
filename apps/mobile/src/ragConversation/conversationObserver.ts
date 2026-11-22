@@ -43,6 +43,8 @@ export type RagConversationObserver = Pick<
   ) => Promise<boolean>;
   /** Opt-in is from the composer dispatch, never inferred from typed route or model output. */
   readonly inputOrigin?: 'composer' | 'shortcut';
+  /** Local-only storage permission; available only to the live request owner. */
+  readonly admitDailyReportMemory?: import('./conversationDailyReportMemoryJobs').DailyReportMemoryObserver;
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
   /** The checkpoint and explicit photo consent are owned by this specific turn. */

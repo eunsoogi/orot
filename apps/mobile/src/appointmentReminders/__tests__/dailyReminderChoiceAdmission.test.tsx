@@ -152,7 +152,12 @@ test('a live daily tap delayed by real leave ownership invokes the canonical cho
     expect(manual).toBeEnabled();
     await fireEvent.press(manual);
     await waitFor(() => expect(sender).toHaveBeenCalledTimes(2));
-    expect(sender.mock.calls[1]?.[4]).toEqual(sender.mock.calls[0]?.[4]);
+    const notificationContext = sender.mock.calls[0]?.[4];
+    expect(notificationContext).not.toHaveProperty('directDailyReportRequest');
+    expect(sender.mock.calls[1]?.[4]).toEqual({
+      ...notificationContext,
+      directDailyReportRequest: true,
+    });
   } finally {
     await view.unmount();
     AppState.currentState = appState;

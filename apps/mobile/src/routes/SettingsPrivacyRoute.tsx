@@ -1,3 +1,4 @@
+import { SettingsDailyReportMemorySection } from './SettingsDailyReportMemorySection';
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
@@ -72,6 +73,7 @@ export function SettingsPrivacyRoute({
               />
             </View>
             <SettingsAutomaticMemorySection ownership={ownership} />
+            <SettingsDailyReportMemorySection ownership={ownership} />
             <View
               style={styles.secondaryColumn}
               testID="settings-privacy-external-transfer"

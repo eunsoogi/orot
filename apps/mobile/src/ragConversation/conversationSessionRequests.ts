@@ -12,7 +12,7 @@ import {
 } from './conversationActivity';
 import { createConversationRequestDisposal } from './conversationRequestDisposal';
 import { conversationHistoryPayload } from './conversationHistoryPayload';
-import { conversationCompletedAnswer } from './conversationCompletedAnswer';
+import { publishConversationAnswer } from './conversationDailyReportMemoryJobs';
 import { prepareConversationRequest } from './conversationRequestStart';
 import { bindRequestCancel } from './conversationRequestIdentity';
 import { ownsOutcome } from './conversationOutcomeOwnership';
@@ -44,6 +44,7 @@ export function createConversationSessionRequests(
   photo?: Parameters<typeof startRetainedRequest>[0]['photo'],
   cold?: ConversationSessionOptions['coldResume'],
   memoryPort?: ConversationSessionOptions['ordinaryMemory'],
+  activeSelection?: (id: number) => number | undefined,
 ) {
   const steering = createConversationSteeringOwner(find, update);
   const ordinaryMemory = createConversationOrdinaryMemoryOwner(memoryPort);
@@ -65,6 +66,7 @@ export function createConversationSessionRequests(
     find,
     update,
     conversationScope,
+    activeSelection,
     cold,
     confirmPhotoResume: photo?.consent.confirm,
     retention,
@@ -200,7 +202,7 @@ export function createConversationSessionRequests(
         }
         if (outcome.status === 'answer')
           lifetime.answered(controller, request.committed);
-        conversationCompletedAnswer({
+        publishConversationAnswer(request, {
           id,
           userMessageId,
           messageId: outcome.status === 'answer' ? responseId : ++messageId,

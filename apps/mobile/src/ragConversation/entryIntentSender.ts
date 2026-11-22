@@ -1,3 +1,5 @@
+import { bindDailyReportMemoryTap } from './conversationDailyReportMemoryJobs';
+import type { DailyReportMemoryTap } from '../storage/dailyReportMemoryTap';
 import type { ConversationSessions } from './conversationSessions';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { ConversationSender } from './conversationSessionTypes';
@@ -12,6 +14,8 @@ export function entryIntentSender(
   id: number,
   send: ConversationScreenProps['onSend'],
   inputOrigin: 'composer' | 'shortcut' = 'shortcut',
+  reportOrigin?: 'direct-user-tap',
+  reportTap?: DailyReportMemoryTap,
 ): ConversationSender {
   // Freeze the selected source before storage preflight can yield to another selection.
   const selected = conversationEntryForSession(store, id);
@@ -46,8 +50,18 @@ export function entryIntentSender(
         observer?.onSummarySaveSettled?.(value);
       },
     };
+    if (reportOrigin && reportTap)
+      bindDailyReportMemoryTap(scopedObserver, reportTap);
     const outcome = context
-      ? await send(question, history, signal, scopedObserver, context)
+      ? await send(
+          question,
+          history,
+          signal,
+          scopedObserver,
+          reportOrigin && selected?.intent === 'daily-report'
+            ? { ...context, directDailyReportRequest: true }
+            : context,
+        )
       : await send(question, history, signal, scopedObserver);
     if (
       (!signal?.aborted || committed) &&

@@ -69,6 +69,8 @@ export function ConversationReportTask({
             store,
             () => store.getSnapshot().activeId === sessionId,
             services.sendRagMessage,
+            undefined,
+            'direct-user-tap',
           );
         }}
       />

@@ -1,3 +1,5 @@
+import { AppState } from 'react-native';
+import { captureDailyReportMemoryTap } from '../storage/dailyReportMemoryTap';
 import type { ConversationSessions } from './conversationSessions';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import { canSelectConversationChoice } from './selectConversationChoice';
@@ -13,6 +15,7 @@ export function startConversationReportTurn(
   isCurrent: () => boolean,
   sender: ConversationScreenProps['onSend'],
   notificationIdentity?: DailyReportIdentity,
+  origin?: 'direct-user-tap',
 ) {
   if (!isCurrent()) return;
   const snapshot = store.getSnapshot();
@@ -30,9 +33,20 @@ export function startConversationReportTurn(
     entryKey: `conversation-report:${session.id}`,
     reportRequest,
   });
+  const tap =
+    notificationIdentity || !origin || AppState.currentState !== 'active'
+      ? undefined
+      : captureDailyReportMemoryTap();
   return store.sendPrompt(
     session.id,
     t('dailyReport.title'),
-    entryIntentSender(store, session.id, sender),
+    entryIntentSender(
+      store,
+      session.id,
+      sender,
+      'shortcut',
+      notificationIdentity ? undefined : origin,
+      tap,
+    ),
   );
 }
