@@ -62,7 +62,7 @@ precondition(LiteratureActionGeometry.decide(window: window, scroll: scroll, doc
   const settings = readFileSync('apps/mobile/e2e/LiteratureSettingsProbe.tsx', 'utf8');
   const fixture = readFileSync('apps/mobile/e2e/literatureVisualFixtures.ts', 'utf8');
   for (const required of [
-    'settings-consent-medical',
+    'provider-option-0',
     'provider-selection-cancel',
     'provider-selection-confirm',
     'synthetic-literature-search-count',
@@ -70,6 +70,16 @@ precondition(LiteratureActionGeometry.decide(window: window, scroll: scroll, doc
   ]) {
     assert.ok(consent.includes(required), required);
   }
+  // The supported on-device choice opens the current Europe PMC review.
+  assert.doesNotMatch(consent, /settings-consent-medical/);
+  const choice = consent.indexOf('option.tap()');
+  const confirm = consent.indexOf(
+    'NavigationPageActionUITestConditions.tap(app, id: "provider-selection-confirm"',
+  );
+  const recipient = consent.indexOf('guard recipientText == "Europe PMC"');
+  const allow = consent.indexOf('allow.tap()');
+  assert.ok(choice >= 0 && choice < confirm && confirm < recipient && recipient < allow);
+  assert.match(settings, /options=\{\[createAppleSelectionOption\('available'\)\]\}/);
   assert.match(settings, /selectionStore=\{providerSelectionStore\}/);
   assert.match(fixture, /setCount\(value => value \+ 1\)/);
   assert.match(source, /LiteratureActionReveal\.reveal\(open, in: app, dock: search\)/);
