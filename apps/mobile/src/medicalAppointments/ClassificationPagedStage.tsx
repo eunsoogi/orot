@@ -14,13 +14,12 @@ import { ClassificationPagingActions } from './ClassificationPagingActions';
 import {
   ClassificationCircleButton,
   ClassificationCircleSlot,
-  classificationCircleGeometry,
+  classificationConfirmationGeometry,
 } from './ClassificationCircle';
 import {
   paginateClassificationLines,
   type ClassificationTextLine,
 } from './classificationTextPagination';
-
 interface Props {
   readonly documents: readonly string[];
   readonly caption?: ClassificationCaptionCopy;
@@ -29,13 +28,12 @@ interface Props {
   readonly onAction: () => void;
   readonly disabled?: boolean;
   readonly testID: string;
+  readonly confirmAtDock?: boolean;
   readonly supplementaryAction?: {
     readonly title: string;
     readonly onPress: () => void;
   };
 }
-
-/** A measured, non-scrolling reader keeps even one long event reachable without shrinking Dynamic Type. */
 export function ClassificationPagedStage(props: Props) {
   const window = useWindowDimensions();
   const { fontScale } = window;
@@ -44,10 +42,8 @@ export function ClassificationPagedStage(props: Props) {
   const [footerHeight, setFooterHeight] = useState(0);
   const [documentIndex, setDocumentIndex] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
-  const index = Math.min(
-    documentIndex,
-    Math.max(0, props.documents.length - 1),
-  );
+  const lastDocument = Math.max(0, props.documents.length - 1);
+  const index = Math.min(documentIndex, lastDocument);
   const text = props.documents[index] ?? '';
   const identity = JSON.stringify([text, bounds.width, fontScale]);
   const latestIdentity = useRef(identity);
@@ -57,10 +53,13 @@ export function ClassificationPagedStage(props: Props) {
     lines: readonly ClassificationTextLine[];
   } | null>(null);
   const paneHeight = bounds.height || window.height;
-  const geometry = classificationCircleGeometry(
-    bounds.width || window.width,
+  const paneWidth = bounds.width || window.width;
+  const geometry = classificationConfirmationGeometry(
+    paneWidth,
     paneHeight,
     fontScale,
+    Boolean(props.confirmAtDock && !frame.expanded),
+    window.width,
   );
   const available = Math.max(
     0,
@@ -72,16 +71,15 @@ export function ClassificationPagedStage(props: Props) {
   }>();
   const captionHeight =
     captionMeasurement?.key === identity ? captionMeasurement.height : 0;
-  const captionFits = Boolean(
-    props.caption && captionHeight > 0 && captionHeight <= available,
-  );
+  const captionFits =
+    !!props.caption && captionHeight > 0 && captionHeight <= available;
   const lines = measurement?.key === identity ? measurement.lines : null;
   const measuredPages =
     lines && available > 0 ? paginateClassificationLines(lines, available) : [];
   const pages = measuredPages.length ? measuredPages : [text];
   const page = Math.min(pageIndex, Math.max(0, pages.length - 1));
   const cannotFitLine =
-    !captionFits && Boolean(lines?.some(line => line.height > available));
+    !captionFits && !!lines?.some(line => line.height > available);
   const requiresExpansion = cannotFitLine && !frame.expanded;
   const naturalHeight =
     lines?.reduce((sum, line) => sum + line.height, 0) ?? available;
@@ -118,7 +116,7 @@ export function ClassificationPagedStage(props: Props) {
           );
         }}
       >
-        <ClassificationCircleSlot {...geometry}>
+        <ClassificationCircleSlot {...geometry} paneWidth={paneWidth}>
           <ClassificationCircleButton
             size={geometry.size}
             title={
@@ -141,7 +139,10 @@ export function ClassificationPagedStage(props: Props) {
           />
         </ClassificationCircleSlot>
         <View
-          style={[styles.group, { top: geometry.captionTop }]}
+          style={[
+            styles.group,
+            { top: geometry.captionTop, left: geometry.listStart },
+          ]}
           testID="classification-stage-captions"
         >
           <View
@@ -196,7 +197,6 @@ export function ClassificationPagedStage(props: Props) {
                     current: page + 1,
                     total: pages.length,
                   })}
-                  // Before native metrics arrive this bounded first frame cannot paint over the actions.
                   numberOfLines={
                     measuredPages.length
                       ? undefined
