@@ -7,10 +7,9 @@ import {
   useRef,
   useState,
 } from 'react';
-import { AppState, View } from 'react-native';
+import { AppState } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
-import { t } from '../i18n';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import {
   subscribeLocalDataClear,
@@ -18,8 +17,11 @@ import {
 } from '../storage/localDataClearEvents';
 import { openGeneratedReportReader } from './readers';
 import { generatedReportCopy as copy } from './text';
-import { GeneratedReportRows } from './GeneratedReportRows';
-import { generatedReportBrowserStyles as styles } from './generatedReportBrowserStyles';
+import {
+  GeneratedReportFrame,
+  GeneratedReportDescription,
+  GeneratedReportRows,
+} from './GeneratedReportRows';
 import type {
   GeneratedReportRow,
   GeneratedReportReader,
@@ -169,10 +171,7 @@ export function GeneratedReportBrowser({
       AppState.currentState === 'active',
     );
   return (
-    <View style={styles.panel} testID="generated-report-browser">
-      <AppText accessibilityRole="header" style={styles.heading}>
-        {destination ? t('records.generatedConversationMaterials') : copy.title}
-      </AppText>
+    <GeneratedReportFrame destination={destination} selected={!!selected}>
       {!expanded ? (
         <AppButton
           testID="generated-report-open"
@@ -203,7 +202,7 @@ export function GeneratedReportBrowser({
           {selected ? (
             <AppText accessibilityRole="header">{copy[selected.kind]}</AppText>
           ) : (
-            <AppText>{copy.description}</AppText>
+            <GeneratedReportDescription destination={destination} />
           )}
           {state === 'loading' && (
             <AppText accessibilityLiveRegion="polite">{copy.loading}</AppText>
@@ -245,6 +244,6 @@ export function GeneratedReportBrowser({
           ) : null}
         </>
       )}
-    </View>
+    </GeneratedReportFrame>
   );
 }
