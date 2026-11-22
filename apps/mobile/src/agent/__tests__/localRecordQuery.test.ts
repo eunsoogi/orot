@@ -67,7 +67,7 @@ describe('mobile local record query adapter', () => {
     });
   });
 
-  it('passes an already-open memory reader through and creates LangChain query tools', async () => {
+  it('ranks an already-open memory reader once without growing the LangChain result', async () => {
     const hit: LocalMemoryHit = {
       id: 'mobile-memory-1',
       text: 'Prefers an evening reminder.',
@@ -80,8 +80,25 @@ describe('mobile local record query adapter', () => {
       },
       createdAt: 1790730000000,
     };
+    // The ranking window is internal. The tool may expose neither its
+    // local-only first hit nor an eligible hit beyond the caller's page.
+    const ranked: LocalMemoryHit[] = [
+      {
+        ...hit,
+        id: 'synthetic-local-only',
+        text: 'Synthetic private note.',
+        provenance: {
+          sourceIds: ['conversation-local-memory:synthetic'],
+          reviewState: 'user_confirmed',
+        },
+      },
+      { ...hit, memoryKey: 'synthetic-durable-key' },
+      { ...hit, id: 'synthetic-eligible-overflow', score: 0.8 },
+    ];
     const memory: LocalMemoryReader = {
-      recall: jest.fn(async () => [hit]),
+      recall: jest.fn(async (_query: string, options?: { limit?: number }) =>
+        ranked.slice(0, options?.limit ?? ranked.length),
+      ),
     };
 
     const tools = await openLocalRecordQueryTools(memory);
@@ -97,9 +114,14 @@ describe('mobile local record query adapter', () => {
       'query_transcript_evidence',
       'search_source_linked_user_memory',
     ]);
-    await expect(
-      memoryTool?.invoke({ query: 'reminder', limit: 1 }),
-    ).resolves.toContain('recording-mobile-1');
-    expect(memory.recall).toHaveBeenCalledWith('reminder', { limit: 1 });
+    const output = await memoryTool?.invoke({ query: 'reminder', limit: 1 });
+    if (typeof output !== 'string') throw new Error('Missing memory tool JSON');
+    expect(JSON.parse(output)).toEqual({
+      status: 'available',
+      hits: [hit],
+      limit: 1,
+    });
+    expect(memory.recall).toHaveBeenCalledTimes(1);
+    expect(memory.recall).toHaveBeenCalledWith('reminder', { limit: 6 });
   });
 });
