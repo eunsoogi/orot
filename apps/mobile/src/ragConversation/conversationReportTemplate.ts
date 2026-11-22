@@ -22,12 +22,18 @@ export interface ConversationReportSection {
   readonly content: string;
 }
 
+export interface ConversationReport {
+  readonly title: string;
+  readonly introduction?: string;
+  readonly sections: readonly ConversationReportSection[];
+}
+
 /** Accept only a complete explicit report, preserving every body character.
  * Unknown/repeated/missing headings fall back to the intact ordinary answer. */
-export function parseConversationReport(content: string) {
+export function parsePossibilityConversationReport(content: string) {
   const template = possibilityReportTemplate();
   const title = `# ${template.title}\n`;
-  if (!content.startsWith(title)) return parseDailyConversationReport(content);
+  if (!content.startsWith(title)) return undefined;
   const remainder = content.slice(title.length).replace(/^\n+/u, '');
   const sources = parseSourceConversationReport(remainder);
   if (sources) return { title: template.title, sections: sources };
@@ -47,6 +53,15 @@ export function parseConversationReport(content: string) {
     if (index === template.sections.length - 1 && next !== -1) return undefined;
   }
   return { title: template.title, sections };
+}
+
+export function parseConversationReport(
+  content: string,
+): ConversationReport | undefined {
+  return (
+    parsePossibilityConversationReport(content) ??
+    parseDailyConversationReport(content)
+  );
 }
 
 /** A quick choice requests a report; later free-form follow-ups remain natural dialogue.

@@ -33,7 +33,11 @@ export function installReceiptFixturePlatform(mark: (name: string) => void) {
 /** Keep the real native epoch ownership path, replacing only fixture account/catalog reads. */
 export function installFixtureNativeSelection(
   input: SelectedAiResolverOptions,
+  loadAccountSummary: typeof nativeChatGPTSelectionServices.loadAccountSummary,
 ) {
+  jest
+    .spyOn(nativeChatGPTSelectionServices, 'loadAccountSummary')
+    .mockImplementation(loadAccountSummary);
   jest
     .spyOn(providerSelectionStore, 'load')
     .mockImplementation(() => input.selectionStore!.load());

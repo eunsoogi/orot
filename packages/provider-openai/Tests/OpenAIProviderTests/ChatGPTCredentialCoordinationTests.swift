@@ -7,6 +7,20 @@ final class ChatGPTCredentialCoordinationTests: XCTestCase {
     private static let hostIdentifier = "urn:uuid:0cc04a4c-0f3a-4f49-8bda-10675883a491"
     private static let tokenPath = "/api/accounts/oauth/token"
 
+    func testSelectedLocalSummaryDoesNotEnumerateOrRefreshAccounts() throws {
+        let store = LoadCountingCredentialStore(allowsEnumeration: false)
+        let account = syntheticAccount(expiresAt: Date(timeIntervalSince1970: 1))
+        try store.saveAccount(account)
+        let transport = StubOAuthHTTPTransport { _ in
+            XCTFail("Reading a local account summary must not refresh credentials.")
+            return StubOAuthResponse(statusCode: 500, body: Data())
+        }
+        let client = ChatGPTOAuthClient(transport: transport, credentialStore: store)
+        let summary = try XCTUnwrap(client.loadStoredAccountSummary(issuedClientID: account.issuedClientID))
+        XCTAssertEqual(summary, ChatGPTAccountSummary(account: account))
+        XCTAssertNil(try client.loadStoredAccountSummary(issuedClientID: "oaiapp_other-fixture"))
+    }
+
     func testSeparateClientsSerializeRefreshForOneStoredAccount() async throws {
         let responseGate = RequestGate()
         let transport = StubOAuthHTTPTransport { request in
@@ -130,6 +144,11 @@ final class ChatGPTCredentialCoordinationTests: XCTestCase {
 private final class LoadCountingCredentialStore: ChatGPTCredentialStore, @unchecked Sendable {
     private let base = InMemoryChatGPTCredentialStore()
     private let loadCounter = AsyncLoadCounter()
+    private let allowsEnumeration: Bool
+
+    init(allowsEnumeration: Bool = true) {
+        self.allowsEnumeration = allowsEnumeration
+    }
 
     func loadOrCreateHostIdentifier() throws -> String {
         try base.loadOrCreateHostIdentifier()
@@ -142,7 +161,8 @@ private final class LoadCountingCredentialStore: ChatGPTCredentialStore, @unchec
     }
 
     func listAccounts() throws -> [ChatGPTStoredAccount] {
-        try base.listAccounts()
+        guard allowsEnumeration else { throw ChatGPTOAuthError.credentialStoreUnavailable }
+        return try base.listAccounts()
     }
 
     func saveAccount(_ account: ChatGPTStoredAccount) throws {

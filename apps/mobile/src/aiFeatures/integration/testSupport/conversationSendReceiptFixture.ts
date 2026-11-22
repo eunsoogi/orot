@@ -160,16 +160,18 @@ export function createReceiptTestApp(
           : [model],
     );
   });
+  const account = {
+    issuedClientID: 'fixture-account',
+    hasDirectPlanAccess: true,
+    requiresSignIn: false,
+  };
   const listAccounts = jest.fn(async () =>
-    mode === 'account-removed'
-      ? []
-      : [
-          {
-            issuedClientID: 'fixture-account',
-            hasDirectPlanAccess: true,
-            requiresSignIn: false,
-          },
-        ],
+    mode === 'account-removed' ? [] : [account],
+  );
+  const loadAccountSummary = jest.fn(async (accountId: string) =>
+    mode !== 'account-removed' && accountId === account.issuedClientID
+      ? account
+      : undefined,
   );
   const authorize = jest.fn(async () => {
     if (authorize.mock.calls.length === 1) await f.authority.hold();
@@ -195,7 +197,7 @@ export function createReceiptTestApp(
       cancelSignIn: jest.fn(),
     },
   };
-  if (warm) installFixtureNativeSelection(selectedAi);
+  if (warm) installFixtureNativeSelection(selectedAi, loadAccountSummary);
   const services = createAiFeatureServices(
     { authorize },
     {
@@ -211,6 +213,12 @@ export function createReceiptTestApp(
   return {
     services,
     listAccounts,
+    assertAccountReads(inventories: number, exact: boolean) {
+      expect(listAccounts).toHaveBeenCalledTimes(inventories);
+      expect(loadAccountSummary.mock.calls).toEqual(
+        exact ? [[account.issuedClientID]] : [],
+      );
+    },
     listModels,
     authorize,
     generate,

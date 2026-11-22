@@ -58,6 +58,12 @@ export function useConversationWorkspaceBounds(routeKey?: string) {
       measurementSequence.current += 1;
       if (state === 'active') measure();
     });
+    // AppState does not replay a transition between render and subscription.
+    // Reconcile the singleton before the following measurement effect runs.
+    if (appState.current !== AppState.currentState) {
+      appState.current = AppState.currentState;
+      measurementSequence.current += 1;
+    }
     return () => {
       subscription.remove();
       // Ignore an in-flight native callback after this host has unmounted.
