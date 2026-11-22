@@ -54,9 +54,10 @@ test('the real reminder flow restores the explicitly selected day after a new ro
       retain: jest.fn(() => () => {}),
     },
   } as unknown as AiFeatureServices;
-  const route = (key: string) => (
+  const route = (key: string, inline = false) => (
     <AppointmentReminderProvider runtime={runtime}>
       <DailyReportFlowScreen
+        inline={inline}
         services={services}
         routeKey={key}
         providerSelection={null}
@@ -67,6 +68,9 @@ test('the real reminder flow restores the explicitly selected day after a new ro
       />
     </AppointmentReminderProvider>
   );
+  const inlineRoute = await render(route('original', true));
+  await screen.findByText('오늘 선택하기');
+  await inlineRoute.unmount();
   const view = await render(route('original'));
   await screen.findByText('오늘 선택하기');
   await fireEvent.press(screen.getByText('오늘 선택하기'));
