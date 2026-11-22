@@ -76,6 +76,12 @@ test('existing staged journey samples actual geometry without replacing its orac
   assert.match(compactList, /guard expectLeft \? sideOrder : stackedOrder else/);
   assert.match(compactList, /guard node\(app, id\)\.waitForExistence\(timeout: 4\) else/);
   assert.match(compactList, /guard returnedLast\.waitForExistence\(timeout: 4\) else/);
+  const preTap = compactList.indexOf('guard let beforeSample, last.isHittable else');
+  assert.ok(preTap > 0 && preTap < compactList.indexOf('last.tap()'));
+  assert.ok(compactList.includes('row.maxY - viewport.maxY + 12'));
+  assert.ok(compactList.includes('sample.viewport.contains(sample.row)'));
+  assert.ok(compactList.includes('stableStageFrame(sample.row, previous.row)'));
+  assert.match(compactList, /waitForSettledClassificationRow\(in: returnedList, row: returnedLast\)/);
   assert.match(compactList, /stableStageFrame\(listAfter, listBefore\)/);
   assert.match(compactList, /stableStageFrame\(after, before\)/);
   assert.match(

@@ -40,13 +40,33 @@ extension AppointmentConsentUITests {
             let end = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35))
             start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.2)
         }
+        XCTAssertFalse(fullyVisible(first))
+        XCTAssertTrue(FormScrollGeometry.stableStageFrame(primary.frame, primaryFrame) && FormScrollGeometry.stableStageFrame(notice.frame, noticeFrame))
+        try captureStageLayout(app, stage: "result-list-end", anchor: anchor)
+        var beforeSample = waitForSettledClassificationRow(in: list, row: last)
+        if beforeSample == nil, last.exists {
+            // A projected AX row may exist below the clipped viewport. Move it explicitly,
+            // instead of letting XCTest auto-scroll it as part of the detail tap.
+            let viewport = list.frame, row = last.frame
+            if FormScrollGeometry.valid(viewport), FormScrollGeometry.valid(row), row.maxY > viewport.maxY {
+                let distance = min(viewport.height * 0.35, max(32, row.maxY - viewport.maxY + 12))
+                let start = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+                let end = start.withOffset(CGVector(dx: 0, dy: -distance))
+                start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.2)
+                beforeSample = waitForSettledClassificationRow(in: list, row: last)
+            }
+        }
+        guard let beforeSample, last.isHittable else {
+            XCTFail("Refusing to tap an unsettled/clipped last row: viewport=\(list.frame), row=\(last.frame)")
+            throw ActivationError.unproven
+        }
+        if !labels.contains(last.label) {
+            labels.append(last.label)
+        }
         XCTAssertEqual(labels.count, 9)
         let rowTitles = labels.dropFirst().compactMap { $0.split(separator: ",", maxSplits: 1).first.map(String.init) }
         XCTAssertEqual(rowTitles, (2 ... 9).map { "합성 진료 예약 \($0)" })
-        XCTAssertTrue(fullyVisible(last) && !fullyVisible(first))
-        XCTAssertTrue(FormScrollGeometry.stableStageFrame(primary.frame, primaryFrame) && FormScrollGeometry.stableStageFrame(notice.frame, noticeFrame))
-        try captureStageLayout(app, stage: "result-list-end", anchor: anchor)
-        let before = last.frame, listBefore = list.frame
+        let before = beforeSample.row, listBefore = beforeSample.viewport
         last.tap()
         XCTAssertTrue(node(app, "classification-result-reader").waitForAppearance())
         XCTAssertFalse(node(app, id).exists)
@@ -65,7 +85,11 @@ extension AppointmentConsentUITests {
             XCTFail("Back did not reveal the named last row; before=\(before) list=\(returnedList.frame)")
             throw ActivationError.unproven
         }
-        let after = returnedLast.frame, listAfter = returnedList.frame
+        guard let afterSample = waitForSettledClassificationRow(in: returnedList, row: returnedLast) else {
+            XCTFail("Back did not settle a fully visible last row; row before=\(before) after=\(returnedLast.frame), list before=\(listBefore) after=\(returnedList.frame)")
+            throw ActivationError.unproven
+        }
+        let after = afterSample.row, listAfter = afterSample.viewport
         let revealedFirst = returnedRows.firstMatch
         let firstAfter = revealedFirst.exists ? revealedFirst.frame : .null
         XCTContext.runActivity(named: "Classification Back geometry: row before=\(before) after=\(after), list before=\(listBefore) after=\(listAfter), first after=\(firstAfter)") { _ in }
@@ -74,6 +98,31 @@ extension AppointmentConsentUITests {
         XCTAssertTrue(listAfter.insetBy(dx: -1, dy: -1).contains(after) && returnedLast.isHittable)
         XCTAssertFalse(listAfter.insetBy(dx: -1, dy: -1).contains(firstAfter), "Back must not reset the list to the top")
         return details + labels
+    }
+
+    /// Require two consecutive fresh coordinate samples before trusting clipping and offset.
+    /// Hittability is checked once outside the poll to avoid repeated full AX hit tests.
+    @MainActor
+    private func waitForSettledClassificationRow(in list: XCUIElement, row: XCUIElement) -> (viewport: CGRect, row: CGRect)? {
+        var previous: (viewport: CGRect, row: CGRect)?
+        var settled: (viewport: CGRect, row: CGRect)?
+        let frames = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard list.exists, row.exists else {
+                previous = nil
+                return false
+            }
+            let sample = (viewport: list.frame, row: row.frame)
+            defer { previous = sample }
+            guard FormScrollGeometry.valid(sample.viewport), FormScrollGeometry.valid(sample.row),
+                  sample.row.height >= 44, sample.viewport.contains(sample.row),
+                  let previous, previous.viewport.contains(previous.row),
+                  FormScrollGeometry.stableStageFrame(sample.viewport, previous.viewport),
+                  FormScrollGeometry.stableStageFrame(sample.row, previous.row)
+            else { return false }
+            settled = sample
+            return true
+        }, object: nil)
+        return XCTWaiter().wait(for: [frames], timeout: 2) == .completed ? settled : nil
     }
 
     /// Record and validate settled product geometry before any list or detail gestures.
