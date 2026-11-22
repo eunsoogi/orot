@@ -18,12 +18,22 @@ import { hubSpacing } from '../layout/hubSpacing';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
 import { RecordsRouteEntries } from './RecordsRouteEntries';
+import type { RecordsTabAuthority } from './useAppRootTab';
+import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
+import type { GeneratedReportRow } from '../generatedReports/types';
 import { LegacySymptomData } from './LegacySymptomData';
 
 export interface RecordsRouteProps {
   readonly memoryActive?: boolean;
   readonly onOpenGeneratedReports?: () => void;
   readonly onOpenDocumentDetail?: (sourceId: string) => void;
+  readonly openDocument?: (sourceId: string) => void;
+  readonly openRecentRecording?: (source: RecordingSourceRecord) => void;
+  readonly openMemory?: (id: string) => void;
+  readonly openReport?: (row: GeneratedReportRow) => boolean;
+  readonly active?: boolean;
+  readonly ownership?: NavigationRouteOwnership;
+  readonly recordsTabAuthority?: RecordsTabAuthority;
   readonly showAllRecent?: boolean;
   readonly onOpenRecentRecords?: () => void;
   readonly recordings: readonly RecordingSourceRecord[];
@@ -38,7 +48,14 @@ export interface RecordsRouteProps {
 
 /** Reuses Home's loaded audio snapshot and keeps every Records state in measured usable space. */
 export function RecordsRoute({
-  onOpenDocumentDetail,
+  openDocument,
+  onOpenDocumentDetail = openDocument,
+  openRecentRecording,
+  openReport,
+  openMemory,
+  active = true,
+  ownership,
+  recordsTabAuthority,
   onOpenGeneratedReports,
   memoryActive = true,
   showAllRecent = false,
@@ -187,6 +204,12 @@ export function RecordsRoute({
             onRetryRecordings={onRetryRecordings}
             onRetryDocuments={reloadSavedDocuments}
             onOpenMedicalDocument={openSavedDocumentAtListPosition}
+            onOpenRecording={openRecentRecording}
+            onOpenReport={openReport}
+            onOpenMemory={openMemory}
+            active={active}
+            ownership={ownership}
+            tabAuthority={recordsTabAuthority}
             onOpenSavedRecordings={onOpenSavedRecordings}
           />
           {sourceMessage ? (

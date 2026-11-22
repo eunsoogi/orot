@@ -8,6 +8,7 @@ import type {
   AiFeatureServiceDependencies,
 } from '../aiFeatures/integration/featureServices';
 import type { NavigationRouteActions } from '../navigation/NavigationRouteAdapter';
+import type { RecordsTabAuthority } from './useAppRootTab';
 import type { AppRootTab } from '../navigation/rootTabs';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import type { HealthRecordsDetailSelection } from '../healthkit/healthRecordsLibraryModel';
@@ -29,6 +30,7 @@ export interface AppRouteContentProps {
   readonly loadSavedVisitQuestions?: AiFeatureServices['loadSavedVisitQuestions'];
   readonly actions: NavigationRouteActions<AppNavigationRoute>;
   readonly activeTab: AppRootTab;
+  readonly recordsTabAuthority?: RecordsTabAuthority;
   /** Must use the root-tab leave guard so a staged import is never discarded. */
   readonly onSelectRecordsSection?: (
     tab: 'records' | 'schedule',

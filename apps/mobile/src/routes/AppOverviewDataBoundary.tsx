@@ -53,7 +53,12 @@ export function AppOverviewDataBoundary({
     recordingState,
     refreshAppointments,
     refreshRecordings,
-  } = useAppOverviewData(loadAppointments, loadRecordings, active);
+  } = useAppOverviewData(
+    loadAppointments,
+    loadRecordings,
+    active.overview,
+    active.recordings,
+  );
   const appointmentData = useMemo(
     () => ({
       appointmentRepository,
