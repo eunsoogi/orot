@@ -39,7 +39,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-test('balances reminder and cancellation actions while keeping edit in the header', async () => {
+test('pairs reminders and separates the destructive action while keeping edit in the header', async () => {
   const store = createAppointmentStore([appointment('current')]);
   const minActionWidth = 92 * Math.max(1, Dimensions.get('window').fontScale);
   const runtime = createAppointmentReminderRuntime(
@@ -83,7 +83,11 @@ test('balances reminder and cancellation actions while keeping edit in the heade
   const oneDayReminder = actions.getByTestId(
     'appointment-reminder-current-1440',
   );
-  const cancel = actions.getByTestId('appointment-cancel-current');
+  expect(actions.queryByTestId('appointment-cancel-current')).toBeNull();
+  const detailActions = screen.getByTestId('appointment-actions-current');
+  const cancel = within(detailActions).getByTestId(
+    'appointment-cancel-current',
+  );
   expect(oneHourReminder.props.accessibilityLabel).toBe('1시간 전 알림');
   expect(oneDayReminder.props.accessibilityLabel).toBe('하루 전 알림');
   expect(within(oneHourReminder).getByText('1시간\n전 알림')).toBeTruthy();
@@ -106,7 +110,7 @@ test('balances reminder and cancellation actions while keeping edit in the heade
   }
   expect(cancel.props.accessibilityRole).toBe('button');
   expect(cancel.props.accessibilityLabel).toBe('current 예약 취소');
-  const cancelLabel = within(cancel).getByText('예약\n취소');
+  const cancelLabel = within(cancel).getByText('예약 취소');
   expect(StyleSheet.flatten(cancel.props.style)).toMatchObject({
     backgroundColor: appColors.dangerSurface,
     borderColor: appColors.danger,
@@ -116,11 +120,9 @@ test('balances reminder and cancellation actions while keeping edit in the heade
     minWidth: 44,
     paddingHorizontal: 12,
   });
-  expect(StyleSheet.flatten(cancel.parent?.props.style)).toMatchObject({
-    flexBasis: 0,
-    flexGrow: 1,
-    flexShrink: 0,
-    minWidth: minActionWidth,
+  expect(StyleSheet.flatten(detailActions.props.style)).toMatchObject({
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
   });
   expect(StyleSheet.flatten(cancelLabel.props.style)).toMatchObject({
     color: appColors.danger,

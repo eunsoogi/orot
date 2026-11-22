@@ -17,7 +17,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  detailPanel: { flexGrow: 1, minWidth: 0, gap: 16 },
   selectionCard: {
     backgroundColor: appColors.surface,
     borderRadius: 16,
@@ -42,7 +41,6 @@ const styles = StyleSheet.create({
   },
   historyStatus: { color: appColors.secondary, fontWeight: '600' },
   title: { color: appColors.text, fontSize: 24, fontWeight: '700' },
-  detailTitle: { color: appColors.text, fontSize: 20, fontWeight: '700' },
   message: { color: appColors.secondary, fontSize: 15 },
   selectionPrompt: {
     backgroundColor: appColors.surface,
@@ -53,14 +51,17 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   error: { color: appColors.danger },
+  // The borderless detail is a sibling of the selected button, not an interactive child.
   card: {
     backgroundColor: appColors.surface,
-    borderColor: appColors.border,
     borderRadius: 16,
-    borderWidth: 1,
-    gap: 10,
+    gap: 12,
     padding: 16,
+    marginHorizontal: 8,
   },
+  cardEyebrow: { color: appColors.secondary, fontSize: 14, fontWeight: '700' },
+  cardFacts: { gap: 6 },
+  detailStatus: { color: appColors.secondary, fontWeight: '600' },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
   },
   cardHeaderClinic: { flex: 1, minWidth: 0 },
   clinic: { color: appColors.text, fontSize: 18, fontWeight: '600' },
-  actions: { gap: 8, minWidth: 0 },
+  cancelAction: { alignSelf: 'flex-start', maxWidth: '100%' },
   form: {
     alignSelf: 'center',
     backgroundColor: appColors.surface,

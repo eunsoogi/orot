@@ -26,14 +26,12 @@ export default function AppointmentCard({
   const canEdit =
     appointment.status === 'scheduled' || appointment.status === 'rescheduled';
   const formattedDateTime = formatDateTime(new Date(appointment.effectiveAt));
-  // Match the reminder choices' two-line labels while the accessible name keeps the full wording.
-  const cancelActionTitle = t('appointments.actions.cancel').replace(
-    /\s+/u,
-    '\n',
-  );
 
   return (
     <View style={styles.card} testID={`appointment-${appointment.id}`}>
+      <Text accessibilityRole="header" style={styles.cardEyebrow}>
+        {t('appointments.detail.title')}
+      </Text>
       <View
         style={styles.cardHeader}
         testID={`appointment-header-${appointment.id}`}
@@ -54,37 +52,36 @@ export default function AppointmentCard({
           />
         ) : null}
       </View>
-      <Text testID={`appointment-time-${appointment.id}`}>
-        {formattedDateTime} · {t('appointments.localTime')}
-      </Text>
-      {appointment.note ? <Text>{appointment.note}</Text> : null}
-      <Text testID={`appointment-status-${appointment.id}`}>
-        {appointmentStatusLabel(appointment)}
-      </Text>
+      <View style={styles.cardFacts}>
+        <Text
+          style={styles.detailStatus}
+          testID={`appointment-status-${appointment.id}`}
+        >
+          {appointmentStatusLabel(appointment)}
+        </Text>
+        <Text testID={`appointment-time-${appointment.id}`}>
+          {formattedDateTime} · {t('appointments.localTime')}
+        </Text>
+        {appointment.note ? <Text>{appointment.note}</Text> : null}
+      </View>
+      <AppointmentReminderControls appointment={appointment} />
       {canEdit ? (
         <View
-          style={styles.actions}
+          style={styles.cancelAction}
           testID={`appointment-actions-${appointment.id}`}
         >
-          <AppointmentReminderControls
-            appointment={appointment}
-            additionalAction={
-              <Button
-                accessibilityLabel={t('appointments.actions.cancelForClinic', {
-                  clinic: clinicName,
-                })}
-                onPress={onCancel}
-                size="compact"
-                testID={`appointment-cancel-${appointment.id}`}
-                title={cancelActionTitle}
-                variant="destructive"
-              />
-            }
+          <Button
+            accessibilityLabel={t('appointments.actions.cancelForClinic', {
+              clinic: clinicName,
+            })}
+            onPress={onCancel}
+            size="compact"
+            testID={`appointment-cancel-${appointment.id}`}
+            title={t('appointments.actions.cancel')}
+            variant="destructive"
           />
         </View>
-      ) : (
-        <AppointmentReminderControls appointment={appointment} />
-      )}
+      ) : null}
     </View>
   );
 }
