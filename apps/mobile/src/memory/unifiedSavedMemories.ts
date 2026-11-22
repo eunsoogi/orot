@@ -16,7 +16,7 @@ export interface GeneratedReportSavedMemory {
   readonly sourceKind: 'saved_generated_report';
   readonly id: string;
   readonly artifactId: string;
-  readonly reportKind?: 'health_summary';
+  readonly reportKind?: 'health_summary' | 'disease_possibilities';
   readonly text: string;
   readonly createdAt: number;
 }
@@ -79,13 +79,18 @@ export async function loadUnifiedLocalMemories(): Promise<SavedMemory[]> {
   ]);
   const reportReferences: GeneratedReportSavedMemory[] = generated.map(row => ({
     sourceKind: 'saved_generated_report',
-    id: 'generated-report:' + row.artifactId,
+    id:
+      (row.reportKind === 'disease_possibilities'
+        ? 'generated-disease-report:'
+        : 'generated-report:') + row.artifactId,
     artifactId: row.artifactId,
     ...(row.reportKind ? { reportKind: row.reportKind } : {}),
     text: t(
       row.reportKind === 'health_summary'
         ? 'savedMemory.generatedReportHealthSummary'
-        : 'savedMemory.generatedReportDaily',
+        : row.reportKind === 'disease_possibilities'
+          ? 'savedMemory.generatedReportDiseasePossibilities'
+          : 'savedMemory.generatedReportDaily',
     ),
     createdAt: Date.parse(row.savedAt),
   }));
