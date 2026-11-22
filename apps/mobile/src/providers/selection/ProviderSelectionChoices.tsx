@@ -47,6 +47,7 @@ export function ProviderSelectionChoices({
           index={index}
           onPress={() => onChoose(option)}
           option={option}
+          hideLocalSubtitle={presentation === 'settings-provider'}
           requirements={requirements}
           selected={
             selected?.provider.id === option.provider.id &&

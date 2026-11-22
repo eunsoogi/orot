@@ -176,8 +176,11 @@ export default function ProviderSelectionScreen({
           locked={saving || pendingOption !== null}
           onOpenAccounts={chatGPTSetup?.onOpenAccounts}
         >
-          {presentation === 'settings-provider' && !pendingOption ? (
-            <ProviderSelectionCurrentSummary message={selectionMessage} />
+          {presentation === 'settings-provider' ? (
+            <ProviderSelectionCurrentSummary
+              message={selectionMessage}
+              draft={confirmationOption?.displayName}
+            />
           ) : null}
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionChoices

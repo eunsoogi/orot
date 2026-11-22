@@ -84,9 +84,10 @@ export function VoiceSettingsPanel({
     ],
     active,
   );
-  const savedChoice = voiceModels.find(
-    item => item.mode === savedMode && item.id === savedModel,
+  const displayedChoice = voiceModels.find(
+    item => item.mode === mode && item.id === model,
   );
+  const showingDraft = model !== savedModel || mode !== savedMode;
   const choices = (connection: 'local' | 'openai-api') =>
     voiceModels
       .filter(
@@ -111,10 +112,14 @@ export function VoiceSettingsPanel({
     <View testID="voice-settings-panel">
       {savedModel !== null && !failedLoad ? (
         <ModelSelectionSummary
-          label={t('modelSettings.currentSelection')}
+          label={t(
+            showingDraft
+              ? 'modelSettings.selectedAiPrefix'
+              : 'modelSettings.currentSelection',
+          )}
           value={modelPresentation(
-            savedMode === 'local' ? 'Apple' : 'OpenAI API',
-            savedChoice?.title,
+            mode === 'local' ? 'Apple' : 'OpenAI API',
+            displayedChoice?.title,
           )}
           testID="voice-current-model"
         />
