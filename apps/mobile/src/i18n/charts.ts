@@ -11,6 +11,8 @@ export const chartsKo = {
   'chart.state.stale': '이전에 불러온 기록을 표시하고 있어요.',
   'chart.coverage': '요청 범위: {requested} · 표시 범위: {displayed}',
   'chart.missing': '측정되지 않음',
+  'chart.rangeAndMean': '최저 {minimum}, 최고 {maximum}, 평균 {mean}',
+  'chart.singleSample': '측정값 {value}',
   'chart.partialValue': '일부 기록',
   'chart.source': '출처: {source}',
   'chart.selectedMeasurement': '선택한 측정값',

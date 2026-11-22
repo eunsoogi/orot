@@ -1,10 +1,12 @@
 import type { OverviewChartHealthContext } from '../../healthEvidence/healthContext/healthContextReport';
+import type { ChartRange } from '../../ui/charts/types';
 import type { OverviewMetric } from './metricSelection';
 
 export interface OverviewMetricDay {
   readonly date: string;
   readonly value: number | null;
   readonly partial: boolean;
+  readonly range?: ChartRange;
 }
 export interface OverviewMetricProjection {
   readonly metric: OverviewMetric;
@@ -54,6 +56,7 @@ export function projectOverviewMetric(
   if (metric !== 'sleep' && !series) return null;
   const values = new Map<string, number>();
   const comparisonValues = new Map<string, number>();
+  const heartRanges = new Map<string, ChartRange>();
   if (metric === 'sleep') {
     for (const day of report.sleep)
       if (day.asleepSeconds > 0) {
@@ -62,6 +65,13 @@ export function projectOverviewMetric(
       }
   } else {
     for (const day of series!.days) {
+      // The range and mean must describe the exact same admitted daily sensor samples.
+      if (metric === 'heartRate')
+        heartRanges.set(day.date, {
+          minimum: day.minimum,
+          maximum: day.maximum,
+          samples: day.samples,
+        });
       values.set(
         day.date,
         metric === 'steps' || metric === 'workouts'
@@ -121,6 +131,9 @@ export function projectOverviewMetric(
       date: day.date,
       value: values.get(day.date) ?? null,
       partial: day.partial,
+      ...(heartRanges.has(day.date)
+        ? { range: heartRanges.get(day.date) }
+        : {}),
     })),
     comparison: comparable
       ? {

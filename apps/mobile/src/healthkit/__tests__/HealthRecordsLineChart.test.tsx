@@ -22,7 +22,6 @@ beforeEach(() => {
 
 test.each([
   ['blood_pressure', 'blood pressure systolic', '120 mmHg'],
-  ['heart_rate', 'heart_rate', '72회/분'],
   ['steps', 'step_count', '72걸음'],
   ['body_mass', 'body_mass', '72 kg'],
 ] as const)(

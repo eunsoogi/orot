@@ -30,17 +30,25 @@ test('Overview charts skip the AI workout-overlap enrichment with identical publ
   try {
     await runMigrations(fixture.database);
     const repo = createRecordRepository(fixture.database);
-    await repo.put(
-      'health_observation',
-      healthObservation(
-        'heart',
-        'heart_rate',
-        '2026-01-14T13:00:00Z',
-        'healthkit',
-        'imported',
-        '2026-01-14T13:00:00Z',
-      ),
-    );
+    // Unequal raw values still produce one same-sensor daily range and sample mean.
+    for (const [minute, amount] of [
+      ['00', 72],
+      ['01', 60],
+      ['02', 102],
+    ] as const) {
+      const at = `2026-01-14T13:${minute}:00Z`;
+      await repo.put('health_observation', {
+        ...healthObservation(
+          `heart-${minute}`,
+          'heart_rate',
+          at,
+          'healthkit',
+          'imported',
+          at,
+        ),
+        value: { kind: 'quantity', amount, unit: 'count/min' },
+      });
+    }
     await repo.put('health_observation', {
       ...healthObservation(
         'workout',
@@ -106,9 +114,15 @@ test('Overview charts skip the AI workout-overlap enrichment with identical publ
         'workouts',
       ]);
     expect(charts[0]!.metrics.heartRate!.measuredAt).toBe(
-      '2026-01-14T13:00:00Z',
+      '2026-01-14T13:02:00Z',
     );
     expect(charts[1]!.metrics.heartRate!.measuredAt).toBe(now.toISOString());
+    expect(
+      charts[0]!.metrics.heartRate!.days.find(day => day.date === '2026-01-14'),
+    ).toMatchObject({
+      value: 78,
+      range: { minimum: 60, maximum: 102, samples: 3 },
+    });
     expect(baselineQueries).toEqual([
       'heart-workout-enrichment',
       'heart-workout-enrichment',
