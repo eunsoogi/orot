@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import { RecordsHubSection } from '../RecordsHubSection';
 import { ScheduleRoute } from '../ScheduleRoute';
 import {
@@ -6,9 +6,9 @@ import {
   syncedCalendar,
 } from '../../calendar/calendarLinkingTestFixtures';
 
-// Recovery states must use the same scrollable hub header as the loaded calendar.
+// Recovery states must use the same stationary hub header as the loaded calendar.
 test.each(['loading', 'failed'] as const)(
-  'scrolls the schedule header while storage is %s',
+  'keeps the schedule header outside the scroll view while storage is %s',
   async appointmentState => {
     await render(
       <RecordsHubSection selected="schedule" onSelect={jest.fn(async () => {})}>
@@ -24,10 +24,10 @@ test.each(['loading', 'failed'] as const)(
         />
       </RecordsHubSection>,
     );
-    expect(
-      within(screen.getByTestId('navigation-route-scroll')).getByTestId(
-        'records-hub-header',
-      ),
-    ).toBeVisible();
+    const header = screen.getByTestId('records-hub-header');
+    expect(header).toBeVisible();
+    expect(screen.getByTestId('navigation-route-scroll')).not.toContainElement(
+      header,
+    );
   },
 );

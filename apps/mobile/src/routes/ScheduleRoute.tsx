@@ -1,5 +1,3 @@
-import { useContext } from 'react';
-import { RecordsHubScrollHeaderContext } from './RecordsHubSection';
 import { StyleSheet, View } from 'react-native';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 import type { AppointmentRepository } from '@orot/storage';
@@ -35,7 +33,6 @@ export function ScheduleRoute({
   onOpenMedicalAppointments,
   onAppointmentsChanged,
 }: ScheduleRouteProps) {
-  const scrollHeader = useContext(RecordsHubScrollHeaderContext);
   const label = t('appointments.retry');
   const hasDock = useNavigationRouteActions(
     !appointmentRepository && appointmentState === 'failed'
@@ -63,7 +60,6 @@ export function ScheduleRoute({
   if (appointmentRepository) {
     return (
       <CalendarLinkingScreen
-        scrollHeader={scrollHeader}
         bridge={bridge}
         calendarSync={calendarSync}
         adaptiveScheduleLayout
@@ -78,7 +74,6 @@ export function ScheduleRoute({
 
   return (
     <NavigationRouteScrollView>
-      {scrollHeader}
       <View style={styles.container}>
         <Text accessibilityRole="header" style={styles.title}>
           {t('schedule.title')}
