@@ -121,6 +121,18 @@ test('new Apple-derived rows cannot broaden default evidence, catalog or date co
     expect(snapshot.lineage.map(item => item.recordId).sort()).toEqual(
       expectedIds,
     );
+    // The quantity reader groups by normalized concepts. A differently cased
+    // row in a reserved importer namespace must not join the manual series.
+    await repository.put(kind, {
+      ...hidden[0]!,
+      concept: 'RESTING_HEART_RATE',
+    });
+    const refreshed = await data.readHealthContext!(window, ['measurements']);
+    expect(
+      refreshed.quantities
+        .find(item => item.concept === 'resting_heart_rate')
+        ?.days.reduce((total, day) => total + day.samples, 0),
+    ).toBe(1);
   } finally {
     connection.close();
   }

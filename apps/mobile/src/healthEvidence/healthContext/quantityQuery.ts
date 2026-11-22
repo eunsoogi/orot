@@ -1,4 +1,4 @@
-import { defaultObservationEvidence } from '../defaultObservationEvidence';
+import { defaultQuantityObservationEvidence } from '../defaultObservationEvidence';
 import {
   healthContextCalendarParameter,
   healthContextCalendarSql,
@@ -73,10 +73,13 @@ export async function readHealthQuantityContext(
       ? `${kind} = 'measurement'`
       : `${kind} NOT IN ('diagnosis', 'allergy', 'procedure')
           AND (${kind} = 'measurement' OR ${concept} = 'workout_duration')`;
+  // The activity family can only contain steps and workout duration, never these derived metrics.
+  const derivedExclusion =
+    family === 'activity' ? '' : defaultQuantityObservationEvidence();
   const admitted = `${admittedKind}
           ${familyFilter}
           AND ${currentEvidenceCondition('health_observation')}
-          ${defaultObservationEvidence('health_observation')}
+          ${derivedExclusion}
           AND json_extract(r.payload_json, '$.value.kind') = 'quantity'
           AND json_type(r.payload_json, '$.value.amount') IN ('integer', 'real')
           AND json_type(r.payload_json, '$.value.unit') = 'text'`;

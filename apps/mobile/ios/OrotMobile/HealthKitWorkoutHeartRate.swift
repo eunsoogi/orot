@@ -21,7 +21,8 @@ extension HealthKitModule {
             }
         #endif
         guard HKHealthStore.isHealthDataAvailable(),
-              let heartRate = HKObjectType.quantityType(forIdentifier: .heartRate) else {
+              let heartRate = HKObjectType.quantityType(forIdentifier: .heartRate)
+        else {
             resolve(["status": "notAvailable"] as NSDictionary)
             return
         }
@@ -39,12 +40,12 @@ extension HealthKitModule {
                 return
             }
             #if DEBUG && targetEnvironment(simulator)
-                if self.hasSyntheticFixture {
+                if hasSyntheticFixture {
                     resolve(["status": "notAvailable"] as NSDictionary)
                     return
                 }
             #endif
-            self.readAssociatedHeartRate(workout: workout, heartRate: heartRate, resolve: resolve, reject: reject)
+            readAssociatedHeartRate(workout: workout, heartRate: heartRate, resolve: resolve, reject: reject)
         }
         store.execute(query)
     }
@@ -67,14 +68,16 @@ extension HealthKitModule {
             options: [.discreteMin, .discreteAverage, .discreteMax],
         ) { _, result, error in
             if let error = error as NSError?,
-               error.domain != HKErrorDomain || error.code != HKError.Code.errorNoData.rawValue {
+               error.domain != HKErrorDomain || error.code != HKError.Code.errorNoData.rawValue
+            {
                 reject("WORKOUT_HEART_RATE_READ_FAILED", "Associated heart rate could not be read.", nil)
                 return
             }
             let unit = HKUnit.count().unitDivided(by: .minute())
             guard let minimum = result?.minimumQuantity()?.doubleValue(for: unit),
                   let mean = result?.averageQuantity()?.doubleValue(for: unit),
-                  let maximum = result?.maximumQuantity()?.doubleValue(for: unit) else {
+                  let maximum = result?.maximumQuantity()?.doubleValue(for: unit)
+            else {
                 // Empty cannot distinguish absent measurements from an unobservable read grant.
                 resolve(["status": "notAvailable"] as NSDictionary)
                 return

@@ -21,8 +21,18 @@ export function defaultObservationEvidence(kind: RecordKind): string {
   return `AND ${defaultObservationAllowedSql()}`;
 }
 
-function defaultObservationAllowedSql(): string {
-  const concept = "json_extract(r.payload_json, '$.concept')";
+/** Quantity aggregation already groups case-normalized concepts. Use its
+ * covered expression so the privacy check never loads the underlying payload.
+ */
+export function defaultQuantityObservationEvidence(): string {
+  return `AND ${defaultObservationAllowedSql(
+    "lower(json_extract(r.payload_json, '$.concept'))",
+  )}`;
+}
+
+function defaultObservationAllowedSql(
+  concept = "json_extract(r.payload_json, '$.concept')",
+): string {
   return `CASE
     WHEN ${resting} THEN ${concept} IS NOT 'resting_heart_rate'
     WHEN ${walking} THEN ${concept} IS NOT 'walking_heart_rate_average'
