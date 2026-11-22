@@ -18,6 +18,12 @@ import type {
 } from './types';
 import { useGeneratedReportAccess } from './useGeneratedReportAccess';
 
+import {
+  isSameRefreshedReport,
+  useGeneratedReportPull,
+  type RefreshSelection,
+} from './refreshOwnedGeneratedReport';
+
 type SourceTrip = {
   phase: 'leaving' | 'covered' | 'returning' | 'restore';
   readonly target: GeneratedReportCitationSelection['target'];
@@ -99,50 +105,68 @@ export function GeneratedReportDetailDestination({
       scroll?.restore();
     }
   }, [canAccess, scroll, state]);
-  const read = useCallback(async () => {
-    if (!canAccess()) return;
-    abort();
-    resumeRow.current = null;
-    renewable.current = true;
-    const controller = new AbortController();
-    request.current = controller;
-    const current = () =>
-      request.current === controller &&
-      !controller.signal.aborted &&
-      canAccess();
-    setState({ status: 'loading' });
-    try {
-      const reader = await openGeneratedReportReader();
-      if (!current()) return;
-      const detail = await reader.read(row, controller.signal);
-      if (!current()) return;
-      const trip = sourceTrip.current;
-      if (trip?.phase === 'returning') {
-        const renewed = detail?.conversationSources?.target;
+  const read = useCallback(
+    async (refresh?: RefreshSelection) => {
+      if (!canAccess()) return;
+      const controller = new AbortController();
+      refresh?.claim(controller);
+      abort();
+      resumeRow.current = null;
+      renewable.current = true;
+      request.current = controller;
+      const current = () =>
+        request.current === controller &&
+        !controller.signal.aborted &&
+        canAccess();
+      if (!refresh?.keepVisible) setState({ status: 'loading' });
+      try {
+        const reader = await openGeneratedReportReader();
         if (
-          renewed?.sessionId !== trip.target.sessionId ||
-          renewed.sessionVersion !== trip.target.sessionVersion
-        ) {
-          sourceTrip.current = undefined;
-          renewable.current = false;
-          setState({ status: 'unavailable' });
+          !current() ||
+          (refresh && (!(await refresh.verify()) || !current()))
+        )
+          return;
+        const detail = await reader.read(row, controller.signal);
+        if (
+          !current() ||
+          (refresh && (!(await refresh.verify()) || !current()))
+        )
+          return;
+        const prior = refresh?.prior;
+        const refreshedTarget = detail?.conversationSources?.target;
+        if (prior && !isSameRefreshedReport(prior, refreshedTarget)) {
+          invalidate();
           return;
         }
-        trip.phase = 'restore';
+        const trip = sourceTrip.current;
+        if (trip?.phase === 'returning') {
+          const renewed = detail?.conversationSources?.target;
+          if (
+            renewed?.sessionId !== trip.target.sessionId ||
+            renewed.sessionVersion !== trip.target.sessionVersion
+          ) {
+            sourceTrip.current = undefined;
+            renewable.current = false;
+            setState({ status: 'unavailable' });
+            return;
+          }
+          trip.phase = 'restore';
+        }
+        renewable.current = Boolean(detail);
+        setState(
+          detail
+            ? { status: 'ready', detail, generation: ++generation.current }
+            : { status: 'unavailable' },
+        );
+      } catch {
+        if (current()) {
+          renewable.current = false;
+          setState({ status: 'failed' });
+        }
       }
-      renewable.current = Boolean(detail);
-      setState(
-        detail
-          ? { status: 'ready', detail, generation: ++generation.current }
-          : { status: 'unavailable' },
-      );
-    } catch {
-      if (current()) {
-        renewable.current = false;
-        setState({ status: 'failed' });
-      }
-    }
-  }, [abort, canAccess, row]);
+    },
+    [abort, canAccess, invalidate, row],
+  );
   useEffect(() => {
     if (started.current || !canAccess()) return;
     if (resumeRow.current && resumeRow.current !== row) {
@@ -160,6 +184,15 @@ export function GeneratedReportDetailDestination({
       live = false;
     };
   }, [accessVersion, active, canAccess, invalidate, read, row]);
+  const refreshing = useGeneratedReportPull({
+    active,
+    state,
+    request,
+    canAccess,
+    invalidate,
+    read,
+    hasSourceTrip: () => Boolean(sourceTrip.current),
+  });
   if (!active || (ownership && !ownership.isCurrent())) return null;
   const owner = request.current;
   return (
@@ -167,11 +200,17 @@ export function GeneratedReportDetailDestination({
       row={row}
       state={state}
       onRetry={() => {
-        if (state.status === 'failed' && request.current === owner) read();
+        if (
+          state.status === 'failed' &&
+          request.current === owner &&
+          !refreshing.current
+        )
+          read();
       }}
       isCurrent={() =>
         Boolean(
           owner &&
+          !refreshing.current &&
           request.current === owner &&
           !owner.signal.aborted &&
           canAccess(),
@@ -181,6 +220,7 @@ export function GeneratedReportDetailDestination({
         openReportSource &&
         (selection => {
           if (
+            refreshing.current ||
             request.current !== owner ||
             !owner ||
             owner.signal.aborted ||
