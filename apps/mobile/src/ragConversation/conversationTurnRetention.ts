@@ -1,4 +1,5 @@
 import { observeToolRetention } from './conversationToolRetentionDiagnostic';
+import { conversationLocalClarification } from './conversationLocalClarification';
 import { createConversationDeliveryRetention } from './conversationDeliveryRetention';
 import { createConversationOpeningRetention } from './conversationOpeningRetention';
 import { notifyConversationInterruption } from '../replyNotifications/notifyConversationInterruption';
@@ -73,6 +74,7 @@ export function createConversationTurnRetention(
   return {
     ...createConversationRetainedPreview(input),
     retainOpening: opening.retainOpening,
+    ...conversationLocalClarification(input, opening, delivery),
     retainDelivery: delivery.retainDelivery,
     discardOpening() {
       opening.discardOpening();

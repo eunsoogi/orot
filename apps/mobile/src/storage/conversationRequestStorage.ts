@@ -11,6 +11,7 @@ import {
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { createConversationRequestSources } from './conversationRequestSources';
 import { createConversationRequestReader } from './conversationRequestRead';
+import { createConversationLocalOutcomeStorage } from './conversationLocalOutcomeStorage';
 
 // Multiple adapters may share one connection; reopening an adapter is not a process restart.
 const recoveries = new WeakMap<SqlDatabase, Promise<void>>();
@@ -23,7 +24,7 @@ export async function commitConversationRequest(
   alreadyStored = false,
 ) {
   const result = await tx.execute(
-    'SELECT session_id, session_version, question, created_at, status, input_json FROM conversation_requests WHERE id = ?',
+    'SELECT session_id, session_version, question, created_at, status, input_json, local_outcome_json FROM conversation_requests WHERE id = ?',
     [value.id],
   );
   const row = result.rows[0];
@@ -38,6 +39,7 @@ export async function commitConversationRequest(
     return;
   }
   if (
+    row.local_outcome_json != null ||
     row.session_id !== value.sessionId ||
     row.session_version !== version ||
     row.question !== value.question ||
@@ -85,6 +87,10 @@ export function createConversationRequestStorage(
   return {
     ...createConversationRequestSources(database, ensure),
     ...createConversationRequestReader(database, ensure),
+    completeLocalClarification: createConversationLocalOutcomeStorage(
+      database,
+      ensure,
+    ),
     async startRequest(input: {
       id: string;
       sessionId: string;

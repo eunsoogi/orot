@@ -1,7 +1,7 @@
 import type { RestoredTurn } from './conversationRestoredTurn';
 import type { DisplayMessage } from './ConversationMessage';
 import type { StoredSteeringInstruction } from '../storage/conversationSteeringStorage';
-import { t } from '../i18n';
+import { restoredConversationInterruptionCopy } from './restoredConversationInterruptionCopy';
 
 /** Allocate stable display identities without renumbering already visible pages. */
 export function conversationRestoredMessages(
@@ -70,9 +70,9 @@ export function conversationRestoredMessages(
               incomplete: true,
               interruptionReason:
                 turn.interruptionReason ?? 'process-interrupted',
-              activity: turn.interruptionReason
-                ? t(`conversationInterruption.${turn.interruptionReason}`)
-                : t('ragConversation.progressInterrupted'),
+              activity: restoredConversationInterruptionCopy(
+                turn.interruptionReason,
+              ),
             }
           : {}),
       },

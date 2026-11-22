@@ -13,6 +13,7 @@ export type ConversationTurnRetentionInput = {
         | 'appendToolEvent'
         | 'discardToolEvent'
         | 'startRequest'
+        | 'completeLocalClarification'
         | 'interruptRequest'
         | 'listInterruptedRequests'
         | 'invalidatePreview'

@@ -93,6 +93,8 @@ export type RagConversationObserver = Pick<
     candidate: ConversationRetentionCandidate,
     signal: AbortSignal,
   ) => Promise<void>;
+  /** Receives a closed local terminal result; no model prose or source payload is saved. */
+  readonly onLocalVisitClarification?: (signal: AbortSignal) => Promise<void>;
   readonly onRetentionFailure?: (
     retryPreparation?: PrepareConversationRetention,
   ) => void;
