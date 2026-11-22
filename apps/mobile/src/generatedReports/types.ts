@@ -11,7 +11,8 @@ export interface GeneratedReportRow {
 }
 export interface GeneratedReportDetail {
   readonly analysis?: import('../diseaseHypotheses/types').DiseaseHypothesisAnalysis;
-  readonly daily?: import('@orot/domain').DailyReportOutput;
+  /** Only from the exact validated standalone Daily Report; not an archive link target. */
+  readonly dailyReport?: import('../ragConversation/conversationReportTemplate').ConversationReport;
   /** Parsed only from a complete, currently validated Conversation possibility artifact. */
   readonly conversationPossibility?: NonNullable<
     ReturnType<
