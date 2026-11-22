@@ -39,6 +39,8 @@ export function GeneratedReportDetailDestination({
 }) {
   const request = useRef<AbortController | null>(null);
   const started = useRef(false);
+  const renewable = useRef(false);
+  const resumeRow = useRef<GeneratedReportRow | null>(null);
   const generation = useRef(0);
   const sourceTrip = useRef<SourceTrip | undefined>(undefined);
   const scroll = useNavigationRouteScrollPosition();
@@ -50,14 +52,32 @@ export function GeneratedReportDetailDestination({
     request.current = null;
   }, []);
   const invalidate = useCallback(() => {
+    renewable.current = false;
+    if (resumeRow.current) {
+      resumeRow.current = null;
+      started.current = true;
+    }
     abort();
     setState({ status: 'unavailable' });
   }, [abort]);
+  const suspend = useCallback(() => {
+    if (!renewable.current) {
+      invalidate();
+      return;
+    }
+    // Clear the protected snapshot immediately; only this row may be renewed.
+    resumeRow.current = row;
+    started.current = false;
+    abort();
+    setState({ status: 'loading' });
+  }, [abort, invalidate, row]);
   const { accessVersion, canAccess } = useGeneratedReportAccess(
     active,
     ownership,
     invalidate,
     abort,
+    false,
+    suspend,
   );
   useLayoutEffect(() => {
     const trip = sourceTrip.current;
@@ -82,6 +102,8 @@ export function GeneratedReportDetailDestination({
   const read = useCallback(async () => {
     if (!canAccess()) return;
     abort();
+    resumeRow.current = null;
+    renewable.current = true;
     const controller = new AbortController();
     request.current = controller;
     const current = () =>
@@ -102,22 +124,31 @@ export function GeneratedReportDetailDestination({
           renewed.sessionVersion !== trip.target.sessionVersion
         ) {
           sourceTrip.current = undefined;
+          renewable.current = false;
           setState({ status: 'unavailable' });
           return;
         }
         trip.phase = 'restore';
       }
+      renewable.current = Boolean(detail);
       setState(
         detail
           ? { status: 'ready', detail, generation: ++generation.current }
           : { status: 'unavailable' },
       );
     } catch {
-      if (current()) setState({ status: 'failed' });
+      if (current()) {
+        renewable.current = false;
+        setState({ status: 'failed' });
+      }
     }
   }, [abort, canAccess, row]);
   useEffect(() => {
     if (started.current || !canAccess()) return;
+    if (resumeRow.current && resumeRow.current !== row) {
+      invalidate();
+      return;
+    }
     let live = true;
     // Strict replay and a synchronous Back must invalidate before any reader starts.
     Promise.resolve().then(() => {
@@ -128,7 +159,7 @@ export function GeneratedReportDetailDestination({
     return () => {
       live = false;
     };
-  }, [accessVersion, active, canAccess, read]);
+  }, [accessVersion, active, canAccess, invalidate, read, row]);
   if (!active || (ownership && !ownership.isCurrent())) return null;
   const owner = request.current;
   return (
