@@ -29,7 +29,7 @@ export function createConversationSessions(
   options: S.ConversationSessionOptions = {},
 ) {
   const { owner, empty } = createConversationSessionSeed();
-  let bindSender = (sender: S.ConversationSender) => sender;
+  let bindSender: S.BindConversationSender = sender => sender;
   let beforeSend: Parameters<typeof conversationDispatch>[0]['beforeSend'];
   let snapshot = initialConversationSnapshot(empty());
   const listeners = createConversationListeners();
@@ -118,9 +118,9 @@ export function createConversationSessions(
     },
   });
   const dispatch = conversationDispatch({
-    bindSender: sender => bindSender(sender),
+    bindSender: (...args) => bindSender(...args),
     beforeSend: options.continuousSession
-      ? (id, signal) => beforeSend!(id, signal)
+      ? (...args) => beforeSend!(...args)
       : undefined,
     requests,
     find,

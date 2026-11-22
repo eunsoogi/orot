@@ -186,7 +186,23 @@ export function observeConversationMain(
   return async (options, invocation) => {
     observeReceiptStage('conversation_receipt_main', 'started');
     try {
-      const outcome = await run(options, invocation);
+      const outcome = await run(
+        {
+          ...options,
+          workflow: {
+            ...options.workflow,
+            onModelStage(stage, event) {
+              try {
+                providerDiagnostic('rag', stage, event);
+              } catch {
+                // An optional diagnostic cannot suppress the caller's observer.
+              }
+              return options.workflow.onModelStage?.(stage, event);
+            },
+          },
+        },
+        invocation,
+      );
       observeReceiptStage('conversation_receipt_main', 'completed');
       return outcome;
     } catch (error) {

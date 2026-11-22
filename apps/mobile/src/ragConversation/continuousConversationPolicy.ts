@@ -1,3 +1,4 @@
+import { createConversationWarmAdmission } from './conversationWarmAdmission';
 import {
   createConversationRootRestoreOwnership,
   ownedArchiveRestore,
@@ -13,7 +14,6 @@ import type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 import type {
   ConversationSession,
   ConversationSessionOptions,
-  ConversationSender,
 } from './conversationSessionTypes';
 
 /** App-level policy, not a new transcript store. Existing restore/retention fences remain authoritative.
@@ -188,6 +188,13 @@ export function continuousConversationPolicy<
       update(store.getSnapshot().activeId, { modelSelectionPending: false });
     },
   });
+  const warm = createConversationWarmAdmission(
+    store,
+    options,
+    () => (pending || disposed ? -1 : epoch),
+    ready,
+    update,
+  );
   return {
     ...store,
     continuous: enabled,
@@ -218,17 +225,8 @@ export function continuousConversationPolicy<
     create: () => {
       if (!enabled) store.create();
     },
-    prepareSend: ready,
-    bindSender(sender: ConversationSender): ConversationSender {
-      const expectedConversationModel = model;
-      return !enabled || !expectedConversationModel
-        ? sender
-        : (question, history, signal, observer) =>
-            sender(question, history, signal, {
-              ...observer,
-              expectedConversationModel,
-            });
-    },
+    prepareSend: warm.prepare,
+    bindSender: warm.binder(() => (enabled ? model : undefined)),
     invalidateAll() {
       rootRestore.clear();
       interrupted = undefined;

@@ -12,6 +12,7 @@ export function useGeneratedReportAccess(
   ownership: NavigationRouteOwnership | undefined,
   invalidate: () => void,
   abort: () => void,
+  retainOnBlur = false,
 ) {
   const live = useRef({ active, ownership });
   live.current = { active, ownership };
@@ -27,15 +28,22 @@ export function useGeneratedReportAccess(
   );
 
   useLayoutEffect(() => {
+    if (retainOnBlur) invalidate();
+  }, [invalidate, ownership, retainOnBlur]);
+
+  useLayoutEffect(() => {
     foreground.current = AppState.currentState === 'active';
     // Old rows cannot survive replacement of the route's ownership object.
-    invalidate();
+    if (!retainOnBlur || !foreground.current) invalidate();
     let ready = canAccess();
     const sync = () => {
       const next = canAccess();
       if (ready === next) return;
       ready = next;
-      if (!next) invalidate();
+      if (!next) {
+        if (retainOnBlur && foreground.current) abort();
+        else invalidate();
+      }
       wake();
     };
     const leave = ownership?.subscribe(sync);
@@ -43,6 +51,7 @@ export function useGeneratedReportAccess(
     const deleted = subscribeLocalSourceDeletion(invalidate);
     const appState = AppState.addEventListener('change', value => {
       foreground.current = value === 'active';
+      if (retainOnBlur && !foreground.current && !ready) invalidate();
       sync();
     });
     return () => {
@@ -52,7 +61,7 @@ export function useGeneratedReportAccess(
       deleted();
       appState.remove();
     };
-  }, [abort, active, canAccess, invalidate, ownership]);
+  }, [abort, active, canAccess, invalidate, ownership, retainOnBlur]);
 
   return { accessVersion, canAccess };
 }
