@@ -1,3 +1,4 @@
+import { allowWarmConversationSender } from './warmConversationSender';
 import type { ConversationSessions } from './conversationSessions';
 import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { ConversationSender } from './conversationSessionTypes';
@@ -16,7 +17,12 @@ export function entryIntentSender(
   // Freeze the selected source before storage preflight can yield to another selection.
   const selected = conversationEntryForSession(store, id);
   const restored = store.getSnapshot().sessions.find(item => item.id === id);
-  return async (question, history, signal, observer) => {
+  const dispatch: ConversationSender = async (
+    question,
+    history,
+    signal,
+    observer,
+  ) => {
     // Restored targets are revalidated by the same guard used for the original entry.
     // Restored possibility sessions retain their safety and grounding boundary on follow-up.
     const context =
@@ -59,4 +65,13 @@ export function entryIntentSender(
     }
     return outcome;
   };
+  return !restored?.dailyReport &&
+    !selected?.dailyReport &&
+    !selected?.reportRequest &&
+    !selected?.appointmentId &&
+    (!selected ||
+      selected.intent === 'conversation' ||
+      selected.intent === 'possibilities')
+    ? allowWarmConversationSender(dispatch)
+    : dispatch;
 }

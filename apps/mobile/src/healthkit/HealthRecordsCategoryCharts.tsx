@@ -33,7 +33,13 @@ export function HealthRecordsCategoryCharts({
         <HealthRecordsLineChart
           key={unit}
           category={category}
-          observations={selectHealthRecordPreview(records)}
+          observations={
+            // A retained heart mark must summarize all samples at its instant
+            // in the loaded page; thin the marks only after that calculation.
+            category === 'heart_rate'
+              ? records
+              : selectHealthRecordPreview(records)
+          }
           preview
           hasMore={hasMore}
           loadState={loadState}

@@ -1,9 +1,11 @@
 import { useId, useMemo, useState } from 'react';
-import { Linking, Pressable, ScrollView } from 'react-native';
+import { Linking, Pressable } from 'react-native';
 import type { EvidenceReference } from '@orot/agent-runtime';
 import { AppText as Text } from '../layout/AppText';
-import { AppSymbol } from '../layout/AppSymbol';
-import { appColors } from '../layout/appColors';
+import {
+  ConversationCitationStrip,
+  ConversationSourcePill,
+} from './ConversationSourcePill';
 import { isSafeEuropePmcArticleUrl } from '../aiFeatures/integration/articleLinks';
 import { styles } from './ConversationScreen.styles';
 import { isPublicWebReference } from '../externalMedicalEvidence/publicWebSources';
@@ -44,38 +46,6 @@ function citationPresentation(reference: EvidenceReference) {
     }),
     hint: external ? t('externalMedicalEvidence.source.openHint') : undefined,
   };
-}
-
-function SourceChip({
-  testID,
-  label,
-  hint,
-  caption,
-  icon,
-  onPress,
-}: {
-  readonly testID: string;
-  readonly label: string;
-  readonly hint?: string;
-  readonly caption: string;
-  readonly icon: 'book' | 'doc.text' | 'globe';
-  readonly onPress: () => void;
-}) {
-  return (
-    <Pressable
-      testID={testID}
-      accessibilityRole={icon === 'globe' ? 'link' : 'button'}
-      accessibilityLabel={label}
-      accessibilityHint={hint}
-      style={styles.source}
-      onPress={onPress}
-    >
-      <AppSymbol name={icon} color={appColors.primaryText} size={18} />
-      <Text numberOfLines={1} style={styles.sourceText}>
-        {caption}
-      </Text>
-    </Pressable>
-  );
 }
 
 const archiveLabels = {
@@ -121,21 +91,13 @@ export function ConversationSources({
   const count = archived?.citations.length ?? references.length;
   if (!count) return null;
   return (
-    <ScrollView
-      testID="rag-conversation-sources"
-      horizontal
-      // This nested scroller must pass the first tap to a citation while the composer is focused.
-      keyboardShouldPersistTaps="handled"
-      showsHorizontalScrollIndicator={false}
-      style={styles.sourcesViewport}
-      contentContainerStyle={styles.sources}
-    >
+    <ConversationCitationStrip>
       {archived
         ? (expanded ? archived.citations : archived.citations.slice(0, 2)).map(
             (citation, index) => {
               const caption = citation.title ?? t(archiveLabels[citation.kind]);
               return (
-                <SourceChip
+                <ConversationSourcePill
                   key={index}
                   testID={`${identity}-citation-${index}`}
                   caption={caption}
@@ -164,7 +126,7 @@ export function ConversationSources({
                 />
               );
             return (
-              <SourceChip
+              <ConversationSourcePill
                 key={`${reference.sourceId}:${reference.evidenceId}:${index}`}
                 testID={`${identity}-citation-${index}`}
                 label={text.label}
@@ -209,6 +171,6 @@ export function ConversationSources({
           <Text style={styles.sourceText}>+{count - 2}</Text>
         </Pressable>
       ) : null}
-    </ScrollView>
+    </ConversationCitationStrip>
   );
 }

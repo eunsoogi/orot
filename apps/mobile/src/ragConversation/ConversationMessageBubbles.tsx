@@ -1,3 +1,4 @@
+import { useConversationFinalCommitDiagnostic } from './conversationFinalCommitDiagnostic';
 import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
@@ -25,6 +26,7 @@ export function ConversationMessageBubbles({
   readonly presentation: ConversationBubblePresentation;
 }) {
   const { opening, showBody } = conversationBubblePaint(message, presentation);
+  useConversationFinalCommitDiagnostic(message, Boolean(showBody));
   if (!opening && !beforeAnswer) return showBody ? children : null;
   return (
     <View style={styles.assistantBubbleSequence}>

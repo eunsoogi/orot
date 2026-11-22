@@ -12,8 +12,11 @@ export function overviewMetricChartData(
     value:
       day.value === null
         ? null
-        : chartValueForDisplay(metric.metric, day.value, metric.unit),
+        : metric.metric === 'heartRate' && day.range
+          ? day.value
+          : chartValueForDisplay(metric.metric, day.value, metric.unit),
     source: t('overview.metricChartSource'),
+    ...(metric.metric === 'heartRate' && day.range ? { range: day.range } : {}),
     ...(day.partial ? { partial: true } : {}),
   }));
   const recordedDays = points.filter(point => point.value !== null).length;

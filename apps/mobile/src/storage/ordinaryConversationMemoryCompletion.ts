@@ -6,6 +6,8 @@ export interface OrdinaryConversationCompletionIdentity {
   readonly sessionVersion: number;
   readonly question: string;
   readonly createdAt: string;
+  /** Only the live composer owner can attach its exact retained entry mode. */
+  readonly entryIntent?: 'possibilities';
 }
 
 /** This read is a protected, same-transaction gate for an optional local note.
@@ -37,7 +39,11 @@ export async function hasOrdinaryConversationCompletedSource(
          AND json_extract(a.result_json, '$.question') = r.question COLLATE BINARY
          AND json_extract(a.result_json, '$.status') = 'complete'
          AND json_type(a.result_json, '$.submittedInput') IS NULL
-         AND json_type(a.result_json, '$.entryIntent') IS NULL
+         AND (
+           (?6 IS NULL AND json_type(a.result_json, '$.entryIntent') IS NULL)
+           OR (?6 = 'possibilities' AND json_type(a.result_json, '$.entryIntent') = 'text'
+             AND json_extract(a.result_json, '$.entryIntent') = ?6 COLLATE BINARY)
+         )
          AND json_type(a.result_json, '$.dailyReport') IS NULL
          AND json_type(a.result_json, '$.healthSummary') IS NULL
          AND json_type(a.result_json, '$.visitQuestions') IS NULL
@@ -50,6 +56,7 @@ export async function hasOrdinaryConversationCompletedSource(
       identity.sessionVersion,
       identity.question,
       identity.createdAt,
+      identity.entryIntent ?? null,
     ],
   );
   return result.rows[0]?.matched === 1;

@@ -62,6 +62,40 @@ describe('OpenAI native account bridge', () => {
     });
   });
 
+  it('loads only the exact account with no inventory or model catalog call', async () => {
+    const loadAccountSummary = jest.fn(async () => baseAccount);
+    const native = makeNativeProviderModule({ loadAccountSummary });
+    const openai = loadOpenAIProvider(native);
+    await expect(
+      openai.loadOpenAIAccountSummary(baseAccount.issuedClientID),
+    ).resolves.toEqual(baseAccount);
+    expect(loadAccountSummary).toHaveBeenCalledWith(baseAccount.issuedClientID);
+    expect(native.listAccounts).not.toHaveBeenCalled();
+    expect(native.listModels).not.toHaveBeenCalled();
+  });
+
+  it('rejects a returned account mismatch without falling back', async () => {
+    const native = makeNativeProviderModule({
+      loadAccountSummary: async () => baseAccount,
+    });
+    const openai = loadOpenAIProvider(native);
+    await expect(
+      openai.loadOpenAIAccountSummary('other-fixture-account'),
+    ).rejects.toMatchObject({
+      code: 'INVALID_CHATGPT_ACCOUNT_SUMMARY',
+    });
+    expect(native.listAccounts).not.toHaveBeenCalled();
+  });
+
+  it('preserves the strict compatibility read when the native capability is absent', async () => {
+    const native = makeNativeProviderModule();
+    const openai = loadOpenAIProvider(native);
+    await expect(
+      openai.loadOpenAIAccountSummary(baseAccount.issuedClientID),
+    ).resolves.toEqual(baseAccount);
+    expect(native.listAccounts).toHaveBeenCalledTimes(1);
+  });
+
   it('returns only a validated summary and supports cancellation/sign-out', async () => {
     const native = makeNativeProviderModule();
     const openai = loadOpenAIProvider(native);

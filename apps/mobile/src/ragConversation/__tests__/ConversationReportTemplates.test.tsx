@@ -127,10 +127,9 @@ test('daily report preserves model order, limits and original text in reusable s
     t('dailyReport.analysis.limits'),
     t('dailyReport.observations'),
     t('dailyReport.suggestedQuestions'),
-    t('conversationTemplate.daily.scope'),
   ]);
   expect(parsed?.sections.at(-1)?.content).toContain(
-    t('dailyReport.reportCaution'),
+    'Synthetic follow-up question',
   );
   const restored = conversationRestoredMessages(
     [{ question: 'Synthetic', answer, citations: [] }],
@@ -144,7 +143,7 @@ test('daily report preserves model order, limits and original text in reusable s
     'Synthetic observed record',
   ])
     expect(screen.getByText(text, { exact: false })).toBeTruthy();
-  expect(screen.getAllByRole('header')).toHaveLength(6);
+  expect(screen.getAllByRole('header')).toHaveLength(5);
 });
 
 test('replacing or withholding the completed body removes every old report section', async () => {

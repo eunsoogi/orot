@@ -53,6 +53,7 @@ export function navigationRailPresentation(
         navigationCount,
         actionCount,
         hasContextualBack,
+        pinContextualBack: candidate.railSide !== 'left' && hasContextualBack,
       })
     : undefined;
   const fits = navFits && pageLayout?.fits === true;

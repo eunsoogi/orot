@@ -7,12 +7,14 @@ import type { AiFeatureServices } from '../../aiFeatures/integration/featureServ
 /** Switch only the visible destination while retaining the same protected conversation owner. */
 export function RestoredVisitDestinations({
   discover,
+  visit,
 }: {
   discover: AiFeatureServices['conversationArtifacts'];
+  visit: string;
 }) {
   const [overview, setOverview] = useState(false);
   return overview ? (
-    <OverviewPreparedVisits discover={discover} />
+    <OverviewPreparedVisits appointmentId={visit} />
   ) : (
     <>
       <ConversationScreen

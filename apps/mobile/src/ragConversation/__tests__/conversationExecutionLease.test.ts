@@ -98,7 +98,7 @@ test('protected data loss during lease acquisition still ends the eventual lease
   expect(f.adapter.end).toHaveBeenCalledWith('one');
 });
 
-test('foreground reconciliation catches an expiration whose event was missed', async () => {
+test('a background transition followed by missing ownership does not prove a native expiry', async () => {
   const f = fixture();
   let phase: 'active' | 'background' = 'active';
   f.adapter.currentPhase = () => phase;
@@ -115,7 +115,10 @@ test('foreground reconciliation catches an expiration whose event was missed', a
   f.emit({ kind: 'foreground' });
   await Promise.resolve();
   await Promise.resolve();
-  expect(interrupt).toHaveBeenCalledWith('expired');
+  expect(interrupt).toHaveBeenCalledWith('lease-check-failed');
+  expect(conversationExecutionDiagnostics().at(-2)?.event).toBe(
+    'foreground-lease-unavailable',
+  );
   end();
 });
 

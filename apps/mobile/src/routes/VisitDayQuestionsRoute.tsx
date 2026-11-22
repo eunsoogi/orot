@@ -14,7 +14,8 @@ import { useNavigationLeaveStateRegistration } from '../navigation';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { t } from '../i18n';
-import { appointmentTimeLabel } from './nextAppointment';
+import { VisitDayQuestionsContent } from './VisitDayQuestionsContent';
+import { appColors } from '../layout/appColors';
 
 /** Read only the route-bound appointment; never send saved questions to a model. */
 export function VisitDayQuestionsRoute({
@@ -100,10 +101,14 @@ export function VisitDayQuestionsRoute({
   return (
     <NavigationRouteScrollView>
       <View testID="visit-day-questions" style={styles.container}>
-        <AppText accessibilityRole="header">
-          {t('visitDayQuestions.title')}
-        </AppText>
-        <AppText>{t('visitDayQuestions.readOnly')}</AppText>
+        <View style={styles.header}>
+          <AppText accessibilityRole="header" style={styles.title}>
+            {t('visitDayQuestions.title')}
+          </AppText>
+          <AppText style={styles.subtitle}>
+            {t('visitDayQuestions.readOnly')}
+          </AppText>
+        </View>
         {failed || visible?.saved.status === 'error' ? (
           <>
             <AppText accessibilityRole="alert">
@@ -117,33 +122,11 @@ export function VisitDayQuestionsRoute({
               testID="visit-day-questions-retry"
             />
           </>
-        ) : visible ? (
-          <>
-            <AppText>
-              {visible.appointment.clinicLabel ??
-                t('appointments.preparation.untitled')}
-            </AppText>
-            <AppText>{appointmentTimeLabel(visible.appointment)}</AppText>
-            {visible.saved.questions.length ? (
-              visible.saved.questions.map(question => (
-                <View key={question.identity.id} style={styles.question}>
-                  <AppText
-                    testID={`visit-day-question-${question.identity.id}`}
-                  >
-                    {question.questionText}
-                  </AppText>
-                  <AppText>{question.rationale}</AppText>
-                </View>
-              ))
-            ) : (
-              <AppText>{t('visitDayQuestions.empty')}</AppText>
-            )}
-            {visible.saved.restorationNotice ? (
-              <AppText accessibilityRole="alert">
-                {visible.saved.restorationNotice}
-              </AppText>
-            ) : null}
-          </>
+        ) : visible?.saved.status === 'ready' ? (
+          <VisitDayQuestionsContent
+            appointment={visible.appointment}
+            saved={visible.saved}
+          />
         ) : (
           <AppText>{t('appointments.preparation.loading')}</AppText>
         )}
@@ -154,5 +137,7 @@ export function VisitDayQuestionsRoute({
 
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 16 },
-  question: { gap: 8 },
+  header: { gap: 8 },
+  title: { fontSize: 26, fontWeight: '700', lineHeight: 34 },
+  subtitle: { color: appColors.secondary, fontSize: 15, lineHeight: 22 },
 });

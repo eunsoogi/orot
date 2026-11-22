@@ -4,6 +4,7 @@ import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { restoreConversationToolTurns } from './restoreConversationToolTurns';
 import { sameToolSource } from '../../storage/conversationToolExternalSource';
+import { observeToolSourceBinding } from './toolSourceBindingDiagnostic';
 
 /** Only publish live links after the call and its lineage have been durably saved. */
 export async function bindLiveConversationToolSources(
@@ -13,10 +14,8 @@ export async function bindLiveConversationToolSources(
   data: AiFeatureLocalData,
   registry: LocalEvidenceReferenceRegistry,
 ) {
-  const owner = await storage.readToolCall(
-    sessionId,
-    event.operationRunId,
-    event.callId,
+  const owner = await observeToolSourceBinding('tool_event_bind_owner', () =>
+    storage.readToolCall(sessionId, event.operationRunId, event.callId),
   );
   if (!owner) return;
   const turn = {
@@ -31,13 +30,17 @@ export async function bindLiveConversationToolSources(
         item.runId === event.operationRunId && item.callId === event.callId,
     ),
   };
-  const [restored] = await restoreConversationToolTurns(
-    [turn],
-    registry,
-    data,
-    new AbortController().signal,
-    sessionId,
-    storage,
+  const [restored] = await observeToolSourceBinding(
+    'tool_event_bind_restore',
+    () =>
+      restoreConversationToolTurns(
+        [turn],
+        registry,
+        data,
+        new AbortController().signal,
+        sessionId,
+        storage,
+      ),
   );
   const sources = restored?.toolEvents[0]?.sources ?? [];
   const saved = turn.toolEvents[0];

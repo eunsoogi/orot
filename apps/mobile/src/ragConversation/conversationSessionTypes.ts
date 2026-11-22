@@ -33,6 +33,14 @@ export interface ConversationSessionOptions {
     model: { providerId: string; modelId: string };
     selectionCurrent?: () => boolean;
   }>;
+  /** Read-only proof of an already-admitted native ChatGPT owner, not remote eligibility. */
+  readonly prepareWarmSend?: (
+    lease: { readonly id: string; readonly version: number },
+    signal: AbortSignal,
+  ) => Promise<
+    | import('./conversationWarmAdmission').WarmConversationSelectionProof
+    | undefined
+  >;
   readonly restoreSteering?: (
     sessionId: string,
     requestId: string,
@@ -137,6 +145,7 @@ export type PendingTurn = {
   committed: boolean;
   summarySaving: boolean;
   summaryCommitted: boolean;
+  readonly liveFinalResponseId?: number;
   readonly coldResponseId?: number;
   coldStopping?: boolean;
   readonly stopCold?: () => void;
@@ -209,3 +218,8 @@ export interface ConversationSession {
   readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
   readonly taskCards?: readonly import('./conversationTaskState').RetainedConversationTask[];
 }
+
+export type BindConversationSender = (
+  sender: ConversationSender,
+  warm?: import('./conversationWarmAdmission').WarmConversationPreparation,
+) => ConversationSender;

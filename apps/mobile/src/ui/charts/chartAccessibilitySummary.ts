@@ -1,5 +1,5 @@
 import { t } from '../../i18n';
-import { formatChartPosition, formatChartValue } from './format';
+import { formatChartPosition, formatChartPointValue } from './format';
 import type { ChartData } from './types';
 
 /** Keeps chart-only cards readable without introducing a hidden details action or mutating records. */
@@ -17,9 +17,7 @@ export function chartAccessibilitySummary(
         [
           formatChartPosition(point.x, axis),
           series.label,
-          point.value === null
-            ? t('chart.missing')
-            : formatChartValue(data.metric, point.value, series.unit),
+          formatChartPointValue(data.metric, point, series.unit),
           point.partial ? t('chart.partialValue') : '',
           t('chart.source', { source: point.source }),
         ]

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { t } from '../../i18n';
-import { formatChartPosition, formatChartValue } from './format';
+import { formatChartPosition, formatChartPointValue } from './format';
 import type { ChartData, ChartPoint, ChartSeries } from './types';
 
 type PointEntry = {
@@ -56,10 +56,7 @@ function selectedValue(
   series: ChartSeries,
   point: ChartPoint,
 ) {
-  const value =
-    point.value === null
-      ? t('chart.missing')
-      : formatChartValue(data.metric, point.value, series.unit);
+  const value = formatChartPointValue(data.metric, point, series.unit);
   const partial = point.partial ? ` · ${t('chart.partialValue')}` : '';
   return `${series.label}: ${value}${partial} · ${t('chart.source', { source: point.source })}`;
 }

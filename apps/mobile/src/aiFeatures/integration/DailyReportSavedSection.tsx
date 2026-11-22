@@ -1,4 +1,4 @@
-import { DailyReportAnalysis } from './DailyReportAnalysis';
+import { DailyReportAnalysis } from './DailyReportAnalysisSection';
 import { View, StyleSheet } from 'react-native';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { EvidenceReference } from '@orot/agent-runtime';
@@ -103,7 +103,6 @@ export function DailyReportSavedSection({
           onStale={onStale}
         />
       ) : null}
-      <AppText>{t('dailyReport.reportCaution')}</AppText>
       {saved.report.followUpQuestions.length > 0 ? (
         <>
           <AppText accessibilityRole="header">
