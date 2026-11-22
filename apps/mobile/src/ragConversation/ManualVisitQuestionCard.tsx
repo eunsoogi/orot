@@ -13,6 +13,7 @@ import type { ManualVisitQuestion } from './manualVisitRecordService';
 
 interface ManualVisitQuestionCardProps {
   readonly item: ManualVisitQuestion;
+  readonly embedded?: boolean;
   readonly draft: ManualVisitDraft | null;
   readonly emptyAnswerLabel: string;
   readonly busy: boolean;
@@ -27,6 +28,7 @@ interface ManualVisitQuestionCardProps {
 /** Presents asked-question state while leaving persistence and correction to the caller. */
 export function ManualVisitQuestionCard({
   item,
+  embedded = false,
   draft,
   emptyAnswerLabel,
   busy,
@@ -46,8 +48,13 @@ export function ManualVisitQuestionCard({
   const hasPendingConfirmation = Boolean(activeDraft && !activeDraft.recordId);
 
   return (
-    <View style={styles.card}>
-      <Text>{item.question.questionText}</Text>
+    <View
+      style={embedded ? styles.embeddedRow : styles.card}
+      testID="manual-visit-question-row"
+    >
+      <Text style={embedded ? styles.embeddedQuestion : undefined}>
+        {item.question.questionText}
+      </Text>
       {item.records.map(record => (
         <View key={record.id}>
           {record.questionText !== item.question.questionText && (
@@ -63,7 +70,10 @@ export function ManualVisitQuestionCard({
               accessibilityRole="checkbox"
               accessibilityLabel={t('visitQuestions.manual.status.confirmed')}
               accessibilityState={{ checked: true, disabled: true }}
-              style={styles.confirmedStatus}
+              style={[
+                styles.confirmedStatus,
+                embedded && styles.trailingAction,
+              ]}
             >
               <AppSymbol name="checkmark.circle.fill" size={18} />
               <Text style={styles.confirmedStatusText}>
@@ -109,6 +119,9 @@ export function ManualVisitQuestionCard({
           )}
           <Button
             title={t('visitQuestions.manual.actions.edit')}
+            variant={embedded ? 'text' : undefined}
+            size={embedded ? 'compact' : undefined}
+            style={embedded ? styles.trailingAction : undefined}
             disabled={busy}
             onPress={() => onEdit(record)}
           />
@@ -117,9 +130,9 @@ export function ManualVisitQuestionCard({
       {!hasManualConfirmation && !hasPendingConfirmation && (
         <Button
           title={t('visitQuestions.manual.actions.confirmAsked')}
-          variant="secondary"
+          variant={embedded ? 'text' : 'secondary'}
           size="compact"
-          style={styles.confirmationButton}
+          style={embedded ? styles.trailingAction : styles.confirmationButton}
           accessibilityHint={t(
             'visitQuestions.manual.actions.confirmAskedHint',
           )}

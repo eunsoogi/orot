@@ -12,15 +12,11 @@ final class DailyReportEntryUITests: XCTestCase {
         defer { app.terminate() }
 
         try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title"])
-        let homeEntry = UITestConditions.element(app, "overview-open-daily-report")
-        XCTAssertTrue(homeEntry.waitForAppearance(), app.debugDescription)
-        attach(app, name: "daily-report-home-entry")
-        XCTAssertTrue(homeEntry.isHittable, homeEntry.debugDescription)
-        homeEntry.tap()
-        XCTAssertTrue(UITestConditions.element(app, "daily-report-screen").waitForAppearance(), app.debugDescription)
+        // Overview no longer exposes a daily report shortcut: the explicit Conversation entry remains.
+        let overview = UITestConditions.element(app, "overview-screen")
+        XCTAssertTrue(overview.waitForAppearance(), app.debugDescription)
+        XCTAssertFalse(UITestConditions.element(app, "overview-open-daily-report").exists, overview.debugDescription)
 
-        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
-        XCTAssertTrue(homeEntry.waitForAppearance(), app.debugDescription)
         try NavigationUITestConditions.openTab(app, "conversation", markers: ["rag-conversation-screen"])
         let conversationEntry = UITestConditions.element(app, "daily-report-request")
         XCTAssertTrue(conversationEntry.waitForAppearance(), app.debugDescription)
