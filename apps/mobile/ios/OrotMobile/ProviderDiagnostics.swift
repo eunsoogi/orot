@@ -35,6 +35,7 @@ final class OrotProviderDiagnostics: NSObject {
                "conversation_final_react_commit",
                "conversation_dispatch", "conversation_run", "tool_capture_personal", "tool_capture_memory", "tool_capture_generated", "tool_capture_external",
                "tool_event_adapter", "tool_event_discard", "tool_event_capture", "tool_event_write", "tool_event_bind",
+               "tool_event_bind_owner", "tool_event_bind_restore",
                "tool_event_write_setup", "tool_event_write_decode", "tool_event_write_lineage_validation",
                "tool_event_write_admission", "tool_event_write_body", "tool_event_write_settlement", "tool_search_wait",
                "opening_generate", "opening_validate", "opening_review", "opening_consent",

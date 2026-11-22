@@ -43,6 +43,8 @@ export type Stage =
   | 'tool_event_write_settlement'
   | 'tool_search_wait'
   | 'tool_event_bind'
+  | 'tool_event_bind_owner'
+  | 'tool_event_bind_restore'
   | 'opening_generate'
   | 'opening_validate'
   | 'opening_review'
