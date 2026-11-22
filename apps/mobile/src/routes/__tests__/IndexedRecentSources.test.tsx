@@ -155,7 +155,7 @@ test('built-in Records uses one bounded media cursor independently of held repor
     expect(
       await screen.findByTestId('records-recent-source-audio-24'),
     ).toBeTruthy();
-    expect(page).toHaveBeenLastCalledWith({
+    expect(page.mock.lastCall?.[0]).toEqual({
       key: 'audio-25',
       createdAt: timestamp,
     });
@@ -164,7 +164,7 @@ test('built-in Records uses one bounded media cursor independently of held repor
       reports.resolve(reportPages.slice(0, 20));
     });
     await waitFor(() =>
-      expect(reportRead).toHaveBeenLastCalledWith({
+      expect(reportRead.mock.lastCall?.[0]).toEqual({
         key: 'visit:11',
         createdAt: reportPages[19].createdAt,
       }),
@@ -172,7 +172,7 @@ test('built-in Records uses one bounded media cursor independently of held repor
     expect(screen.getByTestId('records-recent-show-more')).toBeEnabled();
     await fireEvent.press(screen.getByTestId('records-recent-show-more'));
     expect(await screen.findByText('Synthetic imported file')).toBeTruthy();
-    expect(page).toHaveBeenLastCalledWith({
+    expect(page.mock.lastCall?.[0]).toEqual({
       key: 'audio-05',
       createdAt: timestamp,
     });

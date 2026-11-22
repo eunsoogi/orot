@@ -12,7 +12,9 @@ interface SyncDatabase {
 }
 
 /** Synthetic SQLite, matching the native driver's separate direct execute and queued transaction paths. */
-export function openInterleavableRecentSourceDatabase() {
+export function openInterleavableRecentSourceDatabase(
+  beforeDirectExecute?: (sql: string) => Promise<void> | undefined,
+) {
   const { DatabaseSync } = require('node:sqlite') as {
     DatabaseSync: new (path: string) => SyncDatabase;
   };
@@ -29,7 +31,10 @@ export function openInterleavableRecentSourceDatabase() {
     };
   };
   const database = guardedNativeDatabase<SqlDatabase>({
-    execute,
+    async execute(query, parameters) {
+      await beforeDirectExecute?.(query);
+      return execute(query, parameters);
+    },
     transaction(operation) {
       const job = tail
         .then(() => new Promise<void>(resolve => setImmediate(resolve)))
