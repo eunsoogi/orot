@@ -1,6 +1,13 @@
 import { legacySummaryPeriodAvailable } from './legacySummaryPeriodQuarantine';
-import { createReadOnlyPeriodValidation } from './readOnlyPeriodValidation';
-import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
+import {
+  createReadOnlyPeriodValidation,
+  type ReadOnlyPeriodValidation,
+} from './readOnlyPeriodValidation';
+import {
+  createManualHistoryRepository,
+  type SqlDatabase,
+  type SqlExecutor,
+} from '@orot/storage';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { decodeSavedSymptomSummary } from './symptomSummaryStorageCodec';
 import { visibleSummary } from './symptomSummaryQuarantine';
@@ -30,37 +37,47 @@ export async function revalidateSummaryArtifacts(
         }
         continue;
       }
-      const result = await tx.execute(
-        `SELECT r.result_json FROM symptom_summary_runs r WHERE r.id = ? AND ${visibleSummary} AND NOT EXISTS (SELECT 1 FROM conversation_invalid_summaries invalid WHERE invalid.id = r.id)`,
-        [item.id],
-      );
-      const saved = decodeSavedSymptomSummary(result.rows[0]?.result_json);
       if (
-        !saved ||
-        saved.inputLineage !== 'complete' ||
-        fingerprint(saved) !== item.revision
+        !(await readCurrentRetainedSummary(tx, item, history, validatePeriod))
       ) {
-        valid = false;
-        return;
-      }
-      try {
-        if (!(await legacySummaryPeriodAvailable(tx, saved))) {
-          valid = false;
-          return;
-        }
-        await assertRetainedEvidenceCurrent(
-          tx,
-          saved.sources,
-          history,
-          false,
-          undefined,
-          validatePeriod,
-        );
-      } catch {
         valid = false;
         return;
       }
     }
   });
   return valid;
+}
+
+/** Read the exact supported snapshot with the same lineage checks used by the generated artifact catalog. */
+export async function readCurrentRetainedSummary(
+  tx: SqlExecutor,
+  item: { readonly id: string; readonly revision: string },
+  history: ReturnType<typeof createManualHistoryRepository>,
+  validatePeriod: ReadOnlyPeriodValidation,
+) {
+  const result = await tx.execute(
+    `SELECT r.result_json FROM symptom_summary_runs r WHERE r.id = ? AND ${visibleSummary} AND NOT EXISTS (SELECT 1 FROM conversation_invalid_summaries invalid WHERE invalid.id = r.id)`,
+    [item.id],
+  );
+  const saved = decodeSavedSymptomSummary(result.rows[0]?.result_json);
+  if (
+    !saved ||
+    saved.inputLineage !== 'complete' ||
+    fingerprint(saved) !== item.revision
+  )
+    return null;
+  try {
+    if (!(await legacySummaryPeriodAvailable(tx, saved))) return null;
+    await assertRetainedEvidenceCurrent(
+      tx,
+      saved.sources,
+      history,
+      false,
+      undefined,
+      validatePeriod,
+    );
+    return saved;
+  } catch {
+    return null;
+  }
 }

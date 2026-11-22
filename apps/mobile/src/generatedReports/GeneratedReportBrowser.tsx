@@ -1,5 +1,6 @@
+import { GeneratedReportBookmarkAction } from './GeneratedReportBookmarkAction';
 import { GeneratedReportContent } from './GeneratedReportContent';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AppState, View, StyleSheet } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
@@ -29,7 +30,12 @@ export function GeneratedReportBrowser({
   const [expanded, setExpanded] = useState(false);
   const [rows, setRows] = useState<readonly GeneratedReportRow[]>([]);
   const [selected, setSelected] = useState<GeneratedReportRow | null>(null);
-  const [detail, setDetail] = useState<GeneratedReportDetail | null>(null);
+  const [detail, setDetail] = useState<{
+    readonly value: GeneratedReportDetail;
+    readonly owner: AbortController;
+    readonly generation: number;
+  } | null>(null);
+  const generation = useRef(0);
   const [state, setState] = useState<
     'idle' | 'loading' | 'ready' | 'failed' | 'unavailable'
   >('idle');
@@ -47,7 +53,7 @@ export function GeneratedReportBrowser({
     setState('idle');
     setExpanded(false);
   }
-  useEffect(() => {
+  useLayoutEffect(() => {
     const clear = subscribeLocalDataClear(invalidate),
       deleted = subscribeLocalSourceDeletion(invalidate);
     const subscription = AppState.addEventListener('change', next => {
@@ -92,6 +98,7 @@ export function GeneratedReportBrowser({
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
+    const selectedGeneration = ++generation.current;
     setSelected(row);
     setDetail(null);
     setState('loading');
@@ -99,13 +106,27 @@ export function GeneratedReportBrowser({
       const reader = await open();
       const result = await reader.read(row, controller.signal);
       if (controller.signal.aborted || !available.current) return;
-      setDetail(result);
+      setDetail(
+        result
+          ? { value: result, owner: controller, generation: selectedGeneration }
+          : null,
+      );
       setState(result ? 'ready' : 'unavailable');
     } catch {
       if (!controller.signal.aborted && available.current) setState('failed');
     }
   }
   if (!active) return null;
+  // A newly selected instance of the same report cannot revive this press.
+  const ownsRenderedReport = () =>
+    Boolean(
+      detail &&
+      request.current === detail.owner &&
+      !detail.owner.signal.aborted &&
+      available.current &&
+      foreground.current &&
+      AppState.currentState === 'active',
+    );
   return (
     <View style={styles.panel} testID="generated-report-browser">
       <AppText accessibilityRole="header" style={styles.heading}>
@@ -160,7 +181,16 @@ export function GeneratedReportBrowser({
             <AppText accessibilityRole="alert">{copy.unavailable}</AppText>
           ) : null}
           {selected && detail && state === 'ready' ? (
-            <GeneratedReportContent detail={detail} />
+            <>
+              <GeneratedReportContent detail={detail.value} />
+              {detail.value.bookmarkOriginal ? (
+                <GeneratedReportBookmarkAction
+                  key={detail.generation}
+                  bookmark={detail.value.bookmarkOriginal}
+                  current={ownsRenderedReport}
+                />
+              ) : null}
+            </>
           ) : null}
           {!selected && state === 'ready' ? (
             <>

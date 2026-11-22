@@ -1,5 +1,6 @@
+import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { conversationDailyReportText } from '../aiFeatures/integration/conversationDailyReportText';
-import { readableHypothesis } from '../diseaseHypotheses/readableHypothesis';
+import { projectGeneratedSummaryDetail } from './summaryDetail';
 import { createManualHistoryRepository, type SqlDatabase } from '@orot/storage';
 import { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import { validateDailyReportArtifact } from '../storage/dailyReportArtifactValidation';
@@ -27,8 +28,46 @@ import { generatedReportCopy as copy } from './text';
 export function createGeneratedReportReader(
   database: SqlDatabase,
   dependencies = { data: openAiFeatureLocalData, records: openLocalStorage },
-): GeneratedReportReader {
+): GeneratedReportReader & {
+  readBookmarkedDiseasePossibilities(
+    id: string,
+    current: () => boolean,
+  ): Promise<GeneratedReportDetail | null>;
+} {
+  const bookmarks = createConversationArtifactStorage(database);
   return {
+    async readBookmarkedDiseasePossibilities(id, current) {
+      const revision = await bookmarks.readSavedDiseasePossibilitiesPin(
+        id,
+        current,
+      );
+      if (!revision || !current()) return null;
+      const saved = await openSummaryReader(
+        database,
+        new LocalEvidenceReferenceRegistry(),
+        dependencies.data,
+      ).readCommittedStatus(id);
+      if (
+        !saved ||
+        'status' in saved ||
+        saved.revision !== revision ||
+        saved.analysis.presentation !== undefined ||
+        saved.analysis.savedSummary?.status !== 'saved' ||
+        saved.analysis.savedSummary.id !== id ||
+        saved.analysis.savedSummary.sourceChanged ||
+        !current()
+      )
+        return null;
+      // Keep the original review warnings, then revalidate the exact retained
+      // snapshot after those source reads; never publish their stale result.
+      const verified = await bookmarks.readSavedDiseasePossibilitiesReference(
+        id,
+        current,
+      );
+      return current() && verified && fingerprint(verified) === revision
+        ? projectGeneratedSummaryDetail(saved.analysis)
+        : null;
+    },
     list: before => listGeneratedReports(database, before),
     async read(row, signal) {
       if (signal.aborted) return null;
@@ -98,23 +137,47 @@ async function readSelected(
       warning: saved.restorationNotice,
     };
   }
-  const saved = await createSymptomSummaryPersistence({
+  const saved = await openSummaryReader(
+    database,
     registry,
-    data: dependencies.data,
-    storage: async () => createSymptomSummaryStorage(database),
-  }).history.readStatus!(row.id);
+    dependencies.data,
+  ).readCommittedStatus(row.id);
   if (!saved || 'status' in saved) return null;
+  const original = saved.analysis.savedSummary;
+  // A same-looking Conversation answer or a preview never supplies a pin capability.
+  const bookmarkOriginal =
+    row.origin === 'summary' &&
+    row.kind === 'possibilities' &&
+    row.key === `summary:${row.id}` &&
+    !row.unavailable &&
+    saved.analysis.presentation === undefined &&
+    original?.status === 'saved' &&
+    original.id === row.id &&
+    !original.sourceChanged
+      ? (current: () => boolean) =>
+          createConversationArtifactStorage(
+            database,
+          ).bookmarkDiseasePossibilities({
+            id: row.id,
+            revision: saved.revision,
+            current: () => !signal.aborted && current(),
+          })
+      : undefined;
   return {
-    analysis: saved.analysis,
-    paragraphs: saved.analysis.hypotheses
-      .map(readableHypothesis)
-      .flatMap(h => [h.title, h.summary, h.uncertainty, ...h.missingData]),
-    warning:
-      saved.analysis.savedSummary?.status === 'saved' &&
-      saved.analysis.savedSummary.sourceChanged
-        ? copy.changed
-        : copy.coverage,
+    ...projectGeneratedSummaryDetail(saved.analysis),
+    ...(bookmarkOriginal ? { bookmarkOriginal } : {}),
   };
+}
+function openSummaryReader(
+  database: SqlDatabase,
+  registry: LocalEvidenceReferenceRegistry,
+  data: typeof openAiFeatureLocalData,
+) {
+  return createSymptomSummaryPersistence({
+    registry,
+    data,
+    storage: async () => createSymptomSummaryStorage(database),
+  });
 }
 /** Storage opens lazily when the Records browser is used, not during application import. */
 export async function openGeneratedReportReader() {

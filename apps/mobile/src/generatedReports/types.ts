@@ -14,6 +14,8 @@ export interface GeneratedReportDetail {
   readonly daily?: import('@orot/domain').DailyReportOutput;
   readonly paragraphs: readonly string[];
   readonly warning?: string;
+  /** Bound only to the exact rendered committed standalone possibility snapshot. */
+  readonly bookmarkOriginal?: (current: () => boolean) => Promise<boolean>;
 }
 export interface GeneratedReportReader {
   list(before?: {
