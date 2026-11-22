@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { ClassificationPagedStage } from './ClassificationPagedStage';
 import { ClassificationResultNotice } from './ClassificationResultNotice';
-import {
-  ClassificationEdgeAction,
-  classificationEdgeTarget,
-} from './ClassificationEdgeAction';
+import { classificationEdgeTarget } from './ClassificationEdgeAction';
 import {
   ClassificationResultDetail,
   type ClassificationResultField,
@@ -42,7 +45,6 @@ export function ClassificationResultsStage({
 }: Props) {
   const window = useWindowDimensions();
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
-  const [index, setIndex] = useState(0);
   const [detail, setDetail] = useState<{ id: string } | 'summary' | null>(null);
   const details =
     detail === 'summary'
@@ -59,13 +61,10 @@ export function ClassificationResultsStage({
   const target = classificationEdgeTarget;
   const naturalRow = Math.max(target, Math.ceil(38 * scale + 10));
   const naturalCaption = Math.max(target, Math.ceil(38 * scale + 4));
-  // A short pane keeps a complete row and visible notice beside the action.
-  const compact = !details && height < 3 * target + 8;
-  const minimum = details
-    ? Math.max(target, Math.min(160, height / 2))
-    : compact
-      ? target
-      : 2 * target;
+  // Keep the viewport the same size while a detail covers it. Resizing a
+  // hidden scroll view near its bottom would clamp the remembered offset.
+  const compact = height < 3 * target + 8;
+  const minimum = naturalCaption + naturalRow;
   const size = Math.max(
     0,
     Math.min(circle.size, Math.max(target, height - minimum - 8)),
@@ -75,17 +74,11 @@ export function ClassificationResultsStage({
     Math.min((height - size) / 2, height - size - minimum - 8),
   );
   const top = compact ? target + 8 : centerOffset + size + 8;
-  const available = Math.max(0, height - top);
-  const captionHeight = compact
-    ? 0
-    : Math.min(naturalCaption, Math.max(target, available - target));
-  const rowSpace = Math.max(available - captionHeight, target);
-  const rowHeight = Math.min(naturalRow, rowSpace);
-  const capacity = Math.min(3, Math.max(1, Math.floor(rowSpace / rowHeight)));
-  const position =
-    Math.floor(Math.max(0, Math.min(index, rows.length - 1)) / capacity) *
-    capacity;
-  const paging = rows.length > capacity;
+  const captionHeight = Math.min(
+    naturalCaption,
+    Math.max(target, height - top - target),
+  );
+  const showingDetail = Boolean(details);
 
   const actionTitle = t('medicalAppointments.restartShort');
   const actionLabel = t('medicalAppointments.startAgain');
@@ -142,76 +135,57 @@ export function ClassificationResultsStage({
               {restartButton(target)}
             </ClassificationCircleSlot>
           </View>
-          {noticeAction(target, true)}
+          {!showingDetail && noticeAction(target, true)}
         </View>
       ) : (
         <ClassificationCircleSlot size={size} centerOffset={centerOffset}>
           {restartButton(size)}
         </ClassificationCircleSlot>
       )}
-      {details ? (
+      {/* Keep the native scroll view mounted at its original offset. When the
+          reader owns the surface, hidden rows cannot take touches or AX focus. */}
+      <View
+        style={[styles.list, { top }, showingDetail && styles.hidden]}
+        pointerEvents={showingDetail ? 'none' : 'auto'}
+        accessibilityElementsHidden={showingDetail}
+        importantForAccessibility={
+          showingDetail ? 'no-hide-descendants' : 'auto'
+        }
+      >
+        {!compact && noticeAction(captionHeight, false)}
+        <ScrollView
+          style={styles.viewport}
+          contentContainerStyle={styles.rows}
+          alwaysBounceVertical={false}
+          contentInsetAdjustmentBehavior="never"
+          testID="classification-result-list"
+        >
+          {rows.map(row => (
+            <Pressable
+              key={row.id}
+              style={[styles.result, { minHeight: naturalRow }]}
+              accessibilityRole="button"
+              accessibilityLabel={`${row.title}, ${row.when}, ${row.category}`}
+              accessibilityHint={t('medicalAppointments.openResultDetails')}
+              onPress={() => setDetail({ id: row.id })}
+              testID="classification-result-row"
+            >
+              <AppText numberOfLines={1} style={styles.title}>
+                {row.title}
+              </AppText>
+              <AppText numberOfLines={1} style={styles.time}>
+                {row.when} · {row.category}
+              </AppText>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+      {details && (
         <ClassificationResultDetail
           fields={details}
           top={top}
           back={() => setDetail(null)}
         />
-      ) : (
-        <View
-          style={[styles.list, { top }]}
-          testID="classification-stage-captions"
-        >
-          {compact ? null : noticeAction(captionHeight, false)}
-          <View style={styles.band} testID="classification-result-paging">
-            {paging ? (
-              <ClassificationEdgeAction
-                direction="left"
-                label={t('medicalAppointments.previousResult')}
-                testID="medical-appointment-previous-result"
-                disabled={position === 0}
-                onPress={() => setIndex(Math.max(0, position - capacity))}
-              />
-            ) : null}
-            <View style={styles.rows} testID="classification-result-list">
-              {rows.slice(position, position + capacity).map(row => (
-                <Pressable
-                  key={row.id}
-                  style={[styles.result, { height: rowHeight }]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${row.title}, ${row.when}, ${row.category}`}
-                  accessibilityHint={t('medicalAppointments.openResultDetails')}
-                  onPress={() => setDetail({ id: row.id })}
-                  testID="classification-result-row"
-                >
-                  <AppText
-                    numberOfLines={1}
-                    maxFontSizeMultiplier={
-                      rowHeight < naturalRow
-                        ? Math.max(1, rowHeight / 21)
-                        : undefined
-                    }
-                    style={styles.title}
-                  >
-                    {row.title}
-                  </AppText>
-                  {rowHeight >= naturalRow ? (
-                    <AppText numberOfLines={1} style={styles.time}>
-                      {row.when} · {row.category}
-                    </AppText>
-                  ) : null}
-                </Pressable>
-              ))}
-            </View>
-            {paging ? (
-              <ClassificationEdgeAction
-                direction="right"
-                label={t('medicalAppointments.nextResult')}
-                testID="medical-appointment-next-result"
-                disabled={position + capacity >= rows.length}
-                onPress={() => setIndex(position + capacity)}
-              />
-            ) : null}
-          </View>
-        </View>
       )}
     </View>
   );
@@ -221,12 +195,14 @@ const styles = StyleSheet.create({
   fill: { flex: 1, minHeight: 0, width: '100%' },
   list: {
     position: 'absolute',
+    bottom: 0,
     width: '100%',
     maxWidth: 520,
     alignSelf: 'center',
   },
-  band: { flexDirection: 'row', alignItems: 'center' },
-  rows: { flex: 1, minWidth: 0 },
+  hidden: { opacity: 0 },
+  viewport: { flex: 1, minHeight: 0 },
+  rows: { paddingBottom: 8 },
   compactHeader: {
     alignItems: 'center',
     alignSelf: 'center',
