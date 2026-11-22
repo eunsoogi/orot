@@ -13,7 +13,10 @@ import { ScrollView, View } from 'react-native';
 import { navigationText } from '../../i18n/navigation';
 import ChatGPTAccountSetupCard from './ChatGPTAccountSetupCard';
 import { ProviderSelectionChoices } from './ProviderSelectionChoices';
-import { ProviderSelectionFooter } from './ProviderSelectionFooter';
+import {
+  ProviderSelectionCurrentSummary,
+  ProviderSelectionFooter,
+} from './ProviderSelectionFooter';
 import {
   providerSelectionScreenStyles as styles,
   selectionSummaryMessage,
@@ -173,6 +176,9 @@ export default function ProviderSelectionScreen({
           locked={saving || pendingOption !== null}
           onOpenAccounts={chatGPTSetup?.onOpenAccounts}
         >
+          {presentation === 'settings-provider' && !pendingOption ? (
+            <ProviderSelectionCurrentSummary message={selectionMessage} />
+          ) : null}
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionChoices
               chatGPTSetup={chatGPTSetup}
@@ -201,6 +207,7 @@ export default function ProviderSelectionScreen({
           ) : null}
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionFooter
+              showSummary={presentation !== 'settings-provider'}
               inlineConsent={!unifiedReview}
               searchChoices={unifiedReview ? undefined : search.choices}
               searchReviewStatus={search.status}

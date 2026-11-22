@@ -175,3 +175,25 @@ test('pending sign-in remains cancellable while other account actions are busy',
   await fireEvent.press(cancel);
   expect(onCancelSignIn).toHaveBeenCalledTimes(1);
 });
+
+it('shows the saved conversation selection ahead of providers without a second copy', async () => {
+  await render(
+    <ProviderSelectionScreen
+      presentation="settings-provider"
+      options={[createAppleSelectionOption('available')]}
+      requirements={{ inputTypes: ['text'] }}
+      selectionStore={{
+        load: async () => null,
+        save: jest.fn(),
+        clear: jest.fn(),
+      }}
+    />,
+  );
+  const rows = screen.getAllByTestId(
+    /^(provider-selection-current-card|provider-choices-content)$/,
+  );
+  expect(rows.map(row => row.props.testID)).toEqual([
+    'provider-selection-current-card',
+    'provider-choices-content',
+  ]);
+});
