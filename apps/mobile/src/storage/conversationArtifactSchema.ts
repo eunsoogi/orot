@@ -21,6 +21,7 @@ import {
 } from './typedDeletionMarkers';
 import { setupConversationTaskCards } from './conversationTaskCards';
 import { setupConversationRequests } from './conversationRequestSchema';
+import { setupOrdinaryConversationMemoryNotes } from './ordinaryConversationMemoryNoteSchema';
 import { setupConversationPreviewSchema } from './conversationPreviewSchema';
 
 /** Install dependency cleanup in the same encrypted store as records and retained output. */
@@ -54,6 +55,7 @@ export async function setupConversationArtifactSchema(tx: SqlExecutor) {
     'CREATE TABLE IF NOT EXISTS conversation_artifacts (id TEXT PRIMARY KEY NOT NULL, session_id TEXT NOT NULL, created_at TEXT NOT NULL, result_json TEXT NOT NULL)',
   );
   await setupConversationRequests(tx);
+  await setupOrdinaryConversationMemoryNotes(tx);
   await setupConversationTaskCards(tx);
   await tx.execute(
     'CREATE INDEX IF NOT EXISTS conversation_artifacts_order ON conversation_artifacts (session_id, created_at DESC, id DESC)',

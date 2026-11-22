@@ -59,10 +59,7 @@ test.each(['composer', 'shortcut'] as const)(
       status: 'complete',
       createdAt: '2026-11-01T00:00:00.000Z',
     });
-    expect(Boolean(memory)).toBe(inputOrigin === 'composer');
-    if (memory) {
-      expect(memory.text).toContain(question);
-      expect(memory.text).not.toContain('INFERRED_TEXT_NOT_A_MEMORY');
-    }
+    // A proposal never authorizes embedding, even for typed follow-up.
+    expect(memory).toBeUndefined();
   },
 );

@@ -60,6 +60,8 @@ export type {
 } from './appointments';
 export {
   createManualHistoryRepository,
+  autoLocalConversationMemoryIdPrefix,
+  isAutoLocalConversationMemoryId,
   localConversationMemoryIdPrefix,
   isLocalConversationMemoryId,
 } from './manualHistory';

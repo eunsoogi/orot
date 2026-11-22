@@ -59,7 +59,7 @@ export function SettingsDetailsRoute({
         <SettingsBackupRoute state={backupState} onPrepare={onPrepareBackup} />
       );
     case 'settings-privacy':
-      return <SettingsPrivacyRoute />;
+      return <SettingsPrivacyRoute ownership={actions.ownership} />;
     case 'settings-health-data':
       return <HealthDataIntegrationRoute />;
     case 'settings-sync-status':

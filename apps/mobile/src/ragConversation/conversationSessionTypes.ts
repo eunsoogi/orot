@@ -19,6 +19,7 @@ type Retention = ReturnType<typeof createConversationSessionRetention>;
 
 export interface ConversationSessionOptions {
   readonly useProtectedPromptHistory?: boolean;
+  readonly ordinaryMemory?: import('./ordinaryConversationMemoryTask').OrdinaryConversationMemoryPort;
   readonly readSavedHistoryDisplay?: import('./conversationSavedHistoryDisplay').ReadSavedHistoryDisplay;
   readonly readPlainContextPage?: ReturnType<
     typeof import('../storage/plainConversationContext').createPlainConversationContextReader
