@@ -60,7 +60,7 @@ test.each([
   { width: 390, scheme: 'dark', fontScale: 1.6 },
   { width: 870, scheme: 'light', fontScale: 1 },
 ] as const)(
-  'separates headings from compact library rows in $scheme at $width pt',
+  'separates headings from well-spaced library rows in $scheme at $width pt',
   async ({ width, scheme, fontScale }) => {
     const dimensions = { width, height: 650, scale: 3, fontScale };
     await act(async () =>
@@ -105,7 +105,7 @@ test.each([
       const last = screen.getByTestId(rowPrefix + 'two');
       expect(first).toHaveStyle({
         minHeight: 44,
-        paddingVertical: 8,
+        paddingVertical: 14,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: appColors.border,
       });

@@ -1,20 +1,10 @@
 import { GeneratedReportBookmarkAction } from './GeneratedReportBookmarkAction';
 import { GeneratedReportContent } from './GeneratedReportContent';
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
-import { AppState } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useGeneratedReportAccess } from './useGeneratedReportAccess';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
-import {
-  subscribeLocalDataClear,
-  subscribeLocalSourceDeletion,
-} from '../storage/localDataClearEvents';
 import { openGeneratedReportReader } from './readers';
 import { generatedReportCopy as copy } from './text';
 import {
@@ -54,45 +44,25 @@ export function GeneratedReportBrowser({
   >('idle');
   const [more, setMore] = useState(false);
   const request = useRef<AbortController | null>(null);
-  const foreground = useRef(AppState.currentState === 'active');
-  const available = useRef(active);
-  available.current = active;
-  const firstEntry = useRef(destination);
-  const canAccess = useCallback(
-    () =>
-      available.current &&
-      foreground.current &&
-      (ownership?.isCurrent() ?? true),
-    [ownership],
-  );
-  function invalidate() {
-    firstEntry.current = false;
+  const abort = useCallback(() => {
     request.current?.abort();
     request.current = null;
+  }, []);
+  const invalidate = useCallback(() => {
+    abort();
     setDetail(null);
     setSelected(null);
     setRows([]);
+    setMore(false);
     setState('idle');
     setExpanded(false);
-  }
-  useLayoutEffect(() => {
-    const clear = subscribeLocalDataClear(invalidate),
-      deleted = subscribeLocalSourceDeletion(invalidate);
-    const leave = ownership?.subscribe(() => {
-      if (!ownership.isCurrent()) invalidate();
-    });
-    const subscription = AppState.addEventListener('change', next => {
-      foreground.current = next === 'active';
-      if (!foreground.current) invalidate();
-    });
-    return () => {
-      request.current?.abort();
-      leave?.();
-      clear();
-      deleted();
-      subscription.remove();
-    };
-  }, [ownership]);
+  }, [abort]);
+  const { accessVersion, canAccess } = useGeneratedReportAccess(
+    active,
+    ownership,
+    invalidate,
+    abort,
+  );
   const list = useCallback(
     async (append = false) => {
       if (!canAccess()) return;
@@ -121,21 +91,16 @@ export function GeneratedReportBrowser({
     [canAccess, open, rows],
   );
   useEffect(() => {
-    if (!active) invalidate();
-  }, [active]);
-  useEffect(() => {
-    if (!active || !firstEntry.current) return;
+    if (!destination || state !== 'idle' || !canAccess()) return;
     let live = true;
-    // Defer the first read so a replayed effect cannot consume route entry.
+    // Wait for committed ownership and let a replayed effect cancel its first read.
     Promise.resolve().then(() => {
-      if (!live || !firstEntry.current || !canAccess()) return;
-      firstEntry.current = false;
-      list();
+      if (live && !request.current && canAccess()) list();
     });
     return () => {
       live = false;
     };
-  }, [active, canAccess, list]);
+  }, [accessVersion, canAccess, destination, list, state]);
   async function read(row: GeneratedReportRow) {
     if (!canAccess()) return;
     request.current?.abort();
@@ -167,12 +132,12 @@ export function GeneratedReportBrowser({
       detail &&
       request.current === detail.owner &&
       !detail.owner.signal.aborted &&
-      canAccess() &&
-      AppState.currentState === 'active',
+      canAccess(),
     );
+  const metadataOwner = request.current;
   return (
     <GeneratedReportFrame destination={destination} selected={!!selected}>
-      {!expanded ? (
+      {!destination && !expanded ? (
         <AppButton
           testID="generated-report-open"
           title={copy.open}
@@ -238,8 +203,12 @@ export function GeneratedReportBrowser({
             <GeneratedReportRows
               rows={rows}
               more={more}
-              onOpen={read}
-              onMore={() => list(true)}
+              onOpen={row => {
+                if (request.current === metadataOwner) return read(row);
+              }}
+              onMore={() => {
+                if (request.current === metadataOwner) return list(true);
+              }}
             />
           ) : null}
         </>
