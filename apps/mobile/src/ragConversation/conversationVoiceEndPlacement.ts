@@ -45,15 +45,15 @@ export function conversationVoiceEndPlacement(
   for (const card of markers) {
     const anchor = card.liveAfterMessageId;
     const followed = anchor == null ? undefined : positions.get(anchor);
+    // No captured live anchor is not an empty transcript: restored rows still
+    // precede or follow this receipt by durable timeline key.
     const at =
-      (anchor === null
-        ? messages[0]?.id
-        : followed !== undefined
-          ? messages[followed + 1]?.id
-          : anchor !== undefined && anchor > 0
-            ? firstMatch(live, id => id > anchor)
-            : (firstMatch(restored, row => compare(card, row.key) <= 0)?.id ??
-              live[0])) ?? null;
+      (followed !== undefined
+        ? messages[followed + 1]?.id
+        : anchor != null && anchor > 0
+          ? firstMatch(live, id => id > anchor)
+          : (firstMatch(restored, row => compare(card, row.key) <= 0)?.id ??
+            live[0])) ?? null;
     const group = before.get(at);
     if (group) group.push(card);
     else before.set(at, [card]);

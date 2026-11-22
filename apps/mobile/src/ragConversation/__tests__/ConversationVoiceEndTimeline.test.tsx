@@ -1,4 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
+import { Text } from 'react-native';
+import { ConversationQuickChoices } from '../ConversationQuickChoices';
 import { NavigationMotionContext } from '../../navigation/NavigationMotionContext';
 import { ConversationTranscriptMessages } from '../ConversationTranscriptMessages';
 import { conversationRestoredMessages } from '../conversationRestoredMessages';
@@ -22,6 +24,11 @@ function renderRows(
       <ConversationTranscriptMessages
         messages={messages}
         voiceEndCards={cards}
+        entryChoices={
+          <ConversationQuickChoices>
+            <Text>Synthetic choices</Text>
+          </ConversationQuickChoices>
+        }
         instructions={undefined}
         replyFocus={undefined}
         onLayout={() => {}}
@@ -35,12 +42,19 @@ test('a first voice-only Conversation shows the owned marker before later text w
   const live = { ...receipt, liveAfterMessageId: null };
   const view = await render(renderRows([], [live]));
   expect(screen.getByText('2분 14초')).toBeTruthy();
+  const original = JSON.stringify(view.toJSON());
+  expect(original.indexOf('conversation-voice-end-marker')).toBeLessThan(
+    original.indexOf('conversation-choices-divider'),
+  );
   const messages = [
     { id: 1, role: 'user', content: 'Later synthetic question' },
   ] as const;
   await view.rerender(renderRows(messages, [live]));
   const tree = JSON.stringify(view.toJSON());
   expect(tree.indexOf('conversation-voice-end-marker')).toBeLessThan(
+    tree.indexOf('conversation-choices-divider'),
+  );
+  expect(tree.indexOf('conversation-choices-divider')).toBeLessThan(
     tree.indexOf('Later synthetic question'),
   );
   expect(conversationHistoryPayload(messages, 'Different draft')).toEqual([
@@ -97,6 +111,9 @@ test('a live marker stays after its stable message anchor when older history pre
   );
   const tree = JSON.stringify(view.toJSON());
   const marker = tree.indexOf('conversation-voice-end-marker');
+  expect(tree.indexOf('conversation-choices-divider')).toBeLessThan(
+    tree.indexOf('Before ending'),
+  );
   expect(tree.indexOf('Before ending')).toBeLessThan(marker);
   expect(tree.indexOf('After ending')).toBeGreaterThan(marker);
 });
