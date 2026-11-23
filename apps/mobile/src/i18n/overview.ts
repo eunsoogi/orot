@@ -36,7 +36,7 @@ export const overviewKo = {
   'overview.metricSleep': '기록된 수면',
   'overview.metricHeartRate': '심박수',
   'overview.metricBodyMass': '체중',
-  'overview.metricSteps': '기록된 걸음 샘플 합계',
+  'overview.metricSteps': '걸음수',
   'overview.duration.hoursMinutes': '{hours}시간 {minutes}분',
   'overview.metricUnit.minutes': '분',
   'overview.metricUnit.countPerMinute': '회/분',
