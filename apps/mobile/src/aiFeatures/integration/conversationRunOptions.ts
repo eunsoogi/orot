@@ -28,17 +28,18 @@ export function conversationRunWorkflow<
   execution: T,
   current: () => Promise<boolean>,
   hasHistory: boolean,
-  search: DefaultPublicSearchResult,
-  searchedTool: boolean,
+  search: { eager: DefaultPublicSearchResult; chargeEagerSearch: boolean },
+  onAcceptedSearch?: RagConversationObserver['onAcceptedSearch'],
 ) {
   return {
     ...guardHistory(execution, current, hasHistory),
+    onAcceptedSearch,
     execution: {
       ...execution.execution,
       budget: budgetAfterPublicSearch(
         execution.execution.budget,
-        search,
-        searchedTool,
+        search.eager,
+        search.chargeEagerSearch,
       ),
     },
   };
@@ -55,7 +56,20 @@ export function conversationRunInvocation(
   return {
     onApprovalWait: observer?.onApprovalWait,
     onProgress: observer?.onProgress,
-    onToolEvent: observer?.onToolEvent,
+    onToolEvent:
+      observer && (observer.onToolEvent || observer.onBackgroundTool)
+        ? (
+            event: Parameters<
+              NonNullable<RagConversationObserver['onToolEvent']>
+            >[0],
+          ) => {
+            try {
+              observer.onBackgroundTool?.(event);
+            } finally {
+              observer.onToolEvent?.(event);
+            }
+          }
+        : undefined,
     ...conversationStreamObservers(observer, retained, registry, selection),
     signal,
   };

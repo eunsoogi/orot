@@ -53,9 +53,11 @@ test.each(['current', 'stale', 'cancelled'] as const)(
       tool,
     );
     const stages: [ModelStage, 'started' | 'completed'][] = [];
+    const accepted = jest.fn();
     const run = runMultiAgentWorkflow(
       {
         ...options,
+        onAcceptedSearch: accepted,
         onModelStage: (stage, event) => {
           stages.push([stage, event]);
         },
@@ -90,6 +92,7 @@ test.each(['current', 'stale', 'cancelled'] as const)(
         ['tool_result_evidence_check', 'started'],
       ]);
       expect(generate).toHaveBeenCalledTimes(1);
+      expect(accepted).not.toHaveBeenCalled();
       if (outcome === 'cancelled') controller.abort();
       else heldGuard.release(outcome === 'current');
 
@@ -99,6 +102,12 @@ test.each(['current', 'stale', 'cancelled'] as const)(
       );
       expect(generate).toHaveBeenCalledTimes(outcome === 'current' ? 2 : 1);
       expect(search).toHaveBeenCalledTimes(1);
+      expect(accepted).toHaveBeenCalledTimes(outcome === 'current' ? 1 : 0);
+      if (outcome === 'current')
+        expect(accepted).toHaveBeenCalledWith({
+          operationRunId: 'external-evidence-run-1',
+          callId: 'tool-1',
+        });
       expect(searchAndGuard()).toEqual([
         ['tool_search_wait', 'started'],
         ['tool_search_wait', 'completed'],

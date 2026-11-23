@@ -31,6 +31,14 @@ export type RagConversationObserver = Pick<
   ) => Promise<
     import('./conversationWorkflowContinuation').ConversationWorkflowContinuation['persisted']
   >;
+  /** Status-only provider observation starts inside authorized, current model invocation. */
+  readonly onProviderExecution?: (
+    signal?: AbortSignal,
+  ) => (() => void) | undefined;
+  readonly onBackgroundTool?: NonNullable<MultiAgentInvocation['onToolEvent']>;
+  readonly onAcceptedSearch?: NonNullable<
+    import('@orot/agent-runtime').MultiAgentWorkflowOptions['onAcceptedSearch']
+  >;
   /** Owned pause/continue controls never submit a new question. */
   readonly onWorkflowPauseController?: (requestPause: () => void) => void;
   readonly onWorkflowPaused?: (

@@ -1,6 +1,7 @@
 import { observeConversationSendAdmission } from '../providers/conversationSendAdmissionDiagnostic';
 import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import {
+  createContinuedRequestOwners,
   observeContinuedConversationActivity,
   revokeContinuedConversationWork,
 } from './conversationContinuedWork';
@@ -29,7 +30,7 @@ export function createConversationRequestLifetime(input: {
   reportFenceFailure: (id: number) => void;
   pauseState?: (id: number, resume?: () => void) => void;
 }) {
-  const entries = new Map<number, ConversationLifetimeEntry>();
+  const { entries, statusObserver } = createContinuedRequestOwners();
   const owners = new WeakMap<AbortController, ConversationLifetimeEntry>();
   async function attach(
     id: number,
@@ -124,6 +125,7 @@ export function createConversationRequestLifetime(input: {
     },
     executionObserver(controller: AbortController) {
       return {
+        ...statusObserver(owners.get(controller)),
         onApprovalWait: (waiting: boolean) => {
           const entry = owners.get(controller);
           if (

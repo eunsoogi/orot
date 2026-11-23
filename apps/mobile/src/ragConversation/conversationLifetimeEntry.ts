@@ -21,6 +21,9 @@ export type ConversationLifetimeEntry = {
   start?: Promise<void>;
   fence?: Promise<void>;
   release?: Awaited<ReturnType<typeof beginConversationExecutionLease>>;
+  backgroundStatus?: ReturnType<
+    typeof import('./conversationBackgroundStatus').createConversationBackgroundStatus
+  >;
   continuedRequested?: boolean;
   continuedDeferred?: boolean;
   continuedRefused?: string;

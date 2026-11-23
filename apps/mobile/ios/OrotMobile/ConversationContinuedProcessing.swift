@@ -21,7 +21,17 @@ final class ConversationContinuedProcessing {
     private let identifier = "com.orot.mobile.conversation.\(UUID().uuidString)"
     private var task: BGContinuedProcessingTask?
     private var finished = false
-    private var answered = false
+    private enum Stage: String {
+        case checkpointed, toolStarted = "tool_started", toolFinished = "tool_finished"
+        case toolCompleted = "tool_completed", toolFailed = "tool_failed", toolCancelled = "tool_cancelled"
+        case toolInterrupted = "tool_interrupted", providerWaiting = "provider_waiting"
+        case providerFinished = "provider_finished", answered
+    }
+
+    // Optional tool work does not estimate duration. A status refresh never advances units.
+    private var statusKey = "preparing"
+    private var completedUnits: Int64 = 0
+    private var toolInProgress = false
     private let status: (String, Int?) -> Void
     private let expired: () -> Void
 
@@ -53,17 +63,15 @@ final class ConversationContinuedProcessing {
                     self.expired()
                 }
             }
-            // Three real milestones: checkpoint, received answer, durable saved answer.
-            // This is not a duration estimate; there are no timer-based progress heartbeats.
-            continued.progress.totalUnitCount = 3
-            continued.progress.completedUnitCount = answered ? 2 : 1
-            continued.updateTitle(Self.copy("title"), subtitle: answered ? Self.copy("saving") : Self.copy("waiting"))
+            continued.progress.totalUnitCount = 5
+            continued.progress.completedUnitCount = completedUnits
+            continued.updateTitle(Self.copy("title"), subtitle: Self.copy(statusKey))
         }) else {
             observeConversationExecution(.registrationRefused)
             status("continued-refused", nil)
             return
         }
-        let request = BGContinuedProcessingTaskRequest(identifier: identifier, title: Self.copy("title"), subtitle: Self.copy("waiting"))
+        let request = BGContinuedProcessingTaskRequest(identifier: identifier, title: Self.copy("title"), subtitle: Self.copy("preparing"))
         request.strategy = .fail
         // Default resources are CPU and network. No entitlement or GPU permission is requested.
         do {
@@ -82,11 +90,42 @@ final class ConversationContinuedProcessing {
         NSLocalizedString(key, tableName: "ConversationProcessingCopy", comment: "Background answer progress")
     }
 
-    func receivedAnswer() {
-        guard !finished else { return }
-        answered = true
-        task?.progress.completedUnitCount = 2
-        task?.updateTitle(Self.copy("title"), subtitle: Self.copy("saving"))
+    func report(_ code: String) {
+        guard !finished, let stage = Stage(rawValue: code), completedUnits < 4 else { return }
+        switch stage {
+        case .checkpointed:
+            guard completedUnits == 0 else { return }
+            completedUnits = 1
+            statusKey = "waiting"
+        case .toolStarted:
+            toolInProgress = true
+            statusKey = "toolRunning"
+        case .toolFinished, .toolCompleted, .toolFailed, .toolCancelled, .toolInterrupted:
+            guard toolInProgress else { return }
+            toolInProgress = false
+            if stage == .toolCompleted, (1 ... 2).contains(completedUnits) {
+                completedUnits += 1
+            }
+            statusKey = switch stage {
+            case .toolFailed: "toolFailed"
+            case .toolCancelled: "toolCancelled"
+            case .toolInterrupted: "toolInterrupted"
+            default: "toolFinished"
+            }
+        case .providerWaiting:
+            statusKey = "modelRunning"
+        case .providerFinished:
+            statusKey = toolInProgress ? "toolRunning" : "waiting"
+        case .answered:
+            completedUnits = 4
+            statusKey = "saving"
+        }
+        if let task {
+            if task.progress.completedUnitCount != completedUnits {
+                task.progress.completedUnitCount = completedUnits
+            }
+            task.updateTitle(Self.copy("title"), subtitle: Self.copy(statusKey))
+        }
     }
 
     func finish(success: Bool) {
@@ -94,7 +133,7 @@ final class ConversationContinuedProcessing {
         finished = true
         BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier)
         if success {
-            task?.progress.completedUnitCount = 3
+            task?.progress.completedUnitCount = 5
         }
         task?.setTaskCompleted(success: success)
         task = nil

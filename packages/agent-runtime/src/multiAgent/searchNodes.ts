@@ -6,7 +6,14 @@ import { unavailableSearchBatch } from './initialEvidenceSearch';
 import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coveragePolicy';
 import type { EvidenceBatch } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch, serializedReferenceKey } from './evidence';
-import { canceled, completeState, reportProgress, stop, finishToolEvent } from './runtimeContext';
+import {
+  canceled,
+  completeState,
+  reportAcceptedSearch,
+  reportProgress,
+  stop,
+  finishToolEvent,
+} from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
@@ -171,6 +178,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       }
       // The full batch is already checked and remains in currentEvidence; the ToolMessage carries only its call identity and result.
       context.pendingNativeToolCallId = undefined;
+      if (toolStatus === 'completed') reportAcceptedSearch(context);
       finishToolEvent(context, toolStatus, next);
       context.currentEvidence = combined;
       return {
@@ -195,6 +203,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     };
     if (!(await evidenceIsFresh(context, combined))) return completeState();
     context.currentEvidence = combined;
+    if (toolStatus === 'completed') reportAcceptedSearch(context);
     finishToolEvent(context, toolStatus, next);
     if (
       requiresCompleteResearch(context.options, state) &&

@@ -140,6 +140,26 @@ export function operationKey(kind: 'model' | 'tool', number: number): string {
   return `${kind}-${number}`;
 }
 
+export type AcceptedSearchObserver = (
+  identity: Readonly<
+    Pick<import('./toolEvents').ConversationToolEvent, 'operationRunId' | 'callId'>
+  >,
+) => void;
+
+/** Called only after the combined search result passes the current evidence fence. */
+export function reportAcceptedSearch<TResult>(context: RuntimeContext<TResult>) {
+  const event = context.activeToolEvent;
+  if (!event || context.signal.aborted) return;
+  try {
+    context.options.onAcceptedSearch?.({
+      operationRunId: event.operationRunId,
+      callId: event.callId,
+    });
+  } catch {
+    // An observer's failure must not change evidence or workflow outcome.
+  }
+}
+
 /** Close exactly the active call, omitting private error detail and output. */
 export function finishToolEvent<TResult>(
   context: RuntimeContext<TResult>,
