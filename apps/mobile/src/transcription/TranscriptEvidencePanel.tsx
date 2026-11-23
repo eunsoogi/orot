@@ -25,6 +25,7 @@ interface TranscriptEvidencePanelProps {
   recordingSourceId?: string;
   service?: TranscriptEvidenceService;
   deletionBusy?: boolean;
+  savedDetail?: boolean;
   automaticTranscriptionStatus?: 'running' | 'failed' | 'complete';
   onRequestDelete?: (sourceId: string) => void;
   onInteractionChange?: (state: { busy: boolean; dirty: boolean }) => void;
@@ -34,6 +35,7 @@ export default function TranscriptEvidencePanel({
   recordingSourceId,
   service = transcriptEvidenceService,
   deletionBusy = false,
+  savedDetail = false,
   automaticTranscriptionStatus,
   onRequestDelete,
   onInteractionChange,
@@ -136,7 +138,7 @@ export default function TranscriptEvidencePanel({
   );
   return (
     <View style={styles.container} testID="transcript-panel">
-      <TranscriptReviewHeader />
+      <TranscriptReviewHeader savedDetail={savedDetail} />
       {view && onRequestDelete ? (
         <AppButton
           disabled={busy || deletionBusy}
