@@ -56,6 +56,7 @@ export async function loadFeatureEvidenceSnapshot(
   signal: AbortSignal,
   query = '',
   scope?: EvidenceCandidateScope,
+  personalRecordsOnly = false,
 ): Promise<LocalEvidenceSnapshot> {
   if (signal.aborted)
     throw new Error('The local evidence request was cancelled.');
@@ -115,6 +116,7 @@ export async function loadFeatureEvidenceSnapshot(
     repository: data.repository,
     manualHistory: data.manualHistory,
     memoryRecords,
+    personalRecordsOnly,
     memoryStorage: data.memoryStorage,
     registry,
   });
