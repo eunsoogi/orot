@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Animated, StyleSheet, View } from 'react-native';
-import { AdaptiveColumns } from '../../../layout/AdaptiveColumns';
+import { createAppleSelectionOption } from '../options';
+import { ProviderSelectionChoices } from '../ProviderSelectionChoices';
 import { NavigationMotionContext } from '../../../navigation/NavigationMotionContext';
 import { ModelSelectionTabs } from '../ModelSelectionTabs';
 
@@ -11,19 +12,38 @@ jest.mock('../../../navigation/NavigationGeometryProvider', () => ({
     reservedRegions: [],
   }),
 }));
-jest.mock('../../../calendarModelSettings/CalendarModelSettingsPanel', () => ({
-  CalendarModelSettingsPanel: () => null,
+jest.mock('../../../calendarModelSettings/calendarModelStore', () => ({
+  calendarModelStore: jest
+    .requireActual(
+      '../../../agent/execution/testSupport/modelSettingsServiceFixture',
+    )
+    .modelSettingsSelectionFixture(),
 }));
-jest.mock('../../../voiceSettings/VoiceSettingsPanel', () => ({
-  VoiceSettingsPanel: () => null,
+jest.mock('../../../voiceSettings/voiceSettingsStore', () => ({
+  voiceSettingsStore: {
+    ...jest
+      .requireActual(
+        '../../../agent/execution/testSupport/modelSettingsServiceFixture',
+      )
+      .modelSettingsVoiceFixture(),
+    load: jest.fn(async () => ({
+      mode: 'local',
+      model: 'apple-system-speech',
+      hasApiKey: false,
+    })),
+    accountStatus: jest.fn(async () => ({ connected: false, revision: 1 })),
+    subscribe: () => () => {},
+  },
 }));
+
+const apple = createAppleSelectionOption('available');
 
 type Capture = (x: number, y: number, width: number, height: number) => void;
 const nativeView = View as unknown as {
   prototype: { measureInWindow: (callback: Capture) => void };
 };
 const viewport = 'model-tab-content-viewport';
-const animatedHost = 'test-provider-columns-host';
+const animatedHost = 'settings-provider-panels-host';
 
 /** A real measurement consumer remounts while a native-driver movement is still outstanding. */
 test.each([false, true])(
@@ -45,15 +65,21 @@ test.each([false, true])(
     const animate = jest.spyOn(Animated, 'timing').mockReturnValue(animation);
     const width = () =>
       StyleSheet.flatten(
-        screen.getByTestId('test-provider-columns-primary').props.style,
+        screen.getByTestId('settings-provider-panels-primary').props.style,
       ).width;
     try {
       await render(
         <NavigationMotionContext.Provider value={reduceMotion}>
-          <ModelSelectionTabs enabled locked={false}>
-            <AdaptiveColumns
-              primary={<View />}
-              testID="test-provider-columns"
+          <ModelSelectionTabs enabled locked={false} calendarOptions={[apple]}>
+            <ProviderSelectionChoices
+              options={[apple]}
+              loading={false}
+              saving={false}
+              pendingOption={null}
+              selectedOption={undefined}
+              presentation="settings-provider"
+              requirements={{ inputTypes: ['text'] }}
+              onChoose={jest.fn()}
             />
           </ModelSelectionTabs>
         </NavigationMotionContext.Provider>,
@@ -65,7 +91,12 @@ test.each([false, true])(
         { nativeEvent: { layout: { x: 0, y: 0, width: 345, height: 600 } } },
       );
       await fireEvent.press(screen.getByTestId('model-tab-calendar'));
+      expect(screen.getByTestId('calendar-model-settings')).toBeTruthy();
+      expect(width()).toBe(345);
       await fireEvent.press(screen.getByTestId('model-tab-voice'));
+      expect(screen.getByTestId('voice-settings-panel')).toBeTruthy();
+      expect(screen.getByTestId('voice-model-group-local')).toBeTruthy();
+      expect(screen.queryByTestId(animatedHost)).toBeNull();
       await fireEvent.press(screen.getByTestId('model-tab-language'));
       expect(width()).toBe(345);
       expect(animation.start).toHaveBeenCalledTimes(reduceMotion ? 0 : 3);

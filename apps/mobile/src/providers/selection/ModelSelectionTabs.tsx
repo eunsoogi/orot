@@ -80,39 +80,37 @@ export function ModelSelectionTabs({
         style={styles.viewport}
         testID="model-tab-content-viewport"
       >
-        <NavigationInlineTransition
-          transitionKey={active}
-          depth={modelTabs.indexOf(active)}
-          style={styles.body}
-        >
-          {active === 'language' ? (
-            <AdaptiveColumnsMeasurementRoot.Provider value={viewport}>
-              {children}
-            </AdaptiveColumnsMeasurementRoot.Provider>
-          ) : null}
-          {active === 'calendar' ? (
-            <CalendarModelSettingsPanel
-              options={calendarOptions}
-              chatGPTSetup={chatGPTSetup}
-              onBusyChange={setCalendarLocked}
-              onStateChange={onCalendarStateChange}
-            />
-          ) : null}
-          {visitedVoice ? (
-            <View
-              style={active !== 'voice' && styles.hidden}
-              accessibilityElementsHidden={active !== 'voice'}
-              importantForAccessibility={
-                active === 'voice' ? 'auto' : 'no-hide-descendants'
-              }
-            >
-              <VoiceSettingsPanel
-                active={active === 'voice'}
-                onOpenAccounts={onOpenAccounts}
+        <AdaptiveColumnsMeasurementRoot.Provider value={viewport}>
+          <NavigationInlineTransition
+            transitionKey={active}
+            depth={modelTabs.indexOf(active)}
+            style={styles.body}
+          >
+            {active === 'language' ? children : null}
+            {active === 'calendar' ? (
+              <CalendarModelSettingsPanel
+                options={calendarOptions}
+                chatGPTSetup={chatGPTSetup}
+                onBusyChange={setCalendarLocked}
+                onStateChange={onCalendarStateChange}
               />
-            </View>
-          ) : null}
-        </NavigationInlineTransition>
+            ) : null}
+            {visitedVoice ? (
+              <View
+                style={active !== 'voice' && styles.hidden}
+                accessibilityElementsHidden={active !== 'voice'}
+                importantForAccessibility={
+                  active === 'voice' ? 'auto' : 'no-hide-descendants'
+                }
+              >
+                <VoiceSettingsPanel
+                  active={active === 'voice'}
+                  onOpenAccounts={onOpenAccounts}
+                />
+              </View>
+            ) : null}
+          </NavigationInlineTransition>
+        </AdaptiveColumnsMeasurementRoot.Provider>
       </View>
     </>
   );

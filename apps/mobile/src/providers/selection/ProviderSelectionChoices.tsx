@@ -1,8 +1,10 @@
+import { useContext } from 'react';
 import { APPLE_PCC_PROVIDER_ID } from './privateCloudCompute';
 import { View } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { providerSettingsStyles as styles } from '../../layout/providerSettingsPresentation';
 import { AdaptiveColumns } from '../../layout/AdaptiveColumns';
+import { AdaptiveColumnsMeasurementRoot } from '../../layout/AdaptiveColumnsMeasurementRoot';
 import { ProviderCatalogAccount } from './ProviderCatalogAccount';
 import ProviderSelectionOptionCard from './ProviderSelectionOptionCard';
 import type {
@@ -38,6 +40,7 @@ export function ProviderSelectionChoices({
   onChoose,
   chatGPTSetup,
 }: ProviderSelectionChoicesProps) {
+  const modelTabViewport = useContext(AdaptiveColumnsMeasurementRoot);
   const selected = pendingOption ?? selectedOption;
   const cards = (local: boolean) =>
     options.map((option, index) =>
@@ -107,6 +110,10 @@ export function ProviderSelectionChoices({
     return (
       <View testID="provider-choices-content">
         <AdaptiveColumns
+          // Both settings catalog wrappers stretch to the tab viewport without horizontal padding.
+          measurementRoot={
+            presentation === 'settings-provider' ? modelTabViewport : null
+          }
           primary={
             <View>
               {localPanel}
