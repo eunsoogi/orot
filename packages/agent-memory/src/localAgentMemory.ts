@@ -2,7 +2,7 @@ import type { Memory, Embedder, RecallOptions } from 'rememori';
 import { openMemoryEngine } from './openMemoryEngine';
 import type { AgentMemoryHit, AgentMemoryInput, AgentMemoryStorageAdapter } from './types';
 import type { AgentMemoryService, AgentMemorySourceRemovalResult } from './service';
-import { writeMemory } from './memoryWrites';
+import { commitMemoryWriteBatch, writeMemory } from './memoryWrites';
 import { readMemoryById, readMemoryByKey, recordsForKey } from './memoryKeys';
 import { forgetAllPersistedRecords } from './allMemoryDeletion';
 import { isAgentMemoryKind, isProvenance, metadataFrom, provenanceFrom } from './validation';
@@ -206,9 +206,7 @@ export class LocalAgentMemory implements AgentMemoryService {
     this.storage.beginBatch();
     try {
       const result = await operation();
-      if (writeContext !== undefined && typeof result === 'string')
-        await this.storage.commitBatch({ recordId: result, context: writeContext });
-      else await this.storage.commitBatch();
+      await commitMemoryWriteBatch(this.storage, result, writeContext);
       return result;
     } catch (error) {
       this.storage.rollbackBatch();

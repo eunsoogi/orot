@@ -51,3 +51,14 @@ export async function writeMemory(
     return id;
   });
 }
+
+/** Only an explicit write with an exact new record ID can carry an app receipt into commit. */
+export async function commitMemoryWriteBatch(
+  storage: AgentMemoryStorageAdapter,
+  result: unknown,
+  writeContext: unknown,
+) {
+  if (writeContext !== undefined && typeof result === 'string')
+    await storage.commitBatch({ recordId: result, context: writeContext });
+  else await storage.commitBatch();
+}
