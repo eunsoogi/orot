@@ -113,7 +113,9 @@ export function createConversationSummaryIntegration(input: {
           !admission.current() ||
           originalObserver?.expectedConversationModel?.isCurrent?.() ===
             false ||
-          proposed?.ownerChanged
+          proposed?.ownerChanged ||
+          (proposed?.intent !== undefined &&
+            !originalObserver?.templateProposalOwner?.current())
         )
           return { status: 'failure', kind: 'cancelled' } as const;
         if (proposed?.spent)

@@ -13,7 +13,10 @@ export function continuousSessionOption(
   captureSelectionWitness?: ConversationSessionOptionInput['captureSelectionWitness'],
 ): Pick<
   ConversationSessionOptions,
-  'continuousSession' | 'prepareWarmSend' | 'captureWarmExecution'
+  | 'continuousSession'
+  | 'prepareWarmSend'
+  | 'captureWarmExecution'
+  | 'captureTemplateSelection'
 > {
   if (!selectedAi) return {};
   let previous:
@@ -33,6 +36,33 @@ export function continuousSessionOption(
       )
         return;
       return () => previous === target && target.selectionCurrent?.() === true;
+    },
+    captureTemplateSelection: ({ lease, requestId, providerId, modelId }) => {
+      const target = previous;
+      if (
+        !target ||
+        target.id !== lease.id ||
+        target.version !== lease.version ||
+        target.model.providerId !== providerId ||
+        target.model.modelId !== modelId ||
+        !target.selectionCurrent?.()
+      )
+        return;
+      // Native selection epoch and committed active request must still match. Do not
+      // refresh/adopt a stale lease or use a similarly named replacement provider.
+      const current = () =>
+        previous === target && target.selectionCurrent?.() === true;
+      return {
+        current,
+        recheckOwner: async signal =>
+          current() &&
+          !signal.aborted &&
+          (await (
+            await openStorage()
+          ).validateWarmLease(target.model, lease, signal, requestId)) &&
+          current() &&
+          !signal.aborted,
+      };
     },
     prepareWarmSend: (lease, signal) =>
       warmNativeChatGPTSelection(previous, lease, signal, openStorage),

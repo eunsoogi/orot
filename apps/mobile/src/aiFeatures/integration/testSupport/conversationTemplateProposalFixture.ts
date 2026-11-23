@@ -32,11 +32,12 @@ export function fixture(response: LanguageModelResponse, allowed = true) {
   const observer: RagConversationObserver = {
     inputOrigin: 'composer',
     retentionRequestId: 'synthetic',
-    expectedConversationModel: {
+    templateProposalOwner: {
       providerId,
       modelId,
-      isCurrent: current,
-      isDurablyCurrent,
+      current,
+      recheck: isDurablyCurrent,
+      watch: () => () => {},
     },
     modelTemplateAdmission: { current, today: null },
     onTaskStreamEvent: jest.fn(),

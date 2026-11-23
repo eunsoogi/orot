@@ -11,7 +11,7 @@ test('unknown mode, unavailable and unsupported provider choices produce no prop
   for (const selection of [
     { status: 'selection-required' } as const,
     { status: 'unavailable' } as const,
-    { ...ready, remoteProcessing: false },
+    { ...ready, modelId: 'retired-synthetic-choice' },
     {
       ...ready,
       provider: {
@@ -24,6 +24,9 @@ test('unknown mode, unavailable and unsupported provider choices produce no prop
     await expect(proposeConversationTemplate(f.input)).resolves.toEqual({
       intent: undefined,
       spent: false,
+      ...(selection.status === 'ready' && selection.modelId !== ready.modelId
+        ? { ownerChanged: true }
+        : {}),
     });
   }
   expect(f.generate).not.toHaveBeenCalled();
