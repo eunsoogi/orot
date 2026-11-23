@@ -1,6 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
+import type { DisplayMessage } from './conversationDisplayMessage';
 import {
   parseConversationMessageDelivery,
   type ConversationMessageDelivery,
@@ -60,6 +61,26 @@ export function ConversationMessageReceipt({
     </AppText>
   );
 }
+/** The report's visible provenance is independent from the copyable prose. */
+export function ConversationDailyReportIdentity({
+  report,
+}: {
+  readonly report: NonNullable<DisplayMessage['dailyReport']>;
+}) {
+  return (
+    <AppText>
+      {t('dailyReport.followUpIdentity', {
+        date: report.identity.localDate,
+        zone: report.identity.timeZone,
+      })}{' '}
+      ·{' '}
+      {t('dailyReport.savedRevision', {
+        revision: report.revision,
+      })}
+    </AppText>
+  );
+}
+
 const styles = StyleSheet.create({
   receipt: { alignSelf: 'flex-end', fontSize: 12, marginTop: 4 },
 });
