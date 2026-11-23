@@ -1,3 +1,4 @@
+import { bindSelectedCurrentEvidenceChunks } from '../../healthEvidence/localEvidenceData';
 import type { EvidenceCandidateScope } from '../../healthEvidence/evidenceCandidateScope';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { createLocalEvidenceSnapshot } from './evidenceSnapshot';
@@ -111,6 +112,9 @@ export async function loadFeatureEvidenceSnapshot(
     manualHistoryCandidates: manualHistorySelection.candidates,
     persistedChunks,
     loadCurrentPersistedChunks: () => data.loadCurrentChunks(identities),
+    loadCurrentPersistedChunksFor: personalRecordsOnly
+      ? bindSelectedCurrentEvidenceChunks(data, identities)
+      : undefined,
     staleArtifacts,
     loadCurrentStaleArtifacts: () => data.loadStaleArtifacts(staleIdentities),
     repository: data.repository,
