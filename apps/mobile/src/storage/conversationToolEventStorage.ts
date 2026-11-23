@@ -133,7 +133,7 @@ export function createConversationToolEventStorage(
         if (!session.rows.length)
           throw new Error('Conversation is unavailable.');
         const prior = await tx.execute(
-          'SELECT e.message_id, e.created_at, e.event_json, l.sources_json FROM conversation_tool_events e LEFT JOIN conversation_tool_lineage l USING(session_id,run_id,call_id) WHERE e.session_id = ? AND e.run_id = ? AND e.call_id = ?',
+          'SELECT e.message_id, e.created_at, e.event_json, l.sources_json, p.status AS period_policy FROM conversation_tool_events e LEFT JOIN conversation_tool_lineage l USING(session_id,run_id,call_id) LEFT JOIN tool_period_policy p USING(session_id,run_id,call_id) WHERE e.session_id = ? AND e.run_id = ? AND e.call_id = ?',
           [input.sessionId, event.operationRunId, event.callId],
         );
         const row = prior.rows[0];
@@ -157,6 +157,7 @@ export function createConversationToolEventStorage(
               old,
               input,
             ).sources,
+            { status: row?.period_policy },
           ))
         )
           throw new Error('The legacy tool result must be regenerated.');
@@ -196,11 +197,13 @@ export function createConversationToolEventStorage(
           );
         if (!old || (old.status === 'started' && event.status !== 'started'))
           await indexToolLineage(tx, input.sessionId, event, lineage.sources);
-        await markToolPeriodPolicy(
-          tx,
-          [input.sessionId, event.operationRunId, event.callId],
-          true,
-        );
+        // Existing events read this marker above, and legacy backfill writes it.
+        if (!old)
+          await markToolPeriodPolicy(
+            tx,
+            [input.sessionId, event.operationRunId, event.callId],
+            true,
+          );
       });
     },
     recoverInterruptedToolEvents: toolEventRecovery(database, ensure),
