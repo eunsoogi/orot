@@ -107,11 +107,22 @@ export function withLocalDeletionAwareRevalidation(
           if (signal.aborted || !recordExists) return false;
           continue;
         }
-        const liveReferences = new Set(
-          await repository.listSourceDeletionReferences(sourceId),
-        );
+        if (repository.hasSourceDeletionReferences) {
+          if (
+            !(await repository.hasSourceDeletionReferences(
+              sourceId,
+              uniqueIds,
+              signal,
+            ))
+          )
+            return false;
+        } else {
+          const liveReferences = new Set(
+            await repository.listSourceDeletionReferences(sourceId),
+          );
+          if (uniqueIds.some(id => !liveReferences.has(id))) return false;
+        }
         if (signal.aborted) return false;
-        if (uniqueIds.some(id => !liveReferences.has(id))) return false;
       }
     }
 
