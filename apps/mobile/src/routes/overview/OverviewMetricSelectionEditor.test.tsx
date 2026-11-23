@@ -86,6 +86,17 @@ test('offers accessible moves only for selected metrics, bounded to the current 
     />,
   );
   const first = screen.getByRole('adjustable', { name: '심박수 순서 변경' });
+  const checkbox = screen.getByRole('checkbox', { name: '심박수' });
+  expect(first.parent).toBe(checkbox.parent);
+  // Keep checkbox then handle in source order while laying out the handle first.
+  expect(first.parent?.children).toEqual([checkbox, first]);
+  expect(StyleSheet.flatten(first.parent?.props.style).flexDirection).toBe(
+    'row-reverse',
+  );
+  const [label, mark] = checkbox.children;
+  expect(label).toContainElement(screen.getByText('심박수'));
+  expect(mark).toHaveStyle({ backgroundColor: appColors.primary });
+  expect(StyleSheet.flatten(checkbox.props.style).flexDirection).toBe('row');
   expect(first.props.accessibilityValue.text).toBe('1 / 2');
   expect(first.props.accessibilityActions).toEqual([
     { name: 'increment', label: '아래로 이동' },

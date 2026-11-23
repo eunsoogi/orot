@@ -217,7 +217,8 @@ export function OverviewMetricSelectionEditor({
 }
 
 const reorderStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  // Place the handle on the leading edge without changing control order.
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
   checkbox: { flex: 1, minWidth: 0 },
   handle: {
     alignSelf: 'stretch',
