@@ -87,12 +87,13 @@ function deferred<T>() {
 const event = (
   status: ConversationToolEvent['status'],
   callId = 'safe',
+  order = 1,
 ): ConversationToolEvent => ({
   version: 1,
   operationRunId: 'synthetic-run',
   callId,
   toolName: 'local-evidence',
-  order: 1,
+  order,
   status,
   inputSummary: { sourceKind: 'personal_record' },
   sources: [],
@@ -114,14 +115,13 @@ test('one protected turn reports real tool and model stages without counting wai
     const work = jest.fn();
     const end = jest.fn();
     const begin = jest.fn(async () => true);
-    const now = '2026-01-02T03:04:00.000Z';
     const realStart = storage.startRequest.bind(storage);
     const gate = deferred<void>();
     const started = deferred<void>();
     const turn = createConversationTurnRetention({
       sessionId: 'session',
       sessionVersion: 0,
-      createdAt: now,
+      createdAt: '2026-01-02T03:04:00.000Z',
       turnId: 'owned',
       storage: {
         ...storage,
@@ -168,12 +168,12 @@ test('one protected turn reports real tool and model stages without counting wai
     owner.onBackgroundTool?.(event('started'));
     owner.onAcceptedSearch?.(event('started', 'other-call'));
     owner.onBackgroundTool?.(event('completed'));
-    owner.onBackgroundTool?.(event('started', 'next'));
-    owner.onAcceptedSearch?.(event('started', 'next'));
-    owner.onBackgroundTool?.(event('completed', 'next'));
-    owner.onBackgroundTool?.(event('completed', 'next'));
-    owner.onBackgroundTool?.(event('started', 'cancel'));
-    owner.onBackgroundTool?.(event('cancelled', 'cancel'));
+    owner.onBackgroundTool?.(event('started', 'next', 2));
+    owner.onAcceptedSearch?.(event('started', 'next', 2));
+    owner.onBackgroundTool?.(event('completed', 'next', 2));
+    owner.onBackgroundTool?.(event('completed', 'next', 2));
+    owner.onBackgroundTool?.(event('started', 'cancel', 3));
+    owner.onBackgroundTool?.(event('cancelled', 'cancel', 3));
     expect(stages()).toEqual([
       'checkpointed',
       'tool_started',
@@ -184,6 +184,17 @@ test('one protected turn reports real tool and model stages without counting wai
       'tool_cancelled',
     ]);
 
+    owner.onBackgroundTool?.(event('started', 'parallel-first', 4));
+    owner.onBackgroundTool?.(event('started', 'parallel-second', 5));
+    owner.onAcceptedSearch?.(event('started', 'parallel-second', 5));
+    owner.onBackgroundTool?.(event('completed', 'parallel-second', 5));
+    owner.onBackgroundTool?.(event('failed', 'parallel-first', 4));
+    expect(stages().slice(-4)).toEqual([
+      'tool_started',
+      'tool_started',
+      'tool_completed',
+      'tool_failed',
+    ]);
     const model = (generate: () => unknown) =>
       observeConversationProviderExecution(
         { generate } as unknown as LanguageModelProvider,
@@ -193,12 +204,13 @@ test('one protected turn reports real tool and model stages without counting wai
     await model(() => 'synthetic result');
     expect(stages().slice(-2)).toEqual(finished);
     expect(jest.getTimerCount()).toBe(0);
+    const beforeThrow = stages();
     await expect(
       model(() => {
         throw new Error('synthetic synchronous error');
       }),
     ).rejects.toThrow('synthetic synchronous error');
-    expect(stages().slice(-2)).toEqual(finished);
+    expect(stages()).toEqual(beforeThrow);
     expect(jest.getTimerCount()).toBe(0);
     const pending = deferred<void>();
     const generate = jest.fn(() => pending.promise);
@@ -207,13 +219,12 @@ test('one protected turn reports real tool and model stages without counting wai
     phase = 'background';
     interrupt({ kind: 'phase' });
     await jest.advanceTimersByTimeAsync(30_000);
-    expect(stages().filter(stage => stage === 'provider_waiting')).toHaveLength(
-      5,
-    );
+    const waiting = stages().filter(stage => stage === 'provider_waiting');
+    expect(waiting).toHaveLength(4);
     interrupt({ kind: 'expired', requestId: id });
     const afterExpiry = stages();
     await jest.advanceTimersByTimeAsync(60_000);
-    owner.onBackgroundTool?.(event('started', 'late'));
+    owner.onBackgroundTool?.(event('started', 'late', 6));
     pending.release();
     await providerResult;
     expect(stages()).toEqual(afterExpiry);

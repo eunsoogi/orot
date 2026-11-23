@@ -213,7 +213,6 @@ export function createRagConversationService({
               historyIsCurrent,
               guardHistory,
               searchPlan,
-              observer?.onAcceptedSearch,
             ),
             initialSearch: searchPlan.initialSearch,
           },
@@ -223,7 +222,7 @@ export function createRagConversationService({
           Boolean(report || photo) || historyHasDurableContext(history),
           registry,
           { providerId: selected.provider.id, modelId: selected.modelId },
-          signal,
+          run.modelCheckpointScope(signal, consentPort, entryContext, photo),
         ),
       );
       return await finishConversationWorkflow({

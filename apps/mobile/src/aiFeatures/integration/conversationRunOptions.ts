@@ -6,7 +6,12 @@ import type { ConversationEntryContext } from './conversationIntent';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import type { LanguageModelProvider } from '@orot/model-runtime';
-import type { MultiAgentBudget } from '@orot/agent-runtime';
+import type {
+  ExecutionConsentPort,
+  MultiAgentBudget,
+} from '@orot/agent-runtime';
+import { isKnownModelCheckpointScope } from './conversationModelCheckpointScope';
+export { modelCheckpointScope } from './conversationModelCheckpointScope';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { DefaultPublicSearchResult } from './defaultPublicSearch';
@@ -29,11 +34,9 @@ export function conversationRunWorkflow<
   current: () => Promise<boolean>,
   hasHistory: boolean,
   search: { eager: DefaultPublicSearchResult; chargeEagerSearch: boolean },
-  onAcceptedSearch?: RagConversationObserver['onAcceptedSearch'],
 ) {
   return {
     ...guardHistory(execution, current, hasHistory),
-    onAcceptedSearch,
     execution: {
       ...execution.execution,
       budget: budgetAfterPublicSearch(
@@ -45,31 +48,32 @@ export function conversationRunWorkflow<
   };
 }
 
-/** Preview suppression does not suppress the caller's source-fence callbacks. */
 export function conversationRunInvocation(
   observer: RagConversationObserver | undefined,
   retained: boolean,
   registry: LocalEvidenceReferenceRegistry,
   selection: { providerId: string; modelId: string },
-  signal: AbortSignal,
+  scope:
+    | AbortSignal
+    | { signal: AbortSignal; settingsConsent?: ExecutionConsentPort },
 ) {
+  const { signal, settingsConsent } =
+    'signal' in scope ? scope : { signal: scope, settingsConsent: undefined };
+  const onApprovalWait = observer?.onApprovalWait;
+  const checkpointOnly = isKnownModelCheckpointScope(
+    settingsConsent,
+    observer,
+    retained,
+  );
   return {
-    onApprovalWait: observer?.onApprovalWait,
-    onProgress: observer?.onProgress,
-    onToolEvent:
-      observer && (observer.onToolEvent || observer.onBackgroundTool)
-        ? (
-            event: Parameters<
-              NonNullable<RagConversationObserver['onToolEvent']>
-            >[0],
-          ) => {
-            try {
-              observer.onBackgroundTool?.(event);
-            } finally {
-              observer.onToolEvent?.(event);
-            }
-          }
+    onApprovalWait,
+    onModelApprovalWait:
+      checkpointOnly && onApprovalWait
+        ? (waiting: boolean) => onApprovalWait(waiting, 'checkpoint-only')
         : undefined,
+    onProgress: observer?.onProgress,
+    onToolEvent: observer?.onToolEvent,
+    backgroundStatusForLease: observer?.backgroundStatusForLease,
     ...conversationStreamObservers(observer, retained, registry, selection),
     signal,
   };

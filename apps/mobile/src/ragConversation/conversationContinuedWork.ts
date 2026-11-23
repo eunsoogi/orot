@@ -1,5 +1,5 @@
 import { createConversationBackgroundStatus } from './conversationBackgroundStatus';
-import type { RagConversationObserver } from './conversationObserver';
+import type { ConversationGraphBackgroundStatus } from './conversationObserver';
 import type {
   ContinuationOpportunity,
   ConversationExecutionAdapter,
@@ -161,10 +161,7 @@ export function continuedOpportunityObserver(
 /** Bind once to the admitted lease, not the mutable entry reused by explicit continuation. */
 function continuedStatusObserver(
   entry?: ConversationLifetimeEntry,
-): Pick<
-  RagConversationObserver,
-  'onProviderExecution' | 'onBackgroundTool' | 'onAcceptedSearch'
-> {
+): ConversationGraphBackgroundStatus {
   const reporter = entry?.backgroundStatus;
   if (!reporter) return {};
   return {
@@ -182,5 +179,18 @@ export function createContinuedRequestOwners() {
       return super.set(id, entry);
     }
   }
-  return { entries: new Entries(), statusObserver: continuedStatusObserver };
+  const entries = new Entries();
+  const owners = new WeakMap<AbortController, ConversationLifetimeEntry>();
+  return {
+    entries,
+    owners,
+    own(entry: ConversationLifetimeEntry) {
+      entries.set(entry.id, entry);
+      owners.set(entry.controller, entry);
+    },
+    statusObserver(current: () => ConversationLifetimeEntry | undefined) {
+      const bind = () => continuedStatusObserver(current());
+      return { ...bind(), backgroundStatusForLease: bind };
+    },
+  };
 }

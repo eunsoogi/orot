@@ -31,7 +31,7 @@ final class ConversationContinuedProcessing {
     // Optional tool work does not estimate duration. A status refresh never advances units.
     private var statusKey = "preparing"
     private var completedUnits: Int64 = 0
-    private var toolInProgress = false
+    private var activeTools = 0
     private let status: (String, Int?) -> Void
     private let expired: () -> Void
 
@@ -98,24 +98,29 @@ final class ConversationContinuedProcessing {
             completedUnits = 1
             statusKey = "waiting"
         case .toolStarted:
-            toolInProgress = true
+            guard activeTools < 16 else { return }
+            activeTools += 1
             statusKey = "toolRunning"
         case .toolFinished, .toolCompleted, .toolFailed, .toolCancelled, .toolInterrupted:
-            guard toolInProgress else { return }
-            toolInProgress = false
+            guard activeTools > 0 else { return }
+            activeTools -= 1
             if stage == .toolCompleted, (1 ... 2).contains(completedUnits) {
                 completedUnits += 1
             }
-            statusKey = switch stage {
-            case .toolFailed: "toolFailed"
-            case .toolCancelled: "toolCancelled"
-            case .toolInterrupted: "toolInterrupted"
-            default: "toolFinished"
+            statusKey = if activeTools > 0 {
+                "toolRunning"
+            } else {
+                switch stage {
+                case .toolFailed: "toolFailed"
+                case .toolCancelled: "toolCancelled"
+                case .toolInterrupted: "toolInterrupted"
+                default: "toolFinished"
+                }
             }
         case .providerWaiting:
             statusKey = "modelRunning"
         case .providerFinished:
-            statusKey = toolInProgress ? "toolRunning" : "waiting"
+            statusKey = activeTools > 0 ? "toolRunning" : "waiting"
         case .answered:
             completedUnits = 4
             statusKey = "saving"

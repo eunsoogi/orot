@@ -30,9 +30,11 @@ export function createConversationBackgroundStatus(input: {
   report: (stage: ConversationBackgroundStage) => void;
 }) {
   const providers = new Map<symbol, () => void>();
-  const tools = new Map<string, { terminal: boolean; accepted: boolean }>();
+  const tools = new Map<string, { accepted: boolean }>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let closed = false;
+  let toolRun: string | undefined;
+  let highestStartedOrder = -1;
   const alive = () => !closed && !input.signal.aborted && input.current();
   const send = (stage: ConversationBackgroundStage) => {
     if (!alive()) return false;
@@ -62,7 +64,7 @@ export function createConversationBackgroundStatus(input: {
 
   const tick = () => {
     clear();
-    if (providers.size && send('provider_waiting'))
+    if (providers.size && send('provider_waiting') && providers.size)
       timer = setTimeout(tick, statusIntervalMs);
   };
   const toolKey = (event: ConversationBackgroundToolIdentity) =>
@@ -84,26 +86,40 @@ export function createConversationBackgroundStatus(input: {
       };
       providers.set(owner, detach);
       if (providers.size === 1) tick();
-      if (signal?.aborted) finish();
-      else signal?.addEventListener('abort', finish, { once: true });
+      // The initial report can synchronously retire the owner or this invocation.
+      if (!providers.has(owner) || !alive() || signal?.aborted) {
+        finish();
+        return;
+      }
+      signal?.addEventListener('abort', finish, { once: true });
       return finish;
     },
     acceptedTool(event: ConversationBackgroundToolIdentity) {
       const tool = tools.get(toolKey(event));
-      if (alive() && tool && !tool.terminal) tool.accepted = true;
+      if (alive() && tool) tool.accepted = true;
     },
     tool(event: ConversationToolEvent) {
       if (!alive()) return;
       const key = toolKey(event);
       const tool = tools.get(key);
       if (event.status === 'started') {
-        if (tool || tools.size >= activeToolLimit) return;
-        tools.set(key, { terminal: false, accepted: false });
+        // The graph assigns strictly increasing start orders from its single tool counter.
+        // Drop old starts without retaining an unbounded set of completed call IDs.
+        if (
+          (toolRun && toolRun !== event.operationRunId) ||
+          event.order <= highestStartedOrder ||
+          tool ||
+          tools.size >= activeToolLimit
+        )
+          return;
+        toolRun = event.operationRunId;
+        highestStartedOrder = event.order;
+        tools.set(key, { accepted: false });
         send('tool_started');
         return;
       }
-      if (!tool || tool.terminal) return;
-      tool.terminal = true;
+      if (!tool) return;
+      tools.delete(key);
       send(
         event.status === 'completed' && !tool.accepted
           ? 'tool_finished'

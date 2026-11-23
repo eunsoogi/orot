@@ -35,6 +35,7 @@ export type RagConversationObserver = Pick<
   readonly onProviderExecution?: (
     signal?: AbortSignal,
   ) => (() => void) | undefined;
+  readonly backgroundStatusForLease?: () => ConversationGraphBackgroundStatus;
   readonly onBackgroundTool?: NonNullable<MultiAgentInvocation['onToolEvent']>;
   readonly onAcceptedSearch?: NonNullable<
     import('@orot/agent-runtime').MultiAgentWorkflowOptions['onAcceptedSearch']
@@ -132,3 +133,8 @@ export type RagConversationObserver = Pick<
     },
   ) => Promise<void>;
 };
+
+export type ConversationGraphBackgroundStatus = Pick<
+  RagConversationObserver,
+  'onProviderExecution' | 'onBackgroundTool' | 'onAcceptedSearch'
+>;

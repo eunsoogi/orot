@@ -37,7 +37,8 @@ export type PrivateOutcome<TResult> =
   | { readonly status: 'cancelled'; readonly providerStop: ProviderStopObservation };
 
 export interface RuntimeContext<TResult> {
-  readonly onApprovalWait?: (waiting: boolean) => void;
+  readonly onApprovalWait?: MultiAgentInvocation['onApprovalWait'];
+  readonly onModelApprovalWait?: MultiAgentInvocation['onModelApprovalWait'];
   readonly pause?: import('./workflowPause').MultiAgentPauseController;
   /** Auxiliary classification is journaled and consented, but must not consume task steering. */
   readonly modelCallPurpose?: 'preview_review';
