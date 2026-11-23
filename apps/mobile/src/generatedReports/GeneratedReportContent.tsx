@@ -13,6 +13,8 @@ import type {
 import { SavedSummaryReviewWarnings } from '../diseaseHypotheses/SavedSummaryReviewWarnings';
 import { ConversationReportText } from '../ragConversation/ConversationReportText';
 import { ConversationSources } from '../ragConversation/ConversationSources';
+import { SavedPossibilityNarrative } from '../ragConversation/SavedPossibilityNarrative';
+import { savedPossibilityNarrativeParts } from '../ragConversation/savedPossibilityNarrativeParts';
 import { GeneratedVisitQuestions } from './GeneratedVisitQuestions';
 
 const doNotOpenLiveSource = () => {};
@@ -66,14 +68,19 @@ export function GeneratedReportContent({
       ) : detail.visitQuestions ? (
         <GeneratedVisitQuestions questions={detail.visitQuestions} />
       ) : (
-        detail.paragraphs.map((text, index) => (
-          <AiResponseText
-            key={index}
-            testID={`generated-report-paragraph-${index}`}
-          >
-            {text}
-          </AiResponseText>
-        ))
+        detail.paragraphs.map((text, index) => {
+          const id = `generated-report-paragraph-${index}`;
+          const parts = detail.savedPossibilityNarrative
+            ? savedPossibilityNarrativeParts(text)
+            : undefined;
+          return parts ? (
+            <SavedPossibilityNarrative key={index} testID={id} parts={parts} />
+          ) : (
+            <AiResponseText key={index} testID={id}>
+              {text}
+            </AiResponseText>
+          );
+        })
       )}
       {!summary &&
         detail.analysis?.hypotheses.map((h, index) => (

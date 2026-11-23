@@ -5,6 +5,8 @@ import type { EvidenceReference } from '@orot/agent-runtime';
 export interface DisplayMessage extends RagConversationMessage {
   /** Display-only origin marker; never a provider-history or persistence permission. */
   readonly savedHistoryDisplayOnly?: true;
+  /** Rendering marker for an already admitted saved Possibility artifact. */
+  readonly savedPossibilityNarrative?: true;
   /** App-owned terminal clarification and its question are for display only. */
   readonly localClarification?: true;
   readonly archivedCitationTarget?: import('./useArchivedCitationOpen').ArchivedCitationTarget;

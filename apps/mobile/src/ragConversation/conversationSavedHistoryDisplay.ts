@@ -19,6 +19,7 @@ export type SavedHistoryDisplayRow = {
       readonly kind: 'answer';
       readonly question: string;
       readonly answer: string;
+      readonly savedPossibilityNarrative?: true;
       readonly archivedCitationTarget?: import('./useArchivedCitationOpen').ArchivedCitationTarget;
       readonly interruptionReason?: ConversationRecoveryReason;
       readonly partial?: true;
@@ -105,6 +106,9 @@ export function savedHistoryTranscript(
           id: answerId,
           role: 'assistant',
           content: row.kind === 'answer' ? row.answer : '',
+          ...(row.kind === 'answer' && row.savedPossibilityNarrative
+            ? { savedPossibilityNarrative: true as const }
+            : {}),
           ...(row.kind === 'answer' && row.initialResponse
             ? { initialResponse: row.initialResponse }
             : {}),
