@@ -64,7 +64,8 @@ export async function readConversationReportEvidence(
   )
     return null;
   const report = parsePossibilityConversationReport(saved.answer);
-  if (!report) return { paragraphs: [saved.answer] };
+  if (!report)
+    return { paragraphs: [saved.answer], savedPossibilityNarrative: true };
   // These are the same protected references the strict read just admitted.
   // Only one exact non-photo match may be offered to the archived selector.
   const matches = new Map<string, number>();

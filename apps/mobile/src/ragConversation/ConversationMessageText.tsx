@@ -1,3 +1,7 @@
+import {
+  SavedPossibilityNarrative,
+  savedPossibilityNarrativeParts,
+} from './SavedPossibilityNarrative';
 import { ConversationReportText } from './ConversationReportText';
 import { parseConversationReport } from './conversationReportTemplate';
 import { memo } from 'react';
@@ -16,6 +20,7 @@ export const ConversationMessageText = memo(
     testID,
     allowReport = false,
     staticText = false,
+    savedPossibilityNarrative,
     selectable = true,
   }: {
     readonly content: string;
@@ -23,6 +28,7 @@ export const ConversationMessageText = memo(
     readonly testID?: string;
     readonly allowReport?: boolean;
     readonly staticText?: boolean;
+    readonly savedPossibilityNarrative?: true;
     readonly selectable?: boolean;
   }) {
     const report =
@@ -31,6 +37,18 @@ export const ConversationMessageText = memo(
       return (
         <ConversationReportText
           report={report}
+          testID={testID}
+          selectable={selectable}
+        />
+      );
+    const parts =
+      !user && allowReport && savedPossibilityNarrative
+        ? savedPossibilityNarrativeParts(content)
+        : undefined;
+    if (parts)
+      return (
+        <SavedPossibilityNarrative
+          parts={parts}
           testID={testID}
           selectable={selectable}
         />
