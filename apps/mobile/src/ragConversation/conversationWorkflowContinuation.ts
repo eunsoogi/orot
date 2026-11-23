@@ -79,6 +79,7 @@ export interface ConversationWorkflowContinuation {
         MultiAgentRunResult<unknown>,
         { status: 'paused' }
       >['checkpoint'],
+      reason?: ConversationCheckpointPauseReason,
     ): Promise<void>;
     claim(signal: AbortSignal): Promise<void>;
   };
@@ -121,15 +122,13 @@ export async function runContinuableConversationWorkflow<T>(
       background,
     );
     if (result.status !== 'paused') return result;
-    await continuation.persisted.paused(result.checkpoint);
-    if (
-      signal.aborted ||
-      !(await continuation.waitForContinue(
-        conversationCheckpointPauseReason(
-          result.checkpoint.awaitingAuthorization,
-        ),
-      ))
-    )
+    const reason =
+      result.pauseReason ??
+      conversationCheckpointPauseReason(
+        result.checkpoint.awaitingAuthorization,
+      );
+    await continuation.persisted.paused(result.checkpoint, reason);
+    if (signal.aborted || !(await continuation.waitForContinue(reason)))
       return result;
     // Atomic ownership and live session/source/approval fences precede every resumed dispatch.
     await continuation.validateSelection?.(signal);
