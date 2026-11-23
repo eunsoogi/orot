@@ -16,7 +16,6 @@ import { useNavigationGeometry } from './NavigationGeometryProvider';
 import {
   measureNavigationBottomOcclusion,
   resolveNavigationOcclusion,
-  type NavigationLayoutFrame,
 } from './navigationLayout';
 import {
   NavigationRootLayoutContext,
@@ -29,7 +28,7 @@ import {
 import { observeNavigationTest } from './navigationTestObservation';
 import type { NavigationGeometryRect } from './navigationGeometry';
 import { NavigationOverlayLayoutContext } from './navigationOverlayLayout';
-
+import { useNavigationFrameDiagnostic } from './navigationVisibilityDiagnostics';
 /** Shares shell geometry with the bar, preserves routes beside reserved lanes, and separates scroll-only action overlap. */
 export function NavigationViewport({
   children,
@@ -43,7 +42,7 @@ export function NavigationViewport({
   readonly active?: boolean;
 }) {
   const [contentFrame, setContentFrame] =
-    useState<NavigationLayoutFrame | null>(null);
+    useState<NavigationGeometryRect | null>(null);
   const [actionFrame, setActionFrame] = useState<NavigationGeometryRect | null>(
     null,
   );
@@ -86,6 +85,11 @@ export function NavigationViewport({
         frame: JSON.stringify(sharedFrame),
       });
   }, [active, sharedFrame]);
+  useNavigationFrameDiagnostic(
+    active,
+    sharedFrame?.availableContentFrame,
+    contentFrame,
+  );
   const safeAreaInsets = useContext(SafeAreaInsetsContext);
   const visibleSide =
     sharedFrame?.side ??
@@ -185,10 +189,7 @@ export function NavigationViewport({
           >
             <View
               onLayout={({ nativeEvent }) =>
-                setContentFrame({
-                  y: nativeEvent.layout.y,
-                  height: nativeEvent.layout.height,
-                })
+                setContentFrame(nativeEvent.layout)
               }
               style={contentRegionStyle}
               testID="navigation-content-region"
@@ -243,7 +244,6 @@ export function NavigationViewport({
     </NavigationRootLayoutContext.Provider>
   );
 }
-
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   overlay: { bottom: 0, left: 0, position: 'absolute', right: 0, zIndex: 1 },
