@@ -1,3 +1,4 @@
+import type { ReadValidationChunks } from './evidenceValidationContext';
 import type { HealthEvidenceInventory } from '../../healthEvidence/coverage';
 import type { EvidenceBatch, EvidenceItem } from '@orot/agent-runtime';
 import type {
@@ -52,6 +53,7 @@ export async function createLocalEvidenceSnapshot(input: {
   readonly hasMoreCandidates?: boolean;
   readonly persistedChunks: readonly EvidenceChunk[];
   readonly loadCurrentPersistedChunks: () => Promise<readonly EvidenceChunk[]>;
+  readonly loadCurrentPersistedChunksFor?: ReadValidationChunks;
   readonly staleArtifacts: readonly StaleEvidenceArtifact[];
   readonly loadCurrentStaleArtifacts: () => Promise<
     readonly StaleEvidenceArtifact[]
@@ -59,6 +61,7 @@ export async function createLocalEvidenceSnapshot(input: {
   readonly repository: LocalHealthEvidenceRepository;
   readonly manualHistory?: Pick<ManualHistoryRepository, 'getEvidence'>;
   readonly memoryRecords: readonly PersistedMemoryRecord[];
+  readonly personalRecordsOnly?: boolean;
   readonly memoryStorage: Pick<AgentMemoryStorageAdapter, 'listRecords'>;
   readonly registry: LocalEvidenceReferenceRegistry;
 }): Promise<LocalEvidenceSnapshot> {
@@ -76,11 +79,13 @@ export async function createLocalEvidenceSnapshot(input: {
         registry: input.registry,
       })
     : { items: [], chunks: [] };
-  const memory = await buildMemoryEvidence({
-    records: input.memoryRecords,
-    storage: input.memoryStorage,
-    registry: input.registry,
-  });
+  const memory = input.personalRecordsOnly
+    ? { items: [], chunks: [], excludedCount: 0 }
+    : await buildMemoryEvidence({
+        records: input.memoryRecords,
+        storage: input.memoryStorage,
+        registry: input.registry,
+      });
   const items = [...personal.items, ...manualHistory.items, ...memory.items];
   const chunks = [
     ...personal.chunks,
@@ -110,19 +115,25 @@ export async function createLocalEvidenceSnapshot(input: {
       resultLimit: 8,
       returnedCount: 0,
     },
-    {
-      sourceKind: 'reviewed_memory',
-      searchedSourceIds: [
-        ...new Set(forSource('reviewed_memory').map(item => item.sourceId)),
-      ],
-      gaps: memoryGaps,
-      truncated: memory.excludedCount > 0,
-      ...(memory.excludedCount === 0
-        ? { selectionMethod: 'ranked_retrieval' as const }
-        : {}),
-      resultLimit: 8,
-      returnedCount: 0,
-    },
+    ...(!input.personalRecordsOnly
+      ? [
+          {
+            sourceKind: 'reviewed_memory' as const,
+            searchedSourceIds: [
+              ...new Set(
+                forSource('reviewed_memory').map(item => item.sourceId),
+              ),
+            ],
+            gaps: memoryGaps,
+            truncated: memory.excludedCount > 0,
+            ...(memory.excludedCount === 0
+              ? { selectionMethod: 'ranked_retrieval' as const }
+              : {}),
+            resultLimit: 8,
+            returnedCount: 0,
+          },
+        ]
+      : []),
   ];
 
   return {

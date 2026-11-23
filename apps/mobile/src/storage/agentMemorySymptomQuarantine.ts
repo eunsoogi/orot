@@ -2,18 +2,64 @@ import type { PersistedMemoryRecord } from '@orot/agent-memory';
 import type { SqlExecutor } from '@orot/storage';
 import { decodeAgentMemoryRecord } from './agentMemoryStorageRecords';
 
-/** Legacy rows with ambiguous provenance stay stored but cannot become AI evidence. */
-export async function deletedSymptomIds(
+async function readDeletedSymptomIds(
   sql: SqlExecutor,
+  ids?: ReadonlySet<string>,
 ): Promise<Set<string>> {
   const table = await sql.execute(
     "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'legacy_symptom_deleted'",
   );
   if (!table.rows.length) return new Set();
-  const result = await sql.execute('SELECT id FROM legacy_symptom_deleted');
+  const result = ids
+    ? await sql.execute(
+        `SELECT id FROM legacy_symptom_deleted WHERE id IN (${[...ids].map(() => '?').join(', ')})`,
+        [...ids],
+      )
+    : await sql.execute('SELECT id FROM legacy_symptom_deleted');
   return new Set(
     result.rows.flatMap(row => (typeof row.id === 'string' ? [row.id] : [])),
   );
+}
+
+/** Legacy rows with ambiguous provenance stay stored but cannot become AI evidence. */
+export function deletedSymptomIds(sql: SqlExecutor): Promise<Set<string>> {
+  return readDeletedSymptomIds(sql);
+}
+
+const selectedSymptomIdLimit = 128;
+const selectedSymptomTextLimit = 8192;
+
+interface SymptomQuarantineSelection {
+  matches(requestedIds: readonly string[]): Set<string> | undefined;
+}
+
+/** RAG needs only membership for its selected aliases, not the whole quarantine.
+ * Keep the old single-statement snapshot for large or nonportable bindings;
+ * never split an authority decision across independently timed reads.
+ */
+export async function readSelectedSymptomQuarantine(
+  sql: SqlExecutor,
+  requestedIds: readonly string[],
+): Promise<SymptomQuarantineSelection> {
+  const selected = new Set(requestedIds);
+  const unsuitable =
+    selected.size > selectedSymptomIdLimit ||
+    [...selected].reduce((length, id) => length + id.length, 0) >
+      selectedSymptomTextLimit ||
+    [...selected].some(id => id.includes('\0'));
+  if (unsuitable) {
+    const deleted = await deletedSymptomIds(sql);
+    return { matches: () => deleted };
+  }
+  const deleted = selected.size
+    ? await readDeletedSymptomIds(sql, selected)
+    : new Set<string>();
+  // Recheck synchronously where the reader or writer will consume the result,
+  // including after the promise resolves or when no SQL lookup was needed.
+  return {
+    matches: current =>
+      current.every(id => selected.has(id)) ? deleted : undefined,
+  };
 }
 
 /** Full local-data deletion must include records hidden from ordinary memory reads. */

@@ -85,8 +85,9 @@ export function useRecordNav(
     recordsTabAuthority,
     ownership: actions.ownership,
     openRecentRecording(source: RecordingSourceRecord) {
-      if (!recording || !isCurrent() || !actions.push('recording-review'))
-        return;
+      if (!recording || !isCurrent()) return;
+      const route = actions.push('recording-review');
+      if (!route) return;
       // The exact saved identity opens the existing local viewer without starting playback.
       recording.select({
         summary: {
@@ -95,6 +96,7 @@ export function useRecordNav(
           transcriptReviewState: 'unavailable',
         },
         autoPlay: false,
+        recentRouteKey: route.key,
       });
     },
     sourceId: sources?.sources.get(actions.route.key),

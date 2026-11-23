@@ -6,10 +6,13 @@ import { isProactiveMemoryStatement } from '../memory/userStatementMemory';
 import { isObject } from './taskHistory';
 import type { GroundedRagAnswer } from './task';
 
-function eligible(input: TaskResponderInput): boolean {
+function eligible(
+  input: TaskResponderInput,
+  ownsStatement: (value: string) => boolean,
+): boolean {
   const context = input.context;
   return (
-    isProactiveMemoryStatement(input.request) &&
+    ownsStatement(input.request) &&
     (!isObject(context) ||
       ((!context.intent ||
         context.intent === 'conversation' ||
@@ -22,13 +25,14 @@ function eligible(input: TaskResponderInput): boolean {
  * at retention and by the original statement store, which persists no model text. */
 export function withProactiveMemory(
   task: TaskResponderContract<GroundedRagAnswer>,
+  ownsStatement: (value: string) => boolean = isProactiveMemoryStatement,
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...task,
     taskVersion: '16',
     createResultSchema(input) {
       const schema = task.createResultSchema?.(input) ?? task.resultSchema;
-      if (!eligible(input)) return schema;
+      if (!eligible(input, ownsStatement)) return schema;
       const properties = isObject(schema.properties) ? schema.properties : {};
       return {
         ...schema,
@@ -51,7 +55,7 @@ export function withProactiveMemory(
         validated.status !== 'valid' ||
         validated.value.answerKind === 'prior_output' ||
         rememberCurrentStatement !== true ||
-        !eligible(input)
+        !eligible(input, ownsStatement)
       )
         return validated;
       return {

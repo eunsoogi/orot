@@ -73,7 +73,14 @@ export async function waitForWorkflowContinue(
             continuedOpportunityObserver(entry, entries, input.execution),
           );
           if (!current()) release();
-          else adoptContinuedConversationLease(entry, release, input.execution);
+          else
+            adoptContinuedConversationLease(
+              entry,
+              release,
+              input.execution,
+              false,
+              current,
+            );
         }
         if (!current()) {
           entry.release?.();

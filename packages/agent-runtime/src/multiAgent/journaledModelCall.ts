@@ -99,12 +99,18 @@ export async function journaledModelCall<TResult>(
   const approvalSignal = approval?.signal ?? signal;
   const notify = (waiting: boolean) => {
     try {
-      context.onApprovalWait?.(waiting);
+      (context.onModelApprovalWait ?? context.onApprovalWait)?.(waiting);
     } catch {
       /* UI observers cannot grant access. */
     }
   };
   try {
+    if (
+      approvalSignal.aborted &&
+      !signal.aborted &&
+      context.pause?.confirmCooperativePostToolPause()
+    )
+      throw new AuthorizationPaused();
     notify(Boolean(approval));
     const prepared = prepare ? await prepare(approvalSignal, request) : 'ready';
     if (approvalSignal.aborted && !signal.aborted && options.checkpointer)

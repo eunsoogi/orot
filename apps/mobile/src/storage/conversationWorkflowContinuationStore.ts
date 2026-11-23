@@ -121,7 +121,6 @@ export async function createConversationWorkflowContinuationStore(
     },
     async initialize(options, signal, snapshot) {
       if (original) throw new Error('Continuation already initialized.');
-      // The request must already exist; initialization never manufactures a new turn.
       const input = (
         await database.execute(
           'SELECT question, input_json FROM conversation_requests WHERE id = ? AND session_id = ? AND session_version = ?',
@@ -155,7 +154,7 @@ export async function createConversationWorkflowContinuationStore(
         },
       );
     },
-    async paused(checkpoint) {
+    async paused(checkpoint, reason) {
       await exclusive(async () => {
         if (
           !original ||
@@ -204,7 +203,8 @@ export async function createConversationWorkflowContinuationStore(
           identity.sessionId,
           identity.sessionVersion,
           'interrupted',
-          conversationCheckpointPauseReason(checkpoint.awaitingAuthorization),
+          reason ??
+            conversationCheckpointPauseReason(checkpoint.awaitingAuthorization),
         );
       });
     },
@@ -226,8 +226,7 @@ export async function createConversationWorkflowContinuationStore(
           stableJson(tuple.checkpoint) !== checkpointBytes
         )
           throw new Error('Workflow checkpoint changed.');
-        // This is source freshness, not reusable permission. Runtime must authorize
-        // the exact outgoing payload again after this storage transition.
+        // Runtime reauthorizes the exact outgoing payload after this transition.
         if (
           saved.evidenceReferences.length > 0 &&
           !(await original.revalidateEvidence(saved.evidenceReferences, signal))

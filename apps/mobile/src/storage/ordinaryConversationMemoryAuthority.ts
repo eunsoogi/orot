@@ -4,6 +4,7 @@ import {
   createOrdinaryConversationMemoryEnrollmentStore,
   matchesOrdinaryConversationMemoryEnrollment,
   readOrdinaryConversationMemoryEnrollment,
+  type LocalConversationMemoryScope,
 } from './ordinaryConversationMemoryEnrollment';
 
 /** The SQLite row is backed up; the authority owner must not migrate with it.
@@ -11,8 +12,12 @@ import {
 export function createOrdinaryConversationMemoryOwner(
   database: SqlDatabase,
   authority: ReturnType<typeof createConsentAuthority>,
+  scope: LocalConversationMemoryScope = 'reply-preferences',
 ) {
-  const enrollment = createOrdinaryConversationMemoryEnrollmentStore(database);
+  const enrollment = createOrdinaryConversationMemoryEnrollmentStore(
+    database,
+    scope,
+  );
   let revision = 0;
   let observedRevision = 0;
 
@@ -73,6 +78,7 @@ export function createOrdinaryConversationMemoryOwner(
       }
       return {
         database,
+        scope,
         generation: receipt.generation,
         deviceEpoch: durable.generation,
         isCurrent,
@@ -96,8 +102,10 @@ export function createOrdinaryConversationMemoryOwner(
       // receipt left behind after cancellation is inert while suspended.
       const boundIsCurrent = async () => {
         if (!isCurrent()) return false;
-        const current =
-          await readOrdinaryConversationMemoryEnrollment(database);
+        const current = await readOrdinaryConversationMemoryEnrollment(
+          database,
+          scope,
+        );
         return (
           isCurrent() &&
           current.generation === bound.generation &&

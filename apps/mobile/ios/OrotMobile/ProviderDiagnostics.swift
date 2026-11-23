@@ -18,8 +18,55 @@ final class OrotProviderDiagnostics: NSObject {
     }
 
     @objc func report(_ feature: String, stage: String, outcome: String) {
-        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
-              ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
+        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") else { return }
+        if stage.hasPrefix("daily_report_data_") {
+            // Detailed Daily Report timing accepts no dynamic stage or content.
+            let stages = [
+                "daily_report_data_snapshot", "daily_report_data_projection", "daily_report_data_reproof",
+                "daily_report_data_post_provider", "daily_report_data_save_reproof",
+                "daily_report_data_retry_snapshot", "daily_report_data_retry_projection",
+            ]
+            guard feature == "daily_report",
+                  stages.contains(stage),
+                  ["started", "completed", "failed", "cancelled"].contains(outcome) else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=%@ stage=%@ outcome=%@", feature, stage, outcome)
+            return
+        }
+        if ["steering_submit_admitted", "steering_enqueue_resolved", "steering_row_available",
+            "steering_row_layout", "steering_applied_observed", "steering_read_layout"].contains(stage)
+        {
+            // These app-owned stages take only bounded monotonic elapsed milliseconds, never identities.
+            guard feature == "rag", let elapsed = Int(outcome), (0 ... 300_000).contains(elapsed),
+                  String(elapsed) == outcome else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=%@ elapsed_ms=%d", stage, elapsed)
+            return
+        }
+        if feature == "navigation" {
+            // Navigation accepts only code-owned layout/lifecycle categories, never route identities or sizes.
+            let permitted: [String: Set<String>] = [
+                "foreground": ["active", "inactive", "background"],
+                "planned_frame": ["missing", "collapsed", "positive"],
+                "native_frame": ["missing", "collapsed", "positive"],
+                "root_cover": ["pending", "settled"],
+            ]
+            guard permitted[stage]?.contains(outcome) == true else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=navigation stage=%@ outcome=%@", stage, outcome)
+            return
+        }
+        if stage == "conversation_request_write_wait" || stage == "conversation_lease_admission_wait" {
+            // These waits are not a grant or a provider receipt; no request identity is logged.
+            guard feature == "rag",
+                  ["started", "completed", "failed", "cancelled"].contains(outcome) else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=%@ outcome=%@", stage, outcome)
+            return
+        }
+        if stage == "tool_result_evidence_check" {
+            // This opt-in Conversation span accepts only the start and end of a wait.
+            guard feature == "rag", ["started", "completed"].contains(outcome) else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=tool_result_evidence_check outcome=%@", outcome)
+            return
+        }
+        guard ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
               ["report_sql_first", "report_sql_repeat", "report_sql_unscoped",
                "report_cache_pending_hit", "report_cache_committed_hit", "report_cache_new_key", "report_cache_generation_miss",
                "report_query_quantity", "report_query_heart_rate", "report_query_sleep", "report_query_symptom", "report_query_other",

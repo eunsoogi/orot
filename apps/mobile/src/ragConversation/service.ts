@@ -1,14 +1,16 @@
 import { reportConversationException } from '../providers/conversationFailureDiagnostic';
 import { conversationInitialEvidence } from './conversationInitialEvidence';
 import { runContinuableConversationWorkflow } from './conversationWorkflowContinuation';
-import type { ConversationWorkflowContinuation } from './conversationWorkflowContinuation';
+import type {
+  ConversationGraphInvocation,
+  ConversationWorkflowContinuation,
+} from './conversationWorkflowContinuation';
 import { providerDiagnostic } from '../providers/diagnostics';
 import { conversationWorkflowOutcome } from './conversationWorkflowOutcome';
 import type {
   EvidenceBatch,
   EvidenceItem,
   EvidenceReference,
-  MultiAgentInvocation,
   MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
 import { revalidateWithLocalDeletionGuard } from '../aiFeatures/integration/deletionAwareEvidence';
@@ -80,7 +82,7 @@ export interface RagConversationRunOptions {
 /** Runs local E5 retrieval on a fresh bounded snapshot before every consent-checked model turn. */
 export async function runRagConversationTurn(
   options: RagConversationRunOptions,
-  invocation: MultiAgentInvocation = {},
+  invocation: ConversationGraphInvocation = {},
 ): Promise<RagConversationOutcome> {
   const question = options.question.trim();
   const validPhoto = validConversationPhotoRun(options);
@@ -129,6 +131,7 @@ export async function runRagConversationTurn(
       },
       bufferPossibilityStream(options.entryIntent, invocation),
       options.continuation,
+      invocation.backgroundStatusForLease,
     );
     return conversationWorkflowOutcome(result, options, invocation.signal);
   } catch (error) {

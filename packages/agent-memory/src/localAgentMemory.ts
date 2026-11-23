@@ -2,7 +2,7 @@ import type { Memory, Embedder, RecallOptions } from 'rememori';
 import { openMemoryEngine } from './openMemoryEngine';
 import type { AgentMemoryHit, AgentMemoryInput, AgentMemoryStorageAdapter } from './types';
 import type { AgentMemoryService, AgentMemorySourceRemovalResult } from './service';
-import { writeMemory } from './memoryWrites';
+import { commitMemoryWriteBatch, writeMemory } from './memoryWrites';
 import { readMemoryById, readMemoryByKey, recordsForKey } from './memoryKeys';
 import { forgetAllPersistedRecords } from './allMemoryDeletion';
 import { isAgentMemoryKind, isProvenance, metadataFrom, provenanceFrom } from './validation';
@@ -46,8 +46,8 @@ export class LocalAgentMemory implements AgentMemoryService {
     });
   }
 
-  remember(input: AgentMemoryInput): Promise<string> {
-    return this.enqueue(() => this.write(input));
+  remember(input: AgentMemoryInput, writeContext?: unknown): Promise<string> {
+    return this.enqueue(() => this.write(input, writeContext));
   }
 
   update(input: AgentMemoryInput): Promise<string> {
@@ -192,21 +192,21 @@ export class LocalAgentMemory implements AgentMemoryService {
     }, true);
   }
 
-  private write(input: AgentMemoryInput): Promise<string> {
+  private write(input: AgentMemoryInput, writeContext?: unknown): Promise<string> {
     return writeMemory(
       input,
       this.storage,
       this.removedSourceIds,
       () => this.getEngine(),
-      (operation) => this.runBatch(operation),
+      (operation) => this.runBatch(operation, writeContext),
     );
   }
 
-  private async runBatch<T>(operation: () => Promise<T>): Promise<T> {
+  private async runBatch<T>(operation: () => Promise<T>, writeContext?: unknown): Promise<T> {
     this.storage.beginBatch();
     try {
       const result = await operation();
-      await this.storage.commitBatch();
+      await commitMemoryWriteBatch(this.storage, result, writeContext);
       return result;
     } catch (error) {
       this.storage.rollbackBatch();

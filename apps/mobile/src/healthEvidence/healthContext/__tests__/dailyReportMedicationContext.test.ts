@@ -5,13 +5,16 @@ import {
   DailyReportContextSchema,
 } from '@orot/domain';
 import { createRecordRepository, runMigrations } from '@orot/storage';
+import type { SqlExecutor } from '@orot/storage';
+import { readDailyReportMedicationContext } from '../dailyReportMedicationContext';
+import type { LocalHealthEvidenceRecord } from '../../localEvidenceQueries';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { readDailyReportSnapshot } from '../dailyReportSnapshot';
 import { createDailyReportCalendarWindow } from '../dailyReportWindow';
 import { createDailyReportContext } from '../dailyReportContext';
 import { dailyReportFacts } from '../../../aiFeatures/integration/dailyReportFacts';
 
-const provenance = { origin: 'user_reported', sourceRecordIds: [] };
+const provenance = { origin: 'user_reported' as const, sourceRecordIds: [] };
 const medicine = MedicationDefinitionSchema.parse({
   id: 'med',
   medicationConceptIdentifier: 'concept',
@@ -120,6 +123,113 @@ test('links old medication identity without pretending it occurred today, and pr
     expect(deleted.sourceSnapshot.deletionGeneration).toBeGreaterThan(
       result.sourceSnapshot.deletionGeneration,
     );
+  } finally {
+    connection.close();
+  }
+});
+
+test('batches exact protected identities without changing ordering or cutoff', async () => {
+  if (dose.eventKind !== 'observed') throw new Error('fixture');
+  const connection = openSqliteTestDatabase(':memory:');
+  try {
+    await runMigrations(connection.database);
+    const repository = createRecordRepository(connection.database);
+    const values: LocalHealthEvidenceRecord[] = [];
+    const admitted: string[] = [];
+    for (let i = 103; i >= 0; i--) {
+      const id = `med-${i}`;
+      await repository.put('medication_definition', {
+        ...medicine,
+        id,
+        ingestedAt: i === 5 ? '2035-01-02T00:00:00Z' : medicine.ingestedAt,
+      });
+      values.push({
+        kind: 'dose_event',
+        record: { ...dose, id: `dose-${i}`, medicationDefinitionId: id },
+      });
+      if (![2, 3, 4, 5].includes(i)) admitted.push(id);
+    }
+    await repository.put('medication_assertion', {
+      id: 'med-103',
+      medicationName: 'Other typed synthetic source',
+      assertionKind: 'prescribed',
+      effectiveAt: medicine.ingestedAt,
+      recordedAt: medicine.ingestedAt,
+      ingestedAt: medicine.ingestedAt,
+      provenance,
+      reviewState: { status: 'unreviewed' },
+    });
+    values.splice(1, 0, {
+      kind: 'dose_event',
+      record: DoseEventSchema.parse({
+        id: 'asserted-dose',
+        effectiveAt: dose.effectiveAt,
+        ingestedAt: dose.ingestedAt,
+        provenance,
+        reviewState: { status: 'unreviewed' },
+        eventKind: 'missed',
+        recordedAt: dose.effectiveAt,
+        medicationAssertionId: 'med-103',
+      }),
+    });
+    values.push({
+      kind: 'dose_event',
+      record: { ...dose, id: 'second-dose', medicationDefinitionId: 'med-103' },
+    });
+    await connection.database.execute(
+      'DELETE FROM medication_definitions WHERE id = ?',
+      ['med-3'],
+    );
+    await connection.database.execute(
+      'INSERT INTO transcript_artifact_staleness(transcript_id,artifact_kind,artifact_id,superseded_segment_id,current_segment_id,invalidated_at) VALUES (?,?,?,?,?,?)',
+      [
+        'synthetic',
+        'medication_definition',
+        'med-4',
+        'old',
+        'new',
+        '2035-01-01',
+      ],
+    );
+    const scope = {
+      sourceIds: Array.from({ length: 104 }, (_, i) => `med-${i}`).filter(
+        id => id !== 'med-2',
+      ),
+    };
+    const cutoff = '2035-01-01T12:00:00Z';
+    await connection.database.transaction(async tx => {
+      const original = await Promise.all(
+        values
+          .slice(0, -1)
+          .map(value =>
+            readDailyReportMedicationContext(tx, [value], scope, cutoff),
+          ),
+      );
+      const expected = original.flat();
+      expected[0]!.doses.push('second-dose');
+      let calls = 0;
+      const counted: SqlExecutor = {
+        execute(query, parameters) {
+          calls += 1;
+          return tx.execute(query, parameters);
+        },
+      };
+      const actual = await readDailyReportMedicationContext(
+        counted,
+        values,
+        scope,
+        cutoff,
+      );
+      expect(actual).toEqual(expected);
+      expect(
+        actual.map(item => [item.value.kind, item.value.record.id]),
+      ).toEqual([
+        ['medication_definition', admitted[0]],
+        ['medication_assertion', 'med-103'],
+        ...admitted.slice(1).map(id => ['medication_definition', id]),
+      ]);
+      expect(calls).toBe(4);
+    });
   } finally {
     connection.close();
   }

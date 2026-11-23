@@ -1,6 +1,7 @@
 import Foundation
 
 protocol ResponsesWebSocketConnection: Sendable {
+    var observedClosed: Bool { get }
     func send(_ data: Data) async throws
     func receive() async throws -> Data
     func close()
@@ -8,6 +9,11 @@ protocol ResponsesWebSocketConnection: Sendable {
 }
 
 extension ResponsesWebSocketConnection {
+    /// Unknown transport state is not proof of a close or permission to replay.
+    var observedClosed: Bool {
+        false
+    }
+
     func completed() {
         close()
     }
@@ -33,6 +39,10 @@ struct URLSessionResponsesWebSocket: ResponsesWebSocketConnection {
         task = session.webSocketTask(with: request)
         task.maximumMessageSize = 1_048_576
         task.resume()
+    }
+
+    var observedClosed: Bool {
+        upgrade.gate.observedClosed
     }
 
     func waitUntilOpen() async throws {

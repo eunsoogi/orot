@@ -10,6 +10,7 @@ import {
 } from '../ragConversation/conversationSubmittedInput';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { createConversationRequestSources } from './conversationRequestSources';
+import { createReviewedOpeningStorage } from './conversationReviewedOpeningStorage';
 import { createConversationRequestReader } from './conversationRequestRead';
 import { createConversationLocalOutcomeStorage } from './conversationLocalOutcomeStorage';
 
@@ -87,6 +88,7 @@ export function createConversationRequestStorage(
   return {
     ...createConversationRequestSources(database, ensure),
     ...createConversationRequestReader(database, ensure),
+    writeReviewedOpening: createReviewedOpeningStorage(database, ensure),
     completeLocalClarification: createConversationLocalOutcomeStorage(
       database,
       ensure,
@@ -190,9 +192,10 @@ export function createConversationRequestStorage(
       // Explicit Stop/abandon also fences a safely paused request. Automatic late
       // failures must not replace the saved pause reason or the user's stop intent.
       await database.execute(
-        "UPDATE conversation_requests SET interruption_reason = ?, status = ?, question = CASE WHEN ? = 'cancelled' THEN '' ELSE question END, input_json = CASE WHEN ? = 'cancelled' THEN NULL ELSE input_json END WHERE id = ? AND session_id = ? AND session_version = ? AND (status = 'active' OR (status = 'interrupted' AND (? = 'cancelled' OR ? = 'user-stopped')))",
+        "UPDATE conversation_requests SET interruption_reason = ?, status = ?, question = CASE WHEN ? = 'cancelled' THEN '' ELSE question END, input_json = CASE WHEN ? = 'cancelled' THEN NULL ELSE input_json END, reviewed_opening_json = CASE WHEN ? = 'cancelled' THEN NULL ELSE reviewed_opening_json END WHERE id = ? AND session_id = ? AND session_version = ? AND (status = 'active' OR (status = 'interrupted' AND (? = 'cancelled' OR ? = 'user-stopped')))",
         [
           status === 'cancelled' ? null : (reason ?? null),
+          status,
           status,
           status,
           status,

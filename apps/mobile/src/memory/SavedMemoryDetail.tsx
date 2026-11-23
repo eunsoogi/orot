@@ -1,5 +1,6 @@
 import { SavedGeneratedReportDetail } from './SavedGeneratedReportDetail';
 import { SavedMemoryContent } from './SavedMemoryContent';
+import { useNavigationRouteRefresh } from '../navigation/navigationRouteRefresh';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import { useState } from 'react';
@@ -35,13 +36,22 @@ export function SavedMemoryDetail({
     correctionTarget && correctionTarget.original === memoryId
       ? correctionTarget.id
       : memoryId;
-  const { rows, state, refresh, readyRead } = useSavedMemories(
-    load,
-    active,
-    ownership,
-    selectedId,
-  );
+  const {
+    rows,
+    state,
+    refresh,
+    refreshReadOnly,
+    readOnlyRefreshing,
+    readyRead,
+  } = useSavedMemories(load, active, ownership, selectedId);
   const row = rows.find(value => value.id === selectedId);
+  // Editable history and generated reports retain their own detail lifecycles.
+  const isPlainMemory =
+    row && !isHistoryMemory(row) && !isGeneratedReportMemory(row);
+  useNavigationRouteRefresh(
+    active && (Boolean(isPlainMemory) || readOnlyRefreshing),
+    refreshReadOnly,
+  );
   return (
     <View
       style={[

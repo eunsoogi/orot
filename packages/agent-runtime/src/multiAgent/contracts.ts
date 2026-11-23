@@ -14,8 +14,7 @@ import type {
   ProviderErrorCode,
 } from '@orot/model-runtime';
 import type { RunnableConfig } from '@langchain/core/runnables';
-import type { BaseStore } from '@langchain/langgraph/web';
-import type { BaseCheckpointSaver } from '@langchain/langgraph/web';
+import type { BaseCheckpointSaver, BaseStore } from '@langchain/langgraph/web';
 import type {
   AllowedEvidenceScope,
   EvidenceBatch,
@@ -135,6 +134,7 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue>
   readonly onCoverageDiagnostic?: import('./coverageDiagnostics').CoverageDiagnosticObserver;
   /** Optional content-free timings; no request, response or identity is exposed. */
   readonly onModelStage?: import('./modelStageDiagnostics').ModelStageObserver;
+  readonly onAcceptedSearch?: import('./runtimeContext').AcceptedSearchObserver;
   readonly request: string;
   readonly photoInput?: import('./evidenceContracts').PhotoModelInput;
   readonly context?: JsonValue;
@@ -221,14 +221,14 @@ export type MultiAgentRunResult<TResult> =
 export interface MultiAgentInvocation {
   readonly config?: RunnableConfig;
   readonly resumeFrom?: MultiAgentCheckpointState;
-  readonly onApprovalWait?: (waiting: boolean) => void;
+  readonly onApprovalWait?: (waiting: boolean, kind?: 'checkpoint-only') => void;
+  readonly onModelApprovalWait?: (waiting: boolean) => void;
   readonly pause?: import('./workflowPause').MultiAgentPauseController;
   readonly signal?: AbortSignal;
-  /** Safe phase and source-kind updates; these events never include prompt, query, or evidence content. */
   readonly onProgress?: (event: MultiAgentProgressEvent) => void;
   /** Content-free actual tool lifecycle, excluding reasoning and unrestricted payloads. */
   readonly onToolEvent?: (event: import('./toolEvents').ConversationToolEvent) => void;
-  /** Receives task-projected display text only; structured output and citations stay private. */
+  readonly onReviewedInitialToolOpening?: import('./responderStreamEvent').ReviewedInitialToolOpeningObserver;
   readonly onTaskStreamEvent?: (event: MultiAgentResponderStreamEvent) => void;
   /** Local preparation observes the exact provider request; it must not export its private content. */
   readonly beforeTaskStream?: (

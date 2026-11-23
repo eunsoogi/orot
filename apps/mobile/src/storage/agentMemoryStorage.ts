@@ -176,13 +176,16 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     };
   }
 
-  async commitBatch(): Promise<void> {
+  async commitBatch(
+    witness?: Parameters<AgentMemoryStorageAdapter['commitBatch']>[0],
+  ): Promise<void> {
     if (!this.pending) throw new Error('No agent-memory write batch is open.');
     const batch = this.pending;
     await this.executeWrites(
       batch.writes,
       batch.removedSourceIds,
       batch.removedKinds,
+      witness,
     );
     this.pending = null;
   }
@@ -219,6 +222,7 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
     writes: Map<string, PersistedMemoryRecord | null>,
     removedSourceIdsToAdd: Set<string>,
     removedKinds = new Map<string, readonly string[] | undefined>(),
+    witness?: Parameters<AgentMemoryStorageAdapter['commitBatch']>[0],
   ): Promise<void> {
     await this.ensureTable();
     await commitAgentMemoryWrites(
@@ -226,6 +230,7 @@ export class SqlCipherAgentMemoryStorage implements AgentMemoryStorageAdapter {
       writes,
       removedSourceIdsToAdd,
       removedKinds,
+      witness,
     );
   }
 }

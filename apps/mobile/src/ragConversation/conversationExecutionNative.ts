@@ -15,6 +15,12 @@ type NativeExecution = {
   end(requestId: string): void;
   work?(requestId: string, active: boolean): void;
   answered?(requestId: string): void;
+  reportStatus?(
+    requestId: string,
+    stage:
+      | import('./conversationBackgroundStatus').ConversationBackgroundStage
+      | 'answered',
+  ): void;
   committed?(requestId: string): void;
   isActive(requestId: string): Promise<boolean>;
   isPauseCurrent?(requestId: string, warning: string): Promise<boolean>;
@@ -42,7 +48,14 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
       : {}),
     end: id => module.end(id),
     work: (id, active) => module.work?.(id, active),
-    milestone: (id, stage) => module[stage]?.(id),
+    ...(typeof module.reportStatus === 'function'
+      ? { reportStatus: (id, stage) => module.reportStatus?.(id, stage) }
+      : {}),
+    milestone: (id, stage) => {
+      if (stage === 'answered' && module.reportStatus)
+        module.reportStatus(id, stage);
+      else module[stage]?.(id);
+    },
     isActive: id => module.isActive(id),
     pauseStillCurrent: async (id, warning) =>
       (await module.isPauseCurrent?.(id, warning)) === true,

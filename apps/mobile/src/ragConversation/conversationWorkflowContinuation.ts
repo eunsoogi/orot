@@ -11,6 +11,49 @@ import {
   type MultiAgentWorkflowOptions,
 } from '@orot/agent-runtime';
 import { conversationWorkflowEvidenceCache } from '../aiFeatures/integration/conversationWorkflowEvidenceCache';
+import { bindConversationProviderExecution } from '../aiFeatures/integration/observeConversationProviderExecution';
+import type { RagConversationObserver } from './conversationObserver';
+
+export type ConversationGraphInvocation = MultiAgentInvocation &
+  Pick<RagConversationObserver, 'backgroundStatusForLease'>;
+type StatusFactory = ConversationGraphInvocation['backgroundStatusForLease'];
+
+/** Each graph invocation receives closed callbacks from its own acquired lease. */
+function runOwnedGraph<T>(
+  options: MultiAgentWorkflowOptions<T>,
+  invocation: MultiAgentInvocation,
+  background?: StatusFactory,
+) {
+  if (!background || invocation.signal?.aborted)
+    return runMultiAgentWorkflow(options, invocation);
+  const attempt = background();
+  return runMultiAgentWorkflow(
+    {
+      ...options,
+      provider: bindConversationProviderExecution(
+        options.provider,
+        attempt.onProviderExecution,
+      ),
+      onAcceptedSearch(event) {
+        try {
+          attempt.onAcceptedSearch?.(event);
+        } finally {
+          options.onAcceptedSearch?.(event);
+        }
+      },
+    },
+    {
+      ...invocation,
+      onToolEvent(event) {
+        try {
+          attempt.onBackgroundTool?.(event);
+        } finally {
+          invocation.onToolEvent?.(event);
+        }
+      },
+    },
+  );
+}
 
 /** UI binding is explicit and lifetime-scoped. A process restart cannot silently recreate this owner. */
 export interface ConversationWorkflowContinuation {
@@ -36,6 +79,7 @@ export interface ConversationWorkflowContinuation {
         MultiAgentRunResult<unknown>,
         { status: 'paused' }
       >['checkpoint'],
+      reason?: ConversationCheckpointPauseReason,
     ): Promise<void>;
     claim(signal: AbortSignal): Promise<void>;
   };
@@ -46,8 +90,9 @@ export async function runContinuableConversationWorkflow<T>(
   options: MultiAgentWorkflowOptions<T>,
   invocation: MultiAgentInvocation,
   continuation?: ConversationWorkflowContinuation,
+  background?: StatusFactory,
 ): Promise<MultiAgentRunResult<T>> {
-  if (!continuation) return runMultiAgentWorkflow(options, invocation);
+  if (!continuation) return runOwnedGraph(options, invocation, background);
   const signal = invocation.signal ?? new AbortController().signal;
   const original = conversationWorkflowEvidenceCache(options);
   await continuation.persisted.initialize(
@@ -64,22 +109,26 @@ export async function runContinuableConversationWorkflow<T>(
   while (!signal.aborted) {
     const pause = createMultiAgentPauseController();
     continuation.bindPause(() => pause.requestPause());
-    const result = await runMultiAgentWorkflow(durable, {
-      ...invocation,
-      signal,
-      pause,
-      config: { configurable: { thread_id: continuation.persisted.threadId } },
-    });
+    const result = await runOwnedGraph(
+      durable,
+      {
+        ...invocation,
+        signal,
+        pause,
+        config: {
+          configurable: { thread_id: continuation.persisted.threadId },
+        },
+      },
+      background,
+    );
     if (result.status !== 'paused') return result;
-    await continuation.persisted.paused(result.checkpoint);
-    if (
-      signal.aborted ||
-      !(await continuation.waitForContinue(
-        conversationCheckpointPauseReason(
-          result.checkpoint.awaitingAuthorization,
-        ),
-      ))
-    )
+    const reason =
+      result.pauseReason ??
+      conversationCheckpointPauseReason(
+        result.checkpoint.awaitingAuthorization,
+      );
+    await continuation.persisted.paused(result.checkpoint, reason);
+    if (signal.aborted || !(await continuation.waitForContinue(reason)))
       return result;
     // Atomic ownership and live session/source/approval fences precede every resumed dispatch.
     await continuation.validateSelection?.(signal);

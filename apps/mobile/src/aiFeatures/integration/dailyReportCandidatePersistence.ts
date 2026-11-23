@@ -11,6 +11,7 @@ import type {
   DailyReportFailureCode,
 } from './dailyReportTypes';
 import { providerDiagnostic } from '../../providers/diagnostics';
+import { observeDailyReportData } from './dailyReportDataDiagnostics';
 
 type ContextCandidate = DailyReportSave & { context: DailyReportContext };
 type SaveProof = NonNullable<
@@ -36,7 +37,11 @@ async function refreshedCandidate(
     if (proof.calendarCurrent && !(await proof.calendarCurrent(signal)))
       return null;
     if (signal.aborted || !proof.current()) return null;
-    const latest = await proof.refresh(signal);
+    const latest = await observeDailyReportData(
+      'daily_report_data_save_reproof',
+      signal,
+      () => proof.refresh!(signal),
+    );
     if (!latest || signal.aborted || !proof.current()) return null;
     if (proof.calendarCurrent && !(await proof.calendarCurrent(signal)))
       return null;

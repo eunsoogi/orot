@@ -143,3 +143,25 @@ test.each([
     }
   },
 );
+
+test('Stop completes Apple summary without waiting for a held or rejecting local adapter', async () => {
+  const state = runFixture('failed');
+  try {
+    await state.began.done;
+    let returned: Awaited<typeof state.result> | undefined;
+    const observed = state.result.then(value => {
+      returned = value;
+    });
+    state.abort.abort();
+    for (let i = 0; i < 20; i += 1) await Promise.resolve();
+    expect(returned).toEqual({
+      failure: { status: 'failure', kind: 'cancelled' },
+    });
+    expect(state.generate).not.toHaveBeenCalled();
+    expect(state.runner).not.toHaveBeenCalled();
+    await observed;
+  } finally {
+    state.held.open();
+    await state.result;
+  }
+});

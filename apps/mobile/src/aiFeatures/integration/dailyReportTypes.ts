@@ -51,10 +51,20 @@ export interface DailyReportServiceInput {
   readonly createRunId: () => string;
   readonly resolveSelected?: () => Promise<SelectedAiResolution>;
   readonly timeoutMs?: number | null;
+  readonly isWarmDayCurrent?: (
+    identity: import('@orot/domain').DailyReportIdentity,
+  ) => boolean;
 }
 
 /** Prepared dependencies shared by the lookup and generation stages. */
 export type DailyReportRunInput = Omit<DailyReportServiceInput, 'database'> & {
+  readonly pauseBeforeOpening?: (
+    request: DailyReportServiceRequest,
+    selected: Extract<SelectedAiResolution, { status: 'ready' }>,
+    initial: import('../../healthEvidence/healthContext/dailyReportSnapshotResult').DailyReportSnapshotResult,
+    calendar: import('../../healthEvidence/healthContext/dailyReportWindow').DailyReportCalendarWindow,
+    runId: string,
+  ) => Promise<boolean | Extract<SelectedAiResolution, { status: 'ready' }>>;
   readonly dispatchAuthority?: import('./dailyReportDispatchAuthority').DailyReportDispatchAuthority;
   readonly data: LocalEvidenceData;
   /** DB-owned, generation-local proof refresh; custom readers remain strict. */

@@ -20,6 +20,11 @@ export type RagConversationObserver = Pick<
   readonly onProviderReceipt?: (
     receipt: import('../aiFeatures/integration/conversationReceiptProvider').ConversationProviderReceipt,
   ) => void;
+  /** Only the completed, separately reviewed opening producer owns this durable display port. */
+  readonly onReviewedOpening?: (
+    opening: import('../storage/conversationReviewedOpeningStorage').ReviewedOpening,
+    signal: AbortSignal,
+  ) => Promise<boolean>;
   readonly onSteeringReady?: (
     store: NonNullable<
       import('@orot/agent-runtime').WorkflowOperationJournal['steering']
@@ -30,6 +35,15 @@ export type RagConversationObserver = Pick<
     reconstruct?: import('../storage/conversationContinuationCapture').ConversationColdReconstruction,
   ) => Promise<
     import('./conversationWorkflowContinuation').ConversationWorkflowContinuation['persisted']
+  >;
+  /** Status-only provider observation starts inside authorized, current model invocation. */
+  readonly onProviderExecution?: (
+    signal?: AbortSignal,
+  ) => (() => void) | undefined;
+  readonly backgroundStatusForLease?: () => ConversationGraphBackgroundStatus;
+  readonly onBackgroundTool?: NonNullable<MultiAgentInvocation['onToolEvent']>;
+  readonly onAcceptedSearch?: NonNullable<
+    import('@orot/agent-runtime').MultiAgentWorkflowOptions['onAcceptedSearch']
   >;
   /** Owned pause/continue controls never submit a new question. */
   readonly onWorkflowPauseController?: (requestPause: () => void) => void;
@@ -124,3 +138,8 @@ export type RagConversationObserver = Pick<
     },
   ) => Promise<void>;
 };
+
+export type ConversationGraphBackgroundStatus = Pick<
+  RagConversationObserver,
+  'onProviderExecution' | 'onBackgroundTool' | 'onAcceptedSearch'
+>;

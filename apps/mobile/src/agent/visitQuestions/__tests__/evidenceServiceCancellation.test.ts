@@ -103,6 +103,7 @@ describe('visit-question evidence cancellation', () => {
     );
     expect(dependencies.rag.index).toHaveBeenCalledWith([chunk], {
       signal: controller.signal,
+      reuseVerifiedVectors: true,
     });
     expect(dependencies.rag.search).toHaveBeenCalledTimes(1);
     expect(dependencies.rag.search.mock.calls[0]?.[3]?.signal).toBe(

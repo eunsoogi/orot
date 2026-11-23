@@ -20,6 +20,10 @@ import {
   retainedHistoryTurns,
 } from '../conversationHistoryPayload';
 import { ConversationHistory } from '../ConversationHistory';
+import {
+  committedVisitNeighbor,
+  seedCommittedVisitNeighbor,
+} from '../testSupport/committedVisitClarificationFixture';
 import { conversationHistoryRecoveryProps } from '../conversationHistoryRecoveryProps';
 import { createConversationSessionRetention } from '../conversationSessionRetention';
 import {
@@ -57,161 +61,190 @@ function Transcript({ store }: { store: ConversationSessions }) {
 }
 
 /** The actual approved opening uses a non-streaming fixture; the visit operation returns a typed local decision. */
-test('retains both visible clarification bubbles after SQLite reopen, without creating answer evidence or new model history', async () => {
-  const path = mkdtempSync(join(tmpdir(), 'orot-visit-clarification-'));
-  const file = join(path, 'conversation.sqlite');
-  let db = openSqliteTestDatabase(file);
-  let store: ConversationSessions | undefined;
-  let mounted: Awaited<ReturnType<typeof render>> | undefined;
-  const expectClarification = () => {
-    const transcript = within(
-      mounted!.getByTestId('conversation-message-container'),
-    );
-    expect(transcript.getByText(question)).toBeTruthy();
-    const assistants = transcript.getAllByTestId(
-      /^conversation-assistant-(?:opening-)?message$/,
-    );
-    expect(assistants).toHaveLength(2);
-    const [openingRow, answerRow] = assistants;
-    expect(within(openingRow!).getByText(opening)).toBeTruthy();
-    expect(within(answerRow!).getByText(clarification)).toBeTruthy();
-    expect(transcript.queryByText(warning)).toBeNull();
-    expect(
-      transcript.queryByText(t('aiActivity.draft.incompleteHeading')),
-    ).toBeNull();
-  };
-  const strict = jest.fn(async () => {
-    throw new Error('Display invoked strict history');
-  });
-  try {
-    await runMigrations(db.database);
-    const createStore = (
-      storage: ReturnType<typeof createConversationArtifactStorage>,
-    ) => {
-      let id = 0;
-      return createConversationSessions({
-        retention: createConversationSessionRetention({
-          openStorage: async () => storage,
-          createId: () => `visit-${++id}`,
-          now: () => at,
-        }),
-        restoreSession: strict,
-        restoreSessionPage: strict,
-        readSavedHistoryDisplay: conversationSavedHistoryDisplayOption(
-          async () => storage,
-        ),
-      });
-    };
-    const storage = createConversationArtifactStorage(db.database);
-    store = createStore(storage);
-    const option = createAppleSelectionOption('available');
-    const generate = jest
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        value: { text: opening, toolCalls: [], finishReason: 'complete' },
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        value: { text: 'ALLOW', toolCalls: [], finishReason: 'complete' },
-      });
-    const provider = { ...option.provider, generate, stream: undefined };
-    jest
-      .mocked(defaultVisitQuestionRouteOperations.generate)
-      .mockImplementation(async input => {
-        await input.beforeResearch?.();
-        return {
-          status: 'needs_clarification',
-          message: 'UNREVIEWED_MODEL_TEXT',
-        };
-      });
-    const run = createConversationVisitTurn({
-      loadLocalData: jest.fn(),
-      registry: new LocalEvidenceReferenceRegistry(),
-      loadSaved: async () => ({
-        status: 'ready',
-        appointmentId: 'synthetic-appointment',
-        questions: [],
-        caveats: [],
-        restorationNotice: '',
-      }),
-      registerSource: jest.fn() as never,
-    });
-    mounted = await render(<Transcript store={store} />);
-    await act(async () => {
-      await store!.sendQuickPrompt(
-        1,
-        question,
-        (prompt, _history, signal, observer) =>
-          run({
-            question: prompt,
-            signal: signal!,
-            observer,
-            resolveSelectedAi: async () => ({
-              status: 'ready',
-              selection: { providerId: provider.id, modelId: option.modelId },
-              provider,
-              option: { ...option, provider },
-              modelId: option.modelId,
-              recipient: 'synthetic-on-device',
-              remoteProcessing: false,
-            }),
-            confirmConsent: async () => false,
-          }),
+test.each(['committed', 'write-failed'] as const)(
+  'shows only committed clarification without creating answer evidence or model history: %s',
+  async mode => {
+    const path = mkdtempSync(join(tmpdir(), 'orot-visit-clarification-'));
+    const file = join(path, 'conversation.sqlite');
+    let db = openSqliteTestDatabase(file);
+    let store: ConversationSessions | undefined;
+    let mounted: Awaited<ReturnType<typeof render>> | undefined;
+    const expectClarification = () => {
+      const transcript = within(
+        mounted!.getByTestId('conversation-message-container'),
       );
+      expect(transcript.getByText(question)).toBeTruthy();
+      const assistants = transcript.getAllByTestId(
+        /^conversation-assistant-(?:opening-)?message$/,
+      );
+      expect(assistants).toHaveLength(2);
+      const [openingRow, answerRow] = assistants;
+      expect(within(openingRow!).getByText(opening)).toBeTruthy();
+      expect(within(answerRow!).getByText(clarification)).toBeTruthy();
+      expect(transcript.queryByText(warning)).toBeNull();
+      expect(
+        transcript.queryByText(t('aiActivity.draft.incompleteHeading')),
+      ).toBeNull();
+    };
+    const strict = jest.fn(async () => {
+      throw new Error('Display invoked strict history');
     });
-    expectClarification();
-    const live = store.getSnapshot().sessions[0]!.messages;
-    expect(generate).toHaveBeenCalledTimes(2);
-    expect(defaultVisitQuestionRouteOperations.generate).toHaveBeenCalledTimes(
-      1,
-    );
-    const [owner] = (await storage.listSessions()).items;
-    expect(owner).toBeDefined();
-    await mounted.unmount();
-    mounted = undefined;
-    store.dispose();
-    store = undefined;
-    db.close();
+    try {
+      await runMigrations(db.database);
+      const createStore = (
+        storage: ReturnType<typeof createConversationArtifactStorage>,
+      ) => {
+        let id = 0;
+        return createConversationSessions({
+          retention: createConversationSessionRetention({
+            openStorage: async () => storage,
+            createId: () => `visit-${++id}`,
+            now: () => at,
+          }),
+          restoreSession: strict,
+          restoreSessionPage: strict,
+          readSavedHistoryDisplay: conversationSavedHistoryDisplayOption(
+            async () => storage,
+          ),
+        });
+      };
+      const storage = createConversationArtifactStorage(db.database);
+      if (mode === 'write-failed') {
+        await storage.currentGeneration();
+        await db.database
+          .execute(`CREATE TRIGGER clarification_fixture_write_failure
+        BEFORE UPDATE OF local_outcome_json ON conversation_requests
+        WHEN NEW.local_outcome_json IS NOT NULL AND NEW.id <> '${committedVisitNeighbor.id}' BEGIN SELECT RAISE(ABORT, 'synthetic write failure'); END`);
+      }
+      store = createStore(storage);
+      const option = createAppleSelectionOption('available');
+      const generate = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          value: { text: opening, toolCalls: [], finishReason: 'complete' },
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          value: { text: 'ALLOW', toolCalls: [], finishReason: 'complete' },
+        });
+      const provider = { ...option.provider, generate, stream: undefined };
+      jest
+        .mocked(defaultVisitQuestionRouteOperations.generate)
+        .mockClear()
+        .mockImplementation(async input => {
+          await input.beforeResearch?.();
+          if (mode === 'write-failed')
+            await seedCommittedVisitNeighbor(storage, at);
+          return {
+            status: 'needs_clarification',
+            message: 'UNREVIEWED_MODEL_TEXT',
+          };
+        });
+      const run = createConversationVisitTurn({
+        loadLocalData: jest.fn(),
+        registry: new LocalEvidenceReferenceRegistry(),
+        loadSaved: async () => ({
+          status: 'ready',
+          appointmentId: 'synthetic-appointment',
+          questions: [],
+          caveats: [],
+          restorationNotice: '',
+        }),
+        registerSource: jest.fn() as never,
+      });
+      mounted = await render(<Transcript store={store} />);
+      await act(async () => {
+        await store!.sendQuickPrompt(
+          1,
+          question,
+          (prompt, _history, signal, observer) =>
+            run({
+              question: prompt,
+              signal: signal!,
+              observer,
+              resolveSelectedAi: async () => ({
+                status: 'ready',
+                selection: { providerId: provider.id, modelId: option.modelId },
+                provider,
+                option: { ...option, provider },
+                modelId: option.modelId,
+                recipient: 'synthetic-on-device',
+                remoteProcessing: false,
+              }),
+              confirmConsent: async () => false,
+            }),
+        );
+      });
+      if (mode === 'committed') expectClarification();
+      else {
+        expect(mounted.queryByText(clarification)).toBeNull();
+        expect(mounted.getByText(opening)).toBeTruthy();
+        expect(
+          mounted.getByText(t('ragConversation.conversation.answerSaveFailed')),
+        ).toBeTruthy();
+      }
+      const live = store.getSnapshot().sessions[0]!.messages;
+      expect(generate).toHaveBeenCalledTimes(2);
+      expect(
+        defaultVisitQuestionRouteOperations.generate,
+      ).toHaveBeenCalledTimes(1);
+      const [owner] = (await storage.listSessions()).items;
+      expect(owner).toBeDefined();
+      await mounted.unmount();
+      mounted = undefined;
+      store.dispose();
+      store = undefined;
+      db.close();
 
-    db = openSqliteTestDatabase(file);
-    const reopened = createConversationArtifactStorage(db.database);
-    await reopened.interruptRecoveredRequests();
-    store = createStore(reopened);
-    mounted = await render(<Transcript store={store} />);
-    await act(async () => {
-      await store!.attachExisting(owner!.id, owner!.version, at);
-    });
-    expectClarification();
-    expect(mounted.queryByText('UNREVIEWED_MODEL_TEXT')).toBeNull();
-    expect(conversationHistoryPayload(live, 'Unrelated next prompt')).toEqual(
-      [],
-    );
-    expect(retainedHistoryTurns(live, 'Unrelated next prompt')).toEqual([]);
-    expect(strict).not.toHaveBeenCalled();
-    expect(await reopened.listCompletionIdentities()).toEqual([]);
-    expect(
-      await reopened.readProtectedPromptHistory(
-        owner!.id,
-        owner!.version,
+      db = openSqliteTestDatabase(file);
+      const reopened = createConversationArtifactStorage(db.database);
+      await reopened.interruptRecoveredRequests();
+      store = createStore(reopened);
+      mounted = await render(<Transcript store={store} />);
+      await act(async () => {
+        await store!.attachExisting(owner!.id, owner!.version, at);
+      });
+      if (mode === 'committed') expectClarification();
+      else {
+        expect(mounted.getByText(committedVisitNeighbor.prompt)).toBeTruthy();
+        expect(mounted.getByText(committedVisitNeighbor.opening)).toBeTruthy();
+        expect(mounted.getAllByText(clarification)).toHaveLength(1);
+        expect(mounted.getByText(opening)).toBeTruthy();
+        expect(mounted.queryByText(/^이전 요청의 결과/)).toBeNull();
+      }
+      expect(mounted.queryByText('UNREVIEWED_MODEL_TEXT')).toBeNull();
+      expect(conversationHistoryPayload(live, 'Unrelated next prompt')).toEqual(
         [],
-        new AbortController().signal,
-      ),
-    ).toEqual([]);
-    expect(
-      (await db.database.execute('SELECT id FROM conversation_artifacts')).rows,
-    ).toEqual([]);
-    expect(generate).toHaveBeenCalledTimes(2);
-    await act(async () => {
-      await reopened.deleteSession(owner!.id);
-    });
-    expect(
-      (await db.database.execute('SELECT id FROM conversation_requests')).rows,
-    ).toEqual([]);
-  } finally {
-    await mounted?.unmount();
-    store?.dispose();
-    db.close();
-    rmSync(path, { recursive: true, force: true });
-  }
-});
+      );
+      expect(retainedHistoryTurns(live, 'Unrelated next prompt')).toEqual([]);
+      expect(strict).not.toHaveBeenCalled();
+      expect(await reopened.listCompletionIdentities()).toEqual([]);
+      expect(
+        await reopened.readProtectedPromptHistory(
+          owner!.id,
+          owner!.version,
+          [],
+          new AbortController().signal,
+        ),
+      ).toEqual([]);
+      expect(
+        (await db.database.execute('SELECT id FROM conversation_artifacts'))
+          .rows,
+      ).toEqual([]);
+      expect(generate).toHaveBeenCalledTimes(2);
+      await act(async () => {
+        await reopened.deleteSession(owner!.id);
+      });
+      expect(
+        (await db.database.execute('SELECT id FROM conversation_requests'))
+          .rows,
+      ).toEqual([]);
+    } finally {
+      await mounted?.unmount();
+      store?.dispose();
+      db.close();
+      rmSync(path, { recursive: true, force: true });
+    }
+  },
+);

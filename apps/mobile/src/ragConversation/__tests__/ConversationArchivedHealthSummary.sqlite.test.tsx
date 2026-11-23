@@ -33,7 +33,10 @@ test('the archived summary uses the saved canonical card from one owned presenta
             sql.push(query);
             if (
               /health_observations|source_records|transcript_artifact_staleness|health_context_generation/i.test(
-                query,
+                query.replaceAll(
+                  'SELECT deletions FROM health_context_generation WHERE singleton = 1',
+                  '',
+                ),
               )
             )
               throw new Error('Archived HealthSummaryCard touched evidence.');

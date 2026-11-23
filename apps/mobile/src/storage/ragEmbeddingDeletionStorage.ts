@@ -1,7 +1,10 @@
 import type { LocalEmbeddingWrite } from '@orot/rag';
 import { STORAGE_TABLES } from '@orot/storage';
 import type { SqlExecutor } from '@orot/storage';
-import { deletedSymptomIds } from './agentMemorySymptomQuarantine';
+import {
+  deletedSymptomIds,
+  readSelectedSymptomQuarantine,
+} from './agentMemorySymptomQuarantine';
 
 const EMBEDDINGS_TABLE = 'rag_embeddings';
 const EMBEDDING_MODELS_TABLE = 'rag_embedding_models';
@@ -59,7 +62,13 @@ export async function assertRagEvidenceNotRemoved(
   executor: SqlExecutor,
   entries: readonly LocalEmbeddingWrite[],
 ): Promise<void> {
-  const deletedSymptoms = await deletedSymptomIds(executor);
+  const selectedAliases = () => entries.flatMap(entry => entry.sourceRecordIds);
+  const selected = await readSelectedSymptomQuarantine(
+    executor,
+    selectedAliases(),
+  );
+  const deletedSymptoms =
+    selected.matches(selectedAliases()) ?? (await deletedSymptomIds(executor));
   for (const entry of entries) {
     for (const id of entry.sourceRecordIds) {
       if (!deletedSymptoms.has(id)) continue;

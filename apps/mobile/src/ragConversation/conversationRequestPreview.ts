@@ -6,6 +6,8 @@ import type { MultiAgentResponderStreamEvent } from '@orot/agent-runtime';
 import type { RagConversationObserver } from './conversationObserver';
 import type { createConversationTurnActivity } from './conversationTurnActivity';
 
+const protectedPreviews = new WeakSet<object>();
+
 /** Serializes preview writes and fences a previous provider or tool input before the next one. */
 export function createConversationRequestPreview(input: {
   readonly turn: ReturnType<typeof createConversationTurnRetention>;
@@ -17,7 +19,7 @@ export function createConversationRequestPreview(input: {
   let text = '';
   let writes: Promise<void> = Promise.resolve();
   let pending: { boundary: number; text: string } | undefined;
-  return {
+  const preview = {
     async invalidate() {
       await writes;
       if (!input.current())
@@ -76,6 +78,28 @@ export function createConversationRequestPreview(input: {
     },
     flush: () => writes,
   };
+  protectedPreviews.add(preview);
+  return preview;
+}
+
+const protectedPreviewPairs = new WeakMap<
+  NonNullable<RagConversationObserver['onPreviewBoundary']>,
+  NonNullable<RagConversationObserver['onPreviewPrepared']>
+>();
+
+export function isDecisionFreePreviewPreparation(
+  observer: RagConversationObserver | undefined,
+  hasRetainedInputs: boolean,
+) {
+  if (observer?.beforeTaskStream) return false;
+  const boundary = observer?.onPreviewBoundary;
+  const prepare = observer?.onPreviewPrepared;
+  return (
+    hasRetainedInputs ||
+    !boundary ||
+    !prepare ||
+    protectedPreviewPairs.get(boundary) === prepare
+  );
 }
 
 /** Add private preview callbacks without changing the visible stream observer. */
@@ -89,10 +113,16 @@ export function conversationPreviewObserver(
   | 'beforeTaskInputChange'
   | 'onTaskStreamEvent'
 > {
+  const invalidate = () => preview.invalidate();
+  const prepare: NonNullable<RagConversationObserver['onPreviewPrepared']> = (
+    boundary,
+    template,
+  ) => preview.prepare(boundary, template);
+  if (protectedPreviews.has(preview))
+    protectedPreviewPairs.set(invalidate, prepare);
   return {
-    onPreviewBoundary: () => preview.invalidate(),
-    onPreviewPrepared: (boundary, template) =>
-      preview.prepare(boundary, template),
+    onPreviewBoundary: invalidate,
+    onPreviewPrepared: prepare,
     beforeTaskInputChange: async () => {
       await preview.invalidate();
     },

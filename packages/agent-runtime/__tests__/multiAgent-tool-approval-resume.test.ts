@@ -14,7 +14,7 @@ import {
 } from './multiAgent-external-evidence-fixtures';
 import { operationJournalFixture } from './workflow-operation-journal-fixture';
 
-function fixture(pauseAt: 'tool' | 'model') {
+function fixture(pauseAt?: 'tool' | 'model' | 'post-tool') {
   const pause = createMultiAgentPauseController();
   let evidence: EvidenceBatch = { items: [], coverage: [], conflicts: [] };
   const search = jest.fn(async () => ({
@@ -75,7 +75,7 @@ function fixture(pauseAt: 'tool' | 'model') {
   const consent = {
     authorize: jest.fn(async () => {
       if (++approvals === 2 && pauseAt === 'model') pause.requestPause();
-      return 'authorized' as const;
+      return 'authorized' as 'authorized' | 'renewal_required';
     }),
   };
   const journal = operationJournalFixture();
@@ -85,6 +85,9 @@ function fixture(pauseAt: 'tool' | 'model') {
     checkpointer: new MemorySaver(),
     operationJournal: journal.journal,
     restoreEvidence: async () => evidence,
+    onAcceptedSearch: () => {
+      if (pauseAt === 'post-tool') pause.requestPause();
+    },
   };
   const config = { configurable: { thread_id: 'synthetic-native-tool-approval' } };
   return {
@@ -104,6 +107,7 @@ test('external query approval pauses with zero search and restores the exact nat
   const first = await runMultiAgentWorkflow(f.options, { config: f.config, pause: f.pause });
   expect(first).toMatchObject({ status: 'paused' });
   expect(first.checkpoint.awaitingAuthorization).toBe('tool-1');
+  expect(first.status === 'paused' && first.pauseReason).toBeUndefined();
   expect(f.search).not.toHaveBeenCalled();
   const second = await runMultiAgentWorkflow(f.options, {
     config: f.config,
@@ -123,6 +127,7 @@ test('model approval after a completed native tool restores history without sear
   const first = await runMultiAgentWorkflow(f.options, { config: f.config, pause: f.pause });
   expect(first).toMatchObject({ status: 'paused' });
   expect(first.checkpoint.awaitingAuthorization).toBe('model-2');
+  expect(first.status === 'paused' && first.pauseReason).toBeUndefined();
   expect(f.search).toHaveBeenCalledTimes(1);
   const second = await runMultiAgentWorkflow(f.options, {
     config: f.config,
@@ -167,3 +172,78 @@ test('a changed source blocks query continuation before a second approval or net
   expect(f.search).toHaveBeenCalledTimes(1);
   expect(f.requests).toHaveLength(1);
 });
+
+test('post-tool drain holds the exact private pair until a separate resumed invocation', async () => {
+  const f = fixture('post-tool');
+  const input = f.options.operationJournal.loadOrCreate;
+  let entered!: () => void;
+  let release!: () => void;
+  const sealing = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  f.options.operationJournal.loadOrCreate = async (identity) => {
+    if (identity.operationId === 'model-2:context') {
+      entered();
+      await held;
+    }
+    return input(identity);
+  };
+  const first = runMultiAgentWorkflow(f.options, { config: f.config, pause: f.pause });
+  try {
+    await expect(
+      Promise.race([sealing.then(() => 'held'), first.then(() => 'settled')]),
+    ).resolves.toBe('held');
+  } finally {
+    release();
+  }
+  expect(await first).toMatchObject({
+    status: 'paused',
+    pauseReason: 'background-paused',
+    checkpoint: { awaitingAuthorization: 'model-2' },
+  });
+  expect(f.consent.authorize).toHaveBeenCalledTimes(1);
+  expect(f.requests).toHaveLength(1);
+  const second = await runMultiAgentWorkflow(f.options, { config: f.config });
+  expect(second.status).toBe('result');
+  expect(f.requests).toHaveLength(2);
+  expect(f.search).toHaveBeenCalledTimes(1);
+  expect(f.requests[1]!.messages).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        role: 'assistant',
+        toolCalls: [expect.objectContaining({ id: 'synthetic-call' })],
+      }),
+      expect.objectContaining({ role: 'tool', toolCallId: 'synthetic-call' }),
+    ]),
+  );
+});
+
+test.each(['stop', 'wrong-owner', 'deleted-context', 'consent-expired'] as const)(
+  '%s cannot dispatch a new model or repeat the completed post-tool search',
+  async (fault) => {
+    const f = fixture('post-tool');
+    const first = await runMultiAgentWorkflow(f.options, { config: f.config, pause: f.pause });
+    expect(first).toMatchObject({
+      status: 'paused',
+      checkpoint: { awaitingAuthorization: 'model-2' },
+    });
+    const controller = new AbortController();
+    if (fault === 'stop') controller.abort();
+    if (fault === 'deleted-context') f.records.delete('model-2:context');
+    if (fault === 'consent-expired') f.consent.authorize.mockResolvedValue('renewal_required');
+    const options =
+      fault === 'wrong-owner'
+        ? { ...f.options, execution: { ...f.options.execution, operationRunId: 'different-owner' } }
+        : f.options;
+    const result = await runMultiAgentWorkflow(options, {
+      config: f.config,
+      signal: controller.signal,
+    });
+    expect(result.status).not.toBe('result');
+    expect(f.requests).toHaveLength(1);
+    expect(f.search).toHaveBeenCalledTimes(1);
+  },
+);

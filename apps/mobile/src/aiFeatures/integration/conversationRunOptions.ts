@@ -6,7 +6,12 @@ import type { ConversationEntryContext } from './conversationIntent';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import type { LanguageModelProvider } from '@orot/model-runtime';
-import type { MultiAgentBudget } from '@orot/agent-runtime';
+import type {
+  ExecutionConsentPort,
+  MultiAgentBudget,
+} from '@orot/agent-runtime';
+import { isKnownModelCheckpointScope } from './conversationModelCheckpointScope';
+export { modelCheckpointScope } from './conversationModelCheckpointScope';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { DefaultPublicSearchResult } from './defaultPublicSearch';
@@ -28,8 +33,7 @@ export function conversationRunWorkflow<
   execution: T,
   current: () => Promise<boolean>,
   hasHistory: boolean,
-  search: DefaultPublicSearchResult,
-  searchedTool: boolean,
+  search: { eager: DefaultPublicSearchResult; chargeEagerSearch: boolean },
 ) {
   return {
     ...guardHistory(execution, current, hasHistory),
@@ -37,25 +41,42 @@ export function conversationRunWorkflow<
       ...execution.execution,
       budget: budgetAfterPublicSearch(
         execution.execution.budget,
-        search,
-        searchedTool,
+        search.eager,
+        search.chargeEagerSearch,
       ),
     },
   };
 }
-
-/** Preview suppression does not suppress the caller's source-fence callbacks. */
 export function conversationRunInvocation(
   observer: RagConversationObserver | undefined,
   retained: boolean,
   registry: LocalEvidenceReferenceRegistry,
   selection: { providerId: string; modelId: string },
-  signal: AbortSignal,
+  scope:
+    | AbortSignal
+    | { signal: AbortSignal; settingsConsent?: ExecutionConsentPort },
 ) {
+  const { signal, settingsConsent } =
+    'signal' in scope ? scope : { signal: scope, settingsConsent: undefined };
+  const onApprovalWait = observer?.onApprovalWait;
+  const checkpointOnly = isKnownModelCheckpointScope(
+    settingsConsent,
+    observer,
+    retained,
+  );
   return {
-    onApprovalWait: observer?.onApprovalWait,
+    onApprovalWait,
+    onModelApprovalWait:
+      checkpointOnly && onApprovalWait
+        ? (waiting: boolean) => onApprovalWait(waiting, 'checkpoint-only')
+        : undefined,
     onProgress: observer?.onProgress,
     onToolEvent: observer?.onToolEvent,
+    backgroundStatusForLease: observer?.backgroundStatusForLease,
+    onReviewedInitialToolOpening:
+      settingsConsent && !observer?.photoInput
+        ? observer?.onReviewedOpening
+        : undefined,
     ...conversationStreamObservers(observer, retained, registry, selection),
     signal,
   };
@@ -115,9 +136,7 @@ export function conversationRunRequest(input: {
     workflow: input.workflow,
   };
 }
-
 export const cancelled = { status: 'failure', kind: 'cancelled' } as const;
-
 type RagSend = (
   question: string,
   previous: readonly RagConversationMessage[],
@@ -125,7 +144,6 @@ type RagSend = (
   observer?: RagConversationObserver,
   entry?: ConversationEntryContext,
 ) => Promise<RagConversationOutcome>;
-
 function receiptDiagnosticsEnabled() {
   try {
     return NativeModules.OrotProviderDiagnostics?.enabled === true;

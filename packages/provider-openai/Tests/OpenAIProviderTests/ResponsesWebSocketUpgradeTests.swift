@@ -26,7 +26,9 @@ final class ResponsesWebSocketUpgradeTests: XCTestCase {
     func testOpenedConnectionCanNeverBecomeAnUpgradeRefusal() async throws {
         let gate = ResponsesWebSocketUpgradeGate()
         gate.opened()
+        XCTAssertFalse(gate.observedClosed)
         gate.failed(httpStatus: 404)
+        XCTAssertTrue(gate.observedClosed)
         try await gate.wait()
     }
 

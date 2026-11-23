@@ -28,7 +28,7 @@ export function lazyConversationContinuationStore(
       await store.initialize(options, signal, snapshotEvidence);
       onReady?.(store);
     },
-    paused: checkpoint => ready().paused(checkpoint),
+    paused: (checkpoint, reason) => ready().paused(checkpoint, reason),
     claim: signal => ready().claim(signal),
   };
 }

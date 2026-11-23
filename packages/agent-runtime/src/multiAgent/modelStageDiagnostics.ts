@@ -9,6 +9,7 @@ export type ModelStage =
   | 'evidence_check'
   | 'response_correction'
   | 'tool_search_wait'
+  | 'tool_result_evidence_check'
   | PromptCacheStage;
 export type ModelStageObserver = (
   stage: ModelStage,

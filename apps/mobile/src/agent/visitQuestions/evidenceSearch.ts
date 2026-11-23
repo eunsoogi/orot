@@ -100,7 +100,12 @@ export async function searchVisitQuestionEvidence(input: {
     });
     if (input.signal?.aborted)
       throw new Error('Evidence search was cancelled.');
-    if (input.signal) {
+    if (sourceKind === 'personal_record') {
+      await input.rag.index(chunks, {
+        reuseVerifiedVectors: true,
+        ...(input.signal ? { signal: input.signal } : {}),
+      });
+    } else if (input.signal) {
       await input.rag.index(chunks, { signal: input.signal });
     } else {
       await input.rag.index(chunks);

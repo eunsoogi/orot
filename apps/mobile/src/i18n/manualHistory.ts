@@ -26,6 +26,28 @@ export const manualHistoryKo = {
     '자동 저장이 켜졌는지 확인할 수 없어요.',
   'settings.automaticMemory.disableError':
     '자동 저장이 꺼졌는지 확인할 수 없어요. 다시 꺼 주세요.',
+  'settings.routineMemory.title': '대화에서 기억 자동 저장',
+  'settings.routineMemory.description':
+    '읽기나 공부처럼 직접 말한 일부 반복 습관을 이 기기의 보호된 메모에만 자동으로 저장해요. 건강 기록이나 AI 답변은 이 설정으로 저장하지 않아요. 저장된 메모는 AI에 전송되거나 답변에 활용되지 않으며, 대화 전송 설정은 바뀌지 않아요.',
+  'settings.routineMemory.retention':
+    '끄면 새 습관 메모를 만들지 않아요. 이미 저장된 메모는 직접 삭제할 수 있어요.',
+  'settings.routineMemory.backup':
+    '이미 저장된 습관 메모는 암호화된 iOS 백업에 포함될 수 있어요. 이 설정의 허가는 다른 기기로 옮겨지지 않아요.',
+  'settings.routineMemory.recovery':
+    '복원 후 상태를 확인할 수 없으면 이 설정을 끈 다음 이 기기에서 다시 켤 수 있어요.',
+  'settings.routineMemory.off': '습관 자동 저장 꺼짐',
+  'settings.routineMemory.on': '습관 자동 저장 켜짐',
+  'settings.routineMemory.checking': '습관 저장 설정을 확인하는 중…',
+  'settings.routineMemory.enabling': '습관 자동 저장을 켜는 중…',
+  'settings.routineMemory.disabling': '습관 자동 저장을 끄는 중…',
+  'settings.routineMemory.enable': '습관 자동 저장 켜기',
+  'settings.routineMemory.disable': '습관 자동 저장 끄기',
+  'settings.routineMemory.retry': '습관 저장 설정 다시 확인',
+  'settings.routineMemory.unavailable': '습관 저장 설정을 확인할 수 없어요.',
+  'settings.routineMemory.enableError':
+    '습관 자동 저장이 켜졌는지 확인할 수 없어요.',
+  'settings.routineMemory.disableError':
+    '습관 자동 저장이 꺼졌는지 확인할 수 없어요. 다시 꺼 주세요.',
   'manualHistory.title': '과거 건강 기록',
   'manualHistory.subtitle':
     '진단, 시술, 복용 관련 내용과 건강 정보를 이 기기에 기록해요.',

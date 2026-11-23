@@ -30,6 +30,11 @@ export type SavedHistoryDisplayRow = {
       readonly steeringInstructions?: DisplayMessage['steeringInstructions'];
     })
   | {
+      readonly kind: 'opening';
+      readonly question: string;
+      readonly initialResponse: import('../storage/conversationReviewedOpeningStorage').ReviewedOpening;
+    }
+  | {
       readonly kind: 'interrupted';
       readonly question: string;
       readonly interruptionReason?: ConversationRecoveryReason;
@@ -87,7 +92,8 @@ export function savedHistoryTranscript(
       savedHistoryDisplayOnly: true as const,
       voiceTimelineOrder: { createdAt: row.createdAt, id: row.id },
     };
-    const incomplete = row.kind === 'interrupted' || row.partial;
+    const incomplete =
+      row.kind === 'interrupted' || (row.kind === 'answer' && row.partial);
     const activity = incomplete
       ? restoredConversationInterruptionCopy(row.interruptionReason)
       : undefined;
@@ -107,7 +113,10 @@ export function savedHistoryTranscript(
             },
           ]
         : []),
-      {
+    ];
+    // A reviewed opening can stand alone; do not invent an empty interrupted assistant bubble.
+    if (row.kind === 'answer' || row.kind === 'opening' || activity) {
+      messages.push({
         ...origin,
         id: answerId,
         role: 'assistant',
@@ -118,7 +127,7 @@ export function savedHistoryTranscript(
         !directPhoto
           ? { savedPossibilityNarrative: true as const }
           : {}),
-        ...(row.kind === 'answer' && row.initialResponse
+        ...(row.kind !== 'interrupted' && row.initialResponse
           ? { initialResponse: row.initialResponse }
           : {}),
         ...(activity ? { activity } : {}),
@@ -137,8 +146,8 @@ export function savedHistoryTranscript(
         ...(row.kind === 'answer' && row.archivedCitationTarget
           ? { archivedCitationTarget: row.archivedCitationTarget }
           : {}),
-      },
-    ];
+      });
+    }
     if (afterLiveId === undefined) historical.push(...messages);
     else mounted.push({ after: afterLiveId, messages });
   }

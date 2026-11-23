@@ -4,6 +4,10 @@ import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { AppText } from '../layout/AppText';
 import { t } from '../i18n';
 import { styles } from './ConversationScreen.styles';
+import {
+  markSteeringLatency,
+  steeringLatencyTracked,
+} from './steeringLatencyDiagnostic';
 import type { StoredSteeringInstruction } from '../storage/conversationSteeringStorage';
 
 /** Local enqueue/write is not a receipt. Read means provider application, not claimed comprehension. */
@@ -48,9 +52,18 @@ export function ConversationSteeringMessages({
         ]
           .filter(Boolean)
           .join(' · ');
+        const tracked = !restored && steeringLatencyTracked(row.id);
         return (
           <View
             key={row.id}
+            onLayout={
+              tracked
+                ? ({ nativeEvent: { layout } }) => {
+                    if (layout.width > 0 && layout.height > 0)
+                      markSteeringLatency(row.id, 'steering_row_layout');
+                  }
+                : undefined
+            }
             style={receiptStyles.row}
             testID="conversation-steering-message"
           >
@@ -59,12 +72,35 @@ export function ConversationSteeringMessages({
               restored={restored}
               style={styles.userMessage}
             >
-              <AppText selectable style={[styles.messageText, styles.userText]}>
-                {row.text}
-              </AppText>
+              {/* Use the ordinary outgoing inset on the content, not the
+                  painted animation host. The receipt remains outside it. */}
+              <View style={styles.userMessageBody}>
+                <AppText
+                  selectable
+                  style={[styles.messageText, styles.userText]}
+                >
+                  {row.text}
+                </AppText>
+              </View>
             </ConversationBubbleEntrance>
             {receiptText ? (
               <AppText
+                onTextLayout={
+                  tracked && row.status === 'applied' && row.readAt
+                    ? ({ nativeEvent: { lines } }) => {
+                        // A queued native event from the timestamp/Sent state is not a Read layout.
+                        const normalize = (value: string) =>
+                          value.replace(/\s/gu, '');
+                        if (
+                          Array.isArray(lines) &&
+                          lines.every(line => typeof line?.text === 'string') &&
+                          normalize(lines.map(line => line.text).join('')) ===
+                            normalize(receiptText)
+                        )
+                          markSteeringLatency(row.id, 'steering_read_layout');
+                      }
+                    : undefined
+                }
                 accessibilityLiveRegion="polite"
                 accessibilityHint={
                   row.status === 'applied'

@@ -138,3 +138,60 @@ test('provider failure before processing evidence does not mark read', async () 
   );
   expect(onProviderReceipt).not.toHaveBeenCalled();
 });
+
+test('status cannot re-enter a denied owner and begins only after admitted provider entry', async () => {
+  const f = fixture();
+  const controller = new AbortController();
+  let current = true;
+  let finishCheck!: (allowed: boolean) => void;
+  const durable = new Promise<boolean>(resolve => {
+    finishCheck = resolve;
+  });
+  const observe = jest.fn();
+  const selection = conversationReceiptSelection(f.selected, {
+    expectedConversationModel: {
+      providerId: 'synthetic',
+      modelId: 'synthetic',
+      isCurrent: () => current,
+      isDurablyCurrent: () => durable,
+    },
+    onProviderExecution: observe,
+  });
+  const denied = selection.provider.generate(request, {
+    signal: controller.signal,
+  });
+  current = false;
+  finishCheck(true);
+  expect(await denied).toMatchObject({ ok: false });
+  expect(f.selected.provider.generate).not.toHaveBeenCalled();
+  expect(observe).not.toHaveBeenCalled();
+
+  const order: string[] = [];
+  const original = jest.fn(
+    async (_request, options?: LanguageModelExecutionOptions) => {
+      order.push('entered');
+      await Promise.resolve();
+      if (!options?.signal?.aborted) order.push('synthetic-dispatch');
+      return providerSuccess({
+        text: 'synthetic',
+        toolCalls: [],
+        finishReason: 'complete' as const,
+      });
+    },
+  );
+  const stopped = conversationReceiptSelection<typeof f.selected>(
+    { ...f.selected, provider: { ...f.selected.provider, generate: original } },
+    {
+      onProviderExecution() {
+        order.push('notify');
+        controller.abort();
+        return () => {
+          order.push('finish');
+        };
+      },
+    },
+  );
+  await stopped.provider.generate(request, { signal: controller.signal });
+  expect(original).toHaveBeenCalledTimes(1);
+  expect(order).toEqual(['entered', 'notify', 'finish']);
+});
