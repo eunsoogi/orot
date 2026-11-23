@@ -1,26 +1,26 @@
-import { useCallback, useLayoutEffect, useMemo } from "react";
-import type { ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { AdaptiveColumns } from "../layout/AdaptiveColumns";
-import { NavigationRouteScrollView } from "./NavigationRouteScrollView";
+import { useCallback, useLayoutEffect, useMemo } from 'react';
+import type { ReactNode } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AdaptiveColumns } from '../layout/AdaptiveColumns';
+import { NavigationRouteScrollView } from './NavigationRouteScrollView';
 import {
   NavigationPrimaryActionContext,
   type NavigationPrimaryActionHost,
-} from "./useNavigationPrimaryAction";
-import { NavigationLeaveStateRegistrationProvider } from "./useNavigationLeaveStateRegistration";
-import { createNavigationLeaveGuard } from "./navigationLeaveGuard";
-import { confirmNavigationLeave } from "./navigationLeaveConfirmation";
+} from './useNavigationPrimaryAction';
+import { NavigationLeaveStateRegistrationProvider } from './useNavigationLeaveStateRegistration';
+import { createNavigationLeaveGuard } from './navigationLeaveGuard';
+import { confirmNavigationLeave } from './navigationLeaveConfirmation';
 import type {
   NavigationController,
   NavigationRoute,
-} from "./navigationController";
-import { NavigationContentTransition } from "./NavigationContentTransition";
+} from './navigationController';
+import { NavigationContentTransition } from './NavigationContentTransition';
 import type {
   NavigationLeaveStateSource,
   NavigationRouteActions,
-} from "./NavigationRouteAdapter";
-import type { NavigationRootTabs } from "./rootTabs";
+} from './NavigationRouteAdapter';
+import type { NavigationRootTabs } from './rootTabs';
 
 export interface NavigationRouteSceneProps<Name extends string> {
   readonly route: NavigationRoute<Name>;
@@ -28,7 +28,7 @@ export interface NavigationRouteSceneProps<Name extends string> {
   readonly active: boolean;
   readonly scrollable: boolean;
   readonly childHandlesSafeArea: boolean;
-  readonly contentLayoutOwner: "scene" | "screen";
+  readonly contentLayoutOwner: 'scene' | 'screen';
   readonly rootTabs?: NavigationRootTabs;
   readonly primaryActionHost: NavigationPrimaryActionHost | null;
   readonly registerLeaveStateForRoute: (
@@ -95,11 +95,11 @@ export function NavigationRouteScene<Name extends string>({
         readState: () => {
           const source = getLeaveStateSource();
           if (!source) {
-            throw new Error("The active route has no leave-state owner.");
+            throw new Error('The active route has no leave-state owner.');
           }
           return source.readState();
         },
-        confirm: async (request) => {
+        confirm: async request => {
           const source = getLeaveStateSource();
           if (!source) return false;
           const approved = await (source.confirm ?? confirmNavigationLeave)({
@@ -118,7 +118,7 @@ export function NavigationRouteScene<Name extends string>({
         stopRecording: async () => {
           const source = getLeaveStateSource();
           if (!source?.stopRecording) {
-            throw new Error("The active route cannot stop its recording.");
+            throw new Error('The active route cannot stop its recording.');
           }
           await source.stopRecording();
         },
@@ -144,7 +144,7 @@ export function NavigationRouteScene<Name extends string>({
   );
   // Screen-owned panels must measure the full usable lane without a scene-level width constraint.
   const adaptiveContent =
-    contentLayoutOwner === "scene" ? (
+    contentLayoutOwner === 'scene' ? (
       <AdaptiveColumns
         active={active}
         primary={routeContent}
@@ -156,11 +156,11 @@ export function NavigationRouteScene<Name extends string>({
     );
   const body = scrollable ? (
     <NavigationRouteScrollView
-      key={`${route.key}:${rootTabs?.activeTab ?? ""}`}
+      key={`${route.key}:${rootTabs?.activeTab ?? ''}`}
       pullToRefresh={
-        route.name === "recent-records" ||
-        route.name === "generated-report-detail" ||
-        route.name === "saved-memory-detail"
+        route.name === 'recent-records' ||
+        route.name === 'generated-report-detail' ||
+        route.name === 'saved-memory-detail'
       }
     >
       {adaptiveContent}
@@ -174,7 +174,7 @@ export function NavigationRouteScene<Name extends string>({
       {childHandlesSafeArea ? (
         body
       ) : (
-        <SafeAreaView edges={["top", "right", "left"]} style={styles.fill}>
+        <SafeAreaView edges={['top', 'right', 'left']} style={styles.fill}>
           {body}
         </SafeAreaView>
       )}
@@ -184,8 +184,8 @@ export function NavigationRouteScene<Name extends string>({
   return rootTabs ? (
     <NavigationContentTransition
       transitionKey={
-        rootTabs.contentKey === "schedule"
-          ? "records"
+        rootTabs.contentKey === 'schedule'
+          ? 'records'
           : (rootTabs.contentKey ?? rootTabs.activeTab)
       }
     >
