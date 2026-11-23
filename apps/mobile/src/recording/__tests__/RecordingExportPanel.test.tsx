@@ -1,4 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import RecordingExportPanel from '../RecordingExportPanel';
 import {
   correction,
@@ -188,4 +194,33 @@ test('reports an iOS activity failure without claiming export success', async ()
     '파일을 내보내지 못했어요. 다시 시도해 주세요.',
   );
   expect(screen.queryByTestId('recording-export-status')).toBeNull();
+});
+
+test('saved-detail share rows use one list group and only an interior divider', async () => {
+  const { transcriptService, exportService } = createServices([original]);
+  await render(
+    <RecordingExportPanel
+      savedDetail
+      recordingSourceId={source.id}
+      transcriptService={transcriptService}
+      exportService={exportService}
+    />,
+  );
+  const list = within(screen.getByTestId('recording-export-rows'));
+  const audio = list.getByTestId('recording-export-audio');
+  const transcript = list.getByTestId('recording-export-transcript');
+  for (const row of [audio, transcript]) {
+    const style = StyleSheet.flatten(row.props.style);
+    expect(style.borderWidth ?? 0).toBe(0);
+    expect(style.borderLeftWidth ?? 0).toBe(0);
+  }
+  expect(StyleSheet.flatten(audio.props.style).borderBottomWidth).toBe(
+    StyleSheet.hairlineWidth,
+  );
+  expect(
+    StyleSheet.flatten(transcript.props.style).borderBottomWidth,
+  ).toBeUndefined();
+  expect(exportService.shareAudio).not.toHaveBeenCalled();
+  await fireEvent.press(audio);
+  expect(exportService.shareAudio).toHaveBeenCalledWith(source.id);
 });

@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import type { ReactNode } from 'react';
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
@@ -89,6 +90,15 @@ test('production recording route restores evidence without extraction and saves 
   const view = await render(<RecordingReviewRoute />);
   await screen.findByTestId('encounter-save');
   expect(screen.getByText('전사 버전 2')).toBeTruthy();
+  for (const id of [
+    'encounter-review-panel',
+    'encounter-candidate-0',
+    'encounter-evidence-candidate-0-0',
+  ]) {
+    const style = StyleSheet.flatten(screen.getByTestId(id).props.style);
+    expect(style.borderWidth ?? 0).toBe(0);
+    expect(style.borderLeftWidth ?? 0).toBe(0);
+  }
   expect(screen.getByText('약물')).toBeTruthy();
   expect(screen.getByText('충돌: 기존 기록과 다름')).toBeTruthy();
   expect(encounterReviewService.start).not.toHaveBeenCalled();
