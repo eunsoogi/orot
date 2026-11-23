@@ -186,8 +186,10 @@ test.each(['live', 'restored', 'pending shortcut', 'without copy'] as const)(
             id: 1,
             role: 'user',
             content,
-            restoredHistory: mode === 'restored',
-            localChoicePending: mode === 'pending shortcut',
+            ...(mode === 'restored' ? { restoredHistory: true as const } : {}),
+            ...(mode === 'pending shortcut'
+              ? { localChoicePending: true as const }
+              : {}),
           }}
           copyScope={copyScope}
         />
