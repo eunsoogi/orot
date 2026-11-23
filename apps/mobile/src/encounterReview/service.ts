@@ -20,7 +20,10 @@ import {
 } from '../agent/encounter/modelComposition';
 import { resolveSelectedAiProvider } from '../aiFeatures/integration/provider';
 import { runLocalEncounterProcessing } from '../agent/encounter/workflow';
-import { readEncounterTranscript } from '../agent/encounter/transcript';
+import {
+  EncounterTranscriptTooLong,
+  readEncounterTranscript,
+} from '../agent/encounter/transcript';
 import type { EncounterReviewService, ReviewResult } from './controller';
 import type { ReviewDiagnostics, ReviewDiagnosticAttempt } from './diagnostics';
 
@@ -154,10 +157,17 @@ export function createEncounterReviewService(
         await repository.transcripts.listForRecording(sourceId);
       if (!transcripts.length) return { status: 'no-transcript' };
       diagnostics?.stage('transcript_read');
-      await repository.transaction(async (writer, sql) => {
-        if (!sql) throw new Error('Canonical storage required.');
-        await readEncounterTranscript(writer, sql, sourceId);
-      });
+      try {
+        await repository.transaction(async (writer, sql) => {
+          if (!sql) throw new Error('Canonical storage required.');
+          await readEncounterTranscript(writer, sql, sourceId);
+        });
+      } catch (error) {
+        if (!(error instanceof EncounterTranscriptTooLong)) throw error;
+        if (signal.aborted) return { status: 'cancelled' };
+        diagnostics?.unavailable('transcript_read');
+        return { status: 'transcript-too-long' };
+      }
       diagnostics?.stage('provider_selection');
       const selected = await resolveSelected();
       if (selected.status !== 'ready') {
