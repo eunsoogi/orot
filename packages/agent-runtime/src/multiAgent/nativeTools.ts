@@ -11,12 +11,13 @@ import { toLangChainMessages, toNativeMessages } from '../langchain/messages';
 import { isSourceAllowed } from './evidence';
 import { guidedSchema } from './guidedSchema';
 import { canonicalJson, utf8ByteLength } from './protocol';
-import { completeState, reportTaskStreamEvent, stop } from './runtimeContext';
+import { canceled, completeState, reportTaskStreamEvent, stop } from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { missingNativeEvidenceKind } from './nativeEvidenceRequirements';
 import { reviewInitialToolResponse } from './initialToolResponseReview';
 import { canReserveToolModelCall } from './evidenceToolModelBudget';
+import { observeUntilAbort } from './operationObservation';
 
 /** Tool definitions describe capabilities only. No record is read until a model requests it. */
 export function withNativeTools<TResult>(
@@ -156,20 +157,37 @@ export async function consumeNativeToolCall<TResult>(
     } catch {
       /* fail closed */
     }
-    if (initial && context.options.task.reviewInitialToolResponse) {
+    const requiresReview = context.options.task.reviewInitialToolResponse;
+    if (initial && requiresReview) {
       const canReview =
         !('sourceKind' in tool) ||
         canReserveToolModelCall(tool, { ...state, modelCalls: state.modelCalls + 1 });
       if (!canReview) initial = undefined;
     }
-    if (initial && context.options.task.reviewInitialToolResponse) {
+    if (initial && requiresReview) {
       const review = await reviewInitialToolResponse(context, state, initial);
       modelCalls = review.modelCalls;
       if (context.outcome) return { ...completeState(), modelCalls };
       if (!review.accepted) initial = undefined;
     }
-    if (initial && !context.signal.aborted)
-      reportTaskStreamEvent(context, { type: 'initial_response', callId: call.id, text: initial });
+    if (initial && !context.signal.aborted) {
+      const opening = { callId: call.id, text: initial };
+      const admit = requiresReview && context.onReviewedInitialToolOpening;
+      if (admit) {
+        // Optional protected local publication must not fall back to an untyped event.
+        const publish = Promise.resolve().then(() =>
+          context.signal.aborted ? false : admit(opening, context.signal),
+        );
+        await observeUntilAbort(
+          publish.catch(() => false),
+          context.signal,
+        );
+      } else reportTaskStreamEvent(context, { type: 'initial_response', ...opening });
+    }
+    if (context.signal.aborted) {
+      canceled(context);
+      return { ...completeState(), modelCalls };
+    }
   }
   context.nativeToolMessages.push(assistantMessage);
   context.pendingNativeToolCallId = call.id;

@@ -6,3 +6,9 @@ export type MultiAgentResponderStreamEvent =
   | { readonly type: 'started' }
   | { readonly type: 'text_delta'; readonly text: string }
   | { readonly type: 'text_snapshot'; readonly text: string };
+
+/** Local display admission for one first-tool opening already approved by the task's reviewer. */
+export type ReviewedInitialToolOpeningObserver = (
+  opening: { readonly callId: string; readonly text: string },
+  signal: AbortSignal,
+) => Promise<boolean>;
