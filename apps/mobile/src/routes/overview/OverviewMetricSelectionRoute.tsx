@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { t } from '../../i18n';
 import { AppButton } from '../../layout/AppButton';
 import { AppText } from '../../layout/AppText';
@@ -108,7 +108,10 @@ export function OverviewMetricSelectionRoute({
     if (saved && current()) await actions.onBack();
   };
   return (
-    <View style={styles.section} testID="overview-metric-selection-screen">
+    <View
+      style={[styles.section, routeStyles.content]}
+      testID="overview-metric-selection-screen"
+    >
       <AppText accessibilityRole="header" style={styles.title}>
         {t('overview.metricSelectionTitle')}
       </AppText>
@@ -141,3 +144,8 @@ export function OverviewMetricSelectionRoute({
     </View>
   );
 }
+
+const routeStyles = StyleSheet.create({
+  // Match peer settings content margins without changing the Duo rail or scroll owner.
+  content: { paddingHorizontal: 20, paddingTop: 16 },
+});

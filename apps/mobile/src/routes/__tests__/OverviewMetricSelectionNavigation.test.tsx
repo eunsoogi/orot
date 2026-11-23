@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { createHealthEvidenceTestDatabase } from '../../healthEvidence/localEvidenceTestSupport';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
@@ -157,6 +158,14 @@ test('separate editor discards Cancel and saves all five ordered cards into the 
     const metricLoads = jest.mocked(loadOverviewMetrics).mock.calls.length;
     await openEditor();
     expect(loadOverviewMetrics).toHaveBeenCalledTimes(metricLoads);
+    const editor = screen.getByTestId('overview-metric-selection-screen');
+    expect(StyleSheet.flatten(editor.props.style)).toMatchObject({
+      paddingHorizontal: 20,
+      paddingTop: 16,
+    });
+    expect(editor).toContainElement(
+      screen.getByRole('header', { name: '건강 지표 편집' }),
+    );
     await fireEvent.press(choice('sleep'));
     expect(save()).toBeDisabled();
     await fireEvent.press(choice('bodyMass'));
