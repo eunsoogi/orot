@@ -31,10 +31,15 @@ export function conversationOpeningDelivery(input: {
     reportOpening('opening_display', 'completed');
     return true;
   };
+  const validOpening = (value: ReviewedOpening) => {
+    if (value.text.trim()) return true;
+    reportOpening('opening_display', 'unavailable');
+    return false;
+  };
   return {
     /** New reviewed producer capability. Raw/preview stream tokens never get a durable write. */
     async onReviewedOpening(value: ReviewedOpening, signal: AbortSignal) {
-      if (!eligible() || signal.aborted) return false;
+      if (!eligible() || signal.aborted || !validOpening(value)) return false;
       input.receipt();
       try {
         await input.retained?.persistReviewedOpening?.(value, signal, () =>
@@ -50,7 +55,7 @@ export function conversationOpeningDelivery(input: {
     onLegacyOpening(value: ReviewedOpening) {
       // Reviewed first-tool openings still use the legacy event. Preserve live
       // display without giving that shape the independent journal capability.
-      if (!eligible()) return;
+      if (!eligible() || !validOpening(value)) return;
       input.receipt();
       show(value);
     },
