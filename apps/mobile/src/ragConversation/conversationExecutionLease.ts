@@ -1,3 +1,5 @@
+import { createConversationPauseAdvisory } from './conversationPauseAdvisory';
+import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
 export type ConversationInterruptionReason =
   | 'decision-required'
@@ -9,6 +11,7 @@ export type ConversationInterruptionReason =
 
 export type ConversationRecoveryReason =
   | ConversationInterruptionReason
+  | ConversationCheckpointPauseReason
   | 'user-stopped'
   | 'provider-failed'
   | 'process-interrupted';
@@ -18,6 +21,7 @@ export function decodeConversationRecoveryReason(
   return typeof value === 'string' &&
     [
       'decision-required',
+      'background-paused',
       'expired',
       'protected-data',
       'bridge-unavailable',
@@ -31,8 +35,17 @@ export function decodeConversationRecoveryReason(
     : undefined;
 }
 
+export type ConversationContinuedState =
+  'continued-granted' | 'continued-refused' | 'continued-deferred-inactive';
+export type ContinuationOpportunity =
+  ConversationContinuedState | 'continuation-foreground';
+
 export type ConversationExecutionEvent =
-  | { readonly kind: 'pause-requested'; readonly requestId: string }
+  | {
+      readonly kind: 'pause-requested';
+      readonly requestId: string;
+      readonly warning?: string;
+    }
   | {
       readonly kind: 'expired';
       readonly requestId: string;
@@ -41,9 +54,10 @@ export type ConversationExecutionEvent =
   | {
       readonly kind: 'continued';
       readonly requestId: string;
-      readonly state: 'continued-granted' | 'continued-refused';
+      readonly state: ConversationContinuedState;
     }
   | { readonly kind: 'foreground' }
+  | { readonly kind: 'continuation-foreground' }
   | { readonly kind: 'phase' }
   | { readonly kind: 'protectedData'; readonly available: boolean };
 
@@ -51,10 +65,13 @@ export interface ConversationExecutionAdapter {
   readonly bridgeAvailable?: boolean;
   currentPhase?(): 'active' | 'background' | 'inactive' | 'unknown';
   begin(requestId: string): Promise<boolean>;
+  /** Starts one OS-only preparation lease on the native foreground queue. */
+  beginPreparation?(attemptId: string): Promise<boolean>;
   end(requestId: string): void;
   work?(requestId: string, active: boolean): void;
   milestone?(requestId: string, stage: 'answered' | 'committed'): void;
   isActive(requestId: string): Promise<boolean>;
+  pauseStillCurrent?(requestId: string, warning: string): Promise<boolean>;
   protectedDataAvailable(): Promise<boolean | null>;
   subscribe(listener: (event: ConversationExecutionEvent) => void): () => void;
 }
@@ -68,6 +85,7 @@ export async function beginConversationExecutionLease(
   requestPause: () => void = () => {},
   diagnostic?: ReturnType<typeof createExecutionDiagnostics>,
   acceptsNativeExpiry?: () => boolean,
+  observeOpportunity?: (event: ContinuationOpportunity) => void,
 ) {
   const diagnose =
     diagnostic ??
@@ -87,15 +105,22 @@ export async function beginConversationExecutionLease(
   let closed = false;
   let interrupted = false;
   let acquired = false;
-  let pauseRequested = false;
+  const pause = createConversationPauseAdvisory(
+    adapter,
+    requestId,
+    () => !closed && !interrupted,
+    () => {
+      report('pause-requested');
+      requestPause();
+    },
+  );
   const notify = (reason: ConversationInterruptionReason) => {
     if (closed || interrupted) return;
     interrupted = true;
     report('interrupt', reason);
     interrupt(reason);
   };
-  // A failed ownership check is terminal for safety, but neither a background
-  // transition nor a boolean result establishes an OS-expiration cause.
+  // A boolean ownership loss is not proof that iOS expired the lease.
   const unavailable = (stage: 'startup' | 'foreground') => {
     if (closed || interrupted) return;
     report(
@@ -107,10 +132,12 @@ export async function beginConversationExecutionLease(
   };
   let reconciling = false;
   let reconcileAgain = false;
+  let nativeOpportunity = false;
   // Native and AppState can both announce foreground. Keep one bridge check in
   // flight and one trailing recheck, without caching availability or lease state.
-  const reconcile = async () => {
+  const reconcile = async (continuationForeground = false) => {
     if (closed || interrupted) return;
+    nativeOpportunity ||= continuationForeground;
     if (reconciling) {
       reconcileAgain = true;
       return;
@@ -120,6 +147,8 @@ export async function beginConversationExecutionLease(
       do {
         // Observe actual bridge checks, not duplicate foreground notifications.
         reconcileAgain = false;
+        const opportunity = nativeOpportunity;
+        nativeOpportunity = false;
         report('foreground-check-started');
         const available = await adapter.protectedDataAvailable();
         if (closed || interrupted) return;
@@ -129,6 +158,8 @@ export async function beginConversationExecutionLease(
         // A passed lease check is not provider progress; late results have no owner.
         else if (!closed && !interrupted) {
           report('foreground-check-passed');
+          if (opportunity && available === true)
+            observeOpportunity?.('continuation-foreground');
         }
       } while (reconcileAgain && !closed && !interrupted);
     } catch {
@@ -138,21 +169,18 @@ export async function beginConversationExecutionLease(
     }
   };
   const unsubscribe = adapter.subscribe(event => {
-    // A drain is advisory, not an abort: in-flight effects must reach a safe boundary.
+    if (event.kind === 'pause-requested') pause.receive(event);
     if (
-      event.kind === 'pause-requested' &&
+      event.kind === 'continued' &&
       event.requestId === requestId &&
       !closed &&
-      !interrupted &&
-      !pauseRequested
+      !interrupted
     ) {
-      pauseRequested = true;
-      // This acknowledges the advisory request, not successful checkpoint creation.
-      report('pause-requested');
-      requestPause();
-    }
-    if (event.kind === 'continued' && event.requestId === requestId)
+      // A now-granted task replaces the sampled short-lease opportunity.
+      if (event.state === 'continued-granted') pause.invalidate();
       report(event.state);
+      observeOpportunity?.(event.state);
+    }
     // An unaccepted expiry is not a consumed interruption: a subsequent
     // lock, decision fence or bridge failure must still reach its exact owner.
     if (
@@ -167,7 +195,10 @@ export async function beginConversationExecutionLease(
     }
     if (event.kind === 'protectedData' && !event.available)
       notify('protected-data');
-    if (event.kind === 'foreground') report('foreground');
+    if (event.kind === 'foreground') {
+      pause.invalidate();
+      report('foreground');
+    }
     if (event.kind === 'phase') {
       report('phase');
       const background = adapter.currentPhase?.() === 'background';
@@ -175,6 +206,11 @@ export async function beginConversationExecutionLease(
     }
     // Recheck after foregrounding in case suspension delayed the expiration event.
     if (event.kind === 'foreground' && acquired) reconcile();
+    if (event.kind === 'continuation-foreground' && acquired) {
+      pause.invalidate();
+      report('continuation-foreground');
+      reconcile(true);
+    }
   });
   try {
     if ((await adapter.protectedDataAvailable()) === false)
@@ -195,11 +231,13 @@ export async function beginConversationExecutionLease(
   } catch {
     notify('lease-check-failed');
   }
-  return () => {
+  const release = () => {
     if (closed) return;
     closed = true;
     report('release');
     unsubscribe();
     if (acquired) adapter.end(requestId);
   };
+  // Cleanup also exists for interrupted or denied acquisitions.
+  return Object.assign(release, { admitted: acquired && !interrupted });
 }

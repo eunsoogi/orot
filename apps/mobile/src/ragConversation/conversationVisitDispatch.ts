@@ -5,7 +5,11 @@ import type { ConversationSession } from './conversationSessionTypes';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import { entryIntentSender } from './entryIntentSender';
 import { isTypedVisitQuestionRequest } from './typedVisitQuestionRequest';
-import { withTypedComposerReport } from './typedConversationReportRequest';
+import { isWarmConversationSender } from './warmConversationSender';
+import {
+  typedConversationReportIntent,
+  withTypedComposerReport,
+} from './typedConversationReportRequest';
 import type { TreatmentConversationSender } from '../treatmentContext/treatmentConversationSender';
 
 const pendingVisits = new WeakMap<
@@ -130,6 +134,19 @@ export function sendConversationMessage(
     withTypedComposerReport(onSend),
     'composer',
   );
+  const intent = conversationEntryForSession(store, id)?.intent;
+  // Only ordinary composer sends use the existing warm sender identity.
+  // Typed templates keep their own dispatch; entryIntentSender excludes Daily's pinned target.
+  if (
+    session &&
+    (!intent || intent === 'conversation') &&
+    !session.entryIntent &&
+    !(prepare && isTypedVisitQuestionRequest(session.draft)) &&
+    !typedConversationReportIntent(session.draft) &&
+    !pendingVisits.get(store)?.has(id) &&
+    isWarmConversationSender(sendEntry)
+  )
+    return store.send(id, sendEntry);
   return store.send(id, (question, history, signal, observer) => {
     if (observer?.photoInput)
       return sendEntry(question, history, signal, observer);

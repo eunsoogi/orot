@@ -100,7 +100,7 @@ test.each([
         'The synthetic public-web turn must not dispatch Europe PMC',
       );
     });
-    installSyntheticWebAccount();
+    const loadAccountSummary = installSyntheticWebAccount();
     const data = {
       ...localData([]).data,
       openConversationArtifactStorage: async () => artifactStorage,
@@ -194,6 +194,7 @@ test.each([
         );
         expect(screen.queryByTestId('rag-conversation-error')).toBeNull();
       }
+      expect(loadAccountSummary.mock.calls).toEqual([[account]]);
       expect(publicWeb).toHaveBeenCalledTimes(1);
       expect(publicWeb.mock.calls[0]?.slice(1)).toEqual([
         account,
