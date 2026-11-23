@@ -70,7 +70,7 @@ export function useNavigationFrameDiagnostic(
     record.current = report;
     const sample = (phase?: string) =>
       report(frame.current.planned, frame.current.measured, phase);
-    sample(AppState.currentState);
+    sample(AppState.currentState ?? undefined);
     const subscription = AppState.addEventListener('change', sample);
     return () => {
       record.current = null;
