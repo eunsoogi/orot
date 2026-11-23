@@ -175,7 +175,12 @@ export function AppRouteContent({
     case 'saved-recordings':
       return <SavedRecordingsRoute actions={actions} />;
     case 'recording-review':
-      return <RecordingReviewRoute />;
+      return (
+        <RecordingReviewRoute
+          routeKey={actions.route.key}
+          routeOwner={actions.ownership}
+        />
+      );
     case 'recording':
       // Automatic and manual transcription share the same job registry inside the recording flow.
       return (

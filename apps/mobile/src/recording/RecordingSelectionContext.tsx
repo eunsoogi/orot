@@ -5,6 +5,7 @@ import type { RecordingLibrarySummary } from './recordingLibraryService';
 export interface RecordingSelection {
   readonly summary: RecordingLibrarySummary;
   readonly autoPlay: boolean;
+  readonly recentRouteKey?: string;
 }
 
 const Context = createContext<{
