@@ -5,9 +5,13 @@
 /// UIKit owns the long press, lift, haptic, placement and dismissal. The React
 /// view never leaves its transcript layout and no second renderer copies it.
 @interface OrotConversationBubbleCopyView : RCTView <UIContextMenuInteractionDelegate>
+- (nullable NSString *)copyText __attribute__((objc_method_family(none)));
 @property(nonatomic, copy, nullable) NSString *copyText;
+- (nullable NSString *)copyOwner __attribute__((objc_method_family(none)));
 @property(nonatomic, copy, nullable) NSString *copyOwner;
+- (nullable NSString *)copyLabel __attribute__((objc_method_family(none)));
 @property(nonatomic, copy, nullable) NSString *copyLabel;
+- (nullable UIContextMenuInteraction *)copyInteraction __attribute__((objc_method_family(none)));
 @property(nonatomic, strong, nullable) UIContextMenuInteraction *copyInteraction;
 @property(nonatomic) NSUInteger copyRevision;
 @property(nonatomic) BOOL observingAvailability;
