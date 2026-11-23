@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { Alert, StyleSheet } from 'react-native';
 import type { Appointment } from '@orot/storage';
 import AppointmentsScreen from '../AppointmentsScreen';
@@ -181,4 +187,32 @@ test('uses the saved linked title and fallback without outlines, preserving sele
     '예약',
   );
   expect(screen.getByTestId('appointment-next-visit-linked')).toBeVisible();
+});
+
+test('renders one selected detail immediately after its own card in either section', async () => {
+  const store = createAppointmentStore([
+    appointment('past', now - 60_000),
+    appointment('next', now + 60_000),
+    appointment('later', now + 120_000),
+  ]);
+  await render(<AppointmentsScreen repository={store.repository} />);
+  await screen.findByTestId('appointment-next');
+  const assertRightAfter = (selected: string, section: string) => {
+    const ids = within(screen.getByTestId(section))
+      .getAllByTestId(
+        /^(?:appointment-select-|appointment-(?:next|later|past)$)/u,
+      )
+      .map(node => node.props.testID);
+    expect(ids[ids.indexOf(`appointment-select-${selected}`) + 1]).toBe(
+      `appointment-${selected}`,
+    );
+    expect(
+      screen.getAllByTestId(/^appointment-(?:next|later|past)$/u),
+    ).toHaveLength(1);
+  };
+  assertRightAfter('next', 'appointments-section-upcoming');
+  await fireEvent.press(screen.getByTestId('appointment-select-past'));
+  assertRightAfter('past', 'appointments-section-history');
+  expect(screen.queryByTestId('appointment-next')).toBeNull();
+  expect(screen.getByTestId('appointment-next-visit-next')).toBeVisible();
 });
