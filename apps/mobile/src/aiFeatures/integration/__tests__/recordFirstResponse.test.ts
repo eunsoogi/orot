@@ -2,6 +2,7 @@ import { stableJson } from '../evidenceUtils';
 import { recordFirstResponsePrompt } from '../../../agent/execution/recordFirstResponsePrompt';
 import { restoreConversationTask } from '../../../ragConversation/conversationTaskVersions';
 import { ragConversationTask } from '../../../ragConversation/task';
+import { input } from '../../../ragConversation/testSupport/structuredPossibilityReportFixture';
 import { conversationDailyReportText } from '../conversationDailyReportText';
 import { buildDailyReportModelRequest } from '../dailyReportModelRequest';
 import type { DailyReportLookup } from '../../../storage/dailyReportStorageTypes';
@@ -53,8 +54,25 @@ test('new Chat and actual Daily request share a record-first system prompt witho
   expect(ragConversationTask.systemPrompt).toBe(
     `${recordFirstResponsePrompt} ${old.systemPrompt}`,
   );
-  expect(ragConversationTask.validateResult).toBe(old.validateResult);
-  expect(ragConversationTask.createMessages).toBe(old.createMessages);
+  const historical = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '17',
+  })!;
+  expect(historical.systemPrompt).toBe(ragConversationTask.systemPrompt);
+  expect(historical.validateResult).toBe(old.validateResult);
+  expect(historical.createMessages).toBe(old.createMessages);
+  const sameTitleWithoutAppChoice = { ...input, context: {} };
+  expect(
+    JSON.stringify(historical.createMessages(sameTitleWithoutAppChoice)),
+  ).toContain('answerTemplate');
+  expect(
+    JSON.stringify(
+      ragConversationTask.createMessages(sameTitleWithoutAppChoice),
+    ),
+  ).not.toContain('answerTemplate');
+  expect(JSON.stringify(ragConversationTask.createMessages(input))).toContain(
+    'answerTemplate',
+  );
   expect(recordFirstResponsePrompt).toContain('why these observations matter');
   expect(recordFirstResponsePrompt).toContain('concrete, feasible next step');
   const [system, user] = request.messages;

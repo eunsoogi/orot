@@ -69,6 +69,7 @@ export function conversationRunRequest(input: {
   readonly photoEvidence?: RagConversationRunOptions['photoEvidence'];
   readonly entryContext?: ConversationEntryContext;
   readonly authoredCurrentRequest?: boolean;
+  readonly inputOrigin?: 'composer' | 'shortcut';
   readonly targetVisitEvidence?: RagConversationRunOptions['targetVisitEvidence'];
   readonly dailyReportEvidence?: RagConversationRunOptions['dailyReportEvidence'];
   readonly history: Awaited<ReturnType<typeof loadConversationHistory>>;
@@ -84,7 +85,12 @@ export function conversationRunRequest(input: {
     question: input.question,
     ...(input.photoEvidence ? { photoEvidence: input.photoEvidence } : {}),
     entryIntent: input.entryContext?.intent,
-    authoredCurrentRequest: input.authoredCurrentRequest,
+    authoredCurrentRequest:
+      input.inputOrigin === 'composer' || input.authoredCurrentRequest,
+    explicitPossibilityChoice:
+      input.inputOrigin === 'shortcut' &&
+      input.entryContext?.intent === 'possibilities' &&
+      input.entryContext.entryKey !== 'restored',
     typedPossibilityReport: input.entryContext?.typedPossibilityReport,
     targetVisitEvidence: input.targetVisitEvidence,
     dailyReportEvidence: input.dailyReportEvidence,

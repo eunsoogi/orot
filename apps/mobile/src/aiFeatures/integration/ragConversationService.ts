@@ -199,7 +199,7 @@ export function createRagConversationService({
           question: request,
           photoEvidence,
           entryContext,
-          authoredCurrentRequest: observer?.inputOrigin === 'composer',
+          inputOrigin: observer?.inputOrigin,
           targetVisitEvidence: target.evidence,
           dailyReportEvidence: report?.items,
           history,

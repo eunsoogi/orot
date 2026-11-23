@@ -18,12 +18,12 @@ jest.mock('../../aiFeatures/integration/deletionAwareEvidence', () => ({
 }));
 
 test.each([
-  ['기록과 문헌을 비교해 주세요', ['local', 'MED:1']],
-  [t('conversationActions.possibilities'), ['local', 'MED:1']],
-  [t('conversationActions.possibilities'), ['MED:1']],
+  ['기록과 문헌을 비교해 주세요', ['local', 'MED:1'], false],
+  [t('conversationActions.possibilities'), ['local', 'MED:1'], true],
+  [t('conversationActions.possibilities'), ['MED:1'], true],
 ])(
-  'the actual workflow binds sources and preserves comparison limits for %s with %p',
-  async (question, citations) => {
+  'the actual workflow binds sources and preserves comparison limits for %s with %p (app choice: %s)',
+  async (question, citations, appChoice) => {
     const f = fixture();
     f.generate.mockReset().mockResolvedValueOnce(
       response({
@@ -45,6 +45,8 @@ test.each([
     const result = await runRagConversationTurn({
       ...f.options,
       question,
+      entryIntent: appChoice ? 'possibilities' : undefined,
+      explicitPossibilityChoice: appChoice,
       loadCurrentEvidence: async () => ({
         batch: {
           items: [local],
@@ -100,7 +102,7 @@ test.each([
         'local',
         'MED:1',
       ]);
-      if (question === t('conversationActions.possibilities')) {
+      if (appChoice) {
         expect(
           parseConversationReport(result.answer)?.sections.map(
             section => section.title,
