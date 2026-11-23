@@ -223,9 +223,11 @@ export class LocalEvidenceReferenceRegistry {
     signal: AbortSignal,
   ): Promise<boolean> {
     if (references.length === 0) return false;
-    const context = validationContext();
-    for (const reference of references) {
-      const entry = this.entries.get(stableReference(reference));
+    const entries = references.map(ref =>
+      this.entries.get(stableReference(ref)),
+    );
+    const context = validationContext(entries.map(entry => entry?.validate));
+    for (const entry of entries) {
       if (!entry || signal.aborted) return false;
       try {
         if (!(await entry.validate(signal, context)) || signal.aborted)

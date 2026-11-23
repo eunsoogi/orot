@@ -1,3 +1,4 @@
+import type { ReadValidationChunks } from './evidenceValidationContext';
 import type { HealthEvidenceInventory } from '../../healthEvidence/coverage';
 import type { EvidenceBatch, EvidenceItem } from '@orot/agent-runtime';
 import type {
@@ -52,6 +53,7 @@ export async function createLocalEvidenceSnapshot(input: {
   readonly hasMoreCandidates?: boolean;
   readonly persistedChunks: readonly EvidenceChunk[];
   readonly loadCurrentPersistedChunks: () => Promise<readonly EvidenceChunk[]>;
+  readonly loadCurrentPersistedChunksFor?: ReadValidationChunks;
   readonly staleArtifacts: readonly StaleEvidenceArtifact[];
   readonly loadCurrentStaleArtifacts: () => Promise<
     readonly StaleEvidenceArtifact[]
