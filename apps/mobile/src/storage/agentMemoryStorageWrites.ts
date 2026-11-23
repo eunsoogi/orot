@@ -1,4 +1,5 @@
 import { attestNewMemoryPeriods } from './agentMemoryPeriodAttestation';
+import { attestNonPeriodVisitMemory } from './nonPeriodVisitMemoryAttestation';
 import {
   memoryParentAvailable,
   assertPriorMemoryAvailable,
@@ -8,7 +9,10 @@ import {
   setupUserStatementMemoryGuards,
 } from './userStatementMemoryGuards';
 import type { SqlDatabase } from '@orot/storage';
-import type { PersistedMemoryRecord } from '@orot/agent-memory';
+import type {
+  AgentMemoryStorageAdapter,
+  PersistedMemoryRecord,
+} from '@orot/agent-memory';
 import {
   deletedSymptomIds,
   referencesDeletedSymptom,
@@ -28,6 +32,7 @@ export async function commitAgentMemoryWrites(
   writes: Map<string, PersistedMemoryRecord | null>,
   removedSourceIdsToAdd: Set<string>,
   removedKinds: Map<string, readonly string[] | undefined>,
+  witness?: Parameters<AgentMemoryStorageAdapter['commitBatch']>[0],
 ) {
   await database.transaction(async transaction => {
     if (
@@ -103,6 +108,12 @@ export async function commitAgentMemoryWrites(
           [id],
         );
     }
+    if (witness)
+      await attestNonPeriodVisitMemory(
+        transaction,
+        writes.get(witness.recordId),
+        witness.context,
+      );
     await writeAgentMemoryDeletionMarkers(
       transaction,
       removedSourceIdsToAdd,

@@ -65,6 +65,7 @@ export interface AgentMemoryStorageAdapter extends StorageAdapter {
   listQuarantineRevision?(): Promise<string>;
   markSourceRemoved(sourceId: string, kinds?: readonly string[]): Promise<void>;
   beginBatch(): void;
-  commitBatch(): Promise<void>;
+  /** An optional app-private witness is consumed only by the same write batch. */
+  commitBatch(witness?: { readonly recordId: string; readonly context: unknown }): Promise<void>;
   rollbackBatch(): void;
 }
