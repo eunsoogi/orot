@@ -51,6 +51,12 @@ final class OrotProviderDiagnostics: NSObject {
             NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=%@ outcome=%@", stage, outcome)
             return
         }
+        if stage == "tool_result_evidence_check" {
+            // This opt-in Conversation span accepts only the start and end of a wait.
+            guard feature == "rag", ["started", "completed"].contains(outcome) else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=tool_result_evidence_check outcome=%@", outcome)
+            return
+        }
         guard ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
               ["report_sql_first", "report_sql_repeat", "report_sql_unscoped",
                "report_cache_pending_hit", "report_cache_committed_hit", "report_cache_new_key", "report_cache_generation_miss",
