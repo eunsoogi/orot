@@ -79,20 +79,63 @@ export async function readCurrentEvidenceChunks(
   return chunks;
 }
 
-/** Revalidates only the selected derived rows; unrelated transcript history is never enumerated. */
+const selectedStalenessPageSize = 16;
+
+/** Revalidates only selected derived identities, without scanning unrelated transcript history. */
 export async function readSelectedStaleArtifacts(
   database: SqlDatabase,
   identities: readonly EvidenceRecordIdentity[],
   signal?: AbortSignal,
 ): Promise<readonly EvidenceRecordIdentity[]> {
   const stale: EvidenceRecordIdentity[] = [];
-  for (const identity of identities) {
+  for (
+    let offset = 0;
+    offset < identities.length;
+    offset += selectedStalenessPageSize
+  ) {
     checkHealthEvidenceAbort(signal);
+    const page = identities.slice(offset, offset + selectedStalenessPageSize);
+    if (page.length === 1) {
+      const [identity] = page;
+      const result = await database.execute(
+        'SELECT 1 AS present FROM transcript_artifact_staleness WHERE artifact_kind = ? AND artifact_id = ? LIMIT 1',
+        [identity.kind, identity.id],
+      );
+      if (result.rows.length) stale.push(identity);
+      continue;
+    }
+
+    // One bridge call per bounded page; EXISTS uses the typed covering key and
+    // never duplicates a requested identity across several invalidated revisions.
+    // Bind raw identifiers, unlike JSON extraction, which can alter unusual text.
+    const positions = page
+      .map((_, index) => '(' + index + ', ?, ?)')
+      .join(', ');
     const result = await database.execute(
-      'SELECT 1 AS present FROM transcript_artifact_staleness WHERE artifact_kind = ? AND artifact_id = ? LIMIT 1',
-      [identity.kind, identity.id],
+      `SELECT column1 AS position FROM (VALUES ${positions})
+       WHERE EXISTS (SELECT 1 FROM transcript_artifact_staleness stale
+         WHERE stale.artifact_kind = column2 AND stale.artifact_id = column3)`,
+      page.flatMap(({ kind, id }) => [kind, id]),
     );
-    if (result.rows.length) stale.push(identity);
+    checkHealthEvidenceAbort(signal);
+    const matched = new Set<number>();
+    for (const row of result.rows) {
+      const position = row.position;
+      if (
+        typeof position !== 'number' ||
+        !Number.isSafeInteger(position) ||
+        position < 0 ||
+        position >= page.length ||
+        matched.has(position)
+      ) {
+        throw new Error('Invalid selected evidence staleness result.');
+      }
+      matched.add(position);
+    }
+    // Preserve original registration order and repeated inputs, independent of SQL row order.
+    page.forEach((identity, index) => {
+      if (matched.has(index)) stale.push(identity);
+    });
   }
   checkHealthEvidenceAbort(signal);
   return stale;
