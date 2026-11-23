@@ -96,6 +96,16 @@ export function conversationCompletedAnswer(input: {
                 ? { dailyReport: outcome.dailyReport }
                 : {}),
               citations: outcome.citations,
+              ...(input.retainedTurnId &&
+              outcome.committedRecordingCitations?.target.turnId ===
+                input.retainedTurnId
+                ? {
+                    archivedCitationTarget:
+                      outcome.committedRecordingCitations.target,
+                    savedCitations:
+                      outcome.committedRecordingCitations.citations,
+                  }
+                : {}),
               healthSources: outcome.healthSources,
               healthSummary: outcome.healthSummary,
               visitQuestions: outcome.visitQuestions,

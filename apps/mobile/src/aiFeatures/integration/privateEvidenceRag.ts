@@ -1,12 +1,23 @@
 import type { AiFeatureLocalData } from './localData';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 
+type Rag = AiFeatureLocalData['rag'];
+const rawAdapters = new WeakMap<Rag, Rag>();
+
+/** A turn-scoped registry must not send its aliases through a different owner. */
+export function privateEvidenceRagForTurn(
+  rag: Rag,
+  registry: LocalEvidenceReferenceRegistry,
+): Rag {
+  return createPrivateEvidenceRag(rawAdapters.get(rag) ?? rag, registry);
+}
+
 /** Keeps database deletion guards on real identities, then restores turn-local aliases for responders. */
 export function createPrivateEvidenceRag(
   rag: AiFeatureLocalData['rag'],
   registry: LocalEvidenceReferenceRegistry,
 ): AiFeatureLocalData['rag'] {
-  return {
+  const wrapped: Rag = {
     index: (chunks, options) =>
       rag.index(
         chunks.map(chunk => registry.localSearchChunk(chunk)),
@@ -26,4 +37,6 @@ export function createPrivateEvidenceRag(
       });
     },
   };
+  rawAdapters.set(wrapped, rag);
+  return wrapped;
 }

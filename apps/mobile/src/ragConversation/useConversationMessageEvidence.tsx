@@ -89,7 +89,7 @@ export function useConversationMessageEvidence({
         testIDPrefix={`rag-conversation-message-${message.id}`}
         references={message.citations ?? []}
         archived={
-          message.savedHistoryDisplayOnly && message.savedCitations
+          message.archivedCitationTarget && message.savedCitations
             ? { citations: message.savedCitations, open: openArchived }
             : undefined
         }

@@ -80,7 +80,7 @@ export function createConversationTurnRetention(
       opening.discardOpening();
       delivery.discardDelivery();
     },
-    toolMessageId: input.turnId,
+    ...{ toolMessageId: input.turnId, requestCreatedAt: input.createdAt },
     ordinaryMemorySource: () =>
       completedMemorySource(input, authoredCheckpoint),
     ...(input.storage.openWorkflowContinuation

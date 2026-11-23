@@ -3,6 +3,7 @@ import { STORAGE_TABLES } from '@orot/storage';
 import type { RecordKind, SqlDatabase, SqlExecutor } from '@orot/storage';
 import type { HealthEvidenceInventory } from './coverage';
 import type { EvidenceCandidateScope } from './evidenceCandidateScope';
+import { readSelectedRecordingCandidates } from './selectedRecordingCandidates';
 import { readRankedEvidencePage } from './rankedEvidencePages';
 import { findIdentifiersInTable } from './evidenceIdentifierSearch';
 import {
@@ -89,6 +90,8 @@ export async function readEvidenceCandidates(
   signal?: AbortSignal,
   scope?: EvidenceCandidateScope,
 ): Promise<LocalEvidenceCandidates> {
+  if (scope?.selection === 'saved_recording_transcript')
+    return readSelectedRecordingCandidates(database, query, scope, signal);
   checkHealthEvidenceAbort(signal);
   const candidates: LocalHealthEvidenceRecord[] = [];
   const availableKinds: RecordKind[] = [];
