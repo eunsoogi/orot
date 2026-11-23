@@ -91,6 +91,16 @@ export const recordingControlStyles = StyleSheet.create({
   },
   duration: { color: appColors.secondary, fontSize: 16 },
   result: { gap: 8 },
+  stage: { flex: 1, minHeight: 0 },
+  stageContent: {
+    // The viewport centers short content; large text grows naturally and scrolls.
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  stageGroup: { width: '100%', maxWidth: 480, gap: 12 },
+  stageText: { textAlign: 'center' },
   error: { color: appColors.danger, fontSize: 15 },
   probe: { gap: 8, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
 });
