@@ -32,6 +32,15 @@ final class OrotProviderDiagnostics: NSObject {
             NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=%@ stage=%@ outcome=%@", feature, stage, outcome)
             return
         }
+        if ["steering_submit_admitted", "steering_enqueue_resolved", "steering_row_available",
+            "steering_row_layout", "steering_applied_observed", "steering_read_layout"].contains(stage)
+        {
+            // These app-owned stages take only bounded monotonic elapsed milliseconds, never identities.
+            guard feature == "rag", let elapsed = Int(outcome), (0...300_000).contains(elapsed),
+                  String(elapsed) == outcome else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=%@ elapsed_ms=%d", stage, elapsed)
+            return
+        }
         if feature == "navigation" {
             // Navigation accepts only code-owned layout/lifecycle categories, never route identities or sizes.
             let permitted: [String: Set<String>] = [
