@@ -10,6 +10,7 @@ import { entryIntentSender } from '../../../ragConversation/entryIntentSender';
 import { setConversationEntryForSession } from '../../../ragConversation/useConversationEntryIntent';
 import { createDailyReportIdentity } from '@orot/domain';
 jest.mock('../../../ragConversation/ConversationSessionsContext', () => ({
+  ...jest.requireActual('../../../ragConversation/ConversationSessionsContext'),
   useConversationSessions: jest.fn(),
 }));
 import type { ConversationExecutionEvent } from '../../../ragConversation/conversationExecutionLease';
