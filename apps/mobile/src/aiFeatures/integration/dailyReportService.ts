@@ -1,3 +1,6 @@
+import { createDailyReportWarmCheckpoint } from '../../storage/dailyReportPreDispatchCheckpoint';
+import { fingerprint } from './evidenceUtils';
+import { dailyReportWarmPause } from './dailyReportWarmPause';
 import { createDailyReportSnapshotRefresh } from './dailyReportSnapshotRefresh';
 import { createDailyReportRecoveryBridge } from './dailyReportRecoveryBridge';
 import { conversationConsentScope } from './conversationBackgroundProvider';
@@ -45,6 +48,36 @@ export function createDailyReportService(
                 calendar,
                 scope,
               ),
+            pauseBeforeOpening: input.isWarmDayCurrent
+              ? (turn, selected, initial, calendar, runId) =>
+                  dailyReportWarmPause({
+                    request: turn,
+                    selected,
+                    initial,
+                    checkpoint: identity =>
+                      createDailyReportWarmCheckpoint(input.database, identity),
+                    reproof: () =>
+                      createDailyReportSnapshotRefresh(
+                        input.database,
+                        initial,
+                        calendar,
+                        turn.scope,
+                      )(turn.signal),
+                    dayCurrent: () =>
+                      input.isWarmDayCurrent?.(calendar.identity) === true,
+                    fingerprint: fingerprint({
+                      runId,
+                      day: calendar.identity,
+                      mode: turn.mode,
+                      provider: selected.provider.id,
+                      model: selected.modelId,
+                      recipient: selected.recipient,
+                      scope: turn.scope,
+                      source: initial.sourceSnapshot.revision,
+                      deletion: initial.sourceSnapshot.deletionGeneration,
+                    }),
+                  })
+              : undefined,
             storage,
             deadlineContext,
             stageRecovery: createDailyReportRecoveryBridge(

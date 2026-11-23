@@ -1,3 +1,4 @@
+import { isSettingsOnlyExecutionConsent } from '../../agent/execution/useInferenceConsent';
 import { createDailyReportRecoveryActions } from './dailyReportRecoveryActions';
 import { createDailyReportIdentity } from '@orot/domain';
 import type { ExecutionConsentPort } from '@orot/agent-runtime';
@@ -17,6 +18,20 @@ import { resolveSelectedAiProvider } from './provider';
 import type { AiFeatureServiceDependencies } from './featureServiceDependencies';
 import { providerDiagnostic } from '../../providers/diagnostics';
 
+export function dailyReportDeviceIdentity(now = new Date().toISOString()) {
+  // A changed device timezone requires a new explicit today selection.
+  const current = currentDailyReportContextRequest(
+    now,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
+  return current.status === 'ready'
+    ? createDailyReportIdentity(
+        current.request.localDate,
+        current.request.timeZone,
+      )
+    : null;
+}
+
 /** Reuses the encrypted store and consent-aware generator across all report entries. */
 export function createDailyReportFeature(
   consent: ExecutionConsentPort,
@@ -26,22 +41,8 @@ export function createDailyReportFeature(
     import('../../storage/secureDatabase').then(module =>
       module.openLocalAgentMemoryDatabase(),
     );
-  const currentIdentity = (
-    _timeZone: string,
-    now = new Date().toISOString(),
-  ) => {
-    // A changed device timezone requires a new explicit today selection.
-    const current = currentDailyReportContextRequest(
-      now,
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-    );
-    return current.status === 'ready'
-      ? createDailyReportIdentity(
-          current.request.localDate,
-          current.request.timeZone,
-        )
-      : null;
-  };
+  const currentIdentity = (_timeZone?: string, now?: string) =>
+    dailyReportDeviceIdentity(now);
   const requests = createDailyReportRequests({
     currentIdentity,
     lookup: async identity => {
@@ -98,6 +99,10 @@ export function createDailyReportFeature(
               {
                 database: db,
                 consent,
+                isWarmDayCurrent: isSettingsOnlyExecutionConsent(consent)
+                  ? admitted =>
+                      dailyReportDeviceIdentity()?.key === admitted.key
+                  : undefined,
                 now: () => {
                   if (first) {
                     first = false;
