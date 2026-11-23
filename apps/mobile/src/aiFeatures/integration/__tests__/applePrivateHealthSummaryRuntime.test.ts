@@ -147,7 +147,9 @@ test.each([false, true])(
         expect(saved).toHaveLength(1);
         expect(retained).toHaveBeenCalledTimes(1);
         const committed = await fixture.storage.read(saved[0]!.id);
-        expect(committed?.analysis.hypotheses[0]?.summary).toContain('72 count/min');
+        expect(committed?.analysis.hypotheses[0]?.summary).toContain(
+          '72 count/min',
+        );
         expect(
           committed?.analysis.hypotheses[0]?.supportingEvidence,
         ).toHaveLength(1);
