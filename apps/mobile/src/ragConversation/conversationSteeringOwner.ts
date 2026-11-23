@@ -1,5 +1,11 @@
 import type { WorkflowOperationJournal } from '@orot/agent-runtime';
 import type { ConversationSession } from './conversationSessionTypes';
+import {
+  beginSteeringLatency,
+  markSteeringLatency,
+  retireSteeringLatency,
+  steeringLatencyTracked,
+} from './steeringLatencyDiagnostic';
 type Store = NonNullable<WorkflowOperationJournal['steering']>;
 
 /** UI ownership is distinct from durable request identity. Late receipts cannot alter a newer turn. */
@@ -21,6 +27,7 @@ export function createConversationSteeringOwner(
   let sequence = 0;
   const prefix = Date.now().toString(36);
   const dropActive = (id: number) => {
+    retireSteeringLatency(entries.get(id)?.submissionId);
     entries.get(id)?.release?.();
     entries.delete(id);
     update(id, {
@@ -48,6 +55,7 @@ export function createConversationSteeringOwner(
     },
     bind(id: number, store: Store, current: () => boolean) {
       if (!current()) return;
+      retireSteeringLatency(entries.get(id)?.submissionId);
       entries.get(id)?.release?.();
       const entry = {
         store,
@@ -60,7 +68,21 @@ export function createConversationSteeringOwner(
       entries.set(id, entry);
       const refresh = async () => {
         const rows = await store.list();
-        if (entries.get(id) === entry && current())
+        if (entries.get(id) === entry && current()) {
+          const own =
+            entry.submissionId && steeringLatencyTracked(entry.submissionId)
+              ? rows.find(row => row.id === entry.submissionId)
+              : undefined;
+          if (own) {
+            markSteeringLatency(own.id, 'steering_row_available');
+            if (
+              own.status === 'applied' &&
+              'readAt' in own &&
+              typeof own.readAt === 'string'
+            )
+              markSteeringLatency(own.id, 'steering_applied_observed');
+            if (own.status === 'not_applied') retireSteeringLatency(own.id);
+          }
           update(id, {
             steeringInstructions: rows.map(row =>
               row.id === entry.submissionId
@@ -68,6 +90,7 @@ export function createConversationSteeringOwner(
                 : row,
             ),
           });
+        }
       };
       entry.release = store.subscribe?.(refresh);
       if (current())
@@ -79,10 +102,19 @@ export function createConversationSteeringOwner(
       const text = find(id)?.draft.trim();
       if (!entry || !entry.current() || entry.submitting || !text) return;
       entry.submitting = true;
-      entry.submissionId = `steering-${prefix}-${++sequence}`;
+      retireSteeringLatency(entry.submissionId);
+      const submissionId = `steering-${prefix}-${++sequence}`;
+      entry.submissionId = submissionId;
+      beginSteeringLatency(
+        submissionId,
+        () => entries.get(id) === entry && entry.current(),
+      );
       update(id, { steeringSubmitting: true, steeringError: false });
       try {
-        const accepted = await entry.store.enqueue(entry.submissionId, text);
+        const accepted = await entry.store.enqueue(submissionId, text);
+        if (accepted)
+          markSteeringLatency(submissionId, 'steering_enqueue_resolved');
+        else retireSteeringLatency(submissionId);
         if (
           accepted &&
           entries.get(id) === entry &&
@@ -93,6 +125,7 @@ export function createConversationSteeringOwner(
         if (!accepted && entries.get(id) === entry && entry.current())
           update(id, { steeringError: true });
       } catch {
+        retireSteeringLatency(submissionId);
         if (entries.get(id) === entry && entry.current())
           update(id, { steeringError: true });
       } finally {
@@ -107,6 +140,7 @@ export function createConversationSteeringOwner(
       entry.release?.();
       entries.delete(id);
       const session = find(id);
+      retireSteeringLatency(entry.submissionId);
       if (session) {
         const instructions = resumable
           ? session.steeringInstructions
