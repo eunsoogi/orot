@@ -3,6 +3,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
+import { materialLibraryStyles } from '../layout/MaterialLibraryRows';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
@@ -58,6 +59,7 @@ export function RecordingReviewRoute({
                   onAutoPlayConsumed={() => setAutoPlayConsumed(true)}
                 />
                 <TranscriptEvidencePanel
+                  savedDetail
                   recordingSourceId={source.id}
                   deletionBusy={exportBusy || review.busy}
                   onInteractionChange={setInteraction}
@@ -71,6 +73,11 @@ export function RecordingReviewRoute({
             }
             secondary={
               <View style={styles.group}>
+                <View
+                  accessible={false}
+                  importantForAccessibility="no"
+                  style={materialLibraryStyles.divider}
+                />
                 <EncounterReviewPanel
                   key={source.id}
                   sourceId={source.id}
@@ -78,7 +85,13 @@ export function RecordingReviewRoute({
                   onInteractionChange={setReview}
                   service={reviewService}
                 />
+                <View
+                  accessible={false}
+                  importantForAccessibility="no"
+                  style={materialLibraryStyles.divider}
+                />
                 <RecordingExportPanel
+                  savedDetail
                   recordingSourceId={source.id}
                   onBusyChange={setExportBusy}
                   actionsDisabled={busy || dirty}

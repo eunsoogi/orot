@@ -20,6 +20,7 @@ export type SavedHistoryDisplayRow = {
       readonly question: string;
       readonly answer: string;
       readonly directPhoto?: true;
+      readonly savedPossibilityNarrative?: true;
       readonly archivedCitationTarget?: import('./useArchivedCitationOpen').ArchivedCitationTarget;
       readonly interruptionReason?: ConversationRecoveryReason;
       readonly partial?: true;
@@ -112,6 +113,11 @@ export function savedHistoryTranscript(
         role: 'assistant',
         content: row.kind === 'answer' ? row.answer : '',
         ...(directPhoto ? { directPhotoReply: true } : {}),
+        ...(row.kind === 'answer' &&
+        row.savedPossibilityNarrative &&
+        !directPhoto
+          ? { savedPossibilityNarrative: true as const }
+          : {}),
         ...(row.kind === 'answer' && row.initialResponse
           ? { initialResponse: row.initialResponse }
           : {}),

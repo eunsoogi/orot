@@ -78,6 +78,61 @@ export default function RecordingControls({
     canLeave &&
     (status === 'idle' || status === 'completed') &&
     !hasSharedNavigation;
+  const centeredResult = reviewingTake && Boolean(onOpenSavedRecordings);
+  const errorNotice = error ? (
+    <Text accessibilityRole="alert" style={recordingControlStyles.error}>
+      {error}
+    </Text>
+  ) : null;
+  const review = lastRecording ? (
+    <>
+      <View style={recordingControlStyles.result} testID="recording-result">
+        <Text
+          accessibilityRole="alert"
+          style={[
+            recordingControlStyles.status,
+            centeredResult && recordingControlStyles.stageText,
+          ]}
+        >
+          {sourceSaved ? t('recording.saved') : t('recording.sourcePending')}
+        </Text>
+        {/* Keep the source ID for storage and export only; it is not user-facing completion detail. */}
+        <Text
+          style={centeredResult && recordingControlStyles.stageText}
+          testID="recording-saved-duration"
+        >
+          {t('recording.duration', {
+            duration: formatRecordingDuration(lastRecording.durationMs),
+          })}
+        </Text>
+        {sourceRetryPending ? (
+          <Button
+            disabled={busy}
+            onPress={onRetrySourceSave}
+            testID="recording-retry-save"
+            title={t('recording.retrySave')}
+          />
+        ) : null}
+        {__DEV__ ? (
+          <Text testID="recording-file-protection">
+            {lastRecording.fileProtection}:
+            {String(lastRecording.excludedFromBackup)}
+          </Text>
+        ) : null}
+      </View>
+      <RecordingTranscriptionFeedback
+        snapshot={automaticTranscription}
+        onRetry={onRetryTranscription}
+      />
+      {sourceSaved ? (
+        <Button
+          title={t('recording.newTake')}
+          testID="recording-new-take"
+          onPress={() => setNewTake(true)}
+        />
+      ) : null}
+    </>
+  ) : null;
   return (
     // Capture owns the usable route frame; start and stop never depend on page scrolling.
     <View
@@ -135,46 +190,23 @@ export default function RecordingControls({
           testID="recording-content-columns"
         />
       )}
-      {reviewingTake && lastRecording ? (
-        <View style={recordingControlStyles.result} testID="recording-result">
-          <Text accessibilityRole="alert" style={recordingControlStyles.status}>
-            {sourceSaved ? t('recording.saved') : t('recording.sourcePending')}
-          </Text>
-          {/* Keep the source ID for storage and export only; it is not user-facing completion detail. */}
-          <Text testID="recording-saved-duration">
-            {t('recording.duration', {
-              duration: formatRecordingDuration(lastRecording.durationMs),
-            })}
-          </Text>
-          {sourceRetryPending ? (
-            <Button
-              disabled={busy}
-              onPress={onRetrySourceSave}
-              testID="recording-retry-save"
-              title={t('recording.retrySave')}
-            />
-          ) : null}
-          {__DEV__ ? (
-            <Text testID="recording-file-protection">
-              {lastRecording.fileProtection}:
-              {String(lastRecording.excludedFromBackup)}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-      {reviewingTake && (
-        <RecordingTranscriptionFeedback
-          snapshot={automaticTranscription}
-          onRetry={onRetryTranscription}
-        />
-      )}
-      {reviewingTake && sourceSaved ? (
-        <Button
-          title={t('recording.newTake')}
-          testID="recording-new-take"
-          onPress={() => setNewTake(true)}
-        />
-      ) : null}
+      {reviewingTake &&
+        (centeredResult ? (
+          <ScrollView
+            style={recordingControlStyles.stage}
+            contentContainerStyle={recordingControlStyles.stageContent}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            testID="recording-result-stage"
+          >
+            <View style={recordingControlStyles.stageGroup}>
+              {review}
+              {errorNotice}
+            </View>
+          </ScrollView>
+        ) : (
+          review
+        ))}
       {showRecordingLibrary && !onOpenSavedRecordings ? (
         // Standalone review retains its own keyboard dismissal; the capture page itself never scrolls.
         <ScrollView
@@ -197,11 +229,7 @@ export default function RecordingControls({
           />
         </ScrollView>
       ) : null}
-      {error ? (
-        <Text accessibilityRole="alert" style={recordingControlStyles.error}>
-          {error}
-        </Text>
-      ) : null}
+      {!centeredResult && errorNotice}
       {syntheticProbeAvailable ? (
         <RecordingControlsProbe
           busy={controlsBusy}

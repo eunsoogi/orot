@@ -15,6 +15,10 @@ import {
   recordingExportService,
   type RecordingExportService,
 } from './recordingExportService';
+import {
+  MaterialLibraryRows,
+  materialLibraryStyles,
+} from '../layout/MaterialLibraryRows';
 import RecordingExportOption from './RecordingExportOption';
 import { recordingExportPanelStyles as styles } from './RecordingExportPanel.styles';
 
@@ -24,6 +28,7 @@ interface RecordingExportPanelProps {
   exportService?: RecordingExportService;
   onBusyChange?: (busy: boolean) => void;
   actionsDisabled?: boolean;
+  savedDetail?: boolean;
 }
 
 type ExportError =
@@ -57,6 +62,7 @@ export default function RecordingExportPanel({
   exportService = recordingExportService,
   onBusyChange,
   actionsDisabled = false,
+  savedDetail = false,
 }: RecordingExportPanelProps) {
   const [view, setView] = useState<TranscriptRecordingView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -158,7 +164,6 @@ export default function RecordingExportPanel({
     }
   }
 
-  // Keep the button callback synchronous; these actions report their own share errors in the panel.
   function handleShareAudioPress(): void {
     shareAudio();
   }
@@ -168,15 +173,12 @@ export default function RecordingExportPanel({
   }
 
   const hasTranscript = Boolean(view?.segments.length);
-  return (
-    <View style={styles.panel} testID="recording-export-panel">
-      <Text accessibilityRole="header" style={styles.title}>
-        {t('recording.export.title')}
-      </Text>
-      <Text style={styles.subtitle}>{t('recording.export.description')}</Text>
-      {/* Native sharing can wait for user input; keep each result inside its matching share card. */}
+  const options = (
+    <>
       <RecordingExportOption
         kind="audio"
+        listRow={savedDetail}
+        divider={savedDetail}
         title={t('recording.export.audio')}
         description={t('recording.export.audioDescription')}
         hint={t('recording.export.audioHint')}
@@ -187,6 +189,7 @@ export default function RecordingExportPanel({
       {/* Re-read on press so a transcript created after this panel mounts stays exportable. */}
       <RecordingExportOption
         kind="transcript"
+        listRow={savedDetail}
         title={t('recording.export.transcript')}
         description={t('recording.export.transcriptDescription')}
         hint={t('recording.export.transcriptHint')}
@@ -194,6 +197,30 @@ export default function RecordingExportPanel({
         onPress={handleShareTranscriptPress}
         testID="recording-export-transcript"
       />
+    </>
+  );
+  return (
+    <View style={styles.panel} testID="recording-export-panel">
+      <Text
+        accessibilityRole="header"
+        style={savedDetail ? materialLibraryStyles.heading : styles.title}
+      >
+        {t('recording.export.title')}
+      </Text>
+      <Text
+        style={
+          savedDetail ? materialLibraryStyles.description : styles.subtitle
+        }
+      >
+        {t('recording.export.description')}
+      </Text>
+      {savedDetail ? (
+        <MaterialLibraryRows testID="recording-export-rows">
+          {options}
+        </MaterialLibraryRows>
+      ) : (
+        options
+      )}
       <View style={styles.privacyNote} testID="recording-export-privacy-note">
         <AppSymbol name="info.circle" color={appColors.secondary} />
         <Text style={styles.privacyCopy}>

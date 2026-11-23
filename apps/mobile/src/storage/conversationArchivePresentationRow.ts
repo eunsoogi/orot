@@ -25,6 +25,7 @@ export type ConversationHistoryPresentation = {
       readonly status: 'complete' | 'partial';
       readonly answer: string;
       readonly directPhoto?: true;
+      readonly savedPossibilityNarrative?: true;
       readonly healthSummary?: HealthSummaryResult;
       readonly dailyReport?: NonNullable<ConversationArtifact['dailyReport']>;
       readonly savedCitations?: readonly SavedArchivedCitation[];
@@ -142,6 +143,13 @@ export function decodeOwnedArchiveRow(
       question: value.question,
       answer: value.answer,
       status: value.status,
+      ...(value.status === 'complete' &&
+      value.entryIntent === 'possibilities' &&
+      !value.healthSummary &&
+      !value.dailyReport &&
+      !value.visitQuestions
+        ? { savedPossibilityNarrative: true as const }
+        : {}),
       ...archivedConversationPresentationMetadata(value),
       ...(dailyReport ? { dailyReport } : {}),
       ...(interruptionReason ? { interruptionReason } : {}),

@@ -15,6 +15,8 @@ import { createNextVisitQuestionsTheme } from '../../aiFeatures/integration/next
 import { appointment } from '../../agent/visitQuestions/testing/persistenceFixtures';
 import type { ConversationScreenProps } from '../ConversationScreenProps';
 
+import { scriptedTemplateSender } from '../testSupport/conversationTemplateFixture';
+
 jest.mock('../ConversationSavedRecaps', () => ({
   ConversationSavedRecaps: () => null,
 }));
@@ -22,6 +24,7 @@ jest.mock('../ConversationSavedRecaps', () => ({
 const focused = '다음 진료에서 물어볼 질문을 만들어 줘. 검사 결과 위주로.';
 const splitRequest =
   '다음 진료에서 검사 결과를 확인할 예정이에요. 질문 준비해줘';
+const natural = '지금 병원에 가는데 검사 결과를 물어볼 건데 질문 뽑아줘';
 const ordinary = '다음 진료에서 혈압 검사가 필요한가요?';
 
 test.each([
@@ -31,6 +34,7 @@ test.each([
   'shortcut',
   'after-daily',
   'two-sentence',
+  'natural',
 ] as const)(
   'mounted Conversation owns one protected send and renders the canonical visit card only for visit creation: %s',
   async mode => {
@@ -113,7 +117,9 @@ test.each([
           }
           onBack={jest.fn()}
           onOpenSource={jest.fn()}
-          onSend={send}
+          onSend={scriptedTemplateSender(send, text =>
+            text === ordinary ? 'ordinary' : 'visit-questions',
+          )}
           onOpenDailyReport={() =>
             startConversationReportTurn(store, () => true, send)
           }
@@ -163,18 +169,20 @@ test.each([
           intent: 'daily-report',
         });
       }
-      const prompt =
-        mode === 'two-sentence'
-          ? splitRequest
-          : mode === 'ordinary'
-            ? ordinary
-            : mode === 'shortcut'
-              ? conversationIntentRequests['visit-questions']
-              : focused;
+      const prompts: Partial<Record<typeof mode, string>> = {
+        'two-sentence': splitRequest,
+        natural,
+        ordinary,
+        shortcut: conversationIntentRequests['visit-questions'],
+        selected: conversationIntentRequests['visit-questions'],
+      };
+      const prompt = prompts[mode] ?? focused;
       if (mode === 'shortcut') {
         await fireEvent.press(
           screen.getByTestId('conversation-open-visit-questions'),
         );
+      } else if (mode === 'selected') {
+        await fireEvent.press(screen.getByTestId('conversation-visit-prepare'));
       } else {
         await fireEvent.changeText(
           screen.getByTestId('rag-conversation-input'),
@@ -217,7 +225,7 @@ test.each([
         ).toHaveLength(mode === 'after-daily' ? 2 : 1);
       }
       expect(screen.getByText(prompt)).toBeTruthy();
-      if (mode === 'typed') {
+      if (mode === 'typed' || mode === 'natural') {
         await fireEvent.changeText(
           screen.getByTestId('rag-conversation-input'),
           ordinary,

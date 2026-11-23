@@ -1,3 +1,4 @@
+import { restoreConversationTask } from '../../ragConversation/conversationTaskVersions';
 import { ragConversationTask } from '../../ragConversation/task';
 import { parseConversationReport } from '../../ragConversation/conversationReportTemplate';
 import { t } from '../../i18n';
@@ -11,12 +12,20 @@ import {
 } from '../../../../../packages/storage/__tests__/sourceEvidenceTestSupport';
 import { createConversationArtifactStorage } from '../conversationArtifactStorage';
 
-test.each(['ordinary', 'structured report'])(
+test.each([
+  ['ordinary', null],
+  ['v17 structured report', '17'],
+  ['v18 structured report', '18'],
+] as const)(
   'reopen preserves %s and an empty-corpus wipe fences late sessions and writes',
-  async kind => {
+  async (_kind, version) => {
     let answer = 'answer';
-    if (kind === 'structured report') {
-      const validated = ragConversationTask.validateResult(
+    if (version) {
+      const task = restoreConversationTask({
+        taskType: ragConversationTask.taskType,
+        taskVersion: version,
+      });
+      const validated = task?.validateResult(
         {
           answerKind: 'grounded',
           answer: {
@@ -29,6 +38,14 @@ test.each(['ordinary', 'structured report'])(
         },
         {
           request: t('conversationActions.possibilities'),
+          ...(version === '18'
+            ? {
+                context: {
+                  intent: 'possibilities',
+                  explicitPossibilityChoice: true,
+                },
+              }
+            : {}),
           evidence: {
             items: [
               {
@@ -48,7 +65,7 @@ test.each(['ordinary', 'structured report'])(
           },
         },
       );
-      if (validated.status !== 'valid') throw new Error('Expected report');
+      if (validated?.status !== 'valid') throw new Error('Expected report');
       answer = validated.value.answer;
     }
     const directory = mkdtempSync(join(tmpdir(), 'orot-conversation-'));
@@ -96,7 +113,7 @@ test.each(['ordinary', 'structured report'])(
       connection = openSqliteTestDatabase(path);
       storage = createConversationArtifactStorage(connection.database);
       expect(await storage.read('turn')).toEqual(value);
-      if (kind === 'structured report')
+      if (version)
         expect(
           parseConversationReport((await storage.read('turn'))!.answer)
             ?.sections,

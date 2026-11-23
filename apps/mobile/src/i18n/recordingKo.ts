@@ -85,6 +85,7 @@ export const recordingKo = {
   'recording.transcript.range': '{start}–{end}',
   'recording.transcript.play': '이 구간 듣기',
   'recording.transcript.playing': '구간 재생 중…',
+  'recording.transcript.savedTranscript': '저장된 전사',
   'recording.transcript.review.unreviewed': '검토 전 초안',
   'recording.transcript.review.needsReview': '수정됨 · 다시 확인 필요',
   'recording.transcript.review.reviewed': '검토됨',

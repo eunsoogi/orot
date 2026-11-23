@@ -22,6 +22,6 @@ export const record = {
 };
 export const input = {
   request: t('conversationActions.possibilities'),
-  context: { intent: 'conversation' },
+  context: { intent: 'possibilities', explicitPossibilityChoice: true },
   evidence: { items: [record], coverage: [], conflicts: [] },
 } as unknown as TaskResponderInput;

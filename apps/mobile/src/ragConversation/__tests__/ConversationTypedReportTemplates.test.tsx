@@ -10,6 +10,7 @@ import { conversationWorkflowContext } from '../conversationWorkflowContext';
 import type { RagConversationRunOptions } from '../service';
 import { ragConversationTask } from '../task';
 import { t } from '../../i18n';
+import { scriptedTemplateSender } from '../testSupport/conversationTemplateFixture';
 import {
   answer,
   input,
@@ -47,6 +48,11 @@ test.each([
   ['health-summary', typedSummary, 'health-summary-card'],
   ['ordinary', ordinary, 'rag-conversation-answer-body'],
   [
+    'ordinary',
+    t('conversationActions.possibilities'),
+    'rag-conversation-answer-body',
+  ],
+  [
     'shortcut',
     t('conversationIntent.possibilities'),
     'rag-conversation-answer-body',
@@ -70,6 +76,7 @@ test.each([
           previousMessages,
           authoredCurrentRequest: observer?.inputOrigin === 'composer',
           typedPossibilityReport: context?.typedPossibilityReport,
+          explicitPossibilityChoice: observer?.inputOrigin === 'shortcut',
         } as RagConversationRunOptions;
         const args = {
           ...input,
@@ -100,7 +107,11 @@ test.each([
         <ConversationScreen
           onBack={jest.fn()}
           onOpenSource={jest.fn()}
-          onSend={send}
+          onSend={scriptedTemplateSender(send, () =>
+            mode === 'health-summary' || mode === 'possibilities'
+              ? mode
+              : 'ordinary',
+          )}
           retainedActions={{ possibilities: choices.onOpenDiseaseHypotheses }}
         />
       );

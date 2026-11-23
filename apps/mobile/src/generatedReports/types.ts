@@ -27,6 +27,8 @@ export interface GeneratedReportDetail {
       typeof import('../ragConversation/conversationReportTemplate').parsePossibilityConversationReport
     >
   >;
+  /** Existing complete Possibility narrative only; conveys no source authority. */
+  readonly savedPossibilityNarrative?: true;
   readonly paragraphs: readonly string[];
   readonly warning?: string;
   readonly conversationSources?: {

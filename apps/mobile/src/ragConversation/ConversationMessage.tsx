@@ -193,6 +193,7 @@ export function ConversationMessage({
           {message.content ? (
             <ConversationMessageText
               content={message.content}
+              savedPossibilityNarrative={message.savedPossibilityNarrative}
               user={user}
               staticText={message.savedHistoryDisplayOnly}
               selectable={copyMenus === undefined}

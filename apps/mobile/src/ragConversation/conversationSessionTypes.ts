@@ -49,6 +49,12 @@ export interface ConversationSessionOptions {
     | import('./conversationWarmAdmission').WarmConversationSelectionProof
     | undefined
   >;
+  /** Narrow proof for the optional routing call, not a warm or native execution lease. */
+  readonly captureTemplateSelection?: (
+    identity: import('./conversationTemplateOwner').TemplateSelectionIdentity,
+  ) =>
+    | import('./conversationWarmAdmission').WarmConversationSelectionProof
+    | undefined;
   readonly restoreSteering?: (
     sessionId: string,
     requestId: string,

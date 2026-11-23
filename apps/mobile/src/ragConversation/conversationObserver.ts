@@ -44,6 +44,15 @@ export type RagConversationObserver = Pick<
   ) => Promise<boolean>;
   /** Opt-in is from the composer dispatch, never inferred from typed route or model output. */
   readonly inputOrigin?: 'composer' | 'shortcut';
+  /** Exact live composer capability to ask the selected model for a presentation hint. */
+  readonly modelTemplateAdmission?: {
+    readonly current: () => boolean;
+    readonly today: import('@orot/domain').DailyReportIdentity | null;
+    readonly prepareVisit?: import('./ConversationScreenProps').ConversationScreenProps['prepareVisitQuestions'];
+  };
+  readonly templateProposalOwner?: import('./conversationTemplateOwner').ConversationTemplateOwner;
+  /** A model-only routing stage already used this send's optional opening budget. */
+  readonly suppressContextualOpening?: true;
   /** Local-only storage permission; available only to the live request owner. */
   readonly admitDailyReportMemory?: import('./conversationDailyReportMemoryJobs').DailyReportMemoryObserver;
   readonly conversationScope?: string;

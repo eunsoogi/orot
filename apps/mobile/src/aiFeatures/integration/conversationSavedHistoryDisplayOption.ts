@@ -74,6 +74,9 @@ export function conversationSavedHistoryDisplayOption(
               question: row.question,
               answer: row.answer,
               ...(row.directPhoto ? { directPhoto: true } : {}),
+              ...(row.savedPossibilityNarrative
+                ? { savedPossibilityNarrative: true as const }
+                : {}),
               ...(row.delivery ? { delivery: row.delivery } : {}),
               ...(row.initialResponse
                 ? { initialResponse: row.initialResponse }

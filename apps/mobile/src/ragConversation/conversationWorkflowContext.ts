@@ -27,6 +27,11 @@ export function conversationWorkflowContext(
     !options.photoEvidence?.length
       ? { typedPossibilityReport: true }
       : {}),
+    ...(options.entryIntent === 'possibilities' &&
+    options.explicitPossibilityChoice &&
+    !options.photoEvidence?.length
+      ? { explicitPossibilityChoice: true }
+      : {}),
     ...(options.validatedPriorTurns?.length
       ? { priorDialogue: options.validatedPriorTurns }
       : {}),

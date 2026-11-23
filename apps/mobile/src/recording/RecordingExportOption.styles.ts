@@ -2,14 +2,14 @@ import { StyleSheet } from 'react-native';
 import { appColors } from '../layout/appColors';
 
 export const recordingExportOptionStyles = StyleSheet.create({
+  option: { alignItems: 'center', flexDirection: 'row', gap: 14 },
+  listRow: { minHeight: 64, paddingVertical: 14 },
+  listIconTile: { width: 44, height: 44, borderRadius: 10 },
   card: {
-    alignItems: 'center',
     backgroundColor: appColors.surface,
     borderColor: appColors.border,
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: 14,
     minHeight: 112,
     padding: 16,
   },

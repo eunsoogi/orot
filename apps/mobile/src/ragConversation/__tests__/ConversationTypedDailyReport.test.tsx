@@ -12,9 +12,9 @@ import {
   useConversationSessions,
 } from '../ConversationSessionsContext';
 import { startConversationReportTurn } from '../startConversationReportTurn';
-import { entryIntentSender } from '../entryIntentSender';
+import { sendConversationMessage } from '../conversationVisitDispatch';
 import { createConversationSessions } from '../conversationSessions';
-import { isTypedTodayDailyReportRequest } from '../typedTodayDailyReportRequest';
+import { scriptedTemplateSender } from '../testSupport/conversationTemplateFixture';
 import type { ConversationScreenProps } from '../ConversationScreenProps';
 
 const mockOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
@@ -44,7 +44,11 @@ async function mount(
       <ConversationScreen
         onBack={jest.fn()}
         onOpenSource={jest.fn()}
-        onSend={sender}
+        onSend={scriptedTemplateSender(sender, question =>
+          question === '어제 일일 보고서를 설명해 줘'
+            ? 'ordinary'
+            : 'daily-report',
+        )}
         isEntryCurrent={isEntryCurrent}
         onOpenDailyReport={() =>
           startConversationReportTurn(store, () => true, sender)
@@ -183,21 +187,17 @@ test('pins the natural-language target at the send boundary across midnight', as
     const id = store.getSnapshot().activeId;
     jest.setSystemTime(new Date('2035-01-01T14:59:59.900Z'));
     store.setDraft(id, command);
-    const admitted = entryIntentSender(store, id, send, 'composer');
-    jest.setSystemTime(new Date('2035-01-01T15:00:00.100Z'));
-    await admitted(command, [], new AbortController().signal);
+    await sendConversationMessage(
+      store,
+      id,
+      scriptedTemplateSender(send, () => {
+        jest.setSystemTime(new Date('2035-01-01T15:00:00.100Z'));
+        return 'daily-report';
+      }),
+    );
     expect(send.mock.calls[0]?.[4]?.reportRequest).toEqual(
       createDailyReportIdentity('2035-01-01', 'Asia/Seoul'),
     );
-    expect(
-      isTypedTodayDailyReportRequest('어제 일일 보고서를 만들어 줘.'),
-    ).toBe(false);
-    expect(
-      isTypedTodayDailyReportRequest('2035년 1월 6일 일일 보고서를 만들어 줘.'),
-    ).toBe(false);
-    expect(
-      isTypedTodayDailyReportRequest('일일 보고서가 무엇인지 설명해 줘.'),
-    ).toBe(false);
   } finally {
     store.dispose();
   }

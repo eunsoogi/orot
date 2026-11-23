@@ -29,6 +29,8 @@ test.each(['synthetic-evidence', 'missing'])(
     const result = await runRagConversationTurn({
       ...f.options,
       question: input.request,
+      entryIntent: 'possibilities',
+      explicitPossibilityChoice: true,
     });
     if (citation === 'missing') {
       expect(result.status).not.toBe('answer');
@@ -64,6 +66,8 @@ test('one format correction converts prose to a report, never publishes the reje
   const result = await runRagConversationTurn({
     ...f.options,
     question: input.request,
+    entryIntent: 'possibilities',
+    explicitPossibilityChoice: true,
   });
   expect(f.generate).toHaveBeenCalledTimes(2);
   expect(result.status).toBe('answer');
@@ -87,6 +91,8 @@ test('repeated malformed structure fails after one correction; clinical failures
   const result = await runRagConversationTurn({
     ...f.options,
     question: input.request,
+    entryIntent: 'possibilities',
+    explicitPossibilityChoice: true,
   });
   expect(f.generate).toHaveBeenCalledTimes(2);
   expect(result.status).not.toBe('answer');
@@ -124,7 +130,12 @@ test('cancelled format correction cannot publish a late report', async () => {
       });
     });
   const pending = runRagConversationTurn(
-    { ...f.options, question: input.request },
+    {
+      ...f.options,
+      question: input.request,
+      entryIntent: 'possibilities',
+      explicitPossibilityChoice: true,
+    },
     { signal: controller.signal },
   );
   await started;

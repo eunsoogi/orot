@@ -1,5 +1,8 @@
 import { recordFirstResponsePrompt } from '../agent/execution/recordFirstResponsePrompt';
-import { withStructuredPossibilityReport } from './structuredPossibilityReport';
+import {
+  requestsRoutedPossibilityReport,
+  withStructuredPossibilityReport,
+} from './structuredPossibilityReport';
 import { validateConversationResult } from './conversationResultValidation';
 import { acceptsLocalPublicSearchFallback } from './publicSearchFallback';
 import type { JsonObject, LanguageModelMessage } from '@orot/model-runtime';
@@ -151,8 +154,17 @@ export const proactiveConversationTaskV16 = withProactiveMemory(
 );
 
 // Prompt text is part of protected execution identity, not a migration of prior turns.
-export const ragConversationTask = {
+export const recordFirstConversationTaskV17 = {
   ...proactiveConversationTaskV16,
   taskVersion: '17',
   systemPrompt: `${recordFirstResponsePrompt} ${proactiveConversationTaskV16.systemPrompt}`,
+};
+
+const modelRoutedConversationTask = withProactiveMemory(
+  withStructuredPossibilityReport(legacyTask, requestsRoutedPossibilityReport),
+);
+export const ragConversationTask = {
+  ...modelRoutedConversationTask,
+  taskVersion: '18',
+  systemPrompt: `${recordFirstResponsePrompt} ${modelRoutedConversationTask.systemPrompt}`,
 };
