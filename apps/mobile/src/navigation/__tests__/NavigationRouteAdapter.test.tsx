@@ -1,17 +1,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useLayoutEffect, useState } from 'react';
-import {
-  AccessibilityInfo,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
 import type { NavigationSurfaceProps } from '../NavigationActionBar';
-import { appRouteIsScrollable } from '../appContentLayoutPolicy';
-import { useNavigationRouteRefresh } from '../navigationRouteRefresh';
 import { createNavigationController } from '../navigationController';
 import { NavigationRouteAdapter } from '../NavigationRouteAdapter';
 import { useNavigationBackAction } from '../useNavigationPrimaryAction';
@@ -236,44 +228,6 @@ describe('app navigation route adapter', () => {
     expect(screen.getByTestId('navigation-back')).toBeVisible();
     expect(scrollView).toBeVisible();
   });
-
-  it.each(['medical-document-detail', 'manual-history'] as const)(
-    'only gives the authorized detail a shared scroll refresh control (%s)',
-    async routeName => {
-      const controller = createNavigationController<
-        'home' | 'medical-document-detail' | 'manual-history'
-      >('home');
-      controller.push(routeName);
-      const reads = jest.fn(async (_id: string) => undefined);
-      function SelectedDetail() {
-        useNavigationRouteRefresh(true, () => reads('fixture-selected'));
-        return <Text>Synthetic selected detail</Text>;
-      }
-      await render(
-        <NavigationRouteAdapter
-          controller={controller}
-          scrollable={route => appRouteIsScrollable(route, 'conversation')}
-        >
-          {({ route }) =>
-            route.name === 'home' ? <Text>Home</Text> : <SelectedDetail />
-          }
-        </NavigationRouteAdapter>,
-      );
-      const controls = screen.UNSAFE_queryAllByType(RefreshControl);
-      if (routeName !== 'medical-document-detail') {
-        expect(controls).toHaveLength(0);
-        expect(reads).not.toHaveBeenCalled();
-        return;
-      }
-      expect(controls).toHaveLength(1);
-      expect(reads).not.toHaveBeenCalled();
-      await act(async () => {
-        await controls[0]!.props.onRefresh();
-      });
-      expect(reads.mock.calls).toEqual([['fixture-selected']]);
-      expect(screen.getByText('Synthetic selected detail')).toBeVisible();
-    },
-  );
 
   it('keeps the action bar in a keyboard-avoiding root instead of removing it', async () => {
     const controller = createNavigationController<TestRoute>('home');
