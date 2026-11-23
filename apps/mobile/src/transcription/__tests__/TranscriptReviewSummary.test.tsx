@@ -14,7 +14,7 @@ const reviewed = {
 
 // Requirement 11: the overall review label must not hide unfinished or corrected later segments.
 test.each([
-  ['unreviewed', '검토 전 초안'],
+  ['unreviewed', '저장된 전사'],
   ['needs_review', '수정됨 · 다시 확인 필요'],
   ['reviewed', '검토됨'],
 ] as const)(
