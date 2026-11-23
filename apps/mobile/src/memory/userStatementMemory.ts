@@ -62,6 +62,21 @@ export function isProactiveMemoryStatement(request: string): boolean {
   );
 }
 
+/** Keep direct no-retention wording separate from statements about unrelated past or personal behavior. */
+function declinesStatementRetention(text: string): boolean {
+  return (
+    /\b(?:never|not|don't)\s+(?:retain|preserve|memorize|archive|log)\b|(?:보관|간직|수집)\s*하지(?:는|도)?\s*(?:말|않|마)/iu.test(
+      text,
+    ) ||
+    /보존\s*하지(?:는|도)?\s*(?:말아\s*(?:주세요|줘)|말아요|마세요|마요|마)(?=$|[\s.!。])/u.test(
+      text,
+    ) ||
+    /(?:^|[.!]\s+|,\s*|\b(?:but|and|please)\s+)don’t\s+(?:retain|preserve|memorize|archive|log)\s+(?:this(?:\s+(?:message|statement))?|it)\s*[.!]?$/iu.test(
+      text,
+    )
+  );
+}
+
 /** Keep exact user-authored statements, not answers, diagnoses inferred by a model,
  * quoted documents, questions or hypothetical examples. This deliberately bounded
  * recognizer does not claim general language understanding. Uncertainty stays verbatim. */
@@ -71,12 +86,7 @@ export function conversationStatementMemory(
   if (value.status !== 'complete' || value.submittedInput?.ocr)
     return undefined;
   const question = value.question.trim();
-  if (
-    question.length > 1000 ||
-    /\b(?:never|not|don't)\s+(?:retain|preserve|memorize|archive|log)\b|(?:보관|간직|수집)\s*하지(?:는|도)?\s*(?:말|않|마)/iu.test(
-      question,
-    )
-  )
+  if (question.length > 1000 || declinesStatementRetention(question))
     return undefined;
   // Parse only for eligibility. Persist the original verbatim so both JS and
   // the SQLite statement-time trigger can attest exactly the same source.
