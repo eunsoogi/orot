@@ -97,16 +97,22 @@ test('shows saved audio review details, plays the recording and segment, and hid
   );
   expect(card).toHaveTextContent(/상담 녹음/u);
   expect(card).toHaveTextContent(/06:12/u);
-  expect(card).toHaveTextContent(/검토 전 초안/u);
+  expect(card).toHaveTextContent(/저장된 전사/u);
+  expect(card).not.toHaveTextContent(/검토 전 초안/u);
 
   await fireEvent.press(screen.getByTestId('recording-details-recording-ui-1'));
   expect(await screen.findByTestId('recording-playback-controls')).toBeTruthy();
   expect(screen.getByTestId('recording-detail-duration')).toHaveTextContent(
     '06:12',
   );
-  expect(screen.getByTestId('transcript-review-0')).toHaveTextContent(
-    '검토 전 초안',
+  expect(screen.getByTestId('transcript-summary-title')).toHaveTextContent(
+    '저장된 전사',
   );
+  expect(screen.queryByTestId('transcript-review-0')).toBeNull();
+  expect(screen.getByTestId('transcript-origin-0')).toHaveTextContent(
+    '기계 전사',
+  );
+  expect(screen.getByTestId('transcript-text-0')).toHaveTextContent(segment.text);
   expect(screen.queryByText('speech_transcriber')).toBeNull();
   expect(screen.queryByText('iOS 27')).toBeNull();
 
