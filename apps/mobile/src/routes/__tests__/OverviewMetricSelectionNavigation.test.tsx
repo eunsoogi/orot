@@ -22,6 +22,7 @@ import { RecordSourceNavigationProvider } from '../RecordSourceNavigation';
 import type { AppNavigationRoute } from '../appNavigationRoute';
 import { loadOverviewMetrics } from '../overview/metricLoader';
 import { loadOverviewMetricSelection } from '../overview/metricSelection';
+import { expectMetricEditorInsets } from '../testSupport/expectMetricEditorInsets';
 import { recentRouteProps } from '../testSupport/recentRecordsRouteTestSupport';
 
 jest.mock(
@@ -157,6 +158,7 @@ test('separate editor discards Cancel and saves all five ordered cards into the 
     const metricLoads = jest.mocked(loadOverviewMetrics).mock.calls.length;
     await openEditor();
     expect(loadOverviewMetrics).toHaveBeenCalledTimes(metricLoads);
+    expectMetricEditorInsets();
     await fireEvent.press(choice('sleep'));
     expect(save()).toBeDisabled();
     await fireEvent.press(choice('bodyMass'));
