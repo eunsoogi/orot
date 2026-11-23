@@ -99,7 +99,7 @@ export async function journaledModelCall<TResult>(
   const approvalSignal = approval?.signal ?? signal;
   const notify = (waiting: boolean) => {
     try {
-      context.onApprovalWait?.(waiting);
+      (context.onModelApprovalWait ?? context.onApprovalWait)?.(waiting);
     } catch {
       /* UI observers cannot grant access. */
     }

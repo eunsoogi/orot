@@ -221,10 +221,10 @@ export type MultiAgentRunResult<TResult> =
 export interface MultiAgentInvocation {
   readonly config?: RunnableConfig;
   readonly resumeFrom?: MultiAgentCheckpointState;
-  readonly onApprovalWait?: (waiting: boolean) => void;
+  readonly onApprovalWait?: (waiting: boolean, kind?: 'checkpoint-only') => void;
+  readonly onModelApprovalWait?: (waiting: boolean) => void;
   readonly pause?: import('./workflowPause').MultiAgentPauseController;
   readonly signal?: AbortSignal;
-  /** Safe phase and source-kind updates; these events never include prompt, query, or evidence content. */
   readonly onProgress?: (event: MultiAgentProgressEvent) => void;
   /** Content-free actual tool lifecycle, excluding reasoning and unrestricted payloads. */
   readonly onToolEvent?: (event: import('./toolEvents').ConversationToolEvent) => void;

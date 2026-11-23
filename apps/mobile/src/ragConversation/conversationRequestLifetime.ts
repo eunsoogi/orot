@@ -124,7 +124,9 @@ export function createConversationRequestLifetime(input: {
     },
     executionObserver(controller: AbortController) {
       return {
-        onApprovalWait: (waiting: boolean) => {
+        onApprovalWait: (waiting: boolean, kind?: 'checkpoint-only') => {
+          // The runtime still owns its pause signal and journal; no person is waiting here.
+          if (kind === 'checkpoint-only') return;
           const entry = owners.get(controller);
           if (
             !entry ||
