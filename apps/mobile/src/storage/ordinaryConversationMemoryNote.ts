@@ -4,10 +4,12 @@ import {
   insertManualHistoryEntry,
   type SqlDatabase,
 } from '@orot/storage';
+import { isAuthoredRoutineMemoryStatement } from '../memory/authoredRoutineMemory';
 import { isProactiveMemoryStatement } from '../memory/userStatementMemory';
 import {
   readOrdinaryConversationMemoryEnrollment,
   matchesOrdinaryConversationMemoryEnrollment,
+  type LocalConversationMemoryScope,
 } from './ordinaryConversationMemoryEnrollment';
 import {
   hasOrdinaryConversationCompletedSource,
@@ -17,6 +19,7 @@ import {
 export interface CapturedOrdinaryConversationMemory {
   readonly database: SqlDatabase;
   readonly generation: number;
+  readonly scope?: LocalConversationMemoryScope;
   readonly deviceEpoch: string;
   isCurrent(): boolean;
 }
@@ -30,14 +33,19 @@ export async function saveOrdinaryConversationMemoryNote(
   attemptIsCurrent: () => boolean,
 ): Promise<boolean> {
   const isCurrent = () => attemptIsCurrent() && captured.isCurrent();
-  if (!proposed || !isCurrent() || !isProactiveMemoryStatement(source.question))
-    return false;
+  const scope = captured.scope ?? 'reply-preferences';
+  const eligible =
+    scope === 'reply-preferences'
+      ? isProactiveMemoryStatement(source.question)
+      : scope === 'authored-routine' &&
+        isAuthoredRoutineMemoryStatement(source.question);
+  if (!proposed || !isCurrent() || !eligible) return false;
 
   let saved = false;
   await captured.database.transaction(async tx => {
     const allowed = async () => {
       if (!isCurrent()) return false;
-      const receipt = await readOrdinaryConversationMemoryEnrollment(tx);
+      const receipt = await readOrdinaryConversationMemoryEnrollment(tx, scope);
       return (
         receipt.generation === captured.generation &&
         matchesOrdinaryConversationMemoryEnrollment(

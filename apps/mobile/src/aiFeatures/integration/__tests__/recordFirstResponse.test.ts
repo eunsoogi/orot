@@ -73,6 +73,23 @@ test('new Chat and actual Daily request share a record-first system prompt witho
   expect(JSON.stringify(ragConversationTask.createMessages(input))).toContain(
     'answerTemplate',
   );
+  const v18 = restoreConversationTask({
+    taskType: old.taskType,
+    taskVersion: '18',
+  })!;
+  const routine = {
+    ...input,
+    request: 'I practice piano every day.',
+    context: {},
+  };
+  expect(v18.systemPrompt).toBe(ragConversationTask.systemPrompt);
+  expect(v18.createMessages).toBe(ragConversationTask.createMessages);
+  expect(v18.createResultSchema?.(routine)?.properties).not.toHaveProperty(
+    'rememberCurrentStatement',
+  );
+  expect(
+    ragConversationTask.createResultSchema?.(routine)?.properties,
+  ).toHaveProperty('rememberCurrentStatement');
   expect(recordFirstResponsePrompt).toContain('why these observations matter');
   expect(recordFirstResponsePrompt).toContain('concrete, feasible next step');
   const [system, user] = request.messages;
