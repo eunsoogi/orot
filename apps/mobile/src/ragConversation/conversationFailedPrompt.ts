@@ -1,9 +1,11 @@
+import { getRagConversationFailureCopy } from './copy';
+import type { RagConversationFailureKind } from './outcome';
 import type {
   ConversationSession,
   PendingTurn,
 } from './conversationSessionTypes';
 
-/** Preserve the existing partial and composer recovery for any request failure. */
+/** Recover the composer while keeping terminally rejected output out of the transcript. */
 export function conversationFailureReporter(
   find: (id: number) => ConversationSession,
   update: (id: number, change: Partial<ConversationSession>) => void,
@@ -11,8 +13,35 @@ export function conversationFailureReporter(
   retain: (id: number, activity: string) => void,
   id: number,
 ) {
-  return (partialCopy: string, failureCopy = partialCopy) => {
-    retain(id, partialCopy);
+  return (kind: RagConversationFailureKind, partialCopy?: string) => {
+    const failureCopy = getRagConversationFailureCopy(kind);
+    if (kind === 'validation_failed' || kind === 'provider_refused') {
+      const { pendingMessage: pending, messages } = find(id);
+      const opening = pending?.initialResponse;
+      // A separately reviewed opening may stay visible. A receipt is not an
+      // opening; body text and superseded generations never survive rejection.
+      if (
+        pending &&
+        !pending.withholdHealthBody &&
+        opening &&
+        opening.source !== 'receipt'
+      )
+        update(id, {
+          pendingMessage: null,
+          messages: [
+            ...messages,
+            {
+              id: pending.id,
+              role: 'assistant',
+              content: '',
+              initialResponse: opening,
+              // Exclude this opening from future answer context without an
+              // interruption label, body, or resumption metadata.
+              incomplete: true,
+            },
+          ],
+        });
+    } else retain(id, partialCopy ?? failureCopy);
     restoreFailedPrompt(
       find,
       update,

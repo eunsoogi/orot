@@ -18,6 +18,57 @@ enum NavigationOverflowSheetUITestConditions {
 
 @MainActor
 extension NavigationPageActionUITestConditions {
+    /// Keep the saved-summary precondition strict without running the unrelated assessment.
+    static func verifySummaryAssessmentIsReachable(_ app: XCUIApplication) throws {
+        let destination = "disease-hypotheses-screen"
+        let summary = "symptom-summary-generate"
+        let assessment = "disease-hypotheses-generate"
+        let more = "navigation-page-action-overflow"
+        assertToolbar(app, marker: destination, actions: [summary])
+        let direct = app.buttons[assessment]
+        let overflow = app.buttons[more]
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            (direct.exists && direct.isEnabled && direct.isHittable) ||
+                (overflow.exists && overflow.isEnabled && overflow.isHittable)
+        }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [ready]), .completed)
+        if direct.exists, direct.isHittable {
+            XCTAssertTrue(direct.isEnabled)
+            assertToolbar(app, marker: destination, actions: [summary, assessment] + (overflow.exists ? [more] : []))
+            return
+        }
+
+        assertToolbar(app, marker: destination, actions: [summary, more])
+        XCTAssertTrue(overflow.isEnabled)
+        overflow.tap()
+        let sheets = app.sheets
+        XCTAssertTrue(UITestConditions.exists(sheets.firstMatch))
+        XCTAssertEqual(sheets.count, 1)
+        let sheet = sheets.firstMatch
+        let label = "가능성 살펴보기"
+        let assessmentItems = sheet.buttons.matching(NSPredicate(format: "label == %@", label))
+        let item = assessmentItems.firstMatch
+        XCTAssertTrue(UITestConditions.exists(item))
+        XCTAssertEqual(assessmentItems.count, 1)
+        NavigationOverflowSheetUITestConditions.reveal(item, label: label, in: app)
+        let closeItems = sheet.buttons.matching(NSPredicate(format: "label == %@", "동작 메뉴 닫기"))
+        XCTAssertEqual(closeItems.count, 1)
+        let close = closeItems.firstMatch
+        for control in [item, close] {
+            XCTAssertTrue(control.exists && control.isEnabled && control.isHittable)
+            XCTAssertTrue(sheet.frame.insetBy(dx: -1, dy: -1).contains(control.frame))
+            let visible = control.frame.intersection(app.frame)
+            XCTAssertGreaterThanOrEqual(visible.width, 44)
+            XCTAssertGreaterThanOrEqual(visible.height, 44)
+        }
+        XCTAssertFalse(item.frame.intersects(close.frame))
+        // Use the actual menu's Cancel control, not the assessment or an arbitrary outside tap.
+        close.tap()
+        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !sheet.exists }, object: nil)
+        XCTAssertEqual(UITestConditions.wait(for: [dismissed]), .completed)
+        assertToolbar(app, marker: destination, actions: [summary])
+    }
+
     static func pageAction(_ app: XCUIApplication, id: String, label: String) -> XCUIElement {
         let direct = app.buttons.matching(identifier: id).firstMatch
         let overflow = app.buttons["navigation-page-action-overflow"]

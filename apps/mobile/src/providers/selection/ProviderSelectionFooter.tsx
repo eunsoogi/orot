@@ -100,6 +100,7 @@ export function ProviderSelectionFooter({
         <ProviderSelectionConfirmation
           option={option}
           inlineConsent={inlineConsent}
+          summaryAbove={!showSummary}
           consentChoices={
             searchChoices && onSearchChoices ? (
               <SettingsSearchConsentChoices
@@ -136,15 +137,25 @@ export function ProviderSelectionFooter({
 /** Present the same saved identity above or below the choices, without moving actions. */
 export function ProviderSelectionCurrentSummary({
   message,
+  draft,
 }: {
   readonly message: string;
+  readonly draft?: string;
 }) {
   const prefix = providerSelectionText.selectedPrefix;
   const selected = message.startsWith(prefix);
   return (
     <ModelSelectionSummary
-      label={selected ? prefix : undefined}
-      value={selected ? message.slice(prefix.length).trimStart() : message}
+      label={
+        draft
+          ? t('modelSettings.selectedAiPrefix')
+          : selected
+            ? prefix
+            : undefined
+      }
+      value={
+        draft ?? (selected ? message.slice(prefix.length).trimStart() : message)
+      }
       testID="provider-selection-current"
     />
   );

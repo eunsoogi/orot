@@ -135,22 +135,15 @@ export default function ProviderSelectionScreen({
     savedModelId: savedSelection?.modelId,
     presentation,
   });
+  const host = { testID: 'provider-selection-scroll-lane', onLayout };
   return (
-    <View
-      style={styles.root}
-      testID="provider-selection-scroll-lane"
-      onLayout={onLayout}
-    >
+    <View style={styles.root} {...host}>
       <ScrollView
         {...edge.indicatorProps}
         contentContainerStyle={contentStyle}
         style={[styles.scrollView, edge.scrollViewStyle]}
         testID={
-          presentation === 'settings-provider'
-            ? 'settings-provider-screen'
-            : presentation === 'settings-accounts'
-              ? 'settings-accounts-screen'
-              : 'provider-selection-screen'
+          presentation.replace('feature', 'provider-selection') + '-screen'
         }
       >
         {onBack && !navigationRouteKey ? (
@@ -179,14 +172,20 @@ export default function ProviderSelectionScreen({
           calendarOptions={options}
           chatGPTSetup={chatGPTSetup}
           enabled={presentation === 'settings-provider'}
+          languageHeader={
+            presentation === 'settings-provider' ? (
+              <ProviderSelectionCurrentSummary
+                message={selectionMessage}
+                draft={confirmationOption?.displayName}
+              />
+            ) : null
+          }
           locked={saving || pendingOption !== null}
           onOpenAccounts={chatGPTSetup?.onOpenAccounts}
         >
-          {presentation === 'settings-provider' && !pendingOption ? (
-            <ProviderSelectionCurrentSummary message={selectionMessage} />
-          ) : null}
           {presentation !== 'settings-accounts' ? (
             <ProviderSelectionChoices
+              followsSiblingSummary={presentation === 'settings-provider'}
               chatGPTSetup={chatGPTSetup}
               loading={loading}
               onChoose={option => {

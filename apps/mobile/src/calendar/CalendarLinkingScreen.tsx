@@ -18,8 +18,7 @@ import { emptyCalendarAutoSyncState } from './calendarAutoSync';
 import type { CalendarAutoSyncState } from './calendarAutoSync';
 import { useCalendarLinking } from './useCalendarLinking';
 import { eventFromAppointment } from './calendarMonthEvents';
-import { BottomNavigationMenu } from '../navigation/BottomNavigationMenu';
-import { navigationText } from '../i18n/navigation';
+import { CalendarRouteActions } from './CalendarRouteActions';
 import { useCalendarNavigationLeaveState } from './useCalendarNavigationLeaveState';
 
 interface CalendarLinkingScreenProps {
@@ -28,6 +27,7 @@ interface CalendarLinkingScreenProps {
   bridge: CalendarBridge;
   calendarSync?: CalendarAutoSyncState;
   adaptiveScheduleLayout?: boolean;
+  embeddedInHubScroll?: boolean;
   heading?: string;
   onOpenAppointments?: () => void;
   onOpenMedicalAppointments?: () => void;
@@ -35,12 +35,14 @@ interface CalendarLinkingScreenProps {
   onBack?: () => void;
   onOpenRecording?: () => void;
 }
+
 export default function CalendarLinkingScreen({
   scrollHeader,
   repository,
   bridge,
   calendarSync = emptyCalendarAutoSyncState,
   adaptiveScheduleLayout = false,
+  embeddedInHubScroll = false,
   heading = t('calendar.title'),
   onOpenAppointments,
   onOpenMedicalAppointments,
@@ -48,12 +50,11 @@ export default function CalendarLinkingScreen({
   onBack,
   onOpenRecording,
 }: CalendarLinkingScreenProps) {
-  const inset = useNavigationContentInset();
+  const navigationInset = useNavigationContentInset();
   const edge = useNavigationEdgeVerticalScroll({
-    ownerWidth: adaptiveScheduleLayout ? undefined : 0,
+    ownerWidth: adaptiveScheduleLayout && !embeddedInHubScroll ? undefined : 0,
     trailingPadding: 20,
   });
-  const content = [styles.container, inset, edge.contentStyle];
   const calendar = useCalendarLinking(repository, bridge, calendarSync);
   const queryWindow: CalendarQueryWindow | null = calendarSync.query
     ? calendarQueryWindowFromCoverage(calendarSync.query)
@@ -126,7 +127,6 @@ export default function CalendarLinkingScreen({
       selectionDisabled={calendar.saving}
     />
   );
-
   useEffect(() => {
     // Candidate events stay local until confirmation persists them as appointments.
     if (
@@ -137,113 +137,109 @@ export default function CalendarLinkingScreen({
     }
     lastNotice.current = calendar.notice;
   }, [calendar.notice, onAppointmentsChanged]);
+
+  const content = (
+    <>
+      <View style={styles.heading}>
+        <Text
+          accessibilityRole="header"
+          style={styles.title}
+          testID="calendar-title"
+        >
+          {heading}
+        </Text>
+        <Text style={styles.subtitle} testID="schedule-subtitle">
+          {t('schedule.subtitle')}
+        </Text>
+      </View>
+      <CalendarQuickActions
+        disabled={calendar.saving || hasUnsavedSelection}
+        onOpenAppointments={onOpenAppointments}
+        onOpenMedicalAppointments={onOpenMedicalAppointments}
+      />
+      {calendar.loadingAppointments ? (
+        <Text testID="calendar-storage-loading">
+          {t('appointments.opening')}
+        </Text>
+      ) : calendar.error === t('appointments.loadError') ? (
+        <Button
+          onPress={calendar.reloadAppointments}
+          title={t('appointments.retry')}
+        />
+      ) : null}
+      {calendar.pendingChange?.kind === 'changed' ? (
+        <View style={styles.card} testID="calendar-change-warning">
+          <Text style={styles.warning}>{t('calendar.eventChanged')}</Text>
+          <Button
+            onPress={calendar.reviewChangedEvent}
+            testID="calendar-review-change"
+            title={t('calendar.reviewChange')}
+          />
+        </View>
+      ) : null}
+      {calendar.pendingChange?.kind === 'missing' ? (
+        <View style={styles.card} testID="calendar-missing-warning">
+          <Text style={styles.warning}>{t('calendar.eventMissing')}</Text>
+        </View>
+      ) : null}
+      {calendar.error ? (
+        <Text
+          accessibilityRole="alert"
+          style={styles.error}
+          testID="calendar-error"
+        >
+          {calendar.error}
+        </Text>
+      ) : null}
+      {calendar.notice ? (
+        <Text accessibilityLiveRegion="polite">{calendar.notice}</Text>
+      ) : null}
+
+      {adaptiveScheduleLayout ? (
+        // Keep selection in the hook while both sections share one measured region.
+        <AdaptiveColumns
+          primary={
+            <View style={styles.pageSections}>
+              {calendarMonth}
+              {selectionSummary}
+            </View>
+          }
+          routeKey="schedule"
+          testID="schedule-adaptive-columns"
+        />
+      ) : (
+        <>
+          {selectionSummary}
+          {calendarMonth}
+        </>
+      )}
+    </>
+  );
+  // The Records/Schedule hub owns the only vertical scroll and its safe inset.
+  if (embeddedInHubScroll)
+    return <View style={styles.container}>{content}</View>;
   return (
     <View style={styles.screen}>
       <ScrollView
         style={edge.scrollViewStyle}
-        contentContainerStyle={content}
+        contentContainerStyle={[
+          styles.container,
+          navigationInset,
+          edge.contentStyle,
+        ]}
         {...edge.indicatorProps}
         testID="calendar-screen"
       >
         {scrollHeader ? (
           <View style={styles.scrollHeader}>{scrollHeader}</View>
         ) : null}
-        {/* Calendar access and recovery details live in Settings, outside this passive schedule view. */}
-        <View style={styles.heading}>
-          <Text
-            accessibilityRole="header"
-            style={styles.title}
-            testID="calendar-title"
-          >
-            {heading}
-          </Text>
-          <Text style={styles.subtitle} testID="schedule-subtitle">
-            {t('schedule.subtitle')}
-          </Text>
-        </View>
-        <CalendarQuickActions
-          disabled={calendar.saving || hasUnsavedSelection}
-          onOpenAppointments={onOpenAppointments}
-          onOpenMedicalAppointments={onOpenMedicalAppointments}
-        />
-        {calendar.loadingAppointments ? (
-          <Text testID="calendar-storage-loading">
-            {t('appointments.opening')}
-          </Text>
-        ) : calendar.error === t('appointments.loadError') ? (
-          <Button
-            onPress={calendar.reloadAppointments}
-            title={t('appointments.retry')}
-          />
-        ) : null}
-
-        {calendar.pendingChange?.kind === 'changed' ? (
-          <View style={styles.card} testID="calendar-change-warning">
-            <Text style={styles.warning}>{t('calendar.eventChanged')}</Text>
-            <Button
-              onPress={calendar.reviewChangedEvent}
-              testID="calendar-review-change"
-              title={t('calendar.reviewChange')}
-            />
-          </View>
-        ) : null}
-        {calendar.pendingChange?.kind === 'missing' ? (
-          <View style={styles.card} testID="calendar-missing-warning">
-            <Text style={styles.warning}>{t('calendar.eventMissing')}</Text>
-          </View>
-        ) : null}
-        {calendar.error ? (
-          <Text
-            accessibilityRole="alert"
-            style={styles.error}
-            testID="calendar-error"
-          >
-            {calendar.error}
-          </Text>
-        ) : null}
-        {calendar.notice ? (
-          <Text accessibilityLiveRegion="polite">{calendar.notice}</Text>
-        ) : null}
-
-        {adaptiveScheduleLayout ? (
-          // Keep selection in the hook while both sections share one measured region.
-          <AdaptiveColumns
-            primary={
-              <View style={styles.pageSections}>
-                {calendarMonth}
-                {selectionSummary}
-              </View>
-            }
-            routeKey="schedule"
-            testID="schedule-adaptive-columns"
-          />
-        ) : (
-          <>
-            {selectionSummary}
-            {calendarMonth}
-          </>
-        )}
+        {content}
       </ScrollView>
-      {/* Keep route controls outside the calendar scroller and inside its safe area. */}
-      {onBack ? (
-        <BottomNavigationMenu
-          onBack={onBack}
-          primaryAction={
-            onOpenRecording
-              ? {
-                  label: navigationText.recording.label,
-                  accessibilityLabel:
-                    navigationText.recording.accessibilityLabel,
-                  onPress: onOpenRecording,
-                  testID: 'navigation-recording',
-                  systemImageName: 'mic',
-                }
-              : undefined
-          }
-          testID="calendar-back"
-          disabled={calendar.saving}
-        />
-      ) : null}
+      <CalendarRouteActions
+        onBack={onBack}
+        onOpenRecording={onOpenRecording}
+        disabled={calendar.saving}
+      />
     </View>
   );
 }

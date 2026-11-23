@@ -83,3 +83,18 @@ it('only lends the rail to the active full-route appointment owner', async () =>
   await screen.rerender(tree(true, false));
   expect(StyleSheet.flatten(scroll.props.style).marginRight).toBeUndefined();
 });
+
+it('does not add a vertical scroller when the Records hub owns it', async () => {
+  const screen = await render(
+    <NavigationContentFrameContext.Provider value={frame}>
+      <CalendarLinkingScreen
+        adaptiveScheduleLayout
+        embeddedInHubScroll
+        bridge={bridge()}
+        repository={repository(async () => [])}
+      />
+    </NavigationContentFrameContext.Provider>,
+  );
+  expect(screen.queryByTestId('calendar-screen')).toBeNull();
+  expect(screen.getByTestId('calendar-title')).toBeOnTheScreen();
+});

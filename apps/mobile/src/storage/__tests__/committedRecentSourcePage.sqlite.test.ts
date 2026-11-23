@@ -159,3 +159,86 @@ test('changing owners cancels the queued first-page deferral without issuing the
     f.close();
   }
 });
+
+test.each(['current', 'revoked', 'deadline'] as const)(
+  'two separate settled startup crossings recheck the same first-page owner: %s',
+  async owner => {
+    function deferred() {
+      let resolve!: () => void;
+      const promise = new Promise<void>(done => {
+        resolve = done;
+      });
+      return { promise, resolve };
+    }
+    const crossings = [
+      { started: deferred(), settle: deferred() },
+      { started: deferred(), settle: deferred() },
+    ];
+    let next = 0;
+    const f = openInterleavableRecentSourceDatabase(query => {
+      if (query !== 'PRAGMA temp_store = MEMORY') return;
+      const crossing = crossings[next++]!;
+      crossing.started.resolve();
+      return crossing.settle.promise;
+    });
+    const result = jest.fn();
+    const flushQueue = async () => {
+      await new Promise<void>(resolve => setImmediate(resolve));
+      await new Promise<void>(resolve => setImmediate(resolve));
+    };
+    let first: Promise<unknown> | undefined;
+    let another: Promise<unknown> | undefined;
+    let page: Promise<unknown> | undefined;
+    let elapsed = 0;
+    const clock = jest
+      .spyOn(performance, 'now')
+      .mockImplementation(() => elapsed);
+    const check = jest.fn(async () => true);
+    check
+      .mockImplementationOnce(async () => {
+        // A different startup owner can submit while the route revalidates
+        // its first fresh attempt; this second mutation is real SQLite.
+        another = f.database.execute('PRAGMA temp_store = MEMORY');
+        await crossings[1]!.started.promise;
+        return true;
+      })
+      .mockImplementationOnce(async () => {
+        // A slow owner read does not extend the original startup window.
+        if (owner === 'deadline') elapsed = 1_001;
+        return owner !== 'revoked';
+      });
+    try {
+      await runMigrations(f.database);
+      await createRecordRepository(f.database).put('source_record', fixture);
+      first = f.database.execute('PRAGMA temp_store = MEMORY');
+      await crossings[0]!.started.promise;
+      page = readCommittedRecentSourcePage(
+        f.database,
+        undefined,
+        undefined,
+        check,
+      ).then(result, result);
+      await flushQueue();
+      expect(result).not.toHaveBeenCalled();
+      crossings[0]!.settle.resolve();
+      await first;
+      await crossings[1]!.started.promise;
+      await flushQueue();
+      crossings[1]!.settle.resolve();
+      await another;
+      await page;
+      expect(result).toHaveBeenCalledTimes(1);
+      if (owner === 'current')
+        expect(result).toHaveBeenCalledWith([
+          expect.objectContaining({ id: fixture.id }),
+        ]);
+      else expect(result).toHaveBeenCalledWith(expect.any(Error));
+      expect(check).toHaveBeenCalledTimes(2);
+    } finally {
+      clock.mockRestore();
+      for (const crossing of crossings) crossing.settle.resolve();
+      await Promise.allSettled([first, another, page]);
+      f.close();
+    }
+  },
+);

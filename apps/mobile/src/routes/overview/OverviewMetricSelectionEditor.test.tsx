@@ -1,23 +1,23 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
-import { OverviewMetrics } from './OverviewMetrics';
-import { useOverviewMetrics } from './useOverviewMetrics';
-
-jest.mock('./useOverviewMetrics');
-const mocked = jest.mocked(useOverviewMetrics);
+import { OverviewMetricSelectionEditor } from './OverviewMetricSelectionEditor';
+import { overviewMetricTitle } from './OverviewMetricCard';
 
 test('presents choices as full-row checkboxes with selected and unselected status', async () => {
-  mocked.mockReturnValue({
-    selection: ['sleep', 'heartRate'],
-    metrics: {},
-    quantityTruncated: false,
-    state: 'ready',
-    retry: jest.fn(),
-    save: jest.fn(),
-  });
-  await render(<OverviewMetrics />);
-  await fireEvent.press(screen.getByRole('button', { name: '편집' }));
+  await render(
+    <OverviewMetricSelectionEditor
+      canSave
+      onCancel={jest.fn()}
+      onMove={jest.fn()}
+      onSave={jest.fn()}
+      onToggle={jest.fn()}
+      saving={false}
+      saveError={false}
+      selection={['sleep', 'heartRate']}
+      title={overviewMetricTitle}
+    />,
+  );
 
   expect(
     StyleSheet.flatten(
@@ -70,27 +70,48 @@ test('presents choices as full-row checkboxes with selected and unselected statu
   ).toMatchObject({ minHeight: 48, backgroundColor: appColors.primaryAction });
 });
 
-test('explains the two-to-four selection limit and disables save below two choices', async () => {
-  mocked.mockReturnValue({
-    selection: ['sleep', 'heartRate'],
-    metrics: {},
-    quantityTruncated: false,
-    state: 'ready',
-    retry: jest.fn(),
-    save: jest.fn(),
-  });
-  await render(<OverviewMetrics />);
-  await fireEvent.press(screen.getByRole('button', { name: '편집' }));
-
-  expect(screen.getByText('지표를 2개에서 4개 선택하세요.')).toBeTruthy();
-  const save = screen.getByRole('button', { name: '저장' });
-  expect(save).toBeEnabled();
-  await fireEvent.press(screen.getByRole('checkbox', { name: /기록된 수면/ }));
-  expect(save).toBeDisabled();
-  await fireEvent.press(screen.getByRole('checkbox', { name: /기록된 수면/ }));
-  await fireEvent.press(screen.getByRole('checkbox', { name: /체중/ }));
-  await fireEvent.press(
-    screen.getByRole('checkbox', { name: /기록된 걸음 샘플 합계/ }),
+test('offers accessible moves only for selected metrics, bounded to the current order', async () => {
+  const onMove = jest.fn();
+  await render(
+    <OverviewMetricSelectionEditor
+      canSave
+      onCancel={jest.fn()}
+      onMove={onMove}
+      onSave={jest.fn()}
+      onToggle={jest.fn()}
+      saving={false}
+      saveError={false}
+      selection={['heartRate', 'sleep']}
+      title={overviewMetricTitle}
+    />,
   );
-  expect(save).toBeEnabled();
+  const first = screen.getByRole('adjustable', { name: '심박수 순서 변경' });
+  const checkbox = screen.getByRole('checkbox', { name: '심박수' });
+  expect(first.parent).toBe(checkbox.parent);
+  // Keep checkbox then handle in source order while laying out the handle first.
+  expect(first.parent?.children).toEqual([checkbox, first]);
+  expect(StyleSheet.flatten(first.parent?.props.style).flexDirection).toBe(
+    'row-reverse',
+  );
+  const [label, mark] = checkbox.children;
+  expect(label).toContainElement(screen.getByText('심박수'));
+  expect(mark).toHaveStyle({ backgroundColor: appColors.primary });
+  expect(StyleSheet.flatten(checkbox.props.style).flexDirection).toBe('row');
+  expect(first.props.accessibilityValue.text).toBe('1 / 2');
+  expect(first.props.accessibilityActions).toEqual([
+    { name: 'increment', label: '아래로 이동' },
+  ]);
+  expect(StyleSheet.flatten(first.props.style)).toMatchObject({
+    width: 44,
+    minHeight: 44,
+  });
+  expect(screen.queryByTestId('overview-metric-reorder-steps')).toBeNull();
+  await fireEvent(first, 'accessibilityAction', {
+    nativeEvent: { actionName: 'decrement' },
+  });
+  expect(onMove).not.toHaveBeenCalled();
+  await fireEvent(first, 'accessibilityAction', {
+    nativeEvent: { actionName: 'increment' },
+  });
+  expect(onMove).toHaveBeenCalledWith('heartRate', 1);
 });

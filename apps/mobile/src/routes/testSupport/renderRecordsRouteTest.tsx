@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react-native';
 import { recordsRouteTestProps } from './recordsRouteTestProps';
 import { AppRouteContent } from '../AppRouteContent';
+import { RecordsHubSection } from '../RecordsHubSection';
 import {
   appContentLayoutOwner,
   appRouteIsScrollable,
@@ -18,14 +19,24 @@ export async function renderRecordsRouteTest() {
       <NavigationRouteAdapter
         controller={controller}
         contentLayoutOwner={appContentLayoutOwner}
-        scrollable={route => appRouteIsScrollable(route, 'records')}
+        scrollable={route =>
+          route.name !== 'root' && appRouteIsScrollable(route, 'records')
+        }
         rootTabs={route =>
           route.name === 'root'
             ? { activeTab: 'records', onSelect: jest.fn() }
             : undefined
         }
       >
-        {actions => <AppRouteContent {...props} actions={actions} />}
+        {actions =>
+          actions.route.name === 'root' ? (
+            <RecordsHubSection selected="records">
+              <AppRouteContent {...props} actions={actions} />
+            </RecordsHubSection>
+          ) : (
+            <AppRouteContent {...props} actions={actions} />
+          )
+        }
       </NavigationRouteAdapter>
     </RecordSourceNavigationProvider>,
   );

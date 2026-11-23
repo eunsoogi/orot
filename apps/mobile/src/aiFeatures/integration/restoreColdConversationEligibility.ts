@@ -1,3 +1,4 @@
+import { mayHaveConversationCheckpoint } from '../../ragConversation/conversationCheckpointInterruption';
 import { restoreInterruptedPreviews } from './restoreInterruptedPreviews';
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
 type Turns = Awaited<
@@ -18,9 +19,7 @@ export async function restoreColdConversationEligibility(
       if (
         !turn.interrupted ||
         !turn.toolMessageId ||
-        !['expired', 'decision-required'].includes(
-          turn.interruptionReason ?? '',
-        )
+        !mayHaveConversationCheckpoint(turn.interruptionReason)
       )
         return turn;
       const recovery = await cold

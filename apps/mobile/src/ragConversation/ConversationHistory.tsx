@@ -198,7 +198,7 @@ export function ConversationHistory({
               showToolActivity: false,
               onOpenSource,
               onLinkError,
-              compact,
+              ...{ compact, copyingAllowed: !restoring && !restoreFailed },
               toolSourceSessionId,
               resolveToolSource,
               renderVisitQuestions,

@@ -36,13 +36,11 @@ export function createConversationSessions(
   let disposed = false;
   const epoch = { lifecycle: 0, selection: 0 };
   const photoSurface = conversationPhotoSurface(options);
-  const { photoDrafts, photoConsent } = photoSurface;
   const apply = (next: S.ConversationSnapshot | null) => {
-    if (next) {
-      if (next.activeId !== snapshot.activeId) epoch.selection++;
-      snapshot = next;
-      listeners.emit();
-    }
+    if (!next) return;
+    if (next.activeId !== snapshot.activeId) epoch.selection++;
+    snapshot = next;
+    listeners.emit();
   };
   const update = (
     id: number,
@@ -70,8 +68,8 @@ export function createConversationSessions(
     options.execution,
     {
       requested: false,
-      drafts: photoDrafts,
-      consent: photoConsent,
+      drafts: photoSurface.photoDrafts,
+      consent: photoSurface.photoConsent,
       preparation: options.photoPreparation,
     },
     options.coldResume,
@@ -116,10 +114,11 @@ export function createConversationSessions(
     disposed: () => disposed,
     lifecycle: () => epoch.lifecycle,
     finalizeDraft: id => {
-      photoDrafts.retireSession(id).catch(() => {});
+      photoSurface.photoDrafts.retireSession(id).catch(() => {});
     },
   });
   const dispatch = conversationDispatch({
+    options,
     bindSender: (...args) => bindSender(...args),
     beforeSend: options.continuousSession
       ? (...args) => beforeSend!(...args)
@@ -127,9 +126,9 @@ export function createConversationSessions(
     requests,
     find,
     update,
+    selection: { epoch, subscribe: listeners.subscribe },
     current: id => !options.continuousSession || snapshot.activeId === id,
-    photoDrafts,
-    retention: options.retention,
+    photoDrafts: photoSurface.photoDrafts,
     disposed: () => disposed,
   });
   const store = {
@@ -173,6 +172,7 @@ export function createConversationSessions(
     }),
     remove: (id: number) => {
       taskState.invalidateVoiceEnd(id);
+      dispatch.cancelBeforeSend(id);
       return removal.remove(id);
     },
     undoRemove: removal.undo,
@@ -202,8 +202,8 @@ export function createConversationSessions(
     },
     invalidateAll() {
       if (disposed) return;
-      photoConsent.dispose();
-      photoDrafts.clear().catch(() => {});
+      photoSurface.photoConsent.dispose();
+      photoSurface.photoDrafts.clear().catch(() => {});
       epoch.lifecycle++;
       taskState.invalidate();
       taskRefresh.invalidate();
@@ -215,8 +215,8 @@ export function createConversationSessions(
       apply(initialConversationSnapshot(empty()));
     },
     dispose() {
-      photoConsent.dispose();
-      photoDrafts.clear().catch(() => {});
+      photoSurface.photoConsent.dispose();
+      photoSurface.photoDrafts.clear().catch(() => {});
       disposed = true;
       listeners.dispose();
       epoch.lifecycle++;

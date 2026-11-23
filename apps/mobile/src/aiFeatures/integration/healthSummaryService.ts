@@ -4,7 +4,7 @@ import { startContextualConversationOpening } from './contextualConversationOpen
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
-import { symptomSummaryTaskForProvider } from '../../diseaseHypotheses/partitionedSymptomSummaryTask';
+import { healthSummaryTaskForProvider } from '../../diseaseHypotheses/partitionedSymptomSummaryTask';
 import type { SymptomSummaryStorage } from '../../diseaseHypotheses/savedSummaries';
 import type {
   HealthSummaryRequest,
@@ -147,7 +147,7 @@ export function createHealthSummaryService(input: {
     }
     if (signal.aborted)
       return { failure: { status: 'failure', kind: 'cancelled' } };
-    const original = symptomSummaryTaskForProvider(selected.provider.id);
+    const original = healthSummaryTaskForProvider(selected.provider.id);
     const task = {
       ...original,
       // Keep the existing schema and result validator while removing legacy public-search and relative-period instructions.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { HostInstance } from 'react-native';
 import type { ViewStyle } from 'react-native';
@@ -14,6 +14,8 @@ import {
 
 export interface AdaptiveColumnsProps {
   readonly primary: ReactNode;
+  /** Only an explicitly verified, untransformed ancestor sharing this column lane. */
+  readonly measurementRoot?: RefObject<HostInstance | null> | null;
   readonly secondary?: ReactNode;
   readonly routeKey?: string;
   readonly active?: boolean;
@@ -36,6 +38,7 @@ function createPanelStyle(
 /** Reflows stable route-owned panels from measured space, native geometry, and text scale. */
 export function AdaptiveColumns({
   primary,
+  measurementRoot,
   secondary,
   routeKey,
   active = true,
@@ -49,18 +52,27 @@ export function AdaptiveColumns({
     useNavigationContentFrame()?.availableContentFrame ??
     geometry?.safeAreaFrame;
   const hostRef = useRef<HostInstance | null>(null);
+  const measurement = useRef(0);
   const [measuredBounds, setMeasuredBounds] = useState<{
     readonly x: number;
     readonly width: number;
   } | null>(null);
   const hasSecondary = secondary !== undefined && secondary !== null;
   const measureHost = useCallback(() => {
-    const host = hostRef.current;
+    const root = measurementRoot ?? hostRef;
+    const host = root.current;
+    const request = ++measurement.current;
     if (!host) return;
 
     // Native geometry uses window coordinates, so local layout offsets are not interchangeable.
     host.measureInWindow((x, _y, nextWidth) => {
-      if (!Number.isFinite(x) || !Number.isFinite(nextWidth) || nextWidth <= 0)
+      if (
+        request !== measurement.current ||
+        host !== root.current ||
+        !Number.isFinite(x) ||
+        !Number.isFinite(nextWidth) ||
+        nextWidth <= 0
+      )
         return;
       setMeasuredBounds(previous =>
         previous !== null &&
@@ -70,7 +82,7 @@ export function AdaptiveColumns({
           : { x, width: nextWidth },
       );
     });
-  }, []);
+  }, [measurementRoot]);
   const plan = useMemo(
     () =>
       resolveAdaptiveColumns({
