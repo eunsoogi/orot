@@ -6,12 +6,13 @@ jest.mock('../../agent/execution/saveModelSettingsConsent', () => ({
   }) => input.store.save(input.selection),
 }));
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import { Button, Text, View, StyleSheet } from 'react-native';
+import { Animated, Button, Text, View, StyleSheet } from 'react-native';
 import { ModelSelectionTabs } from '../../providers/selection/ModelSelectionTabs';
 import {
   NavigationPrimaryActionContext,
   useNavigationPrimaryActionHost,
 } from '../../navigation/useNavigationPrimaryAction';
+import { NavigationMotionContext } from '../../navigation/NavigationMotionContext';
 import { voiceSettingsStore } from '../voiceSettingsStore';
 import { providerSettingsStyles } from '../../layout/providerSettingsPresentation';
 import { sectionTabStyles } from '../../layout/sectionTabPresentation';
@@ -136,4 +137,75 @@ it('retains a catalog completion across tabs without registering a hidden action
   await fireEvent.press(view.getByTestId('model-tab-voice'));
   expect(view.getByTestId('voice-model-gpt-live-1.1')).toBeEnabled();
   expect(voiceSettingsStore.discoverModels).toHaveBeenCalledTimes(1);
+});
+
+it('slides the active pane in index order while tabs stay fixed; rapid switch and Reduce Motion cancel movement', async () => {
+  const stop = jest.fn();
+  const isBodyMotion = ({
+    duration,
+    toValue,
+    useNativeDriver,
+  }: Parameters<typeof Animated.timing>[1]) =>
+    duration === 200 && toValue === 0 && useNativeDriver;
+  const timing = jest
+    .spyOn(Animated, 'timing')
+    .mockImplementation((_value, config) => ({
+      start: jest.fn(),
+      stop: isBodyMotion(config) ? stop : jest.fn(),
+      reset: jest.fn(),
+    }));
+  const bodyMotionCalls = () =>
+    timing.mock.calls.filter(([, config]) => isBodyMotion(config));
+  const fixture = (reduceMotion: boolean) => (
+    <NavigationMotionContext.Provider value={reduceMotion}>
+      <Fixture />
+    </NavigationMotionContext.Provider>
+  );
+  try {
+    const view = await render(fixture(false));
+    const pane = () => view.getByTestId('navigation-inline-transition');
+    const tab = (key: string) => view.getByTestId(`model-tab-${key}`);
+    expect(view.getByTestId('model-tab-content-viewport')).toHaveStyle({
+      overflow: 'hidden',
+    });
+    expect(pane()).not.toContainElement(tab('language'));
+    expect(pane()).toContainElement(view.getByText('Language choices'));
+    expect(pane()).toHaveStyle({ transform: [{ translateX: 0 }] });
+    expect(bodyMotionCalls()).toHaveLength(0);
+    await fireEvent(pane(), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 420, height: 320 } },
+    });
+    await fireEvent.press(tab('calendar'));
+    expect(pane()).toHaveStyle({
+      opacity: 1,
+      transform: [{ translateX: 420 }],
+    });
+    expect(view.queryByText('Language choices')).toBeNull();
+    await fireEvent.press(tab('voice'));
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(pane()).toHaveStyle({
+      opacity: 1,
+      transform: [{ translateX: 420 }],
+    });
+    await fireEvent.press(tab('language'));
+    expect(stop).toHaveBeenCalledTimes(2);
+    expect(pane()).toHaveStyle({
+      opacity: 1,
+      transform: [{ translateX: -420 }],
+    });
+    expect(pane()).toContainElement(view.getByText('Language choices'));
+    expect(tab('language').props.accessibilityState.selected).toBe(true);
+    await fireEvent.press(tab('language'));
+    expect(bodyMotionCalls()).toHaveLength(3);
+    expect(bodyMotionCalls()[2]?.[0]).toBeInstanceOf(Animated.Value);
+    await view.rerender(fixture(true));
+    expect(stop).toHaveBeenCalledTimes(3);
+    await fireEvent.press(tab('voice'));
+    expect(pane()).toHaveStyle({ transform: [{ translateX: 0 }] });
+    expect(bodyMotionCalls()).toHaveLength(3);
+    expect(tab('voice').props.accessibilityState.selected).toBe(true);
+    expect(voiceSettingsStore.save).not.toHaveBeenCalled();
+  } finally {
+    timing.mockRestore();
+  }
 });
