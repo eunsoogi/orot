@@ -47,7 +47,6 @@ export function conversationRunWorkflow<
     },
   };
 }
-
 export function conversationRunInvocation(
   observer: RagConversationObserver | undefined,
   retained: boolean,
@@ -74,6 +73,10 @@ export function conversationRunInvocation(
     onProgress: observer?.onProgress,
     onToolEvent: observer?.onToolEvent,
     backgroundStatusForLease: observer?.backgroundStatusForLease,
+    onReviewedInitialToolOpening:
+      settingsConsent && !observer?.photoInput
+        ? observer?.onReviewedOpening
+        : undefined,
     ...conversationStreamObservers(observer, retained, registry, selection),
     signal,
   };
@@ -133,9 +136,7 @@ export function conversationRunRequest(input: {
     workflow: input.workflow,
   };
 }
-
 export const cancelled = { status: 'failure', kind: 'cancelled' } as const;
-
 type RagSend = (
   question: string,
   previous: readonly RagConversationMessage[],
@@ -143,7 +144,6 @@ type RagSend = (
   observer?: RagConversationObserver,
   entry?: ConversationEntryContext,
 ) => Promise<RagConversationOutcome>;
-
 function receiptDiagnosticsEnabled() {
   try {
     return NativeModules.OrotProviderDiagnostics?.enabled === true;

@@ -228,7 +228,7 @@ export interface MultiAgentInvocation {
   readonly onProgress?: (event: MultiAgentProgressEvent) => void;
   /** Content-free actual tool lifecycle, excluding reasoning and unrestricted payloads. */
   readonly onToolEvent?: (event: import('./toolEvents').ConversationToolEvent) => void;
-  /** Receives task-projected display text only; structured output and citations stay private. */
+  readonly onReviewedInitialToolOpening?: import('./responderStreamEvent').ReviewedInitialToolOpeningObserver;
   readonly onTaskStreamEvent?: (event: MultiAgentResponderStreamEvent) => void;
   /** Local preparation observes the exact provider request; it must not export its private content. */
   readonly beforeTaskStream?: (
