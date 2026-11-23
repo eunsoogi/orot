@@ -14,8 +14,7 @@ import type {
   ProviderErrorCode,
 } from '@orot/model-runtime';
 import type { RunnableConfig } from '@langchain/core/runnables';
-import type { BaseStore } from '@langchain/langgraph/web';
-import type { BaseCheckpointSaver } from '@langchain/langgraph/web';
+import type { BaseCheckpointSaver, BaseStore } from '@langchain/langgraph/web';
 import type {
   AllowedEvidenceScope,
   EvidenceBatch,
@@ -135,6 +134,7 @@ export interface MultiAgentWorkflowOptions<TResult = JsonValue>
   readonly onCoverageDiagnostic?: import('./coverageDiagnostics').CoverageDiagnosticObserver;
   /** Optional content-free timings; no request, response or identity is exposed. */
   readonly onModelStage?: import('./modelStageDiagnostics').ModelStageObserver;
+  readonly onAcceptedSearch?: import('./runtimeContext').AcceptedSearchObserver;
   readonly request: string;
   readonly photoInput?: import('./evidenceContracts').PhotoModelInput;
   readonly context?: JsonValue;

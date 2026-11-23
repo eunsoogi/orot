@@ -33,8 +33,7 @@ export function conversationRunWorkflow<
   execution: T,
   current: () => Promise<boolean>,
   hasHistory: boolean,
-  search: DefaultPublicSearchResult,
-  searchedTool: boolean,
+  search: { eager: DefaultPublicSearchResult; chargeEagerSearch: boolean },
 ) {
   return {
     ...guardHistory(execution, current, hasHistory),
@@ -42,8 +41,8 @@ export function conversationRunWorkflow<
       ...execution.execution,
       budget: budgetAfterPublicSearch(
         execution.execution.budget,
-        search,
-        searchedTool,
+        search.eager,
+        search.chargeEagerSearch,
       ),
     },
   };
@@ -74,6 +73,7 @@ export function conversationRunInvocation(
         : undefined,
     onProgress: observer?.onProgress,
     onToolEvent: observer?.onToolEvent,
+    backgroundStatusForLease: observer?.backgroundStatusForLease,
     ...conversationStreamObservers(observer, retained, registry, selection),
     signal,
   };

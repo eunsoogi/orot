@@ -1,3 +1,4 @@
+import type { ConversationBackgroundReporter } from './conversationBackgroundStatus';
 import { createConversationPauseAdvisory } from './conversationPauseAdvisory';
 import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
@@ -61,7 +62,7 @@ export type ConversationExecutionEvent =
   | { readonly kind: 'phase' }
   | { readonly kind: 'protectedData'; readonly available: boolean };
 
-export interface ConversationExecutionAdapter {
+export interface ConversationExecutionAdapter extends ConversationBackgroundReporter {
   readonly bridgeAvailable?: boolean;
   currentPhase?(): 'active' | 'background' | 'inactive' | 'unknown';
   begin(requestId: string): Promise<boolean>;

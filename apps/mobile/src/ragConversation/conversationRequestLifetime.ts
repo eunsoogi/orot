@@ -1,6 +1,7 @@
 import { observeConversationSendAdmission } from '../providers/conversationSendAdmissionDiagnostic';
 import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import {
+  createContinuedRequestOwners as continuedOwners,
   observeContinuedConversationActivity,
   revokeContinuedConversationWork,
 } from './conversationContinuedWork';
@@ -29,8 +30,7 @@ export function createConversationRequestLifetime(input: {
   reportFenceFailure: (id: number) => void;
   pauseState?: (id: number, resume?: () => void) => void;
 }) {
-  const entries = new Map<number, ConversationLifetimeEntry>();
-  const owners = new WeakMap<AbortController, ConversationLifetimeEntry>();
+  const { entries, owners, own, statusObserver } = continuedOwners();
   async function attach(
     id: number,
     controller: AbortController,
@@ -61,8 +61,7 @@ export function createConversationRequestLifetime(input: {
         () => input.execution?.currentPhase?.() ?? 'unknown',
       ),
     };
-    entries.set(id, entry);
-    owners.set(controller, entry);
+    own(entry);
     const lost = () => controller.signal.aborted || entries.get(id) !== entry;
     entry.start = observeConversationSendAdmission(
       exclusive ? undefined : 'conversation_request_write_wait',
@@ -124,6 +123,7 @@ export function createConversationRequestLifetime(input: {
     },
     executionObserver(controller: AbortController) {
       return {
+        ...statusObserver(() => owners.get(controller)),
         onApprovalWait: (waiting: boolean, kind?: 'checkpoint-only') => {
           // The runtime still owns its pause signal and journal; no person is waiting here.
           if (kind === 'checkpoint-only') return;

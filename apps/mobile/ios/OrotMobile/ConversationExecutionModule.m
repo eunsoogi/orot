@@ -9,7 +9,7 @@ RCT_EXTERN_METHOD(begin : (NSString *)requestId resolver : (RCTPromiseResolveBlo
 RCT_EXTERN_METHOD(beginPreparation : (NSString *)attempt resolver : (RCTPromiseResolveBlock)
                       resolve rejecter : (RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(work : (NSString *)requestId active : (BOOL)active)
-RCT_EXTERN_METHOD(answered : (NSString *)requestId)
+RCT_EXTERN_METHOD(reportStatus : (NSString *)requestId stage : (NSString *)stage)
 RCT_EXTERN_METHOD(committed : (NSString *)requestId)
 RCT_EXTERN_METHOD(end : (NSString *)requestId)
 RCT_EXTERN_METHOD(isPauseCurrent : (NSString *)requestId warning : (NSString *)warning resolver : (
