@@ -186,20 +186,26 @@ test.each([false, true])(
 test('keeps the legacy binary membership for IDs the native bridge cannot portably bind', () =>
   withStorage(async (database, storage) => {
     const unusual = removed + '\0suffix';
-    const read = database.execute.bind(database);
-    await read('INSERT INTO legacy_symptom_deleted (id) VALUES (?)', [unusual]);
+    const fullRead = 'SELECT id FROM legacy_symptom_deleted';
+    await database.execute(
+      'INSERT INTO legacy_symptom_deleted (id) VALUES (? || char(0) || ?)',
+      [removed, 'suffix'],
+    );
+    // Node's SQLite adapter versions differ in decoding embedded NUL. Compare
+    // to the same adapter's original, unscoped read, not a different engine.
+    const baseline = new Set(
+      (await database.execute(fullRead)).rows.map(row => row.id),
+    );
+    const requested = [symptom(unusual), symptom(removed)];
+    const expected = requested.filter(ref => baseline.has(ref.id));
+    expect(expected).toHaveLength(1);
     const queries = jest.spyOn(database, 'execute');
+    expect(await storage.findRemovedTypedEvidence(requested)).toEqual(expected);
     expect(
-      await storage.findRemovedTypedEvidence([
-        symptom(unusual),
-        symptom(removed),
-      ]),
-    ).toEqual([symptom(unusual)]);
-    expect(
-      queries.mock.calls
-        .filter(([sql]) => sql.includes('FROM legacy_symptom_deleted'))
-        .map(([sql]) => sql),
-    ).toEqual(['SELECT id FROM legacy_symptom_deleted']);
+      queries.mock.calls.filter(([sql]) =>
+        sql.includes('FROM legacy_symptom_deleted'),
+      ),
+    ).toEqual([[fullRead]]);
   }));
 
 test('an in-flight abort after the selected guard read still rolls back the owning write', () =>
