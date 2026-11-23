@@ -19,6 +19,19 @@ final class OrotProviderDiagnostics: NSObject {
 
     @objc func report(_ feature: String, stage: String, outcome: String) {
         guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") else { return }
+        if stage.hasPrefix("daily_report_data_") {
+            // Detailed Daily Report timing accepts no dynamic stage or content.
+            let stages = [
+                "daily_report_data_snapshot", "daily_report_data_projection", "daily_report_data_reproof",
+                "daily_report_data_post_provider", "daily_report_data_save_reproof",
+                "daily_report_data_retry_snapshot", "daily_report_data_retry_projection",
+            ]
+            guard feature == "daily_report",
+                  stages.contains(stage),
+                  ["started", "completed", "failed", "cancelled"].contains(outcome) else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=%@ stage=%@ outcome=%@", feature, stage, outcome)
+            return
+        }
         if feature == "navigation" {
             // Navigation accepts only code-owned layout/lifecycle categories, never route identities or sizes.
             let permitted: [String: Set<String>] = [
