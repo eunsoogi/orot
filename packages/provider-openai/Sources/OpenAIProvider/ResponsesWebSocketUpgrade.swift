@@ -51,7 +51,9 @@ final class ResponsesWebSocketUpgradeGate: @unchecked Sendable {
 
     private func finish(_ value: Result<Void, Error>, closesTransport: Bool = false) {
         let pending = lock.withLock { () -> CheckedContinuation<Void, Error>? in
-            if closesTransport { closed = true }
+            if closesTransport {
+                closed = true
+            }
             guard result == nil else { return nil }
             result = value
             defer { waiter = nil }

@@ -9,8 +9,10 @@ protocol ResponsesWebSocketConnection: Sendable {
 }
 
 extension ResponsesWebSocketConnection {
-    // Unknown transport state is not proof of a close or permission to replay.
-    var observedClosed: Bool { false }
+    /// Unknown transport state is not proof of a close or permission to replay.
+    var observedClosed: Bool {
+        false
+    }
 
     func completed() {
         close()
@@ -39,7 +41,9 @@ struct URLSessionResponsesWebSocket: ResponsesWebSocketConnection {
         task.resume()
     }
 
-    var observedClosed: Bool { upgrade.gate.observedClosed }
+    var observedClosed: Bool {
+        upgrade.gate.observedClosed
+    }
 
     func waitUntilOpen() async throws {
         try await withTaskCancellationHandler {

@@ -161,7 +161,9 @@ private final class CompletingSocket: ResponsesWebSocketConnection, @unchecked S
         upgrade.opened()
     }
 
-    var observedClosed: Bool { upgrade.observedClosed }
+    var observedClosed: Bool {
+        upgrade.observedClosed
+    }
 
     func observePeerClose() {
         upgrade.failed(httpStatus: nil)
