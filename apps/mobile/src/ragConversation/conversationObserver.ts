@@ -50,6 +50,7 @@ export type RagConversationObserver = Pick<
     readonly today: import('@orot/domain').DailyReportIdentity | null;
     readonly prepareVisit?: import('./ConversationScreenProps').ConversationScreenProps['prepareVisitQuestions'];
   };
+  readonly templateProposalOwner?: import('./conversationTemplateOwner').ConversationTemplateOwner;
   /** A model-only routing stage already used this send's optional opening budget. */
   readonly suppressContextualOpening?: true;
   /** Local-only storage permission; available only to the live request owner. */

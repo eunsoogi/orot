@@ -14,8 +14,7 @@ import { createLinkedAbortController } from './linkedAbortController';
 import type { SelectedAiResolution } from './provider';
 
 /**
- * Replace the optional opening only for a live ChatGPT composer turn.
- * Apple currently has no matching strict proposal-ownership witness.
+ * Replace the optional opening only for a live, owned composer turn.
  */
 export async function proposeConversationTemplate(input: {
   question: string;
@@ -26,15 +25,13 @@ export async function proposeConversationTemplate(input: {
 }) {
   const { question, signal, observer } = input;
   const admission = observer?.modelTemplateAdmission;
-  const owner = observer?.expectedConversationModel;
+  const owner = observer?.templateProposalOwner;
   if (
     !admission ||
     observer?.inputOrigin !== 'composer' ||
     observer.photoInput ||
     !observer.retentionRequestId ||
-    !owner?.providerId.startsWith('chatgpt-plan:') ||
-    !owner.isCurrent ||
-    !owner.isDurablyCurrent ||
+    !owner?.current() ||
     !observer.onTaskStreamEvent ||
     signal.aborted ||
     !admission.current() ||
@@ -47,11 +44,24 @@ export async function proposeConversationTemplate(input: {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let spent = false;
   let ownerChanged = false;
+  let unwatch: (() => void) | undefined;
+  let stopWaiting: (() => void) | undefined;
   try {
     const current = () =>
       !linked.controller.signal.aborted &&
       admission.current() &&
-      owner.isCurrent!();
+      owner.current();
+    unwatch = owner.watch(() => {
+      ownerChanged = true;
+      linked.controller.abort();
+    });
+    const retired = new Promise<undefined>(resolve => {
+      const stop = () => resolve(undefined);
+      linked.controller.signal.addEventListener('abort', stop, { once: true });
+      stopWaiting = () =>
+        linked.controller.signal.removeEventListener('abort', stop);
+      if (linked.controller.signal.aborted) stop();
+    });
     // A slow selector/grant cannot indefinitely postpone the normal answer.
     const timeout = new Promise<undefined>(resolve => {
       timer = setTimeout(() => {
@@ -61,12 +71,28 @@ export async function proposeConversationTemplate(input: {
     });
     const propose = async () => {
       if (!current()) return;
-      const selected = conversationReceiptSelection(await input.select(), {
+      const live = await input.select();
+      if (
+        live.status === 'ready' &&
+        (live.provider.id !== owner.providerId ||
+          live.modelId !== owner.modelId)
+      ) {
+        if (!linked.controller.signal.aborted) ownerChanged = true;
+        return;
+      }
+      const selected = conversationReceiptSelection(live, {
         expectedConversationModel: {
           ...owner,
           isCurrent: current,
-          isDurablyCurrent: async () =>
-            current() && (await owner.isDurablyCurrent!()) && current(),
+          isDurablyCurrent: async () => {
+            const stillOwned =
+              current() &&
+              (await owner.recheck(linked.controller.signal)) &&
+              current();
+            if (!stillOwned && !linked.controller.signal.aborted)
+              ownerChanged = true;
+            return stillOwned;
+          },
         },
         // Routing is not a receipt for the ordinary or specialized answer.
         onExecutionState: () => {
@@ -75,7 +101,6 @@ export async function proposeConversationTemplate(input: {
       });
       if (
         selected.status !== 'ready' ||
-        !selected.remoteProcessing ||
         !selected.provider.capabilities.toolCalling ||
         !current()
       )
@@ -106,24 +131,26 @@ export async function proposeConversationTemplate(input: {
         signal: linked.controller.signal,
       });
       if (!intent || !current()) return;
-      const verified = await owner.isDurablyCurrent!();
+      const verified = await owner.recheck(linked.controller.signal);
       if (current() && !verified) ownerChanged = true;
       if (current() && verified) return intent;
     };
-    const intent = await Promise.race([propose(), timeout]);
+    const intent = await Promise.race([propose(), timeout, retired]);
     return {
       intent: current() ? intent : undefined,
       spent,
-      ...(ownerChanged ? { ownerChanged } : {}),
+      ...(ownerChanged || !owner.current() ? { ownerChanged: true } : {}),
     };
   } catch {
     return {
       spent,
       intent: undefined,
-      ...(ownerChanged ? { ownerChanged } : {}),
+      ...(ownerChanged || !owner.current() ? { ownerChanged: true } : {}),
     };
   } finally {
     if (timer) clearTimeout(timer);
+    stopWaiting?.();
+    unwatch?.();
     // End the proposal-only authorization/cancellation lifetime. This tool
     // is advice only; no result is ever sent back to the provider.
     linked.controller.abort();
