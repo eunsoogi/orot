@@ -1,19 +1,20 @@
-import { SavedGeneratedReportDetail } from './SavedGeneratedReportDetail';
-import { SavedMemoryContent } from './SavedMemoryContent';
-import { useNavigationLeaveStateRegistration } from '../navigation';
-import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
-import { useState } from 'react';
-import { HistoryMemoryDetail } from './HistoryMemoryDetail';
+import { SavedGeneratedReportDetail } from "./SavedGeneratedReportDetail";
+import { SavedMemoryContent } from "./SavedMemoryContent";
+import { useNavigationRouteRefresh } from "../navigation/navigationRouteRefresh";
+import { useNavigationLeaveStateRegistration } from "../navigation";
+import type { NavigationRouteOwnership } from "../navigation/navigationRouteContracts";
+import { useState } from "react";
+import { HistoryMemoryDetail } from "./HistoryMemoryDetail";
 import {
   isGeneratedReportMemory,
   isHistoryMemory,
-} from './unifiedSavedMemories';
-import { View } from 'react-native';
-import { AppText as Text } from '../layout/AppText';
-import { AppButton } from '../layout/AppButton';
-import { t } from '../i18n';
-import { useSavedMemories, type SavedMemory } from './useSavedMemories';
-import { savedMemoryStyles as styles } from './savedMemoryStyles';
+} from "./unifiedSavedMemories";
+import { View } from "react-native";
+import { AppText as Text } from "../layout/AppText";
+import { AppButton } from "../layout/AppButton";
+import { t } from "../i18n";
+import { useSavedMemories, type SavedMemory } from "./useSavedMemories";
+import { savedMemoryStyles as styles } from "./savedMemoryStyles";
 /** The native destination reloads its ID through the same foreground/deletion fences as the list. */
 export function SavedMemoryDetail({
   memoryId,
@@ -35,13 +36,22 @@ export function SavedMemoryDetail({
     correctionTarget && correctionTarget.original === memoryId
       ? correctionTarget.id
       : memoryId;
-  const { rows, state, refresh, readyRead } = useSavedMemories(
-    load,
-    active,
-    ownership,
-    selectedId,
+  const {
+    rows,
+    state,
+    refresh,
+    refreshReadOnly,
+    readOnlyRefreshing,
+    readyRead,
+  } = useSavedMemories(load, active, ownership, selectedId);
+  const row = rows.find((value) => value.id === selectedId);
+  // Editable history and generated reports retain their own detail lifecycles.
+  const isPlainMemory =
+    row && !isHistoryMemory(row) && !isGeneratedReportMemory(row);
+  useNavigationRouteRefresh(
+    active && (Boolean(isPlainMemory) || readOnlyRefreshing),
+    refreshReadOnly,
   );
-  const row = rows.find(value => value.id === selectedId);
   return (
     <View
       style={[
@@ -53,41 +63,41 @@ export function SavedMemoryDetail({
     >
       {(!row || !isHistoryMemory(row)) && <ReadOnlyMemoryNavigation />}
       <Text accessibilityRole="header" style={styles.title}>
-        {t('savedMemory.detailTitle')}
+        {t("savedMemory.detailTitle")}
       </Text>
-      {state === 'loading' && (
-        <Text accessibilityLiveRegion="polite">{t('savedMemory.loading')}</Text>
+      {state === "loading" && (
+        <Text accessibilityLiveRegion="polite">{t("savedMemory.loading")}</Text>
       )}
-      {state === 'invalidated' && (
+      {state === "invalidated" && (
         <>
           <Text accessibilityLiveRegion="polite">
-            {t('savedMemory.invalidated')}
+            {t("savedMemory.invalidated")}
           </Text>
           <AppButton
-            title={t('savedMemory.reload')}
+            title={t("savedMemory.reload")}
             onPress={() => {
               refresh();
             }}
           />
         </>
       )}
-      {state === 'failed' && (
+      {state === "failed" && (
         <>
-          <Text accessibilityRole="alert">{t('savedMemory.failed')}</Text>
+          <Text accessibilityRole="alert">{t("savedMemory.failed")}</Text>
           <AppButton
-            title={t('savedMemory.retry')}
+            title={t("savedMemory.retry")}
             onPress={() => {
               refresh();
             }}
           />
         </>
       )}
-      {state === 'ready' && !row && <Text>{t('savedMemory.notFound')}</Text>}
+      {state === "ready" && !row && <Text>{t("savedMemory.notFound")}</Text>}
       {row && isHistoryMemory(row) && (
         <HistoryMemoryDetail
           key={row.id}
           record={row.record}
-          onChanged={id => {
+          onChanged={(id) => {
             setCorrectionTarget({ original: memoryId, id });
             refresh();
           }}
