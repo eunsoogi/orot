@@ -5,6 +5,7 @@ import { withDailyReportOpening as openingFor } from './dailyReportOpening';
 import { selectCurrentDailyReportFacts } from './dailyReportCurrentSelection';
 import { reportModelClaims } from './dailyReportModelAnalysis';
 import { prepareDailyReportFacts } from './dailyReportPreparedFacts';
+import * as reportData from './dailyReportDataDiagnostics';
 import type { prepareReportCalendar } from './dailyReportSystemCalendar';
 import { createDailyReportContext } from '../../healthEvidence/healthContext/dailyReportContext';
 import { createDailyReportCalendarWindow } from '../../healthEvidence/healthContext/dailyReportWindow';
@@ -76,10 +77,14 @@ export async function generateDailyReportWithCalendar(
   input.deadlineContext.stage = 'source_read';
   providerDiagnostic('daily_report', 'data', 'started');
   try {
-    snapshot = await input.data.readDailyReportSnapshot!(
-      calendar.context,
-      request.scope,
+    snapshot = await reportData.observeInitialDailyReportSnapshot(
       request.signal,
+      () =>
+        input.data.readDailyReportSnapshot!(
+          calendar.context,
+          request.scope,
+          request.signal,
+        ),
     );
     // Keep an empty successful read distinct from a database failure and never prompt without facts.
     if (!snapshot.values.length) {
@@ -94,12 +99,11 @@ export async function generateDailyReportWithCalendar(
       providerFacts,
       baselineFacts,
       sleepFacts,
-    } = await prepareDailyReportFacts(
-      input,
-      request,
-      calendar,
-      snapshot,
-      external,
+    } = await reportData.observeDailyReportData(
+      'daily_report_data_projection',
+      request.signal,
+      () =>
+        prepareDailyReportFacts(input, request, calendar, snapshot, external),
     ));
   } catch {
     if (request.signal.aborted) return fail('cancelled');
@@ -158,7 +162,7 @@ export async function generateDailyReportWithCalendar(
   } = currentSelection.prepared);
   let proven = currentSelection.proven;
   if (refresh) {
-    const latest = await refresh(request.signal);
+    const latest = await reportData.postProviderProof(request.signal, refresh);
     if (!latest || (external && !(await external.snapshot.revalidate())))
       return fail(
         request.signal.aborted
