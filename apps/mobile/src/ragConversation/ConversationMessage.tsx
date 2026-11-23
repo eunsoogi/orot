@@ -82,6 +82,9 @@ export function ConversationMessage({
     </Text>
   ) : null;
   const activityBeforeText = compact && message.streaming;
+  const bodyStyle = user
+    ? styles.userMessageBody
+    : [styles.assistantBody, activityBeforeText && styles.compactStreamingBody];
   return (
     <ConversationMessageBubbles
       message={message}
@@ -116,15 +119,7 @@ export function ConversationMessage({
         {!user && message.dailyReport ? (
           <ConversationDailyReportIdentity report={message.dailyReport} />
         ) : null}
-        <View
-          testID="conversation-message-body"
-          style={
-            !user && [
-              styles.assistantBody,
-              activityBeforeText && styles.compactStreamingBody,
-            ]
-          }
-        >
+        <View testID="conversation-message-body" style={bodyStyle}>
           <ConversationPreviousOutputs
             outputs={beforeAnswer ? undefined : message.previousOutputs}
           />
