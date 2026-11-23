@@ -1,5 +1,6 @@
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { dailyReportPresentation } from '../aiFeatures/integration/conversationDailyReportText';
+import { readSavedHealthSummaryDetail } from './savedHealthSummaryDetail';
 import { projectGeneratedSummaryDetail } from './summaryDetail';
 import { readConversationReportEvidence } from './conversationReportEvidence';
 import { createArchivedCitationService } from '../aiFeatures/integration/archivedCitationService';
@@ -95,6 +96,10 @@ async function readSelected(
   if (row.origin === 'conversation') {
     return readConversationReportEvidence(database, row, signal);
   }
+  if (row.kind === 'health_summary')
+    return row.origin === 'summary'
+      ? readSavedHealthSummaryDetail(database, row, signal, dependencies.data)
+      : null;
   if (row.kind === 'daily_report') {
     // Superseded and invalidated runs share a tombstone. Never guess the reason or
     // substitute the current head for the selected historical run.
@@ -148,7 +153,12 @@ async function readSelected(
     registry,
     dependencies.data,
   ).readCommittedStatus(row.id);
-  if (!saved || 'status' in saved) return null;
+  if (
+    !saved ||
+    'status' in saved ||
+    saved.analysis.presentation === 'symptom_summary'
+  )
+    return null;
   const original = saved.analysis.savedSummary;
   // A same-looking Conversation answer or a preview never supplies a pin capability.
   const bookmarkOriginal =

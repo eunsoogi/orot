@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { NavigationFadeVeil } from './NavigationFadeVeil';
 import { NavigationMotionContext } from './NavigationMotionContext';
+import { useNavigationCoverDiagnostic } from './navigationVisibilityDiagnostics';
 
 interface NavigationContentTransitionProps {
   readonly transitionKey: string;
@@ -160,6 +161,7 @@ export function NavigationContentTransition({
   const transitionPending =
     displayed.transitionKey !== transitionKey || enterPending;
 
+  useNavigationCoverDiagnostic(transitionPending);
   return (
     <Animated.View
       testID="navigation-content-transition"

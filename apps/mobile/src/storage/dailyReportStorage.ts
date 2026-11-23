@@ -171,11 +171,21 @@ export function createDailyReportStorage(
             stored,
           ],
         );
-        for (const item of input.lineage)
+        // Batch only the reverse index writes; every lineage row was checked
+        // above and the retained JSON still carries the full ordered lineage.
+        const batchSize = 128; // 384 binds, below SQLite's legacy 999 limit.
+        for (
+          let offset = 0;
+          offset < input.lineage.length;
+          offset += batchSize
+        ) {
+          const batch = input.lineage.slice(offset, offset + batchSize);
           await tx.execute(
-            'INSERT OR IGNORE INTO symptom_summary_sources (summary_id, record_kind, record_id) VALUES (?, ?, ?)',
-            [input.runId, item.kind, item.localId],
+            'INSERT OR IGNORE INTO symptom_summary_sources (summary_id, record_kind, record_id) VALUES ' +
+              batch.map(() => '(?, ?, ?)').join(', '),
+            batch.flatMap(item => [input.runId, item.kind, item.localId]),
           );
+        }
         await tx.execute(
           'INSERT INTO daily_report_revisions (identity_key, revision, run_id) VALUES (?, ?, ?)',
           [checked.context.identity.key, revision, input.runId],

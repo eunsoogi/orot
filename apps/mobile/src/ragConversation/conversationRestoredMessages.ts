@@ -50,6 +50,15 @@ export function conversationRestoredMessages(
         role: 'assistant' as const,
         steeringInstructions: receipts[index],
         content: turn.preview ?? turn.answer,
+        ...(turn.entryIntent === 'possibilities' &&
+        !turn.preview &&
+        !turn.interrupted &&
+        turn.completion !== 'partial' &&
+        !turn.healthSummary &&
+        !turn.dailyReport &&
+        !turn.visitQuestions
+          ? { savedPossibilityNarrative: true as const }
+          : {}),
         initialResponse: turn.initialResponse,
         citations: turn.citations,
         healthSources: turn.healthSources,

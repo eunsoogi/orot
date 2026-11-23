@@ -1,3 +1,4 @@
+import { loadHealthSummaryOpeningData } from './healthSummaryOpeningPreflight';
 import { conversationConsentScope } from './conversationBackgroundProvider';
 import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { startContextualConversationOpening } from './contextualConversationOpening';
@@ -66,18 +67,13 @@ export function createHealthSummaryService(input: {
       await input.selectedAi(),
       observer,
     );
-    let data: AiFeatureLocalData;
-    try {
-      data = await input.loadData();
-    } catch {
-      return {
-        failure: {
-          status: 'failure',
-          kind: signal.aborted ? 'cancelled' : 'retrieval_failed',
-        },
-      };
-    }
-    if (!data.readHealthContext || signal.aborted)
+    const data = await loadHealthSummaryOpeningData(
+      input.loadData,
+      selected,
+      signal,
+      observer,
+    );
+    if (!data?.readHealthContext || signal.aborted)
       return {
         failure: {
           status: 'failure',
