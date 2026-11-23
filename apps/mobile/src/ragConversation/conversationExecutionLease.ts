@@ -133,6 +133,7 @@ export async function beginConversationExecutionLease(
   let reconciling = false;
   let reconcileAgain = false;
   let nativeOpportunity = false;
+  let foregroundVisit = 0;
   // Native and AppState can both announce foreground. Keep one bridge check in
   // flight and one trailing recheck, without caching availability or lease state.
   const reconcile = async (continuationForeground = false) => {
@@ -150,16 +151,20 @@ export async function beginConversationExecutionLease(
         const opportunity = nativeOpportunity;
         nativeOpportunity = false;
         report('foreground-check-started');
+        const visit = foregroundVisit;
         const available = await adapter.protectedDataAvailable();
         if (closed || interrupted) return;
         if (available === false) notify('protected-data');
-        else if (!(await adapter.isActive(requestId)))
-          unavailable('foreground');
-        // A passed lease check is not provider progress; late results have no owner.
-        else if (!closed && !interrupted) {
-          report('foreground-check-passed');
-          if (opportunity && available === true)
-            observeOpportunity?.('continuation-foreground');
+        else if (visit === foregroundVisit) {
+          const active = await adapter.isActive(requestId);
+          // A lease sample from another foreground visit cannot prove ownership loss here.
+          if (closed || interrupted || visit !== foregroundVisit) continue;
+          if (!active) unavailable('foreground');
+          else {
+            report('foreground-check-passed');
+            if (opportunity && available === true)
+              observeOpportunity?.('continuation-foreground');
+          }
         }
       } while (reconcileAgain && !closed && !interrupted);
     } catch {
@@ -200,6 +205,7 @@ export async function beginConversationExecutionLease(
       report('foreground');
     }
     if (event.kind === 'phase') {
+      foregroundVisit++;
       report('phase');
       const background = adapter.currentPhase?.() === 'background';
       if (needsDecision() && background) notify('decision-required');
