@@ -74,16 +74,17 @@ describe('shared route refresh control', () => {
           }
         </NavigationRouteAdapter>,
       );
-      const controls = screen.UNSAFE_queryAllByType(RefreshControl);
+      const control = screen.getByTestId('navigation-route-scroll').props
+        .refreshControl;
       if (routeName !== 'medical-document-detail') {
-        expect(controls).toHaveLength(0);
+        expect(control).toBeUndefined();
         expect(reads).not.toHaveBeenCalled();
         return;
       }
-      expect(controls).toHaveLength(1);
+      expect(control.type).toBe(RefreshControl);
       expect(reads).not.toHaveBeenCalled();
       await act(async () => {
-        await controls[0]!.props.onRefresh();
+        await control.props.onRefresh();
       });
       expect(reads.mock.calls).toEqual([['fixture-selected']]);
       expect(screen.getByText('Synthetic selected detail')).toBeVisible();
