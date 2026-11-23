@@ -21,12 +21,17 @@ export async function legacyToolPeriodAvailable(
   tx: SqlExecutor,
   key: Key,
   sources: ToolLineage,
+  joinedPolicy?: { readonly status: unknown },
 ) {
-  const policy = await tx.execute(
-    'SELECT status FROM tool_period_policy WHERE session_id=? AND run_id=? AND call_id=?',
-    [...key],
-  );
-  if (policy.rows.length) return policy.rows[0]?.status === 'current';
+  if (joinedPolicy) {
+    if (joinedPolicy.status !== null) return joinedPolicy.status === 'current';
+  } else {
+    const policy = await tx.execute(
+      'SELECT status FROM tool_period_policy WHERE session_id=? AND run_id=? AND call_id=?',
+      [...key],
+    );
+    if (policy.rows.length) return policy.rows[0]?.status === 'current';
+  }
   let available = true;
   for (const source of sources) {
     if (!('kind' in source) || source.kind !== 'health_context_period')

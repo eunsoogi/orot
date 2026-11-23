@@ -86,6 +86,16 @@ async function readDependencies(
   return dependencies;
 }
 
+// Use one native statement. Unfiltered kinds keep SQLite's scalar Count path;
+// health observations subtract only the fenced Apple-derived namespaces.
+const candidateCatalogCountSql =
+  'SELECT ' +
+  HEALTH_EVIDENCE_RECORD_KINDS.map(kind =>
+    kind === 'health_observation'
+      ? `(${defaultHealthObservationCountSql()}) AS ${kind}`
+      : `(SELECT count(*) AS total FROM ${STORAGE_TABLES[kind].table}) AS ${kind}`,
+  ).join(', ');
+
 /** Searches every stored kind natively, then transfers only a small, diversified candidate window. */
 export async function readEvidenceCandidates(
   database: SqlDatabase,
@@ -101,18 +111,16 @@ export async function readEvidenceCandidates(
   let hasMoreCandidates = false;
   let dependencies: LocalHealthEvidenceRecord[] = [];
   await database.transaction(async transaction => {
+    checkHealthEvidenceAbort(signal);
+    const counts = await transaction.execute(candidateCatalogCountSql);
     for (const kind of HEALTH_EVIDENCE_RECORD_KINDS) {
       checkHealthEvidenceAbort(signal);
-      const count = await transaction.execute(
-        kind === 'health_observation'
-          ? defaultHealthObservationCountSql()
-          : `SELECT count(*) AS total FROM ${STORAGE_TABLES[kind].table}`,
-      );
-      const total = count.rows[0]?.total;
+      const total = counts.rows[0]?.[kind];
       if (
         typeof total !== 'number' ||
         !Number.isSafeInteger(total) ||
-        total < 0
+        total < 0 ||
+        !Number.isSafeInteger(totalRecordCount + total)
       ) {
         throw new Error('The local evidence catalog could not be read.');
       }

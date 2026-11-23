@@ -1,5 +1,18 @@
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 
+export type LocalConversationMemoryScope =
+  'reply-preferences' | 'authored-routine';
+
+/** These independently disclosed grants never share a persisted row. */
+function enrollmentTable(scope: LocalConversationMemoryScope) {
+  switch (scope) {
+    case 'reply-preferences':
+      return 'ordinary_conversation_memory_enrollment';
+    case 'authored-routine':
+      return 'authored_routine_memory_enrollment';
+  }
+}
+
 export interface OrdinaryConversationMemoryEnrollment {
   readonly enabled: boolean;
   readonly generation: number;
@@ -32,9 +45,10 @@ export function matchesOrdinaryConversationMemoryEnrollment(
  * the eventual note write in the same transaction. No row is an opt-out. */
 export async function readOrdinaryConversationMemoryEnrollment(
   sql: SqlExecutor,
+  scope: LocalConversationMemoryScope = 'reply-preferences',
 ): Promise<OrdinaryConversationMemoryEnrollment> {
   const { rows } = await sql.execute(
-    'SELECT enabled, generation, device_epoch FROM ordinary_conversation_memory_enrollment WHERE singleton = 1',
+    `SELECT enabled, generation, device_epoch FROM ${enrollmentTable(scope)} WHERE singleton = 1`,
   );
   if (rows.length === 0) return INITIAL;
   const row = rows[0];
@@ -62,12 +76,14 @@ export async function readOrdinaryConversationMemoryEnrollment(
  * disable followed by enable cannot reauthorize work from an older generation. */
 export function createOrdinaryConversationMemoryEnrollmentStore(
   database: SqlDatabase,
+  scope: LocalConversationMemoryScope = 'reply-preferences',
 ) {
+  const table = enrollmentTable(scope);
   let ready: Promise<unknown> | undefined;
   const prepare = () =>
     (ready ??= database
       .execute(
-        'CREATE TABLE IF NOT EXISTS ordinary_conversation_memory_enrollment (' +
+        `CREATE TABLE IF NOT EXISTS ${table} (` +
           'singleton INTEGER PRIMARY KEY NOT NULL CHECK(singleton = 1), ' +
           'enabled INTEGER NOT NULL CHECK(enabled IN (0, 1)), ' +
           'generation INTEGER NOT NULL CHECK(generation > 0), ' +
@@ -81,7 +97,7 @@ export function createOrdinaryConversationMemoryEnrollmentStore(
   return {
     async read() {
       await prepare();
-      return readOrdinaryConversationMemoryEnrollment(database);
+      return readOrdinaryConversationMemoryEnrollment(database, scope);
     },
     async replace(
       expected: OrdinaryConversationMemoryEnrollment,
@@ -95,7 +111,10 @@ export function createOrdinaryConversationMemoryEnrollmentStore(
       let committed: OrdinaryConversationMemoryEnrollment | undefined;
       await database.transaction(async tx => {
         if (!isCurrent()) return;
-        const current = await readOrdinaryConversationMemoryEnrollment(tx);
+        const current = await readOrdinaryConversationMemoryEnrollment(
+          tx,
+          scope,
+        );
         if (
           current.enabled !== expected.enabled ||
           current.generation !== expected.generation ||
@@ -112,7 +131,7 @@ export function createOrdinaryConversationMemoryEnrollmentStore(
         if (!Number.isSafeInteger(generation))
           throw new Error('Local memory enrollment is exhausted.');
         await tx.execute(
-          'INSERT INTO ordinary_conversation_memory_enrollment (singleton, enabled, generation, device_epoch) ' +
+          `INSERT INTO ${table} (singleton, enabled, generation, device_epoch) ` +
             'VALUES (1, ?, ?, ?) ON CONFLICT(singleton) DO UPDATE SET ' +
             'enabled = excluded.enabled, generation = excluded.generation, device_epoch = excluded.device_epoch',
           [enabled ? 1 : 0, generation, deviceEpoch],

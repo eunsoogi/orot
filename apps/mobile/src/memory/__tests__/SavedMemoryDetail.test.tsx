@@ -1,10 +1,30 @@
 import { act, render, screen } from '@testing-library/react-native';
 import { AppState } from 'react-native';
+import { NavigationRouteScrollView } from '../../navigation/NavigationRouteScrollView';
 import { SavedMemoryDetail } from '../SavedMemoryDetail';
 import {
   notifyLocalDataCleared,
   notifyLocalSourceDeleted,
 } from '../../storage/localDataClearEvents';
+import { loadUnifiedLocalMemories } from '../unifiedSavedMemories';
+import { resumeStatementMemoryAfterRead } from '../resumeStatementMemoryAfterRead';
+
+jest.mock('../unifiedSavedMemories', () => ({
+  ...jest.requireActual('../unifiedSavedMemories'),
+  loadUnifiedLocalMemories: jest.fn(),
+}));
+jest.mock('../resumeStatementMemoryAfterRead', () => ({
+  resumeStatementMemoryAfterRead: jest.fn(),
+}));
+
+jest.mock(
+  'react-native/Libraries/Components/RefreshControl/RefreshControl',
+  () => {
+    const React = jest.requireActual('react');
+    const { View } = jest.requireActual('react-native');
+    return { default: (props: object) => React.createElement(View, props) };
+  },
+);
 const memory = {
   id: 'synthetic',
   text: 'Synthetic full memory details',
@@ -108,4 +128,65 @@ test('quarantined metadata shows review guidance without rendering saved text', 
   ).toBeTruthy();
   expect(screen.queryByText(memory.text)).toBeNull();
   expect(screen.queryByTestId('saved-memory-verbatim')).toBeNull();
+});
+
+test('pull refresh reads the selected plain memory and discards a result after deletion', async () => {
+  const updated = { ...memory, text: 'Updated synthetic memory' };
+  let resolve!: (rows: (typeof memory)[]) => void;
+  const load = jest
+    .fn()
+    .mockResolvedValueOnce([memory])
+    .mockImplementationOnce(
+      () =>
+        new Promise(done => {
+          resolve = done;
+        }),
+    );
+  await render(
+    <NavigationRouteScrollView pullToRefresh>
+      <SavedMemoryDetail memoryId={memory.id} load={load} />
+    </NavigationRouteScrollView>,
+  );
+  const control = () => screen.getByTestId('navigation-route-refresh');
+  const pull = () =>
+    act(async () => {
+      control().props.onRefresh();
+    });
+  expect(screen.getByText(memory.text)).toBeTruthy();
+  await pull();
+  expect(load).toHaveBeenCalledTimes(2);
+  expect(control().props.refreshing).toBe(true);
+  await pull();
+  expect(load).toHaveBeenCalledTimes(2);
+  await act(async () => {
+    notifyLocalSourceDeleted('local');
+    resolve([updated]);
+  });
+  expect(control().props.refreshing).toBe(false);
+  expect(screen.queryByText(memory.text)).toBeNull();
+  expect(screen.queryByText(updated.text)).toBeNull();
+});
+
+test('pull replaces the selected saved text without scheduling default-loader maintenance', async () => {
+  const updated = { ...memory, text: 'Updated synthetic memory' };
+  const load = jest.mocked(loadUnifiedLocalMemories);
+  const resume = jest.mocked(resumeStatementMemoryAfterRead);
+  load
+    .mockReset()
+    .mockResolvedValueOnce([memory])
+    .mockResolvedValueOnce([updated]);
+  resume.mockClear();
+  await render(
+    <NavigationRouteScrollView pullToRefresh>
+      <SavedMemoryDetail memoryId={memory.id} />
+    </NavigationRouteScrollView>,
+  );
+  expect(screen.getByText(memory.text)).toBeTruthy();
+  expect(resume).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    screen.getByTestId('navigation-route-refresh').props.onRefresh();
+  });
+  expect(screen.getByText(updated.text)).toBeTruthy();
+  expect(screen.queryByText(memory.text)).toBeNull();
+  expect(resume).toHaveBeenCalledTimes(1);
 });

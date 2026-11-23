@@ -1,3 +1,4 @@
+import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import { getRagConversationFailureCopy } from './copy';
 import type { DisplayMessage } from './ConversationMessage';
 import type { ConversationSession } from './conversationSessionTypes';
@@ -117,7 +118,10 @@ export function coldPreviewPatch(
 export function coldPausedMessages(
   session: ConversationSession,
   responseId: number,
-  recovery: { attempt: number; reason: 'expired' | 'decision-required' },
+  recovery: {
+    attempt: number;
+    reason: ConversationCheckpointPauseReason | 'expired';
+  },
   sourceOwner: ColdConversationSourceOwner,
 ) {
   return session.messages.map(message =>

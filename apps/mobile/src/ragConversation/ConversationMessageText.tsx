@@ -1,3 +1,5 @@
+import { SavedPossibilityNarrative } from './SavedPossibilityNarrative';
+import { savedPossibilityNarrativeParts } from './savedPossibilityNarrativeParts';
 import { ConversationReportText } from './ConversationReportText';
 import { parseConversationReport } from './conversationReportTemplate';
 import { memo } from 'react';
@@ -16,21 +18,43 @@ export const ConversationMessageText = memo(
     testID,
     allowReport = false,
     staticText = false,
+    savedPossibilityNarrative,
+    selectable = true,
   }: {
     readonly content: string;
     readonly user: boolean;
     readonly testID?: string;
     readonly allowReport?: boolean;
     readonly staticText?: boolean;
+    readonly savedPossibilityNarrative?: true;
+    readonly selectable?: boolean;
   }) {
     const report =
       !user && allowReport ? parseConversationReport(content) : undefined;
     if (report)
-      return <ConversationReportText report={report} testID={testID} />;
+      return (
+        <ConversationReportText
+          report={report}
+          testID={testID}
+          selectable={selectable}
+        />
+      );
+    const parts =
+      !user && allowReport && savedPossibilityNarrative
+        ? savedPossibilityNarrativeParts(content)
+        : undefined;
+    if (parts)
+      return (
+        <SavedPossibilityNarrative
+          parts={parts}
+          testID={testID}
+          selectable={selectable}
+        />
+      );
     const Text = user || staticText ? AppText : AiResponseText;
     return (
       <Text
-        selectable
+        selectable={selectable}
         style={[styles.messageText, user && styles.userText]}
         testID={testID}
       >

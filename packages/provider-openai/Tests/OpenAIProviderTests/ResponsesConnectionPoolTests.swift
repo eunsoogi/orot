@@ -25,6 +25,43 @@ final class ResponsesConnectionPoolTests: XCTestCase {
         XCTAssertNil(pool.take(key()).1)
     }
 
+    func testObservedIdleCloseSelectsFreshConnectionBeforeTheOnlyNextSend() async throws {
+        let pool = ResponsesConnectionPool()
+        let closed = CompletingSocket()
+        let first = pool.lease(closed, generation: pool.take(key()).0)
+        let completed = ChatGPTSteerableResponse(connection: first, initialRequest: Data("{}".utf8))
+        for try await _ in await completed.events() {}
+        XCTAssertEqual(closed.sends, 1)
+
+        closed.observePeerClose()
+        let (generation, reused) = pool.take(key())
+        XCTAssertNil(reused)
+        XCTAssertTrue(closed.isClosed)
+        let fresh = CompletingSocket()
+        let next = pool.lease(reused ?? fresh, generation: generation)
+        try await next.send(Data("{}".utf8))
+        XCTAssertEqual(closed.sends, 1)
+        XCTAssertEqual(fresh.sends, 1)
+        next.close()
+    }
+
+    func testClosingOneLeaseDoesNotDisplaceAnotherIdleConnection() throws {
+        let pool = ResponsesConnectionPool()
+        let closing = CompletingSocket()
+        let first = pool.lease(closing, generation: pool.take(key()).0)
+        let survivor = CompletingSocket()
+        let live = pool.lease(survivor, generation: pool.take(key()).0)
+        live.completed()
+
+        closing.observePeerClose()
+        first.completed()
+        XCTAssertTrue(closing.isClosed)
+        XCTAssertFalse(survivor.isClosed)
+        let reused = try XCTUnwrap(pool.take(key()).1)
+        XCTAssertTrue(reused as AnyObject === survivor)
+        reused.close()
+    }
+
     func testChangingScopeAccountModelOrCredentialRejectsIdleTransport() {
         for changed in [key("other"), key("scope", "other"), key("scope", "account", "other"), key("scope", "account", "model", "other")] {
             let pool = ResponsesConnectionPool()
@@ -115,11 +152,21 @@ final class ResponsesConnectionPoolTests: XCTestCase {
 private final class CompletingSocket: ResponsesWebSocketConnection, @unchecked Sendable {
     private let lock = NSLock()
     private var closed = false
+    private let upgrade = ResponsesWebSocketUpgradeGate()
     private var count = 0
     private var frames = [Data]()
     private let malformed: Bool
     init(malformed: Bool = false) {
         self.malformed = malformed
+        upgrade.opened()
+    }
+
+    var observedClosed: Bool {
+        upgrade.observedClosed
+    }
+
+    func observePeerClose() {
+        upgrade.failed(httpStatus: nil)
     }
 
     var isClosed: Bool {

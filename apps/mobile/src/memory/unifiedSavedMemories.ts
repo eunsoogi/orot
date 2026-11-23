@@ -4,6 +4,7 @@ import type { ManualHistoryScreenRecord } from '../manualHistory/types';
 
 export type AgentSavedMemory = Omit<AgentMemoryHit, 'score'> & {
   readonly unavailableReason?: 'unverifiable_parent';
+  readonly historicalSnapshot?: true;
 };
 export interface HistorySavedMemory {
   readonly sourceKind: 'manual_history';

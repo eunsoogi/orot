@@ -1,4 +1,9 @@
 export const manualHistoryKo = {
+  'settings.dailyReportMemory.title': '일일 보고서 링크 자동 보관',
+  'settings.dailyReportMemory.description':
+    '켜면 대화에서 직접 요청해 새로 완성한 일일 보고서의 링크만 기기의 보호된 기억에 보관해요. 이전 보고서나 알림으로 만든 보고서는 추가하지 않으며 AI에 보내지 않아요.',
+  'settings.dailyReportMemory.retention':
+    '끄면 새 링크를 만들지 않아요. 기존 링크와 보고서는 그대로 남아요. 원본 보고서나 연결된 대화를 삭제하면 링크도 사라져요.',
   'settings.automaticMemory.title': '답변 방식 선호 자동 저장',
   'settings.automaticMemory.description':
     '이 설정을 켜면 직접 말한 답변 길이, 언어 등 일부 선호를 이 기기의 보호된 메모에 자동으로 저장할 수 있어요. 이 설정으로 건강 정보를 저장하거나 AI 외부 전송 권한을 바꾸지는 않아요.',
@@ -21,6 +26,28 @@ export const manualHistoryKo = {
     '자동 저장이 켜졌는지 확인할 수 없어요.',
   'settings.automaticMemory.disableError':
     '자동 저장이 꺼졌는지 확인할 수 없어요. 다시 꺼 주세요.',
+  'settings.routineMemory.title': '대화에서 기억 자동 저장',
+  'settings.routineMemory.description':
+    '읽기나 공부처럼 직접 말한 일부 반복 습관을 이 기기의 보호된 메모에만 자동으로 저장해요. 건강 기록이나 AI 답변은 이 설정으로 저장하지 않아요. 저장된 메모는 AI에 전송되거나 답변에 활용되지 않으며, 대화 전송 설정은 바뀌지 않아요.',
+  'settings.routineMemory.retention':
+    '끄면 새 습관 메모를 만들지 않아요. 이미 저장된 메모는 직접 삭제할 수 있어요.',
+  'settings.routineMemory.backup':
+    '이미 저장된 습관 메모는 암호화된 iOS 백업에 포함될 수 있어요. 이 설정의 허가는 다른 기기로 옮겨지지 않아요.',
+  'settings.routineMemory.recovery':
+    '복원 후 상태를 확인할 수 없으면 이 설정을 끈 다음 이 기기에서 다시 켤 수 있어요.',
+  'settings.routineMemory.off': '습관 자동 저장 꺼짐',
+  'settings.routineMemory.on': '습관 자동 저장 켜짐',
+  'settings.routineMemory.checking': '습관 저장 설정을 확인하는 중…',
+  'settings.routineMemory.enabling': '습관 자동 저장을 켜는 중…',
+  'settings.routineMemory.disabling': '습관 자동 저장을 끄는 중…',
+  'settings.routineMemory.enable': '습관 자동 저장 켜기',
+  'settings.routineMemory.disable': '습관 자동 저장 끄기',
+  'settings.routineMemory.retry': '습관 저장 설정 다시 확인',
+  'settings.routineMemory.unavailable': '습관 저장 설정을 확인할 수 없어요.',
+  'settings.routineMemory.enableError':
+    '습관 자동 저장이 켜졌는지 확인할 수 없어요.',
+  'settings.routineMemory.disableError':
+    '습관 자동 저장이 꺼졌는지 확인할 수 없어요. 다시 꺼 주세요.',
   'manualHistory.title': '과거 건강 기록',
   'manualHistory.subtitle':
     '진단, 시술, 복용 관련 내용과 건강 정보를 이 기기에 기록해요.',

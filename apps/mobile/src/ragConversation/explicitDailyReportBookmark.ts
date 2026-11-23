@@ -146,7 +146,8 @@ export function composerSendWithReportBookmark(
   prepare: Parameters<typeof dispatchConversationMessage>[3],
 ) {
   return () => {
+    if (current && !current()) return;
     if (!handleExplicitDailyReportBookmark({ store, id, current }))
-      dispatchConversationMessage(store, id, send, prepare);
+      dispatchConversationMessage(store, id, send, prepare, current);
   };
 }

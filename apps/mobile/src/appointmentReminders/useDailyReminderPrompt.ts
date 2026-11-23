@@ -1,3 +1,4 @@
+import { useWarmDailyReportMemory } from '../ragConversation/useWarmDailyReportMemory';
 import { startConversationReportTurn } from '../ragConversation/startConversationReportTurn';
 import { useEffect, useRef } from 'react';
 import type { ConversationSessions } from '../ragConversation/conversationSessions';
@@ -17,6 +18,9 @@ export function useDailyReminderPrompt(input: {
   const { canonical, rootKey, store } = input;
   const latest = useRef(input);
   latest.current = input;
+  useWarmDailyReportMemory(
+    canonical === true && Boolean(input.services.dailyReport),
+  );
   useEffect(() => {
     if (!canonical) return;
     const rendezvous = dailyReminderPromptRendezvous(store);
@@ -41,6 +45,12 @@ export function useDailyReminderPrompt(input: {
   return () => {
     const { services, isVisible } = latest.current;
     if (services.dailyReport)
-      startConversationReportTurn(store, isVisible, services.sendRagMessage);
+      startConversationReportTurn(
+        store,
+        isVisible,
+        services.sendRagMessage,
+        undefined,
+        'direct-user-tap',
+      );
   };
 }

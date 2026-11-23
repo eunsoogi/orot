@@ -207,6 +207,7 @@ final class NavigationRailFrameIntegrationTests: OrotFailFastTestCase {
         XCTAssertNil(portal.superview)
         try verifyTopAlignedPageDock(in: nextWindow, controller: nextController)
         try verifyWindowTopBack(in: nextWindow, controller: nextController)
+        try verifyWarmWindowBackAfterPortalResize(in: nextWindow, controller: nextController)
     }
 
     @MainActor

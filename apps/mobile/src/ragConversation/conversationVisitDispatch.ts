@@ -4,6 +4,11 @@ import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { ConversationSession } from './conversationSessionTypes';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import { entryIntentSender } from './entryIntentSender';
+import {
+  allowWarmConversationSender,
+  isWarmConversationSender,
+} from './warmConversationSender';
+import { todayIdentity } from '../aiFeatures/integration/dailyReportTodayIdentity';
 import type { TreatmentConversationSender } from '../treatmentContext/treatmentConversationSender';
 
 const pendingVisits = new WeakMap<
@@ -120,13 +125,41 @@ export function sendConversationMessage(
   id: number,
   onSend: ConversationScreenProps['onSend'],
   prepare?: ConversationScreenProps['prepareVisitQuestions'],
+  isEntryCurrent?: () => boolean,
 ) {
   const session = store.getSnapshot().sessions.find(item => item.id === id);
+  const selectedAtSend = conversationEntryForSession(store, id);
   const sendEntry = entryIntentSender(store, id, onSend, 'composer');
+  if (
+    session &&
+    (!selectedAtSend || selectedAtSend.intent === 'conversation') &&
+    !session.entryIntent &&
+    !pendingVisits.get(store)?.has(id) &&
+    isWarmConversationSender(sendEntry)
+  ) {
+    // The day and entry owner belong to the send, never to the model output or a delayed response.
+    const today = todayIdentity();
+    return store.send(
+      id,
+      allowWarmConversationSender((question, history, signal, observer) =>
+        sendEntry(question, history, signal, {
+          ...observer,
+          modelTemplateAdmission: {
+            today,
+            prepareVisit: prepare,
+            current: () =>
+              !signal?.aborted &&
+              (isEntryCurrent?.() ?? true) &&
+              store.getSnapshot().activeId === id &&
+              conversationEntryForSession(store, id) === selectedAtSend,
+          },
+        }),
+      ),
+    );
+  }
   return store.send(id, (question, history, signal, observer) => {
     if (observer?.photoInput)
       return sendEntry(question, history, signal, observer);
-    // An explicitly selected report owns this turn instead of an earlier visit entry.
     if (session?.dailyReport) {
       pendingVisits.get(store)?.delete(id);
       return sendEntry(question, history, signal, observer);

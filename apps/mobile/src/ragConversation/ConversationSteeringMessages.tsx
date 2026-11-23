@@ -59,9 +59,16 @@ export function ConversationSteeringMessages({
               restored={restored}
               style={styles.userMessage}
             >
-              <AppText selectable style={[styles.messageText, styles.userText]}>
-                {row.text}
-              </AppText>
+              {/* Use the ordinary outgoing inset on the content, not the
+                  painted animation host. The receipt remains outside it. */}
+              <View style={styles.userMessageBody}>
+                <AppText
+                  selectable
+                  style={[styles.messageText, styles.userText]}
+                >
+                  {row.text}
+                </AppText>
+              </View>
             </ConversationBubbleEntrance>
             {receiptText ? (
               <AppText

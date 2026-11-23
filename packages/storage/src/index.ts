@@ -15,6 +15,8 @@ export {
 export type { DatabaseFileState, RandomByteSource, SecureKeyStore } from './key';
 export { openEncryptedStorage } from './open';
 export type { OpenEncryptedStorageOptions } from './open';
+export { listRecentSourcePage } from './recentSourcePage';
+export type { RecentSourceCursor, RecentSourceRow } from './recentSourcePage';
 export { createRecordRepository } from './repository';
 export { createVisitQuestionRecordRepository } from './visitQuestionRecords';
 export { readVisitQuestionRevision } from './visitQuestionRecordValidation';

@@ -1,7 +1,10 @@
 import type { ArchivedConversationPresentationMetadata } from '../storage/archivedConversationPresentationMetadata';
 import type { ConversationHistoryCursor } from './conversationHistoryPage';
 import type { DisplayMessage } from './conversationDisplayMessage';
-import type { ConversationSession } from './conversationSessionTypes';
+import type {
+  ConversationSession,
+  ConversationSessionOptions,
+} from './conversationSessionTypes';
 import { restoredConversationInterruptionCopy } from './restoredConversationInterruptionCopy';
 import type { ConversationRecoveryReason } from './conversationExecutionLease';
 import type { RetainedConversationTask } from './conversationTaskState';
@@ -16,6 +19,7 @@ export type SavedHistoryDisplayRow = {
       readonly kind: 'answer';
       readonly question: string;
       readonly answer: string;
+      readonly savedPossibilityNarrative?: true;
       readonly archivedCitationTarget?: import('./useArchivedCitationOpen').ArchivedCitationTarget;
       readonly interruptionReason?: ConversationRecoveryReason;
       readonly partial?: true;
@@ -24,6 +28,11 @@ export type SavedHistoryDisplayRow = {
       readonly savedCitations?: readonly SavedArchivedCitation[];
       readonly steeringInstructions?: DisplayMessage['steeringInstructions'];
     })
+  | {
+      readonly kind: 'opening';
+      readonly question: string;
+      readonly initialResponse: import('../storage/conversationReviewedOpeningStorage').ReviewedOpening;
+    }
   | {
       readonly kind: 'interrupted';
       readonly question: string;
@@ -79,7 +88,8 @@ export function savedHistoryTranscript(
         savedHistoryDisplayOnly: true as const,
         voiceTimelineOrder: { createdAt: row.createdAt, id: row.id },
       };
-      const incomplete = row.kind === 'interrupted' || row.partial;
+      const incomplete =
+        row.kind === 'interrupted' || (row.kind === 'answer' && row.partial);
       const activity = incomplete
         ? restoredConversationInterruptionCopy(row.interruptionReason)
         : undefined;
@@ -97,31 +107,38 @@ export function savedHistoryTranscript(
               },
             ]
           : []),
-        {
-          ...origin,
-          id: answerId,
-          role: 'assistant',
-          content: row.kind === 'answer' ? row.answer : '',
-          ...(row.kind === 'answer' && row.initialResponse
-            ? { initialResponse: row.initialResponse }
-            : {}),
-          ...(activity ? { activity } : {}),
-          ...(row.kind === 'answer' && row.healthSummary
-            ? { healthSummary: row.healthSummary }
-            : {}),
-          ...(row.kind === 'answer' && row.dailyReport
-            ? { dailyReport: row.dailyReport }
-            : {}),
-          ...(row.kind === 'answer' && row.steeringInstructions
-            ? { steeringInstructions: row.steeringInstructions }
-            : {}),
-          ...(row.kind === 'answer' && row.savedCitations
-            ? { savedCitations: row.savedCitations }
-            : {}),
-          ...(row.kind === 'answer' && row.archivedCitationTarget
-            ? { archivedCitationTarget: row.archivedCitationTarget }
-            : {}),
-        },
+        ...(row.kind === 'answer' || row.kind === 'opening' || activity
+          ? [
+              {
+                ...origin,
+                id: answerId,
+                role: 'assistant' as const,
+                content: row.kind === 'answer' ? row.answer : '',
+                ...(row.kind === 'answer' && row.savedPossibilityNarrative
+                  ? { savedPossibilityNarrative: true as const }
+                  : {}),
+                ...(row.kind !== 'interrupted' && row.initialResponse
+                  ? { initialResponse: row.initialResponse }
+                  : {}),
+                ...(activity ? { activity } : {}),
+                ...(row.kind === 'answer' && row.healthSummary
+                  ? { healthSummary: row.healthSummary }
+                  : {}),
+                ...(row.kind === 'answer' && row.dailyReport
+                  ? { dailyReport: row.dailyReport }
+                  : {}),
+                ...(row.kind === 'answer' && row.steeringInstructions
+                  ? { steeringInstructions: row.steeringInstructions }
+                  : {}),
+                ...(row.kind === 'answer' && row.savedCitations
+                  ? { savedCitations: row.savedCitations }
+                  : {}),
+                ...(row.kind === 'answer' && row.archivedCitationTarget
+                  ? { archivedCitationTarget: row.archivedCitationTarget }
+                  : {}),
+              },
+            ]
+          : []),
       ];
     }),
     ...live,
@@ -144,4 +161,35 @@ export function visibleSavedHistoryDisplay(
   )
     return undefined;
   return session.savedHistoryDisplay;
+}
+
+/** A send may retain mounted, already admitted rows during model confirmation.
+ * It does not authorize dispatch, rehydrate data, or borrow a replacement lease. */
+export function admittedDisplayLease(
+  session: ConversationSession | undefined,
+  retention: ConversationSessionOptions['retention'],
+) {
+  if (
+    !session?.preparingSend ||
+    visibleSavedHistoryDisplay(session) === undefined
+  )
+    return;
+  const lease = retention?.activeLease(session.id);
+  if (!lease) return;
+  const { id, version } = lease;
+  return {
+    withholdUnless(
+      target: { id: string; version: number },
+      withhold: () => void,
+    ) {
+      const live = retention?.activeLease(session.id);
+      if (
+        target.id !== id ||
+        target.version !== version ||
+        live?.id !== id ||
+        live.version !== version
+      )
+        withhold();
+    },
+  };
 }

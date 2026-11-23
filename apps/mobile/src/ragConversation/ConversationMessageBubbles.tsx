@@ -1,3 +1,4 @@
+import { useConversationFinalCommitDiagnostic } from './conversationFinalCommitDiagnostic';
 import { ConversationPreviousOutputs } from './ConversationPreviousOutputs';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
@@ -8,6 +9,7 @@ import {
 } from './conversationBubblePaint';
 import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { ConversationInitialResponse } from './ConversationInitialResponse';
+import type { ConversationBubbleCopy } from './ConversationBubbleCopyHost';
 import type { DisplayMessage } from './conversationDisplayMessage';
 import { styles } from './ConversationScreen.styles';
 
@@ -17,14 +19,17 @@ export function ConversationMessageBubbles({
   message,
   children,
   beforeAnswer,
+  openingCopyMenu,
   presentation,
 }: {
   readonly message: DisplayMessage;
   readonly children: ReactNode;
   readonly beforeAnswer?: ReactNode;
+  readonly openingCopyMenu?: ConversationBubbleCopy;
   readonly presentation: ConversationBubblePresentation;
 }) {
   const { opening, showBody } = conversationBubblePaint(message, presentation);
+  useConversationFinalCommitDiagnostic(message, Boolean(showBody));
   if (!opening && !beforeAnswer) return showBody ? children : null;
   return (
     <View style={styles.assistantBubbleSequence}>
@@ -32,6 +37,7 @@ export function ConversationMessageBubbles({
         <ConversationBubbleEntrance
           entranceKey={conversationBubbleKey('opening', message.id)}
           restored={message.restoredHistory || message.id <= 0}
+          copyMenu={openingCopyMenu}
           testID="conversation-assistant-opening-message"
           style={styles.assistantMessage}
         >

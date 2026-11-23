@@ -1,8 +1,5 @@
 import { savedModelPresentation } from '../providers/selection/savedModelPresentation';
-import {
-  calendarDecisionsModelLabel,
-  calendarDecisionsProviderLabel,
-} from './calendarDecisionsPresentation';
+import { calendarDecisionsModelLabel } from './calendarDecisionsPresentation';
 import type { CalendarModelSettingsPanelProps } from './CalendarModelSettingsPanel.types';
 import { refreshCalendarModels } from './refreshCalendarModels';
 import { useCalendarModelConfirmation } from './useCalendarModelConfirmation';
@@ -166,6 +163,27 @@ export function CalendarModelSettingsPanel({
   );
   return (
     <View testID="calendar-model-settings">
+      <ModelSelectionSummary
+        label={
+          pending
+            ? t('modelSettings.selectedAiPrefix')
+            : saved
+              ? t('modelSettings.currentSelection')
+              : undefined
+        }
+        value={
+          pending
+            ? savedModelPresentation(
+                { providerId: pending.provider.id, modelId: pending.modelId },
+                pending,
+                'calendar',
+              )
+            : saved
+              ? savedModelPresentation(saved, savedOption, 'calendar')
+              : t('modelSettings.calendarUnselected')
+        }
+        testID="calendar-current-model"
+      />
       <ProviderSelectionChoices
         options={options}
         chatGPTSetup={chatGPTSetup}
@@ -179,7 +197,7 @@ export function CalendarModelSettingsPanel({
       />
       <View style={styles.section} testID="calendar-model-group-openai-api">
         <Text accessibilityRole="header" style={styles.heading}>
-          {calendarDecisionsProviderLabel}
+          OpenAI API
         </Text>
         <View style={styles.catalogAccount}>
           <ApiCatalogAccount
@@ -215,6 +233,7 @@ export function CalendarModelSettingsPanel({
       {pending ? (
         <ProviderSelectionConfirmation
           inlineConsent={false}
+          summaryAbove
           hasActionDock={hasDock}
           option={current ?? pending}
           blockedMessage={
@@ -225,19 +244,7 @@ export function CalendarModelSettingsPanel({
           onConfirm={confirm}
           onCancel={() => setPending(null)}
         />
-      ) : (
-        <View style={styles.section}>
-          <ModelSelectionSummary
-            label={saved ? t('modelSettings.currentSelection') : undefined}
-            value={
-              saved
-                ? savedModelPresentation(saved, savedOption, 'calendar')
-                : t('modelSettings.calendarUnselected')
-            }
-            testID="calendar-current-model"
-          />
-        </View>
-      )}
+      ) : null}
     </View>
   );
 }

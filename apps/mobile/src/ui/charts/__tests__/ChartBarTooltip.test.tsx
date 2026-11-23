@@ -1,5 +1,14 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { installChartBarTooltipTestMeasurements } from '../testSupport/chartBarTooltipFixture';
 import { ChartPlot } from '../ChartPlot';
+import { ChartTooltipHost } from '../ChartTooltipHost';
 import type { ChartData } from '../types';
 
 jest.mock('react-native-chart-kit/v2', () => {
@@ -9,6 +18,7 @@ jest.mock('react-native-chart-kit/v2', () => {
     BarChart: (props: object) => <View {...props} testID="bars" />,
   };
 });
+const measurement = installChartBarTooltipTestMeasurements();
 const data: ChartData = {
   metric: 'sleep',
   coverage: { requested: 'week', displayed: 'partial', status: 'partial' },
@@ -26,18 +36,20 @@ const data: ChartData = {
     },
   ],
 };
-const plot = (value = data) => (
-  <ChartPlot
-    data={value}
-    width={160}
-    height={112}
-    title="수면"
-    kind="bar"
-    compact
-    hideDetails
-    barTooltip
-    testID="chart"
-  />
+const plot = (value = data, width = 160) => (
+  <ChartTooltipHost testID="chart-host">
+    <ChartPlot
+      data={value}
+      width={width}
+      height={112}
+      title="수면"
+      kind="bar"
+      compact
+      hideDetails
+      barTooltip
+      testID="chart"
+    />
+  </ChartTooltipHost>
 );
 const bars = () => screen.getByTestId('bars', { includeHiddenElements: true });
 const tooltip = () =>
@@ -49,7 +61,6 @@ test('bar callback shows exact dated duration, deselects, and never restores det
   expect(tooltip()).toBeNull();
   expect(bars().props.interaction.mode).toBe('tap');
   // Invoke the chart-kit callback contract: it reports stable x and series identity.
-  const { act } = require('@testing-library/react-native');
   await act(() =>
     bars().props.interaction.onSelect({
       x: '2026-01-01',
@@ -117,7 +128,6 @@ test('multi-series selection uses the selected series unit and preserves decimal
     ],
   };
   await render(plot(multi));
-  const { act } = require('@testing-library/react-native');
   const renderers = screen.getAllByTestId('bars', {
     includeHiddenElements: true,
   });
@@ -149,9 +159,13 @@ test('multi-series selection uses the selected series unit and preserves decimal
 
 test('editing a selected value clears its old callout even when its date survives', async () => {
   const view = await render(plot());
-  await fireEvent(screen.getByTestId('chart-plot'), 'accessibilityAction', {
-    nativeEvent: { actionName: 'increment' },
-  });
+  await act(() =>
+    bars().props.interaction.onSelect({
+      x: '2026-01-01',
+      seriesKey: 'sleep',
+      position: { x: 80, y: 90 },
+    }),
+  );
   expect(tooltip()).toBeTruthy();
   await view.rerender(
     plot({
@@ -168,46 +182,54 @@ test('editing a selected value clears its old callout even when its date survive
   await fireEvent(screen.getByTestId('chart-plot'), 'accessibilityAction', {
     nativeEvent: { actionName: 'increment' },
   });
-  expect(
-    screen.getByText('2026-01-01 · 수면 · 2시간 0분', {
-      includeHiddenElements: true,
-    }),
-  ).toBeTruthy();
+  expect(screen.getByTestId('chart-plot').props.accessibilityLabel).toContain(
+    '2시간 0분',
+  );
+  expect(tooltip()).toBeNull();
 });
 
-test('floating label tracks the native anchor, clamps edges, and does not intercept touches', async () => {
+test('floating label uses the route overlay outside the chart and avoids touch/accessibility interception', async () => {
   await render(plot());
-  const { act } = require('@testing-library/react-native');
-  await act(() =>
-    bars().props.interaction.onSelect({
-      x: '2026-01-01',
-      seriesKey: 'sleep',
-      position: { x: 10, y: 90 },
+  const select = (day: string, x: number) =>
+    act(() =>
+      bars().props.interaction.onSelect({
+        x: day,
+        seriesKey: 'sleep',
+        position: { x, y: 90 },
+      }),
+    );
+  await select('2026-01-01', 10);
+  expect(
+    within(screen.getByTestId('chart')).queryByTestId('chart-plot-tooltip', {
+      includeHiddenElements: true,
     }),
-  );
+  ).toBeNull();
   await fireEvent(tooltip()!, 'layout', {
-    nativeEvent: { layout: { width: 160, height: 40 } },
+    nativeEvent: { layout: { width: 240, height: 40 } },
   });
-  const { StyleSheet } = require('react-native');
   expect(StyleSheet.flatten(tooltip()!.props.style)).toMatchObject({
     position: 'absolute',
-    left: 0,
-    top: 42,
-    width: 160,
+    left: 8,
+    top: 52,
+    width: 240,
+    opacity: 1,
   });
   expect(tooltip()!.props.pointerEvents).toBe('none');
-  await act(() =>
-    bars().props.interaction.onSelect({
-      x: '2026-01-03',
-      seriesKey: 'sleep',
-      position: { x: 155, y: 20 },
-    }),
-  );
-  expect(StyleSheet.flatten(tooltip()!.props.style).top).toBe(0);
+  expect(tooltip()!.props.accessibilityElementsHidden).toBe(true);
+  await fireEvent(screen.getByTestId('chart-host'), 'touchMove');
+  expect(tooltip()).toBeNull();
+  measurement.setPlotY(20);
+  await select('2026-01-03', 155);
+  await fireEvent(tooltip()!, 'layout', {
+    nativeEvent: { layout: { width: 240, height: 40 } },
+  });
+  expect(StyleSheet.flatten(tooltip()!.props.style)).toMatchObject({
+    top: 328,
+    opacity: 1,
+  });
 });
 test('resizing clears coordinates from the old chart layout', async () => {
   const view = await render(plot());
-  const { act } = require('@testing-library/react-native');
   await act(() =>
     bars().props.interaction.onSelect({
       x: '2026-01-01',
@@ -215,17 +237,6 @@ test('resizing clears coordinates from the old chart layout', async () => {
       position: { x: 80, y: 90 },
     }),
   );
-  await view.rerender(
-    <ChartPlot
-      data={data}
-      width={320}
-      height={112}
-      title="수면"
-      kind="bar"
-      hideDetails
-      barTooltip
-      testID="chart"
-    />,
-  );
+  await view.rerender(plot(data, 320));
   expect(tooltip()).toBeNull();
 });

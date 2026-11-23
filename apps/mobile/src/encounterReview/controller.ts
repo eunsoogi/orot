@@ -11,7 +11,11 @@ export type ReviewResult =
   | EncounterGraphResult
   | {
       status:
-        'idle' | 'no-transcript' | 'selection-required' | 'consent-denied';
+        | 'idle'
+        | 'no-transcript'
+        | 'selection-required'
+        | 'consent-denied'
+        | 'transcript-too-long';
     };
 export interface EncounterReviewService {
   diagnostics?: ReviewDiagnostics;

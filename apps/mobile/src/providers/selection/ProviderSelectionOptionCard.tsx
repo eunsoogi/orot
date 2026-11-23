@@ -19,6 +19,7 @@ interface ProviderSelectionOptionCardProps {
   readonly disabled: boolean;
   readonly index: number;
   readonly catalogModelLabel?: string;
+  readonly hideLocalSubtitle?: boolean;
   readonly onPress: () => void;
 }
 
@@ -29,6 +30,7 @@ export default function ProviderSelectionOptionCard({
   disabled,
   index,
   catalogModelLabel,
+  hideLocalSubtitle = false,
   onPress,
 }: ProviderSelectionOptionCardProps) {
   // Descriptive capability lists are omitted; actual capability and availability gates stay enforced.
@@ -54,7 +56,8 @@ export default function ProviderSelectionOptionCard({
         <Text style={shared.title}>
           {catalogModelLabel ?? option.displayName}
         </Text>
-        {catalogModelLabel ? null : (
+        {catalogModelLabel ||
+        (hideLocalSubtitle && option.privacyBoundary === 'on-device') ? null : (
           <Text style={shared.detail}>
             {option.privacyBoundary === 'on-device'
               ? t('modelSettings.localProcessing')

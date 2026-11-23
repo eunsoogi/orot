@@ -1,23 +1,40 @@
 import { readManualHistoryEntry, runMigrations } from '@orot/storage';
+import { createConversationRetentionBridge } from '../../aiFeatures/integration/conversationRetentionBridge';
+import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evidenceRegistry';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
-import { createOrdinaryConversationMemoryEnrollmentStore } from '../../storage/ordinaryConversationMemoryEnrollment';
+import {
+  createOrdinaryConversationMemoryEnrollmentStore,
+  type LocalConversationMemoryScope,
+} from '../../storage/ordinaryConversationMemoryEnrollment';
 import { saveOrdinaryConversationMemoryNote } from '../../storage/ordinaryConversationMemoryNote';
 import { createConversationSessionRetention } from '../conversationSessionRetention';
 import { createConversationSessions } from '../conversationSessions';
-import type { ConversationSender } from '../conversationSessionTypes';
+import { entryIntentSender } from '../entryIntentSender';
+import { setConversationEntryForSession } from '../useConversationEntryIntent';
+import type { ConversationScreenProps } from '../ConversationScreenProps';
 
-const question = 'For future replies, I prefer concise answers.';
+const preference = 'For future replies, I prefer concise answers.';
+const routine = 'I practice the guitar every Monday.';
 const answer = 'Synthetic validated answer remains visible.';
 const live = () => true;
 
 test.each([
   'enabled',
+  'typed authored follow-up',
+  'typed shortcut with identical phrase',
   'disabled',
   'deleted while optional save waits',
+  'routine when both are enabled',
+  'typed routine when both are enabled',
+  'typed routine shortcut with identical phrase',
+  'routine with only preferences enabled',
+  'routine with wrong-scope receipt',
 ] as const)(
   'a real live retained session saves only an eligible local note: %s',
   async mode => {
+    const isRoutine = mode.includes('routine');
+    const question = isRoutine ? routine : preference;
     const f = openSqliteTestDatabase(':memory:');
     const controller = new AbortController();
     let release!: () => void;
@@ -35,30 +52,60 @@ test.each([
         createId: () => `synthetic-${++sequence}`,
         now: () => '2026-11-22T00:00:00.000Z',
       });
-      const enrollment = createOrdinaryConversationMemoryEnrollmentStore(
-        f.database,
+      const scopeOfQuestion = isRoutine
+        ? 'authored-routine'
+        : 'reply-preferences';
+      const enable = async (
+        scope: LocalConversationMemoryScope,
+        deviceEpoch: string,
+      ) => {
+        const enrollment = createOrdinaryConversationMemoryEnrollmentStore(
+          f.database,
+          scope,
+        );
+        const permission = (await enrollment.replace(
+          await enrollment.read(),
+          deviceEpoch,
+          live,
+        ))!;
+        return {
+          scope,
+          database: f.database,
+          deviceEpoch,
+          generation: permission.generation,
+          isCurrent: () => !controller.signal.aborted,
+        };
+      };
+      const preferenceReceipt = await enable(
+        'reply-preferences',
+        'a'.repeat(64),
       );
-      const deviceEpoch = 'a'.repeat(64);
-      const permission = (await enrollment.replace(
-        await enrollment.read(),
-        deviceEpoch,
-        live,
-      ))!;
-      const capture = jest.fn(async () =>
+      const routineReceipt =
+        isRoutine && mode !== 'routine with only preferences enabled'
+          ? await enable('authored-routine', 'b'.repeat(64))
+          : undefined;
+      const capture = jest.fn(async (scope: LocalConversationMemoryScope) =>
         mode === 'disabled'
           ? undefined
-          : {
-              database: f.database,
-              deviceEpoch,
-              generation: permission.generation,
-              isCurrent: () => !controller.signal.aborted,
-            },
+          : mode === 'routine with wrong-scope receipt'
+            ? preferenceReceipt
+            : scope === 'authored-routine'
+              ? routineReceipt
+              : preferenceReceipt,
       );
+      const save = jest.fn<
+        ReturnType<
+          import('../ordinaryConversationMemoryTask').OrdinaryConversationMemoryPort['save']
+        >,
+        Parameters<
+          import('../ordinaryConversationMemoryTask').OrdinaryConversationMemoryPort['save']
+        >
+      >();
       sessions = createConversationSessions({
         retention,
         ordinaryMemory: {
           capture,
-          save(receipt, source, current) {
+          save: save.mockImplementation((receipt, source, current) => {
             completed = pending.then(() =>
               saveOrdinaryConversationMemoryNote(
                 receipt,
@@ -68,32 +115,60 @@ test.each([
               ),
             );
             return completed;
-          },
+          }),
         },
       });
-      const onSend: ConversationSender = async (
+      const typed = mode.startsWith('typed');
+      const shortcut = mode.includes('shortcut');
+      const hasGrant =
+        mode !== 'disabled' &&
+        mode !== 'routine with wrong-scope receipt' &&
+        (!isRoutine || Boolean(routineReceipt));
+      const expectedWrite =
+        hasGrant && !shortcut && mode !== 'deleted while optional save waits';
+      const onSend: ConversationScreenProps['onSend'] = async (
         authored,
         _history,
         signal,
         observer,
+        entryContext,
       ) => {
-        expect(capture).toHaveBeenCalledTimes(1);
-        await observer!.onRetentionCandidate!(
-          {
-            question: authored,
-            answer,
-            providerId: 'synthetic-provider',
-            modelId: 'synthetic-model',
-            proactiveMemory: true,
-            sources: [],
-            citations: [],
-          },
-          signal!,
-        );
-        return { status: 'answer', answer, citations: [] };
+        expect(capture).toHaveBeenCalledTimes(shortcut ? 0 : 1);
+        if (!shortcut) expect(capture).toHaveBeenCalledWith(scopeOfQuestion);
+        expect(observer?.inputOrigin).toBe(shortcut ? 'shortcut' : 'composer');
+        const bridge = createConversationRetentionBridge({
+          question: authored,
+          registry: new LocalEvidenceReferenceRegistry(),
+          observer,
+          entryContext,
+          providerId: 'synthetic-provider',
+          modelId: 'synthetic-model',
+          signal: signal!,
+        });
+        bridge.onValidatedEvidence([]);
+        const response = await bridge.finish({
+          status: 'answer',
+          answer,
+          citations: [],
+          proactiveMemory: true,
+        });
+        expect(response.retained).toBe(true);
+        return response.outcome;
       };
+      if (typed)
+        setConversationEntryForSession(sessions, 1, {
+          intent: 'possibilities',
+          entryKey: 'selected-current-choice',
+        });
       sessions.setDraft(1, question);
-      await sessions.send(1, onSend);
+      const dispatch = entryIntentSender(
+        sessions,
+        1,
+        onSend,
+        shortcut ? 'shortcut' : 'composer',
+      );
+      if (shortcut) await sessions.sendPrompt(1, question, dispatch);
+      else await sessions.send(1, dispatch);
       expect(sessions.getSnapshot().sessions[0]?.messages.at(-1)?.content).toBe(
         answer,
       );
@@ -101,6 +176,7 @@ test.each([
       expect(identity).toBeDefined();
       const kept = await storage.read(identity!.messageId);
       expect(kept?.proactiveMemory).toBeUndefined();
+      expect(kept?.entryIntent).toBe(typed ? 'possibilities' : undefined);
       const noteId = 'conversation-local-memory:auto:' + identity!.messageId;
       expect(await readManualHistoryEntry(f.database, noteId)).toBeNull();
       if (mode === 'deleted while optional save waits') {
@@ -108,14 +184,16 @@ test.each([
         sessions.dispose();
       }
       release();
-      if (mode === 'disabled') {
+      if (!hasGrant || shortcut) {
         expect(completed).toBeUndefined();
+        expect(save).not.toHaveBeenCalled();
       } else {
         expect(completed).toBeDefined();
-        expect(await completed).toBe(mode === 'enabled');
+        expect(save).toHaveBeenCalledTimes(1);
+        expect(await completed).toBe(expectedWrite);
       }
       const note = await readManualHistoryEntry(f.database, noteId);
-      expect(note?.details).toBe(mode === 'enabled' ? question : undefined);
+      expect(note?.details).toBe(expectedWrite ? question : undefined);
     } finally {
       controller.abort();
       release();

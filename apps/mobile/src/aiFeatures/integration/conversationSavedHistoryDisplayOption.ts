@@ -54,6 +54,16 @@ export function conversationSavedHistoryDisplayOption(
             row.createdAt !== item.createdAt
           )
             throw new Error('Conversation content changed during restoration.');
+          if (row.status === 'opening')
+            return [
+              {
+                kind: 'opening',
+                id: row.id,
+                createdAt: row.createdAt,
+                question: row.question,
+                initialResponse: row.initialResponse,
+              },
+            ];
           if (row.status === 'interrupted')
             return [
               {
@@ -73,6 +83,9 @@ export function conversationSavedHistoryDisplayOption(
               createdAt: row.createdAt,
               question: row.question,
               answer: row.answer,
+              ...(row.savedPossibilityNarrative
+                ? { savedPossibilityNarrative: true as const }
+                : {}),
               ...(row.delivery ? { delivery: row.delivery } : {}),
               ...(row.initialResponse
                 ? { initialResponse: row.initialResponse }

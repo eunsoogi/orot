@@ -79,16 +79,9 @@ export function AiFeatureFlowScreen({
         revision: selectedAiRevision,
         resolve: resolveSelectedAi,
       }}
-      renderStoredReportTask={(
-        card,
-        onChat,
-        onTaskIdentity,
-        onTaskResult,
-        sessionId,
-      ) => (
+      renderStoredReportTask={(card, onChat, onTaskIdentity, onTaskResult) => (
         <ConversationReportTask
           card={card}
-          sessionId={sessionId}
           services={services}
           onChat={onChat}
           onTaskIdentity={onTaskIdentity}

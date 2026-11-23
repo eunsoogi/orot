@@ -1,4 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { ChartTooltipHost } from '../ChartTooltipHost';
+import { AppState, Dimensions, View } from 'react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { ChartPlot } from '../ChartPlot';
 import { chartRangeGeometry } from '../chartRangeGeometry';
 import type { ChartData } from '../types';
@@ -81,17 +83,44 @@ test('shows a span and independent mean marker while exposing accessible bounds,
 });
 
 test('chooses a plotted range through the existing contextual callout', async () => {
-  await render(
-    <ChartPlot
-      data={data}
-      width={240}
-      height={112}
-      kind="range"
-      title="심박수"
-      testID="heart"
-      hideDetails
-      barTooltip
-    />,
+  const state = AppState.currentState;
+  AppState.currentState = 'active';
+  const native = View as unknown as {
+    prototype: {
+      measureInWindow: (
+        callback: (x: number, y: number, width: number, height: number) => void,
+      ) => void;
+    };
+  };
+  const measure = jest
+    .spyOn(native.prototype, 'measureInWindow')
+    .mockImplementation(function (
+      this: { props: { testID?: string } },
+      callback,
+    ) {
+      if (this.props.testID === 'heart-host') callback(0, 0, 390, 1000);
+      if (this.props.testID === 'heart-plot-anchor')
+        callback(20, 220, 240, 112);
+    });
+  const size = { width: 390, height: 680, scale: 3, fontScale: 1 };
+  const previous = {
+    window: Dimensions.get('window'),
+    screen: Dimensions.get('screen'),
+  };
+  await act(async () => Dimensions.set({ window: size, screen: size }));
+  const view = await render(
+    <ChartTooltipHost testID="heart-host">
+      <ChartPlot
+        data={data}
+        width={240}
+        height={112}
+        kind="range"
+        title="심박수"
+        testID="heart"
+        hideDetails
+        barTooltip
+      />
+    </ChartTooltipHost>,
   );
   const mark = screen.getAllByTestId('chart-range-bucket', {
     includeHiddenElements: true,
@@ -104,4 +133,8 @@ test('chooses a plotted range through the existing contextual callout', async ()
   expect(
     screen.queryByTestId('heart-plot-tooltip', { includeHiddenElements: true }),
   ).toBeNull();
+  await view.unmount();
+  measure.mockRestore();
+  AppState.currentState = state;
+  await act(async () => Dimensions.set(previous));
 });

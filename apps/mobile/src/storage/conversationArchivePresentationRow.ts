@@ -5,6 +5,10 @@ import {
   type ArchivedConversationPresentationMetadata,
 } from './archivedConversationPresentationMetadata';
 import { validConversationReportTarget } from './conversationReportTarget';
+import {
+  decodeReviewedOpening,
+  type ReviewedOpening,
+} from './conversationReviewedOpeningStorage';
 import type { ConversationArtifact } from './conversationArtifactTypes';
 import type { SavedArchivedCitation } from '../ragConversation/savedArchivedCitations';
 import type { HealthSummaryResult } from '../ragConversation/healthSummary';
@@ -24,12 +28,18 @@ export type ConversationHistoryPresentation = {
   | (ArchivedConversationPresentationMetadata & {
       readonly status: 'complete' | 'partial';
       readonly answer: string;
+      readonly savedPossibilityNarrative?: true;
       readonly healthSummary?: HealthSummaryResult;
       readonly dailyReport?: NonNullable<ConversationArtifact['dailyReport']>;
       readonly savedCitations?: readonly SavedArchivedCitation[];
       readonly steeringInstructions?: readonly StoredSteeringInstruction[];
     })
   | { readonly status: 'interrupted'; readonly answer?: never }
+  | {
+      readonly status: 'opening';
+      readonly initialResponse: ReviewedOpening;
+      readonly answer?: never;
+    }
 );
 
 function readArchivedText(serialized: unknown): Record<string, unknown> | null {
@@ -61,6 +71,7 @@ export function decodeOwnedArchiveRow(
   const interruptionReason = decodeConversationRecoveryReason(
     row.interruption_reason,
   );
+  const reviewed = decodeReviewedOpening(row.reviewed_opening_json);
   if (row.result_json === null) {
     if (row.checkpoint_status === 'completed') {
       const value = readArchivedText(row.local_outcome_json);
@@ -89,6 +100,9 @@ export function decodeOwnedArchiveRow(
           status: 'complete',
           answer: t('visitQuestions.conversation.clarifyGoal'),
           ...display,
+          ...(row.has_reviewed_opening === 1
+            ? { initialResponse: reviewed }
+            : {}),
         },
       };
     }
@@ -104,8 +118,12 @@ export function decodeOwnedArchiveRow(
         sessionId,
         createdAt: row.created_at,
         question: row.checkpoint_question,
-        status: 'interrupted',
-        ...(interruptionReason ? { interruptionReason } : {}),
+        ...(reviewed
+          ? { status: 'opening' as const, initialResponse: reviewed }
+          : {
+              status: 'interrupted' as const,
+              ...(interruptionReason ? { interruptionReason } : {}),
+            }),
       },
     };
   }
@@ -141,7 +159,15 @@ export function decodeOwnedArchiveRow(
       question: value.question,
       answer: value.answer,
       status: value.status,
+      ...(value.status === 'complete' &&
+      value.entryIntent === 'possibilities' &&
+      !value.healthSummary &&
+      !value.dailyReport &&
+      !value.visitQuestions
+        ? { savedPossibilityNarrative: true as const }
+        : {}),
       ...archivedConversationPresentationMetadata(value),
+      ...(row.has_reviewed_opening === 1 ? { initialResponse: reviewed } : {}),
       ...(dailyReport ? { dailyReport } : {}),
       ...(interruptionReason ? { interruptionReason } : {}),
     },

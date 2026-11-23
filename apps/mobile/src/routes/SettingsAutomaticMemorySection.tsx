@@ -5,6 +5,8 @@ import { AppText as Text } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 
+type MemorySettingsKeys = 'settings.automaticMemory' | 'settings.routineMemory';
+
 type DeviceModule =
   typeof import('../storage/ordinaryConversationMemoryDeviceOwner');
 type Owner = Awaited<
@@ -32,9 +34,17 @@ const isError = (status: Status) =>
 /** This local choice neither grants nor revokes any AI external-transfer scope. */
 export function SettingsAutomaticMemorySection({
   ownership,
+  routine = false,
 }: {
   readonly ownership?: NavigationRouteOwnership;
+  readonly routine?: boolean;
 }) {
+  const settingsKey = routine
+    ? 'settings.routineMemory'
+    : 'settings.automaticMemory';
+  const testId = routine
+    ? 'settings-routine-memory'
+    : 'settings-automatic-memory';
   const [status, setStatus] = useState<Status>('checking');
   const routeOwner = useRef<{
     connection?: Connection;
@@ -61,10 +71,15 @@ export function SettingsAutomaticMemorySection({
           const ports =
             require('../storage/ordinaryConversationMemoryDeviceOwner') as DeviceModule;
           if (!live()) return;
-          const owner = await ports.openOrdinaryConversationMemoryOwner();
+          const api = routine
+            ? ports.authoredRoutineMemoryDeviceOwner
+            : {
+                openOwner: ports.openOrdinaryConversationMemoryOwner,
+                readSettings: ports.readOrdinaryConversationMemorySettings,
+              };
+          const owner = await api.openOwner();
           if (!live()) return;
-          const read = () =>
-            ports.readOrdinaryConversationMemorySettings(owner);
+          const read = () => api.readSettings(owner);
           scope.connection = { owner, read };
           const next = await read();
           if (live()) setStatus(next);
@@ -94,7 +109,7 @@ export function SettingsAutomaticMemorySection({
       if (routeOwner.current === scope) routeOwner.current = null;
       unsubscribe();
     };
-  }, [ownership]);
+  }, [ownership, routine]);
 
   const change = (enabled: boolean) => {
     const scope = routeOwner.current;
@@ -129,37 +144,45 @@ export function SettingsAutomaticMemorySection({
 
   const displayStatus = ownership ? status : 'unavailable';
   return (
-    <View style={styles.card} testID="settings-automatic-memory">
+    <View style={styles.card} testID={testId}>
       <Text accessibilityRole="header" style={styles.title}>
-        {t('settings.automaticMemory.title')}
+        {t(`${settingsKey}.title`)}
       </Text>
-      <Text style={styles.body}>
-        {t('settings.automaticMemory.description')}
-      </Text>
-      <Text style={styles.body}>{t('settings.automaticMemory.retention')}</Text>
-      <Text style={styles.body}>{t('settings.automaticMemory.backup')}</Text>
+      <Text style={styles.body}>{t(`${settingsKey}.description`)}</Text>
+      <Text style={styles.body}>{t(`${settingsKey}.retention`)}</Text>
+      <Text style={styles.body}>{t(`${settingsKey}.backup`)}</Text>
       <Text
         accessibilityRole={isError(displayStatus) ? 'alert' : undefined}
         accessibilityLiveRegion="polite"
         style={styles.body}
-        testID="settings-automatic-memory-status"
+        testID={`${testId}-status`}
       >
-        {t(`settings.automaticMemory.${displayStatus}`)}
+        {t(`${settingsKey}.${displayStatus}`)}
       </Text>
       {displayStatus === 'unavailable' && routeOwner.current?.connection ? (
-        <Text style={styles.body}>
-          {t('settings.automaticMemory.recovery')}
-        </Text>
+        <Text style={styles.body}>{t(`${settingsKey}.recovery`)}</Text>
       ) : null}
       {displayStatus === 'off' ? (
-        <MemoryAction action="enable" onPress={() => change(true)} />
+        <MemoryAction
+          settingsKey={settingsKey}
+          testId={testId}
+          action="enable"
+          onPress={() => change(true)}
+        />
       ) : null}
       {displayStatus === 'on' ||
       (isError(displayStatus) && routeOwner.current?.connection) ? (
-        <MemoryAction action="disable" onPress={() => change(false)} />
+        <MemoryAction
+          settingsKey={settingsKey}
+          testId={testId}
+          action="disable"
+          onPress={() => change(false)}
+        />
       ) : null}
       {isError(displayStatus) && ownership ? (
         <MemoryAction
+          settingsKey={settingsKey}
+          testId={testId}
           action="retry"
           onPress={() => routeOwner.current?.refresh()}
         />
@@ -170,9 +193,13 @@ export function SettingsAutomaticMemorySection({
 
 function MemoryAction({
   action,
+  settingsKey,
+  testId,
   onPress,
 }: {
   readonly action: 'enable' | 'disable' | 'retry';
+  readonly settingsKey: MemorySettingsKeys;
+  readonly testId: string;
   readonly onPress: () => void;
 }) {
   return (
@@ -180,11 +207,9 @@ function MemoryAction({
       accessibilityRole="button"
       onPress={onPress}
       style={styles.action}
-      testID={`settings-automatic-memory-${action}`}
+      testID={`${testId}-${action}`}
     >
-      <Text style={styles.actionText}>
-        {t(`settings.automaticMemory.${action}`)}
-      </Text>
+      <Text style={styles.actionText}>{t(`${settingsKey}.${action}`)}</Text>
     </Pressable>
   );
 }

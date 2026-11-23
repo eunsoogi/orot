@@ -10,6 +10,12 @@ export interface InferenceConsentController {
   readonly disclosureSheet: ReactElement | null;
 }
 
+const settingsOnlyPorts = new WeakSet<ExecutionConsentPort>();
+
+export function isSettingsOnlyExecutionConsent(port: ExecutionConsentPort) {
+  return settingsOnlyPorts.has(port);
+}
+
 /** Conversation execution never displays a recurring transmission prompt. Missing,
  * expired or changed settings permission returns renewal_required; it does not send.
  * Settings owns the explicit disclosure and source validation still runs per request. */
@@ -29,36 +35,34 @@ export function useInferenceConsent(): InferenceConsentController {
       ownedListeners.clear();
     };
   }, [ownerToken]);
-  const consent = useMemo(
-    () =>
-      createSettingsConsentAuthorization({
-        catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
-        resolveOwner: async request => {
-          if (!active.current || latestOwner.current !== ownerToken)
-            return null;
-          const owner = await services.resolveOwner(request);
-          if (!owner || !active.current || latestOwner.current !== ownerToken)
-            return null;
-          return {
-            ...owner,
-            isCurrent: () =>
-              active.current &&
-              latestOwner.current === ownerToken &&
-              owner.isCurrent(),
-            subscribeInvalidation: listener => {
-              listeners.current.add(listener);
-              const stop =
-                owner.subscribeInvalidation?.(listener) ?? (() => {});
-              return () => {
-                listeners.current.delete(listener);
-                stop();
-              };
-            },
-          };
-        },
-        readGrant: services.readGrant,
-      }),
-    [services, ownerToken],
-  );
+  const consent = useMemo(() => {
+    const port = createSettingsConsentAuthorization({
+      catalogVersion: SETTINGS_CONSENT_CATALOG_VERSION,
+      resolveOwner: async request => {
+        if (!active.current || latestOwner.current !== ownerToken) return null;
+        const owner = await services.resolveOwner(request);
+        if (!owner || !active.current || latestOwner.current !== ownerToken)
+          return null;
+        return {
+          ...owner,
+          isCurrent: () =>
+            active.current &&
+            latestOwner.current === ownerToken &&
+            owner.isCurrent(),
+          subscribeInvalidation: listener => {
+            listeners.current.add(listener);
+            const stop = owner.subscribeInvalidation?.(listener) ?? (() => {});
+            return () => {
+              listeners.current.delete(listener);
+              stop();
+            };
+          },
+        };
+      },
+      readGrant: services.readGrant,
+    });
+    settingsOnlyPorts.add(port);
+    return port;
+  }, [services, ownerToken]);
   return { consent, disclosureSheet: null };
 }

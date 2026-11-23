@@ -29,24 +29,34 @@ export type {
   DailyReportLineage,
   DailyReportSave,
 } from './dailyReportStorageTypes';
+const dailyReportSchemaReady = new WeakMap<SqlDatabase, Promise<void>>();
+
+/** Share only schema preparation for the exact open connection. A failed
+ * preparation can retry; report data, source proof and authorization never reuse it. */
+function ensureDailyReportSchema(database: SqlDatabase): Promise<void> {
+  const existing = dailyReportSchemaReady.get(database);
+  if (existing) return existing;
+  const ready: Promise<void> = (async () => {
+    await createSymptomSummaryStorage(database).prepareRetentionGuards();
+    await database.transaction(async tx => {
+      await ensureHealthContextGeneration(tx);
+    });
+  })().catch(error => {
+    if (dailyReportSchemaReady.get(database) === ready)
+      dailyReportSchemaReady.delete(database);
+    throw error;
+  });
+  dailyReportSchemaReady.set(database, ready);
+  return ready;
+}
+
 /** The same encrypted summary database serializes both entry points and all revision changes. */
 export function createDailyReportStorage(
   database: SqlDatabase,
   calendarReader?: ReportCalendarReader,
 ) {
-  const summaries = createSymptomSummaryStorage(database);
   const manualHistory = createManualHistoryRepository(database);
-  let ready: Promise<void> | undefined;
-  const ensure = () =>
-    (ready ??= (async () => {
-      await summaries.list();
-      await database.transaction(async tx => {
-        await ensureHealthContextGeneration(tx);
-      });
-    })().catch(error => {
-      ready = undefined;
-      throw error;
-    }));
+  const ensure = () => ensureDailyReportSchema(database);
   const lookup = dailyReportStorageLookup(
     database,
     manualHistory,
@@ -161,11 +171,21 @@ export function createDailyReportStorage(
             stored,
           ],
         );
-        for (const item of input.lineage)
+        // Batch only the reverse index writes; every lineage row was checked
+        // above and the retained JSON still carries the full ordered lineage.
+        const batchSize = 128; // 384 binds, below SQLite's legacy 999 limit.
+        for (
+          let offset = 0;
+          offset < input.lineage.length;
+          offset += batchSize
+        ) {
+          const batch = input.lineage.slice(offset, offset + batchSize);
           await tx.execute(
-            'INSERT OR IGNORE INTO symptom_summary_sources (summary_id, record_kind, record_id) VALUES (?, ?, ?)',
-            [input.runId, item.kind, item.localId],
+            'INSERT OR IGNORE INTO symptom_summary_sources (summary_id, record_kind, record_id) VALUES ' +
+              batch.map(() => '(?, ?, ?)').join(', '),
+            batch.flatMap(item => [input.runId, item.kind, item.localId]),
           );
+        }
         await tx.execute(
           'INSERT INTO daily_report_revisions (identity_key, revision, run_id) VALUES (?, ?, ?)',
           [checked.context.identity.key, revision, input.runId],

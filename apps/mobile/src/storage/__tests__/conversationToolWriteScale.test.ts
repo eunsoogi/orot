@@ -1,3 +1,4 @@
+import { NativeModules } from 'react-native';
 import { runMigrations } from '@orot/storage';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../packages/storage/__tests__/sqliteTestDatabase';
@@ -10,6 +11,9 @@ import { createConversationArtifactStorage } from '../conversationArtifactStorag
 test('profiles terminal tool writes with all retained record dependencies', async () => {
   for (const count of [1000, 4000]) {
     const { database, close } = openSqliteTestDatabase(':memory:');
+    const prior = NativeModules.OrotProviderDiagnostics;
+    const report = jest.fn();
+    NativeModules.OrotProviderDiagnostics = { enabled: true, report };
     try {
       await runMigrations(database);
       const records: {
@@ -43,6 +47,7 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
       });
       let active = false;
       let schemaCalls = 0;
+      let activeTransactions = 0;
       const profile = new Map<
         string,
         { calls: number; rows: number; ms: number }
@@ -82,10 +87,12 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
       });
       const observed: SqlDatabase = {
         execute: wrap(database).execute,
-        transaction: operation =>
-          database.transaction(tx =>
+        transaction: operation => {
+          if (active) activeTransactions++;
+          return database.transaction(tx =>
             operation({ ...tx, execute: wrap(tx).execute }),
-          ),
+          );
+        },
       };
       const storage = createConversationArtifactStorage(observed);
       await storage.createSession('session', await storage.currentGeneration());
@@ -117,6 +124,7 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
         locator: null,
       };
       active = true;
+      report.mockClear();
       const start = performance.now();
       await storage.appendToolEvent({
         ...identity,
@@ -129,6 +137,24 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
         dependencies: [{ reference, records }],
       });
       active = false;
+      expect(
+        report.mock.calls.filter(([, stage]) =>
+          stage.startsWith('tool_event_write_'),
+        ),
+      ).toEqual([
+        ['storage', 'tool_event_write_setup', 'started'],
+        ['storage', 'tool_event_write_setup', 'completed'],
+        ['storage', 'tool_event_write_decode', 'started'],
+        ['storage', 'tool_event_write_decode', 'completed'],
+        ['storage', 'tool_event_write_admission', 'started'],
+        ['storage', 'tool_event_write_admission', 'completed'],
+        ['storage', 'tool_event_write_body', 'started'],
+        ['storage', 'tool_event_write_lineage_validation', 'started'],
+        ['storage', 'tool_event_write_lineage_validation', 'completed'],
+        ['storage', 'tool_event_write_body', 'completed'],
+        ['storage', 'tool_event_write_settlement', 'started'],
+        ['storage', 'tool_event_write_settlement', 'completed'],
+      ]);
       console.info(
         'TERMINAL_WRITE_PROFILE',
         JSON.stringify({
@@ -142,12 +168,15 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
       expect(profile.get('dependency-index')?.calls).toBe(1);
       // The owning schema installs policy before the write; warm writes must not repeat DDL.
       expect(schemaCalls).toBe(0);
-      expect([...profile.values()].reduce((n, p) => n + p.calls, 0)).toBe(10);
+      // Keep one owning transaction and remove two standalone policy calls.
+      expect(activeTransactions).toBe(1);
+      expect([...profile.values()].reduce((n, p) => n + p.calls, 0)).toBe(8);
       const indexed = await database.execute(
         'SELECT count(*) AS count FROM conversation_tool_dependencies',
       );
       expect(indexed.rows[0]?.count).toBe(count + 2);
     } finally {
+      NativeModules.OrotProviderDiagnostics = prior;
       close();
     }
   }

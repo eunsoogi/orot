@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { AppSymbol } from '../layout/AppSymbol';
 import { AppText } from '../layout/AppText';
+import { materialLibraryStyles } from '../layout/MaterialLibraryRows';
 import { appColors } from '../layout/appColors';
 import { recordingExportOptionStyles as styles } from './RecordingExportOption.styles';
 
@@ -12,6 +13,8 @@ interface RecordingExportOptionProps {
   readonly disabled: boolean;
   readonly onPress: () => void;
   readonly testID: string;
+  readonly listRow?: boolean;
+  readonly divider?: boolean;
 }
 
 /** A large two-line share action keeps audio and the latest transcript distinct. */
@@ -23,6 +26,8 @@ export default function RecordingExportOption({
   disabled,
   onPress,
   testID,
+  listRow = false,
+  divider = false,
 }: RecordingExportOptionProps) {
   const transcript = kind === 'transcript';
   return (
@@ -33,12 +38,18 @@ export default function RecordingExportOption({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={[styles.card, disabled && styles.disabled]}
+      style={[
+        styles.option,
+        listRow ? styles.listRow : styles.card,
+        divider && materialLibraryStyles.divider,
+        disabled && styles.disabled,
+      ]}
       testID={testID}
     >
       <View
         style={[
           styles.iconTile,
+          listRow && styles.listIconTile,
           transcript ? styles.transcriptTile : styles.audioTile,
         ]}
       >

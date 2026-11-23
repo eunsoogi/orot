@@ -19,6 +19,10 @@ export async function setupConversationRequests(tx: SqlExecutor) {
     await tx.execute(
       'ALTER TABLE conversation_requests ADD COLUMN local_outcome_json TEXT',
     );
+  if (!columns.rows.some(row => row.name === 'reviewed_opening_json'))
+    await tx.execute(
+      'ALTER TABLE conversation_requests ADD COLUMN reviewed_opening_json TEXT',
+    );
   await setupConversationRequestSources(tx);
   // Opaque identity fences outlive session deletion so late work cannot claim a new conversation.
   await tx.execute(

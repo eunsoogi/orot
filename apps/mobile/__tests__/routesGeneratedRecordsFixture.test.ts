@@ -57,7 +57,26 @@ test('real writers retain four readable generated outputs and a source-backed ap
     ]) {
       const row = rows.find(item => item.kind === kind)!;
       const detail = await reader.read(row, new AbortController().signal);
-      expect(detail?.paragraphs.join('\n')).toContain(text);
+      if (kind === 'daily_report') {
+        // A saved Daily Report renders its typed sections rather than a second flat body.
+        expect(
+          detail?.dailyReport?.sections.map(section => section.content),
+        ).toEqual([text]);
+        expect(detail?.paragraphs).toEqual([]);
+      } else if (kind === 'visit_questions') {
+        // The real writer's saved wording and rationale feed the shared card, not flat prose.
+        expect(detail?.visitQuestions).toEqual([
+          {
+            id: ids.questionId,
+            questionText: text,
+            rationale: '합성 요약을 바탕으로 준비한 질문이에요.',
+            priority: 'routine',
+          },
+        ]);
+        expect(detail?.paragraphs).toEqual([]);
+      } else {
+        expect(detail?.paragraphs.join('\n')).toContain(text);
+      }
     }
     expect((await records.list('appointment'))[0]?.id).toBe(ids.appointmentId);
     expect((await records.list('visit_question'))[0]?.appointmentId).toBe(

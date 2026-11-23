@@ -1,3 +1,5 @@
+import { conversationTemplateTarget } from './conversationTemplateTarget';
+import { proposeConversationTemplate } from './conversationTemplateProposal';
 import { trySaveExplicitConversationMemory } from './saveExplicitConversationMemory';
 import { createConversationDailyReport } from './conversationDailyReport';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
@@ -80,33 +82,76 @@ export function createConversationSummaryIntegration(input: {
     sendRagMessage: async (
       ...args: Parameters<ReturnType<typeof createRagConversationService>>
     ) => {
-      const [question, , signal, observer, context] = args;
+      const [question, history, signal, originalObserver, originalContext] =
+        args;
+      const operationSignal = signal ?? new AbortController().signal;
       const localMemory = trySaveExplicitConversationMemory(
         question,
-        observer,
+        originalObserver,
         input.loadData,
-        signal ?? new AbortController().signal,
+        operationSignal,
       );
       if (localMemory) return localMemory;
+      let observer = originalObserver;
+      let context = originalContext;
+      const admission = observer?.modelTemplateAdmission;
+      if (
+        admission &&
+        (!context || context.intent === 'conversation') &&
+        !context?.appointmentId &&
+        !context?.dailyReport
+      ) {
+        const proposed = await proposeConversationTemplate({
+          question,
+          signal: operationSignal,
+          observer,
+          select: input.selectedAi,
+          consent: input.consent,
+        });
+        if (
+          operationSignal.aborted ||
+          !admission.current() ||
+          originalObserver?.expectedConversationModel?.isCurrent?.() ===
+            false ||
+          proposed?.ownerChanged ||
+          (proposed?.intent !== undefined &&
+            !originalObserver?.templateProposalOwner?.current())
+        )
+          return { status: 'failure', kind: 'cancelled' } as const;
+        if (proposed?.spent)
+          observer = { ...observer, suppressContextualOpening: true };
+        const target = conversationTemplateTarget(
+          proposed?.intent,
+          admission,
+          Boolean(report),
+        );
+        if (target?.intent === 'visit-questions' && admission.prepareVisit)
+          return admission.prepareVisit(
+            question,
+            history,
+            signal,
+            observer,
+            target,
+          );
+        if (target) context = target;
+      }
       if (
         context?.intent === 'daily-report' &&
         context.reportRequest &&
-        report &&
         !observer?.photoInput
       )
-        return report(
-          question,
-          context.reportRequest,
-          signal ?? new AbortController().signal,
-          observer,
-        );
+        return report
+          ? report(
+              question,
+              context.reportRequest,
+              operationSignal,
+              observer,
+              context.directDailyReportRequest === true,
+            )
+          : ({ status: 'failure', kind: 'unavailable' } as const);
       return context?.intent === 'health-summary' && !observer?.photoInput
-        ? summarize(
-            { question },
-            signal ?? new AbortController().signal,
-            observer,
-          )
-        : input.sendRagMessage(...args);
+        ? summarize({ question }, operationSignal, observer)
+        : input.sendRagMessage(question, history, signal, observer, context);
     },
   };
 }

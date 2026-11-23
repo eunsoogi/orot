@@ -2,7 +2,7 @@ import { AppointmentQuestionRoutes } from './AppointmentQuestionRoutes';
 import { useVisitDayQuestionsEntry } from './useVisitDayQuestionsEntry';
 import { RecordsMaterialDestination } from './RecordsMaterialDestination';
 import { SavedMemoryDetail } from '../memory/SavedMemoryDetail';
-import { useRecordSourceNavigation } from './RecordSourceNavigation';
+import { useRecordNav } from './RecordSourceNavigation';
 import { MedicalDocumentDetailRoute } from './MedicalDocumentDetailRoute';
 import { useIsFocused } from '@react-navigation/native';
 import { RecordingReviewRoute } from './RecordingReviewRoute';
@@ -13,7 +13,6 @@ import { UnifiedImportRoute } from '../healthkit/unifiedImport/UnifiedImportRout
 import { RouteLoadError } from './RouteLoadError';
 import OverviewRoute from './OverviewRoute';
 import { SavedRecordingsRoute } from './SavedRecordingsRoute';
-import { RecordsHubSection } from './RecordsHubSection';
 import { RecordsRoute } from './RecordsRoute';
 import { ScheduleRoute } from './ScheduleRoute';
 import { SettingsRoute } from './SettingsRoute';
@@ -29,8 +28,8 @@ export function AppRouteContent({
   discoverManualVisits,
   actions,
   activeTab,
+  recordsTabAuthority,
   selectTab,
-  onSelectRecordsSection,
   appointmentRepository,
   backupPreparationState,
   retryBackupPreparation,
@@ -52,9 +51,9 @@ export function AppRouteContent({
   healthRecordDetailSelection,
   onHealthRecordDetailSelectionChange,
 }: AppRouteContentProps) {
-  const { sourceId, openDocument, openMemory } =
-    useRecordSourceNavigation(actions);
   const active = useIsFocused();
+  const recordNav = useRecordNav(actions, active, recordsTabAuthority);
+  const { sourceId, openMemory } = recordNav;
   const openOverviewPreparation = useVisitDayQuestionsEntry(
     active,
     nextAppointment,
@@ -67,57 +66,47 @@ export function AppRouteContent({
           <OverviewRoute
             appointment={nextAppointment}
             appointmentState={appointmentState}
-            recentRecording={recordings[0] ?? null}
-            recordingState={recordingState}
             onRetryAppointments={() => refreshAppointments()}
-            onRetryRecordings={() => refreshRecordings()}
             onPrepareVisit={openOverviewPreparation}
             onOpenSchedule={() => selectTab('schedule')}
-            onOpenRecords={() => selectTab('records')}
+            onEditMetricSelection={() =>
+              active &&
+              actions.ownership?.isCurrent() !== false &&
+              actions.push('overview-metric-selection')
+            }
             loadSavedVisitQuestions={loadSavedVisitQuestions}
             discoverManualVisits={discoverManualVisits}
-            onOpenRecording={openRecording}
           />
         );
       case 'records':
         return (
-          <RecordsHubSection
-            selected="records"
-            onSelect={onSelectRecordsSection}
-          >
-            <RecordsRoute
-              onOpenDocumentDetail={openDocument}
-              onOpenGeneratedReports={() => actions.push('generated-reports')}
-              memoryActive={active}
-              onOpenRecentRecords={() => actions.push('recent-records')}
-              documentImportService={documentImportService}
-              recordings={recordings}
-              recordingState={recordingState}
-              onRetryRecordings={() => refreshRecordings()}
-              onOpenSavedRecordings={() => actions.push('saved-recordings')}
-              onOpenRecording={openRecording}
-              onOpenHealthLibrary={() => actions.push('health-records')}
-              onOpenManualHistory={() => actions.push('manual-history')}
-            />
-          </RecordsHubSection>
+          <RecordsRoute
+            {...recordNav}
+            onOpenGeneratedReports={() => actions.push('generated-reports')}
+            memoryActive={active}
+            onOpenRecentRecords={() => actions.push('recent-records')}
+            documentImportService={documentImportService}
+            recordings={recordings}
+            recordingState={recordingState}
+            onRetryRecordings={() => refreshRecordings()}
+            onOpenSavedRecordings={() => actions.push('saved-recordings')}
+            onOpenRecording={openRecording}
+            onOpenHealthLibrary={() => actions.push('health-records')}
+            onOpenManualHistory={() => actions.push('manual-history')}
+          />
         );
       case 'schedule':
         return (
-          <RecordsHubSection
-            selected="schedule"
-            onSelect={onSelectRecordsSection}
-          >
-            <ScheduleRoute
-              appointmentRepository={appointmentRepository}
-              appointmentState={appointmentState}
-              bridge={calendarBridge}
-              calendarSync={calendarSync}
-              onRetry={() => refreshAppointments()}
-              onOpenAppointments={() => actions.push('appointments')}
-              onOpenMedicalAppointments={() => actions.push('medical')}
-              onAppointmentsChanged={() => refreshAppointments()}
-            />
-          </RecordsHubSection>
+          <ScheduleRoute
+            appointmentRepository={appointmentRepository}
+            appointmentState={appointmentState}
+            bridge={calendarBridge}
+            calendarSync={calendarSync}
+            onRetry={() => refreshAppointments()}
+            onOpenAppointments={() => actions.push('appointments')}
+            onOpenMedicalAppointments={() => actions.push('medical')}
+            onAppointmentsChanged={() => refreshAppointments()}
+          />
         );
       case 'conversation':
         // AppConversationScene owns the root AI conversation and its app-lifetime sessions.
@@ -151,10 +140,18 @@ export function AppRouteContent({
         <UnifiedImportRoute onBack={actions.onBack} safeAreaHandledByParent />
       );
     case 'saved-memory-detail':
-      return <SavedMemoryDetail memoryId={sourceId} active={active} />;
+      return (
+        <SavedMemoryDetail
+          memoryId={sourceId}
+          active={active}
+          ownership={actions.ownership}
+        />
+      );
     case 'medical-document-detail':
       return (
         <MedicalDocumentDetailRoute
+          active={active}
+          ownership={actions.ownership}
           sourceId={sourceId}
           service={documentImportService}
           onBack={actions.onBack}
@@ -164,7 +161,7 @@ export function AppRouteContent({
       // A native stack destination keeps the overview mounted and owns its own scroll position.
       return (
         <RecordsRoute
-          onOpenDocumentDetail={openDocument}
+          {...recordNav}
           showAllRecent
           documentImportService={documentImportService}
           recordings={recordings}
@@ -178,7 +175,12 @@ export function AppRouteContent({
     case 'saved-recordings':
       return <SavedRecordingsRoute actions={actions} />;
     case 'recording-review':
-      return <RecordingReviewRoute />;
+      return (
+        <RecordingReviewRoute
+          routeKey={actions.route.key}
+          routeOwner={actions.ownership}
+        />
+      );
     case 'recording':
       // Automatic and manual transcription share the same job registry inside the recording flow.
       return (
@@ -202,11 +204,12 @@ export function AppRouteContent({
       );
     case 'manual-history':
     case 'generated-reports':
-      return (
-        <RecordsMaterialDestination
-          {...{ actions, onOpenMemory: openMemory }}
-        />
-      );
+    case 'generated-report-detail':
+    case 'generated-report-source': {
+      // Keep the shared source callbacks and their precedence on all four routes.
+      const props = { actions, onOpenMemory: openMemory, ...recordNav };
+      return <RecordsMaterialDestination {...props} />;
+    }
     case 'appointments':
       return appointmentRepository ? (
         <AppointmentsScreen

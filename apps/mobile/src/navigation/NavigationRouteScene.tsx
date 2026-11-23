@@ -157,6 +157,12 @@ export function NavigationRouteScene<Name extends string>({
   const body = scrollable ? (
     <NavigationRouteScrollView
       key={`${route.key}:${rootTabs?.activeTab ?? ''}`}
+      pullToRefresh={
+        route.name === 'recent-records' ||
+        route.name === 'generated-report-detail' ||
+        route.name === 'saved-memory-detail' ||
+        route.name === 'medical-document-detail'
+      }
     >
       {adaptiveContent}
     </NavigationRouteScrollView>
@@ -178,7 +184,11 @@ export function NavigationRouteScene<Name extends string>({
 
   return rootTabs ? (
     <NavigationContentTransition
-      transitionKey={rootTabs.contentKey ?? rootTabs.activeTab}
+      transitionKey={
+        rootTabs.contentKey === 'schedule'
+          ? 'records'
+          : (rootTabs.contentKey ?? rootTabs.activeTab)
+      }
     >
       {scene}
     </NavigationContentTransition>

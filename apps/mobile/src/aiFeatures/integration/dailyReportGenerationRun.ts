@@ -1,12 +1,14 @@
+import { dailyReportLiveCommit } from './dailyReportLiveCommit';
 import { persistDailyReportCandidate } from './dailyReportCandidatePersistence';
 import { conversationReceiptSelection as observeSelection } from './conversationReceiptSelection';
 import { withDailyReportOpening as openingFor } from './dailyReportOpening';
 import { selectCurrentDailyReportFacts } from './dailyReportCurrentSelection';
 import { reportModelClaims } from './dailyReportModelAnalysis';
 import { prepareDailyReportFacts } from './dailyReportPreparedFacts';
+import * as reportData from './dailyReportDataDiagnostics';
 import type { prepareReportCalendar } from './dailyReportSystemCalendar';
 import { createDailyReportContext } from '../../healthEvidence/healthContext/dailyReportContext';
-import { createDailyReportCalendarWindow } from '../../healthEvidence/healthContext/dailyReportWindow';
+import type { DailyReportCalendarResult } from '../../healthEvidence/healthContext/dailyReportWindow';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import { validateDailyReportCompletion } from '../../storage/dailyReportValidation';
 import {
@@ -22,19 +24,13 @@ import type {
   DailyReportRunInput,
   DailyReportServiceRequest,
 } from './dailyReportTypes';
-type ReadyCalendar = Extract<
-  ReturnType<typeof createDailyReportCalendarWindow>,
-  { status: 'ready' }
->;
-/** Reads the day's evidence, validates the selected model result, and saves one report revision. */
 export async function generateDailyReportWithCalendar(
   input: DailyReportRunInput,
   request: DailyReportServiceRequest,
-  calendar: ReadyCalendar,
+  calendar: Extract<DailyReportCalendarResult, { status: 'ready' }>,
   external?: Awaited<ReturnType<typeof prepareReportCalendar>>,
 ) {
   const fail = (code: DailyReportFailureCode) => {
-    // The deadline already reports the active stage; do not add a second cause for its abort.
     if (!input.deadlineContext.timedOut)
       providerDiagnostic('daily_report', 'workflow', failureOutcome(code));
     return { status: 'failed' as const, code };
@@ -75,12 +71,15 @@ export async function generateDailyReportWithCalendar(
   input.deadlineContext.stage = 'source_read';
   providerDiagnostic('daily_report', 'data', 'started');
   try {
-    snapshot = await input.data.readDailyReportSnapshot!(
-      calendar.context,
-      request.scope,
+    snapshot = await reportData.observeInitialDailyReportSnapshot(
       request.signal,
+      () =>
+        input.data.readDailyReportSnapshot!(
+          calendar.context,
+          request.scope,
+          request.signal,
+        ),
     );
-    // Keep an empty successful read distinct from a database failure and never prompt without facts.
     if (!snapshot.values.length) {
       providerDiagnostic('daily_report', 'data', 'unavailable');
       return fail('source_unavailable');
@@ -93,12 +92,11 @@ export async function generateDailyReportWithCalendar(
       providerFacts,
       baselineFacts,
       sleepFacts,
-    } = await prepareDailyReportFacts(
-      input,
-      request,
-      calendar,
-      snapshot,
-      external,
+    } = await reportData.observeDailyReportData(
+      'daily_report_data_projection',
+      request.signal,
+      () =>
+        prepareDailyReportFacts(input, request, calendar, snapshot, external),
     ));
   } catch {
     if (request.signal.aborted) return fail('cancelled');
@@ -117,6 +115,13 @@ export async function generateDailyReportWithCalendar(
     external?.binding,
   );
   const runId = input.createRunId();
+  const gate = !external && input.pauseBeforeOpening;
+  const day = calendar.context;
+  if (gate) {
+    const resumed = await gate(request, selected, snapshot, day, runId);
+    if (!resumed) return fail('cancelled');
+    if (resumed !== true) selected = resumed;
+  }
   const currentSelection = await openingFor(
     input,
     request,
@@ -157,7 +162,7 @@ export async function generateDailyReportWithCalendar(
   } = currentSelection.prepared);
   let proven = currentSelection.proven;
   if (refresh) {
-    const latest = await refresh(request.signal);
+    const latest = await reportData.postProviderProof(request.signal, refresh);
     if (!latest || (external && !(await external.snapshot.revalidate())))
       return fail(
         request.signal.aborted
@@ -237,9 +242,8 @@ export async function generateDailyReportWithCalendar(
     // Persistence already ran; the route must recheck saved content even if Stop raced this lookup.
     return fail('source_unconfirmed_after_dispatch');
   }
-  // A committed report remains in local history, but a superseded run must not emit it live.
   if (saved.liveAfterReproof?.() === false) return fail('cancelled');
   providerDiagnostic('daily_report', 'persistence', 'completed');
   providerDiagnostic('daily_report', 'workflow', 'result');
-  return { ...result, runId, context: saved.context };
+  return dailyReportLiveCommit(result, runId, saved);
 }

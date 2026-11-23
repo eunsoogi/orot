@@ -46,9 +46,10 @@ export function ConversationTranscriptMessages({
   readonly onLayout: ComponentProps<typeof ReplyMessageContainer>['onLayout'];
   readonly messageProps: Omit<
     ComponentProps<typeof ConversationMessage>,
-    'message'
-  >;
+    'message' | 'copyScope'
+  > & { readonly copyingAllowed?: boolean };
 }) {
+  const { copyingAllowed, ...renderMessage } = messageProps;
   const target =
     pendingId === undefined
       ? undefined
@@ -118,8 +119,13 @@ export function ConversationTranscriptMessages({
       >
         <ConversationMessage
           message={message}
+          copyScope={
+            sessionId === undefined
+              ? undefined
+              : { sessionId, allowed: copyingAllowed === true }
+          }
           beforeAnswer={bubbleRows(before)}
-          {...messageProps}
+          {...renderMessage}
         />
         {bubbleRows(after)}
         <GeneratedReportBookmark message={message} />

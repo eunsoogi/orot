@@ -34,15 +34,13 @@ export async function warmNativeChatGPTSelection(
   assertCurrent();
   if (saved?.providerId !== model.providerId || saved.modelId !== model.modelId)
     return; // An already changed saved selection still follows the original strict path.
-  const accounts = await nativeChatGPTSelectionServices.listAccounts();
+  const summary =
+    await nativeChatGPTSelectionServices.loadAccountSummary(account);
   assertCurrent();
   if (
-    !accounts.some(
-      item =>
-        item.issuedClientID === account &&
-        item.hasDirectPlanAccess &&
-        !item.requiresSignIn,
-    )
+    summary?.issuedClientID !== account ||
+    !summary.hasDirectPlanAccess ||
+    summary.requiresSignIn
   )
     throw new Error('The conversation account is unavailable.');
   const storage = await openStorage();

@@ -5,6 +5,7 @@ import type { RecordingLibrarySummary } from './recordingLibraryService';
 export interface RecordingSelection {
   readonly summary: RecordingLibrarySummary;
   readonly autoPlay: boolean;
+  readonly recentRouteKey?: string;
 }
 
 const Context = createContext<{
@@ -23,8 +24,12 @@ export function RecordingSelectionProvider({
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
+export function useOptionalRecordingSelection() {
+  return useContext(Context);
+}
+
 export function useRecordingSelection() {
-  const context = useContext(Context);
+  const context = useOptionalRecordingSelection();
   if (!context)
     throw new Error('Recording routes require their selection provider.');
   return context;

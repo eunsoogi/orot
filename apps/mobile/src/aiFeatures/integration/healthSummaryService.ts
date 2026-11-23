@@ -1,10 +1,11 @@
+import { loadHealthSummaryOpeningData } from './healthSummaryOpeningPreflight';
 import { conversationConsentScope } from './conversationBackgroundProvider';
 import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { startContextualConversationOpening } from './contextualConversationOpening';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
-import { symptomSummaryTaskForProvider } from '../../diseaseHypotheses/partitionedSymptomSummaryTask';
+import { healthSummaryTaskForProvider } from '../../diseaseHypotheses/partitionedSymptomSummaryTask';
 import type { SymptomSummaryStorage } from '../../diseaseHypotheses/savedSummaries';
 import type {
   HealthSummaryRequest,
@@ -23,7 +24,6 @@ import {
   failureFromWorkflow,
   type RagConversationOutcome,
 } from '../../ragConversation/outcome';
-
 /** One operation owns its retry closure and its original provider, period and result. */
 export function createHealthSummaryService(input: {
   selectedAi: () => Promise<ReturnType<typeof requireSelectedAi>>;
@@ -67,18 +67,13 @@ export function createHealthSummaryService(input: {
       await input.selectedAi(),
       observer,
     );
-    let data: AiFeatureLocalData;
-    try {
-      data = await input.loadData();
-    } catch {
-      return {
-        failure: {
-          status: 'failure',
-          kind: signal.aborted ? 'cancelled' : 'retrieval_failed',
-        },
-      };
-    }
-    if (!data.readHealthContext || signal.aborted)
+    const data = await loadHealthSummaryOpeningData(
+      input.loadData,
+      selected,
+      signal,
+      observer,
+    );
+    if (!data?.readHealthContext || signal.aborted)
       return {
         failure: {
           status: 'failure',
@@ -110,7 +105,7 @@ export function createHealthSummaryService(input: {
       },
     );
     const runId = input.createRunId();
-    const execution = executionOptions({
+    const baseExecution = executionOptions({
       selected,
       operationRunId: runId,
       consent,
@@ -118,6 +113,19 @@ export function createHealthSummaryService(input: {
       tools: [bound.tool],
       consentPurpose: 'symptom_summary',
     });
+    // This workflow can read only its bound health period. Do not request
+    // reviewed-memory consent or advertise a memory scope it cannot use.
+    const execution = {
+      ...baseExecution,
+      execution: {
+        ...baseExecution.execution,
+        allowedScope: { sourceKinds: ['personal_record'] as const },
+        consentScope: {
+          ...baseExecution.execution.consentScope,
+          dataCategories: ['health_records', 'conversation'],
+        },
+      },
+    };
     const opening = startContextualConversationOpening({
       diagnosticFeature: 'disease',
       selected,
@@ -126,6 +134,7 @@ export function createHealthSummaryService(input: {
       signal,
       consent,
       consentScope: execution.execution.consentScope,
+      allowedScope: execution.execution.allowedScope,
     });
     try {
       await opening.done;
@@ -134,7 +143,7 @@ export function createHealthSummaryService(input: {
     }
     if (signal.aborted)
       return { failure: { status: 'failure', kind: 'cancelled' } };
-    const original = symptomSummaryTaskForProvider(selected.provider.id);
+    const original = healthSummaryTaskForProvider(selected.provider.id);
     const task = {
       ...original,
       // Keep the existing schema and result validator while removing legacy public-search and relative-period instructions.

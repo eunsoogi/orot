@@ -1,3 +1,5 @@
+import type { ConversationBubbleCopyScope } from './ConversationBubbleCopyHost';
+import { conversationBubbleCopyMenus } from './conversationBubbleCopyText';
 import { conversationMessageBodyTestID } from './conversationMessageBodyTestID';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
@@ -12,6 +14,7 @@ import { ConversationBubbleEntrance } from './ConversationBubbleEntrance';
 import { conversationBubbleKey } from './conversationBubbleEntrances';
 import { ConversationMessageBubbles } from './ConversationMessageBubbles';
 import { ConversationToolEvents } from './ConversationToolEvents';
+import { ConversationDailyReportIdentity } from './ConversationMessageReceipt';
 import { HealthSummaryCard } from './HealthSummaryCard';
 import type { ResolveConversationToolSource } from './ConversationToolEventSources';
 import { t } from '../i18n';
@@ -28,6 +31,7 @@ export function ConversationMessage({
   showCitations = true,
   showToolActivity = true,
   compact = false,
+  copyScope,
   toolSourceSessionId,
   resolveToolSource,
   resolveColdToolSource,
@@ -45,6 +49,7 @@ export function ConversationMessage({
   readonly showCitations?: boolean;
   readonly showToolActivity?: boolean;
   readonly compact?: boolean;
+  readonly copyScope?: ConversationBubbleCopyScope;
   readonly toolSourceSessionId?: string | null;
   readonly resolveColdToolSource?: import('../aiFeatures/integration/coldConversationSourceResolvers').ResolveColdConversationToolSource;
   readonly resolveToolSource?: ResolveConversationToolSource;
@@ -58,6 +63,7 @@ export function ConversationMessage({
       onLinkError,
     });
   const user = message.role === 'user';
+  const copyMenus = conversationBubbleCopyMenus(copyScope, message);
   const visitQuestions =
     !user && message.visitQuestions ? renderVisitQuestions?.(message) : null;
   const activity = message.activity ? (
@@ -76,9 +82,13 @@ export function ConversationMessage({
     </Text>
   ) : null;
   const activityBeforeText = compact && message.streaming;
+  const bodyStyle = user
+    ? styles.userMessageBody
+    : [styles.assistantBody, activityBeforeText && styles.compactStreamingBody];
   return (
     <ConversationMessageBubbles
       message={message}
+      openingCopyMenu={copyMenus?.opening}
       beforeAnswer={beforeAnswer}
       presentation={{
         showCitations,
@@ -93,6 +103,7 @@ export function ConversationMessage({
           message.id,
         )}
         restored={message.restoredHistory || message.id <= 0}
+        copyMenu={copyMenus?.body}
         testID={
           user ? 'conversation-user-message' : 'conversation-assistant-message'
         }
@@ -106,26 +117,9 @@ export function ConversationMessage({
         }
       >
         {!user && message.dailyReport ? (
-          <Text>
-            {t('dailyReport.followUpIdentity', {
-              date: message.dailyReport.identity.localDate,
-              zone: message.dailyReport.identity.timeZone,
-            })}{' '}
-            ·{' '}
-            {t('dailyReport.savedRevision', {
-              revision: message.dailyReport.revision,
-            })}
-          </Text>
+          <ConversationDailyReportIdentity report={message.dailyReport} />
         ) : null}
-        <View
-          testID="conversation-message-body"
-          style={
-            !user && [
-              styles.assistantBody,
-              activityBeforeText && styles.compactStreamingBody,
-            ]
-          }
-        >
+        <View testID="conversation-message-body" style={bodyStyle}>
           <ConversationPreviousOutputs
             outputs={beforeAnswer ? undefined : message.previousOutputs}
           />
@@ -199,8 +193,10 @@ export function ConversationMessage({
           {message.content ? (
             <ConversationMessageText
               content={message.content}
+              savedPossibilityNarrative={message.savedPossibilityNarrative}
               user={user}
               staticText={message.savedHistoryDisplayOnly}
+              selectable={copyMenus === undefined}
               allowReport={
                 !message.streaming &&
                 !message.incomplete &&

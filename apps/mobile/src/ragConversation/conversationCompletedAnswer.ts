@@ -53,6 +53,45 @@ export function conversationCompletedAnswer(input: {
   }
   const clarification =
     outcome.status === 'insufficient' && outcome.guidance === 'visit_goal';
+  if (clarification && input.retentionUnavailable) {
+    // A save rejection cannot publish new local copy. Keep only the opening
+    // already shown for this owner; never echo pending provider text or receipts.
+    const { pendingMessage } = session;
+    const opening = pendingMessage?.initialResponse;
+    const messages = session.messages.map(message =>
+      message.id === input.userMessageId
+        ? { ...message, localClarification: true as const }
+        : message,
+    );
+    if (
+      pendingMessage &&
+      !pendingMessage.withholdHealthBody &&
+      opening &&
+      opening.source !== 'receipt'
+    )
+      messages.push({
+        id: pendingMessage.id,
+        role: 'assistant',
+        content: '',
+        initialResponse: opening,
+        incomplete: true,
+      });
+    update(id, { pendingMessage: null, messages });
+    const prompt = session.messages.find(
+      message => message.id === input.userMessageId,
+    );
+    restoreFailedPrompt(
+      find,
+      update,
+      id,
+      prompt?.content ?? '',
+      input.userMessageId,
+      t('ragConversation.conversation.answerSaveFailed'),
+      false,
+      input.restorePromptToComposer,
+    );
+    return;
+  }
   const content =
     outcome.status === 'answer'
       ? outcome.answer
@@ -64,7 +103,9 @@ export function conversationCompletedAnswer(input: {
   update(id, {
     pendingMessage: null,
     // A generated report is retained on its own message, not selected for every later prompt.
-    ...(input.retentionUnavailable && !session.error
+    ...(outcome.status === 'answer' &&
+    input.retentionUnavailable &&
+    !session.error
       ? { error: t('ragConversation.conversation.answerSaveSourceUnavailable') }
       : {}),
     messages: [

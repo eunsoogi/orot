@@ -13,9 +13,8 @@ import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
 import { t } from '../i18n';
 import { settleNavigationRequest } from '../navigation/nativeNavigationActions';
-
-// Schedule owns its vertical scroll; hand the same header into that owner.
-export const RecordsHubScrollHeaderContext = createContext<ReactNode>(null);
+import { NavigationInlineTransition } from '../navigation/NavigationInlineTransition';
+import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
 
 const RecordsDetailVisibilityContext = createContext<
   ((visible: boolean) => void) | null
@@ -87,24 +86,37 @@ export function RecordsHubSection({
     </View>
   );
   return (
-    <View style={selected === 'schedule' ? styles.screen : styles.records}>
-      {selected === 'records' && !detailVisible ? header : null}
-      <RecordsHubScrollHeaderContext.Provider
-        value={selected === 'schedule' ? header : null}
+    <View style={styles.screen}>
+      <NavigationRouteScrollView
+        testID={
+          selected === 'schedule'
+            ? 'calendar-screen'
+            : 'navigation-route-scroll'
+        }
       >
+        {selected === 'schedule' || !detailVisible ? header : null}
         <RecordsHubHeadingContext.Provider value>
           <RecordsDetailVisibilityContext.Provider value={setDetailVisible}>
-            {children}
+            <View style={styles.viewport} testID="records-hub-body">
+              <NavigationInlineTransition
+                transitionKey={selected}
+                depth={selected === 'records' ? 0 : 1}
+                style={styles.body}
+              >
+                {children}
+              </NavigationInlineTransition>
+            </View>
           </RecordsDetailVisibilityContext.Provider>
         </RecordsHubHeadingContext.Provider>
-      </RecordsHubScrollHeaderContext.Provider>
+      </NavigationRouteScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, minHeight: 0, backgroundColor: appColors.background },
-  records: { flexGrow: 1, backgroundColor: appColors.background },
+  viewport: { flexGrow: 1, minWidth: 0, overflow: 'hidden' },
+  body: { flexGrow: 1, minWidth: 0 },
   header: {
     marginHorizontal: hubSpacing.horizontal,
     marginTop: hubSpacing.top,

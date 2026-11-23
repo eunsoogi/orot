@@ -16,7 +16,6 @@ import { useNavigationGeometry } from './NavigationGeometryProvider';
 import {
   measureNavigationBottomOcclusion,
   resolveNavigationOcclusion,
-  type NavigationLayoutFrame,
 } from './navigationLayout';
 import {
   NavigationRootLayoutContext,
@@ -29,7 +28,7 @@ import {
 import { observeNavigationTest } from './navigationTestObservation';
 import type { NavigationGeometryRect } from './navigationGeometry';
 import { NavigationOverlayLayoutContext } from './navigationOverlayLayout';
-
+import { useNavigationFrameDiagnostic } from './navigationVisibilityDiagnostics';
 /** Shares shell geometry with the bar, preserves routes beside reserved lanes, and separates scroll-only action overlap. */
 export function NavigationViewport({
   children,
@@ -43,13 +42,19 @@ export function NavigationViewport({
   readonly active?: boolean;
 }) {
   const [contentFrame, setContentFrame] =
-    useState<NavigationLayoutFrame | null>(null);
+    useState<NavigationGeometryRect | null>(null);
   const [actionFrame, setActionFrame] = useState<NavigationGeometryRect | null>(
     null,
   );
-  const [viewportBounds, setViewportBounds] =
-    useState<NavigationGeometryRect | null>(null);
+  const [measurement, setMeasurement] = useState<
+    [NavigationGeometryRect, symbol] | null
+  >(null);
   const geometry = useNavigationGeometry();
+  const { x, y, width, height } = geometry?.windowBounds ?? {};
+  const nativeFrame = [x, y, width, height].join(',');
+  const measurementOwner = useMemo(() => Symbol(nativeFrame), [nativeFrame]);
+  const viewportBounds =
+    measurement?.[1] === measurementOwner ? measurement[0] : null;
   const layout = useMemo(
     () => resolveNavigationRootLayout(geometry),
     [geometry],
@@ -80,6 +85,11 @@ export function NavigationViewport({
         frame: JSON.stringify(sharedFrame),
       });
   }, [active, sharedFrame]);
+  useNavigationFrameDiagnostic(
+    active,
+    sharedFrame?.availableContentFrame,
+    contentFrame,
+  );
   const safeAreaInsets = useContext(SafeAreaInsetsContext);
   const visibleSide =
     sharedFrame?.side ??
@@ -164,17 +174,22 @@ export function NavigationViewport({
         <NavigationOcclusionContext.Provider value={occlusion}>
           <View
             style={styles.fill}
-            onLayout={({ nativeEvent }) =>
-              setViewportBounds(nativeEvent.layout)
-            }
+            onLayout={({ nativeEvent: { layout: bounds } }) => {
+              if (
+                bounds.width > 0 &&
+                bounds.height > 0 &&
+                [bounds.x, bounds.y, bounds.width, bounds.height].every(
+                  Number.isFinite,
+                )
+              ) {
+                setMeasurement([bounds, measurementOwner]);
+              }
+            }}
             testID="navigation-visible-viewport"
           >
             <View
               onLayout={({ nativeEvent }) =>
-                setContentFrame({
-                  y: nativeEvent.layout.y,
-                  height: nativeEvent.layout.height,
-                })
+                setContentFrame(nativeEvent.layout)
               }
               style={contentRegionStyle}
               testID="navigation-content-region"
@@ -229,7 +244,6 @@ export function NavigationViewport({
     </NavigationRootLayoutContext.Provider>
   );
 }
-
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   overlay: { bottom: 0, left: 0, position: 'absolute', right: 0, zIndex: 1 },

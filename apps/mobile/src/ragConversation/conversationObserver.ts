@@ -1,3 +1,4 @@
+import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import type { MultiAgentInvocation } from '@orot/agent-runtime';
 import type { ArtifactContinuation } from './artifactContinuation';
 import type {
@@ -19,6 +20,11 @@ export type RagConversationObserver = Pick<
   readonly onProviderReceipt?: (
     receipt: import('../aiFeatures/integration/conversationReceiptProvider').ConversationProviderReceipt,
   ) => void;
+  /** Only the completed, separately reviewed opening producer owns this durable display port. */
+  readonly onReviewedOpening?: (
+    opening: import('../storage/conversationReviewedOpeningStorage').ReviewedOpening,
+    signal: AbortSignal,
+  ) => Promise<boolean>;
   readonly onSteeringReady?: (
     store: NonNullable<
       import('@orot/agent-runtime').WorkflowOperationJournal['steering']
@@ -30,10 +36,19 @@ export type RagConversationObserver = Pick<
   ) => Promise<
     import('./conversationWorkflowContinuation').ConversationWorkflowContinuation['persisted']
   >;
+  /** Status-only provider observation starts inside authorized, current model invocation. */
+  readonly onProviderExecution?: (
+    signal?: AbortSignal,
+  ) => (() => void) | undefined;
+  readonly backgroundStatusForLease?: () => ConversationGraphBackgroundStatus;
+  readonly onBackgroundTool?: NonNullable<MultiAgentInvocation['onToolEvent']>;
+  readonly onAcceptedSearch?: NonNullable<
+    import('@orot/agent-runtime').MultiAgentWorkflowOptions['onAcceptedSearch']
+  >;
   /** Owned pause/continue controls never submit a new question. */
   readonly onWorkflowPauseController?: (requestPause: () => void) => void;
   readonly onWorkflowPaused?: (
-    reason?: 'expired' | 'decision-required',
+    reason?: ConversationCheckpointPauseReason,
   ) => Promise<boolean>;
   readonly onExecutionState?: (state: 'working' | 'local' | 'decision') => void;
   /** Confirm an ambiguous model-selected user statement locally; never authorizes provider transfer. */
@@ -43,6 +58,17 @@ export type RagConversationObserver = Pick<
   ) => Promise<boolean>;
   /** Opt-in is from the composer dispatch, never inferred from typed route or model output. */
   readonly inputOrigin?: 'composer' | 'shortcut';
+  /** Exact live composer capability to ask the selected model for a presentation hint. */
+  readonly modelTemplateAdmission?: {
+    readonly current: () => boolean;
+    readonly today: import('@orot/domain').DailyReportIdentity | null;
+    readonly prepareVisit?: import('./ConversationScreenProps').ConversationScreenProps['prepareVisitQuestions'];
+  };
+  readonly templateProposalOwner?: import('./conversationTemplateOwner').ConversationTemplateOwner;
+  /** A model-only routing stage already used this send's optional opening budget. */
+  readonly suppressContextualOpening?: true;
+  /** Local-only storage permission; available only to the live request owner. */
+  readonly admitDailyReportMemory?: import('./conversationDailyReportMemoryJobs').DailyReportMemoryObserver;
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
   /** The checkpoint and explicit photo consent are owned by this specific turn. */
@@ -112,3 +138,8 @@ export type RagConversationObserver = Pick<
     },
   ) => Promise<void>;
 };
+
+export type ConversationGraphBackgroundStatus = Pick<
+  RagConversationObserver,
+  'onProviderExecution' | 'onBackgroundTool' | 'onAcceptedSearch'
+>;

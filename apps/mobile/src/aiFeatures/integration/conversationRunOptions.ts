@@ -6,7 +6,12 @@ import type { ConversationEntryContext } from './conversationIntent';
 import type { RagConversationMessage } from '../../ragConversation/task';
 import type { RagConversationOutcome } from '../../ragConversation/service';
 import type { LanguageModelProvider } from '@orot/model-runtime';
-import type { MultiAgentBudget } from '@orot/agent-runtime';
+import type {
+  ExecutionConsentPort,
+  MultiAgentBudget,
+} from '@orot/agent-runtime';
+import { isKnownModelCheckpointScope } from './conversationModelCheckpointScope';
+export { modelCheckpointScope } from './conversationModelCheckpointScope';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import type { DefaultPublicSearchResult } from './defaultPublicSearch';
@@ -28,8 +33,7 @@ export function conversationRunWorkflow<
   execution: T,
   current: () => Promise<boolean>,
   hasHistory: boolean,
-  search: DefaultPublicSearchResult,
-  searchedTool: boolean,
+  search: { eager: DefaultPublicSearchResult; chargeEagerSearch: boolean },
 ) {
   return {
     ...guardHistory(execution, current, hasHistory),
@@ -37,25 +41,39 @@ export function conversationRunWorkflow<
       ...execution.execution,
       budget: budgetAfterPublicSearch(
         execution.execution.budget,
-        search,
-        searchedTool,
+        search.eager,
+        search.chargeEagerSearch,
       ),
     },
   };
 }
 
-/** Preview suppression does not suppress the caller's source-fence callbacks. */
 export function conversationRunInvocation(
   observer: RagConversationObserver | undefined,
   retained: boolean,
   registry: LocalEvidenceReferenceRegistry,
   selection: { providerId: string; modelId: string },
-  signal: AbortSignal,
+  scope:
+    | AbortSignal
+    | { signal: AbortSignal; settingsConsent?: ExecutionConsentPort },
 ) {
+  const { signal, settingsConsent } =
+    'signal' in scope ? scope : { signal: scope, settingsConsent: undefined };
+  const onApprovalWait = observer?.onApprovalWait;
+  const checkpointOnly = isKnownModelCheckpointScope(
+    settingsConsent,
+    observer,
+    retained,
+  );
   return {
-    onApprovalWait: observer?.onApprovalWait,
+    onApprovalWait,
+    onModelApprovalWait:
+      checkpointOnly && onApprovalWait
+        ? (waiting: boolean) => onApprovalWait(waiting, 'checkpoint-only')
+        : undefined,
     onProgress: observer?.onProgress,
     onToolEvent: observer?.onToolEvent,
+    backgroundStatusForLease: observer?.backgroundStatusForLease,
     ...conversationStreamObservers(observer, retained, registry, selection),
     signal,
   };
@@ -67,8 +85,9 @@ export function conversationRunRequest(input: {
   readonly onInitialSearchStatus?: RagConversationRunOptions['onInitialSearchStatus'];
   readonly question: string;
   readonly photoEvidence?: RagConversationRunOptions['photoEvidence'];
-  readonly entryIntent?: RagConversationRunOptions['entryIntent'];
+  readonly entryContext?: ConversationEntryContext;
   readonly authoredCurrentRequest?: boolean;
+  readonly inputOrigin?: 'composer' | 'shortcut';
   readonly targetVisitEvidence?: RagConversationRunOptions['targetVisitEvidence'];
   readonly dailyReportEvidence?: RagConversationRunOptions['dailyReportEvidence'];
   readonly history: Awaited<ReturnType<typeof loadConversationHistory>>;
@@ -83,8 +102,14 @@ export function conversationRunRequest(input: {
     onInitialSearchStatus: input.onInitialSearchStatus,
     question: input.question,
     ...(input.photoEvidence ? { photoEvidence: input.photoEvidence } : {}),
-    entryIntent: input.entryIntent,
-    authoredCurrentRequest: input.authoredCurrentRequest,
+    entryIntent: input.entryContext?.intent,
+    authoredCurrentRequest:
+      input.inputOrigin === 'composer' || input.authoredCurrentRequest,
+    explicitPossibilityChoice:
+      input.inputOrigin === 'shortcut' &&
+      input.entryContext?.intent === 'possibilities' &&
+      input.entryContext.entryKey !== 'restored',
+    typedPossibilityReport: input.entryContext?.typedPossibilityReport,
     targetVisitEvidence: input.targetVisitEvidence,
     dailyReportEvidence: input.dailyReportEvidence,
     previousMessages: input.history.messages,
@@ -186,7 +211,23 @@ export function observeConversationMain(
   return async (options, invocation) => {
     observeReceiptStage('conversation_receipt_main', 'started');
     try {
-      const outcome = await run(options, invocation);
+      const outcome = await run(
+        {
+          ...options,
+          workflow: {
+            ...options.workflow,
+            onModelStage(stage, event) {
+              try {
+                providerDiagnostic('rag', stage, event);
+              } catch {
+                // An optional diagnostic cannot suppress the caller's observer.
+              }
+              return options.workflow.onModelStage?.(stage, event);
+            },
+          },
+        },
+        invocation,
+      );
       observeReceiptStage('conversation_receipt_main', 'completed');
       return outcome;
     } catch (error) {

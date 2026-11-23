@@ -108,6 +108,7 @@ export function createDailyReportRequests(input: {
       });
       return {
         status: 'started' as const,
+        startedByCaller: true as const,
         result,
         cancel: () => controller.abort(),
       };

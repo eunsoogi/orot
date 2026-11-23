@@ -85,6 +85,7 @@ export const recordingKo = {
   'recording.transcript.range': '{start}–{end}',
   'recording.transcript.play': '이 구간 듣기',
   'recording.transcript.playing': '구간 재생 중…',
+  'recording.transcript.savedTranscript': '저장된 전사',
   'recording.transcript.review.unreviewed': '검토 전 초안',
   'recording.transcript.review.needsReview': '수정됨 · 다시 확인 필요',
   'recording.transcript.review.reviewed': '검토됨',
@@ -121,6 +122,11 @@ export const recordingKo = {
     '파일을 내보내지 못했어요. 다시 시도해 주세요.',
   'recording.export.status.completed': '파일을 공유하거나 저장했어요.',
   'recording.export.status.cancelled': '내보내기를 취소했어요.',
+  'recording.detail.refreshUnavailable':
+    '녹음 정보를 불러오지 못했어요. 아래로 당겨 다시 시도해 주세요.',
+  'recording.detail.protected':
+    '기기 잠금을 해제한 뒤 아래로 당겨 다시 시도해 주세요.',
+  'recording.detail.notFound': '저장된 녹음을 찾을 수 없어요.',
   'recording.library.title': '저장된 녹음',
   'recording.library.loading': '녹음 목록을 불러오는 중…',
   'recording.library.loadError': '녹음 목록을 불러오지 못했어요.',

@@ -77,14 +77,17 @@ export default function TranscriptEvidenceItem({
           testID={`transcript-segment-toggle-${segment.segmentOrdinal}`}
         >
           <View style={styles.segmentHeaderLabels}>
-            <View style={styles.reviewBadge}>
-              <Text
-                style={styles.reviewBadgeText}
-                testID={`transcript-review-${segment.segmentOrdinal}`}
-              >
-                {reviewLabel(segment)}
-              </Text>
-            </View>
+            {/* Storage is not clinician verification; saved machine text needs no review chip. */}
+            {segment.reviewState.status !== 'unreviewed' ? (
+              <View style={styles.reviewBadge}>
+                <Text
+                  style={styles.reviewBadgeText}
+                  testID={`transcript-review-${segment.segmentOrdinal}`}
+                >
+                  {reviewLabel(segment)}
+                </Text>
+              </View>
+            ) : null}
             <Text
               style={styles.origin}
               testID={`transcript-origin-${segment.segmentOrdinal}`}

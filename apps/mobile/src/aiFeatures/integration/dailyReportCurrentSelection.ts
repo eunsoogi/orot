@@ -1,6 +1,7 @@
 import { providerDiagnostic } from '../../providers/diagnostics';
 import { hasSevereReportBloodPressure } from './dailyReportGuidance';
 import { prepareDailyReportFacts } from './dailyReportPreparedFacts';
+import { observeDailyReportData } from './dailyReportDataDiagnostics';
 import { selectDailyReportFacts } from './dailyReportModel';
 import { stableJson } from './evidenceUtils';
 import type { DailyReportSnapshotResult } from '../../healthEvidence/healthContext/dailyReportSnapshotResult';
@@ -67,44 +68,49 @@ export async function selectCurrentDailyReportFacts(
       timeoutMs: input.timeoutMs ?? null,
       deadlineContext: input.deadlineContext,
       dispatchAuthority: input.dispatchAuthority,
-      revalidate: async signal => {
-        input.deadlineContext.stage = 'source_read';
-        providerDiagnostic('daily_report', 'data', 'started');
-        let current: DailyReportSnapshotResult | null;
-        try {
-          current = refresh
-            ? await refresh(signal)
-            : await input.data.readDailyReportSnapshot!(
-                calendar.context,
-                request.scope,
-                signal,
-              );
-        } catch (error) {
-          if (!signal.aborted)
-            providerDiagnostic('daily_report', 'data', 'failed');
-          throw error;
-        }
-        providerDiagnostic('daily_report', 'data', 'completed');
-        input.deadlineContext.stage = 'workflow';
-        if (
-          !currentOwner() ||
-          !current ||
-          signal.aborted ||
-          (external && !(await external.snapshot.revalidate()))
-        )
-          return false;
-        if (
-          !refresh &&
-          stableJson(current.sourceSnapshot) !==
-            stableJson(snapshot.sourceSnapshot)
-        )
-          return false;
-        // The calendar bridge can await native work. Its successful result does
-        // not keep the request owner alive or make a replaced scope current.
-        if (!currentOwner() || signal.aborted) return false;
-        proven = current;
-        return true;
-      },
+      revalidate: signal =>
+        observeDailyReportData(
+          'daily_report_data_reproof',
+          signal,
+          async () => {
+            input.deadlineContext.stage = 'source_read';
+            providerDiagnostic('daily_report', 'data', 'started');
+            let current: DailyReportSnapshotResult | null;
+            try {
+              current = refresh
+                ? await refresh(signal)
+                : await input.data.readDailyReportSnapshot!(
+                    calendar.context,
+                    request.scope,
+                    signal,
+                  );
+            } catch (error) {
+              if (!signal.aborted)
+                providerDiagnostic('daily_report', 'data', 'failed');
+              throw error;
+            }
+            providerDiagnostic('daily_report', 'data', 'completed');
+            input.deadlineContext.stage = 'workflow';
+            if (
+              !currentOwner() ||
+              !current ||
+              signal.aborted ||
+              (external && !(await external.snapshot.revalidate()))
+            )
+              return false;
+            if (
+              !refresh &&
+              stableJson(current.sourceSnapshot) !==
+                stableJson(snapshot.sourceSnapshot)
+            )
+              return false;
+            // The calendar bridge can await native work. Its successful result does
+            // not keep the request owner alive or make a replaced scope current.
+            if (!currentOwner() || signal.aborted) return false;
+            proven = current;
+            return true;
+          },
+        ),
     });
     if (!currentOwner())
       return { status: 'failed' as const, code: 'cancelled' as const };
@@ -127,19 +133,22 @@ export async function selectCurrentDailyReportFacts(
       request.signal.aborted
     )
       return selection;
-    const current = await refresh.read(request.signal);
+    const current = await observeDailyReportData(
+      'daily_report_data_retry_snapshot',
+      request.signal,
+      () => refresh.read(request.signal),
+    );
     if (!current)
       return { status: 'failed' as const, code: 'source_read_failed' as const };
     if (!current.values.length)
       return { status: 'failed' as const, code: 'source_unavailable' as const };
     if (external && !(await external.snapshot.revalidate())) return selection;
     snapshot = current;
-    prepared = await prepareDailyReportFacts(
-      input,
-      request,
-      calendar,
-      snapshot,
-      external,
+    prepared = await observeDailyReportData(
+      'daily_report_data_retry_projection',
+      request.signal,
+      () =>
+        prepareDailyReportFacts(input, request, calendar, snapshot, external),
     );
   }
   return {

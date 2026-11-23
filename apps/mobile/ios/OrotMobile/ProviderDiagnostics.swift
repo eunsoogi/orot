@@ -18,8 +18,46 @@ final class OrotProviderDiagnostics: NSObject {
     }
 
     @objc func report(_ feature: String, stage: String, outcome: String) {
-        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
-              ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
+        guard ProcessInfo.processInfo.arguments.contains("-OROT_PROVIDER_DIAGNOSTICS") else { return }
+        if stage.hasPrefix("daily_report_data_") {
+            // Detailed Daily Report timing accepts no dynamic stage or content.
+            let stages = [
+                "daily_report_data_snapshot", "daily_report_data_projection", "daily_report_data_reproof",
+                "daily_report_data_post_provider", "daily_report_data_save_reproof",
+                "daily_report_data_retry_snapshot", "daily_report_data_retry_projection",
+            ]
+            guard feature == "daily_report",
+                  stages.contains(stage),
+                  ["started", "completed", "failed", "cancelled"].contains(outcome) else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=%@ stage=%@ outcome=%@", feature, stage, outcome)
+            return
+        }
+        if feature == "navigation" {
+            // Navigation accepts only code-owned layout/lifecycle categories, never route identities or sizes.
+            let permitted: [String: Set<String>] = [
+                "foreground": ["active", "inactive", "background"],
+                "planned_frame": ["missing", "collapsed", "positive"],
+                "native_frame": ["missing", "collapsed", "positive"],
+                "root_cover": ["pending", "settled"],
+            ]
+            guard permitted[stage]?.contains(outcome) == true else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=navigation stage=%@ outcome=%@", stage, outcome)
+            return
+        }
+        if stage == "conversation_request_write_wait" || stage == "conversation_lease_admission_wait" {
+            // These waits are not a grant or a provider receipt; no request identity is logged.
+            guard feature == "rag",
+                  ["started", "completed", "failed", "cancelled"].contains(outcome) else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=%@ outcome=%@", stage, outcome)
+            return
+        }
+        if stage == "tool_result_evidence_check" {
+            // This opt-in Conversation span accepts only the start and end of a wait.
+            guard feature == "rag", ["started", "completed"].contains(outcome) else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=tool_result_evidence_check outcome=%@", outcome)
+            return
+        }
+        guard ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
               ["report_sql_first", "report_sql_repeat", "report_sql_unscoped",
                "report_cache_pending_hit", "report_cache_committed_hit", "report_cache_new_key", "report_cache_generation_miss",
                "report_query_quantity", "report_query_heart_rate", "report_query_sleep", "report_query_symptom", "report_query_other",
@@ -32,15 +70,22 @@ final class OrotProviderDiagnostics: NSObject {
                "history_session_recheck_before_assembly", "history_session_recheck_after_assembly", "history_tool_recheck_before_assembly", "history_tool_recheck_final", "history_cold_previews", "history_recheck", "history_transcript_layout", "conversation_model_preflight", "conversation_history_preflight",
                "conversation_quick_press", "conversation_send_preparing",
                "conversation_receipt_attempt", "conversation_receipt_main", "conversation_receipt_accepted", "conversation_receipt_response_started",
+               "conversation_final_react_commit",
                "conversation_dispatch", "conversation_run", "tool_capture_personal", "tool_capture_memory", "tool_capture_generated", "tool_capture_external",
                "tool_event_adapter", "tool_event_discard", "tool_event_capture", "tool_event_write", "tool_event_bind",
+               "tool_event_bind_owner", "tool_event_bind_restore",
+               "tool_event_write_setup", "tool_event_write_decode", "tool_event_write_lineage_validation",
+               "tool_event_write_admission", "tool_event_write_body", "tool_event_write_settlement", "tool_search_wait",
                "opening_generate", "opening_validate", "opening_review", "opening_consent",
                "opening_delivery", "opening_preflight", "opening_display", "stop_native", "stop_js", "stop_abort", "stop_settlement", "conversation_photo_flush", "conversation_preview_flush", "conversation_activity_flush", "conversation_stop_fence", "conversation_lifetime_settle", "conversation_save", "conversation_final_history_validation", "conversation_retention_capture",
+               "conversation_save_prepare", "conversation_save_admission", "conversation_save_authority", "conversation_save_lineage",
+               "conversation_save_persist", "conversation_save_settlement", "conversation_save_lineage_period_majority", "conversation_save_lineage_period_seen",
                "saved_memory_modules", "saved_memory_open", "saved_memory_read", "saved_memory_wait",
                "database_transaction", "database_transaction_wait", "sql_schema", "sql_generation",
                "sql_aggregate", "sql_vector", "sql_health_records", "sql_artifact", "sql_other",
                "transaction_healthkit", "transaction_memory", "selection", "data", "workflow", "provider_error", "validation", "persistence",
                "consent_wait", "provider_wait", "evidence_check", "response_correction",
+               "chatgpt_prompt_cache_unknown", "chatgpt_prompt_cache_reported_zero", "chatgpt_prompt_cache_reported_positive",
                "public_search", "history_preparation",
                "evidence_appointment", "evidence_period", "evidence_records",
                "evidence_memory", "evidence_presentation",

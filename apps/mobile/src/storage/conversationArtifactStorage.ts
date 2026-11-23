@@ -1,50 +1,25 @@
+import { createConversationArtifactAppend } from './conversationArtifactAppend';
+import { readConversationGeneration as generation } from './conversationGeneration';
 import { createConversationWarmLeaseReader } from './conversationWarmLease';
 import { createSavedGeneratedReportReferences } from './savedGeneratedReportReferences';
-import { assertHistoricalDialogueParentsCurrent } from './conversationHistoricalDialogue';
-import { withWritePeriodCalculations } from './writePeriodCalculationScope';
 import { registerConversationStrictReaders } from './conversationStrictReadOwner';
-import { appendConversationSourceRows } from './conversationArtifactSourceRows';
-import { enqueueStatementMemory } from './userStatementMemoryJobs';
 import { createPlainConversationContextReader } from './plainConversationContext';
 import { conversationTimelinePages } from './conversationTimelinePages';
 import { continuousConversationStorage } from './continuousConversationStorage';
 import { conversationSteeringHistory } from './conversationSteeringHistory';
 import { conversationWorkflowContinuationOpener } from './conversationWorkflowContinuationOpener';
-import type { SqlDatabase, SqlExecutor } from '@orot/storage';
-import {
-  decodeConversationArtifact,
-  type ConversationArtifact,
-} from './conversationArtifactCodec';
+import type { SqlDatabase } from '@orot/storage';
 import { setupConversationArtifactSchema } from './conversationArtifactSchema';
-import { assertConversationArtifactCurrent } from './conversationArtifactFreshness';
 import { createConversationArtifactReader } from './conversationArtifactRead';
 import { createConversationCompletionReader } from './conversationCompletionReader';
 import { createConversationProjectionReaders } from './conversationHistoryPresentation';
 import { listConversationArtifactPage } from './conversationArtifactPages';
 import { createConversationSessionVisibility } from './conversationSessionVisibility';
-import { assertConversationNotCancelled } from './conversationArtifactCancellation';
-import { isGeneratedSummarySource } from '../ragConversation/conversationArtifactSources';
-import { createSymptomSummaryStorage } from './symptomSummaryStorage';
 import { createConversationToolEventStorage } from './conversationToolEventStorage';
 import { createFilteredToolPeriodStorage } from './conversationToolFilteredStorage';
 import { createConversationPreviewStorage } from './conversationPreviewStorage';
-import {
-  commitConversationRequest,
-  createConversationRequestStorage,
-} from './conversationRequestStorage';
-import {
-  appendTreatmentTaskCard,
-  createConversationTaskCardStorage,
-} from './conversationTaskCards';
-async function generation(tx: SqlExecutor): Promise<number> {
-  const result = await tx.execute(
-    'SELECT generation FROM conversation_artifact_generation WHERE singleton = 1',
-  );
-  const value = result.rows[0]?.generation;
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0)
-    throw new Error('Conversation generation is unavailable.');
-  return value;
-}
+import { createConversationRequestStorage } from './conversationRequestStorage';
+import { createConversationTaskCardStorage } from './conversationTaskCards';
 /** Session and source validation share each write transaction; no retry can reopen a removed session. */
 export function createConversationArtifactStorage(database: SqlDatabase) {
   let ready: Promise<void> | undefined;
@@ -138,89 +113,7 @@ export function createConversationArtifactStorage(database: SqlDatabase) {
         );
       });
     },
-    async append(
-      value: ConversationArtifact,
-      signal?: AbortSignal,
-      expectedSessionVersion = 0,
-    ) {
-      await ensure();
-      const serialized = JSON.stringify(value);
-      const decoded = decodeConversationArtifact(serialized);
-      if (!decoded) throw new Error('The conversation output cannot be saved.');
-      // Install parent lifecycle guards even when this catalog opens before summary history.
-      if (decoded.sources.some(isGeneratedSummarySource))
-        await createSymptomSummaryStorage(database).list();
-      assertConversationNotCancelled(signal);
-      await database.transaction(async tx => {
-        assertConversationNotCancelled(signal);
-        const deletedArtifact = await tx.execute(
-          'SELECT id FROM conversation_deleted_artifacts WHERE id = ? LIMIT 1',
-          [decoded.id],
-        );
-        if (deletedArtifact.rows.length)
-          throw new Error('The conversation output was removed.');
-        const sessions = await tx.execute(
-          'SELECT generation, version FROM conversation_artifact_sessions WHERE id = ? AND hidden = 0',
-          [decoded.sessionId],
-        );
-        if (
-          !sessions.rows.length ||
-          sessions.rows[0]?.generation !== (await generation(tx)) ||
-          sessions.rows[0]?.version !== expectedSessionVersion
-        )
-          throw new Error('Conversation session was removed.');
-        await withWritePeriodCalculations(tx, validate =>
-          assertConversationArtifactCurrent(
-            tx,
-            database,
-            decoded,
-            true,
-            validate,
-          ),
-        );
-        assertConversationNotCancelled(signal);
-        const existing = await tx.execute(
-          'SELECT result_json FROM conversation_artifacts WHERE id = ?',
-          [decoded.id],
-        );
-        if (existing.rows.length) {
-          if (existing.rows[0]?.result_json !== serialized)
-            throw new Error('A different output already owns this identity.');
-          if (decoded.historicalDialogueParents?.length)
-            await assertHistoricalDialogueParentsCurrent(
-              tx,
-              decoded.sessionId,
-              decoded.historicalDialogueParents,
-            );
-          assertConversationNotCancelled(signal);
-          await commitConversationRequest(
-            tx,
-            decoded,
-            expectedSessionVersion,
-            true,
-          );
-          return;
-        }
-        await tx.execute(
-          'INSERT INTO conversation_artifacts (id, session_id, created_at, result_json) VALUES (?, ?, ?, ?)',
-          [decoded.id, decoded.sessionId, decoded.createdAt, serialized],
-        );
-        if (decoded.treatmentContext)
-          await appendTreatmentTaskCard(tx, decoded);
-        await appendConversationSourceRows(tx, decoded);
-        // An earlier invalidation rolls back this write; a later one cascades the indexed edge.
-        if (decoded.historicalDialogueParents?.length)
-          await assertHistoricalDialogueParentsCurrent(
-            tx,
-            decoded.sessionId,
-            decoded.historicalDialogueParents,
-          );
-        // After this check, commit wins; the caller must report the saved result even if cancellation arrives later.
-        assertConversationNotCancelled(signal);
-        await commitConversationRequest(tx, decoded, expectedSessionVersion);
-        await enqueueStatementMemory(tx, decoded);
-      });
-    },
+    append: createConversationArtifactAppend(database, ensure),
     async list(
       sessionId: string,
       cursor?: { readonly createdAt: string; readonly id: string },

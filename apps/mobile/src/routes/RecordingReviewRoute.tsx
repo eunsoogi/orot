@@ -1,8 +1,14 @@
+import {
+  RecentRecordingMetadataRefresh,
+  type RecentRecordingMetadata,
+} from './RecentRecordingMetadataRefresh';
+import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import { useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { VerticalPageSections as AdaptiveColumns } from '../layout/VerticalPageSections';
+import { materialLibraryStyles } from '../layout/MaterialLibraryRows';
 import { appColors } from '../layout/appColors';
 import { t } from '../i18n';
 import { NavigationRouteScrollView } from '../navigation/NavigationRouteScrollView';
@@ -20,7 +26,13 @@ import type { EncounterReviewService } from '../encounterReview/controller';
 /** Saved-source details retain review, playback and export as sections of one recording flow. */
 export function RecordingReviewRoute({
   reviewService,
-}: { readonly reviewService?: EncounterReviewService } = {}) {
+  routeKey,
+  routeOwner,
+}: {
+  readonly reviewService?: EncounterReviewService;
+  readonly routeKey?: string;
+  readonly routeOwner?: NavigationRouteOwnership;
+} = {}) {
   const focused = useIsFocused();
   const { selection } = useRecordingSelection();
   const transcription = useAutomaticRecordingTranscription(
@@ -40,10 +52,56 @@ export function RecordingReviewRoute({
     revision: Number(busy),
     inputRevision: Number(dirty),
   });
-  const source = selection?.summary.source;
+  const selectedSource =
+    !selection?.recentRouteKey || selection.recentRouteKey === routeKey
+      ? selection?.summary.source
+      : undefined;
+  const recent = Boolean(
+    routeKey &&
+    routeOwner &&
+    selection?.recentRouteKey === routeKey &&
+    selectedSource,
+  );
+  const [presentation, setPresentation] = useState<{
+    owner: typeof selection;
+    value: RecentRecordingMetadata;
+    durationMs: number | null;
+  }>();
+  const metadata =
+    recent && presentation?.owner === selection
+      ? presentation.value
+      : undefined;
+  const source =
+    metadata?.status === 'missing' || metadata?.status === 'protected'
+      ? undefined
+      : selectedSource;
   return (
-    <NavigationRouteScrollView>
+    <NavigationRouteScrollView pullToRefresh={recent}>
+      {recent && selectedSource && routeOwner ? (
+        <RecentRecordingMetadataRefresh
+          key={routeKey}
+          id={selectedSource.id}
+          active={focused}
+          enabled={!busy && !dirty}
+          owner={routeOwner}
+          publish={value =>
+            setPresentation(previous => ({
+              owner: selection,
+              value,
+              durationMs:
+                value.status === 'ready'
+                  ? value.durationMs
+                  : previous?.owner === selection
+                    ? previous.durationMs
+                    : (selection?.summary.durationMs ?? null),
+            }))
+          }
+        />
+      ) : null}
       <View style={styles.page}>
+        {metadata?.status === 'unavailable' ? (
+          <AppText>{t('recording.detail.refreshUnavailable')}</AppText>
+        ) : null}
         {source && selection ? (
           /* Stable route-owned panel slots keep transcript drafts and review requests mounted through window reflow. */
           <AdaptiveColumns
@@ -52,12 +110,17 @@ export function RecordingReviewRoute({
                 <RecordingPlaybackControls
                   active={focused}
                   recordingId={source.id}
-                  durationMs={selection.summary.durationMs}
+                  durationMs={
+                    presentation?.owner === selection
+                      ? presentation.durationMs
+                      : selection.summary.durationMs
+                  }
                   playbackService={recordingService}
                   autoPlay={selection.autoPlay && !autoPlayConsumed}
                   onAutoPlayConsumed={() => setAutoPlayConsumed(true)}
                 />
                 <TranscriptEvidencePanel
+                  savedDetail
                   recordingSourceId={source.id}
                   deletionBusy={exportBusy || review.busy}
                   onInteractionChange={setInteraction}
@@ -71,6 +134,11 @@ export function RecordingReviewRoute({
             }
             secondary={
               <View style={styles.group}>
+                <View
+                  accessible={false}
+                  importantForAccessibility="no"
+                  style={materialLibraryStyles.divider}
+                />
                 <EncounterReviewPanel
                   key={source.id}
                   sourceId={source.id}
@@ -78,7 +146,13 @@ export function RecordingReviewRoute({
                   onInteractionChange={setReview}
                   service={reviewService}
                 />
+                <View
+                  accessible={false}
+                  importantForAccessibility="no"
+                  style={materialLibraryStyles.divider}
+                />
                 <RecordingExportPanel
+                  savedDetail
                   recordingSourceId={source.id}
                   onBusyChange={setExportBusy}
                   actionsDisabled={busy || dirty}
@@ -88,7 +162,15 @@ export function RecordingReviewRoute({
             testID="recording-review-layout"
           />
         ) : (
-          <AppText>{t('recording.transcript.noRecording')}</AppText>
+          <AppText>
+            {t(
+              metadata?.status === 'protected'
+                ? 'recording.detail.protected'
+                : metadata?.status === 'missing'
+                  ? 'recording.detail.notFound'
+                  : 'recording.transcript.noRecording',
+            )}
+          </AppText>
         )}
       </View>
     </NavigationRouteScrollView>

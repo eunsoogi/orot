@@ -7,7 +7,8 @@ import type {
   LocalHealthEvidenceRecord,
   LocalHealthEvidenceRepository,
 } from '../../healthEvidence/localEvidenceRepository';
-import type { EvidenceValidationContext } from './evidenceRegistry';
+import type { ReadValidationChunks } from './evidenceValidationContext';
+import { personalChunkReproof } from './personalChunkReproof';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { createPersonalSourceReader } from './personalSourceReader';
 import { fingerprint, stableJson } from './evidenceUtils';
@@ -57,6 +58,7 @@ export function buildPersonalEvidence(input: {
   readonly candidateRecords?: readonly LocalHealthEvidenceRecord[];
   readonly persistedChunks: readonly EvidenceChunk[];
   readonly loadCurrentPersistedChunks: () => Promise<readonly EvidenceChunk[]>;
+  readonly loadCurrentPersistedChunksFor?: ReadValidationChunks;
   readonly staleArtifacts: readonly StaleEvidenceArtifact[];
   readonly loadCurrentStaleArtifacts: () => Promise<
     readonly StaleEvidenceArtifact[]
@@ -151,84 +153,75 @@ export function buildPersonalEvidence(input: {
       reference,
       content,
       readSource: doseSource.readSource,
-      async validate(signal, context: EvidenceValidationContext) {
-        if (signal.aborted) return false;
-        if (!(await doseSource.validate(signal))) return false;
-        const current = await input.repository.readRecord(
-          entry.kind,
-          record.id,
-          signal,
-        );
-        if (!current || fingerprint(current) !== recordFingerprint)
-          return false;
-        if (persisted) {
-          const currentChunks = await context.once(
-            input.loadCurrentPersistedChunks,
-            input.loadCurrentPersistedChunks,
-          );
-          const currentChunk = currentChunks.find(
-            chunk => chunk.id === persisted.id,
-          );
-          // Rebuilds catch both changed content and transcript revisions that supersede an unchanged row.
-          if (
-            !currentChunk ||
-            stableJson(currentChunk) !== stableJson(persisted)
-          )
-            return false;
-        }
-        for (const sourceRecordId of sourceIdsToValidate) {
-          const candidates = recordsById.get(sourceRecordId) ?? [];
-          // IDs are only locally unique per table; exclude only this exact kind-and-ID pair.
-          const dependencies = candidates.filter(
-            candidate =>
-              candidate.kind !== entry.kind ||
-              candidate.record.id !== record.id,
-          );
-          if (dependencies.length === 0) {
-            const isSelfReference = candidates.some(
-              candidate =>
-                candidate.kind === entry.kind &&
-                candidate.record.id === record.id,
-            );
-            if (isSelfReference) continue;
-          }
-          // HealthKit sample and concept IDs are external identities, not SQLCipher row IDs.
-          if (
-            dependencies.length === 0 &&
-            candidates.length === 0 &&
-            record.provenance?.source?.system === 'healthkit'
-          ) {
-            continue;
-          }
-          if (dependencies.length !== 1) return false;
-          const expected = dependencies[0];
-          if (!expected) return false;
-          const currentSource = await input.repository.readRecord(
-            expected.kind,
-            sourceRecordId,
+      validate: personalChunkReproof(
+        input,
+        entry,
+        persisted,
+        async (signal, currentChunk, context) => {
+          if (signal.aborted) return false;
+          if (!(await doseSource.validate(signal))) return false;
+          const current = await input.repository.readRecord(
+            entry.kind,
+            record.id,
             signal,
           );
-          if (
-            !currentSource ||
-            fingerprint(currentSource) !== fingerprint(expected.record)
-          ) {
+          if (!current || fingerprint(current) !== recordFingerprint)
             return false;
+          if (persisted && !(await currentChunk())) return false;
+          for (const sourceRecordId of sourceIdsToValidate) {
+            const candidates = recordsById.get(sourceRecordId) ?? [];
+            // IDs are only locally unique per table; exclude only this exact kind-and-ID pair.
+            const dependencies = candidates.filter(
+              candidate =>
+                candidate.kind !== entry.kind ||
+                candidate.record.id !== record.id,
+            );
+            if (dependencies.length === 0) {
+              const isSelfReference = candidates.some(
+                candidate =>
+                  candidate.kind === entry.kind &&
+                  candidate.record.id === record.id,
+              );
+              if (isSelfReference) continue;
+            }
+            // HealthKit sample and concept IDs are external identities, not SQLCipher row IDs.
+            if (
+              dependencies.length === 0 &&
+              candidates.length === 0 &&
+              record.provenance?.source?.system === 'healthkit'
+            ) {
+              continue;
+            }
+            if (dependencies.length !== 1) return false;
+            const expected = dependencies[0];
+            if (!expected) return false;
+            const currentSource = await input.repository.readRecord(
+              expected.kind,
+              sourceRecordId,
+              signal,
+            );
+            if (
+              !currentSource ||
+              fingerprint(currentSource) !== fingerprint(expected.record)
+            ) {
+              return false;
+            }
           }
-        }
-        if (record.provenance?.origin === 'derived') {
-          const currentStaleKeys = await context.once(
-            input.loadCurrentStaleArtifacts,
-            async () =>
-              new Set(
-                (await input.loadCurrentStaleArtifacts()).map(artifact =>
-                  key(artifact.kind, artifact.id),
+          if (record.provenance?.origin === 'derived') {
+            const currentStaleKeys = await context.once(
+              input.loadCurrentStaleArtifacts,
+              async () =>
+                new Set(
+                  (await input.loadCurrentStaleArtifacts()).map(artifact =>
+                    key(artifact.kind, artifact.id),
+                  ),
                 ),
-              ),
-          );
-          if (currentStaleKeys.has(key(entry.kind, record.id))) return false;
-        }
-        return !signal.aborted;
-      },
+            );
+            if (currentStaleKeys.has(key(entry.kind, record.id))) return false;
+          }
+          return !signal.aborted;
+        },
+      ),
     });
     items.push(item);
     recordsByEvidenceId.set(item.evidenceId, entry);

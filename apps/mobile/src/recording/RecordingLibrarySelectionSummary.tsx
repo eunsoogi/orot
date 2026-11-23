@@ -12,7 +12,7 @@ function reviewLabel(summary: RecordingLibrarySummary): string {
     case 'notTranscribed':
       return t('recording.library.transcriptNotStarted');
     case 'unreviewed':
-      return t('recording.transcript.review.unreviewed');
+      return t('recording.transcript.savedTranscript');
     case 'needsReview':
       return t('recording.transcript.review.needsReview');
     case 'reviewed':

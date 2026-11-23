@@ -3,6 +3,7 @@ import {
   sendConversationMessage,
 } from '../conversationVisitDispatch';
 import { createConversationSessions } from '../conversationSessions';
+import { isWarmConversationSender } from '../warmConversationSender';
 import { conversationEntryForSession } from '../useConversationEntryIntent';
 import { createConversationSessionRetention } from '../conversationSessionRetention';
 import { createConversationArtifactStorage } from '../../storage/conversationArtifactStorage';
@@ -151,3 +152,39 @@ test('edited initial failure retries preparation then allows an ordinary follow-
   expect(onSend).toHaveBeenCalledTimes(1);
   store.dispose();
 });
+
+test.each([
+  '원인이 뭐예요?',
+  '일일 보고서를 만들어 줘.',
+  '질병 가능성 보고서를 만들어 줘.',
+  '내 건강 정보를 요약해 줘.',
+  '다음 진료 질문을 준비해 줘.',
+])(
+  'the composer cannot select a template from wording alone: %s',
+  async question => {
+    jest.mocked(conversationEntryForSession).mockReturnValue(undefined);
+    const store = createConversationSessions();
+    const sender = jest.fn(
+      async (
+        ..._args: Parameters<Parameters<typeof sendConversationMessage>[2]>
+      ) => ({
+        status: 'answer' as const,
+        answer: '합성 답변',
+        citations: [],
+      }),
+    );
+    const prepare = jest.fn();
+    const dispatch = jest.spyOn(store, 'send');
+    try {
+      store.setDraft(1, question);
+      await sendConversationMessage(store, 1, sender, prepare);
+      expect(dispatch).toHaveBeenCalledTimes(1);
+      expect(isWarmConversationSender(dispatch.mock.calls[0]![1])).toBe(true);
+      expect(prepare).not.toHaveBeenCalled();
+      expect(sender).toHaveBeenCalledTimes(1);
+      expect(sender.mock.calls[0]?.[4]).toBeUndefined();
+    } finally {
+      store.dispose();
+    }
+  },
+);

@@ -37,15 +37,29 @@ test('queries outside the initial window, redacts hidden IDs, and revalidates on
       ...metadata,
       id: 'outside record / 42',
       effectiveAt: '2020-01-01T00:00:00Z',
-      description: 'uncommon-zeta synthetic note',
+      description: 'uncommon-zeta synthetic note, memory-local-cross-id.',
     };
     await records.put('symptom_entry', older);
     const list = jest.spyOn(records, 'list');
+    const reviewedMemory = Array.from({ length: 24 }, (_, index) => ({
+      id: index === 0 ? 'memory-local-cross-id' : `memory-${index}`,
+      text: 'Unrelated synthetic reviewed memory.',
+      createdAt: Date.parse(at),
+      reinforcements: 0,
+      vector: new Float32Array(0),
+      tags: [],
+      entities: [],
+      importance: 0,
+      meta: {
+        kind: 'reviewed_interaction',
+        provenance: { sourceIds: [], reviewState: 'human_reviewed' },
+      },
+    }));
     const data: AiFeatureLocalData = {
       ...createLocalEvidenceData(database),
       repository: createLocalHealthEvidenceRepository(database),
       memoryStorage: { listRecords: async () => [] },
-      loadMemoryRecords: async () => [],
+      loadMemoryRecords: async () => reviewedMemory,
       rag: {
         index: jest.fn(async () => undefined),
         search: jest.fn(async (_query, chunks, limit = 8) =>
@@ -66,7 +80,9 @@ test('queries outside the initial window, redacts hidden IDs, and revalidates on
       signal,
       'generic',
     );
-    expect(initial.items).toHaveLength(4);
+    expect(
+      initial.items.filter(item => item.sourceKind === 'personal_record'),
+    ).toHaveLength(4);
     expect(initial.coverage[0]).toMatchObject({
       selectionMethod: 'ranked_retrieval',
       truncated: true,
@@ -78,9 +94,17 @@ test('queries outside the initial window, redacts hidden IDs, and revalidates on
     ).toBe(false);
 
     // This regression exercises ranked raw-record drilldown independently of the additional period tool.
-    const tool = toolsFor(initial, data, registry).find(
-      candidate => candidate.id === 'local-personal-records',
-    )!;
+    const standardRegistry = new LocalEvidenceReferenceRegistry();
+    const ordinaryRegistry = new LocalEvidenceReferenceRegistry();
+    const ordinaryAdd = jest.spyOn(ordinaryRegistry, 'add');
+    const tool = toolsFor(
+      undefined,
+      data,
+      ordinaryRegistry,
+      6,
+      true,
+      'rag',
+    ).find(candidate => candidate.id === 'local-personal-records')!;
     const request = {
       operationRunId: 'bounded-evidence-test',
       operationKey: 'tool-1',
@@ -91,6 +115,16 @@ test('queries outside the initial window, redacts hidden IDs, and revalidates on
       signal,
     };
     const found = await tool.search(request);
+    const standard = await toolsFor(undefined, data, standardRegistry, 6, true)
+      .find(candidate => candidate.id === 'local-personal-records')!
+      .search(request);
+    expect(found).toEqual(standard);
+    expect(
+      ordinaryAdd.mock.calls.filter(
+        ([entry]) => entry.reference.sourceKind === 'reviewed_memory',
+      ),
+    ).toHaveLength(0);
+    expect(JSON.stringify(found)).not.toContain('memory-local-cross-id');
     if ('status' in found)
       throw new Error('Unexpected local consent response.');
     const hit = found.items.find(item =>
@@ -98,14 +132,21 @@ test('queries outside the initial window, redacts hidden IDs, and revalidates on
     );
     expect(hit).toBeDefined();
     expect(JSON.stringify(found)).not.toContain(older.id);
-    expect(registry.resolve(hit!)?.evidenceId).toBe(older.id);
-    expect(await registry.revalidateEvidence([hit!], signal)).toBe(true);
+    expect(ordinaryRegistry.resolve(hit!)?.evidenceId).toBe(older.id);
+    expect(await ordinaryRegistry.revalidateEvidence([hit!], signal)).toBe(
+      true,
+    );
     await records.put('symptom_entry', {
       ...older,
       description: 'Changed after selection.',
     });
-    expect(await registry.revalidateEvidence([hit!], signal)).toBe(false);
-    const outsideScope = await tool.search({
+    expect(await ordinaryRegistry.revalidateEvidence([hit!], signal)).toBe(
+      false,
+    );
+    const scopedTool = toolsFor(initial, data, registry).find(
+      candidate => candidate.id === 'local-personal-records',
+    )!;
+    const outsideScope = await scopedTool.search({
       ...request,
       allowedScope: {
         ...request.allowedScope,

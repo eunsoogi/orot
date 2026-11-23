@@ -17,12 +17,18 @@ export const generatedReportCopy = {
   failed: '저장한 결과를 불러오지 못했어요.',
   retry: '다시 확인',
   more: '더 보기',
+  moreLoading: '더 불러오는 중',
+  moreFailed: '다음 결과를 불러오지 못했어요.',
+  moreRetry: '다시 더 보기',
+  moreComplete: '저장한 결과를 모두 불러왔어요.',
   back: '목록으로',
   close: '닫기',
   unavailable:
     '이전 버전이거나 출처의 변경·삭제로 현재 열람할 수 없는 저장 결과예요. 다른 버전으로 대신 열지 않아요.',
   changed:
     '생성 당시와 원본 자료가 달라졌어요. 저장된 결과의 주의사항을 확인해 주세요.',
+  historicalHealthSummary:
+    '생성 당시 저장된 보고서예요. 현재 원본을 확인할 수 없어 근거 링크는 제공하지 않아요.',
   coverage:
     '생성 당시 저장된 결과예요. 현재 진단이나 새 분석이 아니며, 원본 출처 확인이 필요한 내용이 포함될 수 있어요.',
 } as const;

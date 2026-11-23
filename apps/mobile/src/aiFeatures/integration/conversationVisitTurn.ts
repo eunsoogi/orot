@@ -56,6 +56,8 @@ export function createConversationVisitTurn(deps: {
       ),
       observer: {
         expectedConversationModel: input.observer?.expectedConversationModel,
+        onReviewedOpening: input.observer?.onReviewedOpening,
+        suppressContextualOpening: input.observer?.suppressContextualOpening,
         // Do not manufacture a lifecycle observer for non-conversation callers.
         ...(input.observer?.onExecutionState
           ? {

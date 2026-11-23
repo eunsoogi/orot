@@ -1,3 +1,4 @@
+import { conversationDailyReportMemoryAdmission } from './conversationDailyReportMemoryAdmission';
 import { observeToolRetention } from './conversationToolRetentionDiagnostic';
 import { conversationLocalClarification } from './conversationLocalClarification';
 import { createConversationDeliveryRetention } from './conversationDeliveryRetention';
@@ -14,12 +15,10 @@ import type {
   PrepareConversationRetention,
 } from './conversationRetention';
 import { RetainedSourceInvalidError } from '../aiFeatures/integration/retainedSourceError';
-import { createConversationRetainedPreview } from './conversationRetainedPreview';
-/** One turn keeps the same payload and identity across write retries, without another model call. */
 export function createConversationTurnRetention(
   input: ConversationTurnRetentionInput,
 ) {
-  const opening = createConversationOpeningRetention();
+  const opening = createConversationOpeningRetention(input);
   const delivery = createConversationDeliveryRetention();
   let pending: ConversationArtifact | undefined;
   let preparation: PrepareConversationRetention | undefined;
@@ -72,8 +71,9 @@ export function createConversationTurnRetention(
     return value;
   };
   return {
-    ...createConversationRetainedPreview(input),
+    ...conversationDailyReportMemoryAdmission(input),
     retainOpening: opening.retainOpening,
+    persistReviewedOpening: opening.persistReviewedOpening,
     ...conversationLocalClarification(input, opening, delivery),
     retainDelivery: delivery.retainDelivery,
     discardOpening() {

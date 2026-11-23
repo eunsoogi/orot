@@ -8,6 +8,7 @@ export const overviewMetrics = [
   'workouts',
 ] as const;
 export type OverviewMetric = (typeof overviewMetrics)[number];
+export const minimumOverviewMetricCount = 2;
 // Keep the existing storage key so an upgrade preserves each user's selection.
 const selectionKey = 'home:metric-selection:v1';
 export const defaultOverviewMetrics: readonly OverviewMetric[] = [
@@ -21,8 +22,7 @@ export function validateOverviewMetricSelection(
 ): OverviewMetric[] {
   if (
     !Array.isArray(value) ||
-    value.length < 2 ||
-    value.length > 4 ||
+    value.length < minimumOverviewMetricCount ||
     value.some(metric => !overviewMetrics.includes(metric)) ||
     new Set(value).size !== value.length
   )
