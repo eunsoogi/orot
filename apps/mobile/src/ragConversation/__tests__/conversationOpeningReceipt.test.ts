@@ -95,3 +95,19 @@ test.each(['cancelled', 'newer_request', 'withheld', 'empty'])(
     expect(f.session().pendingMessage?.initialResponse?.source).toBe('receipt');
   },
 );
+
+test('a reviewed whitespace opening does not mark read, and a valid opening keeps its exact bytes', async () => {
+  const f = setup();
+  const signal = new AbortController().signal;
+  const callId = 'reviewed';
+  expect(
+    await f.activity.observer.onReviewedOpening({ callId, text: '  ' }, signal),
+  ).toBe(false);
+  expect(f.session().messages[0].delivery?.readAt).toBeUndefined();
+  const text = '  Synthetic exact opening   ';
+  expect(
+    await f.activity.observer.onReviewedOpening({ callId, text }, signal),
+  ).toBe(true);
+  expect(f.session().pendingMessage?.initialResponse?.text).toBe(text);
+  expect(f.session().messages[0].delivery?.readAt).toEqual(expect.any(String));
+});

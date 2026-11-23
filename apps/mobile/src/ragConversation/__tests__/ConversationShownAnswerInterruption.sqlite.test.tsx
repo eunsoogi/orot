@@ -138,6 +138,17 @@ test.each([
         await (afterDisplay ? toolEntered.promise : modelEntered.promise);
       });
       const session = () => live.getSnapshot().sessions[0]!;
+      if (!afterDisplay)
+        expect(session().pendingMessage?.initialResponse?.text).toBe(opening);
+      // The stream fallback still paints for an owned send, but an event alone
+      // is not the new approved opening journal capability.
+      expect(
+        (
+          await connection.database.execute(
+            'SELECT reviewed_opening_json FROM conversation_requests',
+          )
+        ).rows,
+      ).toEqual([{ reviewed_opening_json: null }]);
       if (afterDisplay) {
         await waitFor(() => expect(mounted.getByText(answer)).toBeTruthy());
         expect(mounted.getByText(opening)).toBeTruthy();

@@ -23,8 +23,6 @@ export const conversationInterruptionKo = {
   'conversationInterruption.user-stopped': '답변 생성을 중지했어요.',
   'conversationInterruption.provider-failed':
     '답변을 완료하지 못했어요. 연결 상태와 저장된 진행 상황을 확인해 주세요.',
-  'conversationInterruption.restoredOutcomeUnknown':
-    '이전 요청의 결과를 확인하지 못했어요. 완료 여부가 불확실한 작업은 자동으로 다시 실행하지 않아요.',
   'conversationInterruption.process-interrupted':
     '이전 실행에서 답변을 완료하지 못했어요. 완료 여부가 불확실한 작업은 자동으로 다시 실행하지 않아요.',
   'conversationInterruption.background-paused':

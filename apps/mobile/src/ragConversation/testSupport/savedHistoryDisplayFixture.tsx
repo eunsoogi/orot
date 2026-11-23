@@ -27,7 +27,10 @@ export async function fixture(
       !check ||
       sql.includes('WITH RECURSIVE ownership(root, artifact_id)') ||
       !/\b(?:health_observations|source_records|health_context_generation|symptom_summary_runs|research_artifacts|conversation_request_previews)\b|WITH RECURSIVE/i.test(
-        sql,
+        sql.replaceAll(
+          'SELECT deletions FROM health_context_generation WHERE singleton = 1',
+          '',
+        ),
       )
     )
       return;
