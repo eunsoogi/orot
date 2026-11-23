@@ -105,6 +105,12 @@ export async function journaledModelCall<TResult>(
     }
   };
   try {
+    if (
+      approvalSignal.aborted &&
+      !signal.aborted &&
+      context.pause?.confirmCooperativePostToolPause()
+    )
+      throw new AuthorizationPaused();
     notify(Boolean(approval));
     const prepared = prepare ? await prepare(approvalSignal, request) : 'ready';
     if (approvalSignal.aborted && !signal.aborted && options.checkpointer)

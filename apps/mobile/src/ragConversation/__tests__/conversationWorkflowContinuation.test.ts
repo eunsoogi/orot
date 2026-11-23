@@ -23,54 +23,67 @@ const options = {
 
 beforeEach(() => run.mockReset());
 
-test('continues the exact persisted thread only after explicit action and atomic claim', async () => {
-  const order: string[] = [];
-  const paused = {
-    status: 'paused',
-    checkpoint: { phase: 'task_response' },
-  } as never;
-  const completed = { status: 'result', value: 'done' } as never;
-  run.mockResolvedValueOnce(paused).mockResolvedValueOnce(completed);
-  const checkpointer = {} as never;
-  const continuation = {
-    bindPause: jest.fn(),
-    waitForContinue: async (reason?: string) => {
-      expect(reason).toBe('background-paused');
-      order.push('tap');
-      return true;
-    },
-    persisted: {
-      checkpointer,
-      threadId: 'original-thread',
-      initialize: async (
-        _options: unknown,
-        _signal: AbortSignal,
-        snapshot?: () => readonly unknown[],
-      ) => {
-        expect(snapshot?.()).toEqual([options.initialEvidence]);
-        order.push('initialize');
+test.each([
+  { pauseReason: 'background-paused', expected: 'background-paused' },
+  { pauseReason: undefined, expected: 'decision-required' },
+])(
+  'persists the exact checkpoint and presents the $expected reason',
+  async ({ pauseReason, expected }) => {
+    const checkpoint = {
+      phase: 'revised_response',
+      awaitingAuthorization: 'model-2',
+    };
+    const order: string[] = [];
+    const paused = {
+      status: 'paused',
+      checkpoint,
+      pauseReason,
+    } as never;
+    const completed = { status: 'result', value: 'done' } as never;
+    run.mockResolvedValueOnce(paused).mockResolvedValueOnce(completed);
+    const checkpointer = {} as never;
+    const continuation = {
+      bindPause: jest.fn(),
+      waitForContinue: async (reason?: string) => {
+        expect(reason).toBe(expected);
+        order.push('tap');
+        return true;
       },
-      paused: async () => {
-        order.push('persisted');
+      persisted: {
+        checkpointer,
+        threadId: 'original-thread',
+        initialize: async (
+          _options: unknown,
+          _signal: AbortSignal,
+          snapshot?: () => readonly unknown[],
+        ) => {
+          expect(snapshot?.()).toEqual([options.initialEvidence]);
+          order.push('initialize');
+        },
+        paused: async (saved: unknown, reason?: string) => {
+          expect(saved).toBe(checkpoint);
+          expect(reason).toBe(expected);
+          order.push('persisted');
+        },
+        claim: async () => {
+          order.push('claim');
+        },
       },
-      claim: async () => {
-        order.push('claim');
-      },
-    },
-  };
-  expect(
-    await runContinuableConversationWorkflow(options, {}, continuation),
-  ).toBe(completed);
-  expect(order).toEqual(['initialize', 'persisted', 'tap', 'claim']);
-  expect(run).toHaveBeenCalledTimes(2);
-  for (const [workflow, invocation] of run.mock.calls) {
-    expect(workflow.checkpointer).toBe(checkpointer);
-    expect(invocation?.config).toEqual({
-      configurable: { thread_id: 'original-thread' },
-    });
-    expect(invocation?.resumeFrom).toBeUndefined();
-  }
-});
+    };
+    expect(
+      await runContinuableConversationWorkflow(options, {}, continuation),
+    ).toBe(completed);
+    expect(order).toEqual(['initialize', 'persisted', 'tap', 'claim']);
+    expect(run).toHaveBeenCalledTimes(2);
+    for (const [workflow, invocation] of run.mock.calls) {
+      expect(workflow.checkpointer).toBe(checkpointer);
+      expect(invocation?.config).toEqual({
+        configurable: { thread_id: 'original-thread' },
+      });
+      expect(invocation?.resumeFrom).toBeUndefined();
+    }
+  },
+);
 
 test('a rejected claim never dispatches a resumed graph', async () => {
   run.mockResolvedValueOnce({ status: 'paused', checkpoint: {} } as never);
