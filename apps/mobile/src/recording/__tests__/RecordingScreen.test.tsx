@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import RecordingScreen from '../RecordingScreen';
 import type { TranscriptEvidenceService } from '../../transcription/transcriptEvidenceService';
 import {
@@ -184,4 +191,45 @@ test('withholds source linking when the completed file protection is unverified'
     ),
   ).toBeTruthy();
   expect(screen.queryByTestId('recording-retry-save')).toBeNull();
+});
+
+test('completed route centers saved status and restart without changing capture or history actions', async () => {
+  const { service } = createService();
+  const openHistory = jest.fn();
+  await render(
+    <RecordingScreen
+      onBack={jest.fn()}
+      onOpenSavedRecordings={openHistory}
+      service={service}
+    />,
+  );
+  await screen.findByTestId('recording-status');
+  expect(screen.getByTestId('recording-content-columns')).toBeVisible();
+  expect(screen.queryByTestId('recording-result-stage')).toBeNull();
+  await fireEvent.press(screen.getByTestId('recording-consent'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+  await fireEvent.press(screen.getByTestId('recording-microphone-control'));
+
+  const stage = await screen.findByTestId('recording-result-stage');
+  expect(StyleSheet.flatten(stage.props.contentContainerStyle)).toMatchObject({
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  });
+  expect(stage.props.keyboardShouldPersistTaps).toBe('handled');
+  expect(stage.props.keyboardDismissMode).toBe('on-drag');
+  expect(screen.queryByTestId('recording-content-columns')).toBeNull();
+  expect(screen.queryByTestId('recording-review-scroll')).toBeNull();
+  expect(within(stage).getByTestId('recording-result')).toBeVisible();
+  expect(within(stage).getByTestId('recording-new-take')).toBeEnabled();
+  expect(screen.getByTestId('recording-saved-duration')).toHaveTextContent(
+    /00:12/,
+  );
+  await fireEvent.press(screen.getByTestId('recording-open-saved'));
+  expect(openHistory).toHaveBeenCalledTimes(1);
+  await fireEvent.press(screen.getByTestId('recording-new-take'));
+  expect(screen.getByTestId('recording-content-columns')).toBeVisible();
+  expect(screen.queryByTestId('recording-result-stage')).toBeNull();
+  expect(service.start).toHaveBeenCalledTimes(1);
+  expect(service.saveSource).toHaveBeenCalledTimes(1);
 });
