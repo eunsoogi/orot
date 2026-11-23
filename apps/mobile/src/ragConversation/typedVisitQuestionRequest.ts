@@ -18,11 +18,26 @@ const followUpRequest = new RegExp(
   'u',
 );
 
+// A nearby, positively stated care visit can precede the actual request in
+// spoken Korean. Only admit that one prompt; a topic does not choose a source.
+const imminentVisit = String.raw`(?:지금|곧|오늘)\s+(?:병원|의원|외래(?:\s*진료)?|진료)(?:에|를|을)?\s*(?:가는데|가서|받는데|보는데|보러\s*가는데)`;
+const spokenTopic = String.raw`(?:(?<topic>[가-힣A-Za-z0-9\s·()]{1,64})(?:물어|여쭤)\s*볼\s*(?:건데|거라서)\s*[,，]?\s+)?`;
+const spokenAction = String.raw`(?:뽑아|만들어|준비해|작성해|정리해)\s*(?:줘(?:요)?|주세요|주실래요|주실\s*수\s*있나요|줄\s*수\s*있나요)`;
+const spokenRequest = new RegExp(
+  String.raw`^${imminentVisit}\s*[,，]?\s+${spokenTopic}${question}${count}${spokenAction}[.!?]?$`,
+  'u',
+);
+
 export function isTypedVisitQuestionRequest(text: string): boolean {
   const value = text.trim().normalize('NFC');
-  return (
-    value.length <= 180 &&
-    !/말고|말아|않|아니라|대신/u.test(value) &&
-    (request.test(value) || followUpRequest.test(value))
+  if (value.length > 180 || /말고|말아|않|아니라|대신/u.test(value))
+    return false;
+  if (request.test(value) || followUpRequest.test(value)) return true;
+  const spoken = spokenRequest.exec(value);
+  if (!spoken) return false;
+  // Do not read instructions about generation, mixed report tasks or
+  // conditional scenarios as a single imminent Visit Questions action.
+  return !/어떻게|방법|만드|뽑는|보고서|요약|만약|가정|간다면/u.test(
+    spoken.groups?.topic ?? '',
   );
 }
