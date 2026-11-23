@@ -151,7 +151,13 @@ final class NavigationGeometryView: UIView {
         }
         guard let scene = window.windowScene, let manager = scene.statusBarManager else { return nil }
         guard !manager.isStatusBarHidden else { return nil }
-        let frame = window.convert(manager.statusBarFrame, from: scene.coordinateSpace)
+        let sceneSpace: any UICoordinateSpace
+        if #available(iOS 26.0, *) {
+            sceneSpace = scene.effectiveGeometry.coordinateSpace
+        } else {
+            sceneSpace = scene.coordinateSpace
+        }
+        let frame = window.convert(manager.statusBarFrame, from: sceneSpace)
         guard !frame.isEmpty, frame.width > frame.height else { return nil }
         guard [frame.minX, frame.minY, frame.width, frame.height].allSatisfy(\.isFinite) else { return nil }
         return frame
