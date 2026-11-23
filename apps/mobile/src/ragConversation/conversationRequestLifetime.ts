@@ -1,3 +1,4 @@
+import { observeConversationSendAdmission } from '../providers/conversationSendAdmissionDiagnostic';
 import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import {
   observeContinuedConversationActivity,
@@ -62,7 +63,12 @@ export function createConversationRequestLifetime(input: {
     };
     entries.set(id, entry);
     owners.set(controller, entry);
-    entry.start = start();
+    const lost = () => controller.signal.aborted || entries.get(id) !== entry;
+    entry.start = observeConversationSendAdmission(
+      exclusive ? undefined : 'conversation_request_write_wait',
+      start,
+      lost,
+    );
     early?.fence(reason => {
       if (
         entries.get(id) !== entry ||
@@ -74,9 +80,13 @@ export function createConversationRequestLifetime(input: {
       input.interrupt(id);
     });
     await entry.start;
-    if (controller.signal.aborted || entries.get(id) !== entry) return;
+    if (lost()) return;
     if (input.execution)
-      await adoptConversationLifetimeLease(entry, entries, input, early);
+      await observeConversationSendAdmission(
+        exclusive ? undefined : 'conversation_lease_admission_wait',
+        () => adoptConversationLifetimeLease(entry, entries, input, early),
+        lost,
+      );
   }
   return {
     start(

@@ -19,6 +19,8 @@ export type Stage =
   | 'conversation_model_preflight'
   | 'conversation_history_preflight'
   | 'conversation_dispatch'
+  | 'conversation_request_write_wait'
+  | 'conversation_lease_admission_wait'
   | 'conversation_run'
   | 'conversation_quick_press'
   | 'conversation_send_preparing'

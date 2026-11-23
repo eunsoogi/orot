@@ -31,6 +31,13 @@ final class OrotProviderDiagnostics: NSObject {
             NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=navigation stage=%@ outcome=%@", stage, outcome)
             return
         }
+        if stage == "conversation_request_write_wait" || stage == "conversation_lease_admission_wait" {
+            // These waits are not a grant or a provider receipt; no request identity is logged.
+            guard feature == "rag",
+                  ["started", "completed", "failed", "cancelled"].contains(outcome) else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=%@ outcome=%@", stage, outcome)
+            return
+        }
         guard ["rag", "disease", "visit", "daily_report", "storage"].contains(feature),
               ["report_sql_first", "report_sql_repeat", "report_sql_unscoped",
                "report_cache_pending_hit", "report_cache_committed_hit", "report_cache_new_key", "report_cache_generation_miss",
