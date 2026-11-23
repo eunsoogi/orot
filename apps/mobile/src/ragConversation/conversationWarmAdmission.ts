@@ -1,3 +1,4 @@
+import { captureConversationTemplateOwner } from './conversationTemplateOwner';
 import type { RagConversationObserver } from './conversationObserver';
 import type { ContinuousConversationStore } from './conversationSelectionReady';
 import type {
@@ -113,6 +114,18 @@ export function createConversationWarmAdmission(
             };
           return sender(question, history, signal, {
             ...observer,
+            ...(model
+              ? {
+                  templateProposalOwner: captureConversationTemplateOwner(
+                    store,
+                    options,
+                    epoch,
+                    model,
+                    signal,
+                    observer,
+                  ),
+                }
+              : {}),
             expectedConversationModel:
               model && warm
                 ? { ...model, isCurrent: current, isDurablyCurrent: recheck }

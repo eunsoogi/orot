@@ -24,6 +24,7 @@ export const reviewCopy = {
   cancelled: t('encounterReview.cancelled'),
   unavailable: t('encounterReview.unavailable'),
   'selection-required': t('encounterReview.selection-required'),
+  'transcript-too-long': t('encounterReview.transcript-too-long'),
   'no-transcript': t('encounterReview.no-transcript'),
   'consent-denied': t('encounterReview.consent-denied'),
 } as const;

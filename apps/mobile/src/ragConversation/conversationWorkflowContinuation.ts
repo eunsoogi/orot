@@ -1,4 +1,8 @@
 import {
+  conversationCheckpointPauseReason,
+  type ConversationCheckpointPauseReason,
+} from './conversationCheckpointInterruption';
+import {
   type EvidenceBatch,
   createMultiAgentPauseController,
   runMultiAgentWorkflow,
@@ -13,7 +17,7 @@ export interface ConversationWorkflowContinuation {
   readonly validateSelection?: (signal: AbortSignal) => Promise<void>;
   readonly bindPause: (requestPause: () => void) => void;
   readonly waitForContinue: (
-    reason?: 'expired' | 'decision-required',
+    reason?: ConversationCheckpointPauseReason,
   ) => Promise<boolean>;
   readonly persisted: {
     readonly checkpointer: NonNullable<
@@ -71,9 +75,9 @@ export async function runContinuableConversationWorkflow<T>(
     if (
       signal.aborted ||
       !(await continuation.waitForContinue(
-        result.checkpoint.awaitingAuthorization
-          ? 'decision-required'
-          : 'expired',
+        conversationCheckpointPauseReason(
+          result.checkpoint.awaitingAuthorization,
+        ),
       ))
     )
       return result;

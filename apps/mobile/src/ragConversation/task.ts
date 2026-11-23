@@ -1,6 +1,9 @@
 import { localConversationMemoryScope } from '../memory/authoredRoutineMemory';
 import { recordFirstResponsePrompt } from '../agent/execution/recordFirstResponsePrompt';
-import { withStructuredPossibilityReport } from './structuredPossibilityReport';
+import {
+  requestsRoutedPossibilityReport,
+  withStructuredPossibilityReport,
+} from './structuredPossibilityReport';
 import { validateConversationResult } from './conversationResultValidation';
 import { acceptsLocalPublicSearchFallback } from './publicSearchFallback';
 import type { JsonObject, LanguageModelMessage } from '@orot/model-runtime';
@@ -158,13 +161,24 @@ export const recordFirstConversationTaskV17 = {
   systemPrompt: `${recordFirstResponsePrompt} ${proactiveConversationTaskV16.systemPrompt}`,
 };
 
-// The new proposal grammar applies only to fresh requests; v17 restoration
-// keeps its original preference-only admission and checkpoint identity.
+const routedStructuredTask = withStructuredPossibilityReport(
+  legacyTask,
+  requestsRoutedPossibilityReport,
+);
+const modelRoutedConversationTask = withProactiveMemory(routedStructuredTask);
+export const modelRoutedConversationTaskV18 = {
+  ...modelRoutedConversationTask,
+  taskVersion: '18',
+  systemPrompt: `${recordFirstResponsePrompt} ${modelRoutedConversationTask.systemPrompt}`,
+};
+
+// Preserve the shipped v18 template contract for exact checkpoints. Only fresh
+// v19 turns can propose the separately enrolled authored-routine statement.
 export const ragConversationTask = {
   ...withProactiveMemory(
-    structuredConversationTask,
+    routedStructuredTask,
     value => localConversationMemoryScope(value) !== undefined,
   ),
-  taskVersion: '18',
-  systemPrompt: recordFirstConversationTaskV17.systemPrompt,
+  taskVersion: '19',
+  systemPrompt: modelRoutedConversationTaskV18.systemPrompt,
 };

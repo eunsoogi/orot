@@ -1,6 +1,9 @@
 import type { JsonObject, JsonValue } from '@orot/model-runtime';
 import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
-import type { TaskResponderContract } from '@orot/agent-runtime';
+import type {
+  TaskResponderContract,
+  TaskResponderInput,
+} from '@orot/agent-runtime';
 import { symptomSummaryTask } from './symptomSummaryTask';
 import { createSymptomSummarySchema } from './symptomSummarySchema';
 import type { DiseaseHypothesisAnalysis } from './types';
@@ -197,4 +200,34 @@ export function symptomSummaryTaskForProvider(providerId: string) {
       ? partitionedSymptomSummaryTask
       : symptomSummaryTask,
   );
+}
+
+/** The private Conversation summary has one source kind, so the runtime does not
+ * emit a result partition. Apply the same Apple schema locally after a real lookup,
+ * without partitioning the graph, changing tools or sending another model request. */
+export function healthSummaryTaskForProvider(providerId: string) {
+  const base = symptomSummaryTaskForProvider(providerId);
+  if (providerId !== APPLE_PROVIDER_ID) return base;
+  function privateResultInput(input: TaskResponderInput) {
+    if (input.resultPartition) return input;
+    const candidate: TaskResponderInput = {
+      ...input,
+      resultPartition: { sourceKind: 'personal_record', index: 0, total: 1 },
+    };
+    // The existing recognizer requires only known personal health_context sources,
+    // at least one meaningful local fact and a supported selector for each topic.
+    return appleRecordTopics(candidate) ? candidate : input;
+  }
+  return {
+    ...base,
+    taskVersion: `${base.taskVersion}.private1`,
+    createMessages: (input: TaskResponderInput) =>
+      base.createMessages(privateResultInput(input)),
+    createResultSchema: (input: TaskResponderInput) =>
+      base.createResultSchema?.(privateResultInput(input)) ?? base.resultSchema,
+    projectStreamedText: (raw: string, input: TaskResponderInput) =>
+      base.projectStreamedText?.(raw, privateResultInput(input)),
+    validateResult: (value: JsonValue, input: TaskResponderInput) =>
+      base.validateResult(value, privateResultInput(input)),
+  };
 }

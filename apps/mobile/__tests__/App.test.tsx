@@ -103,7 +103,10 @@ test('keeps Home compact and groups calendar and appointment management under Re
   ).toEqual(expect.objectContaining({ selected: true }));
   await waitFor(() => expect(loadAppointments).toHaveBeenCalledTimes(2));
 
-  await selectTab('schedule');
+  await selectTab('records');
+  const header = screen.getByTestId('records-hub-header');
+  await fireEvent.press(screen.getByTestId('records-section-schedule'));
+  expect(screen.getByTestId('records-hub-header')).toBe(header);
   expect(screen.queryByTestId('navigation-route-columns-route-1')).toBeNull();
   expect(screen.getByTestId('calendar-title')).toHaveTextContent('일정');
   expect(screen.queryByTestId('calendar-connect')).toBeNull();

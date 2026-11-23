@@ -25,8 +25,9 @@ enum GeneratedRecordsRoutesUITestConditions {
             XCTAssertTrue(UITestConditions.exists(row), app.debugDescription)
             try tap(row, in: app)
             XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "generated-report-detail")))
-            // Match the saved prose itself so the owning window and visible text are both checked.
-            let prose = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "generated-report-paragraph-", text)).firstMatch
+            // Match the rendered wording so the read-only template and owning window are both checked.
+            let textPrefix = key.hasPrefix("visit:") ? "next-visit-saved-question-text-" : "generated-report-paragraph-"
+            let prose = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", textPrefix, text)).firstMatch
             XCTAssertTrue(UITestConditions.exists(prose), app.debugDescription)
             try RoutesVisibleContentUITestConditions.prose(prose, expected: text, in: app)
             assertReadOnly(app)

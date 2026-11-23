@@ -11,7 +11,10 @@ export type AiWorkflowObserver = Pick<
 > &
   Pick<
     import('../ragConversation/conversationObserver').RagConversationObserver,
-    'onProviderReceipt' | 'expectedConversationModel' | 'onExecutionState'
+    | 'onProviderReceipt'
+    | 'expectedConversationModel'
+    | 'onExecutionState'
+    | 'suppressContextualOpening'
   >;
 
 /** Converts typed runtime phases to safe copy without showing search terms or evidence text. */

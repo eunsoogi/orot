@@ -11,11 +11,13 @@ import type {
 
 type NativeExecution = {
   begin(requestId: string): Promise<boolean>;
+  beginPreparation?(attemptId: string): Promise<boolean>;
   end(requestId: string): void;
   work?(requestId: string, active: boolean): void;
   answered?(requestId: string): void;
   committed?(requestId: string): void;
   isActive(requestId: string): Promise<boolean>;
+  isPauseCurrent?(requestId: string, warning: string): Promise<boolean>;
   protectedDataAvailable(): Promise<boolean>;
   addListener(event: string): void;
   removeListeners(count: number): void;
@@ -32,10 +34,18 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
     bridgeAvailable: true,
     currentPhase,
     begin: id => module.begin(id),
+    ...(typeof module.beginPreparation === 'function'
+      ? {
+          beginPreparation: async (id: string) =>
+            (await module.beginPreparation?.(id)) === true,
+        }
+      : {}),
     end: id => module.end(id),
     work: (id, active) => module.work?.(id, active),
     milestone: (id, stage) => module[stage]?.(id),
     isActive: id => module.isActive(id),
+    pauseStillCurrent: async (id, warning) =>
+      (await module.isPauseCurrent?.(id, warning)) === true,
     protectedDataAvailable: () => module.protectedDataAvailable(),
     subscribe(listener) {
       const subscription = emitter.addListener(
@@ -48,7 +58,8 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
             event.kind === 'continued' &&
             typeof event.requestId === 'string' &&
             (event.state === 'continued-granted' ||
-              event.state === 'continued-refused')
+              event.state === 'continued-refused' ||
+              event.state === 'continued-deferred-inactive')
           )
             listener({
               kind: 'continued',
@@ -57,11 +68,19 @@ export function conversationExecutionNative(): ConversationExecutionAdapter | nu
             });
           else if (
             event.kind === 'pause-requested' &&
-            typeof event.requestId === 'string'
+            typeof event.requestId === 'string' &&
+            typeof event.warning === 'string' &&
+            /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(event.warning)
           )
-            listener({ kind: 'pause-requested', requestId: event.requestId });
+            listener({
+              kind: 'pause-requested',
+              requestId: event.requestId,
+              warning: event.warning,
+            });
           else if (event.kind === 'foreground')
             listener({ kind: 'foreground' });
+          else if (event.kind === 'continuation-foreground')
+            listener({ kind: 'continuation-foreground' });
           else if (
             event.kind === 'expired' &&
             typeof event.requestId === 'string'

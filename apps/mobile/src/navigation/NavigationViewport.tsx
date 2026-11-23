@@ -47,9 +47,15 @@ export function NavigationViewport({
   const [actionFrame, setActionFrame] = useState<NavigationGeometryRect | null>(
     null,
   );
-  const [viewportBounds, setViewportBounds] =
-    useState<NavigationGeometryRect | null>(null);
+  const [measurement, setMeasurement] = useState<
+    [NavigationGeometryRect, symbol] | null
+  >(null);
   const geometry = useNavigationGeometry();
+  const { x, y, width, height } = geometry?.windowBounds ?? {};
+  const nativeFrame = [x, y, width, height].join(',');
+  const measurementOwner = useMemo(() => Symbol(nativeFrame), [nativeFrame]);
+  const viewportBounds =
+    measurement?.[1] === measurementOwner ? measurement[0] : null;
   const layout = useMemo(
     () => resolveNavigationRootLayout(geometry),
     [geometry],
@@ -164,9 +170,17 @@ export function NavigationViewport({
         <NavigationOcclusionContext.Provider value={occlusion}>
           <View
             style={styles.fill}
-            onLayout={({ nativeEvent }) =>
-              setViewportBounds(nativeEvent.layout)
-            }
+            onLayout={({ nativeEvent: { layout: bounds } }) => {
+              if (
+                bounds.width > 0 &&
+                bounds.height > 0 &&
+                [bounds.x, bounds.y, bounds.width, bounds.height].every(
+                  Number.isFinite,
+                )
+              ) {
+                setMeasurement([bounds, measurementOwner]);
+              }
+            }}
             testID="navigation-visible-viewport"
           >
             <View

@@ -22,19 +22,22 @@ test('persists ordered choices and rejects invalid selections without changing t
   await expect(
     saveOverviewMetricSelection(repository, ['sleep']),
   ).rejects.toThrow();
-  const fourMetrics = ['workouts', 'steps', 'sleep', 'bodyMass'] as const;
-  await expect(
-    saveOverviewMetricSelection(repository, overviewMetrics),
-  ).rejects.toThrow();
-  await saveOverviewMetricSelection(repository, fourMetrics);
+  const allMetrics = [
+    'workouts',
+    'steps',
+    'sleep',
+    'bodyMass',
+    'heartRate',
+  ] as const;
+  await saveOverviewMetricSelection(repository, allMetrics);
   await expect(loadOverviewMetricSelection(repository)).resolves.toEqual(
-    fourMetrics,
+    allMetrics,
   );
   await expect(
     saveOverviewMetricSelection(repository, ['sleep', 'sleep']),
   ).rejects.toThrow();
   await expect(loadOverviewMetricSelection(repository)).resolves.toEqual(
-    fourMetrics,
+    allMetrics,
   );
 });
 
@@ -60,17 +63,17 @@ test('restores ordered choices after closing and reopening SQLite', async () => 
   try {
     const first = createHealthEvidenceTestDatabase(path);
     await runMigrations(first.database);
-    await saveOverviewMetricSelection(createRecordRepository(first.database), [
-      'steps',
-      'sleep',
-    ]);
+    await saveOverviewMetricSelection(
+      createRecordRepository(first.database),
+      overviewMetrics,
+    );
     first.close();
     const reopened = createHealthEvidenceTestDatabase(path);
     try {
       await runMigrations(reopened.database);
       await expect(
         loadOverviewMetricSelection(createRecordRepository(reopened.database)),
-      ).resolves.toEqual(['steps', 'sleep']);
+      ).resolves.toEqual(overviewMetrics);
     } finally {
       reopened.close();
     }

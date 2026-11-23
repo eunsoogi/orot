@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render } from '@testing-library/react-native';
+import { render, screen } from '@testing-library/react-native';
 import { Animated, Text } from 'react-native';
 import { createNavigationController } from '../navigationController';
 import { NavigationRouteAdapter } from '../NavigationRouteAdapter';
@@ -23,9 +23,9 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
-test('uses nested content identity without changing the selected Records navigation tab', async () => {
+test('switches hub panes without a root fade but still fades between distinct root tabs', async () => {
   const controller = createNavigationController<'root'>('root');
-  const content = (contentKey: 'records' | 'schedule') => (
+  const content = (contentKey: 'records' | 'schedule' | 'overview') => (
     <NavigationMotionContext.Provider value={false}>
       <NavigationRouteAdapter
         controller={controller}
@@ -38,11 +38,24 @@ test('uses nested content identity without changing the selected Records navigat
   const view = await render(content('records'));
   const timing = jest.spyOn(Animated, 'timing');
   try {
+    const rootFade = () =>
+      timing.mock.calls.filter(
+        ([, config]) =>
+          config.toValue === 1 &&
+          config.duration === 100 &&
+          config.useNativeDriver,
+      );
     await view.rerender(content('schedule'));
-    expect(timing).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ toValue: 1 }),
-    );
+    expect(rootFade()).toHaveLength(0);
+    expect(screen.getByText('schedule')).toBeVisible();
+    expect(screen.queryByText('records')).toBeNull();
+
+    await view.rerender(content('records'));
+    expect(rootFade()).toHaveLength(0);
+    expect(screen.getByText('records')).toBeVisible();
+
+    await view.rerender(content('overview'));
+    expect(rootFade()).toHaveLength(1);
   } finally {
     timing.mockRestore();
   }

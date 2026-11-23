@@ -14,6 +14,7 @@ export function dailyConversationReportHeadings() {
     t('dailyReport.observations'),
     t('dailyReport.suggestedQuestions'),
     t('conversationTemplate.daily.scope'),
+    t('dailyReport.coverage.attention'),
   ];
 }
 

@@ -30,6 +30,7 @@ export function ProviderSelectionFooter({
   searchChoices,
   searchReviewStatus = 'ready',
   inlineConsent = true,
+  showSummary = true,
   onSearchChoices,
 }: {
   readonly option: ProviderSelectionOption | null | undefined;
@@ -41,6 +42,7 @@ export function ProviderSelectionFooter({
   readonly searchChoices?: SettingsSearchChoices;
   readonly searchReviewStatus?: 'ready' | 'loading' | 'unreadable';
   readonly inlineConsent?: boolean;
+  readonly showSummary?: boolean;
   readonly onSearchChoices?: (value: SettingsSearchChoices) => void;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
@@ -98,6 +100,7 @@ export function ProviderSelectionFooter({
         <ProviderSelectionConfirmation
           option={option}
           inlineConsent={inlineConsent}
+          summaryAbove={!showSummary}
           consentChoices={
             searchChoices && onSearchChoices ? (
               <SettingsSearchConsentChoices
@@ -119,26 +122,41 @@ export function ProviderSelectionFooter({
           {inlineConsent && remoteAvailable ? (
             <Text>{providerSelectionText.remotePrivacy}</Text>
           ) : null}
-          <ModelSelectionSummary
-            label={
-              message.startsWith(providerSelectionText.selectedPrefix)
-                ? providerSelectionText.selectedPrefix
-                : undefined
-            }
-            value={
-              message.startsWith(providerSelectionText.selectedPrefix)
-                ? message
-                    .slice(providerSelectionText.selectedPrefix.length)
-                    .trimStart()
-                : message
-            }
-            testID="provider-selection-current"
-          />
+          {showSummary ? (
+            <ProviderSelectionCurrentSummary message={message} />
+          ) : null}
           {!hasDock ? (
             <Button disabled title={t('modelSettings.confirmLanguage')} />
           ) : null}
         </>
       )}
     </View>
+  );
+}
+
+/** Present the same saved identity above or below the choices, without moving actions. */
+export function ProviderSelectionCurrentSummary({
+  message,
+  draft,
+}: {
+  readonly message: string;
+  readonly draft?: string;
+}) {
+  const prefix = providerSelectionText.selectedPrefix;
+  const selected = message.startsWith(prefix);
+  return (
+    <ModelSelectionSummary
+      label={
+        draft
+          ? t('modelSettings.selectedAiPrefix')
+          : selected
+            ? prefix
+            : undefined
+      }
+      value={
+        draft ?? (selected ? message.slice(prefix.length).trimStart() : message)
+      }
+      testID="provider-selection-current"
+    />
   );
 }

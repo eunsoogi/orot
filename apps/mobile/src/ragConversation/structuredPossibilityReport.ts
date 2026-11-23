@@ -36,6 +36,21 @@ export function requestsPossibilityReport(
   );
 }
 
+/** New live turns select a report from an approved app route, never from text. */
+export function requestsRoutedPossibilityReport(
+  input: Pick<TaskResponderInput, 'context'>,
+) {
+  const context = input.context;
+  return Boolean(
+    isObject(context) &&
+    !context.photoAttachment &&
+    context.intent === 'possibilities' &&
+    (context.explicitPossibilityChoice === true ||
+      (context.authoredCurrentRequest === true &&
+        context.typedPossibilityReport === true)),
+  );
+}
+
 function serializeReport(value: JsonValue): string | undefined {
   if (
     !isObject(value) ||
@@ -55,6 +70,7 @@ function serializeReport(value: JsonValue): string | undefined {
  * Legacy checkpoints keep their original task, schema and prompts through the version registry. */
 export function withStructuredPossibilityReport(
   base: TaskResponderContract<GroundedRagAnswer>,
+  recognize = requestsPossibilityReport,
 ): TaskResponderContract<GroundedRagAnswer> {
   return {
     ...base,
@@ -80,7 +96,7 @@ export function withStructuredPossibilityReport(
     },
     createMessages(input) {
       const messages = base.createMessages(input);
-      if (!requestsPossibilityReport(input)) return messages;
+      if (!recognize(input)) return messages;
       return messages.map(message => {
         if (message.role !== 'user' || typeof message.content !== 'string')
           return message;
@@ -94,7 +110,7 @@ export function withStructuredPossibilityReport(
     },
     createResultSchema(input): JsonObject {
       const schema = base.createResultSchema?.(input) ?? base.resultSchema!;
-      if (!requestsPossibilityReport(input)) return schema;
+      if (!recognize(input)) return schema;
       const properties = schema.properties as JsonObject;
       // Literature keeps its exact-source schema; the validator, not model prose, composes that report.
       if ('literature' in properties) return schema;
@@ -125,7 +141,7 @@ export function withStructuredPossibilityReport(
     },
     validateResult(value, input) {
       if (
-        !requestsPossibilityReport(input) ||
+        !recognize(input) ||
         !isObject(value) ||
         value.answerKind !== 'grounded'
       )

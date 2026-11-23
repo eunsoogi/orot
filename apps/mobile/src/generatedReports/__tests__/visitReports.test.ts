@@ -64,9 +64,16 @@ test('generated question records reopen with exact source restoration, not visit
     });
     const row = (await reader.list()).find(r => r.kind === 'visit_questions')!;
     expect(row.id).toBe('appointment');
-    expect(
-      (await reader.read(row, new AbortController().signal))?.paragraphs,
-    ).toContain('이전 대화를 확인할까요?');
+    const detail = await reader.read(row, new AbortController().signal);
+    expect(detail?.visitQuestions).toEqual([
+      {
+        id: 'question',
+        questionText: '이전 대화를 확인할까요?',
+        rationale: '저장된 대화의 내용을 확인해요.',
+        priority: 'routine',
+      },
+    ]);
+    expect(detail?.paragraphs).toEqual([]);
     await connection.database.execute(
       "DELETE FROM conversation_artifacts WHERE id='parent-turn'",
     );

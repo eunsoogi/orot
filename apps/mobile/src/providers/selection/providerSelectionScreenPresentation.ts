@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { appColors } from '../../layout/appColors';
+import { modelSettingsPageGap } from '../../layout/providerSettingsPresentation';
 import { providerSelectionText } from './text';
 import type {
   ProviderSelectionPresentation,
@@ -63,7 +64,7 @@ export const providerSelectionScreenStyles = StyleSheet.create({
   // Account rows and disclosures must remain scrollable in short viewports.
   container: {
     flexGrow: 1,
-    gap: 12,
+    gap: modelSettingsPageGap,
     padding: 20,
     backgroundColor: appColors.background,
   },

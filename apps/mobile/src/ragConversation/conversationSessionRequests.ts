@@ -1,3 +1,4 @@
+import { beginWarmDispatchTurn as beginTurn } from './conversationWarmDispatchReservation';
 import { hasShownUnsavedAnswer } from './conversationShownAnswerExpiry';
 import { finishConversationLiveRequest } from './finishConversationLiveRequest';
 import { liveConversationObservers } from './conversationLiveObservers';
@@ -19,7 +20,6 @@ import { bindRequestCancel } from './conversationRequestIdentity';
 import { ownsOutcome } from './conversationOutcomeOwnership';
 import { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
 import { createConversationRequestLifetime } from './conversationRequestLifetime';
-import type { createConversationTurnRetention as turnRetention } from './conversationTurnRetention';
 import { startConversationRetainedRequest as startRetainedRequest } from './conversationPhotoRequestStart';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
 import type { createConversationRequestPreview as requestPreview } from './conversationRequestPreview';
@@ -133,12 +133,12 @@ export function createConversationSessionRequests(
         controllers.get(id) === controller && !controller.signal.aborted;
       let memoryShown = false;
       let activity: turnActivity.ConversationTurnActivity | undefined;
-      let retained: ReturnType<typeof turnRetention> | undefined;
+      let retained: Awaited<ReturnType<typeof beginTurn>>;
       let preview: ReturnType<typeof requestPreview> | undefined;
       let photoInput: Awaited<ReturnType<typeof startRetainedRequest>>;
       try {
         retained = retention
-          ? await retention.beginTurn(id, controller.signal)
+          ? await beginTurn(retention, id, controller.signal, onSend)
           : undefined;
         if (current() && (retained || hasPhoto))
           photoInput = await startRetainedRequest({
@@ -198,7 +198,7 @@ export function createConversationSessionRequests(
         if (outcome.status === 'failure' || outcome.status === 'unavailable') {
           const kind =
             outcome.status === 'failure' ? outcome.kind : 'unavailable';
-          fail(getRagConversationFailureCopy(kind));
+          fail(kind);
           return;
         }
         if (outcome.status === 'answer')
@@ -225,8 +225,7 @@ export function createConversationSessionRequests(
           memory.show();
         }
       } catch {
-        if (current())
-          fail(copy.unavailable, getRagConversationFailureCopy('unavailable'));
+        if (current()) fail('unavailable', copy.unavailable);
       } finally {
         if (!memoryShown) memory?.discard();
         await finishConversationLiveRequest(ownership, {

@@ -1,3 +1,4 @@
+import { mayHaveConversationCheckpoint } from '../../../ragConversation/conversationCheckpointInterruption';
 import { installFixtureNativeSelection } from './conversationReceiptFixturePlatform';
 import {
   providerSuccess,
@@ -230,10 +231,8 @@ export function createReceiptTestApp(
       );
       expect(interrupted).toHaveLength(1);
       expect(
-        interrupted.some(
-          attempt =>
-            attempt.interruptionReason === 'expired' ||
-            attempt.interruptionReason === 'decision-required',
+        interrupted.some(attempt =>
+          mayHaveConversationCheckpoint(attempt.interruptionReason),
         ),
       ).toBe(false);
     },

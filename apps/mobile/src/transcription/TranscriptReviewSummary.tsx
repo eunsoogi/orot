@@ -16,7 +16,8 @@ function reviewSummaryLabel(
     segments.every(segment => segment.reviewState.status === 'reviewed')
   )
     return t('recording.transcript.review.reviewed');
-  return t('recording.transcript.review.unreviewed');
+  // This summary is shown for persisted text, even without a human review.
+  return t('recording.transcript.savedTranscript');
 }
 
 export default function TranscriptReviewSummary({

@@ -122,3 +122,90 @@ test('all scenes draw through the home area with safe end padding, then release 
   });
   expect(screen.getByTestId('end-clearance').props.children).toBe(16);
 });
+
+test('never publishes an empty measured viewport over a still-valid native window', async () => {
+  await render(
+    <NavigationGeometryProvider>
+      <NavigationViewport childHandlesSafeArea actionBar={<View />}>
+        <Probe />
+      </NavigationViewport>
+    </NavigationGeometryProvider>,
+  );
+  const sensor = screen.getByTestId('navigation-window-geometry-sensor');
+  const viewport = screen.getByTestId('navigation-visible-viewport');
+  const payload = {
+    ...openGeometry,
+    hasHinge: true,
+    navigationSide: 'right' as const,
+  };
+  const layout = (height: number) =>
+    fireEvent(viewport, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 951, height } },
+    });
+  const frame = () =>
+    JSON.parse(screen.getByTestId('shared-frame').props.children)
+      .availableContentFrame;
+  await fireEvent(sensor, 'geometryChange', { nativeEvent: payload });
+  await layout(669);
+  await fireEvent.press(screen.getByTestId('edit-draft'));
+  const draft = screen.getByText('edited');
+  expect(frame()).toEqual({ x: 0, y: 0, width: 867, height: 669 });
+
+  // Isolate the React receiving contract; this input is synthetic, not an
+  // observation that iOS emits it when leaving the real app switcher.
+  await layout(0);
+  await layout(Number.NaN);
+  expect(frame()).toEqual({ x: 0, y: 0, width: 867, height: 669 });
+  expect(screen.getByText('edited')).toBe(draft);
+
+  // The next real positive layout is still decisive (e.g. keyboard or a resize).
+  await layout(420);
+  expect(frame()).toEqual({ x: 0, y: 0, width: 867, height: 420 });
+});
+
+test('a replacement route and native resize do not inherit the prior constrained measurement', async () => {
+  function tree(route: string) {
+    return (
+      <NavigationGeometryProvider>
+        <NavigationViewport
+          key={route}
+          childHandlesSafeArea
+          actionBar={<View />}
+        >
+          <Probe />
+        </NavigationViewport>
+      </NavigationGeometryProvider>
+    );
+  }
+  const rendered = await render(tree('first'));
+  const sensor = screen.getByTestId('navigation-window-geometry-sensor');
+  const layout = (height: number) =>
+    fireEvent(screen.getByTestId('navigation-visible-viewport'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 951, height } },
+    });
+  const frameHeight = () =>
+    JSON.parse(screen.getByTestId('shared-frame').props.children)
+      .availableContentFrame.height;
+  await fireEvent(sensor, 'geometryChange', { nativeEvent: openGeometry });
+  await layout(420);
+  expect(frameHeight()).toBe(420);
+
+  await rendered.rerender(tree('second'));
+  await layout(0);
+  expect(frameHeight()).toBe(669);
+  await layout(400);
+  expect(frameHeight()).toBe(400);
+
+  await fireEvent(sensor, 'geometryChange', {
+    nativeEvent: {
+      ...openGeometry,
+      windowBounds: { ...openGeometry.windowBounds, height: 700 },
+    },
+  });
+  expect(frameHeight()).toBe(700);
+  await layout(0);
+  expect(frameHeight()).toBe(700);
+  // Returning to the old size does not resurrect the old cached measurement.
+  await fireEvent(sensor, 'geometryChange', { nativeEvent: openGeometry });
+  expect(frameHeight()).toBe(669);
+});

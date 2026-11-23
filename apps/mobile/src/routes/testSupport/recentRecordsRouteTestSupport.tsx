@@ -6,6 +6,7 @@ import { RecordSourceNavigationProvider } from '../RecordSourceNavigation';
 import { render } from '@testing-library/react-native';
 import { emptyCalendarAutoSyncState } from '../../calendar/calendarAutoSync';
 import { AppRouteContent } from '../AppRouteContent';
+import { RecordsHubSection } from '../RecordsHubSection';
 import type { AppRouteContentProps } from '../AppProps';
 import { appContentLayoutOwner } from '../../navigation/appContentLayoutPolicy';
 import { NavigationRouteAdapter } from '../../navigation/NavigationRouteAdapter';
@@ -84,14 +85,22 @@ export function renderRecords(
         <NavigationRouteAdapter
           controller={controller}
           contentLayoutOwner={appContentLayoutOwner}
-          scrollable
+          scrollable={route => route.name !== 'root'}
           rootTabs={route =>
             route.name === 'root'
               ? { activeTab: 'records', onSelect: jest.fn() }
               : undefined
           }
         >
-          {actions => <AppRouteContent {...props} actions={actions} />}
+          {actions =>
+            actions.route.name === 'root' ? (
+              <RecordsHubSection selected="records">
+                <AppRouteContent {...props} actions={actions} />
+              </RecordsHubSection>
+            ) : (
+              <AppRouteContent {...props} actions={actions} />
+            )
+          }
         </NavigationRouteAdapter>
       </RecordSourceNavigationProvider>
     </RecordsSourcePaging.Provider>,
