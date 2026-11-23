@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import {
   RefreshControl,
@@ -23,6 +24,7 @@ import { useNavigationContentInset } from './useNavigationContentInset';
 interface NavigationRouteScrollPosition {
   readonly preserve: () => void;
   readonly restore: () => void;
+  readonly suspendScroll: () => () => void;
 }
 
 const NavigationRouteScrollPositionContext =
@@ -31,6 +33,11 @@ const NavigationRouteScrollPositionContext =
 /** Returns scroll preservation for content that temporarily replaces a long route list. */
 export function useNavigationRouteScrollPosition() {
   return useContext(NavigationRouteScrollPositionContext);
+}
+
+/** Gives a live descendant gesture a temporary lock on this route's scroll host. */
+export function useNavigationRouteScrollSuspension() {
+  return useNavigationRouteScrollPosition()?.suspendScroll;
 }
 
 /** Lets route content fill its viewport and scroll behind the shared glass actions. */
@@ -46,6 +53,24 @@ export function NavigationRouteScrollView({
   const refresh = useNavigationRouteRefreshHost();
   const navigationInset = useNavigationContentInset();
   const scrollViewRef = useRef<ComponentRef<typeof ScrollView> | null>(null);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+  const scrollHolds = useRef(new Set<symbol>());
+  const suspendScroll = useCallback(() => {
+    const hold = Symbol();
+    scrollHolds.current.add(hold);
+    // Block native pan at grant, rather than waiting for React to commit.
+    scrollViewRef.current
+      ?.getNativeScrollRef()
+      ?.setNativeProps({ scrollEnabled: false });
+    setScrollEnabled(false);
+    return () => {
+      if (!scrollHolds.current.delete(hold) || scrollHolds.current.size) return;
+      scrollViewRef.current
+        ?.getNativeScrollRef()
+        ?.setNativeProps({ scrollEnabled: true });
+      setScrollEnabled(true);
+    };
+  }, []);
   const currentOffset = useRef(0);
   const preservedOffset = useRef<number | null>(null);
   const restoreFrame = useRef<number | null>(null);
@@ -65,7 +90,10 @@ export function NavigationRouteScrollView({
       preservedOffset.current = null;
     });
   }, []);
-  const position = useMemo(() => ({ preserve, restore }), [preserve, restore]);
+  const position = useMemo(
+    () => ({ preserve, restore, suspendScroll }),
+    [preserve, restore, suspendScroll],
+  );
   const updateCurrentOffset = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       currentOffset.current = event.nativeEvent.contentOffset.y;
@@ -101,6 +129,7 @@ export function NavigationRouteScrollView({
               />
             ) : undefined
           }
+          scrollEnabled={scrollEnabled}
           scrollEventThrottle={16}
           style={styles.fill}
           testID={testID}

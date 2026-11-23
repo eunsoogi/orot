@@ -84,6 +84,19 @@ export function OverviewMetricSelectionRoute({
         : [...(previous ?? []), metric],
     );
   };
+  const move = (metric: OverviewMetric, to: number) => {
+    if (!current() || savingRef.current) return;
+    setDraft(previous => {
+      if (!previous) return previous;
+      const from = previous.indexOf(metric);
+      if (from < 0 || to < 0 || to >= previous.length || from === to)
+        return previous;
+      const reordered = [...previous];
+      reordered.splice(from, 1);
+      reordered.splice(to, 0, metric);
+      return reordered;
+    });
+  };
   const cancel = async () => {
     if (current() && !savingRef.current) await actions.onBack();
   };
@@ -119,6 +132,7 @@ export function OverviewMetricSelectionRoute({
         <OverviewMetricSelectionEditor
           canSave={canSave}
           onCancel={cancel}
+          onMove={move}
           onSave={save}
           onToggle={toggle}
           saveError={saveError}
