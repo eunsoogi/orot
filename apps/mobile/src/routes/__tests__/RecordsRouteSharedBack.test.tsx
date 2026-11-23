@@ -113,7 +113,6 @@ test('saved medical source returns through the shared Back action without losing
     <NavigationRouteAdapter
       controller={controller}
       rootTabs={{ activeTab: 'records', onSelect: onSelectTab }}
-      scrollable
       surface={FallbackSurface}
     >
       {() => (
