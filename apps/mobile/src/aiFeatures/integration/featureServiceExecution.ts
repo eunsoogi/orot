@@ -50,6 +50,7 @@ export function toolsFor(
       snapshot,
       registry,
       allowHealthOverview: healthOverview,
+      observeRankedSearch: feature === 'rag',
       rag: data.rag,
       prepareChunks: (chunks, signal) =>
         indexChangedFeatureEvidence(data, { chunks }, signal),

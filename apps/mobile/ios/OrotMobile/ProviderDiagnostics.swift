@@ -60,6 +60,15 @@ final class OrotProviderDiagnostics: NSObject {
             NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=%@ outcome=%@", stage, outcome)
             return
         }
+        if stage.hasPrefix("personal_search_") {
+            // Self-contained opt-in await times, not CPU times or source receipts.
+            let phases = ["personal_search_snapshot", "personal_search_index", "personal_search_rank_adapter"]
+            guard feature == "rag", phases.contains(stage),
+                  let elapsed = Int(outcome), (0 ... 300_000).contains(elapsed),
+                  String(elapsed) == outcome else { return }
+            NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=rag stage=%@ elapsed_ms=%d", stage, elapsed)
+            return
+        }
         if stage == "tool_result_evidence_check" {
             // This opt-in Conversation span accepts only the start and end of a wait.
             guard feature == "rag", ["started", "completed"].contains(outcome) else { return }
