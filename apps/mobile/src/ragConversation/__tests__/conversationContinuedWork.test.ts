@@ -57,6 +57,9 @@ function setup(
     foreground: () => {
       phase = 'active';
     },
+    background: () => {
+      phase = 'background';
+    },
     async finishStart() {
       resolveStart();
       await start;
@@ -213,4 +216,28 @@ test('real native refusal survives decision revocation and approved work on the 
     [requestId, true],
     [requestId, false],
   ]);
+});
+
+test('known journal checkpoint leaves a real grant eligible but does not mask expiry', async () => {
+  const f = setup();
+  await f.finishStart();
+  const requestId = f.requestId();
+  f.event({ kind: 'continued', requestId, state: 'continued-granted' });
+  f.observer.onApprovalWait(true, 'checkpoint-only');
+  f.background();
+  f.event({ kind: 'phase' });
+  f.observer.onApprovalWait(false, 'checkpoint-only');
+  expect(f.work.mock.calls).toEqual([[requestId, true]]);
+  f.event({ kind: 'expired', requestId });
+  expect(f.interrupt).toHaveBeenCalledWith(1);
+});
+
+test('a paired machine checkpoint never clears a separate actual decision', async () => {
+  const f = setup();
+  await f.finishStart();
+  f.observer.onApprovalWait(true, 'checkpoint-only');
+  f.observer.onApprovalWait(true);
+  f.observer.onApprovalWait(false, 'checkpoint-only');
+  f.observer.onExecutionState('working');
+  expect(f.work.mock.calls.map(([, active]) => active)).toEqual([true, false]);
 });
