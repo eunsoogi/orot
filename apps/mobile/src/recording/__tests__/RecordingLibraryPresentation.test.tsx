@@ -112,7 +112,9 @@ test('shows saved audio review details, plays the recording and segment, and hid
   expect(screen.getByTestId('transcript-origin-0')).toHaveTextContent(
     '기계 전사',
   );
-  expect(screen.getByTestId('transcript-text-0')).toHaveTextContent(segment.text);
+  expect(screen.getByTestId('transcript-text-0')).toHaveTextContent(
+    segment.text,
+  );
   expect(screen.queryByText('speech_transcriber')).toBeNull();
   expect(screen.queryByText('iOS 27')).toBeNull();
 
