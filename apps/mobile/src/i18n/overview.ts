@@ -20,6 +20,12 @@ export const overviewKo = {
   'overview.metricChoose': '지표를 2개 이상 선택하세요.',
   'overview.metricSelectionLoadError': '선택한 지표를 불러오지 못했어요.',
   'overview.metricSelectionLoading': '선택한 지표를 불러오는 중…',
+  'overview.metricReorder': '{metric} 순서 변경',
+  'overview.metricReorderHint':
+    '손잡이를 드래그하거나 위 또는 아래로 이동하세요.',
+  'overview.metricMoveUp': '위로 이동',
+  'overview.metricMoveDown': '아래로 이동',
+  'overview.metricReorderPosition': '{position} / {total}',
   'overview.metricSelectedStatus': '한눈에 표시',
   'overview.metricUnselectedStatus': '표시 안 함',
   'overview.metricError': '건강 기록을 불러오지 못했어요.',
