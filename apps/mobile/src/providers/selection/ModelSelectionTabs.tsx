@@ -1,13 +1,15 @@
 import { CalendarModelSettingsPanel } from '../../calendarModelSettings/CalendarModelSettingsPanel';
 import type { ChatGPTAccountSetup, ProviderSelectionOption } from './types';
 import { t } from '../../i18n';
-import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useRef, useState, type ReactNode } from 'react';
+import { Pressable, StyleSheet, View, type HostInstance } from 'react-native';
 import { AppText as Text } from '../../layout/AppText';
 import { sectionTabStyles as tabs } from '../../layout/sectionTabPresentation';
 import { VoiceSettingsPanel } from '../../voiceSettings/VoiceSettingsPanel';
 import { NavigationInlineTransition } from '../../navigation/NavigationInlineTransition';
 import { providerSelectionScreenStyles } from './providerSelectionScreenPresentation';
+
+import { AdaptiveColumnsMeasurementRoot } from '../../layout/AdaptiveColumnsMeasurementRoot';
 
 const modelTabs = ['language', 'calendar', 'voice'] as const;
 type ModelTab = (typeof modelTabs)[number];
@@ -35,6 +37,7 @@ export function ModelSelectionTabs({
   readonly locked: boolean;
   readonly onOpenAccounts?: () => void;
 }) {
+  const viewport = useRef<HostInstance | null>(null);
   const [active, setActive] = useState<ModelTab>('language');
   const [visitedVoice, setVisitedVoice] = useState(false);
   const [calendarLocked, setCalendarLocked] = useState(false);
@@ -71,13 +74,22 @@ export function ModelSelectionTabs({
       {active === 'language' ? languageHeader : null}
       {/* Animate the incoming pane only. Keep the tabs and their keyboard/AX
           targets stationary, and do not remount the visited Voice settings. */}
-      <View style={styles.viewport} testID="model-tab-content-viewport">
+      <View
+        ref={viewport}
+        collapsable={false}
+        style={styles.viewport}
+        testID="model-tab-content-viewport"
+      >
         <NavigationInlineTransition
           transitionKey={active}
           depth={modelTabs.indexOf(active)}
           style={styles.body}
         >
-          {active === 'language' ? children : null}
+          {active === 'language' ? (
+            <AdaptiveColumnsMeasurementRoot.Provider value={viewport}>
+              {children}
+            </AdaptiveColumnsMeasurementRoot.Provider>
+          ) : null}
           {active === 'calendar' ? (
             <CalendarModelSettingsPanel
               options={calendarOptions}
@@ -106,8 +118,11 @@ export function ModelSelectionTabs({
   );
 }
 const styles = StyleSheet.create({
-  viewport: { overflow: 'hidden' },
+  viewport: { alignSelf: 'stretch', overflow: 'hidden' },
   // The Choices and Footer were previously separate children of this ScrollView.
-  body: { gap: providerSelectionScreenStyles.container.gap },
+  body: {
+    alignSelf: 'stretch',
+    gap: providerSelectionScreenStyles.container.gap,
+  },
   hidden: { display: 'none' },
 });

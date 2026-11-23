@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import type { HostInstance } from 'react-native';
@@ -11,6 +18,8 @@ import {
   resolveAdaptiveColumns,
   type AdaptiveColumnsPlan,
 } from './adaptiveColumnsPlan';
+
+import { AdaptiveColumnsMeasurementRoot } from './AdaptiveColumnsMeasurementRoot';
 
 export interface AdaptiveColumnsProps {
   readonly primary: ReactNode;
@@ -49,18 +58,28 @@ export function AdaptiveColumns({
     useNavigationContentFrame()?.availableContentFrame ??
     geometry?.safeAreaFrame;
   const hostRef = useRef<HostInstance | null>(null);
+  const stationaryRoot = useContext(AdaptiveColumnsMeasurementRoot);
+  const measurement = useRef(0);
   const [measuredBounds, setMeasuredBounds] = useState<{
     readonly x: number;
     readonly width: number;
   } | null>(null);
   const hasSecondary = secondary !== undefined && secondary !== null;
   const measureHost = useCallback(() => {
-    const host = hostRef.current;
+    const root = stationaryRoot ?? hostRef;
+    const host = root.current;
+    const request = ++measurement.current;
     if (!host) return;
 
     // Native geometry uses window coordinates, so local layout offsets are not interchangeable.
     host.measureInWindow((x, _y, nextWidth) => {
-      if (!Number.isFinite(x) || !Number.isFinite(nextWidth) || nextWidth <= 0)
+      if (
+        request !== measurement.current ||
+        host !== root.current ||
+        !Number.isFinite(x) ||
+        !Number.isFinite(nextWidth) ||
+        nextWidth <= 0
+      )
         return;
       setMeasuredBounds(previous =>
         previous !== null &&
@@ -70,7 +89,7 @@ export function AdaptiveColumns({
           : { x, width: nextWidth },
       );
     });
-  }, []);
+  }, [stationaryRoot]);
   const plan = useMemo(
     () =>
       resolveAdaptiveColumns({
