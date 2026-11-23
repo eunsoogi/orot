@@ -1,3 +1,4 @@
+import { hasConversationMemoryCommand } from '../../manualHistory/conversationHistoryIntent';
 import { conversationTemplateTarget } from './conversationTemplateTarget';
 import { proposeConversationTemplate } from './conversationTemplateProposal';
 import { trySaveExplicitConversationMemory } from './saveExplicitConversationMemory';
@@ -85,6 +86,16 @@ export function createConversationSummaryIntegration(input: {
       const [question, history, signal, originalObserver, originalContext] =
         args;
       const operationSignal = signal ?? new AbortController().signal;
+      if (originalObserver?.selectedRecordingTranscript) {
+        // An attachment cannot inherit an unrelated feature or local-memory action.
+        // Explicit local commands must not fall through to a remote recipient.
+        if (operationSignal.aborted || hasConversationMemoryCommand(question))
+          return {
+            status: 'failure',
+            kind: operationSignal.aborted ? 'cancelled' : 'validation_failed',
+          } as const;
+        return input.sendRagMessage(...args);
+      }
       const localMemory = trySaveExplicitConversationMemory(
         question,
         originalObserver,

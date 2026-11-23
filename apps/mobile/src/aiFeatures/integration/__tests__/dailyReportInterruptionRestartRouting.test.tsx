@@ -27,8 +27,7 @@ import {
   reportService,
 } from '../testSupport/dailyReportFailureStageFixtures';
 
-// Actual screen restart routing after a synthetic OS interruption of the real daily service.
-// Confirmed replacement calls the real coordinator/service with an in-memory model only.
+// Real Daily Report restart routing after a synthetic interruption, with an in-memory model.
 test.each(['same-day', 'changed-day'] as const)(
   'confirmed daily restart preserves scope and current-day dispatch fence: %s',
   async boundary => {
