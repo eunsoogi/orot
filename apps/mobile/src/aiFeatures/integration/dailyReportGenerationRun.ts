@@ -1,3 +1,4 @@
+import { dailyReportLiveCommit } from './dailyReportLiveCommit';
 import { persistDailyReportCandidate } from './dailyReportCandidatePersistence';
 import { conversationReceiptSelection as observeSelection } from './conversationReceiptSelection';
 import { withDailyReportOpening as openingFor } from './dailyReportOpening';
@@ -14,7 +15,7 @@ import {
   type SelectedAiResolution,
 } from './provider';
 import { dailyReportFacts } from './dailyReportFacts';
-import { dailyReportAnalysis } from './dailyReportAnalysis';
+import { dailyReportAnalysis, reportObservations } from './dailyReportAnalysis';
 import { fingerprint } from './evidenceUtils';
 import { reportFailureOutcome as failureOutcome } from './dailyReportFailureDiagnostics';
 import type {
@@ -186,12 +187,7 @@ export async function generateDailyReportWithCalendar(
     schemaVersion: 1 as const,
     identity: context.identity,
     generatedAt: input.now(),
-    observations: [...new Set([...required, ...selection.indexes])]
-      .slice(0, 8)
-      .map(index => ({
-        text: facts[index]!.text,
-        sourceReferences: facts[index]!.sourceReferences,
-      })),
+    observations: reportObservations(facts, required, selection.indexes),
     supportedContext: dailyReportAnalysis(
       snapshot.values,
       snapshot.sourceSnapshot.records.slice(0, snapshot.values.length),
@@ -242,9 +238,8 @@ export async function generateDailyReportWithCalendar(
     // Persistence already ran; the route must recheck saved content even if Stop raced this lookup.
     return fail('source_unconfirmed_after_dispatch');
   }
-  // A committed report remains in local history, but a superseded run must not emit it live.
   if (saved.liveAfterReproof?.() === false) return fail('cancelled');
   providerDiagnostic('daily_report', 'persistence', 'completed');
   providerDiagnostic('daily_report', 'workflow', 'result');
-  return { ...result, runId, context: saved.context };
+  return dailyReportLiveCommit(result, runId, saved);
 }

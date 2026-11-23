@@ -6,6 +6,9 @@ type Event =
   | 'pause-requested'
   | 'foreground-check-started'
   | 'foreground-check-passed'
+  | 'foreground-lease-unavailable'
+  | 'startup-lease-unavailable'
+  | 'native-expiration'
   | 'stop-received'
   | 'abort-dispatched'
   | 'stop-awaiting-commit'
@@ -14,6 +17,9 @@ type Event =
   | 'outcome'
   | 'continued-granted'
   | 'continued-refused'
+  | 'continued-deferred-inactive'
+  | 'continuation-foreground'
+  | 'workflow-checkpoint-paused'
   | 'begin'
   | 'acquired'
   | 'denied'
@@ -35,6 +41,9 @@ const events = new Set<Event>([
   'pause-requested',
   'foreground-check-started',
   'foreground-check-passed',
+  'foreground-lease-unavailable',
+  'startup-lease-unavailable',
+  'native-expiration',
   'stop-received',
   'abort-dispatched',
   'stop-awaiting-commit',
@@ -43,6 +52,9 @@ const events = new Set<Event>([
   'outcome',
   'continued-granted',
   'continued-refused',
+  'continued-deferred-inactive',
+  'continuation-foreground',
+  'workflow-checkpoint-paused',
   'begin',
   'acquired',
   'denied',
@@ -53,6 +65,7 @@ const events = new Set<Event>([
 ]);
 const reasons = new Set<ConversationRecoveryReason>([
   'decision-required',
+  'background-paused',
   'expired',
   'protected-data',
   'bridge-unavailable',

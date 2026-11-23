@@ -139,7 +139,7 @@ test('Duo remains opt-in with its exact native test inventory', () => {
     'OrotUITests/AppointmentsUITests/testSavedAppointmentIdentitySurvivesAppearanceEditAndRestart',
     classificationReflow,
     'OrotUITests/AppointmentConsentUITests/testClassificationReturnsThroughScheduleToHome',
-    'OrotUITests/AppointmentConsentUITests/testApprovedBatchesExposeMeasuredProgressAndAllResultPages',
+    'OrotUITests/AppointmentConsentUITests/testApprovedBatchesExposeMeasuredProgressAndScrollableResults',
     'OrotUITests/AppointmentConsentUITests/testWideLargeTextReaderPreservesContentAndNativeDismissal',
     manualAppointmentReflow,
     contextualDeparture,

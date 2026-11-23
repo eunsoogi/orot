@@ -84,22 +84,21 @@ extension AppointmentsUITests {
         let header = UITestConditions.element(app, "appointment-header-\(appointmentID)")
         XCTAssertTrue(reminderRow.exists && !reminderRow.frame.isEmpty, app.debugDescription)
         XCTAssertTrue(header.exists && header.frame.contains(headerEdit.frame), app.debugDescription)
-        // Standard text keeps equal-height detail actions on one native row with full touch targets.
+        // The compact reminder pair stays on one row; the destructive action owns a distinct lane.
         for action in [oneHourReminder, oneDayReminder, cancelAction] {
+            FormUITestConditions.reveal(action, in: app, scrollID: "appointments-scroll")
             XCTAssertTrue(action.exists && action.isHittable, app.debugDescription)
             XCTAssertGreaterThanOrEqual(action.frame.width, 44, app.debugDescription)
             XCTAssertGreaterThanOrEqual(action.frame.height, 44, app.debugDescription)
         }
         XCTAssertEqual(oneHourReminder.frame.width, oneDayReminder.frame.width, accuracy: 1, app.debugDescription)
-        XCTAssertEqual(oneDayReminder.frame.width, cancelAction.frame.width, accuracy: 1, app.debugDescription)
         XCTAssertEqual(oneHourReminder.frame.height, oneDayReminder.frame.height, accuracy: 1, app.debugDescription)
-        XCTAssertEqual(oneDayReminder.frame.height, cancelAction.frame.height, accuracy: 1, app.debugDescription)
         XCTAssertEqual(oneHourReminder.frame.midY, oneDayReminder.frame.midY, accuracy: 1, app.debugDescription)
-        XCTAssertEqual(oneDayReminder.frame.midY, cancelAction.frame.midY, accuracy: 1, app.debugDescription)
         XCTAssertLessThanOrEqual(oneHourReminder.frame.maxX, oneDayReminder.frame.minX + 1, app.debugDescription)
-        XCTAssertLessThanOrEqual(oneDayReminder.frame.maxX, cancelAction.frame.minX + 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(reminderRow.frame.maxY, cancelAction.frame.minY + 1, app.debugDescription)
 
         let edit = app.buttons["수정"]
+        FormUITestConditions.reveal(edit, in: app, scrollID: "appointments-scroll", towardTop: true)
         XCTAssertTrue(edit.exists && edit.isHittable)
         edit.tap()
         fill(app, clinic: updatedClinic, date: "2027-06-03", time: "10:15", note: "")
@@ -107,6 +106,7 @@ extension AppointmentsUITests {
         visible(app, "2027년 6월 3일 10:15 · 현지 시간")
         visible(app, "일정 변경")
         let cancel = app.buttons["\(updatedClinic) 예약 취소"]
+        FormUITestConditions.reveal(cancel, in: app, scrollID: "appointments-scroll")
         XCTAssertTrue(cancel.exists && cancel.isHittable)
         cancel.tap()
         let confirmation = app.alerts.firstMatch

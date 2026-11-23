@@ -36,6 +36,19 @@ export interface ConversationSessionOptions {
     model: { providerId: string; modelId: string };
     selectionCurrent?: () => boolean;
   }>;
+  /** A synchronous local owner witness, never permission to dispatch inference. */
+  readonly captureWarmExecution?: (lease: {
+    id: string;
+    version: number;
+  }) => (() => boolean) | undefined;
+  /** Read-only proof of an already-admitted native ChatGPT owner, not remote eligibility. */
+  readonly prepareWarmSend?: (
+    lease: { readonly id: string; readonly version: number },
+    signal: AbortSignal,
+  ) => Promise<
+    | import('./conversationWarmAdmission').WarmConversationSelectionProof
+    | undefined
+  >;
   readonly restoreSteering?: (
     sessionId: string,
     requestId: string,
@@ -73,6 +86,7 @@ export interface ConversationSessionOptions {
   readonly resolveTreatmentSource?: import('../treatmentContext/treatmentSourceLinks').ResolveTreatmentSource;
   readonly retention?: Omit<
     Retention,
+    | 'reserveWarmTurn'
     | 'beginSession'
     | 'saveTaskCard'
     | 'discardUnpublished'
@@ -83,6 +97,7 @@ export interface ConversationSessionOptions {
     Partial<
       Pick<
         Retention,
+        | 'reserveWarmTurn'
         | 'beginSession'
         | 'saveTaskCard'
         | 'discardUnpublished'
@@ -140,6 +155,7 @@ export type PendingTurn = {
   committed: boolean;
   summarySaving: boolean;
   summaryCommitted: boolean;
+  readonly liveFinalResponseId?: number;
   readonly coldResponseId?: number;
   coldStopping?: boolean;
   readonly stopCold?: () => void;
@@ -212,3 +228,8 @@ export interface ConversationSession {
   readonly dailyReport?: NonNullable<ConversationEntryContext['dailyReport']>;
   readonly taskCards?: readonly import('./conversationTaskState').RetainedConversationTask[];
 }
+
+export type BindConversationSender = (
+  sender: ConversationSender,
+  warm?: import('./conversationWarmAdmission').WarmConversationPreparation,
+) => ConversationSender;

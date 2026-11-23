@@ -33,6 +33,7 @@ export function conversationHistoryPayload(
       message =>
         !message.incomplete &&
         !message.historyUnavailable &&
+        !message.localClarification &&
         !(
           message.failed &&
           message.role === 'user' &&
@@ -56,6 +57,7 @@ export function retainedHistoryTurns(
     message =>
       !message.incomplete &&
       !message.historyUnavailable &&
+      !message.localClarification &&
       !(
         message.failed &&
         message.role === 'user' &&

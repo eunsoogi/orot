@@ -13,7 +13,7 @@ import {
 import { createConversationSessionRetention } from '../../ragConversation/conversationSessionRetention';
 import { conversationSavedHistoryDisplayOption } from '../../aiFeatures/integration/conversationSavedHistoryDisplayOption';
 import { openSavedGeneratedReportReferences } from '../../memory/openSavedGeneratedReportReferences';
-import { SavedGeneratedReportDetail } from '../../memory/SavedGeneratedReportDetail';
+import { SavedMemoryDetail } from '../../memory/SavedMemoryDetail';
 import type { ConversationArtifact } from '../conversationArtifactTypes';
 import type { createConversationArtifactStorage } from '../conversationArtifactStorage';
 
@@ -84,6 +84,12 @@ export async function expectReportBookmarkMounted(
     expect(
       await screen.findByText('Synthetic answer based on revision one.'),
     ).toBeTruthy();
+    expect(
+      screen.queryByTestId('conversation-bookmark-generated-report'),
+    ).toBeNull();
+    expect(await conversations.listSavedGeneratedReportReferences()).toEqual(
+      [],
+    );
     const original = await conversations.read(historical.id);
     expect(original?.dailyReport).toBeDefined();
     const bookmark = jest.spyOn(conversations, 'bookmarkDailyReport');
@@ -119,21 +125,26 @@ export async function expectReportBookmarkMounted(
         expect(alert).toHaveBeenCalledWith('보고서 링크를 기억에 보관했어요.'),
       );
       expect(screen.getByTestId('rag-conversation-input').props.value).toBe('');
-      await fireEvent.press(
-        await screen.findByTestId('conversation-bookmark-generated-report'),
-      );
-      await waitFor(() =>
-        expect(
-          screen.getByText('보고서 링크를 기억에 보관했어요.'),
-        ).toBeTruthy(),
-      );
     } finally {
       alert.mockRestore();
       bookmark.mockRestore();
     }
     expect(onSend).not.toHaveBeenCalled();
     await view.rerender(
-      <SavedGeneratedReportDetail artifactId={historical.id} />,
+      <SavedMemoryDetail
+        memoryId={'generated-report:' + historical.id}
+        load={async () =>
+          (await conversations.listSavedGeneratedReportReferences()).map(
+            row => ({
+              sourceKind: 'saved_generated_report',
+              id: 'generated-report:' + row.artifactId,
+              artifactId: row.artifactId,
+              text: 'Synthetic report reference',
+              createdAt: Date.parse(row.savedAt),
+            }),
+          )
+        }
+      />,
     );
     expect(await screen.findByText('AI가 만든 일일 보고서')).toBeTruthy();
     expect(await screen.findByText(/Original report/)).toBeTruthy();

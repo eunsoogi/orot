@@ -21,10 +21,11 @@ export async function resolveConversationSelection(
   observer: RagConversationObserver | undefined,
   resolve: () => Promise<ReturnType<typeof requireSelectedAi>>,
 ) {
-  const selected = conversationReceiptSelection(
-    await withProviderStage('rag', 'selection', resolve),
-    observer,
-  );
+  const ready = await withProviderStage('rag', 'selection', resolve);
+  const owner = observer?.expectedConversationModel?.isDurablyCurrent;
+  if (owner && !(await owner()))
+    throw new Error('The conversation owner changed before consent.');
+  const selected = conversationReceiptSelection(ready, observer);
   return voiceSelectionMatches(observer, selected) ? selected : null;
 }
 

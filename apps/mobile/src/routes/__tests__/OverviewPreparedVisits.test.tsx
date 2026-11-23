@@ -4,8 +4,10 @@ import { OverviewPreparedVisits } from '../OverviewPreparedVisits';
 import { ManualVisitTargetPanels } from '../../ragConversation/ManualVisitTargetPanels';
 
 let mockFocused = true;
+let mockMessages: readonly unknown[] = [];
 const initialAppState = AppState.currentState;
 beforeEach(() => {
+  mockMessages = [];
   AppState.currentState = 'active';
 });
 afterEach(() => {
@@ -47,7 +49,7 @@ jest.mock('../../ragConversation/ConversationSessionsContext', () => ({
 jest.mock('../../ragConversation/useConversationPresentationSnapshot', () => ({
   useConversationPresentationSnapshot: () => ({
     activeId: 0,
-    sessions: [session],
+    sessions: [{ ...session, messages: mockMessages }],
   }),
 }));
 
@@ -93,4 +95,31 @@ test('conversation retains recap results without duplicating the moved preparati
   );
   expect(screen.getByText('recap:synthetic-visit')).toBeTruthy();
   expect(screen.queryByText('prepared:synthetic-visit')).toBeNull();
+});
+
+test('only reads the appointment actually shown by Overview, not another conversation visit', async () => {
+  mockMessages = [
+    {
+      visitQuestions: {
+        appointment: { id: 'december-visit' },
+        review: { expectedSavedQuestions: [] },
+      },
+    },
+  ];
+  const listener = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockReturnValue({ remove: jest.fn() });
+  const view = await render(
+    <OverviewPreparedVisits appointmentId="earlier-visit" />,
+  );
+  try {
+    expect(screen.getByText('prepared:earlier-visit')).toBeTruthy();
+    expect(screen.queryByText('prepared:december-visit')).toBeNull();
+    await view.rerender(<OverviewPreparedVisits />);
+    expect(screen.queryByText('prepared:earlier-visit')).toBeNull();
+    expect(screen.queryByText('prepared:december-visit')).toBeNull();
+  } finally {
+    await view.unmount();
+    listener.mockRestore();
+  }
 });

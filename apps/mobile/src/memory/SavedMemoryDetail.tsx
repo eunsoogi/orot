@@ -1,6 +1,7 @@
 import { SavedGeneratedReportDetail } from './SavedGeneratedReportDetail';
 import { SavedMemoryContent } from './SavedMemoryContent';
 import { useNavigationLeaveStateRegistration } from '../navigation';
+import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import { useState } from 'react';
 import { HistoryMemoryDetail } from './HistoryMemoryDetail';
 import {
@@ -17,10 +18,12 @@ import { savedMemoryStyles as styles } from './savedMemoryStyles';
 export function SavedMemoryDetail({
   memoryId,
   active = true,
+  ownership,
   load,
 }: {
   readonly active?: boolean;
   readonly memoryId?: string;
+  readonly ownership?: NavigationRouteOwnership;
   readonly load?: () => Promise<SavedMemory[]>;
 }) {
   const [correctionTarget, setCorrectionTarget] = useState<{
@@ -32,7 +35,12 @@ export function SavedMemoryDetail({
     correctionTarget && correctionTarget.original === memoryId
       ? correctionTarget.id
       : memoryId;
-  const { rows, state, refresh } = useSavedMemories(load, active);
+  const { rows, state, refresh, readyRead } = useSavedMemories(
+    load,
+    active,
+    ownership,
+    selectedId,
+  );
   const row = rows.find(value => value.id === selectedId);
   return (
     <View
@@ -85,8 +93,13 @@ export function SavedMemoryDetail({
           }}
         />
       )}
-      {row && isGeneratedReportMemory(row) && (
-        <SavedGeneratedReportDetail key={row.id} artifactId={row.artifactId} />
+      {readyRead && row && isGeneratedReportMemory(row) && (
+        <SavedGeneratedReportDetail
+          key={JSON.stringify([readyRead.request, row.id])}
+          artifactId={row.artifactId}
+          reportKind={row.reportKind}
+          isReadCurrent={readyRead.isCurrent}
+        />
       )}
       {row && !isHistoryMemory(row) && !isGeneratedReportMemory(row) && (
         <SavedMemoryContent memory={row} />

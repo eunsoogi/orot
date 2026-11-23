@@ -32,8 +32,10 @@ test('caps the preview at two lines and preserves full text and detail navigatio
   const button = screen.getByRole('button', { name: new RegExp(label) });
   expect(button.props.testID).toBe(`saved-memory-entry-${row.id}`);
   expect(button.props.accessibilityLabel).toContain(label);
-  expect(button).toHaveStyle({ minHeight: 44, paddingVertical: 8 });
-  expect(screen.getByTestId('saved-memory-browser')).toHaveStyle({ gap: 4 });
+  expect(button).toHaveStyle({ minHeight: 44, paddingVertical: 14 });
+  expect(screen.getByTestId('saved-memory-rows')).toHaveStyle({
+    paddingHorizontal: 12,
+  });
   await fireEvent.press(button);
   expect(open).toHaveBeenCalledWith(row.id);
   expect(row.text).toBe(text);

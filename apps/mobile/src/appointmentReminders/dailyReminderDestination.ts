@@ -27,7 +27,11 @@ export function createDailyReminderDestination(port: {
 }) {
   let queue = Promise.resolve();
   const consumed = new Set<string>();
+  // Retain authority only for the live native tap this instance actually accepted.
+  // Passive restoration after restart has no right to synthesize a request.
+  let liveTap: string | null = null;
   const consume = async (entryKey: string) => {
+    if (liveTap === entryKey) liveTap = null;
     consumed.add(entryKey);
     // Opening can persist a session binding; never overwrite it with the pre-open copy.
     const latest = await port.read();
@@ -58,8 +62,10 @@ export function createDailyReminderDestination(port: {
         // Keep a second tap in the native inbox while an earlier report route is active.
         if (port.canOpen && !port.canOpen(entry)) return 'busy' as const;
         // Save before navigation: a crash before inbox acknowledgement can restore this intent.
-        if (previous?.entry.entryKey !== entry.entryKey)
+        if (previous?.entry.entryKey !== entry.entryKey) {
           await port.write({ entry, active: true });
+          liveTap = entry.entryKey;
+        }
         let publish: (() => void) | undefined;
         const prepareFresh = (offer: () => void) => {
           publish = offer;
@@ -67,9 +73,10 @@ export function createDailyReminderDestination(port: {
         const openedEntry =
           previous?.entry.entryKey === entry.entryKey ? previous.entry : entry;
         const result =
-          previous?.entry.entryKey !== entry.entryKey && port.consumeOnOpened
+          liveTap === entry.entryKey && port.consumeOnOpened
             ? await port.open(openedEntry, prepareFresh)
             : await port.open(openedEntry);
+        if (result !== 'busy' && liveTap === entry.entryKey) liveTap = null;
         if (result === 'opened' && port.consumeOnOpened) {
           // At most once: a restart after consumption never synthesizes an offer.
           if (await consume(entry.entryKey)) publish?.();
@@ -105,8 +112,10 @@ export function createDailyReminderDestination(port: {
     dismiss: (entryKey: string) =>
       serial(async () => {
         const previous = await port.read();
-        if (previous?.active && previous.entry.entryKey === entryKey)
+        if (previous?.active && previous.entry.entryKey === entryKey) {
+          if (liveTap === entryKey) liveTap = null;
           await port.write({ ...previous, active: false });
+        }
       }),
     select: (entryKey: string, request: DailyReportContextRequest) =>
       serial(async () => {

@@ -43,7 +43,6 @@ beforeEach(() => chartPlot.mockClear());
 
 test.each([
   ['sleep', 'min', 70.4, 70],
-  ['heartRate', 'count/min', 70.25, 70.3],
   ['bodyMass', 'kg', 70.25, 70.3],
   ['steps', 'count', 70.6, 71],
 ] as const)(
@@ -92,6 +91,28 @@ test.each([
     );
   },
 );
+
+test('routes daily heart extrema and an unrounded mean to the range renderer', async () => {
+  const metric = projection('heartRate', 70.25);
+  // Rounding the mean to Home text precision would put it above this range.
+  const range = { minimum: 70.24, maximum: 70.26, samples: 2 };
+  await render(
+    <OverviewMetricCard
+      metric={{ ...metric, days: [{ ...metric.days[0]!, range }] }}
+      width={320}
+    />,
+  );
+  expect(chartPlot).toHaveBeenCalledTimes(1);
+  const props = chartPlot.mock.calls.at(-1)?.[0];
+  expect(props).toMatchObject({ kind: 'range', height: 112 });
+  expect(props?.data.metric).toBe('heartRate');
+  expect(props?.data.coverage.status).toBe('ready');
+  expect(props?.data.series[0]).toMatchObject({
+    unit: 'count/min',
+    points: [{ x: '2026-10-14', value: 70.25, range, source: '건강 기록' }],
+  });
+  expect(JSON.stringify(props?.data)).not.toContain('Synthetic Watch App');
+});
 
 test('keeps zero, missing days, constant values, outliers and partial today distinct', () => {
   const metric = {

@@ -41,6 +41,10 @@ final class NavigationGlassSurfaceView: UIView {
         didSet { updatePresentation() }
     }
 
+    @objc var railBackTopInset: CGFloat = -1 {
+        didSet { updatePresentation() }
+    }
+
     @objc var railBottomInset: CGFloat = 0 {
         didSet { updatePresentation() }
     }
@@ -121,7 +125,12 @@ final class NavigationGlassSurfaceView: UIView {
 
     override func layoutSubviews() {
         let host = layoutMode != "bottom" ? windowRailHost.mount(for: self, availableHeight: railAvailableHeight, side: layoutMode, width: NavigationRootGlassBar.exteriorWidth + railRightInset) : nil
-        if rootBar.superview !== (host ?? self) {
+        // A resize can reclamp the same portal before React changes any props.
+        // Compare the exact anchor, not the frame, so a stable layout cannot reschedule itself.
+        let rightPortalTopChanged = host.map {
+            layoutMode == "right" && contextualRailTop(hostHeight: $0.bounds.height, mountedToWindow: true) != railPlacementConstraints[6].constant
+        } ?? false
+        if rootBar.superview !== (host ?? self) || rightPortalTopChanged {
             updatePresentation()
         }
         super.layoutSubviews()
@@ -206,18 +215,10 @@ final class NavigationGlassSurfaceView: UIView {
         railPlacementConstraints[3].constant = -railBottomInset
         railPlacementConstraints[4].constant = layoutMode == "left" ? railRightInset : 0
         railPlacementConstraints[5].constant = layoutMode == "left" ? -max(0, host.bounds.width - NavigationRootGlassBar.exteriorWidth - railRightInset) : -railRightInset
-        if usesRightRail,
-           renderedActions.contains(where: \.rootTab),
-           renderedActions.contains(where: { $0.id == "back" })
-        {
-            // Anchor Back 4pt above the uncompressed root bar, including any page-action offset.
-            let rootTopY = host.bounds.height - railBottomInset - rootBar.railHeight
-            railPlacementConstraints[6].constant =
-                rootTopY -
-                NavigationRootGlassBar.contextualBackGroupHeight
-        } else {
-            railPlacementConstraints[6].constant = railTopInset
-        }
+        railPlacementConstraints[6].constant = contextualRailTop(
+            hostHeight: host.bounds.height,
+            mountedToWindow: host === windowRailHost,
+        )
         railPlacementConstraints[7].constant = -railBottomInset
         rootBar.setVerticalLayout(usesRightRail)
         rootBar.setBottomHeight(max(60, bottomHeight))

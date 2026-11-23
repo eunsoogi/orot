@@ -180,6 +180,7 @@ function App({
                     discoverManualVisits={ai.services.conversationArtifacts}
                     actions={actions}
                     activeTab={activeTab}
+                    recordsTabAuthority={root.recordsTabAuthority}
                     selectTab={selectActiveTab}
                     onSelectRecordsSection={async tab => {
                       if (await appNavigation.requestTabSwitch())

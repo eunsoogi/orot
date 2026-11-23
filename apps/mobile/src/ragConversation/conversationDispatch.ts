@@ -1,3 +1,9 @@
+import type { WarmConversationPreparation } from './conversationWarmAdmission';
+import {
+  bindWarmDispatchReservation,
+  prepareWarmDispatchRoute,
+} from './conversationWarmDispatchReservation';
+import { isWarmConversationSender } from './warmConversationSender';
 import {
   appendPlainHistoryToSender,
   type PlainHistoryPlan,
@@ -18,17 +24,30 @@ import type {
 export function conversationDispatch(input: {
   requests: ReturnType<typeof createConversationSessionRequests>;
   photoDrafts: ReturnType<typeof createConversationPhotoImport>;
-  retention: ConversationSessionOptions['retention'];
+  retention?: ConversationSessionOptions['retention'];
+  options?: Pick<
+    ConversationSessionOptions,
+    'retention' | 'captureWarmExecution' | 'execution'
+  >;
   disposed: () => boolean;
   find: (id: number) => ConversationSession | undefined;
   update: (id: number, change: Partial<ConversationSession>) => void;
   current: (id: number) => boolean;
-  bindSender?: (sender: ConversationSender) => ConversationSender;
+  selection?: {
+    epoch: { selection: number };
+    subscribe: (listener: () => void) => () => void;
+  };
+  bindSender?: (
+    sender: ConversationSender,
+    warm?: WarmConversationPreparation,
+  ) => ConversationSender;
   beforeSend?: (
     id: number,
     signal: AbortSignal,
-  ) => Promise<boolean | PlainHistoryPlan>;
+    allowWarm: boolean,
+  ) => Promise<boolean | PlainHistoryPlan | WarmConversationPreparation>;
 }) {
+  const execution = input.options?.execution;
   const preparing = new Map<number, AbortController>();
   const cancelPreparation = (id: number) => {
     const controller = preparing.get(id);
@@ -88,6 +107,12 @@ export function conversationDispatch(input: {
     });
     controller.signal.addEventListener('abort', release, { once: true });
     let dispatched = false;
+    let stopWatchingSelection = () => {};
+    const reservationOwner = new AbortController();
+    const closeReservation = () => reservationOwner.abort();
+    controller.signal.addEventListener('abort', closeReservation, {
+      once: true,
+    });
     try {
       // The preview is the user's own accepted prompt, with no delivery claim.
       input.update(id, {
@@ -100,26 +125,73 @@ export function conversationDispatch(input: {
       });
       markConversationInput('conversation_send_preparing');
       if (!current()) return;
-      const ready = await Promise.race([
-        input.beforeSend?.(id, controller.signal) ?? Promise.resolve(true),
-        cancelled,
-      ]);
+      const prepare = (allowWarm: boolean) =>
+        Promise.race([
+          input.beforeSend?.(id, controller.signal, allowWarm) ??
+            Promise.resolve(true),
+          cancelled,
+        ]);
+      const hasPhoto = () =>
+        prompt === undefined && input.photoDrafts.get(id).status !== 'empty';
+      const allowWarm =
+        !registerOwner &&
+        (prompt === undefined || quickChoice) &&
+        input.photoDrafts.get(id).status === 'empty' &&
+        isWarmConversationSender(sender);
+      const planned = allowWarm
+        ? prepareWarmDispatchRoute(
+            input,
+            id,
+            controller,
+            reservationOwner.signal,
+          )
+        : undefined;
+      const reservation = planned?.reservation;
+      let early = planned?.early;
+      if (planned?.stopWatching) stopWatchingSelection = planned.stopWatching;
+      let ready = await prepare(allowWarm);
+      if (!ready || !current()) return;
+      // Only a certified short-lease failure may fall back to the original foreground path.
+      if (early && (await early.started) !== 'short-lease-admitted') {
+        if (execution?.currentPhase?.() !== 'active' || !current()) return;
+        early = undefined;
+      }
+      let warm =
+        typeof ready === 'object' && 'kind' in ready ? ready : undefined;
+      // A queued picker can change the scope while text-only local proof waits.
+      // Discard that proof and re-enter the original strict model path first.
+      if (warm && hasPhoto() && current()) {
+        warm = undefined;
+        closeReservation();
+        ready = await prepare(false);
+        if (typeof ready === 'object' && 'kind' in ready) return;
+      }
       if (!ready || !current()) return;
       // The same owner transitions synchronously into requests.send before another tap can enter.
       dispatched = true;
-      const prepared =
-        typeof ready === 'object'
-          ? appendPlainHistoryToSender(sender, {
-              ...ready,
-              current: () =>
-                !input.disposed() && input.current(id) && ready.current(),
-            })
-          : sender;
+      const plan =
+        typeof ready === 'object' && !('kind' in ready) ? ready : undefined;
+      const prepared = plan
+        ? appendPlainHistoryToSender(sender, {
+            ...plan,
+            current: () =>
+              !input.disposed() && input.current(id) && plan.current(),
+          })
+        : sender;
+      const bound = input.bindSender?.(prepared, warm) ?? prepared;
+      if (!warm) closeReservation();
       const sending = input.requests.send(
         id,
-        input.bindSender?.(prepared) ?? prepared,
+        warm && reservation
+          ? bindWarmDispatchReservation(
+              bound,
+              reservation,
+              closeReservation,
+              early,
+            )
+          : bound,
         prompt,
-        prompt === undefined && input.photoDrafts.get(id).status !== 'empty',
+        hasPhoto(),
         registerOwner,
       );
       if (preparing.get(id) === controller) {
@@ -142,6 +214,9 @@ export function conversationDispatch(input: {
           errorSurface: 'composerPreflight',
         });
     } finally {
+      stopWatchingSelection();
+      closeReservation();
+      controller.signal.removeEventListener('abort', closeReservation);
       controller.signal.removeEventListener('abort', release);
       if (preparing.get(id) === controller) {
         preparing.delete(id);
@@ -164,7 +239,9 @@ export function conversationDispatch(input: {
       send(id, sender, prompt, undefined, true),
     sendOwnedPrompt: (id: number, prompt: string, sender: ConversationSender) =>
       startOwnedConversationRequest({
-        retention: input.disposed() ? undefined : input.retention,
+        retention: input.disposed()
+          ? undefined
+          : (input.options?.retention ?? input.retention),
         sender,
         start: (ownedSender, registerOwner) =>
           send(id, ownedSender, prompt, registerOwner),

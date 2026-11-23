@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { AppText as Text } from '../../layout/AppText';
-import { appColors } from '../../layout/appColors';
+import { useLayoutEffect, useRef, useState, type ComponentRef } from 'react';
+import { View } from 'react-native';
+import { useChartTooltip } from './ChartTooltipHost';
 import { t } from '../../i18n';
 import { ChartRenderer } from './ChartRenderer';
 import { chartAccessibilitySummary } from './chartAccessibilitySummary';
-import { formatChartValue } from './format';
+import { formatChartPointValue } from './format';
 import type { ChartData } from './types';
 
 type Props = {
@@ -14,34 +13,42 @@ type Props = {
   height: number;
   title: string;
   testID?: string;
+  kind?: 'bar' | 'range';
 };
 
-/** Overlays a wrapping callout at the native bar anchor without a below-chart row. */
-export function ChartBarTooltip({ data, width, height, title, testID }: Props) {
-  const { fontScale } = useWindowDimensions();
-  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
-  const [calloutHeight, setCalloutHeight] = useState(0);
-  const calloutWidth = Math.min(240 * Math.max(1, fontScale), width);
+/** A selected bar publishes its measured point to the route's unclipped tooltip host. */
+export function ChartBarTooltip({
+  data,
+  width,
+  height,
+  title,
+  testID,
+  kind = 'bar',
+}: Props) {
+  const tooltip = useChartTooltip();
+  const source = useRef<ComponentRef<typeof View>>(null);
+  const owner = useRef(Symbol()).current;
+  const touchedIndex = useRef(-1);
   const entries = data.series
     .flatMap(series => series.points.map(point => ({ series, point })))
     .sort((a, b) => a.point.x.localeCompare(b.point.x));
   const [selected, setSelected] = useState<number | null>(null);
   const entry = selected === null ? undefined : entries[selected];
-  const description = entry
-    ? [
-        entry.point.x,
-        entry.series.label,
-        entry.point.value === null
-          ? t('chart.missing')
-          : formatChartValue(data.metric, entry.point.value, entry.series.unit),
-        entry.point.partial ? t('chart.partialValue') : '',
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : undefined;
+  function describe(item: (typeof entries)[number]) {
+    return [
+      item.point.x,
+      item.series.label,
+      formatChartPointValue(data.metric, item.point, item.series.unit),
+      item.point.partial ? t('chart.partialValue') : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  }
+  useLayoutEffect(() => () => tooltip?.close(owner), [owner, tooltip]);
   const move = (direction: number) => {
     // Missing values have no bar; VoiceOver still announces their complete description.
-    setAnchor(null);
+    tooltip?.close(owner);
+    touchedIndex.current = -1;
     // VoiceOver can inspect missing and zero values even where there is no visible bar.
     setSelected(current =>
       Math.max(
@@ -58,12 +65,18 @@ export function ChartBarTooltip({ data, width, height, title, testID }: Props) {
     );
   };
   return (
-    <View>
+    <View
+      ref={source}
+      collapsable={false}
+      testID={testID ? `${testID}-anchor` : undefined}
+    >
       <View
         accessible
         accessibilityRole="adjustable"
         accessibilityLabel={
-          description ?? chartAccessibilitySummary(data, 'day', title)
+          entry
+            ? describe(entry)
+            : chartAccessibilitySummary(data, 'day', title)
         }
         accessibilityHint={t('chart.pointSelectionHint')}
         accessibilityActions={[
@@ -80,62 +93,42 @@ export function ChartBarTooltip({ data, width, height, title, testID }: Props) {
           data={data}
           width={width}
           height={height}
-          kind="bar"
+          kind={kind}
           onBarSelect={selection => {
-            setAnchor(selection?.position ?? null);
-            if (!selection) return setSelected(null);
-            const index = entries.findIndex(
-              item =>
-                item.series.id === selection.seriesId &&
-                item.point.x === selection.x,
-            );
+            const index = selection
+              ? entries.findIndex(
+                  item =>
+                    item.series.id === selection.seriesId &&
+                    item.point.x === selection.x,
+                )
+              : -1;
+            // SVG range glyphs do not emit Chart Kit's deselect callback.
+            if (
+              kind === 'range' &&
+              index >= 0 &&
+              touchedIndex.current === index &&
+              tooltip?.owns(owner)
+            ) {
+              touchedIndex.current = -1;
+              setSelected(null);
+              tooltip.close(owner);
+              return;
+            }
+            touchedIndex.current = index;
             setSelected(index < 0 ? null : index);
+            const picked = entries[index];
+            if (selection && picked && source.current) {
+              tooltip?.show({
+                owner,
+                source: source.current,
+                point: selection.position,
+                text: describe(picked),
+                testID: testID ? `${testID}-tooltip` : undefined,
+              });
+            } else tooltip?.close(owner);
           }}
         />
       </View>
-      {description ? (
-        <View
-          pointerEvents="none"
-          accessible={false}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          onLayout={event => setCalloutHeight(event.nativeEvent.layout.height)}
-          style={[
-            styles.callout,
-            {
-              width: calloutWidth,
-              // Clamp at the plot boundary for edge bars and tall values. The
-              // overlay never takes touches away from scrolling or deselection.
-              left: Math.max(
-                0,
-                Math.min(
-                  width - calloutWidth,
-                  (anchor?.x ?? width / 2) - calloutWidth / 2,
-                ),
-              ),
-              top: Math.max(
-                0,
-                (anchor?.y ?? calloutHeight + 8) - calloutHeight - 8,
-              ),
-            },
-          ]}
-          testID={testID ? `${testID}-tooltip` : undefined}
-        >
-          <Text style={styles.text}>{description}</Text>
-        </View>
-      ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  callout: {
-    position: 'absolute',
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: appColors.background,
-    borderWidth: 1,
-    borderColor: appColors.border,
-  },
-  text: { color: appColors.text, flexShrink: 1 },
-});

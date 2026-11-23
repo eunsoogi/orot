@@ -11,7 +11,7 @@ import type {
   VisitQuestionCandidate,
   VisitQuestionEvidenceItem,
 } from './taskContract';
-import { healthPeriodDependencyId } from '../../storage/healthPeriodDependencies';
+import { visitQuestionMemorySnapshot } from './visitQuestionMemorySnapshot';
 
 function uniqueValues(values: readonly string[]): string[] {
   return [...new Set(values)];
@@ -22,6 +22,7 @@ export function createReviewedVisitQuestionRecord(input: {
   readonly appointmentId: string;
   readonly question: VisitQuestionCandidate;
   readonly position: number;
+  readonly previousEffectiveAt?: string;
   readonly now: string;
   readonly metadataByCitation: VisitQuestionEvidenceCollection['metadataByCitation'];
   readonly legacyRecord?: VisitQuestion;
@@ -73,7 +74,8 @@ export function createReviewedVisitQuestionRecord(input: {
   // The local app has no user account ID; this marks an explicit on-device human review.
   return VisitQuestionCreateSchema.parse({
     id: input.question.identity!.id,
-    effectiveAt: input.appointment.effectiveAt,
+    // Revisiting a list under the same ID cannot relabel an already saved question.
+    effectiveAt: input.previousEffectiveAt ?? input.appointment.effectiveAt,
     recordedAt: input.now,
     ingestedAt: input.now,
     provenance: input.legacyRecord?.provenance ?? {
@@ -107,17 +109,7 @@ export async function saveReviewedVisitQuestionMemory(
   metadataByCitation: VisitQuestionEvidenceCollection['metadataByCitation'],
 ): Promise<'saved' | 'retry_required'> {
   if (!memory) return 'retry_required';
-  const sourceIds = uniqueValues(
-    questions.flatMap(question => [
-      question.id,
-      question.appointmentId,
-      ...question.provenance.sourceRecordIds,
-      ...(question.generatedArtifactSources ?? []).map(
-        source => `generated-artifact:${source.kind}:${source.id}`,
-      ),
-      ...(question.healthContextSources ?? []).map(healthPeriodDependencyId),
-    ]),
-  );
+  const { sourceIds, text } = visitQuestionMemorySnapshot(questions);
   const sourceDates = new Map<string, string>([
     [appointmentId, appointment.effectiveAt],
   ]);
@@ -134,12 +126,7 @@ export async function saveReviewedVisitQuestionMemory(
       memoryKey: `visit-question-review:${appointmentId}`,
       kind: 'reviewed_interaction',
       importance: 0.75,
-      text: [
-        `사용자가 ${appointment.effectiveAt} 예약을 위해 검토한 질문:`,
-        ...questions.map(
-          (question, index) => `${index + 1}. ${question.questionText}`,
-        ),
-      ].join('\n'),
+      text,
       provenance: {
         sourceIds,
         sourceReferences: questions.map(question => ({

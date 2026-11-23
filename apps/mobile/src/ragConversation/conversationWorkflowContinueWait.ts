@@ -1,3 +1,7 @@
+import {
+  adoptContinuedConversationLease,
+  continuedOpportunityObserver,
+} from './conversationContinuedWork';
 import { requestOwnedConversationPause } from './conversationDeferredPause';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
 import { beginConversationExecutionLease } from './conversationExecutionLease';
@@ -9,6 +13,7 @@ export async function waitForWorkflowContinue(
   input: {
     execution?: ConversationExecutionAdapter;
     interrupt: (id: number) => void;
+    acceptNativeExpiry?: (id: number) => boolean;
     pauseState?: (id: number, resume?: () => void) => void;
   },
   entries: Map<number, ConversationLifetimeEntry>,
@@ -64,9 +69,11 @@ export async function waitForWorkflowContinue(
             () => requiresConversationDecisionAbort(entry, input.execution),
             () => requestOwnedConversationPause(entry, entries),
             entry.diagnose,
+            () => !current() || input.acceptNativeExpiry?.(entry.id) !== false,
+            continuedOpportunityObserver(entry, entries, input.execution),
           );
           if (!current()) release();
-          else entry.release = release;
+          else adoptContinuedConversationLease(entry, release, input.execution);
         }
         if (!current()) {
           entry.release?.();

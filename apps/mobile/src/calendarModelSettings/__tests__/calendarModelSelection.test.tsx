@@ -5,7 +5,6 @@ import { voiceSettingsStore } from '../../voiceSettings/voiceSettingsStore';
 import { createAppleSelectionOption } from '../../providers/selection/options';
 import { resolveCalendarModel } from '../resolveCalendarModel';
 import { resolveSelectedAiProvider } from '../../aiFeatures/integration/provider';
-
 // View-only boundary: SQLite grant activation and credential races have dedicated service tests.
 jest.mock('../../agent/execution/saveModelSettingsConsent', () => ({
   saveModelSettingsConsent: async (input: {
@@ -17,7 +16,6 @@ jest.mock(
   '../../layout/AppButton',
   () => require('../testSupport/calendarButtonFixture').calendarButtonFixture,
 );
-
 jest.mock('../calendarModelStore', () => ({
   calendarModelStore: {
     ...jest
@@ -153,7 +151,6 @@ it('does not publish a late catalog after account replacement', async () => {
   });
   expect(screen.queryByText('GPT-6 Luna')).toBeNull();
 });
-
 it('uses the shared compact API account card and keeps disconnected management reachable', async () => {
   account.accountStatus.mockResolvedValue({ connected: false, revision: 3 });
   const onOpenAccounts = jest.fn();
@@ -191,7 +188,6 @@ it('uses the shared compact API account card and keeps disconnected management r
   expect(account.discoverModels).not.toHaveBeenCalled();
   expect(store.save).not.toHaveBeenCalled();
 });
-
 it('keeps the compact refresh disabled until its explicit discovery finishes', async () => {
   let complete!: (value: { revision: number; ids: string[] }) => void;
   account.discoverModels.mockImplementation(
@@ -211,11 +207,15 @@ it('keeps the compact refresh disabled until its explicit discovery finishes', a
   expect(screen.getByTestId('calendar-model-refresh')).not.toBeDisabled();
   expect(screen.getByText('GPT-6 Luna')).toBeTruthy();
 });
-
 it('groups unset and saved identity in the shared summary without the removed introduction', async () => {
   await render(
     <CalendarModelSettingsPanel options={[apple]} onBusyChange={jest.fn()} />,
   );
+  expect(
+    screen.getAllByTestId(
+      /^(calendar-current-model-card|calendar-model-group-openai-api)$/,
+    )[0]?.props.testID,
+  ).toBe('calendar-current-model-card');
   expect(screen.getByTestId('calendar-current-model-card')).toHaveStyle({
     padding: 16,
     borderRadius: 20,
@@ -235,7 +235,9 @@ it('groups unset and saved identity in the shared summary without the removed in
     ),
   ).toBeNull();
   await fireEvent.press(screen.getByTestId('provider-option-0'));
-  expect(screen.queryByTestId('calendar-current-model-card')).toBeNull();
+  expect(screen.getByTestId('calendar-current-model')).toHaveTextContent(
+    /선택한 AI/,
+  );
   expect(store.save).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByTestId('provider-selection-confirm'));
   expect(screen.getByTestId('calendar-current-model-card')).toBeTruthy();

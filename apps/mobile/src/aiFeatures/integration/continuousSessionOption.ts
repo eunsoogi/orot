@@ -1,3 +1,5 @@
+import { selectedChatGPTAccountId } from './savedChatGPTModelLabel';
+import { warmNativeChatGPTSelection } from './warmNativeChatGPTSelection';
 import type { ConversationSessionOptions } from '../../ragConversation/conversationSessionTypes';
 import type { ConversationSessionOptionInput } from './conversationSessionOptionInput';
 import type { requireSelectedAi } from './provider';
@@ -9,10 +11,33 @@ export function continuousSessionOption(
   selectedAi: (() => Promise<ReturnType<typeof requireSelectedAi>>) | undefined,
   openStorage: ReturnType<typeof createConversationSessionStorage>,
   captureSelectionWitness?: ConversationSessionOptionInput['captureSelectionWitness'],
-): Pick<ConversationSessionOptions, 'continuousSession'> {
+): Pick<
+  ConversationSessionOptions,
+  'continuousSession' | 'prepareWarmSend' | 'captureWarmExecution'
+> {
   if (!selectedAi) return {};
+  let previous:
+    | Awaited<
+        ReturnType<NonNullable<ConversationSessionOptions['continuousSession']>>
+      >
+    | undefined;
   return {
+    captureWarmExecution: lease => {
+      const target = previous;
+      if (
+        !target ||
+        target.id !== lease.id ||
+        target.version !== lease.version ||
+        !selectedChatGPTAccountId(target.model) ||
+        !target.selectionCurrent?.()
+      )
+        return;
+      return () => previous === target && target.selectionCurrent?.() === true;
+    },
+    prepareWarmSend: (lease, signal) =>
+      warmNativeChatGPTSelection(previous, lease, signal, openStorage),
     continuousSession: async signal => {
+      previous = undefined;
       const witness = captureSelectionWitness?.();
       const selected = await selectedAi();
       if (signal.aborted) throw new Error('Conversation selection cancelled.');
@@ -29,11 +54,11 @@ export function continuousSessionOption(
         signal,
       );
       const current = witness?.(model.providerId);
-      return {
+      return (previous = {
         ...lease,
         model,
         ...(current ? { selectionCurrent: current } : {}),
-      };
+      });
     },
   };
 }

@@ -4,6 +4,7 @@ import type { ManualHistoryScreenRecord } from '../manualHistory/types';
 
 export type AgentSavedMemory = Omit<AgentMemoryHit, 'score'> & {
   readonly unavailableReason?: 'unverifiable_parent';
+  readonly historicalSnapshot?: true;
 };
 export interface HistorySavedMemory {
   readonly sourceKind: 'manual_history';
@@ -16,6 +17,7 @@ export interface GeneratedReportSavedMemory {
   readonly sourceKind: 'saved_generated_report';
   readonly id: string;
   readonly artifactId: string;
+  readonly reportKind?: 'health_summary' | 'disease_possibilities';
   readonly text: string;
   readonly createdAt: number;
 }
@@ -78,9 +80,19 @@ export async function loadUnifiedLocalMemories(): Promise<SavedMemory[]> {
   ]);
   const reportReferences: GeneratedReportSavedMemory[] = generated.map(row => ({
     sourceKind: 'saved_generated_report',
-    id: 'generated-report:' + row.artifactId,
+    id:
+      (row.reportKind === 'disease_possibilities'
+        ? 'generated-disease-report:'
+        : 'generated-report:') + row.artifactId,
     artifactId: row.artifactId,
-    text: t('savedMemory.generatedReportDaily'),
+    ...(row.reportKind ? { reportKind: row.reportKind } : {}),
+    text: t(
+      row.reportKind === 'health_summary'
+        ? 'savedMemory.generatedReportHealthSummary'
+        : row.reportKind === 'disease_possibilities'
+          ? 'savedMemory.generatedReportDiseasePossibilities'
+          : 'savedMemory.generatedReportDaily',
+    ),
     createdAt: Date.parse(row.savedAt),
   }));
   return [

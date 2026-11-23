@@ -47,14 +47,17 @@ enum ConversationContinuedReadmissionHostRegression {
         UIApplication.shared.applicationState = .background
         module.work("current", active: true)
         precondition(module.continued.isEmpty && ConversationContinuedProcessing.starts == 0)
-        precondition(module.events.last?["state"] as? String == "continued-refused")
+        precondition(module.events.last?["state"] as? String == "continued-deferred-inactive")
         UIApplication.shared.applicationState = .inactive
         module.work("current", active: true)
         precondition(module.continued.isEmpty && ConversationContinuedProcessing.starts == 0)
+        precondition(module.events.count == 2)
+        precondition(module.events.last?["state"] as? String == "continued-deferred-inactive")
         UIApplication.shared.applicationState = .active
         UIApplication.shared.isProtectedDataAvailable = false
         module.work("current", active: true)
         precondition(module.continued.isEmpty && ConversationContinuedProcessing.starts == 0)
+        precondition(module.events.count == 2)
         UIApplication.shared.isProtectedDataAvailable = true
         module.work("current", active: true)
         precondition(ConversationContinuedProcessing.starts == 1)

@@ -2,11 +2,15 @@
 export type AppNavigationRoute =
   | AiFeatureRouteName
   | 'root'
+  | 'overview-metric-selection'
   | 'recording'
   | 'saved-recordings'
   | 'recent-records'
   | 'medical-document-detail'
   | 'saved-memory-detail'
+  | 'generated-reports'
+  | 'generated-report-detail'
+  | 'generated-report-source'
   | 'recording-review'
   | 'unified-import'
   | 'health-records'

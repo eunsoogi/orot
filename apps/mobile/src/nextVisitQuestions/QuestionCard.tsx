@@ -19,6 +19,7 @@ interface QuestionCardProps<TReference extends NextVisitEvidenceReference> {
   readonly selectionHeader?: ReactNode;
   readonly priorityInDetails?: boolean;
   readonly compact?: boolean;
+  readonly readOnlyArchive?: boolean;
   readonly index: number;
   readonly count: number;
   readonly editable: boolean;
@@ -43,6 +44,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
   selectionHeader,
   priorityInDetails = false,
   compact = false,
+  readOnlyArchive = false,
   index,
   count,
   editable,
@@ -55,6 +57,7 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
 }: QuestionCardProps<TReference>) {
   const styles = createQuestionCardStyles(theme, compact);
   const number = index + 1;
+  const archived = !editable && readOnlyArchive;
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   return (
@@ -166,8 +169,12 @@ export function QuestionCard<TReference extends NextVisitEvidenceReference>({
           />
         </View>
       ) : null}
+      {/* The archive retains the rationale without creating live source or review controls. */}
+      {archived && question.rationale ? (
+        <Text style={styles.rationale}>{question.rationale}</Text>
+      ) : null}
       {/* Inline review leads with wording; provenance remains available in details. */}
-      {!priorityInDetails || detailsOpen ? (
+      {!archived && (!priorityInDetails || detailsOpen) ? (
         <>
           <Text style={styles.openSource}>
             {question.kind === 'clarification'

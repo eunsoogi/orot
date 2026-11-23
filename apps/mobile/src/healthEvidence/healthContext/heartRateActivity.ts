@@ -30,6 +30,8 @@ import type {
  * At a shared instant, interval ends sort before workout starts and point samples after them:
  * [start, end) intervals exclude an adjacent workout, while points include a workout's start.
  * Workouts can include pauses; unmatched samples do not establish rest or inactivity.
+ * If this statement admits no workouts, all samples are already known to be
+ * unknown. Group the same heart rows without sorting them into the timeline.
  */
 export async function addHeartRateActivityContext(
   executor: SqlExecutor,
@@ -101,7 +103,7 @@ export async function addHeartRateActivityContext(
     heart AS NOT MATERIALIZED (${heartSql}), events AS (
       SELECT h.*, CASE WHEN h.end_key > h.start_key THEN h.end_key ELSE h.start_key END AS event_key,
         CASE WHEN h.end_key > h.start_key THEN 0 ELSE 2 END AS event_order,
-        NULL AS workout_end FROM heart h
+        NULL AS workout_end FROM heart h WHERE EXISTS (SELECT 1 FROM workouts)
       UNION ALL
       SELECT NULL, NULL, NULL, NULL, NULL, NULL, start_key, 1, end_key FROM workouts
     ), timeline AS (
@@ -109,12 +111,14 @@ export async function addHeartRateActivityContext(
         ORDER BY event_key, event_order ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
       ) AS latest_workout_end FROM events e
     ), classified AS (
-      SELECT h.*,
-        CASE WHEN h.end_key IS NULL OR h.end_key < h.start_key OR h.end_key > ?
-          OR NOT EXISTS (SELECT 1 FROM workouts) THEN 'unknown'
+      SELECT h.date, h.unit, h.sensor, h.amount,
+        CASE WHEN h.end_key IS NULL OR h.end_key < h.start_key OR h.end_key > ? THEN 'unknown'
         WHEN latest_workout_end > h.start_key THEN 'workout_overlap'
         ELSE 'no_recorded_workout_overlap' END AS context
       FROM timeline h WHERE event_order != 1
+      UNION ALL
+      SELECT h.date, h.unit, h.sensor, h.amount, 'unknown' FROM heart h
+      WHERE NOT EXISTS (SELECT 1 FROM workouts)
     )
     SELECT date, unit, sensor, context, count(*) AS samples,
       min(amount) AS minimum, max(amount) AS maximum

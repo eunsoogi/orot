@@ -88,8 +88,18 @@ export function createConversationVisitTurn(deps: {
     if (result.status !== 'ready') {
       // Clarification can be about the purpose of the visit even with valid records.
       // Retain only an app-owned guidance key, never the provider's prose.
-      if (result.status === 'needs_clarification')
+      if (result.status === 'needs_clarification') {
+        if (input.signal.aborted)
+          return { status: 'failure', kind: 'cancelled' };
+        try {
+          await input.observer?.onLocalVisitClarification?.(input.signal);
+        } catch {
+          if (input.signal.aborted)
+            return { status: 'failure', kind: 'cancelled' };
+          input.observer?.onRetentionFailure?.();
+        }
         return { status: 'insufficient', guidance: 'visit_goal' };
+      }
       const providerKind =
         'providerErrorCode' in result
           ? providerFailureKind(result.providerErrorCode)

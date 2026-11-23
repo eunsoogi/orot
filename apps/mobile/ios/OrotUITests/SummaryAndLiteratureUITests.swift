@@ -17,7 +17,7 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             try select(dark, app: app, original: &original)
             let suffix = dark ? "dark" : "light"
             node(app, "summary-visual-open").tap()
-            NavigationPageActionUITestConditions.assertToolbar(app, marker: "disease-hypotheses-screen", actions: ["symptom-summary-generate", "disease-hypotheses-generate", "navigation-page-action-overflow"])
+            try NavigationPageActionUITestConditions.verifySummaryAssessmentIsReachable(app)
             NavigationPageActionUITestConditions.tap(app, id: "symptom-summary-history-open", label: "저장된 요약 보기")
             XCTAssertTrue(UITestConditions.exists(node(app, "summary-history-screen")))
             if !dark {
@@ -84,16 +84,16 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             XCTAssertFalse(node(app, "external-evidence-search").isEnabled)
             XCTAssertEqual(node(app, "external-medical-evidence-screen").scrollViews.count, 1)
             query(app, "sleep synthetic")
+            LiteratureSearchObservation.capture(app, phase: "initial-before", testCase: self)
             node(app, "external-evidence-search").tap()
+            LiteratureSearchObservation.capture(app, phase: "initial-after", testCase: self)
             if !dark {
-                // Assert after the real tap/idleness, rather than masking a consumed tap with a second one.
-                XCTAssertTrue(node(app, "inference-disclosure-sheet").exists, app.debugDescription)
-                capture(app, "literature-query-consent-\(suffix)")
-                node(app, "inference-disclosure-cancel").tap()
-                XCTAssertTrue(UITestConditions.exists(app.staticTexts["검색어 전송에 동의한 뒤 검색할 수 있어요."]))
+                // The first tap must reach the denied state before explicit settings approval.
+                try LiteratureConsentUITestConditions.approve(app)
+                query(app, "sleep synthetic")
+                LiteratureSearchObservation.capture(app, phase: "approved-before", testCase: self)
                 node(app, "external-evidence-search").tap()
-                XCTAssertTrue(UITestConditions.exists(node(app, "inference-disclosure-sheet")))
-                node(app, "inference-disclosure-allow").tap()
+                LiteratureSearchObservation.capture(app, phase: "approved-after", testCase: self)
             }
             let title = app.staticTexts["합성 문헌: 활동과 수면 기록 해석"]
             XCTAssertTrue(UITestConditions.exists(title))
@@ -108,8 +108,14 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             XCTAssertTrue(UITestConditions.exists(node(app, "external-evidence-selected-source")))
             XCTAssertTrue(UITestConditions.exists(app.staticTexts["합성 문헌: 운동과 수면의 질"]))
             let open = node(app, "external-evidence-open-selected-source")
-            UITestConditions.scrollTo(open, in: app)
+            let search = node(app, "external-evidence-search")
+            // Hittability alone can leave the article under the floating search dock.
+            // Require the same measured clearance at ordinary and accessibility text sizes.
+            try LiteratureActionReveal.reveal(open, in: app, dock: search)
+            XCTAssertTrue(app.frame.contains(open.frame))
+            XCTAssertLessThanOrEqual(open.frame.maxY, search.frame.minY - 16)
             XCTAssertTrue(open.isHittable, open.debugDescription)
+            XCTAssertGreaterThanOrEqual(open.frame.height, 44)
             if !dark {
                 open.tap()
                 XCTAssertTrue(UITestConditions.exists(node(app, "synthetic-article-opened")))
@@ -163,7 +169,7 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
         XCTAssertGreaterThan(row.frame.height, defaultTitleHeight)
         let open = node(app, "external-evidence-open-selected-source")
         // The bottom article action must clear the actual XXXL dock, not only the scroll viewport.
-        try NavigationUITestConditions.scrollToBottom(app, "external-medical-evidence-screen")
+        try LiteratureActionReveal.reveal(open, in: app, dock: search)
         XCTAssertTrue(app.frame.contains(open.frame))
         XCTAssertLessThanOrEqual(open.frame.maxY, search.frame.minY - 16)
         XCTAssertTrue(open.isHittable)

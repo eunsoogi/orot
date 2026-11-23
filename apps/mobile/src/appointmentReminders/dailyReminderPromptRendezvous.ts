@@ -1,5 +1,6 @@
 import { canSelectConversationChoice } from '../ragConversation/selectConversationChoice';
 import { startConversationReportTurn } from '../ragConversation/startConversationReportTurn';
+import type { DailyReportIdentity } from '@orot/domain';
 import type { ConversationScreenProps } from '../ragConversation/ConversationScreenProps';
 import type { ConversationSessions } from '../ragConversation/conversationSessions';
 
@@ -8,6 +9,7 @@ type Admission = 'wait' | (() => void) | null;
 type Claim = {
   readonly sessionId: number;
   readonly rootKey: string;
+  readonly reportIdentity: DailyReportIdentity;
   readonly isCurrent: () => boolean;
 };
 
@@ -96,7 +98,7 @@ export function mountDailyReminderConversationPrompt(
       return 'wait';
     if (!canSelectConversationChoice(store, session)) return null;
     return () => {
-      startConversationReportTurn(store, current, send);
+      startConversationReportTurn(store, current, send, claim.reportIdentity);
     };
   });
 }

@@ -6,7 +6,8 @@ import {
   formatTime,
   t,
 } from '../../i18n';
-import type { ChartMetric } from './types';
+import { validChartRangePoint } from './chartRangeGeometry';
+import type { ChartMetric, ChartPoint } from './types';
 
 /** A date bucket is a calendar identity, not a UTC instant to shift by time zone. */
 export function formatChartPosition(
@@ -45,4 +46,23 @@ export function formatChartValue(
   if (metric === 'steps' && unit === 'count')
     return `${amount}${t('overview.metricUnit.steps')}`;
   return unit ? `${amount} ${unit}` : amount;
+}
+
+/** Describe the sampled extrema and mean explicitly, not as a categorical low/high threshold. */
+export function formatChartPointValue(
+  metric: ChartMetric,
+  point: ChartPoint,
+  unit: string,
+): string {
+  if (point.value === null) return t('chart.missing');
+  if (!point.range) return formatChartValue(metric, point.value, unit);
+  if (!validChartRangePoint(point)) return t('chart.missing');
+  const value = (n: number) => formatChartValue(metric, n, unit);
+  return point.range.samples === 1
+    ? t('chart.singleSample', { value: value(point.value) })
+    : t('chart.rangeAndMean', {
+        minimum: value(point.range.minimum),
+        maximum: value(point.range.maximum),
+        mean: value(Math.round(point.value * 10) / 10),
+      });
 }

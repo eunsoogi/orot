@@ -187,6 +187,7 @@ export async function saveReviewedVisitQuestions(
         appointment,
         appointmentId: input.appointmentId,
         question,
+        previousEffectiveAt: existing.get(question.identity!.id)?.effectiveAt,
         position: index + 1,
         now: input.now,
         metadataByCitation: input.evidence.metadataByCitation,

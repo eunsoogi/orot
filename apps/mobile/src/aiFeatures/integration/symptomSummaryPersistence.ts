@@ -37,45 +37,59 @@ export function createSymptomSummaryPersistence(input: {
       opening = undefined;
       throw error;
     }));
-  const history: SymptomSummaryHistory = {
-    retrySave: async () => retry?.() ?? null,
-    list: async before => (await store()).list(before),
-    async readStatus(id) {
-      const status = await (await store()).readWithStatus(id);
-      if (!status || 'status' in status) return status;
-      const analysis = await history.read(id);
-      if (analysis) return { analysis };
-      // A deletion fence may change while sources are restored; never return the old text.
-      const latest = await (await store()).readWithStatus(id);
-      return latest && 'status' in latest ? latest : null;
-    },
-    async read(id) {
-      const storage = await store();
-      const saved = await storage.read(id);
-      if (!saved || !hasCompleteSummaryLineage(saved)) return null;
-      const restored = await restoreSymptomSummary(
-        saved,
-        input.registry,
-        await input.data(),
-      );
-      // Deletion or revision changes may commit while source links are rebuilt.
-      const latest = await storage.readWithStatus(id);
-      if (
-        !latest ||
-        'status' in latest ||
-        fingerprint(latest.summary) !== fingerprint(saved)
-      )
-        return null;
-      return latest.sourceChanged && restored.savedSummary?.status === 'saved'
+  async function readCommitted(id: string) {
+    const storage = await store();
+    const saved = await storage.read(id);
+    if (!saved || !hasCompleteSummaryLineage(saved)) return null;
+    const restored = await restoreSymptomSummary(
+      saved,
+      input.registry,
+      await input.data(),
+    );
+    // Deletion or revision changes may commit while source links are rebuilt.
+    const latest = await storage.readWithStatus(id);
+    const revision = fingerprint(saved);
+    if (
+      !latest ||
+      'status' in latest ||
+      fingerprint(latest.summary) !== revision
+    )
+      return null;
+    const analysis =
+      latest.sourceChanged && restored.savedSummary?.status === 'saved'
         ? {
             ...restored,
             savedSummary: { ...restored.savedSummary, sourceChanged: true },
           }
         : restored;
+    // The revision belongs to this exact rendered original, not to an earlier read of its ID.
+    return { analysis, revision };
+  }
+  async function readCommittedStatus(id: string) {
+    const status = await (await store()).readWithStatus(id);
+    if (!status || 'status' in status) return status;
+    const result = await readCommitted(id);
+    if (result) return result;
+    // A deletion fence may change while sources are restored; never return the old text.
+    const latest = await (await store()).readWithStatus(id);
+    return latest && 'status' in latest ? latest : null;
+  }
+  const history: SymptomSummaryHistory = {
+    retrySave: async () => retry?.() ?? null,
+    list: async before => (await store()).list(before),
+    async readStatus(id) {
+      const result = await readCommittedStatus(id);
+      return result && 'analysis' in result
+        ? { analysis: result.analysis }
+        : result;
+    },
+    async read(id) {
+      return (await readCommitted(id))?.analysis ?? null;
     },
   };
   return {
     history,
+    readCommittedStatus,
     async save(
       outcome: DiseaseHypothesisRunOutcome,
       selected: Extract<SelectedAiResolution, { status: 'ready' }>,

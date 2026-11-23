@@ -45,6 +45,7 @@ export function buildHealthChartSeries(
   const groups = new Map<string, HealthChartPoint[]>();
   for (const observation of observations) {
     if (
+      (category === 'heart_rate' && observation.concept !== 'heart_rate') ||
       observation.value.kind !== 'quantity' ||
       !Number.isFinite(observation.value.amount) ||
       !Number.isFinite(new Date(observation.effectiveAt).getTime())

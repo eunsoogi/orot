@@ -3,15 +3,14 @@ import type { AiFeatureServices } from '../aiFeatures/integration/featureService
 import { HubBanner } from './HubBanner';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@orot/storage';
-import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { AppText as Text } from '../layout/AppText';
-import { AppButton } from '../layout/AppButton';
 import { formatDate, t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { hubSpacing } from '../layout/hubSpacing';
 import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { useNavigationLeaveStateRegistration } from '../navigation';
 import { NextVisitPanel } from './OverviewSummaryPanels';
+import { ChartTooltipHost } from '../ui/charts/ChartTooltipHost';
 import { OverviewMetrics } from './overview/OverviewMetrics';
 import type { OverviewPreparationLoaders } from './useOverviewPreparationData';
 
@@ -19,15 +18,10 @@ export interface OverviewRouteProps extends OverviewPreparationLoaders {
   readonly discoverManualVisits?: AiFeatureServices['conversationArtifacts'];
   readonly appointment: Appointment | null;
   readonly appointmentState: 'loading' | 'ready' | 'failed';
-  readonly recentRecording: RecordingSourceRecord | null;
-  readonly recordingState: 'loading' | 'ready' | 'failed';
   readonly onRetryAppointments: () => void;
-  readonly onRetryRecordings: () => void;
   readonly onPrepareVisit: () => void;
   readonly onOpenSchedule: () => void;
-  readonly onOpenRecords: () => void;
-  readonly onOpenRecording: () => void;
-  readonly onOpenDailyReport?: () => void;
+  readonly onEditMetricSelection: () => void;
 }
 
 /** Keeps visit preparation and health metrics in one ordered page. */
@@ -37,7 +31,7 @@ export default function OverviewRoute({
   onRetryAppointments,
   onPrepareVisit,
   onOpenSchedule,
-  onOpenDailyReport,
+  onEditMetricSelection,
   discoverManualVisits,
 }: OverviewRouteProps) {
   useNavigationLeaveStateRegistration({
@@ -50,7 +44,7 @@ export default function OverviewRoute({
   });
 
   return (
-    <View style={styles.container} testID="overview-screen">
+    <ChartTooltipHost style={styles.container} testID="overview-screen">
       <View style={styles.header}>
         <HubBanner
           title={t('overview.title')}
@@ -68,14 +62,6 @@ export default function OverviewRoute({
 
       {/* The shell consumes system/navigation geometry once and owns the only vertical scroll. */}
       <View style={styles.sections} testID="overview-overview-sections">
-        {onOpenDailyReport ? (
-          <AppButton
-            title={t('dailyReport.title')}
-            testID="overview-open-daily-report"
-            variant="secondary"
-            onPress={onOpenDailyReport}
-          />
-        ) : null}
         <NextVisitPanel
           appointment={appointment}
           appointmentState={appointmentState}
@@ -87,9 +73,9 @@ export default function OverviewRoute({
           appointmentId={appointment?.id}
           discover={discoverManualVisits}
         />
-        <OverviewMetrics />
+        <OverviewMetrics onEdit={onEditMetricSelection} />
       </View>
-    </View>
+    </ChartTooltipHost>
   );
 }
 

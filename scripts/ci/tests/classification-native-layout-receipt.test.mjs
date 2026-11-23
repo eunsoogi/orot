@@ -4,20 +4,19 @@ import test from 'node:test';
 import { stripTypeScriptTypes } from 'node:module';
 const swift = readFileSync('apps/mobile/ios/OrotUITests/ClassificationStagesUITests.swift', 'utf8');
 const compactList = readFileSync(
-  'apps/mobile/ios/OrotUITests/ClassificationReaderGeometryUITests.swift',
+  'apps/mobile/ios/OrotUITests/ClassificationResultScrollingUITestConditions.swift',
   'utf8',
 );
 const owner = readFileSync('apps/mobile/ios/OrotUITests/FormWindowOwnership.swift', 'utf8');
 const entry = readFileSync('apps/mobile/e2e/ClassificationProbeScreen.tsx', 'utf8');
 test('existing staged journey samples actual geometry without replacing its oracles', () => {
   assert.match(entry, /onPress=\{layout\.request\}/);
-  for (const stage of ['confirmation', 'progress-\\(percent)', 'result-\\(pages.count)'])
+  for (const stage of ['confirmation', 'progress-\\(percent)'])
     assert.ok(swift.includes(`captureStageLayout(app, stage: "${stage}", anchor: anchor`));
   for (const oracle of [
     'percent: 0, calls: 1',
     'percent: 88, calls: 2',
     'percent: 100, calls: 2',
-    'pages.dropLast().reversed()',
     'Every segment of the long synthetic title',
     'for index in 2 ... 9',
     'XCTAssertGreaterThanOrEqual(action.frame.height, 44)',
@@ -57,16 +56,55 @@ test('existing staged journey samples actual geometry without replacing its orac
   assert.ok(firstOwner > 0 && firstOwner < tap && tap < responseOwner && responseOwner < read);
   assert.match(owner, /stableStageFrame\(owner.frame, frame\)/);
   assert.match(owner, /let resultListID = "classification-result-list"/);
+  assert.match(owner, /let listResults = phase == 2 && node\(app, resultListID\)\.exists/);
   assert.match(
     owner,
-    /let resultIDs = node\(app, resultListID\)\.exists \? \[resultListID\] : \[viewportID, "classification-page-text"\]/,
+    /let resultIDs = listResults \? \[resultListID\] : \[viewportID, "classification-page-text"\]/,
   );
+  assert.ok(owner.includes('(paging ? ["classification-stage-footer"] : []) + actions'));
   assert.match(owner, /phase == 2 \? resultIDs : \[\]/);
-  assert.match(compactList, /captureStageLayout\(app, stage: "result-list-/);
+  assert.match(compactList, /captureStageLayout\(app, stage: "result-list-start"/);
+  assert.match(compactList, /captureStageLayout\(app, stage: "result-list-end"/);
   assert.match(compactList, /list\.frame\.insetBy\(dx: -1, dy: -1\)\.contains/);
-  assert.match(compactList, /readAllResultPages\(app, anchor: anchor\)/);
-  assert.match(compactList, /starts\.dropLast\(\)\.reversed\(\)/);
+  assert.match(compactList, /fullyVisible\(row\)/);
+  assert.match(compactList, /withVelocity: \.slow/);
+  assert.match(compactList, /readSingleResultDetail\(app\)/);
+  assert.match(compactList, /XCTAssertFalse\(node\(app, id\).exists/);
+  assert.match(compactList, /tap\(app, "classification-detail-back"\)/);
+  const dockCheck = swift.indexOf('try assertClassificationCircleDock');
+  assert.ok(dockCheck > 0 && dockCheck < swift.indexOf('try readScrollableResults'));
+  assert.ok(swift.includes('environment["OROT_CLASSIFICATION_MOTION_ONLY"] == "YES"'));
+  const motionScope = swift.indexOf('if motionOnly {');
+  const scroll = swift.indexOf('try readScrollableResults');
+  assert.ok(dockCheck < motionScope && motionScope < scroll);
+  assert.match(swift.slice(motionScope, scroll), /assertClassificationCircleReturn[\s\S]*return/);
+  assert.match(swift.slice(scroll), /readScrollableResults[\s\S]*assertClassificationCircleReturn/);
+
+  assert.match(compactList, /guard expectLeft \? sideOrder : stackedOrder else/);
+  assert.match(compactList, /guard node\(app, id\)\.waitForExistence\(timeout: 4\) else/);
+  assert.match(compactList, /guard returnedLast\.waitForExistence\(timeout: 4\) else/);
+  const preTap = compactList.indexOf('guard let beforeSample, last.isHittable else');
+  assert.ok(preTap > 0 && preTap < compactList.indexOf('last.tap()'));
+  assert.ok(compactList.includes('row.maxY - viewport.maxY + 12'));
+  assert.ok(compactList.includes('sample.viewport.contains(sample.row)'));
+  assert.ok(compactList.includes('stableStageFrame(sample.row, previous.row)'));
+  assert.match(
+    compactList,
+    /waitForSettledClassificationRow\(in: returnedList, row: returnedLast\)/,
+  );
+  assert.match(compactList, /stableStageFrame\(listAfter, listBefore\)/);
+  assert.match(compactList, /stableStageFrame\(after, before\)/);
+  assert.match(
+    compactList,
+    /listAfter\.insetBy\(dx: -1, dy: -1\)\.contains\(after\) && returnedLast\.isHittable/,
+  );
+  assert.match(
+    compactList,
+    /XCTAssertFalse\(listAfter\.insetBy\(dx: -1, dy: -1\)\.contains\(firstAfter\)/,
+  );
   assert.match(compactList, /XCTAssertEqual\(labels\.count, 9\)/);
+  assert.match(swift, /XCTAssertFalse\(node\(app, "medical-appointment-next-result"\).exists\)/);
+  assert.match(swift, /tap\(app, "classification-detail-back"\)/);
   assert.match(owner, /guard phase == 0 else \{ return false \}/);
   assert.match(owner, /acceptsOptionalStageMarker\(global: total, owned: owned\)/);
   assert.match(owner, /receipt\["confirmationTextViewportProjected"\] = sawConfirmationViewport/);

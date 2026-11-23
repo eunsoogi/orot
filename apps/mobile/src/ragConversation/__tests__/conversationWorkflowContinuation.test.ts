@@ -25,7 +25,8 @@ test('continues the exact persisted thread only after explicit action and atomic
   const checkpointer = {} as never;
   const continuation = {
     bindPause: jest.fn(),
-    waitForContinue: async () => {
+    waitForContinue: async (reason?: string) => {
+      expect(reason).toBe('background-paused');
       order.push('tap');
       return true;
     },

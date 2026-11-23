@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react-native';
 import type { ChartData } from '../../ui/charts';
 import { HealthRecordsLineChart } from '../HealthRecordsLineChart';
 import { HealthRecordsCategoryCharts } from '../HealthRecordsCategoryCharts';
+import { selectHealthRecordPreview } from '../healthRecordPreview';
 import { mapBloodPressureCorrelation } from '../bloodPressure/mapper';
 import { correlation } from '../bloodPressure/testSupport';
 import { healthObservation } from '../../../../../packages/storage/__tests__/localQueryTestSupport';
@@ -113,7 +114,7 @@ test('keeps unit groups separate and drops invalid values and dates', async () =
   ).toEqual([[70], [154]]);
 });
 
-test('retains duplicate instants and updates coverage and values on refresh', async () => {
+test('retains both samples at a coincident instant and updates coverage on refresh', async () => {
   const record = healthObservation('one', 'heart_rate', '2026-10-01T00:00:00Z');
   if (record.value.kind !== 'quantity') throw new Error('Expected quantity');
   const next = {
@@ -131,7 +132,12 @@ test('retains duplicate instants and updates coverage and values on refresh', as
   const read = () =>
     JSON.parse(screen.getByTestId('chart-data').props.children) as ChartData;
   expect(read().coverage.status).toBe('loading');
-  expect(read().series[0]?.points).toHaveLength(2);
+  expect(read().series[0]?.points).toEqual([
+    expect.objectContaining({
+      range: { minimum: 72, maximum: 180, samples: 2 },
+      value: 126,
+    }),
+  ]);
   await result.rerender(
     <HealthRecordsLineChart
       category="heart_rate"
@@ -191,4 +197,47 @@ test('passes measured values, timestamps, provenance and partial coverage to the
   expect(data.series[0]?.points.every(point => point.source.length > 0)).toBe(
     true,
   );
+});
+
+test('Records summarizes a whole loaded heart bucket before selecting preview marks', async () => {
+  const instant = '2035-01-05T00:00:00Z';
+  const input = Array.from({ length: 13 }, (_, index) => {
+    const member = index >= 4 && index <= 6;
+    const day = index < 4 ? index + 1 : index - 1;
+    const record = healthObservation(
+      String(index).padStart(2, '0'),
+      'heart_rate',
+      member ? instant : `2035-01-${String(day).padStart(2, '0')}T00:00:00Z`,
+    );
+    if (record.value.kind !== 'quantity') throw new Error('Expected quantity');
+    return {
+      ...record,
+      value: { ...record.value, amount: [60, 61, 120][index - 4] ?? 72 },
+    };
+  });
+  // This existing raw preview skips rank six, removing the high sample.
+  expect(
+    selectHealthRecordPreview(input).map(record => record.id),
+  ).not.toContain('06');
+  await render(
+    <HealthRecordsCategoryCharts
+      category="heart_rate"
+      hasMore
+      loadState="ready"
+      observations={input}
+    />,
+  );
+  const data = JSON.parse(
+    screen.getByTestId('chart-data').props.children,
+  ) as ChartData;
+  expect(data.coverage.status).toBe('partial');
+  const bucket = data.series[0]?.points.find(point => point.x === instant);
+  expect(bucket?.range).toEqual({ minimum: 60, maximum: 120, samples: 3 });
+  expect(bucket?.value).toBeCloseTo(80.33, 2);
+  expect(data.series[0]?.points).toHaveLength(11);
+  expect(
+    screen.getByText(
+      '표시한 시각의 범위와 평균은 불러온 측정값만으로 계산했어요.',
+    ),
+  ).toBeTruthy();
 });

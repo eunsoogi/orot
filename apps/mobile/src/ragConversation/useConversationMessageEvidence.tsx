@@ -72,6 +72,7 @@ export function useConversationMessageEvidence({
   const citations =
     showCitations && message.dailyReport && resolveDailyReport ? (
       <DailyReportSourceLinks
+        transcript
         key={reportKey}
         {...message.dailyReport}
         resolve={resolveDailyReport}

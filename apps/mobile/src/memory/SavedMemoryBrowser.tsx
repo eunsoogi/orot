@@ -1,22 +1,33 @@
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
+import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { formatDateTime, t } from '../i18n';
 import { useSavedMemories, type SavedMemory } from './useSavedMemories';
-import { savedMemoryStyles as styles } from './savedMemoryStyles';
+import {
+  MaterialLibraryRow,
+  MaterialLibraryRows,
+  materialLibraryStyles as styles,
+} from '../layout/MaterialLibraryRows';
 /** Summaries remain local; navigation receives only the selected memory ID, never text. */
 export function SavedMemoryBrowser({
   load,
   active = true,
+  ownership,
   onOpenMemory,
 }: {
   readonly active?: boolean;
   readonly load?: () => Promise<SavedMemory[]>;
+  readonly ownership?: NavigationRouteOwnership;
   readonly onOpenMemory?: (id: string) => void;
 }) {
-  const { rows, state, refresh } = useSavedMemories(load, active);
+  const { rows, state, refresh, readyRead } = useSavedMemories(
+    load,
+    active,
+    ownership,
+  );
   const [visible, setVisible] = useState(20);
   const position = useNavigationRouteScrollPosition();
   // Restore only after the fresh protected list has committed, not while its rows are empty.
@@ -25,11 +36,8 @@ export function SavedMemoryBrowser({
   }, [active, state, position]);
   // Retain the page bound while a native detail owns focus, so Back restores the same list position.
   return (
-    <View
-      style={[styles.section, styles.panel, styles.previewList]}
-      testID="saved-memory-browser"
-    >
-      <Text accessibilityRole="header" style={styles.title}>
+    <View style={styles.screen} testID="saved-memory-browser">
+      <Text accessibilityRole="header" style={styles.heading}>
         {t('savedMemory.title')}
       </Text>
       <Text style={styles.description}>{t('savedMemory.privacy')}</Text>
@@ -68,25 +76,32 @@ export function SavedMemoryBrowser({
               ? t('savedMemory.count', { count: rows.length })
               : t('savedMemory.empty')}
           </Text>
-          {rows.slice(0, visible).map(row => (
-            <AppButton
-              key={row.id}
-              testID={`saved-memory-entry-${row.id}`}
-              variant="list"
-              // Native wrapping, not a character slice, owns the two-line preview.
-              title={row.text.replace(/\s+/g, ' ').trim()}
-              titleNumberOfLines={2}
-              size="compact"
-              summary={t('savedMemory.savedAt', {
-                date: formatDateTime(new Date(row.createdAt)),
-              })}
-              accessibilityHint={t('savedMemory.openDetail')}
-              onPress={() => {
-                position?.preserve();
-                onOpenMemory?.(row.id);
-              }}
-            />
-          ))}
+          {rows.length ? (
+            <MaterialLibraryRows testID="saved-memory-rows">
+              {rows.slice(0, visible).map((row, index) => (
+                <MaterialLibraryRow
+                  key={row.id}
+                  testID={`saved-memory-entry-${row.id}`}
+                  divider={index + 1 < Math.min(visible, rows.length)}
+                  // Native wrapping, not a character slice, owns the two-line preview.
+                  title={row.text.replace(/\s+/g, ' ').trim()}
+                  titleNumberOfLines={2}
+                  summary={t('savedMemory.savedAt', {
+                    date: formatDateTime(new Date(row.createdAt)),
+                  })}
+                  accessibilityHint={t('savedMemory.openDetail')}
+                  onPress={
+                    onOpenMemory &&
+                    (() => {
+                      if (!readyRead?.isCurrent()) return;
+                      position?.preserve();
+                      onOpenMemory(row.id);
+                    })
+                  }
+                />
+              ))}
+            </MaterialLibraryRows>
+          ) : null}
           {visible < rows.length && (
             <AppButton
               variant="neutral"

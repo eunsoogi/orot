@@ -1,3 +1,4 @@
+import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import type { MultiAgentInvocation } from '@orot/agent-runtime';
 import type { ArtifactContinuation } from './artifactContinuation';
 import type {
@@ -33,7 +34,7 @@ export type RagConversationObserver = Pick<
   /** Owned pause/continue controls never submit a new question. */
   readonly onWorkflowPauseController?: (requestPause: () => void) => void;
   readonly onWorkflowPaused?: (
-    reason?: 'expired' | 'decision-required',
+    reason?: ConversationCheckpointPauseReason,
   ) => Promise<boolean>;
   readonly onExecutionState?: (state: 'working' | 'local' | 'decision') => void;
   /** Confirm an ambiguous model-selected user statement locally; never authorizes provider transfer. */
@@ -43,6 +44,8 @@ export type RagConversationObserver = Pick<
   ) => Promise<boolean>;
   /** Opt-in is from the composer dispatch, never inferred from typed route or model output. */
   readonly inputOrigin?: 'composer' | 'shortcut';
+  /** Local-only storage permission; available only to the live request owner. */
+  readonly admitDailyReportMemory?: import('./conversationDailyReportMemoryJobs').DailyReportMemoryObserver;
   readonly conversationScope?: string;
   readonly retentionSession?: { readonly id: string; readonly version: number };
   /** The checkpoint and explicit photo consent are owned by this specific turn. */
@@ -71,6 +74,9 @@ export type RagConversationObserver = Pick<
   readonly expectedConversationModel?: {
     readonly providerId: string;
     readonly modelId: string;
+    /** Warm local preparation never bypasses the late selection/credential guard. */
+    readonly isCurrent?: () => boolean;
+    readonly isDurablyCurrent?: () => Promise<boolean>;
   };
   /** Voice binds its transcript to the exact selection approved before capture. */
   readonly expectedVoiceSelection?: {
@@ -93,6 +99,8 @@ export type RagConversationObserver = Pick<
     candidate: ConversationRetentionCandidate,
     signal: AbortSignal,
   ) => Promise<void>;
+  /** Receives a closed local terminal result; no model prose or source payload is saved. */
+  readonly onLocalVisitClarification?: (signal: AbortSignal) => Promise<void>;
   readonly onRetentionFailure?: (
     retryPreparation?: PrepareConversationRetention,
   ) => void;

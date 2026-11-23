@@ -62,14 +62,22 @@ const rows = Array.from({ length: 8 }, (_, index) => ({
   title: `합성 일정 ${index + 1}`,
   when: '6월 2일 09:05–09:45',
   category: '의료 방문·검사 일정',
-  details: `합성 일정 ${index + 1}\n\n전체 시간 및 분류 근거 ${index + 1}`,
+  details: [
+    { label: '제목', value: `합성 일정 ${index + 1}` },
+    { label: '날짜 및 시간', value: '2035년 6월 2일 09:05–09:45' },
+    { label: '분류', value: '의료 방문·검사 일정' },
+    {
+      label: '분류 근거',
+      value: `전체 시간 및 분류 근거 ${index + 1} ${'긴 합성 내용 '.repeat(60)}`,
+    },
+  ],
 }));
 
 test.each([
   { width: 430, height: 660, scale: 1 },
   { width: 300, height: 550, scale: 1.6 },
 ])(
-  'pages complete compact rows, keeping long detail accessible at $width points and $scale scale',
+  'scrolls complete compact rows, keeping long detail accessible at $width points and $scale scale',
   async ({ width, height, scale }) => {
     await act(async () =>
       Dimensions.set({
@@ -77,41 +85,51 @@ test.each([
         screen: { width, height, scale: 2, fontScale: scale },
       }),
     );
-    const view = await render(
+    const restart = jest.fn();
+    await render(
       <ClassificationResultsStage
         rows={rows}
         summary="전체 분류 범위"
         notice=""
-        restart={jest.fn()}
+        restart={restart}
       />,
     );
     await layout('medical-appointment-results', width, height);
     const first = screen.getAllByTestId('classification-result-row');
-    expect(first.length).toBeGreaterThanOrEqual(scale === 1 ? 2 : 1);
-    expect(first.length).toBeLessThan(rows.length);
+    expect(first).toHaveLength(rows.length);
+    expect(screen.queryByText('이전 페이지')).toBeNull();
+    expect(screen.queryByText('다음 페이지')).toBeNull();
+    expect(screen.queryByRole('button', { name: '이전 페이지' })).toBeNull();
     expect(screen.getAllByText(/09:05/)[0].props.numberOfLines).toBe(1);
     expect(screen.getByText(rows[0]!.title).props.numberOfLines).toBe(1);
     await fireEvent.press(first[0]!);
     expect(screen.getByTestId('classification-result-reader')).toBeTruthy();
-    expect(screen.getByText(/전체 시간 및 분류 근거 1/)).toBeTruthy();
+    expect(
+      screen.getByText(/전체 시간 및 분류 근거 1/).props.numberOfLines,
+    ).toBeUndefined();
+    expect(screen.getByText('날짜 및 시간')).toBeTruthy();
+    expect(screen.getByText(rows[0]!.category)).toBeTruthy();
+    expect(screen.queryByText('목록')).toBeNull();
+    expect(screen.queryByRole('button', { name: '다음 페이지' })).toBeNull();
+    expect(screen.getByTestId('classification-detail-fields')).toBeTruthy();
+    await fireEvent.press(
+      screen.getByRole('button', { name: '다시 분류하기' }),
+    );
+    expect(restart).toHaveBeenCalledTimes(1);
     await fireEvent.press(
       screen.getByRole('button', { name: '분류된 일정 목록으로 돌아가기' }),
     );
-    await fireEvent.press(
-      screen.getByTestId('medical-appointment-next-result'),
-    );
-    expect(screen.queryByText(rows[0]!.title)).toBeNull();
-    expect(screen.getByText(rows[first.length]!.title)).toBeTruthy();
-    await fireEvent.press(
-      screen.getByTestId('medical-appointment-previous-result'),
-    );
     expect(screen.getByText(rows[0]!.title)).toBeTruthy();
-    expect(JSON.stringify(view.toJSON())).not.toMatch(
-      /RCTScrollView|chevron\.(left|right)/,
-    );
+    expect(screen.getByText(rows.at(-1)!.title)).toBeTruthy();
+    expect(screen.queryByTestId('medical-appointment-next-result')).toBeNull();
+    expect(
+      screen.queryByTestId('medical-appointment-previous-result'),
+    ).toBeNull();
     await layout('medical-appointment-results', 240, 125);
-    expect(screen.queryByTestId('classification-result-row')).toBeNull();
-    expect(screen.getByTestId('classification-result-reader')).toBeTruthy();
+    expect(screen.getAllByTestId('classification-result-row')).toHaveLength(
+      rows.length,
+    );
+    expect(screen.queryByTestId('classification-result-reader')).toBeNull();
     await layout('medical-appointment-results', width, height);
     expect(screen.getAllByTestId('classification-result-row')).toHaveLength(
       first.length,

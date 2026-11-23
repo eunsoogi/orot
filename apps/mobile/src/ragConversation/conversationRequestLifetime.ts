@@ -1,14 +1,19 @@
+import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import {
-  requestOwnedConversationPause,
+  observeContinuedConversationActivity,
+  revokeContinuedConversationWork,
+} from './conversationContinuedWork';
+import {
   clearDrainedConversationPause,
   registerConversationPause,
 } from './conversationDeferredPause';
+import { adoptConversationLifetimeLease } from './conversationLifetimeLeaseAdoption';
+import { takeWarmExecution } from './conversationWarmExecutionHandoff';
 import { interruptConversationLifetime } from './conversationLifetimeInterruption';
 import { createExecutionDiagnostics } from './conversationExecutionDiagnostics';
 import { waitForWorkflowContinue } from './conversationWorkflowContinueWait';
 import { requiresConversationDecisionAbort } from './conversationApprovalBoundary';
 import type { ConversationExecutionAdapter } from './conversationExecutionLease';
-import { beginConversationExecutionLease } from './conversationExecutionLease';
 import type {
   ConversationLifetimeEntry,
   Turn,
@@ -19,6 +24,7 @@ export type { ConversationLifetimeEntry } from './conversationLifetimeEntry';
 export function createConversationRequestLifetime(input: {
   execution?: ConversationExecutionAdapter;
   interrupt: (id: number) => void;
+  acceptNativeExpiry?: (id: number) => boolean;
   reportFenceFailure: (id: number) => void;
   pauseState?: (id: number, resume?: () => void) => void;
 }) {
@@ -39,12 +45,15 @@ export function createConversationRequestLifetime(input: {
       controller.signal.aborted
     )
       throw new Error('Conversation lifetime already owned or cancelled.');
+    const early = takeWarmExecution(turn);
+    if (early && !early.stillOwned())
+      throw new Error('Warm conversation preparation changed.');
     const entry: ConversationLifetimeEntry = {
       id,
       controller,
       turn,
       leaseAttempt: 1,
-      executionId: `${prefix}:1`,
+      executionId: early?.id ?? `${prefix}:1`,
       leasePrefix: prefix,
       diagnose: createExecutionDiagnostics(
         input.execution?.bridgeAvailable,
@@ -54,30 +63,20 @@ export function createConversationRequestLifetime(input: {
     entries.set(id, entry);
     owners.set(controller, entry);
     entry.start = start();
-    await entry.start;
-    if (controller.signal.aborted || entries.get(id) !== entry) return;
-    if (input.execution) {
-      const release = await beginConversationExecutionLease(
-        input.execution,
-        entry.executionId,
-        reason => {
-          if (entries.get(id) === entry && !controller.signal.aborted) {
-            entry.interruptionReason = reason;
-            input.interrupt(id);
-          }
-        },
-        () => requiresConversationDecisionAbort(entry, input.execution),
-        () => requestOwnedConversationPause(entry, entries),
-        entry.diagnose,
-      );
+    early?.fence(reason => {
       if (
-        controller.signal.aborted ||
         entries.get(id) !== entry ||
+        controller.signal.aborted ||
         entry.status
       )
-        release();
-      else entry.release = release;
-    }
+        return;
+      entry.interruptionReason = reason;
+      input.interrupt(id);
+    });
+    await entry.start;
+    if (controller.signal.aborted || entries.get(id) !== entry) return;
+    if (input.execution)
+      await adoptConversationLifetimeLease(entry, entries, input, early);
   }
   return {
     start(
@@ -126,6 +125,7 @@ export function createConversationRequestLifetime(input: {
           entry.resumableApproval = waiting;
           if (waiting) {
             entry.waitingForDecision = true;
+            revokeContinuedConversationWork(entry, input.execution);
             requiresConversationDecisionAbort(entry, input.execution);
           } else entry.waitingForDecision = false;
         },
@@ -136,7 +136,7 @@ export function createConversationRequestLifetime(input: {
             requestPause,
           ),
         onWorkflowPaused: async (
-          reason: 'expired' | 'decision-required' = 'expired',
+          reason: ConversationCheckpointPauseReason = 'background-paused',
         ) => {
           const entry = owners.get(controller);
           if (
@@ -146,7 +146,7 @@ export function createConversationRequestLifetime(input: {
           )
             return false;
           clearDrainedConversationPause(entry);
-          // The graph boundary is already durable; reuse the existing generic notification policy.
+          entry.diagnose('workflow-checkpoint-paused', reason);
           await entry.turn
             .interruptRequest('interrupted', reason)
             .catch(() => {});
@@ -163,20 +163,10 @@ export function createConversationRequestLifetime(input: {
             controller.signal.aborted
           )
             return;
-          entry.waitingForDecision = state === 'decision';
-          input.execution?.work?.(entry.executionId, state === 'working');
-          if (
-            state === 'decision' &&
-            requiresConversationDecisionAbort(entry, input.execution) &&
-            input.execution?.currentPhase?.() === 'background'
-          ) {
-            entry.interruptionReason = 'decision-required';
-            input.interrupt(entry.id);
-          }
+          observeContinuedConversationActivity(entry, state, input);
         },
       };
     },
-    /** Record only a closed result category for the current request, never error text. */
     outcome(
       controller: AbortController,
       outcome: import('./outcome').RagConversationOutcome,
@@ -195,7 +185,7 @@ export function createConversationRequestLifetime(input: {
           outcome.status === 'failure' ? outcome.kind : 'unavailable',
         );
     },
-    /** Only observed workflow milestones advance the system UI; never elapsed-time estimates. */
+    /** Only observed workflow milestones advance the system UI. */
     answered(controller: AbortController, committed: boolean) {
       const entry = owners.get(controller);
       if (
@@ -228,7 +218,6 @@ export function createConversationRequestLifetime(input: {
     interruptionReason(controller: AbortController) {
       return owners.get(controller)?.interruptionReason;
     },
-    /** Final cleanup must retain the same interruption reason already used by Stop. */
     failureStatus(controller: AbortController): StopStatus | 'failed' {
       return controller.signal.aborted
         ? (owners.get(controller)?.status ?? 'cancelled')
@@ -244,7 +233,6 @@ export function createConversationRequestLifetime(input: {
       } while (observed !== entry.fence);
       entry.release?.();
       if (entries.get(id) === entry) entries.delete(id);
-      // Weak ownership retains the terminal Stop reason without preventing collection.
     },
   };
 }

@@ -7,11 +7,13 @@ enum GeneratedRecordsRoutesUITestConditions {
     static func inspect(_ app: XCUIApplication, suffix: String, testCase: XCTestCase) throws {
         try NavigationUITestConditions.openTab(app, "records", markers: ["records-title"])
         let browser = UITestConditions.element(app, "generated-report-browser")
-        XCTAssertTrue(UITestConditions.exists(browser))
-        // Resolve the control by identifier so reveal can match its actual owning window.
-        let open = app.buttons["generated-report-open"]
-        XCTAssertEqual(open.label, "보고서·진료 질문 보기")
+        XCTAssertFalse(browser.exists)
+        XCTAssertFalse(UITestConditions.element(app, "saved-memory-browser").exists)
+        // Reveal the static landing row, then sample the existing protected native destination.
+        let open = app.buttons["records-open-generated-reports"]
+        XCTAssertTrue(open.label.contains("대화에서 생성한 자료"))
         try tap(open, in: app)
+        NavigationUITestConditions.route(app, markers: ["generated-report-browser"])
         let reports = [
             ("summary:synthetic-routes-possibilities", "합성 기록에서 살펴볼 가능성이에요."),
             ("summary:synthetic-routes-health-summary", "합성 건강 정보 요약이에요."),
@@ -23,12 +25,13 @@ enum GeneratedRecordsRoutesUITestConditions {
             XCTAssertTrue(UITestConditions.exists(row), app.debugDescription)
             try tap(row, in: app)
             XCTAssertTrue(UITestConditions.exists(UITestConditions.element(app, "generated-report-detail")))
-            // Match the saved prose itself so the owning window and visible text are both checked.
-            let prose = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "generated-report-paragraph-", text)).firstMatch
+            // Match the rendered wording so the read-only template and owning window are both checked.
+            let textPrefix = key.hasPrefix("visit:") ? "next-visit-saved-question-text-" : "generated-report-paragraph-"
+            let prose = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", textPrefix, text)).firstMatch
             XCTAssertTrue(UITestConditions.exists(prose), app.debugDescription)
             try RoutesVisibleContentUITestConditions.prose(prose, expected: text, in: app)
             assertReadOnly(app)
-            _ = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records")
+            _ = try NavigationUITestConditions.navigationAction(app, "navigation-back")
             RecordingFixtureUITestConditions.capture(app, "records-\(key.replacingOccurrences(of: ":", with: "-"))-\(suffix)", testCase: testCase)
             let back = app.buttons["generated-report-back"]
             XCTAssertEqual(back.label, "목록으로")
@@ -37,10 +40,12 @@ enum GeneratedRecordsRoutesUITestConditions {
             XCTAssertTrue(UITestConditions.exists(row))
         }
         RecordingFixtureUITestConditions.capture(app, "records-report-list-\(suffix)", testCase: testCase)
-        let close = app.buttons["generated-report-close"]
-        XCTAssertEqual(close.label, "닫기")
-        try tap(close, in: app, towardTop: true)
-        XCTAssertTrue(UITestConditions.exists(app.buttons["generated-report-open"]))
+        try NavigationUITestConditions.tapNavigation(app, "navigation-back")
+        NavigationUITestConditions.route(app, markers: ["records-title"])
+        XCTAssertTrue(UITestConditions.exists(open))
+        XCTAssertFalse(browser.exists)
+        let records = try NavigationUITestConditions.navigationAction(app, "navigation-tab-records").control
+        XCTAssertTrue(records.isSelected)
         // The saved scroll offset can leave the title above the viewport at XXXL.
         try NavigationUITestConditions.openTab(app, "overview", markers: ["overview-title", "overview-next-appointment-clinic"])
         try revealOverviewTitle(app)

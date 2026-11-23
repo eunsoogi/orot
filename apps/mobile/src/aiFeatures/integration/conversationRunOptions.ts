@@ -67,7 +67,7 @@ export function conversationRunRequest(input: {
   readonly onInitialSearchStatus?: RagConversationRunOptions['onInitialSearchStatus'];
   readonly question: string;
   readonly photoEvidence?: RagConversationRunOptions['photoEvidence'];
-  readonly entryIntent?: RagConversationRunOptions['entryIntent'];
+  readonly entryContext?: ConversationEntryContext;
   readonly authoredCurrentRequest?: boolean;
   readonly targetVisitEvidence?: RagConversationRunOptions['targetVisitEvidence'];
   readonly dailyReportEvidence?: RagConversationRunOptions['dailyReportEvidence'];
@@ -83,8 +83,9 @@ export function conversationRunRequest(input: {
     onInitialSearchStatus: input.onInitialSearchStatus,
     question: input.question,
     ...(input.photoEvidence ? { photoEvidence: input.photoEvidence } : {}),
-    entryIntent: input.entryIntent,
+    entryIntent: input.entryContext?.intent,
     authoredCurrentRequest: input.authoredCurrentRequest,
+    typedPossibilityReport: input.entryContext?.typedPossibilityReport,
     targetVisitEvidence: input.targetVisitEvidence,
     dailyReportEvidence: input.dailyReportEvidence,
     previousMessages: input.history.messages,
@@ -186,7 +187,23 @@ export function observeConversationMain(
   return async (options, invocation) => {
     observeReceiptStage('conversation_receipt_main', 'started');
     try {
-      const outcome = await run(options, invocation);
+      const outcome = await run(
+        {
+          ...options,
+          workflow: {
+            ...options.workflow,
+            onModelStage(stage, event) {
+              try {
+                providerDiagnostic('rag', stage, event);
+              } catch {
+                // An optional diagnostic cannot suppress the caller's observer.
+              }
+              return options.workflow.onModelStage?.(stage, event);
+            },
+          },
+        },
+        invocation,
+      );
       observeReceiptStage('conversation_receipt_main', 'completed');
       return outcome;
     } catch (error) {

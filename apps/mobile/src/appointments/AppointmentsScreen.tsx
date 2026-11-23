@@ -1,7 +1,7 @@
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { AppState, ScrollView, View } from 'react-native';
-import type { AppointmentRepository } from '@orot/storage';
+import type { Appointment, AppointmentRepository } from '@orot/storage';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { AppointmentListReadStatus } from './AppointmentListReadStatus';
@@ -80,6 +80,34 @@ export default function AppointmentsScreen({
     state.startNewAppointment,
   );
 
+  const renderAppointment = (appointment: Appointment, history: boolean) => {
+    const selected = appointment.id === selectedAppointmentId;
+    return (
+      <Fragment key={appointment.id}>
+        <AppointmentListItem
+          appointment={appointment}
+          history={history}
+          nextVisit={!history && appointment.id === state.nextAppointment?.id}
+          selected={selected}
+          onSelect={() => state.setSelectedAppointmentId(appointment.id)}
+        />
+        {selected ? (
+          <View testID="appointments-columns-secondary">
+            <AppointmentCard
+              appointment={appointment}
+              onEdit={() => state.startEditing(appointment)}
+              onCancel={() =>
+                requestAppointmentCancellationConfirmation(appointment, () =>
+                  state.cancelAppointment(appointment),
+                )
+              }
+            />
+          </View>
+        ) : null}
+      </Fragment>
+    );
+  };
+
   // The selected ID belongs to this screen so measured panel changes do not reset selection.
   const primaryPanel = state.formOpen ? (
     <AppointmentForm
@@ -140,18 +168,9 @@ export default function AppointmentsScreen({
               <Text accessibilityRole="header" style={styles.listSectionTitle}>
                 {t('appointments.section.upcoming')}
               </Text>
-              {upcomingAppointments.map(appointment => (
-                <AppointmentListItem
-                  key={appointment.id}
-                  appointment={appointment}
-                  history={false}
-                  nextVisit={appointment.id === state.nextAppointment?.id}
-                  selected={appointment.id === selectedAppointmentId}
-                  onSelect={() =>
-                    state.setSelectedAppointmentId(appointment.id)
-                  }
-                />
-              ))}
+              {upcomingAppointments.map(appointment =>
+                renderAppointment(appointment, false),
+              )}
             </View>
           ) : null}
           {historicalAppointments.length > 0 ? (
@@ -162,22 +181,21 @@ export default function AppointmentsScreen({
               <Text accessibilityRole="header" style={styles.listSectionTitle}>
                 {t('appointments.section.history')}
               </Text>
-              {historicalAppointments.map(appointment => (
-                <AppointmentListItem
-                  key={appointment.id}
-                  appointment={appointment}
-                  history
-                  nextVisit={false}
-                  selected={appointment.id === selectedAppointmentId}
-                  onSelect={() =>
-                    state.setSelectedAppointmentId(appointment.id)
-                  }
-                />
-              ))}
+              {historicalAppointments.map(appointment =>
+                renderAppointment(appointment, true),
+              )}
             </View>
           ) : null}
         </View>
       )}
+      {!selectedAppointment ? (
+        <Text
+          style={styles.selectionPrompt}
+          testID="appointments-selection-prompt"
+        >
+          {t('appointments.detail.selectPrompt')}
+        </Text>
+      ) : null}
       {!hasDock ? (
         <Button
           onPress={state.startNewAppointment}
@@ -188,32 +206,6 @@ export default function AppointmentsScreen({
     </View>
   );
 
-  const secondaryPanel = state.formOpen ? undefined : (
-    <View style={styles.detailPanel}>
-      <Text accessibilityRole="header" style={styles.detailTitle}>
-        {t('appointments.detail.title')}
-      </Text>
-      {selectedAppointment ? (
-        <AppointmentCard
-          appointment={selectedAppointment}
-          onEdit={() => state.startEditing(selectedAppointment)}
-          onCancel={() =>
-            requestAppointmentCancellationConfirmation(
-              selectedAppointment,
-              () => state.cancelAppointment(selectedAppointment),
-            )
-          }
-        />
-      ) : (
-        <Text
-          style={styles.selectionPrompt}
-          testID="appointments-selection-prompt"
-        >
-          {t('appointments.detail.selectPrompt')}
-        </Text>
-      )}
-    </View>
-  );
   return (
     <ScrollView
       // Starting an edit replaces the list and resets its potentially distant scroll offset.
@@ -239,7 +231,6 @@ export default function AppointmentsScreen({
       <AdaptiveColumns
         primary={primaryPanel}
         routeKey="appointments"
-        secondary={secondaryPanel}
         testID="appointments-columns"
       />
     </ScrollView>

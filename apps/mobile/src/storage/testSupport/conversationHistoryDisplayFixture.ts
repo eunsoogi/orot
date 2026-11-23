@@ -6,8 +6,8 @@ import type { ConversationArtifact } from '../conversationArtifactCodec';
 
 export const date = '2026-10-05T00:00:00.000Z';
 
-export async function setup() {
-  const fixture = await healthContextFixture();
+export async function setup(databasePath?: string) {
+  const fixture = await healthContextFixture(undefined, databasePath);
   let projection = false;
   let strict: number | undefined;
   const sql: string[] = [];

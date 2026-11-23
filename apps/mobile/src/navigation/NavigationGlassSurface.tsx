@@ -50,6 +50,7 @@ export interface NavigationGlassSurfaceProps {
   readonly onAction?: NavigationGlassActionEventHandler;
   readonly layoutMode?: 'bottom' | 'left' | 'right';
   readonly railTopInset?: number;
+  readonly railBackTopInset?: number;
   readonly railBottomInset?: number;
   readonly railRightInset?: number;
   /** Explicit window extent after keyboard avoidance, independent of React host bounds. */
@@ -78,6 +79,7 @@ interface NavigationGlassNativeProps extends ViewProps {
   readonly onAction?: NavigationGlassActionEventHandler;
   readonly layoutMode?: 'bottom' | 'left' | 'right';
   readonly railTopInset?: number;
+  readonly railBackTopInset?: number;
   readonly railBottomInset?: number;
   readonly railRightInset?: number;
   readonly railAvailableHeight?: number;
@@ -100,6 +102,7 @@ export function NavigationGlassSurface({
   railBottomInset,
   railRightInset,
   railTopInset,
+  railBackTopInset,
   railAvailableHeight,
   bottomHeight,
   isPageDock,
@@ -164,6 +167,7 @@ export function NavigationGlassSurface({
         railBottomInset={railBottomInset}
         railRightInset={railRightInset}
         railTopInset={railTopInset}
+        railBackTopInset={railBackTopInset}
         railAvailableHeight={railAvailableHeight}
         bottomHeight={isBottom ? resolvedHeight : undefined}
         style={[

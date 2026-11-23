@@ -23,8 +23,12 @@ export function RecordingSelectionProvider({
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
+export function useOptionalRecordingSelection() {
+  return useContext(Context);
+}
+
 export function useRecordingSelection() {
-  const context = useContext(Context);
+  const context = useOptionalRecordingSelection();
   if (!context)
     throw new Error('Recording routes require their selection provider.');
   return context;

@@ -73,6 +73,9 @@ const visualSessionRetention: NonNullable<
     return {
       toolMessageId: 'conversation-visual-tool-message',
       ordinaryMemorySource: () => undefined,
+      admitDailyReportMemory() {
+        return undefined;
+      },
       retainOpening() {},
       retainDelivery() {},
       discardOpening() {},

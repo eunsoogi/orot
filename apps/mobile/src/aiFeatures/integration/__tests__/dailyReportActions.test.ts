@@ -6,6 +6,10 @@ import {
 import type { DailyReportSourceRecord } from '@orot/domain';
 import type { LocalHealthEvidenceRecord } from '../../../healthEvidence/localEvidenceQueries';
 import { dailyReportActions } from '../dailyReportActions';
+import {
+  dailyReportAnalysis,
+  reportObservations,
+} from '../dailyReportAnalysis';
 
 const metadata = (id: string) => ({
   id,
@@ -29,17 +33,16 @@ const visit = (
   kind: 'appointment',
   record: AppointmentSchema.parse({ ...metadata('visit'), status }),
 });
+const sourcesFor = (values: LocalHealthEvidenceRecord[]) =>
+  values.map(item => ({
+    source: item.kind,
+    recordId: item.record.id,
+    revision: '1',
+    occurrence: { startInclusive: item.record.effectiveAt! },
+    ingestedAt: item.record.ingestedAt,
+  })) as DailyReportSourceRecord[];
 const summarize = (values: LocalHealthEvidenceRecord[]) =>
-  dailyReportActions(
-    values,
-    values.map(item => ({
-      source: item.kind,
-      recordId: item.record.id,
-      revision: '1',
-      occurrence: { startInclusive: item.record.effectiveAt! },
-      ingestedAt: item.record.ingestedAt,
-    })) as DailyReportSourceRecord[],
-  );
+  dailyReportActions(values, sourcesFor(values));
 
 test('explicit missed and taken doses remain separate, not an adherence score or dosing instruction', () => {
   const claims = summarize([dose('missed'), dose('taken')]);
@@ -48,7 +51,7 @@ test('explicit missed and taken doses remain separate, not an adherence score or
     { source: 'dose_event', recordId: 'missed' },
   ]);
   expect(claims[1]?.text).toContain('복용·투여를 완료했어요');
-  expect(claims[1]?.text).toContain('다른 예정 회차');
+  expect(claims[1]?.text).toContain('오늘 기록된 회차');
   expect(claims[1]?.sourceReferences).toEqual([
     { source: 'dose_event', recordId: 'taken' },
   ]);
@@ -67,7 +70,7 @@ test('a visit and active symptoms support preparation, not attendance, a diagnos
   expect(claim.sourceReferences).toHaveLength(2);
 });
 test('cancelled visits never produce visit preparation; completed is a recorded status', () => {
-  expect(summarize([visit('cancelled')])).toHaveLength(1);
+  expect(summarize([visit('cancelled')])).toEqual([]);
   expect(summarize([visit('completed')])[0]?.text).toContain('완료로 저장한');
   expect(summarize([visit('completed')])[0]?.text).toContain(
     '진단이나 새 처방 내용이 확인되지',
@@ -155,12 +158,47 @@ test.each(['absent', 'cancelled'] as const)(
     expect(claims[0]?.sourceReferences).toEqual([
       { source: 'symptom_entry', recordId: 'ongoing' },
     ]);
-    expect(claims.at(-1)?.text).toContain('현재 접근 가능한');
+    expect(claims).toHaveLength(1);
     expect(symptom.record.effectiveAt).toBe('2034-12-20T01:00:00Z');
     const resolved = {
       ...symptom,
       record: { ...symptom.record, status: 'resolved' as const },
     };
-    expect(summarize([resolved])).toHaveLength(1);
+    expect(summarize([resolved])).toEqual([]);
   },
 );
+
+test('a taken dose selected by the model appears once and retains distinctly attributed extra evidence', () => {
+  const values = [dose('taken')];
+  const sources = sourcesFor(values);
+  const action = summarize(values)[0]!;
+  const sameAction = { ...action, kind: 'action' as const };
+  const extraRef = {
+    source: 'dose_event',
+    recordId: 'another-admitted-record',
+  };
+  const modelDuplicate = {
+    ...sameAction,
+    sourceReferences: [...action.sourceReferences, extraRef],
+  };
+  const result = dailyReportAnalysis(
+    values,
+    sources,
+    [0],
+    [],
+    [],
+    [sameAction, modelDuplicate],
+  );
+  expect(result).toEqual([
+    { ...action, section: 'actions' },
+    {
+      section: 'model',
+      text: 'AI가 바로 앞의 안내를 선택할 때 함께 참고한 기록이에요.',
+      sourceReferences: [extraRef],
+    },
+  ]);
+  const observed = { ...action, text: '원본 복용 기록' };
+  expect(
+    reportObservations([observed, { ...action, role: 'guidance' }], [], [1]),
+  ).toEqual([observed]);
+});

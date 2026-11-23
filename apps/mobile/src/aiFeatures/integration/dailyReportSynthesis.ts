@@ -48,6 +48,11 @@ export function dailyReportSynthesis(
   if (symptoms.length) {
     const active = symptoms.filter(item => item.record.status === 'active');
     const resolved = symptoms.filter(item => item.record.status === 'resolved');
+    // The snapshot identifies earlier ongoing records without interpreting a device's time zone.
+    const prior = active.filter(
+      item => sources[item.index]?.contextRole === 'ongoing_symptom',
+    );
+    const today = active.filter(item => !prior.includes(item));
     const descriptions = (items: typeof symptoms) =>
       items
         .slice(0, 3)
@@ -56,15 +61,19 @@ export function dailyReportSynthesis(
     result.push(
       claim(
         [
-          active.length
+          prior.length
+            ? t('dailyReport.analysis.priorActiveSymptoms', {
+                symptoms: descriptions(prior),
+              })
+            : '',
+          today.length
             ? t('dailyReport.analysis.activeSymptoms', {
-                symptoms: descriptions(active),
+                symptoms: descriptions(today),
               })
             : '',
           resolved.length
             ? t('dailySynthesis.resolved', { value0: descriptions(resolved) })
             : '',
-          t('dailySynthesis.currentUnknown'),
         ]
           .filter(Boolean)
           .join(' '),
@@ -210,9 +219,5 @@ export function dailyReportSynthesis(
       );
     }
   }
-  if (!result.length)
-    result.push(
-      claim(t('dailySynthesis.insufficient'), selected.length ? selected : [0]),
-    );
   return result;
 }

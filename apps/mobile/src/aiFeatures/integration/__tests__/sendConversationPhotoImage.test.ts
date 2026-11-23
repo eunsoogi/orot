@@ -117,26 +117,51 @@ test('rechecks owner synchronously at the native start, after subscribing', asyn
   expect(f.startPhotoResponse).not.toHaveBeenCalled();
 });
 
-test('Stop cancels the exact admitted native request, not a replacement model or text route', async () => {
-  const f = setupPhotoSend({ holdNative: true });
-  let started!: () => void;
-  const native = new Promise<void>(resolve => {
-    started = resolve;
-  });
-  f.startPhotoResponse.mockImplementation(async () => started());
-  const result = createConversationPhotoImageSend({
-    ...f.input,
-    prompt: '합성 설명 요청',
-  })();
-  await native;
-  f.controller.abort();
-  await expect(result).resolves.toEqual({ status: 'cancelled' });
-  expect(f.input.confirm.mock.calls[0]?.[0]).toMatchObject({
-    includesPrompt: true,
-  });
-  expect(f.cancelResponse.mock.calls).toEqual([['one-synthetic-request']]);
-  expect(f.ordinaryStart).not.toHaveBeenCalled();
-});
+test.each([false, true])(
+  'Stop cancels only the exact photo request, acknowledged before Stop: %s',
+  async acknowledged => {
+    const f = setupPhotoSend({ holdNative: true });
+    let started!: () => void;
+    let acknowledge!: () => void;
+    const native = new Promise<void>(resolve => {
+      started = resolve;
+    });
+    const registration = new Promise<void>(resolve => {
+      acknowledge = resolve;
+    });
+    const afterBridgeContinuation = () =>
+      new Promise<void>(resolve => setImmediate(resolve));
+    f.startPhotoResponse.mockImplementation(() => {
+      started();
+      return registration;
+    });
+    const result = createConversationPhotoImageSend({
+      ...f.input,
+      prompt: '합성 설명 요청',
+    })();
+    await native;
+    if (acknowledged) {
+      acknowledge();
+      await afterBridgeContinuation();
+    }
+    f.controller.abort();
+    await expect(result).resolves.toEqual({ status: 'cancelled' });
+    expect(f.input.confirm.mock.calls[0]?.[0]).toMatchObject({
+      includesPrompt: true,
+    });
+    expect(f.cancelResponse.mock.calls).toEqual([['one-synthetic-request']]);
+    if (!acknowledged) {
+      acknowledge();
+      await afterBridgeContinuation();
+      expect(f.cancelResponse.mock.calls).toEqual([
+        ['one-synthetic-request'],
+        ['one-synthetic-request'],
+      ]);
+    }
+    expect(f.startPhotoResponse).toHaveBeenCalledTimes(1);
+    expect(f.ordinaryStart).not.toHaveBeenCalled();
+  },
+);
 
 test('a native refusal never switches models or falls back to text', async () => {
   const f = setupPhotoSend();

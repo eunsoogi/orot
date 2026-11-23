@@ -1,10 +1,9 @@
-import { GeneratedReportBrowser } from '../generatedReports/GeneratedReportBrowser';
 import { useRecordsDetailVisibility } from './RecordsHubSection';
+import { RecordsHubHeadingContext } from './RecordsHubBanner';
 import { NavigationInlineTransition } from '../navigation/NavigationInlineTransition';
-import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useContext, useEffect } from 'react';
+import { View } from 'react-native';
 import { AppText as Text } from '../layout/AppText';
-import { appColors } from '../layout/appColors';
 import { VerticalPageSections } from '../layout/VerticalPageSections';
 import type { RecordingSourceRecord } from '../recording/recordingTypes';
 import { MedicalDocumentSourceView } from '../medicalDocuments/MedicalDocumentSourceView';
@@ -14,18 +13,28 @@ import {
 } from '../medicalDocuments/MedicalDocumentReview';
 import { useMedicalDocumentImport } from '../medicalDocuments/useMedicalDocumentImport';
 import type { MedicalDocumentImportService } from '../medicalDocuments/medicalDocumentImportService';
+import { useRecordsSourcePaging } from './RecordsSourcePagingContext';
 import { RecordsRecentSources } from './RecordsRecentSources';
 import { hubSpacing } from '../layout/hubSpacing';
-import { NAVIGATION_CONTENT_GAP } from '../navigation/navigationLayout';
 import { useNavigationRouteScrollPosition } from '../navigation/NavigationRouteScrollView';
 import { RecordsRouteEntries } from './RecordsRouteEntries';
-import { SavedMemoryBrowser } from '../memory/SavedMemoryBrowser';
+import type { RecordsTabAuthority } from './useAppRootTab';
+import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
+import type { GeneratedReportRow } from '../generatedReports/types';
 import { LegacySymptomData } from './LegacySymptomData';
+import { recordsRouteStyles as styles } from './recordsRouteStyles';
 
 export interface RecordsRouteProps {
   readonly memoryActive?: boolean;
-  readonly onOpenMemory?: (memoryId: string) => void;
+  readonly onOpenGeneratedReports?: () => void;
   readonly onOpenDocumentDetail?: (sourceId: string) => void;
+  readonly openDocument?: (sourceId: string) => void;
+  readonly openRecentRecording?: (source: RecordingSourceRecord) => void;
+  readonly openMemory?: (id: string) => void;
+  readonly openReport?: (row: GeneratedReportRow) => boolean;
+  readonly active?: boolean;
+  readonly ownership?: NavigationRouteOwnership;
+  readonly recordsTabAuthority?: RecordsTabAuthority;
   readonly showAllRecent?: boolean;
   readonly onOpenRecentRecords?: () => void;
   readonly recordings: readonly RecordingSourceRecord[];
@@ -35,13 +44,20 @@ export interface RecordsRouteProps {
   readonly onOpenRecording: () => void;
   readonly onOpenHealthLibrary: () => void;
   readonly documentImportService?: MedicalDocumentImportService;
-  readonly onOpenManualHistory: () => void;
+  readonly onOpenManualHistory?: () => void;
 }
 
 /** Reuses Home's loaded audio snapshot and keeps every Records state in measured usable space. */
 export function RecordsRoute({
-  onOpenDocumentDetail,
-  onOpenMemory,
+  openDocument,
+  onOpenDocumentDetail = openDocument,
+  openRecentRecording,
+  openReport,
+  openMemory,
+  active = true,
+  ownership,
+  recordsTabAuthority,
+  onOpenGeneratedReports,
   memoryActive = true,
   showAllRecent = false,
   onOpenRecentRecords,
@@ -54,6 +70,8 @@ export function RecordsRoute({
   documentImportService,
   onOpenManualHistory,
 }: RecordsRouteProps) {
+  const pagedAudio = useRecordsSourcePaging();
+  const pagedDocuments = pagedAudio && !documentImportService;
   const {
     activity,
     closeSavedDocument,
@@ -71,9 +89,10 @@ export function RecordsRoute({
     sourceLoading,
     sourceMessage,
     stagedDocument,
-  } = useMedicalDocumentImport(documentImportService);
+  } = useMedicalDocumentImport(documentImportService, !pagedDocuments);
   useRecordsDetailVisibility(sourceDetail !== null);
   const routeScrollPosition = useNavigationRouteScrollPosition();
+  const hasHubBanner = useContext(RecordsHubHeadingContext);
   useEffect(() => {
     // Source invalidation closes detail before file cleanup settles.
     if (activity === 'deleting' && !sourceDetail)
@@ -85,7 +104,6 @@ export function RecordsRoute({
       onOpenDocumentDetail(sourceId);
       return;
     }
-    // The root-tab ScrollView stays mounted while detail replaces the long Records list.
     routeScrollPosition?.preserve();
     openSavedDocument(sourceId);
   }
@@ -96,7 +114,6 @@ export function RecordsRoute({
     routeScrollPosition?.restore();
   }
 
-  // Keep review actions before every extracted page inside the Records scene's single scroll owner.
   if (stagedDocument) {
     return (
       <NavigationInlineTransition
@@ -123,7 +140,6 @@ export function RecordsRoute({
   }
 
   if (sourceDetail) {
-    // The saved detail owns its measured panels so reflow keeps the text and Back state in place.
     return (
       <NavigationInlineTransition
         transitionKey="detail"
@@ -150,16 +166,18 @@ export function RecordsRoute({
       style={styles.transition}
     >
       <View style={styles.container}>
-        <View testID="records-layout" style={styles.page}>
+        <View
+          testID="records-layout"
+          style={[
+            styles.page,
+            hasHubBanner && !showAllRecent && styles.pageAfterBanner,
+          ]}
+        >
           {!showAllRecent ? (
             <View style={styles.primaryPanel}>
               <RecordsRouteEntries
-                secondary={
-                  <SavedMemoryBrowser
-                    active={memoryActive}
-                    onOpenMemory={onOpenMemory}
-                  />
-                }
+                materialsActive={memoryActive}
+                onOpenGeneratedReports={onOpenGeneratedReports}
                 onOpenSavedRecordings={onOpenSavedRecordings}
                 onOpenRecording={onOpenRecording}
                 onOpenHealthLibrary={onOpenHealthLibrary}
@@ -180,12 +198,11 @@ export function RecordsRoute({
               ) : null}
             </View>
           ) : null}
-          {!showAllRecent ? (
-            <GeneratedReportBrowser active={memoryActive} />
-          ) : null}
           {!showAllRecent ? <LegacySymptomData /> : null}
           <RecordsRecentSources
             showAll={showAllRecent}
+            pagedAudio={pagedAudio}
+            pagedDocuments={pagedDocuments}
             onViewAll={onOpenRecentRecords}
             recordings={recordings}
             recordingState={recordingState}
@@ -196,6 +213,12 @@ export function RecordsRoute({
             onRetryRecordings={onRetryRecordings}
             onRetryDocuments={reloadSavedDocuments}
             onOpenMedicalDocument={openSavedDocumentAtListPosition}
+            onOpenRecording={openRecentRecording}
+            onOpenReport={openReport}
+            onOpenMemory={openMemory}
+            active={active}
+            ownership={ownership}
+            tabAuthority={recordsTabAuthority}
             onOpenSavedRecordings={onOpenSavedRecordings}
           />
           {sourceMessage ? (
@@ -213,22 +236,3 @@ export function RecordsRoute({
     </NavigationInlineTransition>
   );
 }
-
-const styles = StyleSheet.create({
-  transition: { flexGrow: 1, minWidth: 0 },
-  container: {
-    flexGrow: 1,
-    minWidth: 0,
-    backgroundColor: appColors.background,
-  },
-  // A single page owns both entry groups; no panel seam adds a second top or side gutter.
-  page: {
-    gap: hubSpacing.item,
-    paddingHorizontal: hubSpacing.horizontal,
-    paddingTop: hubSpacing.top,
-    // The route scroller already supplies the shared readable gap above navigation.
-    paddingBottom: hubSpacing.bottom - NAVIGATION_CONTENT_GAP,
-  },
-  primaryPanel: { minWidth: 0, gap: hubSpacing.item },
-  status: { color: appColors.secondary, fontSize: 14, lineHeight: 20 },
-});

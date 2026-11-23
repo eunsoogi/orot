@@ -24,10 +24,17 @@ export function GeneratedReportBookmark({
     (message.savedHistoryDisplayOnly
       ? message.voiceTimelineOrder?.id
       : undefined);
+  const summary = message.healthSummary?.analysis.savedSummary;
+  // Daily reports remain in report history. Rendering an answer must not
+  // save a Memory reference or reuse the separate health-summary action.
+  const bookmarkableSummary =
+    !message.dailyReport &&
+    summary?.status === 'saved' &&
+    !summary.sourceChanged;
   if (
     !owner ||
     message.role !== 'assistant' ||
-    !message.dailyReport ||
+    !bookmarkableSummary ||
     !artifactId ||
     message.streaming ||
     message.incomplete
@@ -89,7 +96,7 @@ function BookmarkAction({
     setStatus('saving');
     try {
       const storage = await openSavedGeneratedReportReferences();
-      const saved = await storage.bookmarkDailyReport({
+      const saved = await storage.bookmarkHealthSummary({
         artifactId,
         lease,
         current,
@@ -105,7 +112,7 @@ function BookmarkAction({
   return (
     <>
       <AppButton
-        title={t('savedMemory.bookmarkGeneratedReport')}
+        title={t('savedMemory.bookmarkHealthSummary')}
         variant="neutral"
         testID="conversation-bookmark-generated-report"
         disabled={status === 'saving'}

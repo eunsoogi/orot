@@ -1,3 +1,5 @@
+import { stageDailyReportMemory } from './conversationDailyReportMemoryJobs';
+import { AppState } from 'react-native';
 import type { createConversationTurnActivity } from './conversationTurnActivity';
 import type { createConversationTurnRetention } from './conversationTurnRetention';
 import type { createConversationRequestSaveRecovery } from './conversationRequestSaveRecovery';
@@ -20,7 +22,9 @@ import type {
 import type { RagConversationObserver } from './service';
 
 type Owner = {
+  readonly find: (id: number) => ConversationSession | undefined;
   readonly update: (id: number, change: Partial<ConversationSession>) => void;
+  readonly activeSelection?: (id: number) => number | undefined;
   readonly conversationScope: (id: number) => string;
   readonly retention?: ConversationSessionOptions['retention'];
   readonly lifetime: ReturnType<typeof createConversationRequestLifetime>;
@@ -63,10 +67,62 @@ export function liveConversationObservers(
   } = input;
   const recovery =
     retained && owner.saveRecovery.observer(id, retained, request, current);
+  const reportSelection = owner.activeSelection?.(id);
+  const ownsReportSelection = () =>
+    reportSelection !== undefined &&
+    owner.activeSelection?.(id) === reportSelection;
   const execution = owner.lifetime.executionObserver(controller);
+  const saveLocalClarification = retained?.completeLocalClarification;
   return {
     ...(retained && recovery
       ? (memory?.wrap(retained, recovery) ?? recovery)
+      : {}),
+    ...(saveLocalClarification && !photoInput
+      ? {
+          async onLocalVisitClarification(signal: AbortSignal) {
+            request.saving = true;
+            try {
+              await saveLocalClarification(request.question, signal, current);
+              request.committed = true;
+            } finally {
+              request.saving = false;
+            }
+          },
+        }
+      : {}),
+    ...(retained && !photoInput
+      ? {
+          admitDailyReportMemory(tap) {
+            if (!current() || !ownsReportSelection()) return undefined;
+            const lease = owner.retention?.activeLease(id);
+            const scope = owner.conversationScope(id);
+            const bookmark = retained.admitDailyReportMemory(tap);
+            if (!lease || !bookmark) return undefined;
+            return report => {
+              if (!current() || !ownsReportSelection()) return;
+              stageDailyReportMemory(request, jobCurrent =>
+                bookmark(report, () => {
+                  const latest = owner.retention?.activeLease(id);
+                  const visible = owner.find(id);
+                  return (
+                    jobCurrent() &&
+                    ownsReportSelection() &&
+                    !controller.signal.aborted &&
+                    AppState.currentState === 'active' &&
+                    !!visible &&
+                    !visible.quarantined &&
+                    !visible.leaseRefreshRequired &&
+                    !visible.modelSelectionPending &&
+                    !visible.modelSelectionFailed &&
+                    owner.conversationScope(id) === scope &&
+                    latest?.id === lease.id &&
+                    latest.version === lease.version
+                  );
+                }),
+              );
+            };
+          },
+        }
       : {}),
     ...execution,
     onWorkflowPauseController(requestPause) {

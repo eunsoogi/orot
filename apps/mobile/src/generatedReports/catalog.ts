@@ -1,5 +1,25 @@
-import type { SqlDatabase } from '@orot/storage';
+import {
+  localConversationMemoryIdPrefix,
+  localQueryTimestampKey,
+  localQueryTimestampKeyExpression,
+  type SqlDatabase,
+} from '@orot/storage';
+import {
+  recentMaterialTimestamp,
+  recentMaterialTimestampExpression,
+} from './recentMaterialTimestamp';
+import { visibleSummary } from '../storage/symptomSummaryQuarantine';
 import type { GeneratedReportRow } from './types';
+
+export type RecentMaterialRow =
+  | GeneratedReportRow
+  | {
+      readonly key: string;
+      readonly id: string;
+      readonly origin: 'memory';
+      readonly createdAt: string;
+    };
+type CatalogCursor = Pick<GeneratedReportRow, 'createdAt' | 'key'>;
 
 /** Discover typed saved outputs, not conversation wording. SQL returns metadata only.
  * Older summary stores remain metadata-visible without optional policy tables;
@@ -7,8 +27,29 @@ import type { GeneratedReportRow } from './types';
  * The (date,key) cursor is stable even when several outputs share one timestamp. */
 export async function listGeneratedReports(
   database: SqlDatabase,
-  before?: { createdAt: string; key: string },
-): Promise<readonly GeneratedReportRow[]> {
+  before?: CatalogCursor,
+) {
+  return (await readCatalog(database, before, false)).filter(
+    (row): row is GeneratedReportRow => row.origin !== 'memory',
+  );
+}
+
+/** Opens only current local note metadata and available generated results for the feed. */
+export function listRecentMaterial(
+  database: SqlDatabase,
+  before?: CatalogCursor,
+  signal?: AbortSignal,
+) {
+  return readCatalog(database, before, true, signal);
+}
+
+async function readCatalog(
+  database: SqlDatabase,
+  before: CatalogCursor | undefined,
+  feed: boolean,
+  signal?: AbortSignal,
+): Promise<readonly RecentMaterialRow[]> {
+  if (signal?.aborted) return [];
   const tables = new Set(
     (
       await database.execute(
@@ -16,9 +57,28 @@ export async function listGeneratedReports(
       )
     ).rows.map(r => r.name),
   );
+  // An already-running native read can finish, but a retired page cannot start its content query.
+  if (signal?.aborted) return [];
   const queries: string[] = [];
   if (tables.has('symptom_summary_runs')) {
     const daily = tables.has('daily_report_revisions');
+    const summaryVisibility = !feed
+      ? '1'
+      : [
+            'symptom_summary_sources',
+            'legacy_symptom_deleted',
+            'agent_memory_records',
+            'symptom_summary_periods',
+            'symptom_entries',
+          ].every(table => tables.has(table))
+        ? visibleSummary
+        : '0';
+    const currentDaily =
+      !feed || !daily
+        ? '1'
+        : tables.has('daily_report_heads')
+          ? '(d.run_id IS NULL OR EXISTS (SELECT 1 FROM daily_report_heads h WHERE h.active_run_id=d.run_id AND h.deleted=0 AND h.identity_key=d.identity_key AND h.revision=d.revision))'
+          : 'd.run_id IS NULL';
     const invalid = tables.has('conversation_invalid_summaries')
       ? 'EXISTS(SELECT 1 FROM conversation_invalid_summaries i WHERE i.id=r.id)'
       : '1';
@@ -31,7 +91,7 @@ export async function listGeneratedReports(
         ELSE 'possibilities' END AS kind,r.created_at AS createdAt,
       (${invalid}) OR (${quarantine}) AS unavailable
       FROM symptom_summary_runs r ${daily ? 'LEFT JOIN daily_report_revisions d ON d.run_id=r.id' : ''}
-      WHERE json_valid(r.result_json) AND (
+      WHERE (${summaryVisibility}) AND (${currentDaily}) AND json_valid(r.result_json) AND (
         ${daily ? 'd.run_id IS NOT NULL OR' : ''}
         (json_type(r.result_json,'$.analysis.hypotheses')='array'
          AND json_extract(r.result_json,'$.id')=r.id
@@ -40,13 +100,34 @@ export async function listGeneratedReports(
          AND json_type(r.result_json,'$.providerId')='text'
          AND (json_type(r.result_json,'$.analysis.presentation') IS NULL OR json_extract(r.result_json,'$.analysis.presentation')='symptom_summary')))`);
   }
-  if (tables.has('visit_questions'))
-    queries.push(`
+  const visitVisibility = !feed
+    ? ''
+    : tables.has('visit_period_policy')
+      ? "AND NOT EXISTS (SELECT 1 FROM visit_period_policy p WHERE p.question_id=visit_questions.id AND p.status='quarantined')"
+      : "AND (json_type(payload_json,'$.healthContextSources') IS NULL OR json_array_length(payload_json,'$.healthContextSources')=0 AND json_type(payload_json,'$.healthContextSources')='array')";
+  const visitClock = 'coalesce(recorded_at,effective_at,ingested_at)';
+  const visitRank = localQueryTimestampKeyExpression(
+    recentMaterialTimestampExpression(visitClock),
+  );
+  if (tables.has('visit_questions')) {
+    const visits = `
     SELECT 'visit:'||json_extract(payload_json,'$.appointmentId') AS key,
       json_extract(payload_json,'$.appointmentId') AS id,'visit' AS origin,'visit_questions' AS kind,
-      MAX(coalesce(recorded_at,effective_at,ingested_at)) AS createdAt,0 AS unavailable FROM visit_questions
+      ${feed ? visitClock : `MAX(${visitClock})`} AS createdAt,0 AS unavailable
+      ${feed ? `,MAX(CASE WHEN julianday(${visitClock}) IS NOT NULL AND ${visitClock} GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T*' THEN ${visitRank} END) AS visitRank` : ''}
+    FROM visit_questions
     WHERE json_valid(payload_json) AND json_type(payload_json,'$.appointmentId')='text'
-      AND length(json_extract(payload_json,'$.appointmentId'))>0 GROUP BY json_extract(payload_json,'$.appointmentId')`);
+      AND length(json_extract(payload_json,'$.appointmentId'))>0
+      ${visitVisibility}
+      GROUP BY json_extract(payload_json,'$.appointmentId')`;
+    // With one MAX, SQLite takes the bare timestamp from the same ranked visit
+    // row. Preserve its original fractional UTC instant rather than rounding to milliseconds.
+    queries.push(
+      feed
+        ? `SELECT key,id,origin,kind,createdAt,unavailable FROM (${visits})`
+        : visits,
+    );
+  }
   if (
     [
       'conversation_artifacts',
@@ -67,16 +148,45 @@ export async function listGeneratedReports(
       AND json_type(a.result_json,'$.dailyReport') IS NULL
       AND json_type(a.result_json,'$.visitQuestions') IS NULL
       AND NOT EXISTS(SELECT 1 FROM conversation_deleted_artifacts d WHERE d.id=a.id)`);
+  const includeNotes = feed && tables.has('manual_history_entries');
+  if (includeNotes) {
+    // Match the shared protected Memory reader's current manual-history identities
+    // without selecting note text, projection vectors, or maintenance APIs.
+    queries.push(`SELECT 'memory:'||m.id AS key,m.id,'memory' AS origin,
+      'saved_memory' AS kind,m.recorded_at AS createdAt,0 AS unavailable
+      FROM manual_history_entries m
+      WHERE m.entry_kind='note' AND substr(m.id,1,?)=?
+      AND NOT EXISTS(SELECT 1 FROM manual_history_entries successor WHERE successor.supersedes_id=m.id)`);
+  }
   if (!queries.length) return [];
+  // The recent feed uses absolute instants and admits only available catalog rows.
+  // The browser keeps its historical behavior, including unavailable recovery entries.
+  const clock = feed
+    ? localQueryTimestampKeyExpression(
+        recentMaterialTimestampExpression('createdAt'),
+      )
+    : 'createdAt';
+  const cursor = before
+    ? feed
+      ? localQueryTimestampKey(recentMaterialTimestamp(before.createdAt))
+      : before.createdAt
+    : null;
   const result = await database.execute(
     `SELECT * FROM (${queries.join(' UNION ALL ')})
     WHERE julianday(createdAt) IS NOT NULL AND createdAt GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T*'
-      AND (? IS NULL OR createdAt<? OR (createdAt=? AND key<?))
-    ORDER BY createdAt DESC,key DESC LIMIT 20`,
+      ${feed ? 'AND unavailable=0' : ''}
+      AND (? IS NULL OR ${clock}<? OR (${clock}=? AND key COLLATE BINARY<?))
+    ORDER BY ${clock} DESC,key COLLATE BINARY DESC LIMIT 20`,
     [
-      before?.createdAt ?? null,
-      before?.createdAt ?? null,
-      before?.createdAt ?? null,
+      ...(includeNotes
+        ? [
+            localConversationMemoryIdPrefix.length,
+            localConversationMemoryIdPrefix,
+          ]
+        : []),
+      cursor,
+      cursor,
+      cursor,
       before?.key ?? null,
     ],
   );
@@ -86,12 +196,21 @@ export async function listGeneratedReports(
         typeof r.createdAt === 'string' &&
         Number.isFinite(Date.parse(r.createdAt)),
     )
-    .map(r => ({
-      key: String(r.key),
-      id: String(r.id),
-      origin: r.origin as GeneratedReportRow['origin'],
-      kind: r.kind as GeneratedReportRow['kind'],
-      createdAt: String(r.createdAt),
-      unavailable: r.unavailable === 1,
-    }));
+    .map(r =>
+      r.origin === 'memory'
+        ? {
+            key: String(r.key),
+            id: 'manual-history:' + String(r.id),
+            origin: 'memory',
+            createdAt: String(r.createdAt),
+          }
+        : {
+            key: String(r.key),
+            id: String(r.id),
+            origin: r.origin as GeneratedReportRow['origin'],
+            kind: r.kind as GeneratedReportRow['kind'],
+            createdAt: String(r.createdAt),
+            unavailable: r.unavailable === 1,
+          },
+    );
 }

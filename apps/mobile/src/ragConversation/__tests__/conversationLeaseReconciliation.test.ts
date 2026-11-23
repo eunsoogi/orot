@@ -110,3 +110,126 @@ test('missing at an active-only foreground check is not evidence of iOS expirati
   expect(f.interrupt).toHaveBeenCalledWith('lease-check-failed');
   f.release();
 });
+
+test('a lease lost before a background-start check is not OS expiry evidence', async () => {
+  const f = await fixture();
+  f.release();
+  f.adapter.currentPhase = () => 'background';
+  jest.mocked(f.adapter.isActive).mockResolvedValueOnce(false);
+  const interrupt = jest.fn();
+  const diagnose = jest.fn();
+  const release = await beginConversationExecutionLease(
+    f.adapter,
+    'startup',
+    interrupt,
+    undefined,
+    undefined,
+    diagnose,
+  );
+  expect(interrupt).toHaveBeenCalledWith('lease-check-failed');
+  expect(diagnose).toHaveBeenCalledWith('startup-lease-unavailable');
+  release();
+});
+
+test('a matching native expiry wins over a pending boolean loss and a foreign expiry does not count', async () => {
+  const f = await fixture();
+  f.release();
+  f.adapter.currentPhase = () => 'active';
+  const interrupt = jest.fn();
+  const diagnose = jest.fn();
+  const release = await beginConversationExecutionLease(
+    f.adapter,
+    'exact-owner',
+    interrupt,
+    undefined,
+    undefined,
+    diagnose,
+  );
+  const pending = deferred<boolean>();
+  jest.mocked(f.adapter.isActive).mockImplementationOnce(() => pending.promise);
+  f.emit({ kind: 'foreground' });
+  await flush();
+  f.emit({ kind: 'expired', requestId: 'foreign-owner' });
+  expect(diagnose).not.toHaveBeenCalledWith('native-expiration');
+  f.emit({ kind: 'expired', requestId: 'exact-owner' });
+  pending.resolve(false);
+  await flush();
+  expect(interrupt.mock.calls).toEqual([['expired']]);
+  expect(diagnose).toHaveBeenCalledWith('native-expiration');
+  expect(diagnose).not.toHaveBeenCalledWith('foreground-lease-unavailable');
+  release();
+});
+
+test('fallback bridge loss and ignored shown-final expiry never count as native expiration', async () => {
+  const f = await fixture();
+  f.release();
+  const interrupt = jest.fn();
+  const diagnose = jest.fn();
+  const release = await beginConversationExecutionLease(
+    f.adapter,
+    'owner',
+    interrupt,
+    undefined,
+    undefined,
+    diagnose,
+    () => false,
+  );
+  f.emit({ kind: 'expired', requestId: 'owner' });
+  expect(interrupt).not.toHaveBeenCalled();
+  f.emit({ kind: 'expired', requestId: 'owner', reason: 'bridge-unavailable' });
+  expect(interrupt.mock.calls).toEqual([['bridge-unavailable']]);
+  expect(diagnose).not.toHaveBeenCalledWith('native-expiration');
+  release();
+});
+
+test('a broken diagnostic cannot suppress the exact native cancellation or lease cleanup', async () => {
+  const f = await fixture();
+  f.release();
+  const interrupt = jest.fn();
+  const diagnose = jest.fn(() => {
+    throw new Error('synthetic diagnostic unavailable');
+  });
+  const release = await beginConversationExecutionLease(
+    f.adapter,
+    'owner',
+    interrupt,
+    undefined,
+    undefined,
+    diagnose,
+  );
+  f.emit({ kind: 'expired', requestId: 'owner' });
+  expect(interrupt.mock.calls).toEqual([['expired']]);
+  release();
+  expect(f.adapter.end).toHaveBeenLastCalledWith('owner');
+});
+
+test('a background advisory delivered during an already active native phase does not drain the owner', async () => {
+  const f = await fixture();
+  f.release();
+  const pause = jest.fn();
+  const current = jest.fn(async () => false);
+  Object.assign(f.adapter, { pauseStillCurrent: current });
+  f.adapter.currentPhase = () => 'active';
+  const release = await beginConversationExecutionLease(
+    f.adapter,
+    'owner',
+    f.interrupt,
+    undefined,
+    pause,
+  );
+  const old = {
+    kind: 'pause-requested',
+    requestId: 'owner',
+    warning: 'stale-warning',
+  } as const;
+  f.emit(old);
+  await flush();
+  try {
+    expect(current).toHaveBeenCalledWith('owner', old.warning);
+    expect(pause).not.toHaveBeenCalled();
+    f.emit({ kind: 'expired', requestId: 'owner' });
+    expect(f.interrupt.mock.calls).toEqual([['expired']]);
+  } finally {
+    release();
+  }
+});

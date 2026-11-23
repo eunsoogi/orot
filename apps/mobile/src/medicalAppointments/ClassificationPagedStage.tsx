@@ -20,7 +20,6 @@ import {
   paginateClassificationLines,
   type ClassificationTextLine,
 } from './classificationTextPagination';
-
 interface Props {
   readonly documents: readonly string[];
   readonly caption?: ClassificationCaptionCopy;
@@ -29,59 +28,54 @@ interface Props {
   readonly onAction: () => void;
   readonly disabled?: boolean;
   readonly testID: string;
+  readonly circleSize?: number;
+  readonly hideAction?: boolean;
   readonly supplementaryAction?: {
     readonly title: string;
     readonly onPress: () => void;
   };
 }
-
-/** A measured, non-scrolling reader keeps even one long event reachable without shrinking Dynamic Type. */
 export function ClassificationPagedStage(props: Props) {
   const window = useWindowDimensions();
-  const { fontScale } = window;
+  const scale = window.fontScale;
   const frame = useClassificationReaderFrame(props.onAction, props.documents);
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
   const [footerHeight, setFooterHeight] = useState(0);
   const [documentIndex, setDocumentIndex] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
-  const index = Math.min(
-    documentIndex,
-    Math.max(0, props.documents.length - 1),
-  );
+  const lastDocument = Math.max(0, props.documents.length - 1);
+  const index = Math.min(documentIndex, lastDocument);
   const text = props.documents[index] ?? '';
-  const identity = JSON.stringify([text, bounds.width, fontScale]);
+  const identity = JSON.stringify([text, bounds.width, scale]);
   const latestIdentity = useRef(identity);
   latestIdentity.current = identity;
   const [measurement, setMeasurement] = useState<{
     key: string;
     lines: readonly ClassificationTextLine[];
   } | null>(null);
-  const paneHeight = bounds.height || window.height;
+  const { width, height } = bounds.height ? bounds : window;
   const geometry = classificationCircleGeometry(
-    bounds.width || window.width,
-    paneHeight,
-    fontScale,
+    width,
+    height,
+    scale,
+    frame.expanded ? undefined : props.circleSize,
   );
-  const available = Math.max(
-    0,
-    paneHeight - geometry.captionTop - footerHeight,
-  );
+  const available = Math.max(0, height - geometry.captionTop - footerHeight);
   const [captionMeasurement, setCaptionMeasurement] = useState<{
     key: string;
     height: number;
   }>();
   const captionHeight =
     captionMeasurement?.key === identity ? captionMeasurement.height : 0;
-  const captionFits = Boolean(
-    props.caption && captionHeight > 0 && captionHeight <= available,
-  );
+  const captionFits =
+    !!props.caption && captionHeight > 0 && captionHeight <= available;
   const lines = measurement?.key === identity ? measurement.lines : null;
   const measuredPages =
     lines && available > 0 ? paginateClassificationLines(lines, available) : [];
   const pages = measuredPages.length ? measuredPages : [text];
   const page = Math.min(pageIndex, Math.max(0, pages.length - 1));
   const cannotFitLine =
-    !captionFits && Boolean(lines?.some(line => line.height > available));
+    !captionFits && !!lines?.some(line => line.height > available);
   const requiresExpansion = cannotFitLine && !frame.expanded;
   const naturalHeight =
     lines?.reduce((sum, line) => sum + line.height, 0) ?? available;
@@ -110,36 +104,39 @@ export function ClassificationPagedStage(props: Props) {
         style={styles.fill}
         testID={props.testID}
         onLayout={event => {
-          const { width, height } = event.nativeEvent.layout;
+          const layout = event.nativeEvent.layout;
           setBounds(old =>
-            old.width === width && old.height === height
+            old.width === layout.width && old.height === layout.height
               ? old
-              : { width, height },
+              : { width: layout.width, height: layout.height },
           );
         }}
       >
-        <ClassificationCircleSlot {...geometry}>
-          <ClassificationCircleButton
-            size={geometry.size}
-            title={
-              requiresExpansion
-                ? t('medicalAppointments.readerShort')
-                : props.actionTitle
-            }
-            label={
-              requiresExpansion
-                ? t('medicalAppointments.expandReader')
-                : cannotFitLine
-                  ? t('medicalAppointments.readerTooSmall')
-                  : props.actionLabel
-            }
-            onPress={requiresExpansion ? frame.expand : frame.execute}
-            disabled={
-              frame.closing ||
-              (!requiresExpansion && (cannotFitLine || Boolean(props.disabled)))
-            }
-          />
-        </ClassificationCircleSlot>
+        {!props.hideAction && (
+          <ClassificationCircleSlot {...geometry} paneWidth={width}>
+            <ClassificationCircleButton
+              size={geometry.size}
+              title={
+                requiresExpansion
+                  ? t('medicalAppointments.readerShort')
+                  : props.actionTitle
+              }
+              label={
+                requiresExpansion
+                  ? t('medicalAppointments.expandReader')
+                  : cannotFitLine
+                    ? t('medicalAppointments.readerTooSmall')
+                    : props.actionLabel
+              }
+              onPress={requiresExpansion ? frame.expand : frame.execute}
+              disabled={
+                frame.closing ||
+                (!requiresExpansion &&
+                  (cannotFitLine || Boolean(props.disabled)))
+              }
+            />
+          </ClassificationCircleSlot>
+        )}
         <View
           style={[styles.group, { top: geometry.captionTop }]}
           testID="classification-stage-captions"
@@ -196,11 +193,10 @@ export function ClassificationPagedStage(props: Props) {
                     current: page + 1,
                     total: pages.length,
                   })}
-                  // Before native metrics arrive this bounded first frame cannot paint over the actions.
                   numberOfLines={
                     measuredPages.length
                       ? undefined
-                      : Math.max(1, Math.floor(available / (26 * fontScale)))
+                      : Math.max(1, Math.floor(available / (26 * scale)))
                   }
                 >
                   {pages[page]?.split('\n\n').map((paragraph, item, all) => (

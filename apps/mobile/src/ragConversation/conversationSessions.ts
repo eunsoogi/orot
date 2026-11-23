@@ -1,6 +1,5 @@
 import { conversationSessionErrorState } from './conversationSessionErrorState';
 import { invalidateTasks } from './invalidateConversationTaskRefresh';
-import { createConversationDirectPhotoRetention } from './conversationDirectPhotoRetention';
 import { conversationPhotoSurface } from './conversationPhotoSurface';
 import { prepareConversationSend } from './conversationSendPreflight';
 import { continuousConversationPolicy } from './continuousConversationPolicy';
@@ -14,7 +13,10 @@ import { createConversationRetrySave } from './conversationRetrySave';
 import { refreshConversationSources } from './conversationSourceRefresh';
 import { createConversationListeners } from './conversationListeners';
 import { createConversationVisitReviewUpdater } from './conversationVisitReviewUpdate';
-import * as emptySession from './conversationEmptySession';
+import {
+  createConversationSessionSeed,
+  initialConversationSnapshot,
+} from './conversationEmptySession';
 import { createConversationNavigation } from './conversationSessionTransitions';
 import { conversationTreatmentOwnership } from './conversationTreatmentOwnership';
 import { createConversationHistoryLoader } from './conversationHistoryLoader';
@@ -26,17 +28,17 @@ export type ConversationSessions = S.ConversationSessions;
 export function createConversationSessions(
   options: S.ConversationSessionOptions = {},
 ) {
-  const { owner, empty } = emptySession.createConversationSessionSeed();
-  let bindSender = (sender: S.ConversationSender) => sender;
+  const { owner, empty } = createConversationSessionSeed();
+  let bindSender: S.BindConversationSender = sender => sender;
   let beforeSend: Parameters<typeof conversationDispatch>[0]['beforeSend'];
-  let snapshot = emptySession.initialConversationSnapshot(empty());
+  let snapshot = initialConversationSnapshot(empty());
   const listeners = createConversationListeners();
   let disposed = false;
-  let lifecycle = 0;
+  const epoch = { lifecycle: 0, selection: 0 };
   const photoSurface = conversationPhotoSurface(options);
-  const { photoDrafts, photoConsent } = photoSurface;
   const apply = (next: S.ConversationSnapshot | null) => {
     if (!next) return;
+    if (next.activeId !== snapshot.activeId) epoch.selection++;
     snapshot = next;
     listeners.emit();
   };
@@ -47,7 +49,8 @@ export function createConversationSessions(
   ) => {
     if (disposed) return;
     snapshot = conversationSessionErrorState.update(snapshot, id, change);
-    (stream ? listeners.emitStream : listeners.emit)();
+    if (stream) listeners.emitStream();
+    else listeners.emit();
   };
   const find = (id: number) => snapshot.sessions.find(item => item.id === id)!;
   const { taskState, taskRefresh } = createConversationTasks({
@@ -65,12 +68,13 @@ export function createConversationSessions(
     options.execution,
     {
       requested: false,
-      drafts: photoDrafts,
-      consent: photoConsent,
+      drafts: photoSurface.photoDrafts,
+      consent: photoSurface.photoConsent,
       preparation: options.photoPreparation,
     },
     options.coldResume,
     options.ordinaryMemory,
+    id => (!disposed && snapshot.activeId === id ? epoch.selection : undefined),
   );
   const restoration = conversationRestorationForOptions(options, find, update);
   const attachExisting = createConversationSessionAttachment({
@@ -87,7 +91,7 @@ export function createConversationSessions(
     options,
     attach: attachExisting,
     snapshot: () => snapshot,
-    lifecycle: () => lifecycle,
+    lifecycle: () => epoch.lifecycle,
     disposed: () => disposed,
   });
   const retrySave = createConversationRetrySave({
@@ -108,20 +112,23 @@ export function createConversationSessions(
     requests,
     restoration,
     disposed: () => disposed,
-    lifecycle: () => lifecycle,
-    finalizeDraft: id => photoDrafts.retireSession(id).catch(() => {}),
+    lifecycle: () => epoch.lifecycle,
+    finalizeDraft: id => {
+      photoSurface.photoDrafts.retireSession(id).catch(() => {});
+    },
   });
   const dispatch = conversationDispatch({
-    bindSender: sender => bindSender(sender),
+    options,
+    bindSender: (...args) => bindSender(...args),
     beforeSend: options.continuousSession
-      ? (id, signal) => beforeSend!(id, signal)
+      ? (...args) => beforeSend!(...args)
       : undefined,
     requests,
     find,
     update,
+    selection: { epoch, subscribe: listeners.subscribe },
     current: id => !options.continuousSession || snapshot.activeId === id,
-    photoDrafts,
-    retention: options.retention,
+    photoDrafts: photoSurface.photoDrafts,
     disposed: () => disposed,
   });
   const store = {
@@ -135,12 +142,7 @@ export function createConversationSessions(
     }),
     resumeCold: requests.resumeCold,
     steer: requests.steer,
-    ...photoSurface,
-    retainDirectPhoto: createConversationDirectPhotoRetention(
-      options,
-      restoration.publishDirectPhoto,
-      id => !disposed && snapshot.activeId === id,
-    ),
+    ...photoSurface.retain(restoration, () => !disposed && snapshot.activeId),
     attachExisting,
     loadHistory,
     loadOlderHistory: restoration.loadOlder,
@@ -170,6 +172,7 @@ export function createConversationSessions(
     }),
     remove: (id: number) => {
       taskState.invalidateVoiceEnd(id);
+      dispatch.cancelBeforeSend(id);
       return removal.remove(id);
     },
     undoRemove: removal.undo,
@@ -199,9 +202,9 @@ export function createConversationSessions(
     },
     invalidateAll() {
       if (disposed) return;
-      photoConsent.dispose();
-      photoDrafts.clear().catch(() => {});
-      lifecycle++;
+      photoSurface.photoConsent.dispose();
+      photoSurface.photoDrafts.clear().catch(() => {});
+      epoch.lifecycle++;
       taskState.invalidate();
       taskRefresh.invalidate();
       dispatch.disposeBeforeSend();
@@ -209,16 +212,14 @@ export function createConversationSessions(
       restoration.dispose();
       options.retention?.invalidate();
       removal.invalidate();
-      const session = empty();
-      snapshot = { activeId: session.id, sessions: [session], deleted: null };
-      listeners.emit();
+      apply(initialConversationSnapshot(empty()));
     },
     dispose() {
-      photoConsent.dispose();
-      photoDrafts.clear().catch(() => {});
+      photoSurface.photoConsent.dispose();
+      photoSurface.photoDrafts.clear().catch(() => {});
       disposed = true;
       listeners.dispose();
-      lifecycle++;
+      epoch.lifecycle++;
       taskState.invalidate();
       taskRefresh.invalidate();
       dispatch.disposeBeforeSend();

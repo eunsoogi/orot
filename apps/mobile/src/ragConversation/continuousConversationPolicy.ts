@@ -1,3 +1,5 @@
+import { admittedDisplayLease } from './conversationSavedHistoryDisplay';
+import { createConversationWarmAdmission } from './conversationWarmAdmission';
 import {
   createConversationRootRestoreOwnership,
   ownedArchiveRestore,
@@ -13,7 +15,6 @@ import type { SourceDeletionEvent } from '../storage/localDataClearEvents';
 import type {
   ConversationSession,
   ConversationSessionOptions,
-  ConversationSender,
 } from './conversationSessionTypes';
 
 /** App-level policy, not a new transcript store. Existing restore/retention fences remain authoritative.
@@ -72,13 +73,10 @@ export function continuousConversationPolicy<
     const start = store.getSnapshot();
     const activeId = start.activeId;
     const admitted = start.sessions.find(item => item.id === activeId);
-    // Reconfirming a quick choice does not revoke an already admitted display.
-    // Explicit route/model reconciliation still uses the ordinary strict gate.
     const keepDisplay =
-      origin === 'send' &&
-      admitted?.preparingQuickChoice &&
-      admitted.savedHistoryDisplay &&
-      options.retention?.activeLease(activeId);
+      origin === 'send'
+        ? admittedDisplayLease(admitted, options.retention)
+        : undefined;
     update(activeId, {
       modelSelectionPending: true,
       modelSelectionKeepsDisplay: Boolean(keepDisplay),
@@ -86,6 +84,10 @@ export function continuousConversationPolicy<
     const run = async () => {
       try {
         const target = await options.continuousSession!(signal);
+        keepDisplay?.withholdUnless(target, () => {
+          if (current())
+            update(activeId, { modelSelectionKeepsDisplay: false });
+        });
         if (!current()) return;
         model = target.model;
         const archive = ownedArchiveRestore({
@@ -188,6 +190,13 @@ export function continuousConversationPolicy<
       update(store.getSnapshot().activeId, { modelSelectionPending: false });
     },
   });
+  const warm = createConversationWarmAdmission(
+    store,
+    options,
+    () => (pending || disposed ? -1 : epoch),
+    ready,
+    update,
+  );
   return {
     ...store,
     continuous: enabled,
@@ -218,17 +227,8 @@ export function continuousConversationPolicy<
     create: () => {
       if (!enabled) store.create();
     },
-    prepareSend: ready,
-    bindSender(sender: ConversationSender): ConversationSender {
-      const expectedConversationModel = model;
-      return !enabled || !expectedConversationModel
-        ? sender
-        : (question, history, signal, observer) =>
-            sender(question, history, signal, {
-              ...observer,
-              expectedConversationModel,
-            });
-    },
+    prepareSend: warm.prepare,
+    bindSender: warm.binder(() => (enabled ? model : undefined)),
     invalidateAll() {
       rootRestore.clear();
       interrupted = undefined;

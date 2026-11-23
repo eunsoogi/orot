@@ -11,20 +11,19 @@ import {
   formatChartValue,
 } from './format';
 import { chartRows, lineSegments } from './model';
-import type { ChartData, ChartMetric } from './types';
+import type { ChartAxis, ChartData, ChartKind, ChartMetric } from './types';
+import {
+  ChartRangeRenderer,
+  type ChartBucketSelect,
+} from './ChartRangeRenderer';
 
 type Props = {
   data: ChartData;
   width: number;
   height: number;
-  kind: 'line' | 'bar';
-  onBarSelect?: (
-    selection: {
-      x: string;
-      seriesId: string;
-      position: { x: number; y: number };
-    } | null,
-  ) => void;
+  kind: ChartKind;
+  rangeAxis?: ChartAxis;
+  onBarSelect?: ChartBucketSelect;
 };
 
 const token: Record<
@@ -45,6 +44,7 @@ export function ChartRenderer({
   width,
   height,
   kind,
+  rangeAxis = 'day',
   onBarSelect,
 }: Props) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
@@ -69,6 +69,22 @@ export function ChartRenderer({
           ...data,
           series: data.series.filter(item => item.unit === unit),
         };
+        if (kind === 'range')
+          return (
+            <ChartRangeRenderer
+              key={unit}
+              series={unitData.series}
+              axis={rangeAxis}
+              width={width}
+              height={chartHeight}
+              color={palette[token[data.metric]]}
+              contrast={palette.background}
+              labels={palette.text}
+              fontSize={11 * fontScale}
+              offsetY={index * chartHeight}
+              onSelect={onBarSelect}
+            />
+          );
         const line = kind === 'line' ? lineSegments(unitData) : undefined;
         const rows =
           line?.rows ?? (kind === 'bar' ? chartRows(unitData, 'day') : []);

@@ -5,7 +5,6 @@ import { SelectedModelControl } from '../layout/SelectedModelControl';
 import { appColors } from '../layout/appColors';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
-import { NavigationContentTransition } from '../navigation/NavigationContentTransition';
 import type { ProviderSelectionOption } from '../providers/selection/types';
 import type { CandidateReview } from './classificationWorkflow';
 import { ClassificationPagedStage } from './ClassificationPagedStage';
@@ -14,7 +13,8 @@ import {
   formatCalendarEventRange,
 } from '../calendar/dateTime';
 import { ClassificationResultsStage } from './ClassificationResultsStage';
-import { ClassificationProgress } from './ClassificationProgress';
+import { ClassificationMovingStage } from './ClassificationMovingStage';
+import type { classificationDockGeometry } from './ClassificationCircle';
 import { medicalAppointmentCopy as copy } from './copy.ko';
 import { isConfidentMedical } from './saveCalendarCandidate';
 
@@ -79,19 +79,16 @@ export function MedicalAppointmentReviewView(props: Props) {
   ]
     .filter(Boolean)
     .join('\n');
-  const content =
-    stage === 'progress' ? (
-      <View style={styles.center}>
-        <ClassificationProgress
-          classified={classified}
-          total={props.eventCount}
-          saving={props.savingId !== null}
-        />
-      </View>
-    ) : stage === 'confirmation' ? (
+  const content = (
+    dock: ReturnType<typeof classificationDockGeometry>,
+    interactive: boolean,
+  ) =>
+    stage === 'progress' ? null : stage === 'confirmation' ? (
       <ClassificationPagedStage
         key="confirmation"
         testID="medical-appointment-confirmation"
+        circleSize={dock.size}
+        hideAction={!interactive}
         documents={[Object.values(confirmation).filter(Boolean).join('\n\n')]}
         caption={confirmation}
         actionTitle={t('medicalAppointments.startShort')}
@@ -114,23 +111,45 @@ export function MedicalAppointmentReviewView(props: Props) {
     ) : (
       <ClassificationResultsStage
         key="results"
+        movingCircle={dock}
         rows={medical.map(candidate => ({
           id: candidate.candidateId,
           title: candidate.event.calendarEventSnapshot.title,
           when: formatCalendarEventCompactRange(candidate.event),
           category: copy.labels[candidate.classification!],
           details: [
-            candidate.event.calendarEventSnapshot.title,
-            formatCalendarEventRange(candidate.event),
-            copy.labels[candidate.classification!],
-            candidate.reason ? `${copy.reason}: ${candidate.reason}` : '',
-            candidate.uncertainty
-              ? `${copy.uncertainty}: ${copy.labels[candidate.uncertainty]}`
-              : '',
-            props.savedIds.has(candidate.candidateId) ? copy.saved : '',
-          ]
-            .filter(Boolean)
-            .join('\n\n'),
+            {
+              label: t('medicalAppointments.detailTitle'),
+              value: candidate.event.calendarEventSnapshot.title,
+            },
+            {
+              label: t('medicalAppointments.detailDateTime'),
+              value: formatCalendarEventRange(candidate.event),
+            },
+            {
+              label: t('medicalAppointments.detailCategory'),
+              value: copy.labels[candidate.classification!],
+            },
+            ...(candidate.reason
+              ? [{ label: copy.reason, value: candidate.reason }]
+              : []),
+            ...(candidate.uncertainty
+              ? [
+                  {
+                    label: copy.uncertainty,
+                    value: copy.labels[candidate.uncertainty],
+                  },
+                ]
+              : []),
+            ...(props.savedIds.has(candidate.candidateId)
+              ? [
+                  {
+                    label: t('medicalAppointments.resultStatus'),
+                    value: copy.saved,
+                  },
+                ]
+              : []),
+          ],
         }))}
         summary={resultSummary}
         notice={medical.length ? resultNotice : resultNotice || copy.noMedical}
@@ -154,9 +173,15 @@ export function MedicalAppointmentReviewView(props: Props) {
               label={`${t('medicalAppointments.chooseClassifier')}: ${props.provider?.displayName ?? copy.chooseProvider}`}
               testID="medical-appointment-select-provider"
             />
-            <NavigationContentTransition transitionKey={stage}>
+            <ClassificationMovingStage
+              stage={stage}
+              classified={classified}
+              total={props.eventCount}
+              saving={props.savingId !== null}
+              onRestart={() => setConfirmAgain(true)}
+            >
               {content}
-            </NavigationContentTransition>
+            </ClassificationMovingStage>
           </View>
         }
       />
@@ -166,5 +191,4 @@ export function MedicalAppointmentReviewView(props: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: appColors.background },
   lane: { flex: 1, flexDirection: 'column', paddingHorizontal: 24 },
-  center: { flex: 1, minHeight: 0 },
 });

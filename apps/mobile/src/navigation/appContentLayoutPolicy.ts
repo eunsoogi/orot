@@ -56,6 +56,7 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     route.name === 'disease-hypotheses' ||
     route.name === 'saved-analysis' ||
     route.name === 'source-detail' ||
+    route.name === 'generated-report-source' ||
     (route.name === 'root' &&
       (rootTabs?.activeTab === 'overview' ||
         rootTabs?.activeTab === 'records' ||
@@ -66,16 +67,20 @@ export const appContentLayoutOwner: NavigationRouteLayoutPolicy<string> = (
     : 'scene';
 };
 
-/** Root pages and document activity use exactly one route-scoped scroll owner. */
+/** Root pages and selected detail routes use exactly one route-scoped scroll owner. */
 export function appRouteIsScrollable(
   route: NavigationRoute<string>,
   activeTab: string,
 ): boolean {
   return (
     [
+      'overview-metric-selection',
       'recent-records',
       'medical-document-detail',
       'saved-memory-detail',
+      'manual-history',
+      'generated-reports',
+      'generated-report-detail',
     ].includes(route.name) ||
     (route.name === 'root' &&
       ['overview', 'records', 'settings'].includes(activeTab))

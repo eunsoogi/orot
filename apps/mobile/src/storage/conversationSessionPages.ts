@@ -28,7 +28,7 @@ export async function listConversationSessionPage(
        UNION ALL SELECT session_id, created_at FROM conversation_tool_events
        UNION ALL SELECT session_id, created_at FROM conversation_task_cards
        UNION ALL SELECT session_id, created_at FROM conversation_voice_end_markers INDEXED BY conversation_voice_end_markers_timeline
-       UNION ALL SELECT r.session_id, r.created_at FROM conversation_requests r JOIN conversation_artifact_sessions rs ON rs.id = r.session_id AND rs.version = r.session_version WHERE r.status IN ('active', 'interrupted')) a ON a.session_id = s.id
+       UNION ALL SELECT r.session_id, r.created_at FROM conversation_requests r JOIN conversation_artifact_sessions rs ON rs.id = r.session_id AND rs.version = r.session_version WHERE r.status IN ('active', 'interrupted') OR (r.status = 'completed' AND r.local_outcome_json IS NOT NULL)) a ON a.session_id = s.id
      WHERE s.hidden = 0 AND typeof(s.id) = 'text' AND length(s.id) > 0
        AND s.id NOT LIKE ?
        AND typeof(s.version) = 'integer' AND s.version BETWEEN 0 AND 9007199254740991

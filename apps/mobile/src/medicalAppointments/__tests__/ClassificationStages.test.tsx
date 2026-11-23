@@ -35,6 +35,7 @@ test('shows only the current stage, with exact completed-event progress and no d
   expect(screen.getByTestId('medical-appointment-confirmation')).toBeTruthy();
   expect(screen.queryByTestId('medical-appointment-manual')).toBeNull();
   expect(JSON.stringify(view.toJSON())).not.toContain('RCTScrollView');
+  const selector = screen.getByTestId('medical-appointment-select-provider');
   const button = screen.getByTestId('medical-appointment-import');
   // Busy state removes the repeat action; the existing synchronous owner also guards early duplicate events.
   await fireEvent.press(button);
@@ -62,10 +63,22 @@ test('shows only the current stage, with exact completed-event progress and no d
   expect(screen.getByText('둘째 진료')).toBeTruthy();
   expect(screen.queryByTestId('medical-appointment-next-result')).toBeNull();
   expect(screen.getAllByTestId('classification-result-row')).toHaveLength(2);
+  expect(screen.getByTestId('classification-result-list')).toBeTruthy();
   await fireEvent.press(screen.getByTestId('medical-appointment-import'));
   expect(screen.getByTestId('medical-appointment-confirmation')).toBeTruthy();
   expect(classify).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole('progressbar')).toBeNull();
   expect(JSON.stringify(view.toJSON())).not.toContain('RCTScrollView');
+  await fireEvent.press(screen.getByTestId('medical-appointment-import'));
+  expect(classify).toHaveBeenCalledTimes(2);
+  expect(screen.queryByTestId('medical-appointment-results')).toBeNull();
+  expect(screen.queryByText('첫 진료')).toBeNull();
+  expect(screen.getByRole('progressbar').props.accessibilityValue.now).toBe(0);
+  expect(screen.getByTestId('medical-appointment-select-provider')).toBe(
+    selector,
+  );
+  await act(async () => finish(result(events)));
+  expect(screen.getAllByTestId('classification-result-row')).toHaveLength(2);
 });
 
 const base = {
@@ -88,7 +101,7 @@ const base = {
 };
 
 test.each([false, true])(
-  'uses fade-out and fade-in between all stages; Reduce Motion=%s',
+  'slides and fades destination content unless Reduce Motion is enabled (%s)',
   async reduced => {
     const fixture = (classifying: boolean, completed: boolean) => (
       <NavigationMotionContext.Provider value={reduced}>
@@ -110,7 +123,12 @@ test.each([false, true])(
     const values = jest
       .mocked(Animated.timing)
       .mock.calls.map(call => call[1].toValue);
-    expect(values).toEqual(reduced ? [] : [1, 0, 1, 0, 1, 0]);
+    await view.rerender(fixture(true, false));
+    expect(screen.queryByTestId('medical-appointment-results')).toBeNull();
+    expect(values).toEqual(reduced ? [] : [1, 1, 1, 0, 1]);
+    expect(
+      jest.mocked(Animated.timing).mock.calls.map(call => call[1].toValue),
+    ).toEqual(reduced ? [] : [1, 1, 1, 0, 1, 1]);
   },
 );
 
@@ -136,7 +154,7 @@ test.each([
   { width: 292, height: 440 },
   { width: 608, height: 316 },
 ])(
-  'shares the measured circle anchor across all stages of the $width-point pane',
+  'centers confirmation and progress, then docks inside the $width-point pane',
   async layout => {
     const control = (classifying: boolean, completed: boolean) => (
       <NavigationMotionContext.Provider value>
@@ -152,9 +170,16 @@ test.each([
       await fireEvent(screen.getByTestId(stage), 'layout', {
         nativeEvent: { layout },
       });
-      return StyleSheet.flatten(
+      const style = StyleSheet.flatten(
         screen.getByTestId('classification-circle-slot').props.style,
       );
+      const y =
+        style.transform?.find((axis: object) => 'translateY' in axis)
+          ?.translateY ?? 0;
+      const x =
+        style.transform?.find((axis: object) => 'translateX' in axis)
+          ?.translateX ?? 0;
+      return { top: style.top + y, height: style.height, x };
     };
     const before = await slot('medical-appointment-confirmation');
     const captions = StyleSheet.flatten(
@@ -172,8 +197,13 @@ test.each([
       0,
     );
     await view.rerender(control(false, true));
-    expect(await slot('medical-appointment-results')).toEqual(before);
-    expect(screen.getByText('다시')).toBeTruthy();
+    const docked = await slot('medical-appointment-results');
+    expect(docked.top < before.top || docked.x < 0).toBe(true);
+    expect(screen.getByText('재분류')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('medical-appointment-import'));
+    expect(await slot('medical-appointment-confirmation')).toEqual(before);
+    expect(screen.getByText('시작')).toBeTruthy();
+    expect(screen.queryByRole('progressbar')).toBeNull();
     expect(JSON.stringify(view.toJSON())).not.toContain('RCTScrollView');
   },
 );

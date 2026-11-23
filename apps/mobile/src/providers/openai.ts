@@ -35,6 +35,7 @@ interface NativeOpenAIProviderModule {
   addListener(eventName: string): void;
   removeListeners(count: number): void;
   listAccounts(): Promise<readonly unknown[]>;
+  loadAccountSummary?(issuedClientID: string): Promise<unknown>;
   signIn(existingIssuedClientID: string | null): Promise<unknown>;
   cancelSignIn(): void;
   signOut(issuedClientID: string): Promise<unknown>;
@@ -169,6 +170,23 @@ export async function listOpenAIAccounts(): Promise<
     throw invalidAccountSummary();
   }
   return summaries;
+}
+
+/** Only the existing selected account belongs in warm admission. Older native
+ * binaries still use their strict inventory read; they never bypass the check. */
+export async function loadOpenAIAccountSummary(
+  issuedClientID: string,
+): Promise<OpenAIAccountSummary | undefined> {
+  if (!isIssuedClientID(issuedClientID)) throw invalidAccountSummary();
+  if (!nativeModule?.loadAccountSummary)
+    return (await listOpenAIAccounts()).find(
+      account => account.issuedClientID === issuedClientID,
+    );
+  const value = await nativeModule.loadAccountSummary(issuedClientID);
+  if (value === null || value === undefined) return undefined;
+  const account = readAccountSummary(value);
+  if (account.issuedClientID !== issuedClientID) throw invalidAccountSummary();
+  return account;
 }
 
 export async function signInToOpenAI(

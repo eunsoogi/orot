@@ -1,3 +1,4 @@
+import { restoredConversationInterruptionCopy } from '../restoredConversationInterruptionCopy';
 import { conversationHistoryActivity } from '../conversationHistoryActivity';
 import type { DisplayMessage } from '../ConversationMessage';
 
@@ -45,4 +46,13 @@ test('an independent pending response does not hide another interrupted request'
   expect(
     conversationHistoryActivity(messages, pending, 1, null).visibleMessages,
   ).toHaveLength(2);
+});
+
+test('a durable pause does not claim iOS expiration, while exact expiration keeps its copy', () => {
+  expect(restoredConversationInterruptionCopy('background-paused')).toBe(
+    '백그라운드에서 작업을 일시 중지했어요. 저장된 진행 상황을 확인해 주세요.',
+  );
+  expect(restoredConversationInterruptionCopy('expired')).toContain(
+    'iOS 백그라운드 실행 시간이 끝나 답변이 중단됐어요.',
+  );
 });

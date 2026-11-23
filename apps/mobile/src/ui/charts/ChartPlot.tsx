@@ -8,7 +8,7 @@ import { ChartBarTooltip } from './ChartBarTooltip';
 import { ChartRenderer } from './ChartRenderer';
 import { formatChartTick } from './format';
 import { chartWindows } from './window';
-import type { ChartData } from './types';
+import type { ChartAxis, ChartData, ChartKind } from './types';
 
 type Props = {
   data: ChartData;
@@ -17,7 +17,8 @@ type Props = {
   title: string;
   testID?: string;
   selectedPointTestID?: string;
-  kind: 'line' | 'bar';
+  kind: ChartKind;
+  rangeAxis?: ChartAxis;
   /** Compact charts hide metadata by default; existing consumers retain their presentation. */
   compact?: boolean;
   /** Overview removes detail UI entirely while retaining an accessible chart description. */
@@ -41,12 +42,13 @@ export function ChartPlot({
   testID,
   selectedPointTestID,
   kind,
+  rangeAxis = 'day',
   compact = false,
   hideDetails = false,
   barTooltip = false,
 }: Props) {
   const { fontScale } = useWindowDimensions();
-  const axis = kind === 'line' ? 'time' : 'day';
+  const axis = kind === 'range' ? rangeAxis : kind === 'line' ? 'time' : 'day';
   const [pageIndex, setPageIndex] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const showDetails = !hideDetails && (!compact || detailsOpen);
@@ -141,7 +143,7 @@ export function ChartPlot({
           </View>
         )}
       {barTooltip &&
-      kind === 'bar' &&
+      (kind === 'bar' || (kind === 'range' && axis === 'day')) &&
       visible &&
       positions.length > 0 &&
       width > 0 ? (
@@ -151,6 +153,7 @@ export function ChartPlot({
           width={width}
           height={height}
           title={title}
+          kind={kind}
           testID={testID ? `${testID}-plot` : undefined}
         />
       ) : (
@@ -176,6 +179,7 @@ export function ChartPlot({
               width={width}
               height={height}
               kind={kind}
+              rangeAxis={rangeAxis}
             />
           ) : (
             <View style={{ height }} />

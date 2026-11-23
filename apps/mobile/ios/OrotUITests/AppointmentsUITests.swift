@@ -92,11 +92,13 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         }
         XCTAssertTrue(actionStack.exists && !actionStack.frame.isEmpty, app.debugDescription)
         XCTAssertTrue(reminderRow.exists && !reminderRow.frame.isEmpty, app.debugDescription)
-        XCTAssertLessThan(edit.frame.width, actionStack.frame.width, app.debugDescription)
-        for action in [oneHourReminder, oneDayReminder, cancel] {
-            XCTAssertGreaterThanOrEqual(action.frame.minX, actionStack.frame.minX - 1, app.debugDescription)
-            XCTAssertLessThanOrEqual(action.frame.maxX, actionStack.frame.maxX + 1, app.debugDescription)
+        XCTAssertGreaterThanOrEqual(cancel.frame.minX, actionStack.frame.minX - 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(cancel.frame.maxX, actionStack.frame.maxX + 1, app.debugDescription)
+        for reminder in [oneHourReminder, oneDayReminder] {
+            XCTAssertGreaterThanOrEqual(reminder.frame.minX, reminderRow.frame.minX - 1, app.debugDescription)
+            XCTAssertLessThanOrEqual(reminder.frame.maxX, reminderRow.frame.maxX + 1, app.debugDescription)
         }
+        XCTAssertLessThanOrEqual(reminderRow.frame.maxY, cancel.frame.minY + 1, app.debugDescription)
         XCTAssertTrue(cancel.label.contains(longClinic), app.debugDescription)
         let reminderFrames = [oneHourReminder.frame, oneDayReminder.frame, cancel.frame]
         for firstIndex in reminderFrames.indices {
@@ -107,10 +109,6 @@ final class AppointmentsUITests: OrotFailFastTestCase {
                 )
             }
         }
-        let allActionsShareOneRow =
-            abs(oneHourReminder.frame.midY - oneDayReminder.frame.midY) <= 1 &&
-            abs(oneDayReminder.frame.midY - cancel.frame.midY) <= 1
-        XCTAssertFalse(allActionsShareOneRow, "Accessibility text should wrap action cells without shrinking targets")
 
         cancel.tap()
         let confirmation = app.alerts.firstMatch
@@ -177,16 +175,19 @@ final class AppointmentsUITests: OrotFailFastTestCase {
         try assertAppointmentScrollOwnership(app, scroll: scroll, primary: primary, secondary: secondary)
         let primaryFrame = primary.frame
         let secondaryFrame = secondary.frame
-        let sideBySide = abs(primaryFrame.minY - secondaryFrame.minY) <= 1 &&
-            primaryFrame.maxX <= secondaryFrame.minX + 1
-        let stacked = abs(primaryFrame.minX - secondaryFrame.minX) <= 1 &&
-            primaryFrame.maxY <= secondaryFrame.minY + 1
-        XCTAssertTrue(
-            sideBySide || stacked,
-            "Appointment panels must follow one readable measured column or two non-overlapping columns: primary=\(primaryFrame), secondary=\(secondaryFrame)",
-        )
+        let selections = scroll.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "appointment-select-"))
+            .allElementsBoundByIndex.filter(\.isSelected)
+        XCTAssertEqual(selections.count, 1, app.debugDescription)
+        let selected = try XCTUnwrap(selections.first)
+        XCTAssertEqual(primary.descendants(matching: .any).matching(identifier: "appointments-columns-secondary").count, 1)
+        XCTAssertLessThanOrEqual(selected.frame.maxY, secondaryFrame.minY + 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(secondaryFrame.minY - selected.frame.maxY, 16, app.debugDescription)
+        XCTAssertGreaterThanOrEqual(secondaryFrame.minX, primaryFrame.minX - 1, app.debugDescription)
+        XCTAssertLessThanOrEqual(secondaryFrame.maxX, primaryFrame.maxX + 1, app.debugDescription)
+        let sideBySide = secondaryFrame.minX >= selected.frame.maxX - 1
         if expectsStacked == true {
-            XCTAssertTrue(stacked, "The active geometry must keep appointment details below the list")
+            XCTAssertFalse(sideBySide, "The selected detail must stay below its own row")
         }
         let navigation = try NavigationUITestConditions.navigationAction(app, "appointments-back")
         if navigation.toolbar.frame.height > navigation.toolbar.frame.width {
