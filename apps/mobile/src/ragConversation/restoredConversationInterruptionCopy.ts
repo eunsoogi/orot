@@ -1,16 +1,16 @@
 import { t } from '../i18n';
 import type { ConversationRecoveryReason } from './conversationExecutionLease';
 
-/** A recovered active row or legacy default cannot prove how execution ended.
- * Keep the stored reason intact for recovery eligibility and explicit actions. */
+/** Unknown final outcomes create no transcript copy. Preserve the stored
+ * reason independently for recovery eligibility and explicit actions. */
 export function restoredConversationInterruptionCopy(
   reason: ConversationRecoveryReason | undefined,
-): string {
+): string | undefined {
   if (
     !reason ||
     reason === 'process-interrupted' ||
     reason === 'provider-failed'
   )
-    return t('conversationInterruption.restoredOutcomeUnknown');
+    return undefined;
   return t(`conversationInterruption.${reason}`);
 }

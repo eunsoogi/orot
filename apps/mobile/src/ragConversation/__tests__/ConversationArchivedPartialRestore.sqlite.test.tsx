@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react-native';
+import { act, render, within } from '@testing-library/react-native';
 import { createConversationSessions } from '../conversationSessions';
 import {
   fixture,
@@ -20,6 +20,10 @@ test('real retained partial paints its body, while a request interrupted during 
     await storage.append({
       ...partial,
       answer: 'Committed partial body',
+      initialResponse: {
+        callId: 'approved-opening',
+        text: 'Synthetic approved opening',
+      },
       providerId: 'synthetic',
       modelId: 'synthetic',
       status: 'partial',
@@ -88,8 +92,30 @@ test('real retained partial paints its body, while a request interrupted during 
     });
     expect(ui.getByText('Synthetic saved answer 0')).toBeTruthy();
     expect(ui.getByText('Original partial question')).toBeTruthy();
+    expect(ui.getAllByText('Synthetic approved opening')).toHaveLength(1);
     expect(ui.getByText('Committed partial body')).toBeTruthy();
     expect(ui.getByText('Original interrupted question')).toBeTruthy();
+    expect(ui.queryByText(/이전 요청의 결과를 확인하지 못했어요/)).toBeNull();
+    expect(ui.getAllByTestId(/^conversation-reading-row-/)).toHaveLength(5);
+    expect(
+      ui.getAllByTestId(/^conversation-reading-row-/).map(row => {
+        const labels = [
+          'Synthetic saved question 0',
+          'Synthetic saved answer 0',
+          'Original partial question',
+          'Synthetic approved opening',
+          'Committed partial body',
+          'Original interrupted question',
+        ];
+        return labels.filter(label => within(row).queryByText(label) !== null);
+      }),
+    ).toEqual([
+      ['Synthetic saved question 0'],
+      ['Synthetic saved answer 0'],
+      ['Original partial question'],
+      ['Synthetic approved opening', 'Committed partial body'],
+      ['Original interrupted question'],
+    ]);
     expect(ui.queryByText('Raw streaming draft must stay private')).toBeNull();
     expect(ui.queryByText(/이전 답변의 출처를 확인할 수 없어/)).toBeNull();
     const state = store.getSnapshot().sessions.find(row => row.id === id)!;

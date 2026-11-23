@@ -3,6 +3,7 @@ import type { SelectedAiResolution } from './provider';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import { conversationBackgroundProvider } from './conversationBackgroundProvider';
 import { conversationReceiptProvider } from './conversationReceiptProvider';
+import { observeConversationProviderExecution } from './observeConversationProviderExecution';
 
 /** Both direct calls and workflow selection must use the same request-local observer.
  * Selection never emits a receipt, requests OS work or grants consent.
@@ -11,7 +12,10 @@ export function conversationReceiptSelection<T extends SelectedAiResolution>(
   selected: T,
   observer?: Pick<
     RagConversationObserver,
-    'onProviderReceipt' | 'expectedConversationModel' | 'onExecutionState'
+    | 'onProviderReceipt'
+    | 'expectedConversationModel'
+    | 'onExecutionState'
+    | 'onProviderExecution'
   >,
 ): T {
   const expected = observer?.expectedConversationModel;
@@ -27,11 +31,15 @@ export function conversationReceiptSelection<T extends SelectedAiResolution>(
     selected.status !== 'ready' ||
     (!observer?.onProviderReceipt &&
       !observer?.onExecutionState &&
+      !observer?.onProviderExecution &&
       !expected?.isCurrent)
   )
     return selected;
   const guarded = warmConversationProviderGuard(
-    selected.provider,
+    observeConversationProviderExecution(
+      selected.provider,
+      observer?.onProviderExecution,
+    ),
     expected?.isCurrent,
     expected?.isDurablyCurrent,
   );

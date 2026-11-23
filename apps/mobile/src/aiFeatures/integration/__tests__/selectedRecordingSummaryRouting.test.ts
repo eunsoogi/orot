@@ -8,7 +8,11 @@ const session = {
   retentionSession: { id: 'synthetic-session', version: 0 },
   retentionRequestId: 'synthetic-request',
 } as const;
-const selected = { sourceId: 'synthetic-recording', isCurrent: () => true };
+const selected = {
+  sourceId: 'synthetic-recording',
+  signal: new AbortController().signal,
+  isCurrent: () => true,
+};
 const typedTarget = {
   intent: 'health-summary',
   entryKey: 'synthetic-target',

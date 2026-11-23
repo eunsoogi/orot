@@ -213,9 +213,7 @@ export function createConversationSessionRequests(
           activity,
           retainedTurnId:
             request.committed && retained ? retained.toolMessageId : undefined,
-          retentionUnavailable: Boolean(
-            retained && outcome.status === 'answer' && !request.committed,
-          ),
+          retentionUnavailable: Boolean(retained && !request.committed),
           restorePromptToComposer: request.restorePromptToComposer,
           find,
           update,

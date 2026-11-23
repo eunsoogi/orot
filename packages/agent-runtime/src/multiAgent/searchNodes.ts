@@ -6,7 +6,14 @@ import { unavailableSearchBatch } from './initialEvidenceSearch';
 import { canContinueWithPartialEvidence, hasBlockingCoverage } from './coveragePolicy';
 import type { EvidenceBatch } from './contracts';
 import { referencesFromBatch, validateEvidenceBatch, serializedReferenceKey } from './evidence';
-import { canceled, completeState, reportProgress, stop, finishToolEvent } from './runtimeContext';
+import {
+  canceled,
+  completeState,
+  reportAcceptedSearch,
+  reportProgress,
+  stop,
+  finishToolEvent,
+} from './runtimeContext';
 import type { RuntimeContext } from './runtimeContext';
 import type { WorkflowState } from './state';
 import { canonicalJson, utf8ByteLength } from './protocol';
@@ -16,6 +23,7 @@ import { deferEvidenceAdapter } from './modelCallFreshness';
 import { observeUntilAbort } from './modelCall';
 import type { Runtime } from '@langchain/langgraph/web';
 import { appendNativeToolResultMessage } from './nativeTools';
+import { evidenceIsFresh } from './toolResultEvidenceFreshness';
 // Search remains read-only; the external adapter verifies the declared outbound permission before networking.
 export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
   const executeSearch = async (state: WorkflowState, runtime: Runtime) => {
@@ -170,6 +178,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
       }
       // The full batch is already checked and remains in currentEvidence; the ToolMessage carries only its call identity and result.
       context.pendingNativeToolCallId = undefined;
+      if (toolStatus === 'completed') reportAcceptedSearch(context);
       finishToolEvent(context, toolStatus, next);
       context.currentEvidence = combined;
       return {
@@ -194,6 +203,7 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     };
     if (!(await evidenceIsFresh(context, combined))) return completeState();
     context.currentEvidence = combined;
+    if (toolStatus === 'completed') reportAcceptedSearch(context);
     finishToolEvent(context, toolStatus, next);
     if (
       requiresCompleteResearch(context.options, state) &&
@@ -222,29 +232,4 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
     prepareSearch: (state: WorkflowState) => prepareEvidenceSearch(context, state),
     executeSearch,
   };
-}
-async function evidenceIsFresh<TResult>(
-  context: RuntimeContext<TResult>,
-  batch: EvidenceBatch,
-): Promise<boolean> {
-  try {
-    const observed = await observeUntilAbort(
-      context.options.revalidateEvidence(referencesFromBatch(batch), context.signal),
-      context.signal,
-    );
-    if (observed.kind === 'cancelled') {
-      canceled(context);
-      return false;
-    }
-    if (observed.kind === 'error') {
-      stop(context, 'Evidence freshness could not be confirmed.', 'stale_evidence');
-      return false;
-    }
-    if (observed.value) return true;
-    stop(context, 'One or more evidence sources changed during the run.', 'stale_evidence');
-  } catch {
-    if (context.signal.aborted) canceled(context);
-    else stop(context, 'Evidence freshness could not be confirmed.', 'stale_evidence');
-  }
-  return false;
 }

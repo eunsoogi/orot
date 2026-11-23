@@ -63,6 +63,7 @@ test('queued expiration from a previous lease cannot interrupt a resumed request
     work: jest.fn(),
     currentPhase: () => 'active' as const,
     milestone: jest.fn(),
+    reportStatus: jest.fn(),
     subscribe: (
       listener: (
         event: import('../conversationExecutionLease').ConversationExecutionEvent,
@@ -83,12 +84,36 @@ test('queued expiration from a previous lease cannot interrupt a resumed request
   const controller = new AbortController();
   await lifetime.start(1, controller, turn(), 'synthetic');
   const oldId = execution.begin.mock.calls[0]![0];
-  const pending = lifetime.executionObserver(controller).onWorkflowPaused();
+  const old = lifetime.executionObserver(controller);
+  const endOld = old.onProviderExecution?.();
+  expect(execution.reportStatus).toHaveBeenLastCalledWith(
+    oldId,
+    'provider_waiting',
+  );
+  const pending = old.onWorkflowPaused();
   await waitFor(() => expect(state).toHaveBeenCalled());
   state.mock.calls.at(-1)![1]();
   await expect(pending).resolves.toBe(true);
   const currentId = execution.begin.mock.calls[1]![0];
   expect(currentId).not.toBe(oldId);
+  expect(execution.reportStatus).toHaveBeenLastCalledWith(
+    currentId,
+    'checkpointed',
+  );
+  const statusCount = execution.reportStatus.mock.calls.length;
+  endOld?.();
+  expect(old.onProviderExecution?.()).toBeUndefined();
+  expect(execution.reportStatus).toHaveBeenCalledTimes(statusCount);
+  const endNew = lifetime.executionObserver(controller).onProviderExecution?.();
+  expect(execution.reportStatus).toHaveBeenLastCalledWith(
+    currentId,
+    'provider_waiting',
+  );
+  endNew?.();
+  expect(execution.reportStatus).toHaveBeenLastCalledWith(
+    currentId,
+    'provider_finished',
+  );
   listeners.forEach(listener =>
     listener({ kind: 'expired', requestId: oldId }),
   );

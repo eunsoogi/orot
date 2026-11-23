@@ -72,6 +72,7 @@ it('retires live aliases without poisoning the next cold capture and only expose
       {
         selectedRecordingTranscript: {
           sourceId: chosen,
+          signal: new AbortController().signal,
           isCurrent: () => live,
         },
         retentionSession: { id: sessionId, version: 0 },

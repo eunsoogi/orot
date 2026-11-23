@@ -1,3 +1,5 @@
+import { createConversationBackgroundStatus } from './conversationBackgroundStatus';
+import type { ConversationGraphBackgroundStatus } from './conversationObserver';
 import type {
   ContinuationOpportunity,
   ConversationExecutionAdapter,
@@ -26,6 +28,7 @@ function requestWork(
   entry.continuedRequested = true;
   try {
     execution.work(entry.executionId, true);
+    entry.backgroundStatus?.checkpointed();
   } catch {
     // Optional continued work never invalidates the ordinary lease.
   }
@@ -36,17 +39,43 @@ export function adoptContinuedConversationLease(
   release: NonNullable<ConversationLifetimeEntry['release']>,
   execution?: ConversationExecutionAdapter,
   alreadyRequested = false,
+  current = () => true,
 ) {
-  entry.release = release;
+  const executionId = entry.executionId;
+  entry.backgroundStatus?.close();
+  const reportStatus = execution?.reportStatus;
+  const status =
+    reportStatus &&
+    createConversationBackgroundStatus({
+      signal: entry.controller.signal,
+      current: () =>
+        current() &&
+        entry.executionId === executionId &&
+        release.admitted &&
+        entry.continuedRequested === true &&
+        entry.continuedRefused !== executionId &&
+        !entry.waitingForDecision,
+      report: stage => reportStatus.call(execution, executionId, stage),
+    });
+  entry.backgroundStatus = status;
+  entry.release = Object.assign(
+    () => {
+      status?.close();
+      release();
+    },
+    { admitted: release.admitted },
+  );
   entry.continuedDeferred = false;
   entry.continuedRequested = alreadyRequested;
-  requestWork(entry, execution);
+  if (alreadyRequested) status?.checkpointed();
+  else requestWork(entry, execution);
 }
 
 export function revokeContinuedConversationWork(
   entry: ConversationLifetimeEntry,
   execution?: ConversationExecutionAdapter,
 ) {
+  entry.backgroundStatus?.suspend();
   const requested = entry.continuedRequested;
   entry.continuedDeferred = false;
   if (!requested) return;
@@ -96,6 +125,7 @@ function observeContinuedOpportunity(
   // work notification. A new explicit lease has a different execution ID.
   if (event === 'continued-refused') {
     entry.continuedRefused = entry.executionId;
+    entry.backgroundStatus?.suspend();
     entry.continuedDeferred = false;
     return;
   }
@@ -125,5 +155,42 @@ export function continuedOpportunityObserver(
   return (event: ContinuationOpportunity) => {
     if (entries.get(entry.id) === entry)
       observeContinuedOpportunity(entry, event, execution);
+  };
+}
+
+/** Bind once to the admitted lease, not the mutable entry reused by explicit continuation. */
+function continuedStatusObserver(
+  entry?: ConversationLifetimeEntry,
+): ConversationGraphBackgroundStatus {
+  const reporter = entry?.backgroundStatus;
+  if (!reporter) return {};
+  return {
+    onProviderExecution: reporter.beginProvider,
+    onBackgroundTool: reporter.tool,
+    onAcceptedSearch: reporter.acceptedTool,
+  };
+}
+
+/** Closing the replaced status owner never releases or broadens its execution lease. */
+export function createContinuedRequestOwners() {
+  class Entries extends Map<number, ConversationLifetimeEntry> {
+    override set(id: number, entry: ConversationLifetimeEntry) {
+      this.get(id)?.backgroundStatus?.close();
+      return super.set(id, entry);
+    }
+  }
+  const entries = new Entries();
+  const owners = new WeakMap<AbortController, ConversationLifetimeEntry>();
+  return {
+    entries,
+    owners,
+    own(entry: ConversationLifetimeEntry) {
+      entries.set(entry.id, entry);
+      owners.set(entry.controller, entry);
+    },
+    statusObserver(current: () => ConversationLifetimeEntry | undefined) {
+      const bind = () => continuedStatusObserver(current());
+      return { ...bind(), backgroundStatusForLease: bind };
+    },
   };
 }

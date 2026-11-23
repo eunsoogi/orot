@@ -21,6 +21,8 @@ import { PagedVectorRetriever } from './pagedVectorRetriever';
 import { localE5NativeBackend } from './localE5NativeBackend';
 import { SqlCipherRagEmbeddingStorage } from '../storage/ragEmbeddingStorage';
 import { SqlCipherRagFullTextSearchStore } from '../storage/ragFullTextSearch';
+import { findVerifiedRagVectorIds } from '../storage/ragVerifiedVectorReuse';
+import { vectorStoreChunks } from '../storage/ragVectorStoreEvidence';
 import { SqlCipherVectorStore } from '../storage/sqlCipherVectorStore';
 import { openLocalAgentMemoryDatabase } from '../storage/secureDatabase';
 
@@ -30,7 +32,9 @@ export interface LocalE5RagService {
   prepare(): Promise<void>;
   index(
     chunks: readonly EvidenceChunk[],
-    options?: EmbeddingIndexOptions,
+    options?: EmbeddingIndexOptions & {
+      readonly reuseVerifiedVectors?: boolean;
+    },
   ): Promise<void>;
   deleteChunks(
     chunks: readonly EvidenceChunk[],
@@ -124,6 +128,22 @@ export function createLocalE5RagService(
           );
         }
         seen.add(document.id);
+      }
+      if (options.reuseVerifiedVectors && documents.length) {
+        try {
+          const reusable = await findVerifiedRagVectorIds(
+            database,
+            embeddings.modelIdentity,
+            vectorStoreChunks(documents),
+            options.signal,
+          );
+          throwIfCancelled(options.signal);
+          if (reusable.size === documents.length) return;
+        } catch {
+          // A failed optional proof is never a hit. Keep the original index
+          // operation and its standard protected validation/failure semantics.
+          throwIfCancelled(options.signal);
+        }
       }
       const vectors = new SqlCipherVectorStore(
         embeddings,

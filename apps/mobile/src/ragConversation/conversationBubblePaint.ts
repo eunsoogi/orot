@@ -51,7 +51,23 @@ export function projectTranscript(
   messages: readonly DisplayMessage[],
   separated: boolean,
 ) {
-  return messages.filter(message =>
-    transcriptMessageVisible(message, separated),
-  );
+  return messages.filter(message => {
+    if (
+      message.role === 'assistant' &&
+      message.restoredHistory &&
+      message.incomplete &&
+      !message.activity
+    ) {
+      // Keep recovery state internal if there is no restored bubble or inline action to paint.
+      const { opening, showBody } = conversationBubblePaint(message, {
+        showCitations: true,
+        showToolActivity: false,
+        visitQuestions: Boolean(message.visitQuestions),
+        canResume: Boolean(message.coldResume),
+      });
+      if (!opening && !showBody && !message.steeringInstructions?.length)
+        return false;
+    }
+    return transcriptMessageVisible(message, separated);
+  });
 }

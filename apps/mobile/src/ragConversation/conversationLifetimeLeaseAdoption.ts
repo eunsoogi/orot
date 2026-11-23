@@ -52,7 +52,13 @@ export async function adoptConversationLifetimeLease(
     return;
   }
   // The native prep already called work; a refusal is not permission to submit again.
-  adoptContinuedConversationLease(entry, release, original, Boolean(early));
+  adoptContinuedConversationLease(
+    entry,
+    release,
+    original,
+    Boolean(early),
+    current,
+  );
   const observed = early?.lastState();
   if (observed) opportunity(observed);
 }

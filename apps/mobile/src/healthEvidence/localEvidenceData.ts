@@ -62,6 +62,31 @@ export interface LocalEvidenceData {
   ): Promise<readonly string[]>;
 }
 
+const protectedChunkReaders = new WeakSet<
+  LocalEvidenceData['loadCurrentChunks']
+>();
+const typedKey = ({ kind, id }: EvidenceRecordIdentity) =>
+  JSON.stringify([kind, id]);
+
+/** Only this database-owned reader can narrow an already admitted snapshot later. */
+export function bindSelectedCurrentEvidenceChunks(
+  data: Pick<LocalEvidenceData, 'loadCurrentChunks'>,
+  admitted: readonly EvidenceRecordIdentity[],
+) {
+  const owned = data.loadCurrentChunks;
+  if (!protectedChunkReaders.has(owned)) return undefined;
+  const allowed = new Set(admitted.map(typedKey));
+  return (
+    identities: readonly EvidenceRecordIdentity[],
+    signal: AbortSignal,
+  ) =>
+    signal.aborted ||
+    data.loadCurrentChunks !== owned ||
+    !identities.every(identity => allowed.has(typedKey(identity)))
+      ? Promise.resolve([])
+      : owned(identities, signal);
+}
+
 /** Shares bounded evidence reads between all AI routes without opening another storage copy. */
 export function createLocalEvidenceData(
   database: SqlDatabase,
@@ -69,6 +94,11 @@ export function createLocalEvidenceData(
   let prepared: Promise<void> | undefined;
   const readHealthContext = createHealthContextReader(database);
   const manualHistory = createManualHistoryRepository(database);
+  const loadCurrentChunks: LocalEvidenceData['loadCurrentChunks'] = (
+    identities,
+    signal,
+  ) => readCurrentEvidenceChunks(database, identities, signal);
+  protectedChunkReaders.add(loadCurrentChunks);
   const prepare = () => {
     // SQL ranking may sort private values. Keep temporary query state off plaintext disk.
     prepared ??= database
@@ -107,8 +137,7 @@ export function createLocalEvidenceData(
       await prepare();
       return readEvidenceCandidates(database, query, signal, scope);
     },
-    loadCurrentChunks: (identities, signal) =>
-      readCurrentEvidenceChunks(database, identities, signal),
+    loadCurrentChunks,
     loadStaleArtifacts: historyStalenessRead(
       (identities, signal) =>
         readSelectedStaleArtifacts(database, identities, signal),

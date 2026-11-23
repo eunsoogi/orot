@@ -1,3 +1,4 @@
+import { projectTranscript } from '../conversationBubblePaint';
 import { createConversationSessionRestoreState } from '../conversationSessionRestoreState';
 
 test.each([
@@ -42,11 +43,14 @@ test.each([
             incomplete: true,
             interruptionReason: 'process-interrupted',
             coldResume: undefined,
-            activity:
-              '이전 요청의 결과를 확인하지 못했어요. 완료 여부가 불확실한 작업은 자동으로 다시 실행하지 않아요.',
+            activity: undefined,
           }),
         ],
       }),
     );
+    const messages = update.mock.lastCall?.[1].messages;
+    expect(
+      projectTranscript(messages, false).map(message => message.role),
+    ).toEqual(['user']);
   },
 );

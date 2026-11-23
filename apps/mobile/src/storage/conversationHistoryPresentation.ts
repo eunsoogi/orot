@@ -3,6 +3,7 @@ import {
   decodeOwnedArchiveRow,
   type ConversationHistoryPresentation,
 } from './conversationArchivePresentationRow';
+import { currentReviewedOpeningSql } from './conversationReviewedOpeningStorage';
 export type { ConversationHistoryPresentation } from './conversationArchivePresentationRow';
 import {
   archivedHealthSummaryOwner,
@@ -16,7 +17,6 @@ import { createProtectedPromptHistory } from './protectedPromptHistory';
 import type { SqlDatabase, SqlExecutor } from '@orot/storage';
 import { projectSavedArchivedCitations } from '../ragConversation/savedArchivedCitations';
 import { suppressExplicitlyRemovedHistory } from './conversationHistoryDisplayAncestorFence';
-
 /** Read verified-at-save text, not whether sources are still openable. The
  * artifact table is written by the existing protected, validating append.
  * Legacy complete answers predate request checkpoints; their durable artifact
@@ -69,7 +69,7 @@ function createOwnedArchiveReader<T>(
       const { rows } = await tx.execute(
         `SELECT a.id, a.created_at, a.result_json, r.id AS request_id,
           r.question AS checkpoint_question, r.status AS checkpoint_status,
-          r.interruption_reason, c.request_id AS completion_id, NULL AS local_outcome_json
+          r.interruption_reason, c.request_id AS completion_id, NULL AS local_outcome_json, ${currentReviewedOpeningSql}
          FROM conversation_artifacts a JOIN json_each(?) ids ON ids.value = a.id
          LEFT JOIN conversation_requests r ON r.id = a.id
          LEFT JOIN conversation_completions c ON c.request_id = a.id
@@ -93,7 +93,7 @@ function createOwnedArchiveReader<T>(
          )
          UNION ALL
          SELECT r.id, r.created_at, NULL, r.id, r.question, r.status,
-           r.interruption_reason, NULL, r.local_outcome_json
+           r.interruption_reason, NULL, r.local_outcome_json, ${currentReviewedOpeningSql}
          FROM conversation_requests r JOIN json_each(?) ids ON ids.value = r.id
          WHERE r.session_id = ? AND r.session_version = ? AND (r.status = 'interrupted' OR (r.status = 'completed' AND r.input_json IS NULL AND r.local_outcome_json IS NOT NULL))
          AND NOT EXISTS (SELECT 1 FROM conversation_artifacts a WHERE a.id = r.id)

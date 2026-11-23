@@ -78,6 +78,7 @@ const visualSessionRetention: NonNullable<
         return undefined;
       },
       retainOpening() {},
+      persistReviewedOpening: undefined,
       retainDelivery() {},
       discardOpening() {},
       async startRequest() {},

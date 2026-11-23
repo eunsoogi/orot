@@ -3,9 +3,15 @@ export function createConversationRecordingDraft<
   Row extends { readonly key: string },
 >(publish: (value: Row | null) => void) {
   let selected: Row | null = null;
-  let live: { readonly row: Row; admitted: boolean } | null = null;
+  let live: {
+    readonly row: Row;
+    readonly revocation: AbortController;
+    admitted: boolean;
+  } | null = null;
   const clear = () => {
+    const ticket = live;
     live = null;
+    ticket?.revocation.abort();
     if (selected) {
       selected = null;
       publish(null);
@@ -27,11 +33,16 @@ export function createConversationRecordingDraft<
     },
     claim(current: () => boolean) {
       if (!selected || live || !current()) return undefined;
-      const ticket = { row: selected, admitted: false };
+      const ticket = {
+        row: selected,
+        revocation: new AbortController(),
+        admitted: false,
+      };
       live = ticket;
       const isCurrent = () => live === ticket && current();
       return {
         sourceId: ticket.row.key,
+        signal: ticket.revocation.signal,
         isCurrent,
         admit() {
           if (!isCurrent() || ticket.admitted) return false;
@@ -42,7 +53,9 @@ export function createConversationRecordingDraft<
           return true;
         },
         release() {
-          if (live === ticket) live = null;
+          if (live !== ticket) return;
+          live = null;
+          ticket.revocation.abort();
         },
       };
     },

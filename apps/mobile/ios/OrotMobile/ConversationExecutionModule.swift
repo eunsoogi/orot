@@ -191,10 +191,10 @@ final class ConversationExecutionModule: RCTEventEmitter {
     #endif
 
     /// Milestones contain no prompt, answer, provider identifiers or sensitive metadata.
-    @objc(answered:)
-    func answered(_ requestId: String) {
-        if #available(iOS 26.0, *) {
-            (continued[requestId] as? ConversationContinuedProcessing)?.receivedAnswer()
+    @objc(reportStatus:stage:)
+    func reportStatus(_ requestId: String, stage: String) {
+        if #available(iOS 26.0, *), UIApplication.shared.isProtectedDataAvailable {
+            (continued[requestId] as? ConversationContinuedProcessing)?.report(stage)
         }
     }
 

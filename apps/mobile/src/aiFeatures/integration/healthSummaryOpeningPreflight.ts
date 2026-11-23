@@ -28,7 +28,7 @@ export async function loadHealthSummaryOpeningData(
   let data: AiFeatureLocalData | undefined;
   let failed = false;
   try {
-    data = await load();
+    data = await (observe ? loadWhileCurrent(load, signal) : load());
   } catch {
     failed = true;
   }
@@ -45,4 +45,27 @@ export async function loadHealthSummaryOpeningData(
       'disease',
     );
   return data;
+}
+
+/** Stop retires this reply, not the protected database opener shared by other requests. */
+async function loadWhileCurrent(
+  load: () => Promise<AiFeatureLocalData>,
+  signal: AbortSignal,
+): Promise<AiFeatureLocalData | undefined> {
+  if (signal.aborted) return;
+  let stop = () => {};
+  const cancelled = new Promise<undefined>(resolve => {
+    stop = () => resolve(undefined);
+    signal.addEventListener('abort', stop, { once: true });
+  });
+  try {
+    // Install both paths before invoking the adapter. Late rejection is observed
+    // by the race, while another request can continue using the shared opener.
+    const opened = Promise.resolve().then(() =>
+      signal.aborted ? undefined : load(),
+    );
+    return await Promise.race([opened, cancelled]);
+  } finally {
+    signal.removeEventListener('abort', stop);
+  }
 }

@@ -103,6 +103,7 @@ it.each([
       ],
       selectedRecordingTranscript: {
         sourceId: chosen,
+        signal: new AbortController().signal,
         isCurrent: () => current,
       },
     });

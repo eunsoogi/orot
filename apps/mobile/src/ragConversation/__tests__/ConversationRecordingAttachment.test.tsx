@@ -129,7 +129,7 @@ test('one explicit selected audio ID is bound only to the admitted send', async 
   expect(result.current.selected).toBeNull();
   const scope = provider.mock.calls[0]![3]?.selectedRecordingTranscript;
   expect(provider).toHaveBeenCalledTimes(1);
-  expect(Object.keys(scope!)).toEqual(['sourceId', 'isCurrent']);
+  expect(Object.keys(scope!)).toEqual(['sourceId', 'signal', 'isCurrent']);
   expect(scope?.sourceId).toBe('selected');
   expect(scope?.isCurrent()).toBe(true);
   await act(async () => release());
@@ -199,14 +199,13 @@ test('deleting the selected source revokes a started observer, while unrelated d
   await act(async () => {
     result.current.dispatch(provider);
   });
-  const current =
-    provider.mock.calls[0]![3]?.selectedRecordingTranscript?.isCurrent;
+  const sent = provider.mock.calls[0]![3]?.selectedRecordingTranscript;
   await act(async () => notifyLocalSourceDeleted('local', new Set(['decoy'])));
-  expect(current?.()).toBe(true);
+  expect([sent?.isCurrent(), sent?.signal.aborted]).toEqual([true, false]);
   await act(async () =>
     notifyLocalSourceDeleted('local', new Set([selected.key])),
   );
-  expect(current?.()).toBe(false);
+  expect([sent?.isCurrent(), sent?.signal.aborted]).toEqual([false, true]);
   await act(async () => release());
 });
 

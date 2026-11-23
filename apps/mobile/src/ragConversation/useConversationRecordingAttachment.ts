@@ -196,6 +196,7 @@ export function useConversationRecordingAttachment(input: Scope) {
             ...observer,
             selectedRecordingTranscript: {
               sourceId: ticket.sourceId,
+              signal: ticket.signal,
               isCurrent,
             },
           });

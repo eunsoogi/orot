@@ -3,8 +3,6 @@ import type { ConversationRecoveryReason } from '../conversationExecutionLease';
 import { conversationRestoredMessages } from '../conversationRestoredMessages';
 import { savedHistoryTranscript } from '../conversationSavedHistoryDisplay';
 
-const unknown =
-  '이전 요청의 결과를 확인하지 못했어요. 완료 여부가 불확실한 작업은 자동으로 다시 실행하지 않아요.';
 const question = 'Synthetic question';
 function restore(interruptionReason?: ConversationRecoveryReason) {
   return conversationRestoredMessages(
@@ -47,22 +45,17 @@ function archive(interruptionReason?: ConversationRecoveryReason) {
 }
 
 test.each([undefined, 'process-interrupted', 'provider-failed'] as const)(
-  'unproven restored reason %s describes an unknown outcome without changing recovery',
+  'unproven restored reason %s has no status copy and keeps explicit recovery available',
   reason => {
     expect(restore(reason)).toMatchObject({
       content: '',
-      activity: unknown,
+      activity: undefined,
       incomplete: true,
       interruptionReason: reason ?? 'process-interrupted',
       coldResume: { attempt: 2 },
       toolMessageId: 'request',
     });
-    expect(archive(reason)).toMatchObject({
-      content: '',
-      activity: unknown,
-      savedHistoryDisplayOnly: true,
-    });
-    expect(archive(reason)?.coldResume).toBeUndefined();
+    expect(archive(reason)).toBeUndefined();
   },
 );
 

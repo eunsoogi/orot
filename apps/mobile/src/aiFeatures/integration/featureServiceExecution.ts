@@ -69,6 +69,9 @@ export function toolsFor(
               : {}),
             ...(scope.timeRange ? { timeRange: scope.timeRange } : {}),
           },
+          // Ordinary raw search never sends reviewed-memory items. Keep the
+          // cross-store identifier scan, but materialize only its own sources.
+          feature === 'rag' && request.input.view !== 'health_overview',
         );
         // Overview selection is SQL-ordered by topic and does not use embedding ranking.
         if (request.input.view === 'health_overview')

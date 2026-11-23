@@ -19,7 +19,13 @@ export async function setup(databasePath?: string) {
       /\b(?:health_observations|source_records|symptom_summary_runs|research_artifacts|transcript_artifact_staleness)\b/i.test(
         query,
       ) ||
-      /\bhealth_context_generation\b/i.test(query) ||
+      // The one constant-size deletion epoch fences approved openings, not current facts.
+      /\bhealth_context_generation\b/i.test(
+        query.replaceAll(
+          'SELECT deletions FROM health_context_generation WHERE singleton = 1',
+          '',
+        ),
+      ) ||
       (/\bWITH RECURSIVE\b/i.test(query) &&
         !query.includes('WITH RECURSIVE ownership(root, artifact_id)'))
     )

@@ -13,7 +13,7 @@ import { emptyConversationSnapshot } from './conversationEntryTargets';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
 import { resolveConversationSelection } from './conversationVoiceSelection';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
-import { guardHistory } from './conversationHistoryProviderGuard';
+import { guardSelectedRecordingProvider } from './selectedRecordingProvider';
 import { createSelectedRecordingTranscriptTool } from './selectedRecordingTranscriptTool';
 import {
   conversationRunInvocation,
@@ -42,7 +42,10 @@ async function runSelectedRecordingConversation(
 ): ReturnType<RagConversationServiceDependencies['ragRunner']> {
   const { signal, observer, attachment, question } = input;
   const registry = new LocalEvidenceReferenceRegistry();
-  const current = () => !signal.aborted && attachment.isCurrent();
+  const current = () =>
+    !signal.aborted &&
+    attachment.isCurrent() &&
+    observer.expectedConversationModel?.isCurrent?.() !== false;
   const protectedCurrent = async () =>
     current() && (await currentRecordingProtection()) && current();
   const failure = () => ({
@@ -50,10 +53,15 @@ async function runSelectedRecordingConversation(
     kind: signal.aborted ? ('cancelled' as const) : ('stale_evidence' as const),
   });
   if (!(await protectedCurrent())) return failure();
-  const selected = await resolveConversationSelection(
-    observer,
-    input.selectedAi,
-  );
+  const selected = await resolveConversationSelection(observer, async () => {
+    const resolved = await input.selectedAi();
+    const provider = guardSelectedRecordingProvider(
+      resolved.provider,
+      protectedCurrent,
+      current,
+    );
+    return { ...resolved, provider, option: { ...resolved.option, provider } };
+  });
   if (!(await protectedCurrent())) return failure();
   if (!selected) return { status: 'failure', kind: 'consent_required' };
   const local = await input.loadLocalData();
@@ -128,17 +136,13 @@ async function runSelectedRecordingConversation(
       resolveLocalEvidenceIdentity: reference => registry.resolve(reference),
       onValidatedEvidence: references =>
         retention.onValidatedEvidence(references),
-      workflow: guardHistory(
-        {
-          ...options,
-          execution: {
-            ...options.execution,
-            allowedScope: { sourceKinds: ['personal_record'] },
-          },
+      workflow: {
+        ...options,
+        execution: {
+          ...options.execution,
+          allowedScope: { sourceKinds: ['personal_record'] },
         },
-        protectedCurrent,
-        true,
-      ),
+      },
     },
     conversationRunInvocation(
       // Tool lifecycle is visible, but transient source aliases are not
@@ -187,6 +191,9 @@ export function isolateSelectedRecordingTurn(
     if (!request || request.length > 1000 || observer.photoInput)
       return { status: 'failure', kind: 'validation_failed' };
     const linked = scope(signal, observer);
+    const revoke = () => linked.controller.abort();
+    attachment.signal.addEventListener('abort', revoke, { once: true });
+    if (attachment.signal.aborted) revoke();
     try {
       return await runSelectedRecordingConversation({
         ...dependencies,
@@ -203,6 +210,7 @@ export function isolateSelectedRecordingTurn(
         'workflow',
       );
     } finally {
+      attachment.signal.removeEventListener('abort', revoke);
       linked.dispose();
     }
   };

@@ -14,7 +14,7 @@ type Selection = NonNullable<
 export function createSelectedRecordingTranscriptTool(
   data: AiFeatureLocalData,
   registry: LocalEvidenceReferenceRegistry,
-  selected: Selection,
+  selected: Pick<Selection, 'sourceId' | 'isCurrent'>,
   protectedCurrent: () => Promise<boolean> = async () => selected.isCurrent(),
 ): EvidenceSearchTool {
   const { sourceId, isCurrent } = selected;

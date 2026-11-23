@@ -1,4 +1,5 @@
 import { createRecordRepository, runMigrations } from '@orot/storage';
+import type { SqlDatabase } from '@orot/storage';
 import { createHealthEvidenceTestDatabase } from '../localEvidenceTestSupport';
 import {
   findEvidenceIdentifiers,
@@ -14,6 +15,60 @@ const metadata = {
   provenance: { origin: 'user_reported' as const, sourceRecordIds: [] },
   reviewState: { status: 'unreviewed' as const },
 };
+
+function observeCatalog(
+  database: SqlDatabase,
+  onCatalog?: () => void,
+): { traced: SqlDatabase; statements: string[] } {
+  const statements: string[] = [];
+  return {
+    statements,
+    traced: {
+      ...database,
+      transaction: operation =>
+        database.transaction(tx =>
+          operation({
+            ...tx,
+            async execute(query, values) {
+              statements.push(query);
+              const result = await tx.execute(query, values);
+              if (/count\(\*\) AS total/i.test(query)) onCatalog?.();
+              return result;
+            },
+          }),
+        ),
+    },
+  };
+}
+
+test('loads an empty catalog in one native statement and stops after cancellation', async () => {
+  const { database, close } = createHealthEvidenceTestDatabase();
+  try {
+    await runMigrations(database);
+    const first = observeCatalog(database);
+    const selected = await readEvidenceCandidates(first.traced, '건강 기록');
+    expect(first.statements).toHaveLength(1);
+    const plan = await database.execute(`EXPLAIN ${first.statements[0]}`);
+    expect(plan.rows.filter(row => row.opcode === 'Count')).toHaveLength(13);
+    expect(selected.catalog).toMatchObject({
+      availableKinds: [],
+      totalRecordCount: 0,
+      inventoryComplete: true,
+    });
+    expect(selected.catalog.queriedKinds).toHaveLength(13);
+    expect(selected.candidates).toEqual([]);
+    expect(selected.dependencies).toEqual([]);
+
+    const stop = new AbortController();
+    const cancelled = observeCatalog(database, () => stop.abort());
+    await expect(
+      readEvidenceCandidates(cancelled.traced, '건강 기록', stop.signal),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(cancelled.statements).toHaveLength(1);
+  } finally {
+    close();
+  }
+});
 
 test('keeps full catalog counts separate from diversified candidate payloads', async () => {
   const { database, close } = createHealthEvidenceTestDatabase();
@@ -46,7 +101,16 @@ test('keeps full catalog counts separate from diversified candidate payloads', a
       isArchived: false,
       hasSchedule: true,
     });
-    const selected = await readEvidenceCandidates(database, '건강 기록');
+    const traced = observeCatalog(database);
+    const selected = await readEvidenceCandidates(traced.traced, '건강 기록');
+    expect(
+      traced.statements.filter(query => /count\(\*\) AS total/i.test(query)),
+    ).toHaveLength(1);
+    expect(traced.statements).toHaveLength(3);
+    expect(selected.catalog.availableKinds).toEqual([
+      'health_observation',
+      'medication_definition',
+    ]);
     expect(selected.catalog.totalRecordCount).toBe(112);
     expect(selected.catalog.inventoryComplete).toBe(true);
     expect(selected.catalog.truncatedKinds).toEqual([]);

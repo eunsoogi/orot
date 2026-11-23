@@ -13,6 +13,7 @@ export function interruptConversationLifetime(
   reportFenceFailure: () => void,
 ) {
   entry.status = status;
+  entry.backgroundStatus?.close();
   if (status === 'cancelled') entry.diagnose('user-stop', 'user-stopped');
   try {
     // Native false finishes continued work unsuccessfully, not as a completed answer.

@@ -44,6 +44,7 @@ export type Stage =
   | 'tool_event_write_body'
   | 'tool_event_write_settlement'
   | 'tool_search_wait'
+  | 'tool_result_evidence_check'
   | 'tool_event_bind'
   | 'tool_event_bind_owner'
   | 'tool_event_bind_restore'

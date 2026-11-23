@@ -26,6 +26,7 @@ import {
   SOURCE_DELETION_TOMBSTONES_TABLE,
 } from './sourceDeletionReferences';
 import type { SqlDatabase, SqlExecutor, SqlTransaction } from './sql';
+import { hasExactSourceDeletionReferences } from './sourceDeletionMembership';
 import { clearResearchArtifacts } from './researchDeletion';
 import { readSyncCheckpoint } from './syncCheckpointRead';
 
@@ -66,6 +67,12 @@ export interface RecordRepository extends RecordWriter {
   listAllLocalDeletionReferences(): Promise<readonly string[]>;
   hasStoredRecordId(recordId: string): Promise<boolean>;
   listSourceDeletionReferences(sourceRecordId: string): Promise<readonly string[]>;
+  /** Exact read-only membership under the same cascade predicate; no descendant enumeration. */
+  hasSourceDeletionReferences?(
+    sourceRecordId: string,
+    referenceIds: readonly string[],
+    signal: AbortSignal,
+  ): Promise<boolean>;
   listTypedSourceDeletionReferences(
     sourceRecordId: string,
   ): Promise<readonly { kind: string; id: string }[]>;
@@ -200,6 +207,9 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
     },
     hasStoredRecordId(recordId) {
       return readStoredRecordIdPresence(database, recordId);
+    },
+    hasSourceDeletionReferences(sourceRecordId, referenceIds, signal) {
+      return hasExactSourceDeletionReferences(database, sourceRecordId, referenceIds, signal);
     },
     async listSourceDeletionReferences(sourceRecordId) {
       const references = await readSourceDeletionSnapshot(database, sourceRecordId);
