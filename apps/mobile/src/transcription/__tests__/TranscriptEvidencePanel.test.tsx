@@ -112,9 +112,10 @@ test('shows review provenance and range, preserves correction history, and plays
     /상담 녹음/,
   );
   expect(screen.getByTestId('transcript-summary-title')).toHaveTextContent(
-    '검토 전 초안',
+    '저장된 전사',
   );
   expect(await screen.findByText('복용하지 않았어요.')).toBeTruthy();
+  expect(screen.queryByTestId('transcript-review-0')).toBeNull();
   expect(screen.getByTestId('transcript-origin-0')).toHaveTextContent(
     '기계 전사',
   );
@@ -175,6 +176,7 @@ test('shows review provenance and range, preserves correction history, and plays
     '사용자 수정',
   );
   expect(service.correct).toHaveBeenCalledWith(original.id, correction.text);
+  expect(service.correct).toHaveBeenCalledTimes(1);
   expect(onInteractionChange).toHaveBeenLastCalledWith({
     busy: false,
     dirty: false,
