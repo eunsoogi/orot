@@ -12,6 +12,7 @@ export type AiWorkflowObserver = Pick<
   Pick<
     import('../ragConversation/conversationObserver').RagConversationObserver,
     | 'onProviderReceipt'
+    | 'onReviewedOpening'
     | 'expectedConversationModel'
     | 'onExecutionState'
     | 'suppressContextualOpening'

@@ -20,6 +20,11 @@ export type RagConversationObserver = Pick<
   readonly onProviderReceipt?: (
     receipt: import('../aiFeatures/integration/conversationReceiptProvider').ConversationProviderReceipt,
   ) => void;
+  /** Only the completed, separately reviewed opening producer owns this durable display port. */
+  readonly onReviewedOpening?: (
+    opening: import('../storage/conversationReviewedOpeningStorage').ReviewedOpening,
+    signal: AbortSignal,
+  ) => Promise<boolean>;
   readonly onSteeringReady?: (
     store: NonNullable<
       import('@orot/agent-runtime').WorkflowOperationJournal['steering']

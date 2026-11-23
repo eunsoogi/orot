@@ -15,7 +15,7 @@ import type { SelectedAiResolution } from './provider';
 import { operationRunId } from './featureRunIdentity';
 
 /** Start only at a new live send boundary, never cold workflow restoration. The owning
- * observer fences Stop/newer requests; transient opening text is not saved as an answer. */
+ * observer fences Stop/newer requests; reviewed opening text is never saved as an answer. */
 export function startContextualConversationOpening(input: {
   selected: Extract<SelectedAiResolution, { status: 'ready' }>;
   request: string;
@@ -67,12 +67,24 @@ export function startContextualConversationOpening(input: {
       isCurrent: input.isEvidenceCurrent,
     });
     if (text && !controller.signal.aborted && (input.isCurrent?.() ?? true)) {
-      input.observer.onTaskStreamEvent({
-        type: 'initial_response',
-        callId: id,
-        text,
-      });
-      reportOpening('opening_delivery', 'completed', input.diagnosticFeature);
+      const opening = { callId: id, text };
+      if (input.observer.onReviewedOpening) {
+        const published = await input.observer.onReviewedOpening(
+          opening,
+          controller.signal,
+        );
+        reportOpening(
+          'opening_delivery',
+          published ? 'completed' : 'unavailable',
+          input.diagnosticFeature,
+        );
+      } else {
+        input.observer.onTaskStreamEvent({
+          type: 'initial_response',
+          ...opening,
+        });
+        reportOpening('opening_delivery', 'completed', input.diagnosticFeature);
+      }
     } else if (text) {
       reportOpening(
         'opening_delivery',

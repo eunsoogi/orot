@@ -1,4 +1,4 @@
-import { reportOpening } from '../aiFeatures/integration/openingObservation';
+import { conversationOpeningDelivery } from './conversationOpeningDelivery';
 import { createConversationDeliveryObserver } from './conversationDeliveryObserver';
 import {
   mergeConversationToolEvents,
@@ -110,6 +110,17 @@ export function createConversationTurnActivity(input: {
       input.activityChanged?.();
     }
   };
+  const openingDelivery = conversationOpeningDelivery({
+    pending: () => {
+      const pending = input.find(input.id)?.pendingMessage;
+      return input.current() && pending?.id === input.responseId
+        ? pending
+        : null;
+    },
+    publish: pendingMessage => input.update(input.id, { pendingMessage }),
+    receipt: () => onProviderReceipt('response_started'),
+    retained: input.retained,
+  });
   return {
     metadata,
     finish(status: 'failed' | 'cancelled' | 'interrupted') {
@@ -126,6 +137,7 @@ export function createConversationTurnActivity(input: {
     },
     observer: {
       onProviderReceipt,
+      onReviewedOpening: openingDelivery.onReviewedOpening,
       // A provider may deliver a callback after cancellation or a newer retry.
       // Only the request that still owns this activity may record that callback.
       onToolEvent(event: ConversationToolEvent) {
@@ -172,33 +184,10 @@ export function createConversationTurnActivity(input: {
           return;
         }
         if (event.type === 'initial_response') {
-          // Preserve the reviewed reply separately from answer text and provider history.
-          // Only the current attempt may capture it; replay and late callbacks cannot replace it.
-          if (
-            input.current() &&
-            pending?.id === input.responseId &&
-            !pending.withholdHealthBody &&
-            Boolean(event.text.trim()) &&
-            (!pending.initialResponse ||
-              pending.initialResponse.source === 'receipt')
-          ) {
-            // Accepted generated output is evidence even when its provider is separate from the main call.
-            onProviderReceipt('response_started');
-            input.retained?.retainOpening({
-              callId: event.callId,
-              text: event.text,
-            });
-            input.update(input.id, {
-              pendingMessage: {
-                ...pending,
-                initialResponse: { callId: event.callId, text: event.text },
-              },
-            });
-            reportOpening('opening_display', 'completed');
-          } else {
-            // Rejected display ownership is not proof of stale health evidence.
-            reportOpening('opening_display', 'unavailable');
-          }
+          openingDelivery.onLegacyOpening({
+            callId: event.callId,
+            text: event.text,
+          });
           return;
         }
         if (

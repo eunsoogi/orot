@@ -33,13 +33,19 @@ export function conversationTimelinePages(
     let page!: {
       items: ConversationHistoryCursor[];
       nextCursor: ConversationHistoryCursor | null;
+      reviewedOpeningDeletionEpoch?: number;
     };
     await database.transaction(async tx => {
       const lease = await tx.execute(
-        'SELECT s.id FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ?',
+        `SELECT s.id${
+          displayOnly
+            ? ', (SELECT deletions FROM health_context_generation WHERE singleton = 1) AS opening_epoch'
+            : ''
+        } FROM conversation_artifact_sessions s JOIN conversation_artifact_generation g ON g.singleton = 1 AND s.generation = g.generation WHERE s.id = ? AND s.hidden = 0 AND s.version = ?`,
         [sessionId, version],
       );
       if (!lease.rows.length) throw new Error('Conversation is unavailable.');
+      const epoch = lease.rows[0]?.opening_epoch;
       // A completed artifact and its tool events form one turn. Requests take precedence over
       // tool timestamps to match the existing restoration order; cards occupy their own key space.
       const result = await tx.execute(
@@ -95,6 +101,9 @@ export function conversationTimelinePages(
         });
       page = {
         items,
+        ...(displayOnly && typeof epoch === 'number'
+          ? { reviewedOpeningDeletionEpoch: epoch }
+          : {}),
         nextCursor: result.rows.length > limit ? (items.at(-1) ?? null) : null,
       };
     });
