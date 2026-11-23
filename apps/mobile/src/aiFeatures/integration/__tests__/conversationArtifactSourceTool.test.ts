@@ -100,6 +100,13 @@ test('follows a conversation source through its own catalog and revokes it when 
       maxPayloadBytes: 20000,
       signal: new AbortController().signal,
     };
+    for (const evidenceId of ['e', 'e1234567890123', 'invalid', 'e1.5']) {
+      const input = { evidenceId };
+      expect(tool.parseInput(input)).toBeUndefined();
+      await expect(tool.search({ ...request, input })).rejects.toThrow(
+        'Artifact source scope is unavailable.',
+      );
+    }
     const result = await tool.search(request);
     if ('status' in result) throw new Error('Unexpected consent result');
     expect(result.items[0]?.content).toContain('Synthetic history');

@@ -43,6 +43,7 @@ export interface RagConversationRunOptions {
   readonly entryIntent?: ConversationIntent;
   readonly authoredCurrentRequest?: boolean;
   readonly typedPossibilityReport?: boolean;
+  readonly explicitPossibilityChoice?: boolean;
   readonly targetVisitEvidence?: EvidenceItem;
   readonly dailyReportEvidence?: readonly EvidenceItem[];
   /** Photo evidence and its explicit payload consent must arrive together. */

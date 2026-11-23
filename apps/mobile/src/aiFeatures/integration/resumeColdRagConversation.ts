@@ -1,3 +1,4 @@
+import { conversationCheckpointPauseReason } from '../../ragConversation/conversationCheckpointInterruption';
 import { createMultiAgentPauseController } from '@orot/agent-runtime';
 import type { SqlDatabase } from '@orot/storage';
 import type { JsonObject } from '@orot/model-runtime';
@@ -150,9 +151,9 @@ export async function resumeColdRagConversation(input: {
     if (result.status === 'paused')
       return {
         status: 'paused' as const,
-        reason: result.checkpoint.awaitingAuthorization
-          ? ('decision-required' as const)
-          : ('expired' as const),
+        reason: conversationCheckpointPauseReason(
+          result.checkpoint.awaitingAuthorization,
+        ),
         attempt: descriptor.attempt + 1,
       };
     const outcome = await conversationWorkflowOutcome(

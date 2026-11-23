@@ -4,6 +4,7 @@ import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tes
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { createRagConversationService } from '../ragConversationService';
 import { runRagConversationTurn } from '../../../ragConversation/service';
+import { answer } from '../../../ragConversation/testSupport/structuredPossibilityReportFixture';
 import { publicEvidenceFixture } from '../testSupport/publicWebEvidenceTestSupport';
 import { localData, memoryTransportFixture } from '../featureServiceFixtures';
 import { openLocalAgentMemoryDatabase } from '../../../storage/secureDatabase';
@@ -93,8 +94,6 @@ test.each([
           ),
         );
       if (grounded) {
-        // Keep the actual durable graph, local tool, alias and citation validators.
-        // Only provider output and memory retrieval are synthetic.
         generate
           .mockReset()
           .mockResolvedValueOnce(output('요청하신 내용을 살펴볼게요.'))
@@ -135,8 +134,10 @@ test.each([
                   type: 'result',
                   value: {
                     answerKind: 'grounded',
-                    answer:
-                      '저장된 합성 기억을 확인했어요. 공개 자료는 확인하지 못했어요.',
+                    answer: {
+                      ...answer,
+                      observations: '저장된 합성 기억을 확인했어요.',
+                    },
                   },
                   citations: evidence.map(item => item.evidenceId),
                 }),

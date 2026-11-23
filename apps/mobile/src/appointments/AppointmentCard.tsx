@@ -1,5 +1,6 @@
 import { AppointmentReminderControls } from '../appointmentReminders/AppointmentReminderControls';
-import { View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { AppButton as Button } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import type { Appointment } from '@orot/storage';
@@ -25,21 +26,28 @@ export default function AppointmentCard({
   const clinicName = appointmentClinicName(appointment);
   const canEdit =
     appointment.status === 'scheduled' || appointment.status === 'rescheduled';
+  const { fontScale } = useWindowDimensions();
+  const [headerWidth, setHeaderWidth] = useState<number>();
+  // In a narrow card lane or at large text sizes, Edit must not consume title width.
+  const stackedHeader =
+    canEdit && (fontScale > 1.3 || (headerWidth != null && headerWidth < 300));
   const formattedDateTime = formatDateTime(new Date(appointment.effectiveAt));
-  // Match the reminder choices' two-line labels while the accessible name keeps the full wording.
-  const cancelActionTitle = t('appointments.actions.cancel').replace(
-    /\s+/u,
-    '\n',
-  );
 
   return (
     <View style={styles.card} testID={`appointment-${appointment.id}`}>
+      <Text accessibilityRole="header" style={styles.cardEyebrow}>
+        {t('appointments.detail.title')}
+      </Text>
       <View
-        style={styles.cardHeader}
+        onLayout={event => setHeaderWidth(event.nativeEvent.layout.width)}
+        style={[styles.cardHeader, stackedHeader && headerStyles.stack]}
         testID={`appointment-header-${appointment.id}`}
       >
         <Text
-          style={[styles.clinic, styles.cardHeaderClinic]}
+          style={[
+            styles.clinic,
+            stackedHeader ? headerStyles.fullTitle : styles.cardHeaderClinic,
+          ]}
           testID={`appointment-clinic-${appointment.id}`}
         >
           {clinicName}
@@ -48,43 +56,49 @@ export default function AppointmentCard({
           <Button
             onPress={onEdit}
             size="compact"
+            style={stackedHeader && headerStyles.edit}
             testID={`appointment-edit-${appointment.id}`}
             title={t('appointments.actions.edit')}
             variant="secondary"
           />
         ) : null}
       </View>
-      <Text testID={`appointment-time-${appointment.id}`}>
-        {formattedDateTime} · {t('appointments.localTime')}
-      </Text>
-      {appointment.note ? <Text>{appointment.note}</Text> : null}
-      <Text testID={`appointment-status-${appointment.id}`}>
-        {appointmentStatusLabel(appointment)}
-      </Text>
+      <View style={styles.cardFacts}>
+        <Text
+          style={styles.detailStatus}
+          testID={`appointment-status-${appointment.id}`}
+        >
+          {appointmentStatusLabel(appointment)}
+        </Text>
+        <Text testID={`appointment-time-${appointment.id}`}>
+          {formattedDateTime} · {t('appointments.localTime')}
+        </Text>
+        {appointment.note ? <Text>{appointment.note}</Text> : null}
+      </View>
+      <AppointmentReminderControls appointment={appointment} />
       {canEdit ? (
         <View
-          style={styles.actions}
+          style={styles.cancelAction}
           testID={`appointment-actions-${appointment.id}`}
         >
-          <AppointmentReminderControls
-            appointment={appointment}
-            additionalAction={
-              <Button
-                accessibilityLabel={t('appointments.actions.cancelForClinic', {
-                  clinic: clinicName,
-                })}
-                onPress={onCancel}
-                size="compact"
-                testID={`appointment-cancel-${appointment.id}`}
-                title={cancelActionTitle}
-                variant="destructive"
-              />
-            }
+          <Button
+            accessibilityLabel={t('appointments.actions.cancelForClinic', {
+              clinic: clinicName,
+            })}
+            onPress={onCancel}
+            size="compact"
+            testID={`appointment-cancel-${appointment.id}`}
+            title={t('appointments.actions.cancel')}
+            variant="destructive"
           />
         </View>
-      ) : (
-        <AppointmentReminderControls appointment={appointment} />
-      )}
+      ) : null}
     </View>
   );
 }
+
+const headerStyles = StyleSheet.create({
+  stack: { flexDirection: 'column' },
+  fullTitle: { alignSelf: 'stretch', minWidth: 0 },
+  edit: { maxWidth: '100%' },
+});

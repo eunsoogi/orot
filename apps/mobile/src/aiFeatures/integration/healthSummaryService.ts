@@ -1,10 +1,11 @@
+import { loadHealthSummaryOpeningData } from './healthSummaryOpeningPreflight';
 import { conversationConsentScope } from './conversationBackgroundProvider';
 import { conversationReceiptSelection } from './conversationReceiptSelection';
 import { startContextualConversationOpening } from './contextualConversationOpening';
 import type { MultiAgentWorkflowOptions } from '@orot/agent-runtime';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import type { runDiseaseHypothesisAnalysis } from '../../diseaseHypotheses/task';
-import { symptomSummaryTaskForProvider } from '../../diseaseHypotheses/partitionedSymptomSummaryTask';
+import { healthSummaryTaskForProvider } from '../../diseaseHypotheses/partitionedSymptomSummaryTask';
 import type { SymptomSummaryStorage } from '../../diseaseHypotheses/savedSummaries';
 import type {
   HealthSummaryRequest,
@@ -66,18 +67,13 @@ export function createHealthSummaryService(input: {
       await input.selectedAi(),
       observer,
     );
-    let data: AiFeatureLocalData;
-    try {
-      data = await input.loadData();
-    } catch {
-      return {
-        failure: {
-          status: 'failure',
-          kind: signal.aborted ? 'cancelled' : 'retrieval_failed',
-        },
-      };
-    }
-    if (!data.readHealthContext || signal.aborted)
+    const data = await loadHealthSummaryOpeningData(
+      input.loadData,
+      selected,
+      signal,
+      observer,
+    );
+    if (!data?.readHealthContext || signal.aborted)
       return {
         failure: {
           status: 'failure',
@@ -147,7 +143,7 @@ export function createHealthSummaryService(input: {
     }
     if (signal.aborted)
       return { failure: { status: 'failure', kind: 'cancelled' } };
-    const original = symptomSummaryTaskForProvider(selected.provider.id);
+    const original = healthSummaryTaskForProvider(selected.provider.id);
     const task = {
       ...original,
       // Keep the existing schema and result validator while removing legacy public-search and relative-period instructions.

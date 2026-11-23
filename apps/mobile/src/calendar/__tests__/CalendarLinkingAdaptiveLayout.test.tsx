@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Dimensions, StyleSheet, View } from 'react-native';
+import { RecordsHubSection } from '../../routes/RecordsHubSection';
 import CalendarLinkingScreen from '../CalendarLinkingScreen';
 import {
   bridge,
@@ -51,70 +52,87 @@ afterEach(() => {
   Dimensions.set({ window: originalWindow, screen: originalScreen });
 });
 
-test('keeps explicit event confirmation through measured narrow large-text reflow', async () => {
-  const selected = event('selected-calendar-event');
-  const requestAccessAndListUpcomingEvents = jest.fn(async () => ({
-    access: 'fullAccess' as const,
-    events: [selected],
-  }));
-  const calendarBridge = bridge({
-    requestAccessAndListUpcomingEvents,
-    findEvent: jest.fn(async () => ({
+test.each(['standalone', 'hub'] as const)(
+  'keeps explicit event confirmation through measured narrow large-text reflow in the %s',
+  async owner => {
+    const selected = event('selected-calendar-event');
+    const requestAccessAndListUpcomingEvents = jest.fn(async () => ({
       access: 'fullAccess' as const,
-      event: selected,
-    })),
-  });
-  const appointments = repository(async () => []);
-  measuredBounds.set('schedule-adaptive-columns-host', {
-    x: 24,
-    width: 1500,
-  });
-
-  // ScheduleRoute opts into this layout; measure its parent host instead of using window width.
-  await render(
-    <CalendarLinkingScreen
-      adaptiveScheduleLayout
-      repository={appointments}
-      bridge={calendarBridge}
-      calendarSync={syncedCalendar([selected])}
-    />,
-  );
-  await fireEvent(
-    screen.getByTestId('schedule-adaptive-columns-host'),
-    'layout',
-    { nativeEvent: { layout: { x: 24, y: 0, width: 1500, height: 800 } } },
-  );
-
-  expect(requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
-  await fireEvent.press(
-    await screen.findByTestId('calendar-candidate-selected-calendar-event'),
-  );
-  expect(layoutAxis()).toBe('column');
-  expect(
-    screen.queryByTestId('schedule-adaptive-columns-secondary'),
-  ).toBeNull();
-  expect(screen.getByTestId('calendar-selected-event-title')).toBeTruthy();
-  expect(screen.queryByTestId('schedule-next-visit-summary')).toBeNull();
-  expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
-
-  await act(async () => {
+      events: [selected],
+    }));
+    const calendarBridge = bridge({
+      requestAccessAndListUpcomingEvents,
+      findEvent: jest.fn(async () => ({
+        access: 'fullAccess' as const,
+        event: selected,
+      })),
+    });
+    const appointments = repository(async () => []);
     measuredBounds.set('schedule-adaptive-columns-host', {
       x: 24,
-      width: 552,
+      width: 1500,
     });
-    Dimensions.set({ window: viewport(600, 2), screen: viewport(600, 2) });
-  });
-  await fireEvent(
-    screen.getByTestId('schedule-adaptive-columns-host'),
-    'layout',
-    { nativeEvent: { layout: { x: 24, y: 0, width: 552, height: 800 } } },
-  );
 
-  expect(layoutAxis()).toBe('column');
-  expect(screen.getByTestId('calendar-selected-event-title')).toBeTruthy();
-  expect(screen.getByTestId('calendar-confirm-selected')).toBeTruthy();
-  expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
+    // ScheduleRoute opts into this layout; measure its parent host instead of using window width.
+    const embeddedInHubScroll = owner === 'hub';
+    const calendar = (
+      <CalendarLinkingScreen
+        adaptiveScheduleLayout
+        embeddedInHubScroll={embeddedInHubScroll}
+        repository={appointments}
+        bridge={calendarBridge}
+        calendarSync={syncedCalendar([selected])}
+      />
+    );
+    await render(
+      embeddedInHubScroll ? (
+        <RecordsHubSection selected="schedule">{calendar}</RecordsHubSection>
+      ) : (
+        calendar
+      ),
+    );
+    const scroll = screen.getByTestId('calendar-screen');
+    if (embeddedInHubScroll)
+      expect(scroll).toContainElement(screen.getByTestId('records-hub-header'));
+    await fireEvent(
+      screen.getByTestId('schedule-adaptive-columns-host'),
+      'layout',
+      { nativeEvent: { layout: { x: 24, y: 0, width: 1500, height: 800 } } },
+    );
 
-  await fireEvent.press(screen.getByTestId('calendar-confirm-selected'));
-  expect(appointments.confirmCalendarEvent).toHaveBeenCalledWith(selected);
-});
+    expect(requestAccessAndListUpcomingEvents).not.toHaveBeenCalled();
+    await fireEvent.press(
+      await screen.findByTestId('calendar-candidate-selected-calendar-event'),
+    );
+    expect(layoutAxis()).toBe('column');
+    expect(
+      screen.queryByTestId('schedule-adaptive-columns-secondary'),
+    ).toBeNull();
+    expect(screen.getByTestId('calendar-selected-event-title')).toBeTruthy();
+    expect(screen.queryByTestId('schedule-next-visit-summary')).toBeNull();
+    expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
+
+    await act(async () => {
+      measuredBounds.set('schedule-adaptive-columns-host', {
+        x: 24,
+        width: 552,
+      });
+      Dimensions.set({ window: viewport(600, 2), screen: viewport(600, 2) });
+    });
+    await fireEvent(
+      screen.getByTestId('schedule-adaptive-columns-host'),
+      'layout',
+      { nativeEvent: { layout: { x: 24, y: 0, width: 552, height: 800 } } },
+    );
+
+    expect(layoutAxis()).toBe('column');
+    expect(screen.getByTestId('calendar-selected-event-title')).toBeTruthy();
+    expect(scroll).toContainElement(
+      screen.getByTestId('calendar-confirm-selected'),
+    );
+    expect(appointments.confirmCalendarEvent).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByTestId('calendar-confirm-selected'));
+    expect(appointments.confirmCalendarEvent).toHaveBeenCalledWith(selected);
+  },
+);

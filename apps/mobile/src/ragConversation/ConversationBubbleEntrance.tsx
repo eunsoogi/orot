@@ -1,5 +1,10 @@
 import { createContext, useContext, useLayoutEffect, useState } from 'react';
 import { Animated, Easing, View, type ViewProps } from 'react-native';
+import {
+  AnimatedConversationBubbleCopyHost,
+  ConversationBubbleCopyHost,
+  type ConversationBubbleCopy,
+} from './ConversationBubbleCopyHost';
 import type { createConversationBubbleEntrances } from './conversationBubbleEntrances';
 
 export const ConversationBubbleEntranceContext = createContext<{
@@ -11,20 +16,27 @@ export const ConversationBubbleEntranceContext = createContext<{
 export function ConversationBubbleEntrance({
   entranceKey,
   restored,
+  copyMenu,
   style,
   ...props
 }: ViewProps & {
   readonly entranceKey?: string;
   readonly restored?: boolean;
+  readonly copyMenu?: ConversationBubbleCopy;
 }) {
   const context = useContext(ConversationBubbleEntranceContext);
   // Cold and standalone previews keep their original View and allocate no timeline.
   if (!context || !entranceKey || restored)
-    return <View {...props} style={style} />;
+    return copyMenu && ConversationBubbleCopyHost ? (
+      <ConversationBubbleCopyHost {...props} {...copyMenu} style={style} />
+    ) : (
+      <View {...props} style={style} />
+    );
   return (
     <LiveConversationBubble
       {...props}
       style={style}
+      copyMenu={copyMenu}
       entranceKey={entranceKey}
       {...context}
     />
@@ -35,12 +47,14 @@ function LiveConversationBubble({
   receipts,
   motionAllowed,
   entranceKey,
+  copyMenu,
   style,
   ...props
 }: ViewProps & {
   readonly receipts: ReturnType<typeof createConversationBubbleEntrances>;
   readonly motionAllowed: boolean;
   readonly entranceKey: string;
+  readonly copyMenu?: ConversationBubbleCopy;
 }) {
   const [{ scale, opacity }] = useState(() => {
     const progress = new Animated.Value(1);
@@ -77,10 +91,14 @@ function LiveConversationBubble({
       scale.setValue(1);
     };
   }, [motionAllowed, receipts, entranceKey, scale]);
-  return (
-    <Animated.View
-      {...props}
-      style={[style, { opacity, transform: [{ scale }] }]}
-    />
-  );
+  const paintedStyle = [style, { opacity, transform: [{ scale }] }];
+  if (copyMenu && AnimatedConversationBubbleCopyHost)
+    return (
+      <AnimatedConversationBubbleCopyHost
+        {...props}
+        {...copyMenu}
+        style={paintedStyle}
+      />
+    );
+  return <Animated.View {...props} style={paintedStyle} />;
 }

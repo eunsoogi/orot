@@ -22,7 +22,7 @@ function reviewLabel(summary: RecordingLibrarySummary): string {
     case 'notTranscribed':
       return t('recording.library.transcriptNotStarted');
     case 'unreviewed':
-      return t('recording.transcript.review.unreviewed');
+      return t('recording.transcript.savedTranscript');
     case 'needsReview':
       return t('recording.transcript.review.needsReview');
     case 'reviewed':
@@ -36,10 +36,8 @@ function reviewStyle(summary: RecordingLibrarySummary) {
   if (summary.transcriptReviewState === 'reviewed') {
     return [styles.reviewBadge, styles.reviewComplete];
   }
-  if (
-    summary.transcriptReviewState === 'unreviewed' ||
-    summary.transcriptReviewState === 'needsReview'
-  ) {
+  // A saved machine transcript is neither a pending draft nor a reviewed result.
+  if (summary.transcriptReviewState === 'needsReview') {
     return [styles.reviewBadge, styles.reviewNeeds];
   }
   return [styles.reviewBadge, styles.reviewUnavailable];
@@ -49,10 +47,7 @@ function reviewTextStyle(summary: RecordingLibrarySummary) {
   if (summary.transcriptReviewState === 'reviewed') {
     return styles.reviewCompleteText;
   }
-  if (
-    summary.transcriptReviewState === 'unreviewed' ||
-    summary.transcriptReviewState === 'needsReview'
-  ) {
+  if (summary.transcriptReviewState === 'needsReview') {
     return styles.reviewNeedsText;
   }
   return styles.reviewUnavailableText;

@@ -4,6 +4,13 @@ import type { EncounterTranscript } from '@orot/agent-runtime';
 import type { RecordWriter, SqlExecutor } from '@orot/storage';
 import { requireLiveCheckpointSource } from '@orot/storage';
 
+/** Reject oversized review inputs before any model or network authorization. */
+export class EncounterTranscriptTooLong extends Error {
+  constructor() {
+    super('The recording transcript exceeds the extraction segment limit.');
+  }
+}
+
 /** Corrections are append-only: choose the latest revision per stable segment, never concatenate old text. */
 export function currentEncounterTranscript(
   sourceId: string,
@@ -17,8 +24,8 @@ export function currentEncounterTranscript(
     if ((latest.get(segment.transcriptId)?.revision ?? 0) < segment.revision)
       latest.set(segment.transcriptId, segment);
   }
-  if (!latest.size || latest.size > 8)
-    throw new Error('Select a bounded nonempty transcript.');
+  if (!latest.size) throw new Error('Select a nonempty transcript.');
+  if (latest.size > 8) throw new EncounterTranscriptTooLong();
   return {
     sourceId,
     segments: [...latest.values()]

@@ -1,3 +1,4 @@
+import type { ConversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import type { MultiAgentInvocation } from '@orot/agent-runtime';
 import type { ArtifactContinuation } from './artifactContinuation';
 import type {
@@ -33,7 +34,7 @@ export type RagConversationObserver = Pick<
   /** Owned pause/continue controls never submit a new question. */
   readonly onWorkflowPauseController?: (requestPause: () => void) => void;
   readonly onWorkflowPaused?: (
-    reason?: 'expired' | 'decision-required',
+    reason?: ConversationCheckpointPauseReason,
   ) => Promise<boolean>;
   readonly onExecutionState?: (state: 'working' | 'local' | 'decision') => void;
   /** Confirm an ambiguous model-selected user statement locally; never authorizes provider transfer. */
@@ -43,6 +44,15 @@ export type RagConversationObserver = Pick<
   ) => Promise<boolean>;
   /** Opt-in is from the composer dispatch, never inferred from typed route or model output. */
   readonly inputOrigin?: 'composer' | 'shortcut';
+  /** Exact live composer capability to ask the selected model for a presentation hint. */
+  readonly modelTemplateAdmission?: {
+    readonly current: () => boolean;
+    readonly today: import('@orot/domain').DailyReportIdentity | null;
+    readonly prepareVisit?: import('./ConversationScreenProps').ConversationScreenProps['prepareVisitQuestions'];
+  };
+  readonly templateProposalOwner?: import('./conversationTemplateOwner').ConversationTemplateOwner;
+  /** A model-only routing stage already used this send's optional opening budget. */
+  readonly suppressContextualOpening?: true;
   /** Local-only storage permission; available only to the live request owner. */
   readonly admitDailyReportMemory?: import('./conversationDailyReportMemoryJobs').DailyReportMemoryObserver;
   readonly conversationScope?: string;

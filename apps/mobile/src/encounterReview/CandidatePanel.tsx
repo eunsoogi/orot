@@ -4,6 +4,7 @@ import type { EncounterCandidate, EncounterPending } from '@orot/agent-runtime';
 import { AppText } from '../layout/AppText';
 import { AppButton } from '../layout/AppButton';
 import { reviewCopy as copy } from './strings';
+import { materialLibraryStyles } from '../layout/MaterialLibraryRows';
 import { appColors } from '../layout/appColors';
 import { useInputObservation } from './useInputObservation';
 
@@ -12,12 +13,14 @@ export function CandidatePanel({
   candidate,
   pending,
   selected,
+  divider = false,
   onToggle,
   onEdit,
 }: {
   candidate: EncounterCandidate;
   pending: EncounterPending;
   selected: boolean;
+  divider?: boolean;
   onToggle: () => void;
   onEdit: (field: 'text' | 'dosageInstruction', text: string) => void;
 }) {
@@ -27,7 +30,10 @@ export function CandidatePanel({
     text => onEdit('text', text),
   );
   return (
-    <View style={styles.card} testID={`encounter-${candidate.id}`}>
+    <View
+      style={[styles.candidate, divider && materialLibraryStyles.divider]}
+      testID={`encounter-${candidate.id}`}
+    >
       <View style={styles.heading}>
         <AppText accessibilityRole="header" style={styles.kind}>
           {candidate.kind === 'medication'
@@ -76,7 +82,11 @@ export function CandidatePanel({
           return (
             <View
               key={index}
-              style={styles.evidence}
+              style={[
+                styles.evidence,
+                index < candidate.evidence.length - 1 &&
+                  materialLibraryStyles.divider,
+              ]}
               testID={`encounter-evidence-${candidate.id}-${index}`}
             >
               <AppText>{evidence.quote}</AppText>
@@ -112,35 +122,17 @@ export function CandidatePanel({
   );
 }
 const styles = StyleSheet.create({
-  card: {
-    gap: 12,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: appColors.background,
-    borderColor: appColors.border,
-    borderWidth: 1,
-  },
+  candidate: { gap: 12, paddingVertical: 14 },
   heading: { gap: 4 },
   kind: { fontSize: 16, fontWeight: '600', lineHeight: 22 },
   speaker: { color: appColors.secondary },
   fields: { gap: 12 },
-  evidenceList: { gap: 8 },
-  evidence: {
-    gap: 6,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: appColors.border,
-    borderLeftWidth: 3,
-    borderLeftColor: appColors.primary,
-    backgroundColor: appColors.surface,
-  },
+  evidenceList: { gap: 2 },
+  evidence: { gap: 6, paddingVertical: 10 },
   evidenceDetail: { color: appColors.secondary, lineHeight: 20 },
   conflict: {
     padding: 12,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: appColors.border,
     backgroundColor: appColors.warningSurface,
   },
   conflictText: { color: appColors.warning, lineHeight: 22 },

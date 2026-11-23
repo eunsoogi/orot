@@ -1,3 +1,4 @@
+import { gate, visitServices } from '../testSupport/appleVisitOpeningFixture';
 import {
   act,
   fireEvent,
@@ -32,13 +33,6 @@ jest.mock(
 );
 jest.mock('../visitQuestionAppointment');
 jest.mock('../visitQuestionsContextLoader');
-function gate() {
-  let open!: () => void;
-  const wait = new Promise<void>(resolve => {
-    open = resolve;
-  });
-  return { wait, open };
-}
 const opening = '다음 진료에서 꺼낼 이야기를 살펴볼게요.';
 const openingId = 'conversation-assistant-opening-message';
 const question =
@@ -102,7 +96,8 @@ test.each(['ready', 'model-not-ready', 'unsupported'] as const)(
     const stream = jest.fn<
       ReturnType<AppleFoundationModelsNativeBridge['stream']>,
       Parameters<AppleFoundationModelsNativeBridge['stream']>
-    >(async function* () {
+    >(async function* (request) {
+      serializeAppleRequest(request);
       const phase = stream.mock.calls.length;
       if (phase === 1) {
         yield { type: 'snapshot', text: opening };
@@ -160,6 +155,7 @@ test.each(['ready', 'model-not-ready', 'unsupported'] as const)(
     const sendRagMessage = jest.fn();
     const prepare = createConversationVisitTurn({
       loadLocalData: jest.fn(),
+      generatedArtifactTools: visitServices(consent).generatedArtifactTools,
       registry: new LocalEvidenceReferenceRegistry(),
       loadSaved: async () => ({
         status: 'ready',
@@ -219,6 +215,7 @@ test.each(['ready', 'model-not-ready', 'unsupported'] as const)(
       expect(screen.queryByTestId('inline-visit-review')).toBeNull();
       expect(screen.queryByTestId('rag-conversation-error')).toBeNull();
       const payload = serializeAppleRequest(stream.mock.calls[2]![0]);
+      expect(payload.toolNames).toContain('artifact-personal-source');
       expect(payload.toolNames).toContain(
         'visit-question-personal-record-search',
       );

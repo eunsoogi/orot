@@ -73,6 +73,9 @@ export function conversationSavedHistoryDisplayOption(
               createdAt: row.createdAt,
               question: row.question,
               answer: row.answer,
+              ...(row.savedPossibilityNarrative
+                ? { savedPossibilityNarrative: true as const }
+                : {}),
               ...(row.delivery ? { delivery: row.delivery } : {}),
               ...(row.initialResponse
                 ? { initialResponse: row.initialResponse }

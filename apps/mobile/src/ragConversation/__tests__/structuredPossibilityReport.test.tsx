@@ -16,7 +16,7 @@ import { ConversationMessage } from '../ConversationMessage';
 import { conversationRestoredMessages } from '../conversationRestoredMessages';
 import { t } from '../../i18n';
 
-test('visible typed action and actual choice request get a structured contract, but follow-ups do not', () => {
+test('app-owned routes get a structured contract; identical composer wording cannot opt in', () => {
   expect(requestsPossibilityReport(input)).toBe(true);
   expect(
     requestsPossibilityReport({
@@ -27,6 +27,13 @@ test('visible typed action and actual choice request get a structured contract, 
   expect(requestsPossibilityReport({ ...input, request: 'What else?' })).toBe(
     false,
   );
+  const previous = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '17',
+  });
+  expect(
+    previous?.createResultSchema?.({ ...input, context: [] }),
+  ).toHaveProperty('properties.answer.anyOf');
   const schema = ragConversationTask.createResultSchema!(input);
   expect(schema).toHaveProperty('properties.answer.anyOf');
   const message = ragConversationTask.createMessages(input)[0]!;
@@ -37,7 +44,8 @@ test('visible typed action and actual choice request get a structured contract, 
   expect(
     ragConversationTask.createResultSchema!({
       ...input,
-      request: 'What else?',
+      request: input.request,
+      context: { intent: 'conversation' },
     }),
   ).toEqual(legacyTask.createResultSchema!(input));
 });

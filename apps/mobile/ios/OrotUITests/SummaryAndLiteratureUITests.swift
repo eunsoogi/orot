@@ -17,7 +17,7 @@ final class SummaryAndLiteratureUITests: OrotFailFastTestCase {
             try select(dark, app: app, original: &original)
             let suffix = dark ? "dark" : "light"
             node(app, "summary-visual-open").tap()
-            NavigationPageActionUITestConditions.assertToolbar(app, marker: "disease-hypotheses-screen", actions: ["symptom-summary-generate", "disease-hypotheses-generate", "navigation-page-action-overflow"])
+            try NavigationPageActionUITestConditions.verifySummaryAssessmentIsReachable(app)
             NavigationPageActionUITestConditions.tap(app, id: "symptom-summary-history-open", label: "저장된 요약 보기")
             XCTAssertTrue(UITestConditions.exists(node(app, "summary-history-screen")))
             if !dark {

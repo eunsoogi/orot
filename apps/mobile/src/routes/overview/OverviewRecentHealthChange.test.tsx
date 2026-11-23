@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react-native';
+import { overviewMetricTitle } from './OverviewMetricCard';
 import type { OverviewMetricProjection } from './metricProjection';
 import { OverviewRecentHealthChange } from './OverviewRecentHealthChange';
 import type { OverviewMetric } from './metricSelection';
@@ -81,20 +82,20 @@ test('keeps seven-day periods, values and unequal recorded-day counts distinct',
   expect(screen.queryByText(/Watch|Asia\/Seoul/u)).toBeNull();
 });
 
-test('includes the longest Korean metric title in its accessible label', async () => {
+test('uses the shared step count title for accessible Overview copy', async () => {
   const steps = comparisonMetric('steps', 1200, 1300, 5, 6);
 
   await render(
     <OverviewRecentHealthChange
       metric={steps}
-      title="기록된 걸음 샘플 합계"
+      title={overviewMetricTitle('steps')}
       formatValue={formatValue}
     />,
   );
 
   expect(
     screen.getByTestId('overview-recent-change-steps').props.accessibilityLabel,
-  ).toContain('기록된 걸음 샘플 합계');
+  ).toMatch(/^걸음수\./u);
 });
 
 test('keeps an unavailable comparison absent instead of inventing zero values', async () => {

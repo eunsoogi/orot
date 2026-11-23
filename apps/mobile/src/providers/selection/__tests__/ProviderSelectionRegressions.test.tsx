@@ -196,4 +196,22 @@ it('shows the saved conversation selection ahead of providers without a second c
     'provider-selection-current-card',
     'provider-choices-content',
   ]);
+  const viewport = screen.getByTestId('model-tab-content-viewport');
+  expect(viewport).toContainElement(rows[1]);
+  expect(viewport).not.toContainElement(rows[0]);
+  await fireEvent.press(screen.getByTestId('provider-option-0'));
+  expect(screen.getByTestId('provider-selection-current-card')).toBe(rows[0]);
+  expect(screen.getByTestId('provider-selection-current')).toHaveTextContent(
+    /선택한 AI/,
+  );
+  expect(viewport).not.toContainElement(rows[0]);
+  expect(screen.getByTestId('model-tab-calendar')).toBeDisabled();
+  await fireEvent.press(screen.getByTestId('provider-selection-cancel'));
+  expect(screen.getByTestId('provider-selection-current-card')).toBe(rows[0]);
+  await fireEvent.press(screen.getByTestId('model-tab-calendar'));
+  expect(screen.queryByTestId('provider-selection-current-card')).toBeNull();
+  await fireEvent.press(screen.getByTestId('model-tab-language'));
+  expect(screen.getAllByTestId('provider-selection-current-card')).toHaveLength(
+    1,
+  );
 });

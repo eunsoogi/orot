@@ -4,8 +4,11 @@ import type { ConversationScreenProps } from './ConversationScreenProps';
 import type { ConversationSession } from './conversationSessionTypes';
 import { conversationEntryForSession } from './useConversationEntryIntent';
 import { entryIntentSender } from './entryIntentSender';
-import { isTypedVisitQuestionRequest } from './typedVisitQuestionRequest';
-import { withTypedComposerReport } from './typedConversationReportRequest';
+import {
+  allowWarmConversationSender,
+  isWarmConversationSender,
+} from './warmConversationSender';
+import { todayIdentity } from '../aiFeatures/integration/dailyReportTodayIdentity';
 import type { TreatmentConversationSender } from '../treatmentContext/treatmentConversationSender';
 
 const pendingVisits = new WeakMap<
@@ -122,18 +125,41 @@ export function sendConversationMessage(
   id: number,
   onSend: ConversationScreenProps['onSend'],
   prepare?: ConversationScreenProps['prepareVisitQuestions'],
+  isEntryCurrent?: () => boolean,
 ) {
   const session = store.getSnapshot().sessions.find(item => item.id === id);
-  const sendEntry = entryIntentSender(
-    store,
-    id,
-    withTypedComposerReport(onSend),
-    'composer',
-  );
+  const selectedAtSend = conversationEntryForSession(store, id);
+  const sendEntry = entryIntentSender(store, id, onSend, 'composer');
+  if (
+    session &&
+    (!selectedAtSend || selectedAtSend.intent === 'conversation') &&
+    !session.entryIntent &&
+    !pendingVisits.get(store)?.has(id) &&
+    isWarmConversationSender(sendEntry)
+  ) {
+    // The day and entry owner belong to the send, never to the model output or a delayed response.
+    const today = todayIdentity();
+    return store.send(
+      id,
+      allowWarmConversationSender((question, history, signal, observer) =>
+        sendEntry(question, history, signal, {
+          ...observer,
+          modelTemplateAdmission: {
+            today,
+            prepareVisit: prepare,
+            current: () =>
+              !signal?.aborted &&
+              (isEntryCurrent?.() ?? true) &&
+              store.getSnapshot().activeId === id &&
+              conversationEntryForSession(store, id) === selectedAtSend,
+          },
+        }),
+      ),
+    );
+  }
   return store.send(id, (question, history, signal, observer) => {
     if (observer?.photoInput)
       return sendEntry(question, history, signal, observer);
-    // An explicitly selected report owns this turn instead of an earlier visit entry.
     if (session?.dailyReport) {
       pendingVisits.get(store)?.delete(id);
       return sendEntry(question, history, signal, observer);
@@ -151,25 +177,6 @@ export function sendConversationMessage(
         signal,
         observer,
         context,
-      );
-    // A direct authored creation request uses the same typed preparation as
-    // the shortcut. Scope it only to this send; later chat does not inherit it.
-    if (
-      prepare &&
-      (!selected ||
-        selected.intent === 'conversation' ||
-        selected.intent === 'visit-questions') &&
-      !selected?.dailyReport &&
-      isTypedVisitQuestionRequest(question)
-    )
-      return prepare(
-        question,
-        history,
-        signal,
-        observer,
-        selected?.intent === 'visit-questions'
-          ? selected
-          : { intent: 'visit-questions', entryKey: 'typed-visit-questions' },
       );
     return sendEntry(question, history, signal, observer);
   });

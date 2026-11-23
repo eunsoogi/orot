@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../layout/AppText';
 import { EncounterReviewActions } from './EncounterReviewActions';
+import {
+  MaterialLibraryRows,
+  materialLibraryStyles,
+} from '../layout/MaterialLibraryRows';
 import { appColors } from '../layout/appColors';
 import { useInferenceConsent } from '../agent/execution/useInferenceConsent';
 import { EncounterReviewController } from './controller';
@@ -45,7 +49,10 @@ export function EncounterReviewPanel({
   return (
     <View style={styles.panel} testID="encounter-review-panel">
       <View style={styles.header}>
-        <AppText accessibilityRole="header" style={styles.title}>
+        <AppText
+          accessibilityRole="header"
+          style={materialLibraryStyles.heading}
+        >
           {copy.title}
         </AppText>
         <AppText style={styles.boundary}>{copy.boundary}</AppText>
@@ -60,12 +67,13 @@ export function EncounterReviewPanel({
           : copy[state.status]}
       </AppText>
       {pending ? (
-        <View style={styles.candidates}>
-          {state.candidates.map(candidate => (
+        <MaterialLibraryRows testID="encounter-candidate-list">
+          {state.candidates.map((candidate, index) => (
             <CandidatePanel
               key={candidate.id}
               candidate={candidate}
               pending={pending}
+              divider={index < state.candidates.length - 1}
               selected={state.selected.includes(candidate.id)}
               onToggle={() => controller.toggle(candidate.id)}
               onEdit={(field, text) =>
@@ -73,7 +81,7 @@ export function EncounterReviewPanel({
               }
             />
           ))}
-        </View>
+        </MaterialLibraryRows>
       ) : null}
       <EncounterReviewActions
         status={state.status}
@@ -98,17 +106,8 @@ export function EncounterReviewPanel({
   );
 }
 const styles = StyleSheet.create({
-  panel: {
-    gap: 16,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: appColors.surface,
-    borderColor: appColors.border,
-    borderWidth: 1,
-  },
+  panel: { gap: 12, minWidth: 0 },
   header: { gap: 8 },
-  title: { fontSize: 18, fontWeight: '600', lineHeight: 24 },
   boundary: { color: appColors.secondary, lineHeight: 22 },
   status: { fontWeight: '500', lineHeight: 22 },
-  candidates: { gap: 12 },
 });

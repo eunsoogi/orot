@@ -1,3 +1,4 @@
+import { conversationCheckpointPauseReason } from './conversationCheckpointInterruption';
 import { coldConversationActionCapture } from '../storage/coldConversationActionCapture';
 import { interruptColdConversationAttempt } from '../storage/interruptColdConversationAttempt';
 import {
@@ -193,9 +194,9 @@ export async function runCommittedActionConversationWorkflow<T>(input: {
         d.manifest.sessionId,
         d.manifest.sessionVersion,
         'interrupted',
-        result.checkpoint.awaitingAuthorization
-          ? 'decision-required'
-          : 'expired',
+        conversationCheckpointPauseReason(
+          result.checkpoint.awaitingAuthorization,
+        ),
       );
     }
     return result;

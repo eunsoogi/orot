@@ -20,10 +20,14 @@ function deferred<T>() {
   });
   return { promise, resolve };
 }
-function fixture(historyIsCurrent: () => Promise<boolean>) {
+function fixture(
+  historyIsCurrent: () => Promise<boolean>,
+  continuationFallback = false,
+) {
   const controller = new AbortController();
   const save = jest.fn(async () => {});
   const failed = jest.fn();
+  const onArtifactContinuation = jest.fn();
   const retention = createConversationRetentionBridge({
     observer: { onRetentionCandidate: save, onRetentionFailure: failed },
     registry: new LocalEvidenceReferenceRegistry(),
@@ -35,9 +39,15 @@ function fixture(historyIsCurrent: () => Promise<boolean>) {
   retention.onValidatedEvidence([]);
   const run = () =>
     finishConversationWorkflow({
-      outcome: { status: 'answer', answer: 'PRIVATE_ANSWER', citations: [] },
+      outcome: continuationFallback
+        ? { status: 'no_evidence' }
+        : { status: 'answer', answer: 'PRIVATE_ANSWER', citations: [] },
+      observer: { onArtifactContinuation },
       generated: {
-        choose: () => null,
+        choose: () =>
+          continuationFallback
+            ? { query: 'PRIVATE_QUERY', cursor: 'PRIVATE_CURSOR' }
+            : null,
         tools: [],
         artifactPagingSnapshot: undefined,
         researchPagingSnapshot: undefined,
@@ -55,7 +65,7 @@ function fixture(historyIsCurrent: () => Promise<boolean>) {
       retention,
       signal: controller.signal,
     });
-  return { run, controller, save, failed };
+  return { run, controller, save, failed, onArtifactContinuation };
 }
 beforeEach(() => {
   jest.resetAllMocks();
@@ -108,9 +118,34 @@ test('history exceptions propagate unchanged while false validity never starts c
     status: 'failure',
     kind: 'retrieval_failed',
   });
+  expect(diagnostic.mock.calls.at(-1)).toEqual([
+    'rag',
+    'conversation_final_history_validation',
+    'failed',
+  ]);
   expect(capture).not.toHaveBeenCalled();
   expect(JSON.stringify(diagnostic.mock.calls)).not.toContain('PRIVATE_');
 });
+
+test.each([false, true])(
+  'Stop during final history never exposes a continuation or fallback: read returns %s',
+  async current => {
+    const history = deferred<boolean>();
+    const f = fixture(() => history.promise, true);
+    const running = f.run();
+    f.controller.abort();
+    history.resolve(current);
+
+    expect(await running).toEqual({ status: 'failure', kind: 'cancelled' });
+    expect(f.onArtifactContinuation).not.toHaveBeenCalled();
+    expect(f.save).not.toHaveBeenCalled();
+    expect(capture).not.toHaveBeenCalled();
+    expect(diagnostic.mock.calls).toEqual([
+      ['rag', 'conversation_final_history_validation', 'started'],
+      ['rag', 'conversation_final_history_validation', 'cancelled'],
+    ]);
+  },
+);
 
 test('capture failure keeps the existing unsaved-answer recovery and logs no exception', async () => {
   capture.mockRejectedValue(new Error('PRIVATE_CAPTURE_ERROR'));

@@ -38,6 +38,7 @@ export function startContextualConversationOpening(input: {
     if (
       !input.observer?.onTaskStreamEvent ||
       input.observer.photoInput ||
+      input.observer.suppressContextualOpening ||
       !validateInitialConversationResponse('살펴볼게요.', input.request)
     ) {
       reportOpening('opening_delivery', 'unavailable', input.diagnosticFeature);

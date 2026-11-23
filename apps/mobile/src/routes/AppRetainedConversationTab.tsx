@@ -97,7 +97,8 @@ export function AppRetainedConversationTab({
         </View>
       )}
       {!visible &&
-        (appRouteIsScrollable(actions.route, activeTab) ? (
+        (activeTab !== 'records' &&
+        appRouteIsScrollable(actions.route, activeTab) ? (
           <NavigationRouteScrollView key={activeTab}>
             {children}
           </NavigationRouteScrollView>

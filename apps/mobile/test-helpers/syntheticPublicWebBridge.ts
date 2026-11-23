@@ -122,13 +122,14 @@ export function installSyntheticWebAccount() {
       passwords.set(service, password);
       return { service, storage: STORAGE_TYPE.RSA };
     });
-  jest.spyOn(nativeChatGPTSelectionServices, 'listAccounts').mockResolvedValue([
-    {
-      issuedClientID: account,
-      requiresSignIn: false,
-      hasDirectPlanAccess: true,
-    },
-  ]);
+  const summary = {
+    issuedClientID: account,
+    requiresSignIn: false,
+    hasDirectPlanAccess: true,
+  };
+  jest
+    .spyOn(nativeChatGPTSelectionServices, 'listAccounts')
+    .mockResolvedValue([summary]);
   jest
     .spyOn(nativeChatGPTSelectionServices, 'listModels')
     .mockImplementation(async issuedClientID => {
@@ -136,4 +137,10 @@ export function installSyntheticWebAccount() {
         throw new Error('Unexpected synthetic catalog owner');
       return providerSuccess([model]);
     });
+  // The warm composer revalidates only the selected native account, independently of Settings' catalog.
+  return jest
+    .spyOn(nativeChatGPTSelectionServices, 'loadAccountSummary')
+    .mockImplementation(async issuedClientID =>
+      issuedClientID === account ? summary : undefined,
+    );
 }

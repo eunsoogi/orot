@@ -1,3 +1,6 @@
+import { AppleFoundationModelsProvider } from '@orot/provider-apple';
+import { modelResponseFixture } from '../../../agent/visitQuestions/testing/modelResponseFixture';
+import { serializeAppleRequest } from '../../../providers/apple/serializeRequest';
 import { runMigrations } from '@orot/storage';
 import { openSqliteTestDatabase } from '../../../../../../packages/storage/__tests__/sqliteTestDatabase';
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
@@ -11,7 +14,7 @@ import {
   selectedOption,
 } from '../../../agent/visitQuestions/testing/workflowFixtures';
 
-test.each(['disease', 'summary'] as const)(
+test.each(['disease', 'disease-apple', 'summary'] as const)(
   '%s workflow searches a prior answer and saves its actual generated lineage',
   async mode => {
     const connection = openSqliteTestDatabase(':memory:');
@@ -115,9 +118,26 @@ test.each(['disease', 'summary'] as const)(
         }),
       ];
       const { provider, requests } = makeProvider(outputs);
+      const isApple = mode === 'disease-apple';
+      // The on-device path runs the real adapter and serializes every workflow
+      // phase. Only the SDK's transport result and local records are synthetic.
+      const apple = new AppleFoundationModelsProvider({
+        getAvailability: async () => ({ status: 'available' }),
+        async generate(request) {
+          const index = requests.push(request) - 1;
+          serializeAppleRequest(request);
+          return modelResponseFixture(outputs[index] ?? '');
+        },
+        async *stream() {
+          throw new Error('Unexpected disease stream');
+        },
+        cancel() {},
+      });
       const { selection, option } = selectedOption(
-        { ...provider, searchPublicWeb: publicEvidenceFixture().search },
-        'selected-context-remote',
+        isApple
+          ? apple
+          : { ...provider, searchPublicWeb: publicEvidenceFixture().search },
+        isApple ? 'on-device' : 'selected-context-remote',
       );
       const services = createAiFeatureServices(consent, {
         selectedAi: {
@@ -164,6 +184,15 @@ test.each(['disease', 'summary'] as const)(
       expect(JSON.stringify(requests)).not.toContain('private-turn');
       expect(JSON.stringify(requests)).not.toContain('other-turn');
       expect(requests).toHaveLength(3);
+      if (isApple) {
+        expect(
+          requests.some(request =>
+            serializeAppleRequest(request).toolNames.includes(
+              'artifact-personal-source',
+            ),
+          ),
+        ).toBe(true);
+      }
       const cited = services.resolveSource(
         outcome.result.value.hypotheses[0]!.supportingEvidence[0]!,
       );

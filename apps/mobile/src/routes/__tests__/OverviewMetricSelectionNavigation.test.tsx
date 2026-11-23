@@ -22,6 +22,8 @@ import { RecordSourceNavigationProvider } from '../RecordSourceNavigation';
 import type { AppNavigationRoute } from '../appNavigationRoute';
 import { loadOverviewMetrics } from '../overview/metricLoader';
 import { loadOverviewMetricSelection } from '../overview/metricSelection';
+import { expectMetricEditorInsets } from '../testSupport/expectMetricEditorInsets';
+import { verifyMeasuredMetricDrop } from '../testSupport/overviewMetricDragTestSupport';
 import { recentRouteProps } from '../testSupport/recentRecordsRouteTestSupport';
 
 jest.mock(
@@ -157,6 +159,7 @@ test('separate editor discards Cancel and saves all five ordered cards into the 
     const metricLoads = jest.mocked(loadOverviewMetrics).mock.calls.length;
     await openEditor();
     expect(loadOverviewMetrics).toHaveBeenCalledTimes(metricLoads);
+    expectMetricEditorInsets();
     await fireEvent.press(choice('sleep'));
     expect(save()).toBeDisabled();
     await fireEvent.press(choice('bodyMass'));
@@ -242,3 +245,6 @@ test('a failed Save keeps the draft; held Save rejects cancel, Back and duplicat
     f.close();
   }
 });
+
+test('saves the dragged metric order across Overview and a new mount', () =>
+  verifyMeasuredMetricDrop(mountOverview));

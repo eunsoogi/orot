@@ -154,7 +154,7 @@ test('preserves the selected summary as usable geometry changes under production
   ).toHaveTextContent('01:33');
   expect(
     screen.getByTestId('saved-recordings-selection-review-state'),
-  ).toHaveTextContent('검토 전 초안');
+  ).toHaveTextContent('저장된 전사');
   await fireEvent(sensor, 'geometryChange', {
     nativeEvent: geometry(900, true),
   });
