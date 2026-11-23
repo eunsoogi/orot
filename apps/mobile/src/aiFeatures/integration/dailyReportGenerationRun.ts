@@ -8,7 +8,7 @@ import { prepareDailyReportFacts } from './dailyReportPreparedFacts';
 import * as reportData from './dailyReportDataDiagnostics';
 import type { prepareReportCalendar } from './dailyReportSystemCalendar';
 import { createDailyReportContext } from '../../healthEvidence/healthContext/dailyReportContext';
-import { createDailyReportCalendarWindow } from '../../healthEvidence/healthContext/dailyReportWindow';
+import type { DailyReportCalendarResult } from '../../healthEvidence/healthContext/dailyReportWindow';
 import { providerDiagnostic } from '../../providers/diagnostics';
 import { validateDailyReportCompletion } from '../../storage/dailyReportValidation';
 import {
@@ -24,19 +24,13 @@ import type {
   DailyReportRunInput,
   DailyReportServiceRequest,
 } from './dailyReportTypes';
-type ReadyCalendar = Extract<
-  ReturnType<typeof createDailyReportCalendarWindow>,
-  { status: 'ready' }
->;
-/** Reads the day's evidence, validates the selected model result, and saves one report revision. */
 export async function generateDailyReportWithCalendar(
   input: DailyReportRunInput,
   request: DailyReportServiceRequest,
-  calendar: ReadyCalendar,
+  calendar: Extract<DailyReportCalendarResult, { status: 'ready' }>,
   external?: Awaited<ReturnType<typeof prepareReportCalendar>>,
 ) {
   const fail = (code: DailyReportFailureCode) => {
-    // The deadline already reports the active stage; do not add a second cause for its abort.
     if (!input.deadlineContext.timedOut)
       providerDiagnostic('daily_report', 'workflow', failureOutcome(code));
     return { status: 'failed' as const, code };
@@ -86,7 +80,6 @@ export async function generateDailyReportWithCalendar(
           request.signal,
         ),
     );
-    // Keep an empty successful read distinct from a database failure and never prompt without facts.
     if (!snapshot.values.length) {
       providerDiagnostic('daily_report', 'data', 'unavailable');
       return fail('source_unavailable');
@@ -122,6 +115,13 @@ export async function generateDailyReportWithCalendar(
     external?.binding,
   );
   const runId = input.createRunId();
+  const gate = !external && input.pauseBeforeOpening;
+  const day = calendar.context;
+  if (gate) {
+    const resumed = await gate(request, selected, snapshot, day, runId);
+    if (!resumed) return fail('cancelled');
+    if (resumed !== true) selected = resumed;
+  }
   const currentSelection = await openingFor(
     input,
     request,
