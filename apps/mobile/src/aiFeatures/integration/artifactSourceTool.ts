@@ -46,7 +46,14 @@ export function createArtifactSourceTool(
       type: 'object',
       additionalProperties: false,
       required: ['evidenceId'],
-      properties: { evidenceId: { type: 'string', pattern: '^e[0-9]{1,12}$' } },
+      // Foundation Models does not support regex generation guidance. Keep the
+      // exact ID grammar in parseInput, which also guards the read itself.
+      properties: {
+        evidenceId: {
+          type: 'string',
+          description: 'A disclosed source ID: e followed by 1 to 12 digits.',
+        },
+      },
     },
     parseInput,
     async search(request) {
