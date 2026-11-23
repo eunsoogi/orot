@@ -17,7 +17,7 @@ type Boundary =
  * Native receipt timestamps measure observation gaps, not proof of remote cancellation. */
 export function conversationBoundary(
   stage: Boundary,
-  outcome: 'started' | 'completed' | 'failed',
+  outcome: 'started' | 'completed' | 'failed' | 'cancelled',
 ) {
   try {
     providerDiagnostic('rag', stage, outcome);
@@ -37,6 +37,31 @@ export async function observeConversationFinalization<T>(
     conversationBoundary(stage, 'completed');
     return value;
   } catch (error) {
+    conversationBoundary(stage, 'failed');
+    throw error;
+  }
+}
+
+/** False means rejected, not merely that the read promise returned. Keep Stop distinct. */
+export async function observeConversationFinalHistory(
+  work: () => Promise<boolean>,
+  signal: AbortSignal,
+): Promise<'current' | 'rejected' | 'cancelled'> {
+  const stage = 'conversation_final_history_validation';
+  conversationBoundary(stage, 'started');
+  try {
+    const current = await work();
+    if (signal.aborted) {
+      conversationBoundary(stage, 'cancelled');
+      return 'cancelled';
+    }
+    conversationBoundary(stage, current ? 'completed' : 'failed');
+    return current ? 'current' : 'rejected';
+  } catch (error) {
+    if (signal.aborted) {
+      conversationBoundary(stage, 'cancelled');
+      return 'cancelled';
+    }
     conversationBoundary(stage, 'failed');
     throw error;
   }
