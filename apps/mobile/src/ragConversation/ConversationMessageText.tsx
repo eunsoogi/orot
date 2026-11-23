@@ -1,7 +1,5 @@
-import {
-  SavedPossibilityNarrative,
-  savedPossibilityNarrativeParts,
-} from './SavedPossibilityNarrative';
+import { SavedPossibilityNarrative } from './SavedPossibilityNarrative';
+import { savedPossibilityNarrativeParts } from './savedPossibilityNarrativeParts';
 import { ConversationReportText } from './ConversationReportText';
 import { parseConversationReport } from './conversationReportTemplate';
 import { memo } from 'react';

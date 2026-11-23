@@ -13,10 +13,8 @@ import type {
 import { SavedSummaryReviewWarnings } from '../diseaseHypotheses/SavedSummaryReviewWarnings';
 import { ConversationReportText } from '../ragConversation/ConversationReportText';
 import { ConversationSources } from '../ragConversation/ConversationSources';
-import {
-  SavedPossibilityNarrative,
-  savedPossibilityNarrativeParts,
-} from '../ragConversation/SavedPossibilityNarrative';
+import { SavedPossibilityNarrative } from '../ragConversation/SavedPossibilityNarrative';
+import { savedPossibilityNarrativeParts } from '../ragConversation/savedPossibilityNarrativeParts';
 import { GeneratedVisitQuestions } from './GeneratedVisitQuestions';
 
 const doNotOpenLiveSource = () => {};

@@ -2,6 +2,7 @@ import type { SqlDatabase } from '@orot/storage';
 import { stableJson } from '../aiFeatures/integration/evidenceUtils';
 import { isConversationPhotoSource } from '../ragConversation/conversationArtifactSources';
 import { parsePossibilityConversationReport } from '../ragConversation/conversationReportTemplate';
+import { savedPossibilityNarrativeParts } from '../ragConversation/savedPossibilityNarrativeParts';
 import { projectSavedArchivedCitations } from '../ragConversation/savedArchivedCitations';
 import { createConversationArtifactStorage } from '../storage/conversationArtifactStorage';
 import type { GeneratedReportDetail, GeneratedReportRow } from './types';
@@ -65,7 +66,12 @@ export async function readConversationReportEvidence(
     return null;
   const report = parsePossibilityConversationReport(saved.answer);
   if (!report)
-    return { paragraphs: [saved.answer], savedPossibilityNarrative: true };
+    return {
+      paragraphs: [saved.answer],
+      ...(savedPossibilityNarrativeParts(saved.answer)
+        ? { savedPossibilityNarrative: true }
+        : {}),
+    };
   // These are the same protected references the strict read just admitted.
   // Only one exact non-photo match may be offered to the archived selector.
   const matches = new Map<string, number>();
