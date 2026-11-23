@@ -27,7 +27,6 @@ import {
   syntheticBridge,
   title,
 } from '../test-helpers/syntheticPublicWebBridge';
-
 jest.mock('../src/storage/settingsConsentAuthority', () =>
   jest.requireActual(
     '../src/agent/execution/testSupport/syntheticConsentAuthority',
