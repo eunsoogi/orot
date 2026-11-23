@@ -46,8 +46,8 @@ export class LocalAgentMemory implements AgentMemoryService {
     });
   }
 
-  remember(input: AgentMemoryInput): Promise<string> {
-    return this.enqueue(() => this.write(input));
+  remember(input: AgentMemoryInput, writeContext?: unknown): Promise<string> {
+    return this.enqueue(() => this.write(input, writeContext));
   }
 
   update(input: AgentMemoryInput): Promise<string> {
@@ -192,21 +192,23 @@ export class LocalAgentMemory implements AgentMemoryService {
     }, true);
   }
 
-  private write(input: AgentMemoryInput): Promise<string> {
+  private write(input: AgentMemoryInput, writeContext?: unknown): Promise<string> {
     return writeMemory(
       input,
       this.storage,
       this.removedSourceIds,
       () => this.getEngine(),
-      (operation) => this.runBatch(operation),
+      (operation) => this.runBatch(operation, writeContext),
     );
   }
 
-  private async runBatch<T>(operation: () => Promise<T>): Promise<T> {
+  private async runBatch<T>(operation: () => Promise<T>, writeContext?: unknown): Promise<T> {
     this.storage.beginBatch();
     try {
       const result = await operation();
-      await this.storage.commitBatch();
+      if (writeContext !== undefined && typeof result === 'string')
+        await this.storage.commitBatch({ recordId: result, context: writeContext });
+      else await this.storage.commitBatch();
       return result;
     } catch (error) {
       this.storage.rollbackBatch();

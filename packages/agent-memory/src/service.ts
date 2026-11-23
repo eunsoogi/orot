@@ -21,7 +21,7 @@ export interface AgentMemoryService {
   /** Reads a current row by Rememori ID so Store filters can resolve authorized deletion requests. */
   getById(memoryId: string): Promise<Omit<AgentMemoryHit, 'score'> | null>;
   forgetByKey(memoryKey: string): Promise<boolean>;
-  remember(input: AgentMemoryInput): Promise<string>;
+  remember(input: AgentMemoryInput, writeContext?: unknown): Promise<string>;
   update(input: AgentMemoryInput): Promise<string>;
   recall(
     query: string,

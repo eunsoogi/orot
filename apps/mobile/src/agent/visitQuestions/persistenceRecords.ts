@@ -1,3 +1,5 @@
+import { createNonPeriodVisitMemoryWitness } from '../../storage/nonPeriodVisitMemoryAttestation';
+import type { AgentMemoryInput } from '@orot/agent-memory';
 import type { AgentMemoryService } from '@orot/agent-memory';
 import { VisitQuestionCreateSchema } from '@orot/domain';
 import type {
@@ -122,7 +124,7 @@ export async function saveReviewedVisitQuestionMemory(
   }
 
   try {
-    await memory.remember({
+    const input: AgentMemoryInput = {
       memoryKey: `visit-question-review:${appointmentId}`,
       kind: 'reviewed_interaction',
       importance: 0.75,
@@ -139,7 +141,10 @@ export async function saveReviewedVisitQuestionMemory(
         })),
         reviewState: 'human_reviewed',
       },
-    });
+    };
+    const witness = createNonPeriodVisitMemoryWitness(appointment, questions);
+    if (witness) await memory.remember(input, witness);
+    else await memory.remember(input);
     return 'saved';
   } catch {
     // The reviewed list is already durable; the stable memory key makes a later retry safe.
