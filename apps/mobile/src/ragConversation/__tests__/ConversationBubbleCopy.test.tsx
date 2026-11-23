@@ -1,5 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Linking } from 'react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
+import { Linking, StyleSheet } from 'react-native';
+import { ConversationBubbleEntranceContext } from '../ConversationBubbleEntrance';
+import { createConversationBubbleEntrances } from '../conversationBubbleEntrances';
 import { ConversationMessage } from '../ConversationMessage';
 import { conversationBubbleCopyText } from '../conversationBubbleCopyText';
 import { possibilityReportTemplate } from '../conversationReportTemplate';
@@ -161,3 +168,43 @@ test('a citation remains an independent tap and its URL is not a copy payload', 
     open.mockRestore();
   }
 });
+
+test.each(['live', 'restored', 'pending shortcut', 'without copy'] as const)(
+  'the %s outgoing bubble keeps its padding on the standard body view',
+  async mode => {
+    const content = 'First synthetic line\nSecond synthetic line';
+    const receipts = createConversationBubbleEntrances();
+    const copyScope =
+      mode === 'without copy' ? undefined : { sessionId: 9, allowed: true };
+    await render(
+      <ConversationBubbleEntranceContext.Provider
+        value={{ receipts, motionAllowed: false }}
+      >
+        <ConversationMessage
+          {...actions}
+          message={{
+            id: 1,
+            role: 'user',
+            content,
+            restoredHistory: mode === 'restored',
+            localChoicePending: mode === 'pending shortcut',
+          }}
+          copyScope={copyScope}
+        />
+      </ConversationBubbleEntranceContext.Provider>,
+    );
+    const shell = screen.getByTestId('conversation-user-message');
+    const body = within(shell).getByTestId('conversation-message-body');
+    expect(StyleSheet.flatten(shell.props.style)).toMatchObject({
+      alignSelf: 'flex-end',
+      maxWidth: '85%',
+      borderRadius: 18,
+    });
+    expect(StyleSheet.flatten(shell.props.style)).not.toHaveProperty('padding');
+    expect(StyleSheet.flatten(body.props.style)).toMatchObject({ padding: 14 });
+    expect(within(body).getByText(content)).toBeVisible();
+    expect(shell.props.copyText).toBe(
+      copyScope && mode !== 'pending shortcut' ? content : undefined,
+    );
+  },
+);
