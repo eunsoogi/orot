@@ -3,6 +3,7 @@ import {
   ragConversationTask as currentTask,
   proactiveConversationTaskV16,
   recordFirstConversationTaskV17,
+  modelRoutedConversationTaskV18,
   structuredConversationTask,
 } from './task';
 import { withoutReportTemplate } from './conversationLegacyTemplateMessages';
@@ -26,6 +27,8 @@ export function restoreConversationTask(
 ): typeof ragConversationTask | undefined {
   if (identity.taskType !== ragConversationTask.taskType) return undefined;
   if (identity.taskVersion === currentTask.taskVersion) return currentTask;
+  if (identity.taskVersion === modelRoutedConversationTaskV18.taskVersion)
+    return modelRoutedConversationTaskV18;
   if (identity.taskVersion === recordFirstConversationTaskV17.taskVersion)
     return recordFirstConversationTaskV17;
   if (identity.taskVersion === proactiveConversationTaskV16.taskVersion)

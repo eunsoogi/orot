@@ -160,7 +160,8 @@ export function NavigationRouteScene<Name extends string>({
       pullToRefresh={
         route.name === 'recent-records' ||
         route.name === 'generated-report-detail' ||
-        route.name === 'saved-memory-detail'
+        route.name === 'saved-memory-detail' ||
+        route.name === 'medical-document-detail'
       }
     >
       {adaptiveContent}

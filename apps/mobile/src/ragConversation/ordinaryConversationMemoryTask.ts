@@ -1,10 +1,13 @@
-import { isProactiveMemoryStatement } from '../memory/userStatementMemory';
+import { localConversationMemoryScope } from '../memory/authoredRoutineMemory';
+import type { LocalConversationMemoryScope } from '../storage/ordinaryConversationMemoryEnrollment';
 import type { OrdinaryConversationCompletionIdentity } from '../storage/ordinaryConversationMemoryCompletion';
 import type { CapturedOrdinaryConversationMemory } from '../storage/ordinaryConversationMemoryNote';
 import type { ConversationRetentionCandidate } from './conversationRetention';
 
 export type OrdinaryConversationMemoryPort = {
-  capture(): Promise<CapturedOrdinaryConversationMemory | undefined>;
+  capture(
+    scope: LocalConversationMemoryScope,
+  ): Promise<CapturedOrdinaryConversationMemory | undefined>;
   save(
     capture: CapturedOrdinaryConversationMemory,
     source: OrdinaryConversationCompletionIdentity,
@@ -20,10 +23,11 @@ export function beginOrdinaryConversationMemoryTask(
   question: string,
   signal: AbortSignal,
 ) {
-  if (signal.aborted || !isProactiveMemoryStatement(question)) return;
+  const scope = localConversationMemoryScope(question);
+  if (signal.aborted || !scope) return;
   let capture: ReturnType<typeof port.capture>;
   try {
-    capture = port.capture().catch(() => undefined);
+    capture = port.capture(scope).catch(() => undefined);
   } catch {
     return;
   }
@@ -79,7 +83,12 @@ export function beginOrdinaryConversationMemoryTask(
       try {
         const receipt = await capture;
         const canCommit = () => current() && ownerCurrent();
-        if (!receipt?.isCurrent() || !canCommit()) return false;
+        if (
+          !receipt?.isCurrent() ||
+          (receipt.scope ?? 'reply-preferences') !== scope ||
+          !canCommit()
+        )
+          return false;
         return await port.save(receipt, exact, canCommit);
       } catch {
         // The validated reply already exists. Optional local storage failures

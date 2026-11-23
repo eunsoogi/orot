@@ -32,6 +32,12 @@ final class ResponsesConnectionPool: @unchecked Sendable {
             expiry = nil
             let connection = idle?.1
             idle = nil
+            // This take has not submitted a request. Discard only a known closed
+            // idle transport; send failures remain ambiguous and are not replayed.
+            if let connection, connection.observedClosed {
+                connection.close()
+                return (generation, nil)
+            }
             return (generation, connection)
         }
     }
@@ -45,7 +51,7 @@ final class ResponsesConnectionPool: @unchecked Sendable {
 
     private func release(_ connection: any ResponsesWebSocketConnection, generation expected: Int) {
         lock.withLock {
-            guard generation == expected else { connection.close(); return }
+            guard generation == expected, !connection.observedClosed else { connection.close(); return }
             idle?.1.close()
             expiry?.cancel()
             let ticket = UUID()

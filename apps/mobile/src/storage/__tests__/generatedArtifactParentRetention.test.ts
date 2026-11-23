@@ -143,6 +143,7 @@ test.each(['delete', 'invalidate', 'correct', 'upgrade'] as const)(
             ]),
           }),
         }),
+        expect.any(Object),
       );
 
       if (action === 'upgrade') {

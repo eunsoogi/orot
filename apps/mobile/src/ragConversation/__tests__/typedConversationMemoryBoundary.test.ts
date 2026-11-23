@@ -4,6 +4,7 @@ import { LocalEvidenceReferenceRegistry } from '../../aiFeatures/integration/evi
 import { conversationStatementMemory } from '../../memory/userStatementMemory';
 import { conversationWorkflowContext } from '../conversationWorkflowContext';
 import type { RagConversationRunOptions } from '../service';
+import { restoreConversationTask } from '../conversationTaskVersions';
 import { ragConversationTask } from '../task';
 
 test.each(['composer', 'shortcut'] as const)(
@@ -63,3 +64,37 @@ test.each(['composer', 'shortcut'] as const)(
     expect(memory).toBeUndefined();
   },
 );
+
+test('only the current v18 contract proposes a bounded routine; older checkpoint policy is unchanged', () => {
+  const restored = restoreConversationTask({
+    taskType: ragConversationTask.taskType,
+    taskVersion: '17',
+  })!;
+  const input = {
+    request: 'I practice the guitar every Monday.',
+    evidence: { items: [], coverage: [], conflicts: [] },
+    context: { intent: 'possibilities', authoredCurrentRequest: true },
+  } as unknown as TaskResponderInput;
+  expect(restored.createResultSchema?.(input)?.properties).not.toHaveProperty(
+    'rememberCurrentStatement',
+  );
+  expect(
+    ragConversationTask.createResultSchema?.(input)?.properties,
+  ).toHaveProperty('rememberCurrentStatement');
+  const proposed = {
+    answerKind: 'conversation',
+    answer: 'Synthetic reply',
+    rememberCurrentStatement: true,
+  };
+  expect(restored.validateResult(proposed, input)).toMatchObject({
+    status: 'valid',
+    value: { answer: 'Synthetic reply' },
+  });
+  expect(restored.validateResult(proposed, input)).not.toHaveProperty(
+    'value.proactiveMemory',
+  );
+  expect(ragConversationTask.validateResult(proposed, input)).toHaveProperty(
+    'value.proactiveMemory',
+    true,
+  );
+});

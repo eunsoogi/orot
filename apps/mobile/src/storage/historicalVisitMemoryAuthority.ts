@@ -4,6 +4,7 @@ import {
 } from '@orot/domain';
 import type { AgentMemoryHit } from '@orot/agent-memory';
 import type { SqlExecutor } from '@orot/storage';
+import { hasExactNonPeriodVisitMemoryAttestation } from './nonPeriodVisitMemoryAttestation';
 import { fingerprint } from '../aiFeatures/integration/evidenceUtils';
 import { visitQuestionMemorySnapshot } from '../agent/visitQuestions/visitQuestionMemorySnapshot';
 
@@ -68,11 +69,19 @@ export async function ownsHistoricalVisitMemory(
   )
     return false;
   if (!requiresLaterReviewProof) return true;
-  return hasExactReplacementAttestation(
-    tx,
-    memory.id,
-    memoryRevision,
-    reviewed,
+  return (
+    (await hasExactReplacementAttestation(
+      tx,
+      memory.id,
+      memoryRevision,
+      reviewed,
+    )) ||
+    (await hasExactNonPeriodVisitMemoryAttestation(
+      tx,
+      memory.id,
+      memoryRevision,
+      reviewed,
+    ))
   );
 }
 

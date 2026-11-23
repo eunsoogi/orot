@@ -73,6 +73,7 @@ export function SettingsPrivacyRoute({
               />
             </View>
             <SettingsAutomaticMemorySection ownership={ownership} />
+            <SettingsAutomaticMemorySection ownership={ownership} routine />
             <SettingsDailyReportMemorySection ownership={ownership} />
             <View
               style={styles.secondaryColumn}

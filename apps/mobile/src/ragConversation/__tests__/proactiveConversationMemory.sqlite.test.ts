@@ -81,6 +81,7 @@ test.each([
   ['model-authored contents', false, request, true],
   [true, true, request, true],
   [true, false, 'For future replies, I prefer concise answers.', true],
+  [true, false, 'I practice the guitar every Monday.', true],
   [
     true,
     false,

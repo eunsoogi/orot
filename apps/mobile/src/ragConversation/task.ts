@@ -1,3 +1,4 @@
+import { localConversationMemoryScope } from '../memory/authoredRoutineMemory';
 import { recordFirstResponsePrompt } from '../agent/execution/recordFirstResponsePrompt';
 import {
   requestsRoutedPossibilityReport,
@@ -160,11 +161,24 @@ export const recordFirstConversationTaskV17 = {
   systemPrompt: `${recordFirstResponsePrompt} ${proactiveConversationTaskV16.systemPrompt}`,
 };
 
-const modelRoutedConversationTask = withProactiveMemory(
-  withStructuredPossibilityReport(legacyTask, requestsRoutedPossibilityReport),
+const routedStructuredTask = withStructuredPossibilityReport(
+  legacyTask,
+  requestsRoutedPossibilityReport,
 );
-export const ragConversationTask = {
+const modelRoutedConversationTask = withProactiveMemory(routedStructuredTask);
+export const modelRoutedConversationTaskV18 = {
   ...modelRoutedConversationTask,
   taskVersion: '18',
   systemPrompt: `${recordFirstResponsePrompt} ${modelRoutedConversationTask.systemPrompt}`,
+};
+
+// Preserve the shipped v18 template contract for exact checkpoints. Only fresh
+// v19 turns can propose the separately enrolled authored-routine statement.
+export const ragConversationTask = {
+  ...withProactiveMemory(
+    routedStructuredTask,
+    value => localConversationMemoryScope(value) !== undefined,
+  ),
+  taskVersion: '19',
+  systemPrompt: modelRoutedConversationTaskV18.systemPrompt,
 };

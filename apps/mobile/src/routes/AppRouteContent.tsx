@@ -150,6 +150,8 @@ export function AppRouteContent({
     case 'medical-document-detail':
       return (
         <MedicalDocumentDetailRoute
+          active={active}
+          ownership={actions.ownership}
           sourceId={sourceId}
           service={documentImportService}
           onBack={actions.onBack}

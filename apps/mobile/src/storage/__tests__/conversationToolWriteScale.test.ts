@@ -47,6 +47,7 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
       });
       let active = false;
       let schemaCalls = 0;
+      let activeTransactions = 0;
       const profile = new Map<
         string,
         { calls: number; rows: number; ms: number }
@@ -86,10 +87,12 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
       });
       const observed: SqlDatabase = {
         execute: wrap(database).execute,
-        transaction: operation =>
-          database.transaction(tx =>
+        transaction: operation => {
+          if (active) activeTransactions++;
+          return database.transaction(tx =>
             operation({ ...tx, execute: wrap(tx).execute }),
-          ),
+          );
+        },
       };
       const storage = createConversationArtifactStorage(observed);
       await storage.createSession('session', await storage.currentGeneration());
@@ -165,7 +168,9 @@ test('profiles terminal tool writes with all retained record dependencies', asyn
       expect(profile.get('dependency-index')?.calls).toBe(1);
       // The owning schema installs policy before the write; warm writes must not repeat DDL.
       expect(schemaCalls).toBe(0);
-      expect([...profile.values()].reduce((n, p) => n + p.calls, 0)).toBe(10);
+      // Keep one owning transaction and remove two standalone policy calls.
+      expect(activeTransactions).toBe(1);
+      expect([...profile.values()].reduce((n, p) => n + p.calls, 0)).toBe(8);
       const indexed = await database.execute(
         'SELECT count(*) AS count FROM conversation_tool_dependencies',
       );

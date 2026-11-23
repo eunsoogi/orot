@@ -11,6 +11,12 @@ final class ResponsesWebSocketUpgradeGate: @unchecked Sendable {
     private let lock = NSLock()
     private var result: Result<Void, Error>?
     private var waiter: CheckedContinuation<Void, Error>?
+    private var closed = false
+
+    /// A terminal URLSession notification can arrive after the handshake settled.
+    var observedClosed: Bool {
+        lock.withLock { closed }
+    }
 
     func wait() async throws {
         try await withCheckedThrowingContinuation { continuation in
@@ -36,15 +42,18 @@ final class ResponsesWebSocketUpgradeGate: @unchecked Sendable {
         // Unsupported upgrade is definitive; authentication, throttling, server
         // outages, redirects and ambiguous disconnects must remain failures.
         let rejected = httpStatus.map { [404, 405, 426, 501].contains($0) } ?? false
-        finish(.failure(rejected ? ResponsesWebSocketUpgradeError.rejectedBeforeRequest : ChatGPTResponsesError.transportUnavailable))
+        finish(.failure(rejected ? ResponsesWebSocketUpgradeError.rejectedBeforeRequest : ChatGPTResponsesError.transportUnavailable), closesTransport: true)
     }
 
     func cancelled() {
-        finish(.failure(CancellationError()))
+        finish(.failure(CancellationError()), closesTransport: true)
     }
 
-    private func finish(_ value: Result<Void, Error>) {
+    private func finish(_ value: Result<Void, Error>, closesTransport: Bool = false) {
         let pending = lock.withLock { () -> CheckedContinuation<Void, Error>? in
+            if closesTransport {
+                closed = true
+            }
             guard result == nil else { return nil }
             result = value
             defer { waiter = nil }
