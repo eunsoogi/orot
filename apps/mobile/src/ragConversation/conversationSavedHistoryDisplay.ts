@@ -80,9 +80,25 @@ export function savedHistoryTranscript(
 ): readonly DisplayMessage[] {
   if (!saved.length) return live;
   const liveIds = new Set(live.map(message => message.toolMessageId));
+  const rejectedOpenings = new Map<string, DisplayMessage['initialResponse']>();
+  for (const message of live)
+    if (message.rejectedOpeningTurnId && message.initialResponse)
+      rejectedOpenings.set(
+        message.rejectedOpeningTurnId,
+        message.initialResponse,
+      );
   return [
     ...saved.flatMap<DisplayMessage>(({ row, questionId, answerId }) => {
       if (liveIds.has(row.id)) return [];
+      const shown = rejectedOpenings.get(row.id);
+      // Keep the live pair only when the archive is the exact same opening,
+      // never substitute its identity for a saved answer or another opening.
+      if (
+        row.kind === 'opening' &&
+        shown?.callId === row.initialResponse.callId &&
+        shown.text === row.initialResponse.text
+      )
+        return [];
       const origin = {
         restoredHistory: true as const,
         savedHistoryDisplayOnly: true as const,
