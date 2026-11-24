@@ -89,7 +89,7 @@ test('loading, failure, and measured-empty remain distinct without synthetic poi
   ).toBe('empty');
 });
 
-test('monthly derived heart range groups actual consecutive days without merging a second sensor', () => {
+test('monthly derived heart range keeps adjacent local days and a second sensor separate', () => {
   const { data } = buildHealthRecordsMonthChart('resting_heart_rate', window, {
     kind: 'quantity',
     rows: [
@@ -129,15 +129,22 @@ test('monthly derived heart range groups actual consecutive days without merging
   expect(data.presentation).toBe('whole-bpm-derived-records');
   const [first, second] = data.series;
   expect(first?.id).not.toBe(second?.id);
-  expect(first?.points).toHaveLength(1);
+  expect(first?.points.map(point => point.x)).toEqual([
+    '2026-10-24',
+    '2026-10-25',
+  ]);
   const measured = first!.points[0]!;
   expect(measured.range).toEqual({
     minimum: 62.25,
-    maximum: 88.75,
-    samples: 3,
+    maximum: 62.25,
+    samples: 2,
   });
-  expect(measured.value).toBeCloseTo((124.5 + 88.75) / 3);
-  expect(measured.period).toEqual({ start: '2026-10-24', end: '2026-10-26' });
+  expect(measured.value).toBe(62.25);
+  expect(measured.period).toBeUndefined();
+  expect(first?.points[1]).toMatchObject({
+    value: 88.75,
+    range: { minimum: 88.75, maximum: 88.75, samples: 1 },
+  });
   expect(formatChartPointPosition(measured, 'day')).toContain('2026-10-24');
   expect(
     formatChartPointValue(
@@ -146,7 +153,7 @@ test('monthly derived heart range groups actual consecutive days without merging
       'count/min',
       data.presentation,
     ),
-  ).toMatch(/62.*89.*71/);
+  ).toContain('62');
   expect(second?.points[0]?.range).toEqual({
     minimum: 107,
     maximum: 107,
@@ -155,4 +162,19 @@ test('monthly derived heart range groups actual consecutive days without merging
   expect(
     data.series.flatMap(item => item.points).every(p => p.value !== null),
   ).toBe(true);
+});
+
+test('the full-month workout duration chart uses bars and actual daily totals', () => {
+  const { kind, data } = buildHealthRecordsMonthChart('workouts', window, {
+    kind: 'quantity',
+    rows: [
+      { ...row, concept: 'workout_duration', unit: 'min', mean: 31, sum: 248 },
+    ],
+  });
+  expect(kind).toBe('bar');
+  expect(data.xWindow).toEqual(window);
+  expect(data.series[0]?.points).toEqual([
+    expect.objectContaining({ x: '2026-11-01', value: 248 }),
+  ]);
+  expect(data.series[0]?.points[0]?.range).toBeUndefined();
 });

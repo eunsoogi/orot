@@ -9,7 +9,6 @@ import type {
   ChartMetric,
   ChartSeries,
 } from '../ui/charts';
-import { summarizeSparseHeartRates } from '../ui/charts/summarizeSparseHeartRates';
 import { t } from '../i18n';
 import { formatRecordedAt } from '../recording/formatRecordedAt';
 import {
@@ -114,21 +113,6 @@ export function buildHealthRecordsMonthChart(
   const derived =
     category === 'resting_heart_rate' ||
     category === 'walking_heart_rate_average';
-  let series: readonly ChartSeries[] = [...groups.values()];
-  if (derived) {
-    const compatible = series.filter(item => item.unit === 'count/min');
-    const grouped = summarizeSparseHeartRates(compatible, {
-      firstDay: localDay(xWindow.fromInclusive),
-      lastDay: localDay(xWindow.toInclusive),
-    });
-    const byId = new Map(
-      grouped.map(item => [
-        item.id,
-        { ...item, points: item.points.filter(point => point.value !== null) },
-      ]),
-    );
-    series = series.map(item => byId.get(item.id) ?? item);
-  }
   const status = failed
     ? 'error'
     : !projection
@@ -153,7 +137,7 @@ export function buildHealthRecordsMonthChart(
           : t(`chart.state.${status}`),
         status,
       },
-      series,
+      series: [...groups.values()],
     },
   };
 }
