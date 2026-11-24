@@ -5,6 +5,7 @@ import {
 } from '../conversationContinuedWork';
 import type { ConversationBackgroundStage } from '../conversationBackgroundStatus';
 import type { ConversationLifetimeEntry } from '../conversationLifetimeEntry';
+import type { ConversationExecutionAdapter } from '../conversationExecutionLease';
 
 function fixture() {
   let phase: 'active' | 'background' = 'active';
@@ -17,11 +18,16 @@ function fixture() {
     executionId: 'owned-execution',
     controller,
   } as ConversationLifetimeEntry;
-  const execution = {
+  const execution: ConversationExecutionAdapter = {
     work,
     reportStatus: report,
     currentPhase: () => phase,
-  } as Parameters<typeof adoptContinuedConversationLease>[2];
+    begin: async () => true,
+    end: jest.fn(),
+    isActive: async () => true,
+    protectedDataAvailable: async () => true,
+    subscribe: () => () => {},
+  };
   owners.own(entry);
   adoptContinuedConversationLease(
     entry,
