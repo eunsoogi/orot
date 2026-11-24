@@ -2,12 +2,13 @@ import Foundation
 import HealthKit
 import React
 
-extension HealthKitModule {
+public extension HealthKitModule {
     @objc(queryWorkoutPeriodHeartRate:resolver:rejecter:)
-    public func queryWorkoutPeriodHeartRate(_ request: NSDictionary,
-                                           resolver resolve: @escaping RCTPromiseResolveBlock,
-                                           rejecter _: @escaping RCTPromiseRejectBlock)
-    {
+    func queryWorkoutPeriodHeartRate(
+        _ request: NSDictionary,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter _: @escaping RCTPromiseRejectBlock,
+    ) {
         #if DEBUG && targetEnvironment(simulator)
             if hasSyntheticFixture {
                 resolve(["status": "unavailable"])
@@ -26,7 +27,7 @@ extension HealthKitModule {
     }
 
     @objc(cancelWorkoutPeriodHeartRate:)
-    public func cancelWorkoutPeriodHeartRate(_ callID: String) {
+    func cancelWorkoutPeriodHeartRate(_ callID: String) {
         DispatchQueue.main.async {
             WorkoutPeriodBridgeOperations.cancel(callID)
         }
@@ -64,7 +65,7 @@ private final class WorkoutPeriodReadCall: @unchecked Sendable {
         self.id = id
         self.from = from
         self.to = to
-        self.period = .init(start: start, end: end)
+        period = .init(start: start, end: end)
         self.workouts = workouts
         self.resolve = resolve
     }
@@ -107,7 +108,9 @@ private enum WorkoutPeriodBridgeOperations {
         }
         let expiry = Task {
             do { try await Task.sleep(for: .seconds(15)) } catch { return }
-            if active[call.id]?.call === call { cancel(call.id) }
+            if active[call.id]?.call === call {
+                cancel(call.id)
+            }
         }
         active[call.id] = Active(call: call, work: work, expiry: expiry)
     }

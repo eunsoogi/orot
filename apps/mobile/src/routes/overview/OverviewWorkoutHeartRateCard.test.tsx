@@ -122,7 +122,7 @@ test('a repository replacement during final native confirmation does not release
     // The new hook uses exactly one final post-native confirmation. Arrange
     // an already-admitted first probe so that confirmation itself is held.
     await act(async () => {
-      void lane.consumeProbe();
+      await lane.consumeProbe();
       release(resultFor(request));
       await gate.entered;
       lane.replaceOwner();

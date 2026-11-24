@@ -62,7 +62,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
         now.getDate() + 1,
       );
       boundary = setTimeout(
-        () => void start(),
+        () => start(),
         Math.max(1, midnight.getTime() - now.getTime()),
       );
       const abort = new AbortController();
@@ -119,14 +119,14 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       }
     }
     const visibility = AppState.addEventListener('change', phase => {
-      if (phase === 'active') void start();
+      if (phase === 'active') start();
       else retire();
     });
     const unsubscribeClear = subscribeLocalDataClear(retire);
     const unsubscribeDelete = subscribeLocalSourceDeletion(retire);
     // The native protected-data watcher admits foreground reads; cached JS
     // AppState may still report unknown on the first mounted frame.
-    void start();
+    start();
     return () => {
       mounted = false;
       retire();

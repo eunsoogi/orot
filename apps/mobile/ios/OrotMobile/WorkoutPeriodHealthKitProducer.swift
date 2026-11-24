@@ -30,9 +30,9 @@ enum WorkoutPeriodHealthKitProducer {
     }
 
     private static let maxWorkouts = 512
-    private static let maxParents = 8_192
+    private static let maxParents = 8192
     private static let maxQuantities = 200_000
-    private static let maxMemberships = 32_768
+    private static let maxMemberships = 32768
 
     static func capture(
         store: HKHealthStore,
@@ -50,7 +50,9 @@ enum WorkoutPeriodHealthKitProducer {
               period.start < period.end, completeCohort.count <= maxWorkouts,
               Set(completeCohort.map(\.id)).count == completeCohort.count
         else { return .unavailable }
-        if completeCohort.isEmpty { return .emptyVisible }
+        if completeCohort.isEmpty {
+            return .emptyVisible
+        }
         do {
             let heartRate = HKQuantityType(.heartRate)
             let allIDs = Set(completeCohort.map(\.id))
@@ -158,8 +160,8 @@ enum WorkoutPeriodHealthKitProducer {
                 let revision = await Task.detached(priority: .utility) { digest(material.sorted()) }.value
                 guard active() else { return .unavailable }
                 return .available(Witness(
-                    stats: stats, firstSampleAtMs: Int64(first.timeIntervalSince1970 * 1_000),
-                    lastSampleAtMs: Int64(last.timeIntervalSince1970 * 1_000),
+                    stats: stats, firstSampleAtMs: Int64(first.timeIntervalSince1970 * 1000),
+                    lastSampleAtMs: Int64(last.timeIntervalSince1970 * 1000),
                     membershipRevision: "v1:" + revision,
                 ))
             }
@@ -172,7 +174,9 @@ enum WorkoutPeriodHealthKitProducer {
         counts[sample.uuid] == sample.count
     }
 
-    private static func dateKey(_ date: Date) -> String { String(date.timeIntervalSince1970.bitPattern) }
+    private static func dateKey(_ date: Date) -> String {
+        String(date.timeIntervalSince1970.bitPattern)
+    }
 
     private static func sameSavedInstant(_ native: Date, _ saved: Date) -> Bool {
         let formatter = ISO8601DateFormatter()
@@ -197,6 +201,6 @@ enum WorkoutPeriodHealthKitProducer {
 
 private extension Dictionary {
     func mapValuesWithKeys<T>(_ transform: (Key, Value) -> T) -> [Key: T] {
-        Dictionary<Key, T>(uniqueKeysWithValues: map { ($0.key, transform($0.key, $0.value)) })
+        [Key: T](uniqueKeysWithValues: map { ($0.key, transform($0.key, $0.value)) })
     }
 }
