@@ -119,7 +119,11 @@ public extension HealthKitModule {
                     return
                 }
                 do {
-                    let snapshots = try samples.map(HealthKitBoundary.snapshot)
+                    let snapshots = try HealthKitBoundary.snapshotsWithDerivedShape(
+                        samples,
+                        feature: request.feature,
+                        phase: .anchoredPage,
+                    )
                     let rawAnchor = try newAnchor.map(HealthKitBoundary.encodeAnchor)
                     let cursor = try scope.cursor.map { try $0.encoded(anchor: rawAnchor ?? $0.anchor) } ??
                         rawAnchor ?? request.cursor
@@ -146,6 +150,54 @@ public extension HealthKitModule {
 }
 
 extension HealthKitBoundary {
+    /// A local opt-in observation of already-admitted query pages. Neither DTOs nor
+    /// diagnostics contain extra IDs, times, quantities, or authorization inferences.
+    static func snapshotsWithDerivedShape(
+        _ samples: [HKSample],
+        feature: String,
+        phase: DerivedShapePhase,
+    ) throws -> [[String: Any]] {
+        let arguments = ProcessInfo.processInfo.arguments
+        let flags = ["-OROT_PROVIDER_DIAGNOSTICS", "-OROT_DERIVED_HEART_RATE_SHAPE"]
+        let isDerived = ["restingHeartRate", "walkingHeartRateAverage"].contains(feature)
+        guard isDerived, flags.allSatisfy(arguments.contains) else { return try samples.map(snapshot) }
+
+        var scalar = 0
+        var series = 0
+        var other = 0
+        for sample in samples {
+            let count = (sample as? HKQuantitySample)?.count ?? 0
+            if count == 1 {
+                scalar += 1
+            } else if count > 1 {
+                series += 1
+            } else {
+                other += 1
+            }
+        }
+        var serialized = -1
+        var summarized = -1
+        defer {
+            NSLog(
+                "OROT_DERIVED_HEART_RATE_SHAPE phase=%@ feature=%@ scalar=%ld series=%ld other=%ld serialized=%ld summarized=%ld",
+                phase.rawValue, feature, scalar, series, other, serialized, summarized,
+            )
+        }
+        let results = try samples.map(snapshot)
+        serialized = results.count
+        summarized = results.reduce(into: 0) { count, item in
+            if item["heartRateSampleSummary"] != nil {
+                count += 1
+            }
+        }
+        return results
+    }
+
+    enum DerivedShapePhase: String {
+        case anchoredPage
+        case boundedSnapshot
+    }
+
     /// Discrete HealthKit series expose actual statistics. Never expand a scalar
     /// Apple resting/walking estimate or read any separate raw heart-rate type.
     static func derivedHeartRateSampleSummary(_ sample: HKQuantitySample, unit: HKUnit) -> [String: Any]? {

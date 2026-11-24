@@ -183,7 +183,11 @@ public final class HealthKitModule: NSObject {
                 }
                 // An empty result only means no matching samples are visible to this app.
                 do {
-                    let snapshots = try samples.map(HealthKitBoundary.snapshot)
+                    let snapshots = try HealthKitBoundary.snapshotsWithDerivedShape(
+                        samples,
+                        feature: query.feature,
+                        phase: .boundedSnapshot,
+                    )
                     resolve(HealthKitBoundary.sampleResult(availability: "available", samples: snapshots))
                 } catch {
                     reject("HEALTHKIT_SERIALIZATION_FAILED", "Health record data could not be processed.", nil)

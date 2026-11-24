@@ -13,6 +13,7 @@ final class OrotProviderDiagnostics: NSObject {
         let enabled = arguments.contains("-OROT_PROVIDER_DIAGNOSTICS")
         return [
             "enabled": enabled,
+            "derivedHeartRateShapeEnabled": enabled && arguments.contains("-OROT_DERIVED_HEART_RATE_SHAPE"),
             "historyValidationCostEnabled": enabled && arguments.contains("-OROT_HISTORY_VALIDATION_COST"),
         ]
     }
@@ -26,6 +27,14 @@ final class OrotProviderDiagnostics: NSObject {
             guard stages.contains(stage), let elapsed = Int(outcome), (0 ... 300_000).contains(elapsed),
                   String(elapsed) == outcome else { return }
             NSLog("OROT_PROVIDER_DIAGNOSTIC layer=app feature=live_health stage=%@ elapsed_ms=%d", stage, elapsed)
+            return
+        }
+        if ["derived_mapped", "derived_committed"].contains(stage) {
+            guard ProcessInfo.processInfo.arguments.contains("-OROT_DERIVED_HEART_RATE_SHAPE"),
+                  ["restingHeartRate", "walkingHeartRateAverage"].contains(feature),
+                  let count = Int(outcome), (0 ... 200).contains(count),
+                  String(count) == outcome else { return }
+            NSLog("OROT_DERIVED_HEART_RATE_SHAPE phase=%@ feature=%@ count=%d", stage, feature, count)
             return
         }
         if stage.hasPrefix("daily_report_data_") {
