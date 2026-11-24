@@ -38,6 +38,7 @@ export interface CandidateReview {
   readonly classification?: AppointmentClassification['classification'];
   readonly reason: string;
   readonly uncertainty?: AppointmentClassification['uncertainty'];
+  readonly reusedClassification?: true;
 }
 
 export interface ClassificationRunResult {

@@ -222,6 +222,7 @@
 		A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000001 /* AppleFoundationModelsModule.swift */; };
 		A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000002 /* AppleFoundationModelsModule.m */; };
 		A7F000000000000000000001 /* ConversationExecutionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7F000000000000000000001 /* ConversationExecutionModule.swift */; };
+		8CEBDE8273409A95A90FECBA /* ConversationNativeSceneOwnership.swift in Sources */ = {isa = PBXBuildFile; fileRef = 174E6E280AED849EAE203557 /* ConversationNativeSceneOwnership.swift */; };
 		A7F000000000000000000003 /* ConversationContinuedProcessing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7F000000000000000000003 /* ConversationContinuedProcessing.swift */; };
 		A7F000000000000000000002 /* ConversationExecutionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B7F000000000000000000002 /* ConversationExecutionModule.m */; };
 		A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */; };
@@ -673,6 +674,7 @@
 		B62F00000000000000000001 /* AppleFoundationModelsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsModule.swift; path = OrotMobile/AppleFoundationModelsModule.swift; sourceTree = "<group>"; };
 		B62F00000000000000000002 /* AppleFoundationModelsModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppleFoundationModelsModule.m; path = OrotMobile/AppleFoundationModelsModule.m; sourceTree = "<group>"; };
 		B7F000000000000000000001 /* ConversationExecutionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConversationExecutionModule.swift; path = OrotMobile/ConversationExecutionModule.swift; sourceTree = "<group>"; };
+		174E6E280AED849EAE203557 /* ConversationNativeSceneOwnership.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConversationNativeSceneOwnership.swift; path = OrotMobile/ConversationNativeSceneOwnership.swift; sourceTree = "<group>"; };
 		B7F000000000000000000003 /* ConversationContinuedProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConversationContinuedProcessing.swift; path = OrotMobile/ConversationContinuedProcessing.swift; sourceTree = "<group>"; };
 		B7F000000000000000000002 /* ConversationExecutionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ConversationExecutionModule.m; path = OrotMobile/ConversationExecutionModule.m; sourceTree = "<group>"; };
 		B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppleFoundationModelsCodec.swift; path = OrotMobile/AppleFoundationModelsCodec.swift; sourceTree = "<group>"; };
@@ -895,6 +897,7 @@
 				B62F00000000000000000001 /* AppleFoundationModelsModule.swift */,
 				B62F00000000000000000002 /* AppleFoundationModelsModule.m */,
 				B7F000000000000000000001 /* ConversationExecutionModule.swift */,
+				174E6E280AED849EAE203557 /* ConversationNativeSceneOwnership.swift */,
 				B7F000000000000000000003 /* ConversationContinuedProcessing.swift */,
 				B7F000000000000000000002 /* ConversationExecutionModule.m */,
 				B62F00000000000000000003 /* AppleFoundationModelsCodec.swift */,
@@ -1670,6 +1673,7 @@
 				A62F00000000000000000001 /* AppleFoundationModelsModule.swift in Sources */,
 				A62F00000000000000000002 /* AppleFoundationModelsModule.m in Sources */,
 				A7F000000000000000000001 /* ConversationExecutionModule.swift in Sources */,
+				8CEBDE8273409A95A90FECBA /* ConversationNativeSceneOwnership.swift in Sources */,
 				A7F000000000000000000003 /* ConversationContinuedProcessing.swift in Sources */,
 				A7F000000000000000000002 /* ConversationExecutionModule.m in Sources */,
 				A62F00000000000000000003 /* AppleFoundationModelsCodec.swift in Sources */,

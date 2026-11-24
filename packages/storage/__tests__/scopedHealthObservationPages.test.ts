@@ -188,7 +188,7 @@ test('upgrades version nine while preserving saved rows and avoiding destructive
             sql.match(/^ALTER TABLE agent_memory_records ADD COLUMN (\w+) INTEGER\b/)?.[1] ?? sql,
         ),
     ).toEqual(['recent_metadata_version', 'recent_created_at_ms', 'recent_legacy_pending']);
-    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(19);
+    expect((await database.execute('PRAGMA user_version')).rows[0]!.user_version).toBe(20);
     const page = await repository.listHealthObservationPage(null, 100, {
       category: 'blood_pressure',
       toInclusive: '2026-10-21T00:00:00Z',

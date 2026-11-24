@@ -47,7 +47,7 @@ export type ConversationExecutionEvent =
   | {
       readonly kind: 'expired';
       readonly requestId: string;
-      readonly reason?: 'bridge-unavailable';
+      readonly reason?: 'bridge-unavailable' | 'lease-check-failed';
     }
   | {
       readonly kind: 'continued';

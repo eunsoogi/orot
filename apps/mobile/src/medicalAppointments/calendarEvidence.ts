@@ -157,6 +157,11 @@ export function calendarEventsMatch(
     leftSnapshot.floatingEndAt === rightSnapshot.floatingEndAt;
   return (
     left.calendarEventIdentifier === right.calendarEventIdentifier &&
+    (!left.classificationWitness ||
+      (left.classificationWitness.occurrence ===
+        right.classificationWitness?.occurrence &&
+        left.classificationWitness.revision ===
+          right.classificationWitness?.revision)) &&
     (sameFloatingCivilTime ||
       (left.effectiveAt === right.effectiveAt &&
         left.endsAt === right.endsAt)) &&
