@@ -11,7 +11,9 @@ type Phase = 'hidden' | 'entering' | 'visible' | 'exiting';
 export const jumpLatestFadeDuration = 120;
 
 /** Use the same measured anchor throughout. A decorative transition does not
- * alpha-composite a UIKit glass ancestor or show a second interactive control. */
+ * alpha-composite a UIKit glass ancestor or show a second interactive control.
+ * In a workspace the hit target ends at the measured composer edge; the
+ * visible 22pt button already has 11pt of clearance inside its touch target. */
 export function ConversationJumpToLatest({
   visible,
   bottom,
@@ -65,7 +67,7 @@ export function ConversationJumpToLatest({
       pointerEvents={glass ? 'box-none' : 'none'}
       accessibilityElementsHidden={!glass}
       importantForAccessibility={glass ? 'auto' : 'no-hide-descendants'}
-      style={[styles.host, { bottom: bottom + 8 }]}
+      style={[styles.host, { bottom }]}
       testID="conversation-jump-latest-position"
     >
       {glass ? (

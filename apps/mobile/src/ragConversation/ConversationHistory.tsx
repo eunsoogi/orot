@@ -4,7 +4,7 @@ import { useConversationReadingPosition } from './useConversationReadingPosition
 import { useConversationTranscriptWindow } from './useConversationTranscriptWindow';
 import { conversationHistoryError } from './conversationHistoryError';
 import { useConversationJumpToLatest } from './useConversationJumpToLatest';
-import { ConversationJumpToLatest } from './ConversationJumpToLatest';
+import { HostedConversationJumpToLatest } from './HostedConversationJumpToLatest';
 import { useFloatingComposerInset } from './FloatingComposerSurface';
 import { followConversationLatest } from './followConversationLatest';
 import { useSeparatedConversationActivity } from './ConversationWorkspaceContext';
@@ -230,10 +230,10 @@ export function ConversationHistory({
         />
         {footer}
       </ScrollView>
-      <ConversationJumpToLatest
+      <HostedConversationJumpToLatest
         key={sessionId}
+        sessionId={sessionId}
         visible={jumpControl.away}
-        bottom={composerInset}
         onPress={() => {
           reading.cancel();
           window.cancelAnchor();

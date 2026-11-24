@@ -43,7 +43,9 @@ export function ConversationSteeringComposer({
             },
         steeringDisabled:
           !session.steeringAvailable || session.steeringSubmitting,
-        steeringControls: <ConversationSteeringControls session={session} />,
+        steeringControls: session.steeringError ? (
+          <ConversationSteeringControls session={session} />
+        ) : undefined,
       }}
     />
   );
