@@ -158,11 +158,9 @@ extension HealthKitBoundary {
         phase: DerivedShapePhase,
     ) throws -> [[String: Any]] {
         let arguments = ProcessInfo.processInfo.arguments
-        guard arguments.contains("-OROT_PROVIDER_DIAGNOSTICS"),
-              arguments.contains("-OROT_DERIVED_HEART_RATE_SHAPE"),
-              ["restingHeartRate", "walkingHeartRateAverage"].contains(feature) else {
-            return try samples.map(snapshot)
-        }
+        let flags = ["-OROT_PROVIDER_DIAGNOSTICS", "-OROT_DERIVED_HEART_RATE_SHAPE"]
+        let isDerived = ["restingHeartRate", "walkingHeartRateAverage"].contains(feature)
+        guard isDerived, flags.allSatisfy(arguments.contains) else { return try samples.map(snapshot) }
 
         var scalar = 0
         var series = 0
