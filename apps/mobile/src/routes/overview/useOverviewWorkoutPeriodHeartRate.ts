@@ -1,6 +1,7 @@
 import { useLayoutEffect, useState } from 'react';
 import { createRecordRepository } from '@orot/storage';
 import { conversationExecutionNative } from '../../ragConversation/conversationExecutionNative';
+import { subscribeWorkoutImportCommitted } from '../../healthkit/workoutImportEvents';
 import { loadWorkoutPeriodCohort } from '../../healthkit/workoutPeriodCohort';
 import {
   readWorkoutPeriodHeartRate,
@@ -189,6 +190,10 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
         else retire();
       }
     });
+    const unsubscribeImport = subscribeWorkoutImportCommitted(() => {
+      retire();
+      start();
+    });
     const unsubscribeClear = subscribeLocalDataClear(retire);
     const unsubscribeDelete = subscribeLocalSourceDeletion(retire);
     start();
@@ -196,6 +201,7 @@ export function useOverviewWorkoutPeriodHeartRate(active: boolean): State {
       mounted = false;
       retire();
       unsubscribeProtection();
+      unsubscribeImport();
       unsubscribeClear();
       unsubscribeDelete();
     };

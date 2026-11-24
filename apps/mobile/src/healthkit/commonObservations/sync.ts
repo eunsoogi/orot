@@ -1,3 +1,4 @@
+import { notifyWorkoutImportCommitted } from '../workoutImportEvents';
 import { refreshRecentDiscreteHeartRate } from './refreshRecentDiscreteHeartRate';
 import { commitHealthKitChanges } from '../commitHealthKitChanges';
 import { healthKitSampleChangesCheckpointKey } from '../sampleChangesCheckpoint';
@@ -36,9 +37,12 @@ const pendingSyncs = new WeakMap<
 export function syncCommonObservationChanges(
   options: SyncCommonObservationChangesOptions,
 ): Promise<CommonObservationSyncResult> {
-  return serializeFeatureSync(options, () =>
-    syncCommonObservationChangesExclusive(options),
-  );
+  return serializeFeatureSync(options, async () => {
+    const outcome = await syncCommonObservationChangesExclusive(options);
+    if (options.feature === 'workouts' && outcome.upserted > 0)
+      notifyWorkoutImportCommitted();
+    return outcome;
+  });
 }
 
 /** Commits each complete native page before using its opaque cursor for the next one. */
