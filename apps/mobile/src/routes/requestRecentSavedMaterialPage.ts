@@ -49,14 +49,14 @@ function isWitnessedPage<Row>(
 
 type Ref<T> = { current: T };
 export type RecentPageState = 'idle' | 'loading' | 'ready' | 'failed';
-export type LoadRecentPage<Row> = (
+export type LoadRecentPage<Row> = ((
   before?: RecentPageRow,
   options?: {
     signal: AbortSignal;
     canRetry: () => Promise<boolean>;
     isCurrent: () => boolean;
   },
-) => Promise<RecentPage<Row>>;
+) => Promise<RecentPage<Row>>) & { readonly sourceIsCurrent?: () => boolean };
 
 export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
   ports: {
@@ -93,10 +93,14 @@ export async function requestRecentSavedMaterialPage<Row extends RecentPageRow>(
     setState,
   } = ports;
   const inTab = captureCurrent();
-  if (!inTab() || !canAccess() || pending.current) return false;
+  // A native owner can retire before React publishes the replacement loader.
+  // Its old operation may not publish or turn that gap into a Retry alert.
+  const ownsRead = () =>
+    inTab() && canAccess() && (load.sourceIsCurrent?.() ?? true);
+  if (!ownsRead() || pending.current) return false;
   const operation = new AbortController();
   pending.current = operation;
-  const current = () => inTab() && canAccess() && !operation.signal.aborted;
+  const current = () => ownsRead() && !operation.signal.aborted;
   const protection = conversationExecutionNative();
   let retained = false;
   let publishedWitness = false;
