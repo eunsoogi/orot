@@ -18,6 +18,7 @@ jest.mock('../../routes/overview/metricLoader', () => ({
   projectOverviewMetricSnapshot: jest.fn(),
 }));
 jest.mock('../../routes/overview/metricSelection', () => ({
+  ...jest.requireActual('../../routes/overview/metricSelection'),
   loadOverviewMetricSelection: jest.fn(),
 }));
 
@@ -66,7 +67,7 @@ function fixture() {
     .mockResolvedValue({ metrics: {}, quantityTruncated: false });
   jest
     .mocked(loadOverviewMetricSelection)
-    .mockResolvedValue(['sleep', 'heartRate']);
+    .mockResolvedValue(['sleep', 'workoutHeartRate', 'heartRate']);
   const key = jest.fn(async () => 'synthetic-key');
   const ready = jest.fn(async () => undefined);
   const read = createSecureOverviewReader(
@@ -108,6 +109,16 @@ test('production adapter opens the same existing owner and publishes only after 
     readOnly: true,
     failOnCreate: true,
   });
+  expect(projectOverviewMetricSnapshot).toHaveBeenLastCalledWith(
+    expect.anything(),
+    expect.any(Date),
+    ['sleep', 'heartRate'],
+  );
+  expect(publish).toHaveBeenCalledWith(
+    expect.objectContaining({
+      selection: ['sleep', 'workoutHeartRate', 'heartRate'],
+    }),
+  );
   expect(f.events).toEqual(['begin', 'settled', 'close', 'publish']);
   expect(f.protectedDataAvailable).toHaveBeenCalledTimes(2);
   expect(f.unsubscribe).toHaveBeenCalledTimes(1);
