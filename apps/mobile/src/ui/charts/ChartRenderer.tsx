@@ -9,6 +9,7 @@ import {
   formatChartTick,
   formatChartTimeTick,
   formatChartValue,
+  usesWholeBpm,
 } from './format';
 import { chartRows, lineSegments } from './model';
 import type { ChartAxis, ChartData, ChartKind, ChartMetric } from './types';
@@ -77,6 +78,7 @@ export function ChartRenderer({
               key={unit}
               series={unitData.series}
               axis={rangeAxis}
+              wholeBpm={usesWholeBpm(data.metric, unit, data.presentation)}
               width={width}
               height={chartHeight}
               color={palette[token[data.metric]]}

@@ -32,8 +32,10 @@ export type ChartSeries = {
   style: 'primary' | 'secondary';
   points: readonly ChartPoint[];
 };
+export type ChartPresentation = 'whole-bpm-overview';
 export type ChartData = {
   metric: ChartMetric;
+  presentation?: ChartPresentation;
   coverage: ChartCoverage;
   series: readonly ChartSeries[];
 };

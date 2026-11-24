@@ -17,7 +17,12 @@ export function chartAccessibilitySummary(
         [
           formatChartPosition(point.x, axis),
           series.label,
-          formatChartPointValue(data.metric, point, series.unit),
+          formatChartPointValue(
+            data.metric,
+            point,
+            series.unit,
+            data.presentation,
+          ),
           point.partial ? t('chart.partialValue') : '',
           t('chart.source', { source: point.source }),
         ]

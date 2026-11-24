@@ -38,7 +38,12 @@ export function ChartBarTooltip({
     return [
       item.point.x,
       item.series.label,
-      formatChartPointValue(data.metric, item.point, item.series.unit),
+      formatChartPointValue(
+        data.metric,
+        item.point,
+        item.series.unit,
+        data.presentation,
+      ),
       item.point.partial ? t('chart.partialValue') : '',
     ]
       .filter(Boolean)
