@@ -57,6 +57,8 @@ export function OverviewRecentHealthChange({
   const symbol = {
     sleep: 'bed.double',
     heartRate: 'heart',
+    restingHeartRate: 'heart',
+    walkingHeartRate: 'heart',
     bodyMass: 'scalemass',
     steps: 'figure.walk',
     workouts: 'figure.run',

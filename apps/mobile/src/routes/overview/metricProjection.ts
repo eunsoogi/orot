@@ -1,6 +1,6 @@
 import type { OverviewChartHealthContext } from '../../healthEvidence/healthContext/healthContextReport';
 import type { ChartRange } from '../../ui/charts/types';
-import type { OverviewMetric } from './metricSelection';
+import { isOverviewHeartRate, type OverviewMetric } from './metricSelection';
 
 export interface OverviewMetricDay {
   readonly date: string;
@@ -35,6 +35,8 @@ export function projectOverviewMetric(
 ): OverviewMetricProjection | null {
   const concept = {
     heartRate: 'heart_rate',
+    restingHeartRate: 'resting_heart_rate',
+    walkingHeartRate: 'walking_heart_rate_average',
     bodyMass: 'body_mass',
     steps: 'step_count',
     workouts: 'workout_duration',
@@ -42,6 +44,8 @@ export function projectOverviewMetric(
   const unit = {
     sleep: 'min',
     heartRate: 'count/min',
+    restingHeartRate: 'count/min',
+    walkingHeartRate: 'count/min',
     bodyMass: 'kg',
     steps: 'count',
     workouts: 'min',
@@ -66,7 +70,7 @@ export function projectOverviewMetric(
   } else {
     for (const day of series!.days) {
       // The range and mean must describe the exact same admitted daily sensor samples.
-      if (metric === 'heartRate')
+      if (isOverviewHeartRate(metric))
         heartRanges.set(day.date, {
           minimum: day.minimum,
           maximum: day.maximum,
