@@ -20,6 +20,7 @@ export type ChartBucketSelect = (
 export function ChartRangeRenderer({
   series,
   axis,
+  xWindow,
   width,
   height,
   color,
@@ -33,6 +34,7 @@ export function ChartRangeRenderer({
 }: {
   series: readonly ChartSeries[];
   axis: ChartAxis;
+  xWindow?: import('./types').ChartTimeWindow;
   width: number;
   height: number;
   color: string;
@@ -46,7 +48,14 @@ export function ChartRangeRenderer({
 }) {
   // Keep scale labels away from range strokes; compact widths still expose exact values to AX.
   const axisLabelWidth = width >= 10 * fontSize ? 3.8 * fontSize : 0;
-  const plot = chartRangeGeometry(series, width, height, axis, axisLabelWidth);
+  const plot = chartRangeGeometry(
+    series,
+    width,
+    height,
+    axis,
+    axisLabelWidth,
+    xWindow,
+  );
   if (!plot) return null;
   const groupedTicks =
     axis === 'day'

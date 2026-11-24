@@ -1,4 +1,7 @@
-import type { HealthObservationPageFilter } from '@orot/storage';
+import type {
+  HealthObservationPageFilter,
+  HealthObservationPageLoader,
+} from '@orot/storage';
 
 /** Reads the records the app already saved; it never starts a HealthKit import. */
 export async function listLocalHealthObservations() {
@@ -12,7 +15,7 @@ export async function listLocalHealthObservations() {
 }
 
 /** Loads only the next visible batch; reading never triggers a HealthKit import. */
-export async function listLocalHealthObservationPage(
+async function readPage(
   cursor: import('@orot/storage').HealthObservationCursor | null = null,
   filter?: HealthObservationPageFilter,
 ) {
@@ -26,3 +29,16 @@ export async function listLocalHealthObservationPage(
     filter,
   );
 }
+
+/** Keep product overview and detail on one protected repository without
+ * installing a chart reader on injected raw-page fixtures. */
+export const listLocalHealthObservationPage: HealthObservationPageLoader =
+  Object.assign(readPage, {
+    readMonthChart: (async (category, window) => {
+      const { openLocalStorage } = await import('../storage/secureDatabase');
+      return (await openLocalStorage()).listHealthObservationMonthChart(
+        category,
+        window,
+      );
+    }) satisfies NonNullable<HealthObservationPageLoader['readMonthChart']>,
+  });

@@ -151,6 +151,7 @@ export function useHealthRecordCategoryPages(
   }, [reload]);
 
   return {
+    monthWindow: { fromInclusive: from, toInclusive: now },
     read: (category: HealthObservationCategory) =>
       pages[category] ?? initialPage,
     reload,

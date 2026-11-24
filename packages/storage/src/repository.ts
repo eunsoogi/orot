@@ -1,3 +1,7 @@
+import {
+  readHealthObservationMonthChart,
+  type HealthObservationMonthChartLoader,
+} from './healthObservationMonthChart';
 import { readHealthObservationPage } from './healthObservationPages';
 import { readHealthMedicationPage } from './healthMedicationPages';
 import type { HealthMedicationPage, HealthMedicationPageRequest } from './healthMedicationPages';
@@ -43,6 +47,7 @@ export interface RecordWriter {
 }
 
 export interface RecordRepository extends RecordWriter {
+  readonly listHealthObservationMonthChart: HealthObservationMonthChartLoader;
   listHealthMedicationPage(request: HealthMedicationPageRequest): Promise<HealthMedicationPage>;
   listHealthObservationPage(
     cursor?: HealthObservationCursor | null,
@@ -110,6 +115,8 @@ export function createRecordRepository(database: SqlDatabase): RecordRepository 
     ...sourceEvidenceRepositories,
     manualHistory: createManualHistoryRepository(database),
     listHealthMedicationPage: (request) => readHealthMedicationPage(database, request),
+    listHealthObservationMonthChart: (category, window) =>
+      readHealthObservationMonthChart(database, category, window),
     listHealthObservationPage: (cursor, limit, filter) =>
       readHealthObservationPage(database, cursor, limit, filter),
     transcripts,

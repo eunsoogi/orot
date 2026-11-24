@@ -8,6 +8,7 @@ export function chartWindows(
 ): ChartData[] {
   if (!Number.isInteger(limit) || limit < 1)
     throw new Error('Invalid chart window size');
+  if (data.xWindow) return [data];
   const entries = data.series.flatMap((series, seriesIndex) =>
     series.points.map((point, pointIndex) => ({
       seriesIndex,

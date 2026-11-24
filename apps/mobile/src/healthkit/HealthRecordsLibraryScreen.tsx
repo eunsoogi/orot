@@ -61,7 +61,7 @@ export function HealthRecordsLibraryScreen({
   });
   const [selectedCategory, setSelectedCategory] =
     useState<HealthRecordFilter>('blood_pressure');
-  const { read, reload, revision } = useHealthRecordCategoryPages(
+  const { read, reload, revision, monthWindow } = useHealthRecordCategoryPages(
     loadObservations,
     refreshRevision,
   );
@@ -188,6 +188,12 @@ export function HealthRecordsLibraryScreen({
                     hasMore={read(category).cursor !== null}
                     loadState={read(category).loadState}
                     observations={read(category).records}
+                    monthChart={
+                      loadObservations.readMonthChart && {
+                        load: loadObservations.readMonthChart,
+                        window: monthWindow,
+                      }
+                    }
                     onOpenDetail={onOpenDetail}
                   />
                 )

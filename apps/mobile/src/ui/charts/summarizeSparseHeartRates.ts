@@ -16,6 +16,7 @@ function isoDay(value: number) {
  * Display-only: retain daily ranges when meaningful and never join sources. */
 export function summarizeSparseHeartRates(
   series: readonly ChartSeries[],
+  window?: { readonly firstDay: string; readonly lastDay: string },
 ): readonly ChartSeries[] {
   const dailyPoints = series.flatMap(item => item.points);
   const observed = dailyPoints.filter(validChartRangePoint);
@@ -34,8 +35,14 @@ export function summarizeSparseHeartRates(
     return series;
 
   const days = dailyPoints.map(point => day(point.x));
-  const first = Math.min(...days);
-  const last = Math.max(...days);
+  const first = window ? day(window.firstDay) : Math.min(...days);
+  const last = window ? day(window.lastDay) : Math.max(...days);
+  if (
+    !Number.isFinite(first) ||
+    !Number.isFinite(last) ||
+    days.some(at => at < first || at > last)
+  )
+    return series;
   const length = (last - first) / dayMs + 1;
   if (length < 2 || length > 366) return series; // This is a bounded day chart.
   const count = Math.ceil(length / 3);

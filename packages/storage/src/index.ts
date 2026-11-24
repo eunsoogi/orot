@@ -103,3 +103,9 @@ export {
   isAppleDerivedHeartRateCategory,
 } from './appleDerivedHeartRate';
 export type { AppleDerivedHeartRateCategory } from './appleDerivedHeartRate';
+
+export type {
+  HealthObservationMonthChart,
+  HealthObservationMonthChartLoader,
+} from './healthObservationMonthChart';
+export type { HealthObservationMonthWindow } from './healthObservationMonthQuantity';

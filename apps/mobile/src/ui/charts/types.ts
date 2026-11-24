@@ -36,7 +36,13 @@ export type ChartSeries = {
 };
 export type ChartPresentation =
   'whole-bpm-overview' | 'whole-bpm-derived-records';
+export type ChartTimeWindow = {
+  readonly fromInclusive: string;
+  readonly toInclusive: string;
+};
 export type ChartData = {
+  /** Explicit requested bounds for already bounded measured projections. */
+  xWindow?: ChartTimeWindow;
   metric: ChartMetric;
   presentation?: ChartPresentation;
   coverage: ChartCoverage;
