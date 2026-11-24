@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { HealthKitAutoSyncFeature } from '../healthkit/autoSyncCheckpoint';
 import type { HealthKitAutoSyncNotice } from '../healthkit/autoSyncSettings';
@@ -6,6 +7,7 @@ import { AppButton } from '../layout/AppButton';
 import { AppText as Text } from '../layout/AppText';
 import { AdaptiveColumns } from '../layout/AdaptiveColumns';
 import { appColors } from '../layout/appColors';
+import { useNavigationEdgeVerticalScroll } from '../navigation/navigationEdgeScroll';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { useHealthDataRouteActions } from './useHealthDataRouteActions';
 import { HealthDataAuthorizationRecoveryNotice } from './HealthDataAuthorizationRecoveryNotice';
@@ -39,6 +41,11 @@ export function HealthDataIntegrationScreen({
   readonly statusLoadFailed: boolean;
 }) {
   const inset = useNavigationContentInset();
+  const [ownerWidth, setOwnerWidth] = useState(0);
+  const edge = useNavigationEdgeVerticalScroll({
+    ownerWidth,
+    trailingPadding: inset.paddingRight ?? styles.panel.paddingHorizontal,
+  });
   const hasDock = useHealthDataRouteActions({
     loadFailed,
     loaded,
@@ -49,8 +56,9 @@ export function HealthDataIntegrationScreen({
   // Consume the shell's scroll clearance once; the measured wrapper owns horizontal regions.
   const page = (
     <ScrollView
-      contentContainerStyle={[styles.panel, inset]}
-      style={styles.scroll}
+      {...edge.indicatorProps}
+      contentContainerStyle={[styles.panel, inset, edge.contentStyle]}
+      style={[styles.scroll, edge.scrollViewStyle]}
       testID="health-data-scroll"
     >
       <View style={styles.heading}>
@@ -189,7 +197,16 @@ export function HealthDataIntegrationScreen({
 
   return (
     <AdaptiveColumns
-      primary={page}
+      primary={
+        // The adaptive panel can be narrower than the shared scene. Measure before extending.
+        <View
+          onLayout={event => setOwnerWidth(event.nativeEvent.layout.width)}
+          style={styles.scroll}
+          testID="health-data-scroll-lane"
+        >
+          {page}
+        </View>
+      }
       routeKey="settings-health-data"
       testID="health-data-layout"
     />

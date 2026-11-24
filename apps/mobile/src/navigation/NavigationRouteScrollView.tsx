@@ -20,6 +20,7 @@ import {
   useNavigationRouteRefreshHost,
 } from './navigationRouteRefresh';
 import { useNavigationContentInset } from './useNavigationContentInset';
+import { useNavigationEdgeVerticalScroll } from './navigationEdgeScroll';
 
 interface NavigationRouteScrollPosition {
   readonly preserve: () => void;
@@ -52,6 +53,9 @@ export function NavigationRouteScrollView({
 }) {
   const refresh = useNavigationRouteRefreshHost();
   const navigationInset = useNavigationContentInset();
+  const edge = useNavigationEdgeVerticalScroll({
+    trailingPadding: navigationInset.paddingRight,
+  });
   const scrollViewRef = useRef<ComponentRef<typeof ScrollView> | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const scrollHolds = useRef(new Set<symbol>());
@@ -117,7 +121,12 @@ export function NavigationRouteScrollView({
         <ScrollView
           ref={scrollViewRef}
           automaticallyAdjustKeyboardInsets
-          contentContainerStyle={[styles.content, navigationInset]}
+          {...edge.indicatorProps}
+          contentContainerStyle={[
+            styles.content,
+            navigationInset,
+            edge.contentStyle,
+          ]}
           keyboardShouldPersistTaps="handled"
           onScroll={updateCurrentOffset}
           refreshControl={
@@ -131,7 +140,7 @@ export function NavigationRouteScrollView({
           }
           scrollEnabled={scrollEnabled}
           scrollEventThrottle={16}
-          style={styles.fill}
+          style={[styles.fill, edge.scrollViewStyle]}
           testID={testID}
         >
           {children}

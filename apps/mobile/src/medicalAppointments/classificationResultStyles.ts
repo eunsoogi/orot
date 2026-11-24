@@ -3,13 +3,15 @@ import { appColors } from '../layout/appColors';
 import { classificationEdgeTarget } from './ClassificationEdgeAction';
 import { classificationResultRowBottomInset } from './useClassificationResultGroupTop';
 
+export const classificationResultMaxWidth = 520;
+
 export const classificationResultStyles = StyleSheet.create({
   fill: { flex: 1, minHeight: 0, width: '100%' },
   list: {
     position: 'absolute',
     bottom: 0,
     width: '100%',
-    maxWidth: 520,
+    maxWidth: classificationResultMaxWidth,
     alignSelf: 'center',
   },
   sideList: { position: 'absolute', right: 0 },
@@ -20,7 +22,7 @@ export const classificationResultStyles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     flexDirection: 'row',
-    maxWidth: 520,
+    maxWidth: classificationResultMaxWidth,
     width: '100%',
   },
   compactAction: {

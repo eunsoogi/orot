@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import {
   useCallback,
   useEffect,
@@ -6,8 +5,9 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
+  type ComponentRef,
 } from 'react';
-import type { ComponentRef } from 'react';
 import { ScrollView, View, useWindowDimensions } from 'react-native';
 import type { HostInstance, ViewStyle } from 'react-native';
 import { resolveAdaptiveColumns } from '../layout/adaptiveColumnsPlan';
@@ -21,6 +21,7 @@ import { ConversationHistoryListPane } from './ConversationHistoryListPane';
 import { ConversationHistoryPreview } from './ConversationHistoryPreview';
 import type { ConversationSession } from './conversationSessions';
 import type { ConversationHistoryRow } from './ConversationHistoryScreen';
+import { useHistoryPageEdgeScroll } from './useConversationOwnedEdgeScroll';
 
 /** Measures this screen's usable parent so Duo panels honor the actual native regions. */
 export function ConversationHistoryLayout({
@@ -52,6 +53,7 @@ export function ConversationHistoryLayout({
   const occlusion = useNavigationOcclusion();
   const geometry = useNavigationGeometry();
   const inset = useNavigationContentInset();
+  const edge = useHistoryPageEdgeScroll();
   const hostRef = useRef<HostInstance | null>(null);
   const pageRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const pageOffset = useRef(0);
@@ -64,7 +66,6 @@ export function ConversationHistoryLayout({
   const measureHost = useCallback(() => {
     const host = hostRef.current;
     if (!host) return;
-
     // The native sensor reports window coordinates, so measure this same route-owned host.
     host.measureInWindow((x, _y, nextWidth) => {
       if (!Number.isFinite(x) || !Number.isFinite(nextWidth) || nextWidth <= 0)
@@ -185,14 +186,13 @@ export function ConversationHistoryLayout({
     // Use the existing guarded return route rather than creating another chat.
     onBack();
   };
-
   return (
-    <View style={[styles.screen, inset]} testID="conversation-history-screen">
+    <View style={[styles.screen, inset]} {...edge.hostProps}>
       {/* A single page moves the header, native rows, and selected preview together. */}
       <ScrollView
         ref={pageRef}
         testID="conversation-history-page"
-        contentContainerStyle={styles.pageContent}
+        {...edge.scrollProps}
         keyboardShouldPersistTaps="handled"
         scrollEventThrottle={16}
         onScroll={event => {
