@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { ScrollView, Text } from 'react-native';
+import { ConversationComposer } from '../ConversationComposer';
 import { ConversationHistory } from '../ConversationHistory';
 import { trackJumpLatestMotion } from '../testSupport/jumpLatestMotion';
 import { FloatingComposerSurface } from '../FloatingComposerSurface';
@@ -101,3 +102,65 @@ test.each([true, false])(
     expect(jump()).toBeNull();
   },
 );
+
+test('the above-field hit target floats over only passive padding and still uses the history jump', async () => {
+  const move = jest.spyOn(ScrollView.prototype, 'scrollTo');
+  const scenario = (status = '') => (
+    <FloatingComposerSurface
+      composer={
+        <ConversationComposer
+          value="Synthetic multiline text"
+          busy={false}
+          onChangeText={jest.fn()}
+          onSend={jest.fn()}
+          onCancel={jest.fn()}
+          status={status}
+        />
+      }
+    >
+      <ConversationHistory {...props} />
+    </FloatingComposerSurface>
+  );
+  const view = await render(scenario());
+  const measured = (id: string, frame: { y: number; height: number }) =>
+    fireEvent(screen.getByTestId(id), 'layout', {
+      nativeEvent: { layout: { x: 0, width: 300, ...frame } },
+    });
+  const overlayId = 'conversation-floating-composer-overlay';
+  const frameId = 'rag-conversation-composer';
+  const fieldId = 'rag-conversation-composer-field';
+  const position = () =>
+    screen.getByTestId('conversation-jump-latest-position');
+  await layout(400);
+  await scroll(100);
+  await measured(overlayId, { y: 0, height: 168 });
+  await measured(frameId, { y: 0, height: 168 });
+  await measured(fieldId, { y: 16, height: 120 });
+  expect(position()).toHaveStyle({ bottom: 152 });
+  expect(jump()).toHaveStyle({ width: 44, height: 44 });
+  const overlay = screen.getByTestId(overlayId);
+  const siblings = overlay.parent!.children;
+  expect(position().parent).toBe(overlay.parent);
+  expect(siblings.indexOf(position())).toBeGreaterThan(
+    siblings.indexOf(overlay),
+  );
+  expect(history().props.contentContainerStyle).toMatchObject({
+    paddingBottom: 188,
+  });
+
+  await view.rerender(scenario('A protected status row'));
+  await measured(overlayId, { y: 0, height: 248 });
+  await measured(fieldId, { y: 96, height: 120 });
+  expect(position()).toHaveStyle({ bottom: 248 });
+  expect(screen.getByText('A protected status row')).toBeVisible();
+
+  await view.rerender(scenario());
+  await measured(frameId, { y: 44, height: 168 });
+  await measured(fieldId, { y: 16, height: 120 });
+  await measured(overlayId, { y: 0, height: 212 });
+  expect(position()).toHaveStyle({ bottom: 212 });
+
+  await fireEvent.press(jump()!);
+  expect(move).toHaveBeenLastCalledWith({ y: 600, animated: true });
+  expect(jump()).toBeNull();
+});

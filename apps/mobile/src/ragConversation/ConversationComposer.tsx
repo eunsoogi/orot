@@ -12,6 +12,7 @@ import { appColors } from '../layout/appColors';
 import { useNavigationContentInset } from '../navigation/useNavigationContentInset';
 import { ComposerGlassBackground } from './ComposerGlassBackground';
 import { ComposerInlineActionContext } from './ComposerInlineAction';
+import { ComposerField, ComposerFrame } from './ComposerField';
 import { ConversationGlassAction } from './ConversationGlassAction';
 import {
   ConversationPhotoAttachment,
@@ -74,7 +75,6 @@ export function ConversationComposer({
     readonly onRemove: () => void;
   };
 }) {
-  // Fixed controls need a small visual gap, not the larger scroll-content gutter.
   // The hook still preserves every authoritative navigation and system reservation.
   const navigationInset = useNavigationContentInset(compact ? 0 : 4);
   const copy = getRagConversationCopy();
@@ -186,7 +186,7 @@ export function ConversationComposer({
     </>
   );
   return (
-    <View
+    <ComposerFrame
       style={[
         styles.composerArea,
         compact && styles.compactComposerArea,
@@ -222,9 +222,10 @@ export function ConversationComposer({
           {preflightError}
         </Text>
       ) : null}
-      <View
-        style={styles.composerField}
-        testID="rag-conversation-composer-field"
+      <ComposerField
+        occupied={Boolean(
+          stopping || status || steeringControls || preflightError,
+        )}
       >
         <ComposerGlassBackground testID="rag-conversation-composer-glass" />
         {photo ? (
@@ -238,12 +239,12 @@ export function ConversationComposer({
         ) : (
           <View style={styles.composerRow}>{controls}</View>
         )}
-      </View>
+      </ComposerField>
       {!compact ? (
         <Text style={[styles.disclaimer, styles.composerDisclaimer]}>
           {copy.disclaimer}
         </Text>
       ) : null}
-    </View>
+    </ComposerFrame>
   );
 }
