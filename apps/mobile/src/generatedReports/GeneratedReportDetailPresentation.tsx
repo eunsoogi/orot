@@ -6,6 +6,8 @@ import { AppText } from '../layout/AppText';
 import { appColors } from '../layout/appColors';
 import { NavigationMotionContext } from '../navigation/NavigationMotionContext';
 import { GeneratedReportBookmarkAction } from './GeneratedReportBookmarkAction';
+import { t } from '../i18n';
+import type { SavedArchivedCitation } from '../ragConversation/savedArchivedCitations';
 import { GeneratedReportContent } from './GeneratedReportContent';
 import { generatedReportCopy } from './text';
 import type {
@@ -45,6 +47,7 @@ export function GeneratedReportDetailPresentation({
   onRetry,
   isCurrent,
   onOpenCitation,
+  sourceOpenFailed,
 }: {
   readonly row: GeneratedReportRow;
   readonly state: GeneratedReportDetailPresentationState;
@@ -52,7 +55,9 @@ export function GeneratedReportDetailPresentation({
   readonly isCurrent: () => boolean;
   readonly onOpenCitation?: (
     selection: GeneratedReportCitationSelection,
+    citation: SavedArchivedCitation,
   ) => void;
+  readonly sourceOpenFailed?: boolean;
 }) {
   const reduceMotion = useContext(NavigationMotionContext);
   const created = new Date(row.createdAt);
@@ -92,11 +97,16 @@ export function GeneratedReportDetailPresentation({
               detail={state.detail}
               onOpenCitation={
                 onOpenCitation &&
-                (selection => {
-                  if (isCurrent()) onOpenCitation(selection);
+                ((selection, citation) => {
+                  if (isCurrent()) onOpenCitation(selection, citation);
                 })
               }
             />
+            {sourceOpenFailed ? (
+              <AppText accessibilityRole="alert" style={styles.statusTitle}>
+                {t('ragConversation.conversation.sourceOpenFailed')}
+              </AppText>
+            ) : null}
           </View>
           {state.detail.bookmarkOriginal ? (
             <View style={styles.actions}>

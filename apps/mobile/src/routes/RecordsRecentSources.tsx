@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { appColors } from '../layout/appColors';
 import { RecordsRecentSourceEntry } from './RecordsRecentSourceEntry';
 import { RecordsRecentSourceState } from './RecordsRecentSourceState';
+import type { RecentMaterialReadyLease } from '../generatedReports/certifiedRecentMaterialPage';
 import type { GeneratedReportRow } from '../generatedReports/types';
 import type { NavigationRouteOwnership } from '../navigation/navigationRouteContracts';
 import type { RecordsTabAuthority } from './useAppRootTab';
@@ -34,6 +35,7 @@ export interface RecordsRecentSourcesProps {
   readonly active?: boolean;
   readonly ownership?: NavigationRouteOwnership;
   readonly tabAuthority?: RecordsTabAuthority;
+  readonly recentMaterialReadyLease?: RecentMaterialReadyLease;
 }
 
 /** Renders actual local activity in one grouped timeline while preserving each existing destination. */

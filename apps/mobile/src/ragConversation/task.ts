@@ -227,6 +227,7 @@ function allowsOrdinaryA2UI({ context }: TaskResponderInput) {
   if (Array.isArray(context)) return true;
   return (
     isObject(context) &&
+    !context.suppressA2UIPresentation &&
     !context.photoAttachment &&
     !context.targetEvidenceId &&
     (!context.intent || context.intent === 'conversation')

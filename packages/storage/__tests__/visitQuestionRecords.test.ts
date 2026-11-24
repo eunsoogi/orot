@@ -1,3 +1,4 @@
+import { rewindBeforeMemoryMetadata } from './historicalMigrationSupport';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -149,7 +150,7 @@ describe('official visit-question records', () => {
         await connection.database.execute(
           "INSERT INTO daily_report_heads VALUES ('identity', 'run', 1, 0)",
         );
-        await connection.database.execute(`PRAGMA user_version = ${version}`);
+        await rewindBeforeMemoryMetadata(connection.database, version);
         connection.close();
         connection = openSqliteTestDatabase(path) as typeof connection;
         const original = connection.database;

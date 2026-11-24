@@ -5,6 +5,7 @@ import {
   type NavigationContentFrame,
 } from '../../navigation/navigationContentFrame';
 import { NavigationOcclusionContext } from '../../navigation/useNavigationContentInset';
+import AppointmentsScreen from '../../appointments/AppointmentsScreen';
 import CalendarLinkingScreen from '../CalendarLinkingScreen';
 import { bridge, repository } from '../calendarLinkingTestFixtures';
 
@@ -43,6 +44,12 @@ it.each(['right', 'bottom'] as const)(
       </NavigationContentFrameContext.Provider>,
     );
     const scroll = screen.getByTestId('calendar-screen');
+    expect(StyleSheet.flatten(scroll.props.style)?.marginRight).toBe(
+      placement === 'right' ? -84 : undefined,
+    );
+    expect(
+      StyleSheet.flatten(scroll.props.contentContainerStyle).paddingRight,
+    ).toBe(placement === 'right' ? 104 : undefined);
     expect(
       StyleSheet.flatten(scroll.props.contentContainerStyle).paddingBottom,
     ).toBe(Math.max(overlap, 34) + 16);
@@ -51,3 +58,43 @@ it.each(['right', 'bottom'] as const)(
     ).toBeUndefined();
   },
 );
+
+it('only lends the rail to the active full-route appointment owner', async () => {
+  const store = repository(async () => []);
+  const tree = (fullNavigationLane: boolean, active = true) => (
+    <NavigationContentFrameContext.Provider value={frame}>
+      <AppointmentsScreen
+        repository={store}
+        fullNavigationLane={fullNavigationLane}
+        active={active}
+      />
+    </NavigationContentFrameContext.Provider>
+  );
+  const screen = await render(tree(false));
+  const scroll = screen.getByTestId('appointments-scroll');
+  expect(StyleSheet.flatten(scroll.props.style).marginRight).toBeUndefined();
+  await screen.rerender(tree(true));
+  expect(screen.getByTestId('appointments-scroll')).toBe(scroll);
+  expect(StyleSheet.flatten(scroll.props.style).marginRight).toBe(-84);
+  expect(
+    StyleSheet.flatten(scroll.props.contentContainerStyle).paddingRight,
+  ).toBe(104);
+  expect(scroll.props.keyboardDismissMode).toBe('interactive');
+  await screen.rerender(tree(true, false));
+  expect(StyleSheet.flatten(scroll.props.style).marginRight).toBeUndefined();
+});
+
+it('does not add a vertical scroller when the Records hub owns it', async () => {
+  const screen = await render(
+    <NavigationContentFrameContext.Provider value={frame}>
+      <CalendarLinkingScreen
+        adaptiveScheduleLayout
+        embeddedInHubScroll
+        bridge={bridge()}
+        repository={repository(async () => [])}
+      />
+    </NavigationContentFrameContext.Provider>,
+  );
+  expect(screen.queryByTestId('calendar-screen')).toBeNull();
+  expect(screen.getByTestId('calendar-title')).toBeOnTheScreen();
+});

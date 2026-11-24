@@ -144,6 +144,16 @@ export function conversationCompletedAnswer(input: {
               outcome.a2uiPresentation
                 ? { a2uiPresentation: outcome.a2uiPresentation }
                 : {}),
+              ...(input.retainedTurnId &&
+              outcome.committedRecordingCitations?.target.turnId ===
+                input.retainedTurnId
+                ? {
+                    archivedCitationTarget:
+                      outcome.committedRecordingCitations.target,
+                    savedCitations:
+                      outcome.committedRecordingCitations.citations,
+                  }
+                : {}),
               healthSources: outcome.healthSources,
               healthSummary: outcome.healthSummary,
               visitQuestions: outcome.visitQuestions,

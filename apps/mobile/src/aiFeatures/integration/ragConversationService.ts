@@ -10,6 +10,7 @@ import { executionOptions } from './featureServiceExecution';
 import * as background from './conversationBackgroundProvider';
 import { operationRunId } from './featureRunIdentity';
 import { createConversationToolBundle } from './conversationToolBundle';
+import { isolateSelectedRecordingTurn } from './selectedRecordingConversation';
 import { withProviderStage } from '../../providers/diagnostics';
 import { ragConversationFailure } from './ragConversationFailure';
 import { createConversationRetentionBridge } from './conversationRetentionBridge';
@@ -21,17 +22,17 @@ import * as voiceSelection from './conversationVoiceSelection';
 import { prepareConversationPhoto as preparePhoto } from './conversationPhotoService';
 import * as targets from './conversationEntryTargets';
 import { conversationExternalEvidence } from './conversationExternalEvidence';
-export function createRagConversationService({
-  consent: consentPort,
-  queryConsent: queryConsentPort,
-  externalEvidence,
-  loadLocalData,
-  selectedAi,
-  registry,
-  ragRunner,
-  createOperationRunId,
-  resolveDailyReport,
-}: RagConversationServiceDependencies) {
+export function createRagConversationService(
+  deps: RagConversationServiceDependencies,
+) {
+  const {
+    consent: consentPort,
+    loadLocalData,
+    selectedAi,
+    registry,
+    ragRunner,
+    createOperationRunId,
+  } = deps;
   async function sendRagMessage(
     question: string,
     previousMessages: readonly RagConversationMessage[],
@@ -46,15 +47,14 @@ export function createRagConversationService({
     const linked = background.scope(parentSignal, observer);
     const signal = linked.controller.signal;
     const consent = background.consent(consentPort, observer);
-    const queryConsent = background.consent(queryConsentPort, observer);
+    const queryConsent = background.consent(deps.queryConsent, observer);
     let opening: ReturnType<typeof start> | undefined;
     let stage: 'selection' | 'data' | 'workflow' = 'data';
     try {
       const target = await targets.resolveConversationTargets({
+        ...deps,
         context: entryContext,
-        loadLocalData,
-        resolveDailyReport,
-        registry,
+        resolveDailyReport: deps.resolveDailyReport,
         signal,
       });
       if (target.failure)
@@ -110,11 +110,10 @@ export function createRagConversationService({
           { entry: entryContext, hasPhoto: !!photo },
         );
       const external = conversationExternalEvidence({
+        ...deps,
         selected,
         consent,
         queryConsent,
-        externalEvidence,
-        loadLocalData,
         observer,
         researchInputs,
         owner: history.recoveredOwnerIsCurrent,
@@ -245,5 +244,6 @@ export function createRagConversationService({
       linked.dispose();
     }
   }
-  return run.observeConversationReceiptTiming(sendRagMessage);
+  const dispatch = isolateSelectedRecordingTurn(deps, sendRagMessage);
+  return run.observeConversationReceiptTiming(dispatch);
 }

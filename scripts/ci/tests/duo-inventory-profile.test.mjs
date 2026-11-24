@@ -92,6 +92,8 @@ test('Duo remains opt-in with its exact native test inventory', () => {
     'OrotUITests/ScheduleCalendarUITests/testLargeTextKeepsScheduleConfirmationReachable';
   const appointmentsReflow =
     'OrotUITests/AppointmentsUITests/testAppointmentSelectionDetailsReflowAcrossDuoGeometry';
+  const appointmentOuterEdge =
+    'OrotUITests/AppointmentsUITests/testAppAppointmentOuterEdgeKeepsScrollAndRailBack';
   const classificationReflow =
     'OrotUITests/AppointmentConsentUITests/testDisclosureBlocksProviderUntilApprovalAndNeverSavesFailedClassification';
   const manualAppointmentReflow =
@@ -103,7 +105,7 @@ test('Duo remains opt-in with its exact native test inventory', () => {
   const providerSelectionTests = iosTestInventory('provider-selection');
   const speechTests = iosTestInventory('speech');
   // Keep Duo-only cohorts explicit so the exact inventory cannot drift silently.
-  assert.equal(duoInventory.length, 67);
+  assert.equal(duoInventory.length, 68);
   assert.deepEqual(duoInventory, [
     'OrotUITests/ChartConsumerAcceptanceUITests/testHomeLargeTextChartValuesRemainReachable',
     'OrotUITests/DailyReportEntryUITests/testSavedReportAndFollowUpFitPortraitDuoAtLargeTextInBothAppearances',
@@ -136,6 +138,7 @@ test('Duo remains opt-in with its exact native test inventory', () => {
     scheduleReflow,
     scheduleLargeText,
     appointmentsReflow,
+    appointmentOuterEdge,
     'OrotUITests/AppointmentsUITests/testSavedAppointmentIdentitySurvivesAppearanceEditAndRestart',
     classificationReflow,
     'OrotUITests/AppointmentConsentUITests/testClassificationReturnsThroughScheduleToHome',
