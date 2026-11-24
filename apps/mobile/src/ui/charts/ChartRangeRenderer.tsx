@@ -1,5 +1,4 @@
 import Svg, { Circle, G, Line, Rect, Text as SvgText } from 'react-native-svg';
-import { groupedRangeTicks } from './groupedRangeTicks';
 import { chartRangeGeometry } from './chartRangeGeometry';
 import {
   formatChartTick,
@@ -48,16 +47,6 @@ export function ChartRangeRenderer({
   const axisLabelWidth = width >= 10 * fontSize ? 3.8 * fontSize : 0;
   const plot = chartRangeGeometry(series, width, height, axis, axisLabelWidth);
   if (!plot) return null;
-  const groupedTicks =
-    axis === 'day'
-      ? groupedRangeTicks(
-          series,
-          width - axisLabelWidth,
-          fontSize,
-          plot.first,
-          plot.last,
-        )
-      : undefined;
   return (
     <Svg width={width} height={height} testID="chart-range-plot">
       {plot.valueTicks.map(tick => (
@@ -153,47 +142,32 @@ export function ChartRangeRenderer({
             </SvgText>
           ))
         : null}
-      {groupedTicks?.map(({ label, x }) => (
+      {plot.ticks.map(at => (
         <SvgText
-          key={label}
-          testID="chart-grouped-range-tick"
-          accessibilityLabel={label}
-          x={x}
+          key={at}
+          x={
+            plot.first === plot.last
+              ? width / 2
+              : at === plot.first
+                ? 8
+                : width - 8
+          }
           y={height - 5}
-          textAnchor="middle"
+          textAnchor={
+            plot.first === plot.last
+              ? 'middle'
+              : at === plot.first
+                ? 'start'
+                : 'end'
+          }
           fill={labels}
           fontSize={fontSize}
         >
-          {label}
+          {axis === 'day'
+            ? formatChartTick(new Date(at).toISOString().slice(0, 10), 'day')
+            : formatChartTimeTick(at)}
         </SvgText>
       ))}
-      {!groupedTicks &&
-        plot.ticks.map(at => (
-          <SvgText
-            key={at}
-            x={
-              plot.first === plot.last
-                ? width / 2
-                : at === plot.first
-                  ? 8
-                  : width - 8
-            }
-            y={height - 5}
-            textAnchor={
-              plot.first === plot.last
-                ? 'middle'
-                : at === plot.first
-                  ? 'start'
-                  : 'end'
-            }
-            fill={labels}
-            fontSize={fontSize}
-          >
-            {axis === 'day'
-              ? formatChartTick(new Date(at).toISOString().slice(0, 10), 'day')
-              : formatChartTimeTick(at)}
-          </SvgText>
-        ))}
     </Svg>
   );
 }
