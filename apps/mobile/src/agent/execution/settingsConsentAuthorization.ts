@@ -97,13 +97,17 @@ export function createSettingsConsentAuthorization(input: {
           isCurrent: owner.isCurrent,
           subscribeInvalidation: owner.subscribeInvalidation,
         };
-        const grant = await input.readGrant(captured.slot, captured.domain);
+        const slot = captured.slot;
+        // The dedicated Live companion cannot authorize a generic model request.
+        if (slot === 'voice-responses-health-context')
+          return 'renewal_required';
+        const grant = await input.readGrant(slot, captured.domain);
         if (
           !grant ||
           input.catalogVersion !== SETTINGS_CONSENT_CATALOG_VERSION ||
           !grant.permissions.every(permission =>
             isCatalogDomainPermission(
-              captured.slot,
+              slot,
               captured.domain,
               permission,
               captured.identity.providerId,

@@ -1,18 +1,19 @@
+import type { bindCanonicalLiveHealthRun } from './bindCanonicalLiveHealthRun';
 import {
   createVoiceStopReceipts,
   type CaptureVoiceEndReceipt,
 } from './voiceStopReceipts';
+import type { RealtimeToolRequest } from './realtimeToolRequests';
 import type {
-  RealtimeToolNative,
-  RealtimeToolRequest,
-} from './realtimeToolRequests';
+  NativeRealtimeVoice,
+  RealtimeTranscript,
+} from './nativeRealtimeVoiceTypes';
 import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import {
   captureObservedVoiceCloseAuthority,
   splitLiveVoiceClose,
 } from './observedVoiceCaptions';
 import type { VoicePhase } from './voiceTurn';
-import type { Preferences } from '../voiceSettings/liveVoicePreferences';
 import {
   hasLiveVoiceRuntime,
   hasRealtimeVoiceRuntime,
@@ -24,35 +25,10 @@ export { nativeLiveManagedTools } from './nativeLiveManagedTools';
 const pendingCleanup = createVoiceStopReceipts();
 const openingCalls = new Map<string, { cancelled: boolean }>();
 
-export interface RealtimeTranscript {
-  callId: string;
-  itemId: string;
-  role: 'user' | 'assistant';
-  text: string;
-}
-export interface NativeRealtimeVoice {
-  open(
-    id: string,
-    model: string,
-    key: string,
-    language: string,
-    enableTools?: boolean,
-    preferences?: Preferences,
-    isCurrent?: () => boolean,
-  ): Promise<void>;
-  tools?: RealtimeToolNative;
-  stop(id: string, graceful?: boolean): Promise<void>;
-  pause(id: string): Promise<void>;
-  resume(id: string): Promise<void>;
-  interrupt(id: string): Promise<void>;
-  onState(listener: (id: string, phase: VoicePhase) => void): () => void;
-  onTranscript(listener: (event: RealtimeTranscript) => void): () => void;
-  onSystemCall?(
-    listener: (callId: string, active: boolean) => void,
-  ): () => void;
-  onPaused?(listener: (id: string) => void): () => void;
-  onInterrupted(listener: (id: string) => void): () => void;
-}
+export type {
+  NativeRealtimeVoice,
+  RealtimeTranscript,
+} from './nativeRealtimeVoiceTypes';
 
 /** Only transcripts/status cross the event bridge; native code owns PCM and transport. */
 export function nativeRealtimeVoice(): NativeRealtimeVoice | null {
@@ -65,17 +41,28 @@ export type LiveResponsesGrantIdentity = Readonly<{
   generation: string;
 }>;
 
+type CanonicalRegistration = NonNullable<
+  ReturnType<typeof bindCanonicalLiveHealthRun>
+>['registration'];
+
 export function nativeLiveVoice(
   captureEnd?: CaptureVoiceEndReceipt,
   responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
+  canonicalRegistration?: (callId: string) => CanonicalRegistration | undefined,
 ): NativeRealtimeVoice | null {
-  return nativeOwnedVoice(true, captureEnd, responsesGrant);
+  return nativeOwnedVoice(
+    true,
+    captureEnd,
+    responsesGrant,
+    canonicalRegistration,
+  );
 }
 
 function nativeOwnedVoice(
   live: boolean,
   captureEnd?: CaptureVoiceEndReceipt,
   responsesGrant?: (callId: string) => LiveResponsesGrantIdentity | null,
+  canonicalRegistration?: (callId: string) => CanonicalRegistration | undefined,
 ): NativeRealtimeVoice | null {
   const module =
     Platform.OS === 'ios' ? NativeModules.VoiceRealtimeModule : null;
@@ -149,7 +136,9 @@ function nativeOwnedVoice(
           await module.openLiveCall(id, model, key, {
             language: 'auto',
             voice: preferences.voice,
-            ...(grant ? { responsesGrant: grant } : {}),
+            ...(grant
+              ? { responsesGrant: grant, ...canonicalRegistration?.(id) }
+              : {}),
           });
         } else {
           await module.openRealtimeCall(id, model, key, language, enableTools);

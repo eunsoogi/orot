@@ -2,11 +2,24 @@ import Foundation
 
 /// No database, credentials, tool arguments or output bytes cross this fence.
 final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
+    enum ResultKind: Equatable {
+        case aggregate
+        case canonicalHealth
+
+        func allows(_ output: String) -> Bool {
+            switch self {
+            case .aggregate: (1 ... 2048).contains(output.utf8.count)
+            case .canonicalHealth: RealtimeVoiceCanonicalHealthAdmission.validResult(output)
+            }
+        }
+    }
+
     final class Ticket: @unchecked Sendable {
         private enum Phase { case pending, claimed, output, finished, retired }
         private let lock = NSLock()
         let call: String
         let challenge: String
+        let resultKind: ResultKind
         private var phase = Phase.pending
         private struct Resolver: @unchecked Sendable { let call: (Bool) -> Void }
         private var completion: Resolver?
@@ -14,9 +27,10 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
         private var deadline: DispatchWorkItem?
         private var deadlineAt: DispatchTime?
 
-        init(call: String, challenge: String) {
+        fileprivate init(call: String, challenge: String, resultKind: ResultKind) {
             self.call = call
             self.challenge = challenge
+            self.resultKind = resultKind
         }
 
         func claim() -> Bool {
@@ -101,7 +115,23 @@ final class LiveNativeResultDispatchAuthority: @unchecked Sendable {
     private var current: Ticket?
 
     func begin(call: String, challenge: String) -> Ticket {
-        let next = Ticket(call: call, challenge: challenge)
+        install(call: call, challenge: challenge, resultKind: .aggregate)
+    }
+
+    func beginCanonicalHealth(
+        call: String,
+        challenge: String,
+        admission: RealtimeVoiceCanonicalHealthAdmission,
+        base: LiveResponsesSettingsGrant,
+        key: String,
+        read: (String, String) -> [String: Any]?,
+    ) -> Ticket? {
+        guard admission.current(base: base, key: key, read: read) else { return nil }
+        return install(call: call, challenge: challenge, resultKind: .canonicalHealth)
+    }
+
+    private func install(call: String, challenge: String, resultKind: ResultKind) -> Ticket {
+        let next = Ticket(call: call, challenge: challenge, resultKind: resultKind)
         lock.lock()
         let old = current
         current = next

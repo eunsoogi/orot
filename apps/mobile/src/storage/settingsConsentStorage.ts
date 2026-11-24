@@ -21,6 +21,7 @@ export const settingsConsentSlots = [
   'calendar',
   'voice',
   'voice-responses',
+  'voice-responses-health-context',
 ] as const;
 export type SettingsConsentSlot = (typeof settingsConsentSlots)[number];
 export type SettingsConsentDomain = 'model' | 'public-web' | 'medical-search';

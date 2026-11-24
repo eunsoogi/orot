@@ -42,7 +42,9 @@ export async function saveModelSettingsConsent(input: {
   signal: AbortSignal;
   isCurrent: () => boolean;
 }) {
-  if (input.slot === 'voice-responses')
+  const slot = input.slot;
+  // The companion grant is never an ordinary model-settings grant.
+  if (slot === 'voice-responses' || slot === 'voice-responses-health-context')
     throw new Error('Use explicit Live Responses settings');
   // Only the explicit model-settings action can commit this exact Live media grant.
   if (
@@ -120,7 +122,7 @@ export async function saveModelSettingsConsent(input: {
         credentialEpoch: credential.epoch,
       },
       permissions: settingsPermissionsForFeature(
-        input.slot,
+        slot,
         input.selection.providerId,
         photoApproved,
       ),

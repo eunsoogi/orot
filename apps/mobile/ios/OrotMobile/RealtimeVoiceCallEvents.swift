@@ -134,9 +134,11 @@ struct LiveResponsesAdmission {
         let query: String?
         let topic: String?
         let days: Int?
+        let canonicalArguments: String?
 
         init(owner: Owner, delegationID: String, responseID: String, functionID: String,
-             name: String, query: String? = nil, topic: String? = nil, days: Int? = nil)
+             name: String, query: String? = nil, topic: String? = nil, days: Int? = nil,
+             canonicalArguments: String? = nil)
         {
             self.owner = owner
             self.delegationID = delegationID
@@ -144,6 +146,7 @@ struct LiveResponsesAdmission {
             self.functionID = functionID
             self.name = name
             self.query = query; self.topic = topic; self.days = days
+            self.canonicalArguments = canonicalArguments
         }
     }
 
@@ -157,6 +160,8 @@ struct LiveResponsesAdmission {
     let mayDisclose: (Request, String) -> Bool
     var dispatchTicket: ((Request, String) -> LiveNativeResultDispatchAuthority.Ticket?)?
     var retireDispatch: (() -> Void)?
+    // Constructed by the separate native companion mailbox; no fallback schema.
+    var canonicalConfiguration: (() -> [String: Any]?)?
 
     static func validAggregate(_ output: String, days: Int?) -> Bool {
         guard output.utf8.count <= 512,
@@ -179,6 +184,9 @@ struct LiveResponsesAdmission {
     func configuration() -> [String: Any]? {
         guard backendAllowed(), ["gpt-6-luna", "gpt-6-sol"].contains(backendModel),
               RealtimeVoiceToolLease.validID(functionName) else { return nil }
+        if functionName == RealtimeVoiceCanonicalHealthAdmission.name {
+            return canonicalConfiguration?()
+        }
         let reviewedMemory = functionName == "orot_reviewed_memory"
         let properties: [String: Any] = reviewedMemory
             ? ["query": ["type": "string", "minLength": 1, "maxLength": 1000]] : [:]

@@ -15,6 +15,7 @@ export function nativeLiveManagedTools() {
     return null;
   const events = new NativeEventEmitter(module);
   return {
+    canonicalAvailable: module.supportsCanonicalHealthContextV2 === true,
     holdDelivery(
       call: LiveManagedHealthCall,
       beforeDispatch: (retire: () => void) => (() => void) | undefined,
@@ -77,7 +78,10 @@ export function nativeLiveManagedTools() {
               'responseId',
               'delegationId',
             ].every(key => valid((value as Record<string, unknown>)[key])) &&
-            (value as LiveManagedHealthCall).name === 'orot_health_context' &&
+            ((value as LiveManagedHealthCall).name === 'orot_health_context' ||
+              (module.supportsCanonicalHealthContextV2 === true &&
+                (value as LiveManagedHealthCall).name ===
+                  'local-health-context')) &&
             typeof (value as LiveManagedHealthCall).args === 'string'
           )
             handle(value as LiveManagedHealthCall);

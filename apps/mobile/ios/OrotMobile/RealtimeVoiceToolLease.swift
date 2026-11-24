@@ -129,7 +129,7 @@ final class LiveQueuedToolPermit {
                       item["type"] as? String == "function_call_output",
                       let call = item["call_id"] as? String, RealtimeVoiceToolLease.validID(call),
                       calls.insert(call).inserted,
-                      let value = item["output"] as? String, (1 ... 2048).contains(value.utf8.count)
+                      let value = item["output"] as? String, (ticket?.resultKind ?? .aggregate).allows(value)
                 else { return nil }
             }
             guard let data = try? JSONSerialization.data(withJSONObject: frame),
