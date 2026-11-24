@@ -161,6 +161,8 @@ export const ragConversationKo = {
   'ragConversation.conversation.retrySave': '답변 저장 다시 시도',
   'ragConversation.conversation.unsavedAnswersRemain':
     '저장하지 못한 답변이 남아 있어요.',
+  'ragConversation.conversation.recordingSelectorClarification':
+    '어느 녹음인지 확인할 수 있게 녹음 시각을 시간대와 함께 보내 주세요. 예: 2026-01-01T09:00:00+09:00',
   'ragConversation.conversation.answerSaveFailed': '답변을 저장하지 못했어요.',
   'ragConversation.conversation.answerSaveSourceUnavailable':
     '원본을 확인할 수 없어 답변을 저장하지 못했어요.',

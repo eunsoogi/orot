@@ -23,7 +23,7 @@ export type PrivateOutcome<TResult> =
   | {
       readonly status: 'needs_clarification';
       readonly reason: string;
-      /** Only task validation supplies display copy; other clarifications remain generic. */
+      readonly clarification?: 'recording_selector_required';
       readonly message?: string;
       readonly providerErrorCode?: ProviderErrorCode;
       readonly coverage?: EvidenceBatch['coverage'];

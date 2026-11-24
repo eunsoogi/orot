@@ -10,7 +10,6 @@ import {
   type ProviderResult,
 } from '@orot/model-runtime';
 import type {
-  AppleCancellationSignal,
   AppleFoundationModelsNativeBridge,
   AppleGenerationOptions,
   AppleModelAvailability,
@@ -23,6 +22,12 @@ import {
   unavailableFailure,
   validateRequest,
 } from './helpers';
+import {
+  runAppleNativeHandoff,
+  beganAppleNativeStream,
+  refusedAppleHandoff,
+} from './nativeHandoff';
+import { textUpdate } from './streamTextUpdate';
 import { AppleToolLifetime } from './toolLifetime';
 
 export const APPLE_PROVIDER_ID = 'apple-foundation-models';
@@ -66,7 +71,6 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
     const invalid = validateRequest(request);
     if (invalid) return providerFailure(invalid);
     if (options.signal?.aborted) throw abortError();
-
     let availability: AppleModelAvailability;
     try {
       availability = await this.native.getAvailability();
@@ -79,7 +83,7 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
     if (options.signal?.aborted) throw abortError();
 
     const requestId = this.nextRequestId();
-    return this.generateCancellable(request, requestId, options.signal);
+    return this.generateCancellable(request, requestId, options);
   }
 
   async *stream(
@@ -109,17 +113,26 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
     const requestId = this.nextRequestId();
     let text = '';
     let completed = false;
+    let startedNative = false;
     let cancelled = false;
     const cancel = () => {
       if (cancelled) return;
       cancelled = true;
-      this.native.cancel(requestId);
+      if (startedNative) this.native.cancel(requestId);
     };
     options.signal?.addEventListener('abort', cancel);
     let finishTools: ReturnType<AppleToolLifetime['begin']> | undefined;
     try {
       finishTools = this.toolLifetime.begin(request, options.signal);
-      for await (const packet of this.native.stream(request, requestId)) {
+      const started = await runAppleNativeHandoff(options, () => {
+        startedNative = true;
+        return beganAppleNativeStream(this.native.stream(request, requestId));
+      });
+      if (!started) {
+        yield refusedAppleHandoff();
+        return;
+      }
+      for await (const packet of started.value) {
         if (options.signal?.aborted) throw abortError();
         const result = this.streamPacket(packet);
         if (result.text !== undefined) {
@@ -168,8 +181,9 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
   private async generateCancellable(
     request: LanguageModelRequest,
     requestId: string,
-    signal?: AppleCancellationSignal,
+    options: AppleGenerationOptions,
   ): Promise<ProviderResult<LanguageModelResponse>> {
+    const { signal } = options;
     let cancelListener: (() => void) | undefined;
     let cancelled = false;
     let rejectAbort: ((error: Error) => void) | undefined;
@@ -187,12 +201,14 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
     let finishTools: ReturnType<AppleToolLifetime['begin']> | undefined;
     try {
       finishTools = this.toolLifetime.begin(request, signal);
-      signal?.addEventListener('abort', cancelListener);
-      if (signal?.aborted) {
-        cancelListener();
-        await aborted;
-      }
-      const result = this.native.generate(request, requestId);
+      const began = await runAppleNativeHandoff(options, () => {
+        if (signal?.aborted) throw abortError();
+        signal?.addEventListener('abort', cancelListener!);
+        return this.native.generate(request, requestId);
+      });
+      if (!began && signal?.aborted) throw abortError();
+      if (!began) return refusedAppleHandoff();
+      const result = began.value;
       const response = signal
         ? await Promise.race([result, aborted as Promise<never>])
         : await result;
@@ -231,20 +247,4 @@ export class AppleFoundationModelsProvider implements LanguageModelProvider {
     requestSequence += 1;
     return this.id + '-' + requestSequence;
   }
-}
-
-/** Keep append-only text compact while preserving structured-stream corrections as replacement snapshots. */
-function textUpdate(
-  previous: string,
-  current: string,
-):
-  | Extract<LanguageModelStreamEvent, { type: 'text_delta' }>
-  | Extract<LanguageModelStreamEvent, { type: 'text_snapshot' }>
-  | undefined {
-  if (current === previous) return undefined;
-  if (current.startsWith(previous)) {
-    const text = current.slice(previous.length);
-    return text ? { type: 'text_delta', text } : undefined;
-  }
-  return { type: 'text_snapshot', text: current };
 }

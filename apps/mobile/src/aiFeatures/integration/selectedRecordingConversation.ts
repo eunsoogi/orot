@@ -1,13 +1,15 @@
+import { APPLE_PROVIDER_ID } from '@orot/provider-apple';
+import {
+  recordingSelectionRecipient,
+  sameRecordingRecipient,
+} from './recordingSelectionRecipient';
+import type { HoldRecordingTime } from './selectedRecordingTimestampProof';
+import { isolateSelectedRecordingTurnWith } from './selectedRecordingReply';
 import { bindSelectedRecordingArchive } from './selectedRecordingArchiveScope';
 import { LocalEvidenceReferenceRegistry } from './evidenceRegistry';
 import { privateEvidenceRagForTurn } from './privateEvidenceRag';
 import { projectSavedArchivedCitations } from '../../ragConversation/savedArchivedCitations';
 import { currentRecordingProtection } from '../../ragConversation/conversationRecordingPickerPage';
-import {
-  consent as scopedConsent,
-  scope,
-} from './conversationBackgroundProvider';
-import { ragConversationFailure } from './ragConversationFailure';
 import type { RagConversationObserver } from '../../ragConversation/conversationObserver';
 import { emptyConversationSnapshot } from './conversationEntryTargets';
 import type { RagConversationServiceDependencies } from './ragConversationServiceDependencies';
@@ -23,31 +25,53 @@ import { finishRagConversation } from './finishRagConversation';
 import { executionOptions } from './featureServiceExecution';
 import { operationRunId } from './featureRunIdentity';
 
-type Ports = Pick<
+export type SelectedRecordingPorts = Pick<
   RagConversationServiceDependencies,
   'selectedAi' | 'loadLocalData' | 'ragRunner' | 'createOperationRunId'
 >;
 
 /** An attachment authorizes only its live evidence scope, not other saved records or external search. */
 async function runSelectedRecordingConversation(
-  input: Ports & {
+  input: SelectedRecordingPorts & {
     question: string;
+    submittedQuestion?: string;
     observer: RagConversationObserver;
     attachment: NonNullable<
       RagConversationObserver['selectedRecordingTranscript']
     >;
     consent: RagConversationServiceDependencies['consent'];
     signal: AbortSignal;
+    holdTimestamp?: HoldRecordingTime;
+    recipient?: import('../../ragConversation/conversationRecordingClarification').RecordingRecipient;
   },
 ): ReturnType<RagConversationServiceDependencies['ragRunner']> {
   const { signal, observer, attachment, question } = input;
+  // A timestamp reply may add a database await immediately before transport;
+  // require the real revocation subscription on this new remote route.
+  if (
+    input.recipient?.remoteProcessing &&
+    (!input.consent.isAuthorizationCurrent ||
+      !input.consent.subscribeAuthorizationInvalidation)
+  )
+    return { status: 'failure', kind: 'consent_required' };
   const registry = new LocalEvidenceReferenceRegistry();
   const current = () =>
     !signal.aborted &&
     attachment.isCurrent() &&
     observer.expectedConversationModel?.isCurrent?.() !== false;
-  const protectedCurrent = async () =>
-    current() && (await currentRecordingProtection()) && current();
+  const protectedCurrent = async () => {
+    const witness = await input.holdTimestamp?.();
+    try {
+      return (
+        current() &&
+        (await currentRecordingProtection()) &&
+        current() &&
+        (!input.holdTimestamp || witness?.current() === true)
+      );
+    } finally {
+      witness?.dispose();
+    }
+  };
   const failure = () => ({
     status: 'failure' as const,
     kind: signal.aborted ? ('cancelled' as const) : ('stale_evidence' as const),
@@ -57,13 +81,26 @@ async function runSelectedRecordingConversation(
     const resolved = await input.selectedAi();
     const provider = guardSelectedRecordingProvider(
       resolved.provider,
-      protectedCurrent,
-      current,
+      currentRecordingProtection,
+      () =>
+        current() &&
+        (!input.holdTimestamp ||
+          resolved.provider.id !== APPLE_PROVIDER_ID ||
+          resolved.onDeviceSelectionWitness?.isCurrent() === true),
+      input.holdTimestamp,
     );
     return { ...resolved, provider, option: { ...resolved.option, provider } };
   });
   if (!(await protectedCurrent())) return failure();
-  if (!selected) return { status: 'failure', kind: 'consent_required' };
+  if (
+    !selected ||
+    (input.recipient &&
+      !sameRecordingRecipient(
+        input.recipient,
+        recordingSelectionRecipient(selected),
+      ))
+  )
+    return { status: 'failure', kind: 'consent_required' };
   const local = await input.loadLocalData();
   const data = {
     ...local,
@@ -120,7 +157,7 @@ async function runSelectedRecordingConversation(
         }),
     },
     registry,
-    question,
+    question: input.submittedQuestion ?? question,
     providerId: selected.provider.id,
     modelId: selected.modelId,
     signal,
@@ -177,42 +214,10 @@ async function runSelectedRecordingConversation(
     : finished;
 }
 
-/** Route only app-owned selections through the isolated graph; never retry them as generic sends. */
-export function isolateSelectedRecordingTurn(
-  dependencies: Ports & Pick<RagConversationServiceDependencies, 'consent'>,
-  ordinary: Parameters<
-    typeof import('./conversationRunOptions').observeConversationReceiptTiming
-  >[0],
-): typeof ordinary {
-  return async (question, previous, signal, observer, entry) => {
-    const attachment = observer?.selectedRecordingTranscript;
-    if (!attachment || !observer)
-      return ordinary(question, previous, signal, observer, entry);
-    const request = question.trim();
-    if (!request || request.length > 1000 || observer.photoInput)
-      return { status: 'failure', kind: 'validation_failed' };
-    const linked = scope(signal, observer);
-    const revoke = () => linked.controller.abort();
-    attachment.signal.addEventListener('abort', revoke, { once: true });
-    if (attachment.signal.aborted) revoke();
-    try {
-      return await runSelectedRecordingConversation({
-        ...dependencies,
-        question: request,
-        observer,
-        attachment,
-        signal: linked.controller.signal,
-        consent: scopedConsent(dependencies.consent, observer),
-      });
-    } catch (error) {
-      return ragConversationFailure(
-        error,
-        linked.controller.signal,
-        'workflow',
-      );
-    } finally {
-      attachment.signal.removeEventListener('abort', revoke);
-      linked.dispose();
-    }
-  };
-}
+export type SelectedRecordingRunner = typeof runSelectedRecordingConversation;
+
+export const isolateSelectedRecordingTurn =
+  isolateSelectedRecordingTurnWith.bind(
+    undefined,
+    runSelectedRecordingConversation,
+  );

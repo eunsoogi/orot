@@ -1,3 +1,10 @@
+import { recordingClarificationForLiveTurn } from './conversationRecordingClarification';
+import { currentRecordingProtection } from './conversationRecordingPickerPage';
+import {
+  subscribeLocalDataClear,
+  subscribeLocalSourceDeletion,
+} from '../storage/localDataClearEvents';
+import { conversationExecutionNative } from './conversationExecutionNative';
 import { stageDailyReportMemory } from './conversationDailyReportMemoryJobs';
 import { AppState } from 'react-native';
 import type { createConversationTurnActivity } from './conversationTurnActivity';
@@ -73,7 +80,44 @@ export function liveConversationObservers(
     owner.activeSelection?.(id) === reportSelection;
   const execution = owner.lifetime.executionObserver(controller);
   const saveLocalClarification = retained?.completeLocalClarification;
+  const scope = owner.conversationScope(id);
+  const lease = owner.retention?.activeLease(id);
+  const recordingClarification = recordingClarificationForLiveTurn(owner, id, {
+    question: request.question,
+    key: lease
+      ? JSON.stringify([scope, lease.id, lease.version, reportSelection])
+      : undefined,
+    current: () =>
+      current() &&
+      !controller.signal.aborted &&
+      ownsReportSelection() &&
+      AppState.currentState === 'active' &&
+      !photoInput &&
+      !session.entryIntent &&
+      !session.dailyReport &&
+      owner.conversationScope(id) === scope &&
+      owner.retention?.activeLease(id)?.id === lease?.id &&
+      owner.retention?.activeLease(id)?.version === lease?.version,
+    protectedCurrent: currentRecordingProtection,
+    subscribeInvalidation(invalidate) {
+      const app = AppState.addEventListener('change', state => {
+        if (state !== 'active') invalidate();
+      });
+      const native = conversationExecutionNative()?.subscribe(event => {
+        if (event.kind === 'protectedData' && !event.available) invalidate();
+      });
+      const clear = subscribeLocalDataClear(invalidate);
+      const deleteSource = subscribeLocalSourceDeletion(invalidate);
+      return () => {
+        app.remove();
+        native?.();
+        clear();
+        deleteSource();
+      };
+    },
+  });
   return {
+    recordingClarification,
     ...(retained && recovery
       ? (memory?.wrap(retained, recovery) ?? recovery)
       : {}),

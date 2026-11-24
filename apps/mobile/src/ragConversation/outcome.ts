@@ -46,7 +46,10 @@ export type RagConversationOutcome =
       >;
       readonly visitQuestions?: import('./conversationVisitQuestions').ConversationVisitQuestions;
     }
-  | { readonly status: 'insufficient'; readonly guidance?: 'visit_goal' }
+  | {
+      readonly status: 'insufficient';
+      readonly guidance?: 'visit_goal' | 'recording_selector';
+    }
   | {
       readonly status: 'failure';
       readonly kind: RagConversationFailureKind;
@@ -105,6 +108,8 @@ export function failureFromWorkflow(
 
   switch (result.status) {
     case 'needs_clarification':
+      if (result.clarification === 'recording_selector_required')
+        return { status: 'insufficient', guidance: 'recording_selector' };
       return result.message === 'No current evidence is available.'
         ? { status: 'no_evidence' }
         : { status: 'insufficient' };

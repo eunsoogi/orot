@@ -9,6 +9,7 @@ export type {
   AppleCancellationSignal,
   AppleFoundationModelsNativeBridge,
   AppleGenerationOptions,
+  AppleNativeHandoffFence,
   AppleModelAvailability,
   AppleNativeStreamPacket,
 } from './types';

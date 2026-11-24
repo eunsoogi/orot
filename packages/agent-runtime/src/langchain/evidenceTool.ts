@@ -30,6 +30,7 @@ type SearchFailure = {
   readonly status:
     | 'budget_exceeded'
     | 'consent_required'
+    | 'recording_selector_required'
     | 'cancelled'
     | 'invalid_input'
     | 'invalid_output'
@@ -190,10 +191,19 @@ export function createLangChainEvidenceTool(
         if (observed.kind === 'error') return failure('unavailable');
         const batch = observed.value;
         // External adapters retain their separate query-consent port and run it before networking.
-        if ('status' in batch)
-          return failure(
-            batch.status === 'consent_required' ? 'consent_required' : 'invalid_output',
-          );
+        if ('status' in batch) {
+          // Accept only a bare clarification from the existing local recording tool.
+          const status = batch.status;
+          if (status === 'consent_required') return failure(status);
+          const recordingClarification =
+            status === 'recording_selector_required' &&
+            domain.id === 'local-saved-recording-transcript' &&
+            domain.sourceKind === 'personal_record' &&
+            domain.execution === 'local_read_only' &&
+            Reflect.ownKeys(batch).length === 1 &&
+            Object.prototype.hasOwnProperty.call(batch, 'status');
+          return failure(recordingClarification ? status : 'invalid_output');
+        }
         if (
           reserved.executionLimits !== 'unbounded' &&
           utf8ByteLength(canonicalJson(batch)) > reserved.maxPayloadBytes

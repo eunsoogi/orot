@@ -1,6 +1,8 @@
 import { createConversationArtifactStorage } from '../../../storage/conversationArtifactStorage';
 import { createRecordRepository, runMigrations } from '@orot/storage';
 import { createLocalQueryProbeFixtures } from '../../../../e2e/localRecordQueryProbeFixtures';
+import type { SqlDatabase } from '@orot/storage';
+import { openInterleavableRecentSourceDatabase } from '../../../storage/testSupport/interleavableRecentSourceDatabase';
 import { createHealthEvidenceTestDatabase } from '../../../healthEvidence/localEvidenceTestSupport';
 import { createLocalEvidenceData } from '../../../healthEvidence/localEvidenceData';
 import { createLocalHealthEvidenceRepository } from '../../../healthEvidence/localEvidenceRepository';
@@ -14,10 +16,14 @@ export async function withRecordings(
     data: AiFeatureLocalData,
     correct: () => Promise<void>,
     storage: ReturnType<typeof createConversationArtifactStorage>,
+    database: SqlDatabase,
   ) => Promise<void>,
   omitSelectedTranscript = false,
+  useProtectedReadEpoch = false,
 ) {
-  const { database, close } = createHealthEvidenceTestDatabase();
+  const { database, close } = useProtectedReadEpoch
+    ? openInterleavableRecentSourceDatabase()
+    : createHealthEvidenceTestDatabase();
   try {
     await runMigrations(database);
     const writer = createRecordRepository(database);
@@ -78,6 +84,7 @@ export async function withRecordings(
           );
       },
       createConversationArtifactStorage(database),
+      database,
     );
   } finally {
     close();

@@ -145,7 +145,9 @@ export interface PhotoModelInput {
   readonly consent: ExecutionConsentPort;
 }
 
-export type EvidenceSearchOutcome = EvidenceBatch | { readonly status: 'consent_required' };
+/** The selected recording tool may ask again without exposing whether a record exists. */
+export type EvidenceSearchOutcome =
+  EvidenceBatch | { readonly status: 'consent_required' | 'recording_selector_required' };
 
 export interface ExternalMedicalQueryConsentRequest {
   readonly operationRunId: string;

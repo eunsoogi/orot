@@ -86,6 +86,19 @@ export function createSearchNodes<TResult>(context: RuntimeContext<TResult>) {
         canceled(context, searched.value.providerStop ?? toolProviderStop(tool));
         return completeState();
       }
+      if (searched.value.status === 'recording_selector_required') {
+        // End this turn before another provider call; never serialize a recording selection.
+        context.researchInput = undefined;
+        context.pendingNativeToolCallId = undefined;
+        context.nativeToolMessages = undefined;
+        stop(context, 'A specific saved recording is required.');
+        context.outcome = {
+          status: 'needs_clarification',
+          reason: 'A specific saved recording is required.',
+          clarification: 'recording_selector_required',
+        };
+        return completeState();
+      }
       if (searched.value.status !== 'result') {
         stop(
           context,

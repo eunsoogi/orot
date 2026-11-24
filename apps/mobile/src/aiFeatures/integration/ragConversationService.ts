@@ -236,6 +236,7 @@ export function createRagConversationService(
         retention,
         signal,
         reportIsCurrent: report?.isCurrent,
+        recordingSelection: selected,
       });
     } catch (error) {
       return ragConversationFailure(error, signal, stage);
