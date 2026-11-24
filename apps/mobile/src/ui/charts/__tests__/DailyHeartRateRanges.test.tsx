@@ -71,7 +71,7 @@ test.each(['restingHeartRate', 'walkingHeartRate'] as const)(
     });
     expect(plot.props.accessibilityLabel).toContain(day(1));
     expect(plot.props.accessibilityLabel).toContain(
-      '최저 60회/분, 최고 90회/분, 평균 68회/분',
+      '최저 60 BPM, 최고 90 BPM, 평균 67 BPM',
     );
     expect(screen.queryByText(/2~3일 단위/)).toBeNull();
   },
@@ -130,7 +130,7 @@ test('Records combines same-day observations only within their exact source', as
     'health-record-chart-values-resting_heart_rate-plot',
   );
   expect(plot.props.accessibilityLabel).toContain(
-    '최저 60회/분, 최고 89회/분, 평균 67회/분',
+    '최저 60 BPM, 최고 89 BPM, 평균 67 BPM',
   );
-  expect(plot.props.accessibilityLabel).not.toContain('최고 100회/분');
+  expect(plot.props.accessibilityLabel).not.toContain('최고 100 BPM');
 });

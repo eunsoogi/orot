@@ -1,3 +1,7 @@
+import {
+  formatHeartRateBpm,
+  isHeartRateDisplayUnit,
+} from '../../i18n/heartRateDisplay';
 import { formatHealthDuration } from '../../i18n/healthDuration';
 import {
   formatDate,
@@ -35,27 +39,26 @@ export function formatChartValue(
   metric: ChartMetric,
   value: number,
   unit: string,
-  presentation?: ChartPresentation,
 ): string {
+  if (metric === 'heartRate' && isHeartRateDisplayUnit(unit))
+    return formatHeartRateBpm(value);
   const duration = formatHealthDuration(metric, value, unit);
   if (duration !== undefined) return duration;
-  const amount = formatNumber(
-    value,
-    usesWholeBpm(metric, unit, presentation)
-      ? { maximumFractionDigits: 0 }
-      : { maximumSignificantDigits: 21 },
-  );
+  const amount = formatNumber(value, { maximumSignificantDigits: 21 });
   if (metric === 'sleep' && unit === 'min')
     return `${amount}${t('overview.metricUnit.minutes')}`;
-  if (metric === 'heartRate' && unit === 'count/min')
-    return `${amount}${t('overview.metricUnit.countPerMinute')}`;
   if (metric === 'steps' && unit === 'count')
     return `${amount}${t('overview.metricUnit.steps')}`;
   return unit ? `${amount} ${unit}` : amount;
 }
 
-export function formatRangeAxisValue(value: number, wholeBpm: boolean): string {
-  return formatNumber(value, { maximumFractionDigits: wholeBpm ? 0 : 1 });
+export function formatRangeAxisValue(
+  value: number,
+  heartRateBpm: boolean,
+): string {
+  return heartRateBpm
+    ? formatHeartRateBpm(value)
+    : formatNumber(value, { maximumFractionDigits: 1 });
 }
 
 export function usesWholeBpm(
@@ -79,10 +82,9 @@ export function formatChartPointValue(
   presentation?: ChartPresentation,
 ): string {
   if (point.value === null) return t('chart.missing');
-  if (!point.range)
-    return formatChartValue(metric, point.value, unit, presentation);
+  if (!point.range) return formatChartValue(metric, point.value, unit);
   if (!validChartRangePoint(point)) return t('chart.missing');
-  const value = (n: number) => formatChartValue(metric, n, unit, presentation);
+  const value = (n: number) => formatChartValue(metric, n, unit);
   if (
     usesWholeBpm(metric, unit, presentation) &&
     point.range.samples > 1 &&
@@ -95,7 +97,7 @@ export function formatChartPointValue(
         minimum: value(point.range.minimum),
         maximum: value(point.range.maximum),
         mean: value(
-          usesWholeBpm(metric, unit, presentation)
+          metric === 'heartRate' && isHeartRateDisplayUnit(unit)
             ? point.value
             : Math.round(point.value * 10) / 10,
         ),

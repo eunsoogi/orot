@@ -30,6 +30,7 @@ export function ChartRangeRenderer({
   offsetY,
   onSelect,
   wholeBpm = false,
+  heartRateBpm = false,
 }: {
   series: readonly ChartSeries[];
   axis: ChartAxis;
@@ -44,9 +45,11 @@ export function ChartRangeRenderer({
   offsetY: number;
   onSelect?: ChartBucketSelect;
   wholeBpm?: boolean;
+  heartRateBpm?: boolean;
 }) {
   // Keep scale labels away from range strokes; compact widths still expose exact values to AX.
-  const axisLabelWidth = width >= 10 * fontSize ? 3.8 * fontSize : 0;
+  const axisLabelWidth =
+    width >= 10 * fontSize ? (heartRateBpm ? 5.2 : 3.8) * fontSize : 0;
   const plot = chartRangeGeometry(
     series,
     width,
@@ -147,7 +150,7 @@ export function ChartRangeRenderer({
               fill={labels}
               fontSize={fontSize}
             >
-              {formatRangeAxisValue(tick.value, wholeBpm)}
+              {formatRangeAxisValue(tick.value, heartRateBpm)}
             </SvgText>
           ))
         : null}
