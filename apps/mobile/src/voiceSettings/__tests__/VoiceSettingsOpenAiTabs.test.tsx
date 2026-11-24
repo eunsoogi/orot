@@ -6,7 +6,11 @@ import {
   within,
 } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
-import { providerSettingsStyles } from '../../layout/providerSettingsPresentation';
+import {
+  providerCatalogContentInset,
+  providerSettingsStyles,
+} from '../../layout/providerSettingsPresentation';
+import { t } from '../../i18n';
 import { VoiceSettingsPanel } from '../VoiceSettingsPanel';
 import { VoiceSettingsDockFixture } from '../testSupport/VoiceSettingsDockFixture';
 import { voiceSettingsStore } from '../voiceSettingsStore';
@@ -212,6 +216,7 @@ test('the OpenAI catalog card contains all refreshed voice controls', async () =
   expect(inside.getByTestId('voice-account-details')).toBeVisible();
   const refresh = inside.getByTestId('voice-model-refresh');
   expect(inside.queryByTestId('openai-voice-pair-form')).toBeNull();
+  expect(inside.queryByText(t('modelSettings.modelListNotice'))).toBeNull();
   expect(voiceSettingsStore.discoverModels).not.toHaveBeenCalled();
   await waitFor(() => expect(refresh).toBeEnabled());
   await fireEvent.press(refresh);
@@ -219,4 +224,13 @@ test('the OpenAI catalog card contains all refreshed voice controls', async () =
   expect(await inside.findByTestId('live-voice-language')).toBeVisible();
   expect(inside.getByTestId('live-voice-voice')).toBeVisible();
   expect(inside.getByTestId('voice-tool-model-gpt-6-sol')).toBeVisible();
+  const footer = inside.getByText(t('modelSettings.modelListNotice'));
+  expect(footer).toBeVisible();
+  expect(footer.props.accessibilityRole).toBe('status');
+  expect(footer.props.numberOfLines).toBeUndefined();
+  expect(StyleSheet.flatten(footer.props.style)).toMatchObject({
+    paddingHorizontal: providerCatalogContentInset,
+    paddingTop: 4,
+    paddingBottom: providerCatalogContentInset,
+  });
 });
