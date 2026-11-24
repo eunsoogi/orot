@@ -1,3 +1,4 @@
+// These legacy protected-original tests enter the internal owner, not the image-only composer.
 import {
   act,
   fireEvent,
@@ -31,7 +32,7 @@ jest.mock('../ConversationSavedRecaps', () => ({
   ConversationSavedRecaps: () => null,
 }));
 
-test('the real screen selects without sending and keeps its photo with its session', async () => {
+test('legacy prepared originals stay scoped to their owner without sending', async () => {
   let store!: ConversationSessions;
   const onSend = jest.fn();
   function Screen() {
@@ -54,7 +55,7 @@ test('the real screen selects without sending and keeps its photo with its sessi
     screen.getByTestId('rag-conversation-input'),
     '합성 질문',
   );
-  await fireEvent.press(screen.getByRole('button', { name: '사진 첨부' }));
+  await act(() => store.photoDrafts.select(store.getSnapshot().activeId));
   await waitFor(() =>
     expect(screen.getByTestId('conversation-photo-preview')).toBeTruthy(),
   );
@@ -99,15 +100,17 @@ test('the other session enables its picker when a pending picker is cancelled', 
       <Screen />
     </ConversationSessionsProvider>,
   );
-  await fireEvent.press(screen.getByRole('button', { name: '사진 첨부' }));
+  let selection!: ReturnType<typeof store.photoDrafts.select>;
+  await act(() => {
+    selection = store.photoDrafts.select(store.getSnapshot().activeId);
+  });
   await act(() => store.create());
-  expect(screen.getByRole('button', { name: '사진 첨부' })).toBeDisabled();
+  expect(store.photoDrafts.isPicking()).toBe(true);
   await act(async () => {
     finish(null);
+    await selection;
   });
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: '사진 첨부' })).toBeEnabled(),
-  );
+  await waitFor(() => expect(store.photoDrafts.isPicking()).toBe(false));
   await view.unmount();
 });
 
@@ -129,7 +132,7 @@ test('a photo remains available for undo and is retired when that undo is replac
     </ConversationSessionsProvider>,
   );
   const first = store.getSnapshot().activeId;
-  await fireEvent.press(screen.getByRole('button', { name: '사진 첨부' }));
+  await act(() => store.photoDrafts.select(store.getSnapshot().activeId));
   await waitFor(() =>
     expect(screen.getByTestId('conversation-photo-preview')).toBeTruthy(),
   );
@@ -176,7 +179,10 @@ test('a picker result arriving after session finalization is retired', async () 
   const first = store.getSnapshot().activeId;
   const discard = jest.mocked(medicalDocumentImportService.discardDocument);
   discard.mockClear();
-  await fireEvent.press(screen.getByRole('button', { name: '사진 첨부' }));
+  let selection!: ReturnType<typeof store.photoDrafts.select>;
+  await act(() => {
+    selection = store.photoDrafts.select(store.getSnapshot().activeId);
+  });
   await act(() => store.remove(first));
   await act(() => store.remove(store.getSnapshot().activeId));
   await act(async () => {
@@ -186,6 +192,7 @@ test('a picker result arriving after session finalization is retired', async () 
       contentHash: `sha256:${'a'.repeat(64)}`,
       sections: [],
     });
+    await selection;
   });
   await waitFor(() =>
     expect(discard).toHaveBeenCalledWith(

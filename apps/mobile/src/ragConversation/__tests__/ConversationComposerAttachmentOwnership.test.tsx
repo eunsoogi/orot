@@ -90,7 +90,7 @@ test('only one attachment owns the composer and removing it restores other actio
       screen.getByRole('button', { name: '선택한 녹음 제거' }),
     );
     expect(photo()).toBeEnabled();
-    expect(textOnly()).toBeTruthy();
+    expect(textOnly()).toBeNull();
     expect(send).not.toHaveBeenCalled();
     expect(ports.grant).not.toHaveBeenCalled();
     expect(fixture.start).not.toHaveBeenCalled();
