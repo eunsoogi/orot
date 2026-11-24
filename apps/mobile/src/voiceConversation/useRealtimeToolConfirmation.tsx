@@ -86,16 +86,16 @@ export function useRealtimeToolConfirmation(inline = false) {
     <>
       <AppText accessibilityRole="header" style={styles.title}>
         {request.use === 'live-local-read'
-          ? '이 건강 기록을 조회할까요?'
+          ? t('realtimeToolConsent.liveReadTitle')
           : request.use === 'live-outbound-result'
-            ? '이 집계 결과를 AI에 보낼까요?'
+            ? t('realtimeToolConsent.liveResultTitle')
             : t('realtimeToolConsent.title')}
       </AppText>
       <AppText style={styles.label}>
         {request.use === 'live-local-read'
-          ? '조회할 항목과 기간'
+          ? t('realtimeToolConsent.liveReadLabel')
           : request.use === 'live-outbound-result'
-            ? '전송할 내용'
+            ? t('realtimeToolConsent.liveResultLabel')
             : t('realtimeToolConsent.recognized')}
       </AppText>
       <AppText
@@ -121,10 +121,7 @@ export function useRealtimeToolConfirmation(inline = false) {
         </>
       )}
       {request.use === 'live-local-read' && (
-        <AppText>
-          지금은 기기에서 조회만 해요. 전송 전에는 결과를 보여드리고 다시
-          확인해요.
-        </AppText>
+        <AppText>{t('realtimeToolConsent.liveReadBoundary')}</AppText>
       )}
       <View style={styles.footer}>
         <AppButton

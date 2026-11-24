@@ -55,7 +55,7 @@ export function LiveResponsesSettingsPanel({
     setBusy(false);
     setFailed(false);
     let unsubscribe: (() => void) | undefined;
-    void loadLiveResponsesSettings().then(value => {
+    loadLiveResponsesSettings().then(value => {
       if (owner.signal.aborted) return;
       setStatus(value.kind);
       if (value.kind === 'active') {
@@ -189,7 +189,9 @@ export function LiveResponsesSettingsPanel({
               draft === saved ||
               !allowedModels.includes(draft)
             }
-            onPress={() => void change(true)}
+            onPress={() => {
+              change(true);
+            }}
           />
         </>
       ) : null}
@@ -202,7 +204,9 @@ export function LiveResponsesSettingsPanel({
           title={t('modelSettings.liveResponsesDisable')}
           testID="live-responses-disable"
           disabled={busy}
-          onPress={() => void change(false)}
+          onPress={() => {
+            change(false);
+          }}
         />
       ) : null}
       {(status === 'unavailable' || failed) && (

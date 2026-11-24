@@ -1,5 +1,5 @@
-import Foundation
 import CoreFoundation
+import Foundation
 import Security
 
 /// Only an owned, unexpired Live session may activate capture or play media.
@@ -73,7 +73,8 @@ extension RealtimeVoiceCall {
     func receiveManagedResponses(_ event: [String: Any]) {
         guard let bridge = managedResponses else { return }
         guard let callID = id, let sessionID = liveSessionID, let epoch = liveSocketEpoch,
-              ready, !paused, token != nil, foreground(), liveIsCurrent() else {
+              ready, !paused, token != nil, foreground(), liveIsCurrent()
+        else {
             retireManagedResponses()
             return
         }
@@ -112,7 +113,8 @@ struct LiveResponsesAdmission {
         let days: Int?
 
         init(owner: Owner, delegationID: String, responseID: String, functionID: String,
-             name: String, query: String? = nil, topic: String? = nil, days: Int? = nil) {
+             name: String, query: String? = nil, topic: String? = nil, days: Int? = nil)
+        {
             self.owner = owner
             self.delegationID = delegationID
             self.responseID = responseID
@@ -128,7 +130,7 @@ struct LiveResponsesAdmission {
     let mayRun: (Request) -> Bool
     let approve: ([Request], @escaping (Bool) -> Void) -> (() -> Void)
     let execute: (Request, @escaping (String?) -> Void) -> (() -> Void)
-    // Read-only check of a separate exact current-result grant, including at transport handoff.
+    /// Read-only check of a separate exact current-result grant, including at transport handoff.
     let mayDisclose: (Request, String) -> Bool
 
     static func validAggregate(_ output: String, days: Int?) -> Bool {
@@ -188,7 +190,7 @@ struct LiveResponsesSettingsGrant {
               let model = object["backendModel"], ["gpt-6-luna", "gpt-6-sol"].contains(model),
               let generation = object["generation"], Self.valid(generation),
               let grantID = object["grantID"], grantID == generation + "-model" else { return nil }
-        self.backendModel = model; self.grantID = grantID; self.generation = generation
+        backendModel = model; self.grantID = grantID; self.generation = generation
     }
 
     func isCurrent(key: String, read: (String, String) -> [String: Any]? = LiveResponsesSettingsGrant.read) -> Bool {
@@ -210,7 +212,7 @@ struct LiveResponsesSettingsGrant {
     }
 
     private static func valid(_ value: String) -> Bool {
-        value.utf8.count == 64 && value.utf8.allSatisfy { (48...57).contains($0) || (97...102).contains($0) }
+        value.utf8.count == 64 && value.utf8.allSatisfy { (48 ... 57).contains($0) || (97 ... 102).contains($0) }
     }
 
     private static func read(_ service: String, _ account: String) -> [String: Any]? {
@@ -230,7 +232,7 @@ extension LiveResponsesToolBridge {
         if tool == "orot_health_context" {
             guard object.count == 2, let topic = object["topic"] as? String, LiveResponsesAdmission.healthTopics.contains(topic),
                   let raw = object["days"] as? NSNumber, CFGetTypeID(raw) != CFBooleanGetTypeID(),
-                  let days = object["days"] as? Int, (3...31).contains(days) else { return nil }
+                  let days = object["days"] as? Int, (3 ... 31).contains(days) else { return nil }
             return ["topic": topic, "days": days]
         }
         guard tool == "orot_reviewed_memory" else { return object.isEmpty ? object : nil }

@@ -50,50 +50,6 @@ extension RealtimeVoiceCall {
     }
 }
 
-/// An exact approved tool batch, retained only by its current socket queue.
-final class LiveQueuedToolPermit {
-    private let current: () -> Bool
-    private var retired = false
-    var issued = false
-
-    init(current: @escaping () -> Bool) { self.current = current }
-
-    /// A failed check is permanent, even if settings later return to the same values.
-    func authorizeHandoff() -> Bool {
-        guard !retired, current() else { retired = true; return false }
-        return !retired
-    }
-
-    /// Permit only the Live Responses output envelope and a single final continuation.
-    /// This is not user approval; the native owner must separately approve these exact bytes.
-    func prepare(_ frames: [[String: Any]]) -> [RealtimeSocketWrite]? {
-        guard (2 ... 9).contains(frames.count), authorizeHandoff() else { return nil }
-        var calls = Set<String>()
-        var events = Set<UUID>()
-        var writes: [RealtimeSocketWrite] = []
-        for (index, frame) in frames.enumerated() {
-            guard let type = frame["type"] as? String,
-                  let eventID = frame["event_id"] as? String, let command = UUID(uuidString: eventID),
-                  events.insert(command).inserted else { return nil }
-            if index == frames.count - 1 {
-                guard type == "response.create", frame.count == 2 else { return nil }
-            } else {
-                guard type == "response.item.create", frame.count == 3,
-                      let item = frame["item"] as? [String: Any], item.count == 3,
-                      item["type"] as? String == "function_call_output",
-                      let call = item["call_id"] as? String, RealtimeVoiceToolLease.validID(call),
-                      calls.insert(call).inserted,
-                      let value = item["output"] as? String, (1 ... 2048).contains(value.utf8.count)
-                else { return nil }
-            }
-            guard let data = try? JSONSerialization.data(withJSONObject: frame),
-                  let text = String(data: data, encoding: .utf8) else { return nil }
-            writes.append(RealtimeSocketWrite(text: text, isInput: false, permit: self))
-        }
-        return writes
-    }
-}
-
 /// A bounded batch of calls to one registered parameterless app tool. Do not guess how to
 /// continue incomplete or ambiguous work; no old Realtime event enables this port.
 final class LiveResponsesToolBridge {
@@ -124,7 +80,8 @@ final class LiveResponsesToolBridge {
     }
 
     func receive(_ envelope: [String: Any], owner: Owner, current: @escaping () -> Bool,
-                 send: @escaping ([[String: Any]], @escaping () -> Bool) -> Void) {
+                 send: @escaping ([[String: Any]], @escaping () -> Bool) -> Void)
+    {
         guard !retired, current(), admission.backendAllowed() else { retire(); return }
         guard self.owner == nil || self.owner == owner else { retire(); return }
         self.owner = owner
@@ -139,7 +96,9 @@ final class LiveResponsesToolBridge {
                   RealtimeVoiceToolLease.validID(responseID), let offset = envelope["offset_ms"] as? Int,
                   offset >= 0 else { return }
             if let delegation {
-                if delegation.id != delegationID || delegation.response != responseID { retire() }
+                if delegation.id != delegationID || delegation.response != responseID {
+                    retire()
+                }
             } else {
                 delegation = (delegationID, responseID, offset)
             }
@@ -148,13 +107,15 @@ final class LiveResponsesToolBridge {
         guard let delegation else { return }
         // New speech can revoke this local operation, never authorize it or cancel server work.
         if envelope["type"] as? String == "session.input_transcript.delta",
-           let start = envelope["start_ms"] as? Int, start > delegation.offset {
+           let start = envelope["start_ms"] as? Int, start > delegation.offset
+        {
             retire(); return
         }
         // Even an early creation event for a different delegation can make unscoped
         // response.create unsafe; do not wait for a second event to retire this owner.
         if envelope["type"] as? String == "response.event", envelope["delegation_id"] as? String != delegation.id,
-           (envelope["event"] as? [String: Any])?["type"] as? String == "response.created" {
+           (envelope["event"] as? [String: Any])?["type"] as? String == "response.created"
+        {
             retire(); return
         }
         guard !spent, envelope["type"] as? String == "response.event",
@@ -169,7 +130,9 @@ final class LiveResponsesToolBridge {
         guard created else { return }
         if type == "response.output_item.done", let item = event["item"] as? [String: Any] {
             // The admitted session registers exactly one function, no hosted/custom tools.
-            if item["type"] as? String == "message" || item["type"] as? String == "reasoning" { return }
+            if item["type"] as? String == "message" || item["type"] as? String == "reasoning" {
+                return
+            }
             guard item["type"] as? String == "function_call", let name = item["name"] as? String,
                   name == admission.functionName, let functionID = item["call_id"] as? String,
                   RealtimeVoiceToolLease.validID(functionID), let arguments = item["arguments"] as? String,
@@ -178,14 +141,19 @@ final class LiveResponsesToolBridge {
                                   functionID: functionID, name: name, query: fields["query"] as? String,
                                   topic: fields["topic"] as? String, days: fields["days"] as? Int)
             if let previous = pending.first(where: { $0.functionID == functionID }) {
-                if previous != request { retire() }
+                if previous != request {
+                    retire()
+                }
                 return
             }
             guard pending.count < 8 else { retire(); return }
             pending.append(request)
             return
         }
-        if type == "response.failed" || type == "response.incomplete" { retire(); return }
+        if type == "response.failed" || type == "response.incomplete" {
+            retire()
+            return
+        }
         guard type == "response.completed", let response = event["response"] as? [String: Any],
               response["id"] as? String == delegation.response, response["status"] as? String == "completed",
               !pending.isEmpty else { return }
@@ -204,7 +172,8 @@ final class LiveResponsesToolBridge {
     }
 
     private func runBatch(_ results: [(Request, String)], current: @escaping () -> Bool,
-                          send: @escaping ([[String: Any]], @escaping () -> Bool) -> Void) {
+                          send: @escaping ([[String: Any]], @escaping () -> Bool) -> Void)
+    {
         guard !retired, current(), admission.backendAllowed() else { retire(); return }
         if results.count == pending.count {
             let permitted = { [weak self] in

@@ -213,8 +213,14 @@ private final class HeldManagedSocket: RealtimeSocketPort {
     var failed: (() -> Void)?
     var held: LiveQueuedToolPermit?
 
-    func open(model _: String, key _: String) { XCTFail("No provider connection") }
-    func send(_: [String: Any]) { XCTFail("No generic output") }
+    func open(model _: String, key _: String) {
+        XCTFail("No provider connection")
+    }
+
+    func send(_: [String: Any]) {
+        XCTFail("No generic output")
+    }
+
     func discardInput() {}
     func close() {}
     func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool {

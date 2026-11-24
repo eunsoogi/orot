@@ -14,15 +14,6 @@ protocol RealtimeSocketPort: AnyObject {
     func finishLive(sessionID: String)
 }
 
-extension RealtimeSocketPort {
-    func admitResponsesTransport(_: @escaping () -> Bool) -> Bool { false }
-    func sendManagedToolFrames(_: [[String: Any]], current _: @escaping () -> Bool) -> Bool { false }
-    func discardManagedToolFrames() -> Bool { false }
-    func finishLive(sessionID _: String) {
-        close()
-    }
-}
-
 /// A redirect must never carry a user's BYOK credential to a second destination.
 private final class LiveSocketSessionDelegate: NSObject, URLSessionTaskDelegate {
     func urlSession(_: URLSession, task _: URLSessionTask, willPerformHTTPRedirection _: HTTPURLResponse,
@@ -101,7 +92,11 @@ final class RealtimeVoiceSocket: RealtimeSocketPort {
                 bytes = queue.reduce(0) { $0 + $1.text.utf8.count }
                 // Once a partial batch reached URLSession, never guess that its continuation
                 // is safe or retry it. Terminate through the existing transport failure owner.
-                if permit.issued { transportFailed() } else { flush() }
+                if permit.issued {
+                    transportFailed()
+                } else {
+                    flush()
+                }
                 return
             }
             permit.issued = true

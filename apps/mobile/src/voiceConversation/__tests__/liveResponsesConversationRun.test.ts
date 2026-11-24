@@ -12,9 +12,10 @@ jest.mock('../../voiceSettings/liveVoicePreferencesKeychain', () => ({
 jest.mock('../../voiceSettings/liveResponsesSettings', () => ({
   loadLiveResponsesSettings: (...args: unknown[]) => mockLoad(...args),
 }));
-jest.mock('../../aiFeatures/integration/localData', () => ({
-  openAiFeatureLocalData: jest.fn(),
-}));
+jest.mock('../../aiFeatures/integration/localData', () => {
+  // The fake executor in this ownership suite never admits an actual data read.
+  throw new Error('Audio-only Live wiring must not initialize local data');
+});
 jest.mock('../../ragConversation/conversationExecutionNative', () => ({
   conversationExecutionNative: () => ({
     bridgeAvailable: true,

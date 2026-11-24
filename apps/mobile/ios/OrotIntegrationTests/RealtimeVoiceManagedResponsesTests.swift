@@ -13,14 +13,16 @@ extension RealtimeVoiceLifecycleTests {
             var selected = backend
             let read: (String, String) -> [String: Any]? = { _, account in
                 switch account {
-                case "settings-consent-authority": return ["version": 1, "status": status, "generation": generation]
+                case "settings-consent-authority":
+                    ["version": 1, "status": status, "generation": generation]
                 case "live-responses-settings":
-                    return ["version": 1, "backendModel": selected, "generation": generation,
-                            "grantID": generation + "-model", "credentialEpoch": epoch]
+                    ["version": 1, "backendModel": selected, "generation": generation,
+                     "grantID": generation + "-model", "credentialEpoch": epoch]
                 case "voice-settings":
-                    return ["mode": "openai-api", "model": "gpt-live-1.1",
-                            "apiKey": "synthetic-key", "credentialEpoch": epoch]
-                default: return nil
+                    ["mode": "openai-api", "model": "gpt-live-1.1",
+                     "apiKey": "synthetic-key", "credentialEpoch": epoch]
+                default:
+                    nil
                 }
             }
             XCTAssertTrue(settings.isCurrent(key: "synthetic-key", read: read))
@@ -31,10 +33,12 @@ extension RealtimeVoiceLifecycleTests {
             XCTAssertFalse(settings.isCurrent(key: "synthetic-key", read: read))
             XCTAssertTrue(LiveResponsesAdmission.validAggregate(
                 #"{"topic":"measurements","metric":"heart_rate","unit":"count/min","days":7,"sampleCount":3,"meanOfRecordedDailyMeans":66}"#,
-                days: 7))
+                days: 7,
+            ))
             XCTAssertFalse(LiveResponsesAdmission.validAggregate(
                 #"{"topic":"measurements","metric":"heart_rate","unit":"count/min","days":7,"sampleCount":3,"meanOfRecordedDailyMeans":66,"text":"raw"}"#,
-                days: 7))
+                days: 7,
+            ))
             let socket = ManagedResponseFixtureSocket()
             let configured = expectation(description: "held Live socket configuration")
             let queued = expectation(description: "one owned result and continuation")
@@ -57,7 +61,9 @@ extension RealtimeVoiceLifecycleTests {
             XCTAssertEqual(delegation?["type"] as? String, "responses")
             XCTAssertEqual((delegation?["responses"] as? [String: Any])?["model"] as? String, backend)
             socket.received?(started())
-            for event in managedEvents() { socket.received?(event) }
+            for event in managedEvents() {
+                socket.received?(event)
+            }
             await fulfillment(of: [queued], timeout: 2)
             XCTAssertEqual(invocations, ["function-a"])
             XCTAssertEqual(socket.managed.map { $0["type"] as? String }, ["response.item.create", "response.create"])
@@ -100,10 +106,15 @@ extension RealtimeVoiceLifecycleTests {
             socket.received?(started())
             var events = managedEvents()
             if mode != "stop" {
-                if mode == "null" { events[1]["delegation_id"] = NSNull() }
-                else { events[1]["delegation_id"] = "other-delegation" }
+                if mode == "null" {
+                    events[1]["delegation_id"] = NSNull()
+                } else {
+                    events[1]["delegation_id"] = "other-delegation"
+                }
             }
-            for event in events { socket.received?(event) }
+            for event in events {
+                socket.received?(event)
+            }
             if let entered {
                 await fulfillment(of: [entered], timeout: 2)
                 XCTAssertEqual(hits, 1)
@@ -167,11 +178,18 @@ private final class ManagedResponseFixtureSocket: RealtimeSocketPort {
         XCTAssertEqual(model, "gpt-live-1.1")
         XCTAssertEqual(key, "synthetic-key")
     }
-    func admitResponsesTransport(_ current: @escaping () -> Bool) -> Bool { current() }
+
+    func admitResponsesTransport(_ current: @escaping () -> Bool) -> Bool {
+        current()
+    }
+
     func send(_ event: [String: Any]) {
         controls.append(event)
-        if event["type"] as? String == "session.start" { configured?() }
+        if event["type"] as? String == "session.start" {
+            configured?()
+        }
     }
+
     func sendManagedToolFrames(_ frames: [[String: Any]], current: @escaping () -> Bool) -> Bool {
         let next = LiveQueuedToolPermit(current: current)
         guard next.prepare(frames) != nil, permit == nil else { return false }
@@ -180,18 +198,21 @@ private final class ManagedResponseFixtureSocket: RealtimeSocketPort {
         queued?()
         return true
     }
+
     func handoff() -> Bool {
         guard handed < managed.count, permit?.authorizeHandoff() == true else { return false }
         handed += 1
         permit?.issued = true
         return true
     }
+
     func discardManagedToolFrames() -> Bool {
         dropped = !managed.isEmpty
         let uncertain = handed > 0 && handed < managed.count
         permit = nil
         return uncertain
     }
+
     func discardInput() {}
     func close() {}
 }

@@ -1,5 +1,4 @@
 import { AppState } from 'react-native';
-import { openAiFeatureLocalData } from '../aiFeatures/integration/localData';
 import { conversationExecutionNative } from '../ragConversation/conversationExecutionNative';
 import { loadLiveCallSettings } from '../voiceSettings/liveVoicePreferencesKeychain';
 import {
@@ -38,7 +37,7 @@ export function liveResponsesConversationRun(input: {
     const old = grant;
     clear();
     if (old) {
-      void native?.revoke(old.nativeGrant).catch(() => undefined);
+      native?.revoke(old.nativeGrant).catch(() => undefined);
       input.stop();
     }
   };
@@ -112,7 +111,11 @@ export function liveResponsesConversationRun(input: {
               return null;
             return () => !signal.aborted && current() && owner.current();
           },
-          openData: openAiFeatureLocalData,
+          // Audio-only startup must not initialize protected local evidence storage.
+          openData: async () =>
+            (
+              await import('../aiFeatures/integration/localData')
+            ).openAiFeatureLocalData(),
           settle: native.settle,
         })
       : null;
@@ -127,7 +130,7 @@ export function liveResponsesConversationRun(input: {
           abort: new AbortController(),
         };
         challenge = running;
-        void execute(incoming, running.abort.signal).finally(() => {
+        execute(incoming, running.abort.signal).finally(() => {
           if (challenge === running) challenge = undefined;
         });
       },
