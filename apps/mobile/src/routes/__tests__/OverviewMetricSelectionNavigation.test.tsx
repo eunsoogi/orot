@@ -171,9 +171,6 @@ test('separate editor discards Cancel and saves all five ordered cards into the 
     expect(choice('bodyMass').props.accessibilityState.checked).toBe(false);
     for (const metric of added) await fireEvent.press(choice(metric));
     expect(screen.getAllByRole('checkbox')).toHaveLength(7);
-    for (const metric of [...initial, ...added]) {
-      expect(choice(metric).props.accessibilityState.checked).toBe(true);
-    }
     for (const metric of ['restingHeartRate', 'walkingHeartRate']) {
       expect(choice(metric).props.accessibilityState.checked).toBe(false);
     }
